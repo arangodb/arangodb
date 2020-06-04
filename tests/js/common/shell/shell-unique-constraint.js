@@ -106,13 +106,8 @@ function UniqueConstraintSuite() {
       assertEqual("hash", idx.type);
       assertTrue(idx.unique);
       assertEqual(["a","b"].sort(), idx.fields.sort());
-      if (internal.db._engine().name === 'mmfiles') {
-        assertEqual(id, idx.id);
-        assertFalse(idx.isNewlyCreated);
-      } else {
-        assertNotEqual(id, idx.id);
-        assertTrue(idx.isNewlyCreated);
-      }
+      assertNotEqual(id, idx.id);
+      assertTrue(idx.isNewlyCreated);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -47,30 +47,35 @@ function UpgradeData() {
       const c = db._collection('LargeCollection');
       assertEqual(c.count(), 10000);
 
-      const v = db._createView('TestView', 'arangosearch', {});
-      const properties = {
-        links: {
-          'LargeCollection': {
-            includeAllFields: true
+      let v;
+      try {
+        v = db._createView('TestView', 'arangosearch', {});
+        const properties = {
+          links: {
+            'LargeCollection': {
+              includeAllFields: true
+            }
           }
-        }
-      };
-      v.properties(properties);
+        };
+        v.properties(properties);
 
-      const query =
-        `FOR doc in TestView
+        const query =
+          `FOR doc in TestView
           SEARCH(doc.name >= "Name 1114" &&  doc.name <= "Name 1117")
           OPTIONS { waitForSync: true }
           SORT doc.name ASC
           RETURN doc`;
-      const results = db._query(query).toArray();
-      assertEqual(results.length, 4);
-      assertEqual(results[0].name, "Name 1114");
-      assertEqual(results[1].name, "Name 1115");
-      assertEqual(results[2].name, "Name 1116");
-      assertEqual(results[3].name, "Name 1117");
+        const results = db._query(query).toArray();
+        assertEqual(results.length, 4);
+        assertEqual(results[0].name, "Name 1114");
+        assertEqual(results[1].name, "Name 1115");
+        assertEqual(results[2].name, "Name 1116");
+        assertEqual(results[3].name, "Name 1117");
+      }
+      finally {
+        db._dropView('TestView');
+      }
     }
-
   };
 }
 

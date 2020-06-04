@@ -52,18 +52,18 @@ typedef std::vector<Expected> ExpectedVec_t;
 //
 // TestProgressHandler lets us know once ApplicationServer is ready
 //
-class TestProgressHandler : public arangodb::application_features::ApplicationServer::ProgressHandler {
-public:
+class TestProgressHandler
+    : public arangodb::application_features::ApplicationServer::ProgressHandler {
+ public:
   TestProgressHandler() {
-    _serverReady=false;
+    _serverReady = false;
 
     using std::placeholders::_1;
-    _state = std::bind(& TestProgressHandler::StateChange, this, _1);
+    _state = std::bind(&TestProgressHandler::StateChange, this, _1);
 
     using std::placeholders::_2;
-    _feature = std::bind(& TestProgressHandler::FeatureChange, this, _1, _2);
+    _feature = std::bind(&TestProgressHandler::FeatureChange, this, _1, _2);
   }
-
 
   void StateChange(arangodb::application_features::ApplicationServer::State newState) {
     if (arangodb::application_features::ApplicationServer::State::IN_WAIT == newState) {
@@ -73,14 +73,13 @@ public:
     }
   }
 
-  void FeatureChange(arangodb::application_features::ApplicationServer::State newState, std::string const &) {
-  }
+  void FeatureChange(arangodb::application_features::ApplicationServer::State newState,
+                     std::string const&) {}
 
   arangodb::basics::ConditionVariable _serverReadyCond;
   std::atomic_bool _serverReady;
 
-};// class TestProgressHandler
-
+};  // class TestProgressHandler
 
 using namespace arangodb::maintenance;
 
@@ -91,10 +90,9 @@ using namespace arangodb::maintenance;
 //  2. constructor with ApplicationServer pointer for threaded actions
 //
 class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
-public:
+ public:
   TestMaintenanceFeature(arangodb::application_features::ApplicationServer& as)
-    : arangodb::MaintenanceFeature(as) {
-
+      : arangodb::MaintenanceFeature(as) {
     // force activation of the feature, even in agency/single-server mode
     // (the catch tests use single-server mode)
     _forceActivation = true;
@@ -102,41 +100,41 @@ public:
     // begin with no threads to allow queue validation
     _maintenanceThreadsMax = 0;
     as.addReporter(_progressHandler);
+    initializeMetrics();
   }
 
   virtual ~TestMaintenanceFeature() = default;
 
   void validateOptions(std::shared_ptr<arangodb::options::ProgramOptions> options) override {}
 
-  void setSecondsActionsBlock(uint32_t seconds) { _secondsActionsBlock = seconds; }
+  void setSecondsActionsBlock(uint32_t seconds) {
+    _secondsActionsBlock = seconds;
+  }
 
   /// @brief set thread count, then activate the threads via start().  One time usage only.
   ///   Code waits until background ApplicationServer known to have fully started.
   void setMaintenanceThreadsMax(uint32_t threads) {
     CONDITION_LOCKER(clock, _progressHandler._serverReadyCond);
-    while(!_progressHandler._serverReady) {
+    while (!_progressHandler._serverReady) {
       _progressHandler._serverReadyCond.wait();
-    } // while
+    }  // while
 
     _maintenanceThreadsMax = threads;
     start();
-  } // setMaintenanceThreadsMax
+  }  // setMaintenanceThreadsMax
 
-
-  virtual arangodb::Result addAction(
-    std::shared_ptr<arangodb::maintenance::Action> action, bool executeNow = false) override {
+  virtual arangodb::Result addAction(std::shared_ptr<arangodb::maintenance::Action> action,
+                                     bool executeNow = false) override {
     _recentAction = action;
     return MaintenanceFeature::addAction(action, executeNow);
   }
 
-  virtual arangodb::Result addAction(
-    std::shared_ptr<arangodb::maintenance::ActionDescription> const & description,
-    bool executeNow = false) override {
+  virtual arangodb::Result addAction(std::shared_ptr<arangodb::maintenance::ActionDescription> const& description,
+                                     bool executeNow = false) override {
     return MaintenanceFeature::addAction(description, executeNow);
   }
 
-
-  bool verifyRegistryState(ExpectedVec_t & expected) {
+  bool verifyRegistryState(ExpectedVec_t& expected) {
     bool good(true);
 
     VPackBuilder registryBuilder(toVelocyPack());
@@ -145,40 +143,39 @@ public:
     auto action = registry.begin();
     auto check = expected.begin();
 
-    for ( ; registry.end() != action && expected.end()!=check; ++action, ++check) {
+    for (; registry.end() != action && expected.end() != check; ++action, ++check) {
       VPackSlice id = (*action).get("id");
       if (!(id.isInteger() && id.getInt() == check->_id)) {
-        std::cerr << "Id mismatch: action has " << id.getInt()
-                  << " expected " << check->_id << std::endl;
+        std::cerr << "Id mismatch: action has " << id.getInt() << " expected "
+                  << check->_id << std::endl;
         good = false;
-      } // if
+      }  // if
 
       VPackSlice result = (*action).get("result");
       if (!(result.isInteger() && check->_result == result.getInt())) {
         std::cerr << "Result mismatch: action has " << result.getInt()
                   << " expected " << check->_result << std::endl;
         good = false;
-      } // if
+      }  // if
 
       VPackSlice state = (*action).get("state");
       if (!(state.isInteger() && check->_state == state.getInt())) {
         std::cerr << "State mismatch: action has " << state.getInt()
                   << " expected " << check->_state << std::endl;
         good = false;
-      } // if
+      }  // if
 
       VPackSlice progress = (*action).get("progress");
       if (!(progress.isInteger() && check->_progress == progress.getInt())) {
         std::cerr << "Progress mismatch: action has " << progress.getInt()
                   << " expected " << check->_progress << std::endl;
         good = false;
-      } // if
-    } // for
+      }  // if
+    }    // for
 
     return good;
 
-  } // verifyRegistryState
-
+  }  // verifyRegistryState
 
   /// @brief poll registry until all actions finish
   void waitRegistryComplete() {
@@ -193,12 +190,12 @@ public:
       for (auto action : registry) {
         VPackSlice state = action.get("state");
         again = again || (COMPLETE != state.getInt() && FAILED != state.getInt());
-      } // for
+      }  // for
     } while (again);
-  } // waitRegistryComplete
+  }  // waitRegistryComplete
 
-public:
+ public:
   std::shared_ptr<Action> _recentAction;
   TestProgressHandler _progressHandler;
 
-};// TestMaintenanceFeature
+};  // TestMaintenanceFeature

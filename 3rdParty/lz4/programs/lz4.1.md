@@ -31,26 +31,29 @@ The native file format is the `.lz4` format.
 `lz4` supports a command line syntax similar _but not identical_ to `gzip(1)`.
 Differences are :
 
-  * `lz4` preserves original files
   * `lz4` compresses a single file by default (see `-m` for multiple files)
   * `lz4 file1 file2` means : compress file1 _into_ file2
   * `lz4 file.lz4` will default to decompression (use `-z` to force compression)
+  * `lz4` preserves original files
   * `lz4` shows real-time notification statistics
      during compression or decompression of a single file
-     (use `-q` to silent them)
-  * If no destination name is provided, result is sent to `stdout`
-    _except if stdout is the console_.
-  * If no destination name is provided, __and__ if `stdout` is the console,
-    `file` is compressed into `file.lz4`.
-  * As a consequence of previous rules, note the following example :
-    `lz4 file | consumer` sends compressed data to `consumer` through `stdout`,
-    hence it does _not_ create `file.lz4`.
+     (use `-q` to silence them)
+  * When no destination is specified, result is sent on implicit output,
+    which depends on `stdout` status.
+    When `stdout` _is Not the console_, it becomes the implicit output.
+    Otherwise, if `stdout` is the console, the implicit output is `filename.lz4`.
+  * It is considered bad practice to rely on implicit output in scripts.
+    because the script's environment may change.
+    Always use explicit output in scripts.
+    `-c` ensures that output will be `stdout`.
+    Conversely, providing a destination name, or using `-m`
+    ensures that the output will be either the specified name, or `filename.lz4` respectively.
 
 Default behaviors can be modified by opt-in commands, detailed below.
 
   * `lz4 -m` makes it possible to provide multiple input filenames,
     which will be compressed into files using suffix `.lz4`.
-    Progress notifications are also disabled by default (use `-v` to enable them).
+    Progress notifications become disabled by default (use `-v` to enable them).
     This mode has a behavior which more closely mimics `gzip` command line,
     with the main remaining difference being that source files are preserved by default.
   * Similarly, `lz4 -m -d` can decompress multiple `*.lz4` files.
@@ -78,8 +81,7 @@ In some cases, some options can be expressed using short command `-x`
 or long command `--long-word`.
 Short commands can be concatenated together.
 For example, `-d -c` is equivalent to `-dc`.
-Long commands cannot be concatenated.
-They must be clearly separated by a space.
+Long commands cannot be concatenated. They must be clearly separated by a space.
 
 ### Multiple commands
 
@@ -111,16 +113,42 @@ only the latest one will be applied.
 * `-b#`:
   Benchmark mode, using `#` compression level.
 
+* `--list`:
+  List information about .lz4 files.
+  note : current implementation is limited to single-frame .lz4 files.
+
 ### Operation modifiers
 
 * `-#`:
-  Compression level, with # being any value from 1 to 16.
+  Compression level, with # being any value from 1 to 12.
   Higher values trade compression speed for compression ratio.
-  Values above 16 are considered the same as 16.
+  Values above 12 are considered the same as 12.
   Recommended values are 1 for fast compression (default),
   and 9 for high compression.
   Speed/compression trade-off will vary depending on data to compress.
   Decompression speed remains fast at all settings.
+
+* `--fast[=#]`:
+  Switch to ultra-fast compression levels.
+  The higher the value, the faster the compression speed, at the cost of some compression ratio.
+  If `=#` is not present, it defaults to `1`.
+  This setting overrides compression level if one was set previously.
+  Similarly, if a compression level is set after `--fast`, it overrides it.
+
+* `--best`:
+  Set highest compression level. Same as -12.
+
+* `--favor-decSpeed`:
+  Generate compressed data optimized for decompression speed.
+  Compressed data will be larger as a consequence (typically by ~0.5%),
+  while decompression speed will be improved by 5-20%, depending on use cases.
+  This option only works in combination with very high compression levels (>=10).
+
+* `-D dictionaryName`:
+  Compress, decompress or benchmark using dictionary _dictionaryName_.
+  Compression and decompression must use the same dictionary to be compatible.
+  Using a different dictionary during decompression will either
+  abort due to decompression error, or generate a checksum error.
 
 * `-f` `--[no-]force`:
   This option has several effects:
@@ -139,6 +167,7 @@ only the latest one will be applied.
   Multiple input files.
   Compressed file names will be appended a `.lz4` suffix.
   This mode also reduces notification level.
+  Can also be used to list multiple files.
   `lz4 -m` has a behavior equivalent to `gzip -k`
   (it preserves source files by default).
 
@@ -150,8 +179,11 @@ only the latest one will be applied.
   Block size \[4-7\](default : 7)<br/>
   `-B4`= 64KB ; `-B5`= 256KB ; `-B6`= 1MB ; `-B7`= 4MB
 
+* `-BI`:
+  Produce independent blocks (default)
+
 * `-BD`:
-  Block Dependency (improves compression ratio on small blocks)
+  Blocks depend on predecessors (improves compression ratio, more noticeable on small blocks)
 
 * `--[no-]frame-crc`:
   Select frame checksum (default:enabled)
@@ -203,7 +235,7 @@ only the latest one will be applied.
   Benchmark multiple compression levels, from b# to e# (included)
 
 * `-i#`:
-  Minimum evaluation in seconds \[1-9\] (default : 3)
+  Minimum evaluation time in seconds \[1-9\] (default : 3)
 
 
 BUGS

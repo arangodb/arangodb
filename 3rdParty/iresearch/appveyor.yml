@@ -11,41 +11,9 @@ build:
 
 environment:
   BOOST_VERSION: default
-  CMAKE_OPTIONS: -DUSE_TESTS=On -DCMAKE_BUILD_TYPE=%CONFIGURATION% -DMSVC_BUILD_THREADS=16
+  USE_SIMDCOMP: On
   CMAKE_BUILD_OPTIONS: --config %CONFIGURATION%
   matrix:
-
-  ############################################################################
-  # Visual Studio 2015
-  ############################################################################
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-      BUILD_TYPE: shared
-      TEST_OPTIONS: --gtest_filter=*type_utils*
-      VSINSTALL: "Microsoft Visual Studio 14.0\\VC"
-      BOOST_ROOT: C:/Libraries/boost_1_60_0
-      CONFIGURATION: Debug
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-      BUILD_TYPE: static
-      TEST_OPTIONS: --gtest_filter=*type_utils*
-      VSINSTALL: "Microsoft Visual Studio 14.0\\VC"
-      BOOST_ROOT: C:/Libraries/boost_1_60_0
-      CONFIGURATION: Debug
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-      BUILD_TYPE: shared
-      TEST_OPTIONS: --gtest_filter=*:-:*europarl*/fs*
-      VSINSTALL: "Microsoft Visual Studio 14.0\\VC"
-      BOOST_ROOT: C:/Libraries/boost_1_60_0
-      CONFIGURATION: Release
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-      BUILD_TYPE: static
-      TEST_OPTIONS: --gtest_filter=*:-:*europarl*/fs* # tests with europarl_docs take longer than an hour on MSVC2015
-      VSINSTALL: "Microsoft Visual Studio 14.0\\VC"
-      BOOST_ROOT: C:/Libraries/boost_1_60_0
-      CONFIGURATION: Release
 
   ############################################################################
   # Visual Studio 2017
@@ -126,7 +94,7 @@ install:
   - cd %DEPS_DIR%
   - appveyor-retry git clone --quiet %SNOWBALL_URL% %SNOWBALL_DIR%
   - cd %SNOWBALL_DIR%
-  - git reset --hard 5137019d68befd633ce8b1cd48065f41e77ed43e
+  - git reset --hard 53739a805cfa6c77ff8496dc711dc1c106d987c1
   - set SNOWBALL_ROOT=%SNOWBALL_DIR%
 
   ############################################################################
@@ -195,7 +163,7 @@ build_script:
   - cd %APPVEYOR_BUILD_FOLDER%
   - mkdir build
   - cd build
-  - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 %CMAKE_OPTIONS% ..
+  - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 -DUSE_TESTS=On -DCMAKE_BUILD_TYPE=%CONFIGURATION% -DMSVC_BUILD_THREADS=16 -DUSE_SIMDCOMP=%USE_SIMDCOMP% ..
   - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-tests-%BUILD_TYPE%
   - if "%BUILD_TYPE%" == "static" ( cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-benchmarks )
   - if "%BUILD_TYPE%" == "static" ( cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-index-util )
@@ -204,7 +172,7 @@ test_script:
   ############################################################################
   # Execute tests
   ############################################################################
-  - cmd: bin\%CONFIGURATION%\iresearch-tests%EXECUTABLE_SUFFIX%.exe --gtest_output=xml:test_results.xml %TEST_OPTIONS%
+  - cmd: python ..\scripts\gtest-parallel\gtest_parallel.py %TEST_OPTIONS% bin\%CONFIGURATION%\iresearch-tests%EXECUTABLE_SUFFIX%.exe -- --gtest_output=xml:test_results.xml
 
 on_finish:
   ############################################################################

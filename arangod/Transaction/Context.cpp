@@ -27,7 +27,6 @@
 #include "Cluster/ClusterInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "Transaction/ContextData.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
@@ -42,6 +41,7 @@
 
 using namespace arangodb;
 
+namespace {
 // custom type value handler, used for deciphering the _id attribute
 struct CustomTypeHandler final : public VPackCustomTypeHandler {
   CustomTypeHandler(TRI_vocbase_t& vocbase, CollectionNameResolver const& resolver)
@@ -61,6 +61,7 @@ struct CustomTypeHandler final : public VPackCustomTypeHandler {
   TRI_vocbase_t& vocbase;
   CollectionNameResolver const& resolver;
 };
+}
 
 /// @brief create the context
 transaction::Context::Context(TRI_vocbase_t& vocbase)
@@ -72,8 +73,7 @@ transaction::Context::Context(TRI_vocbase_t& vocbase)
       _strings{_strArena},
       _options(arangodb::velocypack::Options::Defaults),
       _dumpOptions(arangodb::velocypack::Options::Defaults),
-      _contextData(EngineSelectorFeature::ENGINE->createTransactionContextData()),
-      _transaction{0, false, false},
+      _transaction{0, false},
       _ownsResolver(false) {
   /// dump options contain have the escapeUnicode attribute set to true
   /// this allows dumping of string values as plain 7-bit ASCII values.
@@ -89,8 +89,7 @@ transaction::Context::~Context() {
   // unregister the transaction from the logfile manager
   if (_transaction.id > 0) {
     transaction::ManagerFeature::manager()->unregisterTransaction(_transaction.id,
-                                                                _transaction.hasFailedOperations,
-                                                                _transaction.isReadOnlyTransaction);
+                                                                  _transaction.isReadOnlyTransaction);
   }
 
   // free all VPackBuilders we handed out
@@ -109,24 +108,9 @@ transaction::Context::~Context() {
 }
 
 /// @brief factory to create a custom type handler, not managed
-VPackCustomTypeHandler* transaction::Context::createCustomTypeHandler(
+std::unique_ptr<VPackCustomTypeHandler> transaction::Context::createCustomTypeHandler(
     TRI_vocbase_t& vocbase, CollectionNameResolver const& resolver) {
-  return new CustomTypeHandler(vocbase, resolver);
-}
-
-/// @brief pin data for the collection
-void transaction::Context::pinData(LogicalCollection* collection) {
-  if (_contextData) {
-    _contextData->pinData(collection);
-  }
-}
-
-/// @brief whether or not the data for the collection is pinned
-bool transaction::Context::isPinned(TRI_voc_cid_t cid) {
-  if (_contextData) {
-    return _contextData->isPinned(cid);
-  }
-  return true;  // storage engine does not need pinning
+  return std::make_unique<::CustomTypeHandler>(vocbase, resolver);
 }
 
 /// @brief temporarily lease a StringBuffer object
@@ -141,7 +125,7 @@ basics::StringBuffer* transaction::Context::leaseStringBuffer(size_t initialSize
 }
 
 /// @brief return a temporary StringBuffer object
-void transaction::Context::returnStringBuffer(basics::StringBuffer* stringBuffer) {
+void transaction::Context::returnStringBuffer(basics::StringBuffer* stringBuffer) noexcept {
   _stringBuffer.reset(stringBuffer);
 }
 
@@ -160,7 +144,7 @@ std::string* transaction::Context::leaseString() {
 }
 
 /// @brief return a temporary std::string object
-void transaction::Context::returnString(std::string* str) {
+void transaction::Context::returnString(std::string* str) noexcept {
   try {  // put string back into our vector of strings
     _strings.push_back(str);
   } catch (...) {
@@ -185,7 +169,7 @@ VPackBuilder* transaction::Context::leaseBuilder() {
 }
 
 /// @brief return a temporary Builder object
-void transaction::Context::returnBuilder(VPackBuilder* builder) {
+void transaction::Context::returnBuilder(VPackBuilder* builder) noexcept {
   try {
     // put builder back into our vector of builders
     _builders.push_back(builder);
@@ -230,23 +214,34 @@ CollectionNameResolver const* transaction::Context::createResolver() {
   return _resolver;
 }
 
+std::shared_ptr<TransactionState> transaction::Context::createState(transaction::Options const& options) {
+  // now start our own transaction
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine != nullptr);
+  return engine->createTransactionState(_vocbase, generateId(), options);
+}
+
 /// @brief unregister the transaction
 /// this will save the transaction's id and status locally
 void transaction::Context::storeTransactionResult(TRI_voc_tid_t id,
-                                                  bool hasFailedOperations,
                                                   bool wasRegistered,
                                                   bool isReadOnlyTransaction) noexcept {
   TRI_ASSERT(_transaction.id == 0);
 
   if (wasRegistered) {
     _transaction.id = id;
-    _transaction.hasFailedOperations = hasFailedOperations;
     _transaction.isReadOnlyTransaction = isReadOnlyTransaction;
   }
 }
 
 TRI_voc_tid_t transaction::Context::generateId() const {
   return Context::makeTransactionId();
+}
+
+std::shared_ptr<transaction::Context> transaction::Context::clone() const {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                 "transaction::Context::clone() is not implemented");
 }
 
 /*static*/ TRI_voc_tid_t transaction::Context::makeTransactionId() {

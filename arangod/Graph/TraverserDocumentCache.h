@@ -36,7 +36,9 @@ namespace graph {
 
 class TraverserDocumentCache final : public TraverserCache {
  public:
-  explicit TraverserDocumentCache(aql::Query* query, BaseOptions const*);
+  TraverserDocumentCache(aql::QueryContext& query, 
+                         std::shared_ptr<arangodb::cache::Cache> cache, 
+                         BaseOptions*);
 
   ~TraverserDocumentCache();
 
@@ -62,12 +64,6 @@ class TraverserDocumentCache final : public TraverserCache {
 
   aql::AqlValue fetchVertexAqlResult(arangodb::velocypack::StringRef idString) override;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Insert value into store
-  //////////////////////////////////////////////////////////////////////////////
-
-  void insertDocument(arangodb::velocypack::StringRef idString, arangodb::velocypack::Slice const& document);
-
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Lookup a document by token in the cache.
@@ -77,11 +73,9 @@ class TraverserDocumentCache final : public TraverserCache {
   //////////////////////////////////////////////////////////////////////////////
   cache::Finding lookup(arangodb::velocypack::StringRef idString);
 
- protected:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief The hash-cache that saves documents found in the Database
-  //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<arangodb::cache::Cache> _cache;
+ private:
+  void insertIntoCache(arangodb::velocypack::StringRef id,
+                       arangodb::velocypack::Slice const& document);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Lookup a document from the database and insert it into the cache.
@@ -90,6 +84,11 @@ class TraverserDocumentCache final : public TraverserCache {
   //////////////////////////////////////////////////////////////////////////////
 
   arangodb::velocypack::Slice lookupAndCache(arangodb::velocypack::StringRef idString);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief The hash-cache that saves documents found in the Database
+  //////////////////////////////////////////////////////////////////////////////
+  std::shared_ptr<arangodb::cache::Cache> _cache;
 };
 }  // namespace graph
 }  // namespace arangodb

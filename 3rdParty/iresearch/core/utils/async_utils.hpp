@@ -70,7 +70,7 @@ class IRESEARCH_API read_write_mutex final {
   // for use with std::lock_guard/std::unique_lock for read operations
   class read_mutex {
    public:
-    explicit read_mutex(read_write_mutex& mutex) NOEXCEPT
+    explicit read_mutex(read_write_mutex& mutex) noexcept
       : mutex_(mutex) {
     }
     read_mutex& operator=(read_mutex&) = delete; // because of reference
@@ -84,7 +84,7 @@ class IRESEARCH_API read_write_mutex final {
   // for use with std::lock_guard/std::unique_lock for write operations
   class write_mutex {
    public:
-    explicit write_mutex(read_write_mutex& mutex) NOEXCEPT
+    explicit write_mutex(read_write_mutex& mutex) noexcept
       : mutex_(mutex) {
     }
     write_mutex& operator=(write_mutex&) = delete; // because of reference
@@ -96,12 +96,12 @@ class IRESEARCH_API read_write_mutex final {
     read_write_mutex& mutex_;
   }; // write_mutex
 
-  read_write_mutex() NOEXCEPT;
-  ~read_write_mutex() NOEXCEPT;
+  read_write_mutex() noexcept;
+  ~read_write_mutex() noexcept;
 
   void lock_read();
   void lock_write();
-  bool owns_write() NOEXCEPT;
+  bool owns_write() noexcept;
   bool try_lock_read();
   bool try_lock_write();
 

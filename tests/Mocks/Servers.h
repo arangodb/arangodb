@@ -23,6 +23,7 @@
 #ifndef ARANGODB_TESTS_MOCKS_SERVERS_H
 #define ARANGODB_TESTS_MOCKS_SERVERS_H 1
 
+#include "IResearch/AgencyMock.h"
 #include "StorageEngineMock.h"
 
 #include "Mocks/LogLevels.h"
@@ -61,9 +62,7 @@ class MockServer {
   void init();
 
   TRI_vocbase_t& getSystemDatabase() const;
-  std::string const testFilesystemPath() const {
-    return _testFilesystemPath;
-  }
+  std::string const testFilesystemPath() const { return _testFilesystemPath; }
 
   // add a feature to the underlying server, keep track of it;
   // all added features will be prepared in startFeatures(), and unprepared in
@@ -100,9 +99,7 @@ class MockServer {
   void stopFeatures();
 
  protected:
-
-  arangodb::application_features::ApplicationServer::State
-    _oldApplicationServerState;
+  arangodb::application_features::ApplicationServer::State _oldApplicationServerState;
   arangodb::application_features::ApplicationServer _server;
   StorageEngineMock _engine;
   std::unordered_map<arangodb::application_features::ApplicationFeature*, bool> _features;
@@ -132,7 +129,7 @@ class MockAqlServer : public MockServer,
   ~MockAqlServer();
 
   std::shared_ptr<arangodb::transaction::Methods> createFakeTransaction() const;
-  std::unique_ptr<arangodb::aql::Query> createFakeQuery() const;
+  std::unique_ptr<arangodb::aql::Query> createFakeQuery(bool activateTracing = false, std::string queryString = "") const;
 };
 
 class MockRestServer : public MockServer,
@@ -153,7 +150,7 @@ class MockClusterServer : public MockServer,
  public:
   virtual TRI_vocbase_t* createDatabase(std::string const& name) = 0;
   virtual void dropDatabase(std::string const& name) = 0;
-  arangodb::consensus::Store& getAgencyStore() { return _agencyStore; };
+  arangodb::consensus::Store& getAgencyStore() { return *_agencyStore; };
   void startFeatures() override;
 
   // You can only create specialized types
@@ -168,8 +165,9 @@ class MockClusterServer : public MockServer,
   void agencyDropDatabase(std::string const& name);
 
  private:
-  arangodb::consensus::Store _agencyStore;
+  arangodb::consensus::Store* _agencyStore;
   arangodb::ServerState::RoleEnum _oldRole;
+  std::unique_ptr<AsyncAgencyStorePoolMock> _pool;
   int _dummy;
 };
 

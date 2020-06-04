@@ -148,11 +148,11 @@ RestStatus RestIndexHandler::getIndexes() {
     }
 
     std::string const& iid = suffixes[1];
-    VPackBuilder b;
-    b.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
+    VPackBuilder tmp;
+    tmp.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
 
     VPackBuilder output;
-    Result res = methods::Indexes::getIndex(coll.get(), b.slice(), output);
+    Result res = methods::Indexes::getIndex(coll.get(), tmp.slice(), output);
     if (res.ok()) {
       VPackBuilder b;
       b.openObject();
@@ -217,9 +217,12 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
   builder.add(StaticStrings::Code, VPackValue(static_cast<int>(rest::ResponseCode::OK)));
   builder.add("indexes", VPackValue(VPackValueType::Object));
   for (std::shared_ptr<Index> idx : idxs) {
+    if (idx->inProgress() || idx->isHidden()) {
+      continue;
+    }
     std::string name = coll->name();
     name.push_back(TRI_INDEX_HANDLE_SEPARATOR_CHR);
-    name.append(std::to_string(idx->id()));
+    name.append(std::to_string(idx->id().id()));
     if (idx->hasSelectivityEstimate() || idx->unique()) {
       builder.add(name, VPackValue(idx->selectivityEstimate()));
     }

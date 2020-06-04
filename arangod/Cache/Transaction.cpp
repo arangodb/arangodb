@@ -18,16 +18,18 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
+
+#include <cstdint>
 
 #include "Cache/Transaction.h"
 
-#include <stdint.h>
-
-using namespace arangodb::cache;
+namespace arangodb::cache {
 
 Transaction::Transaction() : term(0), readOnly(true), sensitive(false) {}
 
 Transaction::Transaction(bool ro)
     : term(0), readOnly(ro), sensitive(!readOnly) {}
+
+}  // namespace arangodb::cache

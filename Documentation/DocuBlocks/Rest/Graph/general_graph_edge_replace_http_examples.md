@@ -11,10 +11,10 @@ Replaces the data of an edge in the collection.
 @RESTURLPARAM{graph,string,required}
 The name of the graph.
 
-@RESTURLPARAM{collection,string,required} 
+@RESTURLPARAM{collection,string,required}
 The name of the edge collection the edge belongs to.
 
-@RESTURLPARAM{edge,string,required} 
+@RESTURLPARAM{edge,string,required}
 The *_key* attribute of the vertex.
 
 @RESTQUERYPARAMETERS
@@ -74,7 +74,6 @@ The complete overwritten edge document.
 Includes all attributes stored before this operation.
 Will only be present if returnOld is true.
 
-
 @RESTRETURNCODE{202}
 Returned if the request was successful but waitForSync is false.
 
@@ -114,7 +113,7 @@ It is true in this response.
 The response code.
 
 @RESTREPLYBODY{errorNum,integer,required,}
-ArangoDB error number for the error that occured.
+ArangoDB error number for the error that occurred.
 
 @RESTREPLYBODY{errorMessage,string,required,}
 A message created for this error.
@@ -134,7 +133,7 @@ It is true in this response.
 The response code.
 
 @RESTREPLYBODY{errorNum,integer,required,}
-ArangoDB error number for the error that occured.
+ArangoDB error number for the error that occurred.
 
 @RESTREPLYBODY{errorMessage,string,required,}
 A message created for this error.
@@ -150,7 +149,7 @@ It is true in this response.
 The response code.
 
 @RESTREPLYBODY{errorNum,integer,required,}
-ArangoDB error number for the error that occured.
+ArangoDB error number for the error that occurred.
 
 @RESTREPLYBODY{errorMessage,string,required,}
 A message created for this error.

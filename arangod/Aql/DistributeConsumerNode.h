@@ -24,20 +24,23 @@
 #define ARANGOD_AQL_DISTRIBUTE_CONSUMER_NODE_H 1
 
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
 
-namespace arangodb {
-namespace aql {
+#include <utility>
+
+namespace arangodb::aql {
+
 class ExecutionBlock;
 class ExecutionPlan;
 class ScatterNode;
 
 class DistributeConsumerNode : public ExecutionNode {
  public:
-  DistributeConsumerNode(ExecutionPlan* plan, size_t id, std::string const& distributeId)
+  DistributeConsumerNode(ExecutionPlan* plan, ExecutionNodeId id, std::string distributeId)
       : ExecutionNode(plan, id),
-        _distributeId(distributeId),
+        _distributeId(std::move(distributeId)),
         _isResponsibleForInitializeCursor(true) {}
 
   DistributeConsumerNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
@@ -80,15 +83,13 @@ class DistributeConsumerNode : public ExecutionNode {
     // This node is not allowed to be cloned.
     // Clone specialization!
     TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "DistributeConsumerNode cannot be cloned");
   }
 
   CostEstimate estimateCost() const override {
     TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "DistributeConsumerNode cannot be estimated");
   }
-
-  void cloneRegisterPlan(ScatterNode* dependency);
 
  protected:
   void toVelocyPackHelperInternal(arangodb::velocypack::Builder& nodes, unsigned flags,
@@ -106,7 +107,6 @@ class DistributeConsumerNode : public ExecutionNode {
   bool _isResponsibleForInitializeCursor;
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql
 
 #endif

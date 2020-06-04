@@ -315,7 +315,7 @@ TEST_F(RestTransactionHandlerTest, permission_denied_read_only) {
     ExecContext()
         : arangodb::ExecContext(arangodb::ExecContext::Type::Internal, "dummy",
                                 "testVocbase", arangodb::auth::Level::RO,
-                                arangodb::auth::Level::RO) {}
+                                arangodb::auth::Level::RO, false) {}
   } execContext;
   arangodb::ExecContextScope execContextScope(&execContext);
 
@@ -354,7 +354,7 @@ TEST_F(RestTransactionHandlerTest, permission_denied_forbidden) {
     ExecContext()
         : arangodb::ExecContext(arangodb::ExecContext::Type::Internal, "dummy",
                                 "testVocbase", arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE) {}
+                                arangodb::auth::Level::NONE, false) {}
   } execContext;
   arangodb::ExecContextScope execContextScope(&execContext);
 

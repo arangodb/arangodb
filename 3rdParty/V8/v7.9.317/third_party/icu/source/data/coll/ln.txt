@@ -1,0 +1,29 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ln{
+    Version{"2.1.19.14"}
+    collations{
+        phonetic{
+            Sequence{
+                "&E<ɛ<<<Ɛ"
+                "&O<<ɔ<<<Ɔ"
+                "&G<gb<<<gB<<<Gb<<<GB"
+                "&K<kp<<<kP<<<Kp<<<KP"
+                "&M<mb<<<mB<<<Mb<<<MB<mf<<<mF<<<Mf<<<MF<mp<<<mP<<<Mp<<<MP<mv<<<mV<<<Mv<<<MV"
+                "&N<nd<<<nD<<<Nd<<<ND<ng<<<nG<<<Ng<<<NG<ngb<<<ngB<<<nGb<<<nGB<<<Ngb<<<NgB<<<NGB<nk"
+                "<<<nK<<<Nk<<<NK<ns<<<nS<<<Ns<<<NS<nt<<<nT<<<Nt<<<NT<ny<<<nY<<<Ny<<<NY<nz<<<nZ<<<Nz"
+                "<<<NZ"
+                "&S<sh<<<sH<<<Sh<<<SH"
+                "&T<ts<<<tS<<<Ts<<<TS"
+            }
+            Version{"35.1"}
+        }
+        standard{
+            Sequence{
+                "&E<ɛ<<<Ɛ"
+                "&O<<ɔ<<<Ɔ"
+            }
+            Version{"35.1"}
+        }
+    }
+}

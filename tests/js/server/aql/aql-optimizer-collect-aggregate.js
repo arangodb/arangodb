@@ -1871,6 +1871,7 @@ function optimizerAggregateResultsSuite () {
     if (typeof actual === 'number') {
       actual = actual.toFixed(6);
     }
+   
     assertEqual(expected, actual, query);
     
     plan = AQL_EXPLAIN(query).plan;
@@ -1941,11 +1942,11 @@ function optimizerAggregateResultsSuite () {
     },
     
     testUnique1 : function () {
-      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = UNIQUE(doc.value1) RETURN v");
+      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = UNIQUE(doc.value1) RETURN SORTED(v)");
     },
 
     testUnique2 : function () {
-      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = UNIQUE(doc.value2) RETURN v");
+      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = UNIQUE(doc.value2) RETURN SORTED(v)");
     },
     
     testSortedUnique1 : function () {

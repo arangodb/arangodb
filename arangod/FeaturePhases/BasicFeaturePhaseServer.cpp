@@ -28,7 +28,6 @@
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
-#include "ApplicationFeatures/PageSizeFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
 #include "ApplicationFeatures/SupervisorFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
@@ -62,7 +61,6 @@ BasicFeaturePhaseServer::BasicFeaturePhaseServer(ApplicationServer& server)
   startsAfter<LanguageFeature>();
   startsAfter<MaxMapCountFeature>();
   startsAfter<NonceFeature>();
-  startsAfter<PageSizeFeature>();
   startsAfter<PrivilegeFeature>();
   startsAfter<SchedulerFeature>();
   startsAfter<ShardingFeature>();

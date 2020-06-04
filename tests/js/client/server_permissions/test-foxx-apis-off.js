@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertEqual, arango */
+/* global getOptions, runSetup, assertTrue, assertEqual, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for security-related server options
@@ -29,6 +29,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
+  return {
+    'foxx.api': 'false',
+    'runSetup': true
+  };
+}
+
+if (runSetup === true) {
   let users = require("@arangodb/users");
   
   users.save("test_rw", "testi");
@@ -36,10 +43,7 @@ if (getOptions === true) {
   
   users.save("test_ro", "testi");
   users.grantDatabase("test_ro", "_system", "ro");
-  
-  return {
-    'foxx.api': 'false',
-  };
+  return true;
 }
 var jsunity = require('jsunity');
 

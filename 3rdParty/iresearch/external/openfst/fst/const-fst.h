@@ -50,10 +50,10 @@ class ConstFstImpl : public FstImpl<A> {
   ConstFstImpl()
       : states_(nullptr),
         arcs_(nullptr),
-        nstates_(0),
         narcs_(0),
+        nstates_(0),
         start_(kNoStateId) {
-    string type = "const";
+    std::string type = "const";
     if (sizeof(Unsigned) != sizeof(uint32)) {
       type += std::to_string(CHAR_BIT * sizeof(Unsigned));
     }
@@ -110,21 +110,21 @@ class ConstFstImpl : public FstImpl<A> {
   };
 
   // Properties always true of this FST class.
-  static FST_CONSTEXPR const uint64 kStaticProperties = kExpanded;
+  static constexpr uint64 kStaticProperties = kExpanded;
   // Current unaligned file format version. The unaligned version was added and
   // made the default since the aligned version does not work on pipes.
-  static FST_CONSTEXPR const int kFileVersion = 2;
+  static constexpr int kFileVersion = 2;
   // Current aligned file format version.
-  static FST_CONSTEXPR const int kAlignedFileVersion = 1;
+  static constexpr int kAlignedFileVersion = 1;
   // Minimum file format version supported.
-  static FST_CONSTEXPR const int kMinFileVersion = 1;
+  static constexpr int kMinFileVersion = 1;
 
   std::unique_ptr<MappedFile> states_region_;  // Mapped file for states.
   std::unique_ptr<MappedFile> arcs_region_;    // Mapped file for arcs.
   ConstState *states_;                         // States representation.
   Arc *arcs_;                                  // Arcs representation.
-  StateId nstates_;                            // Number of states.
   size_t narcs_;                               // Number of arcs.
+  StateId nstates_;                            // Number of states.
   StateId start_;                              // Initial state.
 
   ConstFstImpl(const ConstFstImpl &) = delete;
@@ -132,21 +132,21 @@ class ConstFstImpl : public FstImpl<A> {
 };
 
 template <class Arc, class Unsigned>
-FST_CONSTEXPR const uint64 ConstFstImpl<Arc, Unsigned>::kStaticProperties;
+constexpr uint64 ConstFstImpl<Arc, Unsigned>::kStaticProperties;
 
 template <class Arc, class Unsigned>
-FST_CONSTEXPR const int ConstFstImpl<Arc, Unsigned>::kFileVersion;
+constexpr int ConstFstImpl<Arc, Unsigned>::kFileVersion;
 
 template <class Arc, class Unsigned>
-FST_CONSTEXPR const int ConstFstImpl<Arc, Unsigned>::kAlignedFileVersion;
+constexpr int ConstFstImpl<Arc, Unsigned>::kAlignedFileVersion;
 
 template <class Arc, class Unsigned>
-FST_CONSTEXPR const int ConstFstImpl<Arc, Unsigned>::kMinFileVersion;
+constexpr int ConstFstImpl<Arc, Unsigned>::kMinFileVersion;
 
 template <class Arc, class Unsigned>
 ConstFstImpl<Arc, Unsigned>::ConstFstImpl(const Fst<Arc> &fst)
-    : nstates_(0), narcs_(0) {
-  string type = "const";
+    : narcs_(0), nstates_(0) {
+  std::string type = "const";
   if (sizeof(Unsigned) != sizeof(uint32)) {
     type += std::to_string(CHAR_BIT * sizeof(Unsigned));
   }
@@ -157,10 +157,7 @@ ConstFstImpl<Arc, Unsigned>::ConstFstImpl(const Fst<Arc> &fst)
   // Counts states and arcs.
   for (StateIterator<Fst<Arc>> siter(fst); !siter.Done(); siter.Next()) {
     ++nstates_;
-    for (ArcIterator<Fst<Arc>> aiter(fst, siter.Value()); !aiter.Done();
-         aiter.Next()) {
-      ++narcs_;
-    }
+    narcs_ += fst.NumArcs(siter.Value());
   }
   states_region_.reset(MappedFile::Allocate(nstates_ * sizeof(*states_)));
   arcs_region_.reset(MappedFile::Allocate(narcs_ * sizeof(*arcs_)));
@@ -278,7 +275,7 @@ class ConstFst : public ImplToExpandedFst<internal::ConstFstImpl<A, Unsigned>> {
 
   // Read a ConstFst from a file; return nullptr on error; empty filename reads
   // from standard input.
-  static ConstFst<A, Unsigned> *Read(const string &filename) {
+  static ConstFst<A, Unsigned> *Read(const std::string &filename) {
     auto *impl = ImplToExpandedFst<Impl>::Read(filename);
     return impl ? new ConstFst<A, Unsigned>(std::shared_ptr<Impl>(impl))
                 : nullptr;
@@ -288,7 +285,7 @@ class ConstFst : public ImplToExpandedFst<internal::ConstFstImpl<A, Unsigned>> {
     return WriteFst(*this, strm, opts);
   }
 
-  bool Write(const string &filename) const override {
+  bool Write(const std::string &filename) const override {
     return Fst<Arc>::WriteFile(filename);
   }
 
@@ -335,7 +332,7 @@ bool ConstFst<Arc, Unsigned>::WriteFst(const FST &fst, std::ostream &strm,
                  : internal::ConstFstImpl<Arc, Unsigned>::kFileVersion;
   size_t num_arcs = 0;    // To silence -Wsometimes-uninitialized warnings.
   size_t num_states = 0;  // Ditto.
-  size_t start_offset = 0;
+  std::streamoff start_offset = 0;
   bool update_header = true;
   if (const auto *impl = GetImplIfConstFst(fst)) {
     num_arcs = impl->narcs_;
@@ -355,7 +352,7 @@ bool ConstFst<Arc, Unsigned>::WriteFst(const FST &fst, std::ostream &strm,
   hdr.SetStart(fst.Start());
   hdr.SetNumStates(num_states);
   hdr.SetNumArcs(num_arcs);
-  string type = "const";
+  std::string type = "const";
   if (sizeof(Unsigned) != sizeof(uint32)) {
     type += std::to_string(CHAR_BIT * sizeof(Unsigned));
   }
@@ -404,7 +401,7 @@ bool ConstFst<Arc, Unsigned>::WriteFst(const FST &fst, std::ostream &strm,
   }
   strm.flush();
   if (!strm) {
-    LOG(ERROR) << "ConstFst::WriteFst: write failed: " << opts.source;
+    LOG(ERROR) << "ConstFst::WriteFst: Write failed: " << opts.source;
     return false;
   }
   if (update_header) {
@@ -470,7 +467,7 @@ class ArcIterator<ConstFst<Arc, Unsigned>> {
 
   void Seek(size_t a) { i_ = a; }
 
-  FST_CONSTEXPR uint32 Flags() const { return kArcValueFlags; }
+  constexpr uint32 Flags() const { return kArcValueFlags; }
 
   void SetFlags(uint32, uint32) {}
 

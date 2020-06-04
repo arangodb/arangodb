@@ -26,7 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Cluster/ServerState.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>

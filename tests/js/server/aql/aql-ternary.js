@@ -227,6 +227,15 @@ function ahuacatlTernaryTestSuite () {
       
       actual = getQueryResults("FOR i IN [ null, 0, 1, 2 ] RETURN NOOPT(i ?: 'foo')");
       assertEqual(expected, actual);
+      
+      actual = getQueryResults("RETURN 1 ?: ASSERT(false, 'peng')");
+      assertEqual([ 1 ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(1) ?: ASSERT(false, 'peng')");
+      assertEqual([ 1 ], actual);
+      
+      actual = getQueryResults("FOR i IN [ 1, 2, 3, 4 ] RETURN i ?: ASSERT(false, 'peng')");
+      assertEqual([ 1, 2, 3, 4 ], actual);
     },
 
   };
@@ -245,9 +254,11 @@ function ahuacatlTernaryCollectionTestSuite () {
     setUp : function () {
       db._drop(cn);
       c = db._create(cn);
-      for (var i = 0; i < 100; ++i) {
-        c.insert({value:i});
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({_key: "test" + i, value: i});
       }
+      c.insert(docs);
     },
 
     tearDown : function () {
@@ -260,6 +271,16 @@ function ahuacatlTernaryCollectionTestSuite () {
 
       var actual = getQueryResults(query);
       assertEqual([], actual);
+    },
+
+    testCollTernaryShortcut : function () {
+      var query = "RETURN DOCUMENT('" + cn + "/test10').value ?: 'foo'";
+      var actual = getQueryResults(query);
+      assertEqual([10], actual);
+      
+      query = "RETURN DOCUMENT('" + cn + "/test100000000').value ?: 'foo'";
+      actual = getQueryResults(query);
+      assertEqual(['foo'], actual);
     }
   };
 }

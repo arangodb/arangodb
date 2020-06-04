@@ -24,9 +24,9 @@
 #define ARANGOD_AQL_RETURN_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 
@@ -37,13 +37,12 @@ class Methods;
 
 namespace aql {
 
-class ExecutorInfos;
+class RegisterInfos;
 class NoStats;
 
-class ReturnExecutorInfos : public ExecutorInfos {
+class ReturnExecutorInfos {
  public:
-  ReturnExecutorInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
-                      RegisterId nrOutputRegisters, bool doCount);
+  ReturnExecutorInfos(RegisterId inputRegister, bool doCount);
 
   ReturnExecutorInfos() = delete;
   ReturnExecutorInfos(ReturnExecutorInfos&&) = default;
@@ -89,47 +88,26 @@ class ReturnExecutor {
   ~ReturnExecutor();
 
   /**
-   * @brief produce the next Row of Aql Values.
+   * @brief skip the next Rows of Aql Values.
    *
-   * @return ExecutionState,
-   *         if something was written output.hasValue() == true
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
    */
-  inline std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output) {
-    ExecutionState state;
-    ReturnExecutor::Stats stats;
-    InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-    std::tie(state, inputRow) = _fetcher.fetchRow();
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
-    if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(!inputRow);
-      return {state, stats};
-    }
+  /**
+   * @brief produce the next Rows of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
 
-    if (!inputRow) {
-      TRI_ASSERT(state == ExecutionState::DONE);
-      return {state, stats};
-    }
-
-    AqlValue val = inputRow.stealValue(_infos.getInputRegisterId());
-    AqlValueGuard guard(val, true);
-    TRI_IF_FAILURE("ReturnBlock::getSome") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-    output.moveValueInto(_infos.getOutputRegisterId(), inputRow, guard);
-
-    if (_infos.doCount()) {
-      stats.incrCounted();
-    }
-    return {state, stats};
-  }
-
-  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const {
-    return _fetcher.preFetchNumberOfRows(atMost);
-  }
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
 
  private:
   ReturnExecutorInfos& _infos;
-  Fetcher& _fetcher;
 };
 }  // namespace aql
 }  // namespace arangodb

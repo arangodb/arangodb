@@ -26,8 +26,8 @@
 #include <velocypack/Compare.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-common.h>
-#include <boost/optional.hpp>
-#include <boost/variant.hpp>
+#include <optional>
+#include <variant>
 
 #include "Agency/AgencyComm.h"
 #include "ClusterInfo.h"
@@ -70,8 +70,8 @@ struct Collection {
   uint64_t replicationFactor;
   bool deleted;
   bool isSmart;
-  boost::optional<CollectionID> distributeShardsLike;
-  boost::optional<CollectionID> repairingDistributeShardsLike;
+  std::optional<CollectionID> distributeShardsLike;
+  std::optional<CollectionID> repairingDistributeShardsLike;
   std::map<ShardID, DBServers, VersionSort> shardsById;
 
   std::string inline fullName() const {
@@ -87,8 +87,8 @@ struct Collection {
              tagged_argument<tag::replicationFactor, uint64_t> replicationFactor_,
              tagged_argument<tag::deleted, bool> deleted_,
              tagged_argument<tag::isSmart, bool> isSmart_,
-             tagged_argument<tag::distributeShardsLike, boost::optional<CollectionID>> distributeShardsLike_,
-             tagged_argument<tag::repairingDistributeShardsLike, boost::optional<CollectionID>> repairingDistributeShardsLike_,
+             tagged_argument<tag::distributeShardsLike, std::optional<CollectionID>> distributeShardsLike_,
+             tagged_argument<tag::repairingDistributeShardsLike, std::optional<CollectionID>> repairingDistributeShardsLike_,
              tagged_argument<tag::shardsById, std::map<ShardID, DBServers, VersionSort>> shardsById_);
 };
 
@@ -105,7 +105,7 @@ class DistributeShardsLikeRepairer {
   ResultT<std::map<CollectionID, struct Collection>> static readCollections(
       velocypack::Slice const& collectionsByDatabase);
 
-  boost::optional<ServerID const> static findFreeServer(DBServers const& availableDbServers,
+  std::optional<ServerID const> static findFreeServer(DBServers const& availableDbServers,
                                                         DBServers const& shardDbServers);
 
   std::vector<std::pair<CollectionID, Result>> static findCollectionsToFix(
@@ -136,7 +136,7 @@ class DistributeShardsLikeRepairer {
                                                       ShardID const& shardId,
                                                       ShardID const& protoShardId);
 
-  ResultT<boost::optional<FixServerOrderOperation>> static createFixServerOrderOperation(
+  ResultT<std::optional<FixServerOrderOperation>> static createFixServerOrderOperation(
       struct Collection& collection, struct Collection const& proto,
       ShardID const& shardId, ShardID const& protoShardId);
 

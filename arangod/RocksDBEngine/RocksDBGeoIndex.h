@@ -23,24 +23,26 @@
 #ifndef ARANGOD_ROCKSDB_GEO_INDEX_H
 #define ARANGOD_ROCKSDB_GEO_INDEX_H 1
 
+#include <velocypack/Builder.h>
+
 #include "Basics/Result.h"
 #include "GeoIndex/Index.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 
-#include <velocypack/Builder.h>
-
 namespace arangodb {
+
 class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
   friend class RocksDBSphericalIndexIterator;
 
  public:
   RocksDBGeoIndex() = delete;
 
-  RocksDBGeoIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection,
+  RocksDBGeoIndex(IndexId iid, arangodb::LogicalCollection& collection,
                   arangodb::velocypack::Slice const& info, std::string const& typeName);
 
-  ~RocksDBGeoIndex() override {}
+  ~RocksDBGeoIndex() = default;
 
   IndexType type() const override {
     if ("geo1" == _typeName) {
@@ -74,7 +76,7 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
   /// insert index elements into the specified write batch.
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId, velocypack::Slice const& doc,
-                arangodb::Index::OperationMode mode) override;
+                arangodb::OperationOptions& options) override;
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,

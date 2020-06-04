@@ -25,6 +25,7 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/VelocyPackHelper.h"
 
 using namespace arangodb::aql;
@@ -42,37 +43,33 @@ AqlItemBlockManager::AqlItemBlockManager(ResourceMonitor* resourceMonitor,
 AqlItemBlockManager::~AqlItemBlockManager() = default;
 
 /// @brief request a block with the specified size
-SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(size_t nrItems, RegisterId nrRegs) {
-  // LOG_TOPIC("47298", TRACE, arangodb::Logger::FIXME) << "requesting AqlItemBlock of "
-  // << nrItems << " x " << nrRegs;
+SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(size_t nrItems, RegisterCount nrRegs) {
   size_t const targetSize = nrItems * (nrRegs + 1);
 
   AqlItemBlock* block = nullptr;
-  size_t i = Bucket::getId(targetSize);
+  uint32_t i = Bucket::getId(targetSize);
 
   int tries = 0;
-  while (tries++ < 2) {
+  do {
     TRI_ASSERT(i < numBuckets);
+    
+    std::lock_guard<std::mutex> guard(_buckets[i]._mutex);
     if (!_buckets[i].empty()) {
       block = _buckets[i].pop();
       TRI_ASSERT(block != nullptr);
       TRI_ASSERT(block->numEntries() == 0);
-      block->rescale(nrItems, nrRegs);
-      // LOG_TOPIC("7157d", TRACE, arangodb::Logger::FIXME) << "returned cached
-      // AqlItemBlock with dimensions " << block->size() << " x " <<
-      // block->getNrRegs();
       break;
     }
     // try next (bigger) bucket
-    if (++i >= numBuckets) {
-      break;
-    }
-  }
+    ++i;
+  } while (i < numBuckets && ++tries < 3);
 
+  // perform potentially expensive allocation/cleanup tasks outside
+  // of the locked section
   if (block == nullptr) {
     block = new AqlItemBlock(*this, nrItems, nrRegs);
-    // LOG_TOPIC("eb998", TRACE, arangodb::Logger::FIXME) << "created AqlItemBlock with
-    // dimensions " << block->size() << " x " << block->getNrRegs();
+  } else {
+    block->rescale(nrItems, nrRegs);
   }
 
   TRI_ASSERT(block != nullptr);
@@ -80,6 +77,7 @@ SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(size_t nrItems, Register
   TRI_ASSERT(block->getNrRegs() == nrRegs);
   TRI_ASSERT(block->numEntries() == targetSize);
   TRI_ASSERT(block->getRefCount() == 0);
+  TRI_ASSERT(block->hasShadowRows() == false);
 
   return SharedAqlItemBlockPtr{block};
 }
@@ -89,11 +87,8 @@ void AqlItemBlockManager::returnBlock(AqlItemBlock*& block) noexcept {
   TRI_ASSERT(block != nullptr);
   TRI_ASSERT(block->getRefCount() == 0);
 
-  // LOG_TOPIC("93865", TRACE, arangodb::Logger::FIXME) << "returning AqlItemBlock of
-  // dimensions " << block->size() << " x " << block->getNrRegs();
-
   size_t const targetSize = block->capacity();
-  size_t const i = Bucket::getId(targetSize);
+  uint32_t const i = Bucket::getId(targetSize);
   TRI_ASSERT(i < numBuckets);
 
   // Destroying the block releases the AqlValues. Which in turn may hold DocVecs
@@ -103,16 +98,24 @@ void AqlItemBlockManager::returnBlock(AqlItemBlock*& block) noexcept {
   // buckets!
   block->destroy();
 
-  if (!_buckets[i].full()) {
-    // recycle the block
-    TRI_ASSERT(block->numEntries() == 0);
-    // store block in bucket (this will not fail)
-    _buckets[i].push(block);
-  } else {
+  {
+    std::lock_guard<std::mutex> guard(_buckets[i]._mutex);
+
+    if (!_buckets[i].full()) {
+      // recycle the block
+      TRI_ASSERT(block->numEntries() == 0);
+      // store block in bucket (this will not fail)
+      _buckets[i].push(block);
+      block = nullptr;
+    }
+  }
+
+  // call block destructor outside the lock
+  if (block != nullptr) {
     // bucket is full. simply delete the block
     delete block;
+    block = nullptr;
   }
-  block = nullptr;
 }
 
 SharedAqlItemBlockPtr AqlItemBlockManager::requestAndInitBlock(arangodb::velocypack::Slice slice) {
@@ -144,6 +147,12 @@ void AqlItemBlockManager::deleteBlock(AqlItemBlock* block) {
 }
 #endif
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+uint32_t AqlItemBlockManager::getBucketId(size_t targetSize) noexcept {
+  return Bucket::getId(targetSize);
+}
+#endif
+
 AqlItemBlockManager::Bucket::Bucket() : numItems(0) {
   for (size_t i = 0; i < numBlocksPerBucket; ++i) {
     blocks[i] = nullptr;
@@ -166,7 +175,6 @@ bool AqlItemBlockManager::Bucket::full() const noexcept {
 
 AqlItemBlock* AqlItemBlockManager::Bucket::pop() noexcept {
   TRI_ASSERT(!empty());
-  TRI_ASSERT(numItems > 0);
   AqlItemBlock* result = blocks[--numItems];
   TRI_ASSERT(result != nullptr);
   blocks[numItems] = nullptr;
@@ -180,39 +188,16 @@ void AqlItemBlockManager::Bucket::push(AqlItemBlock* block) noexcept {
   TRI_ASSERT(numItems <= numBlocksPerBucket);
 }
 
-size_t AqlItemBlockManager::Bucket::getId(size_t targetSize) noexcept {
+uint32_t AqlItemBlockManager::Bucket::getId(size_t targetSize) noexcept {
   if (targetSize <= 1) {
     return 0;
   }
-  if (targetSize <= 10) {
-    return 1;
+
+  if (ADB_UNLIKELY(targetSize >= (1ULL << numBuckets))) {
+    return (numBuckets - 1);
   }
-  if (targetSize <= 20) {
-    return 2;
-  }
-  if (targetSize <= 40) {
-    return 3;
-  }
-  if (targetSize <= 100) {
-    return 4;
-  }
-  if (targetSize <= 200) {
-    return 5;
-  }
-  if (targetSize <= 400) {
-    return 6;
-  }
-  if (targetSize <= 1000) {
-    return 7;
-  }
-  if (targetSize <= 2000) {
-    return 8;
-  }
-  if (targetSize <= 4000) {
-    return 9;
-  }
-  if (targetSize <= 10000) {
-    return 10;
-  }
-  return 11;
+  
+  uint32_t value = arangodb::NumberUtils::log2(static_cast<uint32_t>(targetSize));
+  TRI_ASSERT(value < numBuckets);
+  return value;
 }

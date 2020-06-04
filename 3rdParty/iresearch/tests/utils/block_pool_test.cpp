@@ -488,7 +488,3 @@ TEST_F(byte_block_pool_test, greedy_slice_alignment_with_reuse) {
   greedy_slice_between_blocks();
   greedy_slice_between_blocks(); // reuse block_pool from previous run
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

@@ -32,11 +32,6 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-
-namespace traverser {
-class TraverserEngineRegistry;
-}
-
 namespace aql {
 class Query;
 class QueryRegistry;
@@ -45,14 +40,20 @@ enum class SerializationFormat;
 /// @brief shard control request handler
 class RestAqlHandler : public RestVocbaseBaseHandler {
  public:
-  RestAqlHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*,
-                 std::pair<QueryRegistry*, traverser::TraverserEngineRegistry*>*);
+  RestAqlHandler(application_features::ApplicationServer&, GeneralRequest*,
+                 GeneralResponse*, QueryRegistry*);
 
  public:
   char const* name() const override final { return "RestAqlHandler"; }
   RequestLane lane() const override final { return RequestLane::CLUSTER_AQL; }
   RestStatus execute() override;
   RestStatus continueExecute() override;
+  void shutdownExecute(bool isFinalized) noexcept override;
+
+  class Route {
+   public:
+    static auto execute() -> const char* { return "/_api/aql/execute"; }
+  };
 
  public:
   // DELETE method for /_api/aql/kill/<queryId>, (internal)
@@ -60,20 +61,47 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 
   // PUT method for /_api/aql/<operation>/<queryId>, this is using
   // the part of the cursor API with side effects.
-  // <operation>: can be "getSome" or "skip".
+  // <operation>: can be "execute", "getSome", "skipSome" "initializeCursor" or
+  //              "shutdown".
+  //              "getSome" and "skipSome" are only used pre-3.7 and can be
+  //              removed in 3.8.
   // The body must be a Json with the following attributes:
+  // For the "execute" operation one has to give:
+  //   "callStack": an array of objects, each with the following attributes:
+  //     "offset": a non-negative integer
+  //     "limit": either a non-negative integer, or the string "infinity"
+  //     "limitType: string or null, either "soft" or "hard"; set iff limit is
+  //     not infinity "fullCount": a boolean
+  //   The result is an object with the attributes
+  //     "code": integer, error code.
+  //        If there was no error:
+  //     "result": an object with the following attributes:
+  //       "state": string, either "hasMore" or "done"
+  //       "skipped": non-negative integer
+  //       "block": serialized AqlItemBlock, or null when no rows are returned.
   // For the "getSome" operation one has to give:
-  //   "atMost": must be a positiv integers, the cursor returns never
-  //             more than "atMost" items.
-  //             The result is the JSON representation of an
-  //             AqlItemBlock.
-  // For the "skip" operation one has to give:
-  //   "number": must be a positive integer, the cursor skips as many items,
-  //             possibly exhausting the cursor.
-  //             The result is a JSON with the attributes "error" (boolean),
-  //             "errorMessage" (if applicable) and "exhausted" (boolean) [3.3
-  //             and earlier] "done" (boolean) [3.4.0 and later] to indicate
-  //             whether or not the cursor is exhausted.
+  //   "atMost": must be a positive integer, the cursor returns never
+  //             more than "atMost" items. Defaults to
+  //             ExecutionBlock::DefaultBatchSize.
+  //   The result is the JSON representation of an AqlItemBlock.
+  // For the "skipSome" operation one has to give:
+  //   "atMost": must be a positive integer, the cursor skips never
+  //             more than "atMost" items. The result is a JSON object with a
+  //             single attribute "skipped" containing the number of
+  //             skipped items.
+  //             If "atMost" is not given it defaults to
+  //             ExecutionBlock::DefaultBatchSize.
+  // For the "initializeCursor" operation, one has to bind the following
+  // attributes:
+  //   "items": This is a serialized AqlItemBlock with usually only one row
+  //            and the correct number of columns.
+  //   "pos":   The number of the row in "items" to take, usually 0.
+  // For the "shutdown" operation no additional arguments are
+  // required and an empty JSON object in the body is OK.
+  // All operations allow to set the HTTP header "x-shard-id:". If this is
+  // set, then the root block of the stored query must be a ScatterBlock
+  // and the shard ID is given as an additional argument to the ScatterBlock's
+  // special API.
   RestStatus useQuery(std::string const& operation, std::string const& idString);
 
  private:
@@ -102,35 +130,15 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 
   void setupClusterQuery();
 
-  bool registerSnippets(arangodb::velocypack::Slice const snippets,
-                        arangodb::velocypack::Slice const collections,
-                        arangodb::velocypack::Slice const variables,
-                        std::shared_ptr<arangodb::velocypack::Builder> const& options,
-                        std::shared_ptr<transaction::Context> const& ctx,
-                        double const ttl, aql::SerializationFormat format,
-                        bool& needToLock, arangodb::velocypack::Builder& answer);
-
-  bool registerTraverserEngines(arangodb::velocypack::Slice const traversers,
-                                std::shared_ptr<transaction::Context> const& ctx,
-                                double const ttl, bool& needToLock,
-                                arangodb::velocypack::Builder& answer);
-
-  // Send slice as result with the given response type.
-  void sendResponse(rest::ResponseCode, arangodb::velocypack::Slice const,
-                    transaction::Context*);
-  // Send slice as result with the given response type.
-  void sendResponse(rest::ResponseCode, arangodb::velocypack::Slice const);
-
   // handle for useQuery
-  RestStatus handleUseQuery(std::string const&, Query*, arangodb::velocypack::Slice const);
-
-  // parseVelocyPackBody, returns a nullptr and produces an error
-  // response if parse was not successful.
-  std::shared_ptr<arangodb::velocypack::Builder> parseVelocyPackBody();
+  RestStatus handleUseQuery(std::string const&, arangodb::velocypack::Slice const);
+  
+  // handle query finalization for all engines
+  void handleFinishQuery(std::string const& idString);
 
  private:
   // dig out vocbase from context and query from ID, handle errors
-  bool findQuery(std::string const& idString, Query*& query);
+  ExecutionEngine* findEngine(std::string const& idString);
 
   // generate patched options with TTL extracted from request
   std::pair<double, std::shared_ptr<VPackBuilder>> getPatchedOptionsWithTTL(VPackSlice const& optionsSlice) const;
@@ -138,8 +146,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   // our query registry
   QueryRegistry* _queryRegistry;
 
-  // our traversal engine registry
-  traverser::TraverserEngineRegistry* _traverserRegistry;
+  aql::ExecutionEngine* _engine;
 
   // id of current query
   QueryId _qId;

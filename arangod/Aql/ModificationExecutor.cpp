@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,118 +17,269 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Christoph Uhde
+/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ModificationExecutor.h"
+
+#include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/QueryContext.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Basics/Common.h"
-#include "ModificationExecutorTraits.h"
+#include "Basics/VelocyPackHelper.h"
+#include "StorageEngine/TransactionState.h"
 #include "VocBase/LogicalCollection.h"
 
+#include "Aql/InsertModifier.h"
+#include "Aql/RemoveModifier.h"
+#include "Aql/SimpleModifier.h"
+#include "Aql/UpdateReplaceModifier.h"
+#include "Aql/UpsertModifier.h"
+
+#include "Logger/LogMacros.h"
+
 #include <algorithm>
+#include "velocypack/velocypack-aliases.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
-
-template <typename FetcherType>
-constexpr bool ModificationExecutorBase<FetcherType>::Properties::preservesOrder;
-template <typename FetcherType>
-constexpr BlockPassthrough ModificationExecutorBase<FetcherType>::Properties::allowsBlockPassthrough;
-template <typename FetcherType>
-constexpr bool ModificationExecutorBase<FetcherType>::Properties::inputSizeRestrictsOutputSize;
+using namespace arangodb::basics;
 
 namespace arangodb {
 namespace aql {
-std::string toString(AllRowsFetcher&) { return "AllRowsFetcher"; }
-std::string toString(SingleBlockFetcher<BlockPassthrough::Enable>&) {
-  return "SingleBlockFetcher<BlockPassthrough::Enable>";
+
+ModifierOutput::ModifierOutput(InputAqlItemRow const& inputRow, Type type)
+    : _inputRow(std::move(inputRow)), _type(type), _oldValue(), _newValue() {}
+ModifierOutput::ModifierOutput(InputAqlItemRow&& inputRow, Type type)
+    : _inputRow(std::move(inputRow)), _type(type), _oldValue(), _newValue() {}
+
+ModifierOutput::ModifierOutput(InputAqlItemRow const& inputRow, Type type,
+                               AqlValue const& oldValue, AqlValue const& newValue)
+    : _inputRow(std::move(inputRow)),
+      _type(type),
+      _oldValue(oldValue),
+      _oldValueGuard(std::in_place, _oldValue.value(), true),
+      _newValue(newValue),
+      _newValueGuard(std::in_place, _newValue.value(), true) {}
+
+ModifierOutput::ModifierOutput(InputAqlItemRow&& inputRow, Type type,
+                               AqlValue const& oldValue, AqlValue const& newValue)
+    : _inputRow(std::move(inputRow)),
+      _type(type),
+      _oldValue(oldValue),
+      _oldValueGuard(std::in_place, _oldValue.value(), true),
+      _newValue(newValue),
+      _newValueGuard(std::in_place, _newValue.value(), true) {}
+
+InputAqlItemRow ModifierOutput::getInputRow() const { return _inputRow; }
+ModifierOutput::Type ModifierOutput::getType() const { return _type; }
+bool ModifierOutput::hasOldValue() const { return _oldValue.has_value(); }
+AqlValue const& ModifierOutput::getOldValue() const {
+  TRI_ASSERT(_oldValue.has_value());
+  return _oldValue.value();
 }
-std::string toString(SingleBlockFetcher<BlockPassthrough::Disable>&) {
-  return "SingleBlockFetcher<BlockPassthrough::Disable>";
+bool ModifierOutput::hasNewValue() const { return _newValue.has_value(); }
+AqlValue const& ModifierOutput::getNewValue() const {
+  TRI_ASSERT(_newValue.has_value());
+  return _newValue.value();
 }
+
+template <typename FetcherType, typename ModifierType>
+ModificationExecutor<FetcherType, ModifierType>::ModificationExecutor(Fetcher& fetcher, Infos& infos)
+    : _trx(infos._query.newTrxContext()), _lastState(ExecutionState::HASMORE), _infos(infos), _modifier(infos) {}
+
+// Fetches as many rows as possible from upstream using the fetcher's fetchRow
+// method and accumulates results through the modifier
+template <typename FetcherType, typename ModifierType>
+auto ModificationExecutor<FetcherType, ModifierType>::doCollect(AqlItemBlockInputRange& input,
+                                                                size_t maxOutputs)
+    -> void {
+  // for fetchRow
+  InputAqlItemRow row{CreateInvalidInputRowHint{}};
+  ExecutionState state = ExecutionState::HASMORE;
+
+  // Maximum number of rows we can put into output
+  // So we only ever produce this many here
+  while (_modifier.nrOfOperations() < maxOutputs && input.hasDataRow()) {
+    auto [state, row] = input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+
+    // Make sure we have a valid row
+    TRI_ASSERT(row.isInitialized());
+    _modifier.accumulate(row);
+  }
+  TRI_ASSERT(state == ExecutionState::DONE || state == ExecutionState::HASMORE);
+}
+
+// Outputs accumulated results, and counts the statistics
+template <typename FetcherType, typename ModifierType>
+void ModificationExecutor<FetcherType, ModifierType>::doOutput(OutputAqlItemRow& output,
+                                                               Stats& stats) {
+  typename ModifierType::OutputIterator modifierOutputIterator(_modifier);
+  // We only accumulated as many items as we can output, so this
+  // should be correct
+  for (auto const& modifierOutput : modifierOutputIterator) {
+    TRI_ASSERT(!output.isFull());
+    bool written = false;
+    switch (modifierOutput.getType()) {
+      case ModifierOutput::Type::ReturnIfRequired:
+        if (_infos._options.returnOld) {
+          output.cloneValueInto(_infos._outputOldRegisterId, modifierOutput.getInputRow(),
+                                modifierOutput.getOldValue());
+          written = true;
+        }
+        if (_infos._options.returnNew) {
+          output.cloneValueInto(_infos._outputNewRegisterId, modifierOutput.getInputRow(),
+                                modifierOutput.getNewValue());
+          written = true;
+        }
+        [[fallthrough]];
+      case ModifierOutput::Type::CopyRow:
+        if (!written) {
+          output.copyRow(modifierOutput.getInputRow());
+        }
+        output.advanceRow();
+        break;
+      case ModifierOutput::Type::SkipRow:
+        // nothing.
+        break;
+    }
+  }
+}
+
+template <typename FetcherType, typename ModifierType>
+[[nodiscard]] auto ModificationExecutor<FetcherType, ModifierType>::produceRows(
+    typename FetcherType::DataRange& input, OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, ModificationStats, AqlCall> {
+  AqlCall upstreamCall{};
+  if constexpr (std::is_same_v<ModifierType, UpsertModifier> &&
+                !std::is_same_v<FetcherType, AllRowsFetcher>) {
+    upstreamCall.softLimit = _modifier.getBatchSize();
+  }
+  auto stats = ModificationStats{};
+
+  _modifier.reset();
+  if (!input.hasDataRow()) {
+    // Input is empty
+    return {input.upstreamState(), stats, upstreamCall};
+  }
+
+  TRI_IF_FAILURE("ModificationBlock::getSome") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  // only produce at most output.numRowsLeft() many results
+  ExecutorState upstreamState = ExecutorState::HASMORE;
+  if constexpr (std::is_same_v<typename FetcherType::DataRange, AqlItemBlockInputMatrix>) {
+    auto& range = input.getInputRange();
+    doCollect(range, output.numRowsLeft());
+    upstreamState = range.upstreamState();
+    if (upstreamState == ExecutorState::DONE) {
+      // We are done with this input.
+      // We need to forward it to the last ShadowRow.
+      input.skipAllRemainingDataRows();
+    }
+  } else {
+    doCollect(input, output.numRowsLeft());
+    upstreamState = input.upstreamState();
+  }
+  if (_modifier.nrOfOperations() > 0) {
+    _modifier.transact(_trx);
+
+    if (_infos._doCount) {
+      stats.addWritesExecuted(_modifier.nrOfWritesExecuted());
+      stats.addWritesIgnored(_modifier.nrOfWritesIgnored());
+    }
+
+    doOutput(output, stats);
+  }
+
+  return {upstreamState, stats, upstreamCall};
+}
+
+template <typename FetcherType, typename ModifierType>
+[[nodiscard]] auto ModificationExecutor<FetcherType, ModifierType>::skipRowsRange(
+    typename FetcherType::DataRange& input, AqlCall& call)
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
+  AqlCall upstreamCall{};
+  if constexpr (std::is_same_v<ModifierType, UpsertModifier> &&
+                !std::is_same_v<FetcherType, AllRowsFetcher>) {
+    upstreamCall.softLimit = _modifier.getBatchSize();
+  }
+
+  auto stats = ModificationStats{};
+
+  TRI_IF_FAILURE("ModificationBlock::getSome") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  // only produce at most output.numRowsLeft() many results
+  ExecutorState upstreamState = input.upstreamState();
+  while (input.hasDataRow() && call.needSkipMore()) {
+    _modifier.reset();
+    size_t toSkip = call.getOffset();
+    if (call.getLimit() == 0 && call.hasHardLimit()) {
+      // We need to produce all modification operations.
+      // If we are bound by limits or not!
+      toSkip = ExecutionBlock::SkipAllSize();
+    }
+    if constexpr (std::is_same_v<typename FetcherType::DataRange, AqlItemBlockInputMatrix>) {
+      auto& range = input.getInputRange();
+      if (range.hasDataRow()) {
+        doCollect(range, toSkip);
+      }
+      upstreamState = range.upstreamState();
+      if (upstreamState == ExecutorState::DONE) {
+        // We are done with this input.
+        // We need to forward it to the last ShadowRow.
+        input.skipAllRemainingDataRows();
+        TRI_ASSERT(input.upstreamState() == ExecutorState::DONE);
+      }
+    } else {
+      doCollect(input, toSkip);
+      upstreamState = input.upstreamState();
+    }
+
+    if (_modifier.nrOfOperations() > 0) {
+      _modifier.transact(_trx);
+
+      if (_infos._doCount) {
+        stats.addWritesExecuted(_modifier.nrOfWritesExecuted());
+        stats.addWritesIgnored(_modifier.nrOfWritesIgnored());
+      }
+
+      if (call.needsFullCount()) {
+        // If we need to do full count the nr of writes we did
+        // in this batch is always correct.
+        // If we are in offset phase and need to produce data
+        // after the toSkip is limited to offset().
+        // otherwise we need to report everything we write
+        call.didSkip(_modifier.nrOfWritesExecuted());
+      } else {
+        // If we do not need to report fullcount.
+        // we cannot report more than offset
+        // but also not more than the operations we
+        // have successfully executed
+        call.didSkip((std::min)(call.getOffset(), _modifier.nrOfWritesExecuted()));
+      }
+    }
+  }
+
+  return {upstreamState, stats, call.getSkipCount(), upstreamCall};
+}
+
+using NoPassthroughSingleRowFetcher = SingleRowFetcher<BlockPassthrough::Disable>;
+
+template class ::arangodb::aql::ModificationExecutor<NoPassthroughSingleRowFetcher, InsertModifier>;
+template class ::arangodb::aql::ModificationExecutor<AllRowsFetcher, InsertModifier>;
+template class ::arangodb::aql::ModificationExecutor<NoPassthroughSingleRowFetcher, RemoveModifier>;
+template class ::arangodb::aql::ModificationExecutor<AllRowsFetcher, RemoveModifier>;
+template class ::arangodb::aql::ModificationExecutor<NoPassthroughSingleRowFetcher, UpdateReplaceModifier>;
+template class ::arangodb::aql::ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>;
+template class ::arangodb::aql::ModificationExecutor<NoPassthroughSingleRowFetcher, UpsertModifier>;
+template class ::arangodb::aql::ModificationExecutor<AllRowsFetcher, UpsertModifier>;
+
 }  // namespace aql
 }  // namespace arangodb
-
-template <typename FetcherType>
-ModificationExecutorBase<FetcherType>::ModificationExecutorBase(Fetcher& fetcher, Infos& infos)
-    : _infos(infos), _fetcher(fetcher), _prepared(false) {}
-
-template <typename Modifier, typename FetcherType>
-ModificationExecutor<Modifier, FetcherType>::ModificationExecutor(Fetcher& fetcher, Infos& infos)
-    : ModificationExecutorBase<FetcherType>(fetcher, infos), _modifier() {
-  this->_infos._trx->pinData(this->_infos._aqlCollection->id());  // important for mmfiles
-}
-
-template <typename Modifier, typename FetcherType>
-ModificationExecutor<Modifier, FetcherType>::~ModificationExecutor() = default;
-
-template <typename Modifier, typename FetcherType>
-std::pair<ExecutionState, typename ModificationExecutor<Modifier, FetcherType>::Stats>
-ModificationExecutor<Modifier, FetcherType>::produceRows(OutputAqlItemRow& output) {
-  ExecutionState state = ExecutionState::HASMORE;
-  ModificationExecutor::Stats stats;
-
-  // TODO - fix / improve prefetching if possible
-  while (!this->_prepared && (this->_fetcher.upstreamState() !=
-                              ExecutionState::DONE /*|| this->_fetcher._prefetched */)) {
-    SharedAqlItemBlockPtr block;
-
-    std::tie(state, block) = this->_fetcher.fetchBlockForModificationExecutor(
-        _modifier._defaultBlockSize);  // Upsert must use blocksize of one!
-                                       // Otherwise it could happen that an insert
-                                       // is not seen by subsequent opererations.
-    _modifier._block = block;
-
-    if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(_modifier._block == nullptr);
-      return {state, std::move(stats)};
-    }
-
-    if (_modifier._block == nullptr) {
-      TRI_ASSERT(state == ExecutionState::DONE);
-      return {state, std::move(stats)};
-    }
-
-    TRI_IF_FAILURE("ModificationBlock::getSome") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-  
-    TRI_ASSERT(_modifier._block != nullptr);
-
-    // prepares modifier for single row output
-    this->_prepared = _modifier.doModifications(this->_infos, stats);
-
-    if (!this->_infos._producesResults) {
-      this->_prepared = false;
-    }
-  }
-
-  if (this->_prepared) {
-    TRI_ASSERT(_modifier._block != nullptr);
-
-    // Produces the output
-    bool thisBlockHasMore = _modifier.doOutput(this->_infos, output);
-
-    if (thisBlockHasMore) {
-      return {ExecutionState::HASMORE, std::move(stats)};
-    } else {
-      // we need to get a new block
-      this->_prepared = false;
-    }
-  }
-
-  return {this->_fetcher.upstreamState(), std::move(stats)};
-}
-
-template class ::arangodb::aql::ModificationExecutor<Insert, SingleBlockFetcher<BlockPassthrough::Disable>>;
-template class ::arangodb::aql::ModificationExecutor<Insert, AllRowsFetcher>;
-template class ::arangodb::aql::ModificationExecutor<Remove, SingleBlockFetcher<BlockPassthrough::Disable>>;
-template class ::arangodb::aql::ModificationExecutor<Remove, AllRowsFetcher>;
-template class ::arangodb::aql::ModificationExecutor<Replace, SingleBlockFetcher<BlockPassthrough::Disable>>;
-template class ::arangodb::aql::ModificationExecutor<Replace, AllRowsFetcher>;
-template class ::arangodb::aql::ModificationExecutor<Update, SingleBlockFetcher<BlockPassthrough::Disable>>;
-template class ::arangodb::aql::ModificationExecutor<Update, AllRowsFetcher>;
-template class ::arangodb::aql::ModificationExecutor<Upsert, SingleBlockFetcher<BlockPassthrough::Disable>>;
-template class ::arangodb::aql::ModificationExecutor<Upsert, AllRowsFetcher>;

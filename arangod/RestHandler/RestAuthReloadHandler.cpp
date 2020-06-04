@@ -27,6 +27,7 @@
 #include "Auth/UserManager.h"
 #include "Basics/StaticStrings.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Utils/ExecContext.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>
@@ -41,6 +42,11 @@ RestAuthReloadHandler::RestAuthReloadHandler(application_features::ApplicationSe
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestAuthReloadHandler::execute() {
+  if (!ExecContext::current().isAdminUser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+    return RestStatus::DONE;
+  }
+
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um != nullptr) {
     um->triggerLocalReload();

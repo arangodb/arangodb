@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_FST_DECL_H
@@ -30,7 +29,12 @@ NS_BEGIN(fst)
 
 template<typename Label> class StringLeftWeight;
 
-NS_END
+NS_BEGIN(fsa)
+
+struct Transition;
+
+NS_END // fsa
+NS_END // fst
 
 NS_ROOT
 

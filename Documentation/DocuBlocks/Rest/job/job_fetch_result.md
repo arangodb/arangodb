@@ -93,4 +93,3 @@ Fetching the result of an HTTP POST job that failed:
   logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

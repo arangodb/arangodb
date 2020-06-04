@@ -77,7 +77,7 @@ uint64_t Slice::getUIntUnchecked() const noexcept {
   uint8_t const h = head();
   if (h >= 0x28 && h <= 0x2f) {
     // UInt
-    return readIntegerNonEmpty<uint64_t>(_start + 1, h - 0x27);
+    return readIntegerNonEmpty<uint64_t>(start() + 1, h - 0x27);
   }
 
   if (h >= 0x30 && h <= 0x39) {
@@ -134,6 +134,10 @@ std::string Slice::toJson(Options const* options) const {
 }
 
 std::string Slice::toString(Options const* options) const {
+  if (isString()) {
+    return copyString();
+  }
+
   // copy options and set prettyPrint in copy
   Options prettyOptions = *options;
   prettyOptions.prettyPrint = true;
@@ -185,6 +189,45 @@ uint64_t Slice::normalizedHash(uint64_t seed) const {
   return value;
 }
 
+uint32_t Slice::normalizedHash32(uint32_t seed) const {
+  uint32_t value;
+
+  if (isNumber()) {
+    // upcast integer values to double
+    double v = getNumericValue<double>();
+    value = VELOCYPACK_HASH32(&v, sizeof(v), seed);
+  } else if (isArray()) {
+    // normalize arrays by hashing array length and iterating
+    // over all array members
+    ArrayIterator it(*this);
+    uint64_t const n = it.size() ^ 0xba5bedf00d;
+    value = VELOCYPACK_HASH32(&n, sizeof(n), seed);
+    while (it.valid()) {
+      value ^= it.value().normalizedHash32(value);
+      it.next();
+    }
+  } else if (isObject()) {
+    // normalize objects by hashing object length and iterating
+    // over all object members
+    ObjectIterator it(*this, true);
+    uint32_t const n = static_cast<uint32_t>(it.size() ^ 0xf00ba44ba5);
+    uint32_t seed2 = VELOCYPACK_HASH32(&n, sizeof(n), seed);
+    value = seed2;
+    while (it.valid()) {
+      auto current = (*it);
+      uint32_t seed3 = current.key.normalizedHash32(seed2);
+      value ^= seed3;
+      value ^= current.value.normalizedHash32(seed3);
+      it.next();
+    }
+  } else {
+    // fall back to regular hash function
+    value = hash32(seed);
+  }
+
+  return value;
+}
+
 // look for the specified attribute inside an Object
 // returns a Slice(ValueType::None) if not found
 Slice Slice::get(StringRef const& attribute) const {
@@ -205,22 +248,22 @@ Slice Slice::get(StringRef const& attribute) const {
 
   ValueLength const offsetSize = indexEntrySize(h);
   VELOCYPACK_ASSERT(offsetSize > 0);
-  ValueLength end = readIntegerNonEmpty<ValueLength>(_start + 1, offsetSize);
+  ValueLength end = readIntegerNonEmpty<ValueLength>(start() + 1, offsetSize);
 
   // read number of items
   ValueLength n;
   ValueLength ieBase;
   if (offsetSize < 8) {
-    n = readIntegerNonEmpty<ValueLength>(_start + 1 + offsetSize, offsetSize);
+    n = readIntegerNonEmpty<ValueLength>(start() + 1 + offsetSize, offsetSize);
     ieBase = end - n * offsetSize;
   } else {
-    n = readIntegerNonEmpty<ValueLength>(_start + end - offsetSize, offsetSize);
+    n = readIntegerNonEmpty<ValueLength>(start() + end - offsetSize, offsetSize);
     ieBase = end - n * offsetSize - offsetSize;
   }
 
   if (n == 1) {
     // Just one attribute, there is no index table!
-    Slice key(_start + findDataOffset(h));
+    Slice key(start() + findDataOffset(h));
 
     if (key.isString()) {
       if (key.isEqualStringUnchecked(attribute)) {
@@ -268,7 +311,7 @@ int64_t Slice::getIntUnchecked() const noexcept {
 
   if (h >= 0x20 && h <= 0x27) {
     // Int  T
-    uint64_t v = readIntegerNonEmpty<uint64_t>(_start + 1, h - 0x1f);
+    uint64_t v = readIntegerNonEmpty<uint64_t>(start() + 1, h - 0x1f);
     if (h == 0x27) {
       return toInt64(v);
     } else {
@@ -289,7 +332,7 @@ int64_t Slice::getInt() const {
 
   if (h >= 0x20 && h <= 0x27) {
     // Int  T
-    uint64_t v = readIntegerNonEmpty<uint64_t>(_start + 1, h - 0x1f);
+    uint64_t v = readIntegerNonEmpty<uint64_t>(start() + 1, h - 0x1f);
     if (h == 0x27) {
       return toInt64(v);
     } else {
@@ -321,12 +364,12 @@ uint64_t Slice::getUInt() const {
   uint8_t const h = head();
   if (h == 0x28) {
     // single byte integer
-    return readIntegerFixed<uint64_t, 1>(_start + 1);
+    return readIntegerFixed<uint64_t, 1>(start() + 1);
   }
 
   if (h >= 0x29 && h <= 0x2f) {
     // UInt
-    return readIntegerNonEmpty<uint64_t>(_start + 1, h - 0x27);
+    return readIntegerNonEmpty<uint64_t>(start() + 1, h - 0x27);
   }
 
   if (h >= 0x20 && h <= 0x27) {
@@ -448,7 +491,7 @@ ValueLength Slice::getNthOffset(ValueLength index) const {
   }
 
   ValueLength const offsetSize = indexEntrySize(h);
-  ValueLength end = readIntegerNonEmpty<ValueLength>(_start + 1, offsetSize);
+  ValueLength end = readIntegerNonEmpty<ValueLength>(start() + 1, offsetSize);
 
   ValueLength dataOffset = 0;
 
@@ -457,16 +500,16 @@ ValueLength Slice::getNthOffset(ValueLength index) const {
   if (h <= 0x05) {  // No offset table or length, need to compute:
     VELOCYPACK_ASSERT(h != 0x00 && h != 0x01);
     dataOffset = findDataOffset(h);
-    Slice first(_start + dataOffset);
+    Slice first(start() + dataOffset);
     ValueLength s = first.byteSize();
     if (VELOCYPACK_UNLIKELY(s == 0)) {
       throw Exception(Exception::InternalError, "Invalid data for compact object");
     }
     n = (end - dataOffset) / s;
   } else if (offsetSize < 8) {
-    n = readIntegerNonEmpty<ValueLength>(_start + 1 + offsetSize, offsetSize);
+    n = readIntegerNonEmpty<ValueLength>(start() + 1 + offsetSize, offsetSize);
   } else {
-    n = readIntegerNonEmpty<ValueLength>(_start + end - offsetSize, offsetSize);
+    n = readIntegerNonEmpty<ValueLength>(start() + end - offsetSize, offsetSize);
   }
 
   if (index >= n) {
@@ -483,26 +526,26 @@ ValueLength Slice::getNthOffset(ValueLength index) const {
       VELOCYPACK_ASSERT(h != 0x00 && h != 0x01);
       dataOffset = findDataOffset(h);
     }
-    return dataOffset + index * Slice(_start + dataOffset).byteSize();
+    return dataOffset + index * Slice(start() + dataOffset).byteSize();
   }
 
   ValueLength const ieBase =
       end - n * offsetSize + index * offsetSize - (offsetSize == 8 ? 8 : 0);
-  return readIntegerNonEmpty<ValueLength>(_start + ieBase, offsetSize);
+  return readIntegerNonEmpty<ValueLength>(start() + ieBase, offsetSize);
 }
 
 // extract the nth member from an Array
 Slice Slice::getNth(ValueLength index) const {
   VELOCYPACK_ASSERT(isArray());
 
-  return Slice(_start + getNthOffset(index));
+  return Slice(start() + getNthOffset(index));
 }
 
 // extract the nth member from an Object
 Slice Slice::getNthKey(ValueLength index, bool translate) const {
   VELOCYPACK_ASSERT(type() == ValueType::Object);
 
-  Slice s(_start + getNthOffset(index));
+  Slice s(start() + getNthOffset(index));
 
   if (translate) {
     return s.makeKey();
@@ -531,8 +574,8 @@ ValueLength Slice::getNthOffsetFromCompact(ValueLength index) const {
   auto const h = head();
   VELOCYPACK_ASSERT(h == 0x13 || h == 0x14);
 
-  ValueLength end = readVariableValueLength<false>(_start + 1);
-  ValueLength n = readVariableValueLength<true>(_start + end - 1);
+  ValueLength end = readVariableValueLength<false>(start() + 1);
+  ValueLength n = readVariableValueLength<true>(start() + end - 1);
   if (VELOCYPACK_UNLIKELY(index >= n)) {
     throw Exception(Exception::IndexOutOfBounds);
   }
@@ -540,10 +583,10 @@ ValueLength Slice::getNthOffsetFromCompact(ValueLength index) const {
   ValueLength offset = 1 + getVariableValueLength(end);
   ValueLength current = 0;
   while (current != index) {
-    uint8_t const* s = _start + offset;
+    uint8_t const* s = start() + offset;
     offset += Slice(s).byteSize();
     if (h == 0x14) {
-      offset += Slice(_start + offset).byteSize();
+      offset += Slice(start() + offset).byteSize();
     }
     ++current;
   }
@@ -558,7 +601,7 @@ Slice Slice::searchObjectKeyLinear(StringRef const& attribute,
 
   for (ValueLength index = 0; index < n; ++index) {
     ValueLength offset = ieBase + index * offsetSize;
-    Slice key(_start + readIntegerNonEmpty<ValueLength>(_start + offset, offsetSize));
+    Slice key(start() + readIntegerNonEmpty<ValueLength>(start() + offset, offsetSize));
 
     if (key.isString()) {
       if (!key.isEqualStringUnchecked(attribute)) {
@@ -600,7 +643,7 @@ Slice Slice::searchObjectKeyBinary(StringRef const& attribute,
 
   do {
     ValueLength offset = ieBase + index * offsetSize;
-    Slice key(_start + readIntegerFixed<ValueLength, offsetSize>(_start + offset));
+    Slice key(start() + readIntegerFixed<ValueLength, offsetSize>(start() + offset));
 
     int res;
     if (key.isString()) {

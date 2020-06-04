@@ -33,6 +33,8 @@
 #include <cstddef>
 #include <memory>
 
+#include "Aql/AqlItemBlockInputMatrix.h"
+
 namespace arangodb {
 namespace aql {
 
@@ -42,6 +44,7 @@ enum class ExecutionState;
 template <BlockPassthrough>
 class DependencyProxy;
 class ShadowAqlItemRow;
+class SkipResult;
 
 /**
  * @brief Interface for all AqlExecutors that do need all
@@ -57,14 +60,9 @@ class ShadowAqlItemRow;
  *     => If all rows have been Fetched, it will return DONE and an AqlItemMatrix, the Matrix will return results
  *     => Any later call will return DONE and a nullptr. So make sure you keep the Matrix.
  *     => This state can be left only if the shadowRow is fetched.
- *   - fetchBlockForPassthrough()
- *     => Cannot be used! Only required to make the code compile
  *   - preFetchNumberOfRows()
  *     => Will do the same as fetchAllRows, but NOT give out the data, it will only hold it internally.
  *     => On response it will inform the caller on exactly how many Rows will be returned until the next ShadowRow appears.
- *   - fetchBlockForModificationExecutor()
- *     => Fetches all blocks from upstream up to the next shadow row. Then it will only return these Blocks one by one.
- *     => This is relevant for ModificationExecutors to guarantee that all Input is read before a write is executed.
  *   - upstreamState()
  *     => Returns the last state of the dependencyProxy.
  *   - fetchShadowRow()
@@ -89,14 +87,29 @@ class AllRowsFetcher {
 
  public:
   explicit AllRowsFetcher(DependencyProxy<BlockPassthrough::Disable>& executionBlock);
-
   TEST_VIRTUAL ~AllRowsFetcher() = default;
+
+  using DataRange = AqlItemBlockInputMatrix;
 
  protected:
   // only for testing! Does not initialize _dependencyProxy!
   AllRowsFetcher() = default;
 
  public:
+  /**
+   * @brief Execute the given call stack
+   *
+   * @param stack Call stack, on top of stack there is current subquery, bottom is the main query.
+   * @return std::tuple<ExecutionState, size_t, DataRange>
+   *   ExecutionState => DONE, all queries are done, there will be no more
+   *   ExecutionState => HASMORE, there are more results for queries, might be on other subqueries
+   *   ExecutionState => WAITING, we need to do I/O to solve the request, save local state and return WAITING to caller immediately
+   *
+   *   size_t => Amount of documents skipped
+   *   DataRange => Resulting data
+   */
+  std::tuple<ExecutionState, SkipResult, DataRange> execute(AqlCallStack& stack);
+
   /**
    * @brief Fetch one new AqlItemRow from upstream.
    *        **Guarantee**: the pointer returned is valid only
@@ -141,7 +154,7 @@ class AllRowsFetcher {
    */
   // This is only TEST_VIRTUAL, so we ignore this lint warning:
   // NOLINTNEXTLINE google-default-arguments
-  std::pair<ExecutionState, InputAqlItemRow> fetchRow(size_t atMost = ExecutionBlock::DefaultBatchSize());
+  std::pair<ExecutionState, InputAqlItemRow> fetchRow(size_t atMost = ExecutionBlock::DefaultBatchSize);
 
   /**
    * @brief Prefetch the number of rows that will be returned from upstream.
@@ -163,14 +176,13 @@ class AllRowsFetcher {
   TEST_VIRTUAL std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t);
 
   // only for ModificationNodes
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForModificationExecutor(std::size_t);
-
-  // only for ModificationNodes
   ExecutionState upstreamState();
 
   // NOLINTNEXTLINE google-default-arguments
-  std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(
-      size_t atMost = ExecutionBlock::DefaultBatchSize());
+  std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(size_t atMost = ExecutionBlock::DefaultBatchSize);
+
+  //@deprecated
+  auto useStack(AqlCallStack const& stack) -> void;
 
  private:
   DependencyProxy<BlockPassthrough::Disable>* _dependencyProxy;
@@ -188,7 +200,7 @@ class AllRowsFetcher {
   /**
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()
    */
-  RegisterId getNrInputRegisters() const;
+  RegisterCount getNrInputRegisters() const;
 
   /**
    * @brief Delegates to ExecutionBlock::fetchBlock()

@@ -1,0 +1,27 @@
+libstemmer_csharp
+=================
+
+This document pertains to the C# version of the libstemmer distribution,
+available for download from:
+
+https://snowballstem.org/dist/libstemmer_csharp.tgz
+
+
+Compiling the library
+=====================
+
+To build a library::
+
+mcs -target:library -out:snowballstemmer.dll csharp/Snowball/*.cs csharp/Snowball/Algorithms/*cs
+
+And to build the example program using that library::
+
+mcs -target:exe -out:stemwords.exe -r:snowballstemmer.dll csharp/Stemwords/Program.cs
+
+Using the library
+=================
+
+There is currently no formal documentation on the use of the C# version
+of the library. Additionally, its interface is not guaranteed to be
+stable.
+

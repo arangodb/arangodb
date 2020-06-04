@@ -24,6 +24,7 @@
 
 #include "Agency/AgencyFeature.h"
 #include "Agency/Agent.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Common.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Cluster/ClusterFeature.h"
@@ -99,56 +100,76 @@ auto prepareRequest(RestVerb type, std::string path, VPackBufferUInt8 payload,
 FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
                       std::string path, velocypack::Buffer<uint8_t> payload,
                       RequestOptions const& options, Headers headers) {
+
+  LOG_TOPIC("2713a", DEBUG, Logger::COMMUNICATION)
+      << "request to '" << dest
+      << "' '" << fuerte::to_string(type) << " " << path << "'";
+
   // FIXME build future.reset(..)
+  try {
 
-  if (!pool || !pool->config().clusterInfo) {
-    LOG_TOPIC("59b95", ERR, Logger::COMMUNICATION)
+    auto req = prepareRequest(type, std::move(path), std::move(payload),
+                              options, std::move(headers));
+
+    if (!pool || !pool->config().clusterInfo) {
+      LOG_TOPIC("59b95", ERR, Logger::COMMUNICATION)
         << "connection pool unavailable";
-    return futures::makeFuture(Response{std::move(dest), Error::Canceled, nullptr});
-  }
+      return futures::makeFuture(Response{std::move(dest), Error::Canceled, nullptr, std::move(req)});
+    }
 
-  arangodb::network::EndpointSpec spec;
-  int res = resolveDestination(*pool->config().clusterInfo, dest, spec);
-  if (res != TRI_ERROR_NO_ERROR) {  // FIXME return an error  ?!
-    return futures::makeFuture(Response{std::move(dest), Error::Canceled, nullptr});
-  }
-  TRI_ASSERT(!spec.endpoint.empty());
+    arangodb::network::EndpointSpec spec;
+    int res = resolveDestination(*pool->config().clusterInfo, dest, spec);
+    if (res != TRI_ERROR_NO_ERROR) {  // FIXME return an error  ?!
+      return futures::makeFuture(Response{std::move(dest), Error::Canceled, nullptr, std::move(req)});
+    }
+    TRI_ASSERT(!spec.endpoint.empty());
 
-  auto req = prepareRequest(type, std::move(path), std::move(payload),
-                            options, std::move(headers));
-  struct Pack {
-    DestinationId dest;
-    futures::Promise<network::Response> promise;
-    std::unique_ptr<fuerte::Response> tmp;
-    bool skipScheduler;
-    Pack(DestinationId&& dest, bool skip)
+    struct Pack {
+      DestinationId dest;
+      futures::Promise<network::Response> promise;
+      std::unique_ptr<fuerte::Response> tmp;
+      std::unique_ptr<fuerte::Request> tmp_req;
+      bool skipScheduler;
+      Pack(DestinationId&& dest, bool skip)
         : dest(std::move(dest)), promise(), skipScheduler(skip) {}
-  };
-  // fits in SSO of std::function
-  static_assert(sizeof(std::shared_ptr<Pack>) <= 2 * sizeof(void*), "");
-  auto conn = pool->leaseConnection(spec.endpoint);
-  auto p = std::make_shared<Pack>(std::move(dest), options.skipScheduler);
+    };
 
-  FutureRes f = p->promise.getFuture();
-  conn->sendRequest(std::move(req), [p(std::move(p))](fuerte::Error err,
-                                                      std::unique_ptr<fuerte::Request> req,
-                                                      std::unique_ptr<fuerte::Response> res) {
-    Scheduler* sch = SchedulerFeature::SCHEDULER;
-    if (p->skipScheduler || sch == nullptr) {
-      p->promise.setValue(network::Response{std::move(p->dest), err, std::move(res)});
-      return;
-    }
+    // fits in SSO of std::function
+    static_assert(sizeof(std::shared_ptr<Pack>) <= 2 * sizeof(void*), "");
+    auto conn = pool->leaseConnection(spec.endpoint);
+    auto p = std::make_shared<Pack>(std::move(dest), options.skipScheduler);
 
-    p->tmp = std::move(res);
+    FutureRes f = p->promise.getFuture();
+    conn->sendRequest(
+      std::move(req),
+      [p(std::move(p))](fuerte::Error err, std::unique_ptr<fuerte::Request> req,
+                        std::unique_ptr<fuerte::Response> res) {
+        Scheduler* sch = SchedulerFeature::SCHEDULER;
+        if (p->skipScheduler || sch == nullptr) {
+          p->promise.setValue(network::Response{std::move(p->dest), err, std::move(res), std::move(req)});
+          return;
+        }
 
-    bool queued = sch->queue(RequestLane::CLUSTER_INTERNAL, [p, err]() {
-      p->promise.setValue(Response{std::move(p->dest), err, std::move(p->tmp)});
-    });
-    if (ADB_UNLIKELY(!queued)) {
-      p->promise.setValue(Response{std::move(p->dest), fuerte::Error::Canceled, nullptr});
-    }
-  });
-  return f;
+        p->tmp = std::move(res);
+        p->tmp_req = std::move(req);
+
+        bool queued = sch->queue(
+          RequestLane::CLUSTER_INTERNAL,
+          [p, err]() {
+            p->promise.setValue(Response{std::move(p->dest), err, std::move(p->tmp), std::move(p->tmp_req)});
+          });
+        if (ADB_UNLIKELY(!queued)) {
+          p->promise.setValue(Response{std::move(p->dest), fuerte::Error::Canceled, nullptr, std::move(p->tmp_req)});
+        }
+      });
+    return f;
+
+  } catch (std::exception const& e) {
+    LOG_TOPIC("236d7", DEBUG, Logger::COMMUNICATION) << "failed to send request: " << e.what();
+  } catch (...) {
+    LOG_TOPIC("36d72", DEBUG, Logger::COMMUNICATION) << "failed to send request.";
+  }
+  return futures::makeFuture(Response{std::string(), Error::Canceled, nullptr, nullptr});
 }
 
 /// Handler class with enough information to keep retrying
@@ -185,6 +206,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
 
   std::shared_ptr<arangodb::Scheduler::WorkItem> _workItem;
   std::unique_ptr<fuerte::Response> _response;   /// temporary response
+  std::unique_ptr<fuerte::Request> _request;
   futures::Promise<network::Response> _promise;  /// promise called
 
   std::chrono::steady_clock::time_point const _startTime;
@@ -193,25 +215,26 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
  public:
   FutureRes future() { return _promise.getFuture(); }
 
+
   // scheduler requests that are due
   void startRequest() {
     auto now = std::chrono::steady_clock::now();
     if (now > _endTime || _pool->config().clusterInfo->server().isStopping()) {
-      callResponse(Error::Timeout, nullptr);
+      callResponse(Error::Timeout, nullptr, std::move(_request));
       return;  // we are done
     }
 
     arangodb::network::EndpointSpec spec;
     int res = resolveDestination(*_pool->config().clusterInfo, _destination, spec);
     if (res != TRI_ERROR_NO_ERROR) {  // ClusterInfo did not work
-      callResponse(Error::Canceled, nullptr);
+      callResponse(Error::Canceled, nullptr, std::move(_request));
       return;
     }
 
     if (!_pool) {
       LOG_TOPIC("5949f", ERR, Logger::COMMUNICATION)
           << "connection pool unavailable";
-      callResponse(Error::Canceled, nullptr);
+      callResponse(Error::Canceled, nullptr, std::move(_request));
       return;
     }
 
@@ -236,20 +259,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
     switch (err) {
       case fuerte::Error::NoError: {
         TRI_ASSERT(res);
-        if (res->statusCode() == fuerte::StatusOK || res->statusCode() == fuerte::StatusCreated ||
-            res->statusCode() == fuerte::StatusAccepted ||
-            res->statusCode() == fuerte::StatusNoContent) {
-          callResponse(Error::NoError, std::move(res));
-          break;
-        } else if (res->statusCode() == fuerte::StatusNotFound && _options.retryNotFound &&
-                   TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
-                       network::errorCodeFromBody(res->slice())) {
-          LOG_TOPIC("5a8e9", DEBUG, Logger::COMMUNICATION)
-              << "retrying request";
-        } else {  // a "proper error" which has to be returned to the client
-          LOG_TOPIC("5a8d9", DEBUG, Logger::COMMUNICATION)
-              << "canceling request";
-          callResponse(err, std::move(res));
+        if (checkResponse(err, req, res)) {
           break;
         }
         [[fallthrough]];
@@ -257,7 +267,8 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
 
       case fuerte::Error::CouldNotConnect:
       case fuerte::Error::ConnectionClosed:
-      case fuerte::Error::Timeout: {
+      case fuerte::Error::Timeout:
+      case fuerte::Error::Canceled: {
         // Note that this case includes the refusal of a leader to accept
         // the operation, in which case we have to flush ClusterInfo:
 
@@ -269,8 +280,24 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
           tryAgainAfter = std::chrono::seconds(3);
         }
 
-        if ((now + tryAgainAfter) >= _endTime) {  // cancel out
-          callResponse(err, std::move(res));
+        // Now check if the request was directed to an explicit server and see if that
+        // server is failed, if so, we should no longer retry, regardless of the timeout:
+        bool found = false;
+        if (_destination.size() > 7 && _destination.compare(0, 7, "server:") == 0) {
+          auto failedServers = _pool->config().clusterInfo->getFailedServers();
+          for (auto const& f : failedServers) {
+            if (_destination.compare(7, _destination.size() - 7, f) == 0) {
+              found = true;
+              LOG_TOPIC("feade", DEBUG, Logger::COMMUNICATION)
+                  << "Found destination "
+                  << _destination << " to be in failed servers list, will no longer retry, aborting operation";
+              break;
+            }
+          }
+        }
+
+        if (found || (now + tryAgainAfter) >= _endTime) { // cancel out
+          callResponse(err, std::move(res), std::move(req));
         } else {
           retryLater(tryAgainAfter);
         }
@@ -278,50 +305,89 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
       }
 
       default:  // a "proper error" which has to be returned to the client
-        callResponse(err, std::move(res));
+        callResponse(err, std::move(res), std::move(req));
         break;
     }
   }
 
-  /// @broef schedule calling the response promise
-  void callResponse(Error err, std::unique_ptr<fuerte::Response> res) {
+  bool checkResponse(fuerte::Error err,
+                     std::unique_ptr<fuerte::Request>& req,
+                     std::unique_ptr<fuerte::Response>& res) {
+    switch (res->statusCode()) {
+      case fuerte::StatusOK:
+      case fuerte::StatusCreated:
+      case fuerte::StatusAccepted:
+      case fuerte::StatusNoContent:
+        callResponse(Error::NoError, std::move(res), std::move(req));
+        return true; // done
+
+      case fuerte::StatusServiceUnavailable:
+        return false; // goto retry
+
+      case fuerte::StatusNotFound:
+        if (_options.retryNotFound &&
+            TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == network::errorCodeFromBody(res->slice())) {
+          return false; // goto retry
+        }
+        [[fallthrough]];
+      default:  // a "proper error" which has to be returned to the client
+        callResponse(err, std::move(res), std::move(req));
+        return true; // done
+    }
+  }
+
+  /// @brief schedule calling the response promise
+  void callResponse(Error err, std::unique_ptr<fuerte::Response> res, std::unique_ptr<fuerte::Request> req) {
+
+    LOG_TOPIC_IF("2713e", DEBUG, Logger::COMMUNICATION, err != fuerte::Error::NoError)
+        << "error on request to '" << _destination
+        << "' '" << fuerte::to_string(_type) << " " << _path
+        << "' '" << fuerte::to_string(err) << "'";
+
     Scheduler* sch = SchedulerFeature::SCHEDULER;
     if (_options.skipScheduler || sch == nullptr) {
-      _promise.setValue(Response{std::move(_destination), err, std::move(res)});
+      _promise.setValue(Response{std::move(_destination), err, std::move(res), std::move(req)});
       return;
     }
 
     _response = std::move(res);
+    _request = std::move(req);
     bool queued =
         sch->queue(RequestLane::CLUSTER_INTERNAL, [self = shared_from_this(), err]() {
           self->_promise.setValue(Response{std::move(self->_destination), err,
-                                           std::move(self->_response)});
+                                           std::move(self->_response),
+                                           std::move(self->_request)});
         });
     if (ADB_UNLIKELY(!queued)) {
-      _promise.setValue(Response{std::move(_destination), fuerte::Error::QueueCapacityExceeded, nullptr});
+      _promise.setValue(Response{std::move(_destination), fuerte::Error::QueueCapacityExceeded, nullptr, std::move(_request)});
     }
   }
 
   void retryLater(std::chrono::steady_clock::duration tryAgainAfter) {
+
+    LOG_TOPIC("2713f", DEBUG, Logger::COMMUNICATION)
+        << "retry request to '" << _destination
+        << "' '" << fuerte::to_string(_type) << " " << _path << "'";
+
     auto* sch = SchedulerFeature::SCHEDULER;
     if (ADB_UNLIKELY(sch == nullptr)) {
-      _promise.setValue(Response{std::move(_destination), fuerte::Error::Canceled, nullptr});
+      _promise.setValue(Response{std::move(_destination), fuerte::Error::Canceled, nullptr, std::move(_request)});
       return;
     }
-    
+
     bool queued;
     std::tie(queued, _workItem) =
         sch->queueDelay(RequestLane::CLUSTER_INTERNAL, tryAgainAfter,
                         [self = shared_from_this()](bool canceled) {
           if (canceled) {
-            self->_promise.setValue(Response{self->_destination, Error::Canceled, nullptr});
+            self->_promise.setValue(Response{std::move(self->_destination), Error::Canceled, nullptr, std::move(self->_request)});
           } else {
             self->startRequest();
           }
         });
     if (ADB_UNLIKELY(!queued)) {
       // scheduler queue is full, cannot requeue
-      _promise.setValue(Response{std::move(_destination), Error::QueueCapacityExceeded, nullptr});
+      _promise.setValue(Response{std::move(_destination), Error::QueueCapacityExceeded, nullptr, std::move(_request)});
     }
   }
 };
@@ -332,19 +398,33 @@ FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
                            velocypack::Buffer<uint8_t> payload,
                            RequestOptions const& options,
                            Headers headers) {
-  if (!pool || !pool->config().clusterInfo) {
-    LOG_TOPIC("59b96", ERR, Logger::COMMUNICATION)
+
+  try {
+
+    if (!pool || !pool->config().clusterInfo) {
+      LOG_TOPIC("59b96", ERR, Logger::COMMUNICATION)
         << "connection pool unavailable";
-    return futures::makeFuture(Response{destination, Error::Canceled, nullptr});
+      return futures::makeFuture(Response{destination, Error::Canceled, nullptr, nullptr});
+    }
+
+    LOG_TOPIC("2713b", DEBUG, Logger::COMMUNICATION)
+      << "request to '" << destination
+      << "' '" << fuerte::to_string(type) << " " << path << "'";
+
+    auto rs = std::make_shared<RequestsState>(pool, std::move(destination),
+                                              type, std::move(path),
+                                              std::move(payload),
+                                              std::move(headers), options);
+    rs->startRequest();  // will auto reference itself
+    return rs->future();
+
+  } catch (std::exception const& e) {
+    LOG_TOPIC("6d723", DEBUG, Logger::COMMUNICATION) << "failed to send request: " << e.what();
+  } catch (...) {
+    LOG_TOPIC("d7236", DEBUG, Logger::COMMUNICATION) << "failed to send request.";
   }
 
-  //  auto req = prepareRequest(type, path, std::move(payload), timeout, headers);
-  auto rs = std::make_shared<RequestsState>(pool, std::move(destination),
-                                            type, std::move(path),
-                                            std::move(payload),
-                                            std::move(headers), options);
-  rs->startRequest();  // will auto reference itself
-  return rs->future();
+  return futures::makeFuture(Response{std::string(), Error::Canceled, nullptr, nullptr});
 }
 
 }  // namespace network

@@ -23,12 +23,13 @@
 #ifndef ARANGOD_VOC_BASE_API_INDEXES_H
 #define ARANGOD_VOC_BASE_API_INDEXES_H 1
 
-#include "Basics/Result.h"
-#include "Indexes/Index.h"
-#include "VocBase/voc-types.h"
-
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+
+#include "Basics/Result.h"
+#include "Indexes/Index.h"
+#include "VocBase/Identifiers/IndexId.h"
+#include "VocBase/voc-types.h"
 
 struct TRI_vocbase_t;
 
@@ -63,7 +64,7 @@ struct Indexes {
   static arangodb::Result extractHandle(LogicalCollection const* collection,
                                         CollectionNameResolver const* resolver,
                                         velocypack::Slice const& val,
-                                        TRI_idx_iid_t& iid, std::string& name);
+                                        IndexId& iid, std::string& name);
 
  private:
   static arangodb::Result ensureIndexCoordinator(LogicalCollection const* collection,
@@ -75,7 +76,7 @@ struct Indexes {
       arangodb::LogicalCollection const* collection, arangodb::velocypack::Slice const slice,
       bool create, arangodb::velocypack::Builder& resultBuilder);
   static arangodb::Result dropCoordinatorEE(arangodb::LogicalCollection const* collection,
-                                            TRI_idx_iid_t const iid);
+                                            IndexId const iid);
 #endif
 };
 }  // namespace methods

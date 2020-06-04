@@ -27,6 +27,7 @@
 #include "Agency/TimeString.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/HeartbeatThread.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -43,13 +44,20 @@ inline static std::chrono::system_clock::duration secs_since_epoch() {
 }
 
 ActionBase::ActionBase(MaintenanceFeature& feature, ActionDescription const& desc)
-    : _feature(feature), _description(desc), _state(READY), _progress(0),
+    : _feature(feature),
+      _description(desc),
+      _state(READY),
+      _progress(0),
       _priority(desc.priority()) {
   init();
 }
 
 ActionBase::ActionBase(MaintenanceFeature& feature, ActionDescription&& desc)
-    : _feature(feature), _description(std::move(desc)), _state(READY), _progress(0), _priority(desc.priority()) {
+    : _feature(feature),
+      _description(std::move(desc)),
+      _state(READY),
+      _progress(0),
+      _priority(desc.priority()) {
   init();
 }
 
@@ -69,10 +77,10 @@ ActionBase::~ActionBase() = default;
 
 void ActionBase::notify() {
   LOG_TOPIC("df020", DEBUG, Logger::MAINTENANCE)
-      << "Job " << _description << " calling syncDBServerStatusQuo";
+      << "Job " << _description << " notifing maintenance";
   auto& server = _feature.server();
   if (server.hasFeature<ClusterFeature>()) {
-    server.getFeature<ClusterFeature>().syncDBServerStatusQuo();
+    server.getFeature<ClusterFeature>().notify();
   }
 }
 
@@ -183,10 +191,18 @@ void ActionBase::toVelocyPack(VPackBuilder& builder) const {
   builder.add("state", VPackValue(_state));
   builder.add("progress", VPackValue(_progress));
 
-  builder.add("created", VPackValue(timepointToString(_actionCreated.load())));
-  builder.add("started", VPackValue(timepointToString(_actionStarted.load())));
-  builder.add("lastStat", VPackValue(timepointToString(_actionLastStat.load())));
-  builder.add("done", VPackValue(timepointToString(_actionDone.load())));
+  builder.add("created", VPackValue(timepointToString(
+                             std::chrono::duration_cast<std::chrono::system_clock::duration>(
+                                 _actionCreated.load()))));
+  builder.add("started", VPackValue(timepointToString(
+                             std::chrono::duration_cast<std::chrono::system_clock::duration>(
+                                 _actionStarted.load()))));
+  builder.add("lastStat", VPackValue(timepointToString(
+                              std::chrono::duration_cast<std::chrono::system_clock::duration>(
+                                  _actionLastStat.load()))));
+  builder.add("done", VPackValue(timepointToString(
+                          std::chrono::duration_cast<std::chrono::system_clock::duration>(
+                              _actionDone.load()))));
 
   builder.add("result", VPackValue(_result.errorNumber()));
 

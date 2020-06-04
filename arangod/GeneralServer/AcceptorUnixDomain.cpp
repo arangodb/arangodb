@@ -63,7 +63,10 @@ void AcceptorUnixDomain::open() {
 }
 
 void AcceptorUnixDomain::asyncAccept() {
-  TRI_ASSERT(!_asioSocket);
+  // In most cases _asioSocket will be nullptr here, however, if
+  // the async_accept returns with an error, then an old _asioSocket
+  // is already set. Therefore, we do no longer assert here that
+  // _asioSocket is nullptr.
   IoContext& context = _server.selectIoContext();
 
   _asioSocket.reset(new AsioSocket<SocketType::Unix>(context));
@@ -98,6 +101,10 @@ void AcceptorUnixDomain::asyncAccept() {
 
 void AcceptorUnixDomain::close() {
   if (_open) {
+    _open = false;  // make sure this flag is reset to `false` before
+                    // we cancel/close the acceptor, otherwise the
+                    // handleError method would restart async_accept
+                    // right away
     _acceptor.close();
     int error = 0;
     std::string path = static_cast<EndpointUnixDomain*>(_endpoint)->path();
@@ -106,5 +113,9 @@ void AcceptorUnixDomain::close() {
           << "unable to remove socket file '" << path << "'";
     }
   }
-  _open = false;
 }
+
+void AcceptorUnixDomain::cancel() {
+  _acceptor.cancel();
+}
+

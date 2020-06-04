@@ -36,8 +36,9 @@
 #include "Replication/common-defines.h"
 #include "Replication/utilities.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RocksDBEngine/RocksDBMetaCollection.h"
+#include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "Transaction/Context.h"
@@ -70,12 +71,11 @@ TRI_voc_cid_t normalizeIdentifier(TRI_vocbase_t& vocbase, std::string const& ide
 
 }  // namespace
 
-RocksDBReplicationContext::RocksDBReplicationContext(double ttl, SyncerId syncerId,
-                                                    TRI_server_id_t clientId)
+RocksDBReplicationContext::RocksDBReplicationContext(double ttl, SyncerId syncerId, ServerId clientId)
     : _id{TRI_NewTickServer()},
       _syncerId{syncerId},
-    // buggy clients may not send the serverId
-      _clientId{clientId != 0 ? clientId : _id},
+      // buggy clients may not send the serverId
+      _clientId{clientId.isSet() ? clientId : ServerId(_id)},
       _snapshotTick{0},
       _snapshot{nullptr},
       _ttl{ttl > 0.0 ? ttl : replutils::BatchInfo::DefaultTimeout},
@@ -95,6 +95,10 @@ RocksDBReplicationContext::~RocksDBReplicationContext() {
 }
 
 TRI_voc_tick_t RocksDBReplicationContext::id() const { return _id; }
+
+rocksdb::Snapshot const* RocksDBReplicationContext::snapshot() {
+  return _snapshot;
+}
 
 uint64_t RocksDBReplicationContext::snapshotTick() {
   MUTEX_LOCKER(locker, _contextLock);
@@ -127,6 +131,20 @@ void RocksDBReplicationContext::removeVocbase(TRI_vocbase_t& vocbase) {
   }
 }
 
+/// invalidate all iterators with that collection
+bool RocksDBReplicationContext::removeCollection(LogicalCollection& collection) {
+  MUTEX_LOCKER(locker, _contextLock);
+
+  for (auto const& it : _iterators) {
+    if (it.second->logical != nullptr &&
+        it.second->logical->id() == collection.id()) {
+      _isDeleted = true;  // setDeleted also gets the lock
+      return true;
+    }
+  }
+  return false;
+}
+
 /// remove matching iterator
 void RocksDBReplicationContext::releaseIterators(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid) {
   MUTEX_LOCKER(locker, _contextLock);
@@ -152,6 +170,9 @@ std::tuple<Result, TRI_voc_cid_t, uint64_t> RocksDBReplicationContext::bindColle
     return std::make_tuple(TRI_ERROR_BAD_PARAMETER, 0, 0);
   }
   TRI_voc_cid_t cid = logical->id();
+
+  LOG_TOPIC("71235", TRACE, Logger::REPLICATION)
+      << "binding replication context " << id() << " to collection '" << cname << "'";
 
   MUTEX_LOCKER(writeLocker, _contextLock);
 
@@ -182,7 +203,7 @@ std::tuple<Result, TRI_voc_cid_t, uint64_t> RocksDBReplicationContext::bindColle
   TRI_ASSERT(_snapshot != nullptr);
 
   auto iter = std::make_unique<CollectionIterator>(vocbase, logical, true, _snapshot);
-  auto result = _iterators.emplace(cid, std::move(iter));
+  auto result = _iterators.try_emplace(cid, std::move(iter));
   TRI_ASSERT(result.second);
 
   CollectionIterator* cIter = result.first->second.get();
@@ -809,23 +830,29 @@ RocksDBReplicationContext::CollectionIterator::CollectionIterator(
   _readOptions.fill_cache = false;
   _readOptions.prefix_same_as_start = true;
   
-  _cTypeHandler.reset(transaction::Context::createCustomTypeHandler(vocbase, _resolver));
+  _cTypeHandler = transaction::Context::createCustomTypeHandler(vocbase, _resolver);
   vpackOptions.customTypeHandler = _cTypeHandler.get();
   setSorted(sorted);
 
   if (!vocbase.use()) {  // false if vobase was deleted
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-  TRI_vocbase_col_status_e ignore;
-  int res = vocbase.useCollection(logical.get(), ignore);
-  if (res != TRI_ERROR_NO_ERROR) {  // collection was deleted
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  try {
+    vocbase.useCollection(logical->id(), true);
+  } catch (...) {
+    vocbase.release();
+    throw;
   }
+
+  LOG_TOPIC("71236", TRACE, Logger::REPLICATION)
+      << "replication created iterator for collection '" << coll->name() << "'";
 }
 
 RocksDBReplicationContext::CollectionIterator::~CollectionIterator() {
   TRI_ASSERT(!vocbase.isDangling());
   vocbase.releaseCollection(logical.get());
+  LOG_TOPIC("71237", TRACE, Logger::REPLICATION)
+      << "replication released iterator for collection '" << logical->name() << "'";
   logical.reset();
   vocbase.release();
 }
@@ -836,7 +863,7 @@ void RocksDBReplicationContext::CollectionIterator::setSorted(bool sorted) {
     _sortedIterator = sorted;
 
     if (sorted) {
-      auto index = logical->getPhysical()->lookupIndex(0);  // RocksDBCollection->primaryIndex() is private
+      auto index = logical->getPhysical()->lookupIndex(IndexId::primary());  // RocksDBCollection->primaryIndex() is private
       TRI_ASSERT(index->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
       auto primaryIndex = static_cast<RocksDBPrimaryIndex*>(index.get());
       bounds = RocksDBKeyBounds::PrimaryIndex(primaryIndex->objectId());
@@ -906,7 +933,7 @@ RocksDBReplicationContext::CollectionIterator* RocksDBReplicationContext::getCol
 
     if (nullptr != logical) {
       auto result =
-          _iterators.emplace(cid, std::make_unique<CollectionIterator>(vocbase, logical, sorted,
+          _iterators.try_emplace(cid, std::make_unique<CollectionIterator>(vocbase, logical, sorted,
                                                                        _snapshot));
 
       if (result.second) {

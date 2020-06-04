@@ -23,6 +23,7 @@
 #include <fuerte/types.h>
 
 #include <algorithm>
+#include <stdexcept>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
 
@@ -136,6 +137,7 @@ std::string to_string(ProtocolType type) {
       return "undefined";
 
     case ProtocolType::Http:
+    case ProtocolType::Http2:
       return "http";
 
     case ProtocolType::Vst:

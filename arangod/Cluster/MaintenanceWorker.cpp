@@ -64,50 +64,50 @@ void MaintenanceWorker::run() {
     if (!_feature.isPaused()) {
       try {
         switch (_loopState) {
-        case eFIND_ACTION:
-          _curAction = _feature.findReadyAction(_labels);
-          more = (bool)_curAction;
-          break;
+          case eFIND_ACTION:
+            _curAction = _feature.findReadyAction(_labels);
+            more = (bool)_curAction;
+            break;
 
-        case eRUN_FIRST:
-          _curAction->startStats();
-          more = _curAction->first();
-          break;
+          case eRUN_FIRST:
+            _curAction->startStats();
+            more = _curAction->first();
+            break;
 
-        case eRUN_NEXT:
-          more = _curAction->next();
-          break;
+          case eRUN_NEXT:
+            more = _curAction->next();
+            break;
 
-        default:
-          _loopState = eSTOP;
-          LOG_TOPIC("dc389", ERR, Logger::CLUSTER)
-              << "MaintenanceWorkerRun:  unexpected state (" << _loopState << ")";
+          default:
+            _loopState = eSTOP;
+            LOG_TOPIC("dc389", ERR, Logger::CLUSTER)
+                << "MaintenanceWorkerRun:  unexpected state (" << _loopState << ")";
 
-      }  // switch
+        }  // switch
 
       } catch (std::exception const& ex) {
         if (_curAction) {
           LOG_TOPIC("dd8e8", ERR, Logger::CLUSTER)
-            << "MaintenanceWorkerRun:  caught exception (" << ex.what() << ")"
-            << " state:" << _loopState << " action:" << *_curAction;
+              << "MaintenanceWorkerRun:  caught exception (" << ex.what() << ")"
+              << " state:" << _loopState << " action:" << *_curAction;
 
           _curAction->setState(FAILED);
         } else {
           LOG_TOPIC("16d4c", ERR, Logger::CLUSTER)
-            << "MaintenanceWorkerRun:  caught exception (" << ex.what() << ")"
-            << " state:" << _loopState;
+              << "MaintenanceWorkerRun:  caught exception (" << ex.what() << ")"
+              << " state:" << _loopState;
         }
       } catch (...) {
         if (_curAction) {
           LOG_TOPIC("ac2a2", ERR, Logger::CLUSTER)
-            << "MaintenanceWorkerRun: caught error, state: " << _loopState
-            << " state:" << _loopState << " action:" << *_curAction;
+              << "MaintenanceWorkerRun: caught error, state: " << _loopState
+              << " state:" << _loopState << " action:" << *_curAction;
 
           _curAction->setState(FAILED);
         } else {
           LOG_TOPIC("88771", ERR, Logger::CLUSTER)
-            << "MaintenanceWorkerRun: caught error, state: " << _loopState
-            << " state:" << _loopState;
+              << "MaintenanceWorkerRun: caught error, state: " << _loopState
+              << " state:" << _loopState;
         }
       }
 
@@ -157,9 +157,13 @@ void MaintenanceWorker::nextState(bool actionMore) {
     // finish the current action
     if (_curAction) {
       _lastResult = _curAction->result();
+      _curAction->endStats();
+
+      bool failed = _curAction->result().ok() && FAILED != _curAction->getState();
+      recordJobStats(failed);
 
       // if action's state not set, assume it succeeded when result ok
-      if (_curAction->result().ok() && FAILED != _curAction->getState()) {
+      if (failed) {
         _curAction->endStats();
         _curAction->setState(COMPLETE);
 
@@ -189,8 +193,28 @@ void MaintenanceWorker::nextState(bool actionMore) {
       _loopState = (_directAction ? eSTOP : eFIND_ACTION);
     }  // else
   }    // else
+}
 
-}  // MaintenanceWorker::nextState
+void MaintenanceWorker::recordJobStats(bool failed) {
+  auto iter = _feature._maintenance_job_metrics_map.find(_curAction->describe().name());
+  if (iter != _feature._maintenance_job_metrics_map.end()) {
+    MaintenanceFeature::ActionMetrics& metrics = iter->second;
+    auto runtime = std::chrono::duration_cast<std::chrono::milliseconds>(
+                       _curAction->getRunDuration())
+                       .count();
+    auto queuetime = std::chrono::duration_cast<std::chrono::milliseconds>(
+                         _curAction->getQueueDuration())
+                         .count();
+    metrics._accum_runtime.count(runtime);
+    metrics._runtime_histogram.count(runtime);
+    metrics._queue_time_histogram.count(queuetime);
+    metrics._accum_queue_time.count(queuetime);
+    if (failed) {
+      metrics._failure_counter.count();
+    }
+  }
+}
+// MaintenanceWorker::nextState
 
 }  // namespace maintenance
 }  // namespace arangodb

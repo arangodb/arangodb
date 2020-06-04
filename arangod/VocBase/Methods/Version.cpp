@@ -25,6 +25,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
+#include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -90,6 +91,16 @@ VersionResult::StatusCode Version::compare(uint64_t current, uint64_t other) {
 }
 
 VersionResult Version::check(TRI_vocbase_t* vocbase) {
+  uint64_t lastVersion = UINT64_MAX;
+  uint64_t serverVersion = Version::current();
+  std::map<std::string, bool> tasks;
+
+  if (ServerState::instance()->isCoordinator()) {
+    // in a coordinator, we don't have any persistent data, so there is no VERSION
+    // file available. In this case we don't know the previous version we are
+    // upgrading from, so we can't do anything sensible here.
+    return VersionResult{VersionResult::VERSION_MATCH, serverVersion, serverVersion, tasks};
+  }
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
 
@@ -105,10 +116,6 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
     LOG_TOPIC("dc4de", ERR, Logger::STARTUP) << "VERSION file '" << versionFile << "' is empty";
     return VersionResult{VersionResult::CANNOT_READ_VERSION_FILE, 0, 0, {}};
   }
-
-  uint64_t lastVersion = UINT64_MAX;
-  uint64_t serverVersion = Version::current();
-  std::map<std::string, bool> tasks;
 
   try {
     std::shared_ptr<VPackBuilder> parsed = velocypack::Parser::fromJson(versionInfo);
@@ -126,7 +133,7 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
       return VersionResult{VersionResult::CANNOT_PARSE_VERSION_FILE, 0, 0, tasks};
     }
     for (VPackObjectIterator::ObjectPair pair : VPackObjectIterator(run)) {
-      tasks.emplace(pair.key.copyString(), pair.value.getBool());
+      tasks.try_emplace(pair.key.copyString(), pair.value.getBool());
     }
   } catch (velocypack::Exception const& e) {
     LOG_TOPIC("2d92a", ERR, Logger::STARTUP)

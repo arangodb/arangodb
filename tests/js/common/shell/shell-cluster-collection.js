@@ -1,5 +1,4 @@
 /*jshint globalstrict:false, strict:false */
-/*global fail, assertEqual, assertTrue, assertFalse, assertNull, assertTypeOf */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test collection functionality in a cluster
@@ -28,11 +27,16 @@
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var arangodb = require("@arangodb");
-var ERRORS = arangodb.errors;
-var db = arangodb.db;
-let internal = require("internal");
+const jsunity = require("jsunity");
+const {fail, assertEqual, assertTrue, assertFalse, assertNull, assertTypeOf} = jsunity.jsUnity.assertions;
+const arangodb = require("@arangodb");
+const ERRORS = arangodb.errors;
+const db = arangodb.db;
+const internal = require("internal");
+const isServer = typeof internal.arango === 'undefined';
+const console = require('console');
+const request = require('@arangodb/request');
+const ArangoError = require("@arangodb").ArangoError;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -40,25 +44,51 @@ let internal = require("internal");
 
 function ClusterCollectionSuite () {
   'use strict';
+
+  function baseUrl(endpoint) { // arango.getEndpoint()
+    return endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
+  }
+
+  /// @brief set failure point
+  function debugCanUseFailAt(endpoint) {
+    let res = request.get({
+      url: baseUrl(endpoint) + '/_admin/debug/failat',
+    });
+    return res.status === 200;
+  }
+
+  /// @brief set failure point
+  function debugSetFailAt(endpoint, failAt) {
+    assertTrue(typeof failAt !== 'undefined');
+    let res = request.put({
+      url: baseUrl(endpoint) + '/_admin/debug/failat/' + failAt,
+      body: ""
+    });
+    if (res.status !== 200) {
+      throw "Error setting failure point";
+    }
+  }
+
+  /// @brief remove failure point
+  function debugRemoveFailAt(endpoint, failAt) {
+    assertTrue(typeof failAt !== 'undefined');
+    let res = request.delete({
+      url: baseUrl(endpoint) + '/_admin/debug/failat/' + failAt,
+      body: ""
+    });
+    if (res.status !== 200) {
+      throw "Error seting failure point";
+    }
+  }
+
   return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      try {
-        db._drop("UnitTestsClusterCrud");
-      }
-      catch (err) {
-      }
+      db._drop("UnitTestsClusterCrud");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -142,8 +172,8 @@ function ClusterCollectionSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test create collection with replicationFactor && minReplicationFactor
-/// minReplicationFactor is equally set to replicationFactor
+/// @brief test create collection with replicationFactor && writeConcern
+/// writeConcern is equally set to replicationFactor
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateValidMinReplicationFactor : function () {
@@ -161,14 +191,15 @@ function ClusterCollectionSuite () {
         assertTrue(c.hasOwnProperty("_id"));
         assertEqual(i, c.properties().replicationFactor);
         assertEqual(i, c.properties().minReplicationFactor);
+        assertEqual(i, c.properties().writeConcern);
         db._drop("UnitTestsClusterCrud");
         c = undefined;
       }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test create collection with replicationFactor && minReplicationFactor
-/// minReplicationFactor is set to replicationFactor - 1
+/// @brief test create collection with replicationFactor && writeConcern
+/// writeConcern is set to replicationFactor - 1
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateValidMinReplicationFactorSmaller : function () {
@@ -185,48 +216,51 @@ function ClusterCollectionSuite () {
         assertTrue(c.hasOwnProperty("_id"));
         assertEqual(i, c.properties().replicationFactor);
         assertEqual(i - 1, c.properties().minReplicationFactor);
+        assertEqual(i - 1, c.properties().writeConcern);
         db._drop("UnitTestsClusterCrud");
       }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test create collection with replicationFactor && minReplicationFactor
+/// @brief test create collection with replicationFactor && writeConcern
 /// set to 2. Then decrease both to 1 (update).
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateValidMinReplicationFactorThenDecrease : function () {
       let c = db._create("UnitTestsClusterCrud", {
         replicationFactor: 2,
-        minReplicationFactor: 2
+        writeConcern: 2
       });
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
       assertEqual(3, c.status());
       assertTrue(c.hasOwnProperty("_id"));
       assertEqual(2, c.properties().replicationFactor);
-      assertEqual(2, c.properties().minReplicationFactor);
+      assertEqual(2, c.properties().minReplicationFactor); // deprecated
+      assertEqual(2, c.properties().writeConcern);
 
       db._collection("UnitTestsClusterCrud").properties({
         replicationFactor: 1,
-        minReplicationFactor: 1
+        writeConcern: 1
       });
 
       c = db._collection("UnitTestsClusterCrud");
       assertEqual(1, c.properties().replicationFactor);
-      assertEqual(1, c.properties().minReplicationFactor);
+      assertEqual(1, c.properties().minReplicationFactor); // deprecated
+      assertEqual(1, c.properties().writeConcern);
 
       db._drop("UnitTestsClusterCrud");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test create collection with replicationFactor && minReplicationFactor
+/// @brief test create collection with replicationFactor && writeConcern
 /// set to 1. Then increase both to 2 (update).
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateValidMinReplicationFactorThenIncrease : function () {
       let c = db._create("UnitTestsClusterCrud", {
         replicationFactor: 1,
-        minReplicationFactor: 1
+        writeConcern: 1
       });
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
@@ -234,28 +268,30 @@ function ClusterCollectionSuite () {
       assertTrue(c.hasOwnProperty("_id"));
       assertEqual(1, c.properties().replicationFactor);
       assertEqual(1, c.properties().minReplicationFactor);
+      assertEqual(1, c.properties().writeConcern);
 
       db._collection("UnitTestsClusterCrud").properties({
         replicationFactor: 2,
-        minReplicationFactor: 2
+        writeConcern: 2
       });
 
       c = db._collection("UnitTestsClusterCrud");
       assertEqual(2, c.properties().replicationFactor);
       assertEqual(2, c.properties().minReplicationFactor);
+      assertEqual(2, c.properties().writeConcern);
 
       db._drop("UnitTestsClusterCrud");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test create collection with replicationFactor && minReplicationFactor
+/// @brief test create collection with replicationFactor && writeConcern
 /// set to 2. Then increase both to 3 (update).
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateInvalidMinReplicationFactorThenIncrease : function () {
       let c = db._create("UnitTestsClusterCrud", {
         replicationFactor: 2,
-        minReplicationFactor: 2
+        writeConcern: 2
       });
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
@@ -263,6 +299,7 @@ function ClusterCollectionSuite () {
       assertTrue(c.hasOwnProperty("_id"));
       assertEqual(2, c.properties().replicationFactor);
       assertEqual(2, c.properties().minReplicationFactor);
+      assertEqual(2, c.properties().writeConcern);
 
       try {
         db._collection("UnitTestsClusterCrud").properties({
@@ -276,6 +313,7 @@ function ClusterCollectionSuite () {
       c = db._collection("UnitTestsClusterCrud");
       assertEqual(2, c.properties().replicationFactor);
       assertEqual(2, c.properties().minReplicationFactor);
+      assertEqual(2, c.properties().writeConcern);
 
       db._drop("UnitTestsClusterCrud");
     },
@@ -292,6 +330,17 @@ function ClusterCollectionSuite () {
           db._create("UnitTestsClusterCrud", {
             replicationFactor: 2,
             minReplicationFactor: minFactor
+          });
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+        }
+      });
+      invalidMinReplFactors.forEach(function(minFactor) {
+        try {
+          db._create("UnitTestsClusterCrud", {
+            replicationFactor: 2,
+            writeConcern: minFactor
           });
           fail();
         } catch (err) {
@@ -356,6 +405,18 @@ function ClusterCollectionSuite () {
           c = db._create("UnitTestsClusterCrud", {
             replicationFactor: i,
             minReplicationFactor: i + 1
+          });
+        }
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+      try {
+        let c;
+        for ( let i = 1; i < 3; i++) {
+          c = db._create("UnitTestsClusterCrud", {
+            replicationFactor: i,
+            writeConcern: i + 1
           });
         }
         fail();
@@ -533,6 +594,65 @@ function ClusterCollectionSuite () {
       }
     },
 
+    testCreateFailureDuringIsBuilding : function () {
+      if (!isServer) {
+        console.info('Skipping client test');
+        // TODO make client tests work
+        return;
+      }
+      let setFailAt;
+      let removeFailAt;
+      if (isServer) {
+        if (internal.debugCanUseFailAt()) {
+          setFailAt = internal.debugSetFailAt;
+          removeFailAt = internal.debugRemoveFailAt;
+        }
+      } else {
+        const arango = internal.arango;
+        const coordinatorEndpoint = arango.getEndpoint();
+        if (debugCanUseFailAt(coordinatorEndpoint)) {
+          setFailAt = failurePoint => debugSetFailAt(coordinatorEndpoint, failurePoint);
+          removeFailAt = failurePoint => debugRemoveFailAt(coordinatorEndpoint, failurePoint);
+        }
+      }
+      if (!setFailAt) {
+        console.info('Failure tests disabled, skipping...');
+        return;
+      }
+
+      const failurePoint = 'ClusterInfo::createCollectionsCoordinator';
+      try {
+        setFailAt(failurePoint);
+        const colName = "UnitTestClusterShouldNotBeCreated";
+        let threw = false;
+        try {
+          db._create(colName);
+        } catch (e) {
+          threw = true;
+          if (isServer) {
+            assertTrue(e instanceof ArangoError);
+            assertEqual(22, e.errorNum);
+            assertEqual('intentional debug error', e.errorMessage);
+          } else {
+            const expected = {
+              'error': true,
+              'errorNum': 22,
+              'code': 500,
+              'errorMessage': 'intentional debug error',
+            };
+            assertEqual(expected, e);
+          }
+        }
+        assertTrue(threw);
+        const collections = global.ArangoAgency.get(`Plan/Collections/${db._name()}`)
+          .arango.Plan.Collections[db._name()];
+        assertEqual([], Object.values(collections).filter(col => col.name === colName),
+          'Collection should have been deleted');
+      } finally {
+        removeFailAt(failurePoint);
+      }
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test replicationFactor
 ////////////////////////////////////////////////////////////////////////////////
@@ -643,9 +763,6 @@ function ClusterCollectionSuite () {
       assertTrue(c.hasOwnProperty("_id"));
       assertEqual([ "_key" ], c.properties().shardKeys);
       assertFalse(c.properties().waitForSync);
-      if (db._engine().name === "mmfiles") {
-        assertEqual(1048576, c.properties().journalSize);
-      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -804,10 +921,6 @@ function ClusterCollectionSuite () {
 
   };
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ClusterCollectionSuite);
 

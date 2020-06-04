@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,8 +34,10 @@
 #include "Agency/State.h"
 #include "Agency/Store.h"
 #include "Agency/Supervision.h"
+#include "Futures/Promise.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadWriteLock.h"
+#include "RestServer/MetricsFeature.h"
 
 struct TRI_vocbase_t;
 
@@ -120,6 +122,9 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief Read from agency
   read_ret_t read(query_t const&);
 
+  /// @brief Long pool for higher index than given
+  futures::Future<query_t> poll(index_t const& index, double const& timeout);
+
   /// @brief Inquire success of logs given clientIds
   write_ret_t inquire(query_t const&);
 
@@ -149,6 +154,18 @@ class Agent final : public arangodb::Thread, public AgentInterface {
 
  private:
 
+  void logsForTrigger();
+
+  /// @brief clear expired polls registered by Agent::poll
+  ///        if qu is nullptr, we're resigning.
+  ///        Caller must have _promLock!
+  void triggerPollsNoLock(
+    query_t qu = nullptr,
+    SteadyTimePoint const& tp = std::chrono::steady_clock::now() + std::chrono::seconds(60));
+
+  /// @brief trigger all expire polls
+  void clearExpiredPolls();
+
   /// @brief empty callback trash bin
   void emptyCbTrashBin();
 
@@ -161,7 +178,12 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   void advanceCommitIndex();
 
  public:
-  /// @brief Invoked by leader to replicate log entries ($5.3);
+
+  /// @brief Get last confirmed index of an agent. Default my own.
+  ///   Safe ONLY IF via executeLock() (see example Supervision.cpp)
+  index_t confirmed(std::string const& serverId = std::string()) const;
+
+  /// @brief Invoked by leader to replicate log entries ($5.3);w
   ///        also used as heartbeat ($5.2). This is the version used by
   ///        the constituent to send out empty heartbeats to keep
   ///        the term alive.
@@ -187,6 +209,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   index_t index();
 
   /// @brief Start orderly shutdown of threads
+  // cppcheck-suppress virtualCallInConstructor
   void beginShutdown() override final;
 
   /// @brief Report appended entries from AgentCallback
@@ -203,6 +226,9 @@ class Agent final : public arangodb::Thread, public AgentInterface {
 
   /// @brief Convencience size of agency
   size_t size() const;
+
+  Supervision& supervision() { return _supervision; }
+  Supervision const& supervision() const { return _supervision; }
 
   /// @brief Rebuild DBs by applying state log to empty DB
   void rebuildDBs();
@@ -224,7 +250,10 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   ///  and write lock for _readDB
   void executeLockedWrite(std::function<void()> const& cb);
 
-  /// @brief Get read store and compaction index
+  /// @brief execute a callback while holding _transientLock
+  void executeTransientLocked(std::function<void()> const& cb);
+
+    /// @brief Get read store and compaction index
   index_t readDB(Node&) const;
 
   /// @brief Get read store and compaction index
@@ -243,9 +272,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   Store const& spearhead() const;
 
   /// @brief Get transient store
-  ///  WARNING: this assumes caller holds appropriate
-  ///  locks or will use executeLockedRead() or
-  ///  executeLockedWrite() with a lambda function
+  /// WARNING: this assumes caller holds _transientLock
   Store const& transient() const;
 
   /// @brief Serve active agent interface
@@ -256,6 +283,9 @@ class Agent final : public arangodb::Thread, public AgentInterface {
 
   /// @brief All there is in the state machine
   query_t allLogs() const;
+
+  /// @brief Get copy of log entries starting with begin ending on end
+  std::vector<log_t> logs(index_t begin = 0, index_t end = (std::numeric_limits<uint64_t>::max)()) const;
 
   /// @brief Last contact with followers
   void lastAckedAgo(Builder&) const;
@@ -324,7 +354,17 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief add agent to configuration (from State after successful local persistence)
   void updateConfiguration(VPackSlice const&);
 
+  /// @brief patch some configuration values, this is for manual interaction with
+  /// the agency leader.
+  void updateSomeConfigValues(VPackSlice);
+
+  Histogram<log_scale_t<float>>& commitHist() const;
+
  private:
+
+  /// @brief load() has run
+  bool loaded() const;
+
   /// @brief Find out, if we've had acknowledged RPCs recent enough
   bool challengeLeadership();
 
@@ -363,7 +403,8 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief Committed (read) kv-store
   Store _readDB;
 
-  /// @brief Committed (read) kv-store for transient data
+  /// @brief Committed (read) kv-store for transient data. This is
+  /// protected by the _transientLock mutex.
   Store _transient;
 
   /// @brief Condition variable for appending to the log and for
@@ -419,6 +460,10 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// Writing requires this held first, then _waitForCV's mutex
   mutable arangodb::basics::ReadWriteLock _outputLock;
 
+  /// @brief The following mutex protects the _transient store. It is
+  /// needed for all accesses to _transient.
+  mutable arangodb::Mutex _transientLock;
+
   /// @brief RAFT consistency lock and update notifier:
   ///   _readDB and _commitIndex
   /// _waitForCV's mutex held alone, allows reads from _readDB or _commitIndex.
@@ -466,6 +511,9 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// since the epoch of the steady clock.
   std::atomic<int64_t> _leaderSince;
 
+  /// @brief load() has completed
+  std::atomic<bool> _loaded;
+
   /// @brief Container for callbacks for removal
   std::unordered_map<std::string, std::unordered_set<std::string>> _callbackTrashBin;
   std::chrono::time_point<std::chrono::steady_clock> _callbackLastPurged;
@@ -475,6 +523,27 @@ class Agent final : public arangodb::Thread, public AgentInterface {
 
   // lock for _ongoingTrxs
   arangodb::Mutex _trxsLock;
+
+  // @brief promises for poll interface and the guard
+  //        The map holds all current poll promises.
+  //        key,value: expiry time of this poll, the promise
+  //        When expired or when any change to commitIndex, promise is fullfilled
+  //        All rest handlers will receive the same vpack,
+  //        They need to sort out, what is sent to client
+  std::mutex _promLock;
+  index_t _lowestPromise;
+  std::multimap<SteadyTimePoint, futures::Promise<query_t>> _promises;
+
+  Counter& _write_ok;
+  Counter& _write_no_leader;
+  Counter& _read_ok;
+  Counter& _read_no_leader;
+  Histogram<log_scale_t<float>>& _write_hist_msec;
+  Histogram<log_scale_t<float>>& _commit_hist_msec;
+  Histogram<log_scale_t<float>>& _append_hist_msec;
+  Histogram<log_scale_t<float>>& _compaction_hist_msec;
+  Gauge<uint64_t>& _local_index;
+
 };
 }  // namespace consensus
 }  // namespace arangodb

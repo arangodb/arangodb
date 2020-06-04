@@ -40,7 +40,7 @@ class RecursiveMutexLocker {
       T& mutex, // mutex
       std::atomic<std::thread::id>& owner, // owner
       arangodb::basics::LockerType type, // locker type
-      bool acquire, // aquire flag
+      bool acquire, // acquire flag
       char const* file, // file
       int line // line
 ): _locker(&mutex, type, false, file, line), _owner(owner), _update(noop) {
@@ -116,7 +116,7 @@ class RecursiveWriteLocker {
       T& mutex, // mutex
       std::atomic<std::thread::id>& owner, // owner
       arangodb::basics::LockerType type, // locker type
-      bool acquire, // aquire flag
+      bool acquire, // acquire flag
       char const* file, // file
       int line // line
 ): _locked(false), // locked
@@ -151,7 +151,7 @@ class RecursiveWriteLocker {
   }
 
  private:
-  bool _locked;  // track locked state separately for recursive lock aquisition
+  bool _locked;  // track locked state separately for recursive lock acquisition
   arangodb::basics::WriteLocker<T> _locker;
   std::atomic<std::thread::id>& _owner;
   void (*_update)(RecursiveWriteLocker& locker);

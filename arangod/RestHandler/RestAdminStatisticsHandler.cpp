@@ -25,8 +25,11 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "RestAdminStatisticsHandler.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Statistics/Descriptions.h"
+#include "Statistics/RequestStatistics.h"
 #include "Statistics/StatisticsFeature.h"
 
 using namespace arangodb;
@@ -44,8 +47,7 @@ RestStatus RestAdminStatisticsHandler::execute() {
     return RestStatus::DONE;
   }
 
-  auto& server = application_features::ApplicationServer::server();
-  ServerSecurityFeature& security = server.getFeature<ServerSecurityFeature>();
+  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
 
   if (!security.canAccessHardenedApi()) {
     // dont leak information about server internals here
@@ -54,6 +56,11 @@ RestStatus RestAdminStatisticsHandler::execute() {
   }
 
   if (_request->requestPath() == "/_admin/statistics") {
+    if (_request->value("sync") == "true") {
+      // processAll operates on a lock-free queue, and the statistic updates
+      // themselves are also thread-safe
+      RequestStatistics::processAll();
+    }
     getStatistics();
   } else if (_request->requestPath() == "/_admin/statistics-description") {
     getStatisticsDescription();
@@ -85,8 +92,12 @@ void RestAdminStatisticsHandler::getStatistics() {
   tmp.close();  // system
 
   tmp.add("client", VPackValue(VPackValueType::Object, true));
-  desc->clientStatistics(tmp);
+  desc->clientStatistics(tmp, stats::RequestStatisticsSource::ALL);
   tmp.close();  // client
+
+  tmp.add("clientUser", VPackValue(VPackValueType::Object, true));
+  desc->clientStatistics(tmp, stats::RequestStatisticsSource::USER);
+  tmp.close();  // clientUser
 
   tmp.add("http", VPackValue(VPackValueType::Object, true));
   desc->httpStatistics(tmp);

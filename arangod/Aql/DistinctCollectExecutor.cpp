@@ -26,136 +26,147 @@
 #include "DistinctCollectExecutor.h"
 
 #include "Aql/AqlValue.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "Logger/LogMacros.h"
 
 #include <utility>
 
+#define INTERNAL_LOG_DC LOG_DEVEL_IF(false)
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
-constexpr bool DistinctCollectExecutor::Properties::preservesOrder;
-constexpr BlockPassthrough DistinctCollectExecutor::Properties::allowsBlockPassthrough;
-constexpr bool DistinctCollectExecutor::Properties::inputSizeRestrictsOutputSize;
+DistinctCollectExecutorInfos::DistinctCollectExecutorInfos(std::pair<RegisterId, RegisterId> groupRegister,
+                                                           velocypack::Options const* opts)
+    : _groupRegister(std::move(groupRegister)), _vpackOptions(opts) {}
 
-DistinctCollectExecutorInfos::DistinctCollectExecutorInfos(
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep,
-    std::unordered_set<RegisterId>&& readableInputRegisters,
-    std::unordered_set<RegisterId>&& writeableInputRegisters,
-    std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
-    transaction::Methods* trxPtr)
-    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
-                    std::make_shared<std::unordered_set<RegisterId>>(writeableInputRegisters),
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _groupRegisters(groupRegisters),
-      _trxPtr(trxPtr) {
-  TRI_ASSERT(!_groupRegisters.empty());
+std::pair<RegisterId, RegisterId> const& DistinctCollectExecutorInfos::getGroupRegister() const {
+  return _groupRegister;
 }
 
-std::vector<std::pair<RegisterId, RegisterId>> DistinctCollectExecutorInfos::getGroupRegisters() const {
-  return _groupRegisters;
+velocypack::Options const* DistinctCollectExecutorInfos::vpackOptions() const {
+  return _vpackOptions;
 }
 
-transaction::Methods* DistinctCollectExecutorInfos::getTransaction() const {
-  return _trxPtr;
-}
-
-DistinctCollectExecutor::DistinctCollectExecutor(Fetcher& fetcher, Infos& infos)
+DistinctCollectExecutor::DistinctCollectExecutor(Fetcher&, Infos& infos)
     : _infos(infos),
-      _fetcher(fetcher),
-      _seen(1024,
-            AqlValueGroupHash(_infos.getTransaction(),
-                              _infos.getGroupRegisters().size()),
-            AqlValueGroupEqual(_infos.getTransaction())) {}
+      _seen(1024, AqlValueGroupHash(1),
+            AqlValueGroupEqual(_infos.vpackOptions())) {}
 
 DistinctCollectExecutor::~DistinctCollectExecutor() { destroyValues(); }
 
 void DistinctCollectExecutor::initializeCursor() { destroyValues(); }
 
-std::pair<ExecutionState, NoStats> DistinctCollectExecutor::produceRows(OutputAqlItemRow& output) {
-  TRI_IF_FAILURE("DistinctCollectExecutor::produceRows") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+[[nodiscard]] auto DistinctCollectExecutor::expectedNumberOfRowsNew(
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
+  if (input.finalState() == ExecutorState::DONE) {
+    // Worst case assumption:
+    // For every input row we have a new group.
+    // We will never produce more then asked for
+    return std::min(call.getLimit(), input.countDataRows());
   }
-  NoStats stats{};
-  InputAqlItemRow input{CreateInvalidInputRowHint{}};
-  ExecutionState state;
-
-  std::vector<AqlValue> groupValues;
-  groupValues.reserve(_infos.getGroupRegisters().size());
-
-  while (true) {
-    std::tie(state, input) = _fetcher.fetchRow();
-
-    if (state == ExecutionState::WAITING) {
-      return {state, stats};
-    }
-
-    if (!input) {
-      TRI_ASSERT(state == ExecutionState::DONE);
-      return {state, stats};
-    }
-    TRI_ASSERT(input.isInitialized());
-
-    groupValues.clear();
-    // for hashing simply re-use the aggregate registers, without cloning
-    // their contents
-    for (auto& it : _infos.getGroupRegisters()) {
-      groupValues.emplace_back(input.getValue(it.second));
-    }
-
-    // now check if we already know this group
-    auto foundIt = _seen.find(groupValues);
-
-    bool newGroup = foundIt == _seen.end();
-    if (newGroup) {
-      size_t i = 0;
-
-      for (auto& it : _infos.getGroupRegisters()) {
-        output.cloneValueInto(it.first, input, groupValues[i]);
-        ++i;
-      }
-
-      // transfer ownership
-      std::vector<AqlValue> copy;
-      copy.reserve(groupValues.size());
-      for (auto const& it : groupValues) {
-        copy.emplace_back(it.clone());
-      }
-      _seen.emplace(std::move(copy));
-    }
-
-    // Abort if upstream is done
-    if (state == ExecutionState::DONE) {
-      return {state, stats};
-    }
-
-    return {ExecutionState::HASMORE, stats};
-  }
-}
-
-std::pair<ExecutionState, size_t> DistinctCollectExecutor::expectedNumberOfRows(size_t atMost) const {
-  // This block cannot know how many elements will be returned exactly.
-  // but it is upper bounded by the input.
-  return _fetcher.preFetchNumberOfRows(atMost);
+  // Otherwise we do not know.
+  return call.getLimit();
 }
 
 void DistinctCollectExecutor::destroyValues() {
   // destroy all AqlValues captured
-  for (auto& it : _seen) {
-    for (auto& it2 : it) {
-      const_cast<AqlValue*>(&it2)->destroy();
-    }
+  for (auto& value : _seen) {
+    const_cast<AqlValue*>(&value)->destroy();
   }
   _seen.clear();
 }
 
 const DistinctCollectExecutor::Infos& DistinctCollectExecutor::infos() const noexcept {
   return _infos;
+}
+
+auto DistinctCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
+                                          OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, Stats, AqlCall> {
+  TRI_IF_FAILURE("DistinctCollectExecutor::produceRows") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  InputAqlItemRow input{CreateInvalidInputRowHint{}};
+  ExecutorState state = ExecutorState::HASMORE;
+
+  INTERNAL_LOG_DC << output.getClientCall();
+
+  AqlValue groupValue;
+
+  while (inputRange.hasDataRow()) {
+    INTERNAL_LOG_DC << "output.isFull() = " << std::boolalpha << output.isFull();
+
+    if (output.isFull()) {
+      INTERNAL_LOG_DC << "output is full";
+      break;
+    }
+
+    std::tie(state, input) = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+    INTERNAL_LOG_DC << "inputRange.nextDataRow() = " << state;
+    TRI_ASSERT(input.isInitialized());
+
+    // for hashing simply re-use the aggregate registers, without cloning
+    // their contents
+    groupValue = input.getValue(_infos.getGroupRegister().second);
+
+    // now check if we already know this group
+    bool newGroup = _seen.find(groupValue) == _seen.end();
+    if (newGroup) {
+      output.cloneValueInto(_infos.getGroupRegister().first, input, groupValue);
+      output.advanceRow();
+
+      _seen.emplace(groupValue.clone());
+    }
+  }
+
+  INTERNAL_LOG_DC << "returning state " << state;
+  return {inputRange.upstreamState(), {}, {}};
+}
+
+auto DistinctCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
+  TRI_IF_FAILURE("DistinctCollectExecutor::skipRowsRange") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  InputAqlItemRow input{CreateInvalidInputRowHint{}};
+  ExecutorState state = ExecutorState::HASMORE;
+
+  AqlValue groupValue;
+  size_t skipped = 0;
+
+  INTERNAL_LOG_DC << call;
+
+  while (inputRange.hasDataRow()) {
+    INTERNAL_LOG_DC << "call.needSkipMore() = " << std::boolalpha << call.needSkipMore();
+
+    if (!call.needSkipMore()) {
+      return {ExecutorState::HASMORE, {}, skipped, {}};
+    }
+
+    std::tie(state, input) = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+    INTERNAL_LOG_DC << "inputRange.nextDataRow() = " << state;
+    TRI_ASSERT(input.isInitialized());
+
+    // for hashing simply re-use the aggregate registers, without cloning
+    // their contents
+    groupValue = input.getValue(_infos.getGroupRegister().second);
+
+    // now check if we already know this group
+    bool newGroup = _seen.find(groupValue) == _seen.end();
+    if (newGroup) {
+      skipped += 1;
+      call.didSkip(1);
+
+      _seen.emplace(groupValue.clone());
+    }
+  }
+
+  return {inputRange.upstreamState(), {}, skipped, {}};
 }

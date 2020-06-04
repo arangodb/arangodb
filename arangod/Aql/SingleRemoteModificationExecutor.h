@@ -23,28 +23,31 @@
 #ifndef ARANGOD_AQL_SINGLE_REMOTE_MODIFICATION_EXECUTOR_H
 #define ARANGOD_AQL_SINGLE_REMOTE_MODIFICATION_EXECUTOR_H 1
 
-#include "Aql/ModificationExecutor.h"
+#include "Aql/AllRowsFetcher.h"
+#include "Aql/InputAqlItemRow.h"
+#include "Aql/ModificationExecutorHelpers.h"
+#include "Aql/ModificationExecutorInfos.h"
+#include "Aql/OutputAqlItemRow.h"
+#include "Aql/SingleRowFetcher.h"
+#include "Aql/Stats.h"
+#include "Transaction/Methods.h"
 
 namespace arangodb {
 namespace aql {
 
 struct SingleRemoteModificationInfos : ModificationExecutorInfos {
-  SingleRemoteModificationInfos(
-      RegisterId inputRegister, RegisterId outputNewRegisterId,
-      RegisterId outputOldRegisterId, RegisterId outputRegisterId,
-      RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-      std::unordered_set<RegisterId> const& registersToClear,
-      std::unordered_set<RegisterId>&& registersToKeep, transaction::Methods* trx,
-      OperationOptions options, aql::Collection const* aqlCollection,
-      ConsultAqlWriteFilter consultAqlWriteFilter, IgnoreErrors ignoreErrors,
-      IgnoreDocumentNotFound ignoreDocumentNotFound,  // end of base class params
-      std::string key, bool hasParent, bool replaceIndex)
+  SingleRemoteModificationInfos(RegisterId inputRegister, RegisterId outputNewRegisterId,
+                                RegisterId outputOldRegisterId, RegisterId outputRegisterId,
+                                arangodb::aql::QueryContext& query, OperationOptions options,
+                                aql::Collection const* aqlCollection,
+                                ConsultAqlWriteFilter consultAqlWriteFilter,
+                                IgnoreErrors ignoreErrors,
+                                IgnoreDocumentNotFound ignoreDocumentNotFound,
+                                std::string key, bool hasParent, bool replaceIndex)
       : ModificationExecutorInfos(inputRegister, RegisterPlan::MaxRegisterId,
                                   RegisterPlan::MaxRegisterId, outputNewRegisterId,
-                                  outputOldRegisterId, outputRegisterId,
-                                  nrInputRegisters, nrOutputRegisters,
-                                  registersToClear, std::move(registersToKeep),
-                                  trx, std::move(options), aqlCollection,
+                                  outputOldRegisterId, outputRegisterId, query,
+                                  std::move(options), aqlCollection,
                                   ProducesResults(false), consultAqlWriteFilter,
                                   ignoreErrors, DoCount(true), IsReplace(false),
                                   ignoreDocumentNotFound),
@@ -61,7 +64,14 @@ struct SingleRemoteModificationInfos : ModificationExecutorInfos {
   constexpr static double const defaultTimeOut = 3600.0;
 };
 
+// These tags are used to instantiate SingleRemoteModificationExecutor
+// for the different use cases
 struct IndexTag {};
+struct Insert {};
+struct Remove {};
+struct Replace {};
+struct Update {};
+struct Upsert {};
 
 template <typename Modifier>
 struct SingleRemoteModificationExecutor {
@@ -84,13 +94,18 @@ struct SingleRemoteModificationExecutor {
    * @return ExecutionState,
    *         if something was written output.hasValue() == true
    */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
  protected:
-  bool doSingleRemoteModificationOperation(InputAqlItemRow&, OutputAqlItemRow&, Stats&);
-
+  auto doSingleRemoteModificationOperation(InputAqlItemRow&, Stats&) -> OperationResult;
+  auto doSingleRemoteModificationOutput(InputAqlItemRow&, OutputAqlItemRow&,
+                                        OperationResult&) -> void;
+  
+  transaction::Methods _trx;
   Infos& _info;
-  Fetcher& _fetcher;
   ExecutionState _upstreamState;
 };
 

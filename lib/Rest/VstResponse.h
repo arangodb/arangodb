@@ -37,9 +37,6 @@ class VstResponse : public GeneralResponse {
  bool isResponseEmpty() const override {
     return _payload.empty();
  }
-  // required by base
-  uint64_t messageId() const override { return _messageId; }
-  void setMessageId(uint64_t msgId) override { _messageId = msgId; }
 
   virtual arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::VST;
@@ -61,7 +58,6 @@ class VstResponse : public GeneralResponse {
   void writeMessageHeader(velocypack::Buffer<uint8_t>&) const;
   
  private:
-  uint64_t _messageId; /// message ID
   velocypack::Buffer<uint8_t> _payload; /// actual payload
 };
 }  // namespace arangodb

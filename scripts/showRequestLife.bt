@@ -1,0 +1,92 @@
+#!/usr/bin/env bpftrace
+
+// To use this you have to install bpftrace and compile with -DUSE_DTRACE.
+// Then simply execute this script. It will output a single line for each
+// DTRACE point that is currently in the source. This is basically for
+// illustration purposes only.
+
+BEGIN {
+  @START = nsecs;
+  printf("Tracing timings for requests in arangod...\n");
+}
+
+usdt:build/bin/arangod:arangod:HttpCommTaskProcess* {
+  printf("%llu HttpCommTask::processRequest this=%llx\n", (nsecs-@START)/1000,
+         arg0);
+}
+
+usdt:build/bin/arangod:arangod:CommTaskPrepareExecution {
+  printf("%llu CommTask::prepareExecution this=%llx\n", (nsecs-@START)/1000,
+         arg0);
+}
+
+usdt:build/bin/arangod:arangod:CommTaskExecuteRequest {
+  printf("%llu CommTask::executeRequest this=%llx\n", (nsecs-@START)/1000,
+         arg0);
+}
+
+usdt:build/bin/arangod:arangod:CommTaskHandleRequestSync {
+  printf("%llu CommTask::handleRequestSync commtask=%llx handler=%llx\n",
+         (nsecs-@START)/1000, arg0, arg1);
+}
+
+usdt:build/bin/arangod:arangod:RestHandlerExecuteEngine {
+  printf("%llu RestHandler::executeEngine this=%llx\n", (nsecs-@START)/1000,
+         arg0);
+}
+
+usdt:build/bin/arangod:arangod:HttpCommTaskSendResponse* {
+  printf("%llu HttpCommTask::sendResponse this=%llx\n",
+         (nsecs-@START)/1000, arg0);
+}
+
+usdt:build/bin/arangod:arangod:HttpCommTaskWriteResponse* {
+  printf("%llu HttpCommTask::writeResponse this=%llx\n",
+         (nsecs-@START)/1000, arg0);
+}
+
+usdt:build/bin/arangod:arangod:HttpCommTaskResponseWritten* {
+  printf("%llu HttpCommTask::ResponseWritten this=%llx\n",
+         (nsecs-@START)/1000, arg0);
+}
+
+usdt:build/bin/arangod:arangod:H2CommTaskProcessStream* {
+  printf("%llu H2CommTask::processStream this=%llx\n", (nsecs-@START)/1000,
+         arg0);
+}
+
+usdt:build/bin/arangod:arangod:H2CommTaskSendResponse* {
+  printf("%llu H2CommTask::sendResponse this=%llx\n",
+         (nsecs-@START)/1000, arg0);
+}
+
+usdt:build/bin/arangod:arangod:H2CommTaskBeforeAsyncWrite* {
+  printf("%llu H2CommTask::BeforeAsyncWrite this=%llx\n",
+         (nsecs-@START)/1000, arg0);
+}
+
+usdt:build/bin/arangod:arangod:H2CommTaskAfterAsyncWrite* {
+  printf("%llu H2CommTask::AfterAsyncWritten this=%llx\n",
+         (nsecs-@START)/1000, arg0);
+}
+
+usdt:build/bin/arangod:arangod:VstCommTaskProcess* {
+  printf("%llu VstCommTask::processMessage this=%llx\n", (nsecs-@START)/1000,
+         arg0);
+}
+
+usdt:build/bin/arangod:arangod:VstCommTaskSendResponse* {
+  printf("%llu VstCommTask::sendResponse this=%llx\n",
+         (nsecs-@START)/1000, arg0);
+}
+
+usdt:build/bin/arangod:arangod:VstCommTaskBeforeAsyncWrite* {
+  printf("%llu VstCommTask::BeforeAsyncWrite this=%llx\n",
+         (nsecs-@START)/1000, arg0);
+}
+
+usdt:build/bin/arangod:arangod:VstCommTaskAfterAsyncWrite* {
+  printf("%llu VstCommTask::AfterAsyncWritten this=%llx\n",
+         (nsecs-@START)/1000, arg0);
+}
+

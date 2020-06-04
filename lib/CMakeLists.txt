@@ -102,7 +102,6 @@ add_library(arango STATIC
   ApplicationFeatures/LanguageFeature.cpp
   ApplicationFeatures/MaxMapCountFeature.cpp
   ApplicationFeatures/NonceFeature.cpp
-  ApplicationFeatures/PageSizeFeature.cpp
   ApplicationFeatures/PrivilegeFeature.cpp
   ApplicationFeatures/ShellColorsFeature.cpp
   ApplicationFeatures/ShutdownFeature.cpp
@@ -113,7 +112,9 @@ add_library(arango STATIC
   Basics/AttributeNameParser.cpp
   Basics/ConditionLocker.cpp
   Basics/ConditionVariable.cpp
+  Basics/CrashHandler.cpp
   Basics/DataProtector.cpp
+  Basics/EncodingUtils.cpp
   Basics/Exceptions.cpp
   Basics/FileUtils.cpp
   Basics/FunctionUtils.cpp
@@ -122,9 +123,15 @@ add_library(arango STATIC
   Basics/LocalTaskQueue.cpp
   Basics/Mutex.cpp
   Basics/Nonce.cpp
+  Basics/NumberOfCores.cpp
+  Basics/NumberUtils.cpp
+  Basics/PageSize.cpp
+  Basics/PhysicalMemory.cpp
   Basics/ReadWriteLock.cpp
+  Basics/ReadWriteSpinLock.cpp
   Basics/Result.cpp
   Basics/FileResult.cpp
+  Basics/Identifier.cpp
   Basics/RocksDBLogger.cpp
   Basics/RocksDBUtils.cpp
   Basics/SharedPRNG.cpp
@@ -142,7 +149,6 @@ add_library(arango STATIC
   Basics/csv.cpp
   Basics/datetime.cpp
   Basics/debugging.cpp
-  Basics/EncodingUtils.cpp
   Basics/error.cpp
   Basics/fasthash.cpp
   Basics/files.cpp
@@ -153,6 +159,7 @@ add_library(arango STATIC
   Basics/memory.cpp
   Basics/prime-numbers.cpp
   Basics/process-utils.cpp
+  Basics/signals.cpp
   Basics/socket-utils.cpp
   Basics/system-functions.cpp
   Basics/terminal-utils.cpp
@@ -162,6 +169,7 @@ add_library(arango STATIC
   Basics/voc-errors.cpp
   Basics/exitcodes.cpp
   Basics/xxhash.cpp
+  Containers/MerkleTree.cpp
   Endpoint/Endpoint.cpp
   Endpoint/EndpointIp.cpp
   Endpoint/EndpointIpV4.cpp
@@ -171,12 +179,11 @@ add_library(arango STATIC
   Logger/LogAppender.cpp
   Logger/LogAppenderFile.cpp
   Logger/LogAppenderSyslog.cpp
-  Logger/LogBuffer.cpp
+  Logger/LogBufferFeature.cpp
   Logger/LogLevel.cpp
   Logger/LogThread.cpp
   Logger/LogTopic.cpp
   Logger/Logger.cpp
-  Logger/LoggerBufferFeature.cpp
   Logger/LoggerFeature.cpp
   Logger/LoggerStream.cpp
   Logger/LogTimeFormat.cpp
@@ -202,10 +209,8 @@ add_library(arango STATIC
   Rest/VstResponse.cpp
   Rest/HttpRequest.cpp
   Rest/HttpResponse.cpp
-  Rest/InitializeRest.cpp
   Rest/Version.cpp
   SimpleHttpClient/ClientConnection.cpp
-  SimpleHttpClient/Communicator.cpp
   SimpleHttpClient/GeneralClientConnection.cpp
   SimpleHttpClient/SimpleHttpClient.cpp
   SimpleHttpClient/SimpleHttpResult.cpp
@@ -229,6 +234,17 @@ target_link_libraries(arango
   ${V8_LIBS}
   ${SYSTEM_LIBRARIES}
 )
+
+add_dependencies(arango snappy-static)
+
+set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
+include_directories(${SNAPPY_INCLUDE_DIR})
+
+if (USE_LIBUNWIND)
+  target_link_libraries(arango ${LIBUNWIND_LIB})
+  target_include_directories(arango PRIVATE "${LIBUNWIND_HOME}/include")
+  add_dependencies(arango libunwind_build)
+endif ()
 
 # Rebuild generated error files so they are up-to-date when all
 # dependent stuff is built
@@ -293,7 +309,14 @@ add_library(arango_v8 STATIC
   V8/v8-utils.cpp
   V8/v8-vpack.cpp
   V8/v8-environment.cpp
-)
+  )
+add_library(arango_v8_deadline STATIC
+  V8/v8-deadline.cpp
+  )
+
+add_library(arango_v8_no_deadline STATIC
+  V8/v8-no-deadline.cpp
+  )
 
 target_link_libraries(arango_v8
     boost_system
@@ -309,11 +332,11 @@ endif()
 if (USE_FAIL_ON_WARNINGS)
   if (MSVC)
     target_compile_options(arango_v8 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-    target_compile_options(arango_geo PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+    target_compile_options(arango_geo PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS96)
     target_compile_options(arango PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
   else ()
-    target_compile_options(arango_v8 PRIVATE -Werror)
-    target_compile_options(arango_geo PRIVATE -Werror)
-    target_compile_options(arango PRIVATE -Werror)
+    target_compile_options(arango_v8 PRIVATE -Werror -Wno-error=deprecated-declarations)
+    target_compile_options(arango_geo PRIVATE -Werror -Wno-error=deprecated-declarations)
+    target_compile_options(arango PRIVATE -Werror -Wno-error=deprecated-declarations)
   endif ()
 endif ()

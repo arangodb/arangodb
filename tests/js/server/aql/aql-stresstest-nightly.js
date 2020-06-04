@@ -185,7 +185,7 @@ function stressTestSuite() {
       Object.keys(aqlFuncs).forEach(function(aqlFunc) {
         var funcArguments = aqlFuncs[aqlFunc];
         var funcParts = funcArguments.split('|');
-        
+
         var funcMinArguments = funcParts[0].length > 0 ? funcParts[0].split(',').length : 0;
         var funcMaxArguments = funcParts.length > 1
           ? funcMinArguments + funcParts[1].split(',').length
@@ -199,12 +199,12 @@ function stressTestSuite() {
         var testMaxArguments = funcMaxArguments + 1;
 
         // try up to 5 arguments for every query
-        for (var i=testMinArguments;i<=testMaxArguments;i++) {
+        for (var i = testMinArguments; i <= testMaxArguments; i++) {
           // and brute force every combination :D
           // generate a matrix with indices pointing to our possible values
           // start with 0 in every cell
           var keyIndices = [];
-          for (var j=1;j<=i;j++) {
+          for (var j = 1; j <= i; j++) {
             keyIndices.push(0);
           }
            

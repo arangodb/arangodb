@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_SUBQUERY_START_EXECUTION_NODE_H 1
 
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
 
 namespace arangodb {
@@ -38,7 +39,7 @@ class SubqueryStartNode : public ExecutionNode {
 
  public:
   SubqueryStartNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
-  SubqueryStartNode(ExecutionPlan* plan, size_t id, Variable const* subqueryOutVariable)
+  SubqueryStartNode(ExecutionPlan* plan, ExecutionNodeId id, Variable const* subqueryOutVariable)
       : ExecutionNode(plan, id), _subqueryOutVariable(subqueryOutVariable) {}
 
   CostEstimate estimateCost() const override final;
@@ -57,10 +58,13 @@ class SubqueryStartNode : public ExecutionNode {
 
   bool isEqualTo(ExecutionNode const& other) const override final;
 
+  bool isModificationSubqueryNode();
+
  private:
   /// @brief This is only required for Explain output.
   ///        it has no practical usage other then to print this information during explain.
   Variable const* _subqueryOutVariable;
+  bool _isModificationSubquery;
 };
 
 }  // namespace aql

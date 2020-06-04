@@ -33,7 +33,7 @@
 #include <string>
 #include <vector>
 
-#include <openssl/sha.h>
+#include <openssl/evp.h>
 
 #include "Basics/Common.h"
 #include "Basics/StringUtils.h"
@@ -143,6 +143,12 @@ std::string TRI_Dirname(std::string const& path);
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string TRI_Basename(char const* path);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the basename
+////////////////////////////////////////////////////////////////////////////////
+
+std::string TRI_Basename(std::string const& path);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a list of files in path
@@ -382,18 +388,6 @@ std::string TRI_LocateInstallDirectory(char const* argv0, const char* binaryPath
 
 std::string TRI_LocateConfigDirectory(char const* binaryPath);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the address of the null buffer
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_GetNullBufferFiles();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the size of the null buffer
-////////////////////////////////////////////////////////////////////////////////
-
-size_t TRI_GetNullBufferSizeFiles();
-
 /// @brief creates a new datafile
 /// returns the file descriptor or -1 if the file cannot be created
 int TRI_CreateDatafile(std::string const& filename, size_t maximalSize);
@@ -405,19 +399,8 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize);
 bool TRI_PathIsAbsolute(std::string const& path);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize the files subsystem
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitializeFiles();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdown the files subsystem
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_ShutdownFiles();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief if which is found, value is overwriten, true returned.
+/// @brief reads an environment variable. returns false if env var was not set.
+/// if env var was set, returns env variable value in "value" and returns true.
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_GETENV(char const* which, std::string& value);
@@ -427,28 +410,14 @@ bool TRI_GETENV(char const* which, std::string& value);
 ///        you need to wrap your TRI_SHA256Functor object within std::ref().
 ////////////////////////////////////////////////////////////////////////////////
 struct TRI_SHA256Functor {
-  SHA256_CTX _context;
-  unsigned char _digest[SHA256_DIGEST_LENGTH];
+  TRI_SHA256Functor();
+  ~TRI_SHA256Functor();
 
-  TRI_SHA256Functor() {
-    int ret_val = SHA256_Init(&_context);
-    if (1 != ret_val) {
-      TRI_ASSERT(false);
-    } // if
-  }
-
-  bool operator()(char const* data, size_t size) {
-    int ret_val = SHA256_Update(&_context, static_cast<void const*>(data), size);
-    return 1 == ret_val;
-  }
-
-  std::string final() {
-    int ret_val = SHA256_Final(_digest, &_context);
-    if (1 != ret_val) {
-      TRI_ASSERT(false);
-    } // if
-    return arangodb::basics::StringUtils::encodeHex((char const *)_digest, SHA256_DIGEST_LENGTH);
-  }
+  bool operator()(char const* data, size_t size) noexcept;
+  
+  std::string finalize();
+  
+  EVP_MD_CTX* _context;
 };// struct TRI_SHA256Functor
 
 #endif

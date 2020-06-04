@@ -1,4 +1,5 @@
 /*jshint globalstrict:true, strict:true, esnext: true */
+/*global print */
 
 "use strict";
 
@@ -149,7 +150,7 @@ const checkResIsValidBfsOf = (expectedPaths, actualPaths) => {
   const actualPathsSet = new Map();
   for (const path of actualPaths) {
     const p = JSON.stringify(path);
-    if(actualPathsSet.has(p)) {
+    if (actualPathsSet.has(p)) {
       actualPathsSet.set(p, actualPathsSet.get(p) + 1);
     } else {
       actualPathsSet.set(p, 1);
@@ -159,7 +160,7 @@ const checkResIsValidBfsOf = (expectedPaths, actualPaths) => {
   const expectedPathsSet = new Map();
   for (const path of expectedPaths) {
     const p = JSON.stringify(path);
-    if(expectedPathsSet.has(p)) {
+    if (expectedPathsSet.has(p)) {
       expectedPathsSet.set(p, expectedPathsSet.get(p) + 1);
     } else {
       expectedPathsSet.set(p, 1);
@@ -236,6 +237,67 @@ const checkResIsValidGlobalBfsOf = (expectedVertices, actualPaths) => {
 
   assertEqual(expectedVertices, actualVertices, messages.join('; '));
 };
+
+const assertResIsContainedInPathList = (allowedPaths, actualPath) => {
+
+  const pathFound = undefined !==  _.find(allowedPaths, (path) => _.isEqual(path, actualPath));
+  if (!pathFound) {
+    print("ShortestPath result not as expected!");
+    print("Allowed paths are: ");
+    print(allowedPaths);
+    print("Actual returned path is: ");
+    print(actualPath);
+  }
+
+  assertTrue(pathFound);
+};
+
+/**
+ * Generates a test function that checks if the result is a valid shortest path result.
+ * - getCost has one parameter (path) and should return is cost
+ *
+ * The returned test function only works for graphs without parallel edges.
+ * allowedPaths must be a set of allowed paths and actualPaths is the result of a kShortestPath query
+ * where limit is set to the limit as in the query.
+ */
+const checkResIsValidKShortestPathListWeightFunc  = (getCost) => {
+  return (allowedPaths, actualPaths, limit) => {
+    // check that we've only got as many paths as requested
+    if (actualPaths.length > limit) {
+      print("Unexpected amount of found paths!");
+      print("Allowed paths are:");
+      print(allowedPaths);
+      print("Actual returned paths are: ");
+      print(actualPaths);
+    }
+    // we're allowed to find less or equal the amount of the set limit
+    assertTrue(actualPaths.length <= limit);
+
+    // assert that there are no duplicate paths (only if there are no parallel edges)
+    const stringifiedPathsSet = new Set(actualPaths.map(JSON.stringify));
+    assertEqual(stringifiedPathsSet.size, actualPaths.length);
+
+    assertTrue(_.isEqual(_.sortBy(allowedPaths, getCost), allowedPaths));
+    assertTrue(allowedPaths.length >= actualPaths.length);
+
+    _.each(actualPaths,  (path, index) => {
+      const cost = getCost(path);
+      const allowedCost = getCost(allowedPaths[index]);
+      if (allowedCost !== cost) {
+        print ("Path length not as expected: ");
+        print(allowedCost , " !== ", cost);
+        if (allowedCost < cost) {
+          print ("Traversal missed a shorter path");
+        }
+      }
+      assertTrue(allowedCost === cost);
+      assertResIsContainedInPathList(allowedPaths, path);
+    });
+  };
+};
+
+const checkResIsValidKShortestPathListNoWeights = checkResIsValidKShortestPathListWeightFunc((path) => path.length);
+const checkResIsValidKShortestPathListWeights = checkResIsValidKShortestPathListWeightFunc((path) => path.weight);
 
 
 /**
@@ -1047,6 +1109,35 @@ function testOpenDiamondDfsUniqueEdgesUniqueVerticesNone(testGraph) {
   checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
 }
 
+function testOpenDiamondDfsLabelVariableForwarding(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+  
+  const ruleList = [["-all"], ["+all"], ["-all", "+optimize-traversals"], ["+all", "-optimize-traversals"]];
+  for (const rules of ruleList) {
+    const query = `
+        LET label = NOOPT(100)
+        FOR v, e, p IN 0..3 OUTBOUND "${testGraph.vertex('A')}"
+          GRAPH "${testGraph.name()}"
+          FILTER p.edges[0].distance != label
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+    const expectedPathsAsTree =
+      new Node("A", [
+        new Node("C", [
+          new Node("D", [
+            new Node("E"),
+            new Node("F"),
+          ]),
+        ])
+      ]);
+    const res = db._query(query, {},  { optimizer: { rules } });
+    const actualPaths = res.toArray();
+
+    checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
+  }
+}
+
 function testOpenDiamondBfsUniqueVerticesPath(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
@@ -1249,6 +1340,122 @@ function testOpenDiamondBfsUniqueEdgesUniqueNoneVerticesGlobal(testGraph) {
   const actualPaths = res.toArray();
 
   checkResIsValidGlobalBfsOf(expectedVertices, actualPaths);
+}
+
+function testOpenDiamondBfsLabelVariableForwarding(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+  
+  const ruleList = [["-all"], ["+all"], ["-all", "+optimize-traversals"], ["+all", "-optimize-traversals"]];
+  for (const rules of ruleList) {
+    const query = `
+        LET label = NOOPT(100)
+        FOR v, e, p IN 0..3 OUTBOUND "${testGraph.vertex('A')}"
+          GRAPH "${testGraph.name()}" OPTIONS { bfs: true }
+          FILTER p.edges[0].distance != label
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+    const expectedPathsAsTree =
+      new Node("A", [
+        new Node("C", [
+          new Node("D", [
+            new Node("E"),
+            new Node("F"),
+          ]),
+        ])
+      ]);
+    const res = db._query(query, {},  { optimizer: { rules } });
+    const actualPaths = res.toArray();
+
+    checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
+  }
+}
+
+
+function testOpenDiamondShortestPath(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+  const query = aql`
+        FOR v, e IN OUTBOUND SHORTEST_PATH ${testGraph.vertex('A')} TO ${testGraph.vertex('F')}  
+        GRAPH ${testGraph.name()} 
+        RETURN v.key
+      `;
+
+  const allowedPaths = [
+    ["A", "B", "D", "F"],
+    ["A", "C", "D", "F"]
+  ];
+
+  const res = db._query(query);
+  const actualPath = res.toArray();
+
+  assertResIsContainedInPathList(allowedPaths, actualPath);
+}
+
+function testOpenDiamondShortestPathEnabledWeightCheck(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+  const query = aql`
+        FOR v, e IN OUTBOUND SHORTEST_PATH ${testGraph.vertex('A')} TO ${testGraph.vertex('F')}
+        GRAPH ${testGraph.name()} 
+        OPTIONS {weightAttribute: ${testGraph.weightAttribute()}}
+        RETURN v.key
+      `;
+
+  const allowedPaths = [
+    ["A", "C", "D", "F"]
+  ];
+
+  const res = db._query(query);
+  const actualPath = res.toArray();
+
+  assertResIsContainedInPathList(allowedPaths, actualPath);
+}
+
+function testOpenDiamondKShortestPathWithMultipleLimits(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+  const limits = [1, 2, 3, 4];
+
+  _.each(limits, function (limit) {
+    const query = aql`
+        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('F')}  
+        GRAPH ${testGraph.name()}
+        LIMIT ${limit}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+    const allowedPaths = [
+      ["A", "B", "D", "F"],
+      ["A", "C", "D", "F"]
+    ];
+
+    const res = db._query(query);
+    const actualPath = res.toArray();
+
+    checkResIsValidKShortestPathListNoWeights(allowedPaths, actualPath, limit);
+  });
+}
+
+function testOpenDiamondKShortestPathEnabledWeightCheckLimit1(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+  const limits = [1, 2, 3];
+  _.each(limits, (limit) => {
+    const query = aql`
+        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('F')}
+        GRAPH ${testGraph.name()} 
+        OPTIONS {weightAttribute: ${testGraph.weightAttribute()}}
+        LIMIT ${limit}
+        RETURN {vertices: p.vertices[*].key, weight: p.weight}
+      `;
+
+    const allowedPaths = [
+      {vertices: ["A", "C", "D", "F"], weight: 3},
+      {vertices: ["A", "B", "D", "F"], weight: 102}
+    ];
+
+    const res = db._query(query);
+    const actualPath = res.toArray();
+
+    checkResIsValidKShortestPathListWeights(allowedPaths, actualPath, limit);
+  });
 }
 
 function testSmallCircleDfsUniqueVerticesPath(testGraph) {
@@ -1588,6 +1795,90 @@ function testSmallCircleBfsUniqueEdgesNoneUniqueVerticesGlobal(testGraph) {
   const actualPaths = res.toArray();
 
   checkResIsValidGlobalBfsOf(expectedVertices, actualPaths);
+}
+
+function testSmallCircleShortestPath(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  const query = aql`
+        FOR v, e IN OUTBOUND SHORTEST_PATH ${testGraph.vertex('A')} TO ${testGraph.vertex('D')}  
+        GRAPH ${testGraph.name()} 
+        RETURN v.key
+      `;
+
+  const allowedPaths = [
+    ["A", "B", "C", "D"]
+  ];
+
+  const res = db._query(query);
+  const actualPath = res.toArray();
+
+  assertResIsContainedInPathList(allowedPaths, actualPath);
+}
+
+function testSmallCircleShortestPathEnabledWeightCheck(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  const query = aql`
+        FOR v, e IN OUTBOUND SHORTEST_PATH ${testGraph.vertex('A')} TO ${testGraph.vertex('D')}  
+        GRAPH ${testGraph.name()} 
+        OPTIONS {weightAttribute: ${testGraph.weightAttribute()}}
+        RETURN v.key
+      `;
+
+  const allowedPaths = [
+    ["A", "B", "C", "D"]
+  ];
+
+  const res = db._query(query);
+  const actualPath = res.toArray();
+
+  assertResIsContainedInPathList(allowedPaths, actualPath);
+}
+
+function testSmallCircleKShortestPathWithMultipleLimits(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  const limits = [1, 2, 3, 4];
+
+  _.each(limits, function (limit) {
+    const query = aql`
+        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('D')}  
+        GRAPH ${testGraph.name()}
+        LIMIT ${limit}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+    const allowedPaths = [
+      ["A", "B", "C", "D"]
+    ];
+
+    const res = db._query(query);
+    const actualPath = res.toArray();
+
+    checkResIsValidKShortestPathListNoWeights(allowedPaths, actualPath, limit);
+  });
+}
+
+function testSmallCircleKShortestPathEnabledWeightCheckWithMultipleLimits(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  const limits = [1, 2, 3, 4];
+
+  _.each(limits, function (limit) {
+    const query = aql`
+        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('D')}  
+        GRAPH ${testGraph.name()}
+        OPTIONS {weightAttribute: ${testGraph.weightAttribute()}}
+        LIMIT ${limit}
+        RETURN {vertices: p.vertices[*].key, weight: p.weight}
+      `;
+
+    const allowedPaths = [
+      {vertices: ["A", "B", "C", "D"], weight: 3}
+    ];
+
+    const res = db._query(query);
+    const actualPath = res.toArray();
+
+    checkResIsValidKShortestPathListWeights(allowedPaths, actualPath, limit);
+  });
 }
 
 function testCompleteGraphDfsUniqueVerticesPathD1(testGraph) {
@@ -2681,6 +2972,111 @@ function testCompleteGraphBfsUniqueEdgesNoneUniqueVerticesGlobalD10(testGraph) {
   checkResIsValidGlobalBfsOf(expectedVertices, actualPaths);
 }
 
+function testCompleteGraphShortestPath(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const query = aql`
+        FOR v, e IN OUTBOUND SHORTEST_PATH ${testGraph.vertex('A')} TO ${testGraph.vertex('C')}  
+        GRAPH ${testGraph.name()} 
+        RETURN v.key
+      `;
+
+  const allowedPaths = [
+    ["A", "C"]
+  ];
+
+  const res = db._query(query);
+  const actualPath = res.toArray();
+
+  assertResIsContainedInPathList(allowedPaths, actualPath);
+}
+
+function testCompleteGraphKShortestPathLimit1(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const limit = 1;
+  const query = aql`
+        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('C')}  
+        GRAPH ${testGraph.name()} 
+        LIMIT ${limit}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const allowedPaths = [
+    ["A", "C"]
+  ];
+
+  const res = db._query(query);
+  const actualPath = res.toArray();
+
+  checkResIsValidKShortestPathListNoWeights(allowedPaths, actualPath, limit);
+}
+
+function testCompleteGraphKShortestPathLimit3(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const limit = 3;
+  const query = aql`
+        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('C')}  
+        GRAPH ${testGraph.name()} 
+        LIMIT ${limit}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const allowedPaths = [
+    ["A", "C"], ["A", "B", "C"], ["A", "D", "C"], ["A", "E", "C"]
+  ];
+
+  const res = db._query(query);
+  const actualPath = res.toArray();
+
+  checkResIsValidKShortestPathListNoWeights(allowedPaths, actualPath, limit);
+}
+
+function testCompleteGraphShortestPathEnabledWeightCheck(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const query = aql`
+        FOR v, e IN OUTBOUND SHORTEST_PATH ${testGraph.vertex('A')} TO ${testGraph.vertex('C')}  
+        GRAPH ${testGraph.name()} 
+        OPTIONS {weightAttribute: ${testGraph.weightAttribute()}}
+        RETURN v.key
+      `;
+
+  const allowedPaths = [
+    ["A", "B", "C"]
+  ];
+
+  const res = db._query(query);
+  const actualPath = res.toArray();
+
+  assertResIsContainedInPathList(allowedPaths, actualPath);
+}
+
+function testCompleteGraphKShortestPathEnabledWeightCheckMultiLimit(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const limits = [1, 2, 3];
+
+  _.each(limits, (limit) => {
+    const query = aql`
+        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('C')}  
+        GRAPH ${testGraph.name()} 
+        OPTIONS {weightAttribute: ${testGraph.weightAttribute()}}
+        LIMIT ${limit}
+        RETURN {vertices: p.vertices[*].key, weight: p.weight}
+      `;
+
+    const allowedPaths = [
+      {vertices: ["A", "B", "C"], weight: 4},
+      {vertices: ["A", "E", "D", "C"], weight: 4},
+      { "vertices" : [ "A", "C" ], "weight" : 5 }
+    ];
+
+    const res = db._query(query);
+    const actualPaths = res.toArray();
+
+    checkResIsValidKShortestPathListWeights(allowedPaths, actualPaths, limit);
+  });
+
+
+}
+
 function getExpectedBinTree() {
   const leftChild = vi => 2 * vi + 1;
   const rightChild = vi => 2 * vi + 2;
@@ -2857,6 +3253,90 @@ function testEasyPathAllCombinations(testGraph) {
       throw e;
     }
   }
+}
+
+function testEasyPathShortestPath(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.easyPath.name()));
+  const query = aql`
+        FOR v, e IN OUTBOUND SHORTEST_PATH ${testGraph.vertex('A')} TO ${testGraph.vertex('J')}  
+        GRAPH ${testGraph.name()} 
+        RETURN v.key
+      `;
+
+  const allowedPaths = [
+    ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
+  ];
+
+  const res = db._query(query);
+  const actualPath = res.toArray();
+
+  assertResIsContainedInPathList(allowedPaths, actualPath);
+}
+
+function testEasyPathKShortestPathMultipleLimits(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.easyPath.name()));
+  const limits = [1, 2, 3, 4];
+
+  _.each(limits, function (limit) {
+    const query = aql`
+        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('J')}  
+        GRAPH ${testGraph.name()}
+        LIMIT ${limit}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+    const allowedPaths = [
+      ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
+    ];
+
+    const res = db._query(query);
+    const actualPaths = res.toArray();
+
+    checkResIsValidKShortestPathListNoWeights(allowedPaths, actualPaths, limit);
+  });
+}
+
+function testEasyPathShortestPathEnabledWeightCheck(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.easyPath.name()));
+  const query = aql`
+        FOR v, e IN OUTBOUND SHORTEST_PATH ${testGraph.vertex('A')} TO ${testGraph.vertex('J')}  
+        GRAPH ${testGraph.name()} 
+        OPTIONS {weightAttribute: ${testGraph.weightAttribute()}}
+        RETURN v.key
+      `;
+
+  const allowedPaths = [
+    ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
+  ];
+
+  const res = db._query(query);
+  const actualPath = res.toArray();
+
+  assertResIsContainedInPathList(allowedPaths, actualPath);
+}
+
+function testEasyPathKShortestPathEnabledWeightCheckMultipleLimits(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.easyPath.name()));
+  const limits = [1, 2, 3, 4];
+
+  _.each(limits, function (limit) {
+    const query = aql`
+        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('J')}  
+        GRAPH ${testGraph.name()}
+        OPTIONS {weightAttribute: ${testGraph.weightAttribute()}}
+        LIMIT ${limit}
+        RETURN {vertices: p.vertices[*].key, weight: p.weight}
+      `;
+
+    const allowedPaths = [
+      { vertices: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"], weight: 45}
+    ];
+
+    const res = db._query(query);
+    const actualPaths = res.toArray();
+
+    checkResIsValidKShortestPathListWeights(allowedPaths, actualPaths, limit);
+  });
 }
 
 function testAdvancedPathDfsUniqueVerticesPath(testGraph) {
@@ -3294,6 +3774,94 @@ function testAdvancedPathBfsUniqueEdgesUniqueNoneVerticesGlobal(testGraph) {
   checkResIsValidGlobalBfsOf(expectedVertices, actualPaths);
 }
 
+function testAdvancedPathShortestPath(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
+  const query = aql`
+        FOR v, e IN OUTBOUND SHORTEST_PATH ${testGraph.vertex('A')} TO ${testGraph.vertex('I')}  
+        GRAPH ${testGraph.name()} 
+        RETURN v.key
+      `;
+
+  const allowedPaths = [
+    ["A", "D", "E", "H", "I"]
+  ];
+
+  const res = db._query(query);
+  const actualPath = res.toArray();
+
+  assertResIsContainedInPathList(allowedPaths, actualPath);
+}
+
+function testAdvancedPathKShortestPathMultiLimit(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
+  const limits = [1, 2, 3];
+
+  _.each(limits, (limit) => {
+    const query = aql`
+        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('I')}  
+        GRAPH ${testGraph.name()}
+        LIMIT ${limit}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+    const allowedPaths = [
+      ["A", "D", "E", "H", "I"],
+      ["A", "D", "E", "F", "G", "H", "I"],
+      ["A", "B", "C", "D", "E", "H", "I"]
+    ];
+
+    const res = db._query(query);
+    const actualPaths = res.toArray();
+
+    checkResIsValidKShortestPathListNoWeights(allowedPaths, actualPaths, limit);
+  });
+}
+
+function testAdvancedPathShortestPathEnabledWeightCheck(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
+  const query = aql`
+        FOR v, e IN OUTBOUND SHORTEST_PATH ${testGraph.vertex('A')} TO ${testGraph.vertex('I')}  
+        GRAPH ${testGraph.name()} 
+        OPTIONS {weightAttribute: ${testGraph.weightAttribute()}}
+        RETURN v.key
+      `;
+
+  const allowedPaths = [
+    ["A", "B", "C", "D", "E", "F", "G", "H", "I"]
+  ];
+
+  const res = db._query(query);
+  const actualPath = res.toArray();
+
+  assertResIsContainedInPathList(allowedPaths, actualPath);
+}
+
+function testAdvancedPathKShortestPathEnabledWeightCheckMultiLimit(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
+  const limits = [1, 2, 3];
+
+  _.each(limits, (limit) => {
+    const query = aql`
+        FOR p IN OUTBOUND K_SHORTEST_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('I')}  
+        GRAPH ${testGraph.name()} 
+        OPTIONS {weightAttribute: ${testGraph.weightAttribute()}}
+        LIMIT ${limit}
+        RETURN {vertices: p.vertices[*].key, weight: p.weight}
+      `;
+
+    const allowedPaths = [
+      {vertices: ["A", "B", "C", "D", "E", "F", "G", "H", "I"], weight: 8},
+      {vertices: ["A", "D", "E", "F", "G", "H", "I"], weight: 15},
+      {vertices: ["A", "B", "C", "D", "E", "H", "I"], weight: 15}
+    ];
+
+    const res = db._query(query);
+    const actualPath = res.toArray();
+
+    checkResIsValidKShortestPathListWeights(allowedPaths, actualPath, limit);
+  });
+}
+
 const testsByGraph = {
   openDiamond: {
     testOpenDiamondDfsUniqueVerticesPath,
@@ -3302,6 +3870,7 @@ const testsByGraph = {
     testOpenDiamondDfsUniqueEdgesNone,
     testOpenDiamondDfsUniqueEdgesUniqueVerticesPath,
     testOpenDiamondDfsUniqueEdgesUniqueVerticesNone,
+    testOpenDiamondDfsLabelVariableForwarding,
     testOpenDiamondBfsUniqueVerticesPath,
     testOpenDiamondBfsUniqueVerticesNone,
     testOpenDiamondBfsUniqueVerticesGlobal,
@@ -3310,7 +3879,12 @@ const testsByGraph = {
     testOpenDiamondBfsUniqueEdgesUniqueVerticesPath,
     testOpenDiamondBfsUniqueEdgesUniqueVerticesNone,
     testOpenDiamondBfsUniqueEdgesUniquePathVerticesGlobal,
-    testOpenDiamondBfsUniqueEdgesUniqueNoneVerticesGlobal
+    testOpenDiamondBfsUniqueEdgesUniqueNoneVerticesGlobal,
+    testOpenDiamondBfsLabelVariableForwarding,
+    testOpenDiamondShortestPath,
+    testOpenDiamondShortestPathEnabledWeightCheck,
+    testOpenDiamondKShortestPathWithMultipleLimits,
+    testOpenDiamondKShortestPathEnabledWeightCheckLimit1
   },
   smallCircle: {
     testSmallCircleDfsUniqueVerticesPath,
@@ -3326,7 +3900,11 @@ const testsByGraph = {
     testSmallCircleBfsUniqueVerticesUniqueEdgesPath,
     testSmallCircleBfsUniqueVerticesUniqueEdgesNone,
     testSmallCircleBfsUniqueEdgesPathUniqueVerticesGlobal,
-    testSmallCircleBfsUniqueEdgesNoneUniqueVerticesGlobal
+    testSmallCircleBfsUniqueEdgesNoneUniqueVerticesGlobal,
+    testSmallCircleShortestPath,
+    testSmallCircleShortestPathEnabledWeightCheck,
+    testSmallCircleKShortestPathWithMultipleLimits,
+    testSmallCircleKShortestPathEnabledWeightCheckWithMultipleLimits
   },
   completeGraph: {
     testCompleteGraphDfsUniqueVerticesPathD1,
@@ -3353,10 +3931,19 @@ const testsByGraph = {
     testCompleteGraphBfsUniqueEdgesPathUniqueVerticesGlobalD3,
     testCompleteGraphBfsUniqueEdgesNoneUniqueVerticesGlobalD3,
     testCompleteGraphBfsUniqueEdgesPathUniqueVerticesGlobalD10,
-    testCompleteGraphBfsUniqueEdgesNoneUniqueVerticesGlobalD10
+    testCompleteGraphBfsUniqueEdgesNoneUniqueVerticesGlobalD10,
+    testCompleteGraphShortestPath,
+    testCompleteGraphShortestPathEnabledWeightCheck,
+    testCompleteGraphKShortestPathLimit1,
+    testCompleteGraphKShortestPathLimit3,
+    testCompleteGraphKShortestPathEnabledWeightCheckMultiLimit
   },
   easyPath: {
     testEasyPathAllCombinations,
+    testEasyPathShortestPath,
+    testEasyPathShortestPathEnabledWeightCheck,
+    testEasyPathKShortestPathMultipleLimits,
+    testEasyPathKShortestPathEnabledWeightCheckMultipleLimits
   },
   advancedPath: {
     testAdvancedPathDfsUniqueVerticesPath,
@@ -3373,6 +3960,10 @@ const testsByGraph = {
     testAdvancedPathBfsUniqueEdgesUniqueVerticesNone,
     testAdvancedPathBfsUniqueEdgesUniquePathVerticesGlobal,
     testAdvancedPathBfsUniqueEdgesUniqueNoneVerticesGlobal,
+    testAdvancedPathShortestPath,
+    testAdvancedPathShortestPathEnabledWeightCheck,
+    testAdvancedPathKShortestPathMultiLimit,
+    testAdvancedPathKShortestPathEnabledWeightCheckMultiLimit
   },
   largeBinTree: {
     testLargeBinTreeAllCombinations,

@@ -30,6 +30,9 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 
 class GeneralResponse;
 
@@ -46,13 +49,10 @@ class ReplicationFeature final : public application_features::ApplicationFeature
   void unprepare() override final;
 
   /// @brief return a pointer to the global replication applier
-  GlobalReplicationApplier* globalReplicationApplier() const {
-    TRI_ASSERT(_globalReplicationApplier != nullptr);
-    return _globalReplicationApplier.get();
-  }
+  GlobalReplicationApplier* globalReplicationApplier() const;
 
   /// @brief disable replication appliers
-  void disableReplicationApplier() { _replicationApplierAutoStart = false; }
+  void disableReplicationApplier();
 
   /// @brief start the replication applier for a single database
   void startApplier(TRI_vocbase_t* vocbase);
@@ -60,8 +60,28 @@ class ReplicationFeature final : public application_features::ApplicationFeature
   /// @brief stop the replication applier for a single database
   void stopApplier(TRI_vocbase_t* vocbase);
 
+  /// @brief returns the connect timeout for replication requests
+  double connectTimeout() const;
+
+  /// @brief returns the request timeout for replication requests
+  double requestTimeout() const;
+
+  /// @brief returns the connect timeout for replication requests
+  /// this will return the provided value if the user has not adjusted the
+  /// timeout via configuration. otherwise it will return the configured
+  /// timeout value
+  double checkConnectTimeout(double value) const;
+  
+  /// @brief returns the request timeout for replication requests
+  /// this will return the provided value if the user has not adjusted the
+  /// timeout via configuration. otherwise it will return the configured
+  /// timeout value
+  double checkRequestTimeout(double value) const;
+
   /// @brief automatic failover of replication using the agency
-  bool isActiveFailoverEnabled() const { return _enableActiveFailover; }
+  bool isActiveFailoverEnabled() const;
+
+  bool syncByRevision() const;
 
   /// @brief track the number of (parallel) tailing operations
   /// will throw an exception if the number of concurrently running operations
@@ -81,11 +101,28 @@ class ReplicationFeature final : public application_features::ApplicationFeature
   static ReplicationFeature* INSTANCE;
 
  private:
+  /// @brief connection timeout for replication requests
+  double _connectTimeout;
+  
+  /// @brief request timeout for replication requests
+  double _requestTimeout;
+
+  /// @brief whether or not the user-defined connect timeout is forced to be used
+  /// this is true only if the user set the connect timeout at startup
+  bool _forceConnectTimeout;
+  
+  /// @brief whether or not the user-defined request timeout is forced to be used
+  /// this is true only if the user set the request timeout at startup
+  bool _forceRequestTimeout;
+
   bool _replicationApplierAutoStart;
 
   /// Enable the active failover
   bool _enableActiveFailover;
-  
+
+  /// Use the revision-based replication protocol
+  bool _syncByRevision;
+
   /// @brief number of currently operating tailing operations
   std::atomic<uint64_t> _parallelTailingInvocations;
 

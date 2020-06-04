@@ -18,11 +18,9 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "all_iterator.hpp"
-#include "search/score_doc_iterators.hpp"
 #include "formats/empty_term_reader.hpp"
 
 NS_ROOT
@@ -33,21 +31,24 @@ all_iterator::all_iterator(
     const order::prepared& order,
     uint64_t docs_count,
     boost_t boost)
-  : max_doc_(doc_id_t(doc_limits::min() + docs_count - 1)) {
-  // make doc_id accessible via attribute
-  attrs_.emplace(doc_);
+  : attributes{{
+      { type<document>::id(), &doc_   },
+      { type<cost>::id(),     &cost_  },
+      { type<score>::id(),    &score_ },
+    }},
+    max_doc_(doc_id_t(doc_limits::min() + docs_count - 1)) {
 
   // set estimation value
-  estimate(max_doc_);
+  cost_.value(max_doc_);
 
-  // set scorers
-  prepare_score(order, order.prepare_scorers(
-    reader,
-    irs::empty_term_reader(docs_count),
-    query_stats,
-    attributes(), // doc_iterator attributes
-    boost
-  ));
+  // set score
+  if (!order.empty()) {
+    score_.prepare(
+      order,
+      order.prepare_scorers(reader, irs::empty_term_reader(docs_count),
+                            query_stats, *this, boost)
+    );
+  }
 }
 
 NS_END // ROOT

@@ -10,10 +10,10 @@
 The transaction identifier,
 
 @RESTDESCRIPTION
-Commit a running server-side transaction. Committing is an idempotent operation. 
+Commit a running server-side transaction. Committing is an idempotent operation.
 It is not an error to commit a transaction more than once.
 
-If the transaction can be committed, *HTTP 200* will be returned. 
+If the transaction can be committed, *HTTP 200* will be returned.
 The returned JSON object has the following properties:
 
 - *error*: boolean flag to indicate if an error occurred (*false*
@@ -25,7 +25,7 @@ The returned JSON object has the following properties:
     - *id*: the identifier of the transaction
     - *status*: containing the string 'committed'
 
-If the transaction cannot be found, committing is not allowed or the 
+If the transaction cannot be found, committing is not allowed or the
 transaction was aborted, the server
 will respond with *HTTP 400*, *HTTP 404* or *HTTP 409*.
 
@@ -39,7 +39,6 @@ details. The object has the following attributes:
 - *errorNum*: the server error number
 
 - *errorMessage*: a descriptive error message
-
 
 @RESTRETURNCODES
 
@@ -84,4 +83,3 @@ Committing a transaction:
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
-

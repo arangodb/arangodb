@@ -1,9 +1,13 @@
+from __future__ import unicode_literals
 import os
 import sys
 import re
 import inspect
-import urllib
 import io
+try:
+  from urllib.parse import quote_plus
+except ImportError:
+  from urllib import quote_plus
 
 validExtensions = (".cpp", ".h", ".js", ".md")
 # specify the paths in which docublocks are searched. note that js/apps/* must not be included because it contains js/apps/system/
@@ -30,7 +34,7 @@ def file_content(filepath, forceDokuBlockContent):
   """ Fetches and formats file's content to perform the required operation.
   """
 
-  infile = io.open(filepath, 'r', encoding='utf-8', newline=None)
+  infile = io.open(filepath, encoding='utf-8', newline=None)
   filelines = tuple(infile)
   infile.close()
 
@@ -48,7 +52,7 @@ def file_content(filepath, forceDokuBlockContent):
           (not searchMDPaths[2] in filepath) and
           (not searchMDPaths[3] in filepath) and
           (not searchMDPaths[4] in filepath)):
-        print "next startDocuBlock found without endDocuBlock in between in file %s [%s]" %(filepath, line)
+        print("next startDocuBlock found without endDocuBlock in between in file %s [%s]" %(filepath, line))
         raise Exception
       _start = line[0]
     if "@endDocuBlock" in line[1]:
@@ -58,11 +62,11 @@ def file_content(filepath, forceDokuBlockContent):
         comment_indexes.append([_start, _end])
         _start = None
       except NameError:
-        print "endDocuBlock without previous startDocublock seen while analyzing file %s [%s]" %(filepath, line)
+        print("endDocuBlock without previous startDocublock seen while analyzing file %s [%s]" %(filepath, line))
         raise Exception
 
   if len(docublockname) != 0 and forceDokuBlockContent: 
-    print "no endDocuBlock found while analyzing file %s [%s]" %(filepath, docublockname)
+    print("no endDocuBlock found while analyzing file %s [%s]" %(filepath, docublockname))
     raise Exception
 
   for index in comment_indexes:
@@ -78,7 +82,7 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
   first = True
   aqlResult = False
   lastline = None
-  longText = u""
+  longText = ""
   longLines = 0
   short = ""
   shortLines = 0
@@ -99,7 +103,7 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
   blockCount = 0
 
   # read in the context, split into long and short
-  infile = io.open(filepath, 'r', encoding='utf-8', newline=None)
+  infile = io.open(filepath, encoding='utf-8', newline=None)
   for line in infile:
     stripped_line = re.sub('<[^<]+?>', '', line) # remove HTML tags
     if first:
@@ -196,70 +200,69 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
   # python3: urllib.parse.quote_plus
 
   # write example
-  fh.write(unicode("\n"))
+  fh.write("\n")
 
-  utag = urllib.quote_plus(tag) + '_container'
-  ustr = u"\uE9CB"
-  anchor = u"<a class=\"anchorjs-link \" href=\"#"+ utag + "\" aria-label=\"Anchor\" data-anchorjs-icon=\"" + ustr + "\"></a>"
+  utag = quote_plus(tag) + '_container'
+  ustr = "\uE9CB"
+  #anchor = "<a class=\"anchorjs-link \" href=\"#"+ utag + "\" aria-label=\"Anchor\" data-anchorjs-icon=\"" + ustr + "\"></a>"
 
   longTag = "%s_long" % tag
   shortTag = "%s_short" % tag
   shortToggle = "$('#%s').hide(); $('#%s').show();" % (shortTag, longTag)
   longToggle = "$('#%s').hide(); $('#%s').show(); window.location.hash='%s';" % (longTag, shortTag, utag)
 
-  fh.write(unicode("<div class=\"example-container\" id=\"%s\">\n" % utag))
-  fh.write(unicode(anchor))
-
+  fh.write("<div class=\"example-container\" id=\"%s\">\n" % utag)
+  #fh.write(anchor)
 
   if shortable:
-    fh.write(unicode("<div id=\"%s\" style=\"Display: none;\">\n" % longTag))
+    fh.write("<div id=\"%s\" style=\"display: none;\">\n" % longTag)
   else:
-    fh.write(unicode("<div id=\"%s\">\n" % longTag))
+    fh.write("<div id=\"%s\">\n" % longTag)
 
   if blockType != "AQL" and blockType != "EXPLAIN":
-    fh.write(unicode("<pre>\n"))
-  fh.write(unicode("%s" % longText))
-  fh.write(unicode("</pre>\n"))
+    fh.write("<pre>\n")
+  fh.write("%s" % longText)
+  fh.write("</pre>\n")
   if shortable:
     hideText=""
     if blockType == "arangosh":
-      hideText = u"Hide execution results"
+      hideText = "Hide execution results"
     elif blockType == "curl":
-      hideText = u"Hide response body"
+      hideText = "Hide response body"
     elif blockType == "AQL":
-      hideText = u"Hide query result"
+      hideText = "Hide query result"
     elif blockType == "EXPLAIN":
-        hideText = u"Hide explain output"
+        hideText = "Hide explain output"
     else:
-      hideText = u"Hide"
-    fh.write(unicode('<div id="%s_collapse" onclick="%s" class="example_show_button">%s</div>' % (
+      hideText = "Hide"
+    fh.write('<div id="%s_collapse" onclick="%s" class="example_show_button">%s</div>' % (
       utag,
       longToggle,
       hideText
-      )))
-  fh.write(unicode("</div>\n"))
+      ))
+  fh.write("</div>\n")
     
   if shortable:    
-    fh.write(unicode("<div id=\"%s\" onclick=\"%s\">\n" % (shortTag, shortToggle)))
+    fh.write("<div id=\"%s\" onclick=\"%s\">\n" % (shortTag, shortToggle))
     if blockType != "AQL" and blockType != "EXPLAIN":
-      fh.write(unicode("<pre>\n"))
-    fh.write(unicode("%s" % short))
+      fh.write("<pre>\n")
+    fh.write("%s" % short)
 
     if blockType == "arangosh":
-      fh.write(unicode("</pre><div class=\"example_show_button\">Show execution results</div>\n"))
+      fh.write("</pre><div class=\"example_show_button\">Show execution results</div>\n")
     elif blockType == "curl":
-      fh.write(unicode("</pre><div class=\"example_show_button\">Show response body</div>\n"))
+      fh.write("</pre><div class=\"example_show_button\">Show response body</div>\n")
     elif blockType == "AQL":
-      fh.write(unicode("</pre><div class=\"example_show_button\">Show query result</div>\n"))
+      fh.write("</pre><div class=\"example_show_button\">Show query result</div>\n")
     elif blockType == "EXPLAIN":
-      fh.write(unicode("</pre><div class=\"example_show_button\">Show explain output</div>\n"))
+      fh.write("</pre><div class=\"example_show_button\">Show explain output</div>\n")
     else:
-      fh.write(unicode("</pre><div class=\"example_show_button\">Show</div>\n"))
+      fh.write("</pre><div class=\"example_show_button\">Show</div>\n")
       
-    fh.write(unicode("</div>\n"))
+    fh.write("</div>\n")
 
-  fh.write(unicode("</div>\n"))
-  fh.write(unicode("\n"))
+  fh.write("</div>\n")
+  fh.write("\n")
 
 
 def fetch_comments(dirpath, forceDokuBlockContent):
@@ -278,7 +281,7 @@ def fetch_comments(dirpath, forceDokuBlockContent):
         filepath = os.path.join(root, filename)
         file_comments = file_content(filepath, forceDokuBlockContent)
         for comment in file_comments:
-          fh.write(unicode("\n<!-- filename: %s -->\n" % filepath))
+          fh.write("\n<!-- filename: %s -->\n" % filepath)
           explain = False
           for _com in comment:
             if "@EXPLAIN{TRUE}" in _com:
@@ -292,7 +295,7 @@ def fetch_comments(dirpath, forceDokuBlockContent):
               if not shouldIgnoreLine:
                 if ("@startDocuBlock" in _text) or \
                   ("@endDocuBlock" in _text):
-                  fh.write(unicode("%s\n\n" % _text))
+                  fh.write("%s\n\n" % _text)
                 elif ("@EXAMPLE_ARANGOSH_OUTPUT" in _text or \
                       "@EXAMPLE_ARANGOSH_RUN" in _text or \
                       "@EXAMPLE_AQL" in _text):
@@ -311,35 +314,35 @@ def fetch_comments(dirpath, forceDokuBlockContent):
                   try:
                     _filename = re.search("{(.*)}", _text).group(1)
                   except Exception as x:
-                    print "failed to match file name in  %s while parsing %s " % (_text, filepath)
+                    print("failed to match file name in  %s while parsing %s " % (_text, filepath))
                     raise x
                   dirpath = os.path.abspath(os.path.join(os.path.dirname( __file__ ), os.pardir, "Examples", _filename + ".generated"))
                   if os.path.isfile(dirpath):
                     example_content(dirpath, fh, _filename, blockType, filepath)
                   else:
                     fullSuccess = False
-                    print "Could not find the generated example for " + _filename + " found in " + filepath
+                    print("Could not find the generated example for " + _filename + " found in " + filepath)
                 else:
-                  fh.write(unicode("%s\n" % _text))
+                  fh.write("%s\n" % _text)
               elif ("@END_EXAMPLE_ARANGOSH_OUTPUT" in _text or \
                     "@END_EXAMPLE_ARANGOSH_RUN" in _text or \
                     "@END_EXAMPLE_AQL" in _text):
                 shouldIgnoreLine = False
             else:
-              fh.write(unicode("\n"))
+              fh.write("\n")
   fh.close()
 
 if __name__ == "__main__":
-  errorsFile = io.open("../../lib/Basics/errors.dat", "r", encoding="utf-8", newline=None)
-  commentsFile = io.open("allComments.txt", "w", encoding="utf-8", newline="")
-  commentsFile.write(unicode("@startDocuBlock errorCodes \n"))
+  errorsFile = io.open("../../lib/Basics/errors.dat", encoding="utf-8", newline=None)
+  commentsFile = io.open("allComments.txt", mode="w", encoding="utf-8", newline="")
+  commentsFile.write("@startDocuBlock errorCodes \n")
   for line in errorsFile:
-    commentsFile.write(unicode(line + "\n"))
-  commentsFile.write(unicode("@endDocuBlock \n"))
+    commentsFile.write(line + "\n")
+  commentsFile.write("@endDocuBlock \n")
   commentsFile.close()
   errorsFile.close()
   for i in searchPaths:
-    print "Searching for docublocks in " + i[0] + ": "
+    print("Searching for docublocks in " + i[0] + ": ")
     dirpath = os.path.abspath(os.path.join(os.path.dirname( __file__ ), os.pardir,"ArangoDB/../../"+i[0]))
     fetch_comments(dirpath, i[1])
     os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..', 'templates'))

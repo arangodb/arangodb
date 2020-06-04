@@ -35,20 +35,20 @@ NS_ROOT
 ////////////////////////////////////////////////////////////////////////////////
 class column_info {
  public:
-  column_info(const compression::type_id& compression,
+  column_info(const type_info& compression,
               const compression::options& options,
-              bool encryption) NOEXCEPT
-    : compression_(&compression),
+              bool encryption) noexcept
+    : compression_(compression),
       options_(options),
       encryption_(encryption) {
   }
 
-  const compression::type_id& compression() const NOEXCEPT { return *compression_; }
-  const compression::options& options() const NOEXCEPT { return options_; }
-  bool encryption() const NOEXCEPT { return encryption_; }
+  const type_info& compression() const noexcept { return compression_; }
+  const compression::options& options() const noexcept { return options_; }
+  bool encryption() const noexcept { return encryption_; }
 
  private:
-  const compression::type_id* compression_;
+  const type_info compression_;
   const compression::options options_;
   bool encryption_;
 }; // column_info

@@ -101,7 +101,7 @@ bool ResignShardLeadership::first() {
       std::stringstream error;
       error << "Failed to lookup local collection " << collection
             << " in database " + database;
-      LOG_TOPIC("e06ca", ERR, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
+      LOG_TOPIC("e06ca", ERR, Logger::MAINTENANCE) << "ResignLeadership: " << error.str();
       _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
       return false;
     }

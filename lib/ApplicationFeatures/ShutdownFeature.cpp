@@ -22,6 +22,7 @@
 
 #include "ApplicationFeatures/ShutdownFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"

@@ -38,7 +38,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
@@ -63,7 +63,6 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice, LogicalCollection* coll,
   SingleCollectionTransaction trx(transaction::StandaloneContext::Create(coll->vocbase()),
                                   *coll, AccessMode::Type::EXCLUSIVE);
 
-  trx.addHint(transaction::Hints::Hint::RECOVERY);  // turn off waitForSync!
   trx.addHint(transaction::Hints::Hint::NO_INDEXING);
   // turn on intermediate commits as the number of keys to delete can be huge
   // here
@@ -107,8 +106,7 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice, LogicalCollection* coll,
           builder.clear();
           builder.add(velocypack::ValuePair(docKey.data(), docKey.size(),
                                             velocypack::ValueType::String));
-          auto r = physical->remove(trx, builder.slice(), mdr, options,
-                                    /*lock*/false, nullptr, nullptr);
+          auto r = physical->remove(trx, builder.slice(), mdr, options);
 
           if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
             // ignore not found, we remove conflicting docs ahead of time
@@ -129,7 +127,7 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice, LogicalCollection* coll,
 
   // remove everything from the highest remote key until the end of the key
   // range
-  auto index = coll->lookupIndex(0);  // RocksDBCollection->primaryIndex() is private
+  auto index = coll->lookupIndex(IndexId::primary());  // RocksDBCollection->primaryIndex() is private
   TRI_ASSERT(index->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
   auto primaryIndex = static_cast<RocksDBPrimaryIndex*>(index.get());
 
@@ -144,8 +142,7 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice, LogicalCollection* coll,
           builder.clear();
           builder.add(velocypack::ValuePair(docKey.data(), docKey.size(),
                                             velocypack::ValueType::String));
-          auto r = physical->remove(trx, builder.slice(), mdr, options,
-                                    /*lock*/false, nullptr, nullptr);
+          auto r = physical->remove(trx, builder.slice(), mdr, options);
 
           if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
             // ignore not found, we remove conflicting docs ahead of time
@@ -185,6 +182,9 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
   options.ignoreRevs = true;
   options.isRestore = true;
   options.indexOperationMode = Index::OperationMode::internal;
+  options.waitForSync = false;
+  options.validate = false;
+
   if (!syncer._state.leaderId.empty()) {
     options.isSynchronousReplicationFrom = syncer._state.leaderId;
   }
@@ -229,7 +229,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
   if (r.fail()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("got invalid response from master at ") +
-                      syncer._state.master.endpoint + ": response is no array");
+                      syncer._state.master.endpoint + ": " + r.errorMessage());
   }
 
   VPackSlice const responseBody = builder.slice();
@@ -294,8 +294,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
         keyBuilder->clear();
         keyBuilder->add(VPackValue(localKey));
 
-        auto r = physical->remove(*trx, keyBuilder->slice(), mdr, options,
-                                  /*lock*/false, nullptr, nullptr);
+        auto r = physical->remove(*trx, keyBuilder->slice(), mdr, options);
 
         if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
           // ignore not found, we remove conflicting docs ahead of time
@@ -348,8 +347,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
       keyBuilder->clear();
       keyBuilder->add(VPackValue(localKey));
 
-      auto r = physical->remove(*trx, keyBuilder->slice(), mdr, options,
-                                /*lock*/false, nullptr, nullptr);
+      auto r = physical->remove(*trx, keyBuilder->slice(), mdr, options);
 
       if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
         // ignore not found, we remove conflicting docs ahead of time
@@ -426,7 +424,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                     std::string("got invalid response from master at ") +
                         syncer._state.master.endpoint +
-                        ": response is no array");
+                        ": " + r.errorMessage());
     }
 
     VPackSlice const slice = docsBuilder->slice();
@@ -439,6 +437,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
 
     size_t foundLength = slice.length();
 
+    double t = TRI_microtime();
     for (VPackSlice it : VPackArrayIterator(slice)) {
       if (it.isNull()) {
         continue;
@@ -473,8 +472,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
         keyBuilder->clear();
         keyBuilder->add(VPackValue(conflictingKey));
 
-        auto res = physical->remove(*trx, keyBuilder->slice(), mdr, options,
-                                    /*lock*/false, nullptr, nullptr);
+        auto res = physical->remove(*trx, keyBuilder->slice(), mdr, options);
 
         if (res.ok()) {
           ++stats.numDocsRemoved;
@@ -483,14 +481,14 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
         return res;
       };
 
-      LocalDocumentId const documentId = physical->lookupKey(trx, keySlice);
-
-      if (!documentId.isSet()) {
+      std::pair<LocalDocumentId, TRI_voc_rid_t> lookupResult;
+      if (physical->lookupKey(trx, keySlice.stringRef(), lookupResult).is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+        // key does not yet exist
         // INSERT
         TRI_ASSERT(options.indexOperationMode == Index::OperationMode::internal);
 
-        Result res = physical->insert(trx, it, mdr, options,
-                                      /*lock*/false, nullptr, nullptr);
+        Result res = physical->insert(trx, it, mdr, options);
+        
         if (res.fail()) {
           if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
               res.errorMessage() > keySlice.copyString()) {
@@ -502,8 +500,8 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
             }
 
             options.indexOperationMode = Index::OperationMode::normal;
-            res = physical->insert(trx, it, mdr, options,
-                                   /*lock*/false, nullptr, nullptr);
+            res = physical->insert(trx, it, mdr, options);
+            
             options.indexOperationMode = Index::OperationMode::internal;
             if (res.fail()) {
               return res;
@@ -521,8 +519,8 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
         // REPLACE
         TRI_ASSERT(options.indexOperationMode == Index::OperationMode::internal);
 
-        Result res = physical->replace(trx, it, mdr, options,
-                                       /*lock*/false, previous);
+        Result res = physical->replace(trx, it, mdr, options, previous);
+        
         if (res.fail()) {
           if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
               res.errorMessage() > keySlice.copyString()) {
@@ -533,8 +531,8 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
               return res;
             }
             options.indexOperationMode = Index::OperationMode::normal;
-            res = physical->replace(trx, it, mdr, options,
-                                    /*lock*/false, previous);
+            res = physical->replace(trx, it, mdr, options, previous);
+            
             options.indexOperationMode = Index::OperationMode::internal;
             if (res.fail()) {
               return res;
@@ -548,6 +546,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
         }
       }
     }
+    stats.waitedForInsertions += TRI_microtime() - t;
 
     if (foundLength >= toFetch.size()) {
       break;
@@ -614,7 +613,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   if (r.fail()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("got invalid response from master at ") +
-                      syncer._state.master.endpoint + ": response is no array");
+                      syncer._state.master.endpoint + ": " + r.errorMessage());
   }
 
   VPackSlice const chunkSlice = builder.slice();
@@ -629,6 +628,8 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   options.silent = true;
   options.ignoreRevs = true;
   options.isRestore = true;
+  options.waitForSync = false;
+  options.validate = false;
 
   if (!syncer._state.leaderId.empty()) {
     options.isSynchronousReplicationFrom = syncer._state.leaderId;
@@ -655,7 +656,6 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
                                         syncer.vocbase()),
                                     *col, AccessMode::Type::EXCLUSIVE);
 
-    trx.addHint(transaction::Hints::Hint::RECOVERY);  // turn off waitForSync!
     trx.addHint(transaction::Hints::Hint::NO_INDEXING);
     // turn on intermediate commits as the number of operations can be huge here
     trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
@@ -740,8 +740,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
             tempBuilder.add(VPackValue(docKey));
 
             ManagedDocumentResult previous;
-            auto r = physical->remove(trx, tempBuilder.slice(), previous,
-                                      options, /*lock*/false, nullptr, nullptr);
+            auto r = physical->remove(trx, tempBuilder.slice(), previous, options);
 
             if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
               // ignore not found, we remove conflicting docs ahead of time
@@ -893,6 +892,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       ", " + "waited for initial: " + std::to_string(stats.waitedForInitial) +
       " s, " + "waited for keys: " + std::to_string(stats.waitedForKeys) +
       " s, " + "waited for docs: " + std::to_string(stats.waitedForDocs) +
+      " s, " + "waited for insertions: " + std::to_string(stats.waitedForInsertions) +
       " s, " + "total time: " + std::to_string(TRI_microtime() - startTime) +
       " s");
 

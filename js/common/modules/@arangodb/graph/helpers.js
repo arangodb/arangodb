@@ -1,4 +1,5 @@
 /* jshint strict: true, unused: true */
+/* global AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Helpers for graph tests
@@ -27,7 +28,9 @@
 /// @author Copyright 2016-2016, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require('internal');
+var jsunity = require('jsunity');
+const db = require("@arangodb").db;
+const {assertEqual, assertNotEqual} = jsunity.jsUnity.assertions;
 
 function makeTree(k, depth, nrShards, subgraph) {
   // This creates a large graph (vertices and edges), which is a k-ary
@@ -615,6 +618,113 @@ function storeGraph(r, Vname, Ename, Gname) {
            graph };
 }
 
+let runTraversalRestrictEdgeCollectionTests = function (vn, en, gn, checkOptimizerRule) {
+  let fillGraph = function () {
+    let keys = [];
+    let v = db._collection(vn);
+    for (let i = 0; i < 10; ++i) {
+      keys.push(v.insert({ value: i })._key);
+    }
+
+    let e1 = db._collection(en + "1");
+    e1.insert({ _from: vn + "/" + keys[0], _to: vn + "/" + keys[1] });
+    e1.insert({ _from: vn + "/" + keys[1], _to: vn + "/" + keys[2] });
+    e1.insert({ _from: vn + "/" + keys[2], _to: vn + "/" + keys[3] });
+    e1.insert({ _from: vn + "/" + keys[3], _to: vn + "/" + keys[4] });
+    e1.insert({ _from: vn + "/" + keys[4], _to: vn + "/" + keys[5] });
+
+    let e2 = db._collection(en + "2");
+    e2.insert({ _from: vn + "/" + keys[0], _to: vn + "/" + keys[6] });
+    e2.insert({ _from: vn + "/" + keys[1], _to: vn + "/" + keys[7] });
+    e2.insert({ _from: vn + "/" + keys[7], _to: vn + "/" + keys[8] });
+    e2.insert({ _from: vn + "/" + keys[8], _to: vn + "/" + keys[9] });
+
+    return keys;
+  };
+
+  let keys = fillGraph();
+
+  let queries = [
+    [ `WITH ${vn} FOR v IN 0..0 OUTBOUND "${vn}/${keys[0]}" ${en}1 SORT v._id RETURN DISTINCT v._id`, [ 0 ] ],
+    [ `WITH ${vn} FOR v IN 0..1 OUTBOUND "${vn}/${keys[0]}" ${en}1 SORT v._id RETURN DISTINCT v._id`, [ 0, 1 ] ],
+    [ `WITH ${vn} FOR v IN 1..1 OUTBOUND "${vn}/${keys[0]}" ${en}1 SORT v._id RETURN DISTINCT v._id`, [ 1 ] ],
+    [ `WITH ${vn} FOR v IN 1..2 OUTBOUND "${vn}/${keys[0]}" ${en}1 SORT v._id RETURN DISTINCT v._id`, [ 1, 2 ] ],
+    [ `WITH ${vn} FOR v IN 1..3 OUTBOUND "${vn}/${keys[0]}" ${en}1 SORT v._id RETURN DISTINCT v._id`, [ 1, 2, 3 ] ],
+    [ `WITH ${vn} FOR v IN 0..1 OUTBOUND "${vn}/${keys[0]}" ${en}2 SORT v._id RETURN DISTINCT v._id`, [ 0, 6 ] ],
+    [ `WITH ${vn} FOR v IN 1..1 OUTBOUND "${vn}/${keys[0]}" ${en}2 SORT v._id RETURN DISTINCT v._id`, [ 6 ] ],
+    [ `WITH ${vn} FOR v IN 1..2 OUTBOUND "${vn}/${keys[0]}" ${en}2 SORT v._id RETURN DISTINCT v._id`, [ 6 ] ],
+    [ `WITH ${vn} FOR v IN 1..3 OUTBOUND "${vn}/${keys[0]}" ${en}2 SORT v._id RETURN DISTINCT v._id`, [ 6 ] ],
+
+    [ `WITH ${vn} FOR v IN 0..0 OUTBOUND "${vn}/${keys[0]}" ${en}1, ${en}2 SORT v._id RETURN DISTINCT v._id`, [ 0 ] ],
+    [ `WITH ${vn} FOR v IN 0..1 OUTBOUND "${vn}/${keys[0]}" ${en}1, ${en}2 SORT v._id RETURN DISTINCT v._id`, [ 0, 1, 6 ] ],
+    [ `WITH ${vn} FOR v IN 1..1 OUTBOUND "${vn}/${keys[0]}" ${en}1, ${en}2 SORT v._id RETURN DISTINCT v._id`, [ 1, 6 ] ],
+    [ `WITH ${vn} FOR v IN 1..2 OUTBOUND "${vn}/${keys[0]}" ${en}1, ${en}2 SORT v._id RETURN DISTINCT v._id`, [ 1, 2, 6, 7 ] ],
+    [ `WITH ${vn} FOR v IN 1..3 OUTBOUND "${vn}/${keys[0]}" ${en}1, ${en}2 SORT v._id RETURN DISTINCT v._id`, [ 1, 2, 3, 6, 7, 8 ] ],
+
+    [ `WITH ${vn} FOR v IN 0..0 OUTBOUND "${vn}/${keys[0]}" GRAPH "${gn}" SORT v._id RETURN DISTINCT v._id`, [ 0 ] ],
+    [ `WITH ${vn} FOR v IN 0..1 OUTBOUND "${vn}/${keys[0]}" GRAPH "${gn}" SORT v._id RETURN DISTINCT v._id`, [ 0, 1, 6 ] ],
+    [ `WITH ${vn} FOR v IN 1..1 OUTBOUND "${vn}/${keys[0]}" GRAPH "${gn}" SORT v._id RETURN DISTINCT v._id`, [ 1, 6 ] ],
+    [ `WITH ${vn} FOR v IN 1..2 OUTBOUND "${vn}/${keys[0]}" GRAPH "${gn}" SORT v._id RETURN DISTINCT v._id`, [ 1, 2, 6, 7 ] ],
+    [ `WITH ${vn} FOR v IN 1..3 OUTBOUND "${vn}/${keys[0]}" GRAPH "${gn}" SORT v._id RETURN DISTINCT v._id`, [ 1, 2, 3, 6, 7, 8 ] ],
+
+    [ `WITH ${vn} FOR v IN 0..0 OUTBOUND "${vn}/${keys[0]}" ${en}1 OPTIONS { edgeCollections: "${en}1" } SORT v._id RETURN DISTINCT v._id`, [ 0 ] ],
+    [ `WITH ${vn} FOR v IN 0..1 OUTBOUND "${vn}/${keys[0]}" ${en}1 OPTIONS { edgeCollections: "${en}1" } SORT v._id RETURN DISTINCT v._id`, [ 0, 1 ] ],
+    [ `WITH ${vn} FOR v IN 1..1 OUTBOUND "${vn}/${keys[0]}" ${en}1 OPTIONS { edgeCollections: "${en}1" } SORT v._id RETURN DISTINCT v._id`, [ 1 ] ],
+    [ `WITH ${vn} FOR v IN 1..2 OUTBOUND "${vn}/${keys[0]}" ${en}1 OPTIONS { edgeCollections: "${en}1" } SORT v._id RETURN DISTINCT v._id`, [ 1, 2 ] ],
+    [ `WITH ${vn} FOR v IN 1..3 OUTBOUND "${vn}/${keys[0]}" ${en}1 OPTIONS { edgeCollections: "${en}1" } SORT v._id RETURN DISTINCT v._id`, [ 1, 2, 3 ] ],
+    [ `WITH ${vn} FOR v IN 0..1 OUTBOUND "${vn}/${keys[0]}" ${en}2 OPTIONs { edgeCollections: "${en}2" } SORT v._id RETURN DISTINCT v._id`, [ 0, 6 ] ],
+    [ `WITH ${vn} FOR v IN 1..1 OUTBOUND "${vn}/${keys[0]}" ${en}2 OPTIONS { edgeCollections: "${en}2" } SORT v._id RETURN DISTINCT v._id`, [ 6 ] ],
+    [ `WITH ${vn} FOR v IN 1..2 OUTBOUND "${vn}/${keys[0]}" ${en}2 OPTIONS { edgeCollections: "${en}2" } SORT v._id RETURN DISTINCT v._id`, [ 6 ] ],
+    [ `WITH ${vn} FOR v IN 1..3 OUTBOUND "${vn}/${keys[0]}" ${en}2 OPTIONS { edgeCollections: "${en}2" } SORT v._id RETURN DISTINCT v._id`, [ 6 ] ],
+
+    [ `WITH ${vn} FOR v IN 0..0 OUTBOUND "${vn}/${keys[0]}" ${en}1, ${en}2 OPTIONS { edgeCollections: [ "${en}1", "${en}2" ] } SORT v._id RETURN DISTINCT v._id`, [ 0 ] ],
+    [ `WITH ${vn} FOR v IN 0..1 OUTBOUND "${vn}/${keys[0]}" ${en}1, ${en}2 OPTIONS { edgeCollections: [ "${en}1", "${en}2" ] } SORT v._id RETURN DISTINCT v._id`, [ 0, 1, 6 ] ],
+    [ `WITH ${vn} FOR v IN 1..1 OUTBOUND "${vn}/${keys[0]}" ${en}1, ${en}2 OPTIONS { edgeCollections: [ "${en}1", "${en}2" ] } SORT v._id RETURN DISTINCT v._id`, [ 1, 6 ] ],
+    [ `WITH ${vn} FOR v IN 1..2 OUTBOUND "${vn}/${keys[0]}" ${en}1, ${en}2 OPTIONS { edgeCollections: [ "${en}1", "${en}2" ] } SORT v._id RETURN DISTINCT v._id`, [ 1, 2, 6, 7 ] ],
+    [ `WITH ${vn} FOR v IN 1..3 OUTBOUND "${vn}/${keys[0]}" ${en}1, ${en}2 OPTIONS { edgeCollections: [ "${en}1", "${en}2" ] } SORT v._id RETURN DISTINCT v._id`, [ 1, 2, 3, 6, 7, 8 ] ],
+
+    [ `WITH ${vn} FOR v IN 0..0 OUTBOUND "${vn}/${keys[0]}" ${en}1, ${en}2 OPTIONS { edgeCollections: [ "${en}1" ] } SORT v._id RETURN DISTINCT v._id`, [ 0 ] ],
+    [ `WITH ${vn} FOR v IN 0..0 OUTBOUND "${vn}/${keys[0]}" ${en}1, ${en}2 OPTIONS { edgeCollections: [ "${en}2" ] } SORT v._id RETURN DISTINCT v._id`, [ 0 ] ],
+    [ `WITH ${vn} FOR v IN 0..1 OUTBOUND "${vn}/${keys[0]}" ${en}1, ${en}2 OPTIONS { edgeCollections: [ "${en}1" ] } SORT v._id RETURN DISTINCT v._id`, [ 0, 1 ] ],
+    [ `WITH ${vn} FOR v IN 0..1 OUTBOUND "${vn}/${keys[0]}" ${en}1, ${en}2 OPTIONS { edgeCollections: [ "${en}2" ] } SORT v._id RETURN DISTINCT v._id`, [ 0, 6 ] ],
+    [ `WITH ${vn} FOR v IN 1..1 OUTBOUND "${vn}/${keys[0]}" ${en}1, ${en}2 OPTIONS { edgeCollections: [ "${en}1" ] } SORT v._id RETURN DISTINCT v._id`, [ 1 ] ],
+    [ `WITH ${vn} FOR v IN 1..1 OUTBOUND "${vn}/${keys[0]}" ${en}1, ${en}2 OPTIONS { edgeCollections: [ "${en}2" ] } SORT v._id RETURN DISTINCT v._id`, [ 6 ] ],
+    [ `WITH ${vn} FOR v IN 1..2 OUTBOUND "${vn}/${keys[0]}" ${en}1, ${en}2 OPTIONS { edgeCollections: [ "${en}1" ] } SORT v._id RETURN DISTINCT v._id`, [ 1, 2 ] ],
+    [ `WITH ${vn} FOR v IN 1..2 OUTBOUND "${vn}/${keys[0]}" ${en}1, ${en}2 OPTIONS { edgeCollections: [ "${en}2" ] } SORT v._id RETURN DISTINCT v._id`, [ 6 ] ],
+    [ `WITH ${vn} FOR v IN 1..3 OUTBOUND "${vn}/${keys[0]}" ${en}1, ${en}2 OPTIONS { edgeCollections: [ "${en}1" ] } SORT v._id RETURN DISTINCT v._id`, [ 1, 2, 3 ] ],
+    [ `WITH ${vn} FOR v IN 1..3 OUTBOUND "${vn}/${keys[0]}" ${en}1, ${en}2 OPTIONS { edgeCollections: [ "${en}2" ] } SORT v._id RETURN DISTINCT v._id`, [ 6 ] ],
+
+    [ `WITH ${vn} FOR v IN 0..0 OUTBOUND "${vn}/${keys[0]}" GRAPH "${gn}" OPTIONS { edgeCollections: [ "${en}1" ] } SORT v._id RETURN DISTINCT v._id`, [ 0 ] ],
+    [ `WITH ${vn} FOR v IN 0..0 OUTBOUND "${vn}/${keys[0]}" GRAPH "${gn}" OPTIONS { edgeCollections: [ "${en}2" ] } SORT v._id RETURN DISTINCT v._id`, [ 0 ] ],
+    [ `WITH ${vn} FOR v IN 0..1 OUTBOUND "${vn}/${keys[0]}" GRAPH "${gn}" OPTIONS { edgeCollections: [ "${en}1" ] } SORT v._id RETURN DISTINCT v._id`, [ 0, 1 ] ],
+    [ `WITH ${vn} FOR v IN 0..1 OUTBOUND "${vn}/${keys[0]}" GRAPH "${gn}" OPTIONS { edgeCollections: [ "${en}2" ] } SORT v._id RETURN DISTINCT v._id`, [ 0, 6 ] ],
+    [ `WITH ${vn} FOR v IN 1..1 OUTBOUND "${vn}/${keys[0]}" GRAPH "${gn}" OPTIONS { edgeCollections: [ "${en}1" ] } SORT v._id RETURN DISTINCT v._id`, [ 1 ] ],
+    [ `WITH ${vn} FOR v IN 1..1 OUTBOUND "${vn}/${keys[0]}" GRAPH "${gn}" OPTIONS { edgeCollections: [ "${en}2" ] } SORT v._id RETURN DISTINCT v._id`, [ 6 ] ],
+    [ `WITH ${vn} FOR v IN 1..2 OUTBOUND "${vn}/${keys[0]}" GRAPH "${gn}" OPTIONS { edgeCollections: [ "${en}1" ] } SORT v._id RETURN DISTINCT v._id`, [ 1, 2 ] ],
+    [ `WITH ${vn} FOR v IN 1..2 OUTBOUND "${vn}/${keys[0]}" GRAPH "${gn}" OPTIONS { edgeCollections: [ "${en}2" ] } SORT v._id RETURN DISTINCT v._id`, [ 6 ] ],
+    [ `WITH ${vn} FOR v IN 1..3 OUTBOUND "${vn}/${keys[0]}" GRAPH "${gn}" OPTIONS { edgeCollections: [ "${en}1" ] } SORT v._id RETURN DISTINCT v._id`, [ 1, 2, 3 ] ],
+    [ `WITH ${vn} FOR v IN 1..3 OUTBOUND "${vn}/${keys[0]}" GRAPH "${gn}" OPTIONS { edgeCollections: [ "${en}2" ] } SORT v._id RETURN DISTINCT v._id`, [ 6 ] ],
+
+    [ `WITH ${vn} FOR v IN 0..0 OUTBOUND "${vn}/${keys[0]}" GRAPH "${gn}" OPTIONS { edgeCollections: [ "${en}1", "${en}2" ] } SORT v._id RETURN DISTINCT v._id`, [ 0 ] ],
+    [ `WITH ${vn} FOR v IN 0..1 OUTBOUND "${vn}/${keys[0]}" GRAPH "${gn}" OPTIONS { edgeCollections: [ "${en}1", "${en}2" ] } SORT v._id RETURN DISTINCT v._id`, [ 0, 1, 6 ] ],
+    [ `WITH ${vn} FOR v IN 1..1 OUTBOUND "${vn}/${keys[0]}" GRAPH "${gn}" OPTIONS { edgeCollections: [ "${en}1", "${en}2" ] } SORT v._id RETURN DISTINCT v._id`, [ 1, 6 ] ],
+    [ `WITH ${vn} FOR v IN 1..2 OUTBOUND "${vn}/${keys[0]}" GRAPH "${gn}" OPTIONS { edgeCollections: [ "${en}1", "${en}2" ] } SORT v._id RETURN DISTINCT v._id`, [ 1, 2, 6, 7 ] ],
+    [ `WITH ${vn} FOR v IN 1..3 OUTBOUND "${vn}/${keys[0]}" GRAPH "${gn}" OPTIONS { edgeCollections: [ "${en}1", "${en}2" ] } SORT v._id RETURN DISTINCT v._id`, [ 1, 2, 3, 6, 7, 8 ] ],
+  ];
+
+  queries.forEach(function(q) {
+    if (checkOptimizerRule !== undefined) {
+      assertNotEqual(-1, AQL_EXPLAIN(q[0]).plan.rules.indexOf(checkOptimizerRule));
+    }
+    const actual = db._query(q[0]).toArray();
+    let expected = [];
+    q[1].forEach(function(e) {
+      expected.push(vn + "/" + keys[e]);
+    });
+    assertEqual(actual, expected, q);
+  });
+};
+
 exports.makeTree = makeTree;
 exports.PoorMansRandom = PoorMansRandom;
 exports.makeClusteredGraph = makeClusteredGraph;
@@ -623,3 +733,4 @@ exports.simulateDepthFirstSearch = simulateDepthFirstSearch;
 exports.checkBFSResult = checkBFSResult;
 exports.checkDFSResult = checkDFSResult;
 exports.storeGraph = storeGraph;
+exports.runTraversalRestrictEdgeCollectionTests = runTraversalRestrictEdgeCollectionTests;

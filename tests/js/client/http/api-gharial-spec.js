@@ -26,6 +26,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const chai = require('chai');
+const Joi = require('joi');
 const expect = chai.expect;
 chai.Assertion.addProperty('does', function () {
   return this;
@@ -37,6 +38,7 @@ const arango = arangodb.arango;
 const ERRORS = arangodb.errors;
 const db = arangodb.db;
 const internal = require('internal');
+const isCluster = internal.isCluster();
 const wait = internal.wait;
 const url = '/_api/gharial';
 
@@ -87,6 +89,42 @@ describe('_api/gharial', () => {
     }
   };
 
+  const validateGraphFormat = (graph) => {
+    const edgeDefinition = Joi.object({
+      collection: Joi.string().required(),
+      from: Joi.array().items(Joi.string()).required(),
+      to: Joi.array().items(Joi.string()).required()
+    });
+    let schema;
+    if (isCluster) {
+      schema = Joi.object({
+        "_key": Joi.string().required(),
+        "_rev": Joi.string().required(),
+        "_id": Joi.string().required(),
+        name: Joi.string().required(),
+        numberOfShards: Joi.number().integer().min(1).required(),
+        replicationFactor: Joi.number().integer().min(1).required(),
+        minReplicationFactor: Joi.number().integer().min(1).required(),
+        writeConcern: Joi.number().integer().min(1).required(),
+        isSmart: Joi.boolean().required(),
+        isSatellite: Joi.boolean().required(),
+        orphanCollections: Joi.array().items(Joi.string()).required(),
+        edgeDefinitions: Joi.array().items(edgeDefinition).required()
+      });
+    } else {
+      schema = Joi.object({
+        "_key": Joi.string().required(),
+        "_rev": Joi.string().required(),
+        "_id": Joi.string().required(),
+        name: Joi.string().required(),
+        orphanCollections: Joi.array().items(Joi.string()).required(),
+        edgeDefinitions: Joi.array().items(edgeDefinition).required()
+      });
+    }
+    const res = schema.validate(graph);
+    expect(res.error).to.be.null;
+  };
+
   beforeEach(cleanup);
 
   afterEach(cleanup);
@@ -106,7 +144,10 @@ describe('_api/gharial', () => {
       expect(db._collection(eColName)).to.be.null;
       expect(db._collection(vColName)).to.be.null;
       let req = arango.POST(url, graphDef);
+      expect(req).to.have.keys("error", "code", "graph");
       expect(req.code).to.equal(202);
+      expect(req.error).to.be.false;
+      validateGraphFormat(req.graph);
 
       // This is all async give it some time
       do {
@@ -116,6 +157,11 @@ describe('_api/gharial', () => {
 
       expect(db._collection(eColName)).to.not.be.null;
       expect(db._collection(vColName)).to.not.be.null;
+    
+      expect(req).to.have.keys("error", "code", "graph");
+      expect(req.code).to.equal(200);
+      expect(req.error).to.be.false;
+      validateGraphFormat(req.graph);
     });
 
     it('should create a graph with orphans', () => {
@@ -138,7 +184,10 @@ describe('_api/gharial', () => {
       expect(db._collection(oColName)).to.be.null;
       expect(db._collection(oColName2)).to.be.null;
       let req = arango.POST(url, graphDef);
+      expect(req).to.have.keys("error", "code", "graph");
       expect(req.code).to.equal(202);
+      expect(req.error).to.be.false;
+      validateGraphFormat(req.graph);
 
       // This is all async give it some time
       do {
@@ -150,6 +199,72 @@ describe('_api/gharial', () => {
       expect(db._collection(vColName)).to.not.be.null;
       expect(db._collection(oColName)).to.not.be.null;
       expect(db._collection(oColName2)).to.not.be.null;
+
+      expect(req).to.have.keys("error", "code", "graph");
+      expect(req.code).to.equal(200);
+      expect(req.error).to.be.false;
+      validateGraphFormat(req.graph);
+    });
+
+  });
+
+  describe('graph modification test suite', function () {
+    const vertexUrl = `${url}/${graphName}/vertex`;
+    const edgeUrl = `${url}/${graphName}/edge`;
+
+    beforeEach(() => {
+      const graphDef = {
+        "name": graphName,
+        "edgeDefinitions": [{
+          "collection": eColName,
+          "from": [vColName],
+          "to": [vColName]
+        }
+        ],
+        "isSmart": false
+      };
+      expect(db._collection(eColName)).to.be.null;
+      expect(db._collection(vColName)).to.be.null;
+      let req = arango.POST(url, graphDef);
+
+      // Just make sure the graph exists
+      do {
+        wait(0.1);
+        req = arango.GET(url + "/" + graphName);
+      } while (req.code !== 200);
+    });
+
+    it('should list all graphs in correct format', () => {
+      const res = arango.GET(url);
+      expect(res).to.have.keys("error", "code", "graphs");
+      expect(res.code).to.equal(200);
+      expect(res.error).to.be.false;
+      res.graphs.map(validateGraphFormat);
+    });
+
+    it('should be able to add an orphan', () => {
+      const res = arango.POST(vertexUrl, {collection: oColName});
+
+      expect(res).to.have.keys("error", "code", "graph");
+      expect(res.code).to.equal(202);
+      expect(res.error).to.be.false;
+      validateGraphFormat(res.graph);
+
+      expect(db._collection(oColName)).to.not.be.null;
+    });
+
+    it('should be able to modify edge definition', () => {
+      const res = arango.PUT(`${edgeUrl}/${eColName}`, {
+        "collection": eColName,
+        "from": [vColName, oColName],
+        "to": [vColName]
+      });
+      expect(res).to.have.keys("error", "code", "graph");
+      expect(res.code).to.equal(202);
+      expect(res.error).to.be.false;
+      validateGraphFormat(res.graph);
+
+      expect(db._collection(oColName)).to.not.be.null;
     });
   });
 
@@ -987,6 +1102,7 @@ describe('_api/gharial', () => {
           const eName = 'knows';
           const eName_2 = 'knows_2';
           expect(db._collection(eName)).to.be.null; // edgec
+          expect(db._collection(eName_2)).to.be.null; // edgec2
           expect(db._collection(vName)).to.be.null; // vertexc
           const g = examples.loadGraph(exampleGraphName);
           expect(g).to.not.be.null;

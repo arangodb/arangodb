@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShardingStrategyDefault.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
@@ -226,14 +228,14 @@ int ShardingStrategyNone::getResponsibleShard(arangodb::velocypack::Slice slice,
 }
 
 /// @brief a sharding class used to indicate that the selected sharding strategy
-/// is only available in the enterprise edition of ArangoDB
+/// is only available in the Enterprise Edition of ArangoDB
 /// calling getResponsibleShard on this class will always throw an exception
 /// with an appropriate error message
 ShardingStrategyOnlyInEnterprise::ShardingStrategyOnlyInEnterprise(std::string const& name)
     : ShardingStrategy(), _name(name) {}
 
 /// @brief will always throw an exception telling the user the selected sharding
-/// is only available in the enterprise edition
+/// is only available in the Enterprise Edition
 int ShardingStrategyOnlyInEnterprise::getResponsibleShard(arangodb::velocypack::Slice slice,
                                                           bool docComplete, ShardID& shardID,
                                                           bool& usesDefaultShardKeys,
@@ -241,7 +243,7 @@ int ShardingStrategyOnlyInEnterprise::getResponsibleShard(arangodb::velocypack::
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_ONLY_ENTERPRISE,
       std::string("sharding strategy '") + _name +
-          "' is only available in the enterprise edition of ArangoDB");
+          "' is only available in the Enterprise Edition of ArangoDB");
 }
 
 /// @brief base class for hash-based sharding
@@ -325,7 +327,7 @@ uint64_t ShardingStrategyHashBase::hashByAttributes(VPackSlice slice,
   return ::hashByAttributesImpl<false>(slice, attributes, docComplete, error, key);
 }
 
-/// @brief old version of the sharding used in the community edition
+/// @brief old version of the sharding used in the Community Edition
 /// this is DEPRECATED and should not be used for new collections
 ShardingStrategyCommunityCompat::ShardingStrategyCommunityCompat(ShardingInfo* sharding)
     : ShardingStrategyHashBase(sharding) {
@@ -340,7 +342,7 @@ ShardingStrategyCommunityCompat::ShardingStrategyCommunityCompat(ShardingInfo* s
   ::preventUseOnSmartEdgeCollection(_sharding->collection(), NAME);
 }
 
-/// @brief old version of the sharding used in the enterprise edition
+/// @brief old version of the sharding used in the Enterprise Edition
 /// this is DEPRECATED and should not be used for new collections
 ShardingStrategyEnterpriseBase::ShardingStrategyEnterpriseBase(ShardingInfo* sharding)
     : ShardingStrategyHashBase(sharding) {
@@ -361,7 +363,7 @@ ShardingStrategyEnterpriseBase::ShardingStrategyEnterpriseBase(ShardingInfo* sha
 }
 
 /// @brief this implementation of "hashByAttributes" is slightly different
-/// than the implementation in the Community version
+/// than the implementation in the Community Edition
 /// we leave the differences in place, because making any changes here
 /// will affect the data distribution, which we want to avoid
 uint64_t ShardingStrategyEnterpriseBase::hashByAttributes(
@@ -370,7 +372,7 @@ uint64_t ShardingStrategyEnterpriseBase::hashByAttributes(
   return ::hashByAttributesImpl<true>(slice, attributes, docComplete, error, key);
 }
 
-/// @brief old version of the sharding used in the enterprise edition
+/// @brief old version of the sharding used in the Enterprise Edition
 /// this is DEPRECATED and should not be used for new collections
 ShardingStrategyEnterpriseCompat::ShardingStrategyEnterpriseCompat(ShardingInfo* sharding)
     : ShardingStrategyEnterpriseBase(sharding) {

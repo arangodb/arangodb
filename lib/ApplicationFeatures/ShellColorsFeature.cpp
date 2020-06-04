@@ -22,6 +22,9 @@
 
 #include "ShellColorsFeature.h"
 
+#include "Basics/Common.h"
+#include "Basics/operating-system.h"
+
 #ifdef _WIN32
 #include "Basics/win-utils.h"
 #ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING

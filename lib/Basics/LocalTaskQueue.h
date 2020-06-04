@@ -33,6 +33,9 @@
 #include "Basics/Mutex.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace basics {
 
 class LocalTaskQueue;
@@ -44,7 +47,7 @@ class LocalTask : public std::enable_shared_from_this<LocalTask> {
   LocalTask& operator=(LocalTask const&) = delete;
 
   explicit LocalTask(std::shared_ptr<LocalTaskQueue> const& queue);
-  virtual ~LocalTask() {}
+  virtual ~LocalTask() = default;
 
   virtual void run() = 0;
   void dispatch();
@@ -65,7 +68,7 @@ class LocalCallbackTask : public std::enable_shared_from_this<LocalCallbackTask>
 
   LocalCallbackTask(std::shared_ptr<LocalTaskQueue> const& queue,
                     std::function<void()> const& cb);
-  virtual ~LocalCallbackTask() {}
+  virtual ~LocalCallbackTask() = default;
 
   virtual void run();
   void dispatch();
@@ -93,7 +96,7 @@ class LocalTaskQueue {
   LocalTaskQueue(LocalTaskQueue const&) = delete;
   LocalTaskQueue& operator=(LocalTaskQueue const&) = delete;
 
-  explicit LocalTaskQueue(PostFn poster);
+  explicit LocalTaskQueue(application_features::ApplicationServer& server, PostFn poster);
 
   ~LocalTaskQueue();
 
@@ -148,6 +151,11 @@ class LocalTaskQueue {
   int status();
 
  private:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief underlying application server
+  //////////////////////////////////////////////////////////////////////////////
+  application_features::ApplicationServer& _server;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief post task to scheduler/io_service
   //////////////////////////////////////////////////////////////////////////////

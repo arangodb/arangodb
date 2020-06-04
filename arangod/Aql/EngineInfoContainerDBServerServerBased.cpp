@@ -23,6 +23,8 @@
 
 #include "EngineInfoContainerDBServerServerBased.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionNode.h"
@@ -48,7 +50,7 @@ using namespace arangodb::aql;
 namespace {
 const double SETUP_TIMEOUT = 90.0;
 
-Result ExtractRemoteAndShard(VPackSlice keySlice, size_t& remoteId, std::string& shardId) {
+Result ExtractRemoteAndShard(VPackSlice keySlice, ExecutionNodeId& remoteId, std::string& shardId) {
   TRI_ASSERT(keySlice.isString());  // used as  a key in Json
   arangodb::velocypack::StringRef key(keySlice);
   size_t p = key.find(':');
@@ -57,8 +59,8 @@ Result ExtractRemoteAndShard(VPackSlice keySlice, size_t& remoteId, std::string&
             "Unexpected response from DBServer during setup"};
   }
   arangodb::velocypack::StringRef remId = key.substr(0, p);
-  remoteId = basics::StringUtils::uint64(remId.begin(), remId.length());
-  if (remoteId == 0) {
+  remoteId = ExecutionNodeId{basics::StringUtils::uint64(remId.begin(), remId.length())};
+  if (remoteId == ExecutionNodeId{0}) {
     return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
             "Unexpected response from DBServer during setup"};
   }
@@ -74,14 +76,19 @@ Result ExtractRemoteAndShard(VPackSlice keySlice, size_t& remoteId, std::string&
 
 EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngineShardLists(
     GraphNode const* node, ServerID const& server,
-    std::unordered_map<ShardID, ServerID> const& shardMapping, Query const& query)
+    std::unordered_map<ShardID, ServerID> const& shardMapping, QueryContext& query)
     : _node(node), _hasShard(false) {
   auto const& edges = _node->edgeColls();
   TRI_ASSERT(!edges.empty());
-  std::unordered_set<std::string> const& restrictToShards =
-      query.queryOptions().shardIds;
+  auto const& restrictToShards = query.queryOptions().restrictToShards;
   // Extract the local shards for edge collections.
   for (auto const& col : edges) {
+#ifdef USE_ENTERPRISE
+    if (query.trxForOptimization().isInaccessibleCollection(col->id())) {
+      _inaccessible.insert(col->name());
+      _inaccessible.insert(std::to_string(col->id()));
+    }
+#endif
     _edgeCollections.emplace_back(
         getAllLocalShards(shardMapping, server, col->shardIds(restrictToShards)));
   }
@@ -92,16 +99,14 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
   // It might in fact be empty, if we only have edge collections in a graph.
   // Or if we guarantee to never read vertex data.
   for (auto const& col : vertices) {
-    auto shards = getAllLocalShards(shardMapping, server, col->shardIds(restrictToShards));
 #ifdef USE_ENTERPRISE
-    for (auto const& s : shards) {
-      if (query.trx()->isInaccessibleCollectionId(col->getPlanId())) {
-        _inaccessibleShards.insert(s);
-        _inaccessibleShards.insert(std::to_string(col->id()));
-      }
+    if (query.trxForOptimization().isInaccessibleCollection(col->id())) {
+      _inaccessible.insert(col->name());
+      _inaccessible.insert(std::to_string(col->id()));
     }
 #endif
-    _vertexCollections.emplace(col->name(), std::move(shards));
+    auto shards = getAllLocalShards(shardMapping, server, col->shardIds(restrictToShards));
+    _vertexCollections.try_emplace(col->name(), std::move(shards));
   }
 }
 
@@ -169,17 +174,6 @@ void EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::serializ
     infoBuilder.close();
   }
   infoBuilder.close();  // edges
-
-#ifdef USE_ENTERPRISE
-  if (!_inaccessibleShards.empty()) {
-    infoBuilder.add(VPackValue("inaccessible"));
-    infoBuilder.openArray();
-    for (ShardID const& shard : _inaccessibleShards) {
-      infoBuilder.add(VPackValue(shard));
-    }
-    infoBuilder.close();  // inaccessible
-  }
-#endif
   infoBuilder.close();  // shards
 
   _node->enhanceEngineInfo(infoBuilder);
@@ -188,33 +182,31 @@ void EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::serializ
   TRI_ASSERT(infoBuilder.isOpenArray());
 }
 
-EngineInfoContainerDBServerServerBased::EngineInfoContainerDBServerServerBased(Query& query) noexcept
-    : _query(query), _shardLocking(&query), _lastSnippetId(1) {
+EngineInfoContainerDBServerServerBased::EngineInfoContainerDBServerServerBased(QueryContext& query) noexcept
+    : _query(query), _shardLocking(query), _lastSnippetId(1) {
   // NOTE: We need to start with _lastSnippetID > 0. 0 is reserved for GraphNodes
 }
 
-void EngineInfoContainerDBServerServerBased::injectVertexColletions(GraphNode* graphNode) {
+void EngineInfoContainerDBServerServerBased::injectVertexCollections(GraphNode* graphNode) {
   auto const& vCols = graphNode->vertexColls();
   if (vCols.empty()) {
-    std::map<std::string, Collection*> const* allCollections =
-      _query.collections()->collections();
     auto& resolver = _query.resolver();
-    for (auto const& it : *allCollections) {
+    _query.collections().visit([&resolver, graphNode](std::string const& name, aql::Collection* collection) {
       // If resolver cannot resolve this collection
       // it has to be a view.
-      if (!resolver.getCollection(it.first)) {
-        continue;
+      if (resolver.getCollection(name)) {
+        // All known edge collections will be ignored by this call!
+        graphNode->injectVertexCollection(collection);
       }
-      // All known edge collections will be ignored by this call!
-      graphNode->injectVertexCollection(it.second);
-    }
+      return true;
+    });
   }
 }
 
 // Insert a new node into the last engine on the stack
 // If this Node contains Collections, they will be added into the map
 // for ShardLocking
-void EngineInfoContainerDBServerServerBased::addNode(ExecutionNode* node) {
+void EngineInfoContainerDBServerServerBased::addNode(ExecutionNode* node, bool pushToSingleServer) {
   TRI_ASSERT(node);
   TRI_ASSERT(!_snippetStack.empty());
 
@@ -225,7 +217,9 @@ void EngineInfoContainerDBServerServerBased::addNode(ExecutionNode* node) {
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::K_SHORTEST_PATHS: {
-      injectVertexColletions(static_cast<GraphNode*>(node));
+      auto* const graphNode = ExecutionNode::castTo<GraphNode*>(node);
+      graphNode->prepareOptions();
+      injectVertexCollections(graphNode);
       break;
     }
     default:
@@ -233,12 +227,12 @@ void EngineInfoContainerDBServerServerBased::addNode(ExecutionNode* node) {
   }
 
   // Upgrade CollectionLocks if necessary
-  _shardLocking.addNode(node, _snippetStack.top()->id());
+  _shardLocking.addNode(node, _snippetStack.top()->id(), pushToSingleServer);
 }
 
 // Open a new snippet, which provides data for the given sink node (for now only RemoteNode allowed)
 void EngineInfoContainerDBServerServerBased::openSnippet(GatherNode const* sinkGatherNode,
-                                                         size_t sinkRemoteId) {
+                                                         ExecutionNodeId sinkRemoteId) {
   _snippetStack.emplace(std::make_shared<QuerySnippet>(sinkGatherNode, sinkRemoteId,
                                                        _lastSnippetId++));
 }
@@ -247,7 +241,7 @@ void EngineInfoContainerDBServerServerBased::openSnippet(GatherNode const* sinkG
 // to the given queryid of the coordinator.
 void EngineInfoContainerDBServerServerBased::closeSnippet(QueryId inputSnippet) {
   TRI_ASSERT(!_snippetStack.empty());
-  auto e = _snippetStack.top();
+  std::shared_ptr<QuerySnippet> e = _snippetStack.top();
   TRI_ASSERT(e);
   _snippetStack.pop();
   e->useQueryIdAsInput(inputSnippet);
@@ -266,7 +260,9 @@ void EngineInfoContainerDBServerServerBased::closeSnippet(QueryId inputSnippet) 
 //   In case the network is broken and this shutdown request is lost
 //   the DBServers will clean up their snippets after a TTL.
 Result EngineInfoContainerDBServerServerBased::buildEngines(
-    MapRemoteToSnippet& queryIds, std::unordered_map<size_t, size_t>& nodeAliases) {
+    std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
+    MapRemoteToSnippet& snippetIds, std::map<std::string, QueryId>& serverToQueryId,
+    std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases) {
   // This needs to be a set with a defined order, it is important, that we contact
   // the database servers only in this specific order to avoid cluster-wide deadlock situations.
   std::vector<ServerID> dbServers = _shardLocking.getRelevantServers();
@@ -278,6 +274,10 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   // Otherwise the locking needs to be empty.
   TRI_ASSERT(!_closedSnippets.empty() || !_graphNodes.empty());
 
+  auto cleanupGuard = scopeGuard([this, &snippetIds]() {
+    cleanupEngines(TRI_ERROR_INTERNAL, _query.vocbase().name(), snippetIds);
+  });
+  
   NetworkFeature const& nf = _query.vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   if (pool == nullptr) {
@@ -285,18 +285,14 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     return {TRI_ERROR_SHUTTING_DOWN};
   }
 
-  auto cleanupGuard = scopeGuard([this, pool, &queryIds]() {
-    cleanupEngines(pool, TRI_ERROR_INTERNAL, _query.vocbase().name(), queryIds);
-  });
-
   // Build Lookup Infos
   VPackBuilder infoBuilder;
-  transaction::Methods* trx = _query.trx();
-  
+  transaction::Methods& trx = _query.trxForOptimization();
+
   network::RequestOptions options;
   options.database = _query.vocbase().name();
   options.timeout = network::Timeout(SETUP_TIMEOUT);
-  options.skipScheduler = true; // hack to speed up future.get()
+  options.skipScheduler = true;  // hack to speed up future.get()
   options.param("ttl", std::to_string(_query.queryOptions().ttl));
 
   for (auto const& server : dbServers) {
@@ -314,14 +310,24 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 
     addVariablesPart(infoBuilder);
     TRI_ASSERT(infoBuilder.isOpenObject());
+    
+    infoBuilder.add("isModificationQuery", VPackValue(_query.isModificationQuery()));
+    infoBuilder.add("isAsyncQuery", VPackValue(_query.isAsyncQuery()));
 
-    addSnippetPart(infoBuilder, _shardLocking, nodeAliases, server);
+    addSnippetPart(nodesById, infoBuilder, _shardLocking, nodeAliases, server);
     TRI_ASSERT(infoBuilder.isOpenObject());
     auto shardMapping = _shardLocking.getShardMapping();
     std::vector<bool> didCreateEngine =
         addTraversalEnginesPart(infoBuilder, shardMapping, server);
     TRI_ASSERT(didCreateEngine.size() == _graphNodes.size());
     TRI_ASSERT(infoBuilder.isOpenObject());
+
+    infoBuilder.add(StaticStrings::SerializationFormat,
+                    VPackValue(static_cast<SerializationFormatType>(
+                        aql::SerializationFormat::SHADOWROWS)));
+
+    infoBuilder.add(StaticStrings::ArangoSearchAnalyzersRevision, 
+                    VPackValue(trx.state()->analyzersRevision()));
 
     infoBuilder.close();  // Base object
     TRI_ASSERT(infoBuilder.isClosed());
@@ -350,12 +356,12 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 
     // add the transaction ID header
     network::Headers headers;
-    ClusterTrxMethods::addAQLTransactionHeader(*trx, server, headers);
+    ClusterTrxMethods::addAQLTransactionHeader(trx, server, headers);
     auto res = network::sendRequest(pool, serverDest, fuerte::RestVerb::Post,
                                     "/_api/aql/setup", std::move(buffer),
                                     options, std::move(headers))
                    .get();
-    _query.incHttpRequests(1);
+    _query.incHttpRequests(unsigned(1));
     if (res.fail()) {
       int code = network::fuerteToArangoErrorCode(res);
       std::string message = network::fuerteToArangoErrorMessage(res);
@@ -364,15 +370,19 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       LOG_TOPIC("41082", TRACE, Logger::AQL) << infoSlice.toJson();
       return {code, message};
     }
-    auto slices = res.response->slices();
-    if (slices.empty()) {
+
+    VPackSlice response = res.response->slice();
+    if (response.isNone()) {
       return {TRI_ERROR_INTERNAL, "malformed response while building engines"};
     }
-    VPackSlice response = slices[0];
-    auto result = parseResponse(response, queryIds, server, serverDest, didCreateEngine);
+    QueryId globalId = 0;
+    auto result = parseResponse(response, snippetIds, server, serverDest,
+                                didCreateEngine, globalId);
     if (!result.ok()) {
       return result;
     }
+    auto insert = serverToQueryId.try_emplace(serverDest, globalId);
+    TRI_ASSERT(insert.second);
   }
   cleanupGuard.cancel();
   return TRI_ERROR_NO_ERROR;
@@ -380,7 +390,8 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 
 Result EngineInfoContainerDBServerServerBased::parseResponse(
     VPackSlice response, MapRemoteToSnippet& queryIds, ServerID const& server,
-    std::string const& serverDest, std::vector<bool> const& didCreateEngine) const {
+    std::string const& serverDest, std::vector<bool> const& didCreateEngine,
+    QueryId& globalQueryId) const {
   if (!response.isObject() || !response.get("result").isObject()) {
     LOG_TOPIC("0c3f2", ERR, Logger::AQL) << "Received error information from "
                                          << server << " : " << response.toJson();
@@ -392,8 +403,16 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
   }
 
   VPackSlice result = response.get("result");
+  
+  // simon: in 3.7 we get a queryId for all snippets
+  VPackSlice queryIdSlice = result.get("queryId");
+  if (queryIdSlice.isNumber()) {
+    globalQueryId = queryIdSlice.getNumber<QueryId>();
+  } else {
+    globalQueryId = 0;
+  }
+  
   VPackSlice snippets = result.get("snippets");
-
   // Link Snippets to their sinks
   for (auto const& resEntry : VPackObjectIterator(snippets)) {
     if (!resEntry.value.isString()) {
@@ -403,13 +422,13 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
               "failover. Please check: " +
                   server};
     }
-    size_t remoteId = 0;
+    auto remoteId = ExecutionNodeId{0};
     std::string shardId = "";
     auto res = ExtractRemoteAndShard(resEntry.key, remoteId, shardId);
     if (!res.ok()) {
       return res;
     }
-    TRI_ASSERT(remoteId != 0);
+    TRI_ASSERT(remoteId != ExecutionNodeId{0});
     TRI_ASSERT(!shardId.empty());
     auto& remote = queryIds[remoteId];
     auto& thisServer = remote[serverDest];
@@ -437,7 +456,7 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
                   "failover. Please check; " +
                       server};
         }
-        _graphNodes[i]->addEngine(idIter.value().getNumber<traverser::TraverserEngineID>(),
+        _graphNodes[i]->addEngine(idIter.value().getNumber<aql::EngineId>(),
                                   server);
         idIter.next();
       }
@@ -463,13 +482,17 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
  * -> queryid.
  */
 void EngineInfoContainerDBServerServerBased::cleanupEngines(
-    network::ConnectionPool* pool, int errorCode, std::string const& dbname,
-    MapRemoteToSnippet& queryIds) const {
+    int errorCode, std::string const& dbname,
+    MapRemoteToSnippet& snippetIds) const {
+  
+  NetworkFeature const& nf = _query.vocbase().server().getFeature<NetworkFeature>();
+  network::ConnectionPool* pool = nf.pool();
+  
   network::RequestOptions options;
   options.database = dbname;
   options.timeout = network::Timeout(10.0);  // Picked arbitrarily
-  options.skipScheduler = true; // hack to speed up future.get()
-  
+  options.skipScheduler = true;              // hack to speed up future.get()
+
   // Shutdown query snippets
   std::string url("/_api/aql/shutdown/");
   VPackBuffer<uint8_t> body;
@@ -477,7 +500,7 @@ void EngineInfoContainerDBServerServerBased::cleanupEngines(
   builder.openObject();
   builder.add("code", VPackValue(std::to_string(errorCode)));
   builder.close();
-  for (auto const& it : queryIds) {
+  for (auto const& it : snippetIds) {
     // it.first == RemoteNodeId, we don't need this
     // it.second server -> [snippets]
     for (auto const& serToSnippets : it.second) {
@@ -485,9 +508,9 @@ void EngineInfoContainerDBServerServerBased::cleanupEngines(
       for (auto const& shardId : serToSnippets.second) {
         // fire and forget
         network::sendRequest(pool, server, fuerte::RestVerb::Put, url + shardId,
-                             /*copy*/body, options);
+                             /*copy*/ body, options);
       }
-      _query.incHttpRequests(serToSnippets.second.size());
+      _query.incHttpRequests(static_cast<unsigned>(serToSnippets.second.size()));
     }
   }
 
@@ -500,22 +523,21 @@ void EngineInfoContainerDBServerServerBased::cleanupEngines(
     for (auto const& engine : *allEngines) {
       // fire and forget
       network::sendRequest(pool, engine.first, fuerte::RestVerb::Delete,
-                           url + basics::StringUtils::itoa(engine.second),
-                           noBody, options);
+                           url + basics::StringUtils::itoa(engine.second), noBody, options);
     }
-    _query.incHttpRequests(allEngines->size());
+    _query.incHttpRequests(static_cast<unsigned>(allEngines->size()));
   }
 
-  queryIds.clear();
+  snippetIds.clear();
 }
 
 // Insert a GraphNode that needs to generate TraverserEngines on
 // the DBServers. The GraphNode itself will retain on the coordinator.
-void EngineInfoContainerDBServerServerBased::addGraphNode(GraphNode* node) {
+void EngineInfoContainerDBServerServerBased::addGraphNode(GraphNode* node, bool pushToSingleServer) {
   node->prepareOptions();
-  injectVertexColletions(node);
+  injectVertexCollections(node);
   // SnippetID does not matter on GraphNodes
-  _shardLocking.addNode(node, 0);
+  _shardLocking.addNode(node, 0, pushToSingleServer);
   _graphNodes.emplace_back(node);
 }
 
@@ -536,17 +558,18 @@ void EngineInfoContainerDBServerServerBased::addOptionsPart(arangodb::velocypack
   builder.add(VPackValue("options"));
   // toVelocyPack will open & close the "options" object
 #ifdef USE_ENTERPRISE
-  if (_query.trx()->state()->options().skipInaccessibleCollections) {
+  if (_query.queryOptions().transactionOptions.skipInaccessibleCollections) {
     aql::QueryOptions opts = _query.queryOptions();
     TRI_ASSERT(opts.transactionOptions.skipInaccessibleCollections);
-    auto usedCollections = _shardLocking.getUsedCollections();
-    for (auto const& it : usedCollections) {
-      TRI_ASSERT(it != nullptr);
-      if (_query.trx()->isInaccessibleCollectionId(it->getPlanId())) {
-        for (ShardID const& sid : _shardLocking.getShardsForCollection(server, it)) {
+    std::vector<Collection const*> used = _shardLocking.getUsedCollections();
+    for (Collection const* coll : used) {
+      TRI_ASSERT(coll != nullptr);
+      // simon: add collection name, plan ID and shard IDs
+      if (_query.trxForOptimization().isInaccessibleCollection(coll->id())) {
+        for (ShardID const& sid : _shardLocking.getShardsForCollection(server, coll)) {
           opts.inaccessibleCollections.insert(sid);
         }
-        opts.inaccessibleCollections.insert(std::to_string(it->getPlanId()));
+        opts.inaccessibleCollections.insert(std::to_string(coll->id()));
       }
     }
     opts.toVelocyPack(builder, true);
@@ -568,13 +591,14 @@ void EngineInfoContainerDBServerServerBased::addVariablesPart(arangodb::velocypa
 
 // Insert the Snippets information into the message to be send to DBServers
 void EngineInfoContainerDBServerServerBased::addSnippetPart(
+    std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
     arangodb::velocypack::Builder& builder, ShardLocking& shardLocking,
-    std::unordered_map<size_t, size_t>& nodeAliases, ServerID const& server) const {
+    std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases, ServerID const& server) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("snippets"));
   builder.openObject();
   for (auto const& snippet : _closedSnippets) {
-    snippet->serializeIntoBuilder(server, shardLocking, nodeAliases, builder);
+    snippet->serializeIntoBuilder(server, nodesById, shardLocking, nodeAliases, builder);
   }
   builder.close();  // snippets
 }

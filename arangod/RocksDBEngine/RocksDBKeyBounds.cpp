@@ -52,6 +52,12 @@ RocksDBKeyBounds RocksDBKeyBounds::CollectionDocuments(uint64_t collectionObject
   return RocksDBKeyBounds(RocksDBEntryType::Document, collectionObjectId);
 }
 
+RocksDBKeyBounds RocksDBKeyBounds::CollectionDocumentRange(uint64_t collectionObjectId,
+                                                           std::size_t min,
+                                                           std::size_t max) {
+  return RocksDBKeyBounds(RocksDBEntryType::Document, collectionObjectId, min, max);
+}
+
 RocksDBKeyBounds RocksDBKeyBounds::PrimaryIndex(uint64_t indexId) {
   return RocksDBKeyBounds(RocksDBEntryType::PrimaryIndexValue, indexId);
 }
@@ -142,7 +148,7 @@ RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexPrefix(uint64_t objectId,
 
   uint64ToPersistent(internals.buffer(), objectId);
   internals.buffer().append(word.data(), word.length());
-  internals.push_back(0xFFU);
+  internals.push_back(static_cast<char>(0xFFU));
   // 0xFF is higher than any valud utf-8 character
   return b;
 }
@@ -226,6 +232,7 @@ rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
     case RocksDBEntryType::ReplicationApplierConfig:
     case RocksDBEntryType::IndexEstimateValue:
     case RocksDBEntryType::KeyGeneratorValue:
+    case RocksDBEntryType::RevisionTreeValue:
     case RocksDBEntryType::View:
       return RocksDBColumnFamily::definitions();
   }
@@ -277,7 +284,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type) : _type(type) {
 
       _internals.separate();
       _internals.push_back(static_cast<char>(_type));
-      _internals.push_back(0xFFU);
+      _internals.push_back(static_cast<char>(0xFFU));
       break;
     }
     case RocksDBEntryType::CounterValue:
@@ -318,7 +325,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
       _internals.reserve(2 * sizeof(uint64_t) + min.byteSize() + max.byteSize());
 
       uint64ToPersistent(_internals.buffer(), first);
-      _internals.buffer().append((char*)(min.begin()), min.byteSize());
+      _internals.buffer().append((char const*)(min.begin()), min.byteSize());
 
       _internals.separate();
 
@@ -327,10 +334,10 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
         // for the upper bound we can use the object id + 1, which will always compare higher in a
         // bytewise comparison
         uint64ToPersistent(_internals.buffer(), first + 1);
-        _internals.buffer().append((char*)(min.begin()), min.byteSize());
+        _internals.buffer().append((char const*)(min.begin()), min.byteSize());
       } else {
         uint64ToPersistent(_internals.buffer(), first);
-        _internals.buffer().append((char*)(max.begin()), max.byteSize());
+        _internals.buffer().append((char const*)(max.begin()), max.byteSize());
       }
       break;
     }
@@ -482,6 +489,17 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
                                    uint64_t second, uint64_t third)
     : _type(type) {
   switch (_type) {
+    case RocksDBEntryType::Document: {
+      // Documents are stored as follows:
+      // Key: 8-byte object ID of collection + 8-byte document revision ID
+      _internals.reserve(4 * sizeof(uint64_t));
+      uint64ToPersistent(_internals.buffer(), first);   // objectid
+      uint64ToPersistent(_internals.buffer(), second);  // min revision
+      _internals.separate();
+      uint64ToPersistent(_internals.buffer(), first);  // objectid
+      uint64ToPersistent(_internals.buffer(), third);  // max revision
+      break;
+    }
     case RocksDBEntryType::GeoIndexValue: {
       _internals.reserve(sizeof(uint64_t) * 3 * 2);
       uint64ToPersistent(_internals.buffer(), first);

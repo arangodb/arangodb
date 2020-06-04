@@ -111,7 +111,7 @@ std::unique_ptr<arangodb::aql::Query> prepareQuery(
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& optionsString = "{}");
 
-uint64_t getCurrentPlanVersion();
+uint64_t getCurrentPlanVersion(arangodb::application_features::ApplicationServer&);
 
 void setDatabasePath(arangodb::DatabasePathFeature& feature);
 
@@ -149,18 +149,12 @@ void assertExpressionFilter(
     std::function<arangodb::aql::AstNode*(arangodb::aql::AstNode*)> const& expressionExtractor = &defaultExpressionExtractor,
     std::string const& refName = "d");
 
-void assertFilterBoost(
-  irs::filter const& expected,
-  irs::filter const& actual
-);
+void assertFilterBoost(irs::filter const& expected, irs::filter const& actual);
 
-void assertFilterOptimized(
-  TRI_vocbase_t& vocbase,
-  std::string const& queryString,
-  irs::filter const& expectedFilter,
-  arangodb::aql::ExpressionContext* exprCtx = nullptr,
-  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr
-);
+void assertFilterOptimized(TRI_vocbase_t& vocbase, std::string const& queryString,
+                           irs::filter const& expectedFilter,
+                           arangodb::aql::ExpressionContext* exprCtx = nullptr,
+                           std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr);
 
 void assertFilter(TRI_vocbase_t& vocbase, bool parseOk, bool execOk,
                   std::string const& queryString, irs::filter const& expected,
@@ -187,7 +181,8 @@ void assertFilterExecutionFail(TRI_vocbase_t& vocbase, std::string const& queryS
 void assertFilterParseFail(TRI_vocbase_t& vocbase, std::string const& queryString,
                            std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr);
 
-void buildActualFilter(TRI_vocbase_t& vocbase, std::string const& queryString, irs::filter& actual,
+void buildActualFilter(TRI_vocbase_t& vocbase, std::string const& queryString,
+                       irs::filter& actual,
                        arangodb::aql::ExpressionContext* exprCtx = nullptr,
                        std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
                        std::string const& refName = "d");
@@ -201,11 +196,18 @@ inline VPackBuilder dbArgsBuilder(std::string const& name = "_system") {
   builder.add("replicationFactor", VPackValue(1));
   builder.close();
   return builder;
-};
+}
 
-arangodb::CreateDatabaseInfo createInfo(arangodb::application_features::ApplicationServer& server, std::string const& name, uint64_t id, bool allowSystemDB = false);
-arangodb::CreateDatabaseInfo systemDBInfo(arangodb::application_features::ApplicationServer& server, std::string const& name = arangodb::StaticStrings::SystemDatabase, uint64_t id = 1);
-arangodb::CreateDatabaseInfo testDBInfo(arangodb::application_features::ApplicationServer& server, std::string const& name = "testVocbase", uint64_t id = 2);
-arangodb::CreateDatabaseInfo unknownDBInfo(arangodb::application_features::ApplicationServer& server, std::string const& name = "unknownVocbase", uint64_t id = 3);
+arangodb::CreateDatabaseInfo createInfo(arangodb::application_features::ApplicationServer& server,
+                                        std::string const& name, uint64_t id);
+arangodb::CreateDatabaseInfo systemDBInfo(
+    arangodb::application_features::ApplicationServer& server,
+    std::string const& name = arangodb::StaticStrings::SystemDatabase, uint64_t id = 1);
+arangodb::CreateDatabaseInfo testDBInfo(arangodb::application_features::ApplicationServer& server,
+                                        std::string const& name = "testVocbase",
+                                        uint64_t id = 2);
+arangodb::CreateDatabaseInfo unknownDBInfo(
+    arangodb::application_features::ApplicationServer& server,
+    std::string const& name = "unknownVocbase", uint64_t id = 3);
 
 #endif

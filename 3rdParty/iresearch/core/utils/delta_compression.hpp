@@ -43,7 +43,9 @@ class IRESEARCH_API delta_decompressor : public decompressor, private util::nonc
 }; // delta_decompressor
 
 struct IRESEARCH_API delta {
-  DECLARE_COMPRESSION_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::compression::delta";
+  }
 
   static void init();
   static compression::compressor::ptr compressor(const options& opts);

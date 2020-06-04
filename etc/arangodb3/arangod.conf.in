@@ -7,8 +7,6 @@
 [database]
 directory = @LOCALSTATEDIR@/lib/arangodb3
 
-# maximal-journal-size = 33554432
-
 [server]
 # Specify the endpoint for HTTP requests by clients.
 #  tcp://ipv4-address:port

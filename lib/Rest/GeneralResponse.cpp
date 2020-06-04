@@ -31,6 +31,10 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
+bool GeneralResponse::isValidResponseCode(uint64_t code) {
+  return ((code >= 100) && (code < 600));
+}
+
 std::string GeneralResponse::responseString(ResponseCode code) {
   switch (code) {
     //  Informational 1xx
@@ -152,13 +156,18 @@ std::string GeneralResponse::responseString(ResponseCode code) {
           return StringUtils::itoa((int)code) + " Client error";
         case 5:
           return StringUtils::itoa((int)code) + " Server error";
+        case 0:
+          if (static_cast<int>(code) != 0) {
+            return StringUtils::itoa(500) + " Internal Server error";
+          }
+          break;
         default:
           break;
       }
     }
   }
 
-  return StringUtils::itoa((int)code) + " Unknown";
+  return StringUtils::itoa(500) + " Internal Server error - Unknown";
 }
 
 rest::ResponseCode GeneralResponse::responseCode(std::string const& str) {
@@ -364,6 +373,8 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE:
     case TRI_ERROR_NO_SMART_JOIN_ATTRIBUTE:
     case TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE:
+    case TRI_ERROR_VALIDATION_FAILED:
+    case TRI_ERROR_VALIDATION_BAD_PARAMETER:
       return ResponseCode::BAD;
 
     case TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE:
@@ -441,9 +452,10 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
   }
 }
 
-GeneralResponse::GeneralResponse(ResponseCode responseCode)
-    : _responseCode(responseCode),
+GeneralResponse::GeneralResponse(ResponseCode responseCode, uint64_t mid)
+    : _messageId(mid),
+      _responseCode(responseCode),
       _contentType(ContentType::UNSET),
       _contentTypeRequested(ContentType::UNSET),
-      _generateBody(false),
+      _generateBody(true),
       _allowCompression(false) {}

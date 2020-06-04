@@ -54,6 +54,8 @@ class Collection {
   Collection(Collection const&) = delete;
   Collection& operator=(Collection const&) = delete;
 
+  static Builder& appendArray(Builder& builder, Slice const& left);
+
   static void forEach(Slice const& slice, Predicate const& predicate);
 
   static void forEach(Slice const* slice, Predicate const& predicate) {

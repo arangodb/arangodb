@@ -214,9 +214,6 @@ function transactionRevisionsSuite () {
       } catch (err) {
       }
 
-      if (db._engine().name === 'mmfiles' && !isCluster) {
-        assertEqual(1, c.figures().revisions.count);
-      }
       assertEqual(1, c.count());
       assertEqual(1, c.toArray().length);
       assertEqual(1, c.document('test').value);
@@ -230,9 +227,6 @@ function transactionRevisionsSuite () {
       } catch (err) {
       }
 
-      if (db._engine().name === 'mmfiles' && !isCluster) {
-        assertEqual(1, c.figures().revisions.count);
-      }
       assertEqual(1, c.count());
       assertEqual(1, c.toArray().length);
       assertEqual(1, c.document('test').value);
@@ -253,9 +247,6 @@ function transactionRevisionsSuite () {
       }
 
       assertEqual(1, c.toArray().length);
-      if (db._engine().name === 'mmfiles' && !isCluster) {
-        assertEqual(1, c.figures().revisions.count);
-      }
       assertEqual(1, c.document('test').value);
     },
 
@@ -274,9 +265,6 @@ function transactionRevisionsSuite () {
       }
 
       assertEqual(1, c.toArray().length);
-      if (db._engine().name === 'mmfiles' && !isCluster) {
-        assertEqual(1, c.figures().revisions.count);
-      }
       assertEqual(1, c.document('test').value);
     },
 
@@ -291,9 +279,6 @@ function transactionRevisionsSuite () {
       });
 
       assertEqual(1, c.toArray().length);
-      if (db._engine().name === 'mmfiles' && !isCluster) {
-        assertEqual(1, c.figures().revisions.count);
-      }
       assertEqual(2, c.document('test').value);
     },
 
@@ -302,9 +287,6 @@ function transactionRevisionsSuite () {
       c.update('test', { _key: 'test', _rev: doc._rev, value: 2 }, { isRestore: true });
 
       assertEqual(1, c.toArray().length);
-      if (db._engine().name === 'mmfiles' && !isCluster) {
-        assertEqual(1, c.figures().revisions.count);
-      }
       assertEqual(2, c.document('test').value);
     },
 
@@ -318,9 +300,6 @@ function transactionRevisionsSuite () {
       });
 
       assertEqual(1, c.toArray().length);
-      if (db._engine().name === 'mmfiles' && !isCluster) {
-        assertEqual(1, c.figures().revisions.count);
-      }
       assertEqual(2, c.document('test').value);
     },
 
@@ -339,9 +318,6 @@ function transactionRevisionsSuite () {
       }
 
       assertEqual(1, c.toArray().length);
-      if (db._engine().name === 'mmfiles' && !isCluster) {
-        assertEqual(1, c.figures().revisions.count);
-      }
       assertEqual(1, c.document('test').value);
     },
 
@@ -360,9 +336,6 @@ function transactionRevisionsSuite () {
       }
 
       assertEqual(1, c.toArray().length);
-      if (db._engine().name === 'mmfiles' && !isCluster) {
-        assertEqual(1, c.figures().revisions.count);
-      }
       assertEqual(1, c.document('test').value);
     },
 
@@ -382,9 +355,6 @@ function transactionRevisionsSuite () {
       }
 
       assertEqual(1, c.toArray().length);
-      if (db._engine().name === 'mmfiles' && !isCluster) {
-        assertEqual(1, c.figures().revisions.count);
-      }
       assertEqual(1, c.document('test').value);
     },
 
@@ -399,9 +369,6 @@ function transactionRevisionsSuite () {
       });
 
       assertEqual(1, c.toArray().length);
-      if (db._engine().name === 'mmfiles' && !isCluster) {
-        assertEqual(1, c.figures().revisions.count);
-      }
       assertEqual(2, c.document('test').value);
     },
 
@@ -421,9 +388,6 @@ function transactionRevisionsSuite () {
       }
 
       assertEqual(1, c.toArray().length);
-      if (db._engine().name === 'mmfiles' && !isCluster) {
-        assertEqual(1, c.figures().revisions.count);
-      }
       assertEqual(1, c.document('test').value);
     }
 
@@ -1471,62 +1435,6 @@ function transactionOperationsSuite () {
         },
         action: function () {
           c1.ensureFulltextIndex('foo');
-          fail();
-        }
-      };
-
-      try {
-        TRANSACTION(obj);
-        fail();
-      } catch (err) {
-        assertEqual(arangodb.errors.ERROR_TRANSACTION_DISALLOWED_OPERATION.code, err.errorNum);
-      }
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test: trx with create index operation
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testCreateGeoIndex: function () {
-      if (db._engine().name === 'rocksdb') {
-        return;
-      }
-
-      c1 = db._create(cn1);
-
-      var obj = {
-        collections: {
-        },
-        action: function () {
-          c1.ensureGeoIndex('foo', 'bar');
-          fail();
-        }
-      };
-
-      try {
-        TRANSACTION(obj);
-        fail();
-      } catch (err) {
-        assertEqual(arangodb.errors.ERROR_TRANSACTION_DISALLOWED_OPERATION.code, err.errorNum);
-      }
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test: trx with create index operation
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testCreateGeoConstraint: function () {
-      if (db._engine().name === 'rocksdb') {
-        return;
-      }
-
-      c1 = db._create(cn1);
-
-      var obj = {
-        collections: {
-        },
-        action: function () {
-          c1.ensureGeoConstraint('foo', 'bar', true);
           fail();
         }
       };

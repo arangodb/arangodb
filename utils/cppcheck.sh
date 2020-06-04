@@ -1,7 +1,22 @@
-#!/usr/bin/env sh
-rm -f cppcheck.xml cppcheck.xml.tmp
+#!/usr/bin/env bash
 
-cppcheck $* \
+ferr() { echo "$*"; exit 1; }
+
+if [[ $1 == "-j" ]]; then
+  threads=$2
+  shift 2
+else
+  threads=$(nproc)
+fi
+
+if [[ -n $* ]]; then
+  files=( "$@" )
+else
+  files=( arangod/ arangosh/ lib/ enterprise/ )
+fi
+
+cppcheck "$@" \
+  -j $threads \
   --xml --xml-version=2 \
   -I arangod \
   -I arangosh \
@@ -12,7 +27,7 @@ cppcheck $* \
   -I lib \
   -D USE_PLAN_CACHE \
   --std=c++17 \
-  --enable=warning,style,performance,portability,missingInclude \
+  --enable=warning,performance,portability,missingInclude \
   --force \
   --quiet \
   --platform=unix64 \
@@ -42,22 +57,29 @@ cppcheck $* \
   --suppress="redundantAssignment" \
   --suppress="shadowFunction" \
   --suppress="shadowVar" \
+  --suppress="shadowVariable" \
   --suppress="stlFindInsert" \
   --suppress="syntaxError" \
   --suppress="uninitMemberVar" \
   --suppress="unreadVariable" \
   --suppress="useStlAlgorithm" \
   --suppress="variableScope" \
-  arangod/ arangosh/ lib/ enterprise/ 2> cppcheck.xml
-status=$?
+  "${files[@]}" \
+  2> cppcheck.out.xml \
+  || ferr "failed to run cppcheck"
 
-cat cppcheck.xml \
-  | egrep "<error |<location|</error>" cppcheck.xml \
-  | sed -e 's:^.*msg="\([^"]*\)".*:\1:' -e 's:^.*file="\([^"]*\)".*line="\([^"]*\)".*:    \1\:\2:' -e 's:&apos;:":g' -e 's:&gt;:>:g' -e 's:&lt;:<:g' -e 's:</error>::'
+grep -E "<error |<location|</error>" cppcheck.out.xml \
+  | sed -e 's#^.*id="\([^"]*\)".*msg="\([^"]*\)".*#\1: \2#' \
+        -e 's#^.*file="\([^"]*\)".*line="\([^"]*\)".*#    \1:\2#' \
+        -e 's:&apos;:":g' \
+        -e 's:&gt;:>:g' \
+        -e 's:&lt;:<:g' \
+        -e 's:</error>::' \
+        -e 's#^\s*$##' \
+  > cppcheck.log
 
-cat cppcheck.xml \
-  | sed -e "s:file=\":file=\"`pwd`/:g" \
-  > cppcheck.xml.tmp
-mv cppcheck.xml.tmp cppcheck.xml
+sed -e "s:file=\":file=\"$(pwd)/:g" \
+  < cppcheck.out.xml > cppcheck.xml
 
-exit $status
+cat cppcheck.log
+rm cppcheck.out.xml

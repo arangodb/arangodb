@@ -28,11 +28,12 @@
 
 #include "Basics/StringUtils.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ClusterTypes.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "utils/string.hpp"
+
 
 namespace arangodb {
 namespace iresearch {
@@ -47,18 +48,18 @@ void RestAnalyzerHandler::createAnalyzer( // create
 ) {
   TRI_ASSERT(_request); // ensured by execute()
 
-  if (_request->payload().isEmptyObject()) {
-    generateError(
-      arangodb::rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON
-    );
-    return;
-  }
-
   bool success = false;
   auto body = parseVPackBody(success);
 
   if (!success) {
     return; // parseVPackBody(...) calls generateError(...)
+  }
+
+  if (body.isEmptyObject()) {
+    generateError(
+      arangodb::rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON
+    );
+    return;
   }
 
   if (!body.isObject()) {
@@ -100,14 +101,13 @@ void RestAnalyzerHandler::createAnalyzer( // create
   }
 
   std::string nameBuf;
-  auto& server = arangodb::application_features::ApplicationServer::server();
-  auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
-                        ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
+  auto sysVocbase = server().hasFeature<arangodb::SystemDatabaseFeature>()
+                        ? server().getFeature<arangodb::SystemDatabaseFeature>().use()
                         : nullptr;
   if (sysVocbase) {
     nameBuf = IResearchAnalyzerFeature::normalize(name, _vocbase, *sysVocbase); // normalize
     name = nameBuf;
-  };
+  }
 
   irs::string_ref type;
   auto typeSlice = body.get(StaticStrings::AnalyzerTypeField);
@@ -125,7 +125,7 @@ void RestAnalyzerHandler::createAnalyzer( // create
   
   std::shared_ptr<VPackBuilder> propertiesFromStringBuilder;
   auto properties = body.get(StaticStrings::AnalyzerPropertiesField);
-  if(properties.isString()) { // string still could be parsed to an object
+  if (properties.isString()) { // string still could be parsed to an object
     auto string_ref = getStringRef(properties);
     propertiesFromStringBuilder = arangodb::velocypack::Parser::fromJson(string_ref);
     properties = propertiesFromStringBuilder->slice();
@@ -160,7 +160,7 @@ void RestAnalyzerHandler::createAnalyzer( // create
           return;
         }
 
-        auto* feature = irs::attribute::type_id::get(getStringRef(value), false);
+        const auto feature = irs::attributes::get(getStringRef(value), false);
 
         if (!feature) {
           generateError(arangodb::Result(
@@ -171,7 +171,7 @@ void RestAnalyzerHandler::createAnalyzer( // create
           return;
         }
 
-        features.add(*feature);
+        features.add(feature.id());
       }
     } else {
       generateError(arangodb::Result(
@@ -199,9 +199,8 @@ void RestAnalyzerHandler::createAnalyzer( // create
   IResearchAnalyzerFeature::EmplaceResult result;
   auto res = analyzers.emplace(result, name, type, properties, features);
 
-  if (!res.ok()) {
+  if (res.fail()) {
     generateError(res);
-
     return;
   }
 
@@ -235,8 +234,7 @@ arangodb::RestStatus RestAnalyzerHandler::execute() {
     return arangodb::RestStatus::DONE;
   }
 
-  auto& server = arangodb::application_features::ApplicationServer::server();
-  auto& analyzers = server.getFeature<IResearchAnalyzerFeature>();
+  auto& analyzers = server().getFeature<IResearchAnalyzerFeature>();
 
   auto& suffixes = _request->suffixes();
 
@@ -292,9 +290,8 @@ arangodb::RestStatus RestAnalyzerHandler::execute() {
 
 void RestAnalyzerHandler::getAnalyzer(IResearchAnalyzerFeature& analyzers,
                                       std::string const& requestedName) {
-  auto& server = arangodb::application_features::ApplicationServer::server();
-  auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
-                        ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
+  auto sysVocbase = server().hasFeature<arangodb::SystemDatabaseFeature>()
+                        ? server().getFeature<arangodb::SystemDatabaseFeature>().use()
                         : nullptr;
   auto normalizedName =
       sysVocbase ? IResearchAnalyzerFeature::normalize(requestedName, _vocbase, *sysVocbase)
@@ -327,7 +324,7 @@ void RestAnalyzerHandler::getAnalyzer(IResearchAnalyzerFeature& analyzers,
     return;
   }
 
-  auto pool = analyzers.get(normalizedName);
+  auto pool = analyzers.get(normalizedName, AnalyzersRevision::LATEST);
   if (!pool) {
     generateError(arangodb::Result(
       TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
@@ -368,10 +365,9 @@ void RestAnalyzerHandler::getAnalyzers(IResearchAnalyzerFeature& analyzers) {
     analyzers.visit(visitor, &_vocbase);
   }
 
-  auto& server = arangodb::application_features::ApplicationServer::server();
   // include analyzers from the system vocbase if possible
-  if (server.hasFeature<arangodb::SystemDatabaseFeature>()) {
-    auto sysVocbase = server.getFeature<arangodb::SystemDatabaseFeature>().use();
+  if (server().hasFeature<arangodb::SystemDatabaseFeature>()) {
+    auto sysVocbase = server().getFeature<arangodb::SystemDatabaseFeature>().use();
 
     if (sysVocbase // have system vocbase
         && sysVocbase->name() != _vocbase.name() // not same vocbase as current
@@ -412,13 +408,13 @@ void RestAnalyzerHandler::removeAnalyzer(
     return;
   }
 
-  auto& server = arangodb::application_features::ApplicationServer::server();
-  auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
-                        ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
+  auto sysVocbase = server().hasFeature<arangodb::SystemDatabaseFeature>()
+                        ? server().getFeature<arangodb::SystemDatabaseFeature>().use()
                         : nullptr;
   auto normalizedName =
       sysVocbase ? IResearchAnalyzerFeature::normalize(name, _vocbase, *sysVocbase)
                  : std::string(name);
+
   if (!IResearchAnalyzerFeature::canUse(normalizedName, auth::Level::RW)) {
     generateError(arangodb::Result( 
       TRI_ERROR_FORBIDDEN, 
@@ -426,11 +422,13 @@ void RestAnalyzerHandler::removeAnalyzer(
     ));
     return;
   }
+
   auto res = analyzers.remove(normalizedName, force);
   if (!res.ok()) {
     generateError(res);
     return;
   }
+
   arangodb::velocypack::Builder builder;
   builder.openObject();
   builder.add(StaticStrings::AnalyzerNameField, arangodb::velocypack::Value(normalizedName));

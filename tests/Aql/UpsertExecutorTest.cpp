@@ -24,6 +24,7 @@
 #include "QueryHelper.h"
 #include "gtest/gtest.h"
 
+#include "Aql/ExecutionBlock.h"
 #include "Basics/StringUtils.h"
 
 using namespace arangodb;
@@ -336,6 +337,10 @@ class UpsertExecutorIntegrationTest
 
   void SetUp() override {
     SCOPED_TRACE("Setup");
+    ASSERT_EQ(ExecutionBlock::ProductionDefaultBatchSize, ExecutionBlock::DefaultBatchSize);
+
+    ExecutionBlock::setDefaultBatchSize(100);
+
     auto info = VPackParser::fromJson(R"({"name":"UnitTestCollection"})");
     auto collection = vocbase.createCollection(info->slice());
     ASSERT_NE(collection.get(), nullptr) << "Failed to create collection";
@@ -353,6 +358,10 @@ class UpsertExecutorIntegrationTest
       }
     }
     AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
+  }
+
+  void TearDown() override {
+    ExecutionBlock::setDefaultBatchSize(ExecutionBlock::ProductionDefaultBatchSize);
   }
 
   size_t numDocs() const {
@@ -798,7 +807,7 @@ TEST_P(UpsertExecutorIntegrationTest, upsert_alternate_insert_upsert) {
 
 INSTANTIATE_TEST_CASE_P(UpsertExecutorIntegration, UpsertExecutorIntegrationTest,
                         ::testing::Combine(::testing::Values(UpsertType::UPDATE, UpsertType::REPLACE),
-                                           ::testing::Values(1, 1001)));
+                                           ::testing::Values(1, 101)));
 
 /* This works as well, but takes considerably more time to pass.
 INSTANTIATE_TEST_CASE_P(UpsertExecutorIntegration, UpsertExecutorIntegrationTest,

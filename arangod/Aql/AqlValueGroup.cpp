@@ -27,33 +27,38 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-AqlValueGroupHash::AqlValueGroupHash(arangodb::transaction::Methods* trx, size_t num)
-    : _trx(trx), _num(num) {}
+AqlValueGroupHash::AqlValueGroupHash(size_t num)
+    : _num(num) {}
 
 size_t AqlValueGroupHash::operator()(const std::vector<AqlValue>& value) const {
   uint64_t hash = 0x12345678;
 
   TRI_ASSERT(value.size() == _num);
 
-  for (auto const& it : value) {
+  for (AqlValue const& it : value) {
     // we must use the slow hash function here, because a value may have
     // different representations in case its an array/object/number
     // (calls normalizedHash() internally)
-    hash = it.hash(_trx, hash);
+    hash = it.hash(hash);
   }
 
   return static_cast<size_t>(hash);
 }
 
-AqlValueGroupEqual::AqlValueGroupEqual(arangodb::transaction::Methods* trx)
-    : _trx(trx) {}
+size_t AqlValueGroupHash::operator()(AqlValue const& value) const {
+  uint64_t hash = 0x12345678;
+  return value.hash(hash);
+}
+
+AqlValueGroupEqual::AqlValueGroupEqual(velocypack::Options const* opts)
+    : _vpackOptions(opts) {}
 
 bool AqlValueGroupEqual::operator()(const std::vector<AqlValue>& lhs,
                                     const std::vector<AqlValue>& rhs) const {
   size_t const n = lhs.size();
 
   for (size_t i = 0; i < n; ++i) {
-    int res = AqlValue::Compare(_trx, lhs[i], rhs[i], false);
+    int res = AqlValue::Compare(_vpackOptions, lhs[i], rhs[i], false);
 
     if (res != 0) {
       return false;
@@ -61,4 +66,8 @@ bool AqlValueGroupEqual::operator()(const std::vector<AqlValue>& lhs,
   }
 
   return true;
+}
+
+bool AqlValueGroupEqual::operator()(AqlValue const& lhs, AqlValue const& rhs) const {
+  return AqlValue::Compare(_vpackOptions, lhs, rhs, false) == 0;
 }

@@ -52,16 +52,14 @@ static arangodb::aql::QueryResult executeQuery(TRI_vocbase_t& vocbase,
   options->close();
   std::shared_ptr<arangodb::velocypack::Builder> bindVars;
 
-  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                             bindVars, options, arangodb::aql::PART_MAIN);
-  query.setTransactionContext(std::move(ctx));
+  arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString),
+                             bindVars, options);
 
-  std::shared_ptr<arangodb::aql::SharedQueryState> ss = query.sharedState();
   arangodb::aql::QueryResult result;
   while (true) {
-    auto state = query.execute(arangodb::QueryRegistryFeature::registry(), result);
+    auto state = query.execute(result);
     if (state == arangodb::aql::ExecutionState::WAITING) {
-      ss->waitForAsyncResponse();
+      query.sharedState()->waitForAsyncWakeup();
     } else {
       break;
     }
@@ -166,7 +164,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_abort) {
     ASSERT_NE(ctx.get(), nullptr);
 
     SingleCollectionTransaction trx(ctx, "testCollection", AccessMode::Type::WRITE);
-    ASSERT_TRUE(trx.state()->isEmbeddedTransaction());
+    ASSERT_TRUE(!trx.isMainTransaction());
 
     OperationOptions opts;
     auto opRes = trx.insert(coll->name(), doc->slice(), opts);
@@ -181,7 +179,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_abort) {
     ASSERT_NE(ctx.get(), nullptr);
 
     SingleCollectionTransaction trx(ctx, "testCollection", AccessMode::Type::READ);
-    ASSERT_TRUE(trx.state()->isEmbeddedTransaction());
+    ASSERT_TRUE(!trx.isMainTransaction());
 
     OperationOptions opts;
     auto opRes = trx.document(coll->name(), doc->slice(), opts);
@@ -217,7 +215,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit) {
     ASSERT_NE(ctx.get(), nullptr);
 
     SingleCollectionTransaction trx(ctx, "testCollection", AccessMode::Type::WRITE);
-    ASSERT_TRUE(trx.state()->isEmbeddedTransaction());
+    ASSERT_TRUE(!trx.isMainTransaction());
 
     auto doc = arangodb::velocypack::Parser::fromJson("{ \"abc\": 1}");
 
@@ -255,7 +253,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_while_in_use) {
     ASSERT_NE(ctx.get(), nullptr);
 
     SingleCollectionTransaction trx(ctx, "testCollection", AccessMode::Type::WRITE);
-    ASSERT_TRUE(trx.state()->isEmbeddedTransaction());
+    ASSERT_TRUE(!trx.isMainTransaction());
 
     auto doc = arangodb::velocypack::Parser::fromJson("{ \"abc\": 1}");
 
@@ -290,17 +288,26 @@ TEST_F(TransactionManagerTest, leading_multiple_readonly_transactions) {
   ASSERT_TRUE(res.ok());
 
   {
+    transaction::Options opts;
+    bool responsible;
+
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::READ);
     ASSERT_NE(ctx.get(), nullptr);
-    ASSERT_NE(ctx->getParentTransaction(), nullptr);
+    auto state1 = ctx->acquireState(opts, responsible);
+    ASSERT_NE(state1.get(), nullptr);
+    ASSERT_TRUE(!responsible);
 
     auto ctx2 = mgr->leaseManagedTrx(tid, AccessMode::Type::READ);
     ASSERT_NE(ctx2.get(), nullptr);
-    EXPECT_EQ(ctx->getParentTransaction(), ctx2->getParentTransaction());
+    auto state2 = ctx2->acquireState(opts, responsible);
+    EXPECT_EQ(state1.get(), state2.get());
+    ASSERT_TRUE(!responsible);
 
     auto ctx3 = mgr->leaseManagedTrx(tid, AccessMode::Type::READ);
     ASSERT_NE(ctx3.get(), nullptr);
-    EXPECT_EQ(ctx->getParentTransaction(), ctx3->getParentTransaction());
+    auto state3 = ctx3->acquireState(opts, responsible);
+    EXPECT_EQ(state3.get(), state2.get());
+    ASSERT_TRUE(!responsible);
   }
   ASSERT_TRUE(mgr->abortManagedTrx(tid).ok());
   ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::ABORTED);
@@ -320,9 +327,14 @@ TEST_F(TransactionManagerTest, lock_conflict) {
   Result res = mgr->createManagedTrx(vocbase, tid, json->slice());
   ASSERT_TRUE(res.ok());
   {
+    transaction::Options opts;
+    bool responsible;
+
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE);
     ASSERT_NE(ctx.get(), nullptr);
-    ASSERT_NE(ctx->getParentTransaction(), nullptr);
+    auto state1 = ctx->acquireState(opts, responsible);
+    ASSERT_NE(state1.get(), nullptr);
+    ASSERT_TRUE(!responsible);
     ASSERT_ANY_THROW(mgr->leaseManagedTrx(tid, AccessMode::Type::READ));
   }
   ASSERT_TRUE(mgr->abortManagedTrx(tid).ok());
@@ -343,9 +355,14 @@ TEST_F(TransactionManagerTest, garbage_collection_shutdown) {
   Result res = mgr->createManagedTrx(vocbase, tid, json->slice());
   ASSERT_TRUE(res.ok());
   {
+    transaction::Options opts;
+    bool responsible;
+    
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE);
     ASSERT_NE(ctx.get(), nullptr);
-    ASSERT_NE(ctx->getParentTransaction(), nullptr);
+    auto state1 = ctx->acquireState(opts, responsible);
+    ASSERT_NE(state1.get(), nullptr);
+    ASSERT_TRUE(!responsible);
   }
   ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::RUNNING);
   ASSERT_TRUE(mgr->garbageCollect(/*abortAll*/ true));
@@ -403,7 +420,7 @@ TEST_F(TransactionManagerTest, abort_transactions_with_matcher) {
     ASSERT_NE(ctx.get(), nullptr);
 
     SingleCollectionTransaction trx(ctx, "testCollection", AccessMode::Type::WRITE);
-    ASSERT_TRUE(trx.state()->isEmbeddedTransaction());
+    ASSERT_TRUE(!trx.isMainTransaction());
 
     auto doc = arangodb::velocypack::Parser::fromJson("{ \"abc\": 1}");
     OperationOptions opts;
@@ -435,7 +452,7 @@ TEST_F(TransactionManagerTest, permission_denied_readonly) {
     ExecContext()
         : arangodb::ExecContext(arangodb::ExecContext::Type::Internal, "dummy",
                                 "testVocbase", arangodb::auth::Level::RO,
-                                arangodb::auth::Level::RO) {}
+                                arangodb::auth::Level::RO, false) {}
   } execContext;
   arangodb::ExecContextScope execContextScope(&execContext);
 
@@ -465,7 +482,7 @@ TEST_F(TransactionManagerTest, permission_denied_forbidden) {
     ExecContext()
         : arangodb::ExecContext(arangodb::ExecContext::Type::Internal, "dummy",
                                 "testVocbase", arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE) {}
+                                arangodb::auth::Level::NONE, false) {}
   } execContext;
   arangodb::ExecContextScope execContextScope(&execContext);
 

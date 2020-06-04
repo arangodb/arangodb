@@ -28,6 +28,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/debugging.h"
 #include "Replication/SyncerId.h"
+#include "VocBase/Identifiers/ServerId.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -46,13 +47,13 @@ struct ReplicationClientProgress {
   /// @brief syncer id of the client
   SyncerId const syncerId;
   /// @brief server id of the client
-  TRI_server_id_t const clientId;
+  ServerId const clientId;
   /// @brief short descriptive information about the client
   std::string const clientInfo;
 
   ReplicationClientProgress(double lastSeenStamp, double expireStamp,
                             uint64_t lastServedTick, SyncerId syncerId,
-                            TRI_server_id_t clientId, std::string clientInfo)
+                            ServerId clientId, std::string clientInfo)
       : lastSeenStamp(lastSeenStamp),
         expireStamp(expireStamp),
         lastServedTick(lastServedTick),
@@ -79,16 +80,15 @@ class ReplicationClientsProgressTracker {
 
   /// @brief simply extend the lifetime of a specific syncer, so that its entry
   /// does not expire does not update the syncer's lastServedTick value
-  void extend(SyncerId syncerId, TRI_server_id_t clientId,
-              std::string const& clientInfo, double ttl);
+  void extend(SyncerId syncerId, ServerId clientId, std::string const& clientInfo, double ttl);
 
   /// @brief simply update the progress of a specific syncer, so that its entry
   /// does not expire this will update the syncer's lastServedTick value
-  void track(SyncerId syncerId, TRI_server_id_t clientId, std::string const& clientInfo,
+  void track(SyncerId syncerId, ServerId clientId, std::string const& clientInfo,
              TRI_voc_tick_t lastServedTick, double ttl);
 
   /// @brief remove a specific syncer's entry
-  void untrack(SyncerId syncerId, TRI_server_id_t clientId, std::string const& clientInfo);
+  void untrack(SyncerId syncerId, ServerId clientId, std::string const& clientInfo);
 
   /// @brief serialize the existing syncers to a VelocyPack builder
   void toVelocyPack(velocypack::Builder& builder) const;
@@ -105,13 +105,13 @@ class ReplicationClientsProgressTracker {
  private:
   // Make sure the underlying integer types for SyncerIDs and ClientIDs are the
   // same, so we can use one entry
-  static_assert(std::is_same<decltype(SyncerId::value), TRI_server_id_t>::value,
+  static_assert(std::is_same<decltype(SyncerId::value), ServerId::BaseType>::value,
                 "Assuming identical underlying integer types. If these are "
                 "changed, the client-map key must be changed, too.");
   enum class KeyType { INVALID, SYNCER_ID, SERVER_ID };
   union ClientKeyUnion {
     SyncerId syncerId;
-    TRI_server_id_t clientId;
+    ServerId clientId;
   };
   using ClientKey = std::pair<KeyType, ClientKeyUnion>;
   class ClientHash {
@@ -157,7 +157,7 @@ class ReplicationClientsProgressTracker {
     }
   };
 
-  static inline ClientKey getKey(SyncerId const syncerId, TRI_server_id_t const clientId) {
+  static inline ClientKey getKey(SyncerId const syncerId, ServerId const clientId) {
     // For backwards compatible APIs, we might not have a syncer ID;
     // fall back to the clientId in that case. SyncerId was introduced in 3.4.9 and 3.5.0.
     // The only public API using this, /_api/wal/tail, marked the serverId
@@ -172,13 +172,12 @@ class ReplicationClientsProgressTracker {
     if (syncerId.value != 0) {
       keyUnion.syncerId = syncerId;
       keyType = KeyType::SYNCER_ID;
-    }
-    else if (clientId != 0) {
+    } else if (clientId.isSet()) {
       keyUnion.clientId = clientId;
       keyType = KeyType::SERVER_ID;
     }
 
-    return {keyType, keyUnion};
+    return ClientKey(keyType, keyUnion);
   }
 
  private:

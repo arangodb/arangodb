@@ -18,21 +18,19 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_CACHE_TRANSACTIONAL_BUCKET_H
 #define ARANGODB_CACHE_TRANSACTIONAL_BUCKET_H
 
-#include "Basics/Common.h"
+#include <atomic>
+#include <cstddef>
+#include <cstdint>
+
 #include "Cache/BucketState.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
-
-#include <stddef.h>
-
-#include <stdint.h>
-#include <atomic>
 
 namespace arangodb {
 namespace cache {
@@ -51,13 +49,13 @@ struct TransactionalBucket {
   BucketState _state;
 
   // blacklist entries for transactional semantics
-  static constexpr size_t slotsBlacklist = 5;
-  uint32_t _blacklistHashes[slotsBlacklist];
-  uint64_t _blacklistTerm;
+  static constexpr std::size_t slotsBlacklist = 5;
+  std::uint32_t _blacklistHashes[slotsBlacklist];
+  std::uint64_t _blacklistTerm;
 
   // actual cached entries
-  static constexpr size_t slotsData = 8;
-  uint32_t _cachedHashes[slotsData];
+  static constexpr std::size_t slotsData = 8;
+  std::uint32_t _cachedHashes[slotsData];
   CachedValue* _cachedData[slotsData];
 
 // padding, if necessary?
@@ -73,7 +71,7 @@ struct TransactionalBucket {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Attempt to lock bucket (failing after maxTries attempts).
   //////////////////////////////////////////////////////////////////////////////
-  bool lock(uint64_t maxTries);
+  bool lock(std::uint64_t maxTries);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Unlock the bucket. Requires bucket to be locked.
@@ -112,7 +110,8 @@ struct TransactionalBucket {
   /// bucket to allow basic LRU semantics. If no matching entry is found,
   /// nothing will be changed and a nullptr will be returned.
   //////////////////////////////////////////////////////////////////////////////
-  CachedValue* find(uint32_t hash, void const* key, size_t keySize, bool moveToFront = true);
+  CachedValue* find(std::uint32_t hash, void const* key, std::size_t keySize,
+                    bool moveToFront = true);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inserts a given value if it is not blacklisted. Requires state to
@@ -128,7 +127,7 @@ struct TransactionalBucket {
   /// user should evict an item and specify the optimizeForInsertion flag to be
   /// true.
   //////////////////////////////////////////////////////////////////////////////
-  void insert(uint32_t hash, CachedValue* value);
+  void insert(std::uint32_t hash, CachedValue* value);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Removes an item with the given key if one exists. Requires state to
@@ -139,7 +138,7 @@ struct TransactionalBucket {
   /// to the value. Upon removal, the empty slot generated is moved to the back
   /// of the bucket (to remove the gap).
   //////////////////////////////////////////////////////////////////////////////
-  CachedValue* remove(uint32_t hash, void const* key, size_t keySize);
+  CachedValue* remove(std::uint32_t hash, void const* key, std::size_t keySize);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Blacklists a key and removes it if it exists. Requires state to
@@ -149,13 +148,13 @@ struct TransactionalBucket {
   /// hash associated with the key. If there are no empty blacklist slots, fully
   /// blacklist the bucket.
   //////////////////////////////////////////////////////////////////////////////
-  CachedValue* blacklist(uint32_t hash, void const* key, size_t keySize);
+  CachedValue* blacklist(std::uint32_t hash, void const* key, std::size_t keySize);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks whether a given hash is blacklisted. Requires state to be
   /// locked.
   //////////////////////////////////////////////////////////////////////////////
-  bool isBlacklisted(uint32_t hash) const;
+  bool isBlacklisted(std::uint32_t hash) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Searches for the best candidate in the bucket to evict. Requires
@@ -181,7 +180,7 @@ struct TransactionalBucket {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Updates the bucket's blacklist term. Requires state to be locked.
   //////////////////////////////////////////////////////////////////////////////
-  void updateBlacklistTerm(uint64_t term);
+  void updateBlacklistTerm(std::uint64_t term);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reinitializes a bucket to be completely empty and unlocked.
@@ -190,7 +189,7 @@ struct TransactionalBucket {
   void clear();
 
  private:
-  void moveSlot(size_t slot, bool moveToFront);
+  void moveSlot(std::size_t slot, bool moveToFront);
   bool haveOpenTransaction() const;
 };
 

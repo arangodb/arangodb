@@ -1,6 +1,6 @@
 /* jshint unused: false */
-/* global window, $, Backbone, document, d3 */
-/* global $, arangoHelper, btoa, atob, _, frontendConfig */
+/* global window, $, Backbone, document, d3, ReactDOM */
+/* global arangoHelper, btoa, atob, _, frontendConfig */
 
 (function () {
   'use strict';
@@ -23,6 +23,7 @@
       'collection/:colid/documents/:pageid': 'documents',
       'cIndices/:colname': 'cIndices',
       'cSettings/:colname': 'cSettings',
+      'cSchema/:colname': 'cSchema',
       'cInfo/:colname': 'cInfo',
       'collection/:colid/:docid': 'document',
       'shell': 'shell',
@@ -101,6 +102,9 @@
             this.loggerView.logTopicView.remove();
           }
         }
+
+        // react unmounting
+        ReactDOM.unmountComponentAtNode(document.getElementById("content"));
       }
 
       this.lastRoute = window.location.hash;
@@ -136,6 +140,7 @@
 
     listener: function (event) {
       _.each(window.App.listenerFunctions, function (func, key) {
+        void (key);
         func(event);
       });
     },
@@ -407,6 +412,9 @@
         this.navigate('#dashboard', {trigger: true});
         return;
       }
+      // TODO re-enable React View, for now use old view:
+      // window.ShardsReactView.render();
+      // Below code needs to be removed then again.
       if (this.shardsView) {
         this.shardsView.remove();
       }
@@ -414,6 +422,7 @@
         dbServers: this.dbServers
       });
       this.shardsView.render();
+
     },
 
     nodes: function (initialized) {
@@ -518,14 +527,18 @@
         this.waitForInit(this.logger.bind(this));
         return;
       }
-      if (!this.loggerView) {
-        var co = new window.ArangoLogs(
-          {upto: true, loglevel: 4}
-        );
-        this.loggerView = new window.LoggerView({
-          collection: co
-        });
+
+      if (this.loggerView) {
+        this.loggerView.remove();
       }
+
+      var co = new window.ArangoLogs({
+        upto: true,
+        loglevel: 4
+      });
+      this.loggerView = new window.LoggerView({
+        collection: co
+      });
       this.loggerView.render();
     },
 
@@ -605,7 +618,7 @@
             collection: this.userCollection
           });
         }
-        if (error || user === null) {
+        if (error || user === null || user === undefined) {
           this.loginView.render();
         } else {
           this.loginView.render(true);
@@ -673,6 +686,28 @@
         cache: false,
         success: function () {
           self.settingsView = new window.SettingsView({
+            collectionName: colname,
+            collection: self.arangoCollectionsStore.findWhere({
+              name: colname
+            })
+          });
+          self.settingsView.render();
+        }
+      });
+    },
+
+    cSchema: function (colname, initialized) {
+      var self = this;
+
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.cSchema.bind(this), colname);
+        return;
+      }
+      this.arangoCollectionsStore.fetch({
+        cache: false,
+        success: function () {
+          self.settingsView = new window.ValidationView({
             collectionName: colname,
             collection: self.arangoCollectionsStore.findWhere({
               name: colname
@@ -756,6 +791,7 @@
       this.documentView.render();
 
       var callback = function (error, type) {
+        void (type);
         if (!error) {
           this.documentView.setType();
         } else {
@@ -1130,6 +1166,9 @@
       }
       if (this.documentView && Backbone.history.getFragment().indexOf('collection') > -1) {
         this.documentView.resize();
+      }
+      if (this.validationView && Backbone.history.getFragment().indexOf('cSchema') > -1) {
+        this.validationView.resize();
       }
     },
 

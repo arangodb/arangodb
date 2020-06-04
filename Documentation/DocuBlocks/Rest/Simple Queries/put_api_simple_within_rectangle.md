@@ -39,7 +39,7 @@ If given, the identifier of the geo-index to use. (optional)
 @RESTDESCRIPTION
 
 This will find all documents within the specified rectangle (determined by
-the given coordinates (*latitude1*, *longitude1*, *latitude2*, *longitude2*). 
+the given coordinates (*latitude1*, *longitude1*, *latitude2*, *longitude2*).
 
 In order to use the *within-rectangle* query, a geo index must be defined for
 the collection. This index also defines which attribute holds the
@@ -74,7 +74,7 @@ response body contains an error document in this case.
     }
     var url = "/_api/simple/within-rectangle";
     var body = {
-      collection: "products", 
+      collection: "products",
       latitude1 : 0,
       longitude1 : 0,
       latitude2 : 0.2,
@@ -91,4 +91,3 @@ response body contains an error document in this case.
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

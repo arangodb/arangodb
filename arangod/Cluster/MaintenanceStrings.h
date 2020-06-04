@@ -29,11 +29,11 @@ namespace maintenance {
 
 constexpr char const* ACTIONS = "actions";
 constexpr char const* AGENCY = "agency";
+constexpr char const* CACHE_ENABLED = "cacheEnabled";
 constexpr char const* COLLECTION = "collection";
 constexpr char const* CREATE_COLLECTION = "CreateCollection";
 constexpr char const* CREATE_DATABASE = "CreateDatabase";
 constexpr char const* DATABASE = "database";
-constexpr char const* DB = "/_db/";
 constexpr char const* DO_COMPACT = "doCompact";
 constexpr char const* DROP_COLLECTION = "DropCollection";
 constexpr char const* DROP_DATABASE = "DropDatabase";
@@ -46,21 +46,24 @@ constexpr char const* FOLLOWERS_TO_DROP = "followersToDrop";
 constexpr char const* GLOB_UID = "globallyUniqueId";
 constexpr char const* ID = "id";
 constexpr char const* INDEX = "index";
-constexpr char const* INDEX_BUCKETS = "indexBuckets";
 constexpr char const* INDEXES = "indexes";
+constexpr char const* INDEX_BUCKETS = "indexBuckets";
 constexpr char const* JOURNAL_SIZE = "journalSize";
 constexpr char const* KEY = "key";
 constexpr char const* LOCAL_LEADER = "localLeader";
 constexpr char const* NAME = "name";
 constexpr char const* OBJECT_ID = "objectId";
+constexpr char const* OLD_CURRENT_COUNTER = "oldCurrentCounter";
 constexpr char const* OP = "op";
 constexpr char const* PHASE_ONE = "phaseOne";
 constexpr char const* PHASE_TWO = "phaseTwo";
 constexpr char const* PRIMARY = "primary";
+constexpr char const* PLAN_RAFT_INDEX = "planRaftIndex";
 constexpr char const* RESIGN_SHARD_LEADERSHIP = "ResignShardLeadership";
+constexpr char const* SCHEMA = "schema";
 constexpr char const* SELECTIVITY_ESTIMATE = "selectivityEstimate";
-constexpr char const* SERVER_ID = "serverId";
 constexpr char const* SERVERS = "servers";
+constexpr char const* SERVER_ID = "serverId";
 constexpr char const* SHARD = "shard";
 constexpr char const* SHARDS = "shards";
 constexpr char const* SHARD_VERSION = "shardVersion";
@@ -70,7 +73,7 @@ constexpr char const* THE_LEADER = "theLeader";
 constexpr char const* UNDERSCORE = "_";
 constexpr char const* UPDATE_COLLECTION = "UpdateCollection";
 constexpr char const* WAIT_FOR_SYNC = "waitForSync";
-constexpr char const* OLD_CURRENT_COUNTER = "oldCurrentCounter";
+constexpr char const* LEADER_NOT_YET_KNOWN = "NOT_YET_TOUCHED";
 
 }  // namespace maintenance
 }  // namespace arangodb

@@ -159,8 +159,6 @@ function pad(n) {
   return new Array(n).join(' ');
 }
 
-/* print functions */
-
 /* print query string */
 function printQuery(query, cacheable) {
   'use strict';
@@ -502,7 +500,8 @@ function printTraversalDetails(traversals) {
 
   var optify = function (options, colorize) {
     var opts = {
-      bfs: options.bfs || undefined, /* only print if set to true to space room */
+      bfs: options.bfs || undefined, /* only print if set to true to save room */
+      neighbors: options.neighbors || undefined, /* only print if set to true to save room */
       uniqueVertices: options.uniqueVertices,
       uniqueEdges: options.uniqueEdges
     };
@@ -701,7 +700,7 @@ function processQuery(query, explain, planIndex) {
   if (planIndex !== undefined) {
     plan = explain.plans[planIndex];
   }
-  
+
   /// mode with actual runtime stats per node
   let profileMode = stats && stats.hasOwnProperty('nodes');
 
@@ -766,17 +765,22 @@ function processQuery(query, explain, planIndex) {
   if (profileMode) { // merge runtime info into plan
     stats.nodes.forEach(n => {
       if (nodes.hasOwnProperty(n.id)) {
-        nodes[n.id].calls = n.calls;
-        nodes[n.id].items = n.items;
-        nodes[n.id].runtime = n.runtime;
+        nodes[n.id].calls = (n.calls === undefined ? "n/a" : n.calls);
+        nodes[n.id].items = (n.items === undefined ? "n/a" : n.items);
+        nodes[n.id].runtime = (n.runtime === undefined ? "n/a" : n.runtime);
 
-        if (String(n.calls).length > maxCallsLen) {
-          maxCallsLen = String(n.calls).length;
+        if (String(nodes[n.id].calls).length > maxCallsLen) {
+          maxCallsLen = String(nodes[n.id].calls).length;
         }
-        if (String(n.items).length > maxItemsLen) {
-          maxItemsLen = String(n.items).length;
+        if (String(nodes[n.id].items).length > maxItemsLen) {
+          maxItemsLen = String(nodes[n.id].items).length;
         }
-        let l = String(nodes[n.id].runtime.toFixed(3)).length;
+        let l;
+        if (typeof nodes[n.id].runtime === 'number') {
+          l = String(nodes[n.id].runtime.toFixed(3)).length;
+        } else {
+          l = nodes[n.id].runtime.length;
+        }
         if (l > maxRuntimeLen) {
           maxRuntimeLen = l;
         }
@@ -785,10 +789,14 @@ function processQuery(query, explain, planIndex) {
     // by design the runtime is cumulative right now.
     // by subtracting the dependencies from parent runtime we get the runtime per node
     stats.nodes.forEach(n => {
-      if (parents.hasOwnProperty(n.id)) {
-        parents[n.id].forEach(pid => {
-          nodes[pid].runtime -= n.runtime;
-        });
+      if (typeof n.runtime === 'number') {
+        if (parents.hasOwnProperty(n.id)) {
+          parents[n.id].forEach(pid => {
+            if (typeof nodes[pid].runtime === 'number') {
+              nodes[pid].runtime -= n.runtime;
+            }
+          });
+        }
       }
     });
   }
@@ -811,7 +819,8 @@ function processQuery(query, explain, planIndex) {
         return variable('#' + node.name);
       }
     } catch (x) {
-      print(node);
+      require('console').warn("got unexpected invalid variable struct in explainer");
+      require("console").trace();
       throw x;
     }
 
@@ -828,6 +837,10 @@ function processQuery(query, explain, planIndex) {
 
   var buildExpression = function (node) {
     var binaryOperator = function (node, name) {
+      if (name.match(/^[a-zA-Z]+$/)) {
+        // make it a keyword
+        name = keyword(name.toUpperCase());
+      }
       var lhs = buildExpression(node.subNodes[0]);
       var rhs = buildExpression(node.subNodes[1]);
       if (node.subNodes.length === 3) {
@@ -957,6 +970,9 @@ function processQuery(query, explain, planIndex) {
       case 'logical and':
         return '(' + binaryOperator(node, '&&') + ')';
       case 'ternary':
+        if (node.subNodes.length === 2) {
+          return '(' + buildExpression(node.subNodes[0]) + ' ?: ' + buildExpression(node.subNodes[1]) + ')';
+        }
         return '(' + buildExpression(node.subNodes[0]) + ' ? ' + buildExpression(node.subNodes[1]) + ' : ' + buildExpression(node.subNodes[2]) + ')';
       case 'n-ary or':
         if (node.hasOwnProperty('subNodes')) {
@@ -1087,7 +1103,7 @@ function processQuery(query, explain, planIndex) {
   };
 
   var label = function (node) {
-    var rc, v, e, edgeCols, i, d, directions, isLast;
+    var rc, v, vNames, e, eNames, edgeCols, i, d, directions, isLast;
     var parts = [];
     var types = [];
     var filter = '';
@@ -1103,7 +1119,7 @@ function processQuery(query, explain, planIndex) {
         if (node.filter) {
           filter = '   ' + keyword('FILTER') + ' ' + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
         }
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + `${restriction(node)} */`) + filter;
+        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + (node.count ? ', with count optimization' : '') + `${restriction(node)} */`) + filter;
       case 'EnumerateListNode':
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */');
       case 'EnumerateViewNode':
@@ -1120,32 +1136,61 @@ function processQuery(query, explain, planIndex) {
           }
 
           sortCondition = keyword(' SORT ') + node.primarySort.slice(0, primarySortBuckets).map(function (element) {
-            return variableName(node.outVariable) + '.' + attribute(element.field) + ' ' + keyword(element.direction ? 'ASC' : 'DESC');
+            return variableName(node.outVariable) + '.' + attribute(element.field) + ' ' + keyword(element.asc ? 'ASC' : 'DESC');
           }).join(', ');
         }
 
         var scorers = '';
         if (node.scorers && node.scorers.length > 0) {
-          scorers = keyword(' LET ') + node.scorers.map(function (scorer) {
-            return variableName(scorer) + ' = ' + buildExpression(scorer.node);
-          }).join(', ');
+          scorers = node.scorers.map(function (scorer) {
+            return keyword(' LET ') + variableName(scorer) + ' = ' + buildExpression(scorer.node);
+          }).join('');
         }
         let viewAnnotation = '/* view query';
         if (node.hasOwnProperty('outNmDocId') && node.hasOwnProperty('outNmColPtr')) {
           viewAnnotation += ' with late materialization';
+        } else if (node.hasOwnProperty('noMaterialization') && node.noMaterialization) {
+          viewAnnotation += ' without materialization';
         }
-        viewAnnotation +=  ' */';
-        return keyword('FOR ') + variableName(node.outVariable) + keyword(' IN ') + 
-               view(node.view) + condition + sortCondition + scorers +
+        viewAnnotation += ' */';
+        let viewVariables = '';
+        if (node.hasOwnProperty('viewValuesVars') && node.viewValuesVars.length > 0) {
+          viewVariables = node.viewValuesVars.map(function (viewValuesColumn) {
+            if (viewValuesColumn.hasOwnProperty('field')) {
+              return keyword(' LET ') + variableName(viewValuesColumn) + ' = ' + variableName(node.outVariable) + '.' + attribute(viewValuesColumn.field);
+            } else {
+              return viewValuesColumn.viewStoredValuesVars.map(function (viewValuesVar) {
+                return keyword(' LET ') + variableName(viewValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(viewValuesVar.field);
+              }).join('');
+            }
+          }).join('');
+        }
+        return keyword('FOR ') + variableName(node.outVariable) + keyword(' IN ') +
+               view(node.view) + condition + sortCondition + scorers + viewVariables +
                '   ' + annotation(viewAnnotation);
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;
         if (node.filter) {
           filter = '   ' + keyword('FILTER') + ' ' + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
         }
+        let indexAnnotation = '';
+        let indexVariables = '';
+        if (node.hasOwnProperty('outNmDocId')) {
+          indexAnnotation += '/* with late materialization */';
+          if (node.hasOwnProperty('indexValuesVars') && node.indexValuesVars.length > 0) {
+            indexVariables = node.indexValuesVars.map(function (indexValuesVar) {
+              return keyword(' LET ') + variableName(indexValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(indexValuesVar.field);
+            }).join('');
+          }
+        }
+        if (node.count) {
+          indexAnnotation += '/* with count optimization */';
+        }
         node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, false); });
-        return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}   ${annotation(`/* ${types.join(', ')}${projection(node)}${node.satellite ? ', satellite' : ''}${restriction(node)}`)} */` + filter;
-      
+        return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}` + indexVariables +
+          `   ${annotation(`/* ${types.join(', ')}${projection(node)}${node.satellite ? ', satellite' : ''}${restriction(node)} */`)} ` + filter +
+          '   ' + annotation(indexAnnotation);
+
       case 'TraversalNode':
         if (node.hasOwnProperty("options")) {
           node.minMaxDepth = node.options.minDepth + '..' + node.options.maxDepth;
@@ -1158,7 +1203,13 @@ function processQuery(query, explain, planIndex) {
 
         rc = keyword('FOR ');
         if (node.hasOwnProperty('vertexOutVariable')) {
-          parts.push(variableName(node.vertexOutVariable) + '  ' + annotation('/* vertex */'));
+          if (node.options.hasOwnProperty('produceVertices') && !node.options.produceVertices) {
+            parts.push(variableName(node.vertexOutVariable) + '  ' + annotation('/* vertex optimized away */'));
+          } else {
+            parts.push(variableName(node.vertexOutVariable) + '  ' + annotation('/* vertex */'));
+          }
+        } else {
+          parts.push(annotation('/* vertex optimized away */'));
         }
         if (node.hasOwnProperty('edgeOutVariable')) {
           parts.push(variableName(node.edgeOutVariable) + '  ' + annotation('/* edge */'));
@@ -1173,17 +1224,13 @@ function processQuery(query, explain, planIndex) {
         directions = [];
         for (i = 0; i < node.edgeCollections.length; ++i) {
           isLast = (i + 1 === node.edgeCollections.length);
-          d = node.directions[i];
           if (!isLast && node.edgeCollections[i] === node.edgeCollections[i + 1]) {
             // direction ANY is represented by two traversals: an INBOUND and an OUTBOUND traversal
             // on the same collection
-            d = 0; // ANY
-          }
-          directions.push({ collection: node.edgeCollections[i], direction: d });
-
-          if (!isLast && node.edgeCollections[i] === node.edgeCollections[i + 1]) {
-            // don't print same collection twice
+            directions.push({ collection: node.edgeCollections[i], direction: 0 /* ANY */ });
             ++i;
+          } else {
+            directions.push({ collection: node.edgeCollections[i], direction: node.directions[i] });
           }
         }
         var allIndexes = [];
@@ -1223,7 +1270,7 @@ function processQuery(query, explain, planIndex) {
           return 0;
         });
 
-        rc += keyword(translate[directions[0].direction]);
+        rc += keyword(translate[node.defaultDirection]);
         if (node.hasOwnProperty('vertexId')) {
           rc += " '" + value(node.vertexId) + "' ";
         } else {
@@ -1232,9 +1279,13 @@ function processQuery(query, explain, planIndex) {
         rc += annotation('/* startnode */') + '  ';
 
         if (Array.isArray(node.graph)) {
-          rc += collection(directions[0].collection);
-          for (i = 1; i < directions.length; ++i) {
-            rc += ', ' + keyword(translate[directions[i].direction]) + ' ' + collection(directions[i].collection);
+          if (directions.length > 0) {
+            rc += collection(directions[0].collection);
+            for (i = 1; i < directions.length; ++i) {
+              rc += ', ' + keyword(translate[directions[i].direction]) + ' ' + collection(directions[i].collection);
+            }
+          } else {
+            rc += annotation('/* no edge collections */');
           }
         } else {
           rc += keyword('GRAPH') + " '" + value(node.graph) + "'";
@@ -1249,32 +1300,78 @@ function processQuery(query, explain, planIndex) {
         }
 
         e = [];
+        eNames = [];
         if (node.hasOwnProperty('graphDefinition')) {
           v = [];
-          node.graphDefinition.vertexCollectionNames.forEach(function (vcn) {
-            v.push(collection(vcn));
-          });
+          vNames = [];
+          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('vertexCollections')) {
+            node.options.vertexCollections.forEach(function (vcn) {
+              v.push(collection(vcn));
+              vNames.push(vcn);
+            });
+          } else {
+            node.graphDefinition.vertexCollectionNames.forEach(function (vcn) {
+              v.push(collection(vcn));
+              vNames.push(vcn);
+            });
+          }
           node.vertexCollectionNameStr = v.join(', ');
-          node.vertexCollectionNameStrLen = node.graphDefinition.vertexCollectionNames.join(', ').length;
+          node.vertexCollectionNameStrLen = vNames.join(', ').length;
 
-          node.graphDefinition.edgeCollectionNames.forEach(function (ecn) {
-            e.push(collection(ecn));
-          });
+          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('edgeCollections')) {
+            node.options.edgeCollections.forEach(function (ecn) {
+              e.push(collection(ecn));
+              eNames.push(ecn);
+            });
+          } else {
+            node.graphDefinition.edgeCollectionNames.forEach(function (ecn) {
+              e.push(collection(ecn));
+              eNames.push(ecn);
+            });
+          }
           node.edgeCollectionNameStr = e.join(', ');
-          node.edgeCollectionNameStrLen = node.graphDefinition.edgeCollectionNames.join(', ').length;
+          node.edgeCollectionNameStrLen = eNames.join(', ').length;
         } else {
-          edgeCols = node.graph || [];
-          edgeCols.forEach(function (ecn) {
-            e.push(collection(ecn));
-          });
+          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('edgeCollections')) {
+            node.options.edgeCollections.forEach(function (ecn) {
+              e.push(collection(ecn));
+              eNames.push(ecn);
+            });
+          } else {
+            edgeCols = node.graph || [];
+            edgeCols.forEach(function (ecn) {
+              e.push(collection(ecn));
+              eNames.push(ecn);
+            });
+          }
           node.edgeCollectionNameStr = e.join(', ');
-          node.edgeCollectionNameStrLen = edgeCols.join(', ').length;
+          node.edgeCollectionNameStrLen = eNames.join(', ').length;
           node.graph = '<anonymous>';
+
+          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('vertexCollections')) {
+            v = [];
+            node.options.vertexCollections.forEach(function (vcn) {
+              v.push(collection(vcn));
+            });
+            node.vertexCollectionNameStr = v.join(', ');
+            node.vertexCollectionNameStrLen = node.options.vertexCollections.join(', ').length;
+          }
         }
 
         allIndexes.forEach(function (idx) {
           indexes.push(idx);
         });
+
+        if (node.isLocalGraphNode) {
+          if (node.isUsedAsSatellite) {
+            rc += annotation(' /* local graph node, used as satellite */');
+          } else {
+            rc += annotation(' /* local graph node */');
+          }
+        }
+        if (node.options && node.options.hasOwnProperty('parallelism') && node.options.parallelism > 1) {
+          rc += annotation(' /* parallelism: ' + node.options.parallelism + ' */');
+        }
 
         return rc;
       case 'ShortestPathNode': {
@@ -1327,27 +1424,61 @@ function processQuery(query, explain, planIndex) {
 
         shortestPathDetails.push(node);
         e = [];
+        eNames = [];
         if (node.hasOwnProperty('graphDefinition')) {
           v = [];
-          node.graphDefinition.vertexCollectionNames.forEach(function (vcn) {
-            v.push(collection(vcn));
-          });
+          vNames = [];
+          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('vertexCollections')) {
+            node.options.vertexCollections.forEach(function (vcn) {
+              v.push(collection(vcn));
+              vNames.push(vcn);
+            });
+          } else {
+            node.graphDefinition.vertexCollectionNames.forEach(function (vcn) {
+              v.push(collection(vcn));
+              vNames.push(vcn);
+            });
+          }
           node.vertexCollectionNameStr = v.join(', ');
-          node.vertexCollectionNameStrLen = node.graphDefinition.vertexCollectionNames.join(', ').length;
+          node.vertexCollectionNameStrLen = vNames.join(', ').length;
 
-          node.graphDefinition.edgeCollectionNames.forEach(function (ecn) {
-            e.push(collection(ecn));
-          });
+          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('edgeCollections')) {
+            node.options.edgeCollections.forEach(function (ecn) {
+              e.push(collection(ecn));
+              eNames.push(ecn);
+            });
+          } else {
+            node.graphDefinition.edgeCollectionNames.forEach(function (ecn) {
+              e.push(collection(ecn));
+              eNames.push(ecn);
+            });
+          }
           node.edgeCollectionNameStr = e.join(', ');
-          node.edgeCollectionNameStrLen = node.graphDefinition.edgeCollectionNames.join(', ').length;
+          node.edgeCollectionNameStrLen = eNames.join(', ').length;
         } else {
-          edgeCols = node.graph || [];
-          edgeCols.forEach(function (ecn) {
-            e.push(collection(ecn));
-          });
+          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('edgeCollections')) {
+            node.options.edgeCollections.forEach(function (ecn) {
+              e.push(collection(ecn));
+              eNames.push(ecn);
+            });
+          } else {
+            edgeCols = node.graph || [];
+            edgeCols.forEach(function (ecn) {
+              e.push(collection(ecn));
+              eNames.push(ecn);
+            });
+          }
           node.edgeCollectionNameStr = e.join(', ');
-          node.edgeCollectionNameStrLen = edgeCols.join(', ').length;
+          node.edgeCollectionNameStrLen = eNames.join(', ').length;
           node.graph = '<anonymous>';
+          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('vertexCollections')) {
+            v = [];
+            node.options.vertexCollections.forEach(function (vcn) {
+              v.push(collection(vcn));
+            });
+            node.vertexCollectionNameStr = v.join(', ');
+            node.vertexCollectionNameStrLen = node.options.vertexCollections.join(', ').length;
+          }
         }
         return rc;
       }
@@ -1398,27 +1529,61 @@ function processQuery(query, explain, planIndex) {
 
         kShortestPathsDetails.push(node);
         e = [];
+        eNames = [];
         if (node.hasOwnProperty('graphDefinition')) {
           v = [];
-          node.graphDefinition.vertexCollectionNames.forEach(function (vcn) {
-            v.push(collection(vcn));
-          });
+          vNames = [];
+          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('vertexCollections')) {
+            node.options.vertexCollections.forEach(function (vcn) {
+              v.push(collection(vcn));
+              vNames.push(vcn);
+            });
+          } else {
+            node.graphDefinition.vertexCollectionNames.forEach(function (vcn) {
+              v.push(collection(vcn));
+              vNames.push(vcn);
+            });
+          }
           node.vertexCollectionNameStr = v.join(', ');
-          node.vertexCollectionNameStrLen = node.graphDefinition.vertexCollectionNames.join(', ').length;
+          node.vertexCollectionNameStrLen = vNames.join(', ').length;
 
-          node.graphDefinition.edgeCollectionNames.forEach(function (ecn) {
-            e.push(collection(ecn));
-          });
+          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('edgeCollections')) {
+            node.options.edgeCollections.forEach(function (ecn) {
+              e.push(collection(ecn));
+              eNames.push(ecn);
+            });
+          } else {
+            node.graphDefinition.edgeCollectionNames.forEach(function (ecn) {
+              e.push(collection(ecn));
+              eNames.push(ecn);
+            });
+          }
           node.edgeCollectionNameStr = e.join(', ');
-          node.edgeCollectionNameStrLen = node.graphDefinition.edgeCollectionNames.join(', ').length;
+          node.edgeCollectionNameStrLen = eNames.join(', ').length;
         } else {
-          edgeCols = node.graph || [];
-          edgeCols.forEach(function (ecn) {
-            e.push(collection(ecn));
-          });
+          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('edgeCollections')) {
+            node.options.edgeCollections.forEach(function (ecn) {
+              e.push(collection(ecn));
+              eNames.push(ecn);
+            });
+          } else {
+            edgeCols = node.graph || [];
+            edgeCols.forEach(function (ecn) {
+              e.push(collection(ecn));
+              eNames.push(ecn);
+            });
+          }
           node.edgeCollectionNameStr = e.join(', ');
-          node.edgeCollectionNameStrLen = edgeCols.join(', ').length;
+          node.edgeCollectionNameStrLen = eNames.join(', ').length;
           node.graph = '<anonymous>';
+          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('vertexCollections')) {
+            v = [];
+            node.options.vertexCollections.forEach(function (vcn) {
+              v.push(collection(vcn));
+            });
+            node.vertexCollectionNameStr = v.join(', ');
+            node.vertexCollectionNameStrLen = node.options.vertexCollections.join(', ').length;
+          }
         }
         return rc;
       }
@@ -1472,6 +1637,10 @@ function processQuery(query, explain, planIndex) {
       case 'SubqueryStartNode':
         return `${keyword('LET')} ${variableName(node.subqueryOutVariable)} = ( ${annotation(`/* subquery begin */`)}` ;
       case 'SubqueryEndNode':
+        if (node.inVariable) {
+          return `${keyword('RETURN')}  ${variableName(node.inVariable)} ) ${annotation(`/* subquery end */`)}`;
+        }
+        // special hack for spliced subqueries that do not return any data
         return `) ${annotation(`/* subquery end */`)}`;
       case 'InsertNode': {
         modificationFlags = node.modificationFlags;
@@ -1489,7 +1658,7 @@ function processQuery(query, explain, planIndex) {
           indexRef = `${variableName(node.inKeyVariable)}`;
           inputExplain = `${variableName(node.inKeyVariable)} ${keyword('WITH')} ${variableName(node.inDocVariable)}`;
         } else {
-          indexRef = inputExplain = `variableName(node.inDocVariable)`;
+          indexRef = inputExplain = `${variableName(node.inDocVariable)}`;
         }
         let restrictString = '';
         if (node.restrictedTo) {
@@ -1506,7 +1675,7 @@ function processQuery(query, explain, planIndex) {
           indexRef = `${variableName(node.inKeyVariable)}`;
           inputExplain = `${variableName(node.inKeyVariable)} ${keyword('WITH')} ${variableName(node.inDocVariable)}`;
         } else {
-          indexRef = inputExplain = `variableName(node.inDocVariable)`;
+          indexRef = inputExplain = `${variableName(node.inDocVariable)}`;
         }
         let restrictString = '';
         if (node.restrictedTo) {
@@ -1649,14 +1818,29 @@ function processQuery(query, explain, planIndex) {
       case 'ScatterNode':
         return keyword('SCATTER');
       case 'GatherNode':
+        let gatherAnnotations = [];
+        if (node.parallelism === 'parallel') {
+          gatherAnnotations.push('parallel');
+        }
+        if (node.sortmode !== 'unset') {
+          gatherAnnotations.push('sort mode: ' + node.sortmode);
+        }
+        if (node.elements.length === 0) {
+          gatherAnnotations.push('unsorted');
+        }
         return keyword('GATHER') + ' ' + node.elements.map(function (node) {
           if (node.path && node.path.length) {
             return variableName(node.inVariable) + node.path.map(function (n) { return '.' + attribute(n); }) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
           }
           return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
-        }).join(', ') + (node.sortmode === 'unset' ? '' : '  ' + annotation('/* sort mode: ' + node.sortmode + ' */'));
+        }).join(', ') + (gatherAnnotations.length ? '  ' + annotation('/* ' + gatherAnnotations.join(', ') + ' */') : '');
+
       case 'MaterializeNode':
-      	return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable);
+        return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable);
+      case 'MutexNode':
+        return keyword('MUTEX') + '   ' + annotation('/* end async execution */');
+      case 'AsyncNode':
+        return keyword('ASYNC') + '   ' + annotation('/* begin async execution */');
     }
 
     return 'unhandled node type (' + node.type + ')';
@@ -1674,12 +1858,16 @@ function processQuery(query, explain, planIndex) {
     if (node.type === 'SubqueryNode' || node.type === 'SubqueryStartNode') {
       subqueries.push(level);
     }
-    if (node.type === 'SubqueryEndNode' && subqueries.length > 0) {
-      level = subqueries.pop();
+    if (node.type === 'SubqueryEndNode' && !node.inVariable && subqueries.length > 0) {
+      // special hack for spliced subqueries that do not return any data
+      --level;
     }
   };
 
   var postHandle = function (node) {
+    if (node.type === 'SubqueryEndNode' && subqueries.length > 0) {
+      level = subqueries.pop();
+    }
     var isLeafNode = !parents.hasOwnProperty(node.id);
 
     if (['EnumerateCollectionNode',
@@ -1720,7 +1908,6 @@ function processQuery(query, explain, planIndex) {
 
   var printNode = function (node) {
     preHandle(node);
-    node.runtime = Math.abs(node.runtime);
     var line = ' ' +
       pad(1 + maxIdLen - String(node.id).length) + variable(node.id) + '   ' +
       keyword(node.type) + pad(1 + maxTypeLen - String(node.type).length) + '   ';
@@ -1730,9 +1917,22 @@ function processQuery(query, explain, planIndex) {
     }
 
     if (profileMode) {
+      if (node.calls === undefined) {
+        node.calls = 'n/a';
+      }
+      if (node.items === undefined) {
+        node.items = 'n/a';
+      }
+      let runtime = node.runtime;
+      if (runtime === undefined) {
+        runtime = 'n/a';
+      } else {
+        runtime = String(Math.abs(node.runtime).toFixed(5));
+      }
+
       line += pad(1 + maxCallsLen - String(node.calls).length) + value(node.calls) + '   ' +
         pad(1 + maxItemsLen - String(node.items).length) + value(node.items) + '   ' +
-        pad(1 + maxRuntimeLen - String(node.runtime.toFixed(5)).length) + value(node.runtime.toFixed(5)) + '   ' +
+        pad(1 + maxRuntimeLen - runtime.length) + value(runtime) + '   ' +
         indent(level, node.type === 'SingletonNode') + label(node);
     } else {
       line += pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + '   ' +
@@ -1897,9 +2097,11 @@ function debug(query, bindVars, options) {
   }
   let result = {
     engine: db._engine(),
+    engineStats: db._engineStats(),
     version: db._version(true),
     database: db._name(),
     query: input,
+    queryCache: require('@arangodb/aql/cache').properties(),
     collections: {},
     views: {}
   };
@@ -1954,7 +2156,7 @@ function debug(query, bindVars, options) {
   };
   // mangle with graphs used in query
   findGraphs(result.explain.plan.nodes);
-  
+
   let handleCollection = function(collection) {
     let c = db._collection(collection.name);
     if (c === null) {
@@ -1977,7 +2179,7 @@ function debug(query, bindVars, options) {
       let examples;
       if (input.options.examples) {
         // include example data from collections
-        let max = 10; // default number of documents 
+        let max = 10; // default number of documents
         if (typeof input.options.examples === 'number') {
           max = input.options.examples;
         }
@@ -2060,6 +2262,9 @@ function inspectDump(filename, outfile) {
   }
 
   let data = JSON.parse(require('fs').read(filename));
+  if (data.version && data.version) {
+    print("/* original data is from " + data.version["server-version"] + ", " + data.version.license + " */");
+  }
   if (data.database) {
     print("/* original data gathered from database '" + data.database + "' */");
   }
@@ -2123,7 +2328,7 @@ function inspectDump(filename, outfile) {
     let details = data.collections[collection];
     if (details.examples) {
       details.examples.forEach(function (example) {
-        print("db[" + JSON.stringify(collection) + "].insert(" + JSON.stringify(example) + ");");
+        print("db[" + JSON.stringify(collection) + "].insert(" + JSON.stringify(example) + ", {isRestore: true});");
       });
     }
     let missing = details.count;

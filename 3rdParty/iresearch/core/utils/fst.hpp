@@ -18,15 +18,10 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_FST_H
 #define IRESEARCH_FST_H
-
-#include "shared.hpp"
-#include "utils/string.hpp"
-#include "utils/noncopyable.hpp"
 
 #if defined(_MSC_VER)
   #pragma warning(disable : 4018)
@@ -61,6 +56,11 @@
 #endif
 
 #include <boost/functional/hash.hpp>
+
+#include "shared.hpp"
+#include "utils/fst_states_map.hpp"
+#include "utils/string.hpp"
+#include "utils/noncopyable.hpp"
 
 NS_ROOT
 //////////////////////////////////////////////////////////////////////////////
@@ -97,21 +97,23 @@ class fst_builder : util::noncopyable {
       return;
     }
 
+    const auto size = in.size();
+
     // determine common prefix
-    const size_t pref = 1 + prefix(last_, in);
+    const size_t pref = 1 + common_prefix_length(last_, in);
 
     // add states for current input
-    add_states(in.size());
+    add_states(size);
 
     // minimize last word suffix
     minimize(pref);
 
     // add current word suffix
-    for (size_t i = pref; i <= in.size(); ++i) {
+    for (size_t i = pref; i <= size; ++i) {
       states_[i - 1].arcs.emplace_back(in[i - 1], &states_[i]);
     }
 
-    const bool is_final = last_.size() != in.size() || pref != (in.size() + 1);
+    const bool is_final = last_.size() != size || pref != (size + 1);
 
     decltype(fst::DivideLeft(out, out)) output = out;
 
@@ -143,7 +145,7 @@ class fst_builder : util::noncopyable {
     if (is_final) {
       // set final state
       {
-        state& s = states_[in.size()];
+        state& s = states_[size];
         s.final = true;
       }
 
@@ -154,7 +156,7 @@ class fst_builder : util::noncopyable {
         s.arcs.back().out = std::move(output);
       }
     } else {
-      state& s = states_[in.size()];
+      state& s = states_[size];
       assert(s.arcs.size());
       assert(s.arcs.back().label == in[pref - 1]);
       s.arcs.back().out = fst::Times(s.arcs.back().out, output);
@@ -164,13 +166,17 @@ class fst_builder : util::noncopyable {
   }
 
   void finish() {
-    stateid_t start;
-    if (states_.empty()) {
-      start = final;
-    } else {
+    stateid_t start = fst_builder::final;
+
+    if (!states_.empty()) {
       // minimize last word suffix
       minimize(1);
-      start = states_map_.insert(states_[0], fst_);
+
+      auto& root = states_[0];
+
+      if (!root.arcs.empty() || !root.final) {
+        start = states_map_.insert(root, fst_);
+      }
     }
 
     // set the start state
@@ -200,28 +206,20 @@ class fst_builder : util::noncopyable {
         label(label) {
     }
 
-    arc(arc&& rhs) NOEXCEPT
+    arc(arc&& rhs) noexcept
       : target(rhs.target),
         label(rhs.label),
         out(std::move(rhs.out)) {
     }
     
-    bool operator==(const arc_t& rhs) const {
+    bool operator==(const arc_t& rhs) const noexcept {
       return label == rhs.ilabel
         && id == rhs.nextstate
         && out == rhs.weight;
     }
 
-    bool operator!=(const arc_t& rhs) const {
+    bool operator!=(const arc_t& rhs) const noexcept {
       return !(*this == rhs);
-    }
-
-    friend size_t hash_value(const arc& a) {
-      size_t hash = 0;
-      ::boost::hash_combine(hash, a.label);
-      ::boost::hash_combine(hash, a.id);
-      ::boost::hash_combine(hash, a.out.Hash());
-      return hash;
     }
 
     union {
@@ -235,26 +233,16 @@ class fst_builder : util::noncopyable {
   struct state : private util::noncopyable {
     state() = default;
 
-    state(state&& rhs) NOEXCEPT
+    state(state&& rhs) noexcept
       : arcs(std::move(rhs.arcs)),
         out(std::move(rhs.out)),
         final(rhs.final) {
     }
 
-    void clear() {
+    void clear() noexcept {
       arcs.clear();
-      final = false;
       out = weight_t::One();
-    }
-
-    friend size_t hash_value(const state& s) { 
-      size_t seed = 0;
-
-      for (auto& arc: s.arcs) {
-        ::boost::hash_combine(seed, arc);
-      }
-
-      return seed;
+      final = false;
     }
 
     std::vector<arc> arcs;
@@ -262,118 +250,78 @@ class fst_builder : util::noncopyable {
     bool final{ false };
   }; // state
 
-  class state_map : private util::noncopyable {
-   public:
-    static const size_t InitialSize = 16;
-
-    state_map(): states_(InitialSize, fst::kNoStateId) {}
-    stateid_t insert(const state& s, fst_t& fst) {
-      if (s.arcs.empty() && s.final) {
-        return fst_builder::final;
-      }
-
-      stateid_t id;
-      const size_t mask = states_.size() - 1;
-      size_t pos = hash_value(s) % mask;
-      for ( ;; ++pos, pos %= mask ) { // TODO: maybe use quadratic probing here
-        if (fst::kNoStateId == states_[pos]) {
-          states_[pos] = id = add_state(s, fst);
-          ++count_;
-
-          if (count_ > 2 * states_.size() / 3) {
-            rehash(fst);
-          }
-          break;
-        } else if (equals( s, states_[pos], fst)) {
-          id = states_[pos];
-          break;
-        }
-      }
-
-      return id;
-    }
-
-    void reset() {
-      count_ = 0;
-      std::fill(states_.begin(), states_.end(), fst::kNoStateId);
-    }
-
-   private:
-    static bool equals(const state& lhs, stateid_t rhs, const fst_t& fst) {
-      if (fst.NumArcs( rhs ) != lhs.arcs.size() ) {
+  struct state_equal {
+    bool operator()(const state& lhs, stateid_t rhs, const fst_t& fst) const {
+      if (lhs.arcs.size() != fst.NumArcs(rhs)) {
         return false;
       }
 
-      for (fst::ArcIterator<fst_t>it(fst, rhs); !it.Done(); it.Next()) {
-        if (lhs.arcs[it.Position()] !=  it.Value()) {
+      fst::ArcIterator<fst_t> rhs_arc(fst, rhs);
+
+      for (auto& lhs_arc : lhs.arcs) {
+        if (lhs_arc != rhs_arc.Value()) {
           return false;
         }
+
+        rhs_arc.Next();
       }
+
+      assert(rhs_arc.Done());
       return true;
     }
+  };
 
-    static size_t hash(stateid_t id, const fst_t& fst) {
+  struct state_hash {
+    size_t operator()(const state& s, const fst_t& /*fst*/) const noexcept {
       size_t hash = 0;
-      for (fst::ArcIterator< fst_t > it(fst, id); !it.Done(); it.Next()) {
+
+      for (auto& a: s.arcs) {
+        ::boost::hash_combine(hash, a.label);
+        ::boost::hash_combine(hash, a.id);
+        ::boost::hash_combine(hash, a.out.Hash());
+      }
+
+      return hash;
+    }
+
+    size_t operator()(stateid_t id, const fst_t& fst) const noexcept {
+      size_t hash = 0;
+
+      for (fst::ArcIterator<fst_t> it(fst, id); !it.Done(); it.Next()) {
         const arc_t& a = it.Value();
         ::boost::hash_combine(hash, a.ilabel);
         ::boost::hash_combine(hash, a.nextstate);
         ::boost::hash_combine(hash, a.weight.Hash());
       }
+
       return hash;
     }
+  };
 
-    void rehash(const fst_t& fst) {
-      std::vector< stateid_t > states(states_.size() * 2, fst::kNoStateId);
-      const size_t mask = states.size() - 1;
-      for (stateid_t id : states_) {
-
-        if (fst::kNoStateId == id) {
-          continue;
-        }
-
-        size_t pos = hash(id, fst) % mask;
-        for (;;++pos, pos %= mask) { // TODO: maybe use quadratic probing here
-          if (fst::kNoStateId == states[pos] ) {
-            states[pos] = id;
-            break;
-          }
-        }
-      }
-
-      states_ = std::move(states);
-    }
-
-    stateid_t add_state(const state& s, fst_t& fst) {
+  struct state_emplace {
+    stateid_t operator()(const state& s, fst_t& fst) const {
       const stateid_t id = fst.AddState();
+
       if (s.final) {
         fst.SetFinal(id, s.out);
       }
 
       for (const arc& a : s.arcs) {
-        fst.AddArc(id, arc_t(a.label, a.label, a.out, a.id));
+        fst.EmplaceArc(id, a.label, a.label, a.out, a.id);
       }
 
       return id;
     }
+  };
 
-    // TODO: maybe use "buckets" here
-    std::vector<stateid_t> states_;
-    size_t count_{};
-  }; // state_map
-
-  static size_t prefix(const key_t& lhs, const key_t& rhs) {
-    size_t pref = 0;
-    const size_t max = std::min( lhs.size(), rhs.size() );
-    while ( pref < max && lhs[pref] == rhs[pref] ) {
-      ++pref;
-    }
-    return pref;
-  }
+  using states_map = fst_states_map<
+    fst_t, state,
+    state_emplace, state_hash,
+    state_equal, fst::kNoStateId>;
 
   void add_states(size_t size) {
     // reserve size + 1 for root state
-    if ( states_.size() < ++size ) {
+    if (states_.size() < ++size) {
       states_.resize(size);
     }
   }
@@ -384,14 +332,17 @@ class fst_builder : util::noncopyable {
     for (size_t i = last_.size(); i >= pref; --i) {
       state& s = states_[i];
       state& p = states_[i - 1];
-      assert(!p.arcs.empty());
 
-      p.arcs.back().id = states_map_.insert(s, fst_);
+      assert(!p.arcs.empty());
+      p.arcs.back().id = s.arcs.empty() && s.final
+        ? fst_builder::final
+        : states_map_.insert(s, fst_);
+
       s.clear();
     }
   }
 
-  state_map states_map_;
+  states_map states_map_;
   std::vector<state> states_; // current states
   weight_t start_out_; // output for "empty" input
   key_t last_;

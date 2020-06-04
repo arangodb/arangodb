@@ -44,4 +44,3 @@ The server will respond with *HTTP 405* if an unsupported HTTP method is used.
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

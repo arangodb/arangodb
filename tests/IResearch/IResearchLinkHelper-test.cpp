@@ -59,23 +59,26 @@ class IResearchLinkHelperTestSingle : public ::testing::Test {
     auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
     {
       TRI_vocbase_t* vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
+      std::shared_ptr<arangodb::LogicalCollection> unused;
       arangodb::methods::Collections::createSystem(
         *vocbase,
-        arangodb::tests::AnalyzerCollectionName, false);
+        arangodb::tests::AnalyzerCollectionName, false, unused);
     }
     {
       TRI_vocbase_t* vocbase;
       dbFeature.createDatabase(testDBInfo(server.server(), "testVocbaseWithAnalyzer", 1), vocbase);
+      std::shared_ptr<arangodb::LogicalCollection> unused;
       arangodb::methods::Collections::createSystem(
         *vocbase,
-         arangodb::tests::AnalyzerCollectionName, false);
+         arangodb::tests::AnalyzerCollectionName, false, unused);
     }
     {
       TRI_vocbase_t* vocbase;
       dbFeature.createDatabase(testDBInfo(server.server(), "testVocbaseWithView",2), vocbase);
+      std::shared_ptr<arangodb::LogicalCollection> unused;
       arangodb::methods::Collections::createSystem(
         *vocbase,
-        arangodb::tests::AnalyzerCollectionName, false);
+        arangodb::tests::AnalyzerCollectionName, false, unused);
       auto collectionJson = arangodb::velocypack::Parser::fromJson(
           "{ \"id\":102, \"name\": \"foo\" }");
       EXPECT_NE(nullptr, vocbase->createCollection(collectionJson->slice()));
@@ -94,70 +97,70 @@ TEST_F(IResearchLinkHelperTestSingle, test_equals) {
   {
     auto lhs = arangodb::velocypack::Parser::fromJson("123");
     auto rhs = arangodb::velocypack::Parser::fromJson("{}");
-    EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(lhs->slice(),
-                                                                          rhs->slice())));
-    EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(rhs->slice(),
-                                                                          lhs->slice())));
+    EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
+                              server.server(), lhs->slice(), rhs->slice())));
+    EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
+                              server.server(), rhs->slice(), lhs->slice())));
   }
 
   // test view id same type (validate only meta)
   {
     auto lhs = arangodb::velocypack::Parser::fromJson("{ \"view\": 123 }");
     auto rhs = arangodb::velocypack::Parser::fromJson("{ \"view\": 123 }");
-    EXPECT_TRUE((true == arangodb::iresearch::IResearchLinkHelper::equal(lhs->slice(),
-                                                                         rhs->slice())));
-    EXPECT_TRUE((true == arangodb::iresearch::IResearchLinkHelper::equal(rhs->slice(),
-                                                                         lhs->slice())));
+    EXPECT_TRUE((true == arangodb::iresearch::IResearchLinkHelper::equal(
+                             server.server(), lhs->slice(), rhs->slice())));
+    EXPECT_TRUE((true == arangodb::iresearch::IResearchLinkHelper::equal(
+                             server.server(), rhs->slice(), lhs->slice())));
   }
 
   // test view id not same type (at least one non-string)
   {
     auto lhs = arangodb::velocypack::Parser::fromJson("{ \"view\": 123 }");
     auto rhs = arangodb::velocypack::Parser::fromJson("{ \"view\": \"abc\" }");
-    EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(lhs->slice(),
-                                                                          rhs->slice())));
-    EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(rhs->slice(),
-                                                                          lhs->slice())));
+    EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
+                              server.server(), lhs->slice(), rhs->slice())));
+    EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
+                              server.server(), rhs->slice(), lhs->slice())));
   }
 
   // test view id prefix (up to /) not equal (at least one empty)
   {
     auto lhs = arangodb::velocypack::Parser::fromJson("{ \"view\": \"\" }");
     auto rhs = arangodb::velocypack::Parser::fromJson("{ \"view\": \"abc\" }");
-    EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(lhs->slice(),
-                                                                          rhs->slice())));
-    EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(rhs->slice(),
-                                                                          lhs->slice())));
+    EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
+                              server.server(), lhs->slice(), rhs->slice())));
+    EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
+                              server.server(), rhs->slice(), lhs->slice())));
   }
 
   // test view id prefix (up to /) not equal (shorter does not end with '/')
   {
     auto lhs = arangodb::velocypack::Parser::fromJson("{ \"view\": \"a\" }");
     auto rhs = arangodb::velocypack::Parser::fromJson("{ \"view\": \"abc\" }");
-    EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(lhs->slice(),
-                                                                          rhs->slice())));
-    EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(rhs->slice(),
-                                                                          lhs->slice())));
+    EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
+                              server.server(), lhs->slice(), rhs->slice())));
+    EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
+                              server.server(), rhs->slice(), lhs->slice())));
   }
 
   // test view id prefix (up to /) not equal (shorter ends with '/' but not a prefix of longer)
   {
     auto lhs = arangodb::velocypack::Parser::fromJson("{ \"view\": \"a/\" }");
     auto rhs = arangodb::velocypack::Parser::fromJson("{ \"view\": \"ab/c\" }");
-    EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(lhs->slice(),
-                                                                          rhs->slice())));
-    EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(rhs->slice(),
-                                                                          lhs->slice())));
+    EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
+                              server.server(), lhs->slice(), rhs->slice())));
+    EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
+                              server.server(), rhs->slice(), lhs->slice())));
   }
 
   // test view id prefix (up to /) equal
   {
     auto lhs = arangodb::velocypack::Parser::fromJson("{ \"view\": \"a/\" }");
     auto rhs = arangodb::velocypack::Parser::fromJson("{ \"view\": \"a/bc\" }");
-    EXPECT_TRUE((true == arangodb::iresearch::IResearchLinkHelper::equal(lhs->slice(),
-                                                                         rhs->slice())));
-    EXPECT_TRUE((true == arangodb::iresearch::IResearchLinkHelper::equal(rhs->slice(),
-                                                                         lhs->slice())));
+    EXPECT_TRUE((true == arangodb::iresearch::IResearchLinkHelper::equal(
+                             server.server(), lhs->slice(), rhs->slice())));
+    EXPECT_TRUE((true == arangodb::iresearch::IResearchLinkHelper::equal(
+                             server.server(), rhs->slice(), lhs->slice())));
   }
 
   // test meta init fail
@@ -165,10 +168,10 @@ TEST_F(IResearchLinkHelperTestSingle, test_equals) {
     auto lhs = arangodb::velocypack::Parser::fromJson("{ \"view\": \"a/\" }");
     auto rhs = arangodb::velocypack::Parser::fromJson(
         "{ \"view\": \"a/bc\", \"includeAllFields\": 42 }");
-    EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(lhs->slice(),
-                                                                          rhs->slice())));
-    EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(rhs->slice(),
-                                                                          lhs->slice())));
+    EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
+                              server.server(), lhs->slice(), rhs->slice())));
+    EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
+                              server.server(), rhs->slice(), lhs->slice())));
   }
 
   // test meta not equal
@@ -177,10 +180,10 @@ TEST_F(IResearchLinkHelperTestSingle, test_equals) {
         "{ \"view\": \"a/\", \"includeAllFields\": false }");
     auto rhs = arangodb::velocypack::Parser::fromJson(
         "{ \"view\": \"a/bc\", \"includeAllFields\": true }");
-    EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(lhs->slice(),
-                                                                          rhs->slice())));
-    EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(rhs->slice(),
-                                                                          lhs->slice())));
+    EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
+                              server.server(), lhs->slice(), rhs->slice())));
+    EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
+                              server.server(), rhs->slice(), lhs->slice())));
   }
 
   // test equal
@@ -189,10 +192,10 @@ TEST_F(IResearchLinkHelperTestSingle, test_equals) {
         "{ \"view\": \"a/\", \"includeAllFields\": false }");
     auto rhs = arangodb::velocypack::Parser::fromJson(
         "{ \"view\": \"a/bc\", \"includeAllFields\": false }");
-    EXPECT_TRUE((true == arangodb::iresearch::IResearchLinkHelper::equal(lhs->slice(),
-                                                                         rhs->slice())));
-    EXPECT_TRUE((true == arangodb::iresearch::IResearchLinkHelper::equal(rhs->slice(),
-                                                                         lhs->slice())));
+    EXPECT_TRUE((true == arangodb::iresearch::IResearchLinkHelper::equal(
+                             server.server(), lhs->slice(), rhs->slice())));
+    EXPECT_TRUE((true == arangodb::iresearch::IResearchLinkHelper::equal(
+                             server.server(), rhs->slice(), lhs->slice())));
   }
 }
 
@@ -228,10 +231,43 @@ TEST_F(IResearchLinkHelperTestSingle, test_validate_cross_db_analyzer) {
 
 TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
   auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   TRI_vocbase_t& sysVocbase = server.getSystemDatabase();
 
-  // analyzer single-server
+  // analyzer single-server, for creation
+  {
+    auto json = arangodb::velocypack::Parser::fromJson(
+        "{ \
+      \"analyzerDefinitions\": [ { \"name\": \"testAnalyzer0\", \"type\": \"identity\" } ], \
+      \"analyzers\": [\"testAnalyzer0\" ], \
+      \"storedValues\":[[], [\"\"], [\"test.t\"], [\"a.a\", \"b.b\"]] \
+    }");
+    arangodb::velocypack::Builder builder;
+    builder.openObject();
+    EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::normalize(
+                  builder, json->slice(), true, sysVocbase).ok());
+    builder.close();
+    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0",
+                                     arangodb::AnalyzersRevision::LATEST));
+
+    auto expected_json = arangodb::velocypack::Parser::fromJson(
+    "{ \
+      \"type\":\"arangosearch\", \
+      \"primarySort\":[], \
+      \"primarySortCompression\":\"lz4\",\
+      \"fields\":{}, \
+      \"includeAllFields\": false, \
+      \"trackListPositions\": false, \
+      \"storeValues\": \"none\", \
+      \"analyzerDefinitions\": [ \
+        { \"name\": \"testAnalyzer0\", \"type\": \"identity\", \"properties\":{}, \"features\":[], \"revision\":0 } \
+      ], \
+      \"analyzers\": [\"testAnalyzer0\" ], \
+      \"storedValues\":[{\"fields\":[\"test.t\"], \"compression\":\"lz4\"}, {\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"lz4\"}] \
+    }");
+    EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
+  }
+
+  // analyzer single-server, user definition
   {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \
@@ -242,10 +278,91 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     builder.openObject();
     EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::normalize(
                   builder, json->slice(), false, sysVocbase).ok());
-    EXPECT_FALSE(analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1"));
+    builder.close();
+    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0",
+                                     arangodb::AnalyzersRevision::LATEST));
+
+    auto expected_json = arangodb::velocypack::Parser::fromJson(
+    "{ \
+      \"type\":\"arangosearch\", \
+      \"fields\":{}, \
+      \"includeAllFields\": false, \
+      \"trackListPositions\": false, \
+      \"storeValues\": \"none\", \
+      \"analyzers\": [\"testAnalyzer0\" ] \
+    }");
+    EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
   }
 
-  // analyzer single-server (inRecovery) fail persist in recovery
+  // analyzer single-server, not for creation, missing "testAanalyzer0"
+  {
+    auto json = arangodb::velocypack::Parser::fromJson(
+        "{ \
+      \"analyzers\": [\"testAnalyzer0\" ] \
+    }");
+    arangodb::velocypack::Builder builder;
+    builder.openObject();
+    EXPECT_FALSE(arangodb::iresearch::IResearchLinkHelper::normalize(
+                  builder, json->slice(), false, sysVocbase).ok());
+    builder.close();
+    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0",
+                                     arangodb::AnalyzersRevision::LATEST));
+  }
+
+  // analyzer single-server, for creation, missing "testAanalyzer0"
+  {
+    auto json = arangodb::velocypack::Parser::fromJson(
+        "{ \
+      \"analyzers\": [\"testAnalyzer0\" ] \
+    }");
+    arangodb::velocypack::Builder builder;
+    builder.openObject();
+    EXPECT_FALSE(arangodb::iresearch::IResearchLinkHelper::normalize(
+                  builder, json->slice(), false, sysVocbase).ok());
+    builder.close();
+    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0", 
+                                     arangodb::AnalyzersRevision::LATEST));
+  }
+
+  // analyzer single-server (inRecovery), for creation
+  {
+    auto json = arangodb::velocypack::Parser::fromJson(
+        "{ \
+      \"analyzerDefinitions\": [ { \"name\": \"testAnalyzer1\", \"type\": \"identity\" } ], \
+      \"analyzers\": [\"testAnalyzer1\" ], \
+      \"storedValues\":[[], [\"\"], [\"test.t\"], [\"a.a\", \"b.b\"]] \
+    }");
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+    auto restore = irs::make_finally(
+        [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
+    arangodb::velocypack::Builder builder;
+    builder.openObject();
+    EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::normalize(
+                  builder, json->slice(), true, sysVocbase).ok());
+    builder.close();
+    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                                     arangodb::AnalyzersRevision::LATEST));
+
+    auto expected_json = arangodb::velocypack::Parser::fromJson(
+    "{ \
+      \"type\":\"arangosearch\", \
+      \"primarySort\":[], \
+      \"primarySortCompression\":\"lz4\",\
+      \"fields\":{}, \
+      \"includeAllFields\": false, \
+      \"trackListPositions\": false, \
+      \"storeValues\": \"none\", \
+      \"analyzerDefinitions\": [ \
+        { \"name\": \"testAnalyzer1\", \"type\": \"identity\", \"properties\":{}, \"features\":[], \"revision\":0 } \
+      ], \
+      \"analyzers\": [\"testAnalyzer1\" ], \
+      \"storedValues\":[{\"fields\":[\"test.t\"], \"compression\":\"lz4\"}, {\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"lz4\"}] \
+    }");
+    EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
+  }
+
+  // analyzer single-server (inRecovery), not for creation
   {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \
@@ -258,9 +375,59 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
         [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::normalize(
-                              builder, json->slice(), false, sysVocbase)
-                              .ok()));
-    EXPECT_FALSE(analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2"));
+    EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::normalize(
+                  builder, json->slice(), false, sysVocbase).ok());
+    builder.close();
+    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                                     arangodb::AnalyzersRevision::LATEST));
+
+    auto expected_json = arangodb::velocypack::Parser::fromJson(
+    "{ \
+      \"type\":\"arangosearch\", \
+      \"fields\":{}, \
+      \"includeAllFields\": false, \
+      \"trackListPositions\": false, \
+      \"storeValues\": \"none\", \
+      \"analyzers\": [\"testAnalyzer1\" ] \
+    }");
+    EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
   }
-}
+  // analyzer single-server (inRecovery), for creation with specified compression
+  {
+    auto json = arangodb::velocypack::Parser::fromJson(
+      "{ \
+      \"analyzerDefinitions\": [ { \"name\": \"testAnalyzer1\", \"type\": \"identity\" } ], \
+      \"analyzers\": [\"testAnalyzer1\" ], \
+      \"storedValues\":[[], [\"\"], {\"fields\":[\"test.t\"], \"compression\":\"lz4\",\
+      \"some_unknown\":1}, {\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}] \
+    }");
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+    auto restore = irs::make_finally(
+      [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
+    arangodb::velocypack::Builder builder;
+    builder.openObject();
+    EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::normalize(
+      builder, json->slice(), true, sysVocbase).ok());
+    builder.close();
+    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1", 
+                                     arangodb::AnalyzersRevision::LATEST));
+
+    auto expected_json = arangodb::velocypack::Parser::fromJson(
+      "{ \
+      \"type\":\"arangosearch\", \
+      \"primarySort\":[], \
+      \"primarySortCompression\":\"lz4\",\
+      \"fields\":{}, \
+      \"includeAllFields\": false, \
+      \"trackListPositions\": false, \
+      \"storeValues\": \"none\", \
+      \"analyzerDefinitions\": [ \
+        { \"name\": \"testAnalyzer1\", \"type\": \"identity\", \"properties\":{}, \"features\":[], \"revision\":0 } \
+      ], \
+      \"analyzers\": [\"testAnalyzer1\" ], \
+      \"storedValues\":[{\"fields\":[\"test.t\"], \"compression\":\"lz4\"}, {\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}] \
+    }");
+    EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
+  }
+} 

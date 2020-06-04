@@ -29,6 +29,8 @@
 #include "Aql/IndexNode.h"
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
+#include "Basics/tryEmplaceHelper.h"
+
 
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
@@ -93,7 +95,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
     }
 
     case EN::CALCULATION: {
-      _variableDefinitions.emplace(
+      _variableDefinitions.try_emplace(
           ExecutionNode::castTo<CalculationNode const*>(en)->outVariable()->id,
           ExecutionNode::castTo<CalculationNode const*>(en)->expression()->node());
       TRI_IF_FAILURE("ConditionFinder::variableDefinition") {
@@ -124,18 +126,18 @@ bool ConditionFinder::before(ExecutionNode* en) {
       }
 
       std::vector<transaction::Methods::IndexHandle> usedIndexes;
-      auto canUseIndex = condition->findIndexes(node, usedIndexes, sortCondition.get());
+      auto [filtering, sorting] = condition->findIndexes(node, usedIndexes, sortCondition.get());
 
-      if (canUseIndex.first /*filtering*/ || canUseIndex.second /*sorting*/) {
+      if (filtering || sorting) {
         bool descending = false;
-        if (canUseIndex.second && sortCondition->isUnidirectional()) {
+        if (sorting && sortCondition->isUnidirectional()) {
           descending = sortCondition->isDescending();
         }
 
-        if (!canUseIndex.first) {
+        if (!filtering) {
           // index cannot be used for filtering, but only for sorting
           // remove the condition now
-          TRI_ASSERT(canUseIndex.second);
+          TRI_ASSERT(sorting);
           condition.reset(new Condition(_plan->getAst()));
           condition->normalize(_plan);
         }
@@ -146,18 +148,23 @@ bool ConditionFinder::before(ExecutionNode* en) {
         // will clear out usedIndexes
         IndexIteratorOptions opts;
         opts.ascending = !descending;
-        std::unique_ptr<ExecutionNode> newNode(
-            new IndexNode(_plan, _plan->nextId(), node->collection(),
-                          node->outVariable(), usedIndexes, std::move(condition), opts));
         TRI_IF_FAILURE("ConditionFinder::insertIndexNode") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
 
         // We keep this node's change
-        _changes->emplace(node->id(), newNode.get());
-        newNode.release();
+        _changes->try_emplace(
+            node->id(),
+            arangodb::lazyConstruct([&]{
+              IndexNode* idx = new IndexNode(_plan, _plan->nextId(), node->collection(),
+                                             node->outVariable(), usedIndexes, std::move(condition), opts);
+              // if the enumerate collection node had the counting flag
+              // set, we can copy it over to the index node as well
+              idx->copyCountFlag(node);
+              return idx;
+            })
+        );
       }
-
       break;
     }
 
@@ -261,7 +268,7 @@ void ConditionFinder::handleSortCondition(ExecutionNode* en, Variable const* out
 }
 
 ConditionFinder::ConditionFinder(ExecutionPlan* plan,
-                                 std::unordered_map<size_t, ExecutionNode*>* changes,
+                                 std::unordered_map<ExecutionNodeId, ExecutionNode*>* changes,
                                  bool* hasEmptyResult, bool viewMode)
     : _plan(plan),
       _variableDefinitions(),

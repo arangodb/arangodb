@@ -27,6 +27,7 @@
 #include "MaintenanceFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -67,12 +68,12 @@ bool CreateDatabase::first() {
   LOG_TOPIC("953b1", INFO, Logger::MAINTENANCE) << "CreateDatabase: creating database " << database;
 
   try {
-    DatabaseGuard guard("_system");
+    DatabaseGuard guard(StaticStrings::SystemDatabase);
 
     // Assertion in constructor makes sure that we have DATABASE.
     auto& server = _feature.server();
     _result = Databases::create(server, _description.get(DATABASE), users, properties());
-    if (!_result.ok()) {
+    if (!_result.ok() && _result.errorNumber() != TRI_ERROR_ARANGO_DUPLICATE_NAME) {
       LOG_TOPIC("5fb67", ERR, Logger::MAINTENANCE)
           << "CreateDatabase: failed to create database " << database << ": " << _result;
 

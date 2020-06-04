@@ -34,13 +34,13 @@ const fs = require('fs');
 const db = require('internal').db;
 const basePath = fs.makeAbsolute(fs.join(require('internal').pathForTesting('common'), 'test-data', 'apps'));
 const arango = require('@arangodb').arango;
-const originalEndpoint = arango.getEndpoint().replace(/localhost/, '127.0.0.1');
+const origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:');
 const expect = require('chai').expect;
 
 describe('Foxx Manager', function () {
   describe('using different dbs', function () {
     beforeEach(function () {
-      arango.reconnect(originalEndpoint, '_system', 'root', '');
+      arango.reconnect(origin, '_system', 'root', '');
       try {
         db._dropDatabase('tmpFMDB');
       } catch (err) {
@@ -56,23 +56,23 @@ describe('Foxx Manager', function () {
     });
 
     afterEach(function () {
-      arango.reconnect(originalEndpoint, '_system', 'root', '');
+      arango.reconnect(origin, '_system', 'root', '');
       db._dropDatabase('tmpFMDB');
       db._dropDatabase('tmpFMDB2');
     });
 
     it('should allow to install apps on same mount point', function () {
       const download = require('internal').download;
-      arango.reconnect(originalEndpoint, 'tmpFMDB', 'root', '');
+      arango.reconnect(origin, 'tmpFMDB', 'root', '');
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'itzpapalotl'), '/unittest');
       }).not.to.throw();
-      arango.reconnect(originalEndpoint, 'tmpFMDB2', 'root', '');
+      arango.reconnect(origin, 'tmpFMDB2', 'root', '');
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'minimal-working-manifest'), '/unittest');
       }).not.to.throw();
       db._useDatabase('_system');
-      const baseUrl = arango.getEndpoint().replace('tcp://', 'http://') + '/_db';
+      const baseUrl = origin + '/_db';
       const available = download(baseUrl + '/tmpFMDB/unittest/random');
       expect(available.code).to.equal(200);
       const unavailable = download(baseUrl + '/tmpFMDB2/unittest/random');
@@ -87,7 +87,7 @@ describe('Foxx Manager', function () {
     const mount = '/unittest/upgrade';
     const setupTeardownApp = fs.join(basePath, 'minimal-working-setup-teardown');
     const setupApp = fs.join(basePath, 'minimal-working-setup');
-    const url = arango.getEndpoint().replace('tcp://', 'http://') + '/_db/_system' + mount + '/test';
+    const url = origin + '/_db/_system' + mount + '/test';
     const brokenApp = fs.join(basePath, 'broken-controller-file');
 
     beforeEach(function () {
@@ -167,7 +167,7 @@ describe('Foxx Manager', function () {
     const mount = '/unittest/replace';
     const setupTeardownApp = fs.join(basePath, 'minimal-working-setup-teardown');
     const setupApp = fs.join(basePath, 'minimal-working-setup');
-    const url = arango.getEndpoint().replace('tcp://', 'http://') + '/_db/_system' + mount + '/test';
+    const url = origin + '/_db/_system' + mount + '/test';
     const brokenApp = fs.join(basePath, 'broken-controller-file');
 
     beforeEach(function () {

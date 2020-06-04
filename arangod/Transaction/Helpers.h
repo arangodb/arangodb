@@ -84,12 +84,14 @@ VPackSlice extractToFromDocument(VPackSlice);
 void extractKeyAndRevFromDocument(VPackSlice slice, VPackSlice& keySlice,
                                   TRI_voc_rid_t& revisionId);
 
+velocypack::StringRef extractCollectionFromId(velocypack::StringRef id);
+
 /// @brief extract _rev from a database document
 TRI_voc_rid_t extractRevFromDocument(VPackSlice slice);
 VPackSlice extractRevSliceFromDocument(VPackSlice slice);
 
 OperationResult buildCountResult(std::vector<std::pair<std::string, uint64_t>> const& count,
-                                 transaction::CountType type, int64_t& total);
+                                 transaction::CountType type, uint64_t& total);
 
 /// @brief creates an id string from a custom _id value and the _key string
 std::string makeIdFromCustom(CollectionNameResolver const* resolver,
@@ -154,18 +156,14 @@ inline bool isFollowerTransactionId(TRI_voc_tid_t tid) {
   return (tid % 4) == 2;
 }
 
-inline bool isLeaderTransactionId(TRI_voc_tid_t tid) {
-  return (tid % 4) == 1;
-}
-  
+inline bool isLeaderTransactionId(TRI_voc_tid_t tid) { return (tid % 4) == 1; }
+
 inline bool isChildTransactionId(TRI_voc_tid_t tid) {
   return isLeaderTransactionId(tid) || isFollowerTransactionId(tid);
 }
 
-inline bool isLegacyTransactionId(TRI_voc_tid_t tid) {
-  return (tid % 4) == 3;
-}
-  
+inline bool isLegacyTransactionId(TRI_voc_tid_t tid) { return (tid % 4) == 3; }
+
 }  // namespace transaction
 }  // namespace arangodb
 

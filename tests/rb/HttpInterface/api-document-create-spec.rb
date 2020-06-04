@@ -108,6 +108,25 @@ describe ArangoDB do
 
         ArangoDB.drop_collection(cn)
       end
+
+      it "returns an error if an string attribute in the JSON body is corrupted" do
+        cn = "UnitTestsCollectionBasics"
+        id = ArangoDB.create_collection(cn)
+
+        cmd = "/_api/document?collection=#{id}"
+        body = "{ \"foo\" : \"bar\xff\" }"
+        doc = ArangoDB.log_post("#{prefix}-bad-json", cmd, :body => body)
+
+        doc.code.should eq(400)
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['errorNum'].should eq(600)
+        doc.parsed_response['code'].should eq(400)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        ArangoDB.size_collection(cn).should eq(0)
+
+        ArangoDB.drop_collection(cn)
+      end
     end
 
 ################################################################################

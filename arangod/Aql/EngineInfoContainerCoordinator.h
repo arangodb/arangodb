@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_ENGINE_INFO_CONTAINER_COORDINATOR_H 1
 
 #include "Aql/types.h"
+#include "Aql/ExecutionEngine.h"
 
 #include <stack>
 #include <string>
@@ -35,31 +36,32 @@ class Result;
 
 namespace aql {
 
-class ExecutionEngine;
-class ExecutionEngineResult;
+class AqlItemBlockManager;
 class ExecutionNode;
-class Query;
+class QueryContext;
 class QueryRegistry;
 
 class EngineInfoContainerCoordinator {
  private:
   struct EngineInfo {
    public:
-    EngineInfo(QueryId id, size_t idOfRemoteNode);
-    ~EngineInfo();
+    EngineInfo(QueryId id, ExecutionNodeId idOfRemoteNode);
+
+    // This container is not responsible for nodes, they are managed by the AST
+    // somewhere else.
+    ~EngineInfo() = default;
+
 #if (_MSC_VER != 0)
 #pragma warning(disable : 4521)  // stfu wintendo.
 #endif
     EngineInfo(EngineInfo&) = delete;
     EngineInfo(EngineInfo const& other) = delete;
-    EngineInfo(EngineInfo const&& other);
+    EngineInfo(EngineInfo&& other) noexcept;
 
     void addNode(ExecutionNode* en);
 
-    Result buildEngine(Query& query, QueryRegistry* queryRegistry, std::string const& dbname,
-                       std::unordered_set<std::string> const& restrictToShards,
-                       MapRemoteToSnippet const& dbServerQueryIds,
-                       std::vector<uint64_t>& coordinatorQueryIds) const;
+    Result buildEngine(Query& query, MapRemoteToSnippet const& dbServerQueryIds,
+                       bool isfirst, std::unique_ptr<ExecutionEngine>& engine) const;
 
     QueryId queryId() const;
 
@@ -72,7 +74,7 @@ class EngineInfoContainerCoordinator {
     std::vector<ExecutionNode*> _nodes;
 
     // id of the remote node this plan collects data from
-    size_t _idOfRemoteNode;
+    ExecutionNodeId _idOfRemoteNode;
   };
 
  public:
@@ -84,10 +86,10 @@ class EngineInfoContainerCoordinator {
   void addNode(ExecutionNode* node);
 
   // Open a new snippet, which is connected to the given remoteNode id
-  void openSnippet(size_t idOfRemoteNode);
+  void openSnippet(ExecutionNodeId idOfRemoteNode);
 
   // Close the currently open snippet.
-  // This will finallizes the EngineInfo from the given information
+  // This will finalizes the EngineInfo from the given information
   // This will intentionally NOT insert the Engines into the query
   // registry for easier cleanup
   // Returns the queryId of the closed snippet
@@ -95,19 +97,17 @@ class EngineInfoContainerCoordinator {
 
   // Build the Engines on the coordinator
   //   * Creates the ExecutionBlocks
-  //   * Injects all Parts but the First one into QueryRegistery
+  //   * Injects all Parts but the First one into QueryRegistry
   //   Return the first engine which is not added in the Registry
-  ExecutionEngineResult buildEngines(Query& query, QueryRegistry* registry,
-                                     std::string const& dbname,
-                                     std::unordered_set<std::string> const& restrictToShards,
-                                     MapRemoteToSnippet const& dbServerQueryIds,
-                                     std::vector<uint64_t>& coordinatorQueryIds) const;
+  Result buildEngines(Query& query, AqlItemBlockManager& mgr,
+                      MapRemoteToSnippet const& dbServerQueryIds,
+                      SnippetList& coordSnippets) const;
 
  private:
-  // @brief List of EngineInfos to distribute accross the cluster
+  // @brief List of EngineInfos to distribute across the cluster
   std::vector<EngineInfo> _engines;
 
-  std::stack<size_t> _engineStack;
+  std::stack<size_t, std::vector<size_t>> _engineStack;
 };
 
 }  // namespace aql

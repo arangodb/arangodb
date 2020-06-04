@@ -38,14 +38,15 @@ namespace cluster {
 void abortLeaderTransactionsOnShard(TRI_voc_cid_t cid) {
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
-  
-  bool didWork = mgr->abortManagedTrx([cid](TransactionState const& state, std::string const& /*user*/) -> bool {
-    if (transaction::isLeaderTransactionId(state.id())) {
-      TransactionCollection* tcoll = state.collection(cid, AccessMode::Type::NONE);
-      return tcoll != nullptr;
-    }
-    return false;
-  });
+
+  bool didWork = mgr->abortManagedTrx(
+      [cid](TransactionState const& state, std::string const & /*user*/) -> bool {
+        if (transaction::isLeaderTransactionId(state.id())) {
+          TransactionCollection* tcoll = state.collection(cid, AccessMode::Type::NONE);
+          return tcoll != nullptr;
+        }
+        return false;
+      });
   LOG_TOPIC_IF("7edb3", INFO, Logger::TRANSACTIONS, didWork) <<
   "aborted leader transactions on shard '" << cid << "'";
 }
@@ -53,14 +54,15 @@ void abortLeaderTransactionsOnShard(TRI_voc_cid_t cid) {
 void abortFollowerTransactionsOnShard(TRI_voc_cid_t cid) {
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
-  
-  bool didWork = mgr->abortManagedTrx([cid](TransactionState const& state, std::string const& /*user*/) -> bool {
-    if (transaction::isFollowerTransactionId(state.id())) {
-      TransactionCollection* tcoll = state.collection(cid, AccessMode::Type::NONE);
-      return tcoll != nullptr;
-    }
-    return false;
-  });
+
+  bool didWork = mgr->abortManagedTrx(
+      [cid](TransactionState const& state, std::string const & /*user*/) -> bool {
+        if (transaction::isFollowerTransactionId(state.id())) {
+          TransactionCollection* tcoll = state.collection(cid, AccessMode::Type::NONE);
+          return tcoll != nullptr;
+        }
+        return false;
+      });
   LOG_TOPIC_IF("7dcff", INFO, Logger::TRANSACTIONS, didWork) <<
   "aborted follower transactions on shard '" << cid << "'";
 }

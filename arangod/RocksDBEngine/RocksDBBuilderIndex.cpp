@@ -22,6 +22,7 @@
 
 #include "RocksDBBuilderIndex.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Containers/HashSet.h"
@@ -77,8 +78,8 @@ struct BuilderCookie : public arangodb::TransactionState::Cookie {
 
 RocksDBBuilderIndex::RocksDBBuilderIndex(std::shared_ptr<arangodb::RocksDBIndex> const& wp)
     : RocksDBIndex(wp->id(), wp->collection(), wp->name(), wp->fields(),
-                   wp->unique(), wp->sparse(), wp->columnFamily(), wp->objectId(),
-                   /*useCache*/ false),
+                   wp->unique(), wp->sparse(), wp->columnFamily(),
+                   wp->objectId(), wp->tempObjectId(), /*useCache*/ false),
       _wrapped(wp) {
   TRI_ASSERT(_wrapped);
 }
@@ -101,7 +102,7 @@ void RocksDBBuilderIndex::toVelocyPack(VPackBuilder& builder,
 Result RocksDBBuilderIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                    LocalDocumentId const& documentId,
                                    arangodb::velocypack::Slice const& slice,
-                                   OperationMode mode) {
+                                   OperationOptions& options) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto* ctx = dynamic_cast<::BuilderCookie*>(trx.state()->cookie(this));
 #else
@@ -178,6 +179,7 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
   if (mode == AccessMode::Type::EXCLUSIVE) {
     trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
   }
+  trx.addHint(transaction::Hints::Hint::INDEX_CREATION);
   Result res = trx.begin();
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -200,7 +202,7 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
     }
     batch.Clear();
 
-    auto ops = trxColl->stealTrackedOperations();
+    auto ops = trxColl->stealTrackedIndexOperations();
     if (!ops.empty()) {
       TRI_ASSERT(ridx.hasSelectivityEstimate() && ops.size() == 1);
       auto it = ops.begin();
@@ -214,13 +216,15 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
           ridx.estimator()->remove(hash);
         }
       } else {
+        uint64_t seq = rootDB->GetLatestSequenceNumber();
         // since cuckoo estimator uses a map with seq as key we need to 
-        ridx.estimator()->bufferUpdates(1, std::move(it->second.inserts),
-                                           std::move(it->second.removals));
+        ridx.estimator()->bufferUpdates(seq, std::move(it->second.inserts),
+                                             std::move(it->second.removals));
       }
     }
   };
 
+  OperationOptions options;
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     TRI_ASSERT(it->key().compare(upper) < 0);
     if (ridx.collection().vocbase().server().isStopping()) {
@@ -229,7 +233,8 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
     }
 
     res = ridx.insert(trx, &batched, RocksDBKey::documentId(it->key()),
-                      VPackSlice(reinterpret_cast<uint8_t const*>(it->value().data())), Index::OperationMode::normal);
+                      VPackSlice(reinterpret_cast<uint8_t const*>(it->value().data())),
+                      options);
     if (res.fail()) {
       break;
     }
@@ -327,8 +332,8 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
       case RocksDBLogType::TrackedDocumentInsert:
         if (_lastObjectID == _objectId) {
           auto pair = RocksDBLogValue::trackedDocument(blob);
-          tmpRes = _index.insert(_trx, _methods, pair.first, pair.second,
-                                 Index::OperationMode::normal);
+          OperationOptions options;
+          tmpRes = _index.insert(_trx, _methods, pair.first, pair.second, options);
           numInserted++;
         }
         break;
@@ -460,7 +465,7 @@ Result catchup(RocksDBIndex& ridx, WriteBatchType& wb, AccessMode::Type mode,
     }
     wb.Clear();
 
-    auto ops = trxColl->stealTrackedOperations();
+    auto ops = trxColl->stealTrackedIndexOperations();
     if (!ops.empty()) {
       TRI_ASSERT(ridx.hasSelectivityEstimate() && ops.size() == 1);
       auto it = ops.begin();

@@ -26,4 +26,3 @@ If the document count was recalculated successfully, *HTTP 200* is returned.
 @RESTRETURNCODE{404}
 If the *collection-name* is unknown, then a *HTTP 404* is returned.
 @endDocuBlock
-

@@ -288,6 +288,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   bool const overwrite = _request->parsedValue("overwrite", false);
   OperationOptions opOptions;
   opOptions.waitForSync = _request->parsedValue("waitForSync", false);
+  opOptions.validate = !_request->parsedValue(StaticStrings::SkipDocumentValidation, false);
 
   // extract the collection name
   bool found;
@@ -317,8 +318,6 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
     // auto detect import type by peeking at first non-whitespace character
 
-    // json required here
-    TRI_ASSERT(_request->contentType() == ContentType::JSON);
     VPackStringRef body = _request->rawPayload();
 
     char const* ptr = body.data();
@@ -373,9 +372,6 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   VPackBuilder tmpBuilder;
 
   if (linewise) {
-    // json required here
-    TRI_ASSERT(_request->contentType() == ContentType::JSON);
-    
     // each line is a separate JSON document
     VPackStringRef body = _request->rawPayload();
     char const* ptr = body.data();
@@ -663,7 +659,7 @@ bool RestImportHandler::createFromKeyValueList() {
                                         lineNumValue.data() + lineNumValue.size());
   }
 
-  // json required here  
+  // json required here
   // each line is a separate JSON document
   VPackStringRef body = _request->rawPayload();
   char const* current = body.data();
@@ -980,38 +976,29 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestImportHandler::generateDocumentsCreated(RestImportResult const& result) {
-  resetResponse(rest::ResponseCode::CREATED);
+  VPackBuilder json;
+  json.add(VPackValue(VPackValueType::Object));
+  json.add(StaticStrings::Error, VPackValue(false));
+  json.add("created", VPackValue(result._numCreated));
+  json.add("errors", VPackValue(result._numErrors));
+  json.add("empty", VPackValue(result._numEmpty));
+  json.add("updated", VPackValue(result._numUpdated));
+  json.add("ignored", VPackValue(result._numIgnored));
 
-  try {
-    VPackBuilder json;
-    json.add(VPackValue(VPackValueType::Object));
-    json.add(StaticStrings::Error, VPackValue(false));
-    json.add("created", VPackValue(result._numCreated));
-    json.add("errors", VPackValue(result._numErrors));
-    json.add("empty", VPackValue(result._numEmpty));
-    json.add("updated", VPackValue(result._numUpdated));
-    json.add("ignored", VPackValue(result._numIgnored));
+  // include failure details?
+  if (_request->parsedValue("details", false)) {
+    json.add("details", VPackValue(VPackValueType::Array));
 
-    bool found;
-    std::string const& detailsStr = _request->value("details", found);
-
-    // include failure details?
-    if (found && StringUtils::boolean(detailsStr)) {
-      json.add("details", VPackValue(VPackValueType::Array));
-
-      for (auto const& elem : result._errors) {
-        json.add(VPackValue(elem));
-      }
-
-      json.close();
+    for (auto const& elem : result._errors) {
+      json.add(VPackValue(elem));
     }
 
     json.close();
-
-    generateResult(rest::ResponseCode::CREATED, json.slice());
-  } catch (...) {
-    // Ignore the error
   }
+
+  json.close();
+
+  generateResult(rest::ResponseCode::CREATED, json.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

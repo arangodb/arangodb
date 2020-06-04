@@ -44,7 +44,7 @@ void trim(string& s, string characters)
 {
     size_t p = s.find_first_not_of(characters);
     s.erase(0, p);
- 
+
     p = s.find_last_not_of(characters);
     if (string::npos != p)
        s.erase(p+1);
@@ -67,14 +67,13 @@ vector<string> get_lines(vector<string>& input, int& linenum, string terminator)
 {
     vector<string> out;
     string line;
-    size_t epos;
 
     while ((size_t)linenum < input.size()) {
         line = input[linenum];
 
         if (terminator.empty() && line.empty()) { linenum--; break; }
-        
-        epos = line.find(terminator);
+
+        size_t const epos = line.find(terminator);
         if (!terminator.empty() && epos!=string::npos) {
             out.push_back(line);
             break;
@@ -152,8 +151,9 @@ int main(int argc, char *argv[]) {
             continue;
         }
 
-        /* comments of type /**< and /*!< are detected and only function declaration is highlighted (bold) */
-        if ((line.find("/**<")!=string::npos || line.find("/*!<")!=string::npos) && line.find("*/")!=string::npos) {
+        /* comments of type  / * * < and  / * ! <  are detected, and only function declaration is highlighted (bold) */
+        if ((line.find("/**<")!=string::npos || line.find("/*!<")!=string::npos)
+          && line.find("*/")!=string::npos) {
             sout << "<pre><b>";
             print_line(sout, line);
             sout << "</b></pre><BR>" << endl;
@@ -177,16 +177,19 @@ int main(int argc, char *argv[]) {
 
         comments = get_lines(input, linenum, "*/");
         if (!comments.empty()) comments[0] = line.substr(spos+3);
-        if (!comments.empty()) comments[comments.size()-1] = comments[comments.size()-1].substr(0, comments[comments.size()-1].find("*/"));
+        if (!comments.empty())
+            comments[comments.size()-1] = comments[comments.size()-1].substr(0, comments[comments.size()-1].find("*/"));
         for (l=0; l<comments.size(); l++) {
-            if (comments[l].find(" *")==0) comments[l] = comments[l].substr(2);
-            else if (comments[l].find("  *")==0) comments[l] = comments[l].substr(3);
+            if (comments[l].compare(0, 2, " *") == 0)
+                comments[l] = comments[l].substr(2);
+            else if (comments[l].compare(0, 3, "  *") == 0)
+                comments[l] = comments[l].substr(3);
             trim(comments[l], "*-=");
         }
         while (!comments.empty() && comments[comments.size()-1].empty()) comments.pop_back(); // remove empty line at the end
         while (!comments.empty() && comments[0].empty()) comments.erase(comments.begin()); // remove empty line at the start
 
-        /* comments of type /*! mean: this is a function declaration; switch comments with declarations */
+        /* comments of type  / * !  mean: this is a function declaration; switch comments with declarations */
         if (exclam == '!') {
             if (!comments.empty()) comments.erase(comments.begin()); /* remove first line like "LZ4_XXX() :" */
             linenum++;
@@ -194,7 +197,6 @@ int main(int argc, char *argv[]) {
 
             sout << "<pre><b>";
             for (l=0; l<lines.size(); l++) {
-              //  fprintf(stderr, "line[%d]=%s\n", l, lines[l].c_str());
                 print_line(sout, lines[l]);
             }
             sout << "</b><p>";
@@ -202,7 +204,7 @@ int main(int argc, char *argv[]) {
                 print_line(sout, comments[l]);
             }
             sout << "</p></pre><BR>" << endl << endl;
-        } else if (exclam == '=') { /* comments of type /*= and /**= mean: use a <H3> header and show also all functions until first empty line */
+        } else if (exclam == '=') { /* comments of type  / * =  and  / * * =  mean: use a <H3> header and show also all functions until first empty line */
             trim(comments[0], " ");
             sout << "<h3>" << comments[0] << "</h3><pre>";
             for (l=1; l<comments.size(); l++) {
@@ -214,7 +216,7 @@ int main(int argc, char *argv[]) {
                 print_line(sout, lines[l]);
             }
             sout << "</pre></b><BR>" << endl;
-        } else { /* comments of type /** and /*- mean: this is a comment; use a <H2> header for the first line */
+        } else { /* comments of type  / * *  and  / * -  mean: this is a comment; use a <H2> header for the first line */
             if (comments.empty()) continue;
 
             trim(comments[0], " ");

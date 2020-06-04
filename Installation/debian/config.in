@@ -29,7 +29,7 @@ fi
 #do the actual configure
 if test "$DO_CONFIGURE" = "yes"; then
     STATE=1
-    LASTSTATE=5
+    LASTSTATE=4
     while test "$STATE" -ne 0 -a \
                "$STATE" -le "$LASTSTATE" ; do
 
@@ -56,10 +56,6 @@ if test "$DO_CONFIGURE" = "yes"; then
                 db_input high @CPACK_PACKAGE_NAME@/upgrade || true
             ;;
             4)
-                db_input high @CPACK_PACKAGE_NAME@/storage_engine || true
-                db_go
-            ;;
-            5)
                 db_get @CPACK_PACKAGE_NAME@/upgrade
                 if [ "$RET" = "true" ]; then
                     db_input high @CPACK_PACKAGE_NAME@/backup || true

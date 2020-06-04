@@ -187,6 +187,9 @@
       var userName = $('#newUser').val();
 
       var sharding = $('#newSharding').val();
+      if (frontendConfig.forceOneShard) {
+        sharding = 'single';
+      }
       var replicationFactor = $('#new-replication-factor').val();
       var writeConcern = $('#new-write-concern').val();
 
@@ -195,7 +198,7 @@
         "options" : {
           "sharding" : sharding,
           "replicationFactor" : Number(replicationFactor),
-          "minReplicationFactor" : Number(writeConcern),
+          "writeConcern" : Number(writeConcern),
         },
         users: [{
           username: userName
@@ -405,15 +408,15 @@
         tableContent.push(
           window.modalView.createTextEntry(
             'new-write-concern',
-            'Minimum replication factor',
-            dbDefaultProperties.minReplicationFactor,
-            'Numeric value. Must be at least 1 and must be smaller or equal compared to the replication factor. Minimal number of copies of the data in the cluster to be in sync in order to allow writes.',
-            'Default minimum replication factor',
+            'Write concern',
+            dbDefaultProperties.writeConcern,
+            'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value the collection will be read-only until enough copies are created.',
+            'Default write concern',
             false,
             [
               {
-                rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
-                msg: 'Must be a number. Must be at least 1 and has to be smaller or equal compared to the replicationFactor.'
+                rule: Joi.string().allow('').optional().regex(/^([1-9]|10)$/),
+                msg: 'Must be a number between 1 and 10. Has to be smaller or equal compared to the replicationFactor.'
               }
             ]
           )
@@ -422,7 +425,7 @@
 
       // OneShard
       //if enterprise
-      if (window.App.isCluster && frontendConfig.isEnterprise) {
+      if (window.App.isCluster && frontendConfig.isEnterprise && !frontendConfig.forceOneShard) {
         var sharding = [ { value : "",
                            label : "flexible"
                          },
@@ -436,7 +439,7 @@
             'newSharding',
             'Sharding',
             'flexible',
-            'some nice description TODO',
+            'Selects the default sharding setup for new collections in this database. *flexible* means that shards of different collections by default will be randomly distributed to database servers. *single* means that collections by default will use the same sharding setup (number of shards and shard distribution) as one of the system collections.',
             sharding
           )
         );

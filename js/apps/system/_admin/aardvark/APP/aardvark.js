@@ -59,9 +59,9 @@ router.get('/index.html', (req, res) => {
   if (encoding && encoding.indexOf('gzip') >= 0) {
     // gzip-encode?
     res.set('Content-Encoding', 'gzip');
-    res.sendFile(module.context.fileName('frontend/build/index-min.html.gz'));
+    res.sendFile(module.context.fileName('react/build/index.html.gz'));
   } else {
-    res.sendFile(module.context.fileName('frontend/build/index-min.html'));
+    res.sendFile(module.context.fileName('react/build/index.html'));
   }
   res.set('Content-Type', 'text/html; charset=utf-8');
   res.set('X-Frame-Options', 'DENY');
@@ -94,7 +94,8 @@ router.get('/config.js', function (req, res) {
       minReplicationFactor: internal.minReplicationFactor,
       maxReplicationFactor: internal.maxReplicationFactor,
       defaultReplicationFactor: internal.defaultReplicationFactor,
-      maxNumberOfShards: internal.maxNumberOfShards
+      maxNumberOfShards: internal.maxNumberOfShards,
+      forceOneShard: internal.forceOneShard 
     })}`
   );
 })
@@ -131,24 +132,6 @@ router.get('/api/*', module.context.apiDocumentation({
   Mounts the system API documentation.
 `);
 
-authRouter.get('shouldCheckVersion', function (req, res) {
-  const versions = notifications.versions();
-  res.json(Boolean(versions && versions.enableVersionNotification));
-})
-.summary('Is version check allowed')
-.description(dd`
-  Check if version check is allowed.
-`);
-
-authRouter.post('disableVersionCheck', function (req, res) {
-  notifications.setVersions({enableVersionNotification: false});
-  res.json('ok');
-})
-.summary('Disable version check')
-.description(dd`
-  Disable the version check in web interface
-`);
-
 authRouter.post('/query/profile', function (req, res) {
   const bindVars = req.body.bindVars;
   const query = req.body.query;
@@ -179,23 +162,17 @@ authRouter.post('/query/profile', function (req, res) {
 `);
 
 authRouter.post('/query/explain', function (req, res) {
-  const bindVars = req.body.bindVars;
+  const bindVars = req.body.bindVars || {};
   const query = req.body.query;
   const id = req.body.id;
-  const batchSize = req.body.batchSize;
   let msg = null;
 
   try {
-    if (bindVars) {
-      msg = explainer.explain({
-        query: query,
-        bindVars: bindVars,
-        batchSize: batchSize,
-        id: id
-      }, {colors: false}, false, bindVars);
-    } else {
-      msg = explainer.explain(query, {colors: false}, false);
-    }
+    msg = explainer.explain({
+      query: query,
+      bindVars: bindVars,
+      id: id
+    }, {colors: false}, false);
   } catch (e) {
     res.throw('bad request', e.message, {cause: e});
   }

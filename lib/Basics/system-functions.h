@@ -53,9 +53,6 @@ time_t TRI_timegm(struct tm*);
 // seconds with microsecond resolution
 double TRI_microtime();
 
-// number of processors or 0
-size_t TRI_numberProcessors();
-
 namespace arangodb {
 namespace utilities {
 // return the current time as string in format "YYYY-MM-DDTHH:MM:SSZ"

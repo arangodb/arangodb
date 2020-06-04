@@ -30,11 +30,14 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/NumberOfCores.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
 #include "Cluster/Action.h"
 #include "Cluster/ActionDescription.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/CreateDatabase.h"
@@ -75,6 +78,7 @@ MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& 
   // line of code is not required. For philosophical reasons we added it to the
   // ClusterPhase and let it start after `Cluster`.
   startsAfter<ClusterFeature>();
+  startsAfter<MetricsFeature>();
 
   init();
 }  // MaintenanceFeature::MaintenanceFeature
@@ -91,7 +95,7 @@ void MaintenanceFeature::init() {
 
   _maintenanceThreadsMax =
       (std::max)(static_cast<uint32_t>(minThreadLimit),
-                 static_cast<uint32_t>(TRI_numberProcessors() / 4 + 1));
+                 static_cast<uint32_t>(NumberOfCores::getValue() / 4 + 1));
   _secondsActionsBlock = 2;
   _secondsActionsLinger = 3600;
 }  // MaintenanceFeature::init
@@ -103,25 +107,26 @@ void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
       "--server.maintenance-threads",
       "maximum number of threads available for maintenance actions",
       new UInt32Parameter(&_maintenanceThreadsMax),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
-                                   arangodb::options::Flags::Dynamic));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
+                                          arangodb::options::Flags::Dynamic));
 
   options->addOption(
       "--server.maintenance-actions-block",
       "minimum number of seconds finished Actions block duplicates",
       new Int32Parameter(&_secondsActionsBlock),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--server.maintenance-actions-linger",
       "minimum number of seconds finished Actions remain in deque",
       new Int32Parameter(&_secondsActionsLinger),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
-  options->addOption("--cluster.resign-leadership-on-shutdown",
-                    "create resign leader ship job for this dbsever on shutdown",
-                    new BooleanParameter(&_resignLeadershipOnShutdown),
-                    arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+  options->addOption(
+      "--cluster.resign-leadership-on-shutdown",
+      "create resign leader ship job for this dbsever on shutdown",
+      new BooleanParameter(&_resignLeadershipOnShutdown),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
 }  // MaintenanceFeature::collectOptions
 
@@ -140,6 +145,91 @@ void MaintenanceFeature::validateOptions(std::shared_ptr<ProgramOptions> options
 /// do not start threads in prepare
 void MaintenanceFeature::prepare() {}  // MaintenanceFeature::prepare
 
+void MaintenanceFeature::initializeMetrics() {
+  if (_phase1_runtime_msec.has_value()) {
+    // Already initialized.
+    // This actually is only necessary because of tests
+    return;
+  }
+  auto& metricsFeature = server().getFeature<arangodb::MetricsFeature>();
+
+  _phase1_runtime_msec =
+      metricsFeature.histogram(StaticStrings::MaintenancePhaseOneRuntimeMs,
+                               log_scale_t<uint64_t>(2, 50, 8000, 10),
+                               "Maintenance Phase 1 runtime histogram [ms]");
+  _phase2_runtime_msec =
+      metricsFeature.histogram(StaticStrings::MaintenancePhaseTwoRuntimeMs,
+                               log_scale_t<uint64_t>(2, 50, 8000, 10),
+                               "Maintenance Phase 2 runtime histogram [ms]");
+
+  _agency_sync_total_runtime_msec =
+      metricsFeature.histogram(StaticStrings::MaintenanceAgencySyncRuntimeMs,
+                               log_scale_t<uint64_t>(2, 50, 8000, 10),
+                               "Total time spend on agency sync [ms]");
+
+  _phase1_accum_runtime_msec =
+      metricsFeature.counter(StaticStrings::MaintenancePhaseOneAccumRuntimeMs,
+                             0, "Accumulated runtime of phase one");
+  _phase2_accum_runtime_msec =
+      metricsFeature.counter(StaticStrings::MaintenancePhaseTwoAccumRuntimeMs,
+                             0, "Accumulated runtime of phase two");
+  _agency_sync_total_accum_runtime_msec =
+      metricsFeature.counter(StaticStrings::MaintenanceAgencySyncAccumRuntimeMs,
+                             0, "Accumulated runtime of agency sync phase");
+
+  _shards_out_of_sync = metricsFeature.gauge<uint64_t>(
+      StaticStrings::ShardsOutOfSync, 0,
+      "Number of leader shards not fully replicated");
+  _shards_total_count =
+      metricsFeature.gauge<uint64_t>(StaticStrings::ShardsTotalCount, 0,
+                                     "Number of shards on this machine");
+  _shards_leader_count =
+      metricsFeature.gauge<uint64_t>(StaticStrings::ShardsLeaderCount, 0,
+                                     "Number of leader shards on this machine");
+  _shards_not_replicated_count =
+      metricsFeature.gauge<uint64_t>(StaticStrings::ShardsNotReplicated, 0,
+                                     "Number of shards not replicated at all");
+
+  _action_duplicated_counter = metricsFeature.counter(
+      StaticStrings::ActionDuplicateCounter, 0,
+      "Counter of action that have been discarded because of a duplicate");
+  _action_registered_counter = metricsFeature.counter(
+      StaticStrings::ActionRegisteredCounter, 0,
+      "Counter of action that have been registered in the action registry");
+  _action_done_counter =
+      metricsFeature.counter(StaticStrings::ActionDoneCounter, 0,
+                             "Counter of action that are done and have been "
+                             "removed from the registry");
+
+  const char* instrumentedActions[] = {CREATE_COLLECTION, CREATE_DATABASE,
+                                       UPDATE_COLLECTION, SYNCHRONIZE_SHARD,
+                                       DROP_COLLECTION,   DROP_DATABASE,
+                                       DROP_INDEX};
+
+  for (const char* action : instrumentedActions) {
+    std::string action_label = std::string{"action=\""} + action + '"';
+
+    _maintenance_job_metrics_map.try_emplace(
+        action,
+        metricsFeature.histogram({StaticStrings::MaintenanceActionRuntimeMs, action_label},
+                                 log_scale_t<uint64_t>(4, 82, 86400000, 10),
+                                 "Time spend execution the action [ms]"),
+        metricsFeature.histogram(
+            {StaticStrings::MaintenanceActionQueueTimeMs, action_label},
+            log_scale_t<uint64_t>(2, 82, 86400000, 12),
+            "Time spend in the queue before execution [ms]"),
+
+        metricsFeature.counter({StaticStrings::MaintenanceActionAccumRuntimeMs, action_label},
+                               0, "Accumulated action runtime"),
+
+        metricsFeature.counter({StaticStrings::MaintenanceActionAccumQueueTimeMs, action_label},
+                               0, "Accumulated action queue time"),
+
+        metricsFeature.counter({StaticStrings::MaintenanceActionFailureCounter, action_label},
+                               0, "Failure counter for the action"));
+  }
+}
+
 void MaintenanceFeature::start() {
   auto serverState = ServerState::instance();
 
@@ -150,6 +240,8 @@ void MaintenanceFeature::start() {
         << " for single-server or agents.";
     return;
   }
+
+  initializeMetrics();
 
   // start threads
   for (uint32_t loop = 0; loop < _maintenanceThreadsMax; ++loop) {
@@ -171,23 +263,22 @@ void MaintenanceFeature::start() {
 }  // MaintenanceFeature::start
 
 void MaintenanceFeature::beginShutdown() {
-
   if (_resignLeadershipOnShutdown && ServerState::instance()->isDBServer()) {
-
     struct callback_data {
-      uint64_t _jobId;              // initialised before callback
-      bool _completed;              // populated by the callback
-      std::mutex _mutex;            // mutex used by callback and loop to sync access to callback_data
+      uint64_t _jobId;  // initialised before callback
+      bool _completed;  // populated by the callback
+      std::mutex _mutex;  // mutex used by callback and loop to sync access to callback_data
       std::condition_variable _cv;  // signaled if callback has found something
 
-      explicit callback_data(uint64_t jobId) : _jobId(jobId), _completed(false) {}
+      explicit callback_data(uint64_t jobId)
+          : _jobId(jobId), _completed(false) {}
     };
 
     // create common shared memory with jobid
     auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
     auto shared = std::make_shared<callback_data>(ci.uniqid());
 
-    AgencyComm am;
+    AgencyComm am(server());
 
     std::string serverId = ServerState::instance()->getId();
     VPackBuilder jobDesc;
@@ -196,12 +287,13 @@ void MaintenanceFeature::beginShutdown() {
       jobDesc.add("type", VPackValue("resignLeadership"));
       jobDesc.add("server", VPackValue(serverId));
       jobDesc.add("jobId", VPackValue(std::to_string(shared->_jobId)));
-      jobDesc.add("timeCreated", VPackValue(timepointToString(std::chrono::system_clock::now())));
+      jobDesc.add("timeCreated",
+                  VPackValue(timepointToString(std::chrono::system_clock::now())));
       jobDesc.add("creator", VPackValue(serverId));
     }
 
-    LOG_TOPIC("deaf5", INFO, arangodb::Logger::CLUSTER) <<
-      "Starting resigning leadership of shards";
+    LOG_TOPIC("deaf5", INFO, arangodb::Logger::CLUSTER)
+        << "Starting resigning leadership of shards";
     am.setValue("Target/ToDo/" + std::to_string(shared->_jobId), jobDesc.slice(), 0.0);
 
     using clock = std::chrono::steady_clock;
@@ -211,28 +303,34 @@ void MaintenanceFeature::beginShutdown() {
 
     auto endtime = startTime + timeout;
 
-    auto checkAgencyPathExists = [&am](std::string const& path, uint64_t jobId) -> bool {
-      try {
-        AgencyCommResult result = am.getValues("Target/" + path + "/" + std::to_string(jobId));
-        if (result.successful()) {
-          VPackSlice value = result.slice()[0].get(std::vector<std::string>{AgencyCommManager::path(), "Target", path, std::to_string(jobId)});
-          if (value.isObject() && value.hasKey("jobId") && value.get("jobId").isEqualString(std::to_string(jobId))) {
-            return true;
+    auto checkAgencyPathExists =
+      [cf = &server().getFeature<ClusterFeature>()](
+        std::string const& path, uint64_t jobId) -> bool {
+        try {
+          auto [acb, idx] =
+            cf->agencyCache().read(std::vector<std::string>{
+                AgencyCommHelper::path("Target/" + path + "/" + std::to_string(jobId))});
+          auto result = acb->slice();
+          if (!result.isNone()) {
+            VPackSlice value = result[0].get(
+              std::vector<std::string>{
+                AgencyCommHelper::path(), "Target", path, std::to_string(jobId)});
+            if (value.isObject() && value.hasKey("jobId") &&
+                value.get("jobId").isEqualString(std::to_string(jobId))) {
+              return true;
+            }
           }
+        } catch (...) {
+          LOG_TOPIC("deaf6", ERR, arangodb::Logger::CLUSTER)
+            << "Exception when checking for job completion";
         }
-      } catch(...) {
-        LOG_TOPIC("deaf6", ERR, arangodb::Logger::CLUSTER) <<
-          "Exception when checking for job completion";
-      }
-
-      return false;
-    };
+        return false;
+      };
 
     // we can not test for application_features::ApplicationServer::isRetryOK() because it is never okay in shutdown
     while (clock::now() < endtime) {
-
-      bool completed = checkAgencyPathExists ("Failed", shared->_jobId)
-        || checkAgencyPathExists ("Finished", shared->_jobId);
+      bool completed = checkAgencyPathExists("Failed", shared->_jobId) ||
+                       checkAgencyPathExists("Finished", shared->_jobId);
 
       if (completed) {
         break;
@@ -242,12 +340,12 @@ void MaintenanceFeature::beginShutdown() {
       shared->_cv.wait_for(lock, std::chrono::seconds(1));
 
       if (shared->_completed) {
-        break ;
+        break;
       }
     }
 
-    LOG_TOPIC("deaf7", INFO, arangodb::Logger::CLUSTER) <<
-      "Resigning leadership completed (finished, failed or timed out)";
+    LOG_TOPIC("deaf7", INFO, arangodb::Logger::CLUSTER)
+        << "Resigning leadership completed (finished, failed or timed out)";
   }
 
   _isShuttingDown = true;
@@ -260,7 +358,7 @@ void MaintenanceFeature::stop() {
   // Current workers could be stuck on the condition variable.
   // Let's wake them up now.
   {
-    // Only if we have flagged shutdown this operation is save, all other threads potentially
+    // Only if we have flagged shutdown this operation is safe, all other threads potentially
     // trying to get this mutex get into the shutdown case now, instead of getting into wait state.
     TRI_ASSERT(_isShuttingDown);
     std::unique_lock<std::mutex> guard(_currentCounterLock);
@@ -330,6 +428,7 @@ Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::Action> newAct
       // action already exist, need write lock to prevent race
       result.reset(TRI_ERROR_BAD_PARAMETER,
                    "addAction called while similar action already processing.");
+      _action_duplicated_counter->get().operator++();
     }  // else
 
     // executeNow process on this thread, right now!
@@ -367,6 +466,8 @@ Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::ActionDescript
 
     // similar action not in the queue (or at least no longer viable)
     if (!curAction) {
+      LOG_TOPIC("fead2", DEBUG, Logger::MAINTENANCE)
+          << "Did not find action with same hash: " << description << " adding to queue";
       newAction = createAndRegisterAction(description, executeNow);
 
       if (!newAction || !newAction->ok()) {
@@ -375,9 +476,13 @@ Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::ActionDescript
                      "createAction rejected parameters.");
       }  // if
     } else {
+      LOG_TOPIC("fead3", DEBUG, Logger::MAINTENANCE)
+          << "Found actiondescription with same hash: " << description
+          << " found: " << *curAction << " not adding again";
       // action already exist, need write lock to prevent race
       result.reset(TRI_ERROR_BAD_PARAMETER,
                    "addAction called while similar action already processing.");
+      _action_duplicated_counter->get().operator++();
     }  // else
 
     // executeNow process on this thread, right now!
@@ -425,6 +530,7 @@ void MaintenanceFeature::registerAction(std::shared_ptr<Action> action, bool exe
   //   lock condition variable
   {
     _actionRegistry.push_back(action);
+    _action_registered_counter->get().operator++();
 
     if (!executeNow) {
       CONDITION_LOCKER(cLock, _actionRegistryCond);
@@ -440,14 +546,12 @@ void MaintenanceFeature::registerAction(std::shared_ptr<Action> action, bool exe
 }
 
 std::shared_ptr<Action> MaintenanceFeature::createAction(std::shared_ptr<ActionDescription> const& description) {
-  // write lock via _actionRegistryLock is assumed held
-  std::shared_ptr<Action> newAction;
-
   // name should already be verified as existing ... but trust no one
   std::string name = description->get(NAME);
 
   // call factory
-  newAction = std::make_shared<Action>(*this, *description);
+  // write lock via _actionRegistryLock is assumed held
+  std::shared_ptr<Action> newAction = std::make_shared<Action>(*this, *description);
 
   // if a new action constructed successfully
   if (!newAction->ok()) {
@@ -543,13 +647,18 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<s
       // as well clean up those jobs in the _actionRegistry, which are
       // in state DONE:
       if (RandomGenerator::interval(uint32_t(10)) == 0) {
+        size_t actions_removed = 0;
         for (auto loop = _actionRegistry.begin(); _actionRegistry.end() != loop;) {
           if ((*loop)->done()) {
             loop = _actionRegistry.erase(loop);
+            actions_removed++;
           } else {
             ++loop;
           }  // else
         }    // for
+        if (actions_removed > 0) {
+          _action_done_counter->get().count(actions_removed);
+        }
       }
     }  // WRITE
 
@@ -590,9 +699,9 @@ arangodb::Result MaintenanceFeature::storeDBError(std::string const& database,
   {
     VPackObjectBuilder b(&eb);
     eb.add(NAME, VPackValue(database));
-    eb.add("error", VPackValue(true));
-    eb.add("errorNum", VPackValue(failure.errorNumber()));
-    eb.add("errorMessage", VPackValue(failure.errorMessage()));
+    eb.add(StaticStrings::Error, VPackValue(true));
+    eb.add(StaticStrings::ErrorNum, VPackValue(failure.errorNumber()));
+    eb.add(StaticStrings::ErrorMessage, VPackValue(failure.errorMessage()));
   }
 
   return storeDBError(database, eb.steal());
@@ -610,7 +719,7 @@ arangodb::Result MaintenanceFeature::storeDBError(std::string const& database,
   }
 
   try {
-    _dbErrors.emplace(database, error);
+    _dbErrors.try_emplace(database, error);
   } catch (std::exception const& e) {
     return Result(TRI_ERROR_FAILED, e.what());
   }
@@ -648,9 +757,9 @@ arangodb::Result MaintenanceFeature::storeShardError(std::string const& database
   VPackBuilder eb;
   {
     VPackObjectBuilder o(&eb);
-    eb.add("error", VPackValue(true));
-    eb.add("errorMessage", VPackValue(failure.errorMessage()));
-    eb.add("errorNum", VPackValue(failure.errorNumber()));
+    eb.add(StaticStrings::Error, VPackValue(true));
+    eb.add(StaticStrings::ErrorMessage, VPackValue(failure.errorMessage()));
+    eb.add(StaticStrings::ErrorNum, VPackValue(failure.errorNumber()));
     eb.add(VPackValue("indexes"));
     { VPackArrayBuilder a(&eb); }  // []
     eb.add(VPackValue("servers"));
@@ -666,19 +775,18 @@ arangodb::Result MaintenanceFeature::storeShardError(std::string const& database
 arangodb::Result MaintenanceFeature::storeShardError(
     std::string const& database, std::string const& collection,
     std::string const& shard, std::shared_ptr<VPackBuffer<uint8_t>> error) {
-  std::string key = database + SLASH + collection + SLASH + shard;
+  std::string const key = database + SLASH + collection + SLASH + shard;
 
   MUTEX_LOCKER(guard, _seLock);
-  auto const it = _shardErrors.find(key);
-  if (it != _shardErrors.end()) {
-    std::stringstream error;
-    error << "shard " << key << " already has pending error";
-    LOG_TOPIC("378fa", DEBUG, Logger::MAINTENANCE) << error.str();
-    return Result(TRI_ERROR_FAILED, error.str());
-  }
-
   try {
-    _shardErrors.emplace(key, error);
+    auto emplaced = _shardErrors.try_emplace(std::move(key), std::move(error)).second;
+    if (!emplaced) {
+      std::stringstream error;
+      // cppcheck-suppress accessMoved; try_emplace leaves the movables intact
+      error << "shard " << key << " already has pending error";
+      LOG_TOPIC("378fa", DEBUG, Logger::MAINTENANCE) << error.str();
+      return Result(TRI_ERROR_FAILED, error.str());
+    }
   } catch (std::exception const& e) {
     return Result(TRI_ERROR_FAILED, e.what());
   }
@@ -721,30 +829,26 @@ arangodb::Result MaintenanceFeature::storeIndexError(
     std::string const& database, std::string const& collection, std::string const& shard,
     std::string const& indexId, std::shared_ptr<VPackBuffer<uint8_t>> error) {
   using buffer_t = std::shared_ptr<VPackBuffer<uint8_t>>;
-  std::string key = database + SLASH + collection + SLASH + shard;
+  std::string const key = database + SLASH + collection + SLASH + shard;
 
   MUTEX_LOCKER(guard, _ieLock);
 
-  auto errorsIt = _indexErrors.find(key);
-  if (errorsIt == _indexErrors.end()) {
-    try {
-      _indexErrors.emplace(key, std::map<std::string, buffer_t>());
-    } catch (std::exception const& e) {
-      return Result(TRI_ERROR_FAILED, e.what());
-    }
-  }
-  auto& errors = _indexErrors.find(key)->second;
-  auto const it = errors.find(indexId);
-
-  if (it != errors.end()) {
-    std::stringstream error;
-    error << "index " << indexId << " for shard " << key << " already has pending error";
-    LOG_TOPIC("d3c92", DEBUG, Logger::MAINTENANCE) << error.str();
-    return Result(TRI_ERROR_FAILED, error.str());
-  }
-
+  decltype(_indexErrors.emplace(key)) emplace_result;
   try {
-    errors.emplace(indexId, error);
+    emplace_result = _indexErrors.try_emplace(key, std::map<std::string, buffer_t>());
+  } catch (std::exception const& e) {
+    return Result(TRI_ERROR_FAILED, e.what());
+  }
+
+  auto& errors = emplace_result.first->second;
+  try {
+    auto emplaced = errors.try_emplace(indexId, error).second;
+    if (!emplaced) {
+      std::stringstream error;
+      error << "index " << indexId << " for shard " << key << " already has pending error";
+      LOG_TOPIC("d3c92", DEBUG, Logger::MAINTENANCE) << error.str();
+      return Result(TRI_ERROR_FAILED, error.str());
+    }
   } catch (std::exception const& e) {
     return Result(TRI_ERROR_FAILED, e.what());
   }
@@ -848,52 +952,10 @@ bool MaintenanceFeature::isPaused() const {
 }
 
 void MaintenanceFeature::pause(std::chrono::seconds const& s) {
-  _pauseUntil =
-    std::chrono::steady_clock::now().time_since_epoch() + s;
+  _pauseUntil = std::chrono::steady_clock::now().time_since_epoch() + s;
 }
 
- void MaintenanceFeature::proceed() {
+void MaintenanceFeature::proceed() {
   _pauseUntil = std::chrono::steady_clock::duration::zero();
 }
 
-uint64_t MaintenanceFeature::getCurrentCounter() const {
-  // It is guaranteed that getCurrentCounter is not executed
-  // concurrent to increase / wait.
-  // This guarantee is created by the following:
-  // 1) There is one inifinite loop that will call
-  //    PhaseOne and PhaseTwo in exactly this ordering.
-  //    It is guaranteed that only one thread at a time is
-  //    in this loop.
-  //    Between PhaseOne and PhaseTwo the increaseCurrentCounter is called
-  //    Within PhaseOne this getCurrentCounter is called, but never after.
-  //    so getCurrentCounter and increaseCurrentCounter are strictily serialized.
-  // 2) waitForLargerCurrentCounter can be called in concurrent threads at any time.
-  //    It is read-only, so it is save to have it concurrent to getCurrentCounter
-  //    without any locking.
-  //    However we need locking for increase and waitFor in order to guarantee
-  //    it's functionallity.
-  // For now we actually do not need this guard, but as this is NOT performance
-  // critical we can simply get it, just to be save for later use.
-  std::unique_lock<std::mutex> guard(_currentCounterLock);
-  return _currentCounter;
-}
-
-void MaintenanceFeature::increaseCurrentCounter() {
-  std::unique_lock<std::mutex> guard(_currentCounterLock);
-  _currentCounter++;
-  _currentCounterCondition.notify_all();
-}
-
-void MaintenanceFeature::waitForLargerCurrentCounter(uint64_t old) {
-  std::unique_lock<std::mutex> guard(_currentCounterLock);
-  // Just to be sure we get not woken up for other reasons.
-  while (_currentCounter <= old) {
-    // We might miss a shutdown check here.
-    // This is ok, as we will not be able to do much anyways.
-    if (_isShuttingDown) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-    }
-    _currentCounterCondition.wait(guard);
-  }
-  TRI_ASSERT(_currentCounter > old);
-}

@@ -36,7 +36,11 @@
     },
 
     render: function () {
-      this.model.fetchThumbnail(function () {
+      this.model.fetchThumbnail(function (error) {
+        if (error) {
+          $(this.el).remove();
+        }
+
         var thumbnailUrl = this.model.get('defaultThumbnailUrl');
         if (this.model.get('manifest')) {
           try {
@@ -52,8 +56,11 @@
           upgrade: this._upgrade
         }));
       }.bind(this));
-      // set categories for each foxx
-      $(this.el).attr('category', this.model.get('categories'));
+
+      if (this.model.get('categories')) {
+        // set categories for each foxx
+        $(this.el).attr('category', this.model.get('categories'));
+      }
 
       return $(this.el);
     },

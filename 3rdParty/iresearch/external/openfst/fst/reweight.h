@@ -7,6 +7,7 @@
 #define FST_REWEIGHT_H_
 
 #include <vector>
+
 #include <fst/log.h>
 
 #include <fst/mutable-fst.h>

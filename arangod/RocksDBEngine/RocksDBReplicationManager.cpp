@@ -32,6 +32,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -98,7 +99,8 @@ RocksDBReplicationManager::~RocksDBReplicationManager() {
 /// there are active contexts
 //////////////////////////////////////////////////////////////////////////////
 
-RocksDBReplicationContext* RocksDBReplicationManager::createContext(double ttl, SyncerId const syncerId, TRI_server_id_t const clientId) {
+RocksDBReplicationContext* RocksDBReplicationManager::createContext(
+    double ttl, SyncerId const syncerId, ServerId const clientId) {
   auto context = std::make_unique<RocksDBReplicationContext>(ttl, syncerId, clientId);
   TRI_ASSERT(context != nullptr);
   TRI_ASSERT(context->isUsed());
@@ -113,7 +115,7 @@ RocksDBReplicationContext* RocksDBReplicationManager::createContext(double ttl, 
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
 
-    _contexts.emplace(id, context.get());
+    _contexts.try_emplace(id, context.get());
   }
 
   LOG_TOPIC("27c43", TRACE, Logger::REPLICATION)
@@ -207,8 +209,8 @@ RocksDBReplicationContext* RocksDBReplicationManager::find(RocksDBReplicationId 
 /// populates clientId
 //////////////////////////////////////////////////////////////////////////////
 
-ResultT<std::tuple<SyncerId, TRI_server_id_t, std::string>>
-RocksDBReplicationManager::extendLifetime(RocksDBReplicationId id, double ttl) {
+ResultT<std::tuple<SyncerId, ServerId, std::string>> RocksDBReplicationManager::extendLifetime(
+    RocksDBReplicationId id, double ttl) {
   MUTEX_LOCKER(mutexLocker, _lock);
 
   auto it = _contexts.find(id);
@@ -217,6 +219,9 @@ RocksDBReplicationManager::extendLifetime(RocksDBReplicationId id, double ttl) {
     // not found
     return {TRI_ERROR_CURSOR_NOT_FOUND};
   }
+
+  LOG_TOPIC("71234", TRACE, Logger::REPLICATION)
+      << "extending lifetime of replication context " << id;
 
   RocksDBReplicationContext* context = it->second;
   TRI_ASSERT(context != nullptr);
@@ -228,7 +233,7 @@ RocksDBReplicationManager::extendLifetime(RocksDBReplicationId id, double ttl) {
 
   // populate clientId
   SyncerId const syncerId = context->syncerId();
-  TRI_server_id_t const clientId = context->replicationClientServerId();
+  ServerId const clientId = context->replicationClientServerId();
   std::string const& clientInfo = context->clientInfo();
 
   context->extendLifetime(ttl);
@@ -291,6 +296,8 @@ bool RocksDBReplicationManager::containsUsedContext() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBReplicationManager::drop(TRI_vocbase_t* vocbase) {
+  TRI_ASSERT(vocbase != nullptr);
+
   LOG_TOPIC("ce3b0", TRACE, Logger::REPLICATION)
       << "dropping all replication contexts for database " << vocbase->name();
 
@@ -303,6 +310,30 @@ void RocksDBReplicationManager::drop(TRI_vocbase_t* vocbase) {
   }
 
   garbageCollect(false);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drop contexts by collection (at least mark them as deleted)
+////////////////////////////////////////////////////////////////////////////////
+
+void RocksDBReplicationManager::drop(LogicalCollection* collection) {
+  TRI_ASSERT(collection != nullptr);
+
+  LOG_TOPIC("fe4bb", TRACE, Logger::REPLICATION)
+      << "dropping all replication contexts for collection " << collection->name();
+
+  bool found = false;
+  {
+    MUTEX_LOCKER(mutexLocker, _lock);
+
+    for (auto& context : _contexts) {
+      found |= context.second->removeCollection(*collection);
+    }
+  }
+
+  if (found) {
+    garbageCollect(false);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -51,16 +51,7 @@ if [ "$POOLSZ" == "" ] ; then
   POOLSZ=$NRAGENTS
 fi
 
-if [ -z "$USE_ROCKSDB" ] ; then
-  #default engine is RocksDB
-  STORAGE_ENGINE="--server.storage-engine=rocksdb"
-elif [ "$USE_ROCKSDB" == "0" ]; then 
-  #explicitly disable RocksDB engine, so use MMFiles
-  STORAGE_ENGINE="--server.storage-engine=mmfiles"
-else 
-  #any value other than "0" means RocksDB engine
-  STORAGE_ENGINE="--server.storage-engine=rocksdb"
-fi
+STORAGE_ENGINE="--server.storage-engine=rocksdb"
 DEFAULT_REPLICATION=""
 
 if [ "$AUTOUPGRADE" == "1" ];then
@@ -130,7 +121,7 @@ if [ ! -z "$INTERACTIVE_MODE" ] ; then
         CO_ARANGOD="$XTERM $XTERMOPTIONS ${BUILD}/bin/arangod --console"
         echo "Starting one coordinator in terminal with --console"
     elif [ "$INTERACTIVE_MODE" == "R" ] ; then
-        ARANGOD="$XTERM $XTERMOPTIONS rr ${BUILD}/bin/arangod"
+        ARANGOD="rr ${BUILD}/bin/arangod"
         CO_ARANGOD="$ARANGOD --console"
         echo Running cluster in rr with --console.
     fi
@@ -156,12 +147,12 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
           --agency.size $NRAGENTS \
           --agency.supervision true \
           --agency.supervision-frequency $SFRE \
-          --agency.supervision-grace-period 5.0 \
           --agency.wait-for-sync false \
           --database.directory cluster/data$PORT \
           --javascript.enabled false \
           --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
           --server.statistics false \
+          --log.role true \
           --log.file cluster/$PORT.log \
           --log.force-direct false \
           --log.level $LOG_LEVEL_AGENCY \
@@ -184,12 +175,12 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --agency.size $NRAGENTS \
         --agency.supervision true \
         --agency.supervision-frequency $SFRE \
-        --agency.supervision-grace-period 5.0 \
         --agency.wait-for-sync false \
         --database.directory cluster/data$PORT \
         --javascript.enabled false \
         --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
         --server.statistics false \
+        --log.role true \
         --log.file cluster/$PORT.log \
         --log.force-direct false \
         --log.level $LOG_LEVEL_AGENCY \
@@ -236,6 +227,7 @@ start() {
           --cluster.my-address $TRANSPORT://$ADDRESS:$PORT \
           --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
           --cluster.my-role $ROLE \
+          --log.role true \
           --log.file cluster/$PORT.log \
           --log.level $LOG_LEVEL \
           --server.statistics true \
@@ -259,6 +251,7 @@ start() {
         --cluster.my-address $TRANSPORT://$ADDRESS:$PORT \
         --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
         --cluster.my-role $ROLE \
+        --log.role true \
         --log.file cluster/$PORT.log \
         --log.level $LOG_LEVEL \
         --server.statistics true \

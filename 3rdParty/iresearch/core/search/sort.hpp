@@ -24,32 +24,58 @@
 #ifndef IRESEARCH_SORT_H
 #define IRESEARCH_SORT_H
 
-#include "shared.hpp"
+#include <vector>
+
 #include "utils/attributes.hpp"
-#include "utils/attributes_provider.hpp"
+#include "utils/attribute_provider.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/iterator.hpp"
 
-#include <vector>
-
 NS_ROOT
 
-struct data_output; // forward declaration
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief represents a boost related to the particular query
-//////////////////////////////////////////////////////////////////////////////
-typedef float_t boost_t;
-
-CONSTEXPR boost_t no_boost() NOEXCEPT { return 1.f; }
-
 struct collector;
+struct data_output;
+struct order_bucket;
 struct index_reader;
 struct sub_reader;
 struct term_reader;
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief represents no boost value
+//////////////////////////////////////////////////////////////////////////////
+constexpr boost_t no_boost() noexcept { return 1.f; }
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class filter_boost
+/// @brief represents an addition to score from filter specific to a particular
+///        document. May vary from document to document.
+//////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API filter_boost final : attribute {
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::filter_boost";
+  }
+
+  boost_t value{no_boost()};
+}; // filter_boost
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stateful object used for computing the document score based on the
+///        stored state
+////////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API score_ctx {
+  virtual ~score_ctx() = default;
+}; // score_ctx
+
+typedef std::unique_ptr<score_ctx> score_ctx_ptr;
 typedef bool(*score_less_f)(const byte_type* lhs, const byte_type* rhs);
-typedef void(*score_f)(const void* ctx, byte_type*);
+typedef void(*score_f)(const score_ctx* ctx, byte_type*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief combine range of scores denoted by 'src_start' and 'size' to 'dst',
+///        i.e. using +=
+////////////////////////////////////////////////////////////////////////////////
+typedef void(*merge_f)(const order_bucket* ctx, byte_type* dst,
+                       const byte_type** src, size_t count);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class sort
@@ -80,8 +106,12 @@ class IRESEARCH_API sort {
      ////////////////////////////////////////////////////////////////////////////
      virtual void collect(
        const sub_reader& segment,
-       const term_reader& field
-     ) = 0;
+       const term_reader& field) = 0;
+
+     ////////////////////////////////////////////////////////////////////////////
+     /// @brief clear collected stats
+     ////////////////////////////////////////////////////////////////////////////
+     virtual void reset() = 0;
 
      ///////////////////////////////////////////////////////////////////////////
      /// @brief collect field related statistics from a serialized
@@ -95,25 +125,14 @@ class IRESEARCH_API sort {
      virtual void write(data_output& out) const = 0;
   };
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief stateful object used for computing the document score based on the
-  ///        stored state
-  ////////////////////////////////////////////////////////////////////////////////
-  class IRESEARCH_API score_ctx {
-   public:
-    DECLARE_UNIQUE_PTR(score_ctx);
-
-    virtual ~score_ctx() = default;
-  }; // scorer
-
   template<typename T>
-  FORCE_INLINE static T& score_cast(byte_type* score_buf) NOEXCEPT {
+  FORCE_INLINE static T& score_cast(byte_type* score_buf) noexcept {
     assert(score_buf);
     return *reinterpret_cast<T*>(score_buf);
   }
 
   template<typename T>
-  FORCE_INLINE static const T& score_cast(const byte_type* score_buf) NOEXCEPT {
+  FORCE_INLINE static const T& score_cast(const byte_type* score_buf) noexcept {
     return score_cast<T>(const_cast<byte_type*>(score_buf));
   }
 
@@ -140,8 +159,12 @@ class IRESEARCH_API sort {
     virtual void collect(
       const sub_reader& segment,
       const term_reader& field,
-      const attribute_view& term_attrs
-    ) = 0;
+      const attribute_provider& term_attrs) = 0;
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief clear collected stats
+    ////////////////////////////////////////////////////////////////////////////
+    virtual void reset() = 0;
 
     ///////////////////////////////////////////////////////////////////////////
     /// @brief collect term related statistics from a serialized
@@ -156,6 +179,22 @@ class IRESEARCH_API sort {
   };
 
   ////////////////////////////////////////////////////////////////////////////////
+  /// @enum MergeType
+  /// @brief possible variants of merging multiple scores
+  ////////////////////////////////////////////////////////////////////////////////
+  enum class MergeType {
+    //////////////////////////////////////////////////////////////////////////////
+    /// @brief aggregate multiple scores
+    //////////////////////////////////////////////////////////////////////////////
+    AGGREGATE = 0,
+
+    //////////////////////////////////////////////////////////////////////////////
+    /// @brief find max among multiple scores
+    //////////////////////////////////////////////////////////////////////////////
+    MAX,
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
   /// @class sort::prepared
   /// @brief base class for all prepared(compiled) sort entries
   ////////////////////////////////////////////////////////////////////////////////
@@ -163,7 +202,38 @@ class IRESEARCH_API sort {
    public:
     DECLARE_UNIQUE_PTR(prepared);
 
-    prepared() = default;
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief default noop merge function
+    ////////////////////////////////////////////////////////////////////////////////
+    static void noop_merge(
+        const order_bucket*, byte_type*,
+        const byte_type**, size_t) noexcept {
+      // NOOP
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+    /// @brief helper function retuns merge function by a specified type
+    //////////////////////////////////////////////////////////////////////////////
+    template<MergeType type>
+    constexpr static merge_f merge_func(const prepared& bucket) noexcept {
+      switch (type) {
+        case MergeType::AGGREGATE:
+          return bucket.aggregate_func();
+        case MergeType::MAX:
+          return bucket.max_func();
+        default:
+          assert(false);
+          return noop_merge;
+      }
+    }
+
+    explicit prepared(
+        merge_f aggregate_func = &noop_merge,
+        merge_f max_func = &noop_merge) noexcept
+      : aggregate_func_(aggregate_func),
+        max_func_(max_func) {
+    }
+
     virtual ~prepared() = default;
 
     ////////////////////////////////////////////////////////////////////////////
@@ -206,11 +276,11 @@ class IRESEARCH_API sort {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief create a stateful scorer used for computation of document scores
     ////////////////////////////////////////////////////////////////////////////////
-    virtual std::pair<score_ctx::ptr, score_f> prepare_scorer(
+    virtual std::pair<score_ctx_ptr, score_f> prepare_scorer(
       const sub_reader& segment,
       const term_reader& field,
       const byte_type* stats,
-      const attribute_view& doc_attrs,
+      const attribute_provider& doc_attrs,
       boost_t boost) const = 0;
 
     ////////////////////////////////////////////////////////////////////////////
@@ -231,11 +301,6 @@ class IRESEARCH_API sort {
     virtual void prepare_stats(byte_type* stats) const = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief add the score from 'src' to the score in 'dst', i.e. +=
-    ////////////////////////////////////////////////////////////////////////////////
-    virtual void add(byte_type* dst, const byte_type* src) const = 0;
-
-    ////////////////////////////////////////////////////////////////////////////////
     /// @brief compare two score containers and determine if 'lhs' < 'rhs', i.e. <
     ////////////////////////////////////////////////////////////////////////////////
     virtual bool less(const byte_type* lhs, const byte_type* rhs) const = 0;
@@ -245,7 +310,7 @@ class IRESEARCH_API sort {
     ///        the score type (i.e. sizeof(score), alignof(score))
     /// @note alignment must satisfy the following requirements:
     ///       - be a power of 2
-    ///       - be less or equal than ALIGNOF(MAX_ALIGN_T))
+    ///       - be less or equal than alignof(MAX_ALIGN_T))
     ////////////////////////////////////////////////////////////////////////////////
     virtual std::pair<size_t, size_t> score_size() const = 0;
 
@@ -253,227 +318,330 @@ class IRESEARCH_API sort {
     /// @brief number of bytes (first) and alignment (first) required to store stats
     /// @note alignment must satisfy the following requirements:
     ///       - be a power of 2
-    ///       - be less or equal than ALIGNOF(MAX_ALIGN_T))
+    ///       - be less or equal than alignof(MAX_ALIGN_T))
     ////////////////////////////////////////////////////////////////////////////////
     virtual std::pair<size_t, size_t> stats_size() const = 0;
 
-   private:
-    attribute_view attrs_;
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief aggregate range of scores denoted by 'src_start' and 'size' to 'dst',
+    ///        i.e. using +=
+    ////////////////////////////////////////////////////////////////////////////////
+    merge_f aggregate_func() const noexcept { return aggregate_func_; }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief find max score within range of scores denoted by 'src_start' and
+    ///        'size' to 'dst', i.e. using std::max(...)
+    ////////////////////////////////////////////////////////////////////////////////
+    merge_f max_func() const noexcept { return max_func_; }
+
+   protected:
+    merge_f aggregate_func_;
+    merge_f max_func_;
   }; // prepared
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief template score for base class for all prepared(compiled) sort entries
-  ////////////////////////////////////////////////////////////////////////////////
-  template <typename ScoreType, typename StatsType>
-  class prepared_base : public prepared {
-   public:
-    typedef ScoreType score_t;
-    typedef StatsType stats_t;
-
-    FORCE_INLINE static const score_t& score_cast(const byte_type* buf) NOEXCEPT {
-      assert(buf);
-      return *reinterpret_cast<const score_t*>(buf);
-    }
-
-    FORCE_INLINE static score_t& score_cast(byte_type* buf) NOEXCEPT {
-      return const_cast<score_t&>(score_cast(const_cast<const byte_type*>(buf)));
-    }
-
-    FORCE_INLINE static const stats_t& stats_cast(const byte_type* buf) NOEXCEPT {
-      assert(buf);
-      return *reinterpret_cast<const stats_t*>(buf);
-    }
-
-    FORCE_INLINE static stats_t& stats_cast(byte_type* buf) NOEXCEPT {
-      return const_cast<stats_t&>(stats_cast(const_cast<const byte_type*>(buf)));
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief number of bytes required to store the score type (i.e. sizeof(score))
-    ////////////////////////////////////////////////////////////////////////////////
-    virtual inline std::pair<size_t, size_t> score_size() const NOEXCEPT final {
-      static_assert(
-        ALIGNOF(score_t) <= ALIGNOF(MAX_ALIGN_T),
-        "alignof(score_t) must be <= alignof(std::max_align_t)"
-      );
-
-      static_assert (
-        math::is_power2(ALIGNOF(score_t)),
-        "alignof(score_t) must be a power of 2"
-      );
-
-      return std::make_pair(sizeof(score_t), ALIGNOF(score_t));
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief number of bytes required to store stats
-    ////////////////////////////////////////////////////////////////////////////////
-    virtual inline std::pair<size_t, size_t> stats_size() const NOEXCEPT final {
-      static_assert(
-        ALIGNOF(stats_t) <= ALIGNOF(MAX_ALIGN_T),
-        "alignof(stats_t) must be <= alignof(std::max_align_t)"
-      );
-
-      static_assert (
-        math::is_power2(ALIGNOF(stats_t)),
-        "alignof(stats_t) must be a power of 2"
-      );
-
-      return std::make_pair(sizeof(stats_t), ALIGNOF(stats_t));
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief initialize the stats buffer
-    ////////////////////////////////////////////////////////////////////////////////
-    virtual void prepare_stats(byte_type* stats) const override final {
-      stats_cast(stats) = StatsType();
-    }
-  }; // prepared_base
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief template score for base class for all prepared(compiled) sort entries
-  ////////////////////////////////////////////////////////////////////////////////
-  template <typename ScoreType>
-  class prepared_base<ScoreType, void> : public prepared {
-   public:
-    typedef ScoreType score_t;
-    typedef void stats_t;
-
-    FORCE_INLINE static const score_t& score_cast(const byte_type* score_buf) NOEXCEPT {
-      assert(score_buf);
-      return *reinterpret_cast<const score_t*>(score_buf);
-    }
-
-    FORCE_INLINE static score_t& score_cast(byte_type* score_buf) NOEXCEPT {
-      assert(score_buf);
-      return *reinterpret_cast<score_t*>(score_buf);
-    }
-
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief create an object to be used for collecting index statistics, one
-    ///        instance per matched field
-    /// @return nullptr == no statistics collection required
-    ////////////////////////////////////////////////////////////////////////////
-    virtual field_collector::ptr prepare_field_collector() const override {
-      return nullptr;
-    }
-
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief create an object to be used for collecting index statistics, one
-    ///        instance per matched term
-    /// @return nullptr == no statistics collection required
-    ////////////////////////////////////////////////////////////////////////////
-    virtual term_collector::ptr prepare_term_collector() const override {
-      return nullptr;
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief initialize the stats buffer
-    ////////////////////////////////////////////////////////////////////////////////
-    virtual void prepare_stats(byte_type* /*stats*/) const override {
-      // NOOP
-    }
-
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief store collected index statistics into 'stats' of the
-    ///        current 'filter'
-    /// @param filter_attrs out-parameter to store statistics for later use in
-    ///        calls to score(...)
-    /// @param index the full index to collect statistics on
-    /// @param field the field level statistics collector as returned from
-    ///        prepare_field_collector()
-    /// @param term the term level statistics collector as returned from
-    ///        prepare_term_collector()
-    /// @note called once on the 'index' for every field+term matched by the
-    ///       filter
-    /// @note called once on the 'index' for every field with null term stats
-    ///       if term is not applicable, e.g. by_column_existence filter
-    /// @note called exactly once if field/term collection is not applicable,
-    ///       e.g. collecting statistics over the columnstore
-    /// @note called after all calls to collector::collect(...) on each segment
-    ////////////////////////////////////////////////////////////////////////////
-    virtual void collect(
-        byte_type*,
-        const index_reader&,
-        const field_collector*,
-        const term_collector*
-    ) const override {
-      // NOOP
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief number of bytes required to store the score type (i.e. sizeof(score))
-    ////////////////////////////////////////////////////////////////////////////////
-    virtual inline std::pair<size_t, size_t> score_size() const NOEXCEPT final {
-      return std::make_pair(sizeof(score_t), ALIGNOF(score_t));
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief number of bytes required to store stats
-    ////////////////////////////////////////////////////////////////////////////////
-    virtual inline std::pair<size_t, size_t> stats_size() const NOEXCEPT final {
-      return std::make_pair(size_t(0), size_t(0));
-    }
-  }; // prepared_base
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief template score for base class for basic
-  ///        prepared(compiled) sort entries
-  ////////////////////////////////////////////////////////////////////////////////
-  template <typename ScoreType, typename StatsType = void>
-  class prepared_basic : public prepared_base<ScoreType, StatsType> {
-    typedef prepared_base<ScoreType, StatsType> base_t;
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief initialize the score buffer
-    ////////////////////////////////////////////////////////////////////////////////
-    virtual inline void prepare_score(byte_type* score) const override final {
-      base_t::score_cast(score) = ScoreType();
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief add the score from 'src' to the score in 'dst', i.e. +=
-    ////////////////////////////////////////////////////////////////////////////////
-    virtual inline void add(
-      byte_type* dst,
-      const byte_type* src
-    ) const override final {
-      base_t::score_cast(dst) += base_t::score_cast(src);
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief compare two score containers and determine if 'lhs' < 'rhs', i.e. <
-    ////////////////////////////////////////////////////////////////////////////////
-    virtual inline bool less(
-      const byte_type* lhs, const byte_type* rhs
-    ) const override final {
-      return base_t::score_cast(lhs) < base_t::score_cast(rhs);
-    }
-  }; // prepared_basic
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @class type_id
-  //////////////////////////////////////////////////////////////////////////////
-  class type_id: public iresearch::type_id, util::noncopyable {
-   public:
-    type_id(const string_ref& name): name_(name) {}
-    operator const type_id*() const { return this; }
-    const string_ref& name() const { return name_; }
-
-   private:
-    string_ref name_;
-  }; // type_id
-
-  explicit sort(const type_id& id) NOEXCEPT;
+  explicit sort(const type_info& type) noexcept;
   virtual ~sort() = default;
 
-  const type_id& type() const { return *type_; }
+  constexpr type_info::type_id type() const noexcept { return type_; }
 
   virtual prepared::ptr prepare() const = 0;
 
  private:
-  const type_id* type_;
+  type_info::type_id type_;
 }; // sort
+
+////////////////////////////////////////////////////////////////////////////////
+/// @struct order_bucket
+////////////////////////////////////////////////////////////////////////////////
+struct order_bucket : private util::noncopyable {
+  explicit order_bucket(
+      sort::prepared::ptr&& bucket,
+      size_t score_offset,
+      size_t stats_offset,
+      bool reverse)
+    : bucket(std::move(bucket)),
+      score_offset(score_offset),
+      stats_offset(stats_offset),
+      reverse(reverse) {
+  }
+
+  order_bucket(order_bucket&& rhs) noexcept
+    : bucket(std::move(rhs.bucket)),
+      score_offset(rhs.score_offset),
+      stats_offset(rhs.stats_offset),
+      reverse(rhs.reverse) {
+    rhs.score_offset = 0;
+    rhs.stats_offset = 0;
+  }
+
+  order_bucket& operator=(order_bucket&& rhs) noexcept {
+    if (this != &rhs) {
+      bucket = std::move(rhs.bucket);
+      score_offset = rhs.score_offset;
+      rhs.score_offset = 0;
+      stats_offset = rhs.stats_offset;
+      rhs.stats_offset = 0;
+      reverse = rhs.reverse;
+    }
+    return *this;
+  }
+
+  sort::prepared::ptr bucket; // prepared score
+  size_t score_offset; // offset in score buffer
+  size_t stats_offset; // offset in stats buffer
+  bool reverse;
+}; // order_bucket
+
+////////////////////////////////////////////////////////////////////////////////
+/// @struct score_traits
+////////////////////////////////////////////////////////////////////////////////
+template<typename ScoreType>
+struct score_traits {
+  typedef ScoreType score_type;
+
+  FORCE_INLINE static const score_type& score_cast(const byte_type* buf) noexcept {
+    assert(buf);
+    return *reinterpret_cast<const score_type*>(buf);
+  }
+
+  FORCE_INLINE static score_type& score_cast(byte_type* buf) noexcept {
+    return const_cast<score_type&>(score_cast(const_cast<const byte_type*>(buf)));
+  }
+
+  static void aggregate(const order_bucket* ctx, byte_type* dst,
+                        const byte_type** src_begin, size_t size) {
+    const auto offset = ctx->score_offset;
+    auto& casted_dst = score_cast(dst + offset);
+    casted_dst = ScoreType();
+
+    const auto** src_end = src_begin + size;
+    const auto** src_next = src_begin + 4;
+    for (; src_next <= src_end; src_begin = src_next, src_next += 4) {
+      casted_dst += score_cast(src_begin[0] + offset)
+                 +  score_cast(src_begin[1] + offset)
+                 +  score_cast(src_begin[2] + offset)
+                 +  score_cast(src_begin[3] + offset);
+    }
+
+    switch (std::distance(src_end, src_next)) {
+      case 0:
+        break;
+      case 1:
+        casted_dst += score_cast(src_begin[0] + offset)
+                   +  score_cast(src_begin[1] + offset)
+                   +  score_cast(src_begin[2] + offset);
+        break;
+      case 2:
+        casted_dst += score_cast(src_begin[0] + offset)
+                   +  score_cast(src_begin[1] + offset);
+        break;
+      case 3:
+        casted_dst += score_cast(src_begin[0] + offset);
+        break;
+    }
+  }
+
+  static void max(const order_bucket* ctx, byte_type* dst,
+                  const byte_type** src_begin, size_t size) {
+    const auto offset = ctx->score_offset;
+    auto& casted_dst = score_cast(dst + offset);
+
+    switch (size) {
+      case 0:
+        casted_dst = ScoreType();
+        break;
+      case 1:
+        casted_dst = score_cast(src_begin[0] + offset);
+        break;
+      case 2:
+        casted_dst = std::max(score_cast(src_begin[0] + offset),
+                              score_cast(src_begin[1] + offset));
+        break;
+      default:
+        casted_dst = score_cast(*src_begin + offset);
+        const auto* src_end = src_begin + size;
+        for (++src_begin; src_begin != src_end; ) {
+          casted_dst = std::max(score_cast(*src_begin++ + offset), casted_dst);
+        }
+        break;
+    }
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class prepared_sort_base
+/// @brief template score for base class for all prepared(compiled) sort entries
+////////////////////////////////////////////////////////////////////////////////
+template<typename ScoreType,
+         typename StatsType,
+         typename TraitsType = score_traits<ScoreType>
+> class prepared_sort_base : public sort::prepared {
+ public:
+  typedef TraitsType traits_t;
+  typedef typename traits_t::score_type score_t;
+  typedef StatsType stats_t;
+
+  FORCE_INLINE static const stats_t& stats_cast(const byte_type* buf) noexcept {
+    assert(buf);
+    return *reinterpret_cast<const stats_t*>(buf);
+  }
+
+  FORCE_INLINE static stats_t& stats_cast(byte_type* buf) noexcept {
+    return const_cast<stats_t&>(stats_cast(const_cast<const byte_type*>(buf)));
+  }
+
+  prepared_sort_base() noexcept
+    : sort::prepared(&traits_t::aggregate, &traits_t::max) {
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief number of bytes required to store the score type (i.e. sizeof(score))
+  ////////////////////////////////////////////////////////////////////////////////
+  virtual inline std::pair<size_t, size_t> score_size() const noexcept final {
+    static_assert(
+      alignof(score_t) <= alignof(std::max_align_t),
+      "alignof(score_t) must be <= alignof(std::max_align_t)"
+    );
+
+    static_assert (
+      math::is_power2(alignof(score_t)),
+      "alignof(score_t) must be a power of 2"
+    );
+
+    return std::make_pair(sizeof(score_t), alignof(score_t));
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief number of bytes required to store stats
+  ////////////////////////////////////////////////////////////////////////////////
+  virtual inline std::pair<size_t, size_t> stats_size() const noexcept final {
+    static_assert(
+      alignof(stats_t) <= alignof(std::max_align_t),
+      "alignof(stats_t) must be <= alignof(std::max_align_t)"
+    );
+
+    static_assert (
+      math::is_power2(alignof(stats_t)),
+      "alignof(stats_t) must be a power of 2"
+    );
+
+    return std::make_pair(sizeof(stats_t), alignof(stats_t));
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief initialize the stats buffer
+  ////////////////////////////////////////////////////////////////////////////////
+  virtual void prepare_stats(byte_type* stats) const override final {
+    stats_cast(stats) = StatsType();
+  }
+}; // prepared_sort_base
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief template score for base class for all prepared(compiled) sort entries
+////////////////////////////////////////////////////////////////////////////////
+template <typename ScoreType, typename TraitsType>
+class prepared_sort_base<ScoreType, void, TraitsType> : public sort::prepared {
+ public:
+  typedef TraitsType traits_t;
+  typedef typename traits_t::score_type score_t;
+  typedef void stats_t;
+
+  prepared_sort_base() noexcept
+    : sort::prepared(&traits_t::aggregate, &traits_t::max) {
+  }
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief create an object to be used for collecting index statistics, one
+  ///        instance per matched field
+  /// @return nullptr == no statistics collection required
+  ////////////////////////////////////////////////////////////////////////////
+  virtual sort::field_collector::ptr prepare_field_collector() const override {
+    return nullptr;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief create an object to be used for collecting index statistics, one
+  ///        instance per matched term
+  /// @return nullptr == no statistics collection required
+  ////////////////////////////////////////////////////////////////////////////
+  virtual sort::term_collector::ptr prepare_term_collector() const override {
+    return nullptr;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief initialize the stats buffer
+  ////////////////////////////////////////////////////////////////////////////////
+  virtual void prepare_stats(byte_type* /*stats*/) const override {
+    // NOOP
+  }
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief store collected index statistics into 'stats' of the
+  ///        current 'filter'
+  /// @param filter_attrs out-parameter to store statistics for later use in
+  ///        calls to score(...)
+  /// @param index the full index to collect statistics on
+  /// @param field the field level statistics collector as returned from
+  ///        prepare_field_collector()
+  /// @param term the term level statistics collector as returned from
+  ///        prepare_term_collector()
+  /// @note called once on the 'index' for every field+term matched by the
+  ///       filter
+  /// @note called once on the 'index' for every field with null term stats
+  ///       if term is not applicable, e.g. by_column_existence filter
+  /// @note called exactly once if field/term collection is not applicable,
+  ///       e.g. collecting statistics over the columnstore
+  /// @note called after all calls to collector::collect(...) on each segment
+  ////////////////////////////////////////////////////////////////////////////
+  virtual void collect(
+      byte_type*,
+      const index_reader&,
+      const sort::field_collector*,
+      const sort::term_collector*) const override {
+    // NOOP
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief number of bytes required to store the score type (i.e. sizeof(score))
+  ////////////////////////////////////////////////////////////////////////////////
+  virtual inline std::pair<size_t, size_t> score_size() const noexcept final {
+    return std::make_pair(sizeof(score_t), alignof(score_t));
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief number of bytes required to store stats
+  ////////////////////////////////////////////////////////////////////////////////
+  virtual inline std::pair<size_t, size_t> stats_size() const noexcept final {
+    return std::make_pair(size_t(0), size_t(0));
+  }
+}; // prepared_sort_base
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief template score for base class for basic
+///        prepared(compiled) sort entries
+////////////////////////////////////////////////////////////////////////////////
+template<typename ScoreType,
+         typename StatsType = void,
+         typename TraitsType = score_traits<ScoreType>
+> class prepared_sort_basic : public prepared_sort_base<ScoreType, StatsType> {
+  typedef TraitsType traits_t;
+  typedef prepared_sort_base<ScoreType, StatsType> base_t;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief initialize the score buffer
+  ////////////////////////////////////////////////////////////////////////////////
+  virtual inline void prepare_score(byte_type* score) const override final {
+    traits_t::score_cast(score) = ScoreType();
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief compare two score containers and determine if 'lhs' < 'rhs', i.e. <
+  ////////////////////////////////////////////////////////////////////////////////
+  virtual inline bool less(const byte_type* lhs,
+                           const byte_type* rhs) const override final {
+    return traits_t::score_cast(lhs) < traits_t::score_cast(rhs);
+  }
+}; // prepared_basic
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class sort
@@ -483,21 +651,21 @@ class IRESEARCH_API order final {
  public:
   class entry : private util::noncopyable {
    public:
-    entry(const irs::sort::ptr& sort, bool reverse) NOEXCEPT
+    entry(const irs::sort::ptr& sort, bool reverse) noexcept
       : sort_(sort), reverse_(reverse) {
       assert(sort_);
     }
 
-    entry(irs::sort::ptr&& sort, bool reverse) NOEXCEPT
+    entry(irs::sort::ptr&& sort, bool reverse) noexcept
       : sort_(std::move(sort)), reverse_(reverse) {
       assert(sort_);
     }
 
-    entry(entry&& rhs) NOEXCEPT
+    entry(entry&& rhs) noexcept
       : sort_(std::move(rhs.sort_)), reverse_(rhs.reverse_) {
     }
 
-    entry& operator=(entry&& rhs) NOEXCEPT {
+    entry& operator=(entry&& rhs) noexcept {
       if (this != &rhs) {
         sort_ = std::move(rhs.sort_);
         reverse_ = rhs.reverse_;
@@ -505,13 +673,13 @@ class IRESEARCH_API order final {
       return *this;
     }
 
-    const irs::sort& sort() const NOEXCEPT {
+    const irs::sort& sort() const noexcept {
       assert(sort_);
       return *sort_;
     }
 
     template<typename T>
-    const T& sort_cast() const NOEXCEPT {
+    const T& sort_cast() const noexcept {
       typedef typename std::enable_if<
         std::is_base_of<irs::sort, T>::value, T
       >::type type;
@@ -524,7 +692,7 @@ class IRESEARCH_API order final {
     }
 
     template<typename T>
-    const T* sort_safe_cast() const NOEXCEPT {
+    const T* sort_safe_cast() const noexcept {
       typedef typename std::enable_if<
         std::is_base_of<irs::sort, T>::value, T
       >::type type;
@@ -534,14 +702,14 @@ class IRESEARCH_API order final {
         : nullptr;
     }
 
-    bool reverse() const NOEXCEPT {
+    bool reverse() const noexcept {
       return reverse_;
     }
 
    private:
     friend class order;
 
-    irs::sort& sort() NOEXCEPT {
+    irs::sort& sort() noexcept {
       assert(sort_);
       return *sort_;
     }
@@ -560,108 +728,7 @@ class IRESEARCH_API order final {
   ////////////////////////////////////////////////////////////////////////////////
   class IRESEARCH_API prepared final : private util::noncopyable {
    public:
-    struct prepared_sort : private util::noncopyable {
-      explicit prepared_sort(
-          sort::prepared::ptr&& bucket,
-          size_t score_offset,
-          size_t stats_offset,
-          bool reverse)
-        : bucket(std::move(bucket)),
-          score_offset(score_offset),
-          stats_offset(stats_offset),
-          reverse(reverse) {
-      }
-
-      prepared_sort(prepared_sort&& rhs) NOEXCEPT
-        : bucket(std::move(rhs.bucket)),
-          score_offset(rhs.score_offset),
-          stats_offset(rhs.stats_offset),
-          reverse(rhs.reverse) {
-        rhs.score_offset = 0;
-        rhs.stats_offset = 0;
-      }
-
-      prepared_sort& operator=(prepared_sort&& rhs) NOEXCEPT {
-        if (this != &rhs) {
-          bucket = std::move(rhs.bucket);
-          score_offset = rhs.score_offset;
-          rhs.score_offset = 0;
-          stats_offset = rhs.stats_offset;
-          rhs.stats_offset = 0;
-          reverse = rhs.reverse;
-        }
-        return *this;
-      }
-
-      sort::prepared::ptr bucket;
-      size_t score_offset; // offset in score buffer
-      size_t stats_offset; // offset in stats buffer
-      bool reverse;
-    }; // prepared_sort
-
-    typedef std::vector<prepared_sort> prepared_order_t;
-
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief a convinience class for filters to invoke collector functions
-    ///        on collectors in each order bucket
-    ////////////////////////////////////////////////////////////////////////////
-    class IRESEARCH_API collectors: private util::noncopyable { // noncopyable required by MSVC
-     public:
-      collectors(const prepared& buckets, size_t terms_count);
-      collectors(collectors&& other) NOEXCEPT; // function definition explicitly required by MSVC
-
-      //////////////////////////////////////////////////////////////////////////
-      /// @brief collect field related statistics, i.e. field used in the filter
-      /// @param segment the segment being processed (e.g. for columnstore)
-      /// @param field the field matched by the filter in the 'segment'
-      /// @note called once for every field matched by a filter per each segment
-      /// @note always called on each matched 'field' irrespective of if it
-      ///       contains a matching 'term'
-      //////////////////////////////////////////////////////////////////////////
-      void collect(const sub_reader& segment, const term_reader& field) const;
-
-      //////////////////////////////////////////////////////////////////////////
-      /// @brief collect term related statistics, i.e. term used in the filter
-      /// @param segment the segment being processed (e.g. for columnstore)
-      /// @param field the field matched by the filter in the 'segment'
-      /// @param term_offset offset of term, value < constructor 'terms_count'
-      /// @param term_attributes the attributes of the matched term in the field
-      /// @note called once for every term matched by a filter in the 'field'
-      ///       per each segment
-      /// @note only called on a matched 'term' in the 'field' in the 'segment'
-      //////////////////////////////////////////////////////////////////////////
-      void collect(
-        const sub_reader& segment,
-        const term_reader& field,
-        size_t term_offset,
-        const attribute_view& term_attrs
-      ) const;
-
-      //////////////////////////////////////////////////////////////////////////
-      /// @brief store collected index statistics into 'stats' of the
-      ///        current 'filter'
-      /// @param stats out-parameter to store statistics for later use in
-      ///        calls to score(...)
-      /// @param index the full index to collect statistics on
-      /// @note called once on the 'index' for every term matched by a filter
-      ///       calling collect(...) on each of its segments
-      /// @note if not matched terms then called exactly once
-      //////////////////////////////////////////////////////////////////////////
-      void finish(byte_type* stats, const index_reader& index) const;
-
-      //////////////////////////////////////////////////////////////////////////
-      /// @brief add collectors for another term
-      /// @return term_offset
-      //////////////////////////////////////////////////////////////////////////
-      size_t push_back();
-
-     private:
-      IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-      const std::vector<prepared_sort>& buckets_;
-      std::vector<sort::field_collector::ptr> field_collectors_; // size == buckets_.size()
-      std::vector<sort::term_collector::ptr> term_collectors_; // size == buckets_.size() * terms_count, layout order [t0.b0, t0.b1, ... t0.bN, t1.b0, t1.b1 ... tM.BN]
-      IRESEARCH_API_PRIVATE_VARIABLES_END
-    };
+    typedef std::vector<order_bucket> prepared_order_t;
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief a convinience class for doc_iterators to invoke scorer functions
@@ -670,13 +737,13 @@ class IRESEARCH_API order final {
     class IRESEARCH_API scorers: private util::noncopyable { // noncopyable required by MSVC
      public:
       struct entry {
-        entry(sort::score_ctx::ptr&& ctx, score_f func, size_t offset)
+        entry(score_ctx_ptr&& ctx, score_f func, size_t offset)
           : ctx(std::move(ctx)),
             func(func),
             offset(offset) {
         }
 
-        sort::score_ctx::ptr ctx;
+        score_ctx_ptr ctx;
         score_f func;
         size_t offset;
       };
@@ -687,21 +754,25 @@ class IRESEARCH_API order final {
         const sub_reader& segment,
         const term_reader& field,
         const byte_type* stats,
-        const attribute_view& doc,
-        boost_t boost
-      );
-      scorers(scorers&& other) NOEXCEPT; // function definition explicitly required by MSVC
+        const attribute_provider& doc,
+        boost_t boost);
+      scorers(scorers&& other) noexcept; // function definition explicitly required by MSVC
 
-      scorers& operator=(scorers&& other) NOEXCEPT; // function definition explicitly required by MSVC
+      scorers& operator=(scorers&& other) noexcept; // function definition explicitly required by MSVC
 
       void score(byte_type* score) const;
 
-      const entry& operator[](size_t i) const NOEXCEPT {
+      const entry& operator[](size_t i) const noexcept {
         assert(i < scorers_.size());
         return scorers_[i];
       }
 
-      size_t size() const NOEXCEPT {
+      entry& operator[](size_t i) noexcept {
+        assert(i < scorers_.size());
+        return scorers_[i];
+      }
+
+      size_t size() const noexcept {
         return scorers_.size();
       }
 
@@ -711,50 +782,95 @@ class IRESEARCH_API order final {
       IRESEARCH_API_PRIVATE_VARIABLES_END
     }; // scorers
 
+    ////////////////////////////////////////////////////////////////////////////
+    /// @class merger
+    /// @brief a helper class to merge scores for an order bucket
+    ////////////////////////////////////////////////////////////////////////////
+    class merger {
+     public:
+      //////////////////////////////////////////////////////////////////////////
+      /// @brief merge range of scores denoted by 'src_start' and 'size' to
+      ///        'dst', using a merge function
+      //////////////////////////////////////////////////////////////////////////
+      FORCE_INLINE void operator()(
+          byte_type* score,
+          const byte_type** rhs_start,
+          const size_t count) const {
+        assert(merge_func_);
+        (*merge_func_)(bucket_, score, rhs_start, count);
+      }
+
+      FORCE_INLINE bool operator==(merge_f merge_func) const noexcept {
+        return merge_func == merge_func_;
+      }
+
+      FORCE_INLINE bool operator!=(merge_f merge_func) const noexcept {
+        return merge_func != merge_func_;
+      }
+
+     private:
+      friend class order;
+
+      merger() = default;
+
+      merger(const order_bucket* bucket, merge_f merge_func) noexcept
+        : bucket_(bucket), merge_func_(merge_func) {
+        assert(merge_func_);
+      }
+
+      const order_bucket* bucket_{nullptr};
+      merge_f merge_func_{&sort::prepared::noop_merge};
+    }; // merger
+
     static const prepared& unordered();
 
     prepared() = default;
-    prepared(prepared&& rhs) NOEXCEPT;
+    prepared(prepared&& rhs) noexcept;
 
-    prepared& operator=(prepared&& rhs) NOEXCEPT;
+    prepared& operator=(prepared&& rhs) noexcept;
 
-    const flags& features() const NOEXCEPT { return features_; }
+    const flags& features() const noexcept { return features_; }
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief number of bytes required to store the score types of all buckets
     ////////////////////////////////////////////////////////////////////////////
-    size_t score_size() const NOEXCEPT { return score_size_; }
+    size_t score_size() const noexcept { return score_size_; }
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief number of bytes required to store stats of all buckets
     ////////////////////////////////////////////////////////////////////////////
-    size_t stats_size() const NOEXCEPT { return stats_size_; }
+    size_t stats_size() const noexcept { return stats_size_; }
 
     ////////////////////////////////////////////////////////////////////////////
     /// @returns number of bucket in order
     ////////////////////////////////////////////////////////////////////////////
-    size_t size() const NOEXCEPT { return order_.size(); }
-    bool empty() const NOEXCEPT { return order_.empty(); }
+    size_t size() const noexcept { return order_.size(); }
 
-    prepared_order_t::const_iterator begin() const NOEXCEPT {
+    ////////////////////////////////////////////////////////////////////////////
+    /// @returns true if order contains no buckets
+    ////////////////////////////////////////////////////////////////////////////
+    bool empty() const noexcept { return order_.empty(); }
+
+    prepared_order_t::const_iterator begin() const noexcept {
       return prepared_order_t::const_iterator(order_.begin());
     }
 
-    prepared_order_t::const_iterator end() const NOEXCEPT {
+    prepared_order_t::const_iterator end() const noexcept {
       return prepared_order_t::const_iterator(order_.end());
     }
 
-    const prepared_sort& operator[](size_t i) const NOEXCEPT {
-      return order_[i];
+    const order_bucket& front() const noexcept {
+      assert(!order_.empty());
+      return order_.front();
     }
 
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief create an index statistics compound collector for all buckets
-    /// @param terms_count number of term_collectors to allocate
-    ///        0 == collect only field level statistics e.g. by_column_existence
-    ////////////////////////////////////////////////////////////////////////////
-    collectors prepare_collectors(size_t terms_count = 0) const {
-      return collectors(*this, terms_count);
+    const order_bucket& back() const noexcept {
+      assert(!order_.empty());
+      return order_.back();
+    }
+
+    const order_bucket& operator[](size_t i) const noexcept {
+      return order_[i];
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -764,13 +880,30 @@ class IRESEARCH_API order final {
     ////////////////////////////////////////////////////////////////////////////
     void prepare_collectors(byte_type* stats, const index_reader& index) const;
 
+    ////////////////////////////////////////////////////////////////////////////
+    /// @return merger object to combine multiple scores
+    ////////////////////////////////////////////////////////////////////////////
+    merger prepare_merger(sort::MergeType type) const noexcept {
+      switch (type) {
+        case sort::MergeType::AGGREGATE:
+          return prepare_merger<sort::MergeType::AGGREGATE>();
+        case sort::MergeType::MAX:
+          return prepare_merger<sort::MergeType::MAX>();
+        default:
+          assert(false);
+          return {};
+      }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @return set of prepared scorer objects
+    ////////////////////////////////////////////////////////////////////////////
     prepared::scorers prepare_scorers(
         const sub_reader& segment,
         const term_reader& field,
         const byte_type* stats_buf,
-        const attribute_view& doc,
-        irs::boost_t boost
-    ) const {
+        const attribute_provider& doc,
+        irs::boost_t boost) const {
       return scorers(order_, segment, field, stats_buf, doc, boost);
     }
 
@@ -780,10 +913,11 @@ class IRESEARCH_API order final {
     void prepare_stats(byte_type* stats) const;
 
     template<typename T>
-    CONSTEXPR const T& get(const byte_type* score, size_t i) const NOEXCEPT {
-      #if !defined(__APPLE__) && defined(IRESEARCH_DEBUG) // MacOS can't handle asserts in non-debug CONSTEXPR functions
+    constexpr const T& get(const byte_type* score, size_t i) const noexcept {
+      // MacOS can't handle asserts in non-debug constexpr functions
+      #if !defined(__APPLE__) && defined(IRESEARCH_DEBUG)
         assert(sizeof(T) == order_[i].bucket->score_size().first);
-        assert(ALIGNOF(T) == order_[i].bucket->score_size().second);
+        assert(alignof(T) == order_[i].bucket->score_size().second);
       #endif
       return reinterpret_cast<const T&>(*(score + order_[i].score_offset));
     }
@@ -791,9 +925,7 @@ class IRESEARCH_API order final {
     template<
       typename StringType,
       typename TraitsType = typename StringType::traits_type
-    > CONSTEXPR StringType to_string(
-        const byte_type* score, size_t i
-    ) const {
+    > constexpr StringType to_string(const byte_type* score, size_t i) const {
       typedef typename TraitsType::char_type char_type;
 
       return StringType(
@@ -806,9 +938,38 @@ class IRESEARCH_API order final {
     friend class order;
 
     template<typename Func>
-    inline void for_each(const Func& func) const {
+    void for_each(const Func& func) const {
       std::for_each(order_.begin(), order_.end(), func);
     }
+
+    template<sort::MergeType Type>
+    merger prepare_merger() const noexcept {
+      switch (order_.size()) {
+        case 0: return { };
+        case 1: return {
+            &order_[0],
+            sort::prepared::merge_func<Type>(*order_[0].bucket)
+          };
+        case 2: return {
+            &order_[0],
+            [](const order_bucket* ctx, byte_type* dst,
+               const byte_type** src_start, const size_t size) {
+                sort::prepared::merge_func<Type>(*ctx[0].bucket)(ctx,     dst, &(*src_start), size);
+                sort::prepared::merge_func<Type>(*ctx[1].bucket)(ctx + 1, dst, &(*src_start), size);
+          }};
+        default: return {
+            reinterpret_cast<const order_bucket*>(&order_),
+            [](const order_bucket* ctx, byte_type* dst,
+               const byte_type** src_start, const size_t size) {
+                auto& order = *reinterpret_cast<const order::prepared*>(ctx);
+                order.for_each([dst, src_start, size](const order_bucket& sort) {
+                  assert(sort.bucket);
+                  sort::prepared::merge_func<Type>(*sort.bucket)(&sort, dst, src_start, size);
+                });
+          }};
+      }
+    }
+
 
     IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
     prepared_order_t order_;
@@ -821,11 +982,11 @@ class IRESEARCH_API order final {
   static const order& unordered();
 
   order() = default;
-  order(order&& rhs) NOEXCEPT
+  order(order&& rhs) noexcept
     : order_(std::move(rhs.order_)) {
   }
 
-  order& operator=(order&& rhs) NOEXCEPT {
+  order& operator=(order&& rhs) noexcept {
     if (this != &rhs) {
       order_ = std::move(rhs.order_);
     }
@@ -862,17 +1023,17 @@ class IRESEARCH_API order final {
     remove(type::type());
   }
 
-  void remove(const type_id& id);
-  void clear() NOEXCEPT { order_.clear(); }
+  void remove(type_info::type_id type);
+  void clear() noexcept { order_.clear(); }
 
-  size_t size() const NOEXCEPT { return order_.size(); }
-  bool empty() const NOEXCEPT { return order_.empty(); }
+  size_t size() const noexcept { return order_.size(); }
+  bool empty() const noexcept { return order_.empty(); }
 
-  const_iterator begin() const NOEXCEPT { return order_.begin(); }
-  const_iterator end() const NOEXCEPT { return order_.end(); }
+  const_iterator begin() const noexcept { return order_.begin(); }
+  const_iterator end() const noexcept { return order_.end(); }
 
-  iterator begin() NOEXCEPT { return order_.begin(); }
-  iterator end() NOEXCEPT { return order_.end(); }
+  iterator begin() noexcept { return order_.begin(); }
+  iterator end() noexcept { return order_.end(); }
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN

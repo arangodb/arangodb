@@ -33,6 +33,7 @@
 #include <thread>
 
 #include "Agency/Agent.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/MutexLocker.h"
@@ -59,30 +60,36 @@ using namespace arangodb::rest;
 using namespace arangodb::basics;
 
 /// Constructor:
-State::State()
-    : _agent(nullptr),
-      _vocbase(nullptr),
-      _ready(false),
-      _collectionsChecked(false),
-      _collectionsLoaded(false),
-      _nextCompactionAfter(0),
-      _lastCompactionAt(0),
-      _queryRegistry(nullptr),
-      _cur(0) {}
+State::State(application_features::ApplicationServer& server)
+  : _server(server),
+    _agent(nullptr),
+    _vocbase(nullptr),
+    _ready(false),
+    _collectionsChecked(false),
+    _collectionsLoaded(false),
+    _nextCompactionAfter(0),
+    _lastCompactionAt(0),
+    _queryRegistry(nullptr),
+    _cur(0),
+    _log_size(
+      _server.getFeature<MetricsFeature>().gauge(
+        "arangodb_agency_log_size_bytes", uint64_t(0), "Agency replicated log size [bytes]")) {}
 
 /// Default dtor
 State::~State() = default;
 
 inline static std::string timestamp(uint64_t m) {
 
+  TRI_ASSERT(m != 0);
+
   using namespace std::chrono;
-  
+
   std::time_t t = (m == 0) ? std::time(nullptr) :
     system_clock::to_time_t(system_clock::time_point(milliseconds(m)));
   char mbstr[100];
-  return std::strftime(mbstr, sizeof(mbstr), "%Y-%m-%d %H:%M:%S %Z", std::localtime(&t))
-             ? std::string(mbstr)
-             : std::string();
+  return std::strftime(mbstr, sizeof(mbstr), "%Y-%m-%d %H:%M:%S %Z", std::gmtime(&t))
+    ? std::string(mbstr)
+    : std::string();
 }
 
 inline static std::string stringify(index_t index) {
@@ -95,8 +102,8 @@ inline static std::string stringify(index_t index) {
 bool State::persist(index_t index, term_t term, uint64_t millis,
                     arangodb::velocypack::Slice const& entry,
                     std::string const& clientId) const {
-  LOG_TOPIC("b735e", TRACE, Logger::AGENCY) << "persist index=" << index << " term=" << term
-                                   << " entry: " << entry.toJson();
+  LOG_TOPIC("b735e", TRACE, Logger::AGENCY)
+    << "persist index=" << index << " term=" << term << " entry: " << entry.toJson();
 
   Builder body;
   {
@@ -106,6 +113,7 @@ bool State::persist(index_t index, term_t term, uint64_t millis,
     body.add("request", entry);
     body.add("clientId", Value(clientId));
     body.add("timestamp", Value(timestamp(millis)));
+    body.add("epoch_millis", Value(millis));
   }
 
   TRI_ASSERT(_vocbase != nullptr);
@@ -154,6 +162,7 @@ bool State::persistconf(index_t index, term_t term, uint64_t millis,
     log.add("request", entry);
     log.add("clientId", Value(clientId));
     log.add("timestamp", Value(timestamp(millis)));
+    log.add("epoch_millis", Value(millis));
   }
 
   // The new configuration to be persisted.-------------------------------------
@@ -228,6 +237,9 @@ bool State::persistconf(index_t index, term_t term, uint64_t millis,
 std::vector<index_t> State::logLeaderMulti(query_t const& transactions,
                                            std::vector<apply_ret_t> const& applicable,
                                            term_t term) {
+
+  using namespace std::chrono;
+
   std::vector<index_t> idx(applicable.size());
   size_t j = 0;
   auto const& slice = transactions->slice();
@@ -260,8 +272,10 @@ std::vector<index_t> State::logLeaderMulti(query_t const& transactions,
       TRI_ASSERT(transaction.length() > 0);
       size_t pos = transaction.keyAt(0).copyString().find(RECONFIGURE);
 
-      idx[j] = logNonBlocking(_log.back().index + 1, i[0], term, 0, clientId, true,
-                              pos == 0 || pos == 1);
+      idx[j] = logNonBlocking(
+        _log.back().index + 1, i[0], term,
+        duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count(),
+        clientId, true, pos == 0 || pos == 1);
     }
     ++j;
   }
@@ -272,7 +286,10 @@ std::vector<index_t> State::logLeaderMulti(query_t const& transactions,
 index_t State::logLeaderSingle(velocypack::Slice const& slice, term_t term,
                                std::string const& clientId) {
   MUTEX_LOCKER(mutexLocker, _logLock);  // log entries must stay in order
-  return logNonBlocking(_log.back().index + 1, slice, term, 0, clientId, true);
+  using namespace std::chrono;
+  return logNonBlocking(
+    _log.back().index + 1, slice, term,
+    duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count(), clientId, true);
 }
 
 /// Log transaction (leader)
@@ -281,8 +298,9 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
                               bool leading, bool reconfiguration) {
   _logLock.assertLockedByCurrentThread();
 
+  auto byteSize = slice.byteSize();
   auto buf = std::make_shared<Buffer<uint8_t>>();
-  buf->append((char const*)slice.begin(), slice.byteSize());
+  buf->append((char const*)slice.begin(), byteSize);
 
   bool success = reconfiguration ? persistconf(idx, term, millis, slice, clientId)
     : persist(idx, term, millis, slice, clientId);
@@ -293,7 +311,8 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
     FATAL_ERROR_EXIT();
   }
 
-  logEmplaceBackNoLock(log_t(idx, term, buf, clientId));
+  logEmplaceBackNoLock(log_t(idx, term, buf, clientId, millis));
+  _log_size += byteSize;
 
   return _log.back().index;
 }
@@ -326,6 +345,7 @@ void State::logEmplaceBackNoLock(log_t&& l) {
 index_t State::logFollower(query_t const& transactions) {
   VPackSlice slices = transactions->slice();
   size_t nqs = slices.length();
+  using namespace std::chrono;
 
   while (!_ready && !_agent->isStopping()) {
     LOG_TOPIC("8dd4c", DEBUG, Logger::AGENCY) << "Waiting for state to get ready ...";
@@ -409,8 +429,13 @@ index_t State::logFollower(query_t const& transactions) {
       auto index = slice.get("index").getUInt();
 
       uint64_t tstamp = 0;
-      if (slice.hasKey("timestamp")) { // compatibility with older appendEntries protocol
+      if (slice.hasKey("timestamp")) {
+        // compatibility with older appendEntries protocol
         tstamp = slice.get("timestamp").getUInt();
+      }
+      if (tstamp == 0) {
+        tstamp = duration_cast<milliseconds>(
+          system_clock::now().time_since_epoch()).count();
       }
 
       bool reconfiguration = query.keyAt(0).isEqualString(RECONFIGURE);
@@ -486,10 +511,10 @@ size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
         bindVars->close();
 
         TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
-        arangodb::aql::Query query(false, *_vocbase, aql::QueryString(aql),
-                                   bindVars, nullptr, arangodb::aql::PART_MAIN);
+        arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(aql),
+                                   bindVars, nullptr);
 
-        aql::QueryResult queryResult = query.executeSync(_queryRegistry);
+        aql::QueryResult queryResult = query.executeSync();
         if (queryResult.result.fail()) {
           THROW_ARANGO_EXCEPTION(queryResult.result);
         }
@@ -517,9 +542,12 @@ size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
 
 void State::logEraseNoLock(
   std::deque<log_t>::iterator rbegin, std::deque<log_t>::iterator rend) {
-  
+
+  uint64_t delSize = 0;
+
   for (auto lit = rbegin; lit != rend; lit++) {
     std::string const& clientId = lit->clientId;
+    delSize += lit->entry->byteSize();
     if (!clientId.empty()) {
       auto ret = _clientIdLookupTable.equal_range(clientId);
       for (auto it = ret.first; it != ret.second;) {
@@ -533,6 +561,8 @@ void State::logEraseNoLock(
   }
 
   _log.erase(rbegin, rend);
+  TRI_ASSERT(delSize <= _log_size.load());
+  _log_size -= delSize;
 
 }
 
@@ -666,8 +696,23 @@ VPackBuilder State::slices(index_t start, index_t end) const {
     }
 
     for (size_t i = start - _cur; i <= end - _cur; ++i) {
-      try {
-        slices.add(VPackSlice(_log.at(i).entry->data()));
+      try { //{ "a" : {"op":"set", "ttl":20, ...}}
+        auto slice = VPackSlice(_log.at(i).entry->data());
+        VPackObjectBuilder o(&slices);
+        for (auto const& oper : VPackObjectIterator(slice)) {
+          slices.add(VPackValue(oper.key.copyString()));
+
+          if (oper.value.isObject() && oper.value.hasKey("op") &&
+              oper.value.get("op").isEqualString("set") && oper.value.hasKey("ttl")) {
+            VPackObjectBuilder oo(&slices);
+            for (auto const& i : VPackObjectIterator(oper.value)) {
+              slices.add(i.key.copyString(), i.value);
+            }
+            slices.add("epoch_millis", VPackValue(_log.at(i).timestamp.count()));
+          } else {
+            slices.add(oper.value);
+          }
+        }
       } catch (std::exception const&) {
         break;
       }
@@ -675,9 +720,7 @@ VPackBuilder State::slices(index_t start, index_t end) const {
   }
 
   mutexLocker.unlock();
-
   slices.close();
-
   return slices;
 }
 
@@ -755,6 +798,11 @@ bool State::ready() const { return _ready; }
 /// Load collections
 bool State::loadCollections(TRI_vocbase_t* vocbase,
                             QueryRegistry* queryRegistry, bool waitForSync) {
+
+  using namespace std::chrono;
+  auto const epoch_millis =
+    duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+
   _vocbase = vocbase;
   _queryRegistry = queryRegistry;
 
@@ -769,8 +817,9 @@ bool State::loadCollections(TRI_vocbase_t* vocbase,
       std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
       VPackSlice value = arangodb::velocypack::Slice::emptyObjectSlice();
       buf->append(value.startAs<char const>(), value.byteSize());
-      _log.emplace_back(log_t(index_t(0), term_t(0), buf, std::string()));
-      persist(0, 0, 0, value, std::string());
+      _log.emplace_back(log_t(index_t(0), term_t(0), buf, std::string(), epoch_millis));
+      _log_size += value.byteSize();
+      persist(0, 0, epoch_millis, value, std::string());
     }
     _ready = true;
     return true;
@@ -814,10 +863,10 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index, term_t& term
       std::string("FOR c IN compact SORT c._key DESC LIMIT 1 RETURN c"));
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
-  arangodb::aql::Query query(false, *_vocbase, aql::QueryString(aql), bindVars,
-                             nullptr, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
+                             aql::QueryString(aql), bindVars, nullptr);
 
-  aql::QueryResult queryResult = query.executeSync(_queryRegistry);
+  aql::QueryResult queryResult = query.executeSync();
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -864,10 +913,10 @@ bool State::loadCompacted() {
       std::string("FOR c IN compact SORT c._key DESC LIMIT 1 RETURN c"));
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
-  arangodb::aql::Query query(false, *_vocbase, aql::QueryString(aql), bindVars,
-                             nullptr, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
+                             aql::QueryString(aql), bindVars, nullptr);
 
-  aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::registry());
+  aql::QueryResult queryResult = query.executeSync();
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -885,6 +934,7 @@ bool State::loadCompacted() {
     try {
       _cur = StringUtils::uint64(ii.get("_key").copyString());
       _log.clear();  // will be filled in loadRemaining
+      _log_size = 0;
       _clientIdLookupTable.clear();
       // Schedule next compaction:
       _lastCompactionAt = _cur;
@@ -907,10 +957,10 @@ bool State::loadOrPersistConfiguration() {
       std::string("FOR c in configuration FILTER c._key==\"0\" RETURN c.cfg"));
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
-  arangodb::aql::Query query(false, *_vocbase, aql::QueryString(aql), bindVars,
-                             nullptr, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
+                             aql::QueryString(aql), bindVars, nullptr);
 
-  aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::registry());
+  aql::QueryResult queryResult = query.executeSync();
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -1013,10 +1063,10 @@ bool State::loadRemaining() {
   std::string const aql(std::string("FOR l IN log SORT l._key RETURN l"));
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
-  arangodb::aql::Query query(false, *_vocbase, aql::QueryString(aql), bindVars,
-                             nullptr, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
+                             aql::QueryString(aql), bindVars, nullptr);
 
-  aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::registry());
+  aql::QueryResult queryResult = query.executeSync();
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -1027,7 +1077,7 @@ bool State::loadRemaining() {
   MUTEX_LOCKER(logLock, _logLock);
   if (result.isArray() && result.length() > 0) {
     TRI_ASSERT(_log.empty());  // was cleared in loadCompacted
-    std::string clientId;
+    std::string clientId, tstamp;
     // We know that _cur has been set in loadCompacted to the index of the
     // snapshot that was loaded or to 0 if there is no snapshot.
     index_t lastIndex = _cur;
@@ -1041,6 +1091,22 @@ bool State::loadRemaining() {
 
       clientId = req.hasKey("clientId") ? req.get("clientId").copyString()
                                         : std::string();
+
+      uint64_t millis = 0;
+      if (ii.hasKey("epoch_millis")) {
+        if (ii.get("epoch_millis").isInteger()) {
+          try {
+            millis = ii.get("epoch_millis").getNumber<uint64_t>();
+          } catch (std::exception const& e) {
+            LOG_TOPIC("2ee75", ERR, Logger::AGENCY)
+              << "Failed to parse integer value for epoch_millis " << e.what();
+            FATAL_ERROR_EXIT();
+          }
+        } else {
+          LOG_TOPIC("52ee7", ERR, Logger::AGENCY) << "epoch_millis is not an integer type";
+          FATAL_ERROR_EXIT();
+        }
+      }
 
       // Dummy fill missing entries (Not good at all.)
       index_t index(StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()));
@@ -1056,6 +1122,7 @@ bool State::loadRemaining() {
           for (index_t i = lastIndex + 1; i < index; ++i) {
             LOG_TOPIC("f95c7", WARN, Logger::AGENCY) << "Missing index " << i << " in RAFT log.";
             _log.emplace_back(log_t(i, term, buf, std::string()));
+            _log_size += value.byteSize();
             // This has empty clientId, so we do not need to adjust
             // _clientIdLookupTable.
             lastIndex = i;
@@ -1067,7 +1134,7 @@ bool State::loadRemaining() {
           // Real entries
           logEmplaceBackNoLock(
             log_t(StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()),
-                  ii.get("term").getNumber<uint64_t>(), tmp, clientId));
+                  ii.get("term").getNumber<uint64_t>(), tmp, clientId, millis));
           lastIndex = index;
         }
       }
@@ -1204,10 +1271,10 @@ bool State::compactPersisted(index_t cind, index_t keep) {
                         i_str.str() + "\" REMOVE l IN log");
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
-  arangodb::aql::Query query(false, *_vocbase, aql::QueryString(aql), bindVars,
-                             nullptr, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
+                              aql::QueryString(aql), bindVars, nullptr);
 
-  aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::registry());
+  aql::QueryResult queryResult = query.executeSync();
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -1231,10 +1298,10 @@ bool State::removeObsolete(index_t cind) {
                           i_str.str() + "\" REMOVE c IN compact");
 
     TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
-    arangodb::aql::Query query(false, *_vocbase, aql::QueryString(aql),
-                               bindVars, nullptr, arangodb::aql::PART_MAIN);
+    arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
+                               aql::QueryString(aql), bindVars, nullptr);
 
-    aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::registry());
+    aql::QueryResult queryResult = query.executeSync();
 
     if (queryResult.result.fail()) {
       THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -1330,16 +1397,17 @@ bool State::storeLogFromSnapshot(Store& snapshot, index_t index, term_t term) {
   std::string const aql(std::string("FOR l IN log REMOVE l IN log"));
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
-  arangodb::aql::Query query(false, *_vocbase, aql::QueryString(aql), nullptr,
-                             nullptr, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
+                             aql::QueryString(aql), nullptr, nullptr);
 
-  aql::QueryResult queryResult = query.executeSync(_queryRegistry);
+  aql::QueryResult queryResult = query.executeSync();
 
   // We ignore the result, in the worst case we have some log entries
   // too many.
 
   // volatile logs
   _log.clear();
+  _log_size = 0;
   _clientIdLookupTable.clear();
   _cur = index;
   // This empty log should soon be rectified!
@@ -1397,18 +1465,18 @@ query_t State::allLogs() const {
   std::string const logs("FOR l IN log SORT l._key RETURN l");
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
-  arangodb::aql::Query compq(false, *_vocbase, aql::QueryString(comp), bindVars,
-                             nullptr, arangodb::aql::PART_MAIN);
-  arangodb::aql::Query logsq(false, *_vocbase, aql::QueryString(logs), bindVars,
-                             nullptr, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query compq(transaction::StandaloneContext::Create(*_vocbase),
+                              aql::QueryString(comp), bindVars, nullptr);
+  arangodb::aql::Query logsq(transaction::StandaloneContext::Create(*_vocbase),
+                             aql::QueryString(logs), bindVars, nullptr);
 
-  aql::QueryResult compqResult = compq.executeSync(QueryRegistryFeature::registry());
+  aql::QueryResult compqResult = compq.executeSync();
 
   if (compqResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(compqResult.result);
   }
 
-  aql::QueryResult logsqResult = logsq.executeSync(QueryRegistryFeature::registry());
+  aql::QueryResult logsqResult = logsq.executeSync();
 
   if (logsqResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(logsqResult.result);
@@ -1491,10 +1559,10 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
   // First get the latest snapshot, if there is any:
   std::string aql(
       std::string("FOR c IN compact SORT c._key DESC LIMIT 1 RETURN c"));
-  arangodb::aql::Query query(false, vocbase, aql::QueryString(aql), nullptr,
-                             nullptr, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(transaction::StandaloneContext::Create(vocbase),
+                             aql::QueryString(aql), nullptr, nullptr);
 
-  aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::registry());
+  aql::QueryResult queryResult = query.executeSync();
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -1518,10 +1586,10 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
 
   // Now get the rest of the log entries, if there are any:
   aql = "FOR l IN log SORT l._key RETURN l";
-  arangodb::aql::Query query2(false, vocbase, aql::QueryString(aql), nullptr,
-                              nullptr, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query2(transaction::StandaloneContext::Create(vocbase),
+                               aql::QueryString(aql), nullptr, nullptr);
 
-  aql::QueryResult queryResult2 = query2.executeSync(QueryRegistryFeature::registry());
+  aql::QueryResult queryResult2 = query2.executeSync();
 
   if (queryResult2.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult2.result);
@@ -1543,8 +1611,12 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
         std::string clientId =
             req.hasKey("clientId") ? req.get("clientId").copyString() : std::string();
 
+        uint64_t epoch_millis =
+          (req.hasKey("epoch_millis") && req.get("epoch_millis").isInteger()) ?
+          req.get("epoch_millis").getNumber<uint64_t>() : 0;
+
         log_t entry(StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()),
-                    ii.get("term").getNumber<uint64_t>(), tmp, clientId);
+                    ii.get("term").getNumber<uint64_t>(), tmp, clientId, epoch_millis);
 
         if (entry.index <= index) {
           LOG_TOPIC("c8f91", WARN, Logger::AGENCY)
@@ -1577,7 +1649,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
 uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
 
   TRI_ASSERT(builder.isOpenObject());
-  
+
   auto bindVars = std::make_shared<VPackBuilder>();
   { VPackObjectBuilder b(bindVars.get()); }
 
@@ -1585,10 +1657,10 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
     + stringify(lastIndex) + std::string("' SORT l._key RETURN l");
 
   TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
-  arangodb::aql::Query logQuery(false, *_vocbase, aql::QueryString(logQueryStr), bindVars,
-                             nullptr, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query logQuery(transaction::StandaloneContext::Create(*_vocbase),
+                                aql::QueryString(logQueryStr), bindVars, nullptr);
 
-  aql::QueryResult logQueryResult = logQuery.executeSync(_queryRegistry);
+  aql::QueryResult logQueryResult = logQuery.executeSync();
 
   if (logQueryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(logQueryResult.result);
@@ -1597,7 +1669,7 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
   VPackSlice result = logQueryResult.data->slice().resolveExternals();
   std::string firstIndex;
   uint64_t n = 0;
-  
+
   auto copyWithoutId = [&](VPackSlice slice, VPackBuilder& builder) {
     // Need to remove custom attribute in _id:
     { VPackObjectBuilder guard(&builder);
@@ -1634,16 +1706,16 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
     std::string const compQueryStr =
       std::string("FOR c in compact FILTER c._key >= '") + firstIndex
       + std::string("' SORT c._key LIMIT 1 RETURN c");
-        
-    arangodb::aql::Query compQuery(false, *_vocbase, aql::QueryString(compQueryStr),
-                               bindVars, nullptr, arangodb::aql::PART_MAIN);
 
-    aql::QueryResult compQueryResult = compQuery.executeSync(_queryRegistry);
+    arangodb::aql::Query compQuery(transaction::StandaloneContext::Create(*_vocbase),
+                                   aql::QueryString(compQueryStr), bindVars, nullptr);
+
+    aql::QueryResult compQueryResult = compQuery.executeSync();
 
     if (compQueryResult.result.fail()) {
       THROW_ARANGO_EXCEPTION(compQueryResult.result);
     }
-    
+
     result = compQueryResult.data->slice().resolveExternals();
 
     if (result.isArray()) {
@@ -1659,7 +1731,6 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
       }
     }
   }
-  
+
   return n;
 }
-

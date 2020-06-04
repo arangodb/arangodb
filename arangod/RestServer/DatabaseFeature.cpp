@@ -33,6 +33,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/NumberUtils.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -40,7 +41,6 @@
 #include "Basics/files.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
-#include "Cluster/TraverserEngineRegistry.h"
 #include "Cluster/v8-cluster.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -56,10 +56,8 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "Utils/CollectionKeysRepository.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
@@ -129,7 +127,7 @@ void DatabaseManagerThread::run() {
           auto oldLists = databaseFeature._databasesLists.load();
           decltype(oldLists) newLists = nullptr;
           try {
-            newLists = new DatabasesLists();
+            newLists = new DatabaseFeature::DatabasesLists();
             newLists->_databases = oldLists->_databases;
             for (TRI_vocbase_t* vocbase : oldLists->_droppedDatabases) {
               if (vocbase != database) {
@@ -215,11 +213,6 @@ void DatabaseManagerThread::run() {
           queryRegistry->expireQueries();
         }
 
-        auto engineRegistry = TraverserEngineRegistryFeature::registry();
-        if (engineRegistry != nullptr) {
-          engineRegistry->expireEngines();
-        }
-
         // perform cursor cleanup here
         if (++cleanupCycles >= 10) {
           cleanupCycles = 0;
@@ -254,7 +247,6 @@ void DatabaseManagerThread::run() {
 
 DatabaseFeature::DatabaseFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Database"),
-      _maximalJournalSize(TRI_JOURNAL_DEFAULT_SIZE),
       _defaultWaitForSync(false),
       _forceSyncProperties(true),
       _ignoreDatafileErrors(false),
@@ -286,34 +278,34 @@ DatabaseFeature::~DatabaseFeature() {
 void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("database", "Configure the database");
 
-  options->addOption("--database.maximal-journal-size",
-                     "default maximal journal size, can be overwritten when "
-                     "creating a collection",
-                     new UInt64Parameter(&_maximalJournalSize));
+  options->addObsoleteOption("--database.maximal-journal-size",
+                             "default maximal journal size, can be overwritten when "
+                             "creating a collection", true);
 
   options->addOption("--database.wait-for-sync",
                      "default wait-for-sync behavior, can be overwritten "
                      "when creating a collection",
                      new BooleanParameter(&_defaultWaitForSync),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--database.force-sync-properties",
                      "force syncing of collection properties to disk, "
                      "will use waitForSync value of collection when "
                      "turned off",
                      new BooleanParameter(&_forceSyncProperties),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--database.ignore-datafile-errors",
                      "load collections even if datafiles may contain errors",
                      new BooleanParameter(&_ignoreDatafileErrors),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--database.throw-collection-not-loaded-error",
       "throw an error when accessing a collection that is still loading",
       new AtomicBooleanParameter(&_throwCollectionNotLoadedError),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      .setDeprecatedIn(30700);
 
   // the following option was removed in 3.2
   // index-creation is now automatically parallelized via the Boost ASIO thread
@@ -337,14 +329,6 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  if (_maximalJournalSize < TRI_JOURNAL_MINIMAL_SIZE) {
-    LOG_TOPIC("04874", FATAL, arangodb::Logger::FIXME)
-        << "invalid value for '--database.maximal-journal-size'. "
-           "expected at least "
-        << TRI_JOURNAL_MINIMAL_SIZE;
-    FATAL_ERROR_EXIT();
-  }
-
   // sanity check
   if (_checkVersion && _upgrade) {
     LOG_TOPIC("a25b0", FATAL, arangodb::Logger::FIXME)
@@ -375,7 +359,7 @@ void DatabaseFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  if (!lookupDatabase(TRI_VOC_SYSTEM_DATABASE)) {
+  if (!lookupDatabase(StaticStrings::SystemDatabase)) {
     LOG_TOPIC("97e7c", FATAL, arangodb::Logger::FIXME)
         << "No _system database found in database directory. Cannot start!";
     FATAL_ERROR_EXIT();
@@ -463,13 +447,11 @@ void DatabaseFeature::stop() {
     currentVocbase = vocbase;
     CURRENT_VOCBASE = vocbase;
     static size_t currentCursorCount = currentVocbase->cursorRepository()->count();
-    static size_t currentKeysCount = currentVocbase->collectionKeys()->count();
     static size_t currentQueriesCount = currentVocbase->queryList()->count();
 
     LOG_TOPIC("840a4", DEBUG, Logger::FIXME)
         << "shutting down database " << currentVocbase->name() << ": " << (void*) currentVocbase
         << ", cursors: " << currentCursorCount
-        << ", keys: " << currentKeysCount
         << ", queries: " << currentQueriesCount;
 #endif
     vocbase->stop();
@@ -515,7 +497,7 @@ void DatabaseFeature::unprepare() {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // This is to avoid heap use after free errors in the iresearch tests, because
   // the destruction a callback uses a database.
-  // I don't know if this is save to do, thus I enclosed it in ARANGODB_USE_GOOGLE_TESTS
+  // I don't know if this is safe to do, thus I enclosed it in ARANGODB_USE_GOOGLE_TESTS
   // to prevent accidentally breaking anything. However,
   // TODO Find out if this is okay and may be merged (maybe without the #ifdef),
   // or if this has to be done differently in the tests instead. The errors may
@@ -570,9 +552,6 @@ void DatabaseFeature::recoveryDone() {
     if (vocbase->type() != TRI_VOCBASE_TYPE_NORMAL) {
       continue;
     }
-
-    // execute the engine-specific callbacks on successful recovery
-    engine->recoveryDone(*vocbase);
 
     if (vocbase->replicationApplier()) {
       if (server().hasFeature<ReplicationFeature>()) {
@@ -683,9 +662,6 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
     }
 
     if (!engine->inRecovery()) {
-      // starts compactor etc.
-      engine->recoveryDone(*vocbase);
-
       if (vocbase->type() == TRI_VOCBASE_TYPE_NORMAL) {
         if (server().hasFeature<ReplicationFeature>()) {
           server().getFeature<ReplicationFeature>().startApplier(vocbase.get());
@@ -718,14 +694,14 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
   }  // release _databaseCreateLock
 
   // write marker into log
-  int res = TRI_ERROR_NO_ERROR;
+  Result res;
 
   if (!engine->inRecovery()) {
     res = engine->writeCreateDatabaseMarker(dbId, markerBuilder.slice());
   }
 
   result = vocbase.release();
-  events::CreateDatabase(name, res);
+  events::CreateDatabase(name, res.errorNumber());
 
   if (DatabaseFeature::DATABASE != nullptr &&
       DatabaseFeature::DATABASE->versionTracker() != nullptr) {
@@ -736,9 +712,9 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
 }
 
 /// @brief drop database
-int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
+int DatabaseFeature::dropDatabase(std::string const& name,
                                   bool removeAppsDirectory) {
-  if (name == TRI_VOC_SYSTEM_DATABASE) {
+  if (name == StaticStrings::SystemDatabase) {
     // prevent deletion of system database
     events::DropDatabase(name, TRI_ERROR_FORBIDDEN);
     return TRI_ERROR_FORBIDDEN;
@@ -792,7 +768,7 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
         return true;  // try next DataSource
       };
 
-      vocbase->visitDataSources(visitor, true);  // aquire a write lock to avoid potential deadlocks
+      vocbase->visitDataSources(visitor, true);  // acquire a write lock to avoid potential deadlocks
 
       if (TRI_ERROR_NO_ERROR != res) {
         events::DropDatabase(name, res);
@@ -830,14 +806,10 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
       server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>().invalidate(*vocbase);
     }
 
-    engine->prepareDropDatabase(*vocbase, !engine->inRecovery(), res);
+    res = engine->prepareDropDatabase(*vocbase).errorNumber();
   }
   // must not use the database after here, as it may now be
   // deleted by the DatabaseManagerThread!
-
-  if (res == TRI_ERROR_NO_ERROR && waitForDeletion) {
-    engine->waitUntilDeletion(id, true, res);
-  }
 
   events::DropDatabase(name, res);
 
@@ -850,7 +822,7 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
 }
 
 /// @brief drops an existing database
-int DatabaseFeature::dropDatabase(TRI_voc_tick_t id, bool waitForDeletion,
+int DatabaseFeature::dropDatabase(TRI_voc_tick_t id,
                                   bool removeAppsDirectory) {
   std::string name;
 
@@ -874,7 +846,7 @@ int DatabaseFeature::dropDatabase(TRI_voc_tick_t id, bool waitForDeletion,
     return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
   }
   // and call the regular drop function
-  return dropDatabase(name, waitForDeletion, removeAppsDirectory);
+  return dropDatabase(name, removeAppsDirectory);
 }
 
 std::vector<TRI_voc_tick_t> DatabaseFeature::getDatabaseIds(bool includeSystem) {
@@ -890,7 +862,7 @@ std::vector<TRI_voc_tick_t> DatabaseFeature::getDatabaseIds(bool includeSystem) 
       if (vocbase->isDropped()) {
         continue;
       }
-      if (includeSystem || vocbase->name() != TRI_VOC_SYSTEM_DATABASE) {
+      if (includeSystem || vocbase->name() != StaticStrings::SystemDatabase) {
         ids.emplace_back(vocbase->id());
       }
     }
@@ -1093,7 +1065,7 @@ void DatabaseFeature::updateContexts() {
     return;
   }
 
-  auto* vocbase = useDatabase(TRI_VOC_SYSTEM_DATABASE);
+  auto* vocbase = useDatabase(StaticStrings::SystemDatabase);
   TRI_ASSERT(vocbase);
 
   auto queryRegistry = QueryRegistryFeature::registry();
@@ -1276,7 +1248,6 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
 
       // try to open this database
       arangodb::CreateDatabaseInfo info(server());
-      info.allowSystemDB(true);
       auto res = info.load(it, VPackSlice::emptyArraySlice());
       if (res.fail()) {
         THROW_ARANGO_EXCEPTION(res);

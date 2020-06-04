@@ -217,6 +217,7 @@ public:
      arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
    }
 
+
    _id = TRI_GetTempPath();
    _id += TRI_DIR_SEPARATOR_CHAR;
    _id += "arangotest-";
@@ -330,14 +331,16 @@ public:
     pathname += "backups";
     pathname += TRI_DIR_SEPARATOR_CHAR;
     pathname += _idRestore;
+    pathname += TRI_DIR_SEPARATOR_CHAR;
+    pathname += "engine_rocksdb";
     retVal = TRI_CreateRecursiveDirectory(pathname.c_str(), systemError,
                                           systemErrorStr);
 
     EXPECT_EQ(TRI_ERROR_NO_ERROR, retVal);
 
+    writeFile(pathname.c_str(), "../META", "{\"version\":\"" ARANGODB_VERSION "\", \"datetime\":\"xxx\", \"id\":\"xxx\"}");
     writeFile(pathname.c_str(), "MANIFEST-000003", "manifest info");
     writeFile(pathname.c_str(), "CURRENT", "MANIFEST-000003\n");
-    writeFile(pathname.c_str(), "META", "{\"version\":\"" ARANGODB_VERSION "\", \"datetime\":\"xxx\", \"id\":\"xxx\"}");
     writeFile(pathname.c_str(), "IDENTITY", "huh?");
     writeFile(pathname.c_str(), "000111.sst", "raw data 1");
     writeFile(pathname.c_str(), "000111.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash", "");
@@ -362,7 +365,7 @@ public:
 
 /// @brief test
 TEST(RocksDBHotBackupRestoreDirectories, test_createRestoringDirectory) {
-  std::string restoringDir, tempname;
+  std::string fullRestoringDir, restoringDir, restoringSearchDir, tempname;
   bool retBool;
 
   VPackBuilder report;
@@ -371,7 +374,7 @@ TEST(RocksDBHotBackupRestoreDirectories, test_createRestoringDirectory) {
   RocksDBHotBackupRestoreTest testee(feature, VPackSlice(), report);
   testee.createHotDirectory();
 
-  retBool = testee.createRestoringDirectory(restoringDir);
+  retBool = testee.createRestoringDirectories(fullRestoringDir, restoringDir, restoringSearchDir);
 
   // spot check files in restoring dir
   EXPECT_TRUE( retBool );
@@ -391,7 +394,8 @@ TEST(RocksDBHotBackupRestoreDirectories, test_createRestoringDirectory) {
   EXPECT_TRUE( TRI_IsRegularFile(tempname.c_str()) ); // looks same as hard link
 
   // verify still present in originating dir
-  restoringDir = testee.rebuildPath(testee.getDirectoryRestore());
+  restoringDir = testee.rebuildPath(testee.getDirectoryRestore() +
+                                    TRI_DIR_SEPARATOR_CHAR + "engine_rocksdb");
   EXPECT_TRUE( TRI_ExistsFile(restoringDir.c_str()) );
   EXPECT_TRUE( TRI_IsDirectory(restoringDir.c_str()) );
   tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "MANIFEST-000003";

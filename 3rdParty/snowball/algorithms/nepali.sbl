@@ -1,0 +1,92 @@
+/*
+ * Authors:
+ * - Ingroj Shrestha <ing.stha@gmail.com>, Nepali NLP Group
+ * - Oleg Bartunov <obartunov@gmail.com>, Postgres Professional Ltd.
+ * - Shreeya Singh Dhakal, Nepali NLP Group
+ */
+
+routines (
+	remove_category_1
+	check_category_2
+	remove_category_2
+	remove_category_3
+)
+
+stringescapes {}
+
+stringdef dsc     '{U+0901}'  // DEVANAGARI_SIGN_CANDRABINDU
+stringdef dsa     '{U+0902}'  // DEVANAGARI_SIGN_ANUSVARA
+stringdef dli     '{U+0907}'  // DEVANAGARI_LETTER_I
+stringdef dlii    '{U+0908}'  // DEVANAGARI_LETTER_II
+stringdef dle     '{U+090F}'  // DEVANAGARI_LETTER_E
+stringdef dlka    '{U+0915}'  // DEVANAGARI_LETTER_KA
+stringdef dlkha   '{U+0916}'  // DEVANAGARI_LETTER_KHA
+stringdef dlg     '{U+0917}'  // DEVANAGARI_LETTER_GA
+stringdef dlc     '{U+091B}'  // DEVANAGARI_LETTER_CHA
+stringdef dlta    '{U+0924}'  // DEVANAGARI_LETTER_TA
+stringdef dltha   '{U+0925}'  // DEVANAGARI_LETTER_THA
+stringdef dld     '{U+0926}'  // DEVANAGARI_LETTER_DA
+stringdef dln     '{U+0928}'  // DEVANAGARI_LETTER_NA
+stringdef dlpa    '{U+092A}'  // DEVANAGARI_LETTER_PA
+stringdef dlpha   '{U+092B}'  // DEVANAGARI_LETTER_PHA
+stringdef dlb     '{U+092D}'  // DEVANAGARI_LETTER_BHA
+stringdef dlm     '{U+092E}'  // DEVANAGARI_LETTER_MA
+stringdef dly     '{U+092F}'  // DEVANAGARI_LETTER_YA
+stringdef dlr     '{U+0930}'  // DEVANAGARI_LETTER_RA
+stringdef dll     '{U+0932}'  // DEVANAGARI_LETTER_LA
+stringdef dlv     '{U+0935}'  // DEVANAGARI_LETTER_VA
+stringdef dls     '{U+0938}'  // DEVANAGARI_LETTER_SA
+stringdef dlh     '{U+0939}'  // DEVANAGARI_LETTER_HA
+stringdef dvsaa   '{U+093E}'  // DEVANAGARI_VOWEL_SIGN_AA
+stringdef dvsi    '{U+093F}'  // DEVANAGARI_VOWEL_SIGN_I
+stringdef dvsii   '{U+0940}'  // DEVANAGARI_VOWEL_SIGN_II
+stringdef dvsu    '{U+0941}'  // DEVANAGARI_VOWEL_SIGN_U
+stringdef dvsuu   '{U+0942}'  // DEVANAGARI_VOWEL_SIGN_UU
+stringdef dvse    '{U+0947}'  // DEVANAGARI_VOWEL_SIGN_E
+stringdef dvsai   '{U+0948}'  // DEVANAGARI_VOWEL_SIGN_AI
+stringdef dvso    '{U+094B}'  // DEVANAGARI_VOWEL_SIGN_O
+stringdef dvsau   '{U+094C}'  // DEVANAGARI_VOWEL_SIGN_AU
+stringdef dsv     '{U+094D}'  // DEVANAGARI_SIGN_VIRAMA
+
+externals ( stem )
+backwardmode (
+	define remove_category_1 as(
+		[substring] among (
+			'{dlm}{dvsaa}{dlr}{dsv}{dlpha}{dlta}' '{dld}{dsv}{dlv}{dvsaa}{dlr}{dvsaa}' '{dls}{dsc}{dlg}{dvsai}' '{dls}{dsa}{dlg}'
+			'{dls}{dsc}{dlg}' '{dll}{dvsaa}{dli}' '{dll}{dvsaa}{dlii}' '{dlpa}{dlc}{dvsi}'
+			'{dll}{dvse}' '{dlr}{dlta}' '{dlm}{dvsai}' '{dlm}{dvsaa}'
+			(delete)
+			'{dlka}{dvso}' '{dlka}{dvsaa}' '{dlka}{dvsi}' '{dlka}{dvsii}' '{dlka}{dvsai}'(('{dle}' or '{dvse}' ()) or delete)
+		)
+	)
+
+	define check_category_2 as(
+		[substring] among(
+			'{dsc}' '{dsa}' '{dvsai}'
+		)
+	)
+
+	define remove_category_2 as (
+		[substring] among(
+		'{dsc}' '{dsa}' ('{dly}{dvsau}' or '{dlc}{dvsau}' or '{dln}{dvsau}' or '{dltha}{dvse}' delete)
+		'{dvsai}' ('{dlta}{dsv}{dlr}' delete)
+		)
+	)
+
+	define remove_category_3 as(
+		[substring] among(
+			'{dltha}{dvsi}{dli}{dls}{dsv}' '{dlh}{dvsu}{dln}{dvse}{dlc}' '{dlh}{dvsu}{dln}{dsv}{dlc}' '{dln}{dvse}{dlc}{dls}{dsv}' '{dln}{dvse}{dlc}{dln}{dsv}' '{dli}{dle}{dlka}{dvsii}' '{dli}{dle}{dlka}{dvsaa}' '{dli}{dle}{dlka}{dvso}' '{dvsi}{dle}{dlka}{dvsii}' '{dvsi}{dle}{dlka}{dvsaa}' '{dvsi}{dle}{dlka}{dvso}' '{dli}{dlc}{dln}{dsv}' '{dvsi}{dlc}{dln}{dsv}' '{dli}{dlc}{dls}{dsv}' '{dvsi}{dlc}{dls}{dsv}' '{dle}{dlc}{dln}{dsv}' '{dvse}{dlc}{dln}{dsv}' '{dle}{dlc}{dls}{dsv}' '{dvse}{dlc}{dls}{dsv}' '{dlc}{dvsi}{dln}{dsv}' '{dlc}{dvse}{dls}{dsv}' '{dlc}{dsv}{dly}{dvsau}' '{dltha}{dvsi}{dln}{dsv}' '{dltha}{dvsi}{dly}{dvso}' '{dltha}{dvsi}{dly}{dvsau}' '{dltha}{dvsi}{dls}{dsv}' '{dltha}{dsv}{dly}{dvso}' '{dltha}{dsv}{dly}{dvsau}' '{dld}{dvsi}{dly}{dvso}' '{dld}{dvse}{dlkha}{dvsi}' '{dld}{dvse}{dlkha}{dvsii}' '{dll}{dvsaa}{dln}{dsv}' '{dlm}{dvsaa}{dltha}{dvsi}' '{dln}{dvse}{dlka}{dvsai}' '{dln}{dvse}{dlka}{dvsaa}' '{dln}{dvse}{dlka}{dvso}' '{dln}{dvse}{dlc}{dvsau}' '{dlh}{dvso}{dls}{dsv}' '{dli}{dln}{dsv}{dlc}' '{dvsi}{dln}{dsv}{dlc}' '{dln}{dvse}{dlc}{dvsu}' '{dli}{dlc}{dvsau}' '{dvsi}{dlc}{dvsau}' '{dli}{dls}{dsv}' '{dvsi}{dls}{dsv}' '{dvsi}{dly}{dvso}' '{dli}{dly}{dvso}' '{dle}{dlka}{dvsaa}' '{dvse}{dlka}{dvsaa}' '{dle}{dlka}{dvsii}' '{dvse}{dlka}{dvsii}' '{dle}{dlka}{dvsai}' '{dvse}{dlka}{dvsai}' '{dle}{dlka}{dvso}' '{dvse}{dlka}{dvso}' '{dle}{dlc}{dvsu}' '{dvse}{dlc}{dvsu}' '{dle}{dlc}{dvsau}' '{dvse}{dlc}{dvsau}' '{dlc}{dln}{dsv}' '{dlc}{dls}{dsv}' '{dltha}{dvsi}{dle}' '{dlpa}{dlr}{dsv}' '{dlb}{dly}{dvso}' '{dlh}{dlr}{dvsu}' '{dlh}{dlr}{dvsuu}' '{dvsi}{dld}{dvsaa}' '{dli}{dld}{dvsaa}' '{dvsi}{dld}{dvso}' '{dli}{dld}{dvso}' '{dvsi}{dld}{dvsai}' '{dli}{dld}{dvsai}' '{dln}{dvse}{dlc}' '{dli}{dlc}' '{dvsi}{dlc}' '{dle}{dlc}' '{dvse}{dlc}' '{dlc}{dvsu}' '{dlc}{dvse}' '{dlc}{dvsau}' '{dltha}{dvsii}' '{dltha}{dvse}' '{dld}{dvsaa}' '{dld}{dvsii}' '{dld}{dvsai}' '{dld}{dvso}' '{dln}{dvsu}' '{dln}{dvse}' '{dly}{dvso}' '{dly}{dvsau}' '{dlc}'
+			(delete)
+		)
+	)
+
+)
+
+define stem as (
+	backwards (
+		do remove_category_1
+			do (
+				repeat (do (check_category_2 and remove_category_2) remove_category_3)
+			)
+	)
+)

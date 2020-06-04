@@ -23,11 +23,11 @@
 
 #include "GeoJson.h"
 
-#include <cctype>
 #include <string>
 #include <vector>
 
 #include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <s2/s2loop.h>
@@ -46,23 +46,23 @@
 
 namespace {
 // Have one of these values:
-const std::string kTypeStringPoint = "Point";
-const std::string kTypeStringLineString = "LineString";
-const std::string kTypeStringPolygon = "Polygon";
-const std::string kTypeStringMultiPoint = "MultiPoint";
-const std::string kTypeStringMultiLineString = "MultiLineString";
-const std::string kTypeStringMultiPolygon = "MultiPolygon";
-const std::string kTypeStringGeometryCollection = "GeometryCollection";
+std::string const kTypeStringPoint = "Point";
+std::string const kTypeStringLineString = "LineString";
+std::string const kTypeStringPolygon = "Polygon";
+std::string const kTypeStringMultiPoint = "MultiPoint";
+std::string const kTypeStringMultiLineString = "MultiLineString";
+std::string const kTypeStringMultiPolygon = "MultiPolygon";
+std::string const kTypeStringGeometryCollection = "GeometryCollection";
 }  // namespace
 
 namespace {
-inline bool sameCharIgnoringCase(char a, char b) {
+inline bool sameCharIgnoringCase(char a, char b) noexcept {
   return arangodb::basics::StringUtils::toupper(a) == arangodb::basics::StringUtils::toupper(b);
 }
 }  // namespace
 
 namespace {
-bool sameIgnoringCase(std::string const& s1, std::string const& s2) {
+bool sameIgnoringCase(arangodb::velocypack::StringRef const& s1, std::string const& s2) {
   return s1.size() == s2.size() &&
          std::equal(s1.begin(), s1.end(), s2.begin(), ::sameCharIgnoringCase);
 }
@@ -98,14 +98,17 @@ arangodb::Result parsePoints(VPackSlice const& vpack, bool geoJson,
   vertices.clear();
   VPackSlice coordinates = vpack;
   if (vpack.isObject()) {
-    coordinates = vpack.get("coordinates");
+    coordinates = vpack.get(arangodb::geo::geojson::Fields::kCoordinates);
   }
 
   if (!coordinates.isArray()) {
     return {TRI_ERROR_BAD_PARAMETER, "Coordinates missing"};
   }
 
-  for (VPackSlice pt : VPackArrayIterator(coordinates)) {
+  VPackArrayIterator it(coordinates);
+  vertices.reserve(it.size());
+
+  for (VPackSlice pt : it) {
     if (!pt.isArray() || pt.length() != 2) {
       return {TRI_ERROR_BAD_PARAMETER, "Bad coordinate " + pt.toJson()};
     }
@@ -115,7 +118,7 @@ arangodb::Result parsePoints(VPackSlice const& vpack, bool geoJson,
     if (!lat.isNumber() || !lon.isNumber()) {
       return {TRI_ERROR_BAD_PARAMETER, "Bad coordinate " + pt.toJson()};
     }
-    vertices.push_back(
+    vertices.emplace_back(
         S2LatLng::FromDegrees(lat.getNumber<double>(), lon.getNumber<double>()).ToPoint());
   }
   return {TRI_ERROR_NO_ERROR};
@@ -137,7 +140,7 @@ Type type(VPackSlice const& vpack) {
     return Type::UNKNOWN;
   }
 
-  std::string typeStr = type.copyString();
+  arangodb::velocypack::StringRef typeStr = type.stringRef();
   if (::sameIgnoringCase(typeStr, ::kTypeStringPoint)) {
     return Type::POINT;
   } else if (::sameIgnoringCase(typeStr, ::kTypeStringLineString)) {
@@ -157,55 +160,54 @@ Type type(VPackSlice const& vpack) {
 };
 
 Result parseRegion(VPackSlice const& vpack, ShapeContainer& region) {
-  Result badParam(TRI_ERROR_BAD_PARAMETER, "Invalid GeoJSON Geometry Object.");
-  if (!vpack.isObject()) {
-    return badParam;
+  if (vpack.isObject()) {
+    Type t = type(vpack);
+    switch (t) {
+      case Type::POINT: {
+        S2LatLng ll;
+        Result res = parsePoint(vpack, ll);
+        if (res.ok()) {
+          region.reset(new S2PointRegion(ll.ToPoint()), ShapeContainer::Type::S2_POINT);
+        }
+        return res;
+      }
+      case Type::MULTI_POINT: {
+        return parseMultiPoint(vpack, region);
+      }
+      case Type::LINESTRING: {
+        auto line = std::make_unique<S2Polyline>();
+        Result res = parseLinestring(vpack, *line.get());
+        if (res.ok()) {
+          region.reset(std::move(line), ShapeContainer::Type::S2_POLYLINE);
+        }
+        return res;
+      }
+      case Type::MULTI_LINESTRING: {
+        std::vector<S2Polyline> polylines;
+        Result res = parseMultiLinestring(vpack, polylines);
+        if (res.ok()) {
+          region.reset(new S2MultiPolyline(std::move(polylines)),
+                       ShapeContainer::Type::S2_MULTIPOLYLINE);
+        }
+        return res;
+      }
+      case Type::POLYGON: {
+        return parsePolygon(vpack, region);
+      }
+      case Type::MULTI_POLYGON: {
+        return parseMultiPolygon(vpack, region);
+      }
+      case Type::GEOMETRY_COLLECTION: {
+        return Result(TRI_ERROR_NOT_IMPLEMENTED, "GeoJSON type is not supported");
+      }
+      case Type::UNKNOWN: {
+        // will return TRI_ERROR_BAD_PARAMETER
+        break;
+      }
+    }
   }
 
-  Type t = type(vpack);
-  switch (t) {
-    case Type::POINT: {
-      S2LatLng ll;
-      Result res = parsePoint(vpack, ll);
-      if (res.ok()) {
-        region.reset(new S2PointRegion(ll.ToPoint()), ShapeContainer::Type::S2_POINT);
-      }
-      return res;
-    }
-    case Type::MULTI_POINT: {
-      return parseMultiPoint(vpack, region);
-    }
-    case Type::LINESTRING: {
-      auto line = std::make_unique<S2Polyline>();
-      Result res = parseLinestring(vpack, *line.get());
-      if (res.ok()) {
-        region.reset(std::move(line), ShapeContainer::Type::S2_POLYLINE);
-      }
-      return res;
-    }
-    case Type::MULTI_LINESTRING: {
-      std::vector<S2Polyline> polylines;
-      Result res = parseMultiLinestring(vpack, polylines);
-      if (res.ok()) {
-        region.reset(new S2MultiPolyline(std::move(polylines)),
-                     ShapeContainer::Type::S2_MULTIPOLYLINE);
-      }
-      return res;
-    }
-    case Type::POLYGON: {
-      return parsePolygon(vpack, region);
-    }
-    case Type::MULTI_POLYGON: {
-      return parseMultiPolygon(vpack, region);
-    }
-    case Type::GEOMETRY_COLLECTION:
-      return Result(TRI_ERROR_NOT_IMPLEMENTED, "GeoJSON type is not supported");
-    case Type::UNKNOWN: {
-      return badParam;
-    }
-  }
-
-  return badParam;
+  return Result(TRI_ERROR_BAD_PARAMETER, "Invalid GeoJSON Geometry Object.");
 }
 
 /// @brief create s2 latlng
@@ -228,9 +230,8 @@ Result parsePoint(VPackSlice const& vpack, S2LatLng& latLng) {
 
 /// https://tools.ietf.org/html/rfc7946#section-3.1.3
 Result parseMultiPoint(VPackSlice const& vpack, ShapeContainer& region) {
-  Result badParam(TRI_ERROR_BAD_PARAMETER, "Invalid GeoJSON Geometry Object.");
   if (!vpack.isObject()) {
-    return badParam;
+    return Result(TRI_ERROR_BAD_PARAMETER, "Invalid GeoJSON Geometry Object.");
   }
 
   if (Type::MULTI_POINT != type(vpack)) {
@@ -270,8 +271,7 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region) {
   if (!coordinates.isArray()) {
     return Result(TRI_ERROR_BAD_PARAMETER, "coordinates missing");
   }
-  size_t n = coordinates.length();
-
+  
   // Coordinates of a Polygon are an array of LinearRing coordinate arrays.
   // The first element in the array represents the exterior ring. Any subsequent
   // elements
@@ -284,8 +284,13 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region) {
   // - A linear ring MUST follow the right-hand rule with respect to the
   //   area it bounds, i.e., exterior rings are counterclockwise (CCW), and
   //   holes are clockwise (CW).
+  VPackArrayIterator it(coordinates);
+  size_t const n = it.size();
+  
   std::vector<std::unique_ptr<S2Loop>> loops;
-  for (VPackSlice loopVertices : VPackArrayIterator(coordinates)) {
+  loops.reserve(n);
+
+  for (VPackSlice loopVertices : it) {
     std::vector<S2Point> vtx;
     Result res = ::parsePoints(loopVertices, /*geoJson*/ true, vtx);
     if (res.fail()) {
@@ -330,7 +335,7 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region) {
         }
       }
     }
-    loops.push_back(std::make_unique<S2Loop>(vtx, S2Debug::DISABLE));
+    loops.push_back(std::make_unique<S2Loop>(std::move(vtx), S2Debug::DISABLE));
 
     S2Error error;
     if (loops.back()->FindValidationError(&error)) {

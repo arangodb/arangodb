@@ -61,6 +61,7 @@ class AgencyFeature : public application_features::ApplicationFeature {
   uint64_t _compactionKeepSize;
   uint64_t _maxAppendSize;
   double _supervisionGracePeriod;
+  double _supervisionOkThreshold;
   std::string _agencyMyAddress;
   std::vector<std::string> _agencyEndpoints;
   bool _cmdLineTimings;

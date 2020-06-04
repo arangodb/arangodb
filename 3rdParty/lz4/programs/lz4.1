@@ -1,5 +1,5 @@
 .
-.TH "LZ4" "1" "July 2017" "lz4 1.8.0" "User Commands"
+.TH "LZ4" "1" "July 2019" "lz4 1.9.2" "User Commands"
 .
 .SH "NAME"
 \fBlz4\fR \- lz4, unlz4, lz4cat \- Compress or decompress \.lz4 files
@@ -23,9 +23,6 @@ When writing scripts that need to decompress files, it is recommended to always 
 \fBlz4\fR supports a command line syntax similar \fIbut not identical\fR to \fBgzip(1)\fR\. Differences are :
 .
 .IP "\(bu" 4
-\fBlz4\fR preserves original files
-.
-.IP "\(bu" 4
 \fBlz4\fR compresses a single file by default (see \fB\-m\fR for multiple files)
 .
 .IP "\(bu" 4
@@ -35,16 +32,16 @@ When writing scripts that need to decompress files, it is recommended to always 
 \fBlz4 file\.lz4\fR will default to decompression (use \fB\-z\fR to force compression)
 .
 .IP "\(bu" 4
-\fBlz4\fR shows real\-time notification statistics during compression or decompression of a single file (use \fB\-q\fR to silent them)
+\fBlz4\fR preserves original files
 .
 .IP "\(bu" 4
-If no destination name is provided, result is sent to \fBstdout\fR \fIexcept if stdout is the console\fR\.
+\fBlz4\fR shows real\-time notification statistics during compression or decompression of a single file (use \fB\-q\fR to silence them)
 .
 .IP "\(bu" 4
-If no destination name is provided, \fBand\fR if \fBstdout\fR is the console, \fBfile\fR is compressed into \fBfile\.lz4\fR\.
+When no destination is specified, result is sent on implicit output, which depends on \fBstdout\fR status\. When \fBstdout\fR \fIis Not the console\fR, it becomes the implicit output\. Otherwise, if \fBstdout\fR is the console, the implicit output is \fBfilename\.lz4\fR\.
 .
 .IP "\(bu" 4
-As a consequence of previous rules, note the following example : \fBlz4 file | consumer\fR sends compressed data to \fBconsumer\fR through \fBstdout\fR, hence it does \fInot\fR create \fBfile\.lz4\fR\.
+It is considered bad practice to rely on implicit output in scripts\. because the script\'s environment may change\. Always use explicit output in scripts\. \fB\-c\fR ensures that output will be \fBstdout\fR\. Conversely, providing a destination name, or using \fB\-m\fR ensures that the output will be either the specified name, or \fBfilename\.lz4\fR respectively\.
 .
 .IP "" 0
 .
@@ -52,7 +49,7 @@ As a consequence of previous rules, note the following example : \fBlz4 file | c
 Default behaviors can be modified by opt\-in commands, detailed below\.
 .
 .IP "\(bu" 4
-\fBlz4 \-m\fR makes it possible to provide multiple input filenames, which will be compressed into files using suffix \fB\.lz4\fR\. Progress notifications are also disabled by default (use \fB\-v\fR to enable them)\. This mode has a behavior which more closely mimics \fBgzip\fR command line, with the main remaining difference being that source files are preserved by default\.
+\fBlz4 \-m\fR makes it possible to provide multiple input filenames, which will be compressed into files using suffix \fB\.lz4\fR\. Progress notifications become disabled by default (use \fB\-v\fR to enable them)\. This mode has a behavior which more closely mimics \fBgzip\fR command line, with the main remaining difference being that source files are preserved by default\.
 .
 .IP "\(bu" 4
 Similarly, \fBlz4 \-m \-d\fR can decompress multiple \fB*\.lz4\fR files\.
@@ -108,11 +105,31 @@ Test the integrity of compressed \fB\.lz4\fR files\. The decompressed data is di
 \fB\-b#\fR
 Benchmark mode, using \fB#\fR compression level\.
 .
+.TP
+\fB\-\-list\fR
+List information about \.lz4 files\. note : current implementation is limited to single\-frame \.lz4 files\.
+.
 .SS "Operation modifiers"
 .
 .TP
 \fB\-#\fR
-Compression level, with # being any value from 1 to 16\. Higher values trade compression speed for compression ratio\. Values above 16 are considered the same as 16\. Recommended values are 1 for fast compression (default), and 9 for high compression\. Speed/compression trade\-off will vary depending on data to compress\. Decompression speed remains fast at all settings\.
+Compression level, with # being any value from 1 to 12\. Higher values trade compression speed for compression ratio\. Values above 12 are considered the same as 12\. Recommended values are 1 for fast compression (default), and 9 for high compression\. Speed/compression trade\-off will vary depending on data to compress\. Decompression speed remains fast at all settings\.
+.
+.TP
+\fB\-\-fast[=#]\fR
+Switch to ultra\-fast compression levels\. The higher the value, the faster the compression speed, at the cost of some compression ratio\. If \fB=#\fR is not present, it defaults to \fB1\fR\. This setting overrides compression level if one was set previously\. Similarly, if a compression level is set after \fB\-\-fast\fR, it overrides it\.
+.
+.TP
+\fB\-\-best\fR
+Set highest compression level\. Same as -12\.
+.
+.TP
+\fB\-\-favor\-decSpeed\fR
+Generate compressed data optimized for decompression speed\. Compressed data will be larger as a consequence (typically by ~0\.5%), while decompression speed will be improved by 5\-20%, depending on use cases\. This option only works in combination with very high compression levels (>=10)\.
+.
+.TP
+\fB\-D dictionaryName\fR
+Compress, decompress or benchmark using dictionary \fIdictionaryName\fR\. Compression and decompression must use the same dictionary to be compatible\. Using a different dictionary during decompression will either abort due to decompression error, or generate a checksum error\.
 .
 .TP
 \fB\-f\fR \fB\-\-[no\-]force\fR
@@ -130,7 +147,7 @@ Force write to standard output, even if it is the console\.
 .
 .TP
 \fB\-m\fR \fB\-\-multiple\fR
-Multiple input files\. Compressed file names will be appended a \fB\.lz4\fR suffix\. This mode also reduces notification level\. \fBlz4 \-m\fR has a behavior equivalent to \fBgzip \-k\fR (it preserves source files by default)\.
+Multiple input files\. Compressed file names will be appended a \fB\.lz4\fR suffix\. This mode also reduces notification level\. Can also be used to list multiple files\. \fBlz4 \-m\fR has a behavior equivalent to \fBgzip \-k\fR (it preserves source files by default)\.
 .
 .TP
 \fB\-r\fR
@@ -144,8 +161,12 @@ Block size [4\-7](default : 7)
 \fB\-B4\fR= 64KB ; \fB\-B5\fR= 256KB ; \fB\-B6\fR= 1MB ; \fB\-B7\fR= 4MB
 .
 .TP
+\fB\-BI\fR
+Produce independent blocks (default)
+.
+.TP
 \fB\-BD\fR
-Block Dependency (improves compression ratio on small blocks)
+Blocks depend on predecessors (improves compression ratio, more noticeable on small blocks)
 .
 .TP
 \fB\-\-[no\-]frame\-crc\fR
@@ -211,7 +232,7 @@ Benchmark multiple compression levels, from b# to e# (included)
 .
 .TP
 \fB\-i#\fR
-Minimum evaluation in seconds [1\-9] (default : 3)
+Minimum evaluation time in seconds [1\-9] (default : 3)
 .
 .SH "BUGS"
 Report bugs at: https://github\.com/lz4/lz4/issues

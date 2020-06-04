@@ -35,11 +35,6 @@ var internal = require('internal');
 var wait = internal.wait;
 var ArangoCollection = arangodb.ArangoCollection;
 
-var mmfilesEngine = false;
-if (db._engine().name === 'mmfiles') {
-  mmfilesEngine = true;
-}
-
 function EdgeIndexSuite () {
   var vn = 'UnitTestsCollectionVertex';
   var vertex = null;

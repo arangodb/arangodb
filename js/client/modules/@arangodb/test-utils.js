@@ -37,7 +37,7 @@ const sleep = require('internal').sleep;
 const download = require('internal').download;
 const pathForTesting = require('internal').pathForTesting;
 const platform = require('internal').platform;
-
+const SetGlobalExecutionDeadlineTo = require('internal').SetGlobalExecutionDeadlineTo;
 /* Constants: */
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 // const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -207,7 +207,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
         if (!continueTesting) {
 
           if (!results.hasOwnProperty('SKIPPED')) {
-            print('oops! Skipping remaining tests, server is gone.');
+            print('oops! Skipping remaining tests, server is unavailable for testing.');
 
             results['SKIPPED'] = {
               status: false,
@@ -215,7 +215,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
             };
             results[te] = {
               status: false,
-              message: 'server crashed'
+              message: 'server unavailable for testing: ' + results[te].message
             };
           } else {
             if (results['SKIPPED'].message !== '') {
@@ -233,6 +233,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
         let reply = runFn(options, instanceInfo, te, env);
 
         if (reply.hasOwnProperty('forceTerminate')) {
+          results[te] = reply;
           continueTesting = false;
           forceTerminate = true;
           continue;
@@ -342,7 +343,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
           continueTesting = false;
           results[te] = {
             status: false,
-            message: 'server is dead.'
+            message: 'server is dead: + ' + results[te].message
           };
         }
         
@@ -458,16 +459,6 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 
 function filterTestcaseByOptions (testname, options, whichFilter) {
   // These filters require a proper setup, Even if we filter by testcase:
-  if ((testname.indexOf('-mmfiles') !== -1) && options.storageEngine === 'rocksdb') {
-    whichFilter.filter = 'skip when running as rocksdb';
-    return false;
-  }
-
-  if ((testname.indexOf('-rocksdb') !== -1) && options.storageEngine === 'mmfiles') {
-    whichFilter.filter = 'skip when running as mmfiles';
-    return false;
-  }
-
   if ((testname.indexOf('-cluster') !== -1) && !options.cluster) {
     whichFilter.filter = 'noncluster';
     return false;
@@ -615,7 +606,7 @@ function doOnePathInner (path) {
 }
 
 function scanTestPaths (paths, options) {
-  // add enterprise tests
+  // add Enterprise Edition tests
   if (global.ARANGODB_CLIENT_VERSION(true)['enterprise-version']) {
     paths = paths.concat(paths.map(function(p) {
       return 'enterprise/' + p;
@@ -815,16 +806,25 @@ function writeTestResult(path, data) {
   fs.write(jsonFN, JSON.stringify(data));
 }
 
+/// make arangosh use HTTP, VST or HTTP2 according to option
+function findEndpoint(options, instanceInfo) {
+  let endpoint = instanceInfo.endpoint;
+  if (options.vst) {
+    endpoint = endpoint.replace(/.*\/\//, 'vst://');
+  } else if (options.http2) {
+    endpoint = endpoint.replace(/.*\/\//, 'h2://');
+  }
+  print("using endpoint ", endpoint);
+  return endpoint;
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs a local unittest file using arangosh
 // //////////////////////////////////////////////////////////////////////////////
 
 function runInArangosh (options, instanceInfo, file, addArgs) {
   let args = pu.makeArgs.arangosh(options);
-  let endpoint = (options.vst && instanceInfo.hasOwnProperty('vstEndpoint')) ?
-      instanceInfo.vstEndpoint : 
-      instanceInfo.endpoint ;
-  args['server.endpoint'] = endpoint;
+  args['server.endpoint'] = findEndpoint(options, instanceInfo);
 
   args['javascript.unit-tests'] = fs.join(pu.TOP_DIR, file);
 
@@ -853,13 +853,12 @@ runInArangosh.info = 'runInExternalArangosh';
 
 function runInLocalArangosh (options, instanceInfo, file, addArgs) {
   let endpoint = arango.getEndpoint();
-  if (( options.vst && endpoint !== instanceInfo.vstEndpoint) ||
-      (!options.vst && endpoint !== instanceInfo.endpoint)) {
-    let newEndpoint = (options.vst && instanceInfo.hasOwnProperty('vstEndpoint')) ?
-        instanceInfo.vstEndpoint : 
-        instanceInfo.endpoint;
-    print(`runInLocalArangosh: Reconnecting to ${newEndpoint} from ${endpoint}`);
-    arango.reconnect(newEndpoint, '_system', 'root', '');
+  if (options.vst || options.http2) {
+    let newEndpoint = findEndpoint(options, instanceInfo);
+    if (endpoint !== newEndpoint) {
+      print(`runInLocalArangosh: Reconnecting to ${newEndpoint} from ${endpoint}`);
+      arango.reconnect(newEndpoint, '_system', 'root', '');
+    }
   }
   
   let testCode;
@@ -881,11 +880,23 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
   eval('testFunc = function () { \nglobal.instanceInfo = ' + JSON.stringify(instanceInfo) + ';\n' + testCode + "}");
   
   try {
+    SetGlobalExecutionDeadlineTo(options.oneTestTimeout * 1000);
     let result = testFunc();
+    let timeout = SetGlobalExecutionDeadlineTo(0.0);
+    if (timeout) {
+      return {
+        timeout: true,
+        forceTerminate: true,
+        status: false,
+        message: "test ran into timeout. Original test status: " + JSON.stringify(result),
+      };
+    }
     return result;
-  }
-  catch (ex) {
+  } catch (ex) {
+    let timeout = SetGlobalExecutionDeadlineTo(0.0);
     return {
+      timeout: timeout,
+      forceTerminate: true,
       status: false,
       message: "test has thrown! '" + file + "' - " + ex.message || String(ex),
       stack: ex.stack

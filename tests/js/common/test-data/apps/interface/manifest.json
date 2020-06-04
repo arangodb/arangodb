@@ -1,0 +1,7 @@
+{
+  "name": "interface",
+  "version": "0.0.1",
+  "author": "arangodb",
+  "description": "revalidating all possible ways to foxx from outside in.",
+  "main": "index.js"
+}

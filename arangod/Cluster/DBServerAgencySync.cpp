@@ -23,6 +23,7 @@
 
 #include "DBServerAgencySync.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
@@ -105,7 +106,7 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
         // object was created, we believe it. Otherwise, we do not accept
         // that we are the leader. This is to circumvent the problem that
         // after a restart we would implicitly be assumed to be the leader.
-        collections.add("theLeader", VPackValue(theLeaderTouched ? theLeader : "NOT_YET_TOUCHED"));
+        collections.add("theLeader", VPackValue(theLeaderTouched ? theLeader : maintenance::LEADER_NOT_YET_KNOWN));
         collections.add("theLeaderTouched", VPackValue(theLeaderTouched));
 
         if (theLeader.empty() && theLeaderTouched) {
@@ -123,12 +124,12 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
 
 DBServerAgencySyncResult DBServerAgencySync::execute() {
   // default to system database
-
-  TRI_ASSERT(AgencyCommManager::isEnabled());
-  AgencyComm comm;
-
   using namespace std::chrono;
   using clock = std::chrono::steady_clock;
+  auto start = clock::now();
+
+  AgencyComm comm(_server);
+
 
   LOG_TOPIC("62fd8", DEBUG, Logger::MAINTENANCE)
       << "DBServerAgencySync::execute starting";
@@ -156,7 +157,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   Result tmp;
   VPackBuilder rb;
   auto& clusterInfo = _server.getFeature<ClusterFeature>().clusterInfo();
-  auto plan = clusterInfo.getPlan();
+  uint64_t planIndex = 0;
+  auto plan = clusterInfo.getPlan(planIndex);
   auto serverId = arangodb::ServerState::instance()->getId();
 
   if (plan == nullptr) {
@@ -168,14 +170,16 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   }
 
   VPackBuilder local;
+  LOG_TOPIC("54261", TRACE, Logger::MAINTENANCE) << "Before getLocalCollections for phaseOne";
   Result glc = getLocalCollections(local);
+  LOG_TOPIC("54262", TRACE, Logger::MAINTENANCE) << "After getLocalCollections for phaseOne";
   if (!glc.ok()) {
     result.errorMessage = "Could not do getLocalCollections for phase 1: '";
     result.errorMessage.append(glc.errorMessage()).append("'");
     return result;
   }
+  LOG_TOPIC("54263", TRACE, Logger::MAINTENANCE) << "local for phaseOne: " << local.toJson();
 
-  auto start = clock::now();
   try {
     // in previous life handlePlanChange
 
@@ -184,7 +188,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     auto startTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("19aaf", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseOne";
-    tmp = arangodb::maintenance::phaseOne(plan->slice(), local.slice(),
+    tmp = arangodb::maintenance::phaseOne(plan->slice(), planIndex, local.slice(),
                                           serverId, mfeature, rb);
     auto endTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("93f83", DEBUG, Logger::MAINTENANCE)
@@ -210,8 +214,6 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     }
     LOG_TOPIC("675fd", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo - current state: " << current->toJson();
-
-    mfeature.increaseCurrentCounter();
 
     local.clear();
     glc = getLocalCollections(local);
@@ -280,10 +282,6 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
             LOG_TOPIC("d73b8", INFO, Logger::MAINTENANCE)
                 << "Error reporting to agency: _statusCode: " << r.errorCode()
                 << " message: " << r.errorMessage() << ". This can be ignored, since it will be retried automatically.";
-          } else {
-            LOG_TOPIC("9b0b3", DEBUG, Logger::MAINTENANCE)
-                << "Invalidating current in ClusterInfo";
-            clusterInfo.invalidateCurrent();
           }
         }
       }
@@ -330,7 +328,11 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     result.errorMessage = "Report from phase 1 and 2 was not closed.";
   }
 
-  auto took = duration<double>(clock::now() - start).count();
+  auto end = clock::now();
+  auto total_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+  mfeature._agency_sync_total_runtime_msec->get().count(total_ms);
+  mfeature._agency_sync_total_accum_runtime_msec->get().count(total_ms);
+  auto took = duration<double>(end - start).count();
   if (took > 30.0) {
     LOG_TOPIC("83cb8", WARN, Logger::MAINTENANCE)
         << "DBServerAgencySync::execute "

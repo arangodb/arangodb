@@ -104,11 +104,11 @@ TEST(InifileParserTest, test_options) {
   options.addOption("--pork.a-string-value-not-set", "bla", new StringParameter(&aStringValueNotSet));
   options.addOption("--pork.sounds", "which sounds do pigs make?",
                     new DiscreteValuesVectorParameter<StringParameter>(&porkSounds, soundsPorksMake),
-                    arangodb::options::makeFlags(options::Flags::FlushOnFirst));
+                    arangodb::options::makeDefaultFlags(options::Flags::FlushOnFirst));
 
   options.addOption("--pork.strange-sounds", "which strange sounds do pigs make?",
                     new DiscreteValuesVectorParameter<StringParameter>(&strangePorkSounds, soundsPorksMake),
-                    arangodb::options::makeFlags(options::Flags::FlushOnFirst));
+                    arangodb::options::makeDefaultFlags(options::Flags::FlushOnFirst));
 
 
   auto contents = R"data(

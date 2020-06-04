@@ -9,20 +9,17 @@
 @RESTQUERYPARAM{collection,string,required}
 The collection name.
 
-
 @RESTBODYPARAM{type,string,required,string}
 must be equal to *"geo"*.
 
 @RESTBODYPARAM{fields,array,required,string}
-An array with one or two attribute paths.
-
+An array with one or two attribute paths.<br>
 If it is an array with one attribute path *location*, then a geo-spatial
 index on all documents is created using *location* as path to the
 coordinates. The value of the attribute must be an array with at least two
 double values. The array must contain the latitude (first value) and the
 longitude (second value). All documents, which do not have the attribute
-path or with value that are not suitable, are ignored.
-
+path or with value that are not suitable, are ignored.<br>
 If it is an array with two attribute paths *latitude* and *longitude*,
 then a geo-spatial index on all documents is created using *latitude*
 and *longitude* as paths the latitude and the longitude. The value of
@@ -37,9 +34,6 @@ followed by latitude. This corresponds to the format described in
 http://geojson.org/geojson-spec.html#positions
 
 @RESTDESCRIPTION
-**NOTE** Swagger examples won't work due to the anchor.
-
-
 Creates a geo-spatial index in the collection *collection-name*, if
 it does not already exist. Expects an object containing the index details.
 
@@ -69,9 +63,9 @@ Creating a geo index with a location attribute
     db._create(cn);
 
     var url = "/_api/index?collection=" + cn;
-    var body = { 
-      type: "geo", 
-      fields : [ "b" ] 
+    var body = {
+      type: "geo",
+      fields : [ "b" ]
     };
 
     var response = logCurlRequest('POST', url, body);
@@ -90,9 +84,9 @@ Creating a geo index with latitude and longitude attributes
     db._create(cn);
 
     var url = "/_api/index?collection=" + cn;
-    var body = { 
-      type: "geo", 
-      fields: [ "e", "f" ] 
+    var body = {
+      type: "geo",
+      fields: [ "e", "f" ]
     };
 
     var response = logCurlRequest('POST', url, body);
@@ -103,4 +97,3 @@ Creating a geo index with latitude and longitude attributes
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

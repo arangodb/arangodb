@@ -28,6 +28,9 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/StaticStrings.h"
+#include "Cluster/ClusterTypes.h"
+#include "Cluster/ServerState.h"
+#include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -60,8 +63,8 @@ v8::Handle<v8::Object> WrapAnalyzer(
     arangodb::iresearch::AnalyzerPool::ptr const& analyzer) {
   v8::EscapableHandleScope scope(isolate);
   TRI_GET_GLOBALS();
-  TRI_GET_GLOBAL(IResearchAnalyzerTempl, v8::ObjectTemplate);
-  auto result = IResearchAnalyzerTempl->NewInstance();
+  TRI_GET_GLOBAL(IResearchAnalyzerInstanceTempl, v8::ObjectTemplate);
+  auto result = IResearchAnalyzerInstanceTempl->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
 
   if (result.IsEmpty()) {
     return scope.Escape<v8::Object>(result);
@@ -81,6 +84,7 @@ v8::Handle<v8::Object> WrapAnalyzer(
 void JS_AnalyzerFeatures(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
   auto* analyzer = UnwrapAnalyzer(isolate, args.Holder());
 
   if (!analyzer) {
@@ -104,12 +108,11 @@ void JS_AnalyzerFeatures(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     for (auto& feature: analyzer->features()) {
       if (feature) { // valid
-        if (feature->name().null()) {
-          result->Set(i++, v8::Null(isolate));
+        if (feature().name().null()) {
+          result->Set(context, i++, v8::Null(isolate)).FromMaybe(false);
         } else {
-          result->Set( // set value
-            i++, TRI_V8_STD_STRING(isolate, std::string(feature->name())) // args
-          );
+          result->Set(context,  // set value
+                      i++, TRI_V8_STD_STRING(isolate, std::string(feature().name()))).FromMaybe(false); // args
         }
       }
     }
@@ -250,6 +253,7 @@ void JS_AnalyzerType(v8::FunctionCallbackInfo<v8::Value> const& args) {
 void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
   auto& vocbase = GetContextVocBase(isolate);
 
   if (vocbase.isDangling()) {
@@ -268,11 +272,13 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  auto& system = arangodb::application_features::ApplicationServer::server();
-  auto& analyzers = system.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-  auto sysVocbase = system.hasFeature<arangodb::SystemDatabaseFeature>()
-                        ? system.getFeature<arangodb::SystemDatabaseFeature>().use()
-                        : nullptr;
+  TRI_GET_GLOBALS();
+  auto& analyzers =
+      v8g->_server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto sysVocbase =
+      v8g->_server.hasFeature<arangodb::SystemDatabaseFeature>()
+          ? v8g->_server.getFeature<arangodb::SystemDatabaseFeature>().use()
+          : nullptr;
 
   auto nameFromArgs = TRI_ObjectToString(isolate, args[0]);
   auto splittedAnalyzerName = 
@@ -302,7 +308,7 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
       name, vocbase, *sysVocbase // args
     );
     name = nameBuf;
-  };
+  }
 
   auto type = TRI_ObjectToString(isolate, args[1]);
 
@@ -340,20 +346,19 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
     auto value = v8::Local<v8::Array>::Cast(args[3]);
 
     for (uint32_t i = 0, count = value->Length(); i < count;  ++i) {
-      auto subValue = value->Get(i);
+      auto subValue = value->Get(context, i).FromMaybe(v8::Local<v8::Value>());
 
       if (!subValue->IsString()) {
         TRI_V8_THROW_TYPE_ERROR("<feature> must be a string");
       }
 
-      auto* feature = // feature
-        irs::attribute::type_id::get(TRI_ObjectToString(isolate, subValue), false);
+      const auto feature = irs::attributes::get(TRI_ObjectToString(isolate, subValue), false);
 
       if (!feature) {
         TRI_V8_THROW_TYPE_ERROR("<feature> not supported");
       }
 
-      features.add(*feature);
+      features.add(feature.id());
     }
   }
 
@@ -382,13 +387,10 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "problem creating view" // message
       );
     }
-
     auto v8Result = WrapAnalyzer(isolate, result.first);
-
     if (v8Result.IsEmpty()) {
       TRI_V8_THROW_EXCEPTION_MEMORY();
     }
-
     TRI_V8_RETURN(v8Result);
   } catch (arangodb::basics::Exception const& ex) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());
@@ -421,12 +423,13 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  auto& system = arangodb::application_features::ApplicationServer::server();
-  ;
-  auto& analyzers = system.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-  auto sysVocbase = system.hasFeature<arangodb::SystemDatabaseFeature>()
-                        ? system.getFeature<arangodb::SystemDatabaseFeature>().use()
-                        : nullptr;
+  TRI_GET_GLOBALS();
+  auto& analyzers =
+      v8g->_server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto sysVocbase =
+      v8g->_server.hasFeature<arangodb::SystemDatabaseFeature>()
+          ? v8g->_server.getFeature<arangodb::SystemDatabaseFeature>().use()
+          : nullptr;
 
   auto name = TRI_ObjectToString(isolate, args[0]);
   std::string nameBuf;
@@ -468,7 +471,7 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   try {
-    auto analyzer = analyzers.get(name);
+    auto analyzer = analyzers.get(name, arangodb::AnalyzersRevision::LATEST);
 
     if (!analyzer) {
       TRI_V8_RETURN_NULL();
@@ -495,18 +498,20 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
 void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
   auto& vocbase = GetContextVocBase(isolate);
 
   if (vocbase.isDropped()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  auto& system = arangodb::application_features::ApplicationServer::server();
-  ;
-  auto& analyzers = system.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-  auto sysVocbase = system.hasFeature<arangodb::SystemDatabaseFeature>()
-                        ? system.getFeature<arangodb::SystemDatabaseFeature>().use()
-                        : nullptr;
+  TRI_GET_GLOBALS();
+  auto& analyzers =
+      v8g->_server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto sysVocbase =
+      v8g->_server.hasFeature<arangodb::SystemDatabaseFeature>()
+          ? v8g->_server.getFeature<arangodb::SystemDatabaseFeature>().use()
+          : nullptr;
 
   // ...........................................................................
   // end of parameter parsing
@@ -545,7 +550,7 @@ void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
         TRI_V8_THROW_EXCEPTION_MEMORY();
       }
 
-      v8Result->Set(static_cast<uint32_t>(i), analyzer); // cast safe because of check above
+      v8Result->Set(context, static_cast<uint32_t>(i), analyzer).FromMaybe(false); // cast safe because of check above
     }
 
     TRI_V8_RETURN(v8Result);
@@ -580,12 +585,13 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  auto& system = arangodb::application_features::ApplicationServer::server();
-  ;
-  auto& analyzers = system.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-  auto sysVocbase = system.hasFeature<arangodb::SystemDatabaseFeature>()
-                        ? system.getFeature<arangodb::SystemDatabaseFeature>().use()
-                        : nullptr;
+  TRI_GET_GLOBALS();
+  auto& analyzers =
+      v8g->_server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto sysVocbase =
+      v8g->_server.hasFeature<arangodb::SystemDatabaseFeature>()
+          ? v8g->_server.getFeature<arangodb::SystemDatabaseFeature>().use()
+          : nullptr;
 
   auto nameFromArgs = TRI_ObjectToString(isolate, args[0]);
   auto splittedAnalyzerName = 
@@ -609,11 +615,9 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string nameBuf;
   if (sysVocbase) {
-    nameBuf = arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
-      name, vocbase, *sysVocbase // args
-    );
+    nameBuf = arangodb::iresearch::IResearchAnalyzerFeature::normalize(name, vocbase, *sysVocbase);
     name = nameBuf;
-  };
+  }
 
   bool force = false;
 
@@ -638,11 +642,9 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   try {
     auto res = analyzers.remove(name, force);
-
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res);
     }
-
     TRI_V8_RETURN_UNDEFINED();
   } catch (arangodb::basics::Exception const& ex) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());
@@ -654,7 +656,6 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
       "cannot remove analyzer" // message
     );
   }
-
   TRI_V8_TRY_CATCH_END
 }
 
@@ -678,9 +679,9 @@ void TRI_InitV8Analyzers(TRI_v8_global_t& v8g, v8::Isolate* isolate) {
     TRI_AddMethodVocbase(isolate, objTemplate, TRI_V8_ASCII_STRING(isolate, "save"), JS_Create);
     TRI_AddMethodVocbase(isolate, objTemplate, TRI_V8_ASCII_STRING(isolate, "toArray"), JS_List);
 
-    v8g.IResearchAnalyzersTempl.Reset(isolate, objTemplate);
+    v8g.IResearchAnalyzerManagerTempl.Reset(isolate, objTemplate);
 
-    auto instance = objTemplate->NewInstance();
+    auto instance = objTemplate->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
 
     // register the global object accessable via JavaScipt
     if (!instance.IsEmpty()) {
@@ -702,11 +703,11 @@ void TRI_InitV8Analyzers(TRI_v8_global_t& v8g, v8::Isolate* isolate) {
     TRI_AddMethodVocbase(isolate, objTemplate, TRI_V8_ASCII_STRING(isolate, "properties"), JS_AnalyzerProperties);
     TRI_AddMethodVocbase(isolate, objTemplate, TRI_V8_ASCII_STRING(isolate, "type"), JS_AnalyzerType);
 
-    v8g.IResearchAnalyzerTempl.Reset(isolate, objTemplate);
+    v8g.IResearchAnalyzerInstanceTempl.Reset(isolate, objTemplate);
     TRI_AddGlobalFunctionVocbase( // required only for pretty-printing via JavaScript (must to be defined AFTER v8g.IResearchAnalyzerTempl.Reset(...))
       isolate, // isolate
       TRI_V8_ASCII_STRING(isolate, "ArangoAnalyzer"), // name
-      fnTemplate->GetFunction() // impl
+      fnTemplate->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()) // impl
     );
   }
 }

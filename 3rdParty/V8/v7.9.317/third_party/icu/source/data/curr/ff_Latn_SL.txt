@@ -1,0 +1,11 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ff_Latn_SL{
+    Currencies{
+        SLL{
+            "Le",
+            "Lewoon Seraa Liyon",
+        }
+    }
+    Version{"2.1.49.34"}
+}

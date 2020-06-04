@@ -24,33 +24,32 @@
 #ifndef ARANGOD_IRESEARCH_ROCKSDB_RECOVERY_HELPER_H
 #define ARANGOD_IRESEARCH_ROCKSDB_RECOVERY_HELPER_H 1
 
-#include "RocksDBEngine/RocksDBRecoveryHelper.h"
-#include "VocBase/voc-types.h"
-
-#include <velocypack/velocypack-aliases.h>
+#include <cstdint>
 #include <set>
 
-struct TRI_vocbase_t;
+#include <rocksdb/slice.h>
+#include <rocksdb/types.h>
+
+#include "Basics/Identifier.h"
+#include "RocksDBEngine/RocksDBRecoveryHelper.h"
+#include "VocBase/Identifiers/IndexId.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
 
-class Result;
 class DatabaseFeature;
-class LogicalCollection;
 class RocksDBEngine;
 
 namespace iresearch {
-
-class IResearchLink;
 
 class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
  public:
   struct IndexId {
     TRI_voc_tick_t db;
     TRI_voc_cid_t cid;
-    TRI_idx_iid_t iid;
+    arangodb::IndexId iid;
 
-    IndexId(TRI_voc_tick_t db, TRI_voc_cid_t cid, TRI_idx_iid_t iid) noexcept
+    IndexId(TRI_voc_tick_t db, TRI_voc_cid_t cid, arangodb::IndexId iid) noexcept
         : db(db), cid(cid), iid(iid) {}
 
     bool operator<(IndexId const& rhs) const noexcept {

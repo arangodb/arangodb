@@ -206,7 +206,6 @@ struct LogicalViewHelperClusterInfo {
   static Result construct(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
                           velocypack::Slice const& definition) noexcept;
 
-  static Result destruct(LogicalView const& view) noexcept;
   static Result drop(LogicalView const& view) noexcept;
 
   static Result properties(velocypack::Builder& builder, LogicalView const& view) noexcept;

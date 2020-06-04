@@ -37,7 +37,7 @@ class TimedAction {
   TimedAction(std::function<void(double)> const& callback, double threshold)
       : _callback(callback), _threshold(threshold), _start(TRI_microtime()), _done(false) {}
 
-  ~TimedAction() {}
+  ~TimedAction() = default;
 
  public:
   double elapsed() const { return (TRI_microtime() - _start); }

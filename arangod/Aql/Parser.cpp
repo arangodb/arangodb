@@ -21,21 +21,26 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Parser.h"
+
 #include "Basics/Common.h"
 #include "Basics/ScopeGuard.h"
-#include "Aql/Parser.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/QueryContext.h"
 #include "Aql/QueryResult.h"
+#include "Aql/QueryString.h"
 
 #include <sstream>
 
 using namespace arangodb::aql;
 
 /// @brief create the parser
-Parser::Parser(Query* query)
+Parser::Parser(QueryContext& query,
+               Ast& ast, QueryString& qs)
     : _query(query),
-      _ast(query->ast()),
+      _ast(ast),
+      _queryString(qs),
       _scanner(nullptr),
       _queryStringStart(nullptr),
       _buffer(nullptr),
@@ -45,8 +50,7 @@ Parser::Parser(Query* query)
       _stack() {
   _stack.reserve(4);
 
-  QueryString const& qs = queryString();
-  _queryStringStart = qs.data();
+  _queryStringStart = _queryString.data();
   _buffer = qs.data();
   _remainingLength = qs.size();
 }
@@ -60,17 +64,17 @@ bool Parser::configureWriteQuery(AstNode const* collectionNode, AstNode* optionN
 
   if (optionNode != nullptr) {
     if (!optionNode->isConstant()) {
-      _query->registerError(TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS);
+      _query.warnings().registerError(TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS);
     }
 
     isExclusiveAccess = ExecutionPlan::hasExclusiveAccessOption(optionNode);
   }
 
   // now track which collection is going to be modified
-  _ast->addWriteCollection(collectionNode, isExclusiveAccess);
+  _ast.addWriteCollection(collectionNode, isExclusiveAccess);
 
   // register that we have seen a modification operation
-  _query->setIsModificationQuery();
+  _ast.setContainsModificationNode();
 
   return true;
 }
@@ -82,7 +86,7 @@ void Parser::parse() {
   }
 
   // start main scope
-  auto scopes = _ast->scopes();
+  auto scopes = _ast.scopes();
   scopes->start(AQL_SCOPE_MAIN);
 
   TRI_ASSERT(_scanner == nullptr);
@@ -119,9 +123,11 @@ QueryResult Parser::parseWithDetails() {
   parse();
 
   QueryResult result;
-  result.collectionNames = _query->collectionNames();
-  result.bindParameters = _ast->bindParameters();
-  result.data = _ast->toVelocyPack(false);
+  result.collectionNames = _query.collections().collectionNames();
+  result.bindParameters = _ast.bindParameters();
+  auto builder = std::make_shared<VPackBuilder>();
+  _ast.toVelocyPack(*builder, false);
+  result.data = std::move(builder); 
 
   return result;
 }
@@ -153,7 +159,7 @@ void Parser::registerParseError(int errorCode, char const* data, int line, int c
                << std::string("' at position ") << line << std::string(":")
                << (column + 1);
 
-  if (_query->queryOptions().verboseErrors) {
+  if (_query.queryOptions().verboseErrors) {
     errorMessage << std::endl << queryString() << std::endl;
 
     // create a neat pointer to the location of the error.
@@ -172,13 +178,13 @@ void Parser::registerParseError(int errorCode, char const* data, int line, int c
 
 /// @brief register a non-parse error
 void Parser::registerError(int errorCode, char const* data) {
-  _query->registerError(errorCode, data);
+  _query.warnings().registerError(errorCode, data);
 }
 
 /// @brief register a warning
 void Parser::registerWarning(int errorCode, char const* data, int line, int column) {
   // ignore line and column for now
-  _query->registerWarning(errorCode, data);
+  _query.warnings().registerWarning(errorCode, data);
 }
 
 /// @brief push an AstNode array element on top of the stack
@@ -211,7 +217,7 @@ void Parser::pushArrayElement(AstNode* node) {
 void Parser::pushObjectElement(char const* attributeName, size_t nameLength, AstNode* node) {
   auto object = static_cast<AstNode*>(peekStack());
   TRI_ASSERT(object->type == NODE_TYPE_OBJECT);
-  auto element = _ast->createNodeObjectElement(attributeName, nameLength, node);
+  auto element = _ast.createNodeObjectElement(attributeName, nameLength, node);
   object->addMember(element);
 }
 
@@ -219,7 +225,7 @@ void Parser::pushObjectElement(char const* attributeName, size_t nameLength, Ast
 void Parser::pushObjectElement(AstNode* attributeName, AstNode* node) {
   auto object = static_cast<AstNode*>(peekStack());
   TRI_ASSERT(object->type == NODE_TYPE_OBJECT);
-  auto element = _ast->createNodeCalculatedObjectElement(attributeName, node);
+  auto element = _ast.createNodeCalculatedObjectElement(attributeName, node);
   object->addMember(element);
 }
 

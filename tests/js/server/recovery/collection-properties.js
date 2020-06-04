@@ -81,38 +81,18 @@ function recoverySuite () {
       c = db._collection('UnitTestsRecovery1');
       prop = c.properties();
       assertTrue(prop.waitForSync);
-      if (db._engine().name !== "rocksdb") {
-        assertEqual(8 * 1024 * 1024, prop.journalSize);
-        assertFalse(prop.doCompact);
-        assertEqual(8, prop.indexBuckets);
-      }
 
       c = db._collection('UnitTestsRecovery2');
       prop = c.properties();
       assertFalse(prop.waitForSync);
-      if (db._engine().name !== "rocksdb") {
-        assertEqual(16 * 1024 * 1024, prop.journalSize);
-        assertTrue(prop.doCompact);
-        assertEqual(8, prop.indexBuckets);
-      }
 
       c = db._collection('UnitTestsRecovery3');
       prop = c.properties();
       assertTrue(prop.waitForSync);
       
-      if (db._engine().name !== "rocksdb") {
-        assertEqual(4 * 1024 * 1024, prop.journalSize);
-        assertFalse(prop.doCompact);
-        assertEqual(8, prop.indexBuckets);
-      }
-
       c = db._collection('UnitTestsRecovery4');
       prop = c.properties();
       assertTrue(prop.waitForSync);
-      if (db._engine().name !== "rocksdb") {
-        assertTrue(prop.doCompact);
-        assertEqual(32, prop.indexBuckets);
-      }
     }
 
   };

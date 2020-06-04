@@ -25,11 +25,10 @@
 #ifndef ARANGO_CXX_DRIVER_VST_CONNECTION_H
 #define ARANGO_CXX_DRIVER_VST_CONNECTION_H 1
 
-#include "GeneralConnection.h"
-#include "MessageStore.h"
-#include "vst.h"
-
 #include <boost/lockfree/queue.hpp>
+
+#include "GeneralConnection.h"
+#include "vst.h"
 
 // naming in this file will be closer to asio for internal functions and types
 // functions that are exposed to other classes follow ArangoDB conding
@@ -55,13 +54,17 @@ class VstConnection final : public fuerte::GeneralConnection<ST> {
   // this item is then moved to the request queue
   // and a write action is triggerd when there is
   // no other write in progress
-  MessageID sendRequest(std::unique_ptr<Request>, RequestCallback) override;
+  void sendRequest(std::unique_ptr<Request>, RequestCallback) override;
 
   // Return the number of unfinished requests.
   std::size_t requestsLeft() const override;
 
  protected:
   void finishConnect() override;
+
+  /// The following is called when the connection is permanently failed. It is
+  /// used to shut down any activity in a way that avoids sleeping barbers
+  void terminateActivity() override;
 
   // Thread-Safe: activate the writer loop (if off and items are queud)
   void startWriting() override;
@@ -81,13 +84,11 @@ class VstConnection final : public fuerte::GeneralConnection<ST> {
 
   // called by the async_write handler (called from IO thread)
   void asyncWriteCallback(asio_ns::error_code const& ec,
-                          std::shared_ptr<RequestItem>,
-                          size_t nwrite);
+                          std::shared_ptr<RequestItem>, size_t nwrite);
 
   // Thread-Safe: activate the read loop (if needed)
   void startReading();
 
- private:
   // Send out the authentication message on this connection
   void sendAuthenticationRequest();
 
@@ -102,11 +103,12 @@ class VstConnection final : public fuerte::GeneralConnection<ST> {
 
  private:
   /// elements to send out
-  boost::lockfree::queue<vst::RequestItem*, boost::lockfree::capacity<1024>>
+  boost::lockfree::queue<vst::RequestItem*, boost::lockfree::capacity<64>>
       _writeQueue;
 
   /// stores in-flight messages
-  MessageStore<vst::RequestItem> _messageStore;
+  std::map<MessageID, std::shared_ptr<vst::RequestItem>> _messages;
+  std::atomic<uint32_t> _numMessages;
 
   const VSTVersion _vstVersion;
 

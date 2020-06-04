@@ -38,6 +38,7 @@ using namespace arangodb;
 #include <cstring>
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb::basics;
 
@@ -79,10 +80,10 @@ LogAppenderSyslog::LogAppenderSyslog(std::string const& facility,
   _opened = true;
 }
 
-void LogAppenderSyslog::logMessage(LogLevel level, std::string const& message, size_t offset) {
+void LogAppenderSyslog::logMessage(LogMessage const& message) {
   int priority = LOG_ERR;
 
-  switch (level) {
+  switch (message._level) {
     case LogLevel::FATAL:
       priority = LOG_CRIT;
       break;
@@ -105,11 +106,11 @@ void LogAppenderSyslog::logMessage(LogLevel level, std::string const& message, s
   }
 
   if (_opened) {
-    ::syslog(priority, "%s", message.c_str() + offset);
+    ::syslog(priority, "%s", message._message.c_str() + message._offset);
   }
 }
 
-std::string LogAppenderSyslog::details() {
+std::string LogAppenderSyslog::details() const {
   return "More error details may be provided in the syslog";
 }
 

@@ -125,7 +125,7 @@ function optimizerRuleUseIndexRangeTester () {
 
       queries.forEach(function(query) {
         var result = AQL_EXPLAIN(query[0], { }, paramEnabled);
-        if (db._engine().name !== "rocksdb" || query[1]) {
+        if (query[1]) {
           assertEqual([ ], removeAlwaysOnClusterRules(result.plan.rules), query);
         }
       });

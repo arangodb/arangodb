@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_DATAOUTPUT_H
@@ -37,8 +36,12 @@ NS_ROOT
 /// @struct data_output
 /// @brief base interface for all low-level output data streams
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API data_output
-    : std::iterator<std::output_iterator_tag, byte_type, void, void, void> {
+struct IRESEARCH_API data_output {
+  using iterator_category = std::output_iterator_tag;
+  using value_type = void;
+  using pointer = void;
+  using reference = void;
+  using difference_type = void;
 
   virtual ~data_output() = default;
 
@@ -73,9 +76,9 @@ struct IRESEARCH_API data_output
     write_byte(b);
     return *this;
   }
-  data_output& operator*() NOEXCEPT { return *this; }
-  data_output& operator++() NOEXCEPT { return *this; }
-  data_output& operator++(int) NOEXCEPT { return *this; }
+  data_output& operator*() noexcept { return *this; }
+  data_output& operator++() noexcept { return *this; }
+  data_output& operator++(int) noexcept { return *this; }
 }; // data_output
 
 //////////////////////////////////////////////////////////////////////////////

@@ -35,6 +35,7 @@ var getQueryResults = helper.getQueryResults;
 var findExecutionNodes = helper.findExecutionNodes;
 const { db } = require("@arangodb");
 const isCoordinator = require('@arangodb/cluster').isCoordinator();
+const isEnterprise = require("internal").isEnterprise();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -196,18 +197,6 @@ function ahuacatlSubqueryTestSuite () {
     testSpliceSubqueryOutVariableName : function () {
       const explainResult = AQL_EXPLAIN("FOR u IN _users LET theLetVariable = (FOR j IN _users RETURN j) RETURN theLetVariable");
 
-      { // TODO Remove this block as soon as subquery splicing is enabled in the cluster again.
-        //  It's here so the test will fail as soon as that happens, so the actual test will not be forgotten
-        //  to be re-enabled.
-        const isCluster = require("@arangodb/cluster").isCluster();
-        if (isCluster) {
-          const numSubqueryEndNode = findExecutionNodes(explainResult, "SubqueryEndNode").length;
-
-          assertEqual(0, numSubqueryEndNode);
-          return;
-        }
-      }
-
       const subqueryEndNode = findExecutionNodes(explainResult, "SubqueryEndNode")[0];
 
       assertEqual(subqueryEndNode.outVariable.name, "theLetVariable");
@@ -354,8 +343,8 @@ function ahuacatlSubqueryTestSuite () {
 /// A count collect block will produce an output even if it does not get an input
 /// specifically it will rightfully count 0.
 /// The insert block will write into the collection if it gets an input.
-/// So the assertion here is, that if a subquery has no input, than all it's
-/// Parts do not have side-effects, but the subquery still prduces valid results
+/// Even if the outer subquery is skipped. Henve we require to have documents
+/// inserted here.
 ////////////////////////////////////////////////////////////////////////////////
     testCollectWithinEmptyNestedSubquery: function () {
       const colName = "UnitTestSubqueryCollection";
@@ -378,7 +367,7 @@ function ahuacatlSubqueryTestSuite () {
 
         var actual = getQueryResults(query);
         assertEqual(expected, actual);
-        assertEqual(db[colName].count(), 0);
+        assertEqual(db[colName].count(), 1);
       } finally {
         db._drop(colName);
       }
@@ -389,6 +378,12 @@ function ahuacatlSubqueryTestSuite () {
       const colName = "UnitTestSubqueryCollection";
       try {
         const col = db._create(colName, {numberOfShards: 9});
+        let dbServers = 0;
+        if (isCoordinator) {
+          dbServers = Object.values(col.shards(true)).filter((value, index, self) => {
+            return self.indexOf(value) === index;
+          }).length;
+        }
         const docs = [];
         const expected = new Map();
         for (let i = 0; i < 2000; ++i) {
@@ -399,7 +394,7 @@ function ahuacatlSubqueryTestSuite () {
         }
         col.save(docs);
 
-        // Now we do a left out join on the same collection
+        // Now we do a left outer join on the same collection
         const query = `
           FOR left IN ${colName}
             LET rightJoin = (
@@ -418,7 +413,7 @@ function ahuacatlSubqueryTestSuite () {
           assertEqual(scannedIndex, 0);
           assertEqual(filtered, 3960000);
           if (isCoordinator) {
-            assertEqual(httpRequests, 8007);
+            assertTrue(httpRequests <= 4003 * dbServers + 1, httpRequests);
           } else {
             assertEqual(httpRequests, 0);
           }
@@ -445,7 +440,7 @@ function ahuacatlSubqueryTestSuite () {
           assertEqual(scannedIndex, 40000);
           assertEqual(filtered, 0);
           if (isCoordinator) {
-            assertEqual(httpRequests, 8007);
+            assertTrue(httpRequests <= 4003 * dbServers + 1, httpRequests);
           } else {
             assertEqual(httpRequests, 0);
           }
@@ -463,6 +458,50 @@ function ahuacatlSubqueryTestSuite () {
         }        
       } finally {
         db._drop(colName);
+      }
+    },
+
+    testOneShardDBAndSpliceSubquery: function () {
+      const dbName = "SingleShardDB";
+      const docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({foo: i});
+      }
+      const q = `
+        FOR x IN a
+          SORT x.foo ASC
+          LET subquery = (
+            FOR y IN b
+              FILTER x.foo == y.foo
+              RETURN y
+          )
+          RETURN {x, subquery}
+      `;
+      try {
+        db._createDatabase(dbName, {sharding: "single"});
+        db._useDatabase(dbName);
+        const a = db._create("a");
+        const b = db._create("b");
+        a.save(docs);
+        b.save(docs);
+        const statement = db._createStatement(q);
+        const rules = statement.explain().plan.rules;
+        if (isEnterprise && isCoordinator) {
+          // Has one shard rule
+          assertTrue(rules.indexOf("cluster-one-shard") !== -1);
+        }
+        // Has one splice subquery rule
+        assertTrue(rules.indexOf("splice-subqueries") !== -1);
+        // Result is as expected
+        const result = statement.execute().toArray();
+        for (let i = 0; i < 100; ++i) {
+          assertEqual(result[i].x.foo, i);
+          assertEqual(result[i].subquery.length, 1);
+          assertEqual(result[i].subquery[0].foo, i);
+        }
+      } finally {
+        db._useDatabase("_system");
+        db._drop(dbName);
       }
     }
   }; 

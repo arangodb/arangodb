@@ -50,7 +50,7 @@ class Endpoint {
   Endpoint(DomainType, EndpointType, TransportType, EncryptionType, std::string const&, int);
 
  public:
-  virtual ~Endpoint() {}
+  virtual ~Endpoint() = default;
 
  public:
   static std::string uriForm(std::string const&);

@@ -417,8 +417,6 @@ plot \
   internal.wal.flush(true, true);
   internal.wait(5, false);
 
-  c.rotate();
-
   statistics(opts);
 
   // wait for a while

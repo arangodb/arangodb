@@ -8,12 +8,12 @@
 Returns the last available tick value that can be served from the server's
 replication log. This corresponds to the tick of the latest successfull operation.
 
-The result is a JSON object containing the attributes *tick*, *time* and *server*. 
-* *tick*: contains the last available tick, *time* 
+The result is a JSON object containing the attributes *tick*, *time* and *server*.
+* *tick*: contains the last available tick, *time*
 * *time*: the server time as string in format "YYYY-MM-DDTHH:MM:SSZ"
 * *server*: An object with fields *version* and *serverId*
 
-**Note**: this method is not supported on a coordinator in a cluster.
+**Note**: this method is not supported on a Coordinator in a cluster.
 
 @RESTRETURNCODES
 
@@ -27,7 +27,7 @@ is returned when an invalid HTTP method is used.
 is returned if an error occurred while assembling the response.
 
 @RESTRETURNCODE{501}
-is returned when this operation is called on a coordinator in a cluster.
+is returned when this operation is called on a Coordinator in a cluster.
 
 @EXAMPLES
 
@@ -42,4 +42,3 @@ Returning the first available tick
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

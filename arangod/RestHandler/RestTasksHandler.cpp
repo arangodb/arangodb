@@ -24,6 +24,7 @@
 #include "RestTasksHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -74,26 +75,31 @@ RestStatus RestTasksHandler::execute() {
 }
 
 /// @brief returns the short id of the server which should handle this request
-std::string RestTasksHandler::forwardingTarget() {
+ResultT<std::pair<std::string, bool>> RestTasksHandler::forwardingTarget() {
+  auto base = RestVocbaseBaseHandler::forwardingTarget();
+  if (base.ok() && !std::get<0>(base.get()).empty()) {
+    return base;
+  }
+
   rest::RequestType const type = _request->requestType();
   if (type != rest::RequestType::POST && type != rest::RequestType::PUT &&
       type != rest::RequestType::GET && type != rest::RequestType::DELETE_REQ) {
-    return "";
+    return {std::make_pair(StaticStrings::Empty, false)};
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() < 1) {
-    return "";
+    return {std::make_pair(StaticStrings::Empty, false)};
   }
 
   uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
   uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
 
   if (sourceServer == ServerState::instance()->getShortId()) {
-    return "";
+    return {std::make_pair(StaticStrings::Empty, false)};
   }
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-  return ci.getCoordinatorByShortID(sourceServer);
+  return {std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
 }
 
 void RestTasksHandler::getTasks() {
@@ -162,7 +168,7 @@ void RestTasksHandler::registerTask(bool byId) {
   std::string name =
       VelocyPackHelper::getStringValue(body, "name", "user-defined task");
 
-  bool isSystem = VelocyPackHelper::getBooleanValue(body, "isSystem", false);
+  bool isSystem = VelocyPackHelper::getBooleanValue(body, StaticStrings::DataSourceSystem, false);
 
   // offset in seconds into period or from now on if no period
   double offset = VelocyPackHelper::getNumericValue<double>(body, "offset", 0.0);
@@ -204,11 +210,12 @@ void RestTasksHandler::registerTask(bool byId) {
     JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestrictedContext();
     V8ContextGuard guard(&_vocbase, securityContext);
    
-    v8::Isolate* isolate = guard.isolate(); 
+    v8::Isolate* isolate = guard.isolate();
     v8::HandleScope scope(isolate);
+    auto context = TRI_IGETC;
     v8::Handle<v8::Object> bv8 = TRI_VPackToV8(isolate, body).As<v8::Object>();
 
-    if (bv8->Get(TRI_V8_ASCII_STRING(isolate, "command"))->IsFunction()) {
+    if (bv8->Get(context, TRI_V8_ASCII_STRING(isolate, "command")).FromMaybe(v8::Handle<v8::Value>())->IsFunction()) {
       // need to add ( and ) around function because call will otherwise break
       command = "(" + cmdSlice.copyString() + ")(params)";
     } else {

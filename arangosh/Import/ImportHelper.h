@@ -67,7 +67,7 @@ struct ImportStatistics {
   arangodb::Mutex _mutex;
   QuickHistogram _histogram;
 
-  ImportStatistics(application_features::ApplicationServer&);
+  explicit ImportStatistics(application_features::ApplicationServer&);
 };
 
 class ImportHelper {
@@ -181,6 +181,13 @@ class ImportHelper {
   //////////////////////////////////////////////////////////////////////////////
 
   void setRowsToSkip(size_t value) { _rowsToSkip = value; }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not to validation will be skipped
+  //////////////////////////////////////////////////////////////////////////////
+
+  void setSkipValidation(bool value) { _skipValidation = value; }
+
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the number of rows to skip
@@ -309,6 +316,7 @@ class ImportHelper {
   bool _progress;
   bool _firstChunk;
   bool _ignoreMissing;
+  bool _skipValidation;
 
   size_t _numberLines;
   ImportStatistics _stats;

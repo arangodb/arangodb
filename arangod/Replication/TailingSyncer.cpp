@@ -23,6 +23,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TailingSyncer.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
@@ -118,12 +120,6 @@ TailingSyncer::TailingSyncer(ReplicationApplier* applier,
     _state.barrier.id = barrierId;
     _state.barrier.updateTime = TRI_microtime();
   }
-
-  // FIXME: move this into engine code
-  std::string const& engineName = EngineSelectorFeature::ENGINE->typeName();
-
-  // Replication for RocksDB expects only one open transaction at a time
-  _supportsMultipleOpenTransactions = (engineName != "rocksdb");
 }
 
 TailingSyncer::~TailingSyncer() { abortOngoingTransactions(); }
@@ -332,7 +328,7 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
 
     TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
 
-    if (vocbase != nullptr && name != TRI_VOC_SYSTEM_DATABASE) {
+    if (vocbase != nullptr && name != StaticStrings::SystemDatabase) {
       LOG_TOPIC("0a3a4", WARN, Logger::REPLICATION)
           << "seeing database creation marker "
           << "for an already existing db. Dropping db...";
@@ -355,7 +351,7 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
   } else if (type == REPLICATION_DATABASE_DROP) {
     TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
 
-    if (vocbase != nullptr && name != TRI_VOC_SYSTEM_DATABASE) {
+    if (vocbase != nullptr && name != StaticStrings::SystemDatabase) {
       // abort all ongoing transactions for the database to be dropped
       abortOngoingTransactions(name);
 
@@ -426,7 +422,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
 
   // extract "tid"
   arangodb::velocypack::StringRef const transactionId =
-      VelocyPackHelper::getStringRef(slice, "tid", "");
+      VelocyPackHelper::getStringRef(slice, "tid", VPackStringRef());
   TRI_voc_tid_t tid = 0;
   if (!transactionId.empty()) {
     // operation is part of a transaction
@@ -439,7 +435,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
   VPackSlice applySlice = data;
   if (type == REPLICATION_MARKER_REMOVE) {
     _documentBuilder.clear();
-    _documentBuilder.openObject();
+    _documentBuilder.openObject(true);
     _documentBuilder.add(StaticStrings::KeyString, key);
     if (rev.isString()) {
       // _rev is an optional attribute
@@ -508,8 +504,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
     // we will always check if the target document already exists and then either
     // carry out an insert or a replace.
     // so we will be carrying out either a read-then-insert or a read-then-replace
-    // operation, which is a single write operation. and for MMFiles this is also
-    // safe as we have the exclusive lock on the underlying collection anyway 
+    // operation, which is a single write operation.
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
     Result res = trx.begin();
@@ -617,7 +612,7 @@ Result TailingSyncer::startTransaction(VPackSlice const& slice) {
   LOG_TOPIC("e39dc", TRACE, Logger::REPLICATION) << "starting replication transaction " << tid;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_ASSERT(_supportsMultipleOpenTransactions || countOngoingTransactions(slice) == 0);
+  TRI_ASSERT(countOngoingTransactions(slice) == 0);
 #endif
 
   auto trx = std::make_unique<ReplicationTransaction>(*vocbase);
@@ -691,7 +686,7 @@ Result TailingSyncer::commitTransaction(VPackSlice const& slice) {
   _ongoingTransactions.erase(it);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_ASSERT(_supportsMultipleOpenTransactions || countOngoingTransactions(slice) == 0);
+  TRI_ASSERT(countOngoingTransactions(slice) == 0);
 #endif
   return res;
 }
@@ -800,7 +795,7 @@ Result TailingSyncer::changeCollection(VPackSlice const& slice) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
-  arangodb::CollectionGuard guard(vocbase, col);
+  arangodb::CollectionGuard guard(vocbase, col->id());
 
   return guard.collection()->properties(data, false);  // always a full-update
 }
@@ -1446,13 +1441,13 @@ void TailingSyncer::getLocalState() {
   // a _state.master.serverId value of 0 may occur if no proper connection could
   // be established to the master initially
   if (_state.master.serverId != _applier->_state._serverId &&
-      _applier->_state._serverId != 0 && _state.master.serverId != 0) {
+      _applier->_state._serverId.isSet() && _state.master.serverId.isSet()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_REPLICATION_MASTER_CHANGE,
         std::string(
             "encountered wrong master id in replication state file. found: ") +
-            StringUtils::itoa(_state.master.serverId) +
-            ", expected: " + StringUtils::itoa(_applier->_state._serverId));
+            StringUtils::itoa(_state.master.serverId.id()) +
+            ", expected: " + StringUtils::itoa(_applier->_state._serverId.id()));
   }
 }
 
@@ -1513,8 +1508,7 @@ Result TailingSyncer::runContinuousSync() {
       // important: we must not resume tailing in the middle of a RocksDB transaction,
       // as this would mean we would be missing the transaction begin marker. this would
       // cause "unexpected transaction errors"
-      std::string const& engineName = EngineSelectorFeature::ENGINE->typeName();
-      if (engineName == "rocksdb" && _state.master.engine == engineName) {
+      if (_state.master.engine == "rocksdb") {
         fromTick = safeResumeTick;
       }
     }
@@ -1736,11 +1730,12 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick, TRI_voc_tic
                         ": invalid response type for initial data. expecting "
                         "array of ids");
     }
-    _ongoingTransactions.emplace(StringUtils::uint64(it.copyString()), nullptr);
+    auto ref = it.stringRef();
+    _ongoingTransactions.try_emplace(StringUtils::uint64(ref.data(), ref.size()), nullptr);
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_ASSERT(_supportsMultipleOpenTransactions || !hasMultipleOngoingTransactions());
+  TRI_ASSERT(!hasMultipleOngoingTransactions());
 #endif
 
   {
@@ -2066,8 +2061,7 @@ void TailingSyncer::checkParallel() {
     return;
   }
 
-  std::string const& engineName = EngineSelectorFeature::ENGINE->typeName();
-  if (engineName == "rocksdb" && _state.master.engine == engineName) {
+  if (_state.master.engine == "rocksdb") {
     // master and slave are both on RocksDB... that means we do not need
     // to post the list of open transactions every time, and we can
     // also make the WAL tailing work in parallel on master and slave

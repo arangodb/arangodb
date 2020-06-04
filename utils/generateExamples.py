@@ -31,7 +31,8 @@
 ### @author Copyright 2011-2014, triagens GmbH, Cologne, Germany
 ################################################################################
 
-import re, sys, string, os, re
+from __future__ import print_function # py2 compat
+import re, sys, string, os, re, io
 from pprint import pprint
 
 ################################################################################
@@ -132,9 +133,8 @@ OPTION_OUTPUT_ENGINE = 5
 OPTION_OUTPUT_FILTER_NONMATCHING = 6
 OPTION_OUTPUT_FILTER_CLUSTER = 7
 
-engines = ["mmfiles", "rocksdb"]
-engine = "mmfiles"
-otherEngine = "mmfiles"
+engines = ["rocksdb"]
+engine = "rocksdb"
 storageEngineAgnostic = True
 cluster = False
 escapeBS = re.compile("\\\\")
@@ -145,8 +145,8 @@ doubleBS = "\\\\\\\\"
 ################################################################################
 
 def generateArangoshHeader():
-    headerF = open("./Documentation/Scripts/exampleHeader.js", "r")
-    print headerF.read()
+    headerF = io.open("./Documentation/Scripts/exampleHeader.js", encoding="utf-8", newline=None)
+    print(headerF.read())
     headerF.close()
 
 ################################################################################
@@ -172,12 +172,12 @@ def matchStartLine(line, filename):
         name = m.group(2)
 
         if name in ArangoshFiles:
-            print >> sys.stderr, "%s\nduplicate test name '%s' in file %s!\n%s\n" % ('#' * 80, name, filename, '#' * 80)
+            print("%s\nduplicate test name '%s' in file %s!\n%s\n" % ('#' * 80, name, filename, '#' * 80), file=sys.stderr)
             sys.exit(1)
 
         # if we match for filters, only output these!
         if ((FilterForTestcase != None) and not FilterForTestcase.match(name)):
-            print >> sys.stderr, "Arangosh: filtering out testcase '%s'" %name
+            print("Arangosh: filtering out testcase '%s'" %name, file=sys.stderr)
             filterTestList.append(name)
             return("", STATE_BEGIN)
 
@@ -190,13 +190,13 @@ def matchStartLine(line, filename):
         name = m.group(2)
 
         if name in ArangoshFiles:
-            print >> sys.stderr, "%s\nduplicate test name '%s' in file %s!\n%s\n" % ('#' * 80, name, filename, '#' * 80)
+            print("%s\nduplicate test name '%s' in file %s!\n%s\n" % ('#' * 80, name, filename, '#' * 80), file=sys.stderr)
             sys.exit(1)
 
         # if we match for filters, only output these!
         if ((FilterForTestcase != None) and not FilterForTestcase.match(name)):
             filterTestList.append(name)
-            print >> sys.stderr, "CuRL: filtering out testcase '%s'" %name
+            print("CuRL: filtering out testcase '%s'" %name, file=sys.stderr)
             return("", STATE_BEGIN)
 
         ArangoshFiles[name] = True
@@ -208,12 +208,12 @@ def matchStartLine(line, filename):
         name = m.group(2)
 
         if name in AQLFiles:
-            print >> sys.stderr, "%s\nduplicate test name '%s' in file %s!\n%s\n" % ('#' * 80, name, filename, '#' * 80)
+            print("%s\nduplicate test name '%s' in file %s!\n%s\n" % ('#' * 80, name, filename, '#' * 80), file=sys.stderr)
             sys.exit(1)
 
         # if we match for filters, only output these!
         if ((FilterForTestcase != None) and not FilterForTestcase.match(name)):
-            print >> sys.stderr, "AQL: filtering out testcase '%s'" %name
+            print("AQL: filtering out testcase '%s'" %name, file=sys.stderr)
             filterTestList.append(name)
             return("", STATE_BEGIN)
 
@@ -384,9 +384,7 @@ def analyzeFile(f, filename):
 
 
 def generateSetupFunction():
-    print
-    print "(function () {\n%s}());" % ArangoshSetup
-    print
+    print("\n(function () {\n%s}());\n" % ArangoshSetup)
 
 ################################################################################
 ### @brief generate arangosh example
@@ -402,10 +400,10 @@ def generateArangoshOutput(testName):
     #print value[TESTLINES][0][2]
     #print type(value[TESTLINES][0][2])
     if (len(value[TESTLINES]) == 0) or (len(value[TESTLINES][0]) < 3):
-        print >> sys.stderr, "syntax error in %s - its empty! Maybe you've used too many pipes?" %(testName)
+        print("syntax error in %s - its empty! Maybe you've used too many pipes?" %(testName), file=sys.stderr)
         raise Exception
     try:
-        print '''
+        print('''
 %s
 /// %s
 (function() {
@@ -424,11 +422,11 @@ def generateArangoshOutput(testName):
         value[TESTLINES][0][2],
         escapeBS.sub(doubleBS, OutputDir),
         escapeBS.sub(doubleBS, MapSourceFiles[testName])
-        )
+        ))
     except Exception as x:
-        print  >> sys.stderr,x
-        print  >> sys.stderr,testName
-        print  >> sys.stderr,value
+        print(x, file=sys.stderr)
+        print(testName, file=sys.stderr)
+        print(value, file=sys.stderr)
         raise
 
     for l in value[TESTLINES]:
@@ -443,26 +441,26 @@ def generateArangoshOutput(testName):
         fakeVar = 'false'
         if m and l[0][0:3] == 'var':
             count = l[0].find('=')
-            print  "  " + l[0][0:count].rstrip(' ') + ";"
+            print("  " + l[0][0:count].rstrip(' ') + ";")
             l[0] = l[0][4:]
             fakeVar = 'true'
 
-        print "  runTestLine('%s', testName, sourceFile, %s, lineCount++, %s, %s, %s, %s);" % (
+        print("  runTestLine('%s', testName, sourceFile, %s, lineCount++, %s, %s, %s, %s);" % (
             l[0],                         # the test string
             l[2],                         # line in the source file
             'true' if l[1] else 'false',  # Is it visible in the documentation?
             expectError,                  # will it throw? if the errorcode else undefined.
             'true' if m    else 'false',  # is it a loop construct? (will be evaluated different)
             fakeVar                       # 'var ' should be printed
-            )
-    print '''  var output = internal.stopCaptureMode();
+            ))
+    print('''  var output = internal.stopCaptureMode();
 
   print("[" + (time () - startTime) + "s] done with  " + testName);
   output = highlight("js", output);
   fs.write(outputDir + fs.pathSeparator + testName + '.generated', output);
   checkForOrphanTestCollections('not all collections were cleaned up after ' + sourceFile + ' Line[' + startLineCount + '] [' + testName + ']:');
 }());
-'''
+''')
 
 ################################################################################
 ### @brief generate arangosh run
@@ -471,13 +469,13 @@ def generateArangoshOutput(testName):
 def generateArangoshRun(testName):
 
     if JS_DEBUG:
-        print "internal.output('%s\\n');" % ('=' * 80)
-        print "internal.output('ARANGOSH RUN\\n');"
-        print "internal.output('%s\\n');" % ('=' * 80)
+        print("internal.output('%s\\n');" % ('=' * 80))
+        print("internal.output('ARANGOSH RUN\\n');")
+        print("internal.output('%s\\n');" % ('=' * 80))
 
     value = RunTests[testName]
     startLineNo = RunTests[testName][LINE_NO]
-    print '''
+    print('''
 %s
 /// %s
 (function() {
@@ -501,14 +499,14 @@ def generateArangoshRun(testName):
         startLineNo,
         escapeBS.sub(doubleBS, OutputDir),
         escapeBS.sub(doubleBS, MapSourceFiles[testName]),
-        value[STRING].lstrip().rstrip())
+        value[STRING].lstrip().rstrip()))
 
     if testName in ArangoshExpect:
-        print "  rc = runTestFuncCatch(testFunc, testName, errors.%s);" % (ArangoshExpect[key])
+        print("  rc = runTestFuncCatch(testFunc, testName, errors.%s);" % (ArangoshExpect[key]))
     else:
-        print "  rc = runTestFunc(testFunc, testName, sourceFile);"
+        print("  rc = runTestFunc(testFunc, testName, sourceFile);")
 
-    print '''
+    print('''
   if (rc === undefined || rc === '' ) {
     rc = " FAILED in " + testName;
   }
@@ -517,7 +515,7 @@ def generateArangoshRun(testName):
   fs.write(outputDir + fs.pathSeparator + testName + '.generated', output);
   checkForOrphanTestCollections('not all collections were cleaned up after ' + sourceFile + ' Line[' + startLineCount + '] [' + testName + ']:');
 }());
-'''
+''')
 
 ################################################################################
 ### @brief generate arangosh run
@@ -535,7 +533,7 @@ def generateAQL(testName):
     if not AQLEXPLAIN in value:
         value[AQLEXPLAIN] = 'false'
 
-    print '''
+    print('''
 %s
 /// %s
 (() => {
@@ -555,12 +553,12 @@ def generateAQL(testName):
         startLineNo,
         escapeBS.sub(doubleBS, OutputDir),
         escapeBS.sub(doubleBS, MapSourceFiles[testName])
-    )
-    print "  const query = `" + value[AQL] + "`;"
-    print "  const bv = " + value[AQLBV] + ";"
-    print "  const ds = '" + value[AQLDS] + "';"
-    print "  const explainAql = " + value[AQLEXPLAIN].lower() + ";"
-    print '''
+    ))
+    print("  const query = `" + value[AQL] + "`;")
+    print("  const bv = " + value[AQLBV] + ";")
+    print("  const ds = '" + value[AQLDS] + "';")
+    print("  const explainAql = " + value[AQLEXPLAIN].lower() + ";")
+    print('''
   if (ds !== '') {
     exds[ds].removeDS();
     exds[ds].createDS();
@@ -590,26 +588,26 @@ def generateAQL(testName):
   checkForOrphanTestCollections('not all collections were cleaned up after ' + sourceFile + ' Line[' + startLineCount + '] [' + testName + ']:');
 })();
 
-'''
+''')
 
 ################################################################################
 ### @brief generate arangosh run
 ################################################################################
 
 def generateArangoshShutdown():
-    print '''
+    print('''
 if (allErrors.length > 0) {
     print(allErrors);
     throw new Error('trouble during generating documentation data; see above.');
 }
-'''
+''')
 
 ################################################################################
 ### @brief get file names
 ################################################################################
 
 def loopDirectories():
-    global ArangoshSetup, OutputDir, FilterForTestcase, storageEngineAgnostic, cluster, engine, otherEngine
+    global ArangoshSetup, OutputDir, FilterForTestcase, storageEngineAgnostic, cluster, engine
     argv = sys.argv
     argv.pop(0)
     filenames = []
@@ -660,7 +658,7 @@ def loopDirectories():
 
         elif fstate == OPTION_ARANGOSH_SETUP:
             fstate = OPTION_NORMAL
-            f = open(filename, "r")
+            f = io.open(filename, encoding="utf-8", newline=None)
 
             for line in f:
                 line = line.rstrip('\n')
@@ -674,15 +672,11 @@ def loopDirectories():
 
         elif fstate == OPTION_OUTPUT_FILE:
             fstate = OPTION_NORMAL
-            sys.stdout = open(filename, 'w')
+            sys.stdout = io.open(filename, mode='w', encoding='utf-8', newline='')
 
         elif fstate == OPTION_OUTPUT_ENGINE:
             fstate = OPTION_NORMAL
             engine = filename
-            if engine == engines[0]:
-                otherEngine = engines[1]
-            else:
-                otherEngine = engines[0]
 
         elif fstate == OPTION_OUTPUT_FILTER_NONMATCHING:
             fstate = OPTION_NORMAL
@@ -694,35 +688,30 @@ def loopDirectories():
 
     for filename in filenames:
         if (filename.find("#") < 0):
-            f = open(filename, "r")
+            f = io.open(filename, encoding="utf-8", newline=None)
             analyzeFile(f, filename)
 
             f.close()
         else:
-            print >> sys.stderr, "skipping %s\n" % (filename)
+            print("skipping %s\n" % (filename), file=sys.stderr)
 
 
 def generateTestCases():
-    global TESTLINES, TYPE, LINE_NO, STRING, RunTests, storageEngineAgnostic, cluster, engine, otherEngine
+    global TESTLINES, TYPE, LINE_NO, STRING, RunTests, storageEngineAgnostic, cluster, engine
     testNames = RunTests.keys()
-    testNames.sort()
 
-    for thisTest in testNames:
-        if thisTest.endswith(otherEngine):
-            print >> sys.stderr, "skipping " + thisTest
-            continue
-
-        # skip agnostic examples if storage engine is mmfiles to not generate them twice
+    for thisTest in sorted(testNames):
+        # skip agnostic examples if storage engine is rocksdb to not generate them twice
         if not storageEngineAgnostic and not thisTest.endswith(engine):
-            print >> sys.stderr, "skipping " + thisTest
+            print("skipping " + thisTest, file=sys.stderr)
             continue
 
         if cluster and not thisTest.endswith('_cluster'):
-            print >> sys.stderr, "skipping " + thisTest
+            print("skipping " + thisTest, file=sys.stderr)
             continue
 
         if not cluster and thisTest.endswith('_cluster'):
-            print >> sys.stderr, "skipping " + thisTest
+            print("skipping " + thisTest, file=sys.stderr)
             continue
 
         if RunTests[thisTest][TYPE] == STATE_ARANGOSH_OUTPUT:
@@ -739,9 +728,9 @@ def generateTestCases():
 
 loopDirectories()
 if len(RunTests) == 0:
-    print >> sys.stderr, "no testcases generated - bailing out"
+    print("no testcases generated - bailing out", file=sys.stderr)
     raise Exception("no Testcases")
-print >> sys.stderr, "filtering test %d cases" %(len(filterTestList))
+print("filtering test %d cases" %(len(filterTestList)), file=sys.stderr)
 
 generateArangoshHeader()
 generateSetupFunction()

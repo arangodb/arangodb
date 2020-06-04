@@ -46,13 +46,11 @@ class TransactionCollection {
 
   TransactionCollection(TransactionState* trx, 
                         TRI_voc_cid_t cid, 
-                        AccessMode::Type accessType,
-                        int nestingLevel)
+                        AccessMode::Type accessType)
       : _transaction(trx),
         _cid(cid),
         _accessType(accessType),
-        _lockType(AccessMode::Type::NONE),
-        _nestingLevel(nestingLevel) {}
+        _lockType(AccessMode::Type::NONE) {}
 
   virtual ~TransactionCollection();
 
@@ -66,26 +64,11 @@ class TransactionCollection {
 
   AccessMode::Type accessType() const { return _accessType; }
   
-  Result updateUsage(AccessMode::Type accessType, int nestingLevel);
-
-  /// @brief request a main-level lock for a collection
-  /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired
-  /// and no other error occurred returns any other error code otherwise
-  int lockRecursive();
-
-  /// @brief request a lock for a collection
-  /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired
-  /// and no other error occurred returns any other error code otherwise
-  int lockRecursive(AccessMode::Type, int nestingLevel);
-
-  /// @brief request an unlock for a collection
-  int unlockRecursive(AccessMode::Type, int nestingLevel);
+  Result updateUsage(AccessMode::Type accessType);
 
   /// @brief check whether a collection is locked in a specific mode in a
   /// transaction
-  bool isLocked(AccessMode::Type, int nestingLevel) const;
+  bool isLocked(AccessMode::Type) const;
 
   /// @brief check whether a collection is locked at all
   bool isLocked() const;
@@ -93,32 +76,22 @@ class TransactionCollection {
   /// @brief whether or not any write operations for the collection happened
   virtual bool hasOperations() const = 0;
 
-  virtual void freeOperations(transaction::Methods* activeTrx, bool mustRollback) = 0;
-
   virtual bool canAccess(AccessMode::Type accessType) const = 0;
 
-  virtual int use(int nestingLevel) = 0;
-  virtual void unuse(int nestingLevel) = 0;
-  virtual void release() = 0;
+  virtual Result lockUsage() = 0;
+  virtual void releaseUsage() = 0;
 
- protected:
-  void adjustNestingLevel(int nestingLevel) {
-    if (nestingLevel < _nestingLevel) {
-      _nestingLevel = nestingLevel;
-    }
-  }
-  
  protected:
   TransactionState* _transaction;                  // the transaction state
   TRI_voc_cid_t const _cid;                        // collection id
   std::shared_ptr<LogicalCollection> _collection;  // vocbase collection pointer
   AccessMode::Type _accessType;                    // access type (read|write)
-  AccessMode::Type _lockType;                      // lock type
-  int _nestingLevel;  // the transaction level that added this collection
+  AccessMode::Type _lockType;                      // actual held lock type
 
  private:
-  virtual int doLock(AccessMode::Type, int nestingLevel) = 0;
-  virtual int doUnlock(AccessMode::Type, int nestingLevel) = 0;
+  // perform lock, sets _lockType
+  virtual Result doLock(AccessMode::Type) = 0;
+  virtual Result doUnlock(AccessMode::Type) = 0;
 };
 
 }  // namespace arangodb

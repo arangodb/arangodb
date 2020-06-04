@@ -28,6 +28,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -70,8 +71,8 @@ TRI_vocbase_t* Databases::lookup(std::string const& dbname) {
   return nullptr;
 }
 
-std::vector<std::string> Databases::list(std::string const& user) {
-  auto& server = application_features::ApplicationServer::server();
+std::vector<std::string> Databases::list(application_features::ApplicationServer& server,
+                                         std::string const& user) {
   if (!server.hasFeature<DatabaseFeature>()) {
     return std::vector<std::string>();
   }
@@ -80,7 +81,7 @@ std::vector<std::string> Databases::list(std::string const& user) {
   if (user.empty()) {
     if (ServerState::instance()->isCoordinator()) {
       ClusterInfo& ci = server.getFeature<ClusterFeature>().clusterInfo();
-      return ci.databases(true);
+      return ci.databases(false);
     } else {
       // list of all databases
       return databaseFeature.getDatabaseNames();
@@ -93,41 +94,44 @@ std::vector<std::string> Databases::list(std::string const& user) {
 
 arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
   if (ServerState::instance()->isCoordinator()) {
-    AgencyComm agency;
-    AgencyCommResult commRes = agency.getValues("Plan/Databases/" + vocbase->name());
-    if (!commRes.successful()) {
+
+    auto& cache = vocbase->server().getFeature<ClusterFeature>().agencyCache();
+    auto [acb,idx] = cache.read(std::vector<std::string>{
+        AgencyCommHelper::path("Plan/Databases/" + vocbase->name())});
+    auto res = acb->slice();
+
+    if (!res.isArray()) {
       // Error in communication, note that value not found is not an error
       LOG_TOPIC("87642", TRACE, Logger::COMMUNICATION)
-          << "rest database handler: no agency communication";
-      return Result(commRes.errorCode(), commRes.errorMessage());
+        << "rest database handler: no agency communication";
+      return Result(TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "agency cache empty");
     }
 
-    VPackSlice value = commRes.slice()[0].get<std::string>(
-        {AgencyCommManager::path(), "Plan", "Databases", vocbase->name()});
-    if (value.isObject() && value.hasKey("name")) {
-      VPackValueLength l = 0;
-      const char* name = value.get("name").getString(l);
-      TRI_ASSERT(l > 0);
+    VPackSlice value = res[0].get<std::string>(
+        {AgencyCommHelper::path(), "Plan", "Databases", vocbase->name()});
+    if (value.isObject() && value.hasKey(StaticStrings::DataSourceName)) {
+      std::string name = value.get(StaticStrings::DataSourceName).copyString();
 
       VPackObjectBuilder b(&result);
-      result.add("name", value.get("name"));
-      if (value.get("id").isString()) {
-        result.add("id", value.get("id"));
-      } else if (value.get("id").isNumber()) {
-        result.add("id", VPackValue(std::to_string(value.get("id").getUInt())));
+      result.add(StaticStrings::DataSourceName, VPackValue(name));
+      VPackSlice s = value.get(StaticStrings::DataSourceId);
+      if (s.isString()) {
+        result.add(StaticStrings::DataSourceId, s);
+      } else if (s.isNumber()) {
+        result.add(StaticStrings::DataSourceId, VPackValue(std::to_string(s.getUInt())));
       } else {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "unexpected type for 'id' attribute");
       }
+      result.add(StaticStrings::DataSourceSystem, VPackValue(TRI_vocbase_t::IsSystemName(name)));
       result.add("path", VPackValue("none"));
-      result.add("isSystem", VPackValue(name[0] == '_'));
     }
   } else {
     VPackObjectBuilder b(&result);
-    result.add("name", VPackValue(vocbase->name()));
-    result.add("id", VPackValue(std::to_string(vocbase->id())));
+    result.add(StaticStrings::DataSourceName, VPackValue(vocbase->name()));
+    result.add(StaticStrings::DataSourceId, VPackValue(std::to_string(vocbase->id())));
+    result.add(StaticStrings::DataSourceSystem, VPackValue(vocbase->isSystem()));
     result.add("path", VPackValue(vocbase->path()));
-    result.add("isSystem", VPackValue(vocbase->isSystem()));
   }
   return Result();
 }
@@ -216,8 +220,8 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
 
   // This vocbase is needed for the call to methods::Upgrade::createDB, but
   // is just a placeholder
-  CreateDatabaseInfo tmp_info = info;
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, std::move(tmp_info));
+  CreateDatabaseInfo tempInfo = info;
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, std::move(tempInfo));
 
   // Now create *all* system collections for the database,
   // if any of these fail, database creation is considered unsuccessful
@@ -256,8 +260,8 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
   DatabaseFeature& databaseFeature = info.server().getFeature<DatabaseFeature>();
 
   TRI_vocbase_t* vocbase = nullptr;
-  auto tmp_info = info;
-  Result createResult = databaseFeature.createDatabase(std::move(tmp_info), vocbase);
+  auto tempInfo = info;
+  Result createResult = databaseFeature.createDatabase(std::move(tempInfo), vocbase);
   if (createResult.fail()) {
     return createResult;
   }
@@ -282,22 +286,18 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
 arangodb::Result Databases::create(application_features::ApplicationServer& server,
                                    std::string const& dbName, VPackSlice const& users,
                                    VPackSlice const& options) {
-  arangodb::Result res;
-
   // Only admin users are permitted to create databases
   ExecContext const& exec = ExecContext::current();
 
-  if (!exec.isAdminUser()) {
+  if (!exec.isAdminUser() || (ServerState::readOnly() && !exec.isSuperuser())) {
     events::CreateDatabase(dbName, TRI_ERROR_FORBIDDEN);
     return Result(TRI_ERROR_FORBIDDEN);
   }
 
   CreateDatabaseInfo createInfo(server);
-  res = createInfo.load(dbName, options, users);
+  arangodb::Result res = createInfo.load(dbName, options, users);
 
   if (!res.ok()) {
-    LOG_TOPIC("15580", ERR, Logger::FIXME)
-      << "Could not create database: " << res.errorMessage();
     events::CreateDatabase(dbName, res.errorNumber());
     return res;
   }
@@ -308,7 +308,7 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
       createInfo.setId(clusterInfo.uniqid());
     }
 
-    res = ShardingInfo::validateShardsAndReplicationFactor(options, server);
+    res = ShardingInfo::validateShardsAndReplicationFactor(options, server, true);
     if (res.ok()) {
       res = createCoordinator(createInfo);
     }
@@ -330,7 +330,6 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
   // because the cache entry has a TTL
   if (ServerState::instance()->isSingleServerOrCoordinator()) {
     try {
-      auto& server = application_features::ApplicationServer::server();
       auto& sysDbFeature = server.getFeature<arangodb::SystemDatabaseFeature>();
       auto database = sysDbFeature.use();
 
@@ -383,7 +382,7 @@ int dropDBCoordinator(std::string const& dbName) {
   return TRI_ERROR_NO_ERROR;
 }
 
-const std::string dropError = "Error when dropping Datbase";
+const std::string dropError = "Error when dropping database";
 }  // namespace
 
 arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const& dbName) {
@@ -398,11 +397,14 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const
   V8DealerFeature* dealer = V8DealerFeature::DEALER;
   if (dealer != nullptr && dealer->isEnabled()) {
     try {
-      JavaScriptSecurityContext securityContext =
-          JavaScriptSecurityContext::createInternalContext();
+      JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createInternalContext();
+      
+      v8::Isolate* isolate = v8::Isolate::GetCurrent();
+      V8ConditionalContextGuard guard(res, isolate, systemVocbase, securityContext);
 
-      V8ContextGuard guard(systemVocbase, securityContext);
-      v8::Isolate* isolate = guard.isolate();
+      if (res.fail()) {
+        return res;
+      }
 
       v8::HandleScope scope(isolate);
 
@@ -413,7 +415,7 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const
         // If we are a coordinator in a cluster, we have to behave differently:
         res = ::dropDBCoordinator(dbName);
       } else {
-        res = DatabaseFeature::DATABASE->dropDatabase(dbName, false, true);
+        res = DatabaseFeature::DATABASE->dropDatabase(dbName, true);
 
         if (res.fail()) {
           events::DropDatabase(dbName, res.errorNumber());
@@ -424,7 +426,7 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const
         // run the garbage collection in case the database held some objects
         // which can now be freed
         TRI_RunGarbageCollectionV8(isolate, 0.25);
-        V8DealerFeature::DEALER->addGlobalContextMethod("reloadRouting");
+        dealer->addGlobalContextMethod("reloadRouting");
       }
     } catch (arangodb::basics::Exception const& ex) {
       events::DropDatabase(dbName, TRI_ERROR_INTERNAL);
@@ -441,7 +443,7 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const
       // If we are a coordinator in a cluster, we have to behave differently:
       res = ::dropDBCoordinator(dbName);
     } else {
-      res = DatabaseFeature::DATABASE->dropDatabase(dbName, false, true);
+      res = DatabaseFeature::DATABASE->dropDatabase(dbName, true);
     }
   }
 

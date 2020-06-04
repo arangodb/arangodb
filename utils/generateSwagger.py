@@ -34,12 +34,15 @@
 ### @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ################################################################################
 
+from __future__ import print_function # py2 compat
+from __future__ import unicode_literals
 import sys
 import re
 import json
 import operator
 import os
 import os.path
+import io
 #string,
 #from pygments import highlight
 #from pygments.lexers import YamlLexer
@@ -58,7 +61,7 @@ swagger = {
     "swagger": "2.0",
     "info": {
         "description": "ArangoDB REST API Interface",
-        "version": "1.0",
+        "version": "1.0", # placeholder
         "title": "ArangoDB",
         "license": {
             "name": "Apache License, Version 2.0"
@@ -211,7 +214,7 @@ def brTrim(text):
 reqOpt = ["required", "optional"]
 def CheckReqOpt(token):
     if token not in reqOpt:
-        print >> sys.stderr, "This is supposed to be required or optional!"
+        print("This is supposed to be required or optional!", file=sys.stderr)
         raise Exception("invalid value '%s'" % token)
 
 ################################################################################
@@ -396,8 +399,8 @@ class StateMachine:
                 else:
                     handler = newState
         except Exception as x:
-            print >> sys.stderr, "while parsing '" + self.fn + "'"
-            print >> sys.stderr, "trying to use handler '"  + handler.__name__ + "'"
+            print("while parsing '" + self.fn + "'", file=sys.stderr)
+            print("trying to use handler '"  + handler.__name__ + "'", file=sys.stderr)
             raise x
 
 ################################################################################
@@ -503,7 +506,7 @@ def generic_handler(cargo, r, message):
     global DEBUG
 
     if DEBUG:
-        print >> sys.stderr, message
+        print(message, file=sys.stderr)
     (fp, last) = cargo
     last
     while 1:
@@ -526,7 +529,7 @@ def generic_handler_desc(cargo, r, message, op, para, name):
     global DEBUG, operation
 
     if DEBUG:
-        print >> sys.stderr, message
+        print(message, file=sys.stderr)
     (fp, dummy) = cargo
 
     while 1:
@@ -540,7 +543,7 @@ def generic_handler_desc(cargo, r, message, op, para, name):
                 try:
                     operation[op].append(para)
                 except AttributeError as x:
-                    print >> sys.stderr, "trying to set '%s' on operations - failed. '%s'" % (op, para)
+                    print("trying to set '%s' on operations - failed. '%s'" % (op, para), file=sys.stderr)
                     raise x
             return next, c
 
@@ -557,7 +560,7 @@ def start_docublock(cargo, r=Regexen()):
         else:
             currentDocuBlock = last.split(' ')[1].rstrip()
     except Exception as x:
-        print >> sys.stderr, "failed to fetch docublock in '" + last + "': " + str(x)
+        print("failed to fetch docublock in '" + last + "': " + str(x), file=sys.stderr)
         raise x
 
     return generic_handler(cargo, r, 'start_docublock')
@@ -573,12 +576,12 @@ def setRequired(where, which):
 ################################################################################
 def restparam(cargo, r=Regexen()):
     global swagger, operation, httpPath, method, restBodyParam, fn, currentExample, currentReturnCode, currentDocuBlock, lastDocuBlock, restReplyBodyParam
-    print >> sys.stderr, "deprecated RESTPARAM declaration detected:"
-    print >> sys.stderr, json.dumps(
+    print("deprecated RESTPARAM declaration detected:", file=sys.stderr)
+    print(json.dumps(
         swagger['paths'][httpPath],
         indent=4,
         separators=(', ', ': '),
-        sort_keys=True)
+        sort_keys=True), file=sys.stderr)
     raise Exception("RESTPARAM not supported anymore.")
 
 ################################################################################
@@ -586,12 +589,12 @@ def restparam(cargo, r=Regexen()):
 ################################################################################
 def restqueryparams(cargo, r=Regexen()):
     global swagger, operation, httpPath, method, restBodyParam, fn, currentExample, currentReturnCode, currentDocuBlock, lastDocuBlock, restReplyBodyParam
-    print >> sys.stderr, "deprecated RESTQUERYPARAMS declaration detected:"
-    print >> sys.stderr, json.dumps(
+    print("deprecated RESTQUERYPARAMS declaration detected:", file=sys.stderr)
+    print(json.dumps(
         swagger['paths'][httpPath],
         indent=4,
         separators=(', ', ': '),
-        sort_keys=True)
+        sort_keys=True), file=sys.stderr)
     raise Exception("RESTQUERYPARAMS not supported anymore. Use RESTQUERYPARAMETERS instead.")
 
 ################################################################################
@@ -624,13 +627,13 @@ def restheader(cargo, r=Regexen()):
     if not httpPath in swagger['paths']:
         swagger['paths'][httpPath] = {}
     if method in swagger['paths'][httpPath]:
-        print >> sys.stderr, "duplicate route detected:"
-        print >> sys.stderr, "There already is a route [" + ucmethod + " " + httpPath + "]: "
-        print >> sys.stderr, json.dumps(
+        print("duplicate route detected:", file=sys.stderr)
+        print("There already is a route [" + ucmethod + " " + httpPath + "]: ", file=sys.stderr)
+        print(json.dumps(
             swagger['paths'][httpPath],
             indent=4,
             separators=(', ', ': '),
-            sort_keys=True)
+            sort_keys=True), file=sys.stderr)
         raise Exception("Duplicate route")
 
     if currentDocuBlock == None:
@@ -643,7 +646,7 @@ def restheader(cargo, r=Regexen()):
     if len(temp) > 2:
         operationId = temp[2]
     if operationId in operationIDs:
-        print operationIDs
+        print(operationIDs)
         raise Exception("duplicate operation ID! " + operationId)
     lastDocuBlock = currentDocuBlock
 
@@ -682,11 +685,11 @@ def resturlparam(cargo, r=Regexen()):
     try:
         (name, pformat, required) = parameters(last).split(',')
     except Exception:
-        print >> sys.stderr, "RESTURLPARAM: 3 arguments required. You gave me: " + parameters(last)
+        print("RESTURLPARAM: 3 arguments required. You gave me: " + parameters(last), file=sys.stderr)
         raise x
 
     if required.strip() != 'required':
-        print >> sys.stderr, "only required is supported in RESTURLPARAM"
+        print("only required is supported in RESTURLPARAM", file=sys.stderr)
         raise Exception("invalid url parameter")
 
     para = {
@@ -746,8 +749,8 @@ def restbodyparam(cargo, r=Regexen()):
     try:
         (name, ptype, required, ptype2) = parameters(last).split(',')
     except Exception:
-        print >> sys.stderr, "RESTBODYPARAM: 4 arguments required. You gave me: " + parameters(last)
-        print >> sys.stderr, "In this docublock: " + currentDocuBlock
+        print("RESTBODYPARAM: 4 arguments required. You gave me: " + parameters(last), file=sys.stderr)
+        print("In this docublock: " + currentDocuBlock, file=sys.stderr)
         raise Exception("Argument count error")
 
     CheckReqOpt(required)
@@ -818,7 +821,7 @@ def restbodyparam(cargo, r=Regexen()):
         swagger['definitions'][currentDocuBlock]['properties'][name]['additionalProperties'] = {}
     elif ptype != 'string':
         if ptype in swaggerFormats and ptype2 not in swaggerFormats[ptype]:
-            print >> sys.stderr, "RESTSTRUCT: ptype2 (format)[" + ptype2 + "]  not valid: " + parameters(last)
+            print("RESTSTRUCT: ptype2 (format)[" + ptype2 + "]  not valid: " + parameters(last), file=sys.stderr)
             raise Exception("'%s' is not one of %s!" % (ptype2, str(swaggerFormats)))
         swagger['definitions'][currentDocuBlock]['properties'][name]['format'] = ptype2
 
@@ -841,7 +844,7 @@ def restallbodyparam(cargo, r=Regexen()):
     try:
         (_name, _ptype, required) = parameters(last).split(',')
     except Exception:
-        print >> sys.stderr, "RESTALLBODYPARAM: 3 arguments required. You gave me: " + parameters(last)
+        print("RESTALLBODYPARAM: 3 arguments required. You gave me: " + parameters(last), file=sys.stderr)
 
     CheckReqOpt(required)
     if required == 'required':
@@ -879,7 +882,7 @@ def reststruct(cargo, r=Regexen()):
     try:
         (name, className, ptype, required, ptype2) = parameters(last).split(',')
     except Exception:
-        print >> sys.stderr, "RESTSTRUCT: 5 arguments required (name, className, ptype, required, ptype2). You gave me: " + parameters(last)
+        print("RESTSTRUCT: 5 arguments required (name, className, ptype, required, ptype2). You gave me: " + parameters(last), file=sys.stderr)
         raise Exception("Argument count error")
 
     CheckReqOpt(required)
@@ -931,7 +934,7 @@ def reststruct(cargo, r=Regexen()):
 
     elif ptype != 'string' and ptype != 'boolean':
         if ptype in swaggerFormats and ptype2 not in swaggerFormats[ptype]:
-            print >> sys.stderr, "RESTSTRUCT: ptype2 (format)[" + ptype2 + "]  not valid: " + parameters(last)
+            print("RESTSTRUCT: ptype2 (format)[" + ptype2 + "]  not valid: " + parameters(last), file=sys.stderr)
             raise Exception("'%s' is not one of %s!" % (ptype2, str(swaggerFormats)))
         swagger['definitions'][className]['properties'][name]['format'] = ptype2
 
@@ -957,7 +960,7 @@ def restqueryparam(cargo, r=Regexen()):
     swaggerType = parametersList[1].lower()
     
     if swaggerType not in swaggerBaseTypes:
-        print >> sys.stderr, "RESTQUERYPARAM is supposed to be a swagger type."
+        print("RESTQUERYPARAM is supposed to be a swagger type.", file=sys.stderr)
         raise Exception("'%s' is not one of %s!" % (swaggerType, str(swaggerBaseTypes)))
 
     para = {
@@ -983,7 +986,7 @@ def hints(cargo, r=Regexen()):
 
     if r.TRIPLENEWLINEATSTART.match(swagger['paths'][httpPath][method]['x-hints']):
         (fp, dummy) = cargo
-        print >> sys.stderr, 'remove newline after @HINTS in file %s' % (fp.name)
+        print('remove newline after @HINTS in file %s' % (fp.name), file=sys.stderr)
         exit(1)
 
     return ret
@@ -1002,7 +1005,7 @@ def restdescription(cargo, r=Regexen()):
 
     if r.TRIPLENEWLINEATSTART.match(swagger['paths'][httpPath][method]['description']):
         (fp, dummy) = cargo
-        print >> sys.stderr, 'remove newline after @RESTDESCRIPTION in file %s' % (fp.name)
+        print('remove newline after @RESTDESCRIPTION in file %s' % (fp.name), file=sys.stderr)
         exit(1)
 
     return ret
@@ -1018,7 +1021,7 @@ def restreplybody(cargo, r=Regexen()):
     try:
         (name, ptype, required, ptype2) = parameters(last).split(',')
     except Exception:
-        print >> sys.stderr, "RESTREPLYBODY: 4 arguments required. You gave me: " + parameters(last)
+        print("RESTREPLYBODY: 4 arguments required. You gave me: " + parameters(last), file=sys.stderr)
         raise x
 
     CheckReqOpt(required)
@@ -1185,7 +1188,7 @@ def example_arangosh_run(cargo, r=Regexen()):
     global currentExample, DEBUG
 
     if DEBUG:
-        print >> sys.stderr, "example_arangosh_run"
+        print("example_arangosh_run", file=sys.stderr)
     (fp, last) = cargo
 
     exampleHeader = brTrim(operation['x-examples'][currentExample]).strip()
@@ -1193,14 +1196,15 @@ def example_arangosh_run(cargo, r=Regexen()):
     # new examples code TODO should include for each example own object in json file
     fn = os.path.join(os.path.dirname(__file__), '../Documentation/Examples/' + parameters(last) + '.generated')
     try:
-        examplefile = open(fn)
+        examplefile = io.open(fn, encoding='utf-8', newline=None)
     except:
-        print >> sys.stderr, "Failed to open example file:\n  '%s'" % fn
+        print("Failed to open example file:\n  '%s'" % fn, file=sys.stderr)
         raise Exception("failed to open example file:" + fn)
     operation['x-examples'][currentExample] = '\n\n**Example:**\n ' + exampleHeader.strip('\n ') + '\n\n<pre>'
 
     for line in examplefile.readlines():
         operation['x-examples'][currentExample] += '<code>' + line + '</code>'
+    examplefile.close()
 
     operation['x-examples'][currentExample] += '</pre>\n\n\n'
 
@@ -1223,7 +1227,7 @@ def example_arangosh_run(cargo, r=Regexen()):
 def eof(cargo):
     global DEBUG
     if DEBUG:
-        print >> sys.stderr, "eof"
+        print("eof", file=sys.stderr)
 
 ################################################################################
 ### @brief error
@@ -1232,7 +1236,7 @@ def eof(cargo):
 def error(cargo):
     global DEBUG
     if DEBUG:
-        print >> sys.stderr, "error"
+        print("error", file=sys.stderr)
 
     sys.stderr.write('Unidentifiable line:\n' + cargo)
 
@@ -1244,7 +1248,7 @@ def comment(cargo, r=Regexen()):
     global DEBUG
 
     if DEBUG:
-        print >> sys.stderr, "comment"
+        print("comment", file=sys.stderr)
     (fp, dummy) = cargo
 
     while 1:
@@ -1267,7 +1271,7 @@ def skip_code(cargo, r=Regexen()):
     global DEBUG
 
     if DEBUG:
-        print >> sys.stderr, "skip_code"
+        print("skip_code", file=sys.stderr)
     (fp, last) = cargo
 
     return comment((fp, last), r)
@@ -1317,8 +1321,8 @@ def getReference(name, source, verb):
     try:
         ref = name['$ref'][defLen:]
     except Exception:
-        print >>sys.stderr, "No reference in: "
-        print >>sys.stderr, name
+        print("No reference in: ", file=sys.stderr)
+        print(name, file=sys.stderr)
         raise Exception("No reference in: " + name)
     if not ref in swagger['definitions']:
         fn = ''
@@ -1326,11 +1330,11 @@ def getReference(name, source, verb):
             fn = swagger['paths'][route][verb]['x-filename']
         else:
             fn = swagger['definitions'][source]['x-filename']
-        print >> sys.stderr, json.dumps(
+        print(json.dumps(
             swagger['definitions'],
             indent=4,
             separators=(', ', ': '),
-            sort_keys=True)
+            sort_keys=True), file=sys.stderr)
         raise Exception("invalid reference: " + ref + " in " + fn)
     return ref
 
@@ -1395,13 +1399,13 @@ def unwrapPostJson(reference, layer):
                     try:
                         subStructRef = getReference(thisParam['items'], reference, None)
                     except:
-                        print >>sys.stderr, "while analyzing: " + param
-                        print >>sys.stderr, thisParam
+                        print("while analyzing: " + param, file=sys.stderr)
+                        print(thisParam, file=sys.stderr)
                     rc += "\n" + unwrapPostJson(subStructRef, layer + 1)
             else:
                 if thisParam['type'] not in swaggerDataTypes:
-                    print >>sys.stderr, "while analyzing: " + param
-                    print >>sys.stderr, thisParam['type'] + " is not a valid swagger datatype; supported ones: " + str(swaggerDataTypes)
+                    print("while analyzing: " + param, file=sys.stderr)
+                    print(thisParam['type'] + " is not a valid swagger datatype; supported ones: " + str(swaggerDataTypes), file=sys.stderr)
                     raise Exception("invalid swagger type")
                 rc += '  ' * layer + "- **" + param + "**: " + TrimThisParam(thisParam['description'], layer) + '\n'
     return rc
@@ -1410,7 +1414,7 @@ def unwrapPostJson(reference, layer):
 
 
 if len(sys.argv) < 4:
-    print >> sys.stderr, "usage: " + sys.argv[0] + " <scriptDir> <outDir> <relDir> <docublockdir> <optional: filter>"
+    print("usage: " + sys.argv[0] + " <scriptDir> <outDir> <relDir> <docublockdir> <optional: filter>", file=sys.stderr)
     sys.exit(1)
 
 scriptDir = sys.argv[1]
@@ -1428,13 +1432,13 @@ if not relDir.endswith("/"):
 fileFilter = ""
 if len(sys.argv) > 5:
     fileFilter = sys.argv[5]
-    print >> sys.stderr, "Filtering for: [" + fileFilter + "]"
-# read ArangoDB version
-f = open(scriptDir + "VERSION", "r")
-for version in f:
-    version = version.strip('\n')
-f.close()
+    print("Filtering for: [" + fileFilter + "]", file=sys.stderr)
 
+# read ArangoDB version and use it as API version
+f = io.open(scriptDir + "VERSION", encoding="utf-8", newline=None)
+version = f.read().strip()
+f.close()
+swagger['info']['version'] = version
 
 paths = {}
 
@@ -1448,7 +1452,7 @@ for chapter in os.listdir(topdir):
     curPath = os.path.join(topdir, chapter)
     for oneFile in os.listdir(curPath):
         if fileFilter != "" and oneFile != fileFilter:
-            print >> sys.stderr, "Skipping: [" + oneFile + "]"
+            print("Skipping: [" + oneFile + "]", file=sys.stderr)
             continue
         curPath2 = os.path.join(curPath, oneFile)
         if os.path.isfile(curPath2) and oneFile[0] != "." and oneFile.endswith(".md"):
@@ -1458,11 +1462,11 @@ for name, filenames in sorted(files.items(), key=operator.itemgetter(0)):
     currentTag = name
     for fn in filenames:
         thisfn = fn
-        infile = open(fn)
+        infile = io.open(fn, encoding='utf-8', newline=None)
         try:
             getOneApi(infile, name + " - " + ', '.join(filenames), fn)
         except Exception as x:
-            print >> sys.stderr, "\nwhile parsing file: '%s' error: %s" % (thisfn, x)
+            print("\nwhile parsing file: '%s' error: %s" % (thisfn, x), file=sys.stderr)
             raise Exception("while parsing file '%s' error: %s" %(thisfn, x))
         infile.close()
         currentDocuBlock = None
@@ -1477,8 +1481,8 @@ for route in swagger['paths'].keys():
         offsetPlus = 0
         thisVerb = swagger['paths'][route][verb]
         if not thisVerb['description']:
-            print >> sys.stderr, "Description of Route empty; @RESTDESCRIPTION missing?"
-            print >> sys.stderr, "in :" + verb + " " + route
+            print("Description of Route empty; @RESTDESCRIPTION missing?", file=sys.stderr)
+            print("in :" + verb + " " + route, file=sys.stderr)
             #raise TODO
         # insert the post json description into the place we extracted it:
         # Collect the blocks we want to work on, sort them by replacement place:
@@ -1573,7 +1577,7 @@ for route in swagger['paths'].keys():
 
 #print highlight(yaml.dump(swagger, Dumper=yaml.RoundTripDumper), YamlLexer(), TerminalFormatter())
 #print yaml.dump(swagger, Dumper=yaml.RoundTripDumper)
-print json.dumps(swagger, indent=4, separators=(', ', ': '), sort_keys=True)
+print(json.dumps(swagger, indent=4, separators=(', ', ': '), sort_keys=True))
 #print json.dumps(swagger['paths'], indent=4, separators=(', ',': '), sort_keys=True)
 #print highlight(yaml.dump(swagger, Dumper=yaml.RoundTripDumper), YamlLexer(), TerminalFormatter())
 

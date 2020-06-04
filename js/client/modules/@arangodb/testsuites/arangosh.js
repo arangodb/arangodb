@@ -65,6 +65,8 @@ function arangosh (options) {
   let ret = { failed: 0 };
   [
     'testArangoshExitCodeNoConnect',
+    'testArangoshExitCodeSyntaxError',
+    'testArangoshExitCodeSyntaxErrorInSubScript',
     'testArangoshExitCodeFail',
     'testArangoshExitCodeFailButCaught',
     'testArangoshExitCodeEmpty',
@@ -76,6 +78,12 @@ function arangosh (options) {
     'testArangoshShebang'
   ].forEach(function (what) {
     ret[what] = {
+      failed: 0,
+      status: true,
+      total: 0
+    };
+    ret[what + '_file'] = {
+      failed: 0,
       status: true,
       total: 0
     };
@@ -85,6 +93,7 @@ function arangosh (options) {
     print('--------------------------------------------------------------------------------');
     print(title);
     print('--------------------------------------------------------------------------------');
+
     let weirdNames = ['some dog', 'ла́ять', '犬', 'Kläffer'];
     let tmpPath = fs.getTempPath();
     let tmp = fs.join(tmpPath, weirdNames[0], weirdNames[1], weirdNames[2], weirdNames[3]);
@@ -93,6 +102,9 @@ function arangosh (options) {
     process.env.TMP = tmp;
     fs.makeDirectoryRecursive(process.env.TMPDIR);
     pu.cleanupDBDirectoriesAppend(tmp);
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // run command from a .js file
     let args = pu.makeArgs.arangosh(options);
     args['javascript.execute-string'] = command;
     args['log.level'] = 'error';
@@ -126,6 +138,53 @@ function arangosh (options) {
       print(rc);
       print('expect rc: ' + expectedReturnCode);
     }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // run command from a .js file
+    print('\n--------------------------------------------------------------------------------');
+    print(title + ' With js file');
+    print('--------------------------------------------------------------------------------');
+
+
+    var execFile = fs.getTempFile();
+
+    fs.write(execFile, command);
+    section += '_file';
+    let args2 = pu.makeArgs.arangosh(options);
+    args2['javascript.execute'] = execFile;
+    args2['log.level'] = 'error';
+
+    for (let op in opts) {
+      args2[op] = opts[op];
+    }
+
+    const startTime2 = time();
+    let rc2 = executeExternalAndWait(pu.ARANGOSH_BIN, toArgv(args2), false, 0 /*, coverageEnvironment() */);
+    const deltaTime2 = time() - startTime;
+    const failSuccess2 = (rc2.hasOwnProperty('exit') && rc2.exit === expectedReturnCode);
+
+    if (!failSuccess) {
+      ret.failed += 1;
+      ret[section].failed = 1;
+      ret[section]['message'] =
+        'didn\'t get expected return code (' + expectedReturnCode + '): \n' +
+        yaml.safeDump(rc2);
+    } else {
+      ret[section].failed = 0;
+    }
+
+    ++ret[section]['total'];
+    ret[section]['status'] = failSuccess;
+    ret[section]['duration'] = deltaTime;
+    print((failSuccess ? GREEN : RED) + 'Status: ' + (failSuccess ? 'SUCCESS' : 'FAIL') + RESET);
+    if (options.extremeVerbosity) {
+      print(toArgv(args2));
+      print(ret[section]);
+      print(rc2);
+      print('expect rc: ' + expectedReturnCode);
+    }
+
+
     // re-set the environment
     process.env.TMPDIR = tmpPath;
     process.env.TEMP = tmpPath;
@@ -141,7 +200,23 @@ function arangosh (options) {
 
   print();
 
-  runTest('testArangoshExitCodeFail', 'Starting arangosh with exception throwing script:', 'throw(\'foo\')', 1, 
+  runTest('testArangoshExitCodeSyntaxError',
+          'Starting arangosh with unparseable script:',
+          'tis not js!',
+          1, 
+          {'server.endpoint': 'none'});
+  print();
+
+  runTest('testArangoshExitCodeSyntaxErrorInSubScript',
+          'Starting arangosh with unparseable script:',
+          'let x="tis not js!"; require("internal").executeScript(`${x}`, undefined, "/tmp/1")',
+          1, 
+          {'server.endpoint': 'none'});
+  print();
+
+  runTest('testArangoshExitCodeFail',
+          'Starting arangosh with exception throwing script:', 'throw(\'foo\')',
+          1,
           {'server.endpoint': 'none'});
   print();
 

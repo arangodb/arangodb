@@ -1,0 +1,43 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ar_SA{
+    ExemplarCharactersNumbers{"[\u200E \\- , . ٪ ‰ + 0 1 2 3 4 5 6 7 8 9]"}
+    NumberElements{
+        default{"arab"}
+        latn{
+            symbols{
+                percentSign{"٪"}
+            }
+        }
+    }
+    Version{"2.1.49.36"}
+    calendar{
+        default{"islamic-umalqura"}
+        gregorian{
+            dayPeriod{
+                format{
+                    abbreviated{
+                        night2{"ل"}
+                    }
+                    narrow{
+                        morning1{"فجرًا"}
+                    }
+                    wide{
+                        morning1{"فجرًا"}
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        morning1{"فجرًا"}
+                    }
+                    narrow{
+                        morning1{"فجرًا"}
+                    }
+                    wide{
+                        morning1{"فجرًا"}
+                    }
+                }
+            }
+        }
+    }
+}

@@ -126,7 +126,7 @@ TEST_F(IResearchQuerySelectAllTest, test) {
       auto const doc = arangodb::velocypack::Parser::fromJson(
           "{ \"key\": " + std::to_string(i) + "}");
       auto const res =
-          logicalCollection1->insert(&trx, doc->slice(), insertedDocs[i], opt, false);
+          logicalCollection1->insert(&trx, doc->slice(), insertedDocs[i], opt);
       EXPECT_TRUE(res.ok());
     }
 
@@ -135,7 +135,7 @@ TEST_F(IResearchQuerySelectAllTest, test) {
       auto const doc = arangodb::velocypack::Parser::fromJson(
           "{ \"key\": " + std::to_string(i) + "}");
       auto const res =
-          logicalCollection1->insert(&trx, doc->slice(), insertedDocs[i], opt, false);
+          logicalCollection1->insert(&trx, doc->slice(), insertedDocs[i], opt);
       EXPECT_TRUE(res.ok());
     }
 

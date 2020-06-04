@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_SORTED_COLUMN_H
@@ -73,15 +72,15 @@ class sorted_column final : public irs::columnstore_writer::column_output {
     index_.pop_back();
   }
 
-  bool empty() const NOEXCEPT {
+  bool empty() const noexcept {
     return index_.empty();
   }
 
-  size_t size() const NOEXCEPT {
+  size_t size() const noexcept {
     return index_.size();
   }
 
-  void clear() NOEXCEPT {
+  void clear() noexcept {
     data_buf_.clear();
     index_.clear();
   }
@@ -100,15 +99,15 @@ class sorted_column final : public irs::columnstore_writer::column_output {
     flush_buffer_t& buffer
   );
 
-  size_t memory_active() const NOEXCEPT {
+  size_t memory_active() const noexcept {
     return data_buf_.size() + index_.size()*sizeof(decltype(index_)::value_type);
   }
 
-  size_t memory_reserved() const NOEXCEPT {
+  size_t memory_reserved() const noexcept {
     return data_buf_.capacity() + index_.capacity()*sizeof(decltype(index_)::value_type);
   }
 
-  const column_info& info() const NOEXCEPT {
+  const column_info& info() const noexcept {
     return info_;
   }
 

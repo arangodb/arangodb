@@ -119,4 +119,31 @@ void urlDecode(std::string& out, char const* src, size_t len) {
     }
   }
 }
+
+void appendPath(Request const& req, std::string& target) {
+  // construct request path ("/_db/<name>/" prefix)
+  if (!req.header.database.empty()) {
+    target.append("/_db/", 5);
+    http::urlEncode(target, req.header.database);
+  }
+  // must start with /, also turns /_db/abc into /_db/abc/
+  if (req.header.path.empty() || req.header.path[0] != '/') {
+    target.push_back('/');
+  }
+
+  target.append(req.header.path);
+
+  if (!req.header.parameters.empty()) {
+    target.push_back('?');
+    for (auto const& p : req.header.parameters) {
+      if (target.back() != '?') {
+        target.push_back('&');
+      }
+      http::urlEncode(target, p.first);
+      target.push_back('=');
+      http::urlEncode(target, p.second);
+    }
+  }
+}
+
 }}}}  // namespace arangodb::fuerte::v1::http

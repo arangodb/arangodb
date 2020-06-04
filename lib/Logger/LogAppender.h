@@ -42,34 +42,34 @@ class Mutex;
 
 class LogAppender {
  public:
-  static void addLogger(std::function<void(LogMessage*)>);
-
   static void addAppender(std::string const& definition,
                           std::string const& contentFilter = "");
-
+  
+  static void addGlobalAppender(std::shared_ptr<LogAppender>);
+  
   static std::pair<std::shared_ptr<LogAppender>, LogTopic*> buildAppender(
       std::string const& definition, std::string const& contentFilter);
 
-  static void log(LogMessage*);
+  static void logGlobal(LogMessage const&);
+  static void log(LogMessage const&);
 
   static void reopen();
   static void shutdown();
 
  public:
+  LogAppender() = default;
   explicit LogAppender(std::string const& filter) : _filter(filter) {}
-  virtual ~LogAppender() {}
+  virtual ~LogAppender() = default;
+
+  LogAppender(LogAppender const&) = delete;
+  LogAppender& operator=(LogAppender const&) = delete;
 
  public:
-  virtual void logMessage(LogLevel, std::string const& message, size_t offset) = 0;
+  virtual void logMessage(LogMessage const&) = 0;
 
-  virtual std::string details() = 0;
+  virtual std::string details() const = 0;
 
- public:
-  void logMessage(LogLevel level, std::string const& message) {
-    logMessage(level, message, 0);
-  }
-
-  bool checkContent(std::string const& message) {
+  bool checkContent(std::string const& message) const {
     return _filter.empty() || (message.find(_filter) != std::string::npos);
   }
 
@@ -81,9 +81,9 @@ class LogAppender {
 
  private:
   static Mutex _appendersLock;
+  static std::vector<std::shared_ptr<LogAppender>> _globalAppenders;
   static std::map<size_t, std::vector<std::shared_ptr<LogAppender>>> _topics2appenders;
   static std::map<std::pair<std::string, std::string>, std::shared_ptr<LogAppender>> _definition2appenders;
-  static std::vector<std::function<void(LogMessage*)>> _loggers;
   static bool _allowStdLogging;
 };
 }  // namespace arangodb

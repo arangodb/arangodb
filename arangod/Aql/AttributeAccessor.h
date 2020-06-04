@@ -48,7 +48,7 @@ class AttributeAccessor {
   virtual ~AttributeAccessor() = default;
 
   /// @brief execute the accessor
-  virtual AqlValue get(CollectionNameResolver const& resolver, ExpressionContext* context, bool& mustDestroy) = 0;
+  virtual AqlValue get(CollectionNameResolver const& resolver, ExpressionContext const* context, bool& mustDestroy) = 0;
     
  public:
   void replaceVariable(std::unordered_map<VariableId, Variable const*> const& replacements);

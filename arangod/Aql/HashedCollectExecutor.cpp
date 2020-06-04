@@ -26,11 +26,12 @@
 #include "HashedCollectExecutor.h"
 
 #include "Aql/Aggregator.h"
+#include "Aql/AqlCall.h"
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 
@@ -39,32 +40,19 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-constexpr bool HashedCollectExecutor::Properties::preservesOrder;
-constexpr BlockPassthrough HashedCollectExecutor::Properties::allowsBlockPassthrough;
-constexpr bool HashedCollectExecutor::Properties::inputSizeRestrictsOutputSize;
-
 static const AqlValue EmptyValue;
 
 HashedCollectExecutorInfos::HashedCollectExecutorInfos(
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep,
-    std::unordered_set<RegisterId>&& readableInputRegisters,
-    std::unordered_set<RegisterId>&& writeableOutputRegisters,
     std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
     RegisterId collectRegister, std::vector<std::string>&& aggregateTypes,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-    transaction::Methods* trxPtr, bool count)
-    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
-                    std::make_shared<std::unordered_set<RegisterId>>(writeableOutputRegisters),
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _aggregateTypes(aggregateTypes),
+    velocypack::Options const* opts, bool count)
+    : _aggregateTypes(aggregateTypes),
       _aggregateRegisters(aggregateRegisters),
-      _groupRegisters(groupRegisters),
+      _groupRegisters(std::move(groupRegisters)),
       _collectRegister(collectRegister),
-      _count(count),
-      _trxPtr(trxPtr) {
+      _vpackOptions(opts),
+      _count(count) {
   TRI_ASSERT(!_groupRegisters.empty());
 }
 
@@ -80,19 +68,19 @@ std::vector<std::string> HashedCollectExecutorInfos::getAggregateTypes() const {
   return _aggregateTypes;
 }
 
-bool HashedCollectExecutorInfos::getCount() const noexcept { return _count; }
-
-transaction::Methods* HashedCollectExecutorInfos::getTransaction() const {
-  return _trxPtr;
+velocypack::Options const* HashedCollectExecutorInfos::getVPackOptions() const {
+  return _vpackOptions;
 }
+
+bool HashedCollectExecutorInfos::getCount() const noexcept { return _count; }
 
 RegisterId HashedCollectExecutorInfos::getCollectRegister() const noexcept {
   return _collectRegister;
 }
 
-std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*>
+std::vector<Aggregator::Factory>
 HashedCollectExecutor::createAggregatorFactories(HashedCollectExecutor::Infos const& infos) {
-  std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*> aggregatorFactories;
+  std::vector<Aggregator::Factory> aggregatorFactories;
 
   if (infos.getAggregateTypes().empty()) {
     // no aggregate registers. this means we'll only count the number of items
@@ -115,16 +103,12 @@ HashedCollectExecutor::createAggregatorFactories(HashedCollectExecutor::Infos co
 
 HashedCollectExecutor::HashedCollectExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
-      _fetcher(fetcher),
-      _upstreamState(ExecutionState::HASMORE),
       _lastInitializedInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
       _allGroups(1024,
-                 AqlValueGroupHash(_infos.getTransaction(),
-                                   _infos.getGroupRegisters().size()),
-                 AqlValueGroupEqual(_infos.getTransaction())),
+                 AqlValueGroupHash(_infos.getGroupRegisters().size()),
+                 AqlValueGroupEqual(_infos.getVPackOptions())),
       _isInitialized(false),
-      _aggregatorFactories(),
-      _returnedGroups(0) {
+      _aggregatorFactories() {
   _aggregatorFactories = createAggregatorFactories(_infos);
   _nextGroupValues.reserve(_infos.getGroupRegisters().size());
 };
@@ -209,65 +193,104 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(OutputAqlItemRow& output) 
   }
 }
 
-ExecutionState HashedCollectExecutor::init() {
+auto HashedCollectExecutor::consumeInputRange(AqlItemBlockInputRange& inputRange) -> bool {
   TRI_ASSERT(!_isInitialized);
-
-  // fetch & consume all input
-  while (_upstreamState != ExecutionState::DONE) {
-    InputAqlItemRow input = InputAqlItemRow{CreateInvalidInputRowHint{}};
-    std::tie(_upstreamState, input) = _fetcher.fetchRow();
-
-    if (_upstreamState == ExecutionState::WAITING) {
-      TRI_ASSERT(!input.isInitialized());
-      return ExecutionState::WAITING;
-    }
-
-    // !input.isInitialized() => _upstreamState == ExecutionState::DONE
-    TRI_ASSERT(input.isInitialized() || _upstreamState == ExecutionState::DONE);
-
-    // needed to remember the last valid input aql item row
-    // NOTE: this might impact the performance
-    if (input.isInitialized()) {
-      _lastInitializedInputRow = input;
-
+  do {
+    auto [state, input] = inputRange.nextDataRow();
+    if (input) {
       consumeInputRow(input);
+      // We need to retain this
+      _lastInitializedInputRow = input;
     }
-  }
+    if (state == ExecutorState::DONE) {
+      // initialize group iterator for output
+      _currentGroup = _allGroups.begin();
+      return true;
+    }
+  } while (inputRange.hasDataRow());
 
-  // initialize group iterator for output
-  _currentGroup = _allGroups.begin();
-  // The values within are not supposed to be used anymore.
-  _nextGroupValues.clear();
-  return ExecutionState::DONE;
+  TRI_ASSERT(inputRange.upstreamState() == ExecutorState::HASMORE);
+  return false;
 }
 
-std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRows(OutputAqlItemRow& output) {
+auto HashedCollectExecutor::returnState() const -> ExecutorState {
+  if (!_isInitialized || _currentGroup != _allGroups.end()) {
+    // We have either not started, or not produce all groups.
+    return ExecutorState::HASMORE;
+  }
+  return ExecutorState::DONE;
+}
+
+/**
+ * @brief Produce rows.
+ *   We need to consume all rows from the inputRange, except the
+ *   last Row. This is to indicate that this executor is not yet done.
+ *   Afterwards we write all groups into the output.
+ *   Only if we have written the last group we consume
+ *   the remaining inputRow. This is to indicate that
+ *   this executor cannot produce anymore.
+ *
+ * @param inputRange Data from input
+ * @param output Where to write the output
+ * @return std::tuple<ExecutorState, NoStats, AqlCall>
+ */
+
+auto HashedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
+                                        OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, NoStats, AqlCall> {
   TRI_IF_FAILURE("HashedCollectExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-
   if (!_isInitialized) {
-    // fetch & consume all input and initialize output cursor
-    ExecutionState state = init();
-    if (state == ExecutionState::WAITING) {
-      return {state, NoStats{}};
+    // Consume the input range
+    _isInitialized = consumeInputRange(inputRange);
+  }
+
+  if (_isInitialized) {
+    while (_currentGroup != _allGroups.end() && !output.isFull()) {
+      writeCurrentGroupToOutput(output);
+      ++_currentGroup;
+      output.advanceRow();
     }
-    TRI_ASSERT(state == ExecutionState::DONE);
-    _isInitialized = true;
   }
 
-  // produce output
-  if (_currentGroup != _allGroups.end()) {
-    writeCurrentGroupToOutput(output);
-    ++_currentGroup;
-    ++_returnedGroups;
-    TRI_ASSERT(_returnedGroups <= _allGroups.size());
+  AqlCall upstreamCall{};
+  // We cannot forward anything, no skip, no limit.
+  // Need to request all from upstream.
+  return {returnState(), NoStats{}, upstreamCall};
+}
+
+/**
+ * @brief Skip Rows
+ *   We need to consume all rows from the inputRange, except the
+ *   last Row. This is to indicate that this executor is not yet done.
+ *   Afterwards we skip all groups.
+ *   Only if we have skipped the last group we consume
+ *   the remaining inputRow. This is to indicate that
+ *   this executor cannot produce anymore.
+ *
+ * @param inputRange  Data from input
+ * @param call Call from client
+ * @return std::tuple<ExecutorState, NoStats, size_t, AqlCall>
+ */
+auto HashedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+    -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
+  if (!_isInitialized) {
+    // Consume the input range
+    _isInitialized = consumeInputRange(inputRange);
   }
 
-  ExecutionState state = _currentGroup != _allGroups.end() ? ExecutionState::HASMORE
-                                                           : ExecutionState::DONE;
+  if (_isInitialized) {
+    while (_currentGroup != _allGroups.end() && call.needSkipMore()) {
+      ++_currentGroup;
+      call.didSkip(1);
+    }
+  }
 
-  return {state, NoStats{}};
+  AqlCall upstreamCall{};
+  // We cannot forward anything, no skip, no limit.
+  // Need to request all from upstream.
+  return {returnState(), NoStats{}, call.getSkipCount(), upstreamCall};
 }
 
 // finds the group matching the current row, or emplaces it. in either case,
@@ -299,43 +322,44 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
   // this builds a new group with aggregate functions being prepared.
   auto aggregateValues = std::make_unique<AggregateValuesType>();
   aggregateValues->reserve(_aggregatorFactories.size());
-  auto trx = _infos.getTransaction();
-  for (auto const& it : _aggregatorFactories) {
-    aggregateValues->emplace_back((*it)(trx));
+  auto* vpackOpts = _infos.getVPackOptions();
+  for (auto const& factory : _aggregatorFactories) {
+    aggregateValues->emplace_back((*factory)(vpackOpts));
   }
 
   // note: aggregateValues may be a nullptr!
-  auto emplaceResult =
-      _allGroups.emplace(std::move(_nextGroupValues), std::move(aggregateValues));
+  auto [result, emplaced] =
+      _allGroups.try_emplace(std::move(_nextGroupValues), std::move(aggregateValues));
   // emplace must not fail
-  TRI_ASSERT(emplaceResult.second);
+  TRI_ASSERT(emplaced);
 
   // Moving _nextGroupValues left us with an empty vector of minimum capacity.
   // So in order to have correct capacity reserve again.
   _nextGroupValues.reserve(_infos.getGroupRegisters().size());
 
-  return emplaceResult.first;
+  return result;
 };
 
-std::pair<ExecutionState, size_t> HashedCollectExecutor::expectedNumberOfRows(size_t atMost) const {
-  size_t rowsLeft = 0;
+[[nodiscard]] auto HashedCollectExecutor::expectedNumberOfRowsNew(
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
   if (!_isInitialized) {
-    ExecutionState state;
-    std::tie(state, rowsLeft) = _fetcher.preFetchNumberOfRows(atMost);
-    if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(rowsLeft == 0);
-      return {state, 0};
+    if (input.finalState() == ExecutorState::DONE) {
+      // Worst case assumption:
+      // For every input row we have a new group.
+      // We will never produce more then asked for
+      auto estOnInput = input.countDataRows();
+      if (estOnInput == 0 && _infos.getGroupRegisters().empty()) {
+        // Special case, on empty input we will produce 1 output
+        estOnInput = 1;
+      }
+      return std::min(call.getLimit(), estOnInput);
     }
-    // Overestimate, we have not grouped!
-  } else {
-    // This fetcher nows how exactly many rows are left
-    // as it knows how many  groups is has created and not returned.
-    rowsLeft = _allGroups.size() - _returnedGroups;
+    // Otherwise we do not know.
+    return call.getLimit();
   }
-  if (rowsLeft > 0) {
-    return {ExecutionState::HASMORE, rowsLeft};
-  }
-  return {ExecutionState::DONE, rowsLeft};
+  // We know how many groups we have left
+  return std::min<size_t>(call.getLimit(),
+                          std::distance(_currentGroup, _allGroups.end()));
 }
 
 const HashedCollectExecutor::Infos& HashedCollectExecutor::infos() const noexcept {

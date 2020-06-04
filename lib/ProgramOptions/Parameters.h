@@ -36,6 +36,7 @@
 #include <numeric>
 #include <type_traits>
 #include <unordered_set>
+#include <stdexcept>
 
 namespace arangodb {
 namespace options {
@@ -100,7 +101,7 @@ inline T toNumber(std::string value, T base) {
       m = 1000 * 1000 * 1000;
       value = value.substr(0, n - 1);
     } else if (suffix == "%") {
-      m = static_cast<T>(base);
+      m = static_cast<int64_t>(base);
       d = 100;
       value = value.substr(0, n - 1);
     }
@@ -169,7 +170,7 @@ inline std::string stringifyValue<std::string>(std::string const& value) {
 // abstract base parameter type struct
 struct Parameter {
   Parameter() = default;
-  virtual ~Parameter() {}
+  virtual ~Parameter() = default;
 
   virtual void flushValue() {}
 
@@ -446,6 +447,8 @@ struct DiscreteValuesParameter : public T {
     return T::set(value);
   }
 
+  
+  // cppcheck-suppress virtualCallInConstructor ; bogus warning
   std::string description() const override {
     std::string msg("Possible values: ");
     std::vector<std::string> values;

@@ -48,7 +48,7 @@ class IResearchLink; // forward declaration
 ///////////////////////////////////////////////////////////////////////////////
 class IResearchViewCoordinator final : public arangodb::LogicalView {
  public:
-  virtual ~IResearchViewCoordinator();
+  virtual ~IResearchViewCoordinator() = default;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the factory for this type of view
@@ -86,6 +86,13 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
   ///////////////////////////////////////////////////////////////////////////////
   IResearchViewSort const& primarySort() const noexcept {
     return _meta._primarySort;
+  }
+
+  ///////////////////////////////////////////////////////////////////////////////
+  /// @return stored values from links collections
+  ///////////////////////////////////////////////////////////////////////////////
+  IResearchViewStoredValues const& storedValues() const noexcept {
+    return _meta._storedValues;
   }
 
  protected:

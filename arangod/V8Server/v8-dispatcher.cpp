@@ -27,6 +27,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
@@ -77,7 +78,7 @@ static std::string GetTaskId(v8::Isolate* isolate, v8::Handle<v8::Value> arg) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              Javascript functions
+// --SECTION--                                              JavaScript functions
 // -----------------------------------------------------------------------------
 
 static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -87,18 +88,16 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
-  auto& server = application_features::ApplicationServer::server();
+  TRI_GET_GLOBALS();
   if (SchedulerFeature::SCHEDULER == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no scheduler found");
-  } else if (server.isStopping()) {
+  } else if (v8g->_server.isStopping()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
 
   if (args.Length() != 1 || !args[0]->IsObject()) {
     TRI_V8_THROW_EXCEPTION_USAGE("register(<task>)");
   }
-
-  TRI_GET_GLOBALS();
 
   if (ExecContext::current().databaseAuthLevel() != auth::Level::RW) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
@@ -140,9 +139,8 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
                      .FromMaybe(v8::Local<v8::Value>()));
   }
 
-  if(isSystem && !v8g->_securityContext.isInternal()) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "Only Internal Context may create System Tasks");
-
+  if (isSystem && !v8g->_securityContext.isInternal()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "Only internal context may create system tasks");
   }
 
   // offset in seconds into period or from now on if no period
@@ -337,7 +335,7 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "createQueue() needs db RW permissions");
   }
 
-  const std::string runAsUser = exec.user();
+  std::string const runAsUser = exec.user();
   TRI_ASSERT(exec.isAdminUser() || !runAsUser.empty());
   
   std::string key = TRI_ObjectToString(isolate, args[0]);
@@ -355,7 +353,7 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   LOG_TOPIC("aeb56", TRACE, Logger::FIXME) << "Adding queue " << key;
   ExecContextSuperuserScope exscope;
   auto ctx = transaction::V8Context::Create(*vocbase, true);
-  SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::EXCLUSIVE);
+  SingleCollectionTransaction trx(ctx, StaticStrings::QueuesCollection, AccessMode::Type::EXCLUSIVE);
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -363,11 +361,8 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   OperationOptions opts;
-  OperationResult result = trx.insert("_queues", doc.slice(), opts);
-
-  if (result.fail() && result.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
-    result = trx.replace("_queues", doc.slice(), opts);
-  }
+  opts.overwriteMode = OperationOptions::OverwriteMode::Replace;
+  OperationResult result = trx.insert(StaticStrings::QueuesCollection, doc.slice(), opts);
 
   res = trx.finish(result.result);
 
@@ -406,7 +401,7 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   LOG_TOPIC("2cef9", TRACE, Logger::FIXME) << "Removing queue " << key;
   ExecContextSuperuserScope exscope;
   auto ctx = transaction::V8Context::Create(*vocbase, true);
-  SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::WRITE);
+  SingleCollectionTransaction trx(ctx, StaticStrings::QueuesCollection, AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   Result res = trx.begin();
 
@@ -415,7 +410,7 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   OperationOptions opts;
-  OperationResult result = trx.remove("_queues", doc.slice(), opts);
+  OperationResult result = trx.remove(StaticStrings::QueuesCollection, doc.slice(), opts);
 
   res = trx.finish(result.result);
 

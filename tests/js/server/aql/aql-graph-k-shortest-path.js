@@ -532,7 +532,7 @@ function kShortestPathsSyntaxTestSuite() {
       try {
         db._query(query).toArray();
       } catch (e) {
-	assertEqual(e.errorMessage, "AQL: k Shortest Paths only has one return variable near 'RETURN a' at position 2:68 (while parsing)");
+        assertEqual(e.errorMessage, "AQL: k Shortest Paths only has one return variable near 'RETURN a' at position 2:68 (while parsing)");
       }
     }
   };

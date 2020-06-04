@@ -7,6 +7,8 @@
 #define FST_COMPOSE_H_
 
 #include <algorithm>
+#include <memory>
+#include <utility>
 
 #include <fst/log.h>
 
@@ -368,9 +370,9 @@ class ComposeFstImpl
   void AddArc(StateId s, const Arc &arc1, const Arc &arc2,
               const FilterState &f) {
     const StateTuple tuple(arc1.nextstate, arc2.nextstate, f);
-    const Arc oarc(arc1.ilabel, arc2.olabel, Times(arc1.weight, arc2.weight),
-                   state_table_->FindState(tuple));
-    CacheImpl::PushArc(s, oarc);
+    CacheImpl::EmplaceArc(
+        s, arc1.ilabel, arc2.olabel, Times(arc1.weight, arc2.weight),
+        state_table_->FindState(tuple));
   }
 
   StateId ComputeStart() override {
@@ -930,7 +932,8 @@ enum ComposeFilter {
   TRIVIAL_FILTER,
   SEQUENCE_FILTER,
   ALT_SEQUENCE_FILTER,
-  MATCH_FILTER
+  MATCH_FILTER,
+  NO_MATCH_FILTER
 };
 
 struct ComposeOptions {
@@ -1007,6 +1010,12 @@ void Compose(const Fst<Arc> &ifst1, const Fst<Arc> &ifst2,
     }
     case MATCH_FILTER: {
       ComposeFstOptions<Arc, M, MatchComposeFilter<M>> copts;
+      copts.gc_limit = 0;
+      *ofst = ComposeFst<Arc>(ifst1, ifst2, copts);
+      break;
+    }
+    case NO_MATCH_FILTER: {
+      ComposeFstOptions<Arc, M, NoMatchComposeFilter<M>> copts;
       copts.gc_limit = 0;
       *ofst = ComposeFst<Arc>(ifst1, ifst2, copts);
       break;

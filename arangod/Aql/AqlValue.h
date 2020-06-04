@@ -47,6 +47,7 @@ namespace velocypack {
 template <typename T>
 class Buffer;
 class Builder;
+struct Options;
 class Slice;
 class StringRef;
 }
@@ -103,9 +104,6 @@ struct AqlValueHintInt {
 
 struct AqlValueHintUInt {
   explicit AqlValueHintUInt(uint64_t v) noexcept;
-#ifdef TRI_OVERLOAD_FUNCS_SIZE_T
-  explicit AqlValueHintUInt(size_t v) noexcept : value(uint64_t(v)) {}
-#endif
   uint64_t const value;
 };
 
@@ -213,9 +211,6 @@ struct AqlValue final {
   // construct from Builder, copying contents
   explicit AqlValue(arangodb::velocypack::Builder const& builder);
 
-  // construct from Builder, copying contents
-  explicit AqlValue(arangodb::velocypack::Builder const* builder);
-
   // construct from Slice, copying contents
   explicit AqlValue(arangodb::velocypack::Slice const& slice);
 
@@ -225,10 +220,10 @@ struct AqlValue final {
   /// @brief AqlValues can be copied and moved as required
   /// memory management is not performed via AqlValue destructor but via
   /// explicit calls to destroy()
-  AqlValue(AqlValue const&) noexcept = default;
-  AqlValue& operator=(AqlValue const&) noexcept = default;
-  AqlValue(AqlValue&&) noexcept = default;
-  AqlValue& operator=(AqlValue&&) noexcept = default;
+  AqlValue(AqlValue const&) = default;
+  AqlValue& operator=(AqlValue const&) = default;
+  AqlValue(AqlValue&&) = default;
+  AqlValue& operator=(AqlValue&&) = default;
 
   ~AqlValue() = default;
 
@@ -251,7 +246,8 @@ struct AqlValue final {
   bool isDocvec() const noexcept;
 
   /// @brief hashes the value
-  uint64_t hash(transaction::Methods*, uint64_t seed = 0xdeadbeef) const;
+//  uint64_t hash(transaction::Methods*, uint64_t seed = 0xdeadbeef) const;
+  uint64_t hash(uint64_t seed = 0xdeadbeef) const;
 
   /// @brief whether or not the value contains a none value
   bool isNone() const noexcept;
@@ -329,17 +325,22 @@ struct AqlValue final {
   v8::Handle<v8::Value> toV8(v8::Isolate* isolate, transaction::Methods*) const;
 
   /// @brief materializes a value into the builder
-  void toVelocyPack(transaction::Methods*, arangodb::velocypack::Builder& builder,
-                    bool resolveExternals) const;
+  void toVelocyPack(velocypack::Options const*, arangodb::velocypack::Builder&, bool resolveExternals) const;
+//  [[deprecated("Pass VPackOptions instead of the transaction")]]
+//  void toVelocyPack(transaction::Methods*, arangodb::velocypack::Builder&, bool resolveExternals) const;
 
   /// @brief materialize a value into a new one. this expands docvecs and
   /// ranges
+  AqlValue materialize(velocypack::Options const*, bool& hasCopied, bool resolveExternals) const;
+  [[deprecated("Pass VPackOptions instead of the transaction")]]
   AqlValue materialize(transaction::Methods*, bool& hasCopied, bool resolveExternals) const;
 
   /// @brief return the slice for the value
   /// this will throw if the value type is not VPACK_SLICE_POINTER,
   /// VPACK_INLINE, VPACK_MANAGED_SLICE or VPACK_MANAGED_BUFFER
   arangodb::velocypack::Slice slice() const;
+  
+  arangodb::velocypack::Slice slice(AqlValueType type) const;
 
   /// @brief clone a value
   AqlValue clone() const;
@@ -353,17 +354,10 @@ struct AqlValue final {
   /// @brief returns the size of the dynamic memory allocated for the value
   size_t memoryUsage() const noexcept;
 
-  /// @brief create an AqlValue from a vector of AqlItemBlock*s
-  static AqlValue CreateFromBlocks(transaction::Methods*,
-                                   std::vector<AqlItemBlock*> const&,
-                                   std::vector<std::string> const&);
-
-  /// @brief create an AqlValue from a vector of AqlItemBlock*s
-  static AqlValue CreateFromBlocks(transaction::Methods*,
-                                   std::vector<AqlItemBlock*> const&,
-                                   arangodb::aql::RegisterId);
-
   /// @brief compare function for two values
+  static int Compare(velocypack::Options const*, AqlValue const& left,
+                     AqlValue const& right, bool useUtf8);
+  [[deprecated("Pass VPackOptions instead of the transaction")]]
   static int Compare(transaction::Methods*, AqlValue const& left,
                      AqlValue const& right, bool useUtf8);
 
@@ -382,11 +376,26 @@ struct AqlValue final {
   void setPointer(uint8_t const* pointer) noexcept;
 };
 
+// Check that the defaulted constructors, destructor and assignment
+// operators are all noexcept:
+// AqlValue(AqlValue&&)
+static_assert(noexcept(AqlValue(std::declval<AqlValue>())));
+// AqlValue(AqlValue const&)
+static_assert(noexcept(AqlValue(static_cast<AqlValue const&>(std::declval<AqlValue>()))));
+// AqlValue& operator=(AqlValue&&)
+static_assert(noexcept(std::declval<AqlValue>() = std::declval<AqlValue>()));
+// AqlValue& operator=(AqlValue const&)
+static_assert(noexcept(std::declval<AqlValue>() = static_cast<AqlValue const&>(std::declval<AqlValue>())));
+// ~AqlValue()
+static_assert(noexcept(std::declval<AqlValue>().~AqlValue()));
+
 class AqlValueGuard {
  public:
   AqlValueGuard() = delete;
   AqlValueGuard(AqlValueGuard const&) = delete;
   AqlValueGuard& operator=(AqlValueGuard const&) = delete;
+  AqlValueGuard(AqlValueGuard&&) = delete;
+  AqlValueGuard& operator=(AqlValueGuard&&) = delete;
 
   AqlValueGuard(AqlValue& value, bool destroy);
   ~AqlValueGuard();
@@ -397,28 +406,6 @@ class AqlValueGuard {
  private:
   AqlValue& _value;
   bool _destroy;
-};
-
-struct AqlValueMaterializer {
-  explicit AqlValueMaterializer(transaction::Methods* trx);
-
-  AqlValueMaterializer(AqlValueMaterializer const& other);
-
-  // cppcheck-suppress operatorEqVarError
-  AqlValueMaterializer& operator=(AqlValueMaterializer const& other);
-
-  AqlValueMaterializer(AqlValueMaterializer&& other) noexcept;
-
-  // cppcheck-suppress operatorEqVarError
-  AqlValueMaterializer& operator=(AqlValueMaterializer&& other) noexcept;
-
-  ~AqlValueMaterializer();
-
-  arangodb::velocypack::Slice slice(AqlValue const& value, bool resolveExternals);
-
-  transaction::Methods* trx;
-  AqlValue materialized;
-  bool hasCopied;
 };
 
 static_assert(sizeof(AqlValue) == 16, "invalid AqlValue size");

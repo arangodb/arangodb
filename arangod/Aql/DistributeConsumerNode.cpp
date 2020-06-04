@@ -63,24 +63,10 @@ std::unique_ptr<ExecutionBlock> DistributeConsumerNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
   TRI_ASSERT(getRegisterPlan()->nrRegs[previousNode->getDepth()] ==
              getRegisterPlan()->nrRegs[getDepth()]);
-  IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()], calcRegsToKeep(),
-                        getRegsToClear(), _distributeId, _isResponsibleForInitializeCursor);
-  return std::make_unique<ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, SingleRowFetcher<BlockPassthrough::Enable>>>>(
-      &engine, this, std::move(infos));
-}
-
-void DistributeConsumerNode::cloneRegisterPlan(ScatterNode* dependency) {
-  TRI_ASSERT(hasDependency());
-  TRI_ASSERT(getFirstDependency() == dependency);
-  _registerPlan = dependency->getRegisterPlan();
-  _depth = dependency->getDepth();
-  {
-    auto later = dependency->getVarsUsedLater();
-    setVarsUsedLater(later);
-  }
-  {
-    auto valid = dependency->getVarsValid();
-    setVarsValid(valid);
-  }
-  setVarUsageValid();
+  auto registerInfos =
+      createRegisterInfos({}, {});
+  auto executorInfos =
+      IdExecutorInfos(false, 0, _distributeId, _isResponsibleForInitializeCursor);
+  return std::make_unique<ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>(
+      &engine, this, std::move(registerInfos), std::move(executorInfos));
 }

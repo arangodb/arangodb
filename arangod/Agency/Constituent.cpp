@@ -31,6 +31,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Agency/Agent.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/ConditionLocker.h"
@@ -75,6 +76,8 @@ Constituent::Constituent(application_features::ApplicationServer& server)
       _vocbase(nullptr),
       _queryRegistry(nullptr),
       _term(0),
+      _gterm(_server.getFeature<arangodb::MetricsFeature>().gauge(
+               "agency_term", _term, "Agency's term")),
       _leaderID(NO_LEADER),
       _lastHeartbeatSeen(0.0),
       _role(FOLLOWER),
@@ -107,6 +110,7 @@ void Constituent::termNoLock(term_t t, std::string const& votedFor) {
 
   term_t tmp = _term;
   _term = t;
+  _gterm = t;
   std::string tmpVotedFor = _votedFor;
   _votedFor = votedFor;
 
@@ -451,8 +455,6 @@ void Constituent::callElection() {
     _leaderID = NO_LEADER;
   }
 
-  std::stringstream path;
-
   int64_t electionEventCount = countRecentElectionEvents(3600);
   if (electionEventCount <= 0) {
     electionEventCount = 1;
@@ -466,16 +468,15 @@ void Constituent::callElection() {
                                     << electionEventCount << " for next term...";
   }
 
-  path << "/_api/agency_priv/requestVote?term=" << savedTerm
-       << "&candidateId=" << _id << "&prevLogIndex=" << _agent->lastLog().index
-       << "&prevLogTerm=" << _agent->lastLog().term
-       << "&timeoutMult=" << electionEventCount;
-
   auto const& nf = _agent->server().getFeature<arangodb::NetworkFeature>();
   network::ConnectionPool* cp = nf.pool();
   
   network::RequestOptions reqOpts;
   reqOpts.timeout = timeout;
+  reqOpts.param("term", std::to_string(savedTerm)).param("candidateId", _id)
+         .param("prevLogIndex", std::to_string(_agent->lastLog().index))
+         .param("prevLogTerm", std::to_string(_agent->lastLog().term))
+         .param("timeoutMult", std::to_string(electionEventCount));
   
   // Ask everyone for their vote
   // Collect ballots. I vote for myself.
@@ -488,7 +489,7 @@ void Constituent::callElection() {
     if (i == _id) {
       continue;
     }
-    network::sendRequest(cp, _agent->config().poolAt(i), fuerte::RestVerb::Get, path.str(),
+    network::sendRequest(cp, _agent->config().poolAt(i), fuerte::RestVerb::Get, "/_api/agency_priv/requestVote",
                          VPackBuffer<uint8_t>(), reqOpts).thenValue([=](network::Response r) {
       if (r.ok() && r.response->statusCode() == 200) {
         VPackSlice slc = r.slice();
@@ -558,7 +559,7 @@ void Constituent::callElection() {
 void Constituent::update(std::string const& leaderID, term_t t) {
   MUTEX_LOCKER(guard, _termVoteLock);
   _term = t;
-
+  _gterm = t;
   if (_leaderID != leaderID) {
     LOG_TOPIC("fe299", INFO, Logger::AGENCY)
         << "Constituent::update: setting _leaderID to '" << leaderID
@@ -599,10 +600,11 @@ void Constituent::run() {
   {
     std::string const aql(
         "FOR l IN election SORT l._key DESC LIMIT 1 RETURN l");
-    arangodb::aql::Query query(false, *_vocbase, arangodb::aql::QueryString(aql),
-                               bindVars, nullptr, arangodb::aql::PART_MAIN);
+    arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
+                               arangodb::aql::QueryString(aql),
+                               bindVars, nullptr);
 
-    aql::QueryResult queryResult = query.executeSync(_queryRegistry);
+    aql::QueryResult queryResult = query.executeSync();
 
     if (queryResult.result.fail()) {
       THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -615,12 +617,10 @@ void Constituent::run() {
         auto ii = i.resolveExternals();
         try {
           MUTEX_LOCKER(locker, _termVoteLock);
-          _term = ii.get("term").getUInt();
-          _votedFor = ii.get("voted_for").copyString();
+          termNoLock(ii.get("term").getUInt(), ii.get("voted_for").copyString());
         } catch (std::exception const&) {
           LOG_TOPIC("404be", ERR, Logger::AGENCY)
-              << "Persisted election entries corrupt! Defaulting term,vote "
-                 "(0,0)";
+            << "Persisted election entries corrupt! Defaulting term,vote (0,0)";
         }
       }
     }
@@ -639,13 +639,12 @@ void Constituent::run() {
     MUTEX_LOCKER(guard, _termVoteLock);
     _leaderID = _agent->config().id();
     LOG_TOPIC("66f72", INFO, Logger::AGENCY)
-        << "Set _leaderID to '" << _leaderID << "' in term " << _term;
+      << "Set _leaderID to '" << _leaderID << "' in term " << _term;
   } else {
     {
       MUTEX_LOCKER(guard, _termVoteLock);
-      LOG_TOPIC("29175", INFO, Logger::AGENCY) << "Setting role to follower"
-                                         " in term "
-                                      << _term;
+      LOG_TOPIC("29175", INFO, Logger::AGENCY)
+        << "Setting role to follower  in term " << _term;
       _role = FOLLOWER;
     }
     while (!this->isStopping()) {

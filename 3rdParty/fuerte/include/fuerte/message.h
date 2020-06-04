@@ -88,7 +88,7 @@ struct MessageHeader {
   StringMap _meta;  /// Header meta data (equivalent to HTTP headers)
   short _version;
   ContentType _contentType = ContentType::Unset;
-  ContentType _acceptType = ContentType::Unset;
+  ContentType _acceptType = ContentType::VPack;
 };
 
 struct RequestHeader final : public MessageHeader {
@@ -124,10 +124,7 @@ struct ResponseHeader final : public MessageHeader {
   /// Response code
   StatusCode responseCode = StatusUndefined;
 
-  MessageType responseType() const { return _responseType; }
-
- private:
-  MessageType _responseType = MessageType::Response;
+  MessageType responseType() const { return MessageType::Response; }
 };
 
 // Message is base class for message being send to (Request) or
@@ -178,7 +175,7 @@ class Message {
 class Request final : public Message {
  public:
   static constexpr std::chrono::milliseconds defaultTimeout =
-      std::chrono::milliseconds(300 * 1000);
+      std::chrono::seconds(300);
 
   Request(RequestHeader messageHeader = RequestHeader())
       : header(std::move(messageHeader)), _timeout(defaultTimeout) {}
@@ -213,6 +210,7 @@ class Request final : public Message {
   std::vector<velocypack::Slice> slices() const override;
   asio_ns::const_buffer payload() const override;
   std::size_t payloadSize() const override;
+  velocypack::Buffer<uint8_t>&& moveBuffer() && { return std::move(_payload); }
 
   // get timeout, 0 means no timeout
   inline std::chrono::milliseconds timeout() const { return _timeout; }
@@ -236,7 +234,7 @@ class Response : public Message {
   /// @brief request header
   ResponseHeader header;
 
-  MessageType type() const override { return header._responseType; }
+  MessageType type() const override { return header.responseType(); }
   MessageHeader const& messageHeader() const override { return header; }
   ///////////////////////////////////////////////
   // get / check status

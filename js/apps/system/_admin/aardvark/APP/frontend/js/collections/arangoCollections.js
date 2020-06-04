@@ -157,9 +157,6 @@
       var data = {};
       data.name = object.collName;
       data.waitForSync = object.wfs;
-      if (object.journalSize > 0) {
-        data.journalSize = object.journalSize;
-      }
       data.isSystem = object.isSystem;
       data.type = parseInt(object.collType, 10);
       if (object.shards) {

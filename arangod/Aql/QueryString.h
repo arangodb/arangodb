@@ -55,6 +55,7 @@ class QueryString {
   ~QueryString() = default;
 
  public:
+  std::string const& string() const noexcept { return _queryString; }
   char const* data() const { return _queryString.data(); }
   size_t size() const { return _queryString.size(); }
   size_t length() const { return _queryString.size(); }

@@ -45,46 +45,56 @@ class GeneralConnection : public fuerte::Connection {
     return _state.load(std::memory_order_acquire);
   }
 
+  /// The following public methods can be called from any thread:
+
   /// @brief cancel the connection, unusable afterwards
   void cancel() override;
 
   // Activate this connection
-  void startConnection() override;
+  void start() override;
 
+  /// All protected or private methods below here must only be called on the
+  /// IO thread.
  protected:
+  void startConnection();
   // shutdown connection, cancel async operations
-  void shutdownConnection(const fuerte::Error, std::string const& msg = "");
-
-  // Connect with a given number of retries
-  void tryConnect(unsigned retries);
+  void shutdownConnection(const fuerte::Error, std::string const& msg = "",
+                          bool mayRestart = false);
 
   void restartConnection(const Error error);
 
   // Call on IO-Thread: read from socket
   void asyncReadSome();
-
- protected:
+  
   virtual void finishConnect() = 0;
 
-  /// begin writing
+  /// The following is called when the connection is permanently failed. It is
+  /// used to shut down any activity in the derived classes in a way that avoids
+  /// sleeping barbers
+  virtual void terminateActivity() = 0;
+
+  /// begin writing,
   virtual void startWriting() = 0;
 
   // called by the async_read handler (called from IO thread)
   virtual void asyncReadCallback(asio_ns::error_code const&) = 0;
 
-  /// abort ongoing / unfinished requests
+  /// abort ongoing / unfinished requests (locally)
   virtual void abortOngoingRequests(const fuerte::Error) = 0;
 
   /// abort all requests lingering in the queue
   virtual void drainQueue(const fuerte::Error) = 0;
+ 
+ private:
+  // Connect with a given number of retries
+  void tryConnect(unsigned retries, std::chrono::steady_clock::time_point start,
+                  asio_ns::error_code const& ec);
 
  protected:
   /// @brief io context to use
   std::shared_ptr<asio_ns::io_context> _io_context;
   /// @brief underlying socket
   Socket<ST> _proto;
-  /// @brief timer to handle connection / request timeouts
-  asio_ns::steady_timer _timeout;
 
   /// default max chunksize is 30kb in arangodb
   static constexpr size_t READ_BLOCK_SIZE = 1024 * 32;

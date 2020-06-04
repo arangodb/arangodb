@@ -1,0 +1,8 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ko_KP{
+    Countries{
+        KP{"조선민주주의인민공화국"}
+    }
+    Version{"2.1.47.71"}
+}

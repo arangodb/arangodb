@@ -4,9 +4,9 @@
 @RESTHEADER{POST /_api/foxx/commit, Commit local service state}
 
 @RESTDESCRIPTION
-Commits the local service state of the coordinator to the database.
+Commits the local service state of the Coordinator to the database.
 
-This can be used to resolve service conflicts between coordinators that can not be fixed automatically due to missing data.
+This can be used to resolve service conflicts between Coordinators that can not be fixed automatically due to missing data.
 
 @RESTQUERYPARAMETERS
 

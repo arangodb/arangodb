@@ -1,0 +1,141 @@
+#!/usr/bin/env bpftrace
+
+// To use this you have to install bpftrace and compile with -DUSE_DTRACE.
+// Then simply execute this script. It will output a single line for each
+// request. As given this will only work if the client runs single-threaded.
+
+BEGIN {
+  @START = nsecs;
+  @ProcessRequest = 0;
+  @ProcessStream = 0;
+  @ProcessMessage = 0;
+  @ExecuteRequest = 0;
+  printf("Measuring timings for requests in arangod...\n");
+  printf("Values are (in this order per line):\n");
+  printf("  Absolute time since script start (all times in nanoseconds)\n");
+  printf("  CommTask::processRequest -> CommTask::prepareExecution\n");
+  printf("  CommTask::prepareExecution -> CommTask::executeRequest\n");
+  printf("  CommTask::executeRequest -> CommTask::handleRequestSync\n");
+  printf("  CommTask::handleRequestSync -> RestHandler::executeEngine\n");
+  printf("  RestHandler::executeEngine -> CommTask::sendResponse\n");
+  printf("  CommTask::sendResponse -> CommTask::writeResponse\n");
+  printf("  CommTask::writeResponse -> CommTask::responseWritten\n");
+  printf("  Total time for request until response written\n");
+}
+
+usdt:build/bin/arangod:arangod:HttpCommTaskProcess* {
+  @ProcessRequest = nsecs;
+}
+
+usdt:build/bin/arangod:arangod:CommTaskPrepareExecution {
+  @PrepareExecution = nsecs;
+}
+
+usdt:build/bin/arangod:arangod:CommTaskExecuteRequest {
+  @ExecuteRequest = nsecs;
+}
+
+usdt:build/bin/arangod:arangod:CommTaskHandleRequestSync {
+  @HandleRequestSync = nsecs;
+}
+
+usdt:build/bin/arangod:arangod:RestHandlerExecuteEngine {
+  @ExecuteEngine = nsecs;
+}
+
+usdt:build/bin/arangod:arangod:HttpCommTaskSendResponse* {
+  @SendResponse = nsecs;
+}
+
+usdt:build/bin/arangod:arangod:HttpCommTaskWriteResponse* {
+  @WriteResponse = nsecs;
+}
+
+usdt:build/bin/arangod:arangod:HttpCommTaskResponseWritten* {
+  $t = nsecs;
+  if (@ProcessRequest != 0) {
+      printf("%lld %lld %lld %lld %lld %lld ",
+             $t - @START,
+             @PrepareExecution - @ProcessRequest,
+             @ExecuteRequest - @PrepareExecution,
+             @HandleRequestSync - @ExecuteRequest,
+             @ExecuteEngine - @HandleRequestSync,
+             @SendResponse - @ExecuteEngine);
+      printf("%lld %lld %lld\n",
+             @WriteResponse - @SendResponse,
+             $t - @WriteResponse,
+             $t - @ProcessRequest);
+      @Total = hist($t - @ProcessRequest);
+  } else {
+      printf("%lld ResponseWritten\n", $t - @START);
+  }
+  @ProcessRequest = 0;
+}
+
+usdt:build/bin/arangod:arangod:H2CommTaskProcessStream* {
+  @ProcessStream = nsecs;
+}
+
+usdt:build/bin/arangod:arangod:H2CommTaskSendResponse* {
+  @SendResponse = nsecs;
+}
+
+usdt:build/bin/arangod:arangod:H2CommTaskBeforeAsyncWrite* {
+  @BeforeAsyncWrite = nsecs;
+}
+
+usdt:build/bin/arangod:arangod:H2CommTaskAfterAsyncWrite* {
+  $t = nsecs;
+  if (@ProcessStream != 0) {
+      printf("%lld %lld %lld %lld %lld %lld ",
+             $t - @START,
+             @PrepareExecution - @ProcessStream,
+             @ExecuteRequest - @PrepareExecution,
+             @HandleRequestSync - @ExecuteRequest,
+             @ExecuteEngine - @HandleRequestSync,
+             @SendResponse - @ExecuteEngine);
+      printf("%lld %lld %lld\n",
+             @BeforeAsyncWrite - @SendResponse,
+             $t - @BeforeAsyncWrite,
+             $t - @ProcessStream);
+      @Total = hist($t - @ProcessStream);
+  } else {
+      printf("%lld AfterAsyncWrite\n", $t - @START);
+  }
+  @ProcessStream = 0;
+}
+
+usdt:build/bin/arangod:arangod:VstCommTaskProcess* {
+  @ProcessMessage = nsecs;
+}
+
+usdt:build/bin/arangod:arangod:VstCommTaskSendResponse* {
+  @SendResponse = nsecs;
+}
+
+usdt:build/bin/arangod:arangod:VstCommTaskBeforeAsyncWrite* {
+  @BeforeAsyncWrite = nsecs;
+}
+
+usdt:build/bin/arangod:arangod:VstCommTaskAfterAsyncWrite* {
+  $t = nsecs;
+  if (@ProcessMessage != 0 && @ExecuteRequest != 0) {
+      printf("%lld %lld %lld %lld %lld %lld ",
+             $t - @START,
+             @PrepareExecution - @ProcessMessage,
+             @ExecuteRequest - @PrepareExecution,
+             @HandleRequestSync - @ExecuteRequest,
+             @ExecuteEngine - @HandleRequestSync,
+             @SendResponse - @ExecuteEngine);
+      printf("%lld %lld %lld\n",
+             @BeforeAsyncWrite - @SendResponse,
+             $t - @BeforeAsyncWrite,
+             $t - @ProcessMessage);
+      @Total = hist($t - @ProcessMessage);
+  } else {
+      printf("%lld AfterAsyncWrite\n", $t - @START);
+  }
+  @ProcessMessage = 0;
+  @ExecuteRequest = 0;
+}
+

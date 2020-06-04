@@ -41,14 +41,14 @@ range query, a skip-list index on the queried attribute must be present.
 
 Returns a cursor containing the result, see [HTTP Cursor](../AqlQueryCursor/README.md) for details.
 
-Note: the *range* simple query is **deprecated** as of ArangoDB 2.6. 
+Note: the *range* simple query is **deprecated** as of ArangoDB 2.6.
 The function may be removed in future versions of ArangoDB. The preferred
 way for retrieving documents from a collection within a specific range
-is to use an AQL query as follows: 
+is to use an AQL query as follows:
 
-    FOR doc IN @@collection 
-      FILTER doc.value >= @left && doc.value < @right 
-      LIMIT @skip, @limit 
+    FOR doc IN @@collection
+      FILTER doc.value >= @left && doc.value < @right
+      LIMIT @skip, @limit
       RETURN doc`
 
 @RESTRETURNCODES
@@ -62,7 +62,7 @@ query. The response body contains an error document in this case.
 
 @RESTRETURNCODE{404}
 is returned if the collection specified by *collection* is unknown or no
-suitable index for the range query is present.  The response body contains 
+suitable index for the range query is present.  The response body contains
 an error document in this case.
 
 @EXAMPLES
@@ -87,4 +87,3 @@ an error document in this case.
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

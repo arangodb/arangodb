@@ -34,7 +34,7 @@ It returns an object with the attributes
 
 - *isSystem*: If *true* then the collection is a system collection.
 
-If renaming the collection succeeds, then the collection is also renamed in 
+If renaming the collection succeeds, then the collection is also renamed in
 all graph definitions inside the `_graphs` collection in the current database.
 
 **Note**: this method is not available in a cluster.
@@ -67,4 +67,3 @@ is returned.
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

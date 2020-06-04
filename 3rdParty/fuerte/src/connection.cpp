@@ -28,16 +28,15 @@
 namespace arangodb { namespace fuerte { inline namespace v1 {
 // Deconstructor
 Connection::~Connection() {
-  FUERTE_LOG_DEBUG << "Destroying Connection" << std::endl;
+  FUERTE_LOG_DEBUG << "Destroying Connection" << "\n";
 }
 
 // sendRequest and wait for it to finished.
-std::unique_ptr<Response> Connection::sendRequest(
-    std::unique_ptr<Request> request) {
-  FUERTE_LOG_TRACE << "sendRequest (sync): before send" << std::endl;
+std::unique_ptr<Response> Connection::sendRequest(std::unique_ptr<Request> request) {
+  FUERTE_LOG_TRACE << "sendRequest (sync): before send" << "\n";
 
   WaitGroup wg;
-  auto rv = std::unique_ptr<Response>(nullptr);
+  std::unique_ptr<Response> rv;
   ::arangodb::fuerte::v1::Error error = Error::NoError;
 
   auto cb = [&](::arangodb::fuerte::v1::Error e,
@@ -54,11 +53,11 @@ std::unique_ptr<Response> Connection::sendRequest(
     sendRequest(std::move(request), cb);
 
     // Wait for request to finish.
-    FUERTE_LOG_TRACE << "sendRequest (sync): before wait" << std::endl;
+    FUERTE_LOG_TRACE << "sendRequest (sync): before wait" << "\n";
     wg.wait();
   }
 
-  FUERTE_LOG_TRACE << "sendRequest (sync): done" << std::endl;
+  FUERTE_LOG_TRACE << "sendRequest (sync): done" << "\n";
 
   if (error != Error::NoError) {
     throw error;
@@ -66,14 +65,17 @@ std::unique_ptr<Response> Connection::sendRequest(
 
   return rv;
 }
-  
+
 std::string Connection::endpoint() const {
   std::string endpoint;
-  endpoint.reserve(16);
+  endpoint.reserve(32);
+  // http/vst
   endpoint.append(fuerte::to_string(_config._protocolType));
   endpoint.push_back('+');
+  // tcp/ssl/unix
   endpoint.append(fuerte::to_string(_config._socketType));
   endpoint.append("://");
+  // domain name or IP (xxx.xxx.xxx.xxx)
   endpoint.append(_config._host);
   if (_config._socketType != SocketType::Unix) {
     endpoint.push_back(':');

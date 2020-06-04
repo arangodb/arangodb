@@ -25,108 +25,71 @@
 // 3rdParty\iresearch\core\shared.hpp
 #if defined(_MSC_VER)
 #include "date/date.h"
-#undef NOEXCEPT
 #endif
 
-#include <string.h>
-#include <cstdint>
-#include <exception>
-#include <iterator>
-#include <map>
-#include <unordered_set>
-#include <vector>
+#include "analysis/analyzers.hpp"
+#include "analysis/token_attributes.hpp"
+#include "analysis/text_token_stream.hpp"
+#include "analysis/delimited_token_stream.hpp"
+#include "analysis/ngram_token_stream.hpp"
+#include "analysis/token_streams.hpp"
+#include "analysis/text_token_stemming_stream.hpp"
+#include "analysis/text_token_normalizing_stream.hpp"
+#include "utils/hash_utils.hpp"
+#include "utils/object_pool.hpp"
 
-#include <analysis/analyzers.hpp>
-#include <analysis/delimited_token_stream.hpp>
-#include <analysis/ngram_token_stream.hpp>
-#include <analysis/text_token_normalizing_stream.hpp>
-#include <analysis/text_token_stemming_stream.hpp>
-#include <analysis/text_token_stream.hpp>
-#include <analysis/token_attributes.hpp>
-#include <analysis/token_streams.hpp>
-#include <utils/hash_utils.hpp>
-#include <utils/object_pool.hpp>
-
-#include <velocypack/Buffer.h>
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
-
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationServerHelper.h"
 #include "Aql/AqlFunctionFeature.h"
-#include "Aql/AqlValue.h"
 #include "Aql/ExpressionContext.h"
-#include "Aql/Function.h"
-#include "Aql/Functions.h"
+#include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
-#include "Aql/QueryResult.h"
 #include "Aql/QueryString.h"
-#include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/debugging.h"
-#include "Basics/error.h"
-#include "Basics/system-compiler.h"
-#include "Basics/voc-errors.h"
+#include "Basics/FunctionUtils.h"
+#include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/V8FeaturePhase.h"
-#include "Futures/Utilities.h"
 #include "IResearchAnalyzerFeature.h"
 #include "IResearchCommon.h"
+#include "IResearchLink.h"
 #include "Logger/LogMacros.h"
-#include "Logger/LoggerStream.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
-#include "Rest/CommonDefines.h"
-#include "Rest/GeneralRequest.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/UpgradeFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
-#include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VelocyPackHelper.h"
-#include "VocBase/AccessMode.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalView.h"
 #include "VocBase/Methods/Collections.h"
-#include "VocBase/Methods/Upgrade.h"
 #include "VocBase/vocbase.h"
-#include "shared.hpp"
 
-namespace iresearch {
-namespace text_format {
-
-static const irs::text_format::type_id VPACK("vpack");
-
-const type_id& vpack_t() { return VPACK; }
-
-}
-}
+#include <Containers/HashSet.h>
 
 namespace {
 
 using namespace std::literals::string_literals;
 
-static std::string const ANALYZER_COLLECTION_NAME("_analyzers");
 static char const ANALYZER_PREFIX_DELIM = ':'; // name prefix delimiter (2 chars)
 static size_t const ANALYZER_PROPERTIES_SIZE_MAX = 1024 * 1024; // arbitrary value
 static size_t const DEFAULT_POOL_SIZE = 8;  // arbitrary value
 static std::string const FEATURE_NAME("ArangoSearchAnalyzer");
-static irs::string_ref const IDENTITY_ANALYZER_NAME("identity");
-static auto const RELOAD_INTERVAL = std::chrono::seconds(60); // arbitrary value
+static irs::string_ref constexpr IDENTITY_ANALYZER_NAME("identity");
 
 bool normalize(std::string& out,
                irs::string_ref const& type,
@@ -139,16 +102,18 @@ bool normalize(std::string& out,
   // for API consistency we only support analyzers configurable via jSON
   return irs::analysis::analyzers::normalize(
     out, type,
-    irs::text_format::vpack,
+    irs::type<irs::text_format::vpack>::get(),
     arangodb::iresearch::ref<char>(properties),
     false);
 }
 
 class IdentityAnalyzer final : public irs::analysis::analyzer {
  public:
-  DECLARE_ANALYZER_TYPE();
+  static constexpr irs::string_ref type_name() noexcept {
+    return IDENTITY_ANALYZER_NAME;
+  }
 
-  static bool normalize(const irs::string_ref& /*args*/, std::string& out) noexcept {
+  static bool normalize(const irs::string_ref& /*args*/, std::string& out) {
     out.resize(VPackSlice::emptyObjectSlice().byteSize());
     std::memcpy(&out[0], VPackSlice::emptyObjectSlice().begin(), out.size());
     return true;
@@ -159,18 +124,22 @@ class IdentityAnalyzer final : public irs::analysis::analyzer {
   }
 
   IdentityAnalyzer()
-    : irs::analysis::analyzer(IdentityAnalyzer::type()),
+    : irs::analysis::analyzer(irs::type<IdentityAnalyzer>::get()),
       _empty(true) {
-    _attrs.emplace(_term);
-    _attrs.emplace(_inc);
   }
 
-  virtual irs::attribute_view const& attributes() const noexcept override {
-    return _attrs;
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    if (type == irs::type<irs::increment>::id()) {
+      return &_inc;
+    }
+
+    return type == irs::type<irs::term_attribute>::id()
+        ? &_term
+        : nullptr;
   }
 
   virtual bool next() noexcept override {
-    auto empty = _empty;
+    auto const empty = _empty;
 
     _empty = true;
 
@@ -179,27 +148,18 @@ class IdentityAnalyzer final : public irs::analysis::analyzer {
 
   virtual bool reset(irs::string_ref const& data) noexcept override {
     _empty = false;
-    _term.value(irs::ref_cast<irs::byte_type>(data));
+    _term.value = irs::ref_cast<irs::byte_type>(data);
 
     return true;
   }
 
  private:
-  struct IdentityValue : irs::term_attribute {
-    void value(irs::bytes_ref const& data) noexcept {
-      value_ = data;
-    }
-  };
-
-  irs::attribute_view _attrs;
-  IdentityValue _term;
+  irs::term_attribute _term;
   irs::increment _inc;
   bool _empty;
 }; // IdentityAnalyzer
 
-DEFINE_ANALYZER_TYPE_NAMED(IdentityAnalyzer, IDENTITY_ANALYZER_NAME);
 REGISTER_ANALYZER_VPACK(IdentityAnalyzer, IdentityAnalyzer::make, IdentityAnalyzer::normalize);
-
 
 // Delimiter analyzer vpack routines ////////////////////////////
 namespace delimiter_vpack {
@@ -222,7 +182,7 @@ bool parse_delimiter_vpack_config(const irs::string_ref& args, std::string& deli
   return false;
 }
 
-irs::analysis::analyzer::ptr delimiter_vpack_builder(irs::string_ref const& args) noexcept {
+irs::analysis::analyzer::ptr delimiter_vpack_builder(irs::string_ref const& args) {
   std::string delimiter;
   if (parse_delimiter_vpack_config(args, delimiter)) {
     return irs::analysis::delimited_token_stream::make(delimiter);
@@ -230,7 +190,7 @@ irs::analysis::analyzer::ptr delimiter_vpack_builder(irs::string_ref const& args
   return nullptr;
 }
 
-bool delimiter_vpack_normalizer(const irs::string_ref& args, std::string& out) noexcept {
+bool delimiter_vpack_normalizer(const irs::string_ref& args, std::string& out) {
   std::string tmp;
   if (parse_delimiter_vpack_config(args, tmp)) {
     VPackBuilder vpack;
@@ -252,8 +212,16 @@ namespace ngram_vpack {
 const irs::string_ref MIN_PARAM_NAME = "min";
 const irs::string_ref MAX_PARAM_NAME = "max";
 const irs::string_ref PRESERVE_ORIGINAL_PARAM_NAME = "preserveOriginal";
+const irs::string_ref STREAM_TYPE_PARAM_NAME       = "streamType";
+const irs::string_ref START_MARKER_PARAM_NAME      = "startMarker";
+const irs::string_ref END_MARKER_PARAM_NAME        = "endMarker";
 
-bool parse_ngram_vpack_config(const irs::string_ref& args, irs::analysis::ngram_token_stream::options_t& options) {
+const std::map<irs::string_ref, irs::analysis::ngram_token_stream_base::InputType> STREAM_TYPE_CONVERT_MAP = {
+  { "binary", irs::analysis::ngram_token_stream_base::InputType::Binary },
+  { "utf8", irs::analysis::ngram_token_stream_base::InputType::UTF8 }
+};
+
+bool parse_ngram_vpack_config(const irs::string_ref& args, irs::analysis::ngram_token_stream_base::Options& options) {
   auto slice = arangodb::iresearch::slice<char>(args);
 
   if (!slice.isObject()) {
@@ -292,60 +260,146 @@ bool parse_ngram_vpack_config(const irs::string_ref& args, irs::analysis::ngram_
       << slice.toString();
     return false;
   }
+
+  if (slice.hasKey(START_MARKER_PARAM_NAME.c_str())) {
+    auto start_marker_json = slice.get(START_MARKER_PARAM_NAME.c_str());
+    if (start_marker_json.isString()) {
+      options.start_marker = irs::ref_cast<irs::byte_type>(
+        arangodb::iresearch::getStringRef(start_marker_json));
+    } else {
+      std::string argString = slice.toJson();
+      IR_FRMT_ERROR(
+          "Failed to read '%s' attribute as string while constructing "
+          "ngram_token_stream from jSON arguments: %s",
+          START_MARKER_PARAM_NAME.c_str(), argString.c_str());
+      return false;
+    }
+  }
+
+  if (slice.hasKey(END_MARKER_PARAM_NAME.c_str())) {
+    auto end_marker_json = slice.get(END_MARKER_PARAM_NAME.c_str());
+    if (end_marker_json.isString()) {
+      options.end_marker = irs::ref_cast<irs::byte_type>(
+        arangodb::iresearch::getStringRef(end_marker_json));
+    } else {
+      std::string argString = slice.toJson();
+      IR_FRMT_ERROR(
+          "Failed to read '%s' attribute as string while constructing "
+          "ngram_token_stream from jSON arguments: %s",
+          END_MARKER_PARAM_NAME.c_str(), argString.c_str());
+      return false;
+    }
+  }
+
+  if (slice.hasKey(STREAM_TYPE_PARAM_NAME.c_str())) {
+      auto stream_type_json = slice.get(STREAM_TYPE_PARAM_NAME.c_str());
+
+      if (!stream_type_json.isString()) {
+        std::string argString = slice.toJson();
+        IR_FRMT_WARN(
+            "Non-string value in '%s' while constructing ngram_token_stream "
+            "from jSON arguments: %s",
+            STREAM_TYPE_PARAM_NAME.c_str(), argString.c_str());
+        return false;
+      }
+      auto itr = STREAM_TYPE_CONVERT_MAP.find(arangodb::iresearch::getStringRef(stream_type_json));
+      if (itr == STREAM_TYPE_CONVERT_MAP.end()) {
+        std::string argString = slice.toJson();
+        IR_FRMT_WARN(
+            "Invalid value in '%s' while constructing ngram_token_stream from "
+            "jSON arguments: %s",
+            STREAM_TYPE_PARAM_NAME.c_str(), argString.c_str());
+        return false;
+      }
+      options.stream_bytes_type = itr->second;
+  }
+
+  min = std::max(min, decltype(min)(1));
+  max = std::max(max, min);
+
   options.min_gram = min;
   options.max_gram = max;
   options.preserve_original = slice.get(PRESERVE_ORIGINAL_PARAM_NAME).getBool();
+
   return true;
 }
 
 
-irs::analysis::analyzer::ptr ngram_vpack_builder(irs::string_ref const& args) noexcept {
-  irs::analysis::ngram_token_stream::options_t tmp;
+irs::analysis::analyzer::ptr ngram_vpack_builder(irs::string_ref const& args) {
+  irs::analysis::ngram_token_stream_base::Options tmp;
   if (parse_ngram_vpack_config(args, tmp)) {
-    return irs::analysis::ngram_token_stream::make(tmp);
+    switch (tmp.stream_bytes_type) {
+      case irs::analysis::ngram_token_stream_base::InputType::Binary:
+        return irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>::make(tmp);
+      case irs::analysis::ngram_token_stream_base::InputType::UTF8:
+        return irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::UTF8>::make(tmp);
+    }
   }
+
   return nullptr;
 }
 
 
-bool ngram_vpack_normalizer(const irs::string_ref& args, std::string& out) noexcept {
-  irs::analysis::ngram_token_stream::options_t tmp;
+bool ngram_vpack_normalizer(const irs::string_ref& args, std::string& out) {
+  irs::analysis::ngram_token_stream_base::Options tmp;
   if (parse_ngram_vpack_config(args, tmp)) {
     VPackBuilder vpack;
     {
       VPackObjectBuilder scope(&vpack);
-      vpack.add(MIN_PARAM_NAME, VPackValue(tmp.min_gram));
-      vpack.add(MAX_PARAM_NAME, VPackValue(tmp.max_gram));
-      vpack.add(PRESERVE_ORIGINAL_PARAM_NAME, VPackValue(tmp.preserve_original));
+      vpack.add(MIN_PARAM_NAME.c_str(), MIN_PARAM_NAME.size(), VPackValue(tmp.min_gram));
+      vpack.add(MAX_PARAM_NAME.c_str(), MAX_PARAM_NAME.size(), VPackValue(tmp.max_gram));
+      vpack.add(PRESERVE_ORIGINAL_PARAM_NAME.c_str(), PRESERVE_ORIGINAL_PARAM_NAME.size(),
+                VPackValue(tmp.preserve_original));
+      vpack.add(START_MARKER_PARAM_NAME.c_str(), START_MARKER_PARAM_NAME.size(),
+                arangodb::iresearch::toValuePair(irs::ref_cast<char>(tmp.start_marker)));
+      vpack.add(END_MARKER_PARAM_NAME.c_str(), END_MARKER_PARAM_NAME.size(),
+                arangodb::iresearch::toValuePair(irs::ref_cast<char>(tmp.end_marker)));
+
+      auto stream_type_value = std::find_if(STREAM_TYPE_CONVERT_MAP.begin(), STREAM_TYPE_CONVERT_MAP.end(),
+        [&tmp](const decltype(STREAM_TYPE_CONVERT_MAP)::value_type& v) {
+          return v.second == tmp.stream_bytes_type;
+        });
+
+      if (stream_type_value != STREAM_TYPE_CONVERT_MAP.end()) {
+        vpack.add(STREAM_TYPE_PARAM_NAME.c_str(), STREAM_TYPE_PARAM_NAME.size(),
+                  VPackValue(stream_type_value->first.c_str()));
+      } else {
+        IR_FRMT_ERROR(
+          "Invalid %s value in ngram analyzer options: %d",
+          STREAM_TYPE_PARAM_NAME.c_str(),
+          static_cast<int>(tmp.stream_bytes_type));
+        return false;
+      }
     }
+
     out.assign(vpack.slice().startAs<char>(), vpack.slice().byteSize());
     return true;
   }
   return false;
 }
 
-REGISTER_ANALYZER_VPACK(irs::analysis::ngram_token_stream,
+REGISTER_ANALYZER_VPACK(irs::analysis::ngram_token_stream_base,
     ngram_vpack_builder, ngram_vpack_normalizer);
 }  // namespace ngram_vpack
 
 namespace text_vpack {
 // FIXME implement proper vpack parsing
-irs::analysis::analyzer::ptr text_vpack_builder(irs::string_ref const& args) noexcept {
+irs::analysis::analyzer::ptr text_vpack_builder(irs::string_ref const& args) {
   auto slice = arangodb::iresearch::slice<char>(args);
   if (!slice.isNone()) {
-    return irs::analysis::analyzers::get("text", irs::text_format::json,
+    return irs::analysis::analyzers::get("text", irs::type<irs::text_format::json>::get(),
       slice.toString(),
       false);
   }
   return nullptr;
 }
 
-bool text_vpack_normalizer(const irs::string_ref& args, std::string& out) noexcept {
+bool text_vpack_normalizer(const irs::string_ref& args, std::string& out) {
   std::string tmp;
   auto slice = arangodb::iresearch::slice<char>(args);
 
   if (!slice.isNone() &&
-      irs::analysis::analyzers::normalize(tmp, "text", irs::text_format::json,
+      irs::analysis::analyzers::normalize(tmp, "text", irs::type<irs::text_format::json>::get(),
                                           slice.toString(),
                                           false)) {
     auto vpack = VPackParser::fromJson(tmp);
@@ -357,25 +411,25 @@ bool text_vpack_normalizer(const irs::string_ref& args, std::string& out) noexce
 
 REGISTER_ANALYZER_VPACK(irs::analysis::text_token_stream, text_vpack_builder,
                         text_vpack_normalizer);
-}
+} // namespace text_vpack
 
 namespace stem_vpack {
   // FIXME implement proper vpack parsing
-  irs::analysis::analyzer::ptr stem_vpack_builder(irs::string_ref const& args) noexcept {
+  irs::analysis::analyzer::ptr stem_vpack_builder(irs::string_ref const& args) {
     auto slice = arangodb::iresearch::slice<char>(args);
     if (!slice.isNone()) {
-      return irs::analysis::analyzers::get("stem", irs::text_format::json,
+      return irs::analysis::analyzers::get("stem", irs::type<irs::text_format::json>::get(),
         slice.toString(),
         false);
     }
     return nullptr;
   }
 
-  bool stem_vpack_normalizer(const irs::string_ref& args, std::string& out) noexcept {
+  bool stem_vpack_normalizer(const irs::string_ref& args, std::string& out) {
     std::string tmp;
     auto slice = arangodb::iresearch::slice<char>(args);
     if (!slice.isNone() &&
-        irs::analysis::analyzers::normalize(tmp, "stem", irs::text_format::json,
+        irs::analysis::analyzers::normalize(tmp, "stem", irs::type<irs::text_format::json>::get(),
       slice.toString(), false)) {
       auto vpack = VPackParser::fromJson(tmp);
       out.assign(vpack->slice().startAs<char>(), vpack->slice().byteSize());
@@ -386,25 +440,25 @@ namespace stem_vpack {
 
   REGISTER_ANALYZER_VPACK(irs::analysis::text_token_stemming_stream, stem_vpack_builder,
     stem_vpack_normalizer);
-}
+} // namespace stem_vpack
 
 namespace norm_vpack {
   // FIXME implement proper vpack parsing
-  irs::analysis::analyzer::ptr norm_vpack_builder(irs::string_ref const& args) noexcept {
+  irs::analysis::analyzer::ptr norm_vpack_builder(irs::string_ref const& args) {
     auto slice = arangodb::iresearch::slice<char>(args);
     if (!slice.isNone()) {//cannot be created without properties
-      return irs::analysis::analyzers::get("norm", irs::text_format::json,
+      return irs::analysis::analyzers::get("norm", irs::type<irs::text_format::json>::get(),
         slice.toString(),
         false);
     }
     return nullptr;
   }
 
-  bool norm_vpack_normalizer(const irs::string_ref& args, std::string& out) noexcept {
+  bool norm_vpack_normalizer(const irs::string_ref& args, std::string& out) {
     std::string tmp;
     auto slice = arangodb::iresearch::slice<char>(args);
     if (!slice.isNone() && //cannot be created without properties
-        irs::analysis::analyzers::normalize(tmp, "norm", irs::text_format::json,
+        irs::analysis::analyzers::normalize(tmp, "norm", irs::type<irs::text_format::json>::get(),
       slice.toString(), false)) {
       auto vpack = VPackParser::fromJson(tmp);
       out.assign(vpack->slice().startAs<char>(), vpack->slice().byteSize());
@@ -415,12 +469,11 @@ namespace norm_vpack {
 
   REGISTER_ANALYZER_VPACK(irs::analysis::text_token_normalizing_stream, norm_vpack_builder,
     norm_vpack_normalizer);
-}
+} // namespace norm_vpack
 
-arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expressionContext,
+arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* /*expressionContext*/,
                                     arangodb::transaction::Methods* trx,
                                     arangodb::aql::VPackFunctionParameters const& args) {
-
   if (ADB_UNLIKELY(args.empty() || args.size() > 2)) {
     irs::string_ref const message =
         "invalid arguments count while computing result for function 'TOKENS'";
@@ -442,19 +495,16 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
     arangodb::iresearch::getStringRef(args[1].slice()) :
     iresearch::string_ref(arangodb::iresearch::IResearchAnalyzerFeature::identity()->name());
 
-  auto& server = arangodb::application_features::ApplicationServer::server();
-  if( args.size() > 1) {
+  TRI_ASSERT(trx);
+  auto& server = trx->vocbase().server();
+  if (args.size() > 1) {
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    if (trx) {
-      auto sysVocbase =
-          server.hasFeature<arangodb::SystemDatabaseFeature>()
-              ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
-              : nullptr;
-      if (sysVocbase) {
-        pool = analyzers.get(name, trx->vocbase(), *sysVocbase);
-      }
-    } else {
-      pool = analyzers.get(name);  // verbatim
+    auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
+                          ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
+                          : nullptr;
+    if (sysVocbase) {
+      pool = analyzers.get(name, trx->vocbase(), *sysVocbase,
+                           trx->state()->analyzersRevision());
     }
   } else { //do not look for identity, we already have reference)
     pool = arangodb::iresearch::IResearchAnalyzerFeature::identity();
@@ -479,9 +529,9 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
   }
 
-  auto& string_terms = string_analyzer->attributes().get<irs::term_attribute>();
+  auto* string_token = irs::get<irs::term_attribute>(*string_analyzer);
 
-  if (ADB_UNLIKELY(!string_terms)) {
+  if (ADB_UNLIKELY(!string_token)) {
     auto const message =
         "failure to retrieve values from arangosearch analyzer name '"s +
         static_cast<std::string>(name) +
@@ -492,7 +542,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
   }
 
   std::unique_ptr<irs::numeric_token_stream> numeric_analyzer;
-  const irs::term_attribute* numeric_terms = nullptr;
+  const irs::term_attribute* numeric_token = nullptr;
 
   // to avoid copying Builder's default buffer when initializing AqlValue
   // create the buffer externally and pass ownership directly into AqlValue
@@ -520,7 +570,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
       }
       while (string_analyzer->next()) {
         builder.add(
-          arangodb::iresearch::toValuePair(irs::ref_cast<char>(string_terms->value())));
+          arangodb::iresearch::toValuePair(irs::ref_cast<char>(string_token->value)));
       }
       break;
     case VPackValueType::Bool:
@@ -544,10 +594,10 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
     default:
       if (current.isNumber()) { // there are many "number" types. To adopt all current and future ones just
                                 // deal with them all here in generic way
-        if(!numeric_analyzer) {
+        if (!numeric_analyzer) {
           numeric_analyzer = std::make_unique<irs::numeric_token_stream>();
-          numeric_terms = numeric_analyzer->attributes().get<irs::term_attribute>().get();
-          if (ADB_UNLIKELY(!numeric_terms)) {
+          numeric_token = irs::get<irs::term_attribute>(*numeric_analyzer);
+          if (ADB_UNLIKELY(!numeric_token)) {
             auto const message =
               "failure to retrieve values from arangosearch numeric analyzer "
               "while computing result for function 'TOKENS'";
@@ -563,7 +613,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
           builder.add(
             arangodb::iresearch::toValuePair(
               arangodb::basics::StringUtils::encodeBase64(
-                  irs::ref_cast<char>(numeric_terms->value()))));
+                  irs::ref_cast<char>(numeric_token->value))));
         }
       } else {
         auto const message = "unexpected parameter type '"s + current.typeName() +
@@ -667,244 +717,304 @@ bool equalAnalyzer(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the collection containing analyzer definitions (if found)
-///        taken from vocabse for single-server and from ClusterInfo on cluster
-/// @note cannot use arangodb::methods::Collections::lookup(...) since it will
-///       try to resolve via vocbase for the case of db-server
-/// @note cannot use arangodb::CollectionNameResolver::getCollection(...) since
-///       it will try to resolve via vocbase for the case of db-server
-////////////////////////////////////////////////////////////////////////////////
-std::shared_ptr<arangodb::LogicalCollection> getAnalyzerCollection( // get collection
-    TRI_vocbase_t const& vocbase // collection vocbase
-) {
-  if (arangodb::ServerState::instance()->isSingleServer()) {
-    return vocbase.lookupCollection(ANALYZER_COLLECTION_NAME);
-  }
-
-  try {
-    if (vocbase.server().hasFeature<arangodb::ClusterFeature>()) {
-      return vocbase.server()
-          .getFeature<arangodb::ClusterFeature>()
-          .clusterInfo()
-          .getCollectionNT(vocbase.name(), ANALYZER_COLLECTION_NAME);
-    }
-
-    LOG_TOPIC("00001", WARN, arangodb::iresearch::TOPIC)
-      << "failure to find 'ClusterInfo' instance while looking up Analyzer collection '" << ANALYZER_COLLECTION_NAME << "' in vocbase '" << vocbase.name() << "'";
-  } catch (arangodb::basics::Exception& e) {
-    LOG_TOPIC("00002", WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while looking up Analyzer collection '" << ANALYZER_COLLECTION_NAME << "' in vocbase '" << vocbase.name() << "': " << e.code() << " " << e.what();
-    IR_LOG_EXCEPTION();
-  } catch (std::exception& e) {
-    LOG_TOPIC("00003", WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while looking up Analyzer collection '" << ANALYZER_COLLECTION_NAME << "' in vocbase '" << vocbase.name() << "': " << e.what();
-    IR_LOG_EXCEPTION();
-  } catch (...) {
-    LOG_TOPIC("00004", WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while looking up Analyzer collection '" << ANALYZER_COLLECTION_NAME << "' in vocbase '" << vocbase.name() << "'";
-    IR_LOG_EXCEPTION();
-  }
-
-  return nullptr;
-}
-
-std::string normalizedAnalyzerName(
-    std::string database, // database
-    irs::string_ref const& analyzer // analyzer
-) {
-  return database.append(2, ANALYZER_PREFIX_DELIM).append(analyzer);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief read analyzers from vocbase
 /// @return visitation completed fully
 ////////////////////////////////////////////////////////////////////////////////
-arangodb::Result visitAnalyzers( // visit analyzers
-  TRI_vocbase_t& vocbase, // vocbase to visit
-  std::function<arangodb::Result(arangodb::velocypack::Slice const& slice)> const& visitor // visitor
-) {
+arangodb::Result visitAnalyzers(
+    TRI_vocbase_t& vocbase,
+    std::function<arangodb::Result(VPackSlice const&)> const& visitor) {
   static const auto resultVisitor = [](
-    std::function<arangodb::Result(arangodb::velocypack::Slice const& slice)> const& visitor, // visitor
-    TRI_vocbase_t const& vocbase, // vocbase
-    arangodb::velocypack::Slice const& slice // slice to visit
-  )->arangodb::Result {
+      std::function<arangodb::Result(VPackSlice const&)> const& visitor,
+      TRI_vocbase_t const& vocbase,
+      VPackSlice const& slice) -> arangodb::Result {
     if (!slice.isArray()) {
-      return arangodb::Result( // result
-        TRI_ERROR_INTERNAL, // code
-        std::string("failed to parse contents of collection '") + ANALYZER_COLLECTION_NAME + "' in database '" + vocbase.name() + " while visiting analyzers"
-      );
+      return {
+        TRI_ERROR_INTERNAL,
+        "failed to parse contents of collection '" + arangodb::StaticStrings::AnalyzersCollection +
+        "' in database '" + vocbase.name() + " while visiting analyzers" };
     }
 
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto res = visitor(itr.value().resolveExternal());
+    for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const res = visitor(itr.value().resolveExternal());
 
       if (!res.ok()) {
         return res;
       }
     }
 
-    return arangodb::Result();
+    return {};
   };
 
-  // FIXME TODO find a better way to query a cluster collection
-  // workaround for aql::Query failing to execute on a cluster collection
+  static const auto queryString = arangodb::aql::QueryString(
+    "FOR d IN " + arangodb::StaticStrings::AnalyzersCollection + " RETURN d");
+
   if (arangodb::ServerState::instance()->isDBServer()) {
-    arangodb::NetworkFeature const& feature =
-        vocbase.server().getFeature<arangodb::NetworkFeature>();
-    arangodb::network::ConnectionPool* pool = feature.pool();
+     arangodb::NetworkFeature const& feature =
+       vocbase.server().getFeature<arangodb::NetworkFeature>();
+     arangodb::network::ConnectionPool* pool = feature.pool();
 
     if (!pool) {
-      return arangodb::Result(      // result
-          TRI_ERROR_SHUTTING_DOWN,  // code
-          std::string("failure to find connection pool while visiting Analyzer "
-                      "collection '") +
-              ANALYZER_COLLECTION_NAME + "' in vocbase '" + vocbase.name() +
-              "', server is likely shutting down");
+      return {
+        TRI_ERROR_SHUTTING_DOWN,
+        "failure to find connection pool while visiting Analyzer collection '" +
+        arangodb::StaticStrings::AnalyzersCollection +
+        "' in vocbase '" + vocbase.name() + "'"
+      };
     }
 
-    auto collection = getAnalyzerCollection(vocbase);
+    auto& server = vocbase.server();
 
-    if (!collection) {
-      return arangodb::Result(); // nothing to load
+    std::vector<std::string> coords;
+    if (server.hasFeature<arangodb::ClusterFeature>()) {
+      coords = server.getFeature<arangodb::ClusterFeature>()
+                     .clusterInfo()
+                     .getCurrentCoordinators();
     }
 
-    // RestSimpleQueryHandler::allDocuments() expects opbject (calls get() on slice)
+    arangodb::Result res;
+    if (!coords.empty() &&
+        !vocbase.isSystem() && // System database could be on other server so OneShard optimization will not work
+        (vocbase.server().getFeature<arangodb::ClusterFeature>().forceOneShard() ||
+          vocbase.isShardingSingle())) {
+      auto& clusterInfo = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
+      auto collection = clusterInfo.getCollectionNT(vocbase.name(), arangodb::StaticStrings::AnalyzersCollection);
+      if (!collection) {
+        return {}; // treat missing collection as if there are no analyzers
+      }
+
+      auto shards = collection->shardIds();
+      if (shards->empty()) {
+        return {}; // treat missing collection as if there are no analyzers
+      }
+      // If this is indeed OneShard this should be us!
+      TRI_ASSERT(shards->begin()->second.front() == arangodb::ServerState::instance()->getId());
+      const auto oneShardQueryString = arangodb::aql::QueryString(
+        "FOR d IN "s + shards->begin()->first + " RETURN d");
+      arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
+        oneShardQueryString, nullptr, nullptr);
+
+      auto result = query.executeSync();
+
+      if (TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == result.result.errorNumber()) {
+        return {}; // treat missing collection as if there are no analyzers
+      }
+
+      if (result.result.fail()) {
+        return result.result;
+      }
+
+      auto slice = result.data->slice();
+
+      return resultVisitor(visitor, vocbase, slice);
+    }
+
+
+    arangodb::network::RequestOptions reqOpts;
+    reqOpts.database = vocbase.name();
+
     VPackBuffer<uint8_t> buffer;
     {
       VPackBuilder builder(buffer);
       builder.openObject();
+      builder.add("query", VPackValue(queryString.string()));
       builder.close();
     }
-    
-    arangodb::network::RequestOptions reqOpts;
-    reqOpts.database = vocbase.name();
 
-    std::vector<arangodb::network::FutureRes> futures;
-    // create a request for every shard
-    //for (auto& entry: collection->errorNum()) {
-    for (auto& entry: *(collection->shardIds())) {
-      auto& shardId = entry.first;
-      auto url = arangodb::RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH;
-      reqOpts.param("collection", shardId);
 
-      auto f = arangodb::network::sendRequest(pool,
-                                              "shard:" + shardId,  // shard
-                                              arangodb::fuerte::RestVerb::Put,  // request type as per SimpleQueryHandler
-                                              url,     // request url
-                                              buffer,  // body
-                                              reqOpts);
-      futures.emplace_back(std::move(f));
-    }
+    for (auto const& coord : coords) {
+      auto f = arangodb::network::sendRequest(
+            pool,
+            "server:" + coord,
+            arangodb::fuerte::RestVerb::Post,
+            arangodb::RestVocbaseBaseHandler::CURSOR_PATH,
+            buffer,
+            reqOpts);
 
-    auto results = arangodb::futures::collectAll(futures).get();
-    for (auto& r : results) {
-      auto& res = r.get();
-      if (res.error != arangodb::fuerte::Error::NoError) {
-        return arangodb::Result(arangodb::network::fuerteToArangoErrorCode(res));
+      auto& response = f.get();
+
+      if (response.error == arangodb::fuerte::Error::Timeout) {
+        // timeout, try another coordinator
+        res = arangodb::Result{ arangodb::network::fuerteToArangoErrorCode(response) };
+        continue;
       }
 
-      if (res.response->statusCode() == arangodb::fuerte::StatusNotFound) {
-        continue; // treat missing collection as if there are no analyzers
+      if (response.response->statusCode() == arangodb::fuerte::StatusNotFound) {
+        return { TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND };
       }
 
-      std::vector<VPackSlice> slices = res.response->slices();
+      if (response.error != arangodb::fuerte::Error::NoError) {
+        return { arangodb::network::fuerteToArangoErrorCode(response) };
+      }
+
+      std::vector<VPackSlice> slices = response.response->slices();
       if (slices.empty() || !slices[0].isObject()) {
-        return arangodb::Result(
-            TRI_ERROR_INTERNAL,
-            "got misformed result while visiting Analyzer collection'" + ANALYZER_COLLECTION_NAME +
-                "' in vocbase '" + vocbase.name() + "'");
+        return {
+          TRI_ERROR_INTERNAL,
+          "got misformed result while visiting Analyzer collection'" +
+            arangodb::StaticStrings::AnalyzersCollection +
+            "' in vocbase '" + vocbase.name() + "'"
+        };
       }
 
       VPackSlice answer = slices[0];
-      arangodb::Result result =
-          arangodb::network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
+      auto result = arangodb::network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
       if (result.fail()) {
         return result;
       }
 
       if (!answer.hasKey("result")) {
-        return arangodb::Result(  // result
-            TRI_ERROR_INTERNAL,   // code
-            std::string(
-                "failed to parse result while visiting Analyzer collection '") +
-                ANALYZER_COLLECTION_NAME + "' in vocbase '" + vocbase.name() +
-                "'");
+        return {
+          TRI_ERROR_INTERNAL,
+          "failed to parse result while visiting Analyzer collection '" +
+            arangodb::StaticStrings::AnalyzersCollection +
+            "' in vocbase '" + vocbase.name() + "'"
+        };
       }
 
-      result = resultVisitor(visitor, vocbase, answer.get("result"));
-      if (!result.ok()) {
-        return result;
-      }
+      res = resultVisitor(visitor, vocbase, answer.get("result"));
+
+      break;
     }
 
-    return arangodb::Result();
-  }
-
-  if (arangodb::ServerState::instance()->isClusterRole()) {
-    if (!getAnalyzerCollection(vocbase)) {
-      return arangodb::Result(); // treat missing collection as if there are no analyzers
-    }
-
-    static const auto queryString = arangodb::aql::QueryString( // query to execute
-      std::string("FOR d IN ") + ANALYZER_COLLECTION_NAME + " RETURN d" // query
-    );
-    arangodb::aql::Query query( // query
-      false, vocbase, queryString, nullptr, nullptr, arangodb::aql::PART_MAIN // args
-    );
-    auto* queryRegistry = arangodb::QueryRegistryFeature::registry();
-    auto result = query.executeSync(queryRegistry);
-
-    if (TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == result.result.errorNumber()) {
-      return arangodb::Result(); // treat missing collection as if there are no analyzers
-    }
-
-    if (result.result.fail()) {
-      return result.result;
-    }
-
-    auto slice = result.data->slice();
-
-    return resultVisitor(visitor, vocbase, slice);
-  }
-
-  if (!vocbase.lookupCollection(ANALYZER_COLLECTION_NAME)) {
-    return arangodb::Result(); // treat missing collection as if there are no analyzers
-  }
-
-  arangodb::OperationOptions options;
-  arangodb::SingleCollectionTransaction trx( // transaction
-    arangodb::transaction::StandaloneContext::Create(vocbase), // context
-    ANALYZER_COLLECTION_NAME, // collection
-    arangodb::AccessMode::Type::READ // access more
-  );
-  auto res = trx.begin();
-
-  if (!res.ok()) {
     return res;
   }
 
-  auto commit  = irs::make_finally([&trx]()->void {
-    // end read-only transaction
-    TRI_ASSERT(trx.state()->isReadOnlyTransaction());
-    arangodb::Result res = trx.commit();
-    // ignore return value here
-    (void) res;
-  });
-  auto result = trx.all(ANALYZER_COLLECTION_NAME, 0, 0, options);
+  arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
+                             queryString, nullptr, nullptr);
 
-  if (!result.result.ok()) {
+  auto result = query.executeSync();
+
+  if (TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == result.result.errorNumber()) {
+    return {}; // treat missing collection as if there are no analyzers
+  }
+
+  if (result.result.fail()) {
     return result.result;
   }
 
-  auto slice = arangodb::velocypack::Slice(result.buffer->data());
+  auto slice = result.data->slice();
 
   return resultVisitor(visitor, vocbase, slice);
+}
+
+inline std::string normalizedAnalyzerName(
+    std::string database,
+    irs::string_ref const& analyzer) {
+  return database.append(2, ANALYZER_PREFIX_DELIM).append(analyzer);
+}
+
+bool analyzerInUse(arangodb::application_features::ApplicationServer& server,
+                   irs::string_ref const& dbName,
+                   arangodb::iresearch::AnalyzerPool::ptr const& analyzerPtr) {
+  TRI_ASSERT(analyzerPtr);
+
+  if (analyzerPtr.use_count() > 1) { // +1 for ref in '_analyzers'
+    return true;
+  }
+
+  auto checkDatabase = [analyzer = analyzerPtr.get()](TRI_vocbase_t* vocbase) {
+    if (!vocbase) {
+      // no database
+      return false;
+    }
+
+    bool found = false;
+
+    auto visitor = [&found, analyzer](std::shared_ptr<arangodb::LogicalCollection> const& collection) {
+      if (!collection) {
+        return;
+      }
+
+      for (auto const& index : collection->getIndexes()) {
+        if (!index || arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type()) {
+          continue;  // not an IResearchLink
+        }
+
+        // TODO FIXME find a better way to retrieve an iResearch Link
+        // cannot use static_cast/reinterpret_cast since Index is not related to
+        // IResearchLink
+        auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+
+        if (!link) {
+          continue;
+        }
+
+        if (nullptr != link->findAnalyzer(*analyzer)) {
+          // found referenced analyzer
+          found = true;
+          return;
+        }
+      }
+    };
+
+    arangodb::methods::Collections::enumerate(vocbase, visitor);
+
+    return found;
+  };
+
+  TRI_vocbase_t* vocbase{};
+
+  // check analyzer database
+
+  if (server.hasFeature<arangodb::DatabaseFeature>()) {
+    vocbase = server.getFeature<arangodb::DatabaseFeature>()
+                    .lookupDatabase(dbName);
+
+    if (checkDatabase(vocbase)) {
+      return true;
+    }
+  }
+
+  // check system database if necessary
+  if (server.hasFeature<arangodb::SystemDatabaseFeature>()) {
+    auto sysVocbase = server.getFeature<arangodb::SystemDatabaseFeature>().use();
+
+    if (sysVocbase.get() != vocbase && checkDatabase(sysVocbase.get())) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 
-}  // namespace
+arangodb::AnalyzerModificationTransaction::Ptr createAnalyzerModificationTransaction(
+  arangodb::application_features::ApplicationServer& server,
+  irs::string_ref const& vocbase) {
+  if (arangodb::ServerState::instance()->isCoordinator() && !vocbase.empty()) {
+    TRI_ASSERT(server.hasFeature<arangodb::ClusterFeature>());
+    auto& engine = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
+    return std::make_unique<arangodb::AnalyzerModificationTransaction>(vocbase, &engine, false);
+  }
+  return nullptr;
+}
+
+// Auto-repair of dangling AnalyzersRevisions
+void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& workItem,
+                            std::function<void(bool)>& gcfunc) {
+  bool queued = false;
+  {
+    std::lock_guard<std::mutex> guard(mutex);
+    std::tie(queued, workItem) =
+        arangodb::basics::function_utils::retryUntilTimeout<arangodb::Scheduler::WorkHandle>(
+            [&gcfunc]() -> std::pair<bool, arangodb::Scheduler::WorkHandle> {
+              auto off = std::chrono::seconds(5);
+              return arangodb::SchedulerFeature::SCHEDULER->queueDelay(arangodb::RequestLane::INTERNAL_LOW,
+                                                                       off, gcfunc);
+            },
+            arangodb::iresearch::TOPIC,
+            "queue analyzers garbage collection");
+  }
+  if (!queued) {
+    LOG_TOPIC("f25ad", FATAL, arangodb::iresearch::TOPIC)
+        << "Failed to queue analyzers garbage collection, for 5 minutes, "
+           "exiting.";
+    FATAL_ERROR_EXIT();
+  }
+}
+} // namespace
 
 namespace arangodb {
 namespace iresearch {
@@ -913,18 +1023,16 @@ void AnalyzerPool::toVelocyPack(
     VPackBuilder& builder,
     irs::string_ref const& name) {
   TRI_ASSERT(builder.isOpenObject());
-//  if (forPersistence) {
-//    arangodb::iresearch::addStringRef(builder, arangodb::StaticStrings::KeyString, name);
-//  }
-  arangodb::iresearch::addStringRef(builder, StaticStrings::AnalyzerNameField, name);
-  arangodb::iresearch::addStringRef(builder, StaticStrings::AnalyzerTypeField, type());
+  addStringRef(builder, StaticStrings::AnalyzerNameField, name);
+  addStringRef(builder, StaticStrings::AnalyzerTypeField, type());
   builder.add(StaticStrings::AnalyzerPropertiesField, properties());
+  builder.add(arangodb::StaticStrings::AnalyzersRevision, VPackValue(static_cast<uint64_t>(_revision)));
 
   // add features
   VPackArrayBuilder featuresScope(&builder, StaticStrings::AnalyzerFeaturesField);
-  for (auto& feature: features()) {
+  for (auto& feature : features()) {
     TRI_ASSERT(feature); // has to be non-nullptr
-    arangodb::iresearch::addStringRef(builder, feature->name());
+    addStringRef(builder, feature().name());
   }
 }
 
@@ -949,11 +1057,16 @@ void AnalyzerPool::toVelocyPack(VPackBuilder& builder,
 void AnalyzerPool::toVelocyPack(VPackBuilder& builder,
                                 bool forPersistence /*= false*/) {
   irs::string_ref name = this->name();
-  if (forPersistence) {
-    name = IResearchAnalyzerFeature::splitAnalyzerName(name).second;
-  }
 
   VPackObjectBuilder rootScope(&builder);
+
+  if (forPersistence) {
+    name = IResearchAnalyzerFeature::splitAnalyzerName(name).second;
+
+    // ensure names are unique
+    addStringRef(builder, arangodb::StaticStrings::KeyString, name);
+  }
+
   toVelocyPack(builder, name);
 }
 
@@ -968,7 +1081,7 @@ AnalyzerPool::Builder::make(
 
   // for API consistency we only support analyzers configurable via jSON
   return irs::analysis::analyzers::get(
-    type, irs::text_format::vpack, iresearch::ref<char>(properties), false);
+    type, irs::type<irs::text_format::vpack>::get(), iresearch::ref<char>(properties), false);
 }
 
 AnalyzerPool::AnalyzerPool(irs::string_ref const& name)
@@ -976,9 +1089,18 @@ AnalyzerPool::AnalyzerPool(irs::string_ref const& name)
     _name(name) {
 }
 
+bool AnalyzerPool::operator==(AnalyzerPool const& rhs) const {
+  // intentionally do not check revision! Revision does not affects analyzer functionality!
+  return _name == rhs._name &&
+      _type == rhs._type &&
+      _features == rhs._features &&
+      basics::VelocyPackHelper::equal(_properties, rhs._properties, true);
+}
+
 bool AnalyzerPool::init(
     irs::string_ref const& type,
     VPackSlice const properties,
+    AnalyzersRevision::Revision revision,
     irs::flags const& features /*= irs::flags::empty_instance()*/) {
   try {
     _cache.clear();  // reset for new type/properties
@@ -1002,14 +1124,14 @@ bool AnalyzerPool::init(
     // ensure no reallocations will happen
     _config.reserve(_config.size() + type.size());
 
-    auto instance = _cache.emplace(type, arangodb::iresearch::slice(_config));
+    auto instance = _cache.emplace(type, iresearch::slice(_config));
 
     if (instance) {
       _properties = VPackSlice::noneSlice();
       _type = irs::string_ref::NIL;
       _key = irs::string_ref::NIL;
 
-      _properties = arangodb::iresearch::slice(_config);
+      _properties = iresearch::slice(_config);
 
       if (!type.null()) {
         _config.append(type);
@@ -1017,21 +1139,21 @@ bool AnalyzerPool::init(
       }
 
       _features = features;  // store only requested features
-
+      _revision = revision;
       return true;
     }
-  } catch (arangodb::basics::Exception& e) {
-    LOG_TOPIC("62062", WARN, arangodb::iresearch::TOPIC)
+  } catch (basics::Exception& e) {
+    LOG_TOPIC("62062", WARN, iresearch::TOPIC)
         << "caught exception while initializing an arangosearch analizer type '" << _type
         << "' properties '" << _properties << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
   } catch (std::exception& e) {
-    LOG_TOPIC("a9196", WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("a9196", WARN, iresearch::TOPIC)
         << "caught exception while initializing an arangosearch analizer type '"
         << _type << "' properties '" << _properties << "': " << e.what();
     IR_LOG_EXCEPTION();
   } catch (...) {
-    LOG_TOPIC("7524a", WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("7524a", WARN, iresearch::TOPIC)
         << "caught exception while initializing an arangosearch analizer type '"
         << _type << "' properties '" << _properties << "'";
     IR_LOG_EXCEPTION();
@@ -1066,7 +1188,7 @@ void AnalyzerPool::setKey(irs::string_ref const& key) {
   // append(...)
   if (!propertiesIsNone) {
     TRI_ASSERT(propertiesByteSize <= _config.size());
-    _properties = arangodb::iresearch::slice(_config);
+    _properties = iresearch::slice(_config);
   }
 
   // update '_type' since '_config' might have been reallocated during
@@ -1083,21 +1205,21 @@ irs::analysis::analyzer::ptr AnalyzerPool::get() const noexcept {
   try {
     // FIXME do not use shared_ptr
     return _cache.emplace(_type, _properties).release();
-  } catch (arangodb::basics::Exception const& e) {
-    LOG_TOPIC("c9256", WARN, arangodb::iresearch::TOPIC)
+  } catch (basics::Exception const& e) {
+    LOG_TOPIC("c9256", WARN, iresearch::TOPIC)
         << "caught exception while instantiating an arangosearch analizer type "
            "'"
         << _type << "' properties '" << _properties << "': " << e.code() << " "
         << e.what();
     IR_LOG_EXCEPTION();
   } catch (std::exception& e) {
-    LOG_TOPIC("93baf", WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("93baf", WARN, iresearch::TOPIC)
         << "caught exception while instantiating an arangosearch analizer type "
            "'"
         << _type << "' properties '" << _properties << "': " << e.what();
     IR_LOG_EXCEPTION();
   } catch (...) {
-    LOG_TOPIC("08db9", WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("08db9", WARN, iresearch::TOPIC)
         << "caught exception while instantiating an arangosearch analizer type "
            "'"
         << _type << "' properties '" << _properties << "'";
@@ -1107,32 +1229,54 @@ irs::analysis::analyzer::ptr AnalyzerPool::get() const noexcept {
   return nullptr;
 }
 
-IResearchAnalyzerFeature::IResearchAnalyzerFeature(arangodb::application_features::ApplicationServer& server)
+IResearchAnalyzerFeature::IResearchAnalyzerFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, IResearchAnalyzerFeature::name()) {
   setOptional(true);
   startsAfter<arangodb::application_features::V8FeaturePhase>();
-
   // used for registering IResearch analyzer functions
   startsAfter<arangodb::aql::AqlFunctionFeature>();
   // used for getting the system database
   // containing the persisted configuration
   startsAfter<arangodb::SystemDatabaseFeature>();
+  startsAfter<application_features::CommunicationFeaturePhase>();
+  startsAfter<AqlFeature>();
+  startsAfter<aql::OptimizerRulesFeature>();
+  startsAfter<QueryRegistryFeature>();
+  startsAfter<SchedulerFeature>();
+
+  _gcfunc = [this](bool canceled) {
+    if (canceled) {
+      return;
+    }
+
+    auto cleanupTrans =
+      this->server().getFeature<ClusterFeature>().clusterInfo().createAnalyzersCleanupTrans();
+    if (cleanupTrans) {
+      if (cleanupTrans->start().ok()) {
+        cleanupTrans->commit();
+      }
+    }
+
+    if (!this->server().isStopping()) {
+      ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc);
+    }
+  };
 }
 
-/*static*/ bool IResearchAnalyzerFeature::canUse( // check permissions
-    TRI_vocbase_t const& vocbase, // analyzer vocbase
-    arangodb::auth::Level const& level // access level
-) {
+/*static*/ bool IResearchAnalyzerFeature::canUse(
+    TRI_vocbase_t const& vocbase,
+    auth::Level const& level) {
   auto& ctx = arangodb::ExecContext::current();
+
   return ctx.canUseDatabase(vocbase.name(), level) && // can use vocbase
-         ctx.canUseCollection(vocbase.name(), ANALYZER_COLLECTION_NAME, level); // can use analyzers
+         ctx.canUseCollection(vocbase.name(), arangodb::StaticStrings::AnalyzersCollection, level); // can use analyzers
 }
 
-/*static*/ bool IResearchAnalyzerFeature::canUse( // check permissions
-  irs::string_ref const& name, // analyzer name (already normalized)
-  arangodb::auth::Level const& level // access level
-) {
+/*static*/ bool IResearchAnalyzerFeature::canUse(
+    irs::string_ref const& name,
+    auth::Level const& level) {
   auto& ctx = arangodb::ExecContext::current();
+
   if (ctx.isAdminUser()) {
     return true; // authentication not enabled
   }
@@ -1147,71 +1291,145 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(arangodb::application_feature
 
   return split.first.null() // static analyzer (always allowed)
     || (ctx.canUseDatabase(split.first, level) // can use vocbase
-        && ctx.canUseCollection(split.first, ANALYZER_COLLECTION_NAME, level) // can use analyzers
-       );
+        && ctx.canUseCollection(split.first, arangodb::StaticStrings::AnalyzersCollection, level)); // can use analyzers
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief validate analyzer parameters and emplace into map
-////////////////////////////////////////////////////////////////////////////////
-arangodb::Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
-    EmplaceAnalyzerResult& result, // emplacement result on success (out-param)
-    Analyzers& analyzers,
+
+/*static*/ Result IResearchAnalyzerFeature::createAnalyzerPool(
+    AnalyzerPool::ptr& pool,
     irs::string_ref const& name,
     irs::string_ref const& type,
     VPackSlice const properties,
+    arangodb::AnalyzersRevision::Revision revision,
     irs::flags const& features) {
-
   // check type available
-  if (!irs::analysis::analyzers::exists(type, irs::text_format::vpack, false)) {
-    return arangodb::Result(
+  if (!irs::analysis::analyzers::exists(type, irs::type<irs::text_format::vpack>::get(), false)) {
+    return {
       TRI_ERROR_NOT_IMPLEMENTED,
-      "Not implemented analyzer type '" + std::string(type) + "'.");
+      "Not implemented analyzer type '" + std::string(type) + "'."
+    };
   }
 
   // validate analyzer name
   auto split = splitAnalyzerName(name);
 
   if (!TRI_vocbase_t::IsAllowedName(false, velocypack::StringRef(split.second.c_str(), split.second.size()))) {
-    return arangodb::Result( // result
-      TRI_ERROR_BAD_PARAMETER, // code
+    return {
+      TRI_ERROR_BAD_PARAMETER,
       std::string("invalid characters in analyzer name '") + std::string(split.second) + "'"
-    );
-}
+    };
+  }
 
   // validate that features are supported by arangod an ensure that their
   // dependencies are met
-  for(auto& feature: features) {
-    if (&irs::frequency::type() == feature) {
+  for (auto& feature : features) {
+    if (irs::type<irs::frequency>::id() == feature) {
       // no extra validation required
-    } else if (&irs::norm::type() == feature) {
+    } else if (irs::type<irs::norm>::id() == feature) {
       // no extra validation required
-    } else if (&irs::position::type() == feature) {
-      if (!features.check(irs::frequency::type())) {
-        return arangodb::Result(
+    } else if (irs::type<irs::position>::id() == feature) {
+      if (!features.check(irs::type<irs::frequency>::id())) {
+        return {
           TRI_ERROR_BAD_PARAMETER,
-          "missing feature '" + std::string(irs::frequency::type().name()) +
-          "' required when '" + std::string(feature->name()) + "' feature is specified");
+          "missing feature '" + std::string(irs::type<irs::frequency>::name()) +
+          "' required when '" + std::string(feature().name()) + "' feature is specified"
+        };
       }
     } else if (feature) {
-      return arangodb::Result(
+      return {
         TRI_ERROR_BAD_PARAMETER,
-        "unsupported analyzer feature '" + std::string(feature->name()) + "'");
+        "unsupported analyzer feature '" + std::string(feature().name()) + "'"
+      };
     }
   }
 
   // limit the maximum size of analyzer properties
   if (ANALYZER_PROPERTIES_SIZE_MAX < properties.byteSize()) {
-    return arangodb::Result(
+    return {
       TRI_ERROR_BAD_PARAMETER,
       "analyzer properties size of '" + std::to_string(properties.byteSize()) +
-      "' exceeds the maximum allowed limit of '" + std::to_string(ANALYZER_PROPERTIES_SIZE_MAX) + "'");
+      "' exceeds the maximum allowed limit of '" + std::to_string(ANALYZER_PROPERTIES_SIZE_MAX) + "'"
+    };
+  }
+
+  auto analyzerPool = std::make_shared<AnalyzerPool>(name);
+
+  if (!analyzerPool->init(type, properties, revision, features)) {
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "Failure initializing an arangosearch analyzer instance for name '" + std::string(name) +
+      "' type '" + std::string(type) + "'." +
+      (properties.isNone() ?
+        std::string(" Init without properties")
+        : std::string(" Properties '") + properties.toString() + "'") +
+      " was rejected by analyzer. Please check documentation for corresponding analyzer type."
+    };
+  }
+
+  // noexcept
+  pool = analyzerPool;
+  return {};
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validate analyzer parameters and emplace into map
+////////////////////////////////////////////////////////////////////////////////
+Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
+    EmplaceAnalyzerResult& result, // emplacement result on success (out-param)
+    Analyzers& analyzers,
+    irs::string_ref const& name,
+    irs::string_ref const& type,
+    VPackSlice const properties,
+    irs::flags const& features,
+    AnalyzersRevision::Revision revision) {
+  // check type available
+  if (!irs::analysis::analyzers::exists(type, irs::type<irs::text_format::vpack>::get(), false)) {
+    return {
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "Not implemented analyzer type '" + std::string(type) + "'." };
+  }
+
+  // validate analyzer name
+  auto split = splitAnalyzerName(name);
+
+  if (!TRI_vocbase_t::IsAllowedName(false, velocypack::StringRef(split.second.c_str(), split.second.size()))) {
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("invalid characters in analyzer name '") + std::string(split.second) + "'" };
+  }
+
+  // validate that features are supported by arangod an ensure that their
+  // dependencies are met
+  for (auto& feature : features) {
+    if (irs::type<irs::frequency>::id() == feature) {
+      // no extra validation required
+    } else if (irs::type<irs::norm>::id() == feature) {
+      // no extra validation required
+    } else if (irs::type<irs::position>::id() == feature) {
+      if (!features.check(irs::type<irs::frequency>::id())) {
+        return {
+          TRI_ERROR_BAD_PARAMETER,
+          "missing feature '" + std::string(irs::type<irs::frequency>::name()) +
+          "' required when '" + std::string(feature().name()) + "' feature is specified" };
+      }
+    } else if (feature) {
+      return {
+        TRI_ERROR_BAD_PARAMETER,
+        "unsupported analyzer feature '" + std::string(feature().name()) + "'" };
+    }
+  }
+
+  // limit the maximum size of analyzer properties
+  if (ANALYZER_PROPERTIES_SIZE_MAX < properties.byteSize()) {
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "analyzer properties size of '" + std::to_string(properties.byteSize()) +
+      "' exceeds the maximum allowed limit of '" + std::to_string(ANALYZER_PROPERTIES_SIZE_MAX) + "'" };
   }
 
   static const auto generator = []( // key + value generator
-    irs::hashed_string_ref const& key, // source key
-    AnalyzerPool::ptr const& value // source value
-  )->irs::hashed_string_ref {
+      irs::hashed_string_ref const& key,
+      AnalyzerPool::ptr const& value)->irs::hashed_string_ref {
     auto pool = std::make_shared<AnalyzerPool>(key); // allocate pool
     const_cast<AnalyzerPool::ptr&>(value) = pool; // lazy-instantiate pool to avoid allocation if pool is already present
     return pool ? irs::hashed_string_ref(key.hash(), pool->name()) : key; // reuse hash but point ref at value in pool
@@ -1219,15 +1437,14 @@ arangodb::Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
   auto itr = irs::map_utils::try_emplace_update_key( // emplace and update key
     analyzers, // destination
     generator, // key generator
-    irs::make_hashed_ref(name, std::hash<irs::string_ref>()) // key
-  );
+    irs::make_hashed_ref(name, std::hash<irs::string_ref>()));
   auto analyzer = itr.first->second;
 
   if (!analyzer) {
-    return arangodb::Result(
+    return {
       TRI_ERROR_BAD_PARAMETER,
       "failure creating an arangosearch analyzer instance for name '" + std::string(name) +
-      "' type '" + std::string(type) + "' properties '" + properties.toString() + "'");
+      "' type '" + std::string(type) + "' properties '" + properties.toString() + "'" };
   }
 
   // new analyzer creation, validate
@@ -1240,15 +1457,15 @@ arangodb::Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
       }
     });
 
-    if (!analyzer->init(type, properties, features)) {
-      return arangodb::Result(
+    if (!analyzer->init(type, properties, revision, features)) {
+      return {
         TRI_ERROR_BAD_PARAMETER,
         "Failure initializing an arangosearch analyzer instance for name '" + std::string(name) +
         "' type '" + std::string(type) + "'." +
         (properties.isNone() ?
           std::string(" Init without properties")
           : std::string(" Properties '") + properties.toString() + "'") +
-        " was rejected by analyzer. Please check documentation for corresponding analyzer type.");
+        " was rejected by analyzer. Please check documentation for corresponding analyzer type." };
     }
 
     erase = false;
@@ -1262,7 +1479,7 @@ arangodb::Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
     }
     errorText  << "  features: [\n";
     for (auto feature = std::begin(features); feature != std::end(features);) {
-      errorText << "    '" << (*feature)->name() << "'";
+      errorText << "    '" << (*feature)().name() << "'";
       ++feature;
       if (feature != std::end(features)) {
         errorText << ",";
@@ -1273,59 +1490,61 @@ arangodb::Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
     analyzer->toVelocyPack(existingDefinition, false);
     errorText << "  ]\n}\nPrevious definition was:\n"
       << existingDefinition.toString();
-    return arangodb::Result(TRI_ERROR_BAD_PARAMETER, errorText.str());
-
+    return  {TRI_ERROR_BAD_PARAMETER, errorText.str() };
   }
 
   result = itr;
 
-  return arangodb::Result();
+  return {};
 }
 
-arangodb::Result IResearchAnalyzerFeature::ensure( // ensure analyzer existence if possible
-    EmplaceResult& result, // emplacement result on success (out-param)
-    irs::string_ref const& name, // analyzer name
-    irs::string_ref const& type, // analyzer type
-    VPackSlice const properties, // analyzer properties
-    irs::flags const& features, // analyzer features
-    bool isEmplace) {
-  try {
-    auto split = splitAnalyzerName(name);
+Result IResearchAnalyzerFeature::emplace(
+    EmplaceResult& result,
+    irs::string_ref const& name,
+    irs::string_ref const& type,
+    VPackSlice const properties,
+    irs::flags const& features /* = irs::flags::empty_instance() */) {
+  auto const split = splitAnalyzerName(name);
 
+  auto transaction = createAnalyzerModificationTransaction(server(), split.first);
+  if (transaction) {
+    auto startRes = transaction->start();
+    if (startRes.fail()) {
+      return startRes;
+    }
+  }
+
+  try {
     WriteMutex mutex(_mutex);
     SCOPED_LOCK(mutex);
 
     if (!split.first.null()) { // do not trigger load for static-analyzer requests
-      // do not trigger load of analyzers on coordinator or db-server to avoid
-      // recursive lock aquisition in ClusterInfo::loadPlan() if called due to
-      // IResearchLink creation,
-      // also avoids extra cluster calls if it can be helped (optimization)
-      if (!isEmplace && arangodb::ServerState::instance()->isClusterRole()) {
-        auto itr = _analyzers.find( // find analyzer previous definition
-         irs::make_hashed_ref(name, std::hash<irs::string_ref>())
-        );
-
-        if (itr != _analyzers.end()) {
-          _analyzers.erase(itr); // remove old definition instead of reloading all
+      if (transaction) {
+        auto cleanupResult = cleanupAnalyzersCollection(split.first,
+                                                        transaction->buildingRevision());
+        if (cleanupResult.fail()) {
+          return cleanupResult;
         }
-      } else { // trigger analyzer load
-        auto res = loadAnalyzers(split.first);
+      }
 
-        if (!res.ok()) {
-          return res;
-        }
+      auto res = loadAnalyzers(split.first);
+
+      if (!res.ok()) {
+        return res;
       }
     }
 
+
     // validate and emplace an analyzer
     EmplaceAnalyzerResult itr;
-    auto res = emplaceAnalyzer(itr, _analyzers, name, type, properties, features);
+    auto res = emplaceAnalyzer(itr, _analyzers, name, type, properties, features,
+                               transaction? transaction->buildingRevision() : AnalyzersRevision::MIN);
 
     if (!res.ok()) {
       return res;
     }
 
-    auto* engine = arangodb::EngineSelectorFeature::ENGINE;
+    auto* engine = EngineSelectorFeature::ENGINE;
     bool erase = itr.second; // an insertion took place
     auto cleanup = irs::make_finally([&erase, this, &itr]()->void {
       if (erase) {
@@ -1337,158 +1556,115 @@ arangodb::Result IResearchAnalyzerFeature::ensure( // ensure analyzer existence 
     // new pool creation
     if (itr.second) {
       if (!pool) {
-        return arangodb::Result(
+        return {
           TRI_ERROR_INTERNAL,
           "failure creating an arangosearch analyzer instance for name '" + std::string(name) +
           "' type '" + std::string(type) +
-          "' properties '" + properties.toString() + "'");
+          "' properties '" + properties.toString() + "'" };
       }
 
       // persist only on coordinator and single-server while not in recovery
       if ((!engine || !engine->inRecovery()) // do not persist during recovery
-          && (arangodb::ServerState::instance()->isCoordinator() // coordinator
-              || arangodb::ServerState::instance()->isSingleServer())) {// single-server
+          && (ServerState::instance()->isCoordinator() // coordinator
+              || ServerState::instance()->isSingleServer())) {// single-server
         res = storeAnalyzer(*pool);
       }
 
-      if (res.ok()) {
-        result = std::make_pair(pool, itr.second);
-        // cppcheck-suppress unreadVariable
-        erase = false; // successful pool creation, cleanup not required
+      if (res.fail()) {
+        return res;
       }
 
-      return res;
-    }
-
-    result = std::make_pair(pool, itr.second);
-  } catch (arangodb::basics::Exception const& e) {
-    return arangodb::Result( // result
-      e.code(), // code
-      "caught exception while registering an arangosearch analizer name '" + std::string(name) +
-      "' type '" + std::string(type) +
-      "' properties '" + properties.toString() +
-      "': " + std::to_string(e.code()) + " " + e.what());
-  } catch (std::exception const& e) {
-    return arangodb::Result( // result
-      TRI_ERROR_INTERNAL, // code
-      "caught exception while registering an arangosearch analizer name '" + std::string(name) +
-      "' type '" + std::string(type) +
-      "' properties '" + properties.toString() + "': " + e.what());
-  } catch (...) {
-    return arangodb::Result( // result
-      TRI_ERROR_INTERNAL, // code
-      "caught exception while registering an arangosearch analizer name '" + std::string(name) +
-      "' type '" + std::string(type) +
-      "' properties '" + properties.toString() + "'");
-  }
-
-  return arangodb::Result();
-}
-
-AnalyzerPool::ptr IResearchAnalyzerFeature::get( // find analyzer
-    irs::string_ref const& name, // analyzer name
-    TRI_vocbase_t const& activeVocbase, // fallback vocbase if not part of name
-    TRI_vocbase_t const& systemVocbase, // the system vocbase for use with empty prefix
-    bool onlyCached /*= false*/ // check only locally cached analyzers
-) const noexcept {
-  try {
-    auto const normalizedName = normalize(name, activeVocbase, systemVocbase, true);
-
-    auto const split = splitAnalyzerName(normalizedName);
-
-    // FIXME deduplicate code below, see get(irs::string, bool)
-
-    if (!split.first.null()) { // check if analyzer is static
-      if (split.first != activeVocbase.name() && split.first != systemVocbase.name()) {
-        // accessing local analyzer from within another database
-        return nullptr;
-      }
-
-      if (!onlyCached) {
-        // load analyzers for database
-        auto res = const_cast<IResearchAnalyzerFeature*>(this)->loadAnalyzers(split.first);
-
-        if (!res.ok()) {
-          LOG_TOPIC("36062", WARN, arangodb::iresearch::TOPIC)
-            << "failure to load analyzers for database '" << split.first << "' while getting analyzer '" << name << "': " << res.errorNumber() << " " << res.errorMessage();
-          TRI_set_errno(res.errorNumber());
-
-          return nullptr;
+      // cppcheck-suppress unreadVariable
+      if (transaction) {
+        res = transaction->commit();
+        if (res.fail()) {
+          return res;
+        }
+        auto cached = _lastLoad.find(split.first);
+        TRI_ASSERT(cached != _lastLoad.end());
+        if (ADB_LIKELY(cached != _lastLoad.end())) {
+          cached->second = transaction->buildingRevision(); // as we already "updated cache" to this revision
         }
       }
+      erase = false;
     }
-
-    ReadMutex mutex(_mutex);
-    SCOPED_LOCK(mutex);
-    auto itr = _analyzers.find(
-      irs::make_hashed_ref(static_cast<irs::string_ref>(normalizedName),
-                           std::hash<irs::string_ref>())
-    );
-
-    if (itr == _analyzers.end()) {
-      LOG_TOPIC("4049c", WARN, arangodb::iresearch::TOPIC)
-          << "failure to find arangosearch analyzer name '" << name << "'";
-
-      return nullptr;
-    }
-
-    auto pool = itr->second;
-
-    if (pool) {
-      return pool;
-    }
-
-    LOG_TOPIC("1a29c", WARN, arangodb::iresearch::TOPIC)
-        << "failure to get arangosearch analyzer name '" << name << "'";
-    TRI_set_errno(TRI_ERROR_INTERNAL);
-  } catch (arangodb::basics::Exception& e) {
-    LOG_TOPIC("29eff", WARN, arangodb::iresearch::TOPIC)
-        << "caught exception while retrieving an arangosearch analizer name '"
-        << name << "': " << e.code() << " " << e.what();
-    IR_LOG_EXCEPTION();
-  } catch (std::exception& e) {
-    LOG_TOPIC("ce8d5", WARN, arangodb::iresearch::TOPIC)
-        << "caught exception while retrieving an arangosearch analizer name '"
-        << name << "': " << e.what();
-    IR_LOG_EXCEPTION();
+    result = std::make_pair(pool, itr.second);
+  } catch (basics::Exception const& e) {
+    return {
+      e.code(),
+      "caught exception while registering an arangosearch analyzer name '" + std::string(name) +
+      "' type '" + std::string(type) +
+      "' properties '" + properties.toString() +
+      "': " + std::to_string(e.code()) + " " + e.what() };
+  } catch (std::exception const& e) {
+    return {
+      TRI_ERROR_INTERNAL,
+      "caught exception while registering an arangosearch analyzer name '" + std::string(name) +
+      "' type '" + std::string(type) +
+      "' properties '" + properties.toString() + "': " + e.what() };
   } catch (...) {
-    LOG_TOPIC("5505f", WARN, arangodb::iresearch::TOPIC)
-        << "caught exception while retrieving an arangosearch analizer name '"
-        << name << "'";
-    IR_LOG_EXCEPTION();
+    return {
+      TRI_ERROR_INTERNAL, // code
+      "caught exception while registering an arangosearch analyzer name '" + std::string(name) +
+      "' type '" + std::string(type) +
+      "' properties '" + properties.toString() + "'" };
   }
 
-  return nullptr;
+  return {};
 }
 
-AnalyzerPool::ptr IResearchAnalyzerFeature::get( // find analyzer
-    irs::string_ref const& name, // analyzer name
-    bool onlyCached /*= false*/ // check only locally cached analyzers
-) const noexcept {
+AnalyzerPool::ptr IResearchAnalyzerFeature::get(
+    irs::string_ref const& normalizedName,
+    AnalyzerName const& name,
+    AnalyzersRevision::Revision const revision,
+    bool onlyCached) const noexcept {
   try {
-    auto const split = splitAnalyzerName(name);
+    if (!name.first.null()) { // check if analyzer is static
+      if (!onlyCached) {
+        // load analyzers for database
+        auto const endTime = TRI_microtime() + 5.0; // arbitrary value - give some time to update plan
+        do {
+          auto const res = const_cast<IResearchAnalyzerFeature*>(this)->loadAnalyzers(name.first);
+          if (!res.ok()) {
+            LOG_TOPIC("36062", WARN, iresearch::TOPIC)
+              << "failure to load analyzers for database '" << name.first
+              << "' while getting analyzer '" << name
+              << "': " << res.errorNumber() << " " << res.errorMessage();
+            TRI_set_errno(res.errorNumber());
 
-    if (!split.first.null() && !onlyCached) { // do not trigger load for static-analyzer requests
-      auto res = // load analyzers for database
-        const_cast<IResearchAnalyzerFeature*>(this)->loadAnalyzers(split.first);
-
-      if (!res.ok()) {
-        LOG_TOPIC("36068", WARN, arangodb::iresearch::TOPIC)
-          << "failure to load analyzers for database '" << split.first << "' while getting analyzer '" << name << "': " << res.errorNumber() << " " << res.errorMessage();
-        TRI_set_errno(res.errorNumber());
-
-        return nullptr;
+            return nullptr;
+          }
+          if (revision == AnalyzersRevision::LATEST) {
+            break; // we don`t care about specific revision.
+          }
+          {
+            ReadMutex mutex(_mutex);
+            SCOPED_LOCK(mutex);
+            auto itr = _lastLoad.find(name.first);
+            if (itr != _lastLoad.end() && itr->second >= revision) {
+              break; // expected or later revision is loaded
+            }
+          }
+          if (TRI_microtime() > endTime) {
+            LOG_TOPIC("6a908", WARN, iresearch::TOPIC)
+              << "Failed to update analyzers cache to revision: '" << revision
+              << "' in database '" << name.first << "'";
+            break; // do not return error. Maybe requested analyzer was already presented earlier, so we still may succeed
+          }
+          LOG_TOPIC("6879a", DEBUG, iresearch::TOPIC)
+            << "Failed to update analyzers cache to revision: '" << revision
+            << "' in database '" << name.first << "' Retrying...";
+        } while (true);
       }
     }
 
     ReadMutex mutex(_mutex);
     SCOPED_LOCK(mutex);
-    auto itr =
-        _analyzers.find(irs::make_hashed_ref(name, std::hash<irs::string_ref>()));
+    auto itr = _analyzers.find(irs::make_hashed_ref(normalizedName, std::hash<irs::string_ref>()));
 
     if (itr == _analyzers.end()) {
-      LOG_TOPIC("4049d", WARN, arangodb::iresearch::TOPIC)
-          << "failure to find arangosearch analyzer name '" << name << "'";
+      LOG_TOPIC("4049c", WARN, iresearch::TOPIC)
+          << "failure to find arangosearch analyzer name '" << normalizedName << "'";
 
       return nullptr;
     }
@@ -1496,30 +1672,52 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get( // find analyzer
     auto pool = itr->second;
 
     if (pool) {
-      return pool;
+      if (pool->revision() <= revision) {
+        return pool;
+      } else {
+        LOG_TOPIC("c4c20", WARN, iresearch::TOPIC)
+          << "invalid analyzer revision. Requested " << revision << " got " << pool->revision();
+      }
     }
 
-    LOG_TOPIC("826db", WARN, arangodb::iresearch::TOPIC)
-        << "failure to get arangosearch analyzer name '" << name << "'";
+    LOG_TOPIC("1a29c", WARN, iresearch::TOPIC)
+        << "failure to get arangosearch analyzer name '" << normalizedName << "'";
     TRI_set_errno(TRI_ERROR_INTERNAL);
-  } catch (arangodb::basics::Exception& e) {
-    LOG_TOPIC("89eff", WARN, arangodb::iresearch::TOPIC)
+  } catch (basics::Exception const& e) {
+    LOG_TOPIC("29eff", WARN, iresearch::TOPIC)
         << "caught exception while retrieving an arangosearch analizer name '"
-        << name << "': " << e.code() << " " << e.what();
-    IR_LOG_EXCEPTION();
-  } catch (std::exception& e) {
-    LOG_TOPIC("ce8d9", WARN, arangodb::iresearch::TOPIC)
+        << normalizedName << "': " << e.code() << " " << e.what();
+  } catch (std::exception const& e) {
+    LOG_TOPIC("ce8d5", WARN, iresearch::TOPIC)
         << "caught exception while retrieving an arangosearch analizer name '"
-        << name << "': " << e.what();
-    IR_LOG_EXCEPTION();
+        << normalizedName << "': " << e.what();
   } catch (...) {
-    LOG_TOPIC("55050", WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("5505f", WARN, iresearch::TOPIC)
         << "caught exception while retrieving an arangosearch analizer name '"
-        << name << "'";
-    IR_LOG_EXCEPTION();
+        << normalizedName << "'";
   }
 
   return nullptr;
+}
+
+AnalyzerPool::ptr IResearchAnalyzerFeature::get(
+    irs::string_ref const& name,
+    TRI_vocbase_t const& activeVocbase,
+    TRI_vocbase_t const& systemVocbase,
+    arangodb::AnalyzersRevision::Revision const revision,
+    bool onlyCached /*= false*/) const {
+  auto const normalizedName = normalize(name, activeVocbase, systemVocbase, true);
+
+  auto const split = splitAnalyzerName(normalizedName);
+
+  if (!split.first.null() &&
+      split.first != activeVocbase.name() &&
+      split.first != systemVocbase.name()) {
+    // accessing local analyzer from within another database
+    return nullptr;
+  }
+
+  return get(normalizedName, split, revision, onlyCached);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1529,27 +1727,28 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get( // find analyzer
   struct Instance {
     Analyzers analyzers;
     Instance() {
-      // register the indentity analyzer
+      // register the identity analyzer
       {
-        irs::flags const extraFeatures = {irs::frequency::type(), irs::norm::type()};
-        irs::string_ref const name("identity");
+        irs::flags const extraFeatures = {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get()};
 
-        auto pool = std::make_shared<AnalyzerPool>(name);
+        auto pool = std::make_shared<AnalyzerPool>(IDENTITY_ANALYZER_NAME);
 
 
-        if (!pool || !pool->init(IdentityAnalyzer::type().name(),
+        if (!pool || !pool->init(irs::type<IdentityAnalyzer>::name(),
                                  VPackSlice::emptyObjectSlice(),
+                                 AnalyzersRevision::MIN,
                                  extraFeatures)) {
-          LOG_TOPIC("26de1", WARN, arangodb::iresearch::TOPIC)
+          LOG_TOPIC("26de1", WARN, iresearch::TOPIC)
               << "failure creating an arangosearch static analyzer instance "
                  "for name '"
-              << name << "'";
+              << IDENTITY_ANALYZER_NAME << "'";
 
           // this should never happen, treat as an assertion failure
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "failed to create arangosearch static analyzer");
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "failed to create arangosearch static analyzer");
         }
 
-        analyzers.emplace(
+        analyzers.try_emplace(
           irs::make_hashed_ref(irs::string_ref(pool->name()), std::hash<irs::string_ref>()),
           pool);
       }
@@ -1563,16 +1762,16 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get( // find analyzer
         };
 
         irs::flags const extraFeatures = {
-          irs::frequency::type(),
-          irs::norm::type(),
-          irs::position::type()
+          irs::type<irs::frequency>::get(),
+          irs::type<irs::norm>::get(),
+          irs::type<irs::position>::get()
         };  // add norms + frequency/position for by_phrase
 
         irs::string_ref const type("text");
 
         std::string name;
         VPackBuilder properties;
-        for (auto const& locale: locales) {
+        for (auto const& locale : locales) {
           // "text_<locale>"
           {
             name = "text_";
@@ -1589,8 +1788,8 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get( // find analyzer
 
           auto pool = std::make_shared<AnalyzerPool>(name);
 
-          if (!pool->init(type, properties.slice(), extraFeatures)) {
-            LOG_TOPIC("e25f5", WARN, arangodb::iresearch::TOPIC)
+          if (!pool->init(type, properties.slice(), AnalyzersRevision::MIN, extraFeatures)) {
+            LOG_TOPIC("e25f5", WARN, iresearch::TOPIC)
                 << "failure creating an arangosearch static analyzer instance "
                    "for name '"
                 << name << "'";
@@ -1599,7 +1798,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get( // find analyzer
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "failed to create arangosearch static analyzer instance");
           }
 
-          analyzers.emplace(
+          analyzers.try_emplace(
             irs::make_hashed_ref(irs::string_ref(pool->name()), std::hash<irs::string_ref>()),
             pool);
         }
@@ -1618,8 +1817,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get( // find analyzer
     Identity() {
       // find the 'identity' analyzer pool in the static analyzers
       auto& staticAnalyzers = getStaticAnalyzers();
-      irs::string_ref name = IDENTITY_ANALYZER_NAME;  // hardcoded name of the identity analyzer pool
-      auto key = irs::make_hashed_ref(name, std::hash<irs::string_ref>());
+      auto key = irs::make_hashed_ref(IDENTITY_ANALYZER_NAME, std::hash<irs::string_ref>());
       auto itr = staticAnalyzers.find(key);
 
       if (itr != staticAnalyzers.end()) {
@@ -1632,43 +1830,134 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get( // find analyzer
   return identity.instance;
 }
 
-arangodb::Result IResearchAnalyzerFeature::loadAnalyzers(
-    irs::string_ref const& database /*= irs::string_ref::NIL*/) {
-  try {
-    if (!server().hasFeature<arangodb::DatabaseFeature>()) {
-      return arangodb::Result(  // result
-          TRI_ERROR_INTERNAL,   // code
-          std::string("failure to find feature 'Database' while loading "
-                      "analyzers for database '") +
-              std::string(database) + "'");
+Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(irs::string_ref const& database,
+                                                            AnalyzersRevision::Revision buildingRevision) {
+  if (ServerState::instance()->isCoordinator()) {
+    if (!server().hasFeature<DatabaseFeature>()) {
+      return {
+        TRI_ERROR_INTERNAL,
+        "failure to find feature 'Database' while loading analyzers for database '" + std::string(database) + "'"
+      };
     }
-    auto& dbFeature = server().getFeature<arangodb::DatabaseFeature>();
 
+    auto& dbFeature = server().getFeature<DatabaseFeature>();
+    auto* engine = EngineSelectorFeature::ENGINE;
+    auto* vocbase = dbFeature.lookupDatabase(database);
+    if (!vocbase) {
+      if (engine && engine->inRecovery()) {
+        return {}; // database might not have come up yet
+      }
+      return {
+        TRI_ERROR_INTERNAL,
+        "failure to find feature database while loading analyzers for database '" + std::string(database) + "'"
+      };
+    }
+    static const auto queryDeleteString = arangodb::aql::QueryString(
+      "FOR d IN " + arangodb::StaticStrings::AnalyzersCollection + " FILTER d." +
+      arangodb::StaticStrings::AnalyzersRevision + " >= @rev OR ( HAS(d, '" +
+      arangodb::StaticStrings::AnalyzersDeletedRevision +  "') AND d." +
+      arangodb::StaticStrings::AnalyzersDeletedRevision + " < @rev) REMOVE d IN " +
+      arangodb::StaticStrings::AnalyzersCollection);
+
+
+    auto bindBuilder = std::make_shared<VPackBuilder>();
+    bindBuilder->openObject();
+    bindBuilder->add("rev", VPackValue(buildingRevision));
+    bindBuilder->close();
+
+    auto ctx = arangodb::transaction::StandaloneContext::Create(*vocbase);
+    SingleCollectionTransaction trx(ctx, arangodb::StaticStrings::AnalyzersCollection, AccessMode::Type::WRITE);
+    trx.begin();
+
+    arangodb::aql::Query queryDelete(ctx, queryDeleteString, bindBuilder, nullptr);
+
+    auto deleteResult = queryDelete.executeSync();
+    if (deleteResult.fail()) {
+      return {
+        TRI_ERROR_INTERNAL,
+        "failure to remove dangling analyzers from '" + std::string(database) + "' Aql error: (" +
+        std::to_string(deleteResult.errorNumber()) + " ) " +
+        deleteResult.errorMessage()
+      };
+    }
+
+    static const auto queryUpdateString = arangodb::aql::QueryString(
+      "FOR d IN " + arangodb::StaticStrings::AnalyzersCollection + " FILTER " +
+      " ( HAS(d, '" + arangodb::StaticStrings::AnalyzersDeletedRevision + "') AND d." +
+      arangodb::StaticStrings::AnalyzersDeletedRevision + " >= @rev) " +
+      "UPDATE d WITH UNSET(d, '" + arangodb::StaticStrings::AnalyzersDeletedRevision  + "') IN " +
+      arangodb::StaticStrings::AnalyzersCollection);
+    arangodb::aql::Query queryUpdate(ctx, queryUpdateString, bindBuilder, nullptr);
+
+    auto updateResult = queryUpdate.executeSync();
+    if (updateResult.fail()) {
+      return {
+        TRI_ERROR_INTERNAL,
+        "failure to restore dangling analyzers from '" + std::string(database) + "' Aql error: (" +
+        std::to_string(updateResult.errorNumber()) + " ) " +
+        updateResult.errorMessage()
+      };
+    }
+
+    auto commitRes = trx.finish(Result{});
+    if (commitRes.fail()) {
+      return commitRes;
+    }
+  }
+  return {};
+}
+
+Result IResearchAnalyzerFeature::loadAvailableAnalyzers(irs::string_ref const& dbName) {
+  if (!ServerState::instance()->isCoordinator()) {
+    // Single-servers will load analyzers they need in regular get call.
+    // DbServer receives analyzers definitions from coordinators in ddl requests
+    // and dbservers never should start ddl by themselves.
+    return {};
+  }
+  auto res = loadAnalyzers(dbName);
+  if (res.fail()) {
+    return res;
+  }
+  if (dbName != arangodb::StaticStrings::SystemDatabase) {
+    // System is available for all other databases. So reload it`s analyzers too
+    res = loadAnalyzers(arangodb::StaticStrings::SystemDatabase);
+  }
+  return res;
+}
+
+
+Result IResearchAnalyzerFeature::loadAnalyzers(
+    irs::string_ref const& database /*= irs::string_ref::NIL*/) {
+  if (!server().hasFeature<DatabaseFeature>()) {
+    return {
+      TRI_ERROR_INTERNAL,
+      "failure to find feature 'Database' while loading analyzers for database '" + std::string(database)+ "'"
+    };
+  }
+
+  auto& dbFeature = server().getFeature<DatabaseFeature>();
+
+  try {
     WriteMutex mutex(_mutex);
     SCOPED_LOCK(mutex); // '_analyzers'/'_lastLoad' can be asynchronously read
 
     // load all databases
     if (database.null()) {
-      arangodb::Result res;
+      Result res;
       std::unordered_set<irs::hashed_string_ref> seen;
       auto visitor = [this, &res, &seen](TRI_vocbase_t& vocbase)->void {
-        if (!vocbase.lookupCollection(ANALYZER_COLLECTION_NAME)) {
-          return; // skip databases lacking 'ANALYZER_COLLECTION_NAME' (no analyzers there, not an error)
-        }
-
-        auto name = irs::make_hashed_ref( // vocbase name
-          irs::string_ref(vocbase.name()), std::hash<irs::string_ref>() // args
-        );
+        auto name = irs::make_hashed_ref(irs::string_ref(vocbase.name()),
+                                         std::hash<irs::string_ref>());
         auto result = loadAnalyzers(name);
         auto itr = _lastLoad.find(name);
 
         if (itr != _lastLoad.end()) {
           seen.insert(name);
         } else if (res.ok()) { // load errors take precedence
-          res = arangodb::Result( // result
-            TRI_ERROR_INTERNAL, // code
-            "failure to find database last load timestamp after loading analyzers" // message
-          );
+          res = {
+            TRI_ERROR_INTERNAL,
+            "failure to find database last load timestamp after loading analyzers"
+          };
         }
 
         if (!result.ok()) {
@@ -1682,9 +1971,8 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers(
 
       // remove unseen databases from timestamp list
       for (auto itr = _lastLoad.begin(), end = _lastLoad.end(); itr != end;) {
-        auto name = irs::make_hashed_ref( // vocbase name
-          irs::string_ref(itr->first), std::hash<irs::string_ref>() // args
-        );
+        auto name = irs::make_hashed_ref(irs::string_ref(itr->first),
+                                         std::hash<irs::string_ref>());
         auto seenItr = seen.find(name);
 
         if (seenItr == seen.end()) {
@@ -1698,8 +1986,8 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers(
       // remove no longer valid analyzers (force remove)
       for (auto itr = _analyzers.begin(), end = _analyzers.end(); itr != end;) {
         auto split = splitAnalyzerName(itr->first);
-        auto unseenItr = // ignore static analyzers
-          split.first.null() ? unseen.end() : unseen.find(split.first);
+        // ignore static analyzers
+        auto unseenItr = split.first.null() ? unseen.end() : unseen.find(split.first);
 
         if (unseenItr != unseen.end()) {
           itr = _analyzers.erase(itr);
@@ -1715,63 +2003,58 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers(
     // after here load analyzers from a specific database
     // .........................................................................
 
-    auto currentTimestamp = std::chrono::system_clock::now();
     auto databaseKey = // database key used in '_lastLoad'
       irs::make_hashed_ref(database, std::hash<irs::string_ref>());
-    auto* engine = arangodb::EngineSelectorFeature::ENGINE;
+    auto* engine = EngineSelectorFeature::ENGINE;
     auto itr = _lastLoad.find(databaseKey); // find last update timestamp
-
-    if (!engine || engine->inRecovery()) {
-      // always load if inRecovery since collection contents might have changed
-      // unless on db-server which does not store analyzer definitions in collections
-      if (arangodb::ServerState::instance()->isDBServer()) {
-        return arangodb::Result(); // db-server should not access cluster during inRecovery
-      }
-    } else if (arangodb::ServerState::instance()->isSingleServer()) { // single server
-      if(itr != _lastLoad.end()) {
-        return arangodb::Result(); // do not reload on single-server
-      }
-    } else if (itr != _lastLoad.end() // had a previous load
-               && itr->second + RELOAD_INTERVAL > currentTimestamp // timeout not reached
-              ) {
-      return arangodb::Result(); // reload interval not reached
-    }
 
     auto* vocbase = dbFeature.lookupDatabase(database);
 
     if (!vocbase) {
       if (engine && engine->inRecovery()) {
-        return arangodb::Result(); // database might not have come up yet
+        return {}; // database might not have come up yet
       }
       if (itr != _lastLoad.end()) {
         cleanupAnalyzers(database); // cleanup any analyzers for 'database'
         _lastLoad.erase(itr);
       }
 
-      return arangodb::Result( // result
-        TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, // code
-        std::string("failed to find database '") + std::string(database) + "' while loading analyzers"
-      );
+      return {
+        TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+        "failed to find database '" + std::string(database) + "' while loading analyzers"
+      };
     }
 
-    if (!getAnalyzerCollection(*vocbase)) {
-      if (itr != _lastLoad.end()) {
-        cleanupAnalyzers(database); // cleanup any analyzers for 'database'
-      }
-      _lastLoad[databaseKey] = currentTimestamp; // update timestamp
+    AnalyzersRevision::Revision loadingRevision{getAnalyzersRevision(*vocbase, true)->getRevision()};
 
-      return arangodb::Result(); // no collection means nothing to load
+    if (!engine || engine->inRecovery()) {
+      // always load if inRecovery since collection contents might have changed
+      // unless on db-server which does not store analyzer definitions in collections
+      if (ServerState::instance()->isDBServer()) {
+        return {}; // db-server should not access cluster during inRecovery
+      }
+    } else if (ServerState::instance()->isSingleServer()) { // single server
+      if (itr != _lastLoad.end()) {
+        return {}; // do not reload on single-server
+      }
+    } else if (itr != _lastLoad.end() // had a previous load
+               && itr->second == loadingRevision) { // nothing changed
+      LOG_TOPIC("47cb8", TRACE, arangodb::iresearch::TOPIC)
+        << "Load skipped. Revision:" << itr->second
+        << " Current revision:" << loadingRevision;
+      return {}; // reload interval not reached
     }
 
     Analyzers analyzers;
-    auto visitor = [this, &analyzers, &vocbase](arangodb::velocypack::Slice const& slice)->arangodb::Result {
+    auto visitor = [this, &analyzers, &vocbase, &loadingRevision](velocypack::Slice const& slice)-> Result {
       if (!slice.isObject()) {
-        LOG_TOPIC("5c7a5", ERR, arangodb::iresearch::TOPIC)
-          << "failed to find an object value for analyzer definition while loading analyzer form collection '" << ANALYZER_COLLECTION_NAME
+        LOG_TOPIC("5c7a5", ERR, iresearch::TOPIC)
+          << "failed to find an object value for analyzer definition while loading analyzer form collection '"
+          << arangodb::StaticStrings::AnalyzersCollection
           << "' in database '" << vocbase->name()
           << "', skipping it: " << slice.toString();
 
-        return arangodb::Result(); // skip analyzer
+        return {}; // skip analyzer
       }
 
       irs::flags features;
@@ -1783,36 +2066,38 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers(
 
       if (!slice.hasKey(arangodb::StaticStrings::KeyString) // no such field (required)
           || !slice.get(arangodb::StaticStrings::KeyString).isString()) {
-        LOG_TOPIC("1dc56", ERR, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("1dc56", ERR, iresearch::TOPIC)
           << "failed to find a string value for analyzer '" << arangodb::StaticStrings::KeyString
-          << "' while loading analyzer form collection '" << ANALYZER_COLLECTION_NAME
+          << "' while loading analyzer form collection '" << arangodb::StaticStrings::AnalyzersCollection
           << "' in database '" << vocbase->name() << "', skipping it: " << slice.toString();
 
-        return arangodb::Result(); // skip analyzer
+        return {}; // skip analyzer
       }
 
       key = getStringRef(slice.get(arangodb::StaticStrings::KeyString));
 
       if (!slice.hasKey("name") // no such field (required)
           || !(slice.get("name").isString() || slice.get("name").isNull())) {
-        LOG_TOPIC("f5920", ERR, arangodb::iresearch::TOPIC)
-          << "failed to find a string value for analyzer 'name' while loading analyzer form collection '" << ANALYZER_COLLECTION_NAME
+        LOG_TOPIC("f5920", ERR, iresearch::TOPIC)
+          << "failed to find a string value for analyzer 'name' while loading analyzer form collection '"
+          << arangodb::StaticStrings::AnalyzersCollection
           << "' in database '" << vocbase->name()
           << "', skipping it: " << slice.toString();
 
-        return arangodb::Result(); // skip analyzer
+        return {}; // skip analyzer
       }
 
       name = getStringRef(slice.get("name"));
 
       if (!slice.hasKey("type") // no such field (required)
           || !(slice.get("type").isString() || slice.get("name").isNull())) {
-        LOG_TOPIC("9f5c8", ERR, arangodb::iresearch::TOPIC)
-          << "failed to find a string value for analyzer 'type' while loading analyzer form collection '" << ANALYZER_COLLECTION_NAME
+        LOG_TOPIC("9f5c8", ERR, iresearch::TOPIC)
+          << "failed to find a string value for analyzer 'type' while loading analyzer form collection '"
+          << arangodb::StaticStrings::AnalyzersCollection
           << "' in database '" << vocbase->name()
           << "', skipping it: " << slice.toString();
 
-        return arangodb::Result(); // skip analyzer
+        return {}; // skip analyzer
       }
 
       type = getStringRef(slice.get("type"));
@@ -1824,11 +2109,31 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers(
           properties = subSlice; // format as a jSON encoded string
         } else {
           LOG_TOPIC("a297e", ERR, arangodb::iresearch::TOPIC)
-            << "failed to find a string value for analyzer 'properties' while loading analyzer form collection '" << ANALYZER_COLLECTION_NAME
+            << "failed to find a string value for analyzer 'properties' while loading analyzer form collection '"
+            << arangodb::StaticStrings::AnalyzersCollection
             << "' in database '" << vocbase->name()
             << "', skipping it: " << slice.toString();
 
-          return arangodb::Result(); // skip analyzer
+          return {}; // skip analyzer
+        }
+      }
+      AnalyzersRevision::Revision revision{ AnalyzersRevision::MIN };
+      if (slice.hasKey(arangodb::StaticStrings::AnalyzersRevision)) {
+        revision = slice.get(arangodb::StaticStrings::AnalyzersRevision).getNumber<AnalyzersRevision::Revision>();
+      }
+      if (revision > loadingRevision) {
+        LOG_TOPIC("44a5b", DEBUG, arangodb::iresearch::TOPIC)
+          << "analyzer " << name << " ignored as not existed. Revision:" << revision
+          << " Current revision:" << loadingRevision;
+        return {}; // this analyzers is still not exists for our revision
+      }
+      if (slice.hasKey(arangodb::StaticStrings::AnalyzersDeletedRevision)) {
+        auto  deletedRevision = slice.get(arangodb::StaticStrings::AnalyzersDeletedRevision).getNumber<AnalyzersRevision::Revision>();
+        if (deletedRevision <= loadingRevision) {
+          LOG_TOPIC("93b34", DEBUG, arangodb::iresearch::TOPIC)
+            << "analyzer " << name << " ignored as deleted. Deleted revision:" << deletedRevision
+            << " Current revision:" << loadingRevision;
+          return {}; // this analyzers already not exists for our revision
         }
       }
 
@@ -1837,47 +2142,49 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers(
 
         if (!subSlice.isArray()) {
           LOG_TOPIC("7ec8a", ERR, arangodb::iresearch::TOPIC)
-            << "failed to find an array value for analyzer 'features' while loading analyzer form collection '" << ANALYZER_COLLECTION_NAME
+            << "failed to find an array value for analyzer 'features' while loading analyzer form collection '"
+            << arangodb::StaticStrings::AnalyzersCollection
             << "' in database '" << vocbase->name()
             << "', skipping it: " << slice.toString();
 
-          return arangodb::Result(); // skip analyzer
+          return {}; // skip analyzer
         }
 
-        for (arangodb::velocypack::ArrayIterator subItr(subSlice);
+        for (velocypack::ArrayIterator subItr(subSlice);
              subItr.valid();
              ++subItr
             ) {
           auto subEntry = *subItr;
 
           if (!subEntry.isString() && !subSlice.isNull()) {
-            LOG_TOPIC("7620d", ERR, arangodb::iresearch::TOPIC)
-              << "failed to find a string value for an entry in analyzer 'features' while loading analyzer form collection '" << ANALYZER_COLLECTION_NAME
+            LOG_TOPIC("7620d", ERR, iresearch::TOPIC)
+              << "failed to find a string value for an entry in analyzer 'features' while loading analyzer form collection '"
+              << arangodb::StaticStrings::AnalyzersCollection
               << "' in database '" << vocbase->name()
               << "', skipping it: " << slice.toString();
 
-            return arangodb::Result(); // skip analyzer
+            return {}; // skip analyzer
           }
 
-          auto featureName = getStringRef(subEntry);
-          auto* feature = irs::attribute::type_id::get(featureName, false);
+          const auto featureName = getStringRef(subEntry);
+          const auto feature = irs::attributes::get(featureName);
 
           if (!feature) {
-            LOG_TOPIC("4fedc", ERR, arangodb::iresearch::TOPIC)
-              << "failed to find feature '" << featureName << "' while loading analyzer form collection '" << ANALYZER_COLLECTION_NAME
+            LOG_TOPIC("4fedc", ERR, iresearch::TOPIC)
+              << "failed to find feature '" << featureName << "' while loading analyzer form collection '"
+              << arangodb::StaticStrings::AnalyzersCollection
               << "' in database '" << vocbase->name()
               << "', skipping it: " << slice.toString();
 
-            return arangodb::Result(); // skip analyzer
+            return {}; // skip analyzer
           }
 
-          features.add(*feature);
+          features.add(feature.id());
         }
       }
-
       auto normalizedName = normalizedAnalyzerName(vocbase->name(), name);
       EmplaceAnalyzerResult result;
-      auto res = emplaceAnalyzer(result, analyzers, normalizedName, type, properties, features);
+      auto res = emplaceAnalyzer(result, analyzers, normalizedName, type, properties, features, revision);
 
       if (!res.ok()) {
         return res; // caught error emplacing analyzer (abort further processing)
@@ -1886,99 +2193,86 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers(
       if (result.second && result.first->second) {
         result.first->second->setKey(key); // update key
       }
-
-      return arangodb::Result();
+      return {};
     };
-    auto res = visitAnalyzers(*vocbase, visitor);
-
+    auto const res = visitAnalyzers(*vocbase, visitor);
     if (!res.ok()) {
+      if (res.errorNumber() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
+        // collection not found, cleanup any analyzers for 'database'
+        if (itr != _lastLoad.end()) {
+          cleanupAnalyzers(database);
+        }
+        _lastLoad[databaseKey] = loadingRevision;
+        return {}; // no collection means nothing to load
+      }
       return res;
     }
 
     // copy over relevant analyzers from '_analyzers' and validate no duplicates
-    for (auto& entry: _analyzers) {
+    for (auto& entry : _analyzers) {
       if (!entry.second) {
         continue; // invalid analyzer (should never happen if insertions done via here)
       }
 
       auto split = splitAnalyzerName(entry.first);
 
+
+      Analyzers::iterator itr;
       // different database
       if (split.first != vocbase->name()) {
         auto result = analyzers.emplace(entry.first, entry.second);
-
         if (!result.second) { // existing entry
-          if (result.first->second // valid new entry
-              && !equalAnalyzer(*(entry.second), result.first->second->type(), result.first->second->properties(), result.first->second->features())) {
-            return arangodb::Result( // result
-              TRI_ERROR_BAD_PARAMETER, // code
-              "name collision detected while re-registering a duplicate arangosearch analizer name '" + std::string(result.first->second->name()) +
-              "' type '" + std::string(result.first->second->type()) +
-              "' properties '" + result.first->second->properties().toString() +
-              "', previous registration type '" + std::string(entry.second->type()) +
-              "' properties '" + entry.second->properties().toString() + "'"
-            );
-          }
-
-          result.first->second = entry.second; // reuse old analyzer pool to avoid duplicates in memmory
-          const_cast<Analyzers::key_type&>(result.first->first) = entry.first; // point key at old pool
+          itr = result.first;
+        } else {
+          itr = analyzers.end();
         }
-
-        continue; // done with this analyzer
+      } else {
+        itr = analyzers.find(entry.first);
       }
-
-      auto itr = analyzers.find(entry.first);
-
       if (itr == analyzers.end()) {
-        continue; // removed analyzer
+        continue; // no conflict or removed analyzer
       }
-
-      if (itr->second // valid new entry
-          && !equalAnalyzer(*(entry.second), itr->second->type(), itr->second->properties(), itr->second->features())) {
-        return arangodb::Result( // result
-          TRI_ERROR_BAD_PARAMETER, // code
-          "name collision detected while registering a duplicate arangosearch analizer name '" + std::string(itr->second->name()) +
+      if (!itr->second || equalAnalyzer(*(entry.second),
+          itr->second->type(),
+          itr->second->properties(),
+          itr->second->features())) {
+          itr->second = entry.second; // reuse old analyzer pool to avoid duplicates in memmory
+          const_cast<Analyzers::key_type&>(itr->first) = entry.first; // point key at old pool
+      } else if (itr->second->revision() == entry.second->revision()) {
+        return {
+          TRI_ERROR_BAD_PARAMETER,
+          "name collision detected while re-registering a duplicate arangosearch analyzer name '" +
+          std::string(itr->second->name()) +
           "' type '" + std::string(itr->second->type()) +
           "' properties '" + itr->second->properties().toString() +
-          "', previous registration type '" + std::string(entry.second->type()) +
-          "' properties '" + entry.second->properties().toString() + "'"
-        );
+          "', revision " + std::to_string(itr->second->revision()) +
+          ", previous registration type '" + std::string(entry.second->type()) +
+          "' properties '" + entry.second->properties().toString() + "'" +
+          ", revision " + std::to_string(entry.second->revision())
+        };
       }
-
-      itr->second = entry.second; // reuse old analyzer pool to avoid duplicates in memmory
-      const_cast<Analyzers::key_type&>(itr->first) = entry.first; // point key at old pool
     }
-
-    _lastLoad[databaseKey] = currentTimestamp; // update timestamp
+    _lastLoad[databaseKey] = loadingRevision;
     _analyzers = std::move(analyzers); // update mappings
-  } catch (arangodb::basics::Exception const& e) {
-    return arangodb::Result( // result
-      e.code(), // code
-      std::string("caught exception while loading configuration for arangosearch analyzers from database '") + std::string(database) + "': " + std::to_string(e.code()) + " "+ e.what()
-    );
+  } catch (basics::Exception const& e) {
+    return { e.code(),
+             "caught exception while loading configuration for arangosearch analyzers from database '" +
+              std::string(database) + "': " + std::to_string(e.code()) + " "+ e.what() };
   } catch (std::exception const& e) {
-    return arangodb::Result( // result
-      TRI_ERROR_INTERNAL, // code
-      std::string("caught exception while loading configuration for arangosearch analyzers from database '") + std::string(database) + "': " + e.what()
-    );
+    return { TRI_ERROR_INTERNAL,
+             "caught exception while loading configuration for arangosearch analyzers from database '" +
+             std::string(database) + "': " + e.what() };
   } catch (...) {
-    return arangodb::Result( // result
-      TRI_ERROR_INTERNAL, // code
-      std::string("caught exception while loading configuration for arangosearch analyzers from database '") + std::string(database) + "'"
-    );
+    return { TRI_ERROR_INTERNAL,
+             "caught exception while loading configuration for arangosearch analyzers from database '" +
+             std::string(database) + "'" };
   }
 
-  return arangodb::Result();
+  return {};
 }
 
 /*static*/ std::string const& IResearchAnalyzerFeature::name() noexcept {
   return FEATURE_NAME;
-}
-
-/*static*/ irs::string_ref IResearchAnalyzerFeature::extractVocbaseName(
-    irs::string_ref const& name) noexcept {// analyzer name (normalized)
-  auto split = splitAnalyzerName(name);
-  return split.first;
 }
 
 /*static*/ bool IResearchAnalyzerFeature::analyzerReachableFromDb(
@@ -2019,11 +2313,10 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers(
 }
 
 /*static*/ std::string IResearchAnalyzerFeature::normalize( // normalize name
-  irs::string_ref const& name, // analyzer name
-  TRI_vocbase_t const& activeVocbase, // fallback vocbase if not part of name
-  TRI_vocbase_t const& systemVocbase, // the system vocbase for use with empty prefix
-  bool expandVocbasePrefix /*= true*/ // use full vocbase name as prefix for active/system v.s. EMPTY/'::'
-) {
+    irs::string_ref const& name, // analyzer name
+    TRI_vocbase_t const& activeVocbase, // fallback vocbase if not part of name
+    TRI_vocbase_t const& systemVocbase, // the system vocbase for use with empty prefix
+    bool expandVocbasePrefix /*= true*/) { // use full vocbase name as prefix for active/system v.s. EMPTY/'::'
   auto& staticAnalyzers = getStaticAnalyzers();
 
   if (staticAnalyzers.find(irs::make_hashed_ref(name, std::hash<irs::string_ref>())) != staticAnalyzers.end()) {
@@ -2045,7 +2338,9 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers(
     // normalize vocbase such that active vocbase takes precedence over system
     // vocbase i.e. prefer NIL over EMPTY
     // .........................................................................
-    if (&systemVocbase == &activeVocbase || split.first.null() || (split.first == activeVocbase.name())) { // active vocbase
+    if (&systemVocbase == &activeVocbase ||
+        split.first.null() ||
+        (split.first == activeVocbase.name())) { // active vocbase
       return split.second;
     }
 
@@ -2055,6 +2350,31 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers(
   }
 
   return name; // name prefixed with vocbase (or NIL)
+}
+
+AnalyzersRevision::Ptr IResearchAnalyzerFeature::getAnalyzersRevision(const irs::string_ref& vocbaseName,
+                                                                     bool forceLoadPlan /* = false */) const {
+  TRI_vocbase_t* vocbase{ nullptr };
+  auto& dbFeature = server().getFeature<DatabaseFeature>();
+  vocbase = dbFeature.useDatabase(vocbaseName.empty() ? irs::string_ref(arangodb::StaticStrings::SystemDatabase) : vocbaseName);
+  if (vocbase) {
+    return getAnalyzersRevision(*vocbase, forceLoadPlan);
+  }
+  return AnalyzersRevision::getEmptyRevision();
+}
+
+AnalyzersRevision::Ptr IResearchAnalyzerFeature::getAnalyzersRevision(const TRI_vocbase_t& vocbase,
+                                                                     bool forceLoadPlan /* = false */) const {
+  if (ServerState::instance()->isRunningInCluster()) {
+    auto const& server = vocbase.server();
+    if (server.hasFeature<arangodb::ClusterFeature>()) {
+      auto ptr = server.getFeature<arangodb::ClusterFeature>()
+        .clusterInfo().getAnalyzersRevision(vocbase.name(), forceLoadPlan);
+      // could be null if plan is still not loaded
+      return ptr? ptr : AnalyzersRevision::getEmptyRevision();
+    }
+  }
+  return AnalyzersRevision::getEmptyRevision();
 }
 
 void IResearchAnalyzerFeature::prepare() {
@@ -2069,31 +2389,102 @@ void IResearchAnalyzerFeature::prepare() {
   _analyzers = getStaticAnalyzers();
 }
 
-arangodb::Result IResearchAnalyzerFeature::remove( // remove analyzer
-  irs::string_ref const& name, // analyzer name
-  bool force /*= false*/ // force removal
-) {
+Result IResearchAnalyzerFeature::removeFromCollection(irs::string_ref const& name, irs::string_ref const& vocbase) {
+  auto& dbFeature = server().getFeature<DatabaseFeature>();
+  auto* voc = dbFeature.useDatabase(vocbase);
+  if (!voc) {
+    return {
+      TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+      "failure to find vocbase while removing arangosearch analyzer '" + std::string(name) + "'"
+    };
+  }
+  SingleCollectionTransaction trx(transaction::StandaloneContext::Create(*voc),
+                                  arangodb::StaticStrings::AnalyzersCollection,
+                                  AccessMode::Type::WRITE);
+  auto res = trx.begin();
+
+  if (!res.ok()) {
+    return res;
+  }
+
+  velocypack::Builder builder;
+  OperationOptions options;
+
+  builder.openObject();
+  addStringRef(builder, arangodb::StaticStrings::KeyString, name);
+  builder.close();
+
+  auto result = trx.remove(arangodb::StaticStrings::AnalyzersCollection,
+                           builder.slice(),
+                           options);
+
+  if (!result.ok()) {
+    trx.abort();
+
+    return result.result;
+  }
+
+  return trx.commit();
+}
+
+Result IResearchAnalyzerFeature::finalizeRemove(irs::string_ref const& name, irs::string_ref const& vocbase) {
+  TRI_IF_FAILURE("FinalizeAnalyzerRemove") {
+    return Result(TRI_ERROR_DEBUG);
+  }
+
+  try {
+    return removeFromCollection(name, vocbase);
+  }
+  catch (basics::Exception const& e) {
+    return { e.code(),
+            "caught exception while finalizing removing configuration for arangosearch analyzer name '" +
+            std::string(name) + "': " + std::to_string(e.code()) + " " + e.what() };
+  }
+  catch (std::exception const& e) {
+    return { TRI_ERROR_INTERNAL,
+             "caught exception while finalizing removing configuration for arangosearch analyzer name '" +
+             std::string(name) + "': " + e.what() };
+  }
+  catch (...) {
+    return { TRI_ERROR_INTERNAL,
+             "caught exception while finalizing removing configuration for arangosearch analyzer name '" +
+             std::string(name) + "'" };
+  }
+  return {};
+}
+
+Result IResearchAnalyzerFeature::remove(
+    irs::string_ref const& name,
+    bool force /*= false*/) {
   try {
     auto split = splitAnalyzerName(name);
 
     if (split.first.null()) {
-      return arangodb::Result( // result
-        TRI_ERROR_FORBIDDEN, // code
-        "built-in analyzers cannot be removed" // message
-      );
+      return { TRI_ERROR_FORBIDDEN, "built-in analyzers cannot be removed" };
     }
 
     WriteMutex mutex(_mutex);
     SCOPED_LOCK(mutex);
 
-    auto itr = // find analyzer
-      _analyzers.find(irs::make_hashed_ref(name, std::hash<irs::string_ref>()));
+    // FIXME: really strange  we don`t have this load in remove
+    //        This means if we just start server and call remove - we will fail
+    //        Even test IResearchAnalyzerFeatureTest.test_persistence_remove_existing_records  checks this behaviour
+    //        Maybe this is to avoid having here something like onlyCached kludge in get ?
+    //if (!split.first.null()) { // do not trigger load for static-analyzer requests
+    //  auto res = loadAnalyzers(split.first);
+
+    //  if (!res.ok()) {
+    //    return res;
+    //  }
+    //}
+
+    auto itr = _analyzers.find(irs::make_hashed_ref(name, std::hash<irs::string_ref>()));
 
     if (itr == _analyzers.end()) {
-      return arangodb::Result( // result
-        TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, // code
-        std::string("failure to find analyzer while removing arangosearch analyzer '") + std::string(name)+ "'"
-      );
+      return {
+        TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
+        "failure to find analyzer while removing arangosearch analyzer '" + std::string(name)+ "'"
+      };
     }
 
     auto& pool = itr->second;
@@ -2102,27 +2493,39 @@ arangodb::Result IResearchAnalyzerFeature::remove( // remove analyzer
     // will make the state consistent again
     if (!pool) {
       _analyzers.erase(itr);
-      return arangodb::Result( // result
-        TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, // code
-        std::string("failure to find a valid analyzer while removing arangosearch analyzer '") + std::string(name)+ "'"
-      );
+      return {
+        TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
+        "failure to find a valid analyzer while removing arangosearch analyzer '" + std::string(name)+ "'"
+      };
     }
 
-    if (!force && pool.use_count() > 1) { // +1 for ref in '_analyzers'
-      return arangodb::Result( // result
-        TRI_ERROR_ARANGO_CONFLICT, // code
-        std::string("analyzer in-use while removing arangosearch analyzer '") + std::string(name)+ "'"
-      );
+    if (!force && analyzerInUse(server(), split.first, pool)) {  // +1 for ref in '_analyzers'
+      return {
+        TRI_ERROR_ARANGO_CONFLICT,
+        "analyzer in-use while removing arangosearch analyzer '" + std::string(name)+ "'"
+      };
     }
 
     // on db-server analyzers are not persisted
     // allow removal even inRecovery()
-    if (arangodb::ServerState::instance()->isDBServer()) {
+    if (ServerState::instance()->isDBServer()) {
       _analyzers.erase(itr);
 
-      return arangodb::Result();
+      return {};
     }
 
+    auto analyzerModificationTrx = createAnalyzerModificationTransaction(server(), split.first);
+    if (analyzerModificationTrx) {
+      auto startRes = analyzerModificationTrx->start();
+      if (startRes.fail()) {
+        return startRes;
+      }
+      auto cleanupResult = cleanupAnalyzersCollection(split.first,
+                                                      analyzerModificationTrx->buildingRevision());
+      if (cleanupResult.fail()) {
+        return cleanupResult;
+      }
+    }
     // .........................................................................
     // after here the analyzer must be removed from the persisted store first
     // .........................................................................
@@ -2130,109 +2533,113 @@ arangodb::Result IResearchAnalyzerFeature::remove( // remove analyzer
     // this should never happen since non-static analyzers should always have a
     // valid '_key' after
     if (pool->_key.null()) {
-      return arangodb::Result( // result
-        TRI_ERROR_INTERNAL, // code
-        std::string("failure to find '") + arangodb::StaticStrings::KeyString + "' while removing arangosearch analyzer '" + std::string(name)+ "'"
-      );
+      return {
+        TRI_ERROR_INTERNAL,
+        "failure to find '" + arangodb::StaticStrings::KeyString +
+        "' while removing arangosearch analyzer '" + std::string(name)+ "'" };
     }
 
-    auto* engine = arangodb::EngineSelectorFeature::ENGINE;
+    auto* engine = EngineSelectorFeature::ENGINE;
 
     // do not allow persistence while in recovery
     if (engine && engine->inRecovery()) {
-      return arangodb::Result( // result
-        TRI_ERROR_INTERNAL, // code
-        std::string("failure to remove arangosearch analyzer '") + std::string(name)+ "' configuration while storage engine in recovery"
-      );
+      return { TRI_ERROR_INTERNAL,
+               "failure to remove arangosearch analyzer '" + std::string(name) +
+               "' configuration while storage engine in recovery" };
     }
 
-    if (!server().hasFeature<arangodb::DatabaseFeature>()) {
-      return arangodb::Result( // result
-        TRI_ERROR_INTERNAL, // code
-        std::string("failure to find feature 'Database' while removing arangosearch analyzer '") + std::string(name)+ "'"
-      );
+    if (!analyzerModificationTrx) {
+      TRI_ASSERT(ServerState::instance()->isSingleServer());
+      auto commitResult = removeFromCollection(pool->_key, split.first);
+      if (!commitResult.ok()) {
+        return commitResult;
+      }
+      _analyzers.erase(itr);
+    } else {
+      auto& dbFeature = server().getFeature<DatabaseFeature>();
+
+      auto* vocbase = dbFeature.useDatabase(split.first);
+
+      if (!vocbase) {
+        return {
+          TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+          "failure to find vocbase while removing arangosearch analyzer '" + std::string(name) + "'"
+        };
+      }
+
+      SingleCollectionTransaction trx(transaction::StandaloneContext::Create(*vocbase),
+        arangodb::StaticStrings::AnalyzersCollection,
+        AccessMode::Type::WRITE);
+      auto res = trx.begin();
+
+      if (!res.ok()) {
+        return res;
+      }
+
+      velocypack::Builder builder;
+      OperationOptions options;
+
+      builder.openObject();
+      addStringRef(builder, arangodb::StaticStrings::KeyString, pool->_key);
+      builder.add(arangodb::StaticStrings::AnalyzersDeletedRevision,
+        VPackValue(analyzerModificationTrx->buildingRevision()));
+      builder.close();
+
+      auto result = trx.update(arangodb::StaticStrings::AnalyzersCollection,
+        builder.slice(),
+        options);
+
+      if (!result.ok()) {
+        trx.abort();
+
+        return result.result;
+      }
+
+      TRI_IF_FAILURE("UpdateAnalyzerForRemove") {
+        return Result(TRI_ERROR_DEBUG);
+      }
+
+      res = trx.commit();
+      if (!res.ok()) {
+        return res;
+      }
+      res = analyzerModificationTrx->commit();
+      if (res.fail()) {
+        return res;
+      }
+
+      // this is ok. As if we got  there removal is committed into agency
+      _analyzers.erase(itr);
+      auto cached = _lastLoad.find(split.first);
+      TRI_ASSERT(cached != _lastLoad.end());
+      if (ADB_LIKELY(cached != _lastLoad.end())) {
+        // we are hodling writelock so nobody should be able reload analyzers and update cache.
+        TRI_ASSERT(cached->second < analyzerModificationTrx->buildingRevision());
+        cached->second = analyzerModificationTrx->buildingRevision(); // as we already "updated cache" to this revision
+      }
+      res = removeFromCollection(split.second, split.first);
+      if (res.fail()) {
+        // just log this error. Analyzer is already "deleted" for the whole cluster
+        // so we must report success. Leftovers will be cleaned up on the next operation
+        LOG_TOPIC("70a8b", WARN, iresearch::TOPIC) << " Failed to finalize analyzer '" << split.second << "'"
+          << " Error Code:" << res.errorNumber() << " Error:" << res.errorMessage();
+      }
     }
-
-    auto& dbFeature = server().getFeature<arangodb::DatabaseFeature>();
-
-    auto* vocbase = dbFeature.useDatabase(split.first);
-
-    if (!vocbase) {
-      return arangodb::Result( // result
-        TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, // code
-        std::string("failure to find vocbase while removing arangosearch analyzer '") + std::string(name)+ "'"
-      );
-    }
-
-    std::shared_ptr<arangodb::LogicalCollection> collection;
-    auto collectionCallback = [&collection]( // store collection
-      std::shared_ptr<arangodb::LogicalCollection> const& col // args
-    )->void {
-      collection = col;
-    };
-
-    arangodb::methods::Collections::lookup( // find collection
-      *vocbase, ANALYZER_COLLECTION_NAME, collectionCallback // args
-    );
-
-    if (!collection) {
-      return arangodb::Result( // result
-        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, // code
-        std::string("failure to find collection while removing arangosearch analyzer '") + std::string(name)+ "'"
-      );
-    }
-
-    arangodb::SingleCollectionTransaction trx( // transaction
-      arangodb::transaction::StandaloneContext::Create(*vocbase), // transaction context
-      ANALYZER_COLLECTION_NAME, // collection name
-      arangodb::AccessMode::Type::WRITE // collection access type
-    );
-    auto res = trx.begin();
-
-    if (!res.ok()) {
-      return res;
-    }
-
-    arangodb::velocypack::Builder builder;
-    arangodb::OperationOptions options;
-
-    builder.openObject();
-    addStringRef(builder, arangodb::StaticStrings::KeyString, pool->_key);
-    builder.close();
-
-    auto result = // remove
-      trx.remove(ANALYZER_COLLECTION_NAME, builder.slice(), options);
-
-    if (!result.ok()) {
-      trx.abort();
-
-      return result.result;
-    }
-
-    auto commitResult = trx.commit();
-    if (!commitResult.ok()) {
-      return commitResult;
-    }
-
-    _analyzers.erase(itr);
-  } catch (arangodb::basics::Exception const& e) {
-    return arangodb::Result( // result
-      e.code(), // code
-      std::string("caught exception while removing configuration for arangosearch analyzer name '") + std::string(name) + "': " + std::to_string(e.code()) + " "+ e.what()
-    );
+  } catch (basics::Exception const& e) {
+    return { e.code(),
+            "caught exception while removing configuration for arangosearch analyzer name '" +
+            std::string(name) + "': " + std::to_string(e.code()) + " "+ e.what() };
   } catch (std::exception const& e) {
-    return arangodb::Result( // result
-      TRI_ERROR_INTERNAL, // code
-      std::string("caught exception while removing configuration for arangosearch analyzer name '") + std::string(name) + "': " + e.what()
-    );
+    return { TRI_ERROR_INTERNAL,
+             "caught exception while removing configuration for arangosearch analyzer name '" +
+             std::string(name) + "': " + e.what() };
   } catch (...) {
-    return arangodb::Result( // result
-      TRI_ERROR_INTERNAL, // code
-      std::string("caught exception while removing configuration for arangosearch analyzer name '") + std::string(name) + "'"
-    );
+    return { TRI_ERROR_INTERNAL,
+             "caught exception while removing configuration for arangosearch analyzer name '" +
+             std::string(name) + "'" };
   }
 
-  return arangodb::Result();
+  return {};
 }
 
 void IResearchAnalyzerFeature::start() {
@@ -2242,32 +2649,29 @@ void IResearchAnalyzerFeature::start() {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // sanity check: we rely on this condition is true internally
-  {
-    if (server().hasFeature<arangodb::SystemDatabaseFeature>()) {
-      auto& sysDbFeature = server().getFeature<arangodb::SystemDatabaseFeature>();
-      if (sysDbFeature.use()) {  // feature/db may be absent in some unit-test enviroment
-        TRI_ASSERT(sysDbFeature.use()->name() == arangodb::StaticStrings::SystemDatabase);
-      }
+  if (server().hasFeature<SystemDatabaseFeature>()) {
+    auto vocbase = server().getFeature<SystemDatabaseFeature>()
+                           .use();
+    if (vocbase) {  // feature/db may be absent in some unit-test enviroment
+      TRI_ASSERT(vocbase->name() == arangodb::StaticStrings::SystemDatabase);
     }
   }
 #endif
   // register analyzer functions
-  {
-    if (server().hasFeature<arangodb::aql::AqlFunctionFeature>()) {
-      auto& functions = server().getFeature<arangodb::aql::AqlFunctionFeature>();
-      addFunctions(functions);
-    } else {
-      LOG_TOPIC("7dcd9", WARN, arangodb::iresearch::TOPIC)
-          << "failure to find feature 'AQLFunctions' while registering "
-             "IResearch functions";
-    }
+  if (server().hasFeature<aql::AqlFunctionFeature>()) {
+    addFunctions(server().getFeature<aql::AqlFunctionFeature>());
   }
 
-  auto res = loadAnalyzers();
-
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION(res);
+  if (server().hasFeature<ClusterFeature>() &&
+      server().hasFeature<SchedulerFeature>() && // Mostly for tests without scheduler
+      ServerState::instance()->isCoordinator()) {
+    queueGarbageCollection(_workItemMutex, _workItem, _gcfunc);
   }
+}
+
+void IResearchAnalyzerFeature::beginShutdown() {
+  std::lock_guard<std::mutex> guard(_workItemMutex);
+  _workItem.reset();
 }
 
 void IResearchAnalyzerFeature::stop() {
@@ -2281,75 +2685,64 @@ void IResearchAnalyzerFeature::stop() {
 
     _analyzers = getStaticAnalyzers();  // clear cache and reload static analyzers
   }
+  {
+    // reset again, as there may be a race between beginShutdown and
+    // the execution of the deferred _workItem
+    std::lock_guard<std::mutex> guard(_workItemMutex);
+    _workItem.reset();
+  }
 }
 
-arangodb::Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
-  if (!server().hasFeature<arangodb::DatabaseFeature>()) {
-    return arangodb::Result( // result
-      TRI_ERROR_INTERNAL, // code
-      std::string("failure to find feature 'Database' while persising arangosearch analyzer '") + pool.name()+ "'"
-    );
-  }
-  auto& dbFeature = server().getFeature<arangodb::DatabaseFeature>();
-
-  if (pool.type().null()) {
-    return arangodb::Result( // result
-      TRI_ERROR_BAD_PARAMETER, // code
-      std::string("failure to persist arangosearch analyzer '") + pool.name()+ "' configuration with 'null' type"
-    );
-  }
-
-  auto* engine = arangodb::EngineSelectorFeature::ENGINE;
-
-  // do not allow persistence while in recovery
-  if (engine && engine->inRecovery()) {
-    return arangodb::Result( // result
-      TRI_ERROR_INTERNAL, // code
-      std::string("failure to persist arangosearch analyzer '") + pool.name()+ "' configuration while storage engine in recovery"
-    );
-  }
-
-  auto split = splitAnalyzerName(pool.name());
-  auto* vocbase = dbFeature.useDatabase(split.first);
-
-  if (!vocbase) {
-    return arangodb::Result( // result
-      TRI_ERROR_INTERNAL, // code
-      std::string("failure to find vocbase while persising arangosearch analyzer '") + pool.name()+ "'"
-    );
+Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
+  TRI_IF_FAILURE("FailStoreAnalyzer") {
+    return Result(TRI_ERROR_DEBUG);
   }
 
   try {
-    auto collection = getAnalyzerCollection(*vocbase);
-    if (!collection) {
-       return arangodb::Result( // result
-         TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, // code
-         std::string("failure to find collection '") +
-             ANALYZER_COLLECTION_NAME +
-             "' in vocbase '" + vocbase->name() +
-             "' vocbase while persising arangosearch analyzer '" + pool.name()+ "'"
-       );
+    auto& dbFeature = server().getFeature<DatabaseFeature>();
+
+    if (pool.type().null()) {
+      return { TRI_ERROR_BAD_PARAMETER,
+               "failure to persist arangosearch analyzer '" +
+               pool.name() + "' configuration with 'null' type" };
     }
 
-    arangodb::SingleCollectionTransaction trx( // transaction
-      arangodb::transaction::StandaloneContext::Create(*vocbase), // transaction context
-      ANALYZER_COLLECTION_NAME, // collection name
-      arangodb::AccessMode::Type::WRITE // collection access type
-    );
+    auto* engine = EngineSelectorFeature::ENGINE;
+
+    // do not allow persistence while in recovery
+    if (engine && engine->inRecovery()) {
+      return { TRI_ERROR_INTERNAL,
+               "failure to persist arangosearch analyzer '" + pool.name() +
+               "' configuration while storage engine in recovery" };
+    }
+
+    auto split = splitAnalyzerName(pool.name());
+    auto* vocbase = dbFeature.useDatabase(split.first);
+
+    if (!vocbase) {
+      return { TRI_ERROR_INTERNAL,
+               "failure to find vocbase while persising arangosearch analyzer '" +
+               pool.name() + "'" };
+    }
+
+    SingleCollectionTransaction trx(transaction::StandaloneContext::Create(*vocbase),
+                                    arangodb::StaticStrings::AnalyzersCollection,
+                                    AccessMode::Type::WRITE);
     auto res = trx.begin();
 
     if (!res.ok()) {
       return res;
     }
 
-    arangodb::velocypack::Builder builder;
+    velocypack::Builder builder;
     // for storing in db analyzers collection - store only analyzer name
     pool.toVelocyPack(builder, true);
 
-    arangodb::OperationOptions options;
+    OperationOptions options;
     options.waitForSync = true;
 
-    auto result = trx.insert(ANALYZER_COLLECTION_NAME, builder.slice(), options);
+    auto result = trx.insert(arangodb::StaticStrings::AnalyzersCollection,
+                             builder.slice(), options);
 
     if (!result.ok()) {
       trx.abort();
@@ -2360,19 +2753,17 @@ arangodb::Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
     auto slice = result.slice();
 
     if (!slice.isObject()) {
-      return arangodb::Result( // result
-        TRI_ERROR_INTERNAL, // code
-        std::string("failure to parse result as a JSON object while persisting configuration for arangosearch analyzer name '") + pool.name() + "'"
-      );
+      return { TRI_ERROR_INTERNAL,
+               "failure to parse result as a JSON object while persisting configuration for arangosearch analyzer name '" +
+               pool.name() + "'" };
     }
 
     auto key = slice.get(arangodb::StaticStrings::KeyString);
 
     if (!key.isString()) {
-      return arangodb::Result( // result
-        TRI_ERROR_INTERNAL, // code
-        std::string("failure to find the resulting key field while persisting configuration for arangosearch analyzer name '") + pool.name() + "'"
-      );
+      return { TRI_ERROR_INTERNAL,
+               "failure to find the resulting key field while persisting configuration for arangosearch analyzer name '" +
+               pool.name() + "'" };
     }
 
     res = trx.commit();
@@ -2384,29 +2775,25 @@ arangodb::Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
     }
 
     pool.setKey(getStringRef(key));
-  } catch (arangodb::basics::Exception const& e) {
-    return arangodb::Result( // result
-      e.code(), // code
-      std::string("caught exception while persisting configuration for arangosearch analyzer name '") + pool.name() + "': " + std::to_string(e.code()) + " "+ e.what()
-    );
+  } catch (basics::Exception const& e) {
+    return { e.code(),
+             "caught exception while persisting configuration for arangosearch analyzer name '" +
+             pool.name() + "': " + std::to_string(e.code()) + " "+ e.what() };
   } catch (std::exception const& e) {
-    return arangodb::Result( // result
-      TRI_ERROR_INTERNAL, // code
-      std::string("caught exception while persisting configuration for arangosearch analyzer name '") + pool.name() + "': " + e.what()
-    );
+    return { TRI_ERROR_INTERNAL,
+             "caught exception while persisting configuration for arangosearch analyzer name '" +
+             pool.name() + "': " + e.what() };
   } catch (...) {
-    return arangodb::Result( // result
-      TRI_ERROR_INTERNAL, // code
-      std::string("caught exception while persisting configuration for arangosearch analyzer name '") + pool.name() + "'"
-    );
+    return { TRI_ERROR_INTERNAL,
+             "caught exception while persisting configuration for arangosearch analyzer name '" +
+             pool.name() + "'" };
   }
 
-  return arangodb::Result();
+  return {};
 }
 
-bool IResearchAnalyzerFeature::visit( // visit all analyzers
-    std::function<bool(AnalyzerPool::ptr const& analyzer)> const& visitor // visitor
-) const {
+bool IResearchAnalyzerFeature::visit(
+    std::function<bool(AnalyzerPool::ptr const&)> const& visitor) const {
   Analyzers analyzers;
 
   {
@@ -2415,7 +2802,7 @@ bool IResearchAnalyzerFeature::visit( // visit all analyzers
     analyzers = _analyzers;
   }
 
-  for (auto& entry: analyzers) {
+  for (auto& entry : analyzers) {
     if (entry.second && !visitor(entry.second)) {
       return false; // termination request
     }
@@ -2424,13 +2811,12 @@ bool IResearchAnalyzerFeature::visit( // visit all analyzers
   return true;
 }
 
-bool IResearchAnalyzerFeature::visit( // visit analyzers
-    std::function<bool(AnalyzerPool::ptr const& analyzer)> const& visitor, // visitor
-    TRI_vocbase_t const* vocbase // analyzers for vocbase
-) const {
+bool IResearchAnalyzerFeature::visit(
+    std::function<bool(AnalyzerPool::ptr const&)> const& visitor,
+    TRI_vocbase_t const* vocbase) const {
   // static analyzer visitation
   if (!vocbase) {
-    for (auto& entry: getStaticAnalyzers()) {
+    for (auto& entry : getStaticAnalyzers()) {
       if (entry.second && !visitor(entry.second)) {
         return false; // termination request
       }
@@ -2439,12 +2825,10 @@ bool IResearchAnalyzerFeature::visit( // visit analyzers
     return true;
   }
 
-  auto res = const_cast<IResearchAnalyzerFeature*>(this)->loadAnalyzers( // load analyzers for database
-    vocbase->name() // args
-  );
+  auto res = const_cast<IResearchAnalyzerFeature*>(this)->loadAnalyzers(vocbase->name());
 
   if (!res.ok()) {
-    LOG_TOPIC("73695", WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("73695", WARN, iresearch::TOPIC)
       << "failure to load analyzers while visiting database '" << vocbase->name() << "': " << res.errorNumber() << " " << res.errorMessage();
     TRI_set_errno(res.errorNumber());
 
@@ -2459,7 +2843,7 @@ bool IResearchAnalyzerFeature::visit( // visit analyzers
     analyzers = _analyzers;
   }
 
-  for (auto& entry: analyzers) {
+  for (auto& entry : analyzers) {
     if (entry.second // have entry
         && (splitAnalyzerName(entry.first).first == vocbase->name()) // requested vocbase
         && !visitor(entry.second) // termination request

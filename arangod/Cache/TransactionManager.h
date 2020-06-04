@@ -18,18 +18,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_CACHE_TRANSACTION_WINDOW_H
 #define ARANGODB_CACHE_TRANSACTION_WINDOW_H
 
-#include "Basics/Common.h"
+#include <atomic>
+#include <cstdint>
+
 #include "Basics/ReadWriteSpinLock.h"
 #include "Cache/Transaction.h"
-
-#include <stdint.h>
-#include <atomic>
 
 namespace arangodb {
 namespace cache {
@@ -68,17 +67,22 @@ class TransactionManager {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return the current window identifier.
   //////////////////////////////////////////////////////////////////////////////
-  uint64_t term();
+  std::uint64_t term();
 
  private:
-  std::atomic<uint64_t> _openReads;
-  std::atomic<uint64_t> _openSensitive;
-  std::atomic<uint64_t> _openWrites;
-  std::atomic<uint64_t> _term;
-  std::atomic<bool> _lock;
+  struct Counters {
+    uint64_t openReads : 21;
+    uint64_t openWrites : 21;
+    uint64_t openSensitive : 21;
+  };
+  static_assert(sizeof(Counters) == sizeof(uint64_t), "unexpected size");
 
-  void lock();
-  void unlock();
+  struct alignas(16) State {
+    Counters counters;
+    uint64_t term;
+  };
+
+  std::atomic<State> _state;
 };
 
 };  // end namespace cache

@@ -254,7 +254,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
 
         TRI_voc_tick_t dbid = RocksDBLogValue::databaseId(blob);
         TRI_voc_cid_t cid = RocksDBLogValue::collectionId(blob);
-        TRI_idx_iid_t iid = RocksDBLogValue::indexId(blob);
+        IndexId iid = RocksDBLogValue::indexId(blob);
 
         // only print markers from this collection if it is set
         if (shouldHandleCollection(dbid, cid)) {
@@ -273,7 +273,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
 
               VPackObjectBuilder data(&_builder, "data", true);
 
-              data->add("id", VPackValue(std::to_string(iid)));
+              data->add("id", VPackValue(std::to_string(iid.id())));
             }
 
             printMarker(vocbase);

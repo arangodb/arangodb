@@ -52,27 +52,27 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   }
   bool failOnWarning() const { return _failOnWarning; }
   bool smartJoins() const { return _smartJoins; }
+  bool parallelizeTraversals() const { return _parallelizeTraversals; }
   uint64_t queryMemoryLimit() const { return _queryMemoryLimit; }
   uint64_t maxQueryPlans() const { return _maxQueryPlans; }
+  aql::QueryRegistry* queryRegistry() const { return _queryRegistry.get(); }
 
  private:
   bool _trackSlowQueries;
   bool _trackBindVars;
   bool _failOnWarning;
+  bool _queryCacheIncludeSystem;
   bool _smartJoins;
+  bool _parallelizeTraversals;
   uint64_t _queryMemoryLimit;
   uint64_t _maxQueryPlans;
-  double _slowQueryThreshold;
-  double _slowStreamingQueryThreshold;
-  std::string _queryCacheMode;
   uint64_t _queryCacheMaxResultsCount;
   uint64_t _queryCacheMaxResultsSize;
   uint64_t _queryCacheMaxEntrySize;
-  bool _queryCacheIncludeSystem;
+  double _slowQueryThreshold;
+  double _slowStreamingQueryThreshold;
   double _queryRegistryTTL;
-
- public:
-  aql::QueryRegistry* queryRegistry() const { return _queryRegistry.get(); }
+  std::string _queryCacheMode;
 
  private:
   static std::atomic<aql::QueryRegistry*> QUERY_REGISTRY;

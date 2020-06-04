@@ -27,22 +27,22 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "GeneralServer/ServerSecurityFeature.h"
-#include "Logger/LogBuffer.h"
+#include "Logger/LogBufferFeature.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAdminLogHandler::RestAdminLogHandler(application_features::ApplicationServer& server,
+RestAdminLogHandler::RestAdminLogHandler(arangodb::application_features::ApplicationServer& server,
                                          GeneralRequest* request, GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestAdminLogHandler::execute() {
-  auto& server = application_features::ApplicationServer::server();
-  ServerSecurityFeature& security = server.getFeature<ServerSecurityFeature>();
+  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
 
   if (!security.canAccessHardenedApi()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
@@ -142,7 +142,7 @@ void RestAdminLogHandler::reportLogs() {
   std::string searchString = StringUtils::tolower(_request->value("search", search));
 
   // generate result
-  std::vector<LogBuffer> entries = LogBuffer::entries(ul, start, useUpto);
+  std::vector<LogBuffer> entries = server().getFeature<LogBufferFeature>().entries(ul, start, useUpto);
   std::vector<LogBuffer> clean;
 
   if (search) {

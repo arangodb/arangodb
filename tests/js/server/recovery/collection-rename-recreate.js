@@ -83,10 +83,6 @@ function recoverySuite () {
 
       c = db._collection('UnitTestsRecovery2');
       prop = c.properties();
-      if (db._engine().name !== "rocksdb") {
-        assertEqual(8 * 1024 * 1024, prop.journalSize);
-        assertFalse(prop.doCompact);
-      }
       assertEqual(1000, c.count());
     }
 

@@ -25,11 +25,6 @@
 #include "Cache/CacheManagerFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "MMFiles/MMFilesCompactionFeature.h"
-#include "MMFiles/MMFilesEngine.h"
-#include "MMFiles/MMFilesLogfileManager.h"
-#include "MMFiles/MMFilesPersistentIndexFeature.h"
-#include "MMFiles/MMFilesWalRecoveryFeature.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/CheckVersionFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -66,11 +61,6 @@ DatabaseFeaturePhase::DatabaseFeaturePhase(ApplicationServer& server)
   startsAfter<FlushFeature>();
   startsAfter<InitDatabaseFeature>();
   startsAfter<LockfileFeature>();
-  startsAfter<MMFilesCompactionFeature>();
-  startsAfter<MMFilesEngine>();
-  startsAfter<MMFilesLogfileManager>();
-  startsAfter<MMFilesPersistentIndexFeature>();
-  startsAfter<MMFilesWalRecoveryFeature>();
   startsAfter<ReplicationFeature>();
   startsAfter<RocksDBEngine>();
   startsAfter<RocksDBOptionFeature>();

@@ -2,7 +2,7 @@
 // Copyright : Takayuki Matsuoka
 
 
-#ifdef _MSC_VER    /* Visual Studio */
+#if defined(_MSC_VER) && (_MSC_VER <= 1800)  /* Visual Studio <= 2013 */
 #  define _CRT_SECURE_NO_WARNINGS
 #  define snprintf sprintf_s
 #endif
@@ -44,7 +44,7 @@ void test_compress(FILE* outFp, FILE* inpFp)
     char inpBuf[2][BLOCK_BYTES];
     int  inpBufIndex = 0;
 
-    LZ4_resetStream(lz4Stream);
+    LZ4_initStream(lz4Stream, sizeof (*lz4Stream));
 
     for(;;) {
         char* const inpPtr = inpBuf[inpBufIndex];

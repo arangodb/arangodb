@@ -23,6 +23,8 @@
 #ifndef ARANGOD_AQL_AQLITEMBLOCK_SERIALIZATION_FORMAT_H
 #define ARANGOD_AQL_AQLITEMBLOCK_SERIALIZATION_FORMAT_H
 
+#include <type_traits>
+
 namespace arangodb {
 namespace aql {
 
@@ -33,6 +35,8 @@ enum class SerializationFormat {
   // Use a hidden register for shadow rows. In classic versions all entries would be off by one.
   SHADOWROWS = 1
 };
+
+using SerializationFormatType = std::underlying_type_t<SerializationFormat>;
 
 }  // namespace aql
 }  // namespace arangodb

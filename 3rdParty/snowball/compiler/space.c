@@ -123,12 +123,12 @@ extern char * b_to_s(const symbol * p) {
     {
         int i;
         for (i = 0; i < n; i++) {
-	    if (p[i] > 255) {
-		printf("In b_to_s, can't convert p[%d] to char because it's 0x%02x\n", i, (int)p[i]);
-		exit(1);
-	    }
-	    s[i] = (char)p[i];
-	}
+            if (p[i] > 255) {
+                printf("In b_to_s, can't convert p[%d] to char because it's 0x%02x\n", i, (int)p[i]);
+                exit(1);
+            }
+            s[i] = (char)p[i];
+        }
     }
     s[n] = 0;
     return s;
@@ -178,7 +178,7 @@ extern void str_delete(struct str * str) {
 }
 
 /* Append a str to this str. */
-extern void str_append(struct str * str, struct str * add) {
+extern void str_append(struct str * str, const struct str * add) {
 
     symbol * q = add->data;
     str->data = add_to_b(str->data, SIZE(q), q);
@@ -193,12 +193,19 @@ extern void str_append_ch(struct str * str, char add) {
 }
 
 /* Append a low level block to a str. */
-extern void str_append_b(struct str * str, symbol * q) {
+extern void str_append_b(struct str * str, const symbol * q) {
 
     str->data = add_to_b(str->data, SIZE(q), q);
 }
 
-/* Append a (char *, null teminated) string to a str. */
+/* Append the tail of a low level block to a str. */
+extern void str_append_b_tail(struct str * str, const symbol * q, int skip) {
+    if (skip < 0 || skip >= SIZE(q)) return;
+
+    str->data = add_to_b(str->data, SIZE(q) - skip, q + skip);
+}
+
+/* Append a (char *, null terminated) string to a str. */
 extern void str_append_string(struct str * str, const char * s) {
 
     str->data = add_s_to_b(str->data, s);
@@ -219,14 +226,14 @@ extern void str_clear(struct str * str) {
 }
 
 /* Set a string */
-extern void str_assign(struct str * str, char * s) {
+extern void str_assign(struct str * str, const char * s) {
 
     str_clear(str);
     str_append_string(str, s);
 }
 
 /* Copy a string. */
-extern struct str * str_copy(struct str * old) {
+extern struct str * str_copy(const struct str * old) {
 
     struct str * newstr = str_new();
     str_append(newstr, old);
@@ -234,13 +241,13 @@ extern struct str * str_copy(struct str * old) {
 }
 
 /* Get the data stored in this str. */
-extern symbol * str_data(struct str * str) {
+extern symbol * str_data(const struct str * str) {
 
     return str->data;
 }
 
 /* Get the length of the str. */
-extern int str_len(struct str * str) {
+extern int str_len(const struct str * str) {
 
     return SIZE(str->data);
 }
@@ -249,7 +256,7 @@ extern int str_len(struct str * str) {
  *
  * Or -1 if the string is empty.
  */
-extern int str_back(struct str *str) {
+extern int str_back(const struct str *str) {
     return SIZE(str->data) ? str->data[SIZE(str->data) - 1] : -1;
 }
 
@@ -278,4 +285,3 @@ extern int put_utf8(int ch, symbol * p) {
     p[1] = ((ch >> 6) & 0x3F) | 0x80;
     p[2] = (ch & 0x3F) | 0x80; return 3;
 }
-

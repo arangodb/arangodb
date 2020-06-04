@@ -64,30 +64,6 @@ exports.Helper = {
       }
     }
   },
-
-  rotate: function (collection) {
-    var internal = require('internal');
-
-    internal.wal.flush(true, true);
-    internal.wait(1, false);
-
-    var fig = collection.figures();
-    var files = fig.datafiles.count + fig.journals.count;
-
-    // wait for at most 15 seconds
-    var end = internal.time() + 15;
-    collection.rotate();
-
-    while (internal.time() < end) {
-      // wait until the figures change
-      fig = collection.figures();
-      if (fig.datafiles.count + fig.journals.count !== files) {
-        break;
-      }
-
-      internal.wait(1);
-    }
-  }
 };
 
 exports.deriveTestSuite = function (deriveFrom, deriveTo, namespace) {

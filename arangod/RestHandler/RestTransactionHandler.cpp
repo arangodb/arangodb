@@ -218,7 +218,7 @@ void RestTransactionHandler::executeAbort() {
   TRI_ASSERT(mgr != nullptr);
 
   if (_request->suffixes()[0] == "write") {
-    // abort all transactions
+    // abort all write transactions
     bool const fanout = ServerState::instance()->isCoordinator() && !_request->parsedValue("local", false);
     ExecContext const& exec = ExecContext::current();
     Result res = mgr->abortAllManagedWriteTrx(exec.user(), fanout);
@@ -330,7 +330,7 @@ void RestTransactionHandler::returnContext() {
   _v8Context = nullptr;
 }
 
-bool RestTransactionHandler::cancel() {
+void RestTransactionHandler::cancel() {
   // cancel v8 transaction
   WRITE_LOCKER(writeLock, _lock);
   _canceled.store(true);
@@ -338,28 +338,32 @@ bool RestTransactionHandler::cancel() {
   if (!isolate->IsExecutionTerminating()) {
     isolate->TerminateExecution();
   }
-  return true;
 }
 
 /// @brief returns the short id of the server which should handle this request
-std::string RestTransactionHandler::forwardingTarget() {
+ResultT<std::pair<std::string, bool>> RestTransactionHandler::forwardingTarget() {
+  auto base = RestVocbaseBaseHandler::forwardingTarget();
+  if (base.ok() && !std::get<0>(base.get()).empty()) {
+    return base;
+  }
+
   rest::RequestType const type = _request->requestType();
   if (type != rest::RequestType::GET && type != rest::RequestType::PUT &&
       type != rest::RequestType::DELETE_REQ) {
-    return "";
+    return {std::make_pair(StaticStrings::Empty, false)};
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() < 1) {
-    return "";
+    return {std::make_pair(StaticStrings::Empty, false)};
   }
 
   uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
   uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
 
   if (sourceServer == ServerState::instance()->getShortId()) {
-    return "";
+    return {std::make_pair(StaticStrings::Empty, false)};
   }
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-  return ci.getCoordinatorByShortID(sourceServer);
+  return {std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
 }

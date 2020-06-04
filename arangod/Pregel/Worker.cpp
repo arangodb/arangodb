@@ -793,7 +793,7 @@ void Worker<V, E, M>::_callConductor(std::string const& path, VPackBuilder const
     }
   } else {
 
-    std::string baseUrl = Utils::baseUrl(_config.database(), Utils::conductorPrefix);
+    std::string baseUrl = Utils::baseUrl(Utils::conductorPrefix);
     
     VPackBuffer<uint8_t> buffer;
     buffer.append(message.data(), message.size());
@@ -802,8 +802,11 @@ void Worker<V, E, M>::_callConductor(std::string const& path, VPackBuilder const
     auto const& nf = server.getFeature<arangodb::NetworkFeature>();
     network::ConnectionPool* pool = nf.pool();
     
+    network::RequestOptions reqOpts;
+    reqOpts.database = _config.database();
+    
     network::sendRequest(pool, "server:" + _config.coordinatorId(),
-                         fuerte::RestVerb::Post, baseUrl + path, std::move(buffer));
+                         fuerte::RestVerb::Post, baseUrl + path, std::move(buffer), reqOpts);
     
   }
 }
@@ -818,7 +821,7 @@ void Worker<V, E, M>::_callConductorWithResponse(std::string const& path,
     PregelFeature::handleConductorRequest(*_config.vocbase(), path, message.slice(), response);
     handle(response.slice());
   } else {
-    std::string baseUrl = Utils::baseUrl(_config.database(), Utils::conductorPrefix);
+    std::string baseUrl = Utils::baseUrl(Utils::conductorPrefix);
     
     application_features::ApplicationServer& server = _config.vocbase()->server();
     auto const& nf = server.getFeature<arangodb::NetworkFeature>();
@@ -829,6 +832,7 @@ void Worker<V, E, M>::_callConductorWithResponse(std::string const& path,
     
     
     network::RequestOptions reqOpts;
+    reqOpts.database = _config.database();
     reqOpts.skipScheduler = true;
 
     network::Response r = network::sendRequest(pool, "server:" + _config.coordinatorId(),

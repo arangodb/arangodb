@@ -2,15 +2,18 @@
 @startDocuBlock patch_update_document
 @brief updates a document
 
-@RESTHEADER{PATCH /_api/document/{document-handle},Update document, updateDocument}
+@RESTHEADER{PATCH /_api/document/{collection}/{key},Update document,updateDocument}
 
 @RESTALLBODYPARAM{document,json,required}
 A JSON representation of a document update as an object.
 
 @RESTURLPARAMETERS
 
-@RESTURLPARAM{document-handle,string,required}
-This URL parameter must be a document handle.
+@RESTURLPARAM{collection,string,required}
+Name of the *collection* in which the document is to be updated.
+
+@RESTURLPARAM{key,string,required}
+The document key.
 
 @RESTQUERYPARAMETERS
 
@@ -32,14 +35,14 @@ value. If set to *true*, objects will be merged. The default is
 Wait until document has been synced to disk.
 
 @RESTQUERYPARAM{ignoreRevs,boolean,optional}
-By default, or if this is set to *true*, the *_rev* attributes in 
+By default, or if this is set to *true*, the *_rev* attributes in
 the given document is ignored. If this is set to *false*, then
 the *_rev* attribute given in the body document is taken as a
 precondition. The document is only updated if the current revision
 is the one specified.
 
 @RESTQUERYPARAM{returnOld,boolean,optional}
-Return additionally the complete previous revision of the changed 
+Return additionally the complete previous revision of the changed
 document under the attribute *old* in the result.
 
 @RESTQUERYPARAM{returnNew,boolean,optional}
@@ -47,7 +50,7 @@ Return additionally the complete new document under the attribute *new*
 in the result.
 
 @RESTQUERYPARAM{silent,boolean,optional}
-If set to *true*, an empty object will be returned as response. No meta-data 
+If set to *true*, an empty object will be returned as response. No meta-data
 will be returned for the updated document. This option can be used to
 save some network traffic.
 
@@ -58,12 +61,12 @@ You can conditionally update a document based on a target revision id by
 using the *if-match* HTTP header.
 
 @RESTDESCRIPTION
-Partially updates the document identified by *document-handle*.
+Partially updates the document identified by *document-id*.
 The body of the request must contain a JSON document with the
 attributes to patch (the patch document). All attributes from the
 patch document will be added to the existing document if they do not
 yet exist, and overwritten in the existing document if they do exist
-there. 
+there.
 
 The value of the `_key` attribute as well as attributes
 used as sharding keys may not be changed.
@@ -88,8 +91,8 @@ the *Etag* header field contains the new revision of the document
 (in double quotes) and the *Location* header contains a complete URL
 under which the document can be queried.
 
-Cluster only: The patch document _may_ contain  
-values for the collection's pre-defined shard keys. Values for the shard keys 
+Cluster only: The patch document _may_ contain
+values for the collection's pre-defined shard keys. Values for the shard keys
 are treated as hints to improve performance. Should the shard keys
 values be incorrect ArangoDB may answer with a *not found* error
 
@@ -104,10 +107,10 @@ applied. The *waitForSync* query parameter cannot be used to disable
 synchronization for collections that have a default *waitForSync* value
 of *true*.
 
-If *silent* is not set to *true*, the body of the response contains a JSON 
-object with the information about the handle and the revision. The attribute 
-*_id* contains the known *document-handle* of the updated document, *_key* 
-contains the key which uniquely identifies a document in a given collection, 
+If *silent* is not set to *true*, the body of the response contains a JSON
+object with the information about the identifier and the revision. The attribute
+*_id* contains the known *document-id* of the updated document, *_key*
+contains the key which uniquely identifies a document in a given collection,
 and the attribute *_rev* contains the new document revision.
 
 If the query parameter *returnOld* is *true*, then
@@ -208,4 +211,3 @@ Merging attributes of an object using `mergeObjects`:
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

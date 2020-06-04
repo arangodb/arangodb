@@ -235,15 +235,9 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          if (db._engine().name === 'rocksdb') {
-            //  rocksdb keeps wal longer
-            let cc = db._collection(cn).count();
-            assertEqual(cc, 31, 'rocksdb must keep wal, documents not there');
-          } else {
-            //  data loss on slave!
-            let cc = db._collection(cn).count();
-            assertTrue(cc < 25, 'Expected less than ' + cc);
-          }
+          //  rocksdb keeps wal longer
+          let cc = db._collection(cn).count();
+          assertEqual(cc, 31, 'rocksdb must keep wal, documents not there');
         }, {
           requireFromPresent: false,
           keepBarrier: false
@@ -331,16 +325,9 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          if (db._engine().name === 'rocksdb') {
-            //  rocksdb keeps wal longer
-            assertTrue(replication.applier.state().state.running, 'Applier should be running');
-            assertEqual(db._collection(cn).count(), 30, 'rocksdb must keep wal');
-          } else {
-            //  slave should have failed
-            assertFalse(replication.applier.state().state.running);
-            //  data loss on slave!
-            assertTrue(db._collection(cn).count() < 25);
-          }
+          //  rocksdb keeps wal longer
+          assertTrue(replication.applier.state().state.running, 'Applier should be running');
+          assertEqual(db._collection(cn).count(), 30, 'rocksdb must keep wal');
         },
         {
           requireFromPresent: true,

@@ -44,14 +44,13 @@ void mangleNull(std::string& name);
 void mangleBool(std::string& name);
 void mangleNumeric(std::string& name);
 
-void mangleStringField( // mangle string field
-  std::string& name, // field name
-  arangodb::iresearch::IResearchLinkMeta::Analyzer const& analyzer // analyzer to apply
-);
-void demangleStringField( // demangle string field
-  std::string& name, // field name
-  arangodb::iresearch::IResearchLinkMeta::Analyzer const& analyzer // analyzer to apply
-);
+void mangleStringField(
+  std::string& name,
+  arangodb::iresearch::FieldMeta::Analyzer const& analyzer);
+
+void demangleStringField(
+  std::string& name,
+  arangodb::iresearch::FieldMeta::Analyzer const& analyzer);
 
 }  // namespace kludge
 }  // namespace iresearch

@@ -30,13 +30,23 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-constexpr bool NoResultsExecutor::Properties::preservesOrder;
-constexpr BlockPassthrough NoResultsExecutor::Properties::allowsBlockPassthrough;
-constexpr bool NoResultsExecutor::Properties::inputSizeRestrictsOutputSize;
-
-NoResultsExecutor::NoResultsExecutor(Fetcher& fetcher, ExecutorInfos& infos) {}
+NoResultsExecutor::NoResultsExecutor(Fetcher&, Infos&) {}
 NoResultsExecutor::~NoResultsExecutor() = default;
 
-std::pair<ExecutionState, NoStats> NoResultsExecutor::produceRows(OutputAqlItemRow& output) {
-  return {ExecutionState::DONE, NoStats{}};
+auto NoResultsExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output) const
+    noexcept -> std::tuple<ExecutorState, Stats, AqlCall> {
+  return {input.upstreamState(), NoStats{}, AqlCall{0, false, 0, AqlCall::LimitType::HARD}};
+}
+
+auto NoResultsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call) const
+    noexcept -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
+  return {inputRange.upstreamState(), NoStats{}, 0,
+          AqlCall{0, false, 0, AqlCall::LimitType::HARD}};
+};
+
+[[nodiscard]] auto NoResultsExecutor::expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                                              AqlCall const& call) const
+    noexcept -> size_t {
+  // Well nevermind the input, but we will always return 0 rows here.
+  return 0;
 }

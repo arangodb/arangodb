@@ -24,15 +24,17 @@
 #ifndef ARANGO_ROCKSDB_ROCKSDB_LOG_VALUE_H
 #define ARANGO_ROCKSDB_ROCKSDB_LOG_VALUE_H 1
 
-#include "Basics/Common.h"
-#include "RocksDBEngine/RocksDBTypes.h"
-#include "VocBase/LocalDocumentId.h"
-#include "VocBase/voc-types.h"
-
 #include <rocksdb/slice.h>
+
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include "Basics/Common.h"
+#include "RocksDBEngine/RocksDBTypes.h"
+#include "VocBase/Identifiers/IndexId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
 
@@ -58,8 +60,7 @@ class RocksDBLogValue {
 
   static RocksDBLogValue IndexCreate(TRI_voc_tick_t dbid, TRI_voc_cid_t cid,
                                      VPackSlice const& indexInfo);
-  static RocksDBLogValue IndexDrop(TRI_voc_tick_t dbid, TRI_voc_cid_t cid,
-                                   TRI_idx_iid_t indexId);
+  static RocksDBLogValue IndexDrop(TRI_voc_tick_t dbid, TRI_voc_cid_t cid, IndexId indexId);
 
   static RocksDBLogValue ViewCreate(TRI_voc_tick_t, TRI_voc_cid_t);
   static RocksDBLogValue ViewDrop(TRI_voc_tick_t, TRI_voc_cid_t, arangodb::velocypack::StringRef const& uuid);
@@ -85,7 +86,7 @@ class RocksDBLogValue {
   static TRI_voc_tid_t transactionId(rocksdb::Slice const&);
   static TRI_voc_cid_t collectionId(rocksdb::Slice const&);
   static TRI_voc_cid_t viewId(rocksdb::Slice const&);
-  static TRI_idx_iid_t indexId(rocksdb::Slice const&);
+  static IndexId indexId(rocksdb::Slice const&);
 
   /// CollectionTruncate contains an object id
   static uint64_t objectId(rocksdb::Slice const&);

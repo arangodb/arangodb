@@ -1,7 +1,7 @@
 /* jshint browser: true */
 /* jshint unused: false */
 /* global Backbone, $, L, setTimeout, sessionStorage, ace, Storage, window, _, btoa */
-/* global frontendConfig, _, arangoHelper, numeral, templateEngine, Joi */
+/* global frontendConfig, _, arangoHelper, numeral, templateEngine, Joi, Noty */
 
 (function () {
   'use strict';
@@ -638,14 +638,10 @@
         queryData = this.readQueryData();
       }
 
-      if (queryData === 'false') {
-        return;
-      }
-
-      $('#outputEditorWrapper' + counter + ' .queryExecutionTime').text('');
-      this.execPending = false;
-
       if (queryData) {
+        $('#outputEditorWrapper' + counter + ' .queryExecutionTime').text('');
+        this.execPending = false;
+
         var afterResult = function () {
           $('#outputEditorWrapper' + counter + ' #spinner').remove();
           $('#outputEditor' + counter).css('opacity', '1');
@@ -663,7 +659,7 @@
         $.ajax({
           type: 'POST',
           url: url,
-          data: queryData,
+          data: JSON.stringify(queryData),
           contentType: 'application/json',
           processData: false,
           success: function (data) {
@@ -680,8 +676,8 @@
 
               outputEditor.setValue(data.msg, 1);
               self.deselect(outputEditor);
-              $.noty.clearQueue();
-              $.noty.closeAll();
+              Noty.clearQueue();
+              Noty.closeAll();
               self.handleResult(counter);
 
               // SCROLL TO RESULT BOX
@@ -1756,7 +1752,6 @@
     },
 
     readQueryData: function (selected, forExecute, forProfile) {
-      // var selectedText = this.aqlEditor.session.getTextRange(this.aqlEditor.getSelectionRange())
       var data = {};
 
       if (!forProfile) {
@@ -1774,7 +1769,7 @@
         } else {
           arangoHelper.arangoError('Query', 'Your query is empty!');
         }
-        data = false;
+        return false;
       } else {
         var bindVars = {};
         if (Object.keys(this.bindParamTableObj).length > 0) {
@@ -1797,17 +1792,13 @@
         }
       }
 
-      return JSON.stringify(data);
+      return data;
     },
 
     fillResult: function (counter, selected) {
       var self = this;
 
       var queryData = this.readQueryData(selected, true);
-
-      if (queryData === 'false') {
-        return;
-      }
 
       if (queryData) {
         $.ajax({
@@ -1816,15 +1807,15 @@
           headers: {
             'x-arango-async': 'store'
           },
-          data: queryData,
+          data: JSON.stringify(queryData),
           contentType: 'application/json',
           processData: false,
           success: function (data, textStatus, xhr) {
             if (xhr.getResponseHeader('x-arango-async-id')) {
               self.queryCallbackFunction(xhr.getResponseHeader('x-arango-async-id'), counter);
             }
-            $.noty.clearQueue();
-            $.noty.closeAll();
+            Noty.clearQueue();
+            Noty.closeAll();
             self.handleResult(counter);
           },
           error: function (data) {
@@ -2145,13 +2136,6 @@
             url = arangoHelper.databaseUrl('/_api/cursor/' + encodeURIComponent(data.id));
           }
         }
-
-        /*
-        if (!data.complete) {
-          // TODO notify user?
-          // console.log('result was cutted down - more result avail - change limit');
-        }
-        */
 
         if (url) {
           $.ajax({
@@ -2605,12 +2589,16 @@
                   geojson++;
                 }
               } else if (obj.hasOwnProperty('geometry')) {
-                if (obj.geometry.hasOwnProperty('coordinates') && obj.geometry.hasOwnProperty('type')) {
-                  if (obj.geometry.type === 'Point' || obj.geometry.type === 'MultiPoint' ||
-                    obj.geometry.type === 'Polygon' || obj.geometry.type === 'MultiPolygon' ||
-                    obj.geometry.type === 'LineString' || obj.geometry.type === 'MultiLineString') {
-                    geojson++;
+                try {
+                  if (obj.geometry.hasOwnProperty('coordinates') && obj.geometry.hasOwnProperty('type')) {
+                    if (obj.geometry.type === 'Point' || obj.geometry.type === 'MultiPoint' ||
+                      obj.geometry.type === 'Polygon' || obj.geometry.type === 'MultiPolygon' ||
+                      obj.geometry.type === 'LineString' || obj.geometry.type === 'MultiLineString') {
+                      geojson++;
+                    }
                   }
+                } catch (err) {
+                 // happens e.g. if doc.geomotry === null
                 }
               }
             }
@@ -2723,26 +2711,10 @@
 
     getSystemQueries: function (callback) {
       var self = this;
-
-      $.ajax({
-        type: 'GET',
-        cache: false,
-        url: 'js/arango/aqltemplates.json',
-        contentType: 'application/json',
-        processData: false,
-        success: function (data) {
-          if (callback) {
-            callback(false);
-          }
-          self.queries = data;
-        },
-        error: function () {
-          if (callback) {
-            callback(true);
-          }
-          arangoHelper.arangoNotification('Query', 'Error while loading system templates');
-        }
-      });
+      if (callback) {
+        callback(false);
+      }
+      self.queries = window.aqltemplates;
     },
 
     updateLocalQueries: function () {

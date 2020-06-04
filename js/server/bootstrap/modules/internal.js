@@ -438,7 +438,7 @@
   }
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief returns if we are in enterprise version or not
+  // / @brief returns if we are an Enterprise Edition or not
   // //////////////////////////////////////////////////////////////////////////////
 
   if (global.SYS_IS_ENTERPRISE) {
@@ -583,13 +583,17 @@
     exports.maxNumberOfShards = global.MAX_NUMBER_OF_SHARDS;
     delete global.MAX_NUMBER_OF_SHARDS;
   }
+  if (global.FORCE_ONE_SHARD) {
+    exports.forceOneShard = global.FORCE_ONE_SHARD;
+    delete global.FORCE_ONE_SHARD;
+  }
 
   // /////////////////////////////////////////////////////////////////////////////
   // / @brief whether or not clustering is enabled
   // /////////////////////////////////////////////////////////////////////////////
 
   exports.isCluster = function () {
-    var role = global.ArangoServerState.role();
+    let role = global.ArangoServerState.role();
     return (role !== undefined && role !== 'SINGLE' && role !== 'AGENT');
   };
 

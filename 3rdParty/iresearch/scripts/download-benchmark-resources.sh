@@ -9,7 +9,7 @@ BENCHMARK_SEARCH_JAR_URL="https://www.dropbox.com/s/qf9ot583oh34ekl/searcher-j8.
 #BENCHMARK_INDEX_JAR_URL="https://www.dropbox.com/s/mqxm9gov031xmva/indexer.jar?dl=0" # compiled with Java 1.9
 #BENCHMARK_SEARCH_JAR_URL="https://www.dropbox.com/s/yp1gzwrl0oufbma/searcher.jar?dl=0" # compiled with Java 1.9
 #BENCHMARK_TASKS_URL="https://raw.githubusercontent.com/mikemccand/luceneutil/master/tasks/wikimedium.1M.nostopwords.tasks"
-BENCHMARK_TASKS_URL="https://www.dropbox.com/s/ma6zdd6eg9ljlkx/iresearch-benchmark.tasks?dl=0"
+BENCHMARK_TASKS_URL="https://raw.githubusercontent.com/iresearch-toolkit/iresearch-resources/master/benchmarks/iresearch-benchmark.tasks"
 
 #rm -rf "${DEPS_DIR}/${BENCHMARK_RESOURCES_DIR}"
 [ -f "${DEPS_DIR}/${BENCHMARK_RESOURCES_DIR}/benchmark.data" ] || rm -rf "${DEPS_DIR}/${BENCHMARK_RESOURCES_DIR}"
@@ -19,5 +19,5 @@ BENCHMARK_TASKS_URL="https://www.dropbox.com/s/ma6zdd6eg9ljlkx/iresearch-benchma
     wget --quiet -O - "${BENCHMARK_DATA_URL}" | lzma -d > benchmark.data
     wget --quiet -O lucene_index.jar "${BENCHMARK_INDEX_JAR_URL}"
     wget --quiet -O lucene_search.jar "${BENCHMARK_SEARCH_JAR_URL}"
-    wget --quiet -O - "${BENCHMARK_TASKS_URL}" | grep -E 'HighTerm:|MedTerm:|LowTerm:|HighPhrase:|MedPhrase:|LowPhrase:|AndHighHigh:|AndHighMed:|AndHighLow:|OrHighHigh:|OrHighMed:|OrHighLow:|Prefix3:' > benchmark.tasks
+    wget --quiet -O - "${BENCHMARK_TASKS_URL}" | grep -E 'HighTerm:|MedTerm:|LowTerm:|HighPhrase:|MedPhrase:|LowPhrase:|AndHighHigh:|AndHighMed:|AndHighLow:|OrHighHigh:|OrHighMed:|OrHighLow:|Prefix3:|Wildcard:|Fuzzy1:|Fuzzy2:' > benchmark.tasks
 }

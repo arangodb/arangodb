@@ -26,6 +26,7 @@
 #include "Basics/Common.h"
 
 #include "Basics/FileUtils.h"
+#include "Basics/PageSize.h"
 #include "Basics/Thread.h"
 #include "Basics/files.h"
 #include "Basics/memory-map.h"
@@ -126,6 +127,7 @@ class VectorTypedBuffer : public TypedBuffer<T> {
     close();
   }
 
+  // cppcheck-suppress virtualCallInConstructor
   void close() override {
     if (this->_begin == nullptr) {
       return;
@@ -166,7 +168,7 @@ class MappedFileBuffer : public TypedBuffer<T> {
     this->_filename = basics::FileUtils::buildFilename(TRI_GetTempPath(), file);
 
     _mappedSize = sizeof(T) * capacity;
-    size_t pageSize = PageSizeFeature::getPageSize();
+    size_t pageSize = PageSize::getValue();
     TRI_ASSERT(pageSize >= 256);
     // use multiples of page-size
     _mappedSize = (size_t)(((_mappedSize + pageSize - 1) / pageSize) * pageSize);
@@ -232,6 +234,7 @@ class MappedFileBuffer : public TypedBuffer<T> {
   }
 
   /// close file
+  // cppcheck-suppress virtualCallInConstructor
   void close() override {
     if (this->_begin == nullptr) {
       // already closed or not opened
@@ -252,7 +255,7 @@ class MappedFileBuffer : public TypedBuffer<T> {
     }
     if (_fd != -1) {
       TRI_ASSERT(_fd >= 0);
-      int res = TRI_CLOSE(_fd);
+      res = TRI_CLOSE(_fd);
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_TOPIC("00e1d", ERR, arangodb::Logger::FIXME)
             << "unable to close pregel mapped file '" << _filename << "': " << res;

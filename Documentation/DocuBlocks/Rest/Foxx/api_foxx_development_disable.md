@@ -6,9 +6,9 @@
 @RESTDESCRIPTION
 Puts the service at the given mount path into production mode.
 
-When running ArangoDB in a cluster with multiple coordinators this will
-replace the service on all other coordinators with the version on this
-coordinator.
+When running ArangoDB in a cluster with multiple Coordinators this will
+replace the service on all other Coordinators with the version on this
+Coordinator.
 
 @RESTQUERYPARAMETERS
 

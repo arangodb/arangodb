@@ -82,21 +82,16 @@ RestStatus MaintenanceRestHandler::execute() {
 }
 
 RestStatus MaintenanceRestHandler::postAction() {
-  auto& server = ApplicationServer::server();
-  std::stringstream es;
-
-  std::shared_ptr<VPackBuilder> bptr;
-  try {
-
-    bptr = _request->toVelocyPackBuilderPtr();
-    LOG_TOPIC("a0212", DEBUG, Logger::MAINTENANCE) << "parsed post action " << bptr->toJson();
-  } catch (std::exception const& e) {
-    es << "failed parsing post action "  << bptr->toJson() << " " << e.what();
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess) {  // error message generated in parseVPackBody
     return RestStatus::DONE;
   }
-
-  VPackSlice body = bptr->slice();
   
+  LOG_TOPIC("a0212", DEBUG, Logger::MAINTENANCE) << "parsed post action " << body.toJson();
+  
+  std::stringstream es;
+
   if (body.isObject()) {
     std::chrono::seconds dur(0);
     if (body.hasKey("execute") && body.get("execute").isString()) {
@@ -112,12 +107,12 @@ RestStatus MaintenanceRestHandler::postAction() {
           // Pause maintenance
           LOG_TOPIC("1ee7a", DEBUG, Logger::MAINTENANCE)
             << "Maintenance is paused for " << dur.count() << " seconds";
-          server.getFeature<MaintenanceFeature>().pause(dur);
+          server().getFeature<MaintenanceFeature>().pause(dur);
         }
       } else if (ex == "proceed") {
         LOG_TOPIC("6c38a", DEBUG, Logger::MAINTENANCE)
           << "Maintenance is prceeded "  << dur.count() << " seconds";
-        server.getFeature<MaintenanceFeature>().proceed();
+        server().getFeature<MaintenanceFeature>().proceed();
       } else {
         es << "invalid POST command";
           }
@@ -132,8 +127,8 @@ RestStatus MaintenanceRestHandler::postAction() {
     VPackBuilder ok;
     {
       VPackObjectBuilder o(&ok);
-      ok.add("error", VPackValue(false));
-      ok.add("code", VPackValue(200));
+      ok.add(StaticStrings::Error, VPackValue(false));
+      ok.add(StaticStrings::Code, VPackValue(200));
       ok.add("result", VPackValue(true));
     }
     generateResult(rest::ResponseCode::OK, ok.slice());
@@ -181,8 +176,7 @@ void MaintenanceRestHandler::putAction() {
     Result result;
 
     // build the action
-    auto& server = ApplicationServer::server();
-    auto& maintenance = server.getFeature<MaintenanceFeature>();
+    auto& maintenance = server().getFeature<MaintenanceFeature>();
     result = maintenance.addAction(_actionDesc);
 
     if (!result.ok()) {
@@ -230,8 +224,7 @@ bool MaintenanceRestHandler::parsePutBody(VPackSlice const& parameters) {
 
 void MaintenanceRestHandler::getAction() {
   // build the action
-  auto& server = ApplicationServer::server();
-  auto& maintenance = server.getFeature<MaintenanceFeature>();
+  auto& maintenance = server().getFeature<MaintenanceFeature>();
 
   bool found;
   std::string const& detailsStr = _request->value("details", found);
@@ -245,7 +238,7 @@ void MaintenanceRestHandler::getAction() {
     if (found && StringUtils::boolean(detailsStr)) {
       builder.add(VPackValue("state"));
 
-      auto& cluster = server.getFeature<ClusterFeature>();
+      auto& cluster = server().getFeature<ClusterFeature>();
       auto thread = cluster.heartbeatThread();
       if (thread) {
         thread->agencySync().getLocalCollections(builder);
@@ -258,8 +251,7 @@ void MaintenanceRestHandler::getAction() {
 }  // MaintenanceRestHandler::getAction
 
 void MaintenanceRestHandler::deleteAction() {
-  auto& server = ApplicationServer::server();
-  auto& maintenance = server.getFeature<MaintenanceFeature>();
+  auto& maintenance = server().getFeature<MaintenanceFeature>();
 
   std::vector<std::string> const& suffixes = _request->suffixes();
 

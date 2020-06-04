@@ -24,7 +24,7 @@
 #define ARANGOD_CLUSTER_PATHCOMPONENT_H
 
 #include <functional>
-#include <iostream>
+#include <iosfwd>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -136,6 +136,7 @@ class DynamicComponent : public std::enable_shared_from_this<T> /* (sic) */, pub
 #endif
   explicit constexpr DynamicComponent(std::shared_ptr<P const> parent, V value) noexcept
       : _parent(std::move(parent)), _value(std::move(value)) {
+    // cppcheck-suppress *
     static_assert(noexcept(V(std::move(value))),
                   "Move constructor of V is expected to be noexcept");
   }
@@ -164,9 +165,7 @@ class DynamicComponent : public std::enable_shared_from_this<T> /* (sic) */, pub
   V const _value;
 };
 
-std::ostream& operator<<(std::ostream& stream, Path const& path) {
-  return path.toStream(stream);
-}
+std::ostream& operator<<(std::ostream& stream, Path const& path);
 
 }  // namespace paths
 }  // namespace cluster

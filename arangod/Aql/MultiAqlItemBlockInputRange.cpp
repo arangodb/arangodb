@@ -1,0 +1,268 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Markus Pfeiffer
+////////////////////////////////////////////////////////////////////////////////
+
+#include "MultiAqlItemBlockInputRange.h"
+#include "Aql/ShadowAqlItemRow.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Options.h>
+#include <velocypack/velocypack-aliases.h>
+#include <numeric>
+
+#include "Logger/LogMacros.h"
+
+using namespace arangodb;
+using namespace arangodb::aql;
+
+namespace {
+  static auto RowHasNonEmptyValue(ShadowAqlItemRow const& row) -> bool {
+    if (!row.isInitialized()) {
+      return false;
+    }
+    for (RegisterId registerId = 0; registerId < row.getNrRegisters(); ++registerId) {
+      if (!row.getValue(registerId).isEmpty()) {
+        return true;
+      }
+    }
+    return false;
+  }
+}
+
+
+MultiAqlItemBlockInputRange::MultiAqlItemBlockInputRange(ExecutorState state,
+                                                         std::size_t skipped,
+                                                         std::size_t nrInputRanges) {
+  _inputs.resize(nrInputRanges, AqlItemBlockInputRange{state, skipped});
+  TRI_ASSERT(nrInputRanges > 0);
+}
+
+auto MultiAqlItemBlockInputRange::resizeOnce(ExecutorState state, size_t skipped,
+                                             size_t nrInputRanges) -> void {
+  // Is expected to be called exactly once to set the number of dependencies.
+  // We never want to reduce the number of dependencies.
+  TRI_ASSERT(_inputs.size() <= nrInputRanges);
+  TRI_ASSERT(nrInputRanges > 0);
+  _inputs.resize(nrInputRanges, AqlItemBlockInputRange{state, skipped});
+}
+
+auto MultiAqlItemBlockInputRange::upstreamState(size_t const dependency) const
+    noexcept -> ExecutorState {
+  TRI_ASSERT(dependency < _inputs.size());
+  return _inputs.at(dependency).upstreamState();
+}
+
+auto MultiAqlItemBlockInputRange::hasDataRow(size_t const dependency) const noexcept -> bool {
+  TRI_ASSERT(dependency < _inputs.size());
+  return _inputs.at(dependency).hasDataRow();
+}
+
+auto MultiAqlItemBlockInputRange::hasDataRow() const noexcept -> bool {
+  return std::any_of(std::begin(_inputs), std::end(_inputs),
+                     [](AqlItemBlockInputRange const& i) -> bool {
+                       return i.hasDataRow();
+                     });
+}
+
+auto MultiAqlItemBlockInputRange::rangeForDependency(size_t const dependency)
+    -> AqlItemBlockInputRange& {
+  TRI_ASSERT(dependency < _inputs.size());
+  return _inputs.at(dependency);
+}
+
+auto MultiAqlItemBlockInputRange::peekDataRow(size_t const dependency) const
+    -> std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> {
+  TRI_ASSERT(dependency < _inputs.size());
+  return _inputs.at(dependency).peekDataRow();
+}
+
+auto MultiAqlItemBlockInputRange::skipAll(size_t const dependency) noexcept -> std::size_t {
+  TRI_ASSERT(dependency < _inputs.size());
+  return _inputs.at(dependency).skipAll();
+}
+
+auto MultiAqlItemBlockInputRange::skippedInFlight(size_t const dependency) const
+    noexcept -> std::size_t {
+  TRI_ASSERT(dependency < _inputs.size());
+  return _inputs.at(dependency).skippedInFlight();
+}
+
+auto MultiAqlItemBlockInputRange::nextDataRow(size_t const dependency)
+    -> std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> {
+  TRI_ASSERT(dependency < _inputs.size());
+  return _inputs.at(dependency).nextDataRow();
+}
+
+// We have a shadow row, iff all our inputs have o
+auto MultiAqlItemBlockInputRange::hasShadowRow() const noexcept -> bool {
+  return std::all_of(std::begin(_inputs), std::end(_inputs),
+                     [](AqlItemBlockInputRange const& i) -> bool {
+                       return i.hasShadowRow();
+                     });
+}
+
+// * It doesn't matter which shadow row we peek, they should all be the same
+auto MultiAqlItemBlockInputRange::peekShadowRow() const -> arangodb::aql::ShadowAqlItemRow {
+  if (!hasShadowRow()) {
+    return ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
+  }
+
+  // All Ranges are on the same shadow Row.
+  auto row = _inputs.at(0).peekShadowRow();
+  if (RowHasNonEmptyValue(row)) {
+    return row;
+  }
+  for (size_t i = 1; i < _inputs.size(); ++i) {
+    auto const otherrow = _inputs.at(i).peekShadowRow();
+    if (RowHasNonEmptyValue(otherrow)) {
+      return otherrow;
+    }
+  }
+  // There is a smallish chance that actually
+  // None of the shadowRows contains data
+  // That is if no register needs to be bypassed
+  // in the query.
+  return row;
+}
+
+auto MultiAqlItemBlockInputRange::nextShadowRow()
+    -> std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> {
+  TRI_ASSERT(!hasDataRow());
+
+  // Need to consume all shadow rows simultaneously.
+  // Only one (a random one) will contain the data.
+  TRI_ASSERT(!_inputs.empty());
+  auto [state, shadowRow] = _inputs.at(0).nextShadowRow();
+  
+  bool foundData = ::RowHasNonEmptyValue(shadowRow);
+  for (size_t i = 1; i < _inputs.size(); ++i) {
+    auto [otherState, otherRow] = _inputs.at(i).nextShadowRow();
+    // All inputs need to be in the same part of the query.
+    // We cannot have overlapping subquery executions.
+    TRI_ASSERT(state == otherState);
+    // We can only have all rows initialized or none.
+    TRI_ASSERT(shadowRow.isInitialized() == otherRow.isInitialized());
+    if (!foundData) {
+      if (::RowHasNonEmptyValue(otherRow)) {
+        // We found the one that contains data.
+        // Take it
+        shadowRow = otherRow;
+        foundData = true;
+      }
+    } else {
+      // we allready have the filled one.
+      // Just assert the others are empty for correctness
+      TRI_ASSERT(! ::RowHasNonEmptyValue(otherRow));
+    }
+  }
+  return {state, shadowRow};
+}
+
+auto MultiAqlItemBlockInputRange::getBlock(size_t const dependency) const
+    noexcept -> SharedAqlItemBlockPtr {
+  TRI_ASSERT(dependency < _inputs.size());
+  return _inputs.at(dependency).getBlock();
+}
+
+auto MultiAqlItemBlockInputRange::setDependency(size_t const dependency,
+                                                AqlItemBlockInputRange const& range) -> void {
+  TRI_ASSERT(dependency < _inputs.size());
+  _inputs.at(dependency) = range;
+}
+
+auto MultiAqlItemBlockInputRange::isDone() const -> bool {
+  auto res = std::all_of(std::begin(_inputs), std::end(_inputs),
+                         [](AqlItemBlockInputRange const& i) -> bool {
+                           return !i.hasDataRow() &&
+                                  i.upstreamState() == ExecutorState::DONE;
+                         });
+  return res;
+}
+
+auto MultiAqlItemBlockInputRange::state() const -> ExecutorState {
+  return isDone() ? ExecutorState::DONE : ExecutorState::HASMORE;
+}
+
+auto MultiAqlItemBlockInputRange::skipAllRemainingDataRows() -> size_t {
+  for (size_t i = 0; i < _inputs.size(); i++) {
+    std::ignore = _inputs.at(i).skipAllRemainingDataRows();
+    if (_inputs.at(i).upstreamState() == ExecutorState::HASMORE) {
+      return i;
+    }
+  }
+  return 0;
+}
+
+// Subtract up to count rows from the local _skipped state
+auto MultiAqlItemBlockInputRange::skipForDependency(size_t const dependency,
+                                                    size_t count) -> size_t {
+  TRI_ASSERT(dependency < _inputs.size());
+  return _inputs.at(dependency).skip(count);
+}
+
+// Skip all that is available
+auto MultiAqlItemBlockInputRange::skipAllForDependency(size_t const dependency) -> size_t {
+  TRI_ASSERT(dependency < _inputs.size());
+  return _inputs.at(dependency).skipAll();
+}
+
+auto MultiAqlItemBlockInputRange::numberDependencies() const noexcept -> size_t {
+  return _inputs.size();
+}
+
+auto MultiAqlItemBlockInputRange::reset() -> void {
+  for (size_t i = 0; i < _inputs.size(); ++i) {
+    _inputs[i] = AqlItemBlockInputRange(ExecutorState::HASMORE);
+  }
+}
+
+[[nodiscard]] auto MultiAqlItemBlockInputRange::countDataRows() const noexcept
+    -> std::size_t {
+  size_t count = 0;
+  for (auto const& range : _inputs) {
+    count += range.countDataRows();
+  }
+  return count;
+}
+
+[[nodiscard]] auto MultiAqlItemBlockInputRange::countShadowRows() const noexcept
+    -> std::size_t {
+  size_t count = 0;
+  for (auto const& range : _inputs) {
+    // Every range will convey the same shadowRows.
+    // They can only be taken in a synchronous way on all ranges
+    // at the same time.
+    // So the amount of ShadowRows that we can produce here is
+    // upperbounded by the maximum of shadowRows in each range.
+    count = std::max(count, range.countShadowRows());
+  }
+  return count;
+}
+
+[[nodiscard]] auto MultiAqlItemBlockInputRange::finalState() const noexcept -> ExecutorState {
+  bool hasMore = std::any_of(_inputs.begin(), _inputs.end(), [](auto const& range) {
+    return range.finalState() == ExecutorState::HASMORE;
+  });
+  if (hasMore) {
+    return ExecutorState::HASMORE;
+  }
+  return ExecutorState::DONE;
+}

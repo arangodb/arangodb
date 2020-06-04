@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_SUBQUERY_END_EXECUTION_NODE_H 1
 
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
 
 namespace arangodb {
 namespace aql {
@@ -36,12 +37,8 @@ class SubqueryEndNode : public ExecutionNode {
  public:
   SubqueryEndNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
-  SubqueryEndNode(ExecutionPlan* plan, size_t id, Variable const* inVariable,
-                  Variable const* outVariable)
-      : ExecutionNode(plan, id), _inVariable(inVariable), _outVariable(outVariable) {
-    // _inVariable might be nullptr
-    TRI_ASSERT(_outVariable != nullptr);
-  }
+  SubqueryEndNode(ExecutionPlan* plan, ExecutionNodeId id, Variable const* inVariable,
+                  Variable const* outVariable, bool isModificationSubquery);
 
   CostEstimate estimateCost() const override final;
 
@@ -63,7 +60,7 @@ class SubqueryEndNode : public ExecutionNode {
 
   bool isEqualTo(ExecutionNode const& other) const override final;
 
-  void getVariablesUsedHere(arangodb::containers::HashSet<Variable const*>& usedVars) const final {
+  void getVariablesUsedHere(VarSet& usedVars) const final {
     if (_inVariable != nullptr) {
       usedVars.emplace(_inVariable);
     }
@@ -74,11 +71,12 @@ class SubqueryEndNode : public ExecutionNode {
   }
 
   void replaceOutVariable(Variable const* var);
+  bool isModificationNode() const override;
 
  private:
   Variable const* _inVariable;
-
   Variable const* _outVariable;
+  bool _isModificationSubquery;
 };
 
 }  // namespace aql

@@ -58,7 +58,6 @@
 #include "RestServer/FlushFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -232,7 +231,7 @@ TEST_F(IResearchViewSortedTest, SingleField) {
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocs.emplace_back();
         auto const res =
-            collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt, false);
+            collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt);
         EXPECT_TRUE(res.ok());
         ++i;
       }
@@ -519,7 +518,7 @@ TEST_F(IResearchViewSortedTest, MultipleFields) {
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocs.emplace_back();
         auto const res =
-            collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt, false);
+            collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt);
         EXPECT_TRUE(res.ok());
         ++i;
       }

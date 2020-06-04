@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_CONDITION_FINDER_H 1
 
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/WalkerWorker.h"
 
 #include <cstdint>
@@ -40,7 +41,7 @@ struct Variable;
 /// @brief condition finder
 class ConditionFinder : public WalkerWorker<ExecutionNode> {
  public:
-  ConditionFinder(ExecutionPlan* plan, std::unordered_map<size_t, ExecutionNode*>* changes,
+  ConditionFinder(ExecutionPlan* plan, std::unordered_map<ExecutionNodeId, ExecutionNode*>* changes,
                   bool* hasEmptyResult, bool viewMode);
 
   ~ConditionFinder() override = default;
@@ -61,7 +62,7 @@ class ConditionFinder : public WalkerWorker<ExecutionNode> {
   ::arangodb::containers::HashSet<VariableId> _filters;
   std::vector<std::pair<Variable const*, bool>> _sorts;
   // note: this class will never free the contents of this map
-  std::unordered_map<size_t, ExecutionNode*>* _changes;
+  std::unordered_map<aql::ExecutionNodeId, ExecutionNode*>* _changes;
   bool* _hasEmptyResult;
 };
 }  // namespace aql

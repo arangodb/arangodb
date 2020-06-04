@@ -21,7 +21,7 @@ If the `details` parameter is set to `true`, it will return a JSON object with t
 shard IDs as object attribute keys, and the responsible servers for each shard mapped to them.
 In the detailed response, the leader shards will be first in the arrays.
 
-**Note** : This method is only available in a cluster coordinator.
+**Note** : This method is only available in a cluster Coordinator.
 
 @RESTRETURNCODES
 

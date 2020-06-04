@@ -59,12 +59,13 @@
   throw arangodb::basics::Exception(code, message, __FILE__, __LINE__)
 
 /// @brief throws an arango result if the result fails
-#define THROW_ARANGO_EXCEPTION_IF_FAIL(result)                         \
-  do {                                                                 \
-    if ((result).fail()) {                                             \
-      throw arangodb::basics::Exception((result), __FILE__, __LINE__); \
-    }                                                                  \
-  } while (0);
+#define THROW_ARANGO_EXCEPTION_IF_FAIL(expression)                                        \
+  do {                                                                                    \
+    auto&& expressionResult = (expression);                                               \
+    if (expressionResult.fail()) {                                                        \
+      throw arangodb::basics::Exception(std::move(expressionResult), __FILE__, __LINE__); \
+    }                                                                                     \
+  } while (0)
 
 namespace arangodb {
 namespace basics {

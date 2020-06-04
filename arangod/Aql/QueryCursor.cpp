@@ -85,8 +85,7 @@ VPackSlice QueryResultCursor::next() {
 /// @brief return the cursor size
 size_t QueryResultCursor::count() const { return _iterator.size(); }
 
-std::pair<ExecutionState, Result> QueryResultCursor::dump(VPackBuilder& builder,
-                                                          std::function<void()> const&) {
+std::pair<ExecutionState, Result> QueryResultCursor::dump(VPackBuilder& builder) {
   // This cursor cannot block, result already there.
   auto res = dumpSync(builder);
   return {ExecutionState::DONE, res};
@@ -148,31 +147,26 @@ Result QueryResultCursor::dumpSync(VPackBuilder& builder) {
 // QueryStreamCursor class
 // .............................................................................
 
-QueryStreamCursor::QueryStreamCursor(TRI_vocbase_t& vocbase, std::string const& query,
-                                     std::shared_ptr<VPackBuilder> bindVars,
-                                     std::shared_ptr<VPackBuilder> opts, size_t batchSize,
-                                     double ttl, bool contextOwnedByExterior,
-                                     std::shared_ptr<transaction::Context> ctx)
+QueryStreamCursor::QueryStreamCursor(std::unique_ptr<arangodb::aql::Query> q,
+                                     size_t batchSize, double ttl)
     : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, /*hasCount*/ false),
-      _guard(vocbase),
-      _exportCount(-1),
-      _queryResultPos(0) {
-  auto registry = QueryRegistryFeature::registry();
-  TRI_ASSERT(registry != nullptr);
+      _query(std::move(q)),
+      _queryResultPos(0),
+      _exportCount(-1) {
 
-  _query = std::make_unique<Query>(contextOwnedByExterior, _guard.database(),
-                                   aql::QueryString(query), std::move(bindVars),
-                                   std::move(opts), arangodb::aql::PART_MAIN);
-  _query->setTransactionContext(std::move(ctx));
-  _query->prepare(registry, SerializationFormat::SHADOWROWS);
+  _query->prepareQuery(SerializationFormat::SHADOWROWS);
   TRI_ASSERT(_query->state() == aql::QueryExecutionState::ValueType::EXECUTION);
+  _ctx = _query->newTrxContext();
+        
+  transaction::Methods trx(_ctx);
+  TRI_ASSERT(trx.status() == transaction::Status::RUNNING);
 
   // we replaced the rocksdb export cursor with a stream AQL query
   // for this case we need to support printing the collection "count"
-  if (_query->optionsSlice().hasKey("exportCollection")) {
-    std::string cname = _query->optionsSlice().get("exportCollection").copyString();
-    TRI_ASSERT(_query->trx()->status() == transaction::Status::RUNNING);
-    OperationResult opRes = _query->trx()->count(cname, transaction::CountType::Normal);
+  // this is a hack for the export API only
+  auto const& exportCollection = _query->queryOptions().exportCollection;
+  if (!exportCollection.empty()) {
+     OperationResult opRes = trx.count(exportCollection, transaction::CountType::Normal);
     if (opRes.fail()) {
       THROW_ARANGO_EXCEPTION(opRes.result);
     }
@@ -182,36 +176,35 @@ QueryStreamCursor::QueryStreamCursor(TRI_vocbase_t& vocbase, std::string const& 
       _exportCount = (std::min)(limit.getInt(), _exportCount);
     }
   }
-
+   
   // ensures the cursor is cleaned up as soon as the outer transaction ends
   // otherwise we just get issues because we might still try to use the trx
-  TRI_ASSERT(_query->trx()->status() == transaction::Status::RUNNING);
-  int level = _query->trx()->state()->nestingLevel();  // should be level 0 or 1
+  TRI_ASSERT(trx.status() == transaction::Status::RUNNING);
   // things break if the Query outlives a V8 transaction
-  _stateChangeCb = [this, level](transaction::Methods& trx, transaction::Status status) {
-    if (trx.state()->nestingLevel() == level &&
-        (status == transaction::Status::COMMITTED || status == transaction::Status::ABORTED)) {
+  _stateChangeCb = [this](transaction::Methods& /*trx*/, transaction::Status status) {
+    if (status == transaction::Status::COMMITTED ||
+        status == transaction::Status::ABORTED) {
       this->setDeleted();
     }
   };
-  if (!_query->trx()->addStatusChangeCallback(&_stateChangeCb)) {
+  if (!trx.addStatusChangeCallback(&_stateChangeCb)) {
     _stateChangeCb = nullptr;
   }
 }
 
 QueryStreamCursor::~QueryStreamCursor() {
-  if (_query) {  // cursor is canceled or timed-out
-    cleanupStateCallback();
-
-    while (!_queryResults.empty()) {
-      _queryResults.pop_front();
-    }
-
-    // now remove the continue handler we may have registered in the query
-    _query->sharedState()->setContinueCallback();
-    // Query destructor will cleanup plan and abort transaction
-    _query.reset();
+  if (!_query) {
+    return;
   }
+  // cursor is canceled or timed-out
+  cleanupStateCallback();
+
+  _queryResults.clear();
+
+  // now remove the continue handler we may have registered in the query
+  _query->sharedState()->invalidate();
+  // Query destructor will cleanup plan and abort transaction
+  _query.reset();
 }
 
 void QueryStreamCursor::kill() {
@@ -220,17 +213,11 @@ void QueryStreamCursor::kill() {
   }
 }
 
-std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder,
-                                                          std::function<void()> const& ch) {
+std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder) {
   TRI_ASSERT(batchSize() > 0);
   LOG_TOPIC("9af59", TRACE, Logger::QUERIES)
       << "executing query " << _id << ": '"
       << _query->queryString().extract(1024) << "'";
-
-  // We will get a different RestHandler on every dump, so we need to update the
-  // Callback
-  std::shared_ptr<SharedQueryState> ss = _query->sharedState();
-  ss->setContinueHandler(ch);
 
   try {
     ExecutionState state = prepareDump();
@@ -243,6 +230,7 @@ std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder,
     if (!res.ok()) {
       return {ExecutionState::DONE, res};
     }
+    
     return {state, res};
   } catch (arangodb::basics::Exception const& ex) {
     this->setDeleted();
@@ -276,12 +264,10 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
       << _query->queryString().extract(1024) << "'";
 
   std::shared_ptr<SharedQueryState> ss = _query->sharedState();
-  // We will get a different RestHandler on every dump, so we need to update the
-  // Callback
-  ss->setContinueCallback();
+  ss->resetWakeupHandler();
 
   try {
-    aql::ExecutionEngine* engine = _query->engine();
+    aql::ExecutionEngine* engine = _query->rootEngine();
     TRI_ASSERT(engine != nullptr);
 
     SharedAqlItemBlockPtr value;
@@ -291,7 +277,7 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
     while (state == ExecutionState::WAITING) {
       state = prepareDump();
       if (state == ExecutionState::WAITING) {
-        ss->waitForAsyncResponse();
+        ss->waitForAsyncWakeup();
       }
     }
 
@@ -317,6 +303,19 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
   }
 }
 
+/// Set wakeup callback on streaming cursor
+void QueryStreamCursor::setWakeupHandler(std::function<bool()> const& cb) {
+  if (_query) {
+    _query->sharedState()->setWakeupHandler(cb);
+  }
+}
+
+void QueryStreamCursor::resetWakeupHandler() {
+  if (_query) {
+    _query->sharedState()->resetWakeupHandler();
+  }
+}
+
 Result QueryStreamCursor::writeResult(VPackBuilder& builder) {
   try {
     VPackOptions const* oldOptions = builder.options;
@@ -330,7 +329,7 @@ Result QueryStreamCursor::writeResult(VPackBuilder& builder) {
     builder.reserve(16 * 1024);
     builder.add("result", VPackValue(VPackValueType::Array, true));
 
-    aql::ExecutionEngine* engine = _query->engine();
+    aql::ExecutionEngine* engine = _query->rootEngine();
     TRI_ASSERT(engine != nullptr);
     // this is the RegisterId our results can be found in
     RegisterId const resultRegister = engine->resultRegister();
@@ -343,7 +342,7 @@ Result QueryStreamCursor::writeResult(VPackBuilder& builder) {
       while (rowsWritten < batchSize() && _queryResultPos < block->size()) {
         AqlValue const& value = block->getValueReference(_queryResultPos, resultRegister);
         if (!value.isEmpty()) {  // ignore empty blocks (e.g. from UpdateBlock)
-          value.toVelocyPack(_query->trx(), builder, false);
+          value.toVelocyPack(&_query->vpackOptions(), builder, false);
           ++rowsWritten;
         }
         ++_queryResultPos;
@@ -377,15 +376,16 @@ Result QueryStreamCursor::writeResult(VPackBuilder& builder) {
 
     if (!hasMore) {
       std::shared_ptr<SharedQueryState> ss = _query->sharedState();
-      ss->setContinueCallback();
+      ss->resetWakeupHandler();
 
-      // cleanup before transaction is committet
+      // cleanup before transaction is committed
       cleanupStateCallback();
 
+      // TODO: perhaps run this differently ?
       QueryResult result;
       ExecutionState state = _query->finalize(result);  // will commit transaction
       while (state == ExecutionState::WAITING) {
-        ss->waitForAsyncResponse();
+        ss->waitForAsyncWakeup();
         state = _query->finalize(result);
       }
       if (result.extra && result.extra->slice().isObject()) {
@@ -419,11 +419,12 @@ Result QueryStreamCursor::writeResult(VPackBuilder& builder) {
 }
 
 std::shared_ptr<transaction::Context> QueryStreamCursor::context() const {
-  return _query->trx()->transactionContext();
+  TRI_ASSERT(_ctx != nullptr);
+  return _ctx;
 }
 
 ExecutionState QueryStreamCursor::prepareDump() {
-  aql::ExecutionEngine* engine = _query->engine();
+  aql::ExecutionEngine* engine = _query->rootEngine();
   TRI_ASSERT(engine != nullptr);
 
   size_t numBufferedRows = 0;
@@ -450,7 +451,11 @@ ExecutionState QueryStreamCursor::prepareDump() {
     }
   }
 
-  if (state == ExecutionState::WAITING) {
+  if (state != ExecutionState::WAITING) {
+    if (_query) {
+      _query->exitV8Context();
+    }
+  } else {
     // TODO add all results to the builder before going to sleep
   }
 
@@ -459,8 +464,9 @@ ExecutionState QueryStreamCursor::prepareDump() {
 
 void QueryStreamCursor::cleanupStateCallback() {
   TRI_ASSERT(_query);
-  transaction::Methods* trx = _query->trx();
-  if (trx && _stateChangeCb) {
-    trx->removeStatusChangeCallback(&_stateChangeCb);
+  transaction::Methods trx(_ctx);
+  TRI_ASSERT(trx.status() == transaction::Status::RUNNING);
+  if (_stateChangeCb) {
+    trx.removeStatusChangeCallback(&_stateChangeCb);
   }
 }

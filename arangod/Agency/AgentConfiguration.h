@@ -56,6 +56,7 @@ struct config_t {
   uint64_t _compactionStepSize;
   uint64_t _compactionKeepSize;
   double _supervisionGracePeriod;
+  double _supervisionOkThreshold;
   bool _cmdLineTimings;
   size_t _version;
   std::string _startup;
@@ -79,6 +80,7 @@ struct config_t {
   static std::string const waitForSyncStr;
   static std::string const supervisionFrequencyStr;
   static std::string const supervisionGracePeriodStr;
+  static std::string const supervisionOkThresholdStr;
   static std::string const compactionStepSizeStr;
   static std::string const compactionKeepSizeStr;
   static std::string const defaultEndpointStr;
@@ -93,7 +95,7 @@ struct config_t {
   /// @brief ctor
   config_t(std::string const& rid, size_t as, size_t ps, double minp, double maxp,
            std::string const& e, std::vector<std::string> const& g, bool s, bool st,
-           bool w, double f, uint64_t c, uint64_t k, double p, bool t, size_t a);
+           bool w, double f, uint64_t c, uint64_t k, double p, double o, bool t, size_t a);
 
   /// @brief copy constructor
   config_t(config_t const&);
@@ -233,6 +235,19 @@ struct config_t {
 
   /// @brief Supervision grace period
   double supervisionGracePeriod() const;
+
+  /// @brief Supervision ok threshold
+  double supervisionOkThreshold() const;
+
+  /// @brief set Supervision grace period
+  void setSupervisionGracePeriod(double d) {
+    _supervisionGracePeriod = d;
+  }
+
+  /// @brief set Supervision ok threshold
+  void setSupervisionOkThreshold(double d) {
+    _supervisionOkThreshold = d;
+  }
 
   /// @brief
   std::string startup() const;

@@ -53,6 +53,7 @@ enum SslProtocol {
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
   TLS_V13 = 6,
 #endif
+  TLS_GENERIC = 9,
 
   SSL_LAST
 };

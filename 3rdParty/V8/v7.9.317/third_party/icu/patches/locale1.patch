@@ -1,0 +1,100 @@
+diff --git a/source/data/locales/ko.txt b/source/data/locales/ko.txt
+index 302872ef..bc4a0bb6 100644
+--- a/source/data/locales/ko.txt
++++ b/source/data/locales/ko.txt
+@@ -1467,7 +1467,7 @@ ko{
+                     y{"y. M. d. (E) ~ y. M. d. (E)"}
+                 }
+                 yMMM{
+-                    M{"y년 M월~M월"}
++                    M{"y년 M월 ~ M월"}
+                     y{"y년 M월 ~ y년 M월"}
+                 }
+                 yMMMEEEEd{
+@@ -1486,7 +1486,7 @@ ko{
+                 }
+                 yMMMd{
+                     M{"y년 M월 d일 ~ M월 d일"}
+-                    d{"y년 M월 d일~d일"}
++                    d{"y년 M월 d일 ~ d일"}
+                     y{"y년 M월 d일 ~ y년 M월 d일"}
+                 }
+                 yMd{
+diff --git a/source/data/zone/ko.txt b/source/data/zone/ko.txt
+index 721803b7..d03bc3e6 100644
+--- a/source/data/zone/ko.txt
++++ b/source/data/zone/ko.txt
+@@ -1330,24 +1330,24 @@ ko{
+             ls{"아마존 표준시"}
+         }
+         "meta:America_Central"{
+-            ld{"미 중부 하계 표준시"}
+-            lg{"미 중부 시간"}
+-            ls{"미 중부 표준시"}
++            ld{"북미 중부 하계 표준시"}
++            lg{"북미 중부 시간"}
++            ls{"북미 중부 표준시"}
+         }
+         "meta:America_Eastern"{
+-            ld{"미 동부 하계 표준시"}
+-            lg{"미 동부 시간"}
+-            ls{"미 동부 표준시"}
++            ld{"북미 동부 하계 표준시"}
++            lg{"북미 동부 시간"}
++            ls{"북미 동부 표준시"}
+         }
+         "meta:America_Mountain"{
+-            ld{"미 산지 하계 표준시"}
+-            lg{"미 산지 시간"}
+-            ls{"미 산악 표준시"}
++            ld{"북미 로키 산맥 하계 표준시"}
++            lg{"북미 로키 산맥 시간"}
++            ls{"북미 로키 산맥 표준시"}
+         }
+         "meta:America_Pacific"{
+-            ld{"미 태평양 하계 표준시"}
+-            lg{"미 태평양 시간"}
+-            ls{"미 태평양 표준시"}
++            ld{"북미 태평양 하계 표준시"}
++            lg{"북미 태평양 시간"}
++            ls{"북미 태평양 표준시"}
+         }
+         "meta:Anadyr"{
+             ld{"아나디리 하계 표준시"}
+@@ -1395,24 +1395,24 @@ ko{
+             ls{"대서양 표준시"}
+         }
+         "meta:Australia_Central"{
+-            ld{"오스트레일리아 중부 하계 표준시"}
+-            lg{"오스트레일리아 중부 시간"}
+-            ls{"오스트레일리아 중부 표준시"}
++            ld{"호주 중부 하계 표준시"}
++            lg{"호주 중부 시간"}
++            ls{"호주 중부 표준시"}
+         }
+         "meta:Australia_CentralWestern"{
+-            ld{"오스트레일리아 중서부 하계 표준시"}
+-            lg{"오스트레일리아 중서부 시간"}
+-            ls{"오스트레일리아 중서부 표준시"}
++            ld{"호주 중서부 하계 표준시"}
++            lg{"호주 중서부 시간"}
++            ls{"호주 중서부 표준시"}
+         }
+         "meta:Australia_Eastern"{
+-            ld{"오스트레일리아 동부 하계 표준시"}
+-            lg{"오스트레일리아 동부 시간"}
+-            ls{"오스트레일리아 동부 표준시"}
++            ld{"호주 동부 하계 표준시"}
++            lg{"호주 동부 시간"}
++            ls{"호주 동부 표준시"}
+         }
+         "meta:Australia_Western"{
+-            ld{"오스트레일리아 서부 하계 표준시"}
+-            lg{"오스트레일리아 서부 시간"}
+-            ls{"오스트레일리아 서부 표준시"}
++            ld{"호주 서부 하계 표준시"}
++            lg{"호주 서부 시간"}
++            ls{"호주 서부 표준시"}
+         }
+         "meta:Azerbaijan"{
+             ld{"아제르바이잔 하계 표준시"}

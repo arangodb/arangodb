@@ -45,11 +45,20 @@ void FoxxQueuesFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
   options->addOldOption("server.foxx-queues-poll-interval",
                         "foxx.queues-poll-interval");
 
-  options->addOption("--foxx.queues", "enable Foxx queues", new BooleanParameter(&_enabled));
+  options->addOption("--foxx.queues", "enable Foxx queues",
+                     new BooleanParameter(&_enabled),
+                     arangodb::options::makeFlags(
+                     arangodb::options::Flags::DefaultNoComponents,
+                     arangodb::options::Flags::OnCoordinator,
+                     arangodb::options::Flags::OnSingle));
 
   options->addOption("--foxx.queues-poll-interval",
                      "poll interval (in seconds) for Foxx queue manager",
-                     new DoubleParameter(&_pollInterval));
+                     new DoubleParameter(&_pollInterval),
+                     arangodb::options::makeFlags(
+                     arangodb::options::Flags::DefaultNoComponents,
+                     arangodb::options::Flags::OnCoordinator,
+                     arangodb::options::Flags::OnSingle));
 }
 
 void FoxxQueuesFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {

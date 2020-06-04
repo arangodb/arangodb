@@ -48,8 +48,6 @@ using namespace arangodb::pregel;
 TEST(PregelTypedBufferTest, test_with_malloc) {
   
   arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-  arangodb::PageSizeFeature feature(server);
-  feature.prepare();
   
   VectorTypedBuffer<int> mapped(1024);
   ASSERT_EQ(mapped.size(), 0);
@@ -74,8 +72,6 @@ TEST(PregelTypedBufferTest, test_with_malloc) {
 TEST(PregelTypedBufferTest, test_with_mmap) {
   
   arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-  arangodb::PageSizeFeature feature(server);
-  feature.prepare();
   
   MappedFileBuffer<int64_t> mapped(1024);
   ASSERT_EQ(mapped.size(), 0);

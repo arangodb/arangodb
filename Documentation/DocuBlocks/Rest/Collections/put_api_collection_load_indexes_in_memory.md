@@ -65,4 +65,3 @@ If the *collection-name* is unknown, then a *HTTP 404* is returned.
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
-

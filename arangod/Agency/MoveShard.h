@@ -59,10 +59,29 @@ struct MoveShard : public Job {
   std::string _shard;
   std::string _from;
   std::string _to;
+  std::string _parentJobId = {};
   bool _isLeader;
   bool _remainsFollower;
   bool _toServerIsFollower;
 
+  MoveShard& withParent(std::string parentId) {
+    _parentJobId = std::move(parentId);
+    return *this;
+  }
+ private:
+  [[nodiscard]] bool isSubJob() const noexcept { return !_parentJobId.empty(); }
+  void addMoveShardToServerLock(Builder& ops) const;
+  void addMoveShardFromServerLock(Builder& ops) const;
+
+  void addMoveShardToServerCanLock(Builder& precs) const;
+  void addMoveShardFromServerCanLock(Builder& precs) const;
+
+  void addMoveShardToServerUnLock(Builder& ops) const;
+  void addMoveShardFromServerUnLock(Builder& ops) const;
+  void addMoveShardToServerCanUnLock(Builder& ops) const;
+  void addMoveShardFromServerCanUnLock(Builder& ops) const;
+
+  bool moveShardFinish(bool unlock, bool success, std::string const& msg);
 };
 }  // namespace consensus
 }  // namespace arangodb

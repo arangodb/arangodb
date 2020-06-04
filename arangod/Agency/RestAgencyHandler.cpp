@@ -42,7 +42,7 @@ using namespace arangodb::rest;
 using namespace arangodb::consensus;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ArangoDB server
+/// @brief Rest agency handler
 ////////////////////////////////////////////////////////////////////////////////
 
 RestAgencyHandler::RestAgencyHandler(application_features::ApplicationServer& server,
@@ -150,28 +150,153 @@ RestStatus RestAgencyHandler::handleTransient() {
   return RestStatus::DONE;
 }
 
+
+/// Poll from agency starting with start.
+/// The result is of shape
+/// { accepted:bool, result: { firstIndex, commitIndex, logs:[{index, log}] } }
+/// if !accepted, lost leadership
+/// else respond
+RestStatus RestAgencyHandler::pollIndex(
+  index_t const& start, double const& timeout) {
+  return waitForFuture(
+    _agent->poll(start, timeout)
+    .thenValue([this, start](std::shared_ptr<VPackBuilder>&& rb) {
+      VPackSlice res = rb->slice();
+
+      if (res.isObject() && res.hasKey("result")) {
+
+        if (res.hasKey("error")) { // leadership loss
+          generateError(
+            rest::ResponseCode::SERVICE_UNAVAILABLE,
+            TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
+          return;
+        }
+
+        VPackSlice slice = res.get("result");
+
+        if (slice.hasKey("log")) {
+          VPackBuilder builder;
+          {
+            VPackObjectBuilder ob(&builder);
+            builder.add(StaticStrings::Error, VPackValue(false));
+            builder.add("code", VPackValue(int(ResponseCode::OK)));
+            builder.add(VPackValue("result"));
+            VPackObjectBuilder r(&builder);
+            if (!slice.get("firstIndex").isNumber()) {
+              generateError(
+                rest::ResponseCode::SERVER_ERROR,
+                TRI_ERROR_HTTP_SERVER_ERROR, "invalid first log index.");
+              return;
+            } else if (slice.get("firstIndex").getNumber<uint64_t>() > start) {
+              generateError(
+                rest::ResponseCode::SERVER_ERROR,
+                TRI_ERROR_HTTP_SERVER_ERROR, "first log index is greater than requested.");
+              return;
+            }
+            uint64_t i = start - slice.get("firstIndex").getNumber<uint64_t>();
+            builder.add("commitIndex", slice.get("commitIndex"));
+            VPackSlice logs = slice.get("log");
+            builder.add("firstIndex", logs[i].get("index"));
+            builder.add(VPackValue("log"));
+            VPackArrayBuilder a(&builder);
+            for (; i < logs.length(); ++i) {
+              builder.add(logs[i]);
+            }
+          }
+          generateResult(rest::ResponseCode::OK, std::move(*builder.steal()));
+          return;
+        } else {
+          generateResult(rest::ResponseCode::OK, std::move(*rb->steal()));
+          return;
+        }
+      } else {
+        generateError(
+          rest::ResponseCode::SERVER_ERROR,
+          TRI_ERROR_HTTP_SERVER_ERROR, "No leader");
+      }
+    })
+    .thenError<VPackException>([this](VPackException const& e) {
+      generateError(Result{e.errorCode(), e.what()});
+    })
+    .thenError<std::exception>([this](std::exception const& e) {
+      generateError(
+        rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+    }));
+
+}
+
+namespace {
+template <class T> static bool readValue(GeneralRequest const& req, char const* name, T& val) {
+  bool found = true;
+  std::string const& val_str = req.value(name, found);
+
+  if (!found) {
+    LOG_TOPIC("f4732", DEBUG, Logger::AGENCY)
+      << "Query string " << name << " missing.";
+    return false;
+  } else {
+    if (!arangodb::basics::StringUtils::toNumber(val_str, val)) {
+      LOG_TOPIC("f4237", WARN, Logger::AGENCY)
+        << "Conversion of query string " << name  << " with " << val_str << " to " << typeid(T).name() << " failed";
+      return false;
+    }
+  }
+  return true;
+}}
+
+RestStatus RestAgencyHandler::handlePoll() {
+
+  // GET only
+  if (_request->requestType() != rest::RequestType::GET) {
+    return reportMethodNotAllowed();
+  }
+
+  // WARNING ////////////////////////////////////////////////////
+  // Leader only
+  if (!_agent->leading()) {  // Redirect to leader
+    if (_agent->leaderID() == NO_LEADER) {
+      return reportMessage(
+        rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
+    } // WARNING REDIRECTS NEEDS BE DOING
+  }
+
+  // Get queryString index
+  index_t index = 0;
+  double timeout = 60.0;
+
+  readValue(*_request, "index", index);
+  readValue(*_request, "timeout", timeout);
+
+  return pollIndex(index, timeout);
+
+}
+
+
 RestStatus RestAgencyHandler::handleStores() {
+
   if (_request->requestType() == rest::RequestType::GET) {
     Builder body;
     {
       VPackObjectBuilder b(&body);
       {
         _agent->executeLockedRead([&]() {
-          body.add(VPackValue("spearhead"));
-          {
-            VPackArrayBuilder bb(&body);
-            _agent->spearhead().dumpToBuilder(body);
-          }
-          body.add(VPackValue("read_db"));
-          {
-            VPackArrayBuilder bb(&body);
-            _agent->readDB().dumpToBuilder(body);
-          }
-          body.add(VPackValue("transient"));
-          {
-            VPackArrayBuilder bb(&body);
-            _agent->transient().dumpToBuilder(body);
-          }
+            body.add(VPackValue("spearhead"));
+            {
+              VPackArrayBuilder bb(&body);
+              _agent->spearhead().dumpToBuilder(body);
+            }
+            body.add(VPackValue("read_db"));
+            {
+              VPackArrayBuilder bb(&body);
+              _agent->readDB().dumpToBuilder(body);
+            }
+        });
+        _agent->executeTransientLocked([&]() {
+            body.add(VPackValue("transient"));
+            {
+              VPackArrayBuilder bb(&body);
+              _agent->transient().dumpToBuilder(body);
+            }
         });
       }
     }
@@ -207,6 +332,8 @@ RestStatus RestAgencyHandler::handleStore() {
 }
 
 RestStatus RestAgencyHandler::handleWrite() {
+
+  using namespace std::chrono;
   if (_request->requestType() != rest::RequestType::POST) {
     return reportMethodNotAllowed();
   }
@@ -235,6 +362,9 @@ RestStatus RestAgencyHandler::handleWrite() {
   if (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
     return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
   }
+
+  // Start timing
+  auto const start = high_resolution_clock::now();
 
   // Do write
   write_ret_t ret;
@@ -293,6 +423,8 @@ RestStatus RestAgencyHandler::handleWrite() {
 
         if (max_index > 0) {
           result = _agent->waitFor(max_index);
+          _agent->commitHist().count(
+            duration<float,std::milli>(high_resolution_clock::now()-start).count());
         }
       }
     }
@@ -520,7 +652,6 @@ RestStatus RestAgencyHandler::handleRead() {
         return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE,
                              "No leader");
       } else {
-        TRI_ASSERT(ret.redirect != _agent->id());
         redirectRequest(ret.redirect);
       }
     }
@@ -536,6 +667,14 @@ RestStatus RestAgencyHandler::handleConfig() {
   if (_request->requestType() == rest::RequestType::POST) {
     try {
       _agent->updatePeerEndpoint(_request->toVelocyPackBuilderPtr());
+    } catch (std::exception const& e) {
+      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, e.what());
+      return RestStatus::DONE;
+    }
+  }
+  else if (_request->requestType() == rest::RequestType::PUT) {
+    try {
+      _agent->updateSomeConfigValues(_request->toVelocyPackBuilderPtr()->slice());
     } catch (std::exception const& e) {
       generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, e.what());
       return RestStatus::DONE;
@@ -595,6 +734,8 @@ RestStatus RestAgencyHandler::execute() {
         return handleWrite();
       } else if (suffixes[0] == "read") {
         return handleRead();
+      } else if (suffixes[0] == "poll") {
+        return handlePoll();
       } else if (suffixes[0] == "inquire") {
         return handleInquire();
       } else if (suffixes[0] == "transient") {
@@ -603,6 +744,7 @@ RestStatus RestAgencyHandler::execute() {
         return handleTransact();
       } else if (suffixes[0] == "config") {
         if (_request->requestType() != rest::RequestType::GET &&
+            _request->requestType() != rest::RequestType::PUT &&
             _request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }

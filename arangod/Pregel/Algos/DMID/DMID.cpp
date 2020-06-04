@@ -511,7 +511,7 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
       int64_t const* iterationCounter = getAggregatedValue<int64_t>(ITERATION_AGG);
 
       size_t m = std::min(getEdgeCount(), messages.size());
-      for (std::pair<PregelID, float> const& pair : membershipCounter) {
+      for (auto const& pair : membershipCounter) {
         // FIXME
         // float const ttt = pair.second / getEdges().size();
         float const ttt = pair.second / m;
@@ -556,9 +556,9 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
            * This vertex is a global leader. Set Membership degree to
            * 100%
            */
-          vertexState->membershipDegree.emplace(_id, 1.0f);
+          vertexState->membershipDegree.try_emplace(_id, 1.0f);
         } else {
-          vertexState->membershipDegree.emplace(_id, 0.0f);
+          vertexState->membershipDegree.try_emplace(_id, 0.0f);
         }
       }
     });
@@ -615,7 +615,7 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
       } else {
         // Output for DMID modularity calculator
         b.add(_resultField, VPackValue(VPackValueType::Array));
-        for (std::pair<PregelID, float> const& pair : ptr->membershipDegree) {
+        for (auto const& pair : ptr->membershipDegree) {
           size_t i = arangodb::basics::StringUtils::uint64_trusted(pair.first.key.data(),
                                                                    pair.first.key.size());
           b.openArray();

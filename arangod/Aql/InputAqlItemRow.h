@@ -33,12 +33,10 @@
 #include <unordered_set>
 
 namespace arangodb {
-namespace transaction {
-class Methods;
-}
 namespace velocypack {
 class Builder;
-}
+struct Options;
+}  // namespace velocypack
 namespace aql {
 
 class AqlItemBlock;
@@ -90,12 +88,9 @@ class InputAqlItemRow {
 
   RegisterCount getNrRegisters() const noexcept;
 
-  // Note that == and != here check whether the rows are *identical*, that is,
-  // the same row in the same block.
-  // TODO Make this a named method
-  bool operator==(InputAqlItemRow const& other) const noexcept;
-
-  bool operator!=(InputAqlItemRow const& other) const noexcept;
+  // This the old operator==. It tests if both rows refer to the _same_ block and
+  // the _same_ index.
+  [[nodiscard]] bool isSameBlockAndIndex(InputAqlItemRow const& other) const noexcept;
 
   // This checks whether the rows are equivalent, in the sense that they hold
   // the same number of registers and their entry-AqlValues compare equal.
@@ -103,7 +98,8 @@ class InputAqlItemRow {
   // blocks are equal, because comparing rows of blocks with different layouts
   // does not make sense.
   // Invalid rows are considered equivalent.
-  bool equates(InputAqlItemRow const& other) const noexcept;
+  [[nodiscard]] bool equates(InputAqlItemRow const& other,
+                             velocypack::Options const* options) const noexcept;
 
   bool isInitialized() const noexcept;
 
@@ -126,13 +122,14 @@ class InputAqlItemRow {
    * @brief Clone a new ItemBlock from this row
    */
   SharedAqlItemBlockPtr cloneToBlock(AqlItemBlockManager& manager,
-                                     std::unordered_set<RegisterId> const& registers,
-                                     size_t newNrRegs) const;
+                                     RegIdFlatSet const& registers, size_t newNrRegs) const;
 
   /// @brief toVelocyPack, transfer a single AqlItemRow to Json, the result can
   /// be used to recreate the AqlItemBlock via the Json constructor
   /// Uses the same API as an AqlItemBlock with only a single row
-  void toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Builder&) const;
+  void toVelocyPack(velocypack::Options const*, arangodb::velocypack::Builder&) const;
+
+  void toSimpleVelocyPack(velocypack::Options const*, arangodb::velocypack::Builder&) const;
 
  private:
   AqlItemBlock& block() noexcept;

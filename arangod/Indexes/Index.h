@@ -24,19 +24,20 @@
 #ifndef ARANGOD_INDEXES_INDEX_H
 #define ARANGOD_INDEXES_INDEX_H 1
 
+#include <iosfwd>
+
+#include <velocypack/StringRef.h>
+
 #include "Aql/AstNode.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/IndexId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
-
-#include <velocypack/StringRef.h>
-
-#include <iosfwd>
 
 namespace arangodb {
 namespace basics {
@@ -77,12 +78,11 @@ class Index {
   Index(Index const&) = delete;
   Index& operator=(Index const&) = delete;
 
-  Index(TRI_idx_iid_t iid, LogicalCollection& collection, std::string const& name,
+  Index(IndexId iid, LogicalCollection& collection, std::string const& name,
         std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
         bool unique, bool sparse);
 
-  Index(TRI_idx_iid_t iid, LogicalCollection& collection,
-        arangodb::velocypack::Slice const& slice);
+  Index(IndexId iid, LogicalCollection& collection, arangodb::velocypack::Slice const& slice);
 
   virtual ~Index();
 
@@ -146,7 +146,7 @@ class Index {
 
  public:
   /// @brief return the index id
-  inline TRI_idx_iid_t id() const { return _iid; }
+  inline IndexId id() const { return _iid; }
 
   /// @brief return the index name
   inline std::string const& name() const {
@@ -280,7 +280,7 @@ class Index {
   static bool validateHandleName(char const*, size_t*);
 
   /// @brief generate a new index id
-  static TRI_idx_iid_t generateId();
+  static IndexId generateId();
 
   /// @brief check if two index definitions share any identifiers (_id, name)
   static bool CompareIdentifiers(velocypack::Slice const& lhs, velocypack::Slice const& rhs);
@@ -459,7 +459,7 @@ class Index {
   double getTimestamp(arangodb::velocypack::Slice const& doc,
                       std::string const& attributeName) const;
 
-  TRI_idx_iid_t const _iid;
+  IndexId const _iid;
   LogicalCollection& _collection;
   std::string _name;
   std::vector<std::vector<arangodb::basics::AttributeName>> const _fields;

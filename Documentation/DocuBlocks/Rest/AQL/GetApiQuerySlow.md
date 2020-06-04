@@ -22,7 +22,7 @@ Each query is a JSON object with the following attributes:
 
 - *started*: the date and time when the query was started
 
-- *runTime*: the query's total run time 
+- *runTime*: the query's total run time
 
 - *state*: the query's current execution state (will always be "finished"
   for the list of slow queries)
@@ -38,4 +38,3 @@ Is returned when the list of queries can be retrieved successfully.
 The server will respond with *HTTP 400* in case of a malformed request,
 
 @endDocuBlock
-

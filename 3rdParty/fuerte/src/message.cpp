@@ -27,7 +27,7 @@
 #include <velocypack/velocypack-aliases.h>
 #include <sstream>
 
-#include <iostream>
+#include "debugging.h"
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
 
@@ -223,7 +223,7 @@ size_t Request::payloadSize() const { return _payload.byteSize(); }
 
 std::vector<VPackSlice> Response::slices() const {
   std::vector<VPackSlice> slices;
-  if (isContentTypeVPack()) {
+  if (isContentTypeVPack() && payloadSize() > 0) {
     VPackValidator validator;
 
     auto length = _payload.byteSize() - _payloadOffset;
@@ -237,6 +237,7 @@ std::vector<VPackSlice> Response::slices() const {
       if (length < sliceSize) {
         throw std::logic_error("invalid buffer");
       }
+      FUERTE_ASSERT(length >= sliceSize);
       cursor += sliceSize;
       length -= sliceSize;
     }
@@ -250,11 +251,17 @@ asio_ns::const_buffer Response::payload() const {
 }
 
 size_t Response::payloadSize() const {
+  if (_payloadOffset > _payload.byteSize()) {
+    return 0;
+  }
   return _payload.byteSize() - _payloadOffset;
 }
 
 std::shared_ptr<velocypack::Buffer<uint8_t>> Response::copyPayload() const {
   auto buffer = std::make_shared<velocypack::Buffer<uint8_t>>();
+  if (payloadSize() == 0) {
+    return buffer;
+  }
   buffer->append(_payload.data() + _payloadOffset,
                  _payload.byteSize() - _payloadOffset);
   return buffer;

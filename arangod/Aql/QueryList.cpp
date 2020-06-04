@@ -28,17 +28,21 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
+#include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/conversions.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/Value.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -55,12 +59,27 @@ QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id, std::string&& queryString,
       state(state),
       stream(stream) {}
 
+void QueryEntryCopy::toVelocyPack(velocypack::Builder& out) const {
+  auto timeString = TRI_StringTimeStamp(started, Logger::getUseLocalTime());
+
+  out.add(VPackValue(VPackValueType::Object));
+  out.add("id", VPackValue(basics::StringUtils::itoa(id)));
+  out.add("query", VPackValue(queryString));
+  if (bindParameters != nullptr) {
+    out.add("bindVars", bindParameters->slice());
+  } else {
+    out.add("bindVars", arangodb::velocypack::Slice::emptyObjectSlice());
+  }
+  out.add("started", VPackValue(timeString));
+  out.add("runTime", VPackValue(runTime));
+  out.add("state", VPackValue(aql::QueryExecutionState::toString(state)));
+  out.add("stream", VPackValue(stream));
+  out.close();
+}
+
 /// @brief create a query list
 QueryList::QueryList(QueryRegistryFeature& feature, TRI_vocbase_t*)
     : _lock(),
-      _current(),
-      _slow(),
-      _slowCount(0),
       _enabled(feature.trackSlowQueries()),
       _trackSlowQueries(feature.trackSlowQueries()),
       _trackBindVars(feature.trackBindVars()),
@@ -116,15 +135,22 @@ void QueryList::remove(Query* query) {
     return;
   }
 
+  double const started = query->startTime();
+  double const now = TRI_microtime();
+
+  query->vocbase().server().getFeature<arangodb::MetricsFeature>().counter(
+      StaticStrings::AqlQueryRuntimeMs) += static_cast<uint64_t>(1000 * (now - started));
+
+  if (!_trackSlowQueries) {
+    return;
+  }
+  
   bool const isStreaming = query->queryOptions().stream;
   double threshold = (isStreaming ? _slowStreamingQueryThreshold : _slowQueryThreshold);
 
-  if (!_trackSlowQueries || threshold < 0.0) {
+  if (threshold < 0.0) {
     return;
   }
-
-  double const started = query->startTime();
-  double const now = TRI_microtime();
 
   try {
     // check if we need to push the query into the list of slow queries
@@ -172,12 +198,15 @@ void QueryList::remove(Query* query) {
       _slow.emplace_back(query->id(), std::move(q),
                          _trackBindVars ? query->bindParameters() : nullptr,
                          started, now - started,
-                         query->killed() ? QueryExecutionState::ValueType::KILLED : QueryExecutionState::ValueType::FINISHED, isStreaming);
+                         query->killed() ? QueryExecutionState::ValueType::KILLED
+                                         : QueryExecutionState::ValueType::FINISHED,
+                         isStreaming);
 
-      if (++_slowCount > _maxSlowQueries) {
+      // _slow is an std::list, but since c++11 the size() method of all standard
+      // containers is O(1), so this is ok
+      if (_slow.size() > _maxSlowQueries) {
         // free first element
         _slow.pop_front();
-        --_slowCount;
       }
     }
   } catch (...) {
@@ -191,7 +220,7 @@ Result QueryList::kill(TRI_voc_tick_t id) {
   auto it = _current.find(id);
 
   if (it == _current.end()) {
-    return {TRI_ERROR_QUERY_NOT_FOUND};
+    return {TRI_ERROR_QUERY_NOT_FOUND, "query ID not found in query list"};
   }
 
   Query* query = (*it).second;
@@ -257,9 +286,10 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
       double const started = query->startTime();
 
       result.emplace_back(query->id(), extractQueryString(query, maxLength),
-                          _trackBindVars ? query->bindParameters() : nullptr, started,
-                          now - started, 
-                          query->killed() ? QueryExecutionState::ValueType::KILLED : query->state(),
+                          _trackBindVars ? query->bindParameters() : nullptr,
+                          started, now - started,
+                          query->killed() ? QueryExecutionState::ValueType::KILLED
+                                          : query->state(),
                           query->queryOptions().stream);
     }
   }
@@ -292,9 +322,8 @@ std::vector<QueryEntryCopy> QueryList::listSlow() {
 void QueryList::clearSlow() {
   WRITE_LOCKER(writeLocker, _lock);
   _slow.clear();
-  _slowCount = 0;
 }
-  
+
 size_t QueryList::count() {
   READ_LOCKER(writeLocker, _lock);
   return _current.size();

@@ -41,13 +41,13 @@ for the collection and the specified attribute.
 
 Returns a cursor containing the result, see [HTTP Cursor](../AqlQueryCursor/README.md) for details.
 
-Note: the *fulltext* simple query is **deprecated** as of ArangoDB 2.6. 
+Note: the *fulltext* simple query is **deprecated** as of ArangoDB 2.6.
 This API may be removed in future versions of ArangoDB. The preferred
 way for retrieving documents from a collection using the near operator is
-to issue an AQL query using the *FULLTEXT* [AQL function](../../AQL/Functions/Fulltext.html) 
+to issue an AQL query using the *FULLTEXT* [AQL function](../../AQL/Functions/Fulltext.html)
 as follows:
 
-    FOR doc IN FULLTEXT(@@collection, @attributeName, @queryString, @limit) 
+    FOR doc IN FULLTEXT(@@collection, @attributeName, @queryString, @limit)
       RETURN doc
 
 @RESTRETURNCODES
@@ -84,4 +84,3 @@ response body contains an error document in this case.
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

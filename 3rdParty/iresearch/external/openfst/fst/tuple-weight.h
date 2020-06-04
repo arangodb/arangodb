@@ -29,13 +29,6 @@ class TupleWeight {
   using Weight = W;
   using Index = size_t;
 
-  TupleWeight(const TupleWeight &other) { values_ = other.values_; }
-
-  TupleWeight<W, n> &operator=(const TupleWeight<W, n> &other) {
-    values_ = other.values_;
-    return *this;
-  }
-
   template <class Iterator>
   TupleWeight(Iterator begin, Iterator end) {
     std::copy(begin, end, values_.begin());
@@ -65,7 +58,7 @@ class TupleWeight {
     return no_weight;
   }
 
-  FST_CONSTEXPR static size_t Length() { return n; }
+  constexpr static size_t Length() { return n; }
 
   std::istream &Read(std::istream &istrm) {
     for (size_t i = 0; i < n; ++i) values_[i].Read(istrm);

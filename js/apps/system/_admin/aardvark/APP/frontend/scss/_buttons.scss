@@ -153,43 +153,6 @@ button {
       top: 13px;
     }
 
-    &.pan-right {
-      background-image: url('../img/gv_arrow_right.png');
-
-      &:hover {
-        background: inherit;
-        background-image: url('../img/gv_arrow_right.png');
-      }
-    }
-
-    &.pan-left {
-      background-image: url('../img/gv_arrow_left.png');
-
-      &:hover {
-        background: inherit;
-        background-image: url('../img/gv_arrow_left.png');
-      }
-    }
-
-    &.pan-top {
-      background-image: url('../img/gv_arrow_top.png');
-
-      &:hover {
-        background: inherit;
-        background-image: url('../img/gv_arrow_top.png');
-      }
-    }
-
-    &.pan-bottom {
-      background-image: url('../img/gv_arrow_bottom.png');
-
-      &:hover {
-        background: inherit;
-        background-image: url('../img/gv_arrow_bottom.png');
-      }
-    }
-
-
     &.btn-zoom {
       height: 14px;
       margin: 0;

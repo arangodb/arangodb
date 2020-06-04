@@ -26,22 +26,17 @@
 #define ARANGODB_BASICS_STRING_UTILS_H 1
 
 #include <stddef.h>
+#include <charconv>
 #include <cstdint>
 #include <cstring>
 #include <functional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "Basics/Common.h"
 
-#if __cpp_lib_to_chars >= 201611
 // use non-throwing, non-allocating std::from_chars etc. from standard library
-#include <charconv>
-#define ARANGODB_STRING_UTILS_USE_FROM_CHARS 1
-#else
-// use own functionality
-#undef ARANGODB_STRING_UTILS_USE_FROM_CHARS
-#endif
 
 /// @brief helper macro for calculating strlens for static strings at
 /// a compile-time (unless compiled with fno-builtin-strlen etc.)
@@ -164,7 +159,7 @@ static inline char tolower(char c) {
 }
 
 static inline unsigned char tolower(unsigned char c) {
-  return c + ((c - 65U < 26U) << 5);
+  return static_cast<unsigned char>(c + ((c - 65U < 26U) << 5));
 }
 
 static inline char toupper(char c) {
@@ -214,9 +209,11 @@ std::string soundex(std::string const& str);
 std::string soundex(char const* src, size_t len);
 
 /// @brief converts input string to vector of character codes
+std::vector<uint32_t> characterCodes(char const* s, size_t length);
 std::vector<uint32_t> characterCodes(std::string const& str);
 
 /// @brief calculates the levenshtein distance between the input strings
+unsigned int levenshteinDistance(char const* s1, size_t l1, char const* s2, size_t l2);
 unsigned int levenshteinDistance(std::string const& str1, std::string const& str2);
 
 /// @brief calculates the levenshtein distance between the input strings
@@ -243,6 +240,8 @@ std::string itoa(uint64_t i);
 
 /// @brief converts unsigned integer to string
 size_t itoa(uint64_t i, char* result);
+
+void itoa(uint64_t i, std::string& result);
 
 /// @brief converts integer to string
 std::string itoa(int32_t i);
@@ -289,8 +288,6 @@ inline int hex2int(char ch, int errorValue = 0) {
 bool boolean(std::string const& str);
 
 /// @brief parses an integer
-#ifdef ARANGODB_STRING_UTILS_USE_FROM_CHARS
-// use functionality provided by c++17
 inline int64_t int64(char const* value, size_t size) noexcept {
   int64_t result = 0;
   std::from_chars(value, value + size, result, 10);
@@ -299,16 +296,8 @@ inline int64_t int64(char const* value, size_t size) noexcept {
 inline int64_t int64(std::string const& value) noexcept {
   return StringUtils::int64(value.data(), value.size());
 }
-#else
-int64_t int64(std::string const& value);
-inline int64_t int64(char const* value, size_t size) {
-  return StringUtils::int64(std::string(value, size));
-}
-#endif
 
 /// @brief parses an unsigned integer
-#ifdef ARANGODB_STRING_UTILS_USE_FROM_CHARS
-// use functionality provided by c++17
 inline uint64_t uint64(char const* value, size_t size) noexcept {
   uint64_t result = 0;
   std::from_chars(value, value + size, result, 10);
@@ -317,12 +306,9 @@ inline uint64_t uint64(char const* value, size_t size) noexcept {
 inline uint64_t uint64(std::string const& value) noexcept {
   return StringUtils::uint64(value.data(), value.size());
 }
-#else
-uint64_t uint64(std::string const& value);
-inline uint64_t uint64(char const* value, size_t size) {
-  return StringUtils::uint64(std::string(value, size));
+inline uint64_t uint64(std::string_view const& value) noexcept {
+  return StringUtils::uint64(value.data(), value.size());
 }
-#endif
 
 /// @brief parses an unsigned integer
 /// the caller must make sure that the input buffer only contains valid
@@ -335,8 +321,6 @@ inline uint64_t uint64_trusted(std::string const& value) {
 }
 
 /// @brief parses an integer
-#ifdef ARANGODB_STRING_UTILS_USE_FROM_CHARS
-// use functionality provided by c++17
 inline int32_t int32(char const* value, size_t size) noexcept {
   int32_t result = 0;
   std::from_chars(value, value + size, result, 10);
@@ -345,14 +329,8 @@ inline int32_t int32(char const* value, size_t size) noexcept {
 inline int32_t int32(std::string const& value) noexcept {
   return StringUtils::int32(value.data(), value.size());
 }
-#else
-int32_t int32(std::string const& value);
-int32_t int32(char const* value, size_t size);
-#endif
 
 /// @brief parses an unsigned integer
-#ifdef ARANGODB_STRING_UTILS_USE_FROM_CHARS
-// use functionality provided by c++17
 inline uint32_t uint32(char const* value, size_t size) noexcept {
   uint32_t result = 0;
   std::from_chars(value, value + size, result, 10);
@@ -361,10 +339,6 @@ inline uint32_t uint32(char const* value, size_t size) noexcept {
 inline uint32_t uint32(std::string const& value) noexcept {
   return StringUtils::uint32(value.data(), value.size());
 }
-#else
-uint32_t uint32(std::string const& value);
-uint32_t uint32(char const* value, size_t size);
-#endif
 
 /// @brief parses a decimal
 double doubleDecimal(std::string const& str);
@@ -377,6 +351,30 @@ float floatDecimal(std::string const& str);
 
 /// @brief parses a decimal
 float floatDecimal(char const* value, size_t size);
+
+/// @brief convert char const* or std::string to number with error handling
+template<typename T>
+static bool toNumber(std::string const& key, T& val) noexcept {
+  size_t n = key.size();
+  if (n==0) {
+    return false;
+  }
+  try {
+    if constexpr (std::is_integral<T>::value) {
+      char const* s = key.data();
+      std::from_chars(s, s + n, val);
+    } else if constexpr (std::is_same<long double, typename std::remove_cv<T>::type>::value) {
+      val = stold(key);
+    } else if constexpr (std::is_same<double, typename std::remove_cv<T>::type>::value) {
+      val = stod(key);
+    } else if constexpr (std::is_same<float, typename std::remove_cv<T>::type>::value) {
+      val = stof(key);
+    }
+  } catch (...) {
+    return false;
+  }
+  return true;
+}
 
 // -----------------------------------------------------------------------------
 // BASE64

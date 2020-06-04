@@ -26,6 +26,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
@@ -54,7 +55,7 @@ class SortNode : public ExecutionNode {
   static std::string const& sorterTypeName(SorterType);
 
  public:
-  SortNode(ExecutionPlan* plan, size_t id, SortElementVector const& elements, bool stable)
+  SortNode(ExecutionPlan* plan, ExecutionNodeId id, SortElementVector const& elements, bool stable)
       : ExecutionNode(plan, id),
         _reinsertInCluster(true),
         _elements(elements),
@@ -94,7 +95,7 @@ class SortNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final {
+  void getVariablesUsedHere(VarSet& vars) const override final {
     for (auto& p : _elements) {
       vars.emplace(p.var);
     }

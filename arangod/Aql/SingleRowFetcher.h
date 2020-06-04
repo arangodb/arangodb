@@ -26,6 +26,7 @@
 #ifndef ARANGOD_AQL_SINGLE_ROW_FETCHER_H
 #define ARANGOD_AQL_SINGLE_ROW_FETCHER_H
 
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
@@ -39,6 +40,7 @@ namespace arangodb::aql {
 class AqlItemBlock;
 template <BlockPassthrough>
 class DependencyProxy;
+class SkipResult;
 
 /**
  * @brief Interface for all AqlExecutors that do only need one
@@ -54,15 +56,29 @@ class SingleRowFetcher {
   explicit SingleRowFetcher(DependencyProxy<blockPassthrough>& executionBlock);
   TEST_VIRTUAL ~SingleRowFetcher() = default;
 
+  using DataRange = AqlItemBlockInputRange;
+
  protected:
   // only for testing! Does not initialize _dependencyProxy!
   SingleRowFetcher();
 
  public:
   /**
+   * @brief Execute the given call stack
+   *
+   * @param stack Call stack, on top of stack there is current subquery, bottom is the main query.
+   * @return std::tuple<ExecutionState, size_t, DataRange>
+   *   ExecutionState => DONE, all queries are done, there will be no more
+   *   ExecutionState => HASMORE, there are more results for queries, might be on other subqueries
+   *   ExecutionState => WAITING, we need to do I/O to solve the request, save local state and return WAITING to caller immediately
+   *
+   *   size_t => Amount of documents skipped
+   *   DataRange => Resulting data
+   */
+  std::tuple<ExecutionState, SkipResult, DataRange> execute(AqlCallStack& stack);
+
+  /**
    * @brief Fetch one new AqlItemRow from upstream.
-   *        **Guarantee**: the row returned is valid only
-   *        until the next call to fetchRow.
    *
    * @param atMost may be passed if a block knows the maximum it might want to
    *        fetch from upstream (should apply only to the LimitExecutor). Will
@@ -71,7 +87,7 @@ class SingleRowFetcher {
    *
    * @return A pair with the following properties:
    *         ExecutionState:
-   *           WAITING => IO going on, immediatly return to caller.
+   *           WAITING => IO going on, immediately return to caller.
    *           DONE => No more to expect from Upstream, if you are done with
    *                   this row return DONE to caller.
    *           HASMORE => There is potentially more from above, call again if
@@ -84,23 +100,23 @@ class SingleRowFetcher {
   // This is only TEST_VIRTUAL, so we ignore this lint warning:
   // NOLINTNEXTLINE google-default-arguments
   [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow(
-      size_t atMost = ExecutionBlock::DefaultBatchSize());
+      size_t atMost = ExecutionBlock::DefaultBatchSize);
+
+  struct RowWithStates {
+    RowWithStates() = delete;
+    ExecutionState localState;
+    ExecutionState globalState;
+    InputAqlItemRow row;
+  };
+
+  // Like fetchRow(), but returns both the subquery-local state (like fetchRow())
+  // and the global state (like fetchShadowRow()).
+  // Currently necessary only in the SubqueryStartExecutor.
+  [[nodiscard]] RowWithStates fetchRowWithGlobalState(size_t atMost = ExecutionBlock::DefaultBatchSize);
 
   // NOLINTNEXTLINE google-default-arguments
   [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(
-      size_t atMost = ExecutionBlock::DefaultBatchSize());
-
-  [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, size_t> skipRows(size_t atMost);
-
-  // template methods may not be virtual, thus this #ifdef.
-#ifndef ARANGODB_USE_GOOGLE_TESTS
-  template <BlockPassthrough allowPass = blockPassthrough, typename = std::enable_if_t<allowPass == BlockPassthrough::Enable>>
-  [[nodiscard]]
-#else
-  [[nodiscard]]
-  TEST_VIRTUAL
-#endif
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
+      size_t atMost = ExecutionBlock::DefaultBatchSize);
 
   [[nodiscard]] std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t atMost);
 
@@ -110,6 +126,9 @@ class SingleRowFetcher {
   [[nodiscard]] bool hasRowsLeftInBlock() const;
   [[nodiscard]] bool isAtShadowRow() const;
 #endif
+
+  //@deprecated
+  auto useStack(AqlCallStack const& stack) -> void;
 
  private:
   DependencyProxy<blockPassthrough>* _dependencyProxy;
@@ -162,12 +181,12 @@ class SingleRowFetcher {
   /**
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()
    */
-  [[nodiscard]] RegisterId getNrInputRegisters() const;
+  [[nodiscard]] RegisterCount getNrInputRegisters() const;
 
   [[nodiscard]] bool indexIsValid() const;
 
   [[nodiscard]] ExecutionState returnState(bool isShadowRow) const;
 };
-}  // namespace arangodb
+}  // namespace arangodb::aql
 
 #endif  // ARANGOD_AQL_SINGLE_ROW_FETCHER_H

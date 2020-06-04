@@ -1,0 +1,240 @@
+strings ( ch )
+integers ( p1 p2 )
+booleans ( Y_found stemmed GE_removed )
+
+routines (
+
+   R1 R2
+   C V VX
+   lengthen_V
+   Step_1 Step_2 Step_3 Step_4 Step_7
+   Step_6 Step_1c
+   Lose_prefix
+   Lose_infix
+   measure
+)
+
+externals ( stem )
+
+groupings ( v v_WX AOU AIOU )
+
+stringescapes {}
+
+define v        'aeiouy'
+define v_WX     v + 'wx'
+define AOU      'aou'
+define AIOU     'aiou'
+
+backwardmode (
+
+    define R1 as ($p1 <= cursor)
+    define R2 as ($p2 <= cursor)
+
+    define V  as test (v or 'ij')
+    define VX as test (next v or 'ij')
+    define C  as test (not 'ij' non-v)
+
+    define lengthen_V as do (
+        non-v_WX [ (AOU] test (non-v or atlimit)) or
+                   ('e'] test (non-v or atlimit
+                               not AIOU
+                               not (next AIOU non-v)))
+        ->ch insert ch
+    )
+
+    define Step_1 as
+    (
+        [substring] among (
+
+            '{'}s' (delete)
+            's'    (R1 not ('t' R1) C delete)
+            'ies'  (R1 <-'ie')
+            'es'
+                   (('ar' R1 C ] delete lengthen_V) or
+                    ('er' R1 C ] delete) or
+                    (R1 C <-'e'))
+
+            'aus'  (R1 V <-'au')
+            'en'   (('hed' R1 ] <-'heid') or
+                    ('nd' delete) or
+                    ('d' R1 C ] delete) or
+                    ('i' or 'j' V delete) or
+                    (R1 C delete lengthen_V))
+            'nde'  (<-'nd')
+        )
+    )
+
+    define Step_2 as
+    (
+        [substring] among (
+            'je'   (('{'}t' ] delete) or
+                    ('et'   ] R1 C delete) or
+                    ('rnt'  ] <-'rn') or
+                    ('t'    ] R1 VX delete) or
+                    ('ink'  ] <-'ing') or
+                    ('mp'   ] <-'m') or
+                    ('{'}'  ] R1 delete) or
+                    (] R1 C delete))
+            'ge'   (R1 <-'g')
+            'lijke'(R1 <-'lijk')
+            'ische'(R1 <-'isch')
+            'de'   (R1 C delete)
+            'te'   (R1 <-'t')
+            'se'   (R1 <-'s')
+            're'   (R1 <-'r')
+            'le'   (R1 delete attach 'l' lengthen_V)
+            'ene'  (R1 C delete attach 'en' lengthen_V)
+            'ieve' (R1 C <-'ief')
+        )
+    )
+
+    define Step_3 as
+    (
+        [substring] among (
+            'atie'  (R1 <-'eer')
+            'iteit' (R1 delete lengthen_V)
+            'heid'
+            'sel'
+            'ster'  (R1 delete)
+            'rder'  (<-'r')
+            'ing'
+            'isme'
+            'erij'  (R1 delete lengthen_V)
+            'arij'  (R1 C <-'aar')
+            'fie'   (R2 delete attach 'f' lengthen_V)
+            'gie'   (R2 delete attach 'g' lengthen_V)
+            'tst'   (R1 C <-'t')
+            'dst'   (R1 C <-'d')
+        )
+    )
+
+    define Step_4 as
+    (
+        (   [substring] among (
+                'ioneel'  (R1 <-'ie')
+                'atief'   (R1 <-'eer')
+                'baar'    (R1 delete)
+                'naar'    (R1 V <-'n')
+                'laar'    (R1 V <-'l')
+                'raar'    (R1 V <-'r')
+                'tant'    (R1 <-'teer')
+                'lijker'
+                'lijkst'  (R1 <-'lijk')
+                'achtig'
+                'achtiger'
+                'achtigst'(R1 delete)
+                'eriger'
+                'erigst'
+                'erig'
+                'end'     (R1 C delete lengthen_V)
+            )
+        )
+        or
+        (   [substring] among (
+                'iger'
+                'igst'
+                'ig'      (R1 C delete lengthen_V)
+            )
+        )
+    )
+
+    define Step_7 as
+    (
+        [substring] among (
+            'kt'   (<-'k')
+            'ft'   (<-'f')
+            'pt'   (<-'p')
+        )
+    )
+
+    define Step_6 as
+    (
+        [substring] among (
+            'bb'   (<-'b')
+            'cc'   (<-'c')
+            'dd'   (<-'d')
+            'ff'   (<-'f')
+            'gg'   (<-'g')
+            'hh'   (<-'h')
+            'jj'   (<-'j')
+            'kk'   (<-'k')
+            'll'   (<-'l')
+            'mm'   (<-'m')
+            'nn'   (<-'n')
+            'pp'   (<-'p')
+            'qq'   (<-'q')
+            'rr'   (<-'r')
+            'ss'   (<-'s')
+            'tt'   (<-'t')
+            'vv'   (<-'v')
+            'ww'   (<-'w')
+            'xx'   (<-'x')
+            'zz'   (<-'z')
+            'v'    (<-'f')
+            'z'    (<-'s')
+        )
+    )
+
+    define Step_1c as
+    (
+        [substring] among ( (R1 C)
+            'd' (not ('n' R1) delete)
+            't' (not ('h' R1) delete)
+        )
+    )
+)
+
+define Lose_prefix as (
+    ['ge'] test hop 3 (goto v goto non-v)
+    set GE_removed
+    delete
+)
+
+define Lose_infix as (
+    next
+    gopast (['ge']) test hop 3 (goto v goto non-v)
+    set GE_removed
+    delete
+)
+
+define measure as (
+    $p1 = limit
+    $p2 = limit
+    do(
+        repeat non-v  atleast 1 ('ij' or v)  non-v  setmark p1
+        repeat non-v  atleast 1 ('ij' or v)  non-v  setmark p2
+    )
+
+)
+define stem as (
+
+    unset Y_found
+    unset stemmed
+    do ( ['y'] <-'Y' set Y_found )
+    do repeat(goto (v  ['y'])<-'Y' set Y_found )
+
+    measure
+
+    backwards (
+            do (Step_1 set stemmed )
+            do (Step_2 set stemmed )
+            do (Step_3 set stemmed )
+            do (Step_4 set stemmed )
+    )
+    unset GE_removed
+    do (Lose_prefix and measure)
+    backwards (
+            do (GE_removed Step_1c)
+        )
+    unset GE_removed
+    do (Lose_infix and measure)
+    backwards (
+            do (GE_removed Step_1c)
+        )
+    backwards (
+            do (Step_7 set stemmed )
+            do (stemmed or GE_removed Step_6)
+        )
+    do(Y_found  repeat(goto (['Y']) <-'y'))
+)
+

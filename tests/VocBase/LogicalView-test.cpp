@@ -160,63 +160,51 @@ TEST_F(LogicalViewTest, test_auth) {
 
   // no ExecContext
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
     auto logicalView = vocbase.createView(viewJson->slice());
     EXPECT_TRUE(logicalView->canUse(arangodb::auth::Level::RW));
   }
 
   // no read access
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
     auto logicalView = vocbase.createView(viewJson->slice());
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "",
                                   "testVocbase", arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
+                                  arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
-    auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
     EXPECT_FALSE(logicalView->canUse(arangodb::auth::Level::RO));
   }
 
   // no write access
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
     auto logicalView = vocbase.createView(viewJson->slice());
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "",
                                   "testVocbase", arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::RO) {}
+                                  arangodb::auth::Level::RO, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
-    auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
     EXPECT_TRUE(logicalView->canUse(arangodb::auth::Level::RO));
     EXPECT_FALSE(logicalView->canUse(arangodb::auth::Level::RW));
   }
 
   // write access (view access is db access as per https://github.com/arangodb/backlog/issues/459)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
     auto logicalView = vocbase.createView(viewJson->slice());
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "",
                                   "testVocbase", arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::RW) {}
+                                  arangodb::auth::Level::RW, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
-    auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
     EXPECT_TRUE(logicalView->canUse(arangodb::auth::Level::RO));
     EXPECT_TRUE(logicalView->canUse(arangodb::auth::Level::RW));
   }

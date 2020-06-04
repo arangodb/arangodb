@@ -973,11 +973,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
       }
       c.ensureHashIndex("value");
       var query = "FOR x IN " + cn + " FILTER (x.value > 3 || x.value < 90) RETURN x.value";
-      if (db._engine().name === "rocksdb") {
-        ruleIsUsed(query);
-      } else {
-        ruleIsNotUsed(query);
-      }
+      ruleIsUsed(query);
     },
 
     testOverlappingRangesListSkiplist2 : function () {
@@ -1010,11 +1006,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
       }
       c.ensureHashIndex("value");
       var query = "FOR i IN " + cn + " FILTER i.value == 8 || i.value <= 7 RETURN i.value";
-      if (db._engine().name === "rocksdb") {
-        ruleIsUsed(query);
-      } else {
-        ruleIsNotUsed(query);
-      }
+      ruleIsUsed(query);
     },
 
     testNestedOrHashIndex : function () {

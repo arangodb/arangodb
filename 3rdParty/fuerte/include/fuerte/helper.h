@@ -23,14 +23,19 @@
 #ifndef ARANGO_CXX_DRIVER_HELPER
 #define ARANGO_CXX_DRIVER_HELPER
 
-#include <fuerte/message.h>
-#include <fuerte/types.h>
 #include <sstream>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+#include <fuerte/message.h>
+#include <fuerte/types.h>
+#include <velocypack/Slice.h>
+
 namespace arangodb { namespace fuerte { inline namespace v1 {
+
+class Message;
+
 namespace _detail {
 template <typename IteratorType>
 std::string arrayToString(IteratorType begin, IteratorType end) {
@@ -84,7 +89,7 @@ std::string mapToString(IteratorType begin, IteratorType end) {
 
 std::string to_string(velocypack::Slice const& slice);
 std::string to_string(std::vector<velocypack::Slice> const& payload);
-std::string to_string(Message& message);
+std::string to_string(arangodb::fuerte::Message& message);
 StringMap sliceToStringMap(velocypack::Slice const&);
 
 template <typename K, typename V, typename A>
@@ -107,8 +112,8 @@ std::string mapToKeys(std::unordered_map<K, V, A> map) {
   return _detail::mapToKeys(map.begin(), map.end());
 }
 
-std::string encodeBase64(std::string const&);
-std::string encodeBase64U(std::string const&);
+std::string encodeBase64(std::string const&, bool pad);
+std::string encodeBase64U(std::string const&, bool pad);
 
 void toLowerInPlace(std::string& str);
 

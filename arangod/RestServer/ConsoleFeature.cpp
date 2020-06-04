@@ -24,6 +24,7 @@
 
 #include "ConsoleFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/messages.h"
 #include "FeaturePhases/AgencyFeaturePhase.h"
 #include "Logger/LogMacros.h"

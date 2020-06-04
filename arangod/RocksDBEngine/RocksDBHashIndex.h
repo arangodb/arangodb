@@ -26,6 +26,7 @@
 
 #include "Basics/VelocyPackHelper.h"
 #include "RocksDBEngine/RocksDBVPackIndex.h"
+#include "VocBase/Identifiers/IndexId.h"
 
 namespace arangodb {
 
@@ -33,7 +34,7 @@ class RocksDBHashIndex final : public RocksDBVPackIndex {
  public:
   RocksDBHashIndex() = delete;
 
-  RocksDBHashIndex(TRI_idx_iid_t iid, LogicalCollection& coll,
+  RocksDBHashIndex(IndexId iid, LogicalCollection& coll,
                    arangodb::velocypack::Slice const& info)
       : RocksDBVPackIndex(iid, coll, info) {}
 

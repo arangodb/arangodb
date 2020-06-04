@@ -50,6 +50,8 @@ struct QueryEntryCopy {
                  std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
                  double started, double runTime,
                  QueryExecutionState::ValueType state, bool stream);
+  
+  void toVelocyPack(arangodb::velocypack::Builder& out) const;
 
   TRI_voc_tick_t const id;
   std::string const queryString;
@@ -58,6 +60,7 @@ struct QueryEntryCopy {
   double const runTime;
   QueryExecutionState::ValueType const state;
   bool stream;
+
 };
 
 class QueryList {
@@ -222,9 +225,6 @@ class QueryList {
 
   /// @brief list of slow queries
   std::list<QueryEntryCopy> _slow;
-
-  /// @brief current number of slow queries
-  size_t _slowCount;
 
   /// @brief whether or not queries are tracked
   std::atomic<bool> _enabled;

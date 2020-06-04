@@ -26,6 +26,7 @@
 
 #include "Basics/Result.h"
 #include "Cluster/ServerState.h"
+#include "Containers/MerkleTree.h"
 #include "Replication/InitialSyncer.h"
 #include "Replication/utilities.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -39,9 +40,6 @@ class DatabaseInitialSyncer;
 class ReplicationApplierConfiguration;
 
 class DatabaseInitialSyncer final : public InitialSyncer {
-  friend ::arangodb::Result handleSyncKeysMMFiles(DatabaseInitialSyncer& syncer,
-                                                  arangodb::LogicalCollection* col,
-                                                  std::string const& keysId);
   friend ::arangodb::Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
                                                   arangodb::LogicalCollection* col,
                                                   std::string const& keysId);
@@ -192,10 +190,23 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   Result fetchCollectionDump(arangodb::LogicalCollection*,
                              std::string const& leaderColl, TRI_voc_tick_t);
 
-  /// @brief incrementally fetch data from a collection
+  /// @brief incrementally fetch data from a collection using keys as the
+  /// primary document identifier
   // TODO worker safety
   Result fetchCollectionSync(arangodb::LogicalCollection*,
                              std::string const& leaderColl, TRI_voc_tick_t);
+
+  /// @brief incrementally fetch data from a collection using keys as the
+  /// primary document identifier
+  // TODO worker safety
+  Result fetchCollectionSyncByKeys(arangodb::LogicalCollection*,
+                                   std::string const& leaderColl, TRI_voc_tick_t);
+
+  /// @brief incrementally fetch data from a collection using revisions as the
+  /// primary document identifier, not supported by all engines/collections
+  // TODO worker safety
+  Result fetchCollectionSyncByRevisions(arangodb::LogicalCollection*,
+                                        std::string const& leaderColl, TRI_voc_tick_t);
 
   /// @brief changes the properties of a collection, based on the VelocyPack
   /// provided

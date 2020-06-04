@@ -21,6 +21,9 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef ARANGOD_AQL_IRESEARCH_QUERY_COMMON_H
+#define ARANGOD_AQL_IRESEARCH_QUERY_COMMON_H
+
 #include "gtest/gtest.h"
 
 #include "3rdParty/iresearch/tests/tests_config.hpp"
@@ -66,13 +69,16 @@ class IResearchQueryTest
 
     auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
     dbFeature.createDatabase(testDBInfo(server.server()), _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    
+    std::shared_ptr<arangodb::LogicalCollection> unused;
     arangodb::methods::Collections::createSystem(*_vocbase, arangodb::tests::AnalyzerCollectionName,
-                                                 false);
+                                                 false, unused);
+    unused = nullptr;
 
     auto res =
         analyzers.emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
                           VPackParser::fromJson("\"abc\"")->slice(),
-                          irs::flags{irs::frequency::type(), irs::position::type()}  // required for PHRASE
+                          irs::flags{irs::type<irs::frequency>::get(), irs::type<irs::position>::get()}  // required for PHRASE
         );  // cache analyzer
     EXPECT_TRUE(res.ok());
 
@@ -86,16 +92,17 @@ class IResearchQueryTest
         VPackParser::fromJson(
             "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] }")
             ->slice(),
-        {irs::frequency::type(), irs::norm::type(), irs::position::type()});  // cache analyzer
+        {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()});  // cache analyzer
     EXPECT_TRUE(res.ok());
 
     auto sysVocbase = server.getFeature<arangodb::SystemDatabaseFeature>().use();
     arangodb::methods::Collections::createSystem(*sysVocbase, arangodb::tests::AnalyzerCollectionName,
-                                                 false);
+                                                 false, unused);
+    unused = nullptr;
 
     res = analyzers.emplace(result, "_system::test_analyzer", "TestAnalyzer",
                             VPackParser::fromJson("\"abc\"")->slice(),
-                            irs::flags{irs::frequency::type(), irs::position::type()}  // required for PHRASE
+                            irs::flags{irs::type<irs::frequency>::get(), irs::type<irs::position>::get()}  // required for PHRASE
     );  // cache analyzer
     EXPECT_TRUE(res.ok());
 
@@ -149,3 +156,5 @@ class IResearchQueryTest
     return *_vocbase;
   }
 };  // IResearchQueryTest
+
+#endif // ARANGOD_AQL_IRESEARCH_QUERY_COMMON_H

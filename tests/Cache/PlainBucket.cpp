@@ -21,18 +21,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cache/PlainBucket.h"
-#include "Basics/Common.h"
-#include "Basics/debugging.h"
-
 #include "gtest/gtest.h"
 
-#include <stdint.h>
+#include <cstdint>
 #include <string>
+
+#include "Basics/debugging.h"
+#include "Cache/PlainBucket.h"
 
 using namespace arangodb::cache;
 
@@ -40,14 +39,14 @@ TEST(CachePlainBucketTest, verify_that_insertion_works_correctly) {
   auto bucket = std::make_unique<PlainBucket>();
   bool success;
 
-  uint32_t hashes[11] = {1, 2, 3, 4,  5, 6,
-                         7, 8, 9, 10, 11};  // don't have to be real, but should be unique and non-zero
-  uint64_t keys[11] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-  uint64_t values[11] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  std::uint32_t hashes[11] = {1, 2, 3, 4,  5, 6,
+                              7, 8, 9, 10, 11};  // don't have to be real, but should be unique and non-zero
+  std::uint64_t keys[11] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  std::uint64_t values[11] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   CachedValue* ptrs[11];
-  for (size_t i = 0; i < 11; i++) {
-    ptrs[i] = CachedValue::construct(&(keys[i]), sizeof(uint64_t), &(values[i]),
-                                     sizeof(uint64_t));
+  for (std::size_t i = 0; i < 11; i++) {
+    ptrs[i] = CachedValue::construct(&(keys[i]), sizeof(std::uint64_t),
+                                     &(values[i]), sizeof(std::uint64_t));
     TRI_ASSERT(ptrs[i] != nullptr);
   }
 
@@ -56,7 +55,7 @@ TEST(CachePlainBucketTest, verify_that_insertion_works_correctly) {
 
   // insert ten to fill
   ASSERT_FALSE(bucket->isFull());
-  for (size_t i = 0; i < 10; i++) {
+  for (std::size_t i = 0; i < 10; i++) {
     bucket->insert(hashes[i], ptrs[i]);
     if (i < 9) {
       ASSERT_FALSE(bucket->isFull());
@@ -64,7 +63,7 @@ TEST(CachePlainBucketTest, verify_that_insertion_works_correctly) {
       ASSERT_TRUE(bucket->isFull());
     }
   }
-  for (size_t i = 0; i < 10; i++) {
+  for (std::size_t i = 0; i < 10; i++) {
     CachedValue* res = bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
     ASSERT_EQ(res, ptrs[i]);
   }
@@ -77,7 +76,7 @@ TEST(CachePlainBucketTest, verify_that_insertion_works_correctly) {
   bucket->unlock();
 
   // cleanup
-  for (size_t i = 0; i < 11; i++) {
+  for (std::size_t i = 0; i < 11; i++) {
     delete ptrs[i];
   }
 }
@@ -86,23 +85,23 @@ TEST(CachePlainBucketTest, verify_removal_works_correctly) {
   auto bucket = std::make_unique<PlainBucket>();
   bool success;
 
-  uint32_t hashes[3] = {1, 2, 3};  // don't have to be real, but should be unique and non-zero
-  uint64_t keys[3] = {0, 1, 2};
-  uint64_t values[3] = {0, 1, 2};
+  std::uint32_t hashes[3] = {1, 2, 3};  // don't have to be real, but should be unique and non-zero
+  std::uint64_t keys[3] = {0, 1, 2};
+  std::uint64_t values[3] = {0, 1, 2};
   CachedValue* ptrs[3];
-  for (size_t i = 0; i < 3; i++) {
-    ptrs[i] = CachedValue::construct(&(keys[i]), sizeof(uint64_t), &(values[i]),
-                                     sizeof(uint64_t));
+  for (std::size_t i = 0; i < 3; i++) {
+    ptrs[i] = CachedValue::construct(&(keys[i]), sizeof(std::uint64_t),
+                                     &(values[i]), sizeof(std::uint64_t));
     TRI_ASSERT(ptrs[i] != nullptr);
   }
 
   success = bucket->lock(-1LL);
   ASSERT_TRUE(success);
 
-  for (size_t i = 0; i < 3; i++) {
+  for (std::size_t i = 0; i < 3; i++) {
     bucket->insert(hashes[i], ptrs[i]);
   }
-  for (size_t i = 0; i < 3; i++) {
+  for (std::size_t i = 0; i < 3; i++) {
     CachedValue* res = bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
     ASSERT_EQ(res, ptrs[i]);
   }
@@ -124,7 +123,7 @@ TEST(CachePlainBucketTest, verify_removal_works_correctly) {
   bucket->unlock();
 
   // cleanup
-  for (size_t i = 0; i < 3; i++) {
+  for (std::size_t i = 0; i < 3; i++) {
     delete ptrs[i];
   }
 }
@@ -133,14 +132,14 @@ TEST(CachePlainBucketTest, verify_eviction_works_correctly) {
   auto bucket = std::make_unique<PlainBucket>();
   bool success;
 
-  uint32_t hashes[11] = {1, 2, 3, 4,  5, 6,
-                         7, 8, 9, 10, 11};  // don't have to be real, but should be unique and non-zero
-  uint64_t keys[11] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-  uint64_t values[11] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  std::uint32_t hashes[11] = {1, 2, 3, 4,  5, 6,
+                              7, 8, 9, 10, 11};  // don't have to be real, but should be unique and non-zero
+  std::uint64_t keys[11] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  std::uint64_t values[11] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   CachedValue* ptrs[11];
-  for (size_t i = 0; i < 11; i++) {
-    ptrs[i] = CachedValue::construct(&(keys[i]), sizeof(uint64_t), &(values[i]),
-                                     sizeof(uint64_t));
+  for (std::size_t i = 0; i < 11; i++) {
+    ptrs[i] = CachedValue::construct(&(keys[i]), sizeof(std::uint64_t),
+                                     &(values[i]), sizeof(std::uint64_t));
     TRI_ASSERT(ptrs[i] != nullptr);
   }
 
@@ -149,7 +148,7 @@ TEST(CachePlainBucketTest, verify_eviction_works_correctly) {
 
   // insert five to fill
   ASSERT_FALSE(bucket->isFull());
-  for (size_t i = 0; i < 10; i++) {
+  for (std::size_t i = 0; i < 10; i++) {
     bucket->insert(hashes[i], ptrs[i]);
     if (i < 9) {
       ASSERT_FALSE(bucket->isFull());
@@ -157,7 +156,7 @@ TEST(CachePlainBucketTest, verify_eviction_works_correctly) {
       ASSERT_TRUE(bucket->isFull());
     }
   }
-  for (size_t i = 0; i < 10; i++) {
+  for (std::size_t i = 0; i < 10; i++) {
     CachedValue* res = bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
     ASSERT_EQ(res, ptrs[i]);
   }
@@ -186,7 +185,7 @@ TEST(CachePlainBucketTest, verify_eviction_works_correctly) {
   bucket->unlock();
 
   // cleanup
-  for (size_t i = 0; i < 11; i++) {
+  for (std::size_t i = 0; i < 11; i++) {
     delete ptrs[i];
   }
 }

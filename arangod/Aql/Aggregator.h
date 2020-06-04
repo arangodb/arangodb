@@ -29,11 +29,9 @@
 #include <string>
 
 namespace arangodb {
-namespace transaction {
-class Methods;
-}
 namespace velocypack {
 class Slice;
+struct Options;
 }
 
 namespace aql {
@@ -44,25 +42,27 @@ struct Aggregator {
   Aggregator() = delete;
   Aggregator(Aggregator const&) = delete;
   Aggregator& operator=(Aggregator const&) = delete;
+  
+  using Factory = std::function<std::unique_ptr<Aggregator>(velocypack::Options const*)> const*;
 
-  explicit Aggregator(transaction::Methods* trx) : trx(trx) {}
+  explicit Aggregator(velocypack::Options const* opts) : _vpackOptions(opts) {}
   virtual ~Aggregator() = default;
   virtual void reset() = 0;
   virtual void reduce(AqlValue const&) = 0;
   virtual AqlValue stealValue() = 0;
 
   /// @brief creates an aggregator from a name string
-  static std::unique_ptr<Aggregator> fromTypeString(transaction::Methods*,
+  static std::unique_ptr<Aggregator> fromTypeString(velocypack::Options const*,
                                                     std::string const& type);
 
   /// @brief creates an aggregator from a velocypack slice
-  static std::unique_ptr<Aggregator> fromVPack(transaction::Methods*,
+  static std::unique_ptr<Aggregator> fromVPack(velocypack::Options const*,
                                                arangodb::velocypack::Slice const&,
                                                char const* nameAttribute);
 
   /// @brief return a pointer to an aggregator factory for an aggregator type
   /// throws if the aggregator cannot be found
-  static std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const* factoryFromTypeString(
+  static Factory factoryFromTypeString(
       std::string const& type);
 
   /// @brief translates an alias to an actual aggregator name
@@ -95,7 +95,7 @@ struct Aggregator {
   static bool requiresInput(std::string const& type);
 
  protected:
-  transaction::Methods* trx;
+  velocypack::Options const* _vpackOptions;
 };
 
 }  // namespace aql

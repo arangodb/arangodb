@@ -3,7 +3,7 @@
 @brief saves a new edge document
 `edge-collection.insert(from, to, document)`
 
-Saves a new edge and returns the document-handle. *from* and *to*
+Saves a new edge and returns the document-id. *from* and *to*
 must be documents or document references.
 
 `edge-collection.insert(from, to, document, waitForSync)`

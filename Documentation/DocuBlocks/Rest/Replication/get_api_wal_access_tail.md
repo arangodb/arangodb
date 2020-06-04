@@ -6,6 +6,10 @@
 
 @RESTQUERYPARAMETERS
 
+@RESTQUERYPARAM{global,boolean,optional}
+If set to *true*, tails the WAL for all databases. If set to *false*, tails the 
+WAL for the selected database.
+
 @RESTQUERYPARAM{from,number,optional}
 Exclusive lower bound tick value for results. On successive calls
 to this API you should set this to the value returned
@@ -18,7 +22,7 @@ Inclusive upper bound tick value for results.
 @RESTQUERYPARAM{lastScanned,number,optional}
 Should be set to the value of the *x-arango-replication-lastscanned* header
 or alternatively 0 on first try. This allows the rocksdb engine to break up
-large transactions over multiple responses. 
+large transactions over multiple responses.
 
 @RESTQUERYPARAM{global,boolean,optional}
 Whether operations for all databases should be included. When set to *false*
@@ -29,7 +33,7 @@ only valid on the *_system* database. The default is *false*.
 Approximate maximum size of the returned result.
 
 @RESTQUERYPARAM{syncerId,number,optional}
-Id of the client used to tail results. The server will use this to 
+Id of the client used to tail results. The server will use this to
 keep operations until the client has fetched them. Must be a positive integer.
 **Note** this or serverId is required to have a chance at fetching reading all
 operations with the rocksdb storage engine.
@@ -45,7 +49,7 @@ operations with the rocksdb storage engine.
 Short description of the client, used for informative purposes only.
 
 @RESTQUERYPARAM{barrierId,number,optional}
-Id of barrier used to keep WAL entries around. **Note** this is only required for the 
+Id of barrier used to keep WAL entries around. **Note** this is only required for the
 MMFiles storage engine
 
 @RESTDESCRIPTION
@@ -97,7 +101,7 @@ Individual log events will also have additional attributes, depending on the
 event type. A few common attributes which are used for multiple events types
 are:
 
-- *cuid*: globally unique id of the view or collection the event was for
+- *cuid*: globally unique id of the View or collection the event was for
 
 - *db*: the database name the event was for
 
@@ -147,7 +151,7 @@ The response will also contain the following HTTP headers:
   If there isn't any more log data to fetch, the client might decide to go
   to sleep for a while before calling the logger again.
 
-**Note**: this method is not supported on a coordinator in a cluster.
+**Note**: this method is not supported on a Coordinator in a cluster.
 
 @RESTRETURNCODES
 
@@ -171,7 +175,7 @@ is returned when an invalid HTTP method is used.
 is returned if an error occurred while assembling the response.
 
 @RESTRETURNCODE{501}
-is returned when this operation is called on a coordinator in a cluster.
+is returned when this operation is called on a Coordinator in a cluster.
 
 @EXAMPLES
 
@@ -237,4 +241,3 @@ More events than would fit into the response
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

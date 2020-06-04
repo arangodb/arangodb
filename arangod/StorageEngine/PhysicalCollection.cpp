@@ -23,14 +23,18 @@
 
 #include "PhysicalCollection.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/encoding.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Futures/Utilities.h"
 #include "Indexes/Index.h"
+#include "Logger/LogMacros.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "VocBase/KeyGenerator.h"
@@ -149,7 +153,7 @@ std::shared_ptr<Index> PhysicalCollection::lookupIndex(VPackSlice const& info) c
   return findIndex(info, _indexes);
 }
 
-std::shared_ptr<Index> PhysicalCollection::lookupIndex(TRI_idx_iid_t idxId) const {
+std::shared_ptr<Index> PhysicalCollection::lookupIndex(IndexId idxId) const {
   READ_LOCKER(guard, _indexesLock);
   for (auto const& idx : _indexes) {
     if (idx->id() == idxId) {
@@ -170,7 +174,26 @@ std::shared_ptr<Index> PhysicalCollection::lookupIndex(std::string const& idxNam
 }
 
 TRI_voc_rid_t PhysicalCollection::newRevisionId() const {
+  if (_logicalCollection.hasClusterWideUniqueRevs()) {
+    application_features::ApplicationServer& server =
+        _logicalCollection.vocbase().server();
+    ClusterFeature& cf = server.getFeature<ClusterFeature>();
+    ClusterInfo& ci = cf.clusterInfo();
+    return static_cast<TRI_voc_rid_t>(ci.uniqid());
+  }
   return TRI_HybridLogicalClock();
+}
+
+Result PhysicalCollection::upgrade() {
+  return Result{TRI_ERROR_NOT_IMPLEMENTED,
+                "collection upgrade not supported on this type of collection"};
+}
+
+bool PhysicalCollection::didPartialUpgrade() { return false; }
+
+Result PhysicalCollection::cleanupAfterUpgrade() {
+  return Result{TRI_ERROR_NOT_IMPLEMENTED,
+                "collection upgrade not supported on this type of collection"};
 }
 
 /// @brief merge two objects for update, oldValue must have correctly set
@@ -210,7 +233,7 @@ Result PhysicalCollection::mergeObjectsForUpdate(
         }  // else do nothing
       } else {
         // regular attribute
-        newValues.emplace(key, current.value);
+        newValues.try_emplace(key, current.value);
       }
 
       it.next();
@@ -409,8 +432,8 @@ Result PhysicalCollection::newObjectForInsert(transaction::Methods*,
     if (s.isString()) {
       builder.add(StaticStrings::RevString, s);
       VPackValueLength l;
-      char const* p = s.getStringUnchecked(l);
-      revisionId = TRI_StringToRid(p, l, false);
+      char const* str = s.getStringUnchecked(l);
+      revisionId = TRI_StringToRid(str, l, false);
       handled = true;
     }
   }
@@ -517,6 +540,27 @@ Result PhysicalCollection::newObjectForReplace(transaction::Methods*,
   return Result();
 }
 
+std::unique_ptr<containers::RevisionTree> PhysicalCollection::revisionTree(
+    transaction::Methods& trx) {
+  return nullptr;
+}
+
+std::unique_ptr<containers::RevisionTree> PhysicalCollection::revisionTree(uint64_t batchId) {
+  return nullptr;
+}
+
+Result PhysicalCollection::rebuildRevisionTree() {
+  return Result(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+void PhysicalCollection::placeRevisionTreeBlocker(TRI_voc_tid_t) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+void PhysicalCollection::removeRevisionTreeBlocker(TRI_voc_tid_t) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
 /// @brief checks the revision of a document
 int PhysicalCollection::checkRevision(transaction::Methods*, TRI_voc_rid_t expected,
                                       TRI_voc_rid_t found) const {
@@ -585,10 +629,26 @@ futures::Future<OperationResult> PhysicalCollection::figures() {
   return OperationResult(Result(), std::move(buffer));
 }
 
+std::unique_ptr<ReplicationIterator> PhysicalCollection::getReplicationIterator(
+    ReplicationIterator::Ordering, uint64_t batchId) {
+  return nullptr;
+}
+
+std::unique_ptr<ReplicationIterator> PhysicalCollection::getReplicationIterator(
+    ReplicationIterator::Ordering, transaction::Methods&) {
+  return nullptr;
+}
+
+void PhysicalCollection::adjustNumberDocuments(transaction::Methods&, int64_t) {}
+
+Result PhysicalCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
+                                  ManagedDocumentResult& previous, OperationOptions& options) {
+  return Result(TRI_ERROR_NOT_IMPLEMENTED);
+}
 
 bool PhysicalCollection::IndexOrder::operator()(const std::shared_ptr<Index>& left,
                                                 const std::shared_ptr<Index>& right) const {
-  // Primary index always first (but two primary indexes render comparsion
+  // Primary index always first (but two primary indexes render comparison
   // invalid but that`s a bug itself)
   TRI_ASSERT(!((left->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) &&
                (right->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX)));

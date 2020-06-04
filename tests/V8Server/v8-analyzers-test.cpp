@@ -21,10 +21,13 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "src/api.h"  // must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
-#include "src/objects-inl.h"  // (required to avoid compile warnings) must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
+#include "Mocks/Servers.h"  // this must be first because windows
+
+#include "src/api/api.h"  // must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
+// #include "src/objects-inl.h"  // (required to avoid compile warnings) must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
 #include "src/objects/scope-info.h"  // must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
 
+#include "Aql/OptimizerRulesFeature.h"
 #include "gtest/gtest.h"
 
 #include "analysis/analyzers.hpp"
@@ -36,14 +39,13 @@
 
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
-#include "Mocks/Servers.h"
 
 #include "Aql/QueryRegistry.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/VelocyPackHelper.h"
-#include "Logger/Logger.h"
+#include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -78,12 +80,17 @@ class ArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
 
 class EmptyAnalyzer : public irs::analysis::analyzer {
  public:
-  DECLARE_ANALYZER_TYPE();
-  EmptyAnalyzer() : irs::analysis::analyzer(EmptyAnalyzer::type()) {
-    _attrs.emplace(_attr);
+  static constexpr irs::string_ref type_name() noexcept {
+    return "v8-analyzer-empty";
   }
-  virtual irs::attribute_view const& attributes() const NOEXCEPT override {
-    return _attrs;
+  EmptyAnalyzer() : irs::analysis::analyzer(irs::type<EmptyAnalyzer>::get()) {
+  }
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    if (type == irs::type<irs::frequency>::id()) {
+      return &_attr;
+    }
+
+    return nullptr;
   }
   static ptr make(irs::string_ref const&) {
     PTR_NAMED(EmptyAnalyzer, ptr);
@@ -112,92 +119,115 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
   virtual bool reset(irs::string_ref const& data) override { return true; }
 
  private:
-  irs::attribute_view _attrs;
   irs::frequency _attr;
 };
 
-DEFINE_ANALYZER_TYPE_NAMED(EmptyAnalyzer, "v8-analyzer-empty");
 REGISTER_ANALYZER_VPACK(EmptyAnalyzer, EmptyAnalyzer::make, EmptyAnalyzer::normalize);
+
 }  // namespace
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-class V8AnalyzersTest
+class V8AnalyzerTest
     : public ::testing::Test,
       public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
 
-  V8AnalyzersTest() {
+  V8AnalyzerTest() {
     arangodb::tests::v8Init();  // one-time initialize V8
   }
 };
+
+v8::Local<v8::Object> getAnalyzerManagerInstance(TRI_v8_global_t *v8g,
+                                           v8::Isolate *isolate) {
+  return v8::Local<v8::ObjectTemplate>::New(isolate, v8g->IResearchAnalyzerManagerTempl)->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+}
+
+v8::Local<v8::Object> getAnalyzersInstance(TRI_v8_global_t *v8g,
+                                           v8::Isolate *isolate) {
+  return v8::Local<v8::ObjectTemplate>::New(isolate, v8g->IResearchAnalyzerInstanceTempl)->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+}
+
+v8::Local<v8::Function> getAnalyzersMethodFunction(TRI_v8_global_t *v8g,
+                                                   v8::Isolate *isolate,
+                                                   v8::Local<v8::Object>& analyzerObj,
+                                                   const char* name) {
+  auto fn = analyzerObj->Get
+    (TRI_IGETC,
+     TRI_V8_ASCII_STRING(isolate, name)).FromMaybe(v8::Local<v8::Value>());
+  bool isFunction = fn->IsFunction();
+  EXPECT_TRUE(isFunction);
+  return v8::Local<v8::Function>::Cast(fn);
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-TEST_F(V8AnalyzersTest, test_accessors) {
+TEST_F(V8AnalyzerTest, test_instance_accessors) {
   auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
 
   {
     auto vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
+    std::shared_ptr<arangodb::LogicalCollection> ignored;
     arangodb::methods::Collections::createSystem(
         *vocbase,
-        arangodb::tests::AnalyzerCollectionName, false);
+        arangodb::tests::AnalyzerCollectionName, false, ignored);
   }
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-  ASSERT_TRUE((analyzers
-                   .emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                            "identity", VPackSlice::noneSlice())
-                   .ok()));
+  ASSERT_TRUE(analyzers.emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                                "identity", VPackSlice::noneSlice()).ok());
   auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                "::testAnalyzer1");
+                                "::testAnalyzer1", arangodb::AnalyzersRevision::LATEST);
   ASSERT_FALSE(!analyzer);
 
   struct ExecContext : public arangodb::ExecContext {
     ExecContext()
         : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                 arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE) {}
+                                arangodb::auth::Level::NONE, false) {}
   } execContext;
   arangodb::ExecContextScope execContextScope(&execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
+  
 
+  arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
+  v8::Isolate::CreateParams isolateParams;
+  ArrayBufferAllocator arrayBufferAllocator;
+  isolateParams.array_buffer_allocator = &arrayBufferAllocator;
+  auto isolate =
+    std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
+                                 [](v8::Isolate* p) -> void { p->Dispose(); });
+  ASSERT_NE(nullptr, isolate);
+  v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
+  v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
+  v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
+  auto context = v8::Context::New(isolate.get());
+  v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
+  std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(server.server(),isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
+  v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
+  v8g->_vocbase = &vocbase;
+  arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
+
+  auto v8Analyzer = getAnalyzersInstance(v8g.get(), isolate.get());
+  auto fn_name = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "name");
+  auto fn_type = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "type");
+  auto fn_properties = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "properties");
+  auto fn_features = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "features");
+
+  v8Analyzer->SetInternalField(SLOT_CLASS_TYPE,
+                               v8::Integer::New(isolate.get(), WRP_IRESEARCH_ANALYZER_TYPE));
+  v8Analyzer->SetInternalField(SLOT_CLASS,
+                               v8::External::New(isolate.get(), analyzer.get()));
   // test name (authorised)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzer = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzerTempl)
-                          ->NewInstance();
-    auto fn_name = v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "name"));
-    EXPECT_TRUE(fn_name->IsFunction());
-
-    v8Analyzer->SetInternalField(SLOT_CLASS_TYPE,
-                                 v8::Integer::New(isolate.get(), WRP_IRESEARCH_ANALYZER_TYPE));
-    v8Analyzer->SetInternalField(SLOT_CLASS,
-                                 v8::External::New(isolate.get(), analyzer.get()));
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -208,45 +238,17 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result =
-        v8::Function::Cast(*fn_name)->CallAsFunction(context, v8Analyzer,
+    auto result = fn_name->CallAsFunction(context, v8Analyzer,
                                                      static_cast<int>(args.size()),
                                                      args.data());
-    EXPECT_FALSE(result.IsEmpty());
-    EXPECT_TRUE(result.ToLocalChecked()->IsString());
+    ASSERT_FALSE(result.IsEmpty());
+    ASSERT_TRUE(result.ToLocalChecked()->IsString());
     EXPECT_TRUE((analyzer->name() ==
                  TRI_ObjectToString(isolate.get(), result.ToLocalChecked())));
   }
 
   // test name (not authorised)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzer = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzerTempl)
-                          ->NewInstance();
-    auto fn_name = v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "name"));
-    EXPECT_TRUE(fn_name->IsFunction());
-
-    v8Analyzer->SetInternalField(SLOT_CLASS_TYPE,
-                                 v8::Integer::New(isolate.get(), WRP_IRESEARCH_ANALYZER_TYPE));
-    v8Analyzer->SetInternalField(SLOT_CLASS,
-                                 v8::External::New(isolate.get(), analyzer.get()));
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -257,17 +259,16 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
-    auto result =
-        v8::Function::Cast(*fn_name)->CallAsFunction(context, v8Analyzer,
+    auto result = fn_name->CallAsFunction(context, v8Analyzer,
                                                      static_cast<int>(args.size()),
                                                      args.data());
-    EXPECT_TRUE(result.IsEmpty());
-    EXPECT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
+    ASSERT_TRUE(result.IsEmpty());
+    ASSERT_TRUE(tryCatch.HasCaught());
+    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
                                                      tryCatch.Exception(), false)));
-    auto slice = responce.slice();
+    auto slice = response.slice();
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
@@ -277,33 +278,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
 
   // test type (authorised)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzer = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzerTempl)
-                          ->NewInstance();
-    auto fn_type = v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "type"));
-    EXPECT_TRUE(fn_type->IsFunction());
-
-    v8Analyzer->SetInternalField(SLOT_CLASS_TYPE,
-                                 v8::Integer::New(isolate.get(), WRP_IRESEARCH_ANALYZER_TYPE));
-    v8Analyzer->SetInternalField(SLOT_CLASS,
-                                 v8::External::New(isolate.get(), analyzer.get()));
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -314,45 +289,17 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result =
-        v8::Function::Cast(*fn_type)->CallAsFunction(context, v8Analyzer,
+    auto result = fn_type->CallAsFunction(context, v8Analyzer,
                                                      static_cast<int>(args.size()),
                                                      args.data());
-    EXPECT_FALSE(result.IsEmpty());
-    EXPECT_TRUE(result.ToLocalChecked()->IsString());
+    ASSERT_FALSE(result.IsEmpty());
+    ASSERT_TRUE(result.ToLocalChecked()->IsString());
     EXPECT_TRUE((analyzer->type() ==
                  TRI_ObjectToString(isolate.get(), result.ToLocalChecked())));
   }
 
   // test type (not authorised)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzer = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzerTempl)
-                          ->NewInstance();
-    auto fn_type = v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "type"));
-    EXPECT_TRUE(fn_type->IsFunction());
-
-    v8Analyzer->SetInternalField(SLOT_CLASS_TYPE,
-                                 v8::Integer::New(isolate.get(), WRP_IRESEARCH_ANALYZER_TYPE));
-    v8Analyzer->SetInternalField(SLOT_CLASS,
-                                 v8::External::New(isolate.get(), analyzer.get()));
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -363,17 +310,16 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
-    auto result =
-        v8::Function::Cast(*fn_type)->CallAsFunction(context, v8Analyzer,
+    auto result = fn_type->CallAsFunction(context, v8Analyzer,
                                                      static_cast<int>(args.size()),
                                                      args.data());
-    EXPECT_TRUE(result.IsEmpty());
-    EXPECT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
+    ASSERT_TRUE(result.IsEmpty());
+    ASSERT_TRUE(tryCatch.HasCaught());
+    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
                                                      tryCatch.Exception(), false)));
-    auto slice = responce.slice();
+    auto slice = response.slice();
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
@@ -383,34 +329,6 @@ TEST_F(V8AnalyzersTest, test_accessors) {
 
   // test properties (authorised)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzer = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzerTempl)
-                          ->NewInstance();
-    auto fn_properties =
-        v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "properties"));
-    EXPECT_TRUE(fn_properties->IsFunction());
-
-    v8Analyzer->SetInternalField(SLOT_CLASS_TYPE,
-                                 v8::Integer::New(isolate.get(), WRP_IRESEARCH_ANALYZER_TYPE));
-    v8Analyzer->SetInternalField(SLOT_CLASS,
-                                 v8::External::New(isolate.get(), analyzer.get()));
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -421,14 +339,13 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result = v8::Function::Cast(*fn_properties)
-                      ->CallAsFunction(context, v8Analyzer,
+    auto result = fn_properties->CallAsFunction(context, v8Analyzer,
                                        static_cast<int>(args.size()), args.data());
 
-    EXPECT_FALSE(result.IsEmpty());
-    EXPECT_TRUE(result.ToLocalChecked()->IsObject());
+    ASSERT_FALSE(result.IsEmpty());
+    ASSERT_TRUE(result.ToLocalChecked()->IsObject());
     VPackBuilder resultVPack;
-    EXPECT_EQ(TRI_ERROR_NO_ERROR, TRI_V8ToVPack(isolate.get(), resultVPack, result.ToLocalChecked(), false));
+    ASSERT_EQ(TRI_ERROR_NO_ERROR, TRI_V8ToVPack(isolate.get(), resultVPack, result.ToLocalChecked(), false));
     EXPECT_EQUAL_SLICES(
         resultVPack.slice(),
         VPackSlice::emptyObjectSlice());
@@ -436,34 +353,6 @@ TEST_F(V8AnalyzersTest, test_accessors) {
 
   // test properties (not authorised)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzer = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzerTempl)
-                          ->NewInstance();
-    auto fn_properties =
-        v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "properties"));
-    EXPECT_TRUE(fn_properties->IsFunction());
-
-    v8Analyzer->SetInternalField(SLOT_CLASS_TYPE,
-                                 v8::Integer::New(isolate.get(), WRP_IRESEARCH_ANALYZER_TYPE));
-    v8Analyzer->SetInternalField(SLOT_CLASS,
-                                 v8::External::New(isolate.get(), analyzer.get()));
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -474,17 +363,16 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_properties)
-                      ->CallAsFunction(context, v8Analyzer,
+    auto result = fn_properties->CallAsFunction(context, v8Analyzer,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE(result.IsEmpty());
-    EXPECT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
+    ASSERT_TRUE(result.IsEmpty());
+    ASSERT_TRUE(tryCatch.HasCaught());
+    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
                                                      tryCatch.Exception(), false)));
-    auto slice = responce.slice();
-    EXPECT_TRUE(slice.isObject());
+    auto slice = response.slice();
+    ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_FORBIDDEN ==
@@ -493,34 +381,6 @@ TEST_F(V8AnalyzersTest, test_accessors) {
 
   // test features (authorised)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzer = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzerTempl)
-                          ->NewInstance();
-    auto fn_features =
-        v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "features"));
-    EXPECT_TRUE(fn_features->IsFunction());
-
-    v8Analyzer->SetInternalField(SLOT_CLASS_TYPE,
-                                 v8::Integer::New(isolate.get(), WRP_IRESEARCH_ANALYZER_TYPE));
-    v8Analyzer->SetInternalField(SLOT_CLASS,
-                                 v8::External::New(isolate.get(), analyzer.get()));
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -531,45 +391,16 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result = v8::Function::Cast(*fn_features)
-                      ->CallAsFunction(context, v8Analyzer,
+    auto result = fn_features->CallAsFunction(context, v8Analyzer,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_FALSE(result.IsEmpty());
-    EXPECT_TRUE(result.ToLocalChecked()->IsArray());
+    ASSERT_FALSE(result.IsEmpty());
+    ASSERT_TRUE(result.ToLocalChecked()->IsArray());
     auto v8Result = v8::Handle<v8::Array>::Cast(result.ToLocalChecked());
     EXPECT_EQ(analyzer->features().size(), v8Result->Length());
   }
 
   // test features (not authorised)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzer = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzerTempl)
-                          ->NewInstance();
-    auto fn_features =
-        v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "features"));
-    EXPECT_TRUE(fn_features->IsFunction());
-
-    v8Analyzer->SetInternalField(SLOT_CLASS_TYPE,
-                                 v8::Integer::New(isolate.get(), WRP_IRESEARCH_ANALYZER_TYPE));
-    v8Analyzer->SetInternalField(SLOT_CLASS,
-                                 v8::External::New(isolate.get(), analyzer.get()));
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -580,16 +411,15 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_features)
-                      ->CallAsFunction(context, v8Analyzer,
+    auto result = fn_features->CallAsFunction(context, v8Analyzer,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE(result.IsEmpty());
-    EXPECT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
+    ASSERT_TRUE(result.IsEmpty());
+    ASSERT_TRUE(tryCatch.HasCaught());
+    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
                                                      tryCatch.Exception(), false)));
-    auto slice = responce.slice();
+    auto slice = response.slice();
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
@@ -598,15 +428,16 @@ TEST_F(V8AnalyzersTest, test_accessors) {
   }
 }
 
-TEST_F(V8AnalyzersTest, test_create) {
+TEST_F(V8AnalyzerTest, test_manager_create) {
   auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
 
   {
     auto vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
+    std::shared_ptr<arangodb::LogicalCollection> ignored;
     arangodb::methods::Collections::createSystem(
         *vocbase,
-        arangodb::tests::AnalyzerCollectionName, false);
+        arangodb::tests::AnalyzerCollectionName, false, ignored);
   }
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
@@ -621,7 +452,7 @@ TEST_F(V8AnalyzersTest, test_create) {
     ASSERT_TRUE(analyzers
                     .emplace(result, name, "v8-analyzer-empty",
                              VPackParser::fromJson("{\"args\":\"12312\"}")->slice(),
-                             irs::flags{irs::frequency::type()})
+                             irs::flags{irs::type<irs::frequency>::get()})
                     .ok());
   }
 
@@ -629,38 +460,36 @@ TEST_F(V8AnalyzersTest, test_create) {
     ExecContext()
         : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                 arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE) {}
+                                arangodb::auth::Level::NONE, false) {}
   } execContext;
   arangodb::ExecContextScope execContextScope(&execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
+  
+
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
+  v8::Isolate::CreateParams isolateParams;
+  ArrayBufferAllocator arrayBufferAllocator;
+  isolateParams.array_buffer_allocator = &arrayBufferAllocator;
+  auto isolate =
+    std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
+                                 [](v8::Isolate* p) -> void { p->Dispose(); });
+  ASSERT_NE(nullptr, isolate);
+  v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
+  v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
+  v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
+  auto context = v8::Context::New(isolate.get());
+  v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
+  std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(server.server(),isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
+  v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
+  v8g->_vocbase = &vocbase;
+  arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
+
+  auto v8AnalyzerManager = getAnalyzerManagerInstance(v8g.get(), isolate.get());
+  auto fn_save = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8AnalyzerManager, "save");
 
   // invalid params (no args)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_create =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE(fn_create->IsFunction());
-
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -671,17 +500,16 @@ TEST_F(V8AnalyzersTest, test_create) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_create)
-                      ->CallAsFunction(context, fn_create,
+    auto result = fn_save->CallAsFunction(context, fn_save,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE(result.IsEmpty());
-    EXPECT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
+    ASSERT_TRUE(result.IsEmpty());
+    ASSERT_TRUE(tryCatch.HasCaught());
+    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
                                                      tryCatch.Exception(), false)));
-    auto slice = responce.slice();
-    EXPECT_TRUE(slice.isObject());
+    auto slice = response.slice();
+    ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_BAD_PARAMETER ==
@@ -690,30 +518,6 @@ TEST_F(V8AnalyzersTest, test_create) {
 
   // invalid params (invalid type)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_create =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE(fn_create->IsFunction());
-
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2"),
         v8::True(isolate.get()),
@@ -727,17 +531,16 @@ TEST_F(V8AnalyzersTest, test_create) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_create)
-                      ->CallAsFunction(context, fn_create,
+    auto result = fn_save->CallAsFunction(context, fn_save,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE(result.IsEmpty());
-    EXPECT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
+    ASSERT_TRUE(result.IsEmpty());
+    ASSERT_TRUE(tryCatch.HasCaught());
+    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
                                                      tryCatch.Exception(), false)));
-    auto slice = responce.slice();
-    EXPECT_TRUE(slice.isObject());
+    auto slice = response.slice();
+    ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_BAD_PARAMETER ==
@@ -746,30 +549,6 @@ TEST_F(V8AnalyzersTest, test_create) {
 
   // invalid params (invalid name)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_create =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE(fn_create->IsFunction());
-
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), arangodb::StaticStrings::SystemDatabase + "::test:Analyzer2"),
         TRI_V8_ASCII_STRING(isolate.get(), "identity"),
@@ -784,17 +563,16 @@ TEST_F(V8AnalyzersTest, test_create) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_create)
-                      ->CallAsFunction(context, fn_create,
+    auto result = fn_save->CallAsFunction(context, fn_save,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE(result.IsEmpty());
-    EXPECT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
+    ASSERT_TRUE(result.IsEmpty());
+    ASSERT_TRUE(tryCatch.HasCaught());
+    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
                                                      tryCatch.Exception(), false)));
-    auto slice = responce.slice();
-    EXPECT_TRUE(slice.isObject());
+    auto slice = response.slice();
+    ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_BAD_PARAMETER ==
@@ -803,30 +581,6 @@ TEST_F(V8AnalyzersTest, test_create) {
 
   // invalid params (invalid name)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_create =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE(fn_create->IsFunction());
-
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "::test:Analyzer2"s),
         TRI_V8_ASCII_STRING(isolate.get(), "identity"),
@@ -841,17 +595,16 @@ TEST_F(V8AnalyzersTest, test_create) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_create)
-                      ->CallAsFunction(context, fn_create,
+    auto result = fn_save->CallAsFunction(context, fn_save,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE(result.IsEmpty());
-    EXPECT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
+    ASSERT_TRUE(result.IsEmpty());
+    ASSERT_TRUE(tryCatch.HasCaught());
+    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
                                                      tryCatch.Exception(), false)));
-    auto slice = responce.slice();
-    EXPECT_TRUE(slice.isObject());
+    auto slice = response.slice();
+    ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_BAD_PARAMETER ==
@@ -860,30 +613,6 @@ TEST_F(V8AnalyzersTest, test_create) {
 
   // invalid params (invalid name)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_create =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE(fn_create->IsFunction());
-
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "unknownVocbase::testAnalyzer"),
         TRI_V8_ASCII_STRING(isolate.get(), "identity"),
@@ -898,17 +627,16 @@ TEST_F(V8AnalyzersTest, test_create) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_create)
-                      ->CallAsFunction(context, fn_create,
+    auto result = fn_save->CallAsFunction(context, fn_save,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE(result.IsEmpty());
-    EXPECT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
+    ASSERT_TRUE(result.IsEmpty());
+    ASSERT_TRUE(tryCatch.HasCaught());
+    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
                                                      tryCatch.Exception(), false)));
-    auto slice = responce.slice();
-    EXPECT_TRUE(slice.isObject());
+    auto slice = response.slice();
+    ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_FORBIDDEN == slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
@@ -916,30 +644,6 @@ TEST_F(V8AnalyzersTest, test_create) {
 
   // name collision
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_create =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE(fn_create->IsFunction());
-
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "emptyAnalyzer"s),
         TRI_V8_ASCII_STRING(isolate.get(), "v8-analyzer-empty"),
@@ -954,17 +658,16 @@ TEST_F(V8AnalyzersTest, test_create) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_create)
-                      ->CallAsFunction(context, fn_create,
+    auto result = fn_save->CallAsFunction(context, fn_save,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE(result.IsEmpty());
-    EXPECT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
+    ASSERT_TRUE(result.IsEmpty());
+    ASSERT_TRUE(tryCatch.HasCaught());
+    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
                                                      tryCatch.Exception(), false)));
-    auto slice = responce.slice();
-    EXPECT_TRUE(slice.isObject());
+    auto slice = response.slice();
+    ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_BAD_PARAMETER ==
@@ -973,30 +676,6 @@ TEST_F(V8AnalyzersTest, test_create) {
 
   // duplicate matching
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_create =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE(fn_create->IsFunction());
-
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "testAnalyzer1"s),
         TRI_V8_ASCII_STRING(isolate.get(), "identity"),
@@ -1011,52 +690,27 @@ TEST_F(V8AnalyzersTest, test_create) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result = v8::Function::Cast(*fn_create)
-                      ->CallAsFunction(context, fn_create,
+    auto result = fn_save->CallAsFunction(context, fn_save,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_FALSE(result.IsEmpty());
-    EXPECT_TRUE(result.ToLocalChecked()->IsObject());
-    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
+    ASSERT_FALSE(result.IsEmpty());
+    ASSERT_TRUE(result.ToLocalChecked()->IsObject());
+    auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-    EXPECT_FALSE(!v8Analyzer);
-    EXPECT_EQ(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1", v8Analyzer->name());
-    EXPECT_EQ("identity", v8Analyzer->type());
+    ASSERT_FALSE(!v8AnalyzerWeak);
+    ASSERT_EQ(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1", v8AnalyzerWeak->name());
+    ASSERT_EQ("identity", v8AnalyzerWeak->type());
     EXPECT_EQUAL_SLICES(
         VPackSlice::emptyObjectSlice(),
-        v8Analyzer->properties());
-    EXPECT_TRUE(v8Analyzer->features().empty());
+        v8AnalyzerWeak->properties());
+    ASSERT_TRUE(v8AnalyzerWeak->features().empty());
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                  "::testAnalyzer1");
+                                  "::testAnalyzer1", arangodb::AnalyzersRevision::LATEST);
     EXPECT_FALSE(!analyzer);
   }
 
   // not authorised
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_create =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE(fn_create->IsFunction());
-
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "testAnalyzer2"s),
         TRI_V8_ASCII_STRING(isolate.get(), "identity"),
@@ -1071,17 +725,16 @@ TEST_F(V8AnalyzersTest, test_create) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_create)
-                      ->CallAsFunction(context, fn_create,
+    auto result = fn_save->CallAsFunction(context, fn_save,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE(result.IsEmpty());
-    EXPECT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
+    ASSERT_TRUE(result.IsEmpty());
+    ASSERT_TRUE(tryCatch.HasCaught());
+    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
                                                      tryCatch.Exception(), false)));
-    auto slice = responce.slice();
-    EXPECT_TRUE(slice.isObject());
+    auto slice = response.slice();
+    ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_FORBIDDEN ==
@@ -1090,30 +743,6 @@ TEST_F(V8AnalyzersTest, test_create) {
 
   // successful creation
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_create =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE(fn_create->IsFunction());
-
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "testAnalyzer2"s),
         TRI_V8_ASCII_STRING(isolate.get(), "identity"),
@@ -1128,51 +757,26 @@ TEST_F(V8AnalyzersTest, test_create) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result = v8::Function::Cast(*fn_create)
-                      ->CallAsFunction(context, fn_create,
+    auto result = fn_save->CallAsFunction(context, fn_save,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_FALSE(result.IsEmpty());
-    EXPECT_TRUE(result.ToLocalChecked()->IsObject());
-    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
+    ASSERT_FALSE(result.IsEmpty());
+    ASSERT_TRUE(result.ToLocalChecked()->IsObject());
+    auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-    EXPECT_FALSE(!v8Analyzer);
-    EXPECT_EQ(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2", v8Analyzer->name());
-    EXPECT_EQ("identity", v8Analyzer->type());
+    ASSERT_FALSE(!v8AnalyzerWeak);
+    ASSERT_EQ(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2", v8AnalyzerWeak->name());
+    ASSERT_EQ("identity", v8AnalyzerWeak->type());
     EXPECT_EQUAL_SLICES(
         VPackSlice::emptyObjectSlice(),
-        v8Analyzer->properties());
-    EXPECT_TRUE(v8Analyzer->features().empty());
+        v8AnalyzerWeak->properties());
+    ASSERT_TRUE(v8AnalyzerWeak->features().empty());
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                  "::testAnalyzer2");
+                                  "::testAnalyzer2", arangodb::AnalyzersRevision::LATEST);
     EXPECT_FALSE(!analyzer);
   }
   // successful creation with DB name prefix
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_create =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE(fn_create->IsFunction());
-
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), vocbase.name() + "::testAnalyzer3"s),
         TRI_V8_ASCII_STRING(isolate.get(), "identity"),
@@ -1187,50 +791,25 @@ TEST_F(V8AnalyzersTest, test_create) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result = v8::Function::Cast(*fn_create)
-                      ->CallAsFunction(context, fn_create,
+    auto result = fn_save->CallAsFunction(context, fn_save,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_FALSE(result.IsEmpty());
-    EXPECT_TRUE(result.ToLocalChecked()->IsObject());
-    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
+    ASSERT_FALSE(result.IsEmpty());
+    ASSERT_TRUE(result.ToLocalChecked()->IsObject());
+    auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-    EXPECT_FALSE(!v8Analyzer);
-    EXPECT_EQ(vocbase.name() + "::testAnalyzer3", v8Analyzer->name());
-    EXPECT_EQ("identity", v8Analyzer->type());
+    ASSERT_FALSE(!v8AnalyzerWeak);
+    ASSERT_EQ(vocbase.name() + "::testAnalyzer3", v8AnalyzerWeak->name());
+    ASSERT_EQ("identity", v8AnalyzerWeak->type());
     EXPECT_EQUAL_SLICES(
         VPackSlice::emptyObjectSlice(),
-        v8Analyzer->properties());
-    EXPECT_TRUE(v8Analyzer->features().empty());
-    auto analyzer = analyzers.get(vocbase.name() + "::testAnalyzer3");
+        v8AnalyzerWeak->properties());
+    ASSERT_TRUE(v8AnalyzerWeak->features().empty());
+    auto analyzer = analyzers.get(vocbase.name() + "::testAnalyzer3", arangodb::AnalyzersRevision::LATEST);
     EXPECT_FALSE(!analyzer);
   }
   // successful creation in system db by :: prefix
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_create =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE(fn_create->IsFunction());
-
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "::testAnalyzer4"s),
         TRI_V8_ASCII_STRING(isolate.get(), "identity"),
@@ -1245,27 +824,26 @@ TEST_F(V8AnalyzersTest, test_create) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result = v8::Function::Cast(*fn_create)
-                      ->CallAsFunction(context, fn_create,
+    auto result = fn_save->CallAsFunction(context, fn_save,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_FALSE(result.IsEmpty());
-    EXPECT_TRUE(result.ToLocalChecked()->IsObject());
-    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
+    ASSERT_FALSE(result.IsEmpty());
+    ASSERT_TRUE(result.ToLocalChecked()->IsObject());
+    auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-    EXPECT_FALSE(!v8Analyzer);
-    EXPECT_EQ(vocbase.name() + "::testAnalyzer4", v8Analyzer->name());
-    EXPECT_EQ("identity", v8Analyzer->type());
+    ASSERT_FALSE(!v8AnalyzerWeak);
+    ASSERT_EQ(vocbase.name() + "::testAnalyzer4", v8AnalyzerWeak->name());
+    ASSERT_EQ("identity", v8AnalyzerWeak->type());
     EXPECT_EQUAL_SLICES(
         VPackSlice::emptyObjectSlice(),
-        v8Analyzer->properties());
-    EXPECT_TRUE(v8Analyzer->features().empty());
-    auto analyzer = analyzers.get(vocbase.name() + "::testAnalyzer4");
+        v8AnalyzerWeak->properties());
+    ASSERT_TRUE(v8AnalyzerWeak->features().empty());
+    auto analyzer = analyzers.get(vocbase.name() + "::testAnalyzer4", arangodb::AnalyzersRevision::LATEST);
     EXPECT_NE(nullptr, analyzer);
   }
 }
 
-TEST_F(V8AnalyzersTest, test_get) {
+TEST_F(V8AnalyzerTest, test_manager_get) {
   auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
 
@@ -1276,15 +854,16 @@ TEST_F(V8AnalyzersTest, test_get) {
   }
   {
     auto vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
+    std::shared_ptr<arangodb::LogicalCollection> ignored;
     arangodb::methods::Collections::createSystem(
         *vocbase,
-        arangodb::tests::AnalyzerCollectionName, false);
+        arangodb::tests::AnalyzerCollectionName, false, ignored);
   }
   {
     auto vocbase = dbFeature.useDatabase("testVocbase");
-    arangodb::methods::Collections::createSystem(
-        *vocbase,
-        arangodb::tests::AnalyzerCollectionName, false);
+    std::shared_ptr<arangodb::LogicalCollection> ignored;
+    arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName,
+                                                 false, ignored);
   }
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   ASSERT_TRUE((analyzers
@@ -1299,38 +878,36 @@ TEST_F(V8AnalyzersTest, test_get) {
     ExecContext()
         : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                 arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE) {}
+                                arangodb::auth::Level::NONE, false) {}
   } execContext;
   arangodb::ExecContextScope execContextScope(&execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
+  
+
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
+  v8::Isolate::CreateParams isolateParams;
+  ArrayBufferAllocator arrayBufferAllocator;
+  isolateParams.array_buffer_allocator = &arrayBufferAllocator;
+  auto isolate =
+    std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
+                                 [](v8::Isolate* p) -> void { p->Dispose(); });
+  ASSERT_NE(nullptr, isolate);
+  v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
+  v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
+  v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
+  auto context = v8::Context::New(isolate.get());
+  v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
+  std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(server.server(),isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
+  v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
+  v8g->_vocbase = &vocbase;
+  arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
+
+  auto v8AnalyzerManager = getAnalyzerManagerInstance(v8g.get(), isolate.get());
+  auto fn_analyzer = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8AnalyzerManager, "analyzer");
 
   // invalid params (no name)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_get =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE(fn_get->IsFunction());
-
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1341,18 +918,17 @@ TEST_F(V8AnalyzersTest, test_get) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
-    auto result =
-        v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
+    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
                                                     static_cast<int>(args.size()),
                                                     args.data());
-    EXPECT_TRUE(result.IsEmpty());
-    EXPECT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
+    ASSERT_TRUE(result.IsEmpty());
+    ASSERT_TRUE(tryCatch.HasCaught());
+    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
                                                      tryCatch.Exception(), false)));
-    auto slice = responce.slice();
-    EXPECT_TRUE(slice.isObject());
+    auto slice = response.slice();
+    ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_BAD_PARAMETER ==
@@ -1361,30 +937,6 @@ TEST_F(V8AnalyzersTest, test_get) {
 
   // get static (known analyzer)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_get =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE(fn_get->IsFunction());
-
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "identity"),
     };
@@ -1397,50 +949,25 @@ TEST_F(V8AnalyzersTest, test_get) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result =
-        v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
+    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
                                                     static_cast<int>(args.size()),
                                                     args.data());
-    EXPECT_FALSE(result.IsEmpty());
-    EXPECT_TRUE(result.ToLocalChecked()->IsObject());
-    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
+    ASSERT_FALSE(result.IsEmpty());
+    ASSERT_TRUE(result.ToLocalChecked()->IsObject());
+    auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-    EXPECT_FALSE(!v8Analyzer);
-    EXPECT_EQ(std::string("identity"), v8Analyzer->name());
-    EXPECT_EQ(std::string("identity"), v8Analyzer->type());
+    ASSERT_FALSE(!v8AnalyzerWeak);
+    ASSERT_EQ(std::string("identity"), v8AnalyzerWeak->name());
+    ASSERT_EQ(std::string("identity"), v8AnalyzerWeak->type());
     EXPECT_EQUAL_SLICES(
         VPackSlice::emptyObjectSlice(),
-        v8Analyzer->properties());
-    EXPECT_EQ(2, v8Analyzer->features().size());
+        v8AnalyzerWeak->properties());
+    EXPECT_EQ(2, v8AnalyzerWeak->features().size());
   }
 
   // get static (unknown analyzer)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_get =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE(fn_get->IsFunction());
-
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "unknown"),
     };
@@ -1453,40 +980,15 @@ TEST_F(V8AnalyzersTest, test_get) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result =
-        v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
+    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
                                                     static_cast<int>(args.size()),
                                                     args.data());
-    EXPECT_FALSE(result.IsEmpty());
-    EXPECT_TRUE(result.ToLocalChecked()->IsNull());
+    ASSERT_FALSE(result.IsEmpty());
+    EXPECT_TRUE(result.FromMaybe(v8::Local<v8::Value>())->IsNull());
   }
 
   // get custom (known analyzer) authorized
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_get =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE(fn_get->IsFunction());
-
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1"),
     };
@@ -1499,51 +1001,26 @@ TEST_F(V8AnalyzersTest, test_get) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result =
-        v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
+    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
                                                     static_cast<int>(args.size()),
                                                     args.data());
-    EXPECT_FALSE(result.IsEmpty());
-    EXPECT_TRUE(result.ToLocalChecked()->IsObject());
-    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
+    ASSERT_FALSE(result.IsEmpty());
+    ASSERT_TRUE(result.ToLocalChecked()->IsObject());
+    auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-    EXPECT_FALSE(!v8Analyzer);
-    EXPECT_TRUE((arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1" ==
-                 v8Analyzer->name()));
-    EXPECT_EQ(std::string("identity"), v8Analyzer->type());
+    ASSERT_FALSE(!v8AnalyzerWeak);
+    ASSERT_TRUE((arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1" ==
+                 v8AnalyzerWeak->name()));
+    ASSERT_EQ(std::string("identity"), v8AnalyzerWeak->type());
     EXPECT_EQUAL_SLICES(
         VPackSlice::emptyObjectSlice(),
-        v8Analyzer->properties());
-    EXPECT_TRUE(v8Analyzer->features().empty());
+        v8AnalyzerWeak->properties());
+    EXPECT_TRUE(v8AnalyzerWeak->features().empty());
   }
 
   // get custom (known analyzer) authorized but wrong current db
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_get =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE(fn_get->IsFunction());
-
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "testVocbase::testAnalyzer1"),
     };
@@ -1557,17 +1034,16 @@ TEST_F(V8AnalyzersTest, test_get) {
     user.grantDatabase("testVocbase", arangodb::auth::Level::RO);
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
     v8::TryCatch tryCatch(isolate.get());
-    arangodb::velocypack::Builder responce;
-    auto result =
-        v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
+    arangodb::velocypack::Builder response;
+    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
                                                     static_cast<int>(args.size()),
                                                     args.data());
-    EXPECT_TRUE(result.IsEmpty());
-    EXPECT_TRUE(tryCatch.HasCaught());
-    EXPECT_EQ(TRI_ERROR_NO_ERROR, TRI_V8ToVPack(isolate.get(), responce,
+    ASSERT_TRUE(result.IsEmpty());
+    ASSERT_TRUE(tryCatch.HasCaught());
+    ASSERT_EQ(TRI_ERROR_NO_ERROR, TRI_V8ToVPack(isolate.get(), response,
                                                      tryCatch.Exception(), false));
-    auto slice = responce.slice();
-    EXPECT_TRUE(slice.isObject());
+    auto slice = response.slice();
+    ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_FORBIDDEN ==
@@ -1575,30 +1051,6 @@ TEST_F(V8AnalyzersTest, test_get) {
   }
   // get custom (known analyzer) authorized from system with another current db
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_get =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE(fn_get->IsFunction());
-
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(
           isolate.get(), arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1"),
@@ -1613,51 +1065,26 @@ TEST_F(V8AnalyzersTest, test_get) {
     user.grantDatabase("testVocbase", arangodb::auth::Level::RO);
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result =
-        v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
+    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
                                                     static_cast<int>(args.size()),
                                                     args.data());
-    EXPECT_FALSE(result.IsEmpty());
-    EXPECT_TRUE(result.ToLocalChecked()->IsObject());
-    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
+    ASSERT_FALSE(result.IsEmpty());
+    ASSERT_TRUE(result.ToLocalChecked()->IsObject());
+    auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-    EXPECT_FALSE(!v8Analyzer);
-    EXPECT_TRUE((arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1" ==
-                 v8Analyzer->name()));
-    EXPECT_EQ(std::string("identity"), v8Analyzer->type());
+    ASSERT_FALSE(!v8AnalyzerWeak);
+    ASSERT_TRUE((arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1" ==
+                 v8AnalyzerWeak->name()));
+    ASSERT_EQ(std::string("identity"), v8AnalyzerWeak->type());
     EXPECT_EQUAL_SLICES(
         VPackSlice::emptyObjectSlice(),
-        v8Analyzer->properties());
-    EXPECT_TRUE(v8Analyzer->features().empty());
+        v8AnalyzerWeak->properties());
+    EXPECT_TRUE(v8AnalyzerWeak->features().empty());
   }
 
   // get custom (known analyzer) not authorized
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_get =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE(fn_get->IsFunction());
-
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1"),
     };
@@ -1670,18 +1097,17 @@ TEST_F(V8AnalyzersTest, test_get) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
-    auto result =
-        v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
+    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
                                                     static_cast<int>(args.size()),
                                                     args.data());
-    EXPECT_TRUE(result.IsEmpty());
-    EXPECT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
+    ASSERT_TRUE(result.IsEmpty());
+    ASSERT_TRUE(tryCatch.HasCaught());
+    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
                                                      tryCatch.Exception(), false)));
-    auto slice = responce.slice();
-    EXPECT_TRUE(slice.isObject());
+    auto slice = response.slice();
+    ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_FORBIDDEN ==
@@ -1690,30 +1116,6 @@ TEST_F(V8AnalyzersTest, test_get) {
 
   // get custom (unknown analyzer) authorized
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_get =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE(fn_get->IsFunction());
-
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), arangodb::StaticStrings::SystemDatabase + "::unknown"),
     };
@@ -1726,40 +1128,15 @@ TEST_F(V8AnalyzersTest, test_get) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result =
-        v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
+    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
                                                     static_cast<int>(args.size()),
                                                     args.data());
-    EXPECT_FALSE(result.IsEmpty());
-    EXPECT_TRUE(result.ToLocalChecked()->IsNull());
+    ASSERT_FALSE(result.IsEmpty());
+    EXPECT_TRUE(result.FromMaybe(v8::Local<v8::Value>())->IsNull());
   }
 
   // get custom (unknown analyzer) not authorized
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_get =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE(fn_get->IsFunction());
-
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), arangodb::StaticStrings::SystemDatabase + "::unknown"),
     };
@@ -1772,18 +1149,17 @@ TEST_F(V8AnalyzersTest, test_get) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
-    auto result =
-        v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
+    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
                                                     static_cast<int>(args.size()),
                                                     args.data());
-    EXPECT_TRUE(result.IsEmpty());
-    EXPECT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
+    ASSERT_TRUE(result.IsEmpty());
+    ASSERT_TRUE(tryCatch.HasCaught());
+    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
                                                      tryCatch.Exception(), false)));
-    auto slice = responce.slice();
-    EXPECT_TRUE(slice.isObject());
+    auto slice = response.slice();
+    ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_FORBIDDEN ==
@@ -1792,35 +1168,13 @@ TEST_F(V8AnalyzersTest, test_get) {
 
   // get custom (unknown analyzer, unknown vocbase) authorized
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, unknownDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_get =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE(fn_get->IsFunction());
-
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "unknownVocbase::unknown"),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    v8::TryCatch tryCatch(isolate.get());
+    arangodb::velocypack::Builder response;
     auto& user =
         userMap
             .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
@@ -1828,40 +1182,23 @@ TEST_F(V8AnalyzersTest, test_get) {
     user.grantDatabase("unknownVocbase", arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result =
-        v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
-                                                    static_cast<int>(args.size()),
-                                                    args.data());
-    EXPECT_FALSE(result.IsEmpty());
-    EXPECT_TRUE(result.ToLocalChecked()->IsNull());
+    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
+                                              static_cast<int>(args.size()),
+                                              args.data());
+    ASSERT_TRUE(tryCatch.HasCaught());
+    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
+                                                     tryCatch.Exception(), false)));
+    auto slice = response.slice();
+    ASSERT_TRUE(slice.isObject());
+    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+                 slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+                 TRI_ERROR_FORBIDDEN ==
+                     slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+    ASSERT_TRUE(result.IsEmpty());
   }
 
   // get custom (unknown analyzer, unknown vocbase) not authorized
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, unknownDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_get =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE(fn_get->IsFunction());
-
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "unknownVocbase::unknown"),
     };
@@ -1874,18 +1211,17 @@ TEST_F(V8AnalyzersTest, test_get) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
-    auto result =
-        v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
+    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
                                                     static_cast<int>(args.size()),
                                                     args.data());
-    EXPECT_TRUE(result.IsEmpty());
-    EXPECT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
+    ASSERT_TRUE(result.IsEmpty());
+    ASSERT_TRUE(tryCatch.HasCaught());
+    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
                                                      tryCatch.Exception(), false)));
-    auto slice = responce.slice();
-    EXPECT_TRUE(slice.isObject());
+    auto slice = response.slice();
+    ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_FORBIDDEN ==
@@ -1893,22 +1229,23 @@ TEST_F(V8AnalyzersTest, test_get) {
   }
 }
 
-TEST_F(V8AnalyzersTest, test_list) {
+TEST_F(V8AnalyzerTest, test_manager_list) {
   auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
 
   {
     auto vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
+    std::shared_ptr<arangodb::LogicalCollection> ignored;
     arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName,
-                                                 false);
+                                                 false, ignored);
   }
   {
     TRI_vocbase_t* vocbase;
     arangodb::Result res = dbFeature.createDatabase(testDBInfo(server.server()), vocbase);
     ASSERT_TRUE(res.ok());
-    arangodb::methods::Collections::createSystem(
-        *vocbase,
-        arangodb::tests::AnalyzerCollectionName, false);
+    std::shared_ptr<arangodb::LogicalCollection> ignored;
+    arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName,
+                                                 false, ignored);
   }
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -1925,38 +1262,36 @@ TEST_F(V8AnalyzersTest, test_list) {
     ExecContext()
         : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                 arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE) {}
+                                arangodb::auth::Level::NONE, false) {}
   } execContext;
   arangodb::ExecContextScope execContextScope(&execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
+  
 
+  TRI_vocbase_t systemDBVocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
+  TRI_vocbase_t testDBVocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  v8::Isolate::CreateParams isolateParams;
+  ArrayBufferAllocator arrayBufferAllocator;
+  isolateParams.array_buffer_allocator = &arrayBufferAllocator;
+  auto isolate =
+    std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
+                                 [](v8::Isolate* p) -> void { p->Dispose(); });
+  ASSERT_NE(nullptr, isolate);
+  v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
+  v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
+  v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
+  auto context = v8::Context::New(isolate.get());
+  v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
+  std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(server.server(),isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
+  v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
+  arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
+
+  auto v8AnalyzerManager = getAnalyzerManagerInstance(v8g.get(), isolate.get());
+  auto fn_toArray = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8AnalyzerManager, "toArray");
   // system database (authorised)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_list =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "toArray"));
-    EXPECT_TRUE(fn_list->IsFunction());
-
+    v8g->_vocbase = &systemDBVocbase;
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1964,7 +1299,7 @@ TEST_F(V8AnalyzersTest, test_list) {
         userMap
             .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
             .first->second;
-    user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
+    user.grantDatabase(systemDBVocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
     std::set<std::string> expected = {
@@ -1973,24 +1308,22 @@ TEST_F(V8AnalyzersTest, test_list) {
       "text_ru",  "text_sv",  "text_zh",
       arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
     };
-    auto result =
-        v8::Function::Cast(*fn_list)->CallAsFunction(context, fn_list,
+    auto result = fn_toArray->CallAsFunction(context, fn_toArray,
                                                      static_cast<int>(args.size()),
                                                      args.data());
-    EXPECT_FALSE(result.IsEmpty());
-    EXPECT_TRUE(result.ToLocalChecked()->IsArray());
+    ASSERT_FALSE(result.IsEmpty());
+    ASSERT_TRUE(result.ToLocalChecked()->IsArray());
     auto v8Result = v8::Handle<v8::Array>::Cast(result.ToLocalChecked());
 
     for (uint32_t i = 0, count = v8Result->Length(); i < count; ++i) {
-      auto v8Analyzer = v8Result->Get(i);
-      EXPECT_FALSE(v8Analyzer.IsEmpty());
-      EXPECT_TRUE(v8Analyzer->IsObject());
-      auto* analyzer =
-          TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
+      auto v8Analyzer = v8Result->Get(context, i).FromMaybe(v8::Local<v8::Value>());
+      ASSERT_FALSE(v8Analyzer.IsEmpty());
+      ASSERT_TRUE(v8Analyzer->IsObject());
+      auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
               v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
               WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-      EXPECT_FALSE(!analyzer);
-      EXPECT_EQ(1, expected.erase(analyzer->name()));
+      ASSERT_FALSE(!v8AnalyzerWeak);
+      ASSERT_EQ(1, expected.erase(v8AnalyzerWeak->name()));
     }
 
     EXPECT_TRUE(expected.empty());
@@ -1998,30 +1331,7 @@ TEST_F(V8AnalyzersTest, test_list) {
 
   // system database (not authorised)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_list =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "toArray"));
-    EXPECT_TRUE(fn_list->IsFunction());
-
+    v8g->_vocbase = &systemDBVocbase;
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -2029,7 +1339,7 @@ TEST_F(V8AnalyzersTest, test_list) {
         userMap
             .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
             .first->second;
-    user.grantDatabase(vocbase.name(), arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
+    user.grantDatabase(systemDBVocbase.name(), arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
     std::set<std::string> expected = {
@@ -2038,24 +1348,21 @@ TEST_F(V8AnalyzersTest, test_list) {
       "text_ru",  "text_sv",  "text_zh",
     };
 
-    auto result =
-        v8::Function::Cast(*fn_list)->CallAsFunction(context, fn_list,
+    auto result = fn_toArray->CallAsFunction(context, fn_toArray,
                                                      static_cast<int>(args.size()),
                                                      args.data());
-    EXPECT_FALSE(result.IsEmpty());
-    EXPECT_TRUE(result.ToLocalChecked()->IsArray());
+    ASSERT_FALSE(result.IsEmpty());
+    ASSERT_TRUE(result.ToLocalChecked()->IsArray());
     auto v8Result = v8::Handle<v8::Array>::Cast(result.ToLocalChecked());
-
     for (uint32_t i = 0, count = v8Result->Length(); i < count; ++i) {
-      auto v8Analyzer = v8Result->Get(i);
-      EXPECT_FALSE(v8Analyzer.IsEmpty());
-      EXPECT_TRUE(v8Analyzer->IsObject());
-      auto* analyzer =
-          TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
+      auto v8Analyzer = v8Result->Get(context, i).FromMaybe(v8::Local<v8::Value>());
+      ASSERT_FALSE(v8Analyzer.IsEmpty());
+      ASSERT_TRUE(v8Analyzer->IsObject());
+      auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
               v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
               WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-      EXPECT_FALSE(!analyzer);
-      EXPECT_EQ(1, expected.erase(analyzer->name()));
+      ASSERT_FALSE(!v8AnalyzerWeak);
+      ASSERT_EQ(1, expected.erase(v8AnalyzerWeak->name()));
     }
 
     EXPECT_TRUE(expected.empty());
@@ -2063,39 +1370,15 @@ TEST_F(V8AnalyzersTest, test_list) {
 
   // non-system database (authorised, system authorised)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_list =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "toArray"));
-    EXPECT_TRUE(fn_list->IsFunction());
-
+    v8g->_vocbase = &testDBVocbase;
     std::vector<v8::Local<v8::Value>> args = {};
-
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
     auto& user =
         userMap
             .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
-    user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
+    user.grantDatabase(testDBVocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
     std::set<std::string> expected = {
@@ -2105,24 +1388,21 @@ TEST_F(V8AnalyzersTest, test_list) {
       arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
       "testVocbase::testAnalyzer2",
     };
-    auto result =
-        v8::Function::Cast(*fn_list)->CallAsFunction(context, fn_list,
+    auto result = fn_toArray->CallAsFunction(context, fn_toArray,
                                                      static_cast<int>(args.size()),
                                                      args.data());
-    EXPECT_FALSE(result.IsEmpty());
-    EXPECT_TRUE(result.ToLocalChecked()->IsArray());
+    ASSERT_FALSE(result.IsEmpty());
+    ASSERT_TRUE(result.ToLocalChecked()->IsArray());
     auto v8Result = v8::Handle<v8::Array>::Cast(result.ToLocalChecked());
-
     for (uint32_t i = 0, count = v8Result->Length(); i < count; ++i) {
-      auto v8Analyzer = v8Result->Get(i);
+      auto v8Analyzer = v8Result->Get(context, i).FromMaybe(v8::Local<v8::Value>());
       EXPECT_FALSE(v8Analyzer.IsEmpty());
       EXPECT_TRUE(v8Analyzer->IsObject());
-      auto* analyzer =
-          TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
+      auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
               v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
               WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-      EXPECT_FALSE(!analyzer);
-      EXPECT_EQ(1, expected.erase(analyzer->name()));
+      EXPECT_FALSE(!v8AnalyzerWeak);
+      EXPECT_EQ(1, expected.erase(v8AnalyzerWeak->name()));
     }
 
     EXPECT_TRUE(expected.empty());
@@ -2130,29 +1410,7 @@ TEST_F(V8AnalyzersTest, test_list) {
 
   // non-system database (not authorised, system authorised)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_list =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "toArray"));
-    EXPECT_TRUE(fn_list->IsFunction());
+    v8g->_vocbase = &testDBVocbase;
 
     std::vector<v8::Local<v8::Value>> args = {};
 
@@ -2162,7 +1420,7 @@ TEST_F(V8AnalyzersTest, test_list) {
             .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
-    user.grantDatabase(vocbase.name(), arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
+    user.grantDatabase(testDBVocbase.name(), arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
     std::set<std::string> expected = {
@@ -2171,24 +1429,21 @@ TEST_F(V8AnalyzersTest, test_list) {
       "text_ru",  "text_sv",  "text_zh",
       arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
     };
-    auto result =
-        v8::Function::Cast(*fn_list)->CallAsFunction(context, fn_list,
+    auto result = fn_toArray->CallAsFunction(context, fn_toArray,
                                                      static_cast<int>(args.size()),
                                                      args.data());
-    EXPECT_FALSE(result.IsEmpty());
-    EXPECT_TRUE(result.ToLocalChecked()->IsArray());
+    ASSERT_FALSE(result.IsEmpty());
+    ASSERT_TRUE(result.ToLocalChecked()->IsArray());
     auto v8Result = v8::Handle<v8::Array>::Cast(result.ToLocalChecked());
-
     for (uint32_t i = 0, count = v8Result->Length(); i < count; ++i) {
-      auto v8Analyzer = v8Result->Get(i);
-      EXPECT_FALSE(v8Analyzer.IsEmpty());
-      EXPECT_TRUE(v8Analyzer->IsObject());
-      auto* analyzer =
-          TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
+      auto v8Analyzer = v8Result->Get(context, i).FromMaybe(v8::Local<v8::Value>());
+      ASSERT_FALSE(v8Analyzer.IsEmpty());
+      ASSERT_TRUE(v8Analyzer->IsObject());
+      auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
               v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
               WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-      EXPECT_FALSE(!analyzer);
-      EXPECT_EQ(1, expected.erase(analyzer->name()));
+      EXPECT_FALSE(!v8AnalyzerWeak);
+      EXPECT_EQ(1, expected.erase(v8AnalyzerWeak->name()));
     }
 
     EXPECT_TRUE(expected.empty());
@@ -2196,29 +1451,7 @@ TEST_F(V8AnalyzersTest, test_list) {
 
   // non-system database (authorised, system not authorised)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_list =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "toArray"));
-    EXPECT_TRUE(fn_list->IsFunction());
+    v8g->_vocbase = &testDBVocbase;
 
     std::vector<v8::Local<v8::Value>> args = {};
 
@@ -2228,7 +1461,7 @@ TEST_F(V8AnalyzersTest, test_list) {
             .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
-    user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
+    user.grantDatabase(testDBVocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
     std::set<std::string> expected = {
@@ -2237,24 +1470,21 @@ TEST_F(V8AnalyzersTest, test_list) {
       "text_ru",  "text_sv",  "text_zh",
       "testVocbase::testAnalyzer2",
     };
-    auto result =
-        v8::Function::Cast(*fn_list)->CallAsFunction(context, fn_list,
+    auto result = fn_toArray->CallAsFunction(context, fn_toArray,
                                                      static_cast<int>(args.size()),
                                                      args.data());
-    EXPECT_FALSE(result.IsEmpty());
-    EXPECT_TRUE(result.ToLocalChecked()->IsArray());
+    ASSERT_FALSE(result.IsEmpty());
+    ASSERT_TRUE(result.ToLocalChecked()->IsArray());
     auto v8Result = v8::Handle<v8::Array>::Cast(result.ToLocalChecked());
-
     for (uint32_t i = 0, count = v8Result->Length(); i < count; ++i) {
-      auto v8Analyzer = v8Result->Get(i);
-      EXPECT_FALSE(v8Analyzer.IsEmpty());
-      EXPECT_TRUE(v8Analyzer->IsObject());
-      auto* analyzer =
-          TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
+      auto v8Analyzer = v8Result->Get(context, i).FromMaybe(v8::Local<v8::Value>());
+      ASSERT_FALSE(v8Analyzer.IsEmpty());
+      ASSERT_TRUE(v8Analyzer->IsObject());
+      auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
               v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
               WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-      EXPECT_FALSE(!analyzer);
-      EXPECT_EQ(1, expected.erase(analyzer->name()));
+      ASSERT_FALSE(!v8AnalyzerWeak);
+      ASSERT_EQ(1, expected.erase(v8AnalyzerWeak->name()));
     }
 
     EXPECT_TRUE(expected.empty());
@@ -2262,29 +1492,7 @@ TEST_F(V8AnalyzersTest, test_list) {
 
   // non-system database (not authorised, system not authorised)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_list =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "toArray"));
-    EXPECT_TRUE(fn_list->IsFunction());
+    v8g->_vocbase = &testDBVocbase;
 
     std::vector<v8::Local<v8::Value>> args = {};
 
@@ -2294,7 +1502,7 @@ TEST_F(V8AnalyzersTest, test_list) {
             .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
             .first->second;
     user.grantDatabase(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
-    user.grantDatabase(vocbase.name(), arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
+    user.grantDatabase(testDBVocbase.name(), arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
     std::set<std::string> expected = {
@@ -2302,47 +1510,44 @@ TEST_F(V8AnalyzersTest, test_list) {
       "text_fr",  "text_it",  "text_nl",  "text_no",  "text_pt",
       "text_ru",  "text_sv",  "text_zh",
     };
-    auto result =
-        v8::Function::Cast(*fn_list)->CallAsFunction(context, fn_list,
+    auto result = fn_toArray->CallAsFunction(context, fn_toArray,
                                                      static_cast<int>(args.size()),
                                                      args.data());
-    EXPECT_FALSE(result.IsEmpty());
-    EXPECT_TRUE(result.ToLocalChecked()->IsArray());
+    ASSERT_FALSE(result.IsEmpty());
+    ASSERT_TRUE(result.ToLocalChecked()->IsArray());
     auto v8Result = v8::Handle<v8::Array>::Cast(result.ToLocalChecked());
-
     for (uint32_t i = 0, count = v8Result->Length(); i < count; ++i) {
-      auto v8Analyzer = v8Result->Get(i);
-      EXPECT_FALSE(v8Analyzer.IsEmpty());
-      EXPECT_TRUE(v8Analyzer->IsObject());
-      auto* analyzer =
-          TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
+      auto v8Analyzer = v8Result->Get(context, i).FromMaybe(v8::Local<v8::Value>());
+      ASSERT_FALSE(v8Analyzer.IsEmpty());
+      ASSERT_TRUE(v8Analyzer->IsObject());
+      auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
               v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
               WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-      EXPECT_FALSE(!analyzer);
-      EXPECT_EQ(1, expected.erase(analyzer->name()));
+      ASSERT_FALSE(!v8AnalyzerWeak);
+      ASSERT_EQ(1, expected.erase(v8AnalyzerWeak->name()));
     }
 
     EXPECT_TRUE(expected.empty());
   }
 }
 
-TEST_F(V8AnalyzersTest, test_remove) {
+TEST_F(V8AnalyzerTest, test_manager_remove) {
   auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
 
   {
     auto vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
-    arangodb::methods::Collections::createSystem(
-        *vocbase,
-        arangodb::tests::AnalyzerCollectionName, false);
+    std::shared_ptr<arangodb::LogicalCollection> ignored;
+    arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName,
+                                                 false, ignored);
   }
   {
     TRI_vocbase_t* vocbase;
     arangodb::Result res = dbFeature.createDatabase(testDBInfo(server.server()), vocbase);
     ASSERT_TRUE(res.ok());
-    arangodb::methods::Collections::createSystem(
-        *vocbase,
-        arangodb::tests::AnalyzerCollectionName, false);
+    std::shared_ptr<arangodb::LogicalCollection> ignored;
+    arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName,
+                                                 false, ignored);
   }
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -2375,38 +1580,37 @@ TEST_F(V8AnalyzersTest, test_remove) {
     ExecContext()
         : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                 arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE) {}
+                                arangodb::auth::Level::NONE, false) {}
   } execContext;
   arangodb::ExecContextScope execContextScope(&execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
+  
+
+  TRI_vocbase_t systemDBVocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
+  TRI_vocbase_t testDBVocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  v8::Isolate::CreateParams isolateParams;
+  ArrayBufferAllocator arrayBufferAllocator;
+  isolateParams.array_buffer_allocator = &arrayBufferAllocator;
+  auto isolate =
+    std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
+                                 [](v8::Isolate* p) -> void { p->Dispose(); });
+  ASSERT_NE(nullptr, isolate);
+  v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
+  v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
+  v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
+  auto context = v8::Context::New(isolate.get());
+  v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
+  std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(server.server(),isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
+  v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
+  arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
+
+  auto v8AnalyzerManager = getAnalyzerManagerInstance(v8g.get(), isolate.get());
+  auto fn_remove = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8AnalyzerManager, "remove");
 
   // invalid params (no name)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_remove =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
-    EXPECT_TRUE(fn_remove->IsFunction());
-
+    v8g->_vocbase = &systemDBVocbase;
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -2414,20 +1618,20 @@ TEST_F(V8AnalyzersTest, test_remove) {
         userMap
             .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
             .first->second;
-    user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
+    user.grantDatabase(systemDBVocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_remove)
                       ->CallAsFunction(context, fn_remove,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE(result.IsEmpty());
-    EXPECT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
+    ASSERT_TRUE(result.IsEmpty());
+    ASSERT_TRUE(tryCatch.HasCaught());
+    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
                                                      tryCatch.Exception(), false)));
-    auto slice = responce.slice();
-    EXPECT_TRUE(slice.isObject());
+    auto slice = response.slice();
+    ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_BAD_PARAMETER ==
@@ -2436,30 +1640,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
 
   // unknown analyzer
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_remove =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
-    EXPECT_TRUE(fn_remove->IsFunction());
-
+    v8g->_vocbase = &systemDBVocbase;
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "unknown"),
     };
@@ -2469,20 +1650,20 @@ TEST_F(V8AnalyzersTest, test_remove) {
         userMap
             .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
             .first->second;
-    user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
+    user.grantDatabase(systemDBVocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_remove)
                       ->CallAsFunction(context, fn_remove,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE(result.IsEmpty());
-    EXPECT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
+    ASSERT_TRUE(result.IsEmpty());
+    ASSERT_TRUE(tryCatch.HasCaught());
+    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
                                                      tryCatch.Exception(), false)));
-    auto slice = responce.slice();
-    EXPECT_TRUE(slice.isObject());
+    auto slice = response.slice();
+    ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND ==
@@ -2491,30 +1672,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
 
   // not authorised
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_remove =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
-    EXPECT_TRUE(fn_remove->IsFunction());
-
+    v8g->_vocbase = &systemDBVocbase;
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "testAnalyzer1"),
     };
@@ -2524,61 +1682,38 @@ TEST_F(V8AnalyzersTest, test_remove) {
         userMap
             .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
             .first->second;
-    user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
+    user.grantDatabase(systemDBVocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_remove)
                       ->CallAsFunction(context, fn_remove,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE(result.IsEmpty());
-    EXPECT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
+    ASSERT_TRUE(result.IsEmpty());
+    ASSERT_TRUE(tryCatch.HasCaught());
+    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
                                                      tryCatch.Exception(), false)));
-    auto slice = responce.slice();
-    EXPECT_TRUE(slice.isObject());
-    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+    auto slice = response.slice();
+    ASSERT_TRUE(slice.isObject());
+    ASSERT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_FORBIDDEN ==
                      slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                  "::testAnalyzer1");
+                                  "::testAnalyzer1", arangodb::AnalyzersRevision::LATEST);
     EXPECT_FALSE(!analyzer);
   }
 
   // still in use (fail)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_remove =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
-    EXPECT_TRUE(fn_remove->IsFunction());
-
+    v8g->_vocbase = &systemDBVocbase;
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "testAnalyzer2"),
         v8::False(isolate.get()),
     };
     auto inUseAnalyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                       "::testAnalyzer2");  // hold ref to mark in-use
+                                       "::testAnalyzer2", arangodb::AnalyzersRevision::LATEST);  // hold ref to mark in-use
     ASSERT_FALSE(!inUseAnalyzer);
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -2586,61 +1721,38 @@ TEST_F(V8AnalyzersTest, test_remove) {
         userMap
             .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
             .first->second;
-    user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
+    user.grantDatabase(systemDBVocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_remove)
                       ->CallAsFunction(context, fn_remove,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE(result.IsEmpty());
-    EXPECT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
+    ASSERT_TRUE(result.IsEmpty());
+    ASSERT_TRUE(tryCatch.HasCaught());
+    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
                                                      tryCatch.Exception(), false)));
-    auto slice = responce.slice();
-    EXPECT_TRUE(slice.isObject());
-    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+    auto slice = response.slice();
+    ASSERT_TRUE(slice.isObject());
+    ASSERT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_ARANGO_CONFLICT ==
                      slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                  "::testAnalyzer2");
+                                  "::testAnalyzer2", arangodb::AnalyzersRevision::LATEST);
     EXPECT_FALSE(!analyzer);
   }
 
   // still in use + force (success)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_remove =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
-    EXPECT_TRUE(fn_remove->IsFunction());
-
+    v8g->_vocbase = &systemDBVocbase;
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "testAnalyzer2"),
         v8::True(isolate.get()),
     };
     auto inUseAnalyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                       "::testAnalyzer2");  // hold ref to mark in-use
+                                       "::testAnalyzer2", arangodb::AnalyzersRevision::LATEST);  // hold ref to mark in-use
     ASSERT_FALSE(!inUseAnalyzer);
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -2648,45 +1760,22 @@ TEST_F(V8AnalyzersTest, test_remove) {
         userMap
             .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
             .first->second;
-    user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
+    user.grantDatabase(systemDBVocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
     auto result = v8::Function::Cast(*fn_remove)
                       ->CallAsFunction(context, fn_remove,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_FALSE(result.IsEmpty());
-    EXPECT_TRUE(result.ToLocalChecked()->IsUndefined());
+    ASSERT_FALSE(result.IsEmpty());
+    ASSERT_TRUE(result.ToLocalChecked()->IsUndefined());
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                  "::testAnalyzer2");
+                                  "::testAnalyzer2", arangodb::AnalyzersRevision::LATEST);
     EXPECT_FALSE(analyzer);
   }
 
   // success removal
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_remove =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
-    EXPECT_TRUE(fn_remove->IsFunction());
-
+    v8g->_vocbase = &systemDBVocbase;
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "testAnalyzer1"),
     };
@@ -2696,44 +1785,21 @@ TEST_F(V8AnalyzersTest, test_remove) {
         userMap
             .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
             .first->second;
-    user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
+    user.grantDatabase(systemDBVocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
     auto result = v8::Function::Cast(*fn_remove)
                       ->CallAsFunction(context, fn_remove,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_FALSE(result.IsEmpty());
-    EXPECT_TRUE(result.ToLocalChecked()->IsUndefined());
+    ASSERT_FALSE(result.IsEmpty());
+    ASSERT_TRUE(result.ToLocalChecked()->IsUndefined());
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                  "::testAnalyzer1");
+                                  "::testAnalyzer1", arangodb::AnalyzersRevision::LATEST);
     EXPECT_FALSE(analyzer);
   }
   // removal by system db name with ::
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_remove =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
-    EXPECT_TRUE(fn_remove->IsFunction());
-
+    v8g->_vocbase = &systemDBVocbase;
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "::testAnalyzer3"),
         v8::False(isolate.get()),
@@ -2744,46 +1810,23 @@ TEST_F(V8AnalyzersTest, test_remove) {
         userMap
             .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
             .first->second;
-    user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
+    user.grantDatabase(systemDBVocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_remove)
                       ->CallAsFunction(context, fn_remove,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_FALSE(result.IsEmpty());
-    EXPECT_TRUE(result.ToLocalChecked()->IsUndefined());
+    ASSERT_FALSE(result.IsEmpty());
+    ASSERT_TRUE(result.ToLocalChecked()->IsUndefined());
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                  "::testAnalyzer3");
+                                  "::testAnalyzer3", arangodb::AnalyzersRevision::LATEST);
     EXPECT_EQ(nullptr, analyzer);
   }
   //  removal from wrong db
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_remove =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
-    EXPECT_TRUE(fn_remove->IsFunction());
-
+    v8g->_vocbase = &systemDBVocbase;
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "testVocbase::testAnalyzer1"),
         v8::False(isolate.get()),
@@ -2794,54 +1837,31 @@ TEST_F(V8AnalyzersTest, test_remove) {
         userMap
             .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
             .first->second;
-    user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
+    user.grantDatabase(systemDBVocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     user.grantDatabase("testVocbase", arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_remove)
                       ->CallAsFunction(context, fn_remove,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_TRUE(result.IsEmpty());
-    EXPECT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
+    ASSERT_TRUE(result.IsEmpty());
+    ASSERT_TRUE(tryCatch.HasCaught());
+    ASSERT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), response,
                                                      tryCatch.Exception(), false)));
-    auto slice = responce.slice();
-    EXPECT_TRUE(slice.isObject());
-    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+    auto slice = response.slice();
+    ASSERT_TRUE(slice.isObject());
+    ASSERT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_FORBIDDEN ==
                      slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
-    auto analyzer = analyzers.get("testVocbase::testAnalyzer1");
+    auto analyzer = analyzers.get("testVocbase::testAnalyzer1", arangodb::AnalyzersRevision::LATEST);
     EXPECT_NE(nullptr,  analyzer);
   }
   // success removal from non-system db
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_remove =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
-    EXPECT_TRUE(fn_remove->IsFunction());
-
+    v8g->_vocbase = &testDBVocbase;
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "testAnalyzer2"),
     };
@@ -2851,43 +1871,20 @@ TEST_F(V8AnalyzersTest, test_remove) {
         userMap
             .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
             .first->second;
-    user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
+    user.grantDatabase(testDBVocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
     auto result = v8::Function::Cast(*fn_remove)
                       ->CallAsFunction(context, fn_remove,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_FALSE(result.IsEmpty());
-    EXPECT_TRUE(result.ToLocalChecked()->IsUndefined());
-    auto analyzer = analyzers.get("testVocbase::testAnalyzer2");
+    ASSERT_FALSE(result.IsEmpty());
+    ASSERT_TRUE(result.ToLocalChecked()->IsUndefined());
+    auto analyzer = analyzers.get("testVocbase::testAnalyzer2", arangodb::AnalyzersRevision::LATEST);
     EXPECT_EQ(nullptr, analyzer);
   }
   // success removal with db name prefix
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
-    v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate =
-        std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                     [](v8::Isolate* p) -> void { p->Dispose(); });
-    ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-    v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
-    auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
-    v8g->_vocbase = &vocbase;
-    arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_remove =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
-    EXPECT_TRUE(fn_remove->IsFunction());
-
+    v8g->_vocbase = &testDBVocbase;
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "testVocbase::testAnalyzer3"),
     };
@@ -2897,15 +1894,15 @@ TEST_F(V8AnalyzersTest, test_remove) {
         userMap
             .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
             .first->second;
-    user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
+    user.grantDatabase(testDBVocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
     auto result = v8::Function::Cast(*fn_remove)
                       ->CallAsFunction(context, fn_remove,
                                        static_cast<int>(args.size()), args.data());
-    EXPECT_FALSE(result.IsEmpty());
-    EXPECT_TRUE(result.ToLocalChecked()->IsUndefined());
-    auto analyzer = analyzers.get("testVocbase::testAnalyzer3");
+    ASSERT_FALSE(result.IsEmpty());
+    ASSERT_TRUE(result.ToLocalChecked()->IsUndefined());
+    auto analyzer = analyzers.get("testVocbase::testAnalyzer3", arangodb::AnalyzersRevision::LATEST);
     EXPECT_EQ(nullptr, analyzer);
   }
 }

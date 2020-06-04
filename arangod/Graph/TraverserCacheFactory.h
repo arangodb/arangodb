@@ -23,21 +23,22 @@
 #ifndef ARANGOD_GRAPH_TRAVERSER_CACHE_FACTORY_H
 #define ARANGOD_GRAPH_TRAVERSER_CACHE_FACTORY_H 1
 
+#include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/TraverserEngineRegistry.h"
 
 namespace arangodb {
 namespace aql {
-class Query;
+class QueryContext;
 }
 namespace graph {
 class TraverserCache;
 struct BaseOptions;
 
-namespace cacheFactory {
-TraverserCache* CreateCache(arangodb::aql::Query* query, bool activateDocumentCache,
-                            std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines, BaseOptions const* opts);
+namespace CacheFactory {
+TraverserCache* CreateCache(arangodb::aql::QueryContext& query, bool activateDocumentCache,
+                            std::unordered_map<ServerID, aql::EngineId> const* engines,
+                            BaseOptions* opts);
 
 }  // namespace cacheFactory
 }  // namespace graph

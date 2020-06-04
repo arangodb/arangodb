@@ -81,9 +81,8 @@ std::string const Utils::enterNextGSSKey = "nextGSS";
 std::string const Utils::compensate = "compensate";
 std::string const Utils::rollback = "rollback";
 
-std::string Utils::baseUrl(std::string const& dbName, std::string const& prefix) {
-  return "/_db/" + basics::StringUtils::urlEncode(dbName) + Utils::apiPrefix +
-         prefix + "/";
+std::string Utils::baseUrl(std::string const& prefix) {
+  return Utils::apiPrefix + prefix + "/";
 }
 
 int Utils::resolveShard(ClusterInfo& ci, WorkerConfig const* config,

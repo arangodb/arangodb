@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "KeyGenerator.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Endian.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
@@ -687,24 +689,25 @@ GeneratorType generatorType(VPackSlice const& parameters) {
   return GeneratorType::UNKNOWN;
 }
 
-std::unordered_map<GeneratorMapType, std::function<KeyGenerator*(bool, VPackSlice)>> const factories = {
+std::unordered_map<GeneratorMapType, std::function<KeyGenerator*(application_features::ApplicationServer&, bool, VPackSlice)>> const factories = {
     {static_cast<GeneratorMapType>(GeneratorType::UNKNOWN),
-     [](bool, VPackSlice) -> KeyGenerator* {
+     [](application_features::ApplicationServer&, bool, VPackSlice) -> KeyGenerator* {
        // unknown key generator type
        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR,
                                       "invalid key generator type");
      }},
     {static_cast<GeneratorMapType>(GeneratorType::TRADITIONAL),
-     [](bool allowUserKeys, VPackSlice options) -> KeyGenerator* {
+     [](application_features::ApplicationServer& server, bool allowUserKeys,
+        VPackSlice options) -> KeyGenerator* {
        if (ServerState::instance()->isCoordinator()) {
-         auto& server = application_features::ApplicationServer::server();
          auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
          return new TraditionalKeyGeneratorCluster(ci, allowUserKeys);
        }
        return new TraditionalKeyGeneratorSingle(allowUserKeys);
      }},
     {static_cast<GeneratorMapType>(GeneratorType::AUTOINCREMENT),
-     [](bool allowUserKeys, VPackSlice options) -> KeyGenerator* {
+     [](application_features::ApplicationServer&, bool allowUserKeys,
+        VPackSlice options) -> KeyGenerator* {
        if (ServerState::instance()->isCoordinator()) {
          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_UNSUPPORTED,
                                         "the specified key generator is not "
@@ -756,13 +759,13 @@ std::unordered_map<GeneratorMapType, std::function<KeyGenerator*(bool, VPackSlic
        return new AutoIncrementKeyGenerator(allowUserKeys, offset, increment);
      }},
     {static_cast<GeneratorMapType>(GeneratorType::UUID),
-     [](bool allowUserKeys, VPackSlice) -> KeyGenerator* {
+     [](application_features::ApplicationServer&, bool allowUserKeys, VPackSlice) -> KeyGenerator* {
        return new UuidKeyGenerator(allowUserKeys);
      }},
     {static_cast<GeneratorMapType>(GeneratorType::PADDED),
-     [](bool allowUserKeys, VPackSlice options) -> KeyGenerator* {
+     [](application_features::ApplicationServer& server, bool allowUserKeys,
+        VPackSlice options) -> KeyGenerator* {
        if (ServerState::instance()->isCoordinator()) {
-         auto& server = application_features::ApplicationServer::server();
          auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
          return new PaddedKeyGeneratorCluster(ci, allowUserKeys);
        }
@@ -782,7 +785,8 @@ void KeyGenerator::toVelocyPack(arangodb::velocypack::Builder& builder) const {
 }
 
 /// @brief create a key generator based on the options specified
-KeyGenerator* KeyGenerator::factory(VPackSlice options) {
+KeyGenerator* KeyGenerator::factory(application_features::ApplicationServer& server,
+                                    VPackSlice options) {
   if (!options.isObject()) {
     options = VPackSlice::emptyObjectSlice();
   }
@@ -801,7 +805,7 @@ KeyGenerator* KeyGenerator::factory(VPackSlice options) {
 
   TRI_ASSERT(it != ::factories.end());
 
-  return (*it).second(allowUserKeys, options);
+  return (*it).second(server, allowUserKeys, options);
 }
 
 /// @brief validate a key

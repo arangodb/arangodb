@@ -23,6 +23,7 @@
 #ifndef ARANGOD_AQL_BLOCK_FETCHER_H
 #define ARANGOD_AQL_BLOCK_FETCHER_H
 
+#include "Aql/AqlCallStack.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
@@ -36,6 +37,7 @@
 namespace arangodb::aql {
 class ExecutionBlock;
 class AqlItemBlockManager;
+class SkipResult;
 
 /**
  * @brief Thin interface to access the methods of ExecutionBlock that are
@@ -67,15 +69,21 @@ class DependencyProxy {
    */
   DependencyProxy(std::vector<ExecutionBlock*> const& dependencies,
                   AqlItemBlockManager& itemBlockManager,
-                  std::shared_ptr<std::unordered_set<RegisterId> const> inputRegisters,
-                  RegisterId nrInputRegisters);
+                  RegIdSet const& inputRegisters,
+                  RegisterCount nrInputRegisters, velocypack::Options const*);
 
   TEST_VIRTUAL ~DependencyProxy() = default;
+
+  // TODO Implement and document properly!
+  TEST_VIRTUAL std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack& stack);
+
+  TEST_VIRTUAL std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> executeForDependency(
+      size_t dependency, AqlCallStack& stack);
 
   // This is only TEST_VIRTUAL, so we ignore this lint warning:
   // NOLINTNEXTLINE google-default-arguments
   [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlock(
-      size_t atMost = ExecutionBlock::DefaultBatchSize());
+      size_t atMost = ExecutionBlock::DefaultBatchSize);
 
   // This fetches a block from the given dependency.
   // NOTE: It is not allowed to be used in conjunction with prefetching
@@ -83,31 +91,27 @@ class DependencyProxy {
   // This is only TEST_VIRTUAL, so we ignore this lint warning:
   // NOLINTNEXTLINE google-default-arguments
   [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForDependency(
-      size_t dependency, size_t atMost = ExecutionBlock::DefaultBatchSize());
+      size_t dependency, size_t atMost = ExecutionBlock::DefaultBatchSize);
 
-  // See comment on fetchBlockForDependency().
-  [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, size_t> skipSomeForDependency(
-      size_t dependency, size_t atMost);
-
-  // TODO enable_if<allowBlockPassthrough>
-  [[nodiscard]] std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
-
-  [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, size_t> skipSome(size_t atMost);
-
-  [[nodiscard]] TEST_VIRTUAL RegisterId getNrInputRegisters() const;
+  [[nodiscard]] TEST_VIRTUAL RegisterCount getNrInputRegisters() const;
 
   // Tries to fetch a block from upstream and push it, wrapped, onto
   // _blockQueue. If it succeeds, it returns HASMORE (the returned state
   // regards the _blockQueue). If it doesn't it's either because
   //  - upstream returned WAITING - then so does prefetchBlock().
   //  - or upstream returned a nullptr with DONE - then so does prefetchBlock().
-  [[nodiscard]] ExecutionState prefetchBlock(size_t atMost = ExecutionBlock::DefaultBatchSize());
+  [[nodiscard]] ExecutionState prefetchBlock(size_t atMost = ExecutionBlock::DefaultBatchSize);
 
   [[nodiscard]] TEST_VIRTUAL size_t numberDependencies() const;
 
   void reset();
 
   void setDistributeId(std::string const& distId) { _distributeId = distId; }
+
+  [[nodiscard]] velocypack::Options const* velocypackOptions() const noexcept;
+
+  //@deprecated
+  auto useStack(AqlCallStack stack) -> void { _injectedStack = stack; }
 
  protected:
   [[nodiscard]] AqlItemBlockManager& itemBlockManager();
@@ -123,8 +127,8 @@ class DependencyProxy {
  private:
   std::vector<ExecutionBlock*> const& _dependencies;
   AqlItemBlockManager& _itemBlockManager;
-  std::shared_ptr<std::unordered_set<RegisterId> const> const _inputRegisters;
-  RegisterId const _nrInputRegisters;
+  RegIdSet const& _inputRegisters;
+  RegisterCount const _nrInputRegisters;
   std::string _distributeId;
 
   // A queue would suffice, but for the clear() call in reset().
@@ -134,6 +138,10 @@ class DependencyProxy {
   // only modified in case of multiple dependencies + Passthrough otherwise always 0
   size_t _currentDependency;
   size_t _skipped;
+  velocypack::Options const* const _vpackOptions;
+
+  // @deprecated
+  AqlCallStack _injectedStack;
 };
 
 }  // namespace arangodb::aql

@@ -27,6 +27,7 @@
 #include "Aql/Functions.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -44,8 +45,7 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch, v8::Handle<v8::Value>& re
                                arangodb::basics::StringBuffer* const buffer,
                                bool duringCompile) {
   ISOLATE;
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
-
+  auto context = TRI_IGETC;
   bool failed = false;
 
   if (tryCatch.HasCaught()) {
@@ -65,16 +65,16 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch, v8::Handle<v8::Value>& re
 
       v8::Handle<v8::Array> objValue = v8::Handle<v8::Array>::Cast(tryCatch.Exception());
       v8::Handle<v8::String> errorNum =
-          TRI_V8_ASCII_STRING(isolate, "errorNum");
+          TRI_V8_ASCII_STD_STRING(isolate, StaticStrings::ErrorNum);
       v8::Handle<v8::String> errorMessage =
-          TRI_V8_ASCII_STRING(isolate, "errorMessage");
+          TRI_V8_ASCII_STD_STRING(isolate, StaticStrings::ErrorMessage);
 
-      TRI_Utf8ValueNFC stacktrace(isolate, tryCatch.StackTrace(TRI_IGETC).FromMaybe(v8::Local<v8::Value>()));
+      TRI_Utf8ValueNFC stacktrace(isolate, tryCatch.StackTrace(context).FromMaybe(v8::Local<v8::Value>()));
 
       if (TRI_HasProperty(context, isolate, objValue, errorNum) &&
           TRI_HasProperty(context, isolate, objValue, errorMessage)) {
-        v8::Handle<v8::Value> errorNumValue = objValue->Get(errorNum);
-        v8::Handle<v8::Value> errorMessageValue = objValue->Get(errorMessage);
+        v8::Handle<v8::Value> errorNumValue = objValue->Get(context, errorNum).FromMaybe(v8::Local<v8::Value>());
+        v8::Handle<v8::Value> errorMessageValue = objValue->Get(context, errorMessage).FromMaybe(v8::Local<v8::Value>());
 
         // found something that looks like an ArangoError
         if ((errorNumValue->IsNumber() || errorNumValue->IsNumberObject()) &&

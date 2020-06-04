@@ -22,6 +22,8 @@
 
 #include "HotBackup.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Exceptions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
@@ -45,7 +47,7 @@ HotBackup::HotBackup(application_features::ApplicationServer& server)
   } else if (EngineSelectorFeature::isRocksDB()) {
     _engine = BACKUP_ENGINE::ROCKSDB;
   } else {
-    _engine = BACKUP_ENGINE::MMFILES;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "hot backup not implemented for this storage engine");
   }
 }
 
@@ -54,16 +56,14 @@ arangodb::Result HotBackup::execute (
   std::string const& command, VPackSlice const payload, VPackBuilder& report) {
 
   switch (_engine) {
-  case BACKUP_ENGINE::ROCKSDB:
-    return executeRocksDB(command, payload, report);
-  case BACKUP_ENGINE::MMFILES:
-    return executeMMFiles(command, payload, report);
-  case BACKUP_ENGINE::CLUSTER:
-    return executeCoordinator(command, payload, report);
+    case BACKUP_ENGINE::ROCKSDB:
+      return executeRocksDB(command, payload, report);
+    case BACKUP_ENGINE::CLUSTER:
+      return executeCoordinator(command, payload, report);
   }
 
-  return arangodb::Result();
-
+  return arangodb::Result(
+    TRI_ERROR_NOT_IMPLEMENTED, "hot backup not implemented for this storage engine");
 }
 
 
@@ -78,6 +78,8 @@ arangodb::Result HotBackup::executeRocksDB(
   if (operation->valid()) {
     operation->execute();
   } // if
+
+  operation->doAuditLog();
 
   // if !valid() then !success() already set
   if (!operation->success()) {
@@ -118,13 +120,6 @@ arangodb::Result HotBackup::executeCoordinator(
 
   // We'll never get here
   return arangodb::Result();
-
-}
-
-arangodb::Result HotBackup::executeMMFiles(
-  std::string const& command, VPackSlice const payload, VPackBuilder& report) {
-  return arangodb::Result(
-    TRI_ERROR_NOT_IMPLEMENTED, "hot backup not implemented on MMFiles");
 }
 
 }

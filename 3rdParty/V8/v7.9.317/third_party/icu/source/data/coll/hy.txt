@@ -1,0 +1,14 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+hy{
+    Version{"2.1.19.14"}
+    collations{
+        standard{
+            Sequence{
+                "[reorder Armn]"
+                "&ք<և<<<Եւ"
+            }
+            Version{"35.1"}
+        }
+    }
+}

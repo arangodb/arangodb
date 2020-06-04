@@ -1,0 +1,126 @@
+diff --git a/source/common/ucmndata.h b/source/common/ucmndata.h
+index c3eba9f4..15c1a6c4 100644
+--- a/source/common/ucmndata.h
++++ b/source/common/ucmndata.h
+@@ -45,6 +45,20 @@ typedef struct  {
+     UDataInfo   info;
+ } DataHeader;
+ 
++typedef struct {
++    DataHeader hdr;
++    char padding[8];
++    uint32_t count, reserved;
++    /*
++    const struct {
++    const char *const name;
++    const void *const data;
++    } toc[1];
++    */
++   int   fakeNameAndData[4];       /* TODO:  Change this header type from */
++                                   /*        pointerTOC to OffsetTOC.     */
++} ICU_Data_Header;
++
+ typedef struct {
+     uint32_t nameOffset;
+     uint32_t dataOffset;
+diff --git a/source/common/udata.cpp b/source/common/udata.cpp
+index efcd2a2f..07756bbf 100644
+--- a/source/common/udata.cpp
++++ b/source/common/udata.cpp
+@@ -641,7 +641,7 @@ U_NAMESPACE_END
+  *                                                                      *
+  *----------------------------------------------------------------------*/
+ #if U_PLATFORM_HAS_WINUWP_API == 0 // Windows UWP Platform does not support dll icu data at this time
+-extern "C" const DataHeader U_DATA_API U_ICUDATA_ENTRY_POINT;
++extern "C" const ICU_Data_Header U_DATA_API U_ICUDATA_ENTRY_POINT;
+ #endif
+ 
+ /*
+@@ -693,7 +693,7 @@ openCommonData(const char *path,          /*  Path from OpenChoice?          */
+ #if U_PLATFORM_HAS_WINUWP_API == 0 // Windows UWP Platform does not support dll icu data at this time
+             int32_t i;
+             for(i = 0; i < commonDataIndex; ++i) {
+-                if(gCommonICUDataArray[i]->pHeader == &U_ICUDATA_ENTRY_POINT) {
++                if(gCommonICUDataArray[i]->pHeader == &U_ICUDATA_ENTRY_POINT.hdr) {
+                     /* The linked-in data is already in the list. */
+                     return NULL;
+                 }
+@@ -715,7 +715,7 @@ openCommonData(const char *path,          /*  Path from OpenChoice?          */
+         }
+         */
+ #if U_PLATFORM_HAS_WINUWP_API == 0 // Windows UWP Platform does not support dll icu data at this time
+-        setCommonICUDataPointer(&U_ICUDATA_ENTRY_POINT, FALSE, pErrorCode);
++        setCommonICUDataPointer(&U_ICUDATA_ENTRY_POINT.hdr, FALSE, pErrorCode);
+         {
+             Mutex lock;
+             return gCommonICUDataArray[commonDataIndex];
+diff --git a/source/stubdata/stubdata.cpp b/source/stubdata/stubdata.cpp
+index 0fcab4fa..f2efd3c3 100644
+--- a/source/stubdata/stubdata.cpp
++++ b/source/stubdata/stubdata.cpp
+@@ -22,45 +22,34 @@
+ #include "unicode/utypes.h"
+ #include "unicode/udata.h"
+ #include "unicode/uversion.h"
++#include "ucmndata.h"
+ 
+ 
+-typedef struct {
+-    uint16_t headerSize;
+-    uint8_t magic1, magic2;
+-    UDataInfo info;
+-    char padding[8];
+-    uint32_t count, reserved;
+-    /*
+-    const struct {
+-    const char *const name; 
+-    const void *const data;
+-    } toc[1];
+-    */
+-   int   fakeNameAndData[4];       /* TODO:  Change this header type from */
+-                                   /*        pointerTOC to OffsetTOC.     */
+-} ICU_Data_Header;
+-
+ extern "C" U_EXPORT const ICU_Data_Header U_ICUDATA_ENTRY_POINT = {
+-    32,          /* headerSize */
+-    0xda,        /* magic1,  (see struct MappedData in udata.c)  */
+-    0x27,        /* magic2     */
+-    {            /*UDataInfo   */
+-        sizeof(UDataInfo),      /* size        */
+-        0,                      /* reserved    */
++    {            /* DataHeader */
++        {            /* MappedData */
++            32,          /* headerSize */
++            0xda,        /* magic1,  (see struct MappedData in udata.c)  */
++            0x27,        /* magic2     */
++        },
++        {            /*UDataInfo   */
++            sizeof(UDataInfo),      /* size        */
++            0,                      /* reserved    */
+ 
+ #if U_IS_BIG_ENDIAN
+-        1,
++            1,
+ #else
+-        0,
++            0,
+ #endif
+ 
+-        U_CHARSET_FAMILY,
+-        sizeof(UChar),   
+-        0,               /* reserved      */
+-        {                /* data format identifier */
+-           0x54, 0x6f, 0x43, 0x50}, /* "ToCP" */
+-           {1, 0, 0, 0},   /* format version major, minor, milli, micro */
+-           {0, 0, 0, 0}    /* dataVersion   */
++            U_CHARSET_FAMILY,
++            sizeof(UChar),
++            0,               /* reserved      */
++            {                /* data format identifier */
++               0x54, 0x6f, 0x43, 0x50}, /* "ToCP" */
++               {1, 0, 0, 0},   /* format version major, minor, milli, micro */
++               {0, 0, 0, 0}    /* dataVersion   */
++        },
+     },
+     {0,0,0,0,0,0,0,0},  /* Padding[8]   */ 
+     0,                  /* count        */

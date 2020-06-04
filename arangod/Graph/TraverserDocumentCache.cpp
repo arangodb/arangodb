@@ -22,10 +22,9 @@
 
 #include "TraverserDocumentCache.h"
 
-#include "Basics/VelocyPackHelper.h"
-
 #include "Aql/AqlValue.h"
-
+#include "Basics/VelocyPackHelper.h"
+#include "Basics/debugging.h"
 #include "Cache/Cache.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/Common.h"
@@ -41,21 +40,21 @@
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
-
 using namespace arangodb;
 using namespace arangodb::graph;
 
-TraverserDocumentCache::TraverserDocumentCache(aql::Query* query, BaseOptions const* options)
-    : TraverserCache(query, options), _cache(nullptr) {
-  auto cacheManager = CacheManagerFeature::MANAGER;
-  if (cacheManager != nullptr) {
-    _cache = cacheManager->createCache(cache::CacheType::Plain);
-  }
+TraverserDocumentCache::TraverserDocumentCache(aql::QueryContext& query,
+                                               std::shared_ptr<arangodb::cache::Cache> cache,
+                                               BaseOptions* options)
+    : TraverserCache(query, options), 
+      _cache(std::move(cache)) {
+  TRI_ASSERT(_cache != nullptr);
 }
 
 TraverserDocumentCache::~TraverserDocumentCache() {
-  if (_cache != nullptr) {
-    auto cacheManager = CacheManagerFeature::MANAGER;
+  TRI_ASSERT(_cache != nullptr);
+  auto cacheManager = CacheManagerFeature::MANAGER;
+  if (cacheManager != nullptr) {
     try {
       cacheManager->destroyCache(_cache);
     } catch (...) {
@@ -69,35 +68,12 @@ TraverserDocumentCache::~TraverserDocumentCache() {
 // for a longer period of time.
 // DO NOT give it to a caller.
 cache::Finding TraverserDocumentCache::lookup(arangodb::velocypack::StringRef idString) {
-  TRI_ASSERT(_cache != nullptr);
-  VPackValueLength keySize = idString.length();
-  void const* key = idString.data();
-  // uint32_t keySize = static_cast<uint32_t>(idString.byteSize());
-  return _cache->find(key, (uint32_t)keySize);
+  return _cache->find(idString.data(), static_cast<uint32_t>(idString.length()));
 }
 
 VPackSlice TraverserDocumentCache::lookupAndCache(arangodb::velocypack::StringRef id) {
-  VPackSlice result = lookupInCollection(id);
-  if (_cache != nullptr) {
-    void const* key = id.data();
-    auto keySize = static_cast<uint32_t>(id.length());
-
-    void const* resVal = result.begin();
-    uint64_t resValSize = static_cast<uint64_t>(result.byteSize());
-    std::unique_ptr<cache::CachedValue> value(
-        cache::CachedValue::construct(key, keySize, resVal, resValSize));
-
-    if (value) {
-      auto result = _cache->insert(value.get());
-      if (!result.ok()) {
-        LOG_TOPIC("9de3a", DEBUG, Logger::GRAPHS) << "Insert failed";
-      } else {
-        // Cache is responsible.
-        // If this failed, well we do not store it and read it again next time.
-        value.release();
-      }
-    }
-  }
+  VPackSlice result = lookupVertexInCollection(id);
+  insertIntoCache(id, result);
   return result;
 }
 
@@ -109,15 +85,13 @@ void TraverserDocumentCache::insertEdgeIntoResult(EdgeDocumentToken const& idTok
 }
 
 void TraverserDocumentCache::insertVertexIntoResult(arangodb::velocypack::StringRef idString, VPackBuilder& builder) {
-  if (_cache != nullptr) {
-    auto finding = lookup(idString);
-    if (finding.found()) {
-      auto val = finding.value();
-      VPackSlice slice(val->value());
-      // finding makes sure that slice contant stays valid.
-      builder.add(slice);
-      return;
-    }
+  auto finding = lookup(idString);
+  if (finding.found()) {
+    auto val = finding.value();
+    VPackSlice slice(val->value());
+    // finding makes sure that slice contant stays valid.
+    builder.add(slice);
+    return;
   }
   // Not in cache. Fetch and insert.
   builder.add(lookupAndCache(idString));
@@ -129,45 +103,35 @@ aql::AqlValue TraverserDocumentCache::fetchEdgeAqlResult(EdgeDocumentToken const
 }
 
 aql::AqlValue TraverserDocumentCache::fetchVertexAqlResult(arangodb::velocypack::StringRef idString) {
-  if (_cache != nullptr) {
-    auto finding = lookup(idString);
-    if (finding.found()) {
-      auto val = finding.value();
-      VPackSlice slice(val->value());
-      // finding makes sure that slice contant stays valid.
-      return aql::AqlValue(slice);
-    }
+  auto finding = lookup(idString);
+  if (finding.found()) {
+    auto val = finding.value();
+    VPackSlice slice(val->value());
+    // finding makes sure that slice contant stays valid.
+    return aql::AqlValue(slice);
   }
   // Not in cache. Fetch and insert.
   return aql::AqlValue(lookupAndCache(idString));
 }
 
-void TraverserDocumentCache::insertDocument(arangodb::velocypack::StringRef idString,
-                                            arangodb::velocypack::Slice const& document) {
-  ++_insertedDocuments;
-  if (_cache != nullptr) {
-    auto finding = lookup(idString);
-    if (!finding.found()) {
-      void const* key = idString.data();
-      auto keySize = static_cast<uint32_t>(idString.length());
+void TraverserDocumentCache::insertIntoCache(arangodb::velocypack::StringRef id,
+                                             arangodb::velocypack::Slice const& document) {
+  void const* key = id.data();
+  auto keySize = static_cast<uint32_t>(id.length());
 
-      void const* resVal = document.begin();
-      uint64_t resValSize = static_cast<uint64_t>(document.byteSize());
-      std::unique_ptr<cache::CachedValue> value(
-          cache::CachedValue::construct(key, keySize, resVal, resValSize));
+  void const* resVal = document.begin();
+  uint64_t resValSize = static_cast<uint64_t>(document.byteSize());
+  std::unique_ptr<cache::CachedValue> value(
+      cache::CachedValue::construct(key, keySize, resVal, resValSize));
 
-      if (value) {
-        auto result = _cache->insert(value.get());
-        if (!result.ok()) {
-          LOG_TOPIC("9bed3", DEBUG, Logger::GRAPHS)
-              << "Insert document into cache failed";
-        } else {
-          // Cache is responsible.
-          // If this failed, well we do not store it and read it again next
-          // time.
-          value.release();
-        }
-      }
+  if (value) {
+    auto result = _cache->insert(value.get());
+    if (!result.ok()) {
+      LOG_TOPIC("9de3a", DEBUG, Logger::GRAPHS) << "Insert failed";
+    } else {
+      // Cache is responsible.
+      // If this failed, well we do not store it and read it again next time.
+      value.release();
     }
   }
 }

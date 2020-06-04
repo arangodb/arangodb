@@ -22,18 +22,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DocumentExpressionContext.h"
+
 #include "Aql/AqlValue.h"
 
 using namespace arangodb::aql;
 
-DocumentExpressionContext::DocumentExpressionContext(Query* query,
+DocumentExpressionContext::DocumentExpressionContext(arangodb::transaction::Methods& trx,
+                                                     QueryContext& query,
+                                                     AqlFunctionsInternalCache& cache,
                                                      arangodb::velocypack::Slice document)
-    : QueryExpressionContext(query), _document(document) {}
-
-size_t DocumentExpressionContext::numRegisters() const {
-  // hard-coded
-  return 1;
-}
+    : QueryExpressionContext(trx, query, cache), _document(document) {}
 
 AqlValue DocumentExpressionContext::getVariableValue(Variable const*, bool doCopy,
                                                      bool& mustDestroy) const {

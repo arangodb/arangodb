@@ -40,7 +40,7 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 
 RecoveryManager::RecoveryManager(ClusterInfo& ci)
-    : _ci(ci) {} 
+    : _ci(ci), _agency(ci.server()) {}
 
 RecoveryManager::~RecoveryManager() {
   _listeners.clear();
@@ -96,7 +96,7 @@ int RecoveryManager::filterGoodServers(std::vector<ServerID> const& servers,
   AgencyCommResult result = _agency.getValues("Supervision/Health");
   if (result.successful()) {
     VPackSlice serversRegistered = result.slice()[0].get(std::vector<std::string>(
-        {AgencyCommManager::path(), "Supervision", "Health"}));
+        {AgencyCommHelper::path(), "Supervision", "Health"}));
 
     LOG_TOPIC("68f55", INFO, Logger::PREGEL) << "Server Status: " << serversRegistered.toJson();
 

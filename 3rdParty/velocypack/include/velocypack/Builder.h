@@ -254,7 +254,7 @@ class Builder {
     try {
       set(ValuePair(attrName, attrLength, ValueType::String));
       _keyWritten = true;
-      return set(sub);
+      return set(0, sub);
     } catch (...) {
       // clean up in case of an exception
       if (haveReported) {
@@ -266,78 +266,166 @@ class Builder {
 
   // Add a subvalue into an object from a Value:
   inline uint8_t* add(std::string const& attrName, Value const& sub) {
-    return addInternal<Value>(attrName, sub);
+    return addInternal<Value>(attrName, 0, sub);
   }
   inline uint8_t* add(StringRef const& attrName, Value const& sub) {
-    return addInternal<Value>(attrName, sub);
+    return addInternal<Value>(attrName, 0, sub);
   }
   inline uint8_t* add(char const* attrName, Value const& sub) {
-    return addInternal<Value>(attrName, sub);
+    return addInternal<Value>(attrName, 0, sub);
   }
   inline uint8_t* add(char const* attrName, std::size_t attrLength, Value const& sub) {
-    return addInternal<Value>(attrName, attrLength, sub);
+    return addInternal<Value>(attrName, attrLength, 0, sub);
   }
 
   // Add a subvalue into an object from a Slice:
   inline uint8_t* add(std::string const& attrName, Slice const& sub) {
-    return addInternal<Slice>(attrName, sub);
+    return addInternal<Slice>(attrName, 0, sub);
   }
   inline uint8_t* add(StringRef const& attrName, Slice const& sub) {
-    return addInternal<Slice>(attrName, sub);
+    return addInternal<Slice>(attrName, 0, sub);
   }
   inline uint8_t* add(char const* attrName, Slice const& sub) {
-    return addInternal<Slice>(attrName, sub);
+    return addInternal<Slice>(attrName, 0, sub);
   }
   inline uint8_t* add(char const* attrName, std::size_t attrLength, Slice const& sub) {
-    return addInternal<Slice>(attrName, attrLength, sub);
+    return addInternal<Slice>(attrName, attrLength, 0, sub);
   }
 
   // Add a subvalue into an object from a ValuePair:
   inline uint8_t* add(std::string const& attrName, ValuePair const& sub) {
-    return addInternal<ValuePair>(attrName, sub);
+    return addInternal<ValuePair>(attrName, 0, sub);
   }
   inline uint8_t* add(StringRef const& attrName, ValuePair const& sub) {
-    return addInternal<ValuePair>(attrName, sub);
+    return addInternal<ValuePair>(attrName, 0, sub);
   }
   inline uint8_t* add(char const* attrName, ValuePair const& sub) {
-    return addInternal<ValuePair>(attrName, sub);
+    return addInternal<ValuePair>(attrName, 0, sub);
   }
   inline uint8_t* add(char const* attrName, std::size_t attrLength, ValuePair const& sub) {
-    return addInternal<ValuePair>(attrName, attrLength, sub);
+    return addInternal<ValuePair>(attrName, attrLength, 0, sub);
   }
 
   // Add a subvalue into an object from a Serializable:
   inline uint8_t* add(std::string const& attrName, Serialize const& sub) {
-    return addInternal<Serializable>(attrName, sub._sable);
+    return addInternal<Serializable>(attrName, 0, sub._sable);
   }
   inline uint8_t* add(StringRef const& attrName, Serialize const& sub) {
-    return addInternal<Serializable>(attrName, sub._sable);
+    return addInternal<Serializable>(attrName, 0, sub._sable);
   }
   inline uint8_t* add(char const* attrName, Serialize const& sub) {
-    return addInternal<Serializable>(attrName, sub._sable);
+    return addInternal<Serializable>(attrName, 0, sub._sable);
   }
   inline uint8_t* add(char const* attrName, std::size_t attrLength, Serialize const& sub) {
-    return addInternal<Serializable>(attrName, attrLength, sub._sable);
+    return addInternal<Serializable>(attrName, attrLength, 0, sub._sable);
   }
 
   // Add a subvalue into an array from a Value:
   inline uint8_t* add(Value const& sub) {
-    return addInternal<Value>(sub);
+    return addInternal<Value>(0, sub);
   }
 
   // Add a slice to an array
   inline uint8_t* add(Slice const& sub) {
-    return addInternal<Slice>(sub);
+    return addInternal<Slice>(0, sub);
   }
 
   // Add a subvalue into an array from a ValuePair:
   inline uint8_t* add(ValuePair const& sub) {
-    return addInternal<ValuePair>(sub);
+    return addInternal<ValuePair>(0, sub);
   }
 
   // Add a subvalue into an array from a Serializable:
   inline uint8_t* add(Serialize const& sub) {
-    return addInternal<Serializable>(sub._sable);
+    return addInternal<Serializable>(0, sub._sable);
+  }
+
+  // Add a subvalue into an object from a Value:
+  inline uint8_t* addTagged(std::string const& attrName, uint64_t tag, Value const& sub) {
+    return addInternal<Value>(attrName, tag, sub);
+  }
+
+  inline uint8_t* addTagged(StringRef const& attrName, uint64_t tag, Value const& sub) {
+    return addInternal<Value>(attrName, tag, sub);
+  }
+
+  inline uint8_t* addTagged(char const* attrName, uint64_t tag, Value const& sub) {
+    return addInternal<Value>(attrName, tag, sub);
+  }
+
+  inline uint8_t* addTagged(char const* attrName, std::size_t attrLength, uint64_t tag, Value const& sub) {
+    return addInternal<Value>(attrName, attrLength, tag, sub);
+  }
+
+  // Add a subvalue into an object from a Slice:
+  inline uint8_t* addTagged(std::string const& attrName, uint64_t tag, Slice const& sub) {
+    return addInternal<Slice>(attrName, tag, sub);
+  }
+
+  inline uint8_t* addTagged(StringRef const& attrName, uint64_t tag, Slice const& sub) {
+    return addInternal<Slice>(attrName, tag, sub);
+  }
+
+  inline uint8_t* addTagged(char const* attrName, uint64_t tag, Slice const& sub) {
+    return addInternal<Slice>(attrName, tag, sub);
+  }
+
+  inline uint8_t* addTagged(char const* attrName, std::size_t attrLength, uint64_t tag, Slice const& sub) {
+    return addInternal<Slice>(attrName, attrLength, tag, sub);
+  }
+
+  // Add a subvalue into an object from a ValuePair:
+  inline uint8_t* addTagged(std::string const& attrName, uint64_t tag, ValuePair const& sub) {
+    return addInternal<ValuePair>(attrName, tag, sub);
+  }
+
+  inline uint8_t* addTagged(StringRef const& attrName, uint64_t tag, ValuePair const& sub) {
+    return addInternal<ValuePair>(attrName, tag, sub);
+  }
+
+  inline uint8_t* addTagged(char const* attrName, uint64_t tag, ValuePair const& sub) {
+    return addInternal<ValuePair>(attrName, tag, sub);
+  }
+
+  inline uint8_t* addTagged(char const* attrName, std::size_t attrLength, uint64_t tag, ValuePair const& sub) {
+    return addInternal<ValuePair>(attrName, attrLength, tag, sub);
+  }
+
+  // Add a subvalue into an object from a Serializable:
+  inline uint8_t* addTagged(std::string const& attrName, uint64_t tag, Serialize const& sub) {
+    return addInternal<Serializable>(attrName, tag, sub._sable);
+  }
+
+  inline uint8_t* addTagged(StringRef const& attrName, uint64_t tag, Serialize const& sub) {
+    return addInternal<Serializable>(attrName, tag, sub._sable);
+  }
+
+  inline uint8_t* addTagged(char const* attrName, uint64_t tag, Serialize const& sub) {
+    return addInternal<Serializable>(attrName, tag, sub._sable);
+  }
+
+  inline uint8_t* addTagged(char const* attrName, std::size_t attrLength, uint64_t tag, Serialize const& sub) {
+    return addInternal<Serializable>(attrName, attrLength, tag, sub._sable);
+  }
+
+  // Add a subvalue into an array from a Value:
+  inline uint8_t* addTagged(uint64_t tag, Value const& sub) {
+    return addInternal<Value>(tag, sub);
+  }
+
+  // Add a slice to an array
+  inline uint8_t* addTagged(uint64_t tag, Slice const& sub) {
+    return addInternal<Slice>(tag, sub);
+  }
+
+  // Add a subvalue into an array from a ValuePair:
+  inline uint8_t* addTagged(uint64_t tag, ValuePair const& sub) {
+    return addInternal<ValuePair>(tag, sub);
+  }
+
+  // Add a subvalue into an array from a Serialize:
+  inline uint8_t* addTagged(uint64_t tag, Serialize const& sub) {
+    return addInternal<Serializable>(tag, sub._sable);
   }
 
   // Add an External slice to an array
@@ -511,12 +599,53 @@ class Builder {
     }
   }
 
+  void addBCD(int8_t sign, int32_t exponent, char* mantissa, uint64_t mantissaLength) {
+    if (options->disallowBCD) {
+      // BCD values explicitly disallowed 
+      throw Exception(Exception::BuilderBCDDisallowed);
+    }
+
+    bool isOdd = mantissaLength % 2 != 0;
+    uint64_t byteLen = mantissaLength / 2 + (isOdd ? 1 : 0);
+
+    uint64_t n = 0;
+    for (uint64_t x = byteLen; x != 0; x >>= 8) {
+      n++;
+    }
+
+    reserve(1 + n + 4 + byteLen);
+
+    appendByte(static_cast<uint8_t>((sign >= 0 ? 0xc8 : 0xd0) + n - 1));
+
+    uint64_t v = byteLen;
+    for (uint64_t i = 0; i < n; ++i) {
+      appendByteUnchecked(v & 0xff);
+      v >>= 8;
+    }
+
+    appendLengthUnchecked<4>(static_cast<ValueLength>(exponent));
+
+    uint64_t i = 0;
+    while (i < mantissaLength) {
+      if (isOdd && i == 0) {
+        appendByte(mantissa[i]);
+        i++;
+        continue;
+      }
+
+      appendByte((mantissa[i] << 4) | mantissa[i+1]);
+      i += 2;
+    }
+  }
+
   void addUTCDate(int64_t v) {
     constexpr uint8_t vSize = sizeof(int64_t);  // is always 8
     reserve(1 + vSize);
     appendByteUnchecked(0x1c);
     appendLengthUnchecked<vSize>(toUInt64(v));
   }
+
+  void appendTag(uint64_t tag);
 
   inline void checkKeyIsString(bool isString) {
     if (!_stack.empty()) {
@@ -551,7 +680,7 @@ class Builder {
   }
 
   template <typename T>
-  uint8_t* addInternal(T const& sub) {
+  uint8_t* addInternal(uint64_t tag, T const& sub) {
     bool haveReported = false;
     if (!_stack.empty()) {
       if (!_keyWritten) {
@@ -560,7 +689,7 @@ class Builder {
       }
     }
     try {
-      return set(sub);
+      return set(tag, sub);
     } catch (...) {
       // clean up in case of an exception
       if (haveReported) {
@@ -571,22 +700,22 @@ class Builder {
   }
 
   template <typename T>
-  uint8_t* addInternal(std::string const& attrName, T const& sub) {
-    return addInternal<T>(attrName.data(), attrName.size(), sub);
+  uint8_t* addInternal(std::string const& attrName, uint64_t tag, T const& sub) {
+    return addInternal<T>(attrName.data(), attrName.size(), tag, sub);
   }
 
   template <typename T>
-  uint8_t* addInternal(StringRef const& attrName, T const& sub) {
-    return addInternal<T>(attrName.data(), attrName.size(), sub);
+  uint8_t* addInternal(StringRef const& attrName, uint64_t tag, T const& sub) {
+    return addInternal<T>(attrName.data(), attrName.size(), tag, sub);
   }
 
   template <typename T>
-  uint8_t* addInternal(char const* attrName, T const& sub) {
-    return addInternal<T>(attrName, strlen(attrName), sub);
+  uint8_t* addInternal(char const* attrName, uint64_t tag, T const& sub) {
+    return addInternal<T>(attrName, strlen(attrName), tag, sub);
   }
 
   template <typename T>
-  uint8_t* addInternal(char const* attrName, std::size_t attrLength, T const& sub) {
+  uint8_t* addInternal(char const* attrName, std::size_t attrLength, uint64_t tag, T const& sub) {
     bool haveReported = false;
     if (!_stack.empty()) {
       ValueLength const to = _stack.back();
@@ -613,14 +742,15 @@ class Builder {
           memcpy(_start + _pos, translated, checkOverflow(l));
           advance(l);
           _keyWritten = true;
-          return set(sub);
+          return set(tag, sub);
         }
         // otherwise fall through to regular behavior
       }
 
       set(ValuePair(attrName, attrLength, ValueType::String));
       _keyWritten = true;
-      return set(sub);
+
+      return set(tag, sub);
     } catch (...) {
       // clean up in case of an exception
       if (haveReported) {
@@ -668,16 +798,37 @@ class Builder {
     }
   }
 
-  uint8_t* set(Value const& item);
+  uint8_t* set(uint64_t tag, Value const& item);
 
-  uint8_t* set(ValuePair const& pair);
+  uint8_t* set(Value const& item) {
+    return set(0, item);
+  }
 
-  uint8_t* set(Slice const& item);
+  uint8_t* set(uint64_t tag, ValuePair const& pair);
 
-  uint8_t* set(Serializable const& sable) {
+  uint8_t* set(ValuePair const& pair) {
+    return set(0, pair);
+  }
+
+  uint8_t* set(uint64_t tag, Slice const& item);
+
+  uint8_t* set(Slice const& item) {
+    return set(0, item);
+  }
+
+  uint8_t* set(uint64_t tag, Serializable const& sable) {
     auto const oldPos = _pos;
+
+    if (tag != 0) {
+      appendTag(tag);
+    }
+
     sable.toVelocyPack(*this);
     return _start + oldPos;
+  }
+
+  uint8_t* set(Serializable const& sable) {
+    return set(0, sable);
   }
 
   void cleanupAdd() noexcept {
@@ -689,12 +840,6 @@ class Builder {
   inline void reportAdd() {
     std::size_t depth = _stack.size() - 1;
     _index[depth].push_back(_pos - _stack[depth]);
-  }
-
-  template <uint64_t n>
-  void appendLength(ValueLength v) {
-    reserve(n);
-    appendLengthUnchecked<n>(v);
   }
 
   template <uint64_t n>

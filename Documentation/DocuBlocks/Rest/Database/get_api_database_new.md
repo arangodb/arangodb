@@ -12,12 +12,20 @@ Optional object which can contain the following attributes:
 
 @RESTSTRUCT{sharding,get_api_database_new_USERS,string,optional,string}
 The sharding method to use for new collections in this database. Valid values
-are: "", "flexible", or "single". The first two are equivalent.
+are: "", "flexible", or "single". The first two are equivalent. _(cluster only)_
 
-@RESTSTRUCT{replicationFactor,get_api_database_new_USERS,string,optional,number}
+@RESTSTRUCT{replicationFactor,get_api_database_new_USERS,integer,optional,}
 Default replication factor for new collections created in this database.
 Special values include "satellite", which will replicate the collection to
-every DB-server, and 1, which disables replication.
+every DB-Server, and 1, which disables replication. _(cluster only)_
+
+@RESTSTRUCT{writeConcern,get_api_database_new_USERS,number,optional,}
+Default write concern for new collections created in this database.
+It determines how many copies of each shard are required to be
+in sync on the different DB-Servers. If there are less then these many copies
+in the cluster a shard will refuse to write. Writes to shards with enough
+up-to-date copies will succeed at the same time however. The value of
+*writeConcern* can not be larger than *replicationFactor*. _(cluster only)_
 
 @RESTBODYPARAM{users,array,optional,get_api_database_new_USERS}
 Has to be an array of user objects to initially create for the new database.
@@ -93,7 +101,7 @@ Creating a database named *example*.
 @END_EXAMPLE_ARANGOSH_RUN
 
 Creating a database named *mydb* with two users, flexible sharding and
-default replication factor of 3 for collections that will be part of 
+default replication factor of 3 for collections that will be part of
 the newly created database.
 
 @EXAMPLE_ARANGOSH_RUN{RestDatabaseCreateUsers}
@@ -128,4 +136,3 @@ the newly created database.
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

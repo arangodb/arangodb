@@ -29,10 +29,9 @@
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
 #include "Aql/Variable.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/OperationCursor.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
@@ -114,9 +113,10 @@ aql::QueryResult queryEdges(TRI_vocbase_t& vocbase, std::string const& cname,
   bindParameters->close();
   auto options = std::make_shared<VPackBuilder>();
 
-  arangodb::aql::Query query(false, vocbase, aql::QueryString(queryString(dir)),
-                             bindParameters, options, arangodb::aql::PART_MAIN);
-  return query.executeSync(QueryRegistryFeature::registry());
+  arangodb::aql::Query query(transaction::StandaloneContext::Create(vocbase),
+                             aql::QueryString(queryString(dir)),
+                             bindParameters, options);
+  return query.executeSync();
 }
 }  // namespace
 
@@ -144,7 +144,7 @@ bool RestEdgesHandler::readEdges() {
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expected GET " + EDGES_PATH +
-                      "/<collection-identifier>?vertex=<vertex-handle>&"
+                      "/<collection-identifier>?vertex=<vertex-id>&"
                       "direction=<direction>");
     return false;
   }

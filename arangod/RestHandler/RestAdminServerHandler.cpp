@@ -24,10 +24,12 @@
 #include "RestAdminServerHandler.h"
 
 #include "Actions/RestActionHandler.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StaticStrings.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/SslServerFeature.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "Replication/ReplicationFeature.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
@@ -53,8 +55,14 @@ RestStatus RestAdminServerHandler::execute() {
     handleAvailability();
   } else if (suffixes.size() == 1 && suffixes[0] == "databaseDefaults") {
     handleDatabaseDefaults();
+  } else if (suffixes.size() == 1 && suffixes[0] == "tls") {
+    handleTLS();
+  } else if (suffixes.size() == 1 && suffixes[0] == "jwt") {
+    handleJWTSecretsReload();
+  } else if (suffixes.size() == 1 && suffixes[0] == "encryption") {
+    handleEncryptionKeyRotation();
   } else {
-    generateError(rest::ResponseCode::NOT_FOUND, 404);
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   }
   return RestStatus::DONE;
 }
@@ -121,11 +129,10 @@ void RestAdminServerHandler::handleAvailability() {
     return;
   }
 
-  auto& server = application_features::ApplicationServer::server();
   bool available = false;
   switch (ServerState::mode()) {
     case ServerState::Mode::DEFAULT:
-      available = !server.isStopping();
+      available = !server().isStopping();
       break;
     case ServerState::Mode::MAINTENANCE:
     case ServerState::Mode::REDIRECT:
@@ -153,7 +160,7 @@ void RestAdminServerHandler::handleMode() {
     if (af->isActive() && !_request->user().empty()) {
       auth::Level lvl;
       if (af->userManager() != nullptr) {
-        lvl = af->userManager()->databaseAuthLevel(_request->user(), TRI_VOC_SYSTEM_DATABASE,
+        lvl = af->userManager()->databaseAuthLevel(_request->user(), StaticStrings::SystemDatabase,
                                                    /*configured*/ true);
       } else {
         lvl = auth::Level::RW;
@@ -210,12 +217,51 @@ void RestAdminServerHandler::handleMode() {
   }
 }
 
-
 void RestAdminServerHandler::handleDatabaseDefaults() {
   auto defaults = getVocbaseOptions(server(), VPackSlice::emptyObjectSlice());
   VPackBuilder builder;
+
   builder.openObject();
   addClusterOptions(builder, defaults);
   builder.close();
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
+
+void RestAdminServerHandler::handleTLS() {
+  auto const requestType = _request->requestType();
+  VPackBuilder builder;
+  auto* sslServerFeature = arangodb::SslServerFeature::SSL;
+  if (requestType == rest::RequestType::GET) {
+    // Put together a TLS-based cocktail:
+    sslServerFeature->dumpTLSData(builder);
+    generateOk(rest::ResponseCode::OK, builder.slice());
+  } else if (requestType == rest::RequestType::POST) {
+
+    // Only the superuser may reload TLS data:
+    if (!_request->authenticated() || !_request->user().empty()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                    "only superusers may reload TLS data");
+      return;
+    }
+
+    Result res = GeneralServerFeature::reloadTLS();
+    if (res.fail()) {
+      generateError(rest::ResponseCode::BAD, res.errorNumber(), res.errorMessage());
+      return;
+    }
+    sslServerFeature->dumpTLSData(builder);
+    generateOk(rest::ResponseCode::OK, builder.slice());
+  } else {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+  }
+}
+
+#ifndef USE_ENTERPRISE
+void RestAdminServerHandler::handleJWTSecretsReload() {
+  generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+}
+
+void RestAdminServerHandler::handleEncryptionKeyRotation() {
+  generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+}
+#endif

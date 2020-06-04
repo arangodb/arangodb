@@ -88,10 +88,10 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     bool importData{true};
     bool importStructure{true};
     bool includeSystemCollections{false};
-    bool indexesFirst{false};
     bool overwrite{true};
     bool cleanupDuplicateAttributes{false};
     bool progress{true};
+    bool preserveRevisionIds{false};
   };
 
   /// @brief Stores stats about the overall restore progress

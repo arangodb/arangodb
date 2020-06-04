@@ -32,6 +32,10 @@
 #include <mutex>
 #include <queue>
 
+#include "Futures/Future.h"
+#include "Futures/Unit.h"
+#include "Futures/Utilities.h"
+
 #include "Basics/Exceptions.h"
 #include "Basics/system-compiler.h"
 #include "GeneralServer/RequestLane.h"
@@ -63,15 +67,14 @@ class Scheduler {
 
   // Enqueues a task - this is implemented on the specific scheduler
   // May throw.
-  virtual bool queue(RequestLane lane, std::function<void()>,
-                     bool allowDirectHandling = false) ADB_WARN_UNUSED_RESULT = 0;
+  virtual bool queue(RequestLane lane, fu2::unique_function<void()>) ADB_WARN_UNUSED_RESULT = 0;
 
   // Enqueues a task after delay - this uses the queue functions above.
   // WorkHandle is a shared_ptr to a WorkItem. If all references the WorkItem
   // are dropped, the task is canceled. It will return true if queued, false
   // otherwise
   virtual std::pair<bool, WorkHandle> queueDelay(RequestLane lane, clock::duration delay,
-                                                 std::function<void(bool canceled)> handler);
+                                                 fu2::unique_function<void(bool canceled)> handler);
 
   class WorkItem final {
    public:
@@ -89,7 +92,7 @@ class Scheduler {
     // Runs the WorkItem immediately
     void run() { executeWithCancel(false); }
 
-    explicit WorkItem(std::function<void(bool canceled)>&& handler,
+    explicit WorkItem(fu2::unique_function<void(bool canceled)>&& handler,
                       RequestLane lane, Scheduler* scheduler)
         : _handler(std::move(handler)), _lane(lane), _disable(false), _scheduler(scheduler) {}
 
@@ -108,7 +111,9 @@ class Scheduler {
         // Thus any reference to class to self in the _handler will be released
         // as soon as the scheduler executed the _handler lambda.
         bool queued = _scheduler->queue(_lane, [handler = std::move(_handler),
-                                                arg]() { handler(arg); });
+                                                arg]() mutable  {
+                                                  handler(arg);
+                                                });
         if (!queued) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_QUEUE_FULL);
         }
@@ -120,7 +125,7 @@ class Scheduler {
 #endif
 
    private:
-    std::function<void(bool)> _handler;
+    fu2::unique_function<void(bool)> _handler;
     RequestLane _lane;
     std::atomic<bool> _disable;
     Scheduler* _scheduler;
@@ -128,6 +133,29 @@ class Scheduler {
 
  protected:
   application_features::ApplicationServer& _server;
+
+ public:
+    // delay Future returns a future that will be fulfilled after the given duration
+    // requires scheduler
+    // If d is zero, the future is fulfilled immediately. Throws a logic error
+    // if delay was cancelled.
+    futures::Future<futures::Unit> delay(clock::duration d) {
+      if (d == clock::duration::zero()) {
+        return futures::makeFuture();
+      }
+
+      futures::Promise<bool> p;
+      futures::Future<bool> f = p.getFuture();
+
+      auto item = queueDelay(RequestLane::DELAYED_FUTURE, d,
+        [pr = std::move(p)](bool cancelled) mutable { pr.setValue(cancelled); });
+
+      return std::move(f).thenValue([item = std::move(item)](bool cancelled) {
+        if (cancelled) {
+          throw std::logic_error("delay was cancelled");
+        }
+      });
+    }
 
   // ---------------------------------------------------------------------------
   // CronThread and delayed tasks

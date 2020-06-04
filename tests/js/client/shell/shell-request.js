@@ -45,11 +45,11 @@ function RequestSuite () {
   var buildUrl = function (append, base) {
     base = base === false ? '' : '/_admin/echo';
     append = append || '';
-    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:') + base + append;
+    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:') + base + append;
   };
   
   var buildUrlBroken = function (append) {
-    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:') + '/_not-there' + append;
+    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:') + '/_not-there' + append;
   };
 
   return {
@@ -238,7 +238,7 @@ function RequestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBadJson: function () {
-      var url = buildUrl('/_admin/aardvark/index.html', false);
+      var url = buildUrl('/_admin/aardvark/img/ArangoDB-community-edition-Web-UI.png', false);
       var res = request.get(url, {json: true, timeout: 300});
       expect(res).to.be.an.instanceof(request.Response);
       expect(res.json).to.be.equal(undefined);

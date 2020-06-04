@@ -34,6 +34,7 @@
 #include "Agency/Node.h"
 #include "Agency/Supervision.h"
 #include "Agency/TimeString.h"
+#include "AgencyStrings.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/voc-errors.h"
@@ -63,6 +64,7 @@ std::string const plannedServers = "/Plan/DBServers";
 std::string const healthPrefix = "/Supervision/Health/";
 std::string const asyncReplLeader = "/Plan/AsyncReplication/Leader";
 std::string const asyncReplTransientPrefix = "/AsyncReplication/";
+std::string const planAnalyzersPrefix = "/Plan/Analyzers/";
 
 }  // namespace consensus
 }  // namespace arangodb
@@ -170,7 +172,7 @@ bool Job::finish(std::string const& server, std::string const& shard,
         for (auto const& prec : VPackObjectIterator(preconditions)) {
           finished.add(prec.key.copyString(), prec.value);
         }
-      } // -- preconditions
+      }  // -- preconditions
     }
 
     write_ret_t res = singleWriteTransaction(_agent, finished, false);
@@ -470,7 +472,7 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOO
     auto sharedPath = db + "/" + clone.collection + "/";
     auto currentShardPath = curColPrefix + sharedPath + clone.shard + "/servers";
     auto currentFailoverCandidatesPath =
-        curColPrefix + sharedPath + clone.shard + "/servers";
+        curColPrefix + sharedPath + clone.shard + "/failoverCandidates";
     auto plannedShardPath = planColPrefix + sharedPath + "shards/" + clone.shard;
 
     // start up race condition  ... current might not have everything in plan
@@ -644,6 +646,20 @@ void Job::addPutJobIntoSomewhere(Builder& trx, std::string const& where,
   }
 }
 
+void Job::addPreconditionCurrentReplicaShardGroup(Builder& pre, std::string const& database,
+                                                  std::vector<shard_t> const& shardGroup,
+                                                  std::string const& serverId) {
+  for (auto const& sh : shardGroup) {
+    std::string const curPath =
+      curColPrefix + database + "/" + sh.collection + "/" + sh.shard + "/servers";
+    pre.add(VPackValue(curPath));
+    {
+      VPackObjectBuilder guard(&pre);
+      pre.add("in", VPackValue(serverId));
+    }
+  }
+}
+
 void Job::addPreconditionCollectionStillThere(Builder& pre, std::string const& database,
                                               std::string const& collection) {
   std::string planPath = planColPrefix + database + "/" + collection;
@@ -726,4 +742,76 @@ std::string Job::checkServerHealth(Node const& snapshot, std::string const& serv
     return "UNCLEAR";
   }
   return status.first;
+}
+
+void Job::addReadLockServer(Builder& trx, std::string const& server, std::string const& jobId) {
+  trx.add(VPackValue(blockedServersPrefix + server));
+  {
+    VPackObjectBuilder guard(&trx);
+    trx.add("op", VPackValue(OP_READ_LOCK));
+    trx.add("by", VPackValue(jobId));
+  }
+}
+void Job::addWriteLockServer(Builder& trx, std::string const& server, std::string const& jobId) {
+  trx.add(VPackValue(blockedServersPrefix + server));
+  {
+    VPackObjectBuilder guard(&trx);
+    trx.add("op", VPackValue(OP_WRITE_LOCK));
+    trx.add("by", VPackValue(jobId));
+  }
+}
+
+void Job::addReadUnlockServer(Builder& trx, std::string const& server, std::string const& jobId) {
+  trx.add(VPackValue(blockedServersPrefix + server));
+  {
+    VPackObjectBuilder guard(&trx);
+    trx.add("op", VPackValue(OP_READ_UNLOCK));
+    trx.add("by", VPackValue(jobId));
+  }
+}
+
+void Job::addWriteUnlockServer(Builder& trx, std::string const& server,
+                              std::string const& jobId) {
+  trx.add(VPackValue(blockedServersPrefix + server));
+  {
+    VPackObjectBuilder guard(&trx);
+    trx.add("op", VPackValue(OP_WRITE_UNLOCK));
+    trx.add("by", VPackValue(jobId));
+  }
+}
+
+void Job::addPreconditionServerReadLockable(Builder& pre, std::string const& server,
+                                           std::string const& jobId) {
+  pre.add(VPackValue(blockedServersPrefix + server));
+  {
+    VPackObjectBuilder shardLockEmpty(&pre);
+    pre.add(PREC_CAN_READ_LOCK, VPackValue(jobId));
+  }
+}
+
+void Job::addPreconditionServerReadLocked(Builder& pre, std::string const& server,
+                                         std::string const& jobId) {
+  pre.add(VPackValue(blockedServersPrefix + server));
+  {
+    VPackObjectBuilder shardLockEmpty(&pre);
+    pre.add(PREC_IS_READ_LOCKED, VPackValue(jobId));
+  }
+}
+
+void Job::addPreconditionServerWriteLockable(Builder& pre, std::string const& server,
+                                            std::string const& jobId) {
+  pre.add(VPackValue(blockedServersPrefix + server));
+  {
+    VPackObjectBuilder shardLockEmpty(&pre);
+    pre.add(PREC_CAN_WRITE_LOCK, VPackValue(jobId));
+  }
+}
+
+void Job::addPreconditionServerWriteLocked(Builder& pre, std::string const& server,
+                                          std::string const& jobId) {
+  pre.add(VPackValue(blockedServersPrefix + server));
+  {
+    VPackObjectBuilder shardLockEmpty(&pre);
+    pre.add(PREC_IS_WRITE_LOCKED, VPackValue(jobId));
+  }
 }

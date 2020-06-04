@@ -47,8 +47,6 @@ typedef TRI_voc_tick_t CursorId;
 
 class Cursor {
  public:
-  enum CursorType { CURSOR_VPACK, CURSOR_EXPORT };
-
   Cursor(Cursor const&) = delete;
   Cursor& operator=(Cursor const&) = delete;
 
@@ -93,8 +91,6 @@ class Cursor {
     _isUsed = false;
   }
 
-  virtual CursorType type() const = 0;
-
   virtual void kill() {}
 
   virtual size_t count() const = 0;
@@ -113,8 +109,7 @@ class Cursor {
    * free this thread on DONE we have a result. Second: Result If State==DONE
    * this contains Error information or NO_ERROR. On NO_ERROR result is filled.
    */
-  virtual std::pair<aql::ExecutionState, Result> dump(velocypack::Builder& result,
-                                                      std::function<void()> const&) = 0;
+  virtual std::pair<aql::ExecutionState, Result> dump(velocypack::Builder& result) = 0;
 
   /**
    * @brief Dump the cursor result. This is guaranteed to return the result in
@@ -125,6 +120,10 @@ class Cursor {
    * @return ErrorResult, if something goes wrong
    */
   virtual Result dumpSync(velocypack::Builder& result) = 0;
+  
+  /// Set wakeup handler on streaming cursor
+  virtual void setWakeupHandler(std::function<bool()> const& cb) {}
+  virtual void resetWakeupHandler() {}
 
  protected:
   CursorId const _id;

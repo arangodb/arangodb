@@ -140,7 +140,7 @@ static void JS_DropIndexVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& ar
 
   if (args.Length() != 1) {
     events::DropIndex(vocbase.name(), "", "", TRI_ERROR_BAD_PARAMETER);
-    TRI_V8_THROW_EXCEPTION_USAGE("dropIndex(<index-handle>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("dropIndex(<index-id>)");
   }
 
   VPackBuilder builder;
@@ -249,8 +249,8 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   }
 
   // waitForSync can be 3. or 4. parameter
-  auto& server = application_features::ApplicationServer::server();
-  auto& cluster = server.getFeature<ClusterFeature>();
+  TRI_GET_GLOBALS();
+  auto& cluster = v8g->_server.getFeature<ClusterFeature>();
   bool createWaitsForSyncReplication = cluster.createWaitsForSyncReplication();
   bool enforceReplicationFactor = true;
 
@@ -266,7 +266,11 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
                                        enforceReplicationFactor);
   }
 
+  VPackBuilder filtered = methods::Collections::filterInput(propSlice);
+  propSlice = filtered.slice();
+
   v8::Handle<v8::Value> result;
+  std::shared_ptr<LogicalCollection> coll;
   auto res = methods::Collections::create(
       vocbase,                        // collection vocbase
       name,                           // collection name
@@ -275,13 +279,14 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
       createWaitsForSyncReplication,  // replication wait flag
       enforceReplicationFactor,
       false,  // is new Database?, here always false
-      [&isolate, &result](std::shared_ptr<LogicalCollection> const& coll) -> void {
-        TRI_ASSERT(coll);
-        result = WrapCollection(isolate, coll);
-      });
+      coll);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
+  }
+  
+  if (coll) {
+    result = WrapCollection(isolate, coll);
   }
 
   TRI_V8_RETURN(result);

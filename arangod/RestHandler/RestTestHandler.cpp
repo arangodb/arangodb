@@ -141,8 +141,8 @@ RestStatus RestTestHandler::execute() {
     builder.close();
 
     resetResponse(rest::ResponseCode::OK);
-    _response->setPayload(std::move(buffer), true);
-    continueHandlerExecution();
+    _response->setPayload(std::move(buffer));
+    wakeupHandler();
   });
 
   if (ok) {

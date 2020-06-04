@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -40,18 +41,15 @@ class TransactionState;
 class RocksDBTransactionCollection final : public TransactionCollection {
  public:
   RocksDBTransactionCollection(TransactionState* trx, TRI_voc_cid_t cid,
-                               AccessMode::Type accessType, int nestingLevel);
+                               AccessMode::Type accessType);
   ~RocksDBTransactionCollection();
 
   /// @brief whether or not any write operations for the collection happened
   bool hasOperations() const override;
 
-  void freeOperations(transaction::Methods* activeTrx, bool mustRollback) override;
-
   bool canAccess(AccessMode::Type accessType) const override;
-  int use(int nestingLevel) override;
-  void unuse(int nestingLevel) override;
-  void release() override;
+  Result lockUsage() override;
+  void releaseUsage() override;
 
   TRI_voc_rid_t revision() const { return _revision; }
   uint64_t numberDocuments() const {
@@ -65,11 +63,11 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   void addOperation(TRI_voc_document_operation_e operationType, TRI_voc_rid_t revisionId);
 
   /**
-   * @brief Prepare collection for commit by placing index blockers
-   * @param trxId        Active transaction ID
-   * @param preCommitSeq Current seq/tick immediately before call
+   * @brief Prepare collection for commit by placing collection blockers
+   * @param trxId    Active transaction ID
+   * @param beginSeq Current seq/tick on transaction begin
    */
-  void prepareCommit(uint64_t trxId, uint64_t preCommitSeq);
+  void prepareTransaction(uint64_t trxId, uint64_t beginSeq);
 
   /**
    * @brief Signal upstream abort/rollback to clean up index blockers
@@ -84,24 +82,51 @@ class RocksDBTransactionCollection final : public TransactionCollection {
    */
   void commitCounts(TRI_voc_tid_t trxId, uint64_t commitSeq);
 
+  /// @brief Track documents inserted to the collection
+  ///        Used to update the revision tree for replication after commit
+  void trackInsert(TRI_voc_rid_t rid);
+
+  /// @brief Track documents removed from the collection
+  ///        Used to update the revision tree for replication after commit
+  void trackRemove(TRI_voc_rid_t rid);
+
+  struct TrackedOperations {
+    std::vector<std::size_t> inserts;
+    std::vector<std::size_t> removals;
+    bool empty() const { return inserts.empty() && removals.empty(); }
+    void clear() {
+      inserts.clear();
+      removals.clear();
+    }
+  };
+
+  TrackedOperations& trackedOperations() { return _trackedOperations; }
+
+  TrackedOperations stealTrackedOperations() {
+    TrackedOperations empty;
+    _trackedOperations.inserts.swap(empty.inserts);
+    _trackedOperations.removals.swap(empty.removals);
+    return empty;
+  }
+
   /// @brief Every index can track hashes inserted into this index
   ///        Used to update the estimate after the trx commited
-  void trackIndexInsert(TRI_idx_iid_t iid, uint64_t hash);
+  void trackIndexInsert(IndexId iid, uint64_t hash);
 
   /// @brief Every index can track hashes removed from this index
   ///        Used to update the estimate after the trx commited
-  void trackIndexRemove(TRI_idx_iid_t iid, uint64_t hash);
+  void trackIndexRemove(IndexId iid, uint64_t hash);
 
   /// @brief tracked index operations
-  struct IndexOperations {
+  struct TrackedIndexOperations {
     std::vector<uint64_t> inserts;
     std::vector<uint64_t> removals;
   };
-  typedef std::unordered_map<TRI_idx_iid_t, IndexOperations> OperationsMap;
+  using IndexOperationsMap = std::unordered_map<IndexId, TrackedIndexOperations>;
 
   /// @brief steal the tracked operations from the map
-  OperationsMap stealTrackedOperations() {
-    OperationsMap empty;
+  IndexOperationsMap stealTrackedIndexOperations() {
+    IndexOperationsMap empty;
     _trackedIndexOperations.swap(empty);
     return empty;
   }
@@ -111,10 +136,10 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
   /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired
   /// and no other error occurred returns any other error code otherwise
-  int doLock(AccessMode::Type, int nestingLevel) override;
+  Result doLock(AccessMode::Type) override;
 
   /// @brief request an unlock for a collection
-  int doUnlock(AccessMode::Type, int nestingLevel) override;
+  Result doUnlock(AccessMode::Type) override;
 
  private:
   uint64_t _initialNumberDocuments;
@@ -122,11 +147,17 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   uint64_t _numInserts;
   uint64_t _numUpdates;
   uint64_t _numRemoves;
-  bool _usageLocked;
+
+  /// @brief A list where collection can store its document operations
+  ///        Will be applied on commit and not applied on abort
+  TrackedOperations _trackedOperations;
 
   /// @brief A list where all indexes with estimates can store their operations
   ///        Will be applied to the inserter on commit and not applied on abort
-  OperationsMap _trackedIndexOperations;
+  IndexOperationsMap _trackedIndexOperations;
+  
+  bool _usageLocked;
+  bool _exclusiveWrites;
 };
 }  // namespace arangodb
 

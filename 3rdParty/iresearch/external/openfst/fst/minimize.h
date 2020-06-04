@@ -6,9 +6,8 @@
 #ifndef FST_MINIMIZE_H_
 #define FST_MINIMIZE_H_
 
-#include <cmath>
-
 #include <algorithm>
+#include <cmath>
 #include <map>
 #include <queue>
 #include <utility>
@@ -196,7 +195,7 @@ class CyclicMinimizer {
             (fst.Final(s) != Weight::Zero() ? hash_to_class_final
                                             : hash_to_class_nonfinal);
         // Avoids two map lookups by using 'insert' instead of 'find'.
-        auto p = this_map.insert(std::make_pair(hash, next_class));
+        auto p = this_map.emplace(hash, next_class);
         state_to_initial_class[s] = p.second ? next_class++ : p.first->second;
       }
       // Lets the unordered_maps go out of scope before we allocate the classes,
@@ -387,8 +386,7 @@ class AcyclicMinimizer {
       PartitionIterator<StateId> siter(partition_, h);
       equiv_classes[siter.Value()] = h;
       for (siter.Next(); !siter.Done(); siter.Next()) {
-        auto insert_result =
-            equiv_classes.insert(std::make_pair(siter.Value(), kNoStateId));
+        auto insert_result = equiv_classes.emplace(siter.Value(), kNoStateId);
         if (insert_result.second) {
           insert_result.first->second = partition_.AddClass();
         }
@@ -437,7 +435,7 @@ void MergeStates(const Partition<typename Arc::StateId> &partition,
         if (s == state_map[c]) {  // For the first state, just sets destination.
           aiter.SetValue(arc);
         } else {
-          fst->AddArc(state_map[c], arc);
+          fst->AddArc(state_map[c], std::move(arc));
         }
       }
     }

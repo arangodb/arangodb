@@ -26,6 +26,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
 #include "Logger/Logger.h"
+#include "Transaction/StandaloneContext.h"
 
 #include <velocypack/Builder.h>
 
@@ -100,14 +101,12 @@ void RestExplainHandler::explainQuery() {
     return;
   }
 
-  auto bindBuilder = std::make_shared<VPackBuilder>();
-  bindBuilder->add(bindSlice);
+  auto bindBuilder = std::make_shared<VPackBuilder>(bindSlice);
 
-  auto optionsBuilder = std::make_shared<VPackBuilder>();
-  optionsBuilder->add(optionsSlice);
+  auto optionsBuilder = std::make_shared<VPackBuilder>(optionsSlice);
 
-  arangodb::aql::Query query(false, _vocbase, aql::QueryString(queryString),
-                             bindBuilder, optionsBuilder, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(transaction::StandaloneContext::Create(_vocbase), aql::QueryString(queryString),
+                             bindBuilder, optionsBuilder);
   auto queryResult = query.explain();
 
   if (queryResult.result.fail()) {

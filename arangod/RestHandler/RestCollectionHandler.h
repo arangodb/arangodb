@@ -48,7 +48,7 @@ class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
   void collectionRepresentation(std::string const& name, bool showProperties,
                                 bool showFigures, bool showCount, bool detailedCount);
 
-  void collectionRepresentation(LogicalCollection& coll, bool showProperties,
+  void collectionRepresentation(std::shared_ptr<LogicalCollection> coll, bool showProperties,
                                 bool showFigures, bool showCount, bool detailedCount);
 
   void collectionRepresentation(methods::Collections::Context& ctxt, bool showProperties,
@@ -58,11 +58,11 @@ class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
       methods::Collections::Context& ctxt, bool showProperties,
       bool showFigures, bool showCount, bool detailedCount);
 
-  virtual Result handleExtraCommandPut(LogicalCollection& coll, std::string const& command,
+  virtual Result handleExtraCommandPut(std::shared_ptr<LogicalCollection> coll, std::string const& command,
                                        velocypack::Builder& builder) = 0;
 
  private:
-  void standardResponse();
+  RestStatus standardResponse();
   void initializeTransaction(LogicalCollection&);
 
  private:

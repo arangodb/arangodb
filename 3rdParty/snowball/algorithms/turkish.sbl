@@ -1,0 +1,470 @@
+/* Stemmer for Turkish
+	* author: Evren (Kapusuz) Çilden
+	* email: evren.kapusuz at gmail.com
+	* version: 1.0 (15.01.2007)
+
+
+	* stems nominal verb suffixes
+	* stems nominal inflections
+	* more than one syllable word check
+	* (y,n,s,U) context check
+	* vowel harmony check
+	* last consonant check and conversion (b, c, d, ğ to p, ç, t, k)
+
+	* The stemming algorithm is based on the paper "An Affix Stripping
+	* Morphological Analyzer for Turkish" by Gülşen Eryiğit and
+	* Eşref Adalı (Proceedings of the IAESTED International Conference
+	* ARTIFICIAL INTELLIGENCE AND APPLICATIONS, February 16-18,2004,
+	* Innsbruck, Austria
+
+	* Turkish is an agglutinative language and has a very rich morphological
+	* structure. In Turkish, you can form many different words from a single stem
+	* by appending a sequence of suffixes. Eg. The word "doktoruymuşsunuz" means
+	* "You had been the doctor of him". The stem of the word is "doktor" and it
+	* takes three different suffixes -sU, -ymUs, and -sUnUz. The rules about
+	* the append order of suffixes can be clearly described as FSMs.
+	* The paper referenced above defines some FSMs for right to left
+	* morphological analysis. I generated a method for constructing snowball
+	* expressions from right to left FSMs for stemming suffixes.
+*/
+
+routines (
+	append_U_to_stems_ending_with_d_or_g // for preventing some overstemmings
+	check_vowel_harmony	// tests vowel harmony for suffixes
+	is_reserved_word	// tests whether current string is a reserved word ('ad','soyad')
+	mark_cAsInA		// nominal verb suffix
+	mark_DA			// noun suffix
+	mark_DAn		// noun suffix
+	mark_DUr		// nominal verb suffix
+	mark_ki			// noun suffix
+	mark_lAr		// noun suffix, nominal verb suffix
+	mark_lArI		// noun suffix
+	mark_nA			// noun suffix
+	mark_ncA		// noun suffix
+	mark_ndA		// noun suffix
+	mark_ndAn		// noun suffix
+	mark_nU			// noun suffix
+	mark_nUn		// noun suffix
+	mark_nUz		// nominal verb suffix
+	mark_sU			// noun suffix
+	mark_sUn		// nominal verb suffix
+	mark_sUnUz		// nominal verb suffix
+	mark_possessives	// -(U)m,-(U)n,-(U)mUz,-(U)nUz,
+	mark_yA			// noun suffix
+	mark_ylA		// noun suffix
+	mark_yU			// noun suffix
+	mark_yUm		// nominal verb suffix
+	mark_yUz		// nominal verb suffix
+	mark_yDU		// nominal verb suffix
+	mark_yken		// nominal verb suffix
+	mark_ymUs_		// nominal verb suffix
+	mark_ysA		// nominal verb suffix
+
+	mark_suffix_with_optional_y_consonant
+	mark_suffix_with_optional_U_vowel
+	mark_suffix_with_optional_n_consonant
+	mark_suffix_with_optional_s_consonant
+
+	more_than_one_syllable_word
+
+	post_process_last_consonants
+	postlude
+
+	stem_nominal_verb_suffixes
+	stem_noun_suffixes
+	stem_suffix_chain_before_ki
+)
+
+stringescapes	{ }
+
+/* Special characters in Unicode Latin-1 and Latin Extended-A */
+stringdef c,	'{U+00E7}'	// LATIN SMALL LETTER C WITH CEDILLA
+stringdef g~	'{U+011F}'	// LATIN SMALL LETTER G WITH BREVE
+stringdef i'	'{U+0131}'	// LATIN SMALL LETTER I WITHOUT DOT
+stringdef o"	'{U+00F6}'	// LATIN SMALL LETTER O WITH DIAERESIS
+stringdef s,	'{U+015F}'	// LATIN SMALL LETTER S WITH CEDILLA
+stringdef u"	'{U+00FC}'	// LATIN SMALL LETTER U WITH DIAERESIS
+
+booleans	( continue_stemming_noun_suffixes )
+
+groupings	( vowel U vowel1 vowel2 vowel3 vowel4 vowel5 vowel6)
+
+define vowel	'ae{i'}io{o"}u{u"}'
+define U	'{i'}iu{u"}'
+
+// the vowel grouping definitions below are used for checking vowel harmony
+define vowel1	'a{i'}ou'		// vowels that can end with suffixes containing 'a'
+define vowel2	'ei{o"}{u"}'		// vowels that can end with suffixes containing 'e'
+define vowel3	'a{i'}'			// vowels that can end with suffixes containing 'i''
+define vowel4	'ei'			// vowels that can end with suffixes containing 'i'
+define vowel5	'ou'			// vowels that can end with suffixes containing 'o' or 'u'
+define vowel6	'{o"}{u"}'		// vowels that can end with suffixes containing 'o"' or 'u"'
+
+externals	( stem )
+
+backwardmode (
+	// checks vowel harmony for possible suffixes,
+	// helps to detect whether the candidate for suffix applies to vowel harmony
+	// this rule is added to prevent over stemming
+	define check_vowel_harmony as (
+		test
+		(
+			(goto vowel)   // if there is a vowel
+			(
+				('a' goto vowel1) or
+				('e' goto vowel2) or
+				('{i'}' goto vowel3) or
+				('i' goto vowel4) or
+				('o' goto vowel5) or
+				('{o"}' goto vowel6) or
+				('u' goto vowel5) or
+				('{u"}' goto vowel6)
+			)
+		)
+	)
+
+	// if the last consonant before suffix is vowel and n then advance and delete
+	// if the last consonant before suffix is non vowel and n do nothing
+	// if the last consonant before suffix is not n then only delete the suffix
+	// assumption: slice beginning is set correctly
+	define mark_suffix_with_optional_n_consonant as (
+		('n' (test vowel))
+		or
+		((not(test 'n')) test(next vowel))
+
+	)
+
+	// if the last consonant before suffix is vowel and s then advance and delete
+	// if the last consonant before suffix is non vowel and s do nothing
+	// if the last consonant before suffix is not s then only delete the suffix
+	// assumption: slice beginning is set correctly
+	define mark_suffix_with_optional_s_consonant as (
+		('s' (test vowel))
+		or
+		((not(test 's')) test(next vowel))
+	)
+
+	// if the last consonant before suffix is vowel and y then advance and delete
+	// if the last consonant before suffix is non vowel and y do nothing
+	// if the last consonant before suffix is not y then only delete the suffix
+	// assumption: slice beginning is set correctly
+	define mark_suffix_with_optional_y_consonant as (
+		('y' (test vowel))
+		or
+		((not(test 'y')) test(next vowel))
+	)
+
+	define mark_suffix_with_optional_U_vowel as (
+		(U (test non-vowel))
+		or
+		((not(test U)) test(next non-vowel))
+
+	)
+
+	define mark_possessives as (
+		among ('m{i'}z' 'miz' 'muz' 'm{u"}z'
+		       'n{i'}z' 'niz' 'nuz' 'n{u"}z' 'm' 'n')
+		(mark_suffix_with_optional_U_vowel)
+	)
+
+	define mark_sU as (
+		check_vowel_harmony
+		U
+		(mark_suffix_with_optional_s_consonant)
+	)
+
+	define mark_lArI as (
+		among ('leri' 'lar{i'}')
+	)
+
+	define mark_yU as (
+		check_vowel_harmony
+		U
+		(mark_suffix_with_optional_y_consonant)
+	)
+
+	define mark_nU as (
+		check_vowel_harmony
+		among ('n{i'}' 'ni' 'nu' 'n{u"}')
+	)
+
+	define mark_nUn as (
+		check_vowel_harmony
+		among ('{i'}n' 'in' 'un' '{u"}n')
+		(mark_suffix_with_optional_n_consonant)
+	)
+
+	define mark_yA as (
+		check_vowel_harmony
+		among('a' 'e')
+		(mark_suffix_with_optional_y_consonant)
+	)
+
+	define mark_nA as (
+		check_vowel_harmony
+		among('na' 'ne')
+	)
+
+	define mark_DA as (
+		check_vowel_harmony
+		among('da' 'de' 'ta' 'te')
+	)
+
+	define mark_ndA as (
+		check_vowel_harmony
+		among('nda' 'nde')
+	)
+
+	define mark_DAn as (
+		check_vowel_harmony
+		among('dan' 'den' 'tan' 'ten')
+	)
+
+	define mark_ndAn as (
+		check_vowel_harmony
+		among('ndan' 'nden')
+	)
+
+	define mark_ylA as (
+		check_vowel_harmony
+		among('la' 'le')
+		(mark_suffix_with_optional_y_consonant)
+	)
+
+	define mark_ki as (
+		'ki'
+	)
+
+	define mark_ncA as (
+		check_vowel_harmony
+		among('ca' 'ce')
+		(mark_suffix_with_optional_n_consonant)
+	)
+
+	define mark_yUm as (
+		check_vowel_harmony
+		among ('{i'}m' 'im' 'um' '{u"}m')
+		(mark_suffix_with_optional_y_consonant)
+	)
+
+	define mark_sUn as (
+		check_vowel_harmony
+		among ('s{i'}n' 'sin' 'sun' 's{u"}n' )
+	)
+
+	define mark_yUz as (
+		check_vowel_harmony
+		among ('{i'}z' 'iz' 'uz' '{u"}z')
+		(mark_suffix_with_optional_y_consonant)
+	)
+
+	define mark_sUnUz as (
+		among ('s{i'}n{i'}z' 'siniz' 'sunuz' 's{u"}n{u"}z')
+	)
+
+	define mark_lAr as (
+		check_vowel_harmony
+		among ('ler' 'lar')
+	)
+
+	define mark_nUz as (
+		check_vowel_harmony
+		among ('n{i'}z' 'niz' 'nuz' 'n{u"}z')
+	)
+
+	define mark_DUr as (
+		check_vowel_harmony
+		among ('t{i'}r' 'tir' 'tur' 't{u"}r' 'd{i'}r' 'dir' 'dur' 'd{u"}r')
+	)
+
+	define mark_cAsInA as (
+		among ('cas{i'}na' 'cesine')
+	)
+
+	define mark_yDU as (
+		check_vowel_harmony
+		among ('t{i'}m' 'tim' 'tum' 't{u"}m' 'd{i'}m' 'dim' 'dum' 'd{u"}m'
+			't{i'}n' 'tin' 'tun' 't{u"}n' 'd{i'}n' 'din' 'dun' 'd{u"}n'
+			't{i'}k' 'tik' 'tuk' 't{u"}k' 'd{i'}k' 'dik' 'duk' 'd{u"}k'
+			't{i'}' 'ti' 'tu' 't{u"}' 'd{i'}' 'di' 'du' 'd{u"}')
+		(mark_suffix_with_optional_y_consonant)
+	)
+
+	// does not fully obey vowel harmony
+	define mark_ysA as (
+		among ('sam' 'san' 'sak' 'sem' 'sen' 'sek' 'sa' 'se')
+		(mark_suffix_with_optional_y_consonant)
+	)
+
+	define mark_ymUs_ as (
+		check_vowel_harmony
+		among ('m{i'}{s,}' 'mi{s,}' 'mu{s,}' 'm{u"}{s,}')
+		(mark_suffix_with_optional_y_consonant)
+	)
+
+	define mark_yken as (
+		'ken' (mark_suffix_with_optional_y_consonant)
+	)
+
+	define stem_nominal_verb_suffixes as (
+		[
+			set continue_stemming_noun_suffixes
+			(mark_ymUs_ or mark_yDU or mark_ysA or mark_yken)
+			or
+			(mark_cAsInA (mark_sUnUz or mark_lAr or mark_yUm or mark_sUn or mark_yUz or true) mark_ymUs_)
+			or
+			(
+				mark_lAr ] delete try([(mark_DUr or mark_yDU or mark_ysA or mark_ymUs_))
+				unset continue_stemming_noun_suffixes
+			)
+			or
+			(mark_nUz (mark_yDU or mark_ysA))
+			or
+			((mark_sUnUz or mark_yUz or mark_sUn or mark_yUm) ] delete try([ mark_ymUs_))
+			or
+			(mark_DUr ] delete try([ (mark_sUnUz or mark_lAr or mark_yUm or mark_sUn or mark_yUz or true) mark_ymUs_))
+		]delete
+	)
+
+	// stems noun suffix chains ending with -ki
+	define stem_suffix_chain_before_ki as (
+		[
+			mark_ki
+			(
+				(mark_DA] delete try([
+					(mark_lAr] delete try(stem_suffix_chain_before_ki))
+					or
+					(mark_possessives] delete try([mark_lAr] delete stem_suffix_chain_before_ki))
+
+				))
+				or
+				(mark_nUn] delete try([
+					(mark_lArI] delete)
+					or
+					([mark_possessives or mark_sU] delete try([mark_lAr] delete stem_suffix_chain_before_ki))
+					or
+					(stem_suffix_chain_before_ki)
+				))
+				or
+				(mark_ndA (
+					(mark_lArI] delete)
+					or
+					((mark_sU] delete try([mark_lAr]delete stem_suffix_chain_before_ki)))
+					or
+					(stem_suffix_chain_before_ki)
+				))
+			)
+	)
+
+	define stem_noun_suffixes as (
+		([mark_lAr] delete try(stem_suffix_chain_before_ki))
+		or
+		([mark_ncA] delete
+			try(
+				([mark_lArI] delete)
+				or
+				([mark_possessives or mark_sU] delete try([mark_lAr] delete stem_suffix_chain_before_ki))
+				or
+				([mark_lAr] delete stem_suffix_chain_before_ki)
+			)
+		)
+		or
+		([(mark_ndA or mark_nA)
+			(
+				(mark_lArI] delete)
+				or
+				(mark_sU] delete try([mark_lAr] delete stem_suffix_chain_before_ki))
+				or
+				(stem_suffix_chain_before_ki)
+			)
+		)
+		or
+		([(mark_ndAn or mark_nU) ((mark_sU ] delete try([mark_lAr] delete stem_suffix_chain_before_ki)) or (mark_lArI)))
+		or
+		( [mark_DAn] delete try ([
+			(
+				(mark_possessives ] delete try([mark_lAr] delete stem_suffix_chain_before_ki))
+				or
+				(mark_lAr] delete try(stem_suffix_chain_before_ki))
+				or
+				(stem_suffix_chain_before_ki)
+			))
+		)
+		or
+		([mark_nUn or mark_ylA] delete
+			try(
+				([mark_lAr] delete stem_suffix_chain_before_ki)
+				or
+				([mark_possessives or mark_sU] delete try([mark_lAr] delete stem_suffix_chain_before_ki))
+				or
+				stem_suffix_chain_before_ki
+			)
+		)
+		or
+		([mark_lArI] delete)
+		or
+		(stem_suffix_chain_before_ki)
+		or
+		([mark_DA or mark_yU or mark_yA] delete try([((mark_possessives] delete try([mark_lAr)) or mark_lAr) ] delete [ stem_suffix_chain_before_ki))
+		or
+		([mark_possessives or mark_sU] delete try([mark_lAr] delete stem_suffix_chain_before_ki))
+	)
+
+	define post_process_last_consonants as (
+		[substring] among (
+			'b' (<- 'p')
+			'c' (<- '{c,}')
+			'd' (<- 't')
+			'{g~}' (<- 'k')
+		)
+	)
+
+	// after stemming if the word ends with 'd' or 'g' most probably last U is overstemmed
+	// like in 'kedim' -> 'ked'
+	// Turkish words don't usually end with 'd' or 'g'
+	// some very well known words are ignored (like 'ad' 'soyad'
+	// appends U to stems ending with d or g, decides which vowel to add
+	// based on the last vowel in the stem
+	define append_U_to_stems_ending_with_d_or_g as (
+		test('d' or 'g')
+		(test((goto vowel) 'a' or '{i'}') <+ '{i'}')
+		or
+		(test((goto vowel) 'e' or 'i') <+ 'i')
+		or
+		(test((goto vowel) 'o' or 'u') <+ 'u')
+		or
+		(test((goto vowel) '{o"}' or '{u"}') <+ '{u"}')
+	)
+
+	define is_reserved_word as (
+		'ad' try 'soy' atlimit
+	)
+)
+
+// Tests if there are more than one syllables
+// In Turkish each vowel indicates a distinct syllable
+define more_than_one_syllable_word as (
+	test (atleast 2 (gopast vowel))
+)
+
+define postlude as (
+	backwards (
+		not(is_reserved_word)
+		do append_U_to_stems_ending_with_d_or_g
+		do post_process_last_consonants
+
+	)
+)
+
+define stem as (
+	(more_than_one_syllable_word)
+	(
+		backwards (
+			do stem_nominal_verb_suffixes
+			continue_stemming_noun_suffixes
+			do stem_noun_suffixes
+		)
+
+	postlude
+	)
+)

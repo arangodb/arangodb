@@ -79,7 +79,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_ARANGO_DOCUMENT_NOT_FOUND, "document not found");
   REG_ERROR(ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "collection or view not found");
   REG_ERROR(ERROR_ARANGO_COLLECTION_PARAMETER_MISSING, "parameter 'collection' not found");
-  REG_ERROR(ERROR_ARANGO_DOCUMENT_HANDLE_BAD, "illegal document handle");
+  REG_ERROR(ERROR_ARANGO_DOCUMENT_HANDLE_BAD, "illegal document identifier");
   REG_ERROR(ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL, "maximal size of journal too small");
   REG_ERROR(ERROR_ARANGO_DUPLICATE_NAME, "duplicate name");
   REG_ERROR(ERROR_ARANGO_ILLEGAL_NAME, "illegal name");
@@ -87,7 +87,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, "unique constraint violated");
   REG_ERROR(ERROR_ARANGO_INDEX_NOT_FOUND, "index not found");
   REG_ERROR(ERROR_ARANGO_CROSS_COLLECTION_REQUEST, "cross collection request not allowed");
-  REG_ERROR(ERROR_ARANGO_INDEX_HANDLE_BAD, "illegal index handle");
+  REG_ERROR(ERROR_ARANGO_INDEX_HANDLE_BAD, "illegal index identifier");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_TOO_LARGE, "document too large");
   REG_ERROR(ERROR_ARANGO_COLLECTION_NOT_UNLOADED, "collection must be unloaded");
   REG_ERROR(ERROR_ARANGO_COLLECTION_TYPE_INVALID, "collection type invalid");
@@ -218,6 +218,8 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_QUERY_USER_WARN, "%s");
   REG_ERROR(ERROR_CURSOR_NOT_FOUND, "cursor not found");
   REG_ERROR(ERROR_CURSOR_BUSY, "cursor is busy");
+  REG_ERROR(ERROR_VALIDATION_FAILED, "validation failed");
+  REG_ERROR(ERROR_VALIDATION_BAD_PARAMETER, "invalid validation parameter");
   REG_ERROR(ERROR_TRANSACTION_INTERNAL, "internal transaction error");
   REG_ERROR(ERROR_TRANSACTION_NESTED, "nested transactions detected");
   REG_ERROR(ERROR_TRANSACTION_UNREGISTERED_COLLECTION, "unregistered collection used in transaction");
@@ -277,6 +279,8 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_GRAPH_INTERNAL_EDGE_COLLECTION_ALREADY_SET, "edge collection already set");
   REG_ERROR(ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST, "malformed orphan list");
   REG_ERROR(ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT, "edge definition collection is a document collection");
+  REG_ERROR(ERROR_GRAPH_COLLECTION_IS_INITIAL, "initial collection is not allowed to be removed manually");
+  REG_ERROR(ERROR_GRAPH_NO_INITIAL_COLLECTION, "no valid initial collection found");
   REG_ERROR(ERROR_SESSION_UNKNOWN, "unknown session");
   REG_ERROR(ERROR_SESSION_EXPIRED, "session expired");
   REG_ERROR(ERROR_SIMPLE_CLIENT_UNKNOWN_ERROR, "unknown client error");
@@ -284,8 +288,6 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_SIMPLE_CLIENT_COULD_NOT_WRITE, "could not write to server");
   REG_ERROR(ERROR_SIMPLE_CLIENT_COULD_NOT_READ, "could not read from server");
   REG_ERROR(ERROR_WAS_ERLAUBE, "was erlaube?!");
-  REG_ERROR(ERROR_COMMUNICATOR_REQUEST_ABORTED, "Request aborted");
-  REG_ERROR(ERROR_COMMUNICATOR_DISABLED, "Communication was disabled");
   REG_ERROR(ERROR_INTERNAL_AQL, "General internal AQL error");
   REG_ERROR(ERROR_WROTE_TOO_FEW_OUTPUT_REGISTERS, "An AQL block wrote too few output registers");
   REG_ERROR(ERROR_WROTE_TOO_MANY_OUTPUT_REGISTERS, "An AQL block wrote too many output registers");
@@ -320,6 +322,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE, "shard key value must be prefixed with the value of the smart join attribute");
   REG_ERROR(ERROR_NO_SMART_JOIN_ATTRIBUTE, "smart join attribute not given or invalid");
   REG_ERROR(ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE, "must not change the value of the smartJoinAttribute");
+  REG_ERROR(ERROR_INVALID_DISJOINT_SMART_EDGE, "non disjoint edge found");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_FAILED, "error during cluster repairs");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY, "not enough (healthy) db servers");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED, "replication factor violated during cluster repairs");
@@ -345,16 +348,17 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_ACTION_OPERATION_UNABORTABLE, "this maintenance action cannot be stopped");
   REG_ERROR(ERROR_ACTION_UNFINISHED, "maintenance action still processing");
   REG_ERROR(ERROR_NO_SUCH_ACTION, "no such maintenance action");
-  REG_ERROR(ERROR_HOT_BACKUP_INTERNAL, " \"internal hot backup error\"");
-  REG_ERROR(ERROR_HOT_RESTORE_INTERNAL, " \"internal hot restore error\"");
-  REG_ERROR(ERROR_BACKUP_TOPOLOGY, " \"backup does not match this topology\"");
-  REG_ERROR(ERROR_NO_SPACE_LEFT_ON_DEVICE, " \"no space left on device\"");
-  REG_ERROR(ERROR_FAILED_TO_UPLOAD_BACKUP, " \"failed to upload hot backup set to remote target\"");
-  REG_ERROR(ERROR_FAILED_TO_DOWNLOAD_BACKUP, " \"failed to download hot backup set from remote source\"");
-  REG_ERROR(ERROR_NO_SUCH_HOT_BACKUP, " \"no such hot backup set can be found");
-  REG_ERROR(ERROR_REMOTE_REPOSITORY_CONFIG_BAD, " \"remote hotback repository configuration error\"");
-  REG_ERROR(ERROR_LOCAL_LOCK_FAILED, " \"some db servers cannot be reached for transaction locks\"");
-  REG_ERROR(ERROR_LOCAL_LOCK_RETRY, " \"some db servers cannot be reached for transaction locks\"");
-  REG_ERROR(ERROR_HOT_BACKUP_CONFLICT, " \"hot backup conflict\"");
-  REG_ERROR(ERROR_HOT_BACKUP_DBSERVERS_AWOL, " \"hot backup not all db servers reachable\"");
+  REG_ERROR(ERROR_HOT_BACKUP_INTERNAL, "internal hot backup error");
+  REG_ERROR(ERROR_HOT_RESTORE_INTERNAL, "internal hot restore error");
+  REG_ERROR(ERROR_BACKUP_TOPOLOGY, "backup does not match this topology");
+  REG_ERROR(ERROR_NO_SPACE_LEFT_ON_DEVICE, "no space left on device");
+  REG_ERROR(ERROR_FAILED_TO_UPLOAD_BACKUP, "failed to upload hot backup set to remote target");
+  REG_ERROR(ERROR_FAILED_TO_DOWNLOAD_BACKUP, "failed to download hot backup set from remote source");
+  REG_ERROR(ERROR_NO_SUCH_HOT_BACKUP, "no such hot backup set can be found");
+  REG_ERROR(ERROR_REMOTE_REPOSITORY_CONFIG_BAD, "remote hotback repository configuration error");
+  REG_ERROR(ERROR_LOCAL_LOCK_FAILED, "some db servers cannot be reached for transaction locks");
+  REG_ERROR(ERROR_LOCAL_LOCK_RETRY, "some db servers cannot be reached for transaction locks");
+  REG_ERROR(ERROR_HOT_BACKUP_CONFLICT, "hot backup conflict");
+  REG_ERROR(ERROR_HOT_BACKUP_DBSERVERS_AWOL, "hot backup not all db servers reachable");
+  REG_ERROR(ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN, "analyzers in plan could not be modified");
 }

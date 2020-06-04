@@ -24,8 +24,9 @@
 #define ARANGODB_REST_SERVER_SERVER_ID_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/debugging.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "VocBase/voc-types.h"
+#include "VocBase/Identifiers/ServerId.h"
 
 namespace arangodb {
 
@@ -35,13 +36,13 @@ class ServerIdFeature final : public application_features::ApplicationFeature {
 
   void start() override final;
 
-  static TRI_server_id_t getId() {
-    TRI_ASSERT(SERVERID != 0);
+  static ServerId getId() {
+    TRI_ASSERT(SERVERID.isSet());
     return SERVERID;
   }
 
   // fake the server id from the outside. used for testing only
-  static void setId(TRI_server_id_t serverId) { SERVERID = serverId; }
+  static void setId(ServerId serverId) { SERVERID = serverId; }
 
  private:
   /// @brief generates a new server id
@@ -58,7 +59,7 @@ class ServerIdFeature final : public application_features::ApplicationFeature {
 
   std::string _idFilename;
 
-  static TRI_server_id_t SERVERID;
+  static ServerId SERVERID;
 };
 
 }  // namespace arangodb

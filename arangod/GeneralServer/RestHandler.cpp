@@ -23,10 +23,13 @@
 
 #include "RestHandler.h"
 
+#include <fuerte/jwt.h>
 #include <velocypack/Exception.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/dtrace-wrapper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
@@ -34,6 +37,7 @@
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
+#include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Rest/GeneralRequest.h"
@@ -54,21 +58,16 @@ thread_local RestHandler const* RestHandler::CURRENT_HANDLER = nullptr;
 
 RestHandler::RestHandler(application_features::ApplicationServer& server,
                          GeneralRequest* request, GeneralResponse* response)
-    : _canceled(false),
+    :
       _request(request),
       _response(response),
       _server(server),
-      _statistics(nullptr),
+      _statistics(),
+      _handlerId(0),
       _state(HandlerState::PREPARE),
-      _handlerId(0) {}
+      _canceled(false) {}
 
-RestHandler::~RestHandler() {
-  RequestStatistics* stat = _statistics.exchange(nullptr);
-
-  if (stat != nullptr) {
-    stat->release();
-  }
-}
+RestHandler::~RestHandler() = default;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -94,11 +93,12 @@ uint64_t RestHandler::messageId() const {
   return messageId;
 }
 
-void RestHandler::setStatistics(RequestStatistics* stat) {
-  RequestStatistics* old = _statistics.exchange(stat);
-  if (old != nullptr) {
-    old->release();
-  }
+RequestStatistics::Item&& RestHandler::stealStatistics() {
+  return std::move(_statistics);
+}
+
+void RestHandler::setStatistics(RequestStatistics::Item&& stat) {
+  _statistics = std::move(stat);
 }
 
 futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
@@ -107,7 +107,20 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
     return futures::makeFuture(Result());
   }
 
-  std::string serverId = forwardingTarget();
+  ResultT forwardResult = forwardingTarget();
+  if (forwardResult.fail()) {
+    return futures::makeFuture(forwardResult.result());
+  }
+
+  auto forwardContent = forwardResult.get();
+  std::string serverId = std::get<0>(forwardContent);
+  bool removeHeader = std::get<1>(forwardContent);
+
+  if (removeHeader) {
+    _request->removeHeader(StaticStrings::Authorization);
+    _request->setUser("");
+  }
+
   if (serverId.empty()) {
     // no need to actually forward
     return futures::makeFuture(Result());
@@ -135,11 +148,30 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   std::map<std::string, std::string> headers{_request->headers().begin(),
                                              _request->headers().end()};
 
+  if (headers.find(StaticStrings::Authorization) == headers.end()) {
+    // No authorization header is set, this is in particular the case if this
+    // request is coming in with VelocyStream, where the authentication happens
+    // once at the beginning of the connection and not with every request.
+    // In this case, we have to produce a proper JWT token as authorization:
+    auto auth = AuthenticationFeature::instance();
+    if (auth != nullptr && auth->isActive()) {
+      // when in superuser mode, username is empty
+      // in this case ClusterComm will add the default superuser token
+      std::string const& username = _request->user();
+      if (!username.empty()) {
+        headers.emplace(StaticStrings::Authorization,
+                        "bearer " + fuerte::jwt::generateUserToken(auth->tokenCache().jwtSecret(), username));
+      }
+    }
+  }
+
   network::RequestOptions options;
   options.database = dbname;
-  options.timeout = network::Timeout(300);
+  options.timeout = network::Timeout(900);
+  // if the type is unset JSON is used
   options.contentType = rest::contentTypeToString(_request->contentType());
   options.acceptType = rest::contentTypeToString(_request->contentTypeResponse());
+    
   for (auto const& i : _request->values()) {
     options.param(i.first, i.second);
   }
@@ -164,7 +196,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
 
     resetResponse(static_cast<rest::ResponseCode>(response.response->statusCode()));
     _response->setContentType(fuerte::v1::to_string(response.response->contentType()));
-
+    
     if (!useVst) {
       HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
       if (_response == nullptr) {
@@ -173,16 +205,21 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
       }
       httpResponse->body() = response.response->payloadAsString();
     } else {
-      _response->setPayload(std::move(*response.response->stealPayload()), true);
+      _response->setPayload(std::move(*response.response->stealPayload()));
     }
     
 
     auto const& resultHeaders = response.response->messageHeader().meta();
     for (auto const& it : resultHeaders) {
+      if (it.first == "http/1.1") {
+        // never forward this header, as the HTTP response code was already set
+        // via "resetResponse" above
+        continue;
+      }
       _response->setHeader(it.first, it.second);
     }
-    _response->setHeader(StaticStrings::RequestForwardedTo, serverId);
-
+    _response->setHeaderNC(StaticStrings::RequestForwardedTo, serverId);
+    
     return Result();
   };
   return std::move(future).thenValue(cb);
@@ -198,7 +235,7 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept {
     LOG_TOPIC("11929", WARN, arangodb::Logger::FIXME)
     << "caught exception in " << name() << ": " << ex.what();
 #endif
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    _statistics.SET_EXECUTE_ERROR();
     handleError(ex);
   } catch (arangodb::velocypack::Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -206,7 +243,7 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept {
     << "caught velocypack exception in " << name() << ": "
     << ex.what();
 #endif
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    _statistics.SET_EXECUTE_ERROR();
     bool const isParseError =
     (ex.errorCode() == arangodb::velocypack::Exception::ParseError ||
      ex.errorCode() == arangodb::velocypack::Exception::UnexpectedControlCharacter);
@@ -219,7 +256,7 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept {
     << "caught memory exception in " << name() << ": "
     << ex.what();
 #endif
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (std::exception const& ex) {
@@ -227,14 +264,14 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept {
     LOG_TOPIC("252ea", WARN, arangodb::Logger::FIXME)
     << "caught exception in " << name() << ": " << ex.what();
 #endif
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (...) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("f729d", WARN, arangodb::Logger::FIXME) << "caught unknown exception in " << name();
 #endif
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
   }
@@ -255,7 +292,7 @@ void RestHandler::runHandlerStateMachine() {
         if (_state == HandlerState::PAUSED) {
           shutdownExecute(false);
           LOG_TOPIC("23a33", DEBUG, Logger::COMMUNICATION)
-              << "Pausing rest handler execution";
+              << "Pausing rest handler execution " << this;
           return;  // stop state machine
         }
         break;
@@ -266,7 +303,7 @@ void RestHandler::runHandlerStateMachine() {
         if (_state == HandlerState::PAUSED) {
           shutdownExecute(/*isFinalized*/false);
           LOG_TOPIC("23727", DEBUG, Logger::COMMUNICATION)
-              << "Pausing rest handler execution";
+              << "Pausing rest handler execution " << this;
           return;  // stop state machine
         }
         break;
@@ -274,13 +311,19 @@ void RestHandler::runHandlerStateMachine() {
 
       case HandlerState::PAUSED:
         LOG_TOPIC("ae26f", DEBUG, Logger::COMMUNICATION)
-            << "Resuming rest handler execution";
+            << "Resuming rest handler execution " << this;
         _state = HandlerState::CONTINUED;
         break;
 
       case HandlerState::FINALIZE:
-        RequestStatistics::SET_REQUEST_END(_statistics);
-        shutdownEngine();
+        _statistics.SET_REQUEST_END();
+        RestHandler::CURRENT_HANDLER = this;
+
+        // shutdownExecute is noexcept
+        shutdownExecute(true); // may not be moved down
+
+        RestHandler::CURRENT_HANDLER = nullptr;
+        _state = HandlerState::DONE;
         
         // compress response if required
         compressResponse();
@@ -289,7 +332,7 @@ void RestHandler::runHandlerStateMachine() {
         break;
 
       case HandlerState::FAILED:
-        RequestStatistics::SET_REQUEST_END(_statistics);
+        _statistics.SET_REQUEST_END();
         // Callback may stealStatistics!
         _callback(this);
         // No need to finalize here!
@@ -307,11 +350,11 @@ void RestHandler::runHandlerStateMachine() {
 
 void RestHandler::prepareEngine() {
   // set end immediately so we do not get netative statistics
-  RequestStatistics::SET_REQUEST_START_END(_statistics);
+  _statistics.SET_REQUEST_START_END();
 
   if (_canceled) {
     _state = HandlerState::FAILED;
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    _statistics.SET_EXECUTE_ERROR();
 
     Exception err(TRI_ERROR_REQUEST_CANCELED,
                   "request has been canceled by user", __FILE__, __LINE__);
@@ -324,14 +367,14 @@ void RestHandler::prepareEngine() {
     _state = HandlerState::EXECUTE;
     return;
   } catch (Exception const& ex) {
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    _statistics.SET_EXECUTE_ERROR();
     handleError(ex);
   } catch (std::exception const& ex) {
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (...) {
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
   }
@@ -339,28 +382,19 @@ void RestHandler::prepareEngine() {
   _state = HandlerState::FAILED;
 }
 
-/// Execute the rest handler state machine
-void RestHandler::continueHandlerExecution() {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  {
-    RECURSIVE_MUTEX_LOCKER(_executionMutex, _executionMutexOwner);
-    TRI_ASSERT(_state == HandlerState::PAUSED);
+/// Execute the rest handler state machine. Retry the wakeup,
+/// returns true if _state == PAUSED, false otherwise
+bool RestHandler::wakeupHandler() {
+  RECURSIVE_MUTEX_LOCKER(_executionMutex, _executionMutexOwner);
+  if (_state == HandlerState::PAUSED) {
+    runHandlerStateMachine(); // may change _state
+    return _state == HandlerState::PAUSED;
   }
-#endif
-  runHandlerStateMachine();
-}
-
-void RestHandler::shutdownEngine() {
-  RestHandler::CURRENT_HANDLER = this;
-
-  // shutdownExecute is noexcept
-  shutdownExecute(true);
-
-  RestHandler::CURRENT_HANDLER = nullptr;
-  _state = HandlerState::DONE;
+  return false;
 }
 
 void RestHandler::executeEngine(bool isContinue) {
+  DTRACE_PROBE1(arangod, RestHandlerExecuteEngine, this);
   ExecContext* exec = static_cast<ExecContext*>(_request->requestContext());
   ExecContextScope scope(exec);
 
@@ -398,7 +432,7 @@ void RestHandler::executeEngine(bool isContinue) {
     LOG_TOPIC("11928", WARN, arangodb::Logger::FIXME)
         << "caught exception in " << name() << ": " << ex.what();
 #endif
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    _statistics.SET_EXECUTE_ERROR();
     handleError(ex);
   } catch (arangodb::velocypack::Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -406,7 +440,7 @@ void RestHandler::executeEngine(bool isContinue) {
         << "caught velocypack exception in " << name() << ": "
         << ex.what();
 #endif
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    _statistics.SET_EXECUTE_ERROR();
     bool const isParseError =
         (ex.errorCode() == arangodb::velocypack::Exception::ParseError ||
          ex.errorCode() == arangodb::velocypack::Exception::UnexpectedControlCharacter);
@@ -419,7 +453,7 @@ void RestHandler::executeEngine(bool isContinue) {
         << "caught memory exception in " << name() << ": "
         << ex.what();
 #endif
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (std::exception const& ex) {
@@ -427,14 +461,14 @@ void RestHandler::executeEngine(bool isContinue) {
     LOG_TOPIC("252e9", WARN, arangodb::Logger::FIXME)
         << "caught exception in " << name() << ": " << ex.what();
 #endif
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (...) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("f729c", WARN, arangodb::Logger::FIXME) << "caught unknown exception in " << name();
 #endif
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
   }
@@ -465,7 +499,7 @@ void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
       if (_request != nullptr) {
         _response->setContentType(_request->contentTypeResponse());
       }
-      _response->setPayload(std::move(buffer), true, options,
+      _response->setPayload(std::move(buffer), options,
                             /*resolveExternals*/false);
     } catch (...) {
       // exception while generating error
@@ -479,7 +513,7 @@ void RestHandler::compressResponse() {
     switch (_request->acceptEncoding()) {
       case rest::EncodingType::DEFLATE:
         _response->deflate();
-        _response->setHeader(StaticStrings::ContentEncoding, StaticStrings::EncodingDeflate);
+        _response->setHeaderNC(StaticStrings::ContentEncoding, StaticStrings::EncodingDeflate);
         break;
 
       default:

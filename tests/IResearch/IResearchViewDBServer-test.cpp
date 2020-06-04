@@ -33,7 +33,6 @@
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
 #include "Basics/files.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
@@ -43,9 +42,9 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchLinkMeta.h"
-#include "IResearch/IResearchMMFilesLink.h"
 #include "IResearch/IResearchView.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Transaction/Methods.h"
@@ -363,9 +362,9 @@ TEST_F(IResearchViewDBServerTest, test_open) {
 
     // ensure we have shard view in vocbase
     struct Link : public arangodb::iresearch::IResearchLink {
-      Link(TRI_idx_iid_t id, arangodb::LogicalCollection& col)
+      Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
           : IResearchLink(id, col) {}
-    } link(42, *logicalCollection);
+    } link(arangodb::IndexId{42}, *logicalCollection);
     auto asyncLinkPtr =
         std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
 
@@ -529,7 +528,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
       for (size_t i = 1; i <= 12; ++i) {
         auto doc = arangodb::velocypack::Parser::fromJson(
             std::string("{ \"key\": ") + std::to_string(i) + " }");
-        logicalCollection->insert(&trx, doc->slice(), inserted, options, false);
+        logicalCollection->insert(&trx, doc->slice(), inserted, options);
       }
 
       EXPECT_TRUE(trx.commit().ok());
@@ -564,7 +563,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
       for (size_t i = 13; i <= 24; ++i) {
         auto doc = arangodb::velocypack::Parser::fromJson(
             std::string("{ \"key\": ") + std::to_string(i) + " }");
-        logicalCollection->insert(&trx, doc->slice(), inserted, options, false);
+        logicalCollection->insert(&trx, doc->slice(), inserted, options);
       }
 
       EXPECT_TRUE(trx.commit().ok());
@@ -610,7 +609,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     static std::vector<std::string> const EMPTY;
     arangodb::transaction::Options options;
 
-    arangodb::aql::Variable variable("testVariable", 0);
+    arangodb::aql::Variable variable("testVariable", 0, false);
 
     // test insert + query
     for (size_t i = 1; i < 200; ++i) {
@@ -692,9 +691,9 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
     }
 
     struct Link : public arangodb::iresearch::IResearchLink {
-      Link(TRI_idx_iid_t id, arangodb::LogicalCollection& col)
+      Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
           : IResearchLink(id, col) {}
-    } link(42, *logicalCollection);
+    } link(arangodb::IndexId{42}, *logicalCollection);
     auto asyncLinkPtr =
         std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
     EXPECT_TRUE(impl->link(asyncLinkPtr).ok());
@@ -720,9 +719,9 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
 
     // ensure we have shard view in vocbase
     struct Link : public arangodb::iresearch::IResearchLink {
-      Link(TRI_idx_iid_t id, arangodb::LogicalCollection& col)
+      Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
           : IResearchLink(id, col) {}
-    } link(42, *logicalCollection);
+    } link(arangodb::IndexId{42}, *logicalCollection);
     auto asyncLinkPtr =
         std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
     EXPECT_TRUE(impl->link(asyncLinkPtr).ok());
@@ -791,7 +790,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
   {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"unusedKey\": "
-        "\"unusedValue\" }");
+        "\"unusedValue\", \"storedValues\":[[], [\"\"], [\"\"], { \"fields\":[\"test.t\"], \"compression\":\"none\"}, [\"a.a\", \"b.b\"]] }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     arangodb::LogicalView::ptr wiew;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
@@ -807,7 +806,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
     EXPECT_TRUE(wiew->properties(builder, arangodb::LogicalDataSource::Serialization::Properties).ok());
     builder.close();
     auto slice = builder.slice();
-    EXPECT_EQ(13U, slice.length());
+    EXPECT_EQ(15, slice.length());
     EXPECT_TRUE((slice.hasKey("globallyUniqueId") &&
                  slice.get("globallyUniqueId").isString() &&
                  false == slice.get("globallyUniqueId").copyString().empty()));
@@ -818,13 +817,16 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
     EXPECT_TRUE((slice.hasKey("type") && slice.get("type").isString() &&
                  arangodb::iresearch::DATA_SOURCE_TYPE.name() ==
                      slice.get("type").copyString()));
+    auto expectedStoredValue = arangodb::velocypack::Parser::fromJson(
+      "[{ \"fields\":[\"test.t\"], \"compression\":\"none\"}, {\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"lz4\"}]");
+    EXPECT_TRUE(arangodb::basics::VelocyPackHelper::equal(expectedStoredValue->slice(), slice.get("storedValues"), true));
   }
 
   // persistence
   {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"unusedKey\": "
-        "\"unusedValue\" }");
+        "\"unusedValue\", \"storedValues\":[[], [\"\"], [\"\"], { \"fields\":[\"test.t\"], \"compression\":\"none\"}, [\"a.a\", \"b.b\"]] }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     arangodb::LogicalView::ptr wiew;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
@@ -840,7 +842,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
     EXPECT_TRUE(wiew->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok());
     builder.close();
     auto slice = builder.slice();
-    EXPECT_EQ(17, slice.length());
+    EXPECT_EQ(19, slice.length());
     EXPECT_TRUE(slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
                  false == slice.get("deleted").getBoolean());
     EXPECT_TRUE(slice.hasKey("globallyUniqueId") &&
@@ -863,10 +865,17 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
     EXPECT_TRUE(slice.hasKey("version") && slice.get("version").isNumber());
     EXPECT_TRUE(slice.hasKey("consolidationPolicy") && slice.get("consolidationPolicy").isObject());
     EXPECT_TRUE(slice.hasKey("primarySort") && slice.get("primarySort").isArray());
+    auto tmpSlice = slice.get("primarySortCompression");
+    EXPECT_TRUE(tmpSlice.isString());
+    EXPECT_EQ(std::string("lz4"), tmpSlice.copyString());
     EXPECT_TRUE(slice.hasKey("writebufferActive") && slice.get("writebufferActive").isNumber());
     EXPECT_TRUE(slice.hasKey("writebufferIdle") && slice.get("writebufferIdle").isNumber());
     EXPECT_TRUE(slice.hasKey("writebufferSizeMax") && slice.get("writebufferSizeMax").isNumber());
     EXPECT_TRUE(slice.hasKey("collections") && slice.get("collections").isArray());
+    EXPECT_TRUE(slice.hasKey("storedValues") && 2 == slice.get("storedValues").length());
+    auto expectedStoredValue = arangodb::velocypack::Parser::fromJson(
+      "[{ \"fields\":[\"test.t\"], \"compression\":\"none\"}, {\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"lz4\"}]");
+    EXPECT_TRUE(arangodb::basics::VelocyPackHelper::equal(expectedStoredValue->slice(), slice.get("storedValues"), true));
   }
 }
 
@@ -1023,7 +1032,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(13U, slice.length());
+      EXPECT_EQ(15, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1050,7 +1059,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(13U, slice.length());
+      EXPECT_EQ(15, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1076,7 +1085,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(13U, slice.length());
+      EXPECT_EQ(15, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1097,7 +1106,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(17U, slice.length());
+      EXPECT_EQ(19, slice.length());
       EXPECT_TRUE((slice.hasKey("collections") && slice.get("collections").isArray() &&
                    1 == slice.get("collections").length()));
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
@@ -1139,7 +1148,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(13U, slice.length());
+      EXPECT_EQ(15, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1166,7 +1175,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(13U, slice.length());
+      EXPECT_EQ(15, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    2 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1192,7 +1201,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(13U, slice.length());
+      EXPECT_EQ(15, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    2 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1213,7 +1222,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(17U, slice.length());
+      EXPECT_EQ(19, slice.length());
       EXPECT_TRUE((slice.hasKey("collections") && slice.get("collections").isArray() &&
                    1 == slice.get("collections").length()));
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
@@ -1266,7 +1275,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(13U, slice.length());
+      EXPECT_EQ(15, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1293,7 +1302,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(13U, slice.length());
+      EXPECT_EQ(15, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1314,7 +1323,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(13U, slice.length());
+      EXPECT_EQ(15, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1335,7 +1344,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(17U, slice.length());
+      EXPECT_EQ(19, slice.length());
       EXPECT_TRUE((slice.hasKey("collections") && slice.get("collections").isArray() &&
                    1 == slice.get("collections").length()));
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
@@ -1392,7 +1401,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(13U, slice.length());
+      EXPECT_EQ(15, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1419,7 +1428,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(13U, slice.length());
+      EXPECT_EQ(15, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    2 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1440,7 +1449,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(13U, slice.length());
+      EXPECT_EQ(15, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    2 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1461,7 +1470,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(17U, slice.length());
+      EXPECT_EQ(19, slice.length());
       EXPECT_TRUE((slice.hasKey("collections") && slice.get("collections").isArray() &&
                    2 == slice.get("collections").length()));  // list of links is not modified after link drop
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
@@ -1517,9 +1526,9 @@ TEST_F(IResearchViewDBServerTest, test_visitCollections) {
 
     // ensure we have shard view in vocbase
     struct Link : public arangodb::iresearch::IResearchLink {
-      Link(TRI_idx_iid_t id, arangodb::LogicalCollection& col)
+      Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
           : IResearchLink(id, col) {}
-    } link(42, *logicalCollection);
+    } link(arangodb::IndexId{42}, *logicalCollection);
     auto asyncLinkPtr =
         std::make_shared<arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
     EXPECT_TRUE(impl->link(asyncLinkPtr).ok());

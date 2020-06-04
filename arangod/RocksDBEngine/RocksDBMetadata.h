@@ -71,15 +71,28 @@ struct RocksDBMetadata final {
   /**
    * @brief Place a blocker to allow proper commit/serialize semantics
    *
-   * Should be called immediately prior to internal RocksDB commit. If the
-   * commit succeeds, any inserts/removals should be buffered, then the blocker
-   * removed; otherwise simply remove the blocker.
+   * Should be called immediately prior to beginning an internal trx. If the
+   * trx commit succeeds, any inserts/removals should be buffered, then the
+   * blocker updated (intermediate) or removed (final); otherwise simply remove
+   * the blocker.
    *
    * @param  trxId The identifier for the active transaction
    * @param  seq   The sequence number immediately prior to call
    * @return       May return error if we fail to allocate and place blocker
    */
   Result placeBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumber seq);
+
+  /**
+   * @brief Update a blocker to allow proper commit/serialize semantics
+   *
+   * Should be called after initializing an internal trx.
+   *
+   * @param  trxId The identifier for the active transaction (should match input
+   *               to earlier `placeBlocker` call)
+   * @param  seq   The sequence number from the internal snapshot
+   * @return       May return error if we fail to allocate and place blocker
+   */
+  Result updateBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumber seq);
 
   /**
    * @brief Removes an existing transaction blocker
@@ -96,8 +109,6 @@ struct RocksDBMetadata final {
   /// @brief returns the largest safe seq to squash updates against
   rocksdb::SequenceNumber committableSeq(rocksdb::SequenceNumber maxCommitSeq) const;
 
-  /// @brief get the current count
-  DocCount loadCount();
   /// @brief get the current count, ONLY use in recovery
   DocCount& countUnsafe() { return _count; }
 
@@ -107,7 +118,7 @@ struct RocksDBMetadata final {
   /// @brief serialize the collection metadata
   arangodb::Result serializeMeta(rocksdb::WriteBatch&, LogicalCollection&,
                                  bool force, arangodb::velocypack::Builder&,
-                                 rocksdb::SequenceNumber& appliedSeq);
+                                 rocksdb::SequenceNumber& appliedSeq, std::string& output);
 
   /// @brief deserialize collection metadata, only called on startup
   arangodb::Result deserializeMeta(rocksdb::DB*, LogicalCollection&);
@@ -136,7 +147,7 @@ public:
 
  private:
   /// @brief apply counter adjustments, only call from sync thread
-  rocksdb::SequenceNumber applyAdjustments(rocksdb::SequenceNumber commitSeq, bool& didWork);
+  bool applyAdjustments(rocksdb::SequenceNumber commitSeq);
 
  private:
   // TODO we should probably use flat_map or abseils Swiss Tables

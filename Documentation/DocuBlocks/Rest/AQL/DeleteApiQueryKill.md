@@ -26,4 +26,3 @@ The server will respond with *HTTP 400* in case of a malformed request.
 The server will respond with *HTTP 404* when no query with the specified
 id was found.
 @endDocuBlock
-

@@ -24,8 +24,11 @@
 #ifndef ARANGODB_BASICS_MEMORY__MAP_H
 #define ARANGODB_BASICS_MEMORY__MAP_H 1
 
-#include "ApplicationFeatures/PageSizeFeature.h"
 #include "Basics/Common.h"
+#include "Basics/PageSize.h"
+#include "Basics/operating-system.h"
+
+#include <cstdint>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapper macro for anonymous memory mapping
@@ -105,7 +108,7 @@ int TRI_MMFileUnlock(void* memoryAddress, size_t numOfBytes);
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline int TRI_MSync(int fd, char const* begin, char const* end) {
-  size_t pageSize = arangodb::PageSizeFeature::getPageSize();
+  size_t pageSize = arangodb::PageSize::getValue();
   uintptr_t p = (uintptr_t)begin;
   uintptr_t g = (uintptr_t)pageSize;
 

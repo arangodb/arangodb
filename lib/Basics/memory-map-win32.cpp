@@ -26,6 +26,7 @@
 #ifdef TRI_HAVE_WIN32_MMAP
 
 #include "Basics/tri-strings.h"
+#include "Basics/voc-errors.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"

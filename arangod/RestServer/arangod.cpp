@@ -28,6 +28,7 @@
 
 #include "Actions/ActionFeature.h"
 #include "Agency/AgencyFeature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/DaemonFeature.h"
@@ -37,7 +38,6 @@
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
-#include "ApplicationFeatures/PageSizeFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
@@ -49,11 +49,14 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/CrashHandler.h"
 #include "Basics/FileUtils.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterUpgradeFeature.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ReplicationTimeoutFeature.h"
+#include "Cluster/ServerState.h"
 #include "FeaturePhases/AgencyFeaturePhase.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
@@ -67,10 +70,10 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "GeneralServer/SslServerFeature.h"
-#include "Logger/LoggerBufferFeature.h"
+#include "Logger/LogBufferFeature.h"
 #include "Logger/LoggerFeature.h"
-#include "Pregel/PregelFeature.h"
 #include "Network/NetworkFeature.h"
+#include "Pregel/PregelFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
 #include "Replication/ReplicationFeature.h"
@@ -88,12 +91,12 @@
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/LanguageCheckFeature.h"
 #include "RestServer/LockfileFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ScriptFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/TtlFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -122,27 +125,26 @@
 
 // storage engines
 #include "ClusterEngine/ClusterEngine.h"
-#include "MMFiles/MMFilesEngine.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 
 #ifdef _WIN32
 #include <iostream>
 #endif
 
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 
 static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
   try {
-    context.installSegv();
-    context.runStartupChecks();
-
+    CrashHandler::installCrashHandler();
     std::string name = context.binaryName();
 
-    auto options = std::make_shared<options::ProgramOptions>(
+    auto options = std::make_shared<arangodb::options::ProgramOptions>(
         argv[0], "Usage: " + name + " [<options>]", "For more information use:", SBIN_DIRECTORY);
 
     ApplicationServer server(options, SBIN_DIRECTORY);
+    ServerState state(server);
 
     std::vector<std::type_index> nonServerFeatures = {
         std::type_index(typeid(ActionFeature)),
@@ -153,7 +155,8 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         std::type_index(typeid(GeneralServerFeature)),
         std::type_index(typeid(GreetingsFeature)),
         std::type_index(typeid(HttpEndpointProvider)),
-        std::type_index(typeid(LoggerBufferFeature)),
+        std::type_index(typeid(LogBufferFeature)),
+        std::type_index(typeid(pregel::PregelFeature)),
         std::type_index(typeid(ServerFeature)),
         std::type_index(typeid(SslServerFeature)),
         std::type_index(typeid(StatisticsFeature)),
@@ -183,6 +186,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<CacheManagerFeature>();
     server.addFeature<CheckVersionFeature>(&ret, nonServerFeatures);
     server.addFeature<ClusterFeature>();
+    server.addFeature<ClusterUpgradeFeature>();
     server.addFeature<ConfigFeature>(name);
     server.addFeature<ConsoleFeature>();
     server.addFeature<DatabaseFeature>();
@@ -201,13 +205,13 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<LanguageCheckFeature>();
     server.addFeature<LanguageFeature>();
     server.addFeature<LockfileFeature>();
-    server.addFeature<LoggerBufferFeature>();
+    server.addFeature<LogBufferFeature>();
     server.addFeature<LoggerFeature>(true);
     server.addFeature<MaintenanceFeature>();
     server.addFeature<MaxMapCountFeature>();
+    server.addFeature<MetricsFeature>();
     server.addFeature<NetworkFeature>();
     server.addFeature<NonceFeature>();
-    server.addFeature<PageSizeFeature>();
     server.addFeature<PrivilegeFeature>();
     server.addFeature<QueryRegistryFeature>();
     server.addFeature<RandomFeature>();
@@ -228,7 +232,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<StorageEngineFeature>();
     server.addFeature<SystemDatabaseFeature>();
     server.addFeature<TempFeature>(name);
-    server.addFeature<TraverserEngineRegistryFeature>();
     server.addFeature<TtlFeature>();
     server.addFeature<UpgradeFeature>(&ret, nonServerFeatures);
     server.addFeature<V8DealerFeature>();
@@ -261,7 +264,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
 
     // storage engines
     server.addFeature<ClusterEngine>();
-    server.addFeature<MMFilesEngine>();
     server.addFeature<RocksDBEngine>();
 
     try {

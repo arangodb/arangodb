@@ -23,21 +23,27 @@
 
 #include "RestStatusHandler.h"
 
-#include "Agency/AgencyComm.h"
-#include "Agency/AgencyFeature.h"
-#include "Agency/Agent.h"
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Cluster/ServerState.h"
-#include "GeneralServer/ServerSecurityFeature.h"
-#include "Rest/Version.h"
-#include "RestServer/ServerFeature.h"
-
 #if defined(TRI_HAVE_POSIX_THREADS)
 #include <unistd.h>
 #endif
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include "Agency/AgencyComm.h"
+#include "Agency/AgencyFeature.h"
+#include "Agency/Agent.h"
+#include "Agency/AsyncAgencyComm.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StringBuffer.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ServerState.h"
+#include "GeneralServer/ServerSecurityFeature.h"
+#include "Rest/Version.h"
+#include "RestServer/ServerFeature.h"
+#include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -52,15 +58,22 @@ RestStatusHandler::RestStatusHandler(application_features::ApplicationServer& se
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestStatusHandler::execute() {
-  auto& server = application_features::ApplicationServer::server();
-  ServerSecurityFeature& security = server.getFeature<ServerSecurityFeature>();
+  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
 
   if (!security.canAccessHardenedApi()) {
     // dont leak information about server internals here
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN); 
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return RestStatus::DONE;
   }
 
+  if (_request->parsedValue("overview", false)) {
+    return executeOverview();
+  } else {
+    return executeStandard(security);
+  }
+}
+
+RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
   result.add("server", VPackValue("arango"));
@@ -74,9 +87,10 @@ RestStatus RestStatusHandler::execute() {
   result.add("license", VPackValue("community"));
 #endif
 
-  auto& serverFeature = server.getFeature<ServerFeature>();
+  auto& serverFeature = server().getFeature<ServerFeature>();
   result.add("mode", VPackValue(serverFeature.operationModeString()));  // to be deprecated - 3.3 compat
   result.add("operationMode", VPackValue(serverFeature.operationModeString()));
+  result.add("foxxApi", VPackValue(!security.isFoxxApiDisabled()));
 
   std::string host = ServerState::instance()->getHost();
 
@@ -138,7 +152,7 @@ RestStatus RestStatusHandler::execute() {
       result.close();
     }
 
-    auto manager = AgencyCommManager::MANAGER.get();
+    auto manager = AsyncAgencyCommManager::INSTANCE.get();
 
     if (manager != nullptr) {
       result.add("agency", VPackValue(VPackValueType::Object));
@@ -147,7 +161,7 @@ RestStatus RestStatusHandler::execute() {
         result.add("agencyComm", VPackValue(VPackValueType::Object));
         result.add("endpoints", VPackValue(VPackValueType::Array));
 
-        for (auto ep : manager->endpoints()) {
+        for (auto const& ep : manager->endpoints()) {
           result.add(VPackValue(ep));
         }
 
@@ -157,6 +171,97 @@ RestStatus RestStatusHandler::execute() {
 
       result.close();
     }
+  }
+
+  result.close();
+  generateResult(rest::ResponseCode::OK, result.slice());
+  return RestStatus::DONE;
+}
+
+RestStatus RestStatusHandler::executeOverview() {
+  VPackBuilder result;
+
+  result.add(VPackValue(VPackValueType::Object));
+  result.add("version", VPackValue(ARANGODB_VERSION));
+  result.add("platform", VPackValue(TRI_PLATFORM));
+
+#ifdef USE_ENTERPRISE
+  result.add("license", VPackValue("enterprise"));
+#else
+  result.add("license", VPackValue("community"));
+#endif
+
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  result.add("engine", VPackValue(engine->typeName()));
+
+  StringBuffer buffer;
+
+  buffer.appendText("1-");
+
+  auto serverState = ServerState::instance();
+
+  if (serverState != nullptr) {
+    auto role = serverState->getRole();
+    result.add("role", VPackValue(ServerState::roleToString(role)));
+
+    if (role == ServerState::ROLE_COORDINATOR) {
+      ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
+      auto plan = ci.getPlan();
+
+      if (plan != nullptr) {
+        auto coordinators = plan->slice().get("Coordinators");
+        buffer.appendHex(static_cast<uint32_t>(VPackObjectIterator(coordinators).size()));
+        buffer.appendText("-");
+        auto dbservers = plan->slice().get("DBServers");
+        buffer.appendHex(static_cast<uint32_t>(VPackObjectIterator(dbservers).size()));
+      } else {
+        buffer.appendHex(static_cast<uint32_t>(0xFFFF));
+        buffer.appendText("-");
+        buffer.appendHex(static_cast<uint32_t>(1));
+      }
+    } else if (role == ServerState::ROLE_DBSERVER) {
+      buffer.appendHex(static_cast<uint32_t>(0xFFFF));
+      buffer.appendText("-");
+      buffer.appendHex(static_cast<uint32_t>(2));
+    } else if (role == ServerState::ROLE_AGENT) {
+      buffer.appendHex(static_cast<uint32_t>(0xFFFF));
+      buffer.appendText("-");
+      buffer.appendHex(static_cast<uint32_t>(3));
+    } else if (role == ServerState::ROLE_SINGLE) {
+      buffer.appendHex(static_cast<uint32_t>(0xFFFF));
+      buffer.appendText("-");
+      buffer.appendHex(static_cast<uint32_t>(4));
+    } else {
+      buffer.appendHex(static_cast<uint32_t>(0xFFFF));
+      buffer.appendText("-");
+      buffer.appendHex(static_cast<uint32_t>(5));
+    }
+  } else {
+    buffer.appendHex(static_cast<uint32_t>(0xFFFF));
+    buffer.appendText("-");
+    buffer.appendHex(static_cast<uint32_t>(6));
+  }
+
+  buffer.appendText("-");
+
+  {
+    std::string const& browserStr = _request->header("user-agent");
+
+    if (!browserStr.empty()) {
+      buffer.appendText(browserStr);
+    } else {
+      buffer.appendText("unknown browser");
+    }
+  }
+
+  int res = TRI_DeflateStringBuffer(buffer.stringBuffer(), buffer.size());
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    result.add("hash", VPackValue(buffer.c_str()));
+  } else {
+    std::string deflated(buffer.c_str(), buffer.size());
+    auto encoded = StringUtils::encodeBase64(deflated);
+    result.add("hash", VPackValue(encoded));
   }
 
   result.close();

@@ -28,9 +28,11 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/LogMacros.h"
@@ -40,26 +42,34 @@
 
 using namespace arangodb;
 
-AgencyCallbackRegistry::AgencyCallbackRegistry(std::string const& callbackBasePath)
-    : _agency(), _callbackBasePath(callbackBasePath) {}
+AgencyCallbackRegistry::AgencyCallbackRegistry(application_features::ApplicationServer& server,
+                                               std::string const& callbackBasePath)
+  : _agency(server), _callbackBasePath(callbackBasePath) {}
 
 AgencyCallbackRegistry::~AgencyCallbackRegistry() = default;
 
-bool AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb) {
-  uint32_t rand;
+bool AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb, bool local) {
+  uint64_t rand;
   {
     WRITE_LOCKER(locker, _lock);
     while (true) {
-      rand = RandomGenerator::interval(UINT32_MAX);
-      if (_endpoints.emplace(rand, cb).second) {
+      rand = RandomGenerator::interval(std::numeric_limits<uint64_t>::max());
+      if (_endpoints.try_emplace(rand, cb).second) {
         break;
       }
     }
   }
 
+  
   bool ok = false;
   try {
-    ok = _agency.registerCallback(cb->key, getEndpointUrl(rand)).successful();
+    if (local) {
+      auto& cache = _agency.server().getFeature<ClusterFeature>().agencyCache();
+      ok = cache.registerCallback(cb->key, rand);
+    } else {
+      ok = _agency.registerCallback(cb->key, getEndpointUrl(rand)).successful();
+      cb->local(false);
+    }
     if (!ok) {
       LOG_TOPIC("b88f4", ERR, Logger::CLUSTER) << "Registering callback failed";
     }
@@ -76,7 +86,7 @@ bool AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb
   return ok;
 }
 
-std::shared_ptr<AgencyCallback> AgencyCallbackRegistry::getCallback(uint32_t id) {
+std::shared_ptr<AgencyCallback> AgencyCallbackRegistry::getCallback(uint64_t id) {
   READ_LOCKER(locker, _lock);
   auto it = _endpoints.find(id);
 
@@ -88,14 +98,19 @@ std::shared_ptr<AgencyCallback> AgencyCallbackRegistry::getCallback(uint32_t id)
 
 bool AgencyCallbackRegistry::unregisterCallback(std::shared_ptr<AgencyCallback> cb) {
   bool found = false;
-  uint32_t endpointToDelete = 0;
+  uint64_t endpointToDelete = 0;
   {
     READ_LOCKER(locker, _lock);
 
     for (auto const& it : _endpoints) {
       if (it.second.get() == cb.get()) {
-        _agency.unregisterCallback(cb->key, getEndpointUrl(it.first));
         endpointToDelete = it.first;
+        if (cb->local()) {
+          auto& cache = _agency.server().getFeature<ClusterFeature>().agencyCache();
+          cache.unregisterCallback(cb->key, endpointToDelete);
+        } else {
+          _agency.unregisterCallback(cb->key, getEndpointUrl(endpointToDelete));
+        }
         found = true;
         break;
       }
@@ -109,7 +124,7 @@ bool AgencyCallbackRegistry::unregisterCallback(std::shared_ptr<AgencyCallback> 
   return false;
 }
 
-std::string AgencyCallbackRegistry::getEndpointUrl(uint32_t endpoint) {
+std::string AgencyCallbackRegistry::getEndpointUrl(uint64_t endpoint) {
   std::stringstream url;
   url << Endpoint::uriForm(ServerState::instance()->getEndpoint())
       << _callbackBasePath << "/" << endpoint;

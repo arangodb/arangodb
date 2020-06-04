@@ -1,10 +1,10 @@
 
 
-@brief list of agency endpoints
+@brief list of Agency endpoints
 `--cluster.agency-endpoint endpoint`
 
-An agency endpoint the server can connect to. The option can be specified
-multiple times so the server can use a cluster of agency servers.
+An Agency endpoint the server can connect to. The option can be specified
+multiple times so the server can use a cluster of Agency servers.
 Endpoints
 have the following pattern:
 

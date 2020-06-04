@@ -14,12 +14,12 @@ describe ArangoDB do
 ################################################################################
 
     context "error handling:" do
-      it "returns an error if vertex-handle is missing" do
+      it "returns an error if vertex identifier is missing" do
         cn = "UnitTestsCollectionEdge"
         ArangoDB.drop_collection(cn)
         ArangoDB.create_collection(cn, true, 3) # type 3 = edge collection
         cmd = "/_api/edges/#{cn}"
-        doc = ArangoDB.log_get("#{prefix}-missing-handle", cmd)
+        doc = ArangoDB.log_get("#{prefix}-missing-identifier", cmd)
 
         doc.code.should eq(400)
         doc.parsed_response['error'].should eq(true)
@@ -30,12 +30,12 @@ describe ArangoDB do
         ArangoDB.drop_collection(cn)
       end
 
-      it "returns an error if vertex-handle is empty" do
+      it "returns an error if vertex identifier is empty" do
         cn = "UnitTestsCollectionEdge"
         ArangoDB.drop_collection(cn)
         ArangoDB.create_collection(cn, true, 3) # type 3 = edge collection
         cmd = "/_api/edges/#{cn}?vertex="
-        doc = ArangoDB.log_get("#{prefix}-empty-handle", cmd)
+        doc = ArangoDB.log_get("#{prefix}-empty-identifier", cmd)
 
         doc.code.should eq(400)
         doc.parsed_response['error'].should eq(true)

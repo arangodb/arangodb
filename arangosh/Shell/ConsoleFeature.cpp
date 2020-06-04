@@ -114,7 +114,8 @@ void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("console", "Configure the console");
 
   options->addOption("--console.colors", "enable color support",
-                     new BooleanParameter(&_colors));
+                     new BooleanParameter(&_colors),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   options->addOption("--console.auto-complete", "enable auto completion",
                      new BooleanParameter(&_autoComplete));
@@ -136,7 +137,7 @@ void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--console.pager-command", "pager command",
                      new StringParameter(&_pagerCommand),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--console.prompt",

@@ -82,28 +82,54 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--server.rest-server", "start a rest-server",
                      new BooleanParameter(&_restServer),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  
+  options->addOption("--server.validate-utf8-strings", "perform UTF-8 string validation for incoming JSON and VelocyPack data",
+                     new BooleanParameter(&_validateUtf8Strings),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden)).setIntroducedIn(30700);
 
-  options->addObsoleteOption(
-      "--server.session-timeout",
-      "timeout of web interface server sessions (in seconds)", true);
-
-  options->addSection("javascript", "Configure the Javascript engine");
+  options->addSection("javascript", "Configure the JavaScript engine");
 
   options->addOption("--javascript.script", "run scripts and exit",
                      new VectorParameter<StringParameter>(&_scripts));
-
-  options->addSection("vst", "Configure the VelocyStream protocol");
-
-  options->addObsoleteOption("--vst.maxsize", "maximal size (in bytes) "
-                             "for a VelocyPack chunk", false);
 
 #if _WIN32
   options->addOption("--console.code-page",
                      "Windows code page to use; defaults to UTF8",
                      new UInt16Parameter(&_codePage),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 #endif
+
+  // add several obsoleted options here
+  options->addSection("vst", "Configure the VelocyStream protocol");
+  options->addObsoleteOption("--vst.maxsize", "maximal size (in bytes) "
+                             "for a VelocyPack chunk", true);
+  
+  options->addObsoleteOption(
+      "--server.session-timeout",
+      "timeout of web interface server sessions (in seconds)", true);
+
+
+  // add obsolete MMFiles WAL options
+  options->addSection("wal", "Configure the WAL of the MMFiles engine");
+  options->addObsoleteOption("--wal.allow-oversize-entries",
+                             "allow entries that are bigger than '--wal.logfile-size'", false);
+  options->addObsoleteOption("--wal.use-mlock",
+                             "mlock WAL logfiles in memory (may require elevated privileges or limits)", false);
+  options->addObsoleteOption("--wal.directory", "logfile directory", true);
+  options->addObsoleteOption("--wal.historic-logfiles", "maximum number of historic logfiles to keep after collection", true);
+  options->addObsoleteOption("--wal.ignore-logfile-errors", 
+                             "ignore logfile errors. this will read recoverable data from corrupted logfiles but ignore any unrecoverable data", false);
+  options->addObsoleteOption("--wal.ignore-recovery-errors", "continue recovery even if re-applying operations fails", false);
+  options->addObsoleteOption("--wal.flush-timeout", "flush timeout (in milliseconds)", true);
+  options->addObsoleteOption("--wal.logfile-size", "size of each logfile (in bytes)", true);
+  options->addObsoleteOption("--wal.open-logfiles", "maximum number of parallel open logfiles", true);
+  options->addObsoleteOption("--wal.reserve-logfiles", "maximum number of reserve logfiles to maintain", true);
+  options->addObsoleteOption("--wal.slots", "number of logfile slots to use", true);
+  options->addObsoleteOption("--wal.sync-interval", "interval for automatic, non-requested disk syncs (in milliseconds)", true);
+  options->addObsoleteOption("--wal.throttle-when-pending", 
+                             "throttle writes when at least this many operations are waiting for collection (set to 0 to deactivate write-throttling)", true);
+  options->addObsoleteOption("--wal.throttle-wait", "maximum wait time per operation when write-throttled (in milliseconds)", true);
 }
 
 void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -177,6 +203,11 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       _operationMode == OperationMode::MODE_CONSOLE) {
     server().getFeature<ShutdownFeature>().disable();
   }
+}
+
+void ServerFeature::prepare() {
+  // adjust global settings for UTF-8 string validation
+  basics::VelocyPackHelper::strictRequestValidationOptions.validateUtf8Strings = _validateUtf8Strings;
 }
 
 void ServerFeature::start() {

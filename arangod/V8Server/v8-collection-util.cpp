@@ -77,8 +77,9 @@ v8::Handle<v8::Object> WrapCollection( // wrap collection
 ) {
   v8::EscapableHandleScope scope(isolate);
   TRI_GET_GLOBALS();
+  auto context = TRI_IGETC;
   TRI_GET_GLOBAL(VocbaseColTempl, v8::ObjectTemplate);
-  v8::Handle<v8::Object> result = VocbaseColTempl->NewInstance();
+  v8::Handle<v8::Object> result = VocbaseColTempl->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
 
   if (result.IsEmpty()) {
     return scope.Escape<v8::Object>(result);
@@ -111,9 +112,9 @@ v8::Handle<v8::Object> WrapCollection( // wrap collection
     TRI_V8UInt64String<TRI_voc_cid_t>(isolate, collection->id()), // value
     v8::ReadOnly // attributes
   ).FromMaybe(false); // Ignore result...
-  result->Set( // set value
+  result->Set(context, // set value
     _DbNameKey, TRI_V8_STD_STRING(isolate, collection->vocbase().name()) // args
-  );
+  ).FromMaybe(false);
   result->DefineOwnProperty( // define own property
     TRI_IGETC, // context
     VersionKeyHidden, // key

@@ -23,11 +23,13 @@
 
 #include "RestWalAccessHandler.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/system-functions.h"
+#include "Basics/tryEmplaceHelper.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -127,12 +129,9 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
     filter.firstRegularTick =
         _request->parsedValue<uint64_t>("firstRegularTick", 0);
 
-    // copy default options
-    VPackOptions options = VPackOptions::Defaults;
-    options.checkAttributeUniqueness = true;
     VPackSlice slice;
     try {
-      slice = _request->payload(&options);
+      slice = _request->payload(true);
     } catch (...) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "invalid body value. expecting array");
@@ -172,7 +171,7 @@ RestStatus RestWalAccessHandler::execute() {
   std::vector<std::string> suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
     generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expected GET _api/wal/[tail|range|lastTick]>");
+                  "expected GET /_api/wal/[tail|range|lastTick|open-transactions]>");
     return RestStatus::DONE;
   }
 
@@ -194,7 +193,7 @@ RestStatus RestWalAccessHandler::execute() {
   } else {
     generateError(
         ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "expected GET _api/wal/[tail|range|lastTick|open-transactions]>");
+        "expected GET /_api/wal/[tail|range|lastTick|open-transactions]>");
   }
 
   return RestStatus::DONE;
@@ -214,7 +213,7 @@ void RestWalAccessHandler::handleCommandTickRange(WalAccess const* wal) {
     {  // "server" part
       VPackObjectBuilder server(&result, "server", true);
       server->add("version", VPackValue(ARANGODB_VERSION));
-      server->add("serverId", VPackValue(std::to_string(ServerIdFeature::getId())));
+      server->add("serverId", VPackValue(std::to_string(ServerIdFeature::getId().id())));
     }
     result.close();
     generateResult(rest::ResponseCode::OK, result.slice());
@@ -232,7 +231,7 @@ void RestWalAccessHandler::handleCommandLastTick(WalAccess const* wal) {
   {  // "server" part
     VPackObjectBuilder server(&result, "server", true);
     server->add("version", VPackValue(ARANGODB_VERSION));
-    server->add("serverId", VPackValue(std::to_string(ServerIdFeature::getId())));
+    server->add("serverId", VPackValue(std::to_string(ServerIdFeature::getId().id())));
   }
   result.close();
   generateResult(rest::ResponseCode::OK, result.slice());
@@ -254,7 +253,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   }
 
   // check for serverId
-  TRI_server_id_t const clientId = StringUtils::uint64(_request->value("serverId"));
+  ServerId const clientId{StringUtils::uint64(_request->value("serverId"))};
   SyncerId const syncerId = SyncerId::fromRequest(*_request);
   std::string const clientInfo = _request->value("clientInfo");
 
@@ -276,28 +275,26 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   std::map<TRI_voc_tick_t, std::unique_ptr<MyTypeHandler>> handlers;
   VPackOptions opts = VPackOptions::Defaults;
   auto prepOpts = [&handlers, &opts](TRI_vocbase_t& vocbase) -> void {
-    auto const& it = handlers.find(vocbase.id());
-
-    if (it == handlers.end()) {
-      auto res = handlers.emplace(vocbase.id(), std::make_unique<MyTypeHandler>(vocbase));
-
-      opts.customTypeHandler = res.first->second.get();
-    } else {
-      opts.customTypeHandler = it->second.get();
-    }
+    auto it = handlers.try_emplace(
+      vocbase.id(),
+      arangodb::lazyConstruct([&]{
+       return std::make_unique<MyTypeHandler>(vocbase);
+      })
+    ).first;
+    opts.customTypeHandler = it->second.get();
   };
 
   size_t length = 0;
 
   if (useVst) {
-    result = wal->tail(filter, chunkSize, barrierId, 
+    result = wal->tail(filter, chunkSize, barrierId,
                        [&](TRI_vocbase_t* vocbase, VPackSlice const& marker) {
                          length++;
 
                          if (vocbase != nullptr) {  // database drop has no vocbase
                            prepOpts(*vocbase);
                          }
-                         
+
                          _response->addPayload(marker, &opts, true);
                        });
   } else {
@@ -311,7 +308,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
     // note: we need the CustomTypeHandler here
     VPackDumper dumper(&adapter, &opts);
-    result = wal->tail(filter, chunkSize, barrierId, 
+    result = wal->tail(filter, chunkSize, barrierId,
                        [&](TRI_vocbase_t* vocbase, VPackSlice const& marker) {
                          length++;
 

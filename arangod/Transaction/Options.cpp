@@ -40,13 +40,20 @@ Options::Options()
       maxTransactionSize(defaultMaxTransactionSize),
       intermediateCommitSize(defaultIntermediateCommitSize),
       intermediateCommitCount(defaultIntermediateCommitCount),
-      allowImplicitCollections(true),
-      waitForSync(false)
+      allowImplicitCollectionsForRead(true),
+      allowImplicitCollectionsForWrite(false),
 #ifdef USE_ENTERPRISE
-      ,
-      skipInaccessibleCollections(false)
+      skipInaccessibleCollections(false),
 #endif
-{
+      waitForSync(false) {}
+  
+Options Options::replicationDefaults() {
+  Options options;
+  // this is important, because when we get a "transaction begin" marker
+  // we don't know which collections will participate in the transaction later.
+  options.allowImplicitCollectionsForWrite = true;
+  options.waitForSync = false;
+  return options;
 }
 
 void Options::setLimits(uint64_t maxTransactionSize, uint64_t intermediateCommitSize,
@@ -78,11 +85,7 @@ void Options::fromVelocyPack(arangodb::velocypack::Slice const& slice) {
   // simon: 'allowImplicit' is due to naming in 'db._executeTransaction(...)'
   value = slice.get("allowImplicit");
   if (value.isBool()) {
-    allowImplicitCollections = value.getBool();
-  }
-  value = slice.get("waitForSync");
-  if (value.isBool()) {
-    waitForSync = value.getBool();
+    allowImplicitCollectionsForRead = value.getBool();
   }
 #ifdef USE_ENTERPRISE
   value = slice.get("skipInaccessibleCollections");
@@ -90,6 +93,12 @@ void Options::fromVelocyPack(arangodb::velocypack::Slice const& slice) {
     skipInaccessibleCollections = value.getBool();
   }
 #endif
+  value = slice.get("waitForSync");
+  if (value.isBool()) {
+    waitForSync = value.getBool();
+  }
+  // we are intentionally *not* reading allowImplicitCollectionForWrite here.
+  // this is an internal option only used in replication
 }
 
 /// @brief add the options to an opened vpack builder
@@ -100,9 +109,11 @@ void Options::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   builder.add("maxTransactionSize", VPackValue(maxTransactionSize));
   builder.add("intermediateCommitSize", VPackValue(intermediateCommitSize));
   builder.add("intermediateCommitCount", VPackValue(intermediateCommitCount));
-  builder.add("allowImplicit", VPackValue(allowImplicitCollections));
-  builder.add("waitForSync", VPackValue(waitForSync));
+  builder.add("allowImplicit", VPackValue(allowImplicitCollectionsForRead));
 #ifdef USE_ENTERPRISE
   builder.add("skipInaccessibleCollections", VPackValue(skipInaccessibleCollections));
 #endif
+  builder.add("waitForSync", VPackValue(waitForSync));
+  // we are intentionally *not* writing allowImplicitCollectionForWrite here.
+  // this is an internal option only used in replication
 }

@@ -6,6 +6,11 @@
 
 @RESTQUERYPARAMETERS
 
+@RESTQUERYPARAM{global,boolean,optional}
+If set to *true*, starts the global replication applier for all
+databases. If set to *false*, starts the replication applier in the
+selected database.
+
 @RESTQUERYPARAM{from,string,optional}
 The remote *lastLogTick* value from which to start applying. If not specified,
 the last saved tick from the previous applier run is used. If there is no
@@ -61,4 +66,3 @@ is returned if an error occurred while assembling the response.
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

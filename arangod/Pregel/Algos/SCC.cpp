@@ -22,6 +22,7 @@
 
 #include "SCC.h"
 #include <atomic>
+#include <climits>
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Pregel/Aggregator.h"

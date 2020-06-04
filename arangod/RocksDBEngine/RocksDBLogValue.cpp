@@ -68,8 +68,8 @@ RocksDBLogValue RocksDBLogValue::IndexCreate(TRI_voc_tick_t dbid, TRI_voc_cid_t 
 }
 
 RocksDBLogValue RocksDBLogValue::IndexDrop(TRI_voc_tick_t dbid,
-                                           TRI_voc_cid_t cid, TRI_idx_iid_t iid) {
-  return RocksDBLogValue(RocksDBLogType::IndexDrop, dbid, cid, iid);
+                                           TRI_voc_cid_t cid, IndexId iid) {
+  return RocksDBLogValue(RocksDBLogType::IndexDrop, dbid, cid, iid.id());
 }
 
 RocksDBLogValue RocksDBLogValue::ViewCreate(TRI_voc_tick_t dbid, TRI_voc_cid_t vid) {
@@ -269,11 +269,12 @@ TRI_voc_tid_t RocksDBLogValue::transactionId(rocksdb::Slice const& slice) {
   return uint64FromPersistent(slice.data() + sizeof(RocksDBLogType) + sizeof(TRI_voc_tick_t));
 }
 
-TRI_idx_iid_t RocksDBLogValue::indexId(rocksdb::Slice const& slice) {
+IndexId RocksDBLogValue::indexId(rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() >= sizeof(RocksDBLogType) + (3 * sizeof(uint64_t)));
   RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
   TRI_ASSERT(type == RocksDBLogType::IndexDrop);
-  return uint64FromPersistent(slice.data() + sizeof(RocksDBLogType) + (2 * sizeof(uint64_t)));
+  return IndexId{uint64FromPersistent(slice.data() + sizeof(RocksDBLogType) +
+                                      (2 * sizeof(uint64_t)))};
 }
 
 /// CollectionTruncate contains an object id

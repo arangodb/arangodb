@@ -29,6 +29,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -277,9 +278,12 @@ arangodb::Result executeCreate(arangodb::httpclient::SimpleHttpClient& client,
   {
     VPackObjectBuilder guard(&bodyBuilder);
     bodyBuilder.add("timeout", VPackValue(options.maxWaitForLock));
-    bodyBuilder.add("allowInconsistent", VPackValue(options.force));
+    bodyBuilder.add("allowInconsistent", VPackValue(options.allowInconsistent));
     if (!options.label.empty()) {
       bodyBuilder.add("label", VPackValue(options.label));
+    }
+    if (options.abortTransactionsIfNeeded) {
+      bodyBuilder.add("force", VPackValue(true));
     }
   }
   std::string const body = bodyBuilder.slice().toJson();
@@ -361,8 +365,7 @@ arangodb::Result executeRestore(arangodb::httpclient::SimpleHttpClient& client,
   {
     VPackObjectBuilder guard(&bodyBuilder);
     bodyBuilder.add("id", VPackValue(options.identifier));
-    bodyBuilder.add("saveCurrent", VPackValue(options.saveCurrent));
-    if (options.force) {
+    if (options.ignoreVersion) {
       bodyBuilder.add("ignoreVersion", VPackValue(true));
     }
   }
@@ -381,33 +384,6 @@ arangodb::Result executeRestore(arangodb::httpclient::SimpleHttpClient& client,
   } catch (...) {
     result.reset(::ErrorMalformedJsonResponse);
     return result;
-  }
-
-  if (options.saveCurrent) {
-    VPackSlice const resBody = parsedBody->slice();
-    if (!resBody.isObject()) {
-      result.reset(TRI_ERROR_INTERNAL, "expected response to be an object");
-      return result;
-    }
-    TRI_ASSERT(resBody.isObject());
-
-    VPackSlice const resultObject = resBody.get("result");
-    if (!resultObject.isObject()) {
-      result.reset(TRI_ERROR_INTERNAL, "expected 'result' to be an object");
-      return result;
-    }
-    TRI_ASSERT(resultObject.isObject());
-
-    VPackSlice const previous = resultObject.get("previous");
-    if (!previous.isString()) {
-      result.reset(TRI_ERROR_INTERNAL, "expected previous to be a string");
-      return result;
-    }
-    TRI_ASSERT(previous.isString());
-
-    LOG_TOPIC("08c95", INFO, arangodb::Logger::BACKUP)
-        << "current state was saved as backup with identifier '"
-        << previous.copyString() << "'";
   }
 
   LOG_TOPIC("b6d4c", INFO, arangodb::Logger::BACKUP)
@@ -468,7 +444,7 @@ arangodb::Result executeDelete(arangodb::httpclient::SimpleHttpClient& client,
 }
 
 #ifdef USE_ENTERPRISE
-struct TransfereType {
+struct TransferType {
   enum type {
     UPLOAD,
     DOWNLOAD
@@ -512,14 +488,14 @@ struct TransfereType {
 };
 
 arangodb::Result executeStatusQuery(arangodb::httpclient::SimpleHttpClient& client,
-  arangodb::BackupFeature::Options const& options, TransfereType::type type) {
+  arangodb::BackupFeature::Options const& options, TransferType::type type) {
   arangodb::Result result;
 
-  std::string const url = TransfereType::asAdminPath(type);
+  std::string const url = TransferType::asAdminPath(type);
   VPackBuilder bodyBuilder;
   {
     VPackObjectBuilder guard(&bodyBuilder);
-    bodyBuilder.add(TransfereType::asJsonId(type), VPackValue(options.statusId));
+    bodyBuilder.add(TransferType::asJsonId(type), VPackValue(options.statusId));
     if (options.abort) {
       bodyBuilder.add("abort", VPackValue(true));
     }
@@ -593,14 +569,14 @@ arangodb::Result executeStatusQuery(arangodb::httpclient::SimpleHttpClient& clie
   return result;
 }
 
-arangodb::Result executeInitiateTransfere(arangodb::httpclient::SimpleHttpClient& client,
-  arangodb::BackupFeature::Options const& options, TransfereType::type type) {
+arangodb::Result executeInitiateTransfer(arangodb::httpclient::SimpleHttpClient& client,
+  arangodb::BackupFeature::Options const& options, TransferType::type type) {
   arangodb::Result result;
 
   // Load configuration file
   std::shared_ptr<VPackBuilder> configFile;
 
-  result = arangodb::basics::catchVoidToResult([&options, &configFile](){
+  result = arangodb::basics::catchVoidToResult([&options, &configFile]() {
     std::string configFileSource = arangodb::basics::FileUtils::slurp(options.rcloneConfigFile);
     auto configFileParsed = arangodb::velocypack::Parser::fromJson(configFileSource);
     configFile.swap(configFileParsed);
@@ -610,8 +586,8 @@ arangodb::Result executeInitiateTransfere(arangodb::httpclient::SimpleHttpClient
     return result;
   }
 
-  // Initiate transfere
-  std::string const url = TransfereType::asAdminPath(type);
+  // Initiate transfer
+  std::string const url = TransferType::asAdminPath(type);
   VPackBuilder bodyBuilder;
   {
     VPackObjectBuilder guard(&bodyBuilder);
@@ -644,23 +620,23 @@ arangodb::Result executeInitiateTransfere(arangodb::httpclient::SimpleHttpClient
   }
   TRI_ASSERT(resultObject.isObject());
 
-  std::string transfereId = resultObject.get(TransfereType::asJsonId(type)).copyString();
+  std::string transferId = resultObject.get(TransferType::asJsonId(type)).copyString();
 
   LOG_TOPIC("a9597", INFO, arangodb::Logger::BACKUP) << "Backup initiated, use ";
-  LOG_TOPIC("4c459", INFO, arangodb::Logger::BACKUP) << "    arangobackup " << TransfereType::asString(type) << " --status-id=" << transfereId;
+  LOG_TOPIC("4c459", INFO, arangodb::Logger::BACKUP) << "    arangobackup " << TransferType::asString(type) << " --status-id=" << transferId;
   LOG_TOPIC("5cd70", INFO, arangodb::Logger::BACKUP) << " to query progress.";
   return result;
 }
 
-arangodb::Result executeTransfere(arangodb::httpclient::SimpleHttpClient& client,
-  arangodb::BackupFeature::Options const& options, TransfereType::type type) {
+arangodb::Result executeTransfer(arangodb::httpclient::SimpleHttpClient& client,
+  arangodb::BackupFeature::Options const& options, TransferType::type type) {
 
   if (!options.statusId.empty()) {
     // This is a status query
     return executeStatusQuery(client, options, type);
   } else {
-    // This is a transfere
-    return executeInitiateTransfere(client, options, type);
+    // This is a transfer
+    return executeInitiateTransfer(client, options, type);
   }
 }
 #endif
@@ -701,20 +677,22 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      "operation to perform (may be specified as positional "
                      "argument without '--operation')",
                      new DiscreteValuesParameter<StringParameter>(&_options.operation, ::Operations),
-                     static_cast<std::underlying_type<Flags>::type>(Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--allow-inconsistent",
                      "whether to attempt to continue in face of errors; "
                      "may result in inconsistent backup state (create operation)",
-                     new BooleanParameter(&_options.force));
+                     new BooleanParameter(&_options.allowInconsistent));
+
+  options->addOption("--ignore-version",
+                     "ignore stored version of a backup. "
+                     "Restore may not work if versions mismatch (restore operation)",
+                     new BooleanParameter(&_options.ignoreVersion));
 
   options->addOption("--identifier",
                      "a unique identifier for a backup "
                      "(restore/upload/download operation)",
                      new StringParameter(&_options.identifier));
-
-  //  options->addOption("--include-search", "whether to include ArangoSearch data",
-  //                     new BooleanParameter(&_options.includeSearch));
 
   options->addOption(
       "--label",
@@ -722,7 +700,7 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
       new StringParameter(&_options.label));
 
   options->addOption("--max-wait-for-lock",
-                     "maximum time to wait in seconds to aquire a lock on "
+                     "maximum time to wait in seconds to acquire a lock on "
                      "all necessary resources (create operation)",
                      new DoubleParameter(&_options.maxWaitForLock));
 
@@ -734,30 +712,38 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
       "result of the restore request (restore operation)",
       new DoubleParameter(&_options.maxWaitForRestart));
 
-  options->addOption("--save-current",
-                     "whether to save the current state as a backup before "
-                     "restoring to another state (restore operation)",
-                     new BooleanParameter(&_options.saveCurrent));
 #ifdef USE_ENTERPRISE
   options->addOption("--status-id",
                      "returns the status of a transfer process "
                      "(upload/download operation)",
-                     new StringParameter(&_options.statusId));
+                     new StringParameter(&_options.statusId),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Enterprise, arangodb::options::Flags::Command));
 
   options->addOption("--rclone-config-file",
-                     "filename of the rclone configuration file used for"
+                     "filename of the Rclone configuration file used for"
                      "file transfer (upload/download operation)",
-                     new StringParameter(&_options.rcloneConfigFile));
+                     new StringParameter(&_options.rcloneConfigFile),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Enterprise));
 
   options->addOption("--remote-path",
-                     "remote rclone path of directory used to store or "
+                     "remote Rclone path of directory used to store or "
                      "receive backups (upload/download operation)",
-                     new StringParameter(&_options.remoteDirectory));
+                     new StringParameter(&_options.remoteDirectory),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Enterprise));
 
   options->addOption("--abort",
                      "abort transfer with given status-id "
                      "(upload/download operation)",
-                     new BooleanParameter(&_options.abort));
+                     new BooleanParameter(&_options.abort),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Enterprise, arangodb::options::Flags::Command));
+
+  options->addOption("--force",
+                     "abort transactions if needed to ensure a consistent snapshot. "
+                     "This option can destroy the atomicity of your transactions in the "
+                     "presence of intermediate commits! Use it with great care and only "
+                     "if you really need a consistent backup at all costs (create operation)",
+                     new BooleanParameter(&_options.abortTransactionsIfNeeded),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Enterprise));
 #endif
   /*
     options->addSection(
@@ -878,9 +864,9 @@ void BackupFeature::start() {
     result = ::executeDelete(*client, _options);
 #ifdef USE_ENTERPRISE
   } else if (_options.operation == OperationUpload) {
-    result = ::executeTransfere(*client, _options, TransfereType::type::UPLOAD);
+    result = ::executeTransfer(*client, _options, TransferType::type::UPLOAD);
   } else if (_options.operation == OperationDownload) {
-    result = ::executeTransfere(*client, _options, TransfereType::type::DOWNLOAD);
+    result = ::executeTransfer(*client, _options, TransferType::type::DOWNLOAD);
 #endif
   }
 

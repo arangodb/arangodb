@@ -51,16 +51,8 @@ if [ "$POOLSZ" == "" ] ; then
   POOLSZ=$NRAGENTS
 fi
 
-if [ -z "$USE_ROCKSDB" ] ; then
-  #default engine is RocksDB
-  STORAGE_ENGINE="--server.storage-engine=rocksdb"
-elif [ "$USE_ROCKSDB" == "0" ]; then 
-  #explicitly disable RocksDB engine, so use MMFiles
-  STORAGE_ENGINE="--server.storage-engine=mmfiles"
-else 
-  #any value other than "0" means RocksDB engine
-  STORAGE_ENGINE="--server.storage-engine=rocksdb"
-fi
+#default engine is RocksDB
+STORAGE_ENGINE="--server.storage-engine=rocksdb"
 DEFAULT_REPLICATION=""
 
 if [[ $NRAGENTS -le 0 ]]; then
@@ -142,7 +134,6 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --agency.size $NRAGENTS \
         --agency.supervision true \
         --agency.supervision-frequency $SFRE \
-        --agency.supervision-grace-period 5.0 \
         --agency.wait-for-sync false \
         --database.directory active/data$PORT \
         --javascript.enabled false \

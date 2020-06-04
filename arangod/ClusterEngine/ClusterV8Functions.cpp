@@ -45,8 +45,8 @@ using namespace arangodb;
 /// flush the WAL
 static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
 
   bool waitForSync = false;
   bool waitForCollector = false;
@@ -58,16 +58,24 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
           args[0]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
       if (TRI_HasProperty(context, isolate, obj, "waitForSync")) {
         waitForSync = TRI_ObjectToBoolean(
-            isolate, obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForSync")));
+            isolate,
+            obj->Get(context,
+                     TRI_V8_ASCII_STRING(isolate, "waitForSync")
+                     ).FromMaybe(v8::Local<v8::Value>()));
       }
       if (TRI_HasProperty(context, isolate, obj, "waitForCollector")) {
         waitForCollector = TRI_ObjectToBoolean(
             isolate,
-            obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForCollector")));
+            obj->Get(context,
+                     TRI_V8_ASCII_STRING(isolate, "waitForCollector")
+                     ).FromMaybe(v8::Local<v8::Value>()));
       }
       if (TRI_HasProperty(context, isolate, obj, "maxWaitTime")) {
         maxWaitTime = TRI_ObjectToDouble(
-            isolate, obj->Get(TRI_V8_ASCII_STRING(isolate, "maxWaitTime")));
+            isolate,
+            obj->Get(context,
+                     TRI_V8_ASCII_STRING(isolate, "maxWaitTime")
+                     ).FromMaybe(v8::Local<v8::Value>()));
       }
     } else {
       waitForSync = TRI_ObjectToBoolean(isolate, args[0]);
@@ -81,8 +89,8 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  auto& server = application_features::ApplicationServer::server();
-  auto& feature = server.getFeature<ClusterFeature>();
+  TRI_GET_GLOBALS();
+  auto& feature = v8g->_server.getFeature<ClusterFeature>();
   int res = flushWalOnAllDBServers(feature, waitForSync, waitForCollector, maxWaitTime);
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -156,7 +164,7 @@ static void JS_EstimateCollectionSize(v8::FunctionCallbackInfo<v8::Value> const&
   builder.add("indexes", VPackValue(VPackValueType::Object));
 
   for (auto& i : collection->getIndexes()) {
-    builder.add(std::to_string(i->id()), VPackValue(0));
+    builder.add(std::to_string(i->id().id()), VPackValue(0));
   }
 
   builder.close();

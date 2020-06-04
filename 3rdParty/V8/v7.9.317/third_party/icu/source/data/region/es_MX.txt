@@ -1,0 +1,35 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+es_MX{
+    %%Parent{"es_419"}
+    Countries{
+        011{"África Occidental"}
+        014{"África Oriental"}
+        015{"África septentrional"}
+        018{"África meridional"}
+        030{"Asia Oriental"}
+        034{"Asia meridional"}
+        035{"Sudeste Asiático"}
+        039{"Europa meridional"}
+        057{"Región de Micronesia"}
+        145{"Asia Occidental"}
+        151{"Europa Oriental"}
+        154{"Europa septentrional"}
+        155{"Europa Occidental"}
+        BA{"Bosnia y Herzegovina"}
+        CI{"Côte d’Ivoire"}
+        EZ{"zona euro"}
+        GG{"Guernsey"}
+        SA{"Arabia Saudita"}
+        SZ{"Eswatini"}
+        TA{"Tristán de Acuña"}
+        TL{"Timor-Leste"}
+        UM{"Islas menores alejadas de EE. UU."}
+        UN{"UN"}
+        VI{"Islas Vírgenes de EE. UU."}
+    }
+    Countries%short{
+        GB{"RU"}
+    }
+    Version{"2.1.47.96"}
+}

@@ -46,8 +46,8 @@ using namespace arangodb;
 /// flush the WAL
 static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
 
   bool waitForSync = false;
   bool waitForCollector = false;
@@ -58,18 +58,19 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
       v8::Handle<v8::Object> obj =
           args[0]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
       if (TRI_HasProperty(context, isolate, obj, "waitForSync")) {
-        waitForSync = TRI_ObjectToBoolean(
-            isolate, obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForSync")));
+        waitForSync = TRI_ObjectToBoolean(isolate,
+                                          obj->Get(context,
+                                                   TRI_V8_ASCII_STRING(isolate, "waitForSync")).FromMaybe(v8::Local<v8::Value>()));
       }
       if (TRI_HasProperty(context, isolate, obj, "waitForCollector")) {
         waitForCollector = TRI_ObjectToBoolean(
             isolate,
-            obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForCollector")));
+            obj->Get(context, TRI_V8_ASCII_STRING(isolate, "waitForCollector")).FromMaybe(v8::Local<v8::Value>()));
       }
       if (TRI_HasProperty(context, isolate, obj, "writeShutdownFile")) {
         writeShutdownFile = TRI_ObjectToBoolean(
             isolate,
-            obj->Get(TRI_V8_ASCII_STRING(isolate, "writeShutdownFile")));
+            obj->Get(context, TRI_V8_ASCII_STRING(isolate, "writeShutdownFile")).FromMaybe(v8::Local<v8::Value>()));
       }
     } else {
       waitForSync = TRI_ObjectToBoolean(isolate, args[0]);
@@ -200,6 +201,25 @@ static void JS_WaitForEstimatorSync(v8::FunctionCallbackInfo<v8::Value> const& a
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_CollectionRevisionTreeSummary(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  auto* collection = UnwrapCollection(isolate, args.Holder());
+
+  if (!collection) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
+
+  auto* physical = toRocksDBCollection(*collection);
+  VPackBuilder builder;
+  physical->revisionTreeSummary(builder);
+
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
 void RocksDBV8Functions::registerResources() {
   ISOLATE;
   v8::HandleScope scope(isolate);
@@ -218,6 +238,9 @@ void RocksDBV8Functions::registerResources() {
   TRI_AddMethodVocbase(isolate, rt,
                        TRI_V8_ASCII_STRING(isolate, "estimatedSize"),
                        JS_EstimateCollectionSize);
+  TRI_AddMethodVocbase(isolate, rt,
+                       TRI_V8_ASCII_STRING(isolate, "_revisionTreeSummary"),
+                       JS_CollectionRevisionTreeSummary);
 
   // add global WAL handling functions
   TRI_AddGlobalFunctionVocbase(isolate,

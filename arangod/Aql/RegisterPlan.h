@@ -25,90 +25,112 @@
 #ifndef ARANGOD_AQL_REGISTER_PLAN_H
 #define ARANGOD_AQL_REGISTER_PLAN_H 1
 
+#include "Aql/ExecutionNode.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
-#include "Basics/debugging.h"
 
 #include <memory>
+#include <stack>
+#include <unordered_map>
+#include <vector>
 
 namespace arangodb {
-namespace aql {
+namespace velocypack {
+class Builder;
+class Slice;
+}  // namespace velocypack
+}  // namespace arangodb
+
+namespace arangodb::aql {
 
 class ExecutionNode;
 class ExecutionPlan;
+struct Variable;
 
 /// @brief static analysis, walker class and information collector
 struct VarInfo {
   unsigned int depth;
   RegisterId registerId;
 
-  VarInfo() = delete;
-  VarInfo(int depth, RegisterId registerId);
+  VarInfo() = default;
+  VarInfo(unsigned int depth, RegisterId registerId);
 };
 
-struct RegisterPlan final : public WalkerWorker<ExecutionNode> {
+template <typename T>
+struct RegisterPlanT;
+
+template <typename T>
+struct RegisterPlanWalkerT final : public WalkerWorker<T> {
+  explicit RegisterPlanWalkerT(std::shared_ptr<RegisterPlanT<T>> plan)
+      : plan(std::move(plan)) {}
+  virtual ~RegisterPlanWalkerT() noexcept = default;
+
+  void after(T* eb) final;
+  bool enterSubquery(T*, T*) final {
+    return false;  // do not walk into subquery
+  }
+
+  using RegCountStack = std::stack<RegisterCount>;
+
+  RegIdOrderedSetStack unusedRegisters{{}};
+  RegIdSetStack regsToKeepStack{{}};
+  std::shared_ptr<RegisterPlanT<T>> plan;
+  RegCountStack previousSubqueryNrRegs{};
+};
+
+template <typename T>
+struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T>> {
+  friend struct RegisterPlanWalkerT<T>;
   // The following are collected for global usage in the ExecutionBlock,
   // although they are stored here in the node:
 
   // map VariableIds to their depth and registerId:
   std::unordered_map<VariableId, VarInfo> varInfo;
 
-  // number of variables in the frame of the current depth:
-  std::vector<RegisterId> nrRegsHere;
-
   // number of variables in this and all outer frames together,
   // the entry with index i here is always the sum of all values
   // in nrRegsHere from index 0 to i (inclusively) and the two
   // have the same length:
-  std::vector<RegisterId> nrRegs;
+  std::vector<RegisterCount> nrRegs;
 
   // We collect the subquery nodes to deal with them at the end:
-  std::vector<ExecutionNode*> subQueryNodes;
+  std::vector<T*> subQueryNodes;
 
-  // Local for the walk:
-  unsigned int depth;
-  unsigned int totalNrRegs;
-
- private:
-  // This is used to tell all nodes and share a pointer to ourselves
-  std::shared_ptr<RegisterPlan>* me;
-
- public:
-  RegisterPlan() : depth(0), totalNrRegs(0), me(nullptr) {
-    nrRegsHere.reserve(8);
-    nrRegsHere.emplace_back(0);
-    nrRegs.reserve(8);
-    nrRegs.emplace_back(0);
-  }
-
-  void clear();
-
-  void setSharedPtr(std::shared_ptr<RegisterPlan>* shared) { me = shared; }
-
-  // Copy constructor used for a subquery:
-  RegisterPlan(RegisterPlan const& v, unsigned int newdepth);
-  ~RegisterPlan() = default;
-
-  virtual bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
-    return false;  // do not walk into subquery
-  }
-
-  virtual void after(ExecutionNode* eb) override final;
-
-  RegisterPlan* clone(ExecutionPlan* otherPlan, ExecutionPlan* plan);
-
- public:
   /// @brief maximum register id that can be assigned, plus one.
   /// this is used for assertions
-  static constexpr RegisterId MaxRegisterId = 1000;
+  static constexpr RegisterId MaxRegisterId = RegisterId{1000};
 
-  /// @brief reserved register id for subquery depth. Needs to
-  ///        be present in all AqlItemMatrixes.
-  static constexpr RegisterId SUBQUERY_DEPTH_REGISTER = 0;
+ public:
+  RegisterPlanT();
+  RegisterPlanT(arangodb::velocypack::Slice slice, unsigned int depth);
+  // Copy constructor used for a subquery:
+  RegisterPlanT(RegisterPlan const& v, unsigned int newdepth);
+  ~RegisterPlanT() = default;
+
+  std::shared_ptr<RegisterPlanT> clone();
+
+  void registerVariable(Variable const* v, std::set<RegisterId>& unusedRegisters);
+  void increaseDepth();
+  auto addRegister() -> RegisterId;
+  void addSubqueryNode(T* subquery);
+
+  void toVelocyPack(arangodb::velocypack::Builder& builder) const;
+  static void toVelocyPackEmpty(arangodb::velocypack::Builder& builder);
+
+  auto variableToRegisterId(Variable const* variable) const -> RegisterId;
+
+  // compatibility function for 3.6. can be removed in 3.8
+  auto calcRegsToKeep(VarSetStack const& varsUsedLaterStack, VarSetStack const& varsValidStack,
+                      std::vector<Variable const*> const& varsSetHere) const -> RegIdSetStack;
+
+ private:
+  unsigned int depth;
 };
 
-}  // namespace aql
-}  // namespace arangodb
+template <typename T>
+std::ostream& operator<<(std::ostream& os, RegisterPlanT<T> const& r);
+
+}  // namespace arangodb::aql
 
 #endif

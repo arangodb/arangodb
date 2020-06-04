@@ -53,16 +53,13 @@ class QueryResultCursor final : public arangodb::Cursor {
 
   aql::QueryResult const* result() const { return &_result; }
 
-  CursorType type() const override final { return CURSOR_VPACK; }
-
   bool hasNext();
 
   arangodb::velocypack::Slice next();
 
   size_t count() const override final;
 
-  std::pair<ExecutionState, Result> dump(velocypack::Builder& result,
-                                         std::function<void()> const& continueHandler) override final;
+  std::pair<aql::ExecutionState, Result> dump(velocypack::Builder& result) override final;
 
   Result dumpSync(velocypack::Builder& result) override final;
 
@@ -87,25 +84,21 @@ class QueryResultCursor final : public arangodb::Cursor {
 /// cursor is deleted (or query exhausted)
 class QueryStreamCursor final : public arangodb::Cursor {
  public:
-  QueryStreamCursor(TRI_vocbase_t& vocbase, std::string const& query,
-                    std::shared_ptr<velocypack::Builder> bindVars,
-                    std::shared_ptr<velocypack::Builder> opts,
-                    size_t batchSize, double ttl,
-                    bool contextOwnedByExterior,
-                    std::shared_ptr<transaction::Context> ctx);
+  QueryStreamCursor(std::unique_ptr<aql::Query> q, size_t batchSize, double ttl);
 
   ~QueryStreamCursor();
-
-  CursorType type() const override final { return CURSOR_VPACK; }
 
   void kill() override;
 
   size_t count() const override final { return 0; }
 
-  std::pair<ExecutionState, Result> dump(velocypack::Builder& result,
-                                         std::function<void()> const& continueHandler) override final;
+  std::pair<ExecutionState, Result> dump(velocypack::Builder& result) override final;
 
   Result dumpSync(velocypack::Builder& result) override final;
+  
+  /// Set wakeup callback on streaming cursor
+  void setWakeupHandler(std::function<bool()> const& cb) override final;
+  void resetWakeupHandler() override final;
 
   std::shared_ptr<transaction::Context> context() const override final;
 
@@ -122,14 +115,13 @@ class QueryStreamCursor final : public arangodb::Cursor {
   void cleanupResources();
 
  private:
-  DatabaseGuard _guard;
-  int64_t _exportCount;  // used by RocksDBRestExportHandler (<0 is not used)
-  /// current query
+  std::deque<SharedAqlItemBlockPtr> _queryResults; /// buffered results
+  std::shared_ptr<transaction::Context> _ctx; /// cache context
   std::unique_ptr<aql::Query> _query;
-  /// buffered results
-  std::deque<SharedAqlItemBlockPtr> _queryResults;
+
   /// index of the next to-be-returned row in _queryResults.front()
   size_t _queryResultPos;
+  int64_t _exportCount;  // used by RocksDBRestExportHandler (<0 is not used)
   /// used when cursor is owned by V8 transaction
   transaction::Methods::StatusChangeCallback _stateChangeCb;
 };

@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_SCORE_H
@@ -35,38 +34,37 @@ NS_ROOT
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API score : public attribute {
  public:
-  typedef void(*score_f)(const void*, byte_type*);
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::score";
+  }
 
-  DECLARE_ATTRIBUTE_TYPE();
+  static const irs::score& no_score() noexcept;
 
-  static const irs::score& no_score() NOEXCEPT;
-
-  static const irs::score& extract(const attribute_view& attrs) NOEXCEPT {
-    const irs::score* score = attrs.get<irs::score>().get();
+  template<typename Provider>
+  static const score& get(const Provider& attrs) {
+    const auto* score = irs::get<irs::score>(attrs);
     return score ? *score : no_score();
   }
 
-  score() NOEXCEPT;
-
-  const byte_type* c_str() const NOEXCEPT {
+  const byte_type* c_str() const noexcept {
     return value_.c_str();
   }
 
-  const bstring& value() const NOEXCEPT {
+  const bstring& value() const noexcept {
     return value_;
   }
 
-  bool empty() const NOEXCEPT {
+  bool empty() const noexcept {
     return value_.empty();
   }
 
   void evaluate() const {
     assert(func_);
-    (*func_)(ctx_, leak());
+    (*func_)(ctx_.get(), leak());
   }
 
   bool prepare(const order::prepared& ord,
-               const void* ctx,
+               const score_ctx* ctx,
                const score_f func) {
     assert(func);
 
@@ -77,20 +75,23 @@ class IRESEARCH_API score : public attribute {
     value_.resize(ord.score_size());
     ord.prepare_score(leak());
 
-    ctx_ = ctx;
+    ctx_ = memory::managed_ptr<const score_ctx>(ctx, nullptr);
     func_ = func;
     return true;
   }
 
+  bool prepare(const order::prepared& ord,
+               order::prepared::scorers&& scorers);
+
  private:
-  byte_type* leak() const NOEXCEPT {
+  byte_type* leak() const noexcept {
     return const_cast<byte_type*>(&(value_[0]));
   }
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   bstring value_;     // score buffer
-  const void* ctx_{}; // arbitrary scoring context
-  score_f func_{};    // scoring function
+  memory::managed_ptr<const score_ctx> ctx_{}; // arbitrary scoring context
+  score_f func_{[](const score_ctx*, byte_type*){}};    // scoring function
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // score
 

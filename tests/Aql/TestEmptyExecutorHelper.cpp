@@ -27,9 +27,9 @@
 
 #include "Basics/Common.h"
 
-#include "Aql/InputAqlItemRow.h"
 #include "Aql/AqlValue.h"
-#include "Aql/ExecutorInfos.h"
+#include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Logger/LogMacros.h"
 
@@ -38,8 +38,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-TestEmptyExecutorHelper::TestEmptyExecutorHelper(Fetcher&, Infos&){};
-TestEmptyExecutorHelper::~TestEmptyExecutorHelper() = default;
+TestEmptyExecutorHelper::TestEmptyExecutorHelper(Fetcher&, Infos&) {}
 
 std::pair<ExecutionState, FilterStats> TestEmptyExecutorHelper::produceRows(OutputAqlItemRow& output) {
   TRI_IF_FAILURE("TestEmptyExecutorHelper::produceRows") {
@@ -50,11 +49,3 @@ std::pair<ExecutionState, FilterStats> TestEmptyExecutorHelper::produceRows(Outp
 
   return {state, stats};
 }
-
-TestEmptyExecutorHelperInfos::TestEmptyExecutorHelperInfos(
-    RegisterId inputRegister, RegisterId nrInputRegisters,
-    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep)
-    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(inputRegister),
-                    nullptr, nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)) {}

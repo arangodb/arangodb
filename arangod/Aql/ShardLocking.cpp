@@ -25,6 +25,7 @@
 
 #include "ShardLocking.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/GraphNode.h"
@@ -40,7 +41,8 @@ using namespace arangodb::aql;
 std::set<ShardID> const ShardLocking::EmptyShardList{};
 std::unordered_set<ShardID> const ShardLocking::EmptyShardListUnordered{};
 
-void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId) {
+void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
+                           bool pushToSingleServer) {
   TRI_ASSERT(baseNode != nullptr);
   // If we have ever accessed the server lists,
   // we cannot insert Nodes anymore.
@@ -54,20 +56,24 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId) {
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::TRAVERSAL: {
       // Add GraphNode
-      auto node = ExecutionNode::castTo<GraphNode const*>(baseNode);
-      if (node == nullptr) {
+      auto* graphNode = ExecutionNode::castTo<GraphNode const*>(baseNode);
+      if (graphNode == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "unable to cast node to GraphNode");
       }
+      auto const graphIsUsedAsSatellite = graphNode->isUsedAsSatellite();
+      auto const isUsedAsSatellite = [&](auto const& col) {
+        return graphIsUsedAsSatellite || (pushToSingleServer && col->isSatellite());
+      };
       // Add all Edge Collections to the Transactions, Traversals do never write
-      for (auto const& col : node->edgeColls()) {
-        updateLocking(col.get(), AccessMode::Type::READ, snippetId, {}, false);
+      for (auto const& col : graphNode->edgeColls()) {
+        updateLocking(col, AccessMode::Type::READ, snippetId, {}, isUsedAsSatellite(col));
       }
 
       // Add all Vertex Collections to the Transactions, Traversals do never
       // write, the collections have been adjusted already
-      for (auto const& col : node->vertexColls()) {
-        updateLocking(col.get(), AccessMode::Type::READ, snippetId, {}, false);
+      for (auto const& col : graphNode->vertexColls()) {
+        updateLocking(col, AccessMode::Type::READ, snippetId, {}, isUsedAsSatellite(col));
       }
       break;
     }
@@ -143,7 +149,7 @@ void ShardLocking::updateLocking(Collection const* col,
   }
   if (info.allShards.empty()) {
     // Load shards only once per collection!
-    auto const shards = col->shardIds(_query->queryOptions().shardIds);
+    auto const shards = col->shardIds(_query.queryOptions().restrictToShards);
     // What if we have an empty shard list here?
     if (shards->empty()) {
       LOG_TOPIC("0997e", WARN, arangodb::Logger::AQL)
@@ -159,7 +165,7 @@ void ShardLocking::updateLocking(Collection const* col,
   auto snippetPart = info.snippetInfo.find(snippetId);
   if (snippetPart == info.snippetInfo.end()) {
     std::tie(snippetPart, std::ignore) =
-        info.snippetInfo.emplace(snippetId, SnippetInformation{});
+        info.snippetInfo.try_emplace(snippetId, SnippetInformation{});
   }
   TRI_ASSERT(snippetPart != info.snippetInfo.end());
   SnippetInformation& snip = snippetPart->second;
@@ -287,7 +293,7 @@ std::unordered_map<ShardID, ServerID> const& ShardLocking::getShardMapping() {
         }
       }
     }
-    auto& server = _query->vocbase().server();
+    auto& server = _query.vocbase().server();
     if (!server.hasFeature<ClusterFeature>()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
@@ -308,7 +314,7 @@ std::unordered_map<ShardID, ServerID> const& ShardLocking::getShardMapping() {
   return _shardMapping;
 }
 
-std::unordered_set<ShardID> const& ShardLocking::shardsForSnippet(size_t snippetId,
+std::unordered_set<ShardID> const& ShardLocking::shardsForSnippet(QuerySnippet::Id snippetId,
                                                                   Collection const* col) {
   auto const& lockInfo = _collectionLocking.find(col);
 

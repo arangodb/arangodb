@@ -23,6 +23,7 @@
 #ifndef ARANGODB_APPLICATION_FEATURES_PRIVILEGE_FEATURE_H
 #define ARANGODB_APPLICATION_FEATURES_PRIVILEGE_FEATURE_H 1
 
+#include <sys/types.h>
 #include <memory>
 #include <string>
 

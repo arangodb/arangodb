@@ -30,6 +30,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/SkipResult.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -47,7 +48,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> SingleRowFetcher<passBlocksThro
   if (_upstreamState == ExecutionState::DONE) {
     return {_upstreamState, nullptr};
   }
-  atMost = (std::min)(atMost, ExecutionBlock::DefaultBatchSize());
+  atMost = (std::min)(atMost, ExecutionBlock::DefaultBatchSize);
   // There are still some blocks left that ask their parent even after they got
   // DONE the last time, and I don't currently have time to track them down.
   // Thus the following assert is commented out.
@@ -68,25 +69,31 @@ SingleRowFetcher<passBlocksThrough>::SingleRowFetcher()
       _currentShadowRow{CreateInvalidShadowRowHint{}} {}
 
 template <BlockPassthrough passBlocksThrough>
-#ifndef ARANGODB_USE_GOOGLE_TESTS
-template <BlockPassthrough, typename>
-#endif
-std::pair<ExecutionState, SharedAqlItemBlockPtr>
-SingleRowFetcher<passBlocksThrough>::fetchBlockForPassthrough(size_t atMost) {
-  return _dependencyProxy->fetchBlockForPassthrough(atMost);
-}
+std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange>
+SingleRowFetcher<passBlocksThrough>::execute(AqlCallStack& stack) {
+  auto [state, skipped, block] = _dependencyProxy->execute(stack);
+  if (state == ExecutionState::WAITING) {
+    // On waiting we have nothing to return
+    return {state, SkipResult{}, AqlItemBlockInputRange{ExecutorState::HASMORE}};
+  }
+  if (block == nullptr) {
+    if (state == ExecutionState::HASMORE) {
+      return {state, skipped,
+              AqlItemBlockInputRange{ExecutorState::HASMORE, skipped.getSkipCount()}};
+    }
+    return {state, skipped,
+            AqlItemBlockInputRange{ExecutorState::DONE, skipped.getSkipCount()}};
+  }
 
-template <BlockPassthrough passBlocksThrough>
-std::pair<ExecutionState, size_t> SingleRowFetcher<passBlocksThrough>::skipRows(size_t atMost) {
-  TRI_ASSERT(!_currentRow.isInitialized() || _currentRow.isLastRowInBlock());
-  TRI_ASSERT(!indexIsValid());
-
-  auto res = _dependencyProxy->skipSome(atMost);
-  _upstreamState = res.first;
-
-  TRI_ASSERT(res.second <= atMost);
-
-  return res;
+  auto [start, end] = block->getRelevantRange();
+  if (state == ExecutionState::HASMORE) {
+    TRI_ASSERT(block != nullptr);
+    return {state, skipped,
+            AqlItemBlockInputRange{ExecutorState::HASMORE,
+                                   skipped.getSkipCount(), block, start}};
+  }
+  return {state, skipped,
+          AqlItemBlockInputRange{ExecutorState::DONE, skipped.getSkipCount(), block, start}};
 }
 
 template <BlockPassthrough passBlocksThrough>
@@ -136,6 +143,17 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher<passBlocksThrough>::
   return {returnState(false), _currentRow};
 }
 
+template <BlockPassthrough blockPassthrough>
+auto SingleRowFetcher<blockPassthrough>::fetchRowWithGlobalState(size_t atMost)
+    -> RowWithStates {
+  auto [state, row] = fetchRow(atMost);
+  if (state == ExecutionState::WAITING) {
+    return {ExecutionState::WAITING, ExecutionState::WAITING, row};
+  }
+
+  return {state, returnState(true), row};
+}
+
 template <BlockPassthrough passBlocksThrough>
 std::pair<ExecutionState, ShadowAqlItemRow> SingleRowFetcher<passBlocksThrough>::fetchShadowRow(size_t atMost) {
   // TODO We should never fetch from upstream here, as we can't know atMost - only the executor does.
@@ -183,7 +201,7 @@ ExecutionState SingleRowFetcher<passBlocksThrough>::returnState(bool isShadowRow
 }
 
 template <BlockPassthrough blockPassthrough>
-RegisterId SingleRowFetcher<blockPassthrough>::getNrInputRegisters() const {
+RegisterCount SingleRowFetcher<blockPassthrough>::getNrInputRegisters() const {
   return _dependencyProxy->getNrInputRegisters();
 }
 
@@ -241,10 +259,11 @@ bool SingleRowFetcher<blockPassthrough>::isAtShadowRow() const {
 }
 #endif
 
-#ifndef ARANGODB_USE_GOOGLE_TESTS
-template std::pair<ExecutionState, SharedAqlItemBlockPtr>
-SingleRowFetcher<BlockPassthrough::Enable>::fetchBlockForPassthrough(size_t atMost);
-#endif
+//@deprecated
+template <BlockPassthrough blockPassthrough>
+auto SingleRowFetcher<blockPassthrough>::useStack(AqlCallStack const& stack) -> void {
+  _dependencyProxy->useStack(stack);
+}
 
 template class ::arangodb::aql::SingleRowFetcher<BlockPassthrough::Disable>;
 template class ::arangodb::aql::SingleRowFetcher<BlockPassthrough::Enable>;

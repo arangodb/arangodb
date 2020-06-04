@@ -1,0 +1,561 @@
+/*
+ * Authors:
+ * - Assem Chelli, < assem [dot] ch [at] gmail >
+ * - Abdelkrim Aries <ab [underscore] aries [at] esi [dot] dz>
+ *
+*/
+
+stringescapes { }
+
+/* the Arabic letters in Unicode */
+// Hamza
+stringdef o     '{U+0621}' // Hamza
+stringdef ao    '{U+0623}' // Hamza above Alef
+stringdef ao_   '{U+0625}' // Hamza below Alef
+stringdef a~    '{U+0622}' // Alef madda
+stringdef wo    '{U+0624}' // Hamza above waw
+stringdef yo    '{U+0626}' // Hamza above yeh
+
+// Letters
+stringdef a     '{U+0627}' // Alef
+stringdef a_    '{U+0649}' // Alef Maksura
+stringdef b     '{U+0628}' // Beh
+stringdef t_    '{U+0629}' // Teh_Marbuta
+stringdef t     '{U+062A}' // Teh
+stringdef th    '{U+062B}' // Theh
+stringdef j     '{U+062C}' // Jeem
+stringdef h     '{U+062D}' // Hah
+stringdef x     '{U+062E}' // Khah
+stringdef d     '{U+062F}' // Dal
+stringdef dz    '{U+0630}' // Thal
+stringdef r     '{U+0631}' // Reh
+stringdef z     '{U+0632}' // Zain
+stringdef s     '{U+0633}' // Seen
+stringdef sh    '{U+0634}' // Sheen
+stringdef c     '{U+0635}' // Sad
+stringdef dh    '{U+0636}' // Dad
+stringdef tt    '{U+0637}' // Tah
+stringdef zh    '{U+0638}' // Zah
+stringdef i     '{U+0639}' // Ain
+stringdef gh    '{U+063A}' // Ghain
+stringdef f     '{U+0641}' // Feh
+stringdef q     '{U+0642}' // Qaf
+stringdef k     '{U+0643}' // Kaf
+stringdef l     '{U+0644}' // Lam
+stringdef m     '{U+0645}' // Meem
+stringdef n     '{U+0646}' // Noon
+stringdef e     '{U+0647}' // Heh
+stringdef w     '{U+0648}' // Waw
+stringdef y     '{U+064A}' // Yeh
+
+// Diacritics
+stringdef aan   '{U+064B}' // FatHatan
+stringdef uun   '{U+064C}' // Dammatan
+stringdef iin   '{U+064D}' // Kasratan
+stringdef aa    '{U+064E}' // FatHa
+stringdef uu    '{U+064F}' // Damma
+stringdef ii    '{U+0650}' // Kasra
+stringdef oo    '{U+0652}' // Sukun
+stringdef ~     '{U+0651}' // Shadda
+
+// Hindu–Arabic numerals
+stringdef 0     '{U+0660}'
+stringdef 1     '{U+0661}'
+stringdef 2     '{U+0662}'
+stringdef 3     '{U+0663}'
+stringdef 4     '{U+0664}'
+stringdef 5     '{U+0665}'
+stringdef 6     '{U+0666}'
+stringdef 7     '{U+0667}'
+stringdef 8     '{U+0668}'
+stringdef 9     '{U+0669}'
+
+
+// Kasheeda
+stringdef _     '{U+0640}' // Kasheeda, Tatweel
+
+// Shaped forms
+stringdef o1     '{U+FE80}'  // HAMZA
+stringdef ao1    '{U+FE83}'  // ALEF_HAMZA_ABOVE
+stringdef ao2    '{U+FE84}'  // ALEF_HAMZA_ABOVE
+stringdef ao_1   '{U+FE87}'  // ALEF_HAMZA_BELOW
+stringdef ao_2   '{U+FE88}'  // ALEF_HAMZA_BELOW
+stringdef yo1    '{U+FE8B}'  // YEH_HAMZA
+stringdef yo2    '{U+FE8C}'  // YEH_HAMZA
+stringdef yo3    '{U+FE89}'  // YEH_HAMZA
+stringdef yo4    '{U+FE8A}'  // YEH_HAMZA
+stringdef a~1    '{U+FE81}'  // ALEF_MADDA
+stringdef a~2    '{U+FE82}'  // ALEF_MADDA
+stringdef wo1    '{U+FE85}'  // WAW_HAMZA
+stringdef wo2    '{U+FE86}'  // WAW_HAMZA
+stringdef a1     '{U+FE8D}'  // ALEF
+stringdef a2     '{U+FE8E}'  // ALEF
+stringdef b1     '{U+FE8F}'  // BEH
+stringdef b2     '{U+FE90}'  // BEH
+stringdef b3     '{U+FE91}'  // BEH
+stringdef b4     '{U+FE92}'  // BEH
+stringdef t_1    '{U+FE93}'  // TEH_MARBUTA
+stringdef t_2    '{U+FE94}'  // TEH_MARBUTA
+stringdef t1     '{U+FE97}'  // TEH
+stringdef t2     '{U+FE98}'  // TEH
+stringdef t3     '{U+FE95}'  // TEH
+stringdef t4     '{U+FE96}'  // TEH
+stringdef th1    '{U+FE9B}'  // THEH
+stringdef th2    '{U+FE9C}'  // THEH
+stringdef th3    '{U+FE9A}'  // THEH
+stringdef th4    '{U+FE99}'  // THEH
+stringdef j1     '{U+FE9F}'  // JEEM
+stringdef j2     '{U+FEA0}'  // JEEM
+stringdef j3     '{U+FE9D}'  // JEEM
+stringdef j4     '{U+FE9E}'  // JEEM
+stringdef h1     '{U+FEA3}'  // HAH
+stringdef h2     '{U+FEA4}'  // HAH
+stringdef h3     '{U+FEA1}'  // HAH
+stringdef h4     '{U+FEA2}'  // HAH
+stringdef x1     '{U+FEA7}'  // KHAH
+stringdef x2     '{U+FEA8}'  // KHAH
+stringdef x3     '{U+FEA5}'  // KHAH
+stringdef x4     '{U+FEA6}'  // KHAH
+stringdef d1     '{U+FEA9}'  // DAL
+stringdef d2     '{U+FEAA}'  // DAL
+stringdef dz1    '{U+FEAB}'  // THAL
+stringdef dz2    '{U+FEAC}'  // THAL
+stringdef r1     '{U+FEAD}'  // REH
+stringdef r2     '{U+FEAE}'  // REH
+stringdef z1     '{U+FEAF}'  // ZAIN
+stringdef z2     '{U+FEB0}'  // ZAIN
+stringdef s1     '{U+FEB3}'  // SEEN
+stringdef s2     '{U+FEB4}'  // SEEN
+stringdef s3     '{U+FEB1}'  // SEEN
+stringdef s4     '{U+FEB2}'  // SEEN
+stringdef sh1    '{U+FEB7}'  // SHEEN
+stringdef sh2    '{U+FEB8}'  // SHEEN
+stringdef sh3    '{U+FEB5}'  // SHEEN
+stringdef sh4    '{U+FEB6}'  // SHEEN
+stringdef c1     '{U+FEBB}'  // SAD
+stringdef c2     '{U+FEBC}'  // SAD
+stringdef c3     '{U+FEB9}'  // SAD
+stringdef c4     '{U+FEBA}'  // SAD
+stringdef dh1    '{U+FEBF}'  // DAD
+stringdef dh2    '{U+FEC0}'  // DAD
+stringdef dh3    '{U+FEBD}'  // DAD
+stringdef dh4    '{U+FEBE}'  // DAD
+stringdef tt1    '{U+FEC3}'  // TAH
+stringdef tt2    '{U+FEC4}'  // TAH
+stringdef tt3    '{U+FEC1}'  // TAH
+stringdef tt4    '{U+FEC2}'  // TAH
+stringdef zh1    '{U+FEC7}'  // ZAH
+stringdef zh2    '{U+FEC8}'  // ZAH
+stringdef zh3    '{U+FEC5}'  // ZAH
+stringdef zh4    '{U+FEC6}'  // ZAH
+stringdef i1     '{U+FECB}'  // AIN
+stringdef i2     '{U+FECC}'  // AIN
+stringdef i3     '{U+FEC9}'  // AIN
+stringdef i4     '{U+FECA}'  // AIN
+stringdef gh1    '{U+FECF}'  // GHAIN
+stringdef gh2    '{U+FED0}'  // GHAIN
+stringdef gh3    '{U+FECD}'  // GHAIN
+stringdef gh4    '{U+FECE}'  // GHAIN
+stringdef f1     '{U+FED3}'  // FEH
+stringdef f2     '{U+FED4}'  // FEH
+stringdef f3     '{U+FED1}'  // FEH
+stringdef f4     '{U+FED2}'  // FEH
+stringdef q1     '{U+FED7}'  // QAF
+stringdef q2     '{U+FED8}'  // QAF
+stringdef q3     '{U+FED5}'  // QAF
+stringdef q4     '{U+FED6}'  // QAF
+stringdef k1     '{U+FEDB}'  // KAF
+stringdef k2     '{U+FEDC}'  // KAF
+stringdef k3     '{U+FED9}'  // KAF
+stringdef k4     '{U+FEDA}'  // KAF
+stringdef l1     '{U+FEDF}'  // LAM
+stringdef l2     '{U+FEE0}'  // LAM
+stringdef l3     '{U+FEDD}'  // LAM
+stringdef l4     '{U+FEDE}'  // LAM
+stringdef m1     '{U+FEE3}'  // MEEM
+stringdef m2     '{U+FEE4}'  // MEEM
+stringdef m3     '{U+FEE1}'  // MEEM
+stringdef m4     '{U+FEE2}'  // MEEM
+stringdef n1     '{U+FEE7}'  // NOON
+stringdef n2     '{U+FEE8}'  // NOON
+stringdef n3     '{U+FEE5}'  // NOON
+stringdef n4     '{U+FEE6}'  // NOON
+stringdef e1     '{U+FEEB}'  // HEH
+stringdef e2     '{U+FEEC}'  // HEH
+stringdef e3     '{U+FEE9}'  // HEH
+stringdef e4     '{U+FEEA}'  // HEH
+stringdef w1     '{U+FEED}'  // WAW
+stringdef w2     '{U+FEEE}'  // WAW
+stringdef a_1    '{U+FEEF}'  // ALEF_MAKSURA
+stringdef a_2    '{U+FEF0}'  // ALEF_MAKSURA
+stringdef y1     '{U+FEF3}'  // YEH
+stringdef y2     '{U+FEF4}'  // YEH
+stringdef y3     '{U+FEF1}'  // YEH
+stringdef y4     '{U+FEF2}'  // YEH
+
+// Ligatures Lam-Alef
+stringdef la      '{U+FEFB}' // LAM_ALEF
+stringdef la2     '{U+FEFC}' // LAM_ALEF
+stringdef lao     '{U+FEF7}' // LAM_ALEF_HAMZA_ABOVE
+stringdef lao2    '{U+FEF8}' // LAM_ALEF_HAMZA_ABOVE
+stringdef lao_    '{U+FEF9}' // LAM_ALEF_HAMZA_BELOW
+stringdef lao_2   '{U+FEFA}' // LAM_ALEF_HAMZA_BELOW
+stringdef la~     '{U+FEF5}' // LAM_ALEF_MADDA_ABOVE
+stringdef la~2    '{U+FEF6}' // LAM_ALEF_MADDA_ABOVE
+
+
+booleans (
+            is_noun
+            is_verb
+            is_defined
+         )
+
+routines (
+    Prefix_Step1
+    Prefix_Step2
+    Prefix_Step3a_Noun
+    Prefix_Step3b_Noun
+    Prefix_Step3_Verb
+    Prefix_Step4_Verb
+
+    Suffix_All_alef_maqsura
+    Suffix_Noun_Step1a
+    Suffix_Noun_Step1b
+    Suffix_Noun_Step2a
+    Suffix_Noun_Step2b
+    Suffix_Noun_Step2c1
+    Suffix_Noun_Step2c2
+    Suffix_Noun_Step3
+    Suffix_Verb_Step1
+    Suffix_Verb_Step2a
+    Suffix_Verb_Step2b
+    Suffix_Verb_Step2c
+
+    Normalize_post
+    Normalize_pre
+
+    Checks1
+)
+
+externals ( stem )
+
+groupings (  )
+
+
+// Normalizations
+define Normalize_pre as (
+    do repeat (
+        (
+            [substring] among (
+                '{aan}' '{uun}' '{iin}' '{aa}' '{uu}' '{ii}' '{oo}' '{~}'( delete ) // strip vocalization
+                '{_}' ( delete ) // strip kasheeda
+
+                // Hindu–Arabic numerals
+                '{0}' ( <- '0')
+                '{1}' ( <- '1')
+                '{2}' ( <- '2')
+                '{3}' ( <- '3')
+                '{4}' ( <- '4')
+                '{5}' ( <- '5')
+                '{6}' ( <- '6')
+                '{7}' ( <- '7')
+                '{8}' ( <- '8')
+                '{9}' ( <- '9')
+
+                // Shaped forms
+                '{o1}' ( <- '{o}' ) // HAMZA
+                '{ao1}' '{ao2}'  ( <- '{ao}' ) // ALEF_HAMZA_ABOVE
+                '{ao_1}' '{ao_2}' ( <- '{ao_}' ) // ALEF_HAMZA_BELOW
+                '{yo1}'  '{yo2}' '{yo3}'  '{yo4}'  ( <- '{yo}' ) // YEH_HAMZA
+                '{a~1}'  '{a~2}'( <- '{a~}' ) // ALEF_MADDA
+                '{wo1}' '{wo2}'( <- '{wo}' ) // WAW_HAMZA
+                '{a1}' '{a2}' ( <- '{a}' ) // ALEF
+                '{b1}' '{b2}' '{b3}'  '{b4}'  ( <- '{b}' ) // BEH
+                '{t_1}'  '{t_2}' ( <- '{t_}' ) // TEH_MARBUTA
+                '{t1}'   '{t2}' '{t3}' '{t4}'  ( <- '{t}' ) // TEH
+                '{th1}' '{th2}' '{th3}' '{th4}' ( <- '{th}' ) // THEH
+                '{j1}' '{j2}'  '{j3}' '{j4}'(  <- '{j}' ) // JEEM
+                '{h1}' '{h2}' '{h3}' '{h4}' ( <- '{h}' ) // HAH
+                '{x1}' '{x2}' '{x3}' '{x4}'( <- '{x}' ) // KHAH
+                '{d1}'  '{d2}'  ( <- '{d}' ) // DAL
+                '{dz1}''{dz2}' ( <- '{dz}' ) // THAL
+                '{r1}' '{r2}'( <- '{r}' ) // REH
+                '{z1}' '{z2}'  ( <- '{z}' ) // ZAIN
+                '{s1}'  '{s2}'   '{s3}' '{s4}'( <- '{s}' ) // SEEN
+                '{sh1}' '{sh2}' '{sh3}' '{sh4}' ( <- '{sh}' ) // SHEEN
+                '{c1}' '{c2}' '{c3}' '{c4}'( <- '{c}' ) // SAD
+                '{dh1}'    '{dh2}'   '{dh3}'  '{dh4}'( <- '{dh}' ) // DAD
+                '{tt1}'  '{tt2}'  '{tt3}'  '{tt4}' ( <- '{tt}' ) // TAH
+                '{zh1}' '{zh2}' '{zh3}'    '{zh4}'( <- '{zh}' ) // ZAH
+                '{i1}' '{i2}' '{i3}'  '{i4}'( <- '{i}' ) // AIN
+                '{gh1}' '{gh2}' '{gh3}'  '{gh4}'( <- '{gh}' ) // GHAIN
+                '{f1}'  '{f2}' '{f3}'  '{f4}' ( <- '{f}' ) // FEH
+                '{q1}' '{q2}' '{q3}' '{q4}' ( <- '{q}' ) // QAF
+                '{k1}' '{k2}' '{k3}'  '{k4}'( <- '{k}' ) // KAF
+                '{l1}' '{l2}' '{l3}' '{l4}'( <- '{l}' ) // LAM
+                '{m1}' '{m2}'  '{m3}' '{m4}'   ( <- '{m}' ) // MEEM
+                '{n1}'  '{n2}' '{n3}'  '{n4}'( <- '{n}' ) // NOON
+                '{e1}' '{e2}' '{e3}' '{e4}' ( <- '{e}' ) // HEH
+                '{w1}'  '{w2}'  ( <- '{w}' ) // WAW
+                '{a_1}' '{a_2}' ( <- '{a_}' ) // ALEF_MAKSURA
+                '{y1}' '{y2}' '{y3}' '{y4}' ( <- '{y}' ) // YEH
+
+                // Ligatures Lam-Alef
+                '{la}'  '{la2}'     (<- '{l}{a}')
+                '{lao}'  '{lao2}'   (<- '{l}{ao}')
+                '{lao_}'  '{lao_2}' (<- '{l}{ao_}')
+                '{la~}'  '{la~2}'    (<- '{l}{a~}')
+
+            )
+        )
+        or
+        next
+    )
+)
+
+define Normalize_post as (
+
+    do (
+        // normalize last hamza
+        backwards (
+        [substring] among (
+            '{ao}''{ao_}' '{a~}' ( <- '{o}')
+        '{wo}' ( <- '{o}')
+        '{yo}' ( <- '{o}')
+        )
+        )
+    )
+
+    do repeat (
+        (
+        // normalize other hamza's
+            [substring] among (
+                '{ao}''{ao_}' '{a~}' ( <- '{a}')
+                '{wo}' ( <- '{w}')
+                '{yo}' ( <- '{y}')
+            )
+        )
+        or
+        next
+    )
+)
+
+// Checks
+define Checks1 as (
+    [substring] among (
+        '{b}{a}{l}' '{k}{a}{l}' ($(len > 4)  set is_noun  unset is_verb set is_defined)
+        '{l}{l}' '{a}{l}' ($(len > 3)  set is_noun unset is_verb set is_defined)
+    )
+)
+
+
+//prefixes
+define Prefix_Step1 as (
+         [substring] among (
+             '{ao}{ao}' ($(len > 3) <-  '{ao}'  )
+             '{ao}{a~}' ($(len > 3) <-  '{a~}'  )
+             '{ao}{wo}' ($(len > 3) <-  '{ao}'  )
+             '{ao}{a}' ($(len > 3) <-  '{a}'  )
+             '{ao}{ao_}' ($(len > 3) <-  '{ao_}'  )
+            // '{ao}' ($(len > 3) delete) //rare case
+        )
+)
+
+define Prefix_Step2 as (
+        not '{f}{a}'
+        not '{w}{a}'
+        [substring] among (
+            '{f}' ($(len > 3) delete)
+            '{w}' ($(len > 3) delete)
+        )
+)
+
+define Prefix_Step3a_Noun as ( // it is noun and defined
+        [substring] among (
+            '{b}{a}{l}' '{k}{a}{l}' ($(len > 5) delete)
+            '{l}{l}' '{a}{l}' ($(len > 4) delete)
+        )
+)
+
+define Prefix_Step3b_Noun as ( // probably  noun and defined
+        not '{b}{a}' // exception
+        [substring] among (
+            '{b}' ($(len > 3) delete)
+            // '{k}'  '{l}' ($(len > 3) delete) // BUG: cause confusion
+            '{b}{b}' ($(len > 3) <-  '{b}'  )
+            '{k}{k}'  ($(len > 3) <-  '{k}'  )
+           )
+
+)
+
+define Prefix_Step3_Verb as (
+        [substring] among (
+            //'{s}' ($(len > 4) delete)// BUG: cause confusion
+            '{s}{y}' ($(len > 4) <- '{y}' )
+            '{s}{t}' ($(len > 4) <- '{t}')
+            '{s}{n}' ($(len > 4) <- '{n}')
+            '{s}{ao}' ($(len > 4) <- '{ao}')
+        )
+)
+
+define Prefix_Step4_Verb as (
+        [substring] among (
+            '{y}{s}{t}' '{n}{s}{t}' '{t}{s}{t}' ($(len > 4) set is_verb unset is_noun <-  '{a}{s}{t}' )
+        )
+)
+
+// suffixes
+backwardmode (
+
+        define Suffix_Noun_Step1a as (
+                [substring] among (
+                        '{y}' '{k}' '{e}' ($(len >= 4) delete)
+                        '{n}{a}' '{k}{m}' '{e}{a}' '{e}{n}' '{e}{m}' ($(len >= 5)  delete)
+                        '{k}{m}{a}' '{e}{m}{a}' ($(len >= 6) delete)
+                )
+            )
+        define Suffix_Noun_Step1b as (
+            [substring] among (
+                '{n}' ($(len > 5) delete)
+            )
+        )
+
+        define Suffix_Noun_Step2a as (
+                [substring] among (
+                        '{a}' '{y}' '{w}' ($(len > 4) delete)
+                )
+            )
+
+        define Suffix_Noun_Step2b as (
+            [substring] among (
+                '{a}{t}' ($(len >= 5) delete)
+            )
+        )
+
+        define Suffix_Noun_Step2c1 as (
+            [substring] among (
+                '{t}' ($(len >= 4) delete)
+            )
+        )
+        define Suffix_Noun_Step2c2 as ( // feminine t_
+            [substring] among (
+                '{t_}' ($(len >= 4) delete)
+            )
+        )
+        define Suffix_Noun_Step3 as ( // ya' nisbiya
+            [substring] among (
+                '{y}' ($(len >= 3) delete)
+            )
+        )
+
+        define Suffix_Verb_Step1 as (
+                [substring] among (
+                        '{e}' '{k}' ($(len >= 4) delete)
+                        '{n}{y}' '{n}{a}' '{e}{a}' '{e}{m}' '{e}{n}' '{k}{m}' '{k}{n}' ($(len >= 5) delete)
+                        '{e}{m}{a}' '{k}{m}{a}' '{k}{m}{w}'($(len >= 6) delete)
+                )
+            )
+        define Suffix_Verb_Step2a as (
+                [substring] among (
+                       '{t}' ($(len >= 4)  delete)
+                        '{a}' '{n}' '{y}' ($(len >= 4) delete)
+                        '{n}{a}' '{t}{a}'  '{t}{n}'  ($(len >= 5) delete)// past
+                        '{a}{n}' '{w}{n}' '{y}{n}' ($(len > 5) delete) // present
+                        '{t}{m}{a}' ($(len >= 6) delete)
+                )
+            )
+
+        define Suffix_Verb_Step2b as (
+            [substring] among (
+                '{w}{a}' '{t}{m}' ($(len >= 5) delete)
+            )
+        )
+
+
+        define Suffix_Verb_Step2c as (
+            [substring] among (
+                '{w}' ($(len >= 4) delete)
+                '{t}{m}{w}' ($(len >= 6) delete)
+            )
+        )
+
+        define Suffix_All_alef_maqsura as (
+            [substring] among (
+                '{a_}' ( <- '{y}' ) // spell error
+                // '{a_}' ( delete ) // if noun > 3
+                // '{a_}' ( <- '{a}') // if verb
+            )
+        )
+)
+
+define stem as (
+    // set initial values
+    set is_noun
+    set is_verb
+    unset is_defined
+
+    // guess type and properties
+    do Checks1
+
+    // normalization pre-stemming
+    do Normalize_pre
+
+
+    backwards (
+
+       do (
+              //Suffixes for verbs
+            (
+           is_verb
+           (
+               (
+                  (atleast 1 Suffix_Verb_Step1)
+                  ( Suffix_Verb_Step2a or Suffix_Verb_Step2c  or next)
+                )
+                or Suffix_Verb_Step2b
+                or Suffix_Verb_Step2a
+            )
+           )
+            //Suffixes for nouns
+          or (
+               is_noun
+                (
+
+                 try (
+                     Suffix_Noun_Step2c2
+                     or (not is_defined Suffix_Noun_Step1a (
+                            Suffix_Noun_Step2a
+                            or Suffix_Noun_Step2b
+                            or Suffix_Noun_Step2c1
+                            or next))
+                     or (Suffix_Noun_Step1b (
+                            Suffix_Noun_Step2a
+                            or Suffix_Noun_Step2b
+                            or Suffix_Noun_Step2c1))
+                     or (not is_defined Suffix_Noun_Step2a)
+                     or (Suffix_Noun_Step2b)
+                 )
+                 Suffix_Noun_Step3
+                 )
+
+            )
+
+            // Suffixes for alef maqsura
+            or  Suffix_All_alef_maqsura
+        )
+    )
+
+    //Prefixes
+    do (
+       try Prefix_Step1
+       try Prefix_Step2
+       ( Prefix_Step3a_Noun
+         or (is_noun Prefix_Step3b_Noun)
+         or (is_verb try Prefix_Step3_Verb Prefix_Step4_Verb)
+         )
+    )
+
+    // normalization post-stemming
+    do Normalize_post
+
+)

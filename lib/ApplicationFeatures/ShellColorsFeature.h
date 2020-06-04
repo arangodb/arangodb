@@ -31,6 +31,7 @@ class ShellColorsFeature final : public application_features::ApplicationFeature
  public:
   explicit ShellColorsFeature(application_features::ApplicationServer& server);
 
+  // cppcheck-suppress virtualCallInConstructor
   void prepare() override final;
 
  private:

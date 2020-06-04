@@ -22,11 +22,15 @@ attribute(s)
 - *waitForSync*: If *true* then creating or changing a
   document will wait until the data has been synchronized to disk.
 
-- *journalSize*: The maximal size of a journal or datafile in bytes. 
+- *journalSize*: The maximal size of a journal or datafile in bytes.
   The value must be at least `1048576` (1 MB). Note that when
   changing the journalSize value, it will only have an effect for
   additional journals or datafiles that are created. Already
   existing journals or datafiles will not be affected.
+
+- *schema*: Object that specifies the collection level schema 
+  for documents. The attribute keys `rule`, `level` and `message` must follow
+  the rules documented in [Document Schema Validation](https://www.arangodb.com/docs/devel/document-schema-validation.html)
 
 On success an object with the following attributes is returned:
 
@@ -62,6 +66,11 @@ On success an object with the following attributes is returned:
     generating keys and supplying own key values in the *_key* attribute
     of documents is considered an error.
 
+* *schema* (optional, default is *null*):
+  Object that specifies the collection level schema for documents.
+  The attribute keys `rule`, `level` and `message` must follow the rules
+  documented in [Document Schema Validation](https://www.arangodb.com/docs/devel/document-schema-validation.html)
+
 **Note**: except for *waitForSync*, *journalSize* and *name*, collection
 properties **cannot be changed** once a collection is created. To rename
 a collection, the rename endpoint must be used.
@@ -92,4 +101,3 @@ is returned.
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

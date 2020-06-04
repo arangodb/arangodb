@@ -231,12 +231,13 @@ function Run (testsuite) {
   let nonMatchedTests = [];
 
   for (var key in definition) {
-    if ((testFilter !== "undefined" && testFilter !== undefined && testFilter !== null) && (key !== testFilter)) {
-      // print(`test "${key}" doesn't match "${testFilter}", skipping`);
-      nonMatchedTests.push(key);
-      continue;
-    }
     if (key.indexOf('test') === 0) {
+      if ((testFilter !== "undefined" && testFilter !== undefined && testFilter !== null) && (key !== testFilter)) {
+        // print(`test "${key}" doesn't match "${testFilter}", skipping`);
+        nonMatchedTests.push(key);
+        continue;
+      }
+
       var test = { name: key, fn: definition[key]};
 
       tests.push(test);
@@ -378,7 +379,7 @@ function RunTest (path, outputReply, filter) {
 
   content = fs.read(path);
 
-  content = `(function(){ require('jsunity').jsUnity.attachAssertions(); return (function() { require('jsunity').setTestFilter(${JSON.stringify(filter)}); const getOptions = false;  ${content} }());
+  content = `(function(){ require('jsunity').jsUnity.attachAssertions(); return (function() { require('jsunity').setTestFilter(${JSON.stringify(filter)}); const runSetup = false; const getOptions = false; ${content} }());
 });`;
   f = internal.executeScript(content, undefined, path);
 

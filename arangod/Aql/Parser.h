@@ -25,30 +25,32 @@
 #define ARANGOD_AQL_PARSER_H 1
 
 #include "Aql/Ast.h"
-#include "Aql/Query.h"
 #include "Basics/Common.h"
 
 namespace arangodb {
 namespace aql {
 struct AstNode;
-class Query;
+class QueryContext;
 struct QueryResult;
+class QueryString;
 
 /// @brief the parser
 class Parser {
+  Parser(Parser const&) = delete;
+
  public:
   /// @brief create the parser
-  explicit Parser(Query*);
+  explicit Parser(QueryContext&, Ast&, QueryString&);
 
   /// @brief destroy the parser
   ~Parser();
 
  public:
   /// @brief return the ast during parsing
-  inline Ast* ast() { return _ast; }
+  inline Ast* ast() { return &_ast; }
 
   /// @brief return the query during parsing
-  inline Query* query() { return _query; }
+  inline QueryContext& query() { return _query; }
 
   /// @brief return the scanner
   inline void* scanner() const { return _scanner; }
@@ -139,14 +141,16 @@ class Parser {
 
  private:
   /// @brief a pointer to the start of the query string
-  QueryString const& queryString() const { return _query->queryString(); }
+  QueryString const& queryString() const { return _queryString; }
 
  private:
   /// @brief the query
-  Query* _query;
+  QueryContext& _query;
 
   /// @brief abstract syntax tree for the query, build during parsing
-  Ast* _ast;
+  Ast& _ast;
+  
+  QueryString& _queryString;
 
   /// @brief lexer / scanner used when parsing the query (Aql/tokens.ll)
   void* _scanner;

@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_ENCRYPTION_H
@@ -26,7 +25,7 @@
 
 #include "store/data_output.hpp"
 #include "store/data_input.hpp"
-#include "utils/attributes.hpp"
+#include "utils/attribute_store.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/noncopyable.hpp"
 
@@ -37,7 +36,10 @@ NS_ROOT
 /// @brief directory encryption provider
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API encryption : public stored_attribute {
-  DECLARE_ATTRIBUTE_TYPE();
+  // FIXME check if it's possible to rename to iresearch::encryption?
+  static constexpr string_ref type_name() noexcept {
+    return "encryption";
+  }
 
   ////////////////////////////////////////////////////////////////////////////
   /// @struct stream
@@ -64,21 +66,19 @@ struct IRESEARCH_API encryption : public stored_attribute {
   /// @brief an allocated block of header memory for a new file
   virtual bool create_header(
     const std::string& filename,
-    byte_type* header
-  ) = 0;
+    byte_type* header) = 0;
 
   /// @returns a cipher stream for a file given file name
   virtual stream::ptr create_stream(
     const std::string& filename,
-    byte_type* header
-  ) = 0;
+    byte_type* header) = 0;
 };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           helpers
 // -----------------------------------------------------------------------------
 
-inline irs::encryption* get_encryption(const attribute_store& attrs) NOEXCEPT {
+inline irs::encryption* get_encryption(const attribute_store& attrs) noexcept {
   auto enc = attrs.get<irs::encryption>();
 
   return enc ? enc.get() : nullptr;
@@ -148,11 +148,11 @@ class IRESEARCH_API encrypted_output : public irs::index_output, util::noncopyab
     return out_->checksum();
   }
 
-  size_t buffer_size() const NOEXCEPT { return buf_size_; }
+  size_t buffer_size() const noexcept { return buf_size_; }
 
-  const index_output& stream() const NOEXCEPT { return *out_; }
+  const index_output& stream() const noexcept { return *out_; }
 
-  index_output::ptr release() NOEXCEPT {
+  index_output::ptr release() noexcept {
     return std::move(managed_out_);
   }
 
@@ -200,11 +200,11 @@ class IRESEARCH_API encrypted_input : public buffered_index_input, util::noncopy
 
   virtual int64_t checksum(size_t offset) const override final;
 
-  const index_input& stream() const NOEXCEPT {
+  const index_input& stream() const noexcept {
     return *in_;
   }
 
-  index_input::ptr release() NOEXCEPT {
+  index_input::ptr release() noexcept {
     return std::move(managed_in_);
   }
 
@@ -214,7 +214,7 @@ class IRESEARCH_API encrypted_input : public buffered_index_input, util::noncopy
   virtual size_t read_internal(byte_type* b, size_t count) override final;
 
  private:
-  encrypted_input(const encrypted_input& rhs, index_input::ptr&& in) NOEXCEPT;
+  encrypted_input(const encrypted_input& rhs, index_input::ptr&& in) noexcept;
 
   index_input::ptr managed_in_;
   index_input* in_;

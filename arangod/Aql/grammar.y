@@ -25,7 +25,7 @@
 #include "Aql/Function.h"
 #include "Aql/Parser.h"
 #include "Aql/Quantifier.h"
-#include "Aql/Query.h"
+#include "Aql/QueryContext.h"
 #include "Aql/types.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
@@ -64,16 +64,17 @@ void Aqlerror(YYLTYPE* locp,
   parser->registerParseError(TRI_ERROR_QUERY_PARSE, message, locp->first_line, locp->first_column);
 }
 
+namespace {
 /// @brief check if any of the variables used in the INTO expression were
 /// introduced by the COLLECT itself, in which case it would fail
-static void CheckIntoVariables(Parser* parser, AstNode const* expression,
-                               int line, int column,
-                               ::arangodb::containers::HashSet<Variable const*> const& variablesIntroduced) {
+void checkIntoVariables(Parser* parser, AstNode const* expression,
+                        int line, int column,
+                        VarSet const& variablesIntroduced) {
   if (expression == nullptr) {
     return;
   }
 
-  ::arangodb::containers::HashSet<Variable const*> varsInAssignment;
+  VarSet varsInAssignment{};
   Ast::getReferencedVariables(expression, varsInAssignment);
 
   for (auto const& it : varsInAssignment) {
@@ -86,11 +87,11 @@ static void CheckIntoVariables(Parser* parser, AstNode const* expression,
 }
 
 /// @brief register variables in the scope
-static void RegisterAssignVariables(Parser* parser, arangodb::aql::Scopes* scopes,
-                                    int line, int column,
-                                    ::arangodb::containers::HashSet<Variable const*>& variablesIntroduced,
-                                    AstNode const* vars) {
-  ::arangodb::containers::HashSet<Variable const*> varsInAssignment;
+void registerAssignVariables(Parser* parser, arangodb::aql::Scopes* scopes,
+                             int line, int column,
+                             VarSet& variablesIntroduced,
+                             AstNode const* vars) {
+  VarSet varsInAssignment{};
 
   size_t const n = vars->numMembers();
 
@@ -120,7 +121,7 @@ static void RegisterAssignVariables(Parser* parser, arangodb::aql::Scopes* scope
 }
 
 /// @brief validate the aggregate variables expressions
-static bool ValidateAggregates(Parser* parser, AstNode const* aggregates) {
+bool validateAggregates(Parser* parser, AstNode const* aggregates) {
   size_t const n = aggregates->numMembers();
 
   for (size_t i = 0; i < n; ++i) {
@@ -155,9 +156,10 @@ static bool ValidateAggregates(Parser* parser, AstNode const* aggregates) {
 }
 
 /// @brief start a new scope for the collect
-static bool StartCollectScope(arangodb::aql::Scopes* scopes) {
+bool startCollectScope(arangodb::aql::Scopes* scopes) {
   // check if we are in the main scope
-  if (scopes->type() == arangodb::aql::AQL_SCOPE_MAIN) {
+  if (scopes->type() == arangodb::aql::AQL_SCOPE_MAIN ||
+      scopes->type() == arangodb::aql::AQL_SCOPE_SUBQUERY) {
     return false;
   }
 
@@ -169,7 +171,7 @@ static bool StartCollectScope(arangodb::aql::Scopes* scopes) {
 }
 
 /// @brief get the INTO variable stored in a node (may not exist)
-static AstNode const* GetIntoVariable(Parser* parser, AstNode const* node) {
+AstNode const* getIntoVariable(Parser* parser, AstNode const* node) {
   if (node == nullptr) {
     return nullptr;
   }
@@ -189,7 +191,7 @@ static AstNode const* GetIntoVariable(Parser* parser, AstNode const* node) {
 }
 
 /// @brief get the INTO variable = expression stored in a node (may not exist)
-static AstNode const* GetIntoExpression(AstNode const* node) {
+AstNode const* getIntoExpression(AstNode const* node) {
   if (node == nullptr || node->type == NODE_TYPE_VALUE) {
     return nullptr;
   }
@@ -201,7 +203,7 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
   return node->getMember(1);
 }
 
-static AstNode* TransformOutputVariables(Parser* parser, AstNode const* names) {
+AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
   auto wrapperNode = parser->ast()->createNodeArray();
   for (size_t i = 0; i < names->numMembers(); ++i) {
     AstNode* variableNameNode = names->getMemberUnchecked(i);
@@ -211,6 +213,8 @@ static AstNode* TransformOutputVariables(Parser* parser, AstNode const* names) {
   }
   return wrapperNode;
 }
+
+} // namespace
 
 %}
 
@@ -356,6 +360,7 @@ static AstNode* TransformOutputVariables(Parser* parser, AstNode const* names) {
 %type <node> k_shortest_paths_graph_info;
 %type <node> optional_array_elements;
 %type <node> array_elements_list;
+%type <node> array_element;
 %type <node> for_options;
 %type <node> object;
 %type <node> options;
@@ -427,7 +432,7 @@ optional_with:
       parser->pushStack(node);
      } with_collection_list {
       auto node = static_cast<AstNode*>(parser->popStack());
-      auto const& resolver = parser->query()->resolver();
+      auto const& resolver = parser->query().resolver();
       auto withNode = parser->ast()->createNodeWithCollections(node, resolver);
       parser->ast()->addOperation(withNode);
      }
@@ -700,7 +705,7 @@ for_statement:
       if (variableNamesNode->numMembers() > 3) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "Traversals only have one, two or three return variables", yylloc.first_line, yylloc.first_column);
       }
-      auto variablesNode = TransformOutputVariables(parser, variableNamesNode);
+      auto variablesNode = ::transformOutputVariables(parser, variableNamesNode);
       auto graphInfoNode = static_cast<AstNode*>($4);
       TRI_ASSERT(graphInfoNode != nullptr);
       TRI_ASSERT(graphInfoNode->type == NODE_TYPE_ARRAY);
@@ -732,7 +737,7 @@ for_statement:
       if (variableNamesNode->numMembers() > 2) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "ShortestPath only has one or two return variables", yylloc.first_line, yylloc.first_column);
       }
-      auto variablesNode = TransformOutputVariables(parser, variableNamesNode);
+      auto variablesNode = ::transformOutputVariables(parser, variableNamesNode);
       auto graphInfoNode = static_cast<AstNode*>($4);
       TRI_ASSERT(graphInfoNode != nullptr);
       TRI_ASSERT(graphInfoNode->type == NODE_TYPE_ARRAY);
@@ -750,7 +755,7 @@ for_statement:
       if (variableNamesNode->numMembers() > 1) {
           parser->registerParseError(TRI_ERROR_QUERY_PARSE, "k Shortest Paths only has one return variable", yylloc.first_line, yylloc.first_column);
       }
-      auto variablesNode = TransformOutputVariables(parser, variableNamesNode);
+      auto variablesNode = ::transformOutputVariables(parser, variableNamesNode);
       auto graphInfoNode = static_cast<AstNode*>($4);
       TRI_ASSERT(graphInfoNode != nullptr);
       TRI_ASSERT(graphInfoNode->type == NODE_TYPE_ARRAY);
@@ -817,7 +822,7 @@ collect_statement:
       /* COLLECT WITH COUNT INTO var OPTIONS ... */
       auto scopes = parser->ast()->scopes();
 
-      StartCollectScope(scopes);
+      ::startCollectScope(scopes);
 
       auto node = parser->ast()->createNodeCollectCount(parser->ast()->createNodeArray(), $2.value, $2.length, $3);
       parser->ast()->addOperation(node);
@@ -826,9 +831,9 @@ collect_statement:
       /* COLLECT var = expr WITH COUNT INTO var OPTIONS ... */
       auto scopes = parser->ast()->scopes();
 
-      if (StartCollectScope(scopes)) {
-        ::arangodb::containers::HashSet<Variable const*> variables;
-        RegisterAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variables, $1);
+      if (::startCollectScope(scopes)) {
+        VarSet variables{};
+        ::registerAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variables, $1);
       }
 
       auto node = parser->ast()->createNodeCollectCount($1, $2.value, $2.length, $3);
@@ -836,48 +841,48 @@ collect_statement:
     }
   | T_COLLECT aggregate collect_optional_into options {
       /* AGGREGATE var = expr OPTIONS ... */
-      ::arangodb::containers::HashSet<Variable const*> variablesIntroduced;
+      VarSet variablesIntroduced{};
       auto scopes = parser->ast()->scopes();
 
-      if (StartCollectScope(scopes)) {
-        RegisterAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variablesIntroduced, $2);
+      if (::startCollectScope(scopes)) {
+        ::registerAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variablesIntroduced, $2);
       }
 
       // validate aggregates
-      if (!ValidateAggregates(parser, $2)) {
+      if (!::validateAggregates(parser, $2)) {
         YYABORT;
       }
 
       if ($3 != nullptr && $3->type == NODE_TYPE_ARRAY) {
-        CheckIntoVariables(parser, $3->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
+        ::checkIntoVariables(parser, $3->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
       }
 
-      AstNode const* into = GetIntoVariable(parser, $3);
-      AstNode const* intoExpression = GetIntoExpression($3);
+      AstNode const* into = ::getIntoVariable(parser, $3);
+      AstNode const* intoExpression = ::getIntoExpression($3);
 
       auto node = parser->ast()->createNodeCollect(parser->ast()->createNodeArray(), $2, into, intoExpression, nullptr, $3);
       parser->ast()->addOperation(node);
     }
   | collect_variable_list aggregate collect_optional_into options {
       /* COLLECT var = expr AGGREGATE var = expr OPTIONS ... */
-      ::arangodb::containers::HashSet<Variable const*> variablesIntroduced;
+      VarSet variablesIntroduced{};
       auto scopes = parser->ast()->scopes();
 
-      if (StartCollectScope(scopes)) {
-        RegisterAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variablesIntroduced, $1);
-        RegisterAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variablesIntroduced, $2);
+      if (::startCollectScope(scopes)) {
+        ::registerAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variablesIntroduced, $1);
+        ::registerAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variablesIntroduced, $2);
       }
 
-      if (! ValidateAggregates(parser, $2)) {
+      if (!::validateAggregates(parser, $2)) {
         YYABORT;
       }
 
       if ($3 != nullptr && $3->type == NODE_TYPE_ARRAY) {
-        CheckIntoVariables(parser, $3->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
+        ::checkIntoVariables(parser, $3->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
       }
 
       // note all group variables
-      ::arangodb::containers::HashSet<Variable const*> groupVars;
+      VarSet groupVars{};
       size_t n = $1->numMembers();
       for (size_t i = 0; i < n; ++i) {
         auto member = $1->getMember(i);
@@ -895,7 +900,7 @@ collect_statement:
 
         if (member != nullptr) {
           TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
-          ::arangodb::containers::HashSet<Variable const*> variablesUsed;
+          VarSet variablesUsed{};
           Ast::getReferencedVariables(member->getMember(1), variablesUsed);
 
           for (auto& it : groupVars) {
@@ -908,38 +913,38 @@ collect_statement:
         }
       }
 
-      AstNode const* into = GetIntoVariable(parser, $3);
-      AstNode const* intoExpression = GetIntoExpression($3);
+      AstNode const* into = ::getIntoVariable(parser, $3);
+      AstNode const* intoExpression = ::getIntoExpression($3);
 
       auto node = parser->ast()->createNodeCollect($1, $2, into, intoExpression, nullptr, $4);
       parser->ast()->addOperation(node);
     }
   | collect_variable_list collect_optional_into options {
       /* COLLECT var = expr INTO var OPTIONS ... */
-      ::arangodb::containers::HashSet<Variable const*> variablesIntroduced;
+      VarSet variablesIntroduced{};
       auto scopes = parser->ast()->scopes();
 
-      if (StartCollectScope(scopes)) {
-        RegisterAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variablesIntroduced, $1);
+      if (::startCollectScope(scopes)) {
+        ::registerAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variablesIntroduced, $1);
       }
 
       if ($2 != nullptr && $2->type == NODE_TYPE_ARRAY) {
-        CheckIntoVariables(parser, $2->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
+        ::checkIntoVariables(parser, $2->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
       }
 
-      AstNode const* into = GetIntoVariable(parser, $2);
-      AstNode const* intoExpression = GetIntoExpression($2);
+      AstNode const* into = ::getIntoVariable(parser, $2);
+      AstNode const* intoExpression = ::getIntoExpression($2);
 
       auto node = parser->ast()->createNodeCollect($1, parser->ast()->createNodeArray(), into, intoExpression, nullptr, $3);
       parser->ast()->addOperation(node);
     }
   | collect_variable_list collect_optional_into keep options {
       /* COLLECT var = expr INTO var KEEP ... OPTIONS ... */
-      ::arangodb::containers::HashSet<Variable const*> variablesIntroduced;
+      VarSet variablesIntroduced{};
       auto scopes = parser->ast()->scopes();
 
-      if (StartCollectScope(scopes)) {
-        RegisterAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variablesIntroduced, $1);
+      if (::startCollectScope(scopes)) {
+        ::registerAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variablesIntroduced, $1);
       }
 
       if ($2 == nullptr &&
@@ -948,11 +953,11 @@ collect_statement:
       }
 
       if ($2 != nullptr && $2->type == NODE_TYPE_ARRAY) {
-        CheckIntoVariables(parser, $2->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
+        ::checkIntoVariables(parser, $2->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
       }
 
-      AstNode const* into = GetIntoVariable(parser, $2);
-      AstNode const* intoExpression = GetIntoExpression($2);
+      AstNode const* into = ::getIntoVariable(parser, $2);
+      AstNode const* intoExpression = ::getIntoExpression($2);
 
       auto node = parser->ast()->createNodeCollect($1, parser->ast()->createNodeArray(), into, intoExpression, $3, $4);
       parser->ast()->addOperation(node);
@@ -1303,7 +1308,7 @@ function_name:
       std::string temp($1.value, $1.length);
       temp.append("::");
       temp.append($3.value, $3.length);
-      auto p = parser->query()->registerString(temp);
+      auto p = parser->ast()->resources().registerString(temp);
 
       if (p == nullptr) {
         ABORT_OOM
@@ -1470,7 +1475,7 @@ operator_ternary:
       $$ = parser->ast()->createNodeTernaryOperator($1, $3, $5);
     }
   | expression T_QUESTION T_COLON expression {
-      $$ = parser->ast()->createNodeTernaryOperator($1, $1, $4);
+      $$ = parser->ast()->createNodeTernaryOperator($1, $4);
     }
   ;
 
@@ -1532,14 +1537,20 @@ optional_array_elements:
     }
   | array_elements_list {
     }
+  | array_elements_list T_COMMA {
+    }
   ;
 
 array_elements_list:
+    array_element {
+    }
+  | array_elements_list T_COMMA array_element {
+    }
+  ;
+
+array_element:
     expression {
       parser->pushArrayElement($1);
-    }
-  | array_elements_list T_COMMA expression {
-      parser->pushArrayElement($3);
     }
   ;
 
@@ -1622,6 +1633,8 @@ optional_object_elements:
     /* empty */ {
     }
   | object_elements_list {
+    }
+  | object_elements_list T_COMMA {
     }
   ;
 
@@ -1736,7 +1749,7 @@ graph_subject:
     graph_collection {
       auto node = parser->ast()->createNodeArray();
       node->addMember($1);
-      auto const& resolver = parser->query()->resolver();
+      auto const& resolver = parser->query().resolver();
       $$ = parser->ast()->createNodeCollectionList(node, resolver);
     }
   | graph_collection T_COMMA {
@@ -1745,7 +1758,7 @@ graph_subject:
       node->addMember($1);
     } graph_collection_list {
       auto node = static_cast<AstNode*>(parser->popStack());
-      auto const& resolver = parser->query()->resolver();
+      auto const& resolver = parser->query().resolver();
       $$ = parser->ast()->createNodeCollectionList(node, resolver);
     }
   | T_GRAPH bind_parameter {
@@ -1753,6 +1766,10 @@ graph_subject:
       $$ = $2;
     }
   | T_GRAPH T_QUOTED_STRING {
+      // graph name
+      $$ = parser->ast()->createNodeValueString($2.value, $2.length);
+    }
+  | T_GRAPH T_STRING {
       // graph name
       $$ = parser->ast()->createNodeValueString($2.value, $2.length);
     }
@@ -1806,7 +1823,7 @@ reference:
 
       if (node == nullptr) {
         // variable not found. so it must have been a collection or view
-        auto const& resolver = parser->query()->resolver();
+        auto const& resolver = parser->query().resolver();
         node = ast->createNodeDataSource(resolver, $1.value, $1.length, arangodb::AccessMode::Type::READ, true, false);
       }
 
@@ -1981,11 +1998,11 @@ value_literal:
 
 in_or_into_collection_name:
     T_STRING {
-      auto const& resolver = parser->query()->resolver();
+      auto const& resolver = parser->query().resolver();
       $$ = parser->ast()->createNodeCollection(resolver, $1.value, $1.length, arangodb::AccessMode::Type::WRITE);
     }
   | T_QUOTED_STRING {
-      auto const& resolver = parser->query()->resolver();
+      auto const& resolver = parser->query().resolver();
       $$ = parser->ast()->createNodeCollection(resolver, $1.value, $1.length, arangodb::AccessMode::Type::WRITE);
     }
   | T_DATA_SOURCE_PARAMETER {

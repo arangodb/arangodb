@@ -51,14 +51,18 @@ class VstRequest final : public GeneralRequest {
              size_t payloadOffset,
              uint64_t messageId);
 
-  ~VstRequest() {}
+  ~VstRequest() = default;
 
  public:
   
-  uint64_t messageId() const override { return _messageId; }
-  size_t contentLength() const override { return _buffer.size(); }
+  size_t contentLength() const override;
   arangodb::velocypack::StringRef rawPayload() const override;
-  velocypack::Slice payload(arangodb::velocypack::Options const*) override;
+  velocypack::Slice payload(bool strictValidation = true) override;
+  void setPayload(arangodb::velocypack::Buffer<uint8_t> buffer) override;
+
+  virtual void setDefaultContentType() override {
+    _contentType = rest::ContentType::VPACK;
+  }
 
   arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::VST;
@@ -70,11 +74,8 @@ class VstRequest final : public GeneralRequest {
   void parseHeaderInformation();
 
  private:
-  velocypack::Buffer<uint8_t> const _buffer;
-  /// @brief if payload was not VPack this will store parsed result
-  std::shared_ptr<velocypack::Builder> _vpackBuilder;
-  size_t const _payloadOffset;
-  uint64_t const _messageId;
+  /// message header and request body are in the same body
+  size_t _payloadOffset;
   /// @brief was VPack payload validated
   bool _validatedPayload;
 };

@@ -50,11 +50,10 @@ class RocksDBAllIndexIterator final : public IndexIterator {
 
   char const* typeName() const override { return "all-index-iterator"; }
 
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
-  bool nextDocument(DocumentCallback const& cb, size_t limit) override;
-  void skip(uint64_t count, uint64_t& skipped) override;
-
-  void reset() override;
+  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override;
+  bool nextDocumentImpl(DocumentCallback const& cb, size_t limit) override;
+  void skipImpl(uint64_t count, uint64_t& skipped) override;
+  void resetImpl() override;
 
  private:
   bool outOfRange() const;
@@ -73,9 +72,10 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
 
   char const* typeName() const override { return "any-index-iterator"; }
 
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
-  bool nextDocument(DocumentCallback const& cb, size_t limit) override;
-  void reset() override;
+  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override;
+  bool nextDocumentImpl(DocumentCallback const& cb, size_t limit) override;
+  // cppcheck-suppress virtualCallInConstructor ; desired impl
+  void resetImpl() override;
 
  private:
   bool outOfRange() const;

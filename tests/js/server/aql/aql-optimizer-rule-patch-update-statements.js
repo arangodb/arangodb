@@ -73,6 +73,8 @@ function optimizerRuleTestSuite () {
 
     testRuleDisabled : function () {
       var queries = [ 
+        "FOR doc IN " + c.name() + " REMOVE doc IN " + c.name(),
+        "FOR doc IN " + c.name() + " REMOVE doc IN " + c.name() + " RETURN doc",
         "FOR doc IN " + c.name() + " UPDATE doc WITH { test: 1 } IN " + c.name(),
         "FOR doc IN " + c.name() + " UPDATE doc WITH { test: 1 } IN " + c.name() + " RETURN doc",
         "FOR doc IN " + c.name() + " REPLACE doc WITH { test: 1 } IN " + c.name(),
@@ -91,6 +93,14 @@ function optimizerRuleTestSuite () {
 
     testRuleNoEffect : function () {
       var queries = [ 
+        "REMOVE 'test0' IN " + c.name(), // nothing returned
+        "REMOVE { test: 1 } IN " + c.name(), // nothing returned
+        "FOR doc1 IN " + c.name() + " REMOVE doc1 IN " + c.name() + " RETURN doc1.value", // must not kick in here
+        "FOR doc1 IN " + c.name() + " REMOVE doc1 IN " + c.name() + " FILTER doc1.value == 2 RETURN doc1", // must not kick in here
+        "FOR i IN 1..10 FOR doc1 IN " + c.name() + " REMOVE doc1 IN " + c.name() + " RETURN doc1", // must not kick in here
+        "FOR doc1 IN " + c.name() + " FOR i IN 1..10 REMOVE doc1 IN " + c.name() + " RETURN doc1", // must not kick in here
+        "FOR doc1 IN " + c.name() + " FOR doc2 IN " + c.name() + " REMOVE doc1 IN " + c.name() + " RETURN doc1", // must not kick in here
+        "FOR doc1 IN " + c.name() + " FOR doc2 IN " + c.name() + " REMOVE doc1 IN " + c.name() + " RETURN doc2", // must not kick in here
         "UPDATE 'test0' WITH { test: 1 } IN " + c.name(), // nothing returned
         "FOR doc1 IN " + c.name() + " UPDATE doc1 WITH { test: 1 } IN " + c.name() + " FILTER doc1.value == 2 RETURN doc1", // must not kick in here
         "FOR doc1 IN " + c.name() + " UPDATE doc1 WITH { test: 1 } IN " + c.name() + " RETURN doc1.value", // must not kick in here
@@ -121,6 +131,10 @@ function optimizerRuleTestSuite () {
       c.ensureIndex({ type: "skiplist", fields: ["x"] });
 
       var queries = [ 
+        "FOR doc IN " + c.name() + " REMOVE doc IN " + c.name(), // nothing returned
+        "FOR doc IN " + c.name() + " REMOVE doc IN " + c.name() + " RETURN 1", // different values returned
+        "FOR doc IN " + c.name() + " FILTER doc.value > 100 REMOVE doc IN " + c.name(), // nothing returned
+        "FOR doc IN " + c.name() + " FILTER doc.x > 100 REMOVE doc IN " + c.name(), // using index
         "FOR doc IN " + c.name() + " UPDATE doc WITH { test: 1 } IN " + c.name(), // nothing returned
         "FOR doc IN " + c.name() + " UPDATE doc WITH { test: 1 } IN " + c.name() + " RETURN 1", // different values returned
         "FOR doc IN " + c.name() + " FILTER doc.value > 100 UPDATE doc WITH { test: 1 } IN " + c.name(), // nothing returned
@@ -135,6 +149,44 @@ function optimizerRuleTestSuite () {
         var result = AQL_EXPLAIN(query, { }, paramEnabled);
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test results
+////////////////////////////////////////////////////////////////////////////////
+
+    testResultsAfterRemove : function () {
+      var query = "FOR doc IN " + c.name() + " REMOVE doc IN " + c.name() + " RETURN doc";
+      var result = AQL_EXPLAIN(query, { }); 
+      assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
+
+      result = AQL_EXECUTE(query).json;
+      assertEqual(2000, result.length);
+
+      for (var i = 0; i < result.length; ++i) {
+        assertTrue(result[i].value >= 0);
+      }
+
+      assertEqual(0, c.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test results
+////////////////////////////////////////////////////////////////////////////////
+
+    testResultsAfterRemoveReturnOld : function () {
+      var query = "FOR doc IN " + c.name() + " REMOVE doc IN " + c.name() + " RETURN OLD";
+      var result = AQL_EXPLAIN(query, {}, { optimizer: { rules: ["-remove-data-modification-out-variables"] } });
+      assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+
+      result = AQL_EXECUTE(query).json;
+      assertEqual(2000, result.length);
+
+      for (var i = 0; i < result.length; ++i) {
+        assertTrue(result[i].value >= 0);
+      }
+     
+      assertEqual(0, c.count()); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////

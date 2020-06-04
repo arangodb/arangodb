@@ -34,7 +34,7 @@
 
 #include "Geo/GeoParams.h"
 #include "Geo/Utils.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -67,7 +67,7 @@ struct DocumentsDescending {
 
 /// @brief Helper class to build a simple near query iterator.
 /// Will return points sorted by distance to the target point, can
-/// also filter contains / intersect in regions (on rsesult points and
+/// also filter contains / intersect in regions (on result points and
 /// search intervals). Should be storage engine agnostic
 template <typename CMP = DocumentsAscending>
 class NearUtils {

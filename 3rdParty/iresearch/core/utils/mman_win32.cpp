@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #if defined(_MSC_VER)
@@ -33,7 +32,7 @@
 
 NS_LOCAL
 
-DWORD page_protection(int prot) NOEXCEPT {
+DWORD page_protection(int prot) noexcept {
   switch (prot) {
     case PROT_NONE:
       return PAGE_NOACCESS;
@@ -61,7 +60,7 @@ DWORD page_protection(int prot) NOEXCEPT {
   return PAGE_NOACCESS; // fallback
 }
 
-DWORD file_protection(int prot) NOEXCEPT {
+DWORD file_protection(int prot) noexcept {
   DWORD access = 0;
 
   if (PROT_NONE == prot) {

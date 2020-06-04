@@ -1,0 +1,23 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+th{
+    Version{"2.1.19.14"}
+    collations{
+        standard{
+            Sequence{
+                "[normalization on]"
+                "[alternate shifted]"
+                "[reorder Thai]"
+                "&[before 1]๚<ฯ"
+                "&๛<ๆ"
+                "&๎<<์"
+                "&[before 1]ะ<ํ"
+                "&า<<<ๅ"
+                "&าํ<<<ํา<<<ำ"
+                "&ๅํ<<<ํๅ"
+                "&ไ<ฺ"
+            }
+            Version{"35.1"}
+        }
+    }
+}

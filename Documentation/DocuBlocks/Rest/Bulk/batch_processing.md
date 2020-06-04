@@ -81,24 +81,24 @@ The boundary (`SomeBoundaryValue`) is passed to the server in the HTTP
 @EXAMPLE_ARANGOSH_RUN{RestBatchMultipartHeader}
     var parts = [
       "Content-Type: application/x-arango-batchpart\r\n" +
-      "Content-Id: myId1\r\n\r\n" + 
+      "Content-Id: myId1\r\n\r\n" +
       "GET /_api/version HTTP/1.1\r\n",
 
-      "Content-Type: application/x-arango-batchpart\r\n" + 
-      "Content-Id: myId2\r\n\r\n" + 
+      "Content-Type: application/x-arango-batchpart\r\n" +
+      "Content-Id: myId2\r\n\r\n" +
       "DELETE /_api/collection/products HTTP/1.1\r\n",
 
-      "Content-Type: application/x-arango-batchpart\r\n" + 
-      "Content-Id: someId\r\n\r\n" + 
-      "POST /_api/collection/products HTTP/1.1\r\n\r\n" + 
+      "Content-Type: application/x-arango-batchpart\r\n" +
+      "Content-Id: someId\r\n\r\n" +
+      "POST /_api/collection/products HTTP/1.1\r\n\r\n" +
       "{\"name\": \"products\" }\r\n",
 
-      "Content-Type: application/x-arango-batchpart\r\n" + 
-      "Content-Id: nextId\r\n\r\n" + 
+      "Content-Type: application/x-arango-batchpart\r\n" +
+      "Content-Id: nextId\r\n\r\n" +
       "GET /_api/collection/products/figures HTTP/1.1\r\n",
 
-      "Content-Type: application/x-arango-batchpart\r\n" + 
-      "Content-Id: otherId\r\n\r\n" + 
+      "Content-Type: application/x-arango-batchpart\r\n" +
+      "Content-Id: otherId\r\n\r\n" +
       "DELETE /_api/collection/products HTTP/1.1\r\n"
     ];
     var boundary = "SomeBoundaryValue";
@@ -120,9 +120,9 @@ in this case try to find the boundary at the beginning of the request body).
 
 @EXAMPLE_ARANGOSH_RUN{RestBatchImplicitBoundary}
     var parts = [
-      "Content-Type: application/x-arango-batchpart\r\n\r\n" + 
+      "Content-Type: application/x-arango-batchpart\r\n\r\n" +
          "DELETE /_api/collection/notexisting1 HTTP/1.1\r\n",
-      "Content-Type: application/x-arango-batchpart\r\n\r\n" + 
+      "Content-Type: application/x-arango-batchpart\r\n\r\n" +
          "DELETE _api/collection/notexisting2 HTTP/1.1\r\n"
     ];
     var boundary = "SomeBoundaryValue";
@@ -138,4 +138,3 @@ in this case try to find the boundary at the beginning of the request body).
     logPlainResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

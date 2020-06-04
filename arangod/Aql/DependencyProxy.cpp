@@ -22,6 +22,7 @@
 
 #include "DependencyProxy.h"
 
+#include "Aql/AqlCallStack.h"
 #include "Aql/BlocksWithClients.h"
 #include "Aql/types.h"
 #include "Basics/Exceptions.h"
@@ -31,22 +32,90 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 template <BlockPassthrough blockPassthrough>
+std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
+DependencyProxy<blockPassthrough>::execute(AqlCallStack& stack) {
+  ExecutionState state = ExecutionState::HASMORE;
+  SkipResult skipped;
+  SharedAqlItemBlockPtr block = nullptr;
+  // Note: upstreamBlock will return next dependency
+  // if we need to loop here
+  do {
+    std::tie(state, skipped, block) = executeForDependency(_currentDependency, stack);
+
+    if (state == ExecutionState::DONE) {
+      if (!advanceDependency()) {
+        break;
+      }
+    }
+  } while (state != ExecutionState::WAITING && skipped.nothingSkipped() && block == nullptr);
+  return {state, skipped, block};
+}
+
+template <BlockPassthrough blockPassthrough>
+std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
+DependencyProxy<blockPassthrough>::executeForDependency(size_t dependency,
+                                                        AqlCallStack& stack) {
+  ExecutionState state = ExecutionState::HASMORE;
+  SkipResult skipped;
+  SharedAqlItemBlockPtr block = nullptr;
+
+  if (!_distributeId.empty()) {
+    // We are in the cluster case.
+    // we have to ask executeForShard
+    auto upstreamWithClient =
+        dynamic_cast<BlocksWithClients*>(&upstreamBlockForDependency(dependency));
+    TRI_ASSERT(upstreamWithClient != nullptr);
+    if (upstreamWithClient == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
+                                     "Invalid state reached, we try to "
+                                     "request sharded data from a block "
+                                     "that is not able to provide it.");
+    }
+    std::tie(state, skipped, block) =
+        upstreamWithClient->executeForClient(stack, _distributeId);
+  } else {
+    std::tie(state, skipped, block) =
+        upstreamBlockForDependency(dependency).execute(stack);
+  }
+  TRI_IF_FAILURE("ExecutionBlock::getBlock") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  if (skipped.nothingSkipped() && block == nullptr) {
+    // We're either waiting or Done
+    TRI_ASSERT(state == ExecutionState::DONE || state == ExecutionState::WAITING);
+  }
+  return {state, skipped, block};
+}
+
+template <BlockPassthrough blockPassthrough>
 ExecutionState DependencyProxy<blockPassthrough>::prefetchBlock(size_t atMost) {
   TRI_ASSERT(atMost > 0);
   ExecutionState state;
   SharedAqlItemBlockPtr block;
+
+  // Temporary.
+  // Just do a copy of the stack here to not mess with it.
+  AqlCallStack stack = _injectedStack;
+  stack.pushCall(AqlCallList{AqlCall::SimulateGetSome(atMost)});
+  // Also temporary, will not be used here.
+  SkipResult skipped;
   do {
     // Note: upstreamBlock will return next dependency
     // if we need to loop here
     if (_distributeId.empty()) {
-      std::tie(state, block) = upstreamBlock().getSome(atMost);
+      std::tie(state, skipped, block) = upstreamBlock().execute(stack);
     } else {
       auto upstreamWithClient = dynamic_cast<BlocksWithClients*>(&upstreamBlock());
-      std::tie(state, block) = upstreamWithClient->getSomeForShard(atMost, _distributeId);
+      std::tie(state, skipped, block) =
+          upstreamWithClient->executeForClient(stack, _distributeId);
     }
     TRI_IF_FAILURE("ExecutionBlock::getBlock") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
+    // Cannot do skipping here
+    // Temporary!
+    TRI_ASSERT(skipped.nothingSkipped());
 
     if (state == ExecutionState::WAITING) {
       TRI_ASSERT(block == nullptr);
@@ -115,13 +184,22 @@ DependencyProxy<blockPassthrough>::fetchBlockForDependency(size_t dependency, si
   TRI_ASSERT(atMost > 0);
   ExecutionState state;
   SharedAqlItemBlockPtr block;
+
+  // Temporary.
+  // Just do a copy of the stack here to not mess with it.
+  AqlCallStack stack = _injectedStack;
+  stack.pushCall(AqlCallList{AqlCall::SimulateGetSome(atMost)});
+  // Also temporary, will not be used here.
+  SkipResult skipped{};
+
   if (_distributeId.empty()) {
-    std::tie(state, block) = upstream.getSome(atMost);
+    std::tie(state, skipped, block) = upstream.execute(stack);
   } else {
     auto upstreamWithClient = dynamic_cast<BlocksWithClients*>(&upstream);
-    std::tie(state, block) = upstreamWithClient->getSomeForShard(atMost, _distributeId);
+    std::tie(state, skipped, block) =
+        upstreamWithClient->executeForClient(stack, _distributeId);
   }
-
+  TRI_ASSERT(skipped.nothingSkipped());
   TRI_IF_FAILURE("ExecutionBlock::getBlock") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -144,130 +222,28 @@ DependencyProxy<blockPassthrough>::fetchBlockForDependency(size_t dependency, si
 }
 
 template <BlockPassthrough blockPassthrough>
-std::pair<ExecutionState, size_t> DependencyProxy<blockPassthrough>::skipSomeForDependency(
-    size_t const dependency, size_t const atMost) {
-  TRI_ASSERT(blockPassthrough == BlockPassthrough::Disable);
-
-  TRI_ASSERT(_blockPassThroughQueue.empty());
-  TRI_ASSERT(_blockQueue.empty());
-
-  TRI_ASSERT(atMost > 0);
-  TRI_ASSERT(_skipped <= atMost);
-
-  ExecutionBlock& upstream = upstreamBlockForDependency(dependency);
-
-  ExecutionState state = ExecutionState::HASMORE;
-
-  while (state == ExecutionState::HASMORE && _skipped < atMost) {
-    size_t skippedNow;
-    TRI_ASSERT(_skipped <= atMost);
-    std::tie(state, skippedNow) = upstream.skipSome(atMost - _skipped);
-    if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(skippedNow == 0);
-      return {state, 0};
-    }
-
-    _skipped += skippedNow;
-    TRI_ASSERT(_skipped <= atMost);
-  }
-  TRI_ASSERT(state != ExecutionState::WAITING);
-
-  size_t skipped = _skipped;
-  _skipped = 0;
-  TRI_ASSERT(skipped <= atMost);
-  return {state, skipped};
-}
-
-template <BlockPassthrough blockPassthrough>
-std::pair<ExecutionState, size_t> DependencyProxy<blockPassthrough>::skipSome(size_t const toSkip) {
-  TRI_ASSERT(_blockPassThroughQueue.empty());
-  TRI_ASSERT(_blockQueue.empty());
-
-  TRI_ASSERT(toSkip > 0);
-  TRI_ASSERT(_skipped <= toSkip);
-  ExecutionState state = ExecutionState::HASMORE;
-
-  while (_skipped < toSkip) {
-    size_t skippedNow;
-    // Note: upstreamBlock will return next dependency
-    // if we need to loop here
-    TRI_ASSERT(_skipped <= toSkip);
-    if (_distributeId.empty()) {
-      std::tie(state, skippedNow) = upstreamBlock().skipSome(toSkip - _skipped);
-    } else {
-      auto upstreamWithClient = dynamic_cast<BlocksWithClients*>(&upstreamBlock());
-      std::tie(state, skippedNow) =
-          upstreamWithClient->skipSomeForShard(toSkip - _skipped, _distributeId);
-    }
-
-    TRI_ASSERT(skippedNow <= toSkip - _skipped);
-
-    if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(skippedNow == 0);
-      return {state, 0};
-    }
-
-    _skipped += skippedNow;
-
-    // When the current dependency is done, advance.
-    if (state == ExecutionState::DONE) {
-      if (!advanceDependency()) {
-        break;
-      } else {
-        state = ExecutionState::HASMORE;
-      }
-    }
-  }
-
-  size_t skipped = _skipped;
-  _skipped = 0;
-
-  TRI_ASSERT(skipped <= toSkip);
-  return {state, skipped};
-}
-
-template <BlockPassthrough blockPassthrough>
-std::pair<ExecutionState, SharedAqlItemBlockPtr> DependencyProxy<blockPassthrough>::fetchBlockForPassthrough(
-    size_t atMost) {
-  TRI_ASSERT(blockPassthrough == BlockPassthrough::Enable);  // TODO check this with enable_if in the header already
-
-  if (_blockPassThroughQueue.empty()) {
-    ExecutionState state = prefetchBlock(atMost);
-    // prefetchBlock returns HASMORE iff it pushed a block onto _blockPassThroughQueue.
-    // If it didn't, it got either WAITING from upstream, or DONE + nullptr.
-    if (state == ExecutionState::WAITING || state == ExecutionState::DONE) {
-      return {state, nullptr};
-    }
-    TRI_ASSERT(state == ExecutionState::HASMORE);
-  }
-
-  TRI_ASSERT(!_blockPassThroughQueue.empty());
-
-  ExecutionState state;
-  SharedAqlItemBlockPtr block;
-  std::tie(state, block) = _blockPassThroughQueue.front();
-  _blockPassThroughQueue.pop_front();
-
-  return {state, std::move(block)};
-}
-
-template <BlockPassthrough blockPassthrough>
 DependencyProxy<blockPassthrough>::DependencyProxy(
     std::vector<ExecutionBlock*> const& dependencies, AqlItemBlockManager& itemBlockManager,
-    std::shared_ptr<std::unordered_set<RegisterId> const> inputRegisters,
-    RegisterId nrInputRegisters)
+    RegIdSet const& inputRegisters,
+    RegisterCount nrInputRegisters, velocypack::Options const* const options)
     : _dependencies(dependencies),
       _itemBlockManager(itemBlockManager),
-      _inputRegisters(std::move(inputRegisters)),
+      _inputRegisters(inputRegisters),
       _nrInputRegisters(nrInputRegisters),
       _distributeId(),
       _blockQueue(),
       _blockPassThroughQueue(),
       _currentDependency(0),
-      _skipped(0) {}
+      _skipped(0),
+      _vpackOptions(options),
+      _injectedStack(AqlCallList{AqlCall{}}) {
+  // Make the default stack usable, for tests only.
+  // This needs to be removed soon.
+  _injectedStack.popCall();
+}
 
 template <BlockPassthrough blockPassthrough>
-RegisterId DependencyProxy<blockPassthrough>::getNrInputRegisters() const {
+RegisterCount DependencyProxy<blockPassthrough>::getNrInputRegisters() const {
   return _nrInputRegisters;
 }
 
@@ -314,6 +290,12 @@ bool DependencyProxy<blockPassthrough>::advanceDependency() {
   }
   _currentDependency++;
   return true;
+}
+
+template <BlockPassthrough allowBlockPassthrough>
+velocypack::Options const* DependencyProxy<allowBlockPassthrough>::velocypackOptions() const
+    noexcept {
+  return _vpackOptions;
 }
 
 template class ::arangodb::aql::DependencyProxy<BlockPassthrough::Enable>;

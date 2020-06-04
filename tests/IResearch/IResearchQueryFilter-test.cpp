@@ -147,7 +147,7 @@ TEST_F(IResearchQueryFilterTest, SearchAndFilter) {
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocs.emplace_back();
         auto const res =
-          collections[i%2]->insert(&trx, doc, insertedDocs.back(), opt, false);
+          collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt);
         EXPECT_TRUE(res.ok());
         ++i;
       }

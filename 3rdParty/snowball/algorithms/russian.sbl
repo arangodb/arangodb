@@ -1,0 +1,221 @@
+stringescapes {}
+
+/* the 33 Cyrillic letters represented in ASCII characters following the
+ * conventions of the standard Library of Congress transliteration: */
+
+stringdef a    '{U+0430}'
+stringdef b    '{U+0431}'
+stringdef v    '{U+0432}'
+stringdef g    '{U+0433}'
+stringdef d    '{U+0434}'
+stringdef e    '{U+0435}'
+stringdef e"   '{U+0451}'
+stringdef zh   '{U+0436}'
+stringdef z    '{U+0437}'
+stringdef i    '{U+0438}'
+stringdef i`   '{U+0439}'
+stringdef k    '{U+043A}'
+stringdef l    '{U+043B}'
+stringdef m    '{U+043C}'
+stringdef n    '{U+043D}'
+stringdef o    '{U+043E}'
+stringdef p    '{U+043F}'
+stringdef r    '{U+0440}'
+stringdef s    '{U+0441}'
+stringdef t    '{U+0442}'
+stringdef u    '{U+0443}'
+stringdef f    '{U+0444}'
+stringdef kh   '{U+0445}'
+stringdef ts   '{U+0446}'
+stringdef ch   '{U+0447}'
+stringdef sh   '{U+0448}'
+stringdef shch '{U+0449}'
+stringdef "    '{U+044A}'
+stringdef y    '{U+044B}'
+stringdef '    '{U+044C}'
+stringdef e`   '{U+044D}'
+stringdef iu   '{U+044E}'
+stringdef ia   '{U+044F}'
+
+routines ( mark_regions R2
+           perfective_gerund
+           adjective
+           adjectival
+           reflexive
+           verb
+           noun
+           derivational
+           tidy_up
+)
+
+externals ( stem )
+
+integers ( pV p2 )
+
+groupings ( v )
+
+define v '{a}{e}{i}{o}{u}{y}{e`}{iu}{ia}'
+
+define mark_regions as (
+
+    $pV = limit
+    $p2 = limit
+    do (
+        gopast v  setmark pV  gopast non-v
+        gopast v  gopast non-v  setmark p2
+       )
+)
+
+backwardmode (
+
+    define R2 as $p2 <= cursor
+
+    define perfective_gerund as (
+        [substring] among (
+            '{v}'
+            '{v}{sh}{i}'
+            '{v}{sh}{i}{s}{'}'
+                ('{a}' or '{ia}' delete)
+            '{i}{v}'
+            '{i}{v}{sh}{i}'
+            '{i}{v}{sh}{i}{s}{'}'
+            '{y}{v}'
+            '{y}{v}{sh}{i}'
+            '{y}{v}{sh}{i}{s}{'}'
+                (delete)
+        )
+    )
+
+    define adjective as (
+        [substring] among (
+            '{e}{e}' '{i}{e}' '{y}{e}' '{o}{e}' '{i}{m}{i}' '{y}{m}{i}'
+            '{e}{i`}' '{i}{i`}' '{y}{i`}' '{o}{i`}' '{e}{m}' '{i}{m}'
+            '{y}{m}' '{o}{m}' '{e}{g}{o}' '{o}{g}{o}' '{e}{m}{u}'
+            '{o}{m}{u}' '{i}{kh}' '{y}{kh}' '{u}{iu}' '{iu}{iu}' '{a}{ia}'
+            '{ia}{ia}'
+                        // and -
+            '{o}{iu}'   // - which is somewhat archaic
+            '{e}{iu}'   // - soft form of {o}{iu}
+                (delete)
+        )
+    )
+
+    define adjectival as (
+        adjective
+
+        /* of the participle forms, em, vsh, ivsh, yvsh are readily removable.
+           nn, {iu}shch, shch, u{iu}shch can be removed, with a small proportion of
+           errors. Removing im, uem, enn creates too many errors.
+        */
+
+        try (
+            [substring] among (
+                '{e}{m}'                  // present passive participle
+                '{n}{n}'                  // adjective from past passive participle
+                '{v}{sh}'                 // past active participle
+                '{iu}{shch}' '{shch}'     // present active participle
+                    ('{a}' or '{ia}' delete)
+
+     //but not  '{i}{m}' '{u}{e}{m}'      // present passive participle
+     //or       '{e}{n}{n}'               // adjective from past passive participle
+
+                '{i}{v}{sh}' '{y}{v}{sh}'// past active participle
+                '{u}{iu}{shch}'          // present active participle
+                    (delete)
+            )
+        )
+
+    )
+
+    define reflexive as (
+        [substring] among (
+            '{s}{ia}'
+            '{s}{'}'
+                (delete)
+        )
+    )
+
+    define verb as (
+        [substring] among (
+            '{l}{a}' '{n}{a}' '{e}{t}{e}' '{i`}{t}{e}' '{l}{i}' '{i`}'
+            '{l}' '{e}{m}' '{n}' '{l}{o}' '{n}{o}' '{e}{t}' '{iu}{t}'
+            '{n}{y}' '{t}{'}' '{e}{sh}{'}'
+
+            '{n}{n}{o}'
+                ('{a}' or '{ia}' delete)
+
+            '{i}{l}{a}' '{y}{l}{a}' '{e}{n}{a}' '{e}{i`}{t}{e}'
+            '{u}{i`}{t}{e}' '{i}{t}{e}' '{i}{l}{i}' '{y}{l}{i}' '{e}{i`}'
+            '{u}{i`}' '{i}{l}' '{y}{l}' '{i}{m}' '{y}{m}' '{e}{n}'
+            '{i}{l}{o}' '{y}{l}{o}' '{e}{n}{o}' '{ia}{t}' '{u}{e}{t}'
+            '{u}{iu}{t}' '{i}{t}' '{y}{t}' '{e}{n}{y}' '{i}{t}{'}'
+            '{y}{t}{'}' '{i}{sh}{'}' '{u}{iu}' '{iu}'
+                (delete)
+            /* note the short passive participle tests:
+               '{n}{a}' '{n}' '{n}{o}' '{n}{y}'
+               '{e}{n}{a}' '{e}{n}' '{e}{n}{o}' '{e}{n}{y}'
+            */
+        )
+    )
+
+    define noun as (
+        [substring] among (
+            '{a}' '{e}{v}' '{o}{v}' '{i}{e}' '{'}{e}' '{e}'
+            '{i}{ia}{m}{i}' '{ia}{m}{i}' '{a}{m}{i}' '{e}{i}' '{i}{i}'
+            '{i}' '{i}{e}{i`}' '{e}{i`}' '{o}{i`}' '{i}{i`}' '{i`}'
+            '{i}{ia}{m}' '{ia}{m}' '{i}{e}{m}' '{e}{m}' '{a}{m}' '{o}{m}'
+            '{o}' '{u}' '{a}{kh}' '{i}{ia}{kh}' '{ia}{kh}' '{y}' '{'}'
+            '{i}{iu}' '{'}{iu}' '{iu}' '{i}{ia}' '{'}{ia}' '{ia}'
+                (delete)
+            /* the small class of neuter forms '{e}{n}{i}' '{e}{n}{e}{m}'
+               '{e}{n}{a}' '{e}{n}' '{e}{n}{a}{m}' '{e}{n}{a}{m}{i}' '{e}{n}{a}{x}'
+               omitted - they only occur on 12 words.
+            */
+        )
+    )
+
+    define derivational as (
+        [substring] R2 among (
+            '{o}{s}{t}'
+            '{o}{s}{t}{'}'
+                (delete)
+        )
+    )
+
+    define tidy_up as (
+        [substring] among (
+
+            '{e}{i`}{sh}'
+            '{e}{i`}{sh}{e}'  // superlative forms
+               (delete
+                ['{n}'] '{n}' delete
+               )
+            '{n}'
+               ('{n}' delete) // e.g. -nno endings
+            '{'}'
+               (delete)  // with some slight false conflations
+        )
+    )
+)
+
+define stem as (
+
+    // Normalise {e"} to {e}.  The documentation has long suggested the user
+    // should do this before calling the stemmer - we now do it for them.
+    do repeat ( goto (['{e"}']) <- '{e}' )
+
+    do mark_regions
+    backwards setlimit tomark pV for (
+        do (
+             perfective_gerund or
+             ( try reflexive
+               adjectival or verb or noun
+             )
+        )
+        try([ '{i}' ] delete)
+        // because noun ending -i{iu} is being treated as verb ending -{iu}
+
+        do derivational
+        do tidy_up
+    )
+)

@@ -89,7 +89,7 @@ struct SLPAComputation : public VertexComputation<SLPAValue, int8_t, uint64_t> {
   void compute(MessageIterator<uint64_t> const& messages) override {
     SLPAValue* val = mutableVertexData();
     if (globalSuperstep() == 0) {
-      val->memory.emplace(val->nodeId, 1);
+      val->memory.try_emplace(val->nodeId, 1);
       val->numCommunities = 1;
     }
 
@@ -114,7 +114,7 @@ struct SLPAComputation : public VertexComputation<SLPAValue, int8_t, uint64_t> {
     uint64_t cumulativeSum = 0;
     // Randomly select a label with probability proportional to the
     // occurrence frequency of this label in its memory
-    for (std::pair<uint64_t, uint64_t> const& e : val->memory) {
+    for (auto const& e : val->memory) {
       cumulativeSum += e.second;
       if (cumulativeSum >= random) {
         sendMessageToAllNeighbours(e.first);
@@ -159,7 +159,7 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
       return false;
     } else {
       std::vector<std::pair<uint64_t, double>> vec;
-      for (std::pair<uint64_t, uint64_t> pair : ptr->memory) {
+      for (auto const& pair : ptr->memory) {
         double t = (double)pair.second / ptr->numCommunities;
         if (t >= threshold) {
           vec.emplace_back(pair.first, t);

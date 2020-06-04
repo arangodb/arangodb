@@ -34,6 +34,9 @@
 #include "Basics/ConditionVariable.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// class AgencyCallback
@@ -90,7 +93,7 @@ class AgencyCallback {
   //////////////////////////////////////////////////////////////////////////////
 
  public:
-  AgencyCallback(AgencyComm&, std::string const&,
+  AgencyCallback(application_features::ApplicationServer& server, std::string const&,
                  std::function<bool(velocypack::Slice const&)> const&, bool needsValue,
                  bool needsInitialValue = true);
 
@@ -118,15 +121,21 @@ class AgencyCallback {
   bool executeByCallbackOrTimeout(double);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Set if local (b:true) or remote
+  //////////////////////////////////////////////////////////////////////////////
+  void local(bool b);
+  bool local() const;
+  
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief private members
   //////////////////////////////////////////////////////////////////////////////
 
  private:
-  AgencyComm& _agency;
+  AgencyComm _agency;
   std::function<bool(velocypack::Slice const&)> const _cb;
   std::shared_ptr<velocypack::Builder> _lastData;
   bool const _needsValue;
-
   /// @brief this flag is set if there was an attempt to signal the callback's
   /// condition variable - this is necessary to catch all signals that happen
   /// before the caller is going into the wait state, i.e. to prevent this
@@ -136,6 +145,9 @@ class AgencyCallback {
   ///  3) caller going into condition.wait() (and not woken up)
   /// this variable is protected by the condition variable! 
   bool _wasSignaled;
+
+  /// Determined when registered in registery. Default: true 
+  bool _local;
 
   // execute callback with current value data:
   bool execute(std::shared_ptr<velocypack::Builder>);

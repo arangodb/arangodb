@@ -113,8 +113,8 @@ arangodb::Result handleMasterStateResponse(arangodb::replutils::Connection& conn
 
   // validate all values we got
   std::string const masterIdString(serverId.copyString());
-  TRI_server_id_t const masterId = arangodb::basics::StringUtils::uint64(masterIdString);
-  if (masterId == 0) {
+  arangodb::ServerId const masterId{arangodb::basics::StringUtils::uint64(masterIdString)};
+  if (masterId.empty()) {
     // invalid master id
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("invalid server id in response") + endpointString);
@@ -157,10 +157,11 @@ arangodb::Result handleMasterStateResponse(arangodb::replutils::Connection& conn
   master.engine = engineString;
 
   LOG_TOPIC("6c920", INFO, arangodb::Logger::REPLICATION)
-      << "connected to master at " << master.endpoint << ", id " << master.serverId
-      << ", version " << master.majorVersion << "." << master.minorVersion
-      << ", last log tick " << master.lastLogTick << ", last uncommitted log tick "
-      << master.lastUncommittedLogTick << ", engine " << master.engine;
+      << "connected to master at " << master.endpoint << ", id "
+      << master.serverId.id() << ", version " << master.majorVersion << "."
+      << master.minorVersion << ", last log tick " << master.lastLogTick
+      << ", last uncommitted log tick " << master.lastUncommittedLogTick
+      << ", engine " << master.engine;
 
   return Result();
 }
@@ -173,14 +174,14 @@ std::string const ReplicationUrl = "/_api/replication";
 
 Connection::Connection(Syncer* syncer, ReplicationApplierConfiguration const& applierConfig)
     : _endpointString{applierConfig._endpoint},
-      _localServerId{basics::StringUtils::itoa(ServerIdFeature::getId())},
+      _localServerId{basics::StringUtils::itoa(ServerIdFeature::getId().id())},
       _clientInfo{applierConfig._clientInfoString} {
   std::unique_ptr<httpclient::GeneralClientConnection> connection;
   std::unique_ptr<Endpoint> endpoint{Endpoint::clientFactory(_endpointString)};
   if (endpoint != nullptr) {
     connection.reset(httpclient::GeneralClientConnection::factory(
-        endpoint, applierConfig._requestTimeout, applierConfig._connectTimeout,
-        static_cast<size_t>(applierConfig._maxConnectRetries),
+        applierConfig._server, endpoint, applierConfig._requestTimeout,
+        applierConfig._connectTimeout, static_cast<size_t>(applierConfig._maxConnectRetries),
         static_cast<uint32_t>(applierConfig._sslProtocol)));
   }
 
@@ -384,7 +385,7 @@ Result BatchInfo::start(replutils::Connection const& connection,
     if (!connection.clientInfo().empty()) {
       parameters.add("clientInfo", connection.clientInfo());
     }
-    return Location(Path{path}, Query{parameters}, boost::none).toString();
+    return Location(Path{path}, Query{parameters}, std::nullopt).toString();
   }();
 
   VPackBuilder b;
@@ -463,7 +464,7 @@ Result BatchInfo::extend(replutils::Connection const& connection,
     if (!connection.clientInfo().empty()) {
       parameters.add("clientInfo", connection.clientInfo());
     }
-    return Location(Path{path}, Query{parameters}, boost::none).toString();
+    return Location(Path{path}, Query{parameters}, std::nullopt).toString();
   }();
   std::string const body = "{\"ttl\":" + basics::StringUtils::itoa(ttl) + "}";
   progress.set("sending batch extend command to url " + url);
@@ -507,7 +508,7 @@ Result BatchInfo::finish(replutils::Connection const& connection,
       if (!connection.clientInfo().empty()) {
         parameters.add("clientInfo", connection.clientInfo());
       }
-      return Location(Path{path}, Query{parameters}, boost::none).toString();
+      return Location(Path{path}, Query{parameters}, std::nullopt).toString();
     }();
     progress.set("sending batch finish command to url " + url);
 
@@ -539,7 +540,7 @@ MasterInfo::MasterInfo(ReplicationApplierConfiguration const& applierConfig) {
 Result MasterInfo::getState(replutils::Connection& connection, bool isChildSyncer) {
   if (isChildSyncer) {
     TRI_ASSERT(endpoint.empty());
-    TRI_ASSERT(serverId != 0);
+    TRI_ASSERT(serverId.isSet());
     TRI_ASSERT(majorVersion != 0);
     return Result();
   }
@@ -588,7 +589,7 @@ Result MasterInfo::getState(replutils::Connection& connection, bool isChildSynce
 }
 
 bool MasterInfo::simulate32Client() const {
-  TRI_ASSERT(!endpoint.empty() && serverId != 0 && majorVersion != 0);
+  TRI_ASSERT(!endpoint.empty() && serverId.isSet() && majorVersion != 0);
   bool is33 = (majorVersion > 3 || (majorVersion == 3 && minorVersion >= 3));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // allows us to test the old replication API
@@ -641,6 +642,8 @@ Result parseResponse(velocypack::Builder& builder,
     velocypack::Parser parser(builder);
     parser.parse(response->getBody().begin(), response->getBody().length());
     return Result();
+  } catch (VPackException const& e) {
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, e.what());
   } catch (...) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE);
   }

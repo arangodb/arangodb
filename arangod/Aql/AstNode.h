@@ -78,6 +78,8 @@ enum AstNodeFlagType : AstNodeFlagsType {
   FLAG_FINALIZED = 0x0040000,  // node has been finalized and should not be modified; only
                                // set and checked in maintainer mode
   FLAG_SUBQUERY_REFERENCE = 0x0080000,  // node references a subquery
+  
+  FLAG_INTERNAL_CONST = 0x0100000,  // internal, constant node
 };
 
 /// @brief enumeration of AST node value types
@@ -260,7 +262,10 @@ struct AstNode {
 
   /// @brief compute the value for a constant value node
   /// the value is owned by the node and must not be freed by the caller
-  arangodb::velocypack::Slice computeValue() const;
+  /// the Builder object can be passed in as an optimization
+  arangodb::velocypack::Slice computeValue(arangodb::velocypack::Builder* = nullptr) const;
+
+  uint8_t const* computedValue() const { return _computedValue; }
 
   /// @brief sort the members of an (array) node
   /// this will also set the FLAG_SORTED flag for the node
@@ -285,18 +290,12 @@ struct AstNode {
   /// @brief fetch a node's type from VPack
   static AstNodeType getNodeTypeFromVPack(arangodb::velocypack::Slice const& slice);
 
-  /// @brief return a VelocyPack representation of the node value
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackValue() const;
-
   /// @brief build a VelocyPack representation of the node value
   ///        Can throw Out of Memory Error
-  void toVelocyPackValue(arangodb::velocypack::Builder&) const;
-
-  /// @brief return a VelocyPack representation of the node
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool) const;
+  void toVelocyPackValue(arangodb::velocypack::Builder& builder) const;
 
   /// @brief Create a VelocyPack representation of the node
-  void toVelocyPack(arangodb::velocypack::Builder&, bool) const;
+  void toVelocyPack(arangodb::velocypack::Builder& builder, bool verbose) const;
 
   /// @brief convert the node's value to a boolean value
   /// this may create a new node or return the node itself if it is already a
@@ -458,8 +457,8 @@ struct AstNode {
   /// @brief remove a member from the node
   void removeMemberUnchecked(size_t i);
 
-  /// @brief remove all members from the node at once
-  void removeMembers();
+  /// @brief remove a member from the node while breaking members ordering. Faster than removeMemberUnchecked
+  void removeMemberUncheckedUnordered(size_t i);
 
   /// @brief return a member of the node
   AstNode* getMember(size_t i) const;
@@ -521,8 +520,9 @@ struct AstNode {
   /// @brief set the string value of a node
   void setStringValue(char const* v, size_t length);
 
-  /// @brief whether or not a string is equal to another
-  bool stringEquals(char const* other, bool caseInsensitive) const;
+  /// @brief whether the string value of this node is equal to other
+  ///        ignoring case
+  bool stringEqualsCaseInsensitive(std::string const& other) const;
 
   /// @brief whether or not a string is equal to another
   bool stringEquals(std::string const& other) const;
@@ -559,20 +559,14 @@ struct AstNode {
   /// this creates an equivalent to what JSON.stringify() would do
   void appendValue(arangodb::basics::StringBuffer*) const;
 
-  /// @brief Steals the computed value and frees it.
-  void stealComputedValue();
-
-  /// @brief Removes all members from the current node that are also
-  ///        members of the other node (ignoring ordering)
-  ///        Can only be applied if this and other are of type
-  ///        n-ary-and
-  void removeMembersInOtherAndNode(AstNode const* other);
-
   /// @brief If the node has not been marked finalized, mark its subtree so.
   /// If it runs into a finalized node, it assumes the whole subtree beneath
   /// it is marked already and exits early; otherwise it will finalize the node
   /// and recurse on its subtree.
   static void markFinalized(AstNode* subtreeRoot);
+
+  /// @brief sets the computed value pointer.
+  void setComputedValue(uint8_t* data);
 
  public:
   /// @brief the node type
@@ -592,12 +586,15 @@ struct AstNode {
 
   static std::underlying_type<AstNodeFlagType>::type makeFlags();
 
+  void computeValue(arangodb::velocypack::Builder& builder) const;
+  void freeComputedValue();
+
  private:
   /// @brief precomputed VPack value (used when executing expressions)
-  uint8_t mutable* computedValue;
+  uint8_t mutable* _computedValue;
 
   /// @brief the node's sub nodes
-  std::vector<AstNode*> members;
+  std::vector<AstNode*> members{};
 };
 
 int CompareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8);

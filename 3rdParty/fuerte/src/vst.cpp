@@ -53,7 +53,7 @@ namespace arangodb { namespace fuerte { inline namespace v1 { namespace vst {
      << "\nis first:             " << header.isFirst()
      << "\nindex:                " << header.index()
      << "\ntotal message length: " << header.messageLength()
-     << std::endl;
+     << "\n";
   return ss.str();
 }*/
 
@@ -120,7 +120,7 @@ void message::requestHeader(RequestHeader const& header,
     throw std::runtime_error("database for message not set");
   }
   builder.add(VPackValue(header.database));
-  FUERTE_LOG_DEBUG << "MessageHeader.database=" << header.database << std::endl;
+  FUERTE_LOG_DEBUG << "MessageHeader.database=" << header.database << "\n";
 
   // 3 - RestVerb
   if (header.restVerb == RestVerb::Illegal) {
@@ -128,7 +128,7 @@ void message::requestHeader(RequestHeader const& header,
   }
   builder.add(VPackValue(static_cast<int>(header.restVerb)));
   FUERTE_LOG_DEBUG << "MessageHeader.restVerb="
-                   << static_cast<int>(header.restVerb) << std::endl;
+                   << static_cast<int>(header.restVerb) << "\n";
 
   // 4 - path
   // if(!header.path){ throw std::runtime_error("path" + message); }
@@ -137,7 +137,7 @@ void message::requestHeader(RequestHeader const& header,
   } else {
     builder.add(VPackValue(header.path));
   }
-  FUERTE_LOG_DEBUG << "MessageHeader.path=" << header.path << std::endl;
+  FUERTE_LOG_DEBUG << "MessageHeader.path=" << header.path << "\n";
 
   // 5 - parameters - not optional in current server
   if (!header.parameters.empty()) {
@@ -305,7 +305,9 @@ void message::prepareForNetwork(VSTVersion vstVersion, MessageID messageId,
     }
     if (chunkDataLen > 0) {
       assert(payload.size() > 0);
+#ifdef FUERTE_DEBUG
       assert(begin < end);
+#endif
       // Add chunk data buffer
       result.emplace_back(begin, chunkDataLen);
       begin += chunkDataLen;
@@ -522,7 +524,7 @@ std::size_t validateAndCount(uint8_t const* const vpStart, std::size_t length) {
   std::size_t numPayloads = 0;  // fist item is the header
   bool isSubPart = true;
 
-  FUERTE_LOG_VSTTRACE << "buffer length to validate: " << length << std::endl;
+  FUERTE_LOG_VSTTRACE << "buffer length to validate: " << length << "\n";
 
   FUERTE_LOG_VSTTRACE << "sliceSizes: ";
   VPackSlice slice;
@@ -549,7 +551,7 @@ std::size_t validateAndCount(uint8_t const* const vpStart, std::size_t length) {
           e.what());
     }
   }
-  FUERTE_LOG_VSTTRACE << std::endl;
+  FUERTE_LOG_VSTTRACE << "\n";
   return numPayloads;
 }
 
@@ -591,13 +593,13 @@ std::unique_ptr<VPackBuffer<uint8_t>> RequestItem::assemble() {
   if (_responseNumberOfChunks == 0) {
     // We don't have the first chunk yet
     FUERTE_LOG_VSTCHUNKTRACE << "RequestItem::assemble: don't have first chunk"
-                             << std::endl;
+                             << "\n";
     return nullptr;
   }
   if (_responseChunks.size() < _responseNumberOfChunks) {
     // Not all chunks have arrived yet
     FUERTE_LOG_VSTCHUNKTRACE
-        << "RequestItem::assemble: not all chunks have arrived" << std::endl;
+        << "RequestItem::assemble: not all chunks have arrived" << "\n";
     return nullptr;
   }
   assert(_responseChunks.size() == _responseNumberOfChunks);
@@ -612,17 +614,17 @@ std::unique_ptr<VPackBuffer<uint8_t>> RequestItem::assemble() {
   }
   if (!reject) {
     FUERTE_LOG_VSTCHUNKTRACE
-        << "RequestItem::assemble: fast-path, chunks are in order" << std::endl;
+        << "RequestItem::assemble: fast-path, chunks are in order" << "\n";
     return std::make_unique<VPackBuffer<uint8_t>>(std::move(_buffer));
   }
 
   // We now have all chunks. Sort them by index.
-  FUERTE_LOG_VSTCHUNKTRACE << "RequestItem::assemble: sort chunks" << std::endl;
+  FUERTE_LOG_VSTCHUNKTRACE << "RequestItem::assemble: sort chunks" << "\n";
   std::sort(_responseChunks.begin(), _responseChunks.end(), chunkByIndex);
 
   // Combine chunk content
   FUERTE_LOG_VSTCHUNKTRACE << "RequestItem::assemble: build response buffer"
-                           << std::endl;
+                           << "\n";
 
   auto buffer = std::make_unique<VPackBuffer<uint8_t>>();
   for (ChunkInfo const& info : _responseChunks) {

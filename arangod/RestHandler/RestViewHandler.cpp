@@ -27,6 +27,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
 #include "Rest/GeneralResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/CollectionNameResolver.h"
@@ -140,12 +141,6 @@ RestStatus RestViewHandler::execute() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestViewHandler::createView() {
-  if (_request->payload().isEmptyObject()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
-    events::CreateView(_vocbase.name(), "", TRI_ERROR_HTTP_CORRUPTED_JSON);
-    return;
-  }
-
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (!suffixes.empty()) {
@@ -169,6 +164,13 @@ void RestViewHandler::createView() {
     events::CreateView(_vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
     return;
   }
+
+  if (body.isEmptyObject()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
+    events::CreateView(_vocbase.name(), "", TRI_ERROR_HTTP_CORRUPTED_JSON);
+    return;
+  }
+
 
   auto nameSlice = body.get(StaticStrings::DataSourceName);
   auto typeSlice = body.get(StaticStrings::DataSourceType);
@@ -203,8 +205,18 @@ void RestViewHandler::createView() {
   }
 
   try {
+    // First refresh our analyzers cache to see all latest changes in analyzers
+    auto res = server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
+                       .loadAvailableAnalyzers(_vocbase.name());
+
+    if (res.fail()) {
+      generateError(res);
+      events::CreateView(_vocbase.name(), nameSlice.copyString(), res.errorNumber());
+      return;
+    }
+
     LogicalView::ptr view;
-    auto res = LogicalView::create(view, _vocbase, body);
+    res = LogicalView::create(view, _vocbase, body);
 
     if (!res.ok()) {
       generateError(res);
@@ -270,6 +282,14 @@ void RestViewHandler::modifyView(bool partialUpdate) {
     VPackSlice const body = this->parseVPackBody(parseSuccess);
 
     if (!parseSuccess) {
+      return;
+    }
+
+    // First refresh our analyzers cache to see all latest changes in analyzers
+    auto const analyzersRes = server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
+                                      .loadAvailableAnalyzers(_vocbase.name());
+    if (analyzersRes.fail()) {
+      generateError(analyzersRes);
       return;
     }
 
@@ -406,7 +426,7 @@ void RestViewHandler::deleteView() {
   }
 
   auto name = arangodb::basics::StringUtils::urlDecode(suffixes[0]);
-  auto allowDropSystem = _request->parsedValue("isSystem", false);
+  auto allowDropSystem = _request->parsedValue(StaticStrings::DataSourceSystem, false);
   auto view = CollectionNameResolver(_vocbase).getView(name);
 
   if (!view) {

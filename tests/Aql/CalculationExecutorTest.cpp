@@ -25,12 +25,14 @@
 
 #include "gtest/gtest.h"
 
+#include "Aql/AqlCall.h"
+#include "AqlExecutorTestCase.h"
+#include "AqlItemBlockHelper.h"
 #include "RowFetcherHelper.h"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Ast.h"
 #include "Aql/CalculationExecutor.h"
-#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/OutputAqlItemRow.h"
@@ -63,17 +65,19 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
+using CalculationExecutorTestHelper = ExecutorTestHelper<2, 2>;
+using CalculationExecutorSplitType = CalculationExecutorTestHelper::SplitType;
+using CalculationExecutorInputParam = std::tuple<CalculationExecutorSplitType>;
+
 // TODO Add tests for both
 // CalculationExecutor<CalculationType::V8Condition> and
 // CalculationExecutor<CalculationType::Reference>!
 
-class CalculationExecutorTest : public ::testing::Test {
+class CalculationExecutorTest
+    : public AqlExecutorTestCaseWithParam<CalculationExecutorInputParam> {
  protected:
   ExecutionState state;
-  ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager;
-  mocks::MockAqlServer server;
-  std::unique_ptr<arangodb::aql::Query> fakedQuery;
   Ast ast;
   AstNode* one;
   Variable var;
@@ -83,157 +87,282 @@ class CalculationExecutorTest : public ::testing::Test {
   Expression expr;
   RegisterId outRegID;
   RegisterId inRegID;
-  CalculationExecutorInfos infos;
+  RegisterInfos registerInfos;
+  CalculationExecutorInfos executorInfos;
 
   CalculationExecutorTest()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
-        server(),
-        fakedQuery(server.createFakeQuery()),
-        ast(fakedQuery.get()),
+        ast(*fakedQuery.get()),
         one(ast.createNodeValueInt(1)),
-        var("a", 0),
+        var("a", 0, false),
         a(::initializeReference(ast, var)),
         node(ast.createNodeBinaryOperator(AstNodeType::NODE_TYPE_OPERATOR_BINARY_PLUS, a, one)),
         plan(&ast),
-        expr(&plan, &ast, node),
+        expr(&ast, node),
         outRegID(1),
         inRegID(0),
-        infos(outRegID /*out reg*/, RegisterId(1) /*in width*/, RegisterId(2) /*out width*/,
-              std::unordered_set<RegisterId>{} /*to clear*/,
-              std::unordered_set<RegisterId>{} /*to keep*/,
-              *fakedQuery.get() /*query*/, expr /*expression*/,
-              std::vector<Variable const*>{&var} /*expression in variables*/,
-              std::vector<RegisterId>{inRegID} /*expression in registers*/) {}
+        registerInfos(RegIdSet{inRegID}, RegIdSet{outRegID},
+                      RegisterId(1) /*in width*/, RegisterId(2) /*out width*/,
+                      RegIdSet{} /*to clear*/, RegIdSetStack{{}} /*to keep*/),
+        executorInfos(outRegID /*out reg*/, *fakedQuery.get() /*query*/, expr /*expression*/,
+                      std::vector<Variable const*>{&var} /*expression input variables*/,
+                      std::vector<RegisterId>({inRegID}) /*expression input registers*/) {}
+
+  auto getSplit() -> CalculationExecutorSplitType {
+    auto [split] = GetParam();
+    return split;
+  }
+
+  auto buildInfos() -> CalculationExecutorInfos {
+    return CalculationExecutorInfos{0, *fakedQuery.get(), expr, {&var}, {0}};
+  }
 };
 
-TEST_F(CalculationExecutorTest, there_are_no_rows_upstream_the_producer_does_not_wait) {
-  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
-  VPackBuilder input;
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input.steal(), false);
-  CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
-  // Use this instead of std::ignore, so the tests will be noticed and
-  // updated when someone changes the stats type in the return value of
-  // EnumerateListExecutor::produceRows().
-  NoStats stats{};
+template <size_t... vs>
+const CalculationExecutorSplitType splitIntoBlocks =
+    CalculationExecutorSplitType{std::vector<std::size_t>{vs...}};
+template <size_t step>
+const CalculationExecutorSplitType splitStep = CalculationExecutorSplitType{step};
 
-  OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear()};
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_FALSE(result.produced());
+INSTANTIATE_TEST_CASE_P(CalculationExecutor, CalculationExecutorTest,
+                        ::testing::Values(splitIntoBlocks<2, 3>, splitIntoBlocks<3, 4>,
+                                          splitStep<1>, splitStep<2>));
+
+TEST_P(CalculationExecutorTest, reference_empty_input) {
+  AqlCall call{};
+  ExecutionStats stats{};
+
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<CalculationExecutor<CalculationType::Reference>>(std::move(registerInfos),
+                                                                    std::move(executorInfos))
+      .setInputValue({})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({1}, {})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run();
 }
 
-TEST_F(CalculationExecutorTest, there_are_no_rows_upstream_the_producer_waits) {
-  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
-  VPackBuilder input;
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input.steal(), true);
-  CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
-  // Use this instead of std::ignore, so the tests will be noticed and
-  // updated when someone changes the stats type in the return value of
-  // EnumerateListExecutor::produceRows().
-  NoStats stats{};
+TEST_P(CalculationExecutorTest, reference_some_input) {
+  AqlCall call{};
+  ExecutionStats stats{};
 
-  OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear()};
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(result.produced());
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_FALSE(result.produced());
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<CalculationExecutor<CalculationType::Reference>>(std::move(registerInfos),
+                                                                    std::move(executorInfos))
+      .setInputValue(MatrixBuilder<2>{
+          RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
+          RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
+          RowBuilder<2>{3, NoneEntry{}}, RowBuilder<2>{4, NoneEntry{}},
+          RowBuilder<2>{5, NoneEntry{}}, RowBuilder<2>{6, NoneEntry{}}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0, 1}, MatrixBuilder<2>{RowBuilder<2>{0, 0}, RowBuilder<2>{1, 1},
+                                             RowBuilder<2>{R"("a")", R"("a")"},
+                                             RowBuilder<2>{2, 2}, RowBuilder<2>{3, 3},
+                                             RowBuilder<2>{4, 4}, RowBuilder<2>{5, 5},
+                                             RowBuilder<2>{6, 6}})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run(true);
 }
 
-TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_does_not_wait) {
-  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
-  auto input = VPackParser::fromJson("[ [0], [1], [2] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), false);
-  CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
-  NoStats stats{};
+TEST_P(CalculationExecutorTest, referece_some_input_skip) {
+  AqlCall call{};
+  call.offset = 4;
+  ExecutionStats stats{};
 
-  OutputAqlItemRow row{std::move(block), infos.getOutputRegisters(),
-                       infos.registersToKeep(), infos.registersToClear()};
-
-  // 1
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-
-  // 2
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-
-  // 3
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_FALSE(row.produced());
-
-  // verify calculation
-  {
-    AqlValue value;
-    auto block = row.stealBlock();
-    for (std::size_t index = 0; index < 3; index++) {
-      value = block->getValue(index, outRegID);
-      ASSERT_TRUE(value.isNumber());
-      ASSERT_EQ(value.toInt64(), static_cast<int64_t>(index + 1));
-    }
-  }
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<CalculationExecutor<CalculationType::Reference>>(std::move(registerInfos),
+                                                                    std::move(executorInfos))
+      .setInputValue(MatrixBuilder<2>{
+          RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
+          RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
+          RowBuilder<2>{3, NoneEntry{}}, RowBuilder<2>{4, NoneEntry{}},
+          RowBuilder<2>{5, NoneEntry{}}, RowBuilder<2>{6, NoneEntry{}}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0, 1}, MatrixBuilder<2>{RowBuilder<2>{3, 3}, RowBuilder<2>{4, 4},
+                                             RowBuilder<2>{5, 5}, RowBuilder<2>{6, 6}})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(4)
+      .expectedState(ExecutionState::DONE)
+      .run(true);
 }
 
-TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_waits) {
-  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
-  auto input = VPackParser::fromJson("[ [0], [1], [2] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), true);
-  CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
-  NoStats stats{};
+TEST_P(CalculationExecutorTest, reference_some_input_limit) {
+  AqlCall call{};
+  call.hardLimit = 4u;
+  ExecutionStats stats{};
 
-  OutputAqlItemRow row{std::move(block), infos.getOutputRegisters(),
-                       infos.registersToKeep(), infos.registersToClear()};
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<CalculationExecutor<CalculationType::Reference>>(std::move(registerInfos),
+                                                                    std::move(executorInfos))
+      .setInputValue(MatrixBuilder<2>{
+          RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
+          RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
+          RowBuilder<2>{3, NoneEntry{}}, RowBuilder<2>{4, NoneEntry{}},
+          RowBuilder<2>{5, NoneEntry{}}, RowBuilder<2>{6, NoneEntry{}}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0, 1}, MatrixBuilder<2>{RowBuilder<2>{0, 0}, RowBuilder<2>{1, 1},
+                                             RowBuilder<2>{R"("a")", R"("a")"},
+                                             RowBuilder<2>{2, 2}})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run(true);
+}
 
-  // waiting
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(row.produced());
+TEST_P(CalculationExecutorTest, reference_some_input_limit_fullcount) {
+  AqlCall call{};
+  call.hardLimit = 4u;
+  call.fullCount = true;
+  ExecutionStats stats{};
 
-  // 1
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<CalculationExecutor<CalculationType::Reference>>(std::move(registerInfos),
+                                                                    std::move(executorInfos))
+      .setInputValue(MatrixBuilder<2>{
+          RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
+          RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
+          RowBuilder<2>{3, NoneEntry{}}, RowBuilder<2>{4, NoneEntry{}},
+          RowBuilder<2>{5, NoneEntry{}}, RowBuilder<2>{6, NoneEntry{}}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0, 1}, MatrixBuilder<2>{RowBuilder<2>{0, 0}, RowBuilder<2>{1, 1},
+                                             RowBuilder<2>{R"("a")", R"("a")"},
+                                             RowBuilder<2>{2, 2}})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(4)
+      .expectedState(ExecutionState::DONE)
+      .run(true);
+}
 
-  // waiting
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(row.produced());
+TEST_P(CalculationExecutorTest, condition_some_input) {
+  AqlCall call{};
+  ExecutionStats stats{};
 
-  // 2
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<CalculationExecutor<CalculationType::Condition>>(std::move(registerInfos),
+                                                                    std::move(executorInfos))
+      .setInputValue(MatrixBuilder<2>{
+          RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
+          RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
+          RowBuilder<2>{3, NoneEntry{}}, RowBuilder<2>{4, NoneEntry{}},
+          RowBuilder<2>{5, NoneEntry{}}, RowBuilder<2>{6, NoneEntry{}}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0, 1},
+                    MatrixBuilder<2>{RowBuilder<2>{0, 1}, RowBuilder<2>{1, 2},
+                                     RowBuilder<2>{R"("a")", 1}, RowBuilder<2>{2, 3},
+                                     RowBuilder<2>{3, 4}, RowBuilder<2>{4, 5},
+                                     RowBuilder<2>{5, 6}, RowBuilder<2>{6, 7}})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run(true);
+}
 
-  // waiting
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(row.produced());
+TEST_P(CalculationExecutorTest, condition_some_input_skip) {
+  AqlCall call{};
+  call.offset = 4;
+  ExecutionStats stats{};
 
-  // 3
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<CalculationExecutor<CalculationType::Condition>>(std::move(registerInfos),
+                                                                    std::move(executorInfos))
+      .setInputValue(MatrixBuilder<2>{
+          RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
+          RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
+          RowBuilder<2>{3, NoneEntry{}}, RowBuilder<2>{4, NoneEntry{}},
+          RowBuilder<2>{5, NoneEntry{}}, RowBuilder<2>{6, NoneEntry{}}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0, 1}, MatrixBuilder<2>{RowBuilder<2>{3, 4}, RowBuilder<2>{4, 5},
+                                             RowBuilder<2>{5, 6}, RowBuilder<2>{6, 7}})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(4)
+      .expectedState(ExecutionState::DONE)
+      .run(true);
+}
 
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_FALSE(row.produced());
+TEST_P(CalculationExecutorTest, condition_some_input_limit) {
+  AqlCall call{};
+  call.hardLimit = 4u;
+  ExecutionStats stats{};
+
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<CalculationExecutor<CalculationType::Condition>>(std::move(registerInfos),
+                                                                    std::move(executorInfos))
+      .setInputValue(MatrixBuilder<2>{
+          RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
+          RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
+          RowBuilder<2>{3, NoneEntry{}}, RowBuilder<2>{4, NoneEntry{}},
+          RowBuilder<2>{5, NoneEntry{}}, RowBuilder<2>{6, NoneEntry{}}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0, 1},
+                    MatrixBuilder<2>{RowBuilder<2>{0, 1}, RowBuilder<2>{1, 2},
+                                     RowBuilder<2>{R"("a")", 1}, RowBuilder<2>{2, 3}})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run(true);
+}
+
+TEST_P(CalculationExecutorTest, condition_some_input_limit_fullcount) {
+  AqlCall call{};
+  call.hardLimit = 4u;
+  call.fullCount = true;
+  ExecutionStats stats{};
+
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<CalculationExecutor<CalculationType::Condition>>(std::move(registerInfos),
+                                                                    std::move(executorInfos))
+      .setInputValue(MatrixBuilder<2>{
+          RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
+          RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
+          RowBuilder<2>{3, NoneEntry{}}, RowBuilder<2>{4, NoneEntry{}},
+          RowBuilder<2>{5, NoneEntry{}}, RowBuilder<2>{6, NoneEntry{}}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0, 1},
+                    MatrixBuilder<2>{RowBuilder<2>{0, 1}, RowBuilder<2>{1, 2},
+                                     RowBuilder<2>{R"("a")", 1}, RowBuilder<2>{2, 3}})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(4)
+      .expectedState(ExecutionState::DONE)
+      .run(true);
+}
+
+// Could be fixed and enabled if one enabled the V8 engine
+TEST_P(CalculationExecutorTest, DISABLED_v8condition_some_input) {
+  AqlCall call{};
+  ExecutionStats stats{};
+
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<CalculationExecutor<CalculationType::V8Condition>>(std::move(registerInfos),
+                                                                      std::move(executorInfos))
+      .setInputValue(MatrixBuilder<2>{
+          RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
+          RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
+          RowBuilder<2>{3, NoneEntry{}}, RowBuilder<2>{4, NoneEntry{}},
+          RowBuilder<2>{5, NoneEntry{}}, RowBuilder<2>{6, NoneEntry{}}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0, 1},
+                    MatrixBuilder<2>{RowBuilder<2>{0, 1}, RowBuilder<2>{1, 2},
+                                     RowBuilder<2>{R"("a")", 1}, RowBuilder<2>{2, 3},
+                                     RowBuilder<2>{3, 4}, RowBuilder<2>{4, 5},
+                                     RowBuilder<2>{5, 6}, RowBuilder<2>{6, 7}})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run(true);
 }
 
 }  // namespace aql

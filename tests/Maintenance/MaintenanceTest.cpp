@@ -28,8 +28,10 @@
 
 #include "gtest/gtest.h"
 
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Cluster/Maintenance.h"
-#include "MMFiles/MMFilesEngine.h"
+#include "Mocks/Servers.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
 #include <velocypack/Iterator.h>
@@ -68,9 +70,9 @@ char const* dbs2Str =
 #include "DBServer0003.json"
     ;
 
-int loadResources(void) {return 0;}
+int loadResources(void) { return 0; }
 
-#else // _WIN32
+#else  // _WIN32
 #include <Windows.h>
 #include "jsonresource.h"
 LPSTR planStr = nullptr;
@@ -81,17 +83,13 @@ LPSTR dbs1Str = nullptr;
 LPSTR dbs2Str = nullptr;
 
 LPSTR getResource(int which) {
-  HRSRC myResource = ::FindResource(NULL, MAKEINTRESOURCE(which),  RT_RCDATA);
+  HRSRC myResource = ::FindResource(NULL, MAKEINTRESOURCE(which), RT_RCDATA);
   HGLOBAL myResourceData = ::LoadResource(NULL, myResource);
-  return (LPSTR) ::LockResource(myResourceData);
+  return (LPSTR)::LockResource(myResourceData);
 }
 int loadResources(void) {
-  if ((planStr == nullptr) &&
-      (currentStr == nullptr) &&
-      (supervisionStr == nullptr) &&
-      (dbs0Str == nullptr) &&
-      (dbs1Str == nullptr) &&
-      (dbs2Str == nullptr)) {
+  if ((planStr == nullptr) && (currentStr == nullptr) && (supervisionStr == nullptr) &&
+      (dbs0Str == nullptr) && (dbs1Str == nullptr) && (dbs2Str == nullptr)) {
     planStr = getResource(IDS_PLAN);
     currentStr = getResource(IDS_CURRENT);
     dbs0Str = getResource(IDS_DBSERVER0001);
@@ -102,7 +100,7 @@ int loadResources(void) {
   return 0;
 }
 
-#endif // _WIN32
+#endif  // _WIN32
 
 std::map<std::string, std::string> matchShortLongIds(Node const& supervision) {
   std::map<std::string, std::string> ret;
@@ -325,8 +323,11 @@ class LogicalCollection;
 }
 
 class MaintenanceTestActionDescription : public ::testing::Test {
+  // private:
+  //   tests::mocks::MockDBServer _server;
+
  protected:
-  MaintenanceTestActionDescription() {
+  MaintenanceTestActionDescription() /*: _server{}*/ {
     loadResources();
     plan = createNode(planStr);
     originalPlan = plan;
@@ -361,7 +362,8 @@ TEST_F(MaintenanceTestActionDescription, retrieve_nonassigned_key_from_actiondes
   try {
     auto bogus = desc.get("bogus");
     ASSERT_EQ(bogus, "bogus");
-  } catch (std::out_of_range const&) { }
+  } catch (std::out_of_range const&) {
+  }
   std::string value;
   auto res = desc.get("bogus", value);
   ASSERT_TRUE(value.empty());
@@ -375,7 +377,8 @@ TEST_F(MaintenanceTestActionDescription, retrieve_nonassigned_key_from_actiondes
   try {
     auto bogus = desc.get("bogus");
     ASSERT_EQ(bogus, "bogus");
-  } catch (std::out_of_range const&) { }
+  } catch (std::out_of_range const&) {
+  }
   std::string value;
   auto res = desc.get("bogus", value);
   ASSERT_EQ(value, "bogus");
@@ -472,26 +475,29 @@ class MaintenanceTestActionPhaseOne : public ::testing::Test {
   int _dummy;
   std::shared_ptr<arangodb::options::ProgramOptions> po;
   arangodb::application_features::ApplicationServer as;
-  TestMaintenanceFeature feature;
+  std::unique_ptr<TestMaintenanceFeature> feature;
   MaintenanceFeature::errors_t errors;
 
   std::map<std::string, Node> localNodes;
 
-  arangodb::MMFilesEngine engine;  // arbitrary implementation that has index types registered
+  arangodb::RocksDBEngine engine;  // arbitrary implementation that has index types registered
   arangodb::StorageEngine* origStorageEngine;
-  
+
   MaintenanceTestActionPhaseOne()
-    : _dummy(loadResources()),
-      po(std::make_shared<arangodb::options::ProgramOptions>("test", std::string(),
-                                                             std::string(),
-                                                             "path")),
-      as(po, nullptr),
-      feature(as),
-      localNodes{{dbsIds[shortNames[0]], createNode(dbs0Str)},
-                 {dbsIds[shortNames[1]], createNode(dbs1Str)},
-                 {dbsIds[shortNames[2]], createNode(dbs2Str)}},
-      engine(as),
-      origStorageEngine(arangodb::EngineSelectorFeature::ENGINE) {
+      : _dummy(loadResources()),
+        po(std::make_shared<arangodb::options::ProgramOptions>("test", std::string(),
+                                                               std::string(),
+                                                               "path")),
+        as(po, nullptr),
+        localNodes{{dbsIds[shortNames[0]], createNode(dbs0Str)},
+                   {dbsIds[shortNames[1]], createNode(dbs1Str)},
+                   {dbsIds[shortNames[2]], createNode(dbs2Str)}},
+        engine(as),
+        origStorageEngine(arangodb::EngineSelectorFeature::ENGINE) {
+    as.addFeature<arangodb::MetricsFeature>();
+    as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
+    feature = std::make_unique<TestMaintenanceFeature>(as);
+
     arangodb::EngineSelectorFeature::ENGINE = &engine;
   }
 
@@ -504,9 +510,9 @@ TEST_F(MaintenanceTestActionPhaseOne, in_sync_should_have_0_effects) {
   std::vector<ActionDescription> actions;
 
   for (auto const& node : localNodes) {
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, feature, actions);
+                                         node.first, errors, *feature, actions);
 
     if (actions.size() != 0) {
       std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
@@ -520,9 +526,9 @@ TEST_F(MaintenanceTestActionPhaseOne, local_databases_one_more_empty_database_sh
 
   localNodes.begin()->second("db3") = arangodb::velocypack::Slice::emptyObjectSlice();
 
-  arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+  arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
                                        localNodes.begin()->second.toBuilder().slice(),
-                                       localNodes.begin()->first, errors, feature, actions);
+                                       localNodes.begin()->first, errors, *feature, actions);
 
   if (actions.size() != 1) {
     std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
@@ -537,9 +543,9 @@ TEST_F(MaintenanceTestActionPhaseOne,
   std::vector<ActionDescription> actions;
   localNodes.begin()->second("db3/col") = arangodb::velocypack::Slice::emptyObjectSlice();
 
-  arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+  arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
                                        localNodes.begin()->second.toBuilder().slice(),
-                                       localNodes.begin()->first, errors, feature, actions);
+                                       localNodes.begin()->first, errors, *feature, actions);
 
   ASSERT_EQ(actions.size(), 1);
   ASSERT_EQ(actions.front().name(), "DropDatabase");
@@ -559,9 +565,9 @@ TEST_F(MaintenanceTestActionPhaseOne,
 
     node.second("db3") = arangodb::velocypack::Slice::emptyObjectSlice();
 
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, feature, actions);
+                                         node.first, errors, *feature, actions);
 
     if (actions.size() != 1) {
       std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
@@ -587,9 +593,9 @@ TEST_F(MaintenanceTestActionPhaseOne,
 
     node.second("db3") = arangodb::velocypack::Slice::emptyObjectSlice();
 
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, feature, actions);
+                                         node.first, errors, *feature, actions);
 
     if (actions.size() != 2) {
       std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
@@ -613,9 +619,9 @@ TEST_F(MaintenanceTestActionPhaseOne, add_an_index_to_queues) {
 
     auto local = node.second;
 
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
                                          local.toBuilder().slice(), node.first,
-                                         errors, feature, actions);
+                                         errors, *feature, actions);
 
     size_t n = 0;
     for (auto const& shard : shards) {
@@ -649,9 +655,9 @@ TEST_F(MaintenanceTestActionPhaseOne, remove_an_index_from_plan) {
 
     auto local = node.second;
 
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
                                          local.toBuilder().slice(), node.first,
-                                         errors, feature, actions);
+                                         errors, *feature, actions);
 
     size_t n = 0;
     for (auto const& shard : shards) {
@@ -677,9 +683,9 @@ TEST_F(MaintenanceTestActionPhaseOne, add_one_collection_to_local) {
     std::vector<ActionDescription> actions;
     createLocalCollection("_system", "1111111", node.second);
 
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, feature, actions);
+                                         node.first, errors, *feature, actions);
 
     if (actions.size() != 1) {
       std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
@@ -709,9 +715,9 @@ TEST_F(MaintenanceTestActionPhaseOne,
 
     (*node.second(dbname).children().begin()->second)(prop) = v.slice();
 
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, feature, actions);
+                                         node.first, errors, *feature, actions);
 
     /*
     if (actions.size() != 1) {
@@ -746,9 +752,9 @@ TEST_F(MaintenanceTestActionPhaseOne, have_theleader_set_to_empty) {
       leader = v.slice();
     }
 
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, feature, actions);
+                                         node.first, errors, *feature, actions);
 
     if (check) {
       if (actions.size() != 1) {
@@ -775,9 +781,9 @@ TEST_F(MaintenanceTestActionPhaseOne,
     std::vector<ActionDescription> actions;
     node.second("db3") = node.second("_system");
 
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, feature, actions);
+                                         node.first, errors, *feature, actions);
 
     ASSERT_EQ(actions.size(), node.second("db3").children().size());
     for (auto const& action : actions) {
@@ -820,9 +826,9 @@ TEST_F(MaintenanceTestActionPhaseOne, resign_leadership) {
       }
     }
 
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, feature, actions);
+                                         node.first, errors, *feature, actions);
 
     if (actions.size() != 1) {
       std::cout << actions << std::endl;
@@ -850,9 +856,9 @@ TEST_F(MaintenanceTestActionPhaseOne, removed_follower_in_plan_must_be_dropped) 
   for (auto const& node : localNodes) {
     std::vector<ActionDescription> actions;
 
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, feature, actions);
+                                         node.first, errors, *feature, actions);
 
     if (node.first == followerName) {
       // Must see an action dropping the shard

@@ -58,7 +58,7 @@ class RocksDBFulltextIndexIterator final : public IndexIterator {
 
   char const* typeName() const override { return "fulltext-index-iterator"; }
 
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
+  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
     TRI_ASSERT(limit > 0);
     while (_pos != _docs.end() && limit > 0) {
       cb(*_pos);
@@ -68,9 +68,9 @@ class RocksDBFulltextIndexIterator final : public IndexIterator {
     return _pos != _docs.end();
   }
 
-  void reset() override { _pos = _docs.begin(); }
+  void resetImpl() override { _pos = _docs.begin(); }
 
-  void skip(uint64_t count, uint64_t& skipped) override {
+  void skipImpl(uint64_t count, uint64_t& skipped) override {
     while (_pos != _docs.end() && skipped < count) {
       ++_pos;
       skipped++;
@@ -84,12 +84,11 @@ class RocksDBFulltextIndexIterator final : public IndexIterator {
 
 } // namespace
 
-RocksDBFulltextIndex::RocksDBFulltextIndex(TRI_idx_iid_t iid,
-                                           arangodb::LogicalCollection& collection,
+RocksDBFulltextIndex::RocksDBFulltextIndex(IndexId iid, arangodb::LogicalCollection& collection,
                                            arangodb::velocypack::Slice const& info)
     : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::fulltext(), false),
       _minWordLength(FulltextIndexLimits::minWordLengthDefault) {
-  TRI_ASSERT(iid != 0);
+  TRI_ASSERT(iid.isSet());
   TRI_ASSERT(_cf == RocksDBColumnFamily::fulltext());
 
   VPackSlice const value = info.get("minLength");
@@ -149,7 +148,7 @@ bool RocksDBFulltextIndex::matchesDefinition(VPackSlice const& info) const {
 
     // Short circuit. If id is correct the index is identical.
     arangodb::velocypack::StringRef idRef(value);
-    return idRef == std::to_string(_iid);
+    return idRef == std::to_string(_iid.id());
   }
 
   value = info.get("minLength");
@@ -212,7 +211,7 @@ bool RocksDBFulltextIndex::matchesDefinition(VPackSlice const& info) const {
 Result RocksDBFulltextIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                     LocalDocumentId const& documentId,
                                     velocypack::Slice const& doc,
-                                    Index::OperationMode mode) {
+                                    OperationOptions& options) {
   Result res;
   std::set<std::string> words = wordlist(doc);
 
@@ -227,7 +226,8 @@ Result RocksDBFulltextIndex::insert(transaction::Methods& trx, RocksDBMethods* m
   // size_t const count = words.size();
   for (std::string const& word : words) {
     RocksDBKeyLeaser key(&trx);
-    key->constructFulltextIndexValue(_objectId, arangodb::velocypack::StringRef(word), documentId);
+    key->constructFulltextIndexValue(objectId(), arangodb::velocypack::StringRef(word),
+                                     documentId);
     TRI_ASSERT(key->containsLocalDocumentId(documentId));
 
     rocksdb::Status s = mthd->PutUntracked(_cf, key.ref(), value.string());
@@ -258,7 +258,8 @@ Result RocksDBFulltextIndex::remove(transaction::Methods& trx, RocksDBMethods* m
   for (std::string const& word : words) {
     RocksDBKeyLeaser key(&trx);
 
-    key->constructFulltextIndexValue(_objectId, arangodb::velocypack::StringRef(word), documentId);
+    key->constructFulltextIndexValue(objectId(), arangodb::velocypack::StringRef(word),
+                                     documentId);
 
     rocksdb::Status s = mthd->Delete(_cf, key.ref());
 
@@ -450,7 +451,7 @@ Result RocksDBFulltextIndex::applyQueryToken(transaction::Methods* trx,
                                              std::set<LocalDocumentId>& resultSet) {
   auto mthds = RocksDBTransactionState::toMethods(trx);
   // why can't I have an assignment operator when I want one
-  RocksDBKeyBounds bounds = MakeBounds(_objectId, token);
+  RocksDBKeyBounds bounds = MakeBounds(objectId(), token);
   rocksdb::Slice end = bounds.end();
   rocksdb::Comparator const* cmp = this->comparator();
 
@@ -464,7 +465,7 @@ Result RocksDBFulltextIndex::applyQueryToken(transaction::Methods* trx,
   for (iter->Seek(bounds.start());
        iter->Valid() && cmp->Compare(iter->key(), end) < 0;
        iter->Next()) {
-    TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
+    TRI_ASSERT(objectId() == RocksDBKey::objectId(iter->key()));
 
     rocksdb::Status s = iter->status();
     if (!s.ok()) {

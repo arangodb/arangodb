@@ -20,6 +20,8 @@
 ///
 /// @author Max Neunhoeffer
 /// @author Michael Hackstein
+/// @author Tobias Gödderz
+/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RegisterPlan.h"
@@ -29,348 +31,409 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/GraphNode.h"
 #include "Aql/IResearchViewNode.h"
+#include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/SubqueryEndExecutionNode.h"
+#include "Containers/Enumerate.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
 // Requires RegisterPlan to be defined
-VarInfo::VarInfo(int depth, RegisterId registerId)
+VarInfo::VarInfo(unsigned int depth, RegisterId registerId)
     : depth(depth), registerId(registerId) {
-  TRI_ASSERT(registerId < RegisterPlan::MaxRegisterId);
+  TRI_ASSERT(registerId < RegisterPlanT<ExecutionNode>::MaxRegisterId);
+}
+
+template <typename T>
+void RegisterPlanWalkerT<T>::after(T* en) {
+  TRI_ASSERT(en != nullptr);
+
+  bool const mayReuseRegisterImmediately = en->alwaysCopiesRows();
+
+  if (en->isIncreaseDepth()) {
+    // isIncreaseDepth => mayReuseRegisterImmediately
+    TRI_ASSERT(mayReuseRegisterImmediately);
+    plan->increaseDepth();
+  }
+
+  if (en->getType() == ExecutionNode::SUBQUERY) {
+    plan->addSubqueryNode(en);
+  }
+
+  if (en->getType() == ExecutionNode::SUBQUERY_START || en->getType() == ExecutionNode::SUBQUERY_END) {
+    // is SQS or SQE => mayReuseRegisterImmediately
+    TRI_ASSERT(mayReuseRegisterImmediately);
+  }
+
+  /*
+   * For passthrough blocks it is better to assign the registers _before_ we calculate
+   * which registers have become unused to prevent reusing a input register as output register.
+   *
+   * This is not the case if the block is not passthrough since in that case the output row
+   * is different from the input row.
+   */
+  auto const planRegistersForCurrentNode = [&](T* en) -> void {
+    auto const& varsSetHere = en->getVariablesSetHere();
+    for (Variable const* v : varsSetHere) {
+      TRI_ASSERT(v != nullptr);
+      plan->registerVariable(v, unusedRegisters.back());
+    }
+  };
+
+  auto const updateRegsToKeep = [this](T* en, VarSet const& varsUsedLater,
+                                       VarSet const& varsValid) {
+    auto const& varsSetHere = en->getVariablesSetHere();
+
+    auto isSetHere = [&](Variable const *var) {
+      return std::find(varsSetHere.begin(), varsSetHere.end(), var) !=
+             varsSetHere.end();
+    };
+    auto isUsedLater = [&](Variable const *var) {
+      return std::find(varsUsedLater.begin(), varsUsedLater.end(), var) !=
+             varsUsedLater.end();
+    };
+
+
+    // items are pushed for each SubqueryStartNode and popped for SubqueryEndNodes.
+    // as they come in pairs, the stack should never be empty.
+    TRI_ASSERT(!regsToKeepStack.empty());
+    regsToKeepStack.back().clear();
+    for (auto const var : varsValid) {
+
+      if (!isSetHere(var) && isUsedLater(var)) {
+        auto reg = plan->variableToRegisterId(var);
+        regsToKeepStack.back().emplace(reg);
+      }
+    }
+  };
+
+  auto const calculateRegistersToClear = [this](T* en) -> RegIdSet {
+    auto const& varsUsedLater = en->getVarsUsedLaterStack().back();
+    VarSet varsUsedHere;
+    en->getVariablesUsedHere(varsUsedHere);
+    RegIdSet regsToClear;
+
+    // Now find out which registers ought to be erased after this node:
+    // ReturnNodes are special, since they return a single column anyway
+    if (en->getType() != ExecutionNode::RETURN) {
+      for (auto const& v : varsUsedHere) {
+        auto it = varsUsedLater.find(v);
+
+        if (it == varsUsedLater.end()) {
+          auto it2 = plan->varInfo.find(v->id);
+
+          if (it2 == plan->varInfo.end()) {
+            // report an error here to prevent crashing
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                           std::string("missing variable #") +
+                                               std::to_string(v->id) + " (" +
+                                               v->name + ") for node #" +
+                                               std::to_string(en->id().id()) +
+                                               " (" + en->getTypeString() +
+                                               ") while planning registers");
+          }
+
+          TRI_ASSERT(it2 != plan->varInfo.end());
+          RegisterId r = it2->second.registerId;
+          regsToClear.insert(r);
+        }
+      }
+    }
+    return regsToClear;
+  };
+
+  if (!mayReuseRegisterImmediately) {
+    planRegistersForCurrentNode(en);
+  }
+
+  switch (en->getType()) {
+    case ExecutionNode::SUBQUERY_START: {
+      previousSubqueryNrRegs.emplace(plan->nrRegs.back());
+      auto topUnused = unusedRegisters.back();
+      unusedRegisters.emplace_back(std::move(topUnused));
+
+      auto const& varsValid = en->getVarsValidStack();
+      auto const& varsUsedLater = en->getVarsUsedLaterStack();
+
+      TRI_ASSERT(varsValid.size() > 1);
+      TRI_ASSERT(varsUsedLater.size() > 1);
+      updateRegsToKeep(en, varsUsedLater[varsValid.size() - 2],
+                       varsValid[varsValid.size() - 2]);  // subquery start has to update both levels of regs to keep
+      regsToKeepStack.emplace_back();
+    } break;
+    case ExecutionNode::SUBQUERY_END: {
+      unusedRegisters.pop_back();
+      regsToKeepStack.pop_back();
+      // This must have added a section, otherwise we would decrease the
+      // number of registers available inside the subquery.
+      TRI_ASSERT(en->isIncreaseDepth());
+      // We must plan the registers after this, so newly added registers are
+      // based upon this nrRegs.
+      TRI_ASSERT(mayReuseRegisterImmediately);
+      plan->nrRegs.back() = previousSubqueryNrRegs.top();
+      previousSubqueryNrRegs.pop();
+    } break;
+    default: {
+      auto regsToClear = calculateRegistersToClear(en);
+      unusedRegisters.back().insert(regsToClear.begin(), regsToClear.end());
+      // We need to delete those variables that have been used here but are not
+      // used any more later:
+      en->setRegsToClear(std::move(regsToClear));
+    } break;
+  }
+
+  // we can reuse all registers that belong to variables that are not in varsUsedLater and varsUsedHere
+  if (mayReuseRegisterImmediately) {
+    planRegistersForCurrentNode(en);
+  }
+
+  updateRegsToKeep(en, en->getVarsUsedLater(), en->getVarsValid());
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto actual = plan->calcRegsToKeep(en->getVarsUsedLaterStack(), en->getVarsValidStack(),
+                                     en->getVariablesSetHere());
+  TRI_ASSERT(regsToKeepStack == actual);
+#endif
+
+  en->setRegsToKeep(regsToKeepStack);
+  en->_depth = plan->depth;
+  en->_registerPlan = plan;
+}
+
+template <typename T>
+RegisterPlanT<T>::RegisterPlanT() : depth(0) {
+  nrRegs.reserve(8);
+  nrRegs.emplace_back(0);
 }
 
 // Copy constructor used for a subquery:
-RegisterPlan::RegisterPlan(RegisterPlan const& v, unsigned int newdepth)
+template <typename T>
+RegisterPlanT<T>::RegisterPlanT(RegisterPlan const& v, unsigned int newdepth)
     : varInfo(v.varInfo),
-      nrRegsHere(v.nrRegsHere),
       nrRegs(v.nrRegs),
       subQueryNodes(),
-      depth(newdepth + 1),
-      totalNrRegs(v.nrRegs[newdepth]),
-      me(nullptr) {
+      depth(newdepth + 1) {
   if (depth + 1 < 8) {
     // do a minium initial allocation to avoid frequent reallocations
-    nrRegsHere.reserve(8);
     nrRegs.reserve(8);
   }
-  nrRegsHere.resize(depth + 1);
-  nrRegsHere.back() = 0;
   // create a copy of the last value here
   // this is required because back returns a reference and emplace/push_back may
   // invalidate all references
   nrRegs.resize(depth);
-  RegisterId registerId = nrRegs.back();
-  nrRegs.emplace_back(registerId);
+  auto regCount = nrRegs.back();
+  nrRegs.emplace_back(regCount);
 }
 
-void RegisterPlan::clear() {
-  varInfo.clear();
-  nrRegsHere.clear();
-  nrRegs.clear();
-  subQueryNodes.clear();
-  depth = 0;
-  totalNrRegs = 0;
+template <typename T>
+RegisterPlanT<T>::RegisterPlanT(VPackSlice slice, unsigned int depth)
+    : depth(depth) {
+  VPackSlice varInfoList = slice.get("varInfoList");
+  if (!varInfoList.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "\"varInfoList\" attribute needs to be an array");
+  }
+
+  varInfo.reserve(varInfoList.length());
+
+  for (VPackSlice it : VPackArrayIterator(varInfoList)) {
+    if (!it.isObject()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_NOT_IMPLEMENTED,
+          "\"varInfoList\" item needs to be an object");
+    }
+    auto variableId = it.get("VariableId").getNumericValue<VariableId>();
+    auto registerId = it.get("RegisterId").getNumericValue<RegisterId>();
+    auto depthParam = it.get("depth").getNumericValue<unsigned int>();
+
+    varInfo.try_emplace(variableId, VarInfo(depthParam, registerId));
+  }
+
+  VPackSlice nrRegsList = slice.get("nrRegs");
+  if (!nrRegsList.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "\"nrRegs\" attribute needs to be an array");
+  }
+
+  nrRegs.reserve(nrRegsList.length());
+  for (VPackSlice it : VPackArrayIterator(nrRegsList)) {
+    nrRegs.emplace_back(it.getNumericValue<RegisterId>());
+  }
 }
 
-RegisterPlan* RegisterPlan::clone(ExecutionPlan* otherPlan, ExecutionPlan* plan) {
-  auto other = std::make_unique<RegisterPlan>();
+template <typename T>
+auto RegisterPlanT<T>::clone() -> std::shared_ptr<RegisterPlanT> {
+  auto other = std::make_shared<RegisterPlanT>();
 
-  other->nrRegsHere = nrRegsHere;
   other->nrRegs = nrRegs;
   other->depth = depth;
-  other->totalNrRegs = totalNrRegs;
-
   other->varInfo = varInfo;
 
   // No need to clone subQueryNodes because this was only used during
   // the buildup.
 
-  return other.release();
+  return other;
 }
 
-void RegisterPlan::after(ExecutionNode* en) {
-  switch (en->getType()) {
-    case ExecutionNode::ENUMERATE_COLLECTION:
-    case ExecutionNode::INDEX: {
-      depth++;
-      nrRegsHere.emplace_back(1);
-      // create a copy of the last value here
-      // this is required because back returns a reference and emplace/push_back
-      // may invalidate all references
-      RegisterId registerId = 1 + nrRegs.back();
-      nrRegs.emplace_back(registerId);
+template <typename T>
+void RegisterPlanT<T>::increaseDepth() {
+  depth++;
+  // create a copy of the last value here
+  // this is required because back returns a reference and emplace/push_back
+  // may invalidate all references
+  auto regCount = nrRegs.back();
+  nrRegs.emplace_back(regCount);
+}
 
-      auto ep = dynamic_cast<DocumentProducingNode const*>(en);
-      if (ep == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL,
-            "unexpected cast result for DocumentProducingNode");
-      }
+template <typename T>
+RegisterId RegisterPlanT<T>::addRegister() {
+  return static_cast<RegisterId>(nrRegs[depth]++);
+}
 
-      varInfo.emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
-      totalNrRegs++;
-      break;
-    }
+template <typename T>
+void RegisterPlanT<T>::registerVariable(Variable const* v, std::set<RegisterId>& unusedRegisters) {
+  RegisterId regId;
 
-    case ExecutionNode::ENUMERATE_LIST: {
-      depth++;
-      nrRegsHere.emplace_back(1);
-      // create a copy of the last value here
-      // this is required because back returns a reference and emplace/push_back
-      // may invalidate all references
-      RegisterId registerId = 1 + nrRegs.back();
-      nrRegs.emplace_back(registerId);
+  if (unusedRegisters.empty()) {
+    regId = addRegister();
+  } else {
+    auto iter = unusedRegisters.begin();
+    regId = *iter;
+    unusedRegisters.erase(iter);
+  }
 
-      auto ep = ExecutionNode::castTo<EnumerateListNode const*>(en);
-      TRI_ASSERT(ep != nullptr);
-      varInfo.emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
-      totalNrRegs++;
-      break;
-    }
+  bool inserted;
+  std::tie(std::ignore, inserted) = varInfo.try_emplace(v->id, VarInfo(depth, regId));
+  TRI_ASSERT(inserted);
+  if (!inserted) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        std::string("duplicate register assignment for variable " + v->name + " #") +
+            std::to_string(v->id) + " while planning registers");
+  }
+}
 
-    case ExecutionNode::CALCULATION: {
-      nrRegsHere[depth]++;
-      nrRegs[depth]++;
-      auto ep = ExecutionNode::castTo<CalculationNode const*>(en);
-      TRI_ASSERT(ep != nullptr);
-      varInfo.emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
-      totalNrRegs++;
-      break;
-    }
+template <typename T>
+void RegisterPlanT<T>::toVelocyPackEmpty(VPackBuilder& builder) {
+  builder.add(VPackValue("varInfoList"));
+  { VPackArrayBuilder guard(&builder); }
+  builder.add(VPackValue("nrRegs"));
+  { VPackArrayBuilder guard(&builder); }
+  // nrRegsHere is not used anymore and is intentionally left empty
+  // can be removed in ArangoDB 3.8
+  builder.add(VPackValue("nrRegsHere"));
+  { VPackArrayBuilder guard(&builder); }
+  builder.add("totalNrRegs", VPackValue(0));
+}
 
-    case ExecutionNode::SUBQUERY: {
-      nrRegsHere[depth]++;
-      nrRegs[depth]++;
-      auto ep = ExecutionNode::castTo<SubqueryNode const*>(en);
-      TRI_ASSERT(ep != nullptr);
-      varInfo.emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
-      totalNrRegs++;
-      subQueryNodes.emplace_back(en);
-      break;
-    }
+template <typename T>
+void RegisterPlanT<T>::toVelocyPack(VPackBuilder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
 
-    case ExecutionNode::COLLECT: {
-      depth++;
-      nrRegsHere.emplace_back(0);
-      // create a copy of the last value here
-      // this is required because back returns a reference and emplace/push_back
-      // may invalidate all references
-      RegisterId registerId = nrRegs.back();
-      nrRegs.emplace_back(registerId);
-
-      auto ep = ExecutionNode::castTo<CollectNode const*>(en);
-      for (auto const& p : ep->groupVariables()) {
-        // p is std::pair<Variable const*,Variable const*>
-        // and the first is the to be assigned output variable
-        // for which we need to create a register in the current
-        // frame:
-        nrRegsHere[depth]++;
-        nrRegs[depth]++;
-        varInfo.emplace(p.first->id, VarInfo(depth, totalNrRegs));
-        totalNrRegs++;
-      }
-      for (auto const& p : ep->aggregateVariables()) {
-        // p is std::pair<Variable const*,Variable const*>
-        // and the first is the to be assigned output variable
-        // for which we need to create a register in the current
-        // frame:
-        nrRegsHere[depth]++;
-        nrRegs[depth]++;
-        varInfo.emplace(p.first->id, VarInfo(depth, totalNrRegs));
-        totalNrRegs++;
-      }
-      if (ep->hasOutVariable()) {
-        nrRegsHere[depth]++;
-        nrRegs[depth]++;
-        varInfo.emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
-        totalNrRegs++;
-      }
-      break;
-    }
-
-    case ExecutionNode::INSERT:
-    case ExecutionNode::UPDATE:
-    case ExecutionNode::REPLACE:
-    case ExecutionNode::REMOVE:
-    case ExecutionNode::UPSERT: {
-      depth++;
-      nrRegsHere.emplace_back(0);
-      // create a copy of the last value here
-      // this is required because back returns a reference and emplace/push_back
-      // may invalidate all references
-      RegisterId registerId = nrRegs.back();
-      nrRegs.emplace_back(registerId);
-
-      auto ep = dynamic_cast<ModificationNode const*>(en);
-      if (ep == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL, "unexpected cast result for ModificationNode");
-      }
-      if (ep->getOutVariableOld() != nullptr) {
-        nrRegsHere[depth]++;
-        nrRegs[depth]++;
-        varInfo.emplace(ep->getOutVariableOld()->id, VarInfo(depth, totalNrRegs));
-        totalNrRegs++;
-      }
-      if (ep->getOutVariableNew() != nullptr) {
-        nrRegsHere[depth]++;
-        nrRegs[depth]++;
-        varInfo.emplace(ep->getOutVariableNew()->id, VarInfo(depth, totalNrRegs));
-        totalNrRegs++;
-      }
-
-      break;
-    }
-
-    case ExecutionNode::SORT: {
-      // sort sorts in place and does not produce new registers
-      break;
-    }
-
-    case ExecutionNode::RETURN: {
-      // return is special. it produces a result but is the last step in the
-      // pipeline
-      break;
-    }
-
-    case ExecutionNode::SINGLETON:
-    case ExecutionNode::FILTER:
-    case ExecutionNode::LIMIT:
-    case ExecutionNode::SCATTER:
-    case ExecutionNode::DISTRIBUTE:
-    case ExecutionNode::GATHER:
-    case ExecutionNode::REMOTE:
-    case ExecutionNode::DISTRIBUTE_CONSUMER:
-    case ExecutionNode::NORESULTS: {
-      // these node types do not produce any new registers
-      break;
-    }
-
-    case ExecutionNode::TRAVERSAL:
-    case ExecutionNode::SHORTEST_PATH:
-    case ExecutionNode::K_SHORTEST_PATHS: {
-      depth++;
-      auto ep = dynamic_cast<GraphNode const*>(en);
-      if (ep == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "unexpected cast result for GraphNode");
-      }
-      TRI_ASSERT(ep != nullptr);
-      auto vars = ep->getVariablesSetHere();
-      nrRegsHere.emplace_back(static_cast<RegisterId>(vars.size()));
-      // create a copy of the last value here
-      // this is requried because back returns a reference and emplace/push_back
-      // may invalidate all references
-      RegisterId registerId = static_cast<RegisterId>(vars.size() + nrRegs.back());
-      nrRegs.emplace_back(registerId);
-
-      for (auto& it : vars) {
-        varInfo.emplace(it->id, VarInfo(depth, totalNrRegs));
-        totalNrRegs++;
-      }
-      break;
-    }
-
-    case ExecutionNode::REMOTESINGLE: {
-      depth++;
-      auto ep = ExecutionNode::castTo<SingleRemoteOperationNode const*>(en);
-      TRI_ASSERT(ep != nullptr);
-      auto vars = ep->getVariablesSetHere();
-      nrRegsHere.emplace_back(static_cast<RegisterId>(vars.size()));
-      // create a copy of the last value here
-      // this is requried because back returns a reference and emplace/push_back
-      // may invalidate all references
-      RegisterId registerId = static_cast<RegisterId>(vars.size() + nrRegs.back());
-      nrRegs.emplace_back(registerId);
-
-      for (auto& it : vars) {
-        varInfo.emplace(it->id, VarInfo(depth, totalNrRegs));
-        totalNrRegs++;
-      }
-      break;
-    }
-
-    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
-      auto ep = ExecutionNode::castTo<iresearch::IResearchViewNode const*>(en);
-      TRI_ASSERT(ep);
-
-      ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
-      break;
-    }
-
-    case ExecutionNode::SUBQUERY_START: {
-      break;
-    }
-
-    case ExecutionNode::SUBQUERY_END: {
-      nrRegsHere[depth]++;
-      nrRegs[depth]++;
-      auto ep = ExecutionNode::castTo<SubqueryEndNode const*>(en);
-      TRI_ASSERT(ep != nullptr);
-      varInfo.emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
-      totalNrRegs++;
-      subQueryNodes.emplace_back(en);
-      break;
-    }
-    case ExecutionNode::MATERIALIZE: {
-      depth++;
-      nrRegsHere.emplace_back(1);
-      // create a copy of the last value here
-      // this is required because back returns a reference and emplace/push_back
-      // may invalidate all references
-      RegisterId registerId = nrRegs.back() + 1;
-      nrRegs.emplace_back(registerId);
-      auto ep = ExecutionNode::castTo<MaterializeNode const*>(en);
-      TRI_ASSERT(ep != nullptr);
-      varInfo.emplace(ep->outVariable().id, VarInfo(depth, totalNrRegs));
-      totalNrRegs++;
-      break;
-    }
-    default: {
-      // should not reach this point
-      TRI_ASSERT(false);
+  builder.add(VPackValue("varInfoList"));
+  {
+    VPackArrayBuilder guard(&builder);
+    for (auto const& oneVarInfo : varInfo) {
+      VPackObjectBuilder guardInner(&builder);
+      builder.add("VariableId", VPackValue(oneVarInfo.first));
+      builder.add("depth", VPackValue(oneVarInfo.second.depth));
+      builder.add("RegisterId", VPackValue(oneVarInfo.second.registerId));
     }
   }
 
-  en->_depth = depth;
-  en->_registerPlan = *me;
+  builder.add(VPackValue("nrRegs"));
+  {
+    VPackArrayBuilder guard(&builder);
+    for (auto const& oneRegisterID : nrRegs) {
+      builder.add(VPackValue(oneRegisterID));
+    }
+  }
 
-  // Now find out which registers ought to be erased after this node:
-  if (en->getType() != ExecutionNode::RETURN) {
-    // ReturnNodes are special, since they return a single column anyway
-    ::arangodb::containers::HashSet<Variable const*> varsUsedLater =
-        en->getVarsUsedLater();
-    ::arangodb::containers::HashSet<Variable const*> varsUsedHere;
-    en->getVariablesUsedHere(varsUsedHere);
+  // nrRegsHere is not used anymore and is intentionally left empty
+  // can be removed in ArangoDB 3.8
+  builder.add(VPackValue("nrRegsHere"));
+  { VPackArrayBuilder guard(&builder); }
 
-    // We need to delete those variables that have been used here but are not
-    // used any more later:
-    std::unordered_set<RegisterId> regsToClear;
+  // totalNrRegs is not used anymore and is intentionally left empty
+  // can be removed in ArangoDB 3.8
+  builder.add("totalNrRegs", VPackSlice::noneSlice());
+}
 
-    for (auto const& v : varsUsedHere) {
-      auto it = varsUsedLater.find(v);
+template <typename T>
+void RegisterPlanT<T>::addSubqueryNode(T* subquery) {
+  subQueryNodes.emplace_back(subquery);
+}
 
-      if (it == varsUsedLater.end()) {
-        auto it2 = varInfo.find(v->id);
+template <typename T>
+auto RegisterPlanT<T>::calcRegsToKeep(VarSetStack const& varsUsedLaterStack,
+                                      VarSetStack const& varsValidStack,
+                                      std::vector<Variable const*> const& varsSetHere) const
+    -> RegIdSetStack {
+  RegIdSetStack regsToKeepStack;
+  regsToKeepStack.reserve(varsUsedLaterStack.size());
 
-        if (it2 == varInfo.end()) {
-          // report an error here to prevent crashing
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                         std::string("missing variable #") +
-                                             std::to_string(v->id) + " (" + v->name +
-                                             ") for node #" + std::to_string(en->id()) +
-                                             " (" + en->getTypeString() +
-                                             ") while planning registers");
+  TRI_ASSERT(varsValidStack.size() == varsUsedLaterStack.size());
+
+  for (auto const [idx, stackEntry] : enumerate(varsValidStack)) {
+    auto& regsToKeep = regsToKeepStack.emplace_back();
+    auto const& varsUsedLater = varsUsedLaterStack[idx];
+
+    for (auto const var : stackEntry) {
+      auto reg = variableToRegisterId(var);
+
+      bool isUsedLater = std::find(varsUsedLater.begin(), varsUsedLater.end(), var) !=
+                         varsUsedLater.end();
+      if (isUsedLater) {
+        bool isSetHere = std::find(varsSetHere.begin(), varsSetHere.end(), var) !=
+                         varsSetHere.end();
+        if (!isSetHere) {
+          regsToKeep.emplace(reg);
         }
-
-        // finally adjust the variable inside the IN calculation
-        TRI_ASSERT(it2 != varInfo.end());
-        RegisterId r = it2->second.registerId;
-        regsToClear.insert(r);
       }
     }
-    en->setRegsToClear(std::move(regsToClear));
   }
+
+  return regsToKeepStack;
 }
+
+template <typename T>
+auto RegisterPlanT<T>::variableToRegisterId(Variable const* variable) const -> RegisterId {
+  TRI_ASSERT(variable != nullptr);
+  auto it = varInfo.find(variable->id);
+  TRI_ASSERT(it != varInfo.end());
+  RegisterId rv = it->second.registerId;
+  TRI_ASSERT(rv < RegisterPlan::MaxRegisterId);
+  return rv;
+}
+
+template <typename T>
+std::ostream& aql::operator<<(std::ostream& os, const RegisterPlanT<T>& r) {
+  // level -> variable, info
+  std::map<unsigned int, std::map<VariableId, VarInfo>> frames;
+
+  for (auto [id, info] : r.varInfo) {
+    frames[info.depth][id] = info;
+  }
+
+  for (auto [depth, vars] : frames) {
+    os << "depth " << depth << std::endl;
+    os << "------------------------------------" << std::endl;
+
+    for (auto [id, info] : vars) {
+      os << "id = " << id << " register = " << info.registerId << std::endl;
+    }
+  }
+  return os;
+}
+
+template struct aql::RegisterPlanT<ExecutionNode>;
+template struct aql::RegisterPlanWalkerT<ExecutionNode>;
+template std::ostream& aql::operator<<<ExecutionNode>(std::ostream& os,
+                                                      const RegisterPlanT<ExecutionNode>& r);

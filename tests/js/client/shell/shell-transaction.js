@@ -33,6 +33,8 @@ var internal = require('internal');
 var arangodb = require('@arangodb');
 var db = arangodb.db;
 var testHelper = require('@arangodb/test-helper').Helper;
+var analyzers = require("@arangodb/analyzers");
+const isCluster = internal.isCluster();
 
 var compareStringIds = function (l, r) {
   'use strict';
@@ -318,7 +320,7 @@ function transactionInvocationSuite () {
     tearDown: function () {
       db._drop(cn);
     },
-
+    
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test: invalid invocations of _createTransaction() function
     // //////////////////////////////////////////////////////////////////////////////
@@ -723,9 +725,11 @@ function transactionInvocationSuite () {
 
         let jobId = result.headers["x-arango-async-id"];
 
+        // wait until job has started...
         let tries = 0;
         while (++tries < 60) {
           result = arango.PUT_RAW("/_api/job/" + jobId, {});
+
           if (result.code === 204) {
             break;
           }
@@ -738,15 +742,17 @@ function transactionInvocationSuite () {
         result = arango.DELETE("/_api/transaction/write");
         assertEqual(result.code, 200);
 
+        // wait until job has been canceled
         tries = 0;
         while (++tries < 60) {
           result = arango.PUT_RAW("/_api/job/" + jobId, {});
-          if (result.code === 410) {
+        
+          if (result.code === 410 || result.code === 404) {
             break;
           }
           require("internal").wait(0.5, false);
         }
-        assertEqual(410, result.code);
+        assertTrue(result.code === 410 || result.code === 404);
       } finally {
         if (trx1 && trx1._id) {
           try { trx1.abort(); } catch (err) {}
@@ -1492,8 +1498,66 @@ function transactionCollectionsSuite () {
 
       assertEqual(0, c1.count());
       assertEqual(0, c2.count());
+    },
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: trx with analyzers usage
+    // //////////////////////////////////////////////////////////////////////////////
+    testAnalyzersRevisionReadSubstitutedAnalyzer: function () {
+      if (!isCluster) {
+        return; // we don`t have revisions for single server. Nothing to check
+      }
+      let analyzerName = "my_analyzer";
+      let obj = {
+        collections: {
+          read: [ cn1 ]
+        }
+      };
+      let trx;
+      try { analyzers.remove(analyzerName, true); } catch(e) {}
+      analyzers.save(analyzerName,"identity", {});
+      let col = db._collection(cn1);
+      let test_doc = col.save({"test_field":"some"});
+      try {
+        trx = db._createTransaction(obj);
+        // recreating analyzer with same name but different properties
+        analyzers.remove(analyzerName, true);
+        analyzers.save(analyzerName,"ngram", {min:2, max:2, preserveOriginal:true}); 
+        let res = trx.query("FOR d IN @@cn1 FILTER TOKENS(d.test_field, @an)[0] == 'some' RETURN d",
+                   { '@cn1': cn1, 'an':analyzerName });  // query should fail due to substituted analyzer
+        fail();      
+      } catch(err) {
+        assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      } finally {
+        if (trx) {
+          trx.commit();
+        }
+        col.remove(test_doc);
+      }
+    },
+    testAnalyzersRevisionRead: function () {
+      let analyzerName = "my_analyzer";
+      let obj = {
+        collections: {
+          read: [ cn1 ]
+        }
+      };
+      let trx;
+      try { analyzers.remove(analyzerName, true); } catch(e) {}
+      analyzers.save(analyzerName,"identity", {});
+      let col = db._collection(cn1);
+      let test_doc = col.save({"test_field":"some"});
+      try {
+        trx = db._createTransaction(obj);
+        let res = trx.query("FOR d IN @@cn1 FILTER TOKENS(d.test_field, @an)[0] == 'some' RETURN d",
+                   { '@cn1': cn1, 'an':analyzerName });  
+        assertEqual(1, res.toArray().length);
+      } finally {
+        if (trx) {
+          trx.commit();
+        }
+        col.remove(test_doc);
+      }
     }
-
   };
 }
 
@@ -2052,6 +2116,39 @@ function transactionOperationsSuite () {
 
       assertEqual(1, c1.count());
       assertEqual([ 'foo' ], sortedKeys(c1));
+    },
+
+    testAQLDocumentModify: function() {
+      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
+      c1.save({_key:"1"});
+
+
+      let obj = {
+        collections: {
+          write: [ cn1 ]
+        }
+      };
+
+      let trx;
+      try {
+        trx = db._createTransaction(obj);
+        let tc1 = trx.collection(c1.name());
+        
+        trx.query(`LET g = NOOPT(DOCUMENT("${cn1}/1")) UPDATE g WITH {"updated":1} IN ${cn1}`);
+
+        let doc = tc1.document("1");
+        assertEqual(doc.updated, 1);
+
+      } catch(err) {
+        fail("Transaction failed with: " + JSON.stringify(err));
+      } finally {   
+        if (trx) {
+          trx.commit();
+        }
+      }
+      assertEqual(1, c1.count());
+      let doc = c1.document("1");
+      assertEqual(doc.updated, 1);
     }
 
   };
@@ -3993,6 +4090,33 @@ function transactionAQLStreamSuite () {
       db._drop(cn + 'Edge');
     },
 
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: trx using multiple open cursors
+    // //////////////////////////////////////////////////////////////////////////////
+    testMultipleCursorsInSameTransaction: function () {
+      let trx, cursor1, cursor2;
+      try {
+        trx = db._createTransaction({
+          collections: {}
+        });
+        cursor1 = trx.query('FOR i IN 1..10000000000000 RETURN i', {}, {}, {stream: true});
+        try {
+          cursor2 = trx.query('FOR i IN 1..10000000000000 RETURN i', {}, {}, {stream: true});
+          fail();
+        } catch (err) {
+          assertEqual(internal.errors.ERROR_LOCKED.code, err.errorNum);
+        }
+      } catch (err) {
+        fail("Transaction failed with: " + JSON.stringify(err));
+      } finally {
+        if (cursor1) {
+          cursor1.dispose();
+        }
+        if (trx) {
+          trx.abort();
+        }
+      }
+    },
 
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test: trx using no collections
@@ -4011,7 +4135,7 @@ function transactionAQLStreamSuite () {
           assertEqual(i, cursor.next());
         }
 
-      } catch(err) {
+      } catch (err) {
         fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (cursor) {
@@ -4048,8 +4172,7 @@ function transactionAQLStreamSuite () {
           while (cursor.hasNext()) {
             cursor.next();
           }
-  
-        } catch(err) {
+        } catch (err) {
           fail("Transaction failed with: " + JSON.stringify(err));
         } finally {
           if (cursor) {
@@ -4097,7 +4220,7 @@ function transactionAQLStreamSuite () {
         assertEqual(100, extras.stats.writesExecuted);
         assertEqual(100, tc.count());
 
-      } catch(err) {
+      } catch (err) {
         fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (cursor1) {
@@ -4117,7 +4240,6 @@ function transactionAQLStreamSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testUndeclaredTraversalCollectionStream: function () {
-
       let result;
       // begin trx
       let trx = db._createTransaction({

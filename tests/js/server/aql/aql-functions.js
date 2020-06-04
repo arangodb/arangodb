@@ -881,6 +881,76 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test replace_nth function
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceNthCxx : function () {
+
+      var testArray = [
+        null,
+        true,
+        1,
+        3.5,
+        [],
+        [7, 6],
+        { },
+        { foo: 'bar'}
+      ];
+
+      for (let replaceIndex = 0;  replaceIndex <= testArray.length + 2; replaceIndex ++) {
+        for (let replaceValue = 0;  replaceValue < testArray.length; replaceValue ++) {
+          const msg = `Index: ${replaceIndex} ReplaceValue: ${replaceValue}`;
+          let actual = getQueryResults("RETURN NOOPT(REPLACE_NTH(@testArray, @which, @replaceValue, @defaultValue))",
+                                   {
+                                     testArray: testArray,
+                                     which: replaceIndex,
+                                     replaceValue: testArray[replaceValue],
+                                     defaultValue: testArray[replaceValue]
+                                   }
+                                  );
+          if (replaceIndex === testArray.length + 2) {
+            let expectValue = testArray[replaceValue];
+            if (expectValue === undefined) {
+              expectValue = null;
+            }
+            assertEqual(actual[0][testArray.length + 1], expectValue, msg);
+          }
+          assertEqual(actual[0][replaceIndex], testArray[replaceValue], msg);
+        }
+      }
+      for (let replaceIndex = 0;  replaceIndex <= testArray.length; replaceIndex ++) {
+        for (let replaceValue = 0;  replaceValue < testArray.length; replaceValue ++) {
+          let actualReplaceIndex = testArray.length - replaceIndex -1 ;
+          let replaceIndexValue = -(replaceIndex) - 1;
+          if (actualReplaceIndex < 0) {
+            actualReplaceIndex = 0;
+          }
+          const msg = `Index: ${replaceIndexValue} => ${actualReplaceIndex} ReplaceValue: ${replaceValue}`;
+          let actual = getQueryResults("RETURN NOOPT(REPLACE_NTH(@testArray, @which, @replaceValue, @defaultValue))",
+                                   {
+                                     testArray: testArray,
+                                     which: replaceIndexValue,
+                                     replaceValue: testArray[replaceValue],
+                                     defaultValue: testArray[replaceValue]
+                                   }
+                                      );
+          assertEqual(actual[0][actualReplaceIndex], testArray[replaceValue], msg);
+        }
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test replace_nth function
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceNthInvalidCxx : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(REPLACE_NTH(null, null))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(REPLACE_NTH(['x'], null, { }))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(REPLACE_NTH([], null, { }))");
+      assertEqual([ null ], getQueryResults("RETURN NOOPT(REPLACE_NTH(null, 1, 1))")); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test length function
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2195,6 +2265,9 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRangeCxxInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, "RETURN NOOPT(RANGE(1, 100000000))");
+      assertQueryError(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, "RETURN NOOPT(RANGE(100000000, 1, -1))");
+
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(RANGE())");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(RANGE(1))"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(RANGE(1, 2, 3, 4))"); 
@@ -4051,6 +4124,79 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test IN_RANGE function
+////////////////////////////////////////////////////////////////////////////////
+    testInRange: function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN IN_RANGE()");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, 
+        "RETURN IN_RANGE(123, 0, 500, null, true)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, 
+        "RETURN IN_RANGE(123, 0, 500, false, null)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, 
+        "RETURN IN_RANGE(123, 0, 500, 1, true)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, 
+        "RETURN IN_RANGE(123, 0, 500, false, 0)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, 
+        "RETURN IN_RANGE(123, 0, 500, [1, 2, 3], true)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, 
+        "RETURN IN_RANGE(123, 0, 500, false, [1,2,3])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, 
+        "RETURN IN_RANGE(123, 0, 500, 'true', true)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, 
+        "RETURN IN_RANGE(123, 0, 500, false, 'false')");
+      {
+        let res = getQueryResults("RETURN IN_RANGE(5, 1, 10, false, false)");
+        assertEqual(1, res.length);  
+        assertTrue(res[0]);
+      }     
+      {
+        let res = getQueryResults("RETURN IN_RANGE(5+1, 1+1, 10-1, false, false)");
+        assertEqual(1, res.length);  
+        assertTrue(res[0]);
+      }
+      {
+        let res = getQueryResults("RETURN IN_RANGE(MAX([5,6]), MIN([1,0]), MAX([0,6]), false, true)");
+        assertEqual(1, res.length);  
+        assertTrue(res[0]);
+      }
+      {
+        let res = getQueryResults("RETURN IN_RANGE(MAX([5,6]), MIN([1,0]), MAX([0,6]), false, false)");
+        assertEqual(1, res.length);  
+        assertFalse(res[0]);
+      }
+      {
+        let res = getQueryResults("RETURN IN_RANGE(NOOPT(MAX([5,6])), MIN([1,0]), MAX([0,6]), false, false)");
+        assertEqual(1, res.length);  
+        assertFalse(res[0]);
+      }
+      {
+        let res = getQueryResults("RETURN IN_RANGE('foo', MIN([1,0]), 'poo', false, false)");
+        assertEqual(1, res.length);  
+        assertTrue(res[0]);
+      }
+      {
+        let res = getQueryResults("RETURN IN_RANGE('foo', null, 'poo', false, false)");
+        assertEqual(1, res.length);  
+        assertTrue(res[0]);
+      }
+      {
+        let res = getQueryResults("RETURN IN_RANGE(123, null, 'poo', false, false)");
+        assertEqual(1, res.length);  
+        assertTrue(res[0]);
+      }
+      {
+        let res = getQueryResults("RETURN IN_RANGE({a:1}, null, 'poo', false, false)");
+        assertEqual(1, res.length);  
+        assertFalse(res[0]);
+      }
+      {
+        let res = getQueryResults("RETURN IN_RANGE('foo', 'boo', 'poo', false, false)");
+        assertEqual(1, res.length);  
+        assertTrue(res[0]);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test non-existing functions
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4070,4 +4216,3 @@ function ahuacatlFunctionsTestSuite () {
 jsunity.run(ahuacatlFunctionsTestSuite);
 
 return jsunity.done();
-

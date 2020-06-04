@@ -34,12 +34,14 @@
 #include "IResearchView.h"
 #include "IResearchViewCoordinator.h"
 #include "VelocyPackHelper.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
-#include "RestServer/SystemDatabaseFeature.h"
+#include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
@@ -65,8 +67,8 @@ arangodb::Result canUseAnalyzers( // validate
                         ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
                         : nullptr;
 
-  for (auto& entry: meta._analyzers) {
-    if (!entry._pool) {
+  for (auto& pool: meta._analyzerDefinitions) {
+    if (!pool) {
       continue; // skip invalid entries
     }
 
@@ -75,35 +77,35 @@ arangodb::Result canUseAnalyzers( // validate
     if (sysVocbase) {
       result = arangodb::iresearch::IResearchAnalyzerFeature::canUse( // validate
         arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
-          entry._pool->name(), defaultVocbase, *sysVocbase // args
+          pool->name(), defaultVocbase, *sysVocbase // args
         ), // analyzer
         arangodb::auth::Level::RO // auth level
       );
     } else {
       result = arangodb::iresearch::IResearchAnalyzerFeature::canUse( // validate
-        entry._pool->name(), arangodb::auth::Level::RO // args
+        pool->name(), arangodb::auth::Level::RO // args
       );
     }
 
     if (!result) {
-      return arangodb::Result( // result
-        TRI_ERROR_FORBIDDEN, // code
-        std::string("read access is forbidden to arangosearch analyzer '") + entry._pool->name() + "'"
-      );
+      return {
+        TRI_ERROR_FORBIDDEN,
+        std::string("read access is forbidden to arangosearch analyzer '") + pool->name() + "'"
+      };
     }
   }
 
-  for (auto& field: meta._fields) {
-    TRI_ASSERT(field.value().get()); // ensured by UniqueHeapInstance constructor
-    auto& entry = field.value();
-    auto res = canUseAnalyzers(*entry, defaultVocbase);
+//  for (auto& field: meta._fields) {
+//    TRI_ASSERT(field.value().get()); // ensured by UniqueHeapInstance constructor
+//    auto& entry = field.value();
+//    auto res = canUseAnalyzers(*entry, defaultVocbase);
+//
+//    if (!res.ok()) {
+//      return res;
+//    }
+//  }
 
-    if (!res.ok()) {
-      return res;
-    }
-  }
-
-  return arangodb::Result();
+  return {};
 }
 
 arangodb::Result createLink( // create link
@@ -192,10 +194,10 @@ arangodb::Result dropLink( // drop link
 ) {
   // don't need to create an extra transaction inside arangodb::methods::Indexes::drop(...)
   if (!collection.dropIndex(link.id())) {
-    return arangodb::Result( // result
-      TRI_ERROR_INTERNAL, // code
-      std::string("failed to drop link '") + std::to_string(link.id()) + "' from collection '" + collection.name() + "'"
-    );
+    return arangodb::Result(  // result
+        TRI_ERROR_INTERNAL,   // code
+        std::string("failed to drop link '") + std::to_string(link.id().id()) +
+            "' from collection '" + collection.name() + "'");
   }
 
   return arangodb::Result();
@@ -209,9 +211,9 @@ arangodb::Result dropLink<arangodb::iresearch::IResearchViewCoordinator>( // dro
   arangodb::velocypack::Builder builder;
 
   builder.openObject();
-  builder.add( // add
-    arangodb::StaticStrings::IndexId, // key
-    arangodb::velocypack::Value(link.id()) // value
+  builder.add(                                     // add
+      arangodb::StaticStrings::IndexId,            // key
+      arangodb::velocypack::Value(link.id().id())  // value
   );
   builder.close();
 
@@ -281,7 +283,7 @@ arangodb::Result modifyLinks( // modify links
     //        arangodb::Index::Compare(...)
     //        hence must use 'isCreation=true' for normalize(...) to match
     auto res = arangodb::iresearch::IResearchLinkHelper::normalize( // normalize to validate analyzer definitions
-      normalized, link, true, view.vocbase(), &view.primarySort() // args
+      normalized, link, true, view.vocbase(), &view.primarySort(), &view.storedValues(), link.get(arangodb::StaticStrings::IndexId)
     );
 
     if (!res.ok()) {
@@ -325,7 +327,8 @@ arangodb::Result modifyLinks( // modify links
     std::string error;
     arangodb::iresearch::IResearchLinkMeta linkMeta;
 
-    if (!linkMeta.init(namedJson.slice(), true, error, &view.vocbase())) { // validated and normalized with 'isCreation=true' above via normalize(...)
+    if (!linkMeta.init(view.vocbase().server(),
+                       namedJson.slice(), true, error, &view.vocbase())) {  // validated and normalized with 'isCreation=true' above via normalize(...)
       return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
         std::string("error parsing link parameters from json for arangosearch view '") + view.name() + "' collection '" + collectionName + "' error '" + error + "'"
@@ -575,9 +578,10 @@ namespace iresearch {
   return emptySlice._slice;
 }
 
-/*static*/ bool IResearchLinkHelper::equal( // are link definitions equal
-    arangodb::velocypack::Slice const& lhs, // left hand side
-    arangodb::velocypack::Slice const& rhs // right hand side
+/*static*/ bool IResearchLinkHelper::equal(  // are link definitions equal
+    arangodb::application_features::ApplicationServer& server,
+    arangodb::velocypack::Slice const& lhs,  // left hand side
+    arangodb::velocypack::Slice const& rhs   // right hand side
 ) {
   if (!lhs.isObject() || !rhs.isObject()) {
     return false;
@@ -610,14 +614,14 @@ namespace iresearch {
   IResearchLinkMeta lhsMeta;
   IResearchLinkMeta rhsMeta;
 
-  return lhsMeta.init(lhs, true, errorField) // left side meta valid (for db-server analyzer validation should have already apssed on coordinator)
-         && rhsMeta.init(rhs, true, errorField) // right side meta valid (for db-server analyzer validation should have already apssed on coordinator)
-         && lhsMeta == rhsMeta; // left meta equal right meta
+  return lhsMeta.init(server, lhs, true, errorField)  // left side meta valid (for db-server analyzer validation should have already apssed on coordinator)
+         && rhsMeta.init(server, rhs, true, errorField)  // right side meta valid (for db-server analyzer validation should have already apssed on coordinator)
+         && lhsMeta == rhsMeta;  // left meta equal right meta
 }
 
-/*static*/ std::shared_ptr<IResearchLink> IResearchLinkHelper::find( // find link
-    LogicalCollection const& collection, // collection to search
-    TRI_idx_iid_t id // index id to find
+/*static*/ std::shared_ptr<IResearchLink> IResearchLinkHelper::find(  // find link
+    LogicalCollection const& collection,  // collection to search
+    IndexId id                            // index id to find
 ) {
   auto index = collection.lookupIndex(id);
 
@@ -662,7 +666,9 @@ namespace iresearch {
     arangodb::velocypack::Slice definition, // source definition
     bool isCreation, // definition for index creation
     TRI_vocbase_t const& vocbase, // index vocbase
-    IResearchViewSort const* primarySort /* = nullptr */
+    IResearchViewSort const* primarySort, /* = nullptr */
+    IResearchViewStoredValues const* storedValues, /* = nullptr */
+    arangodb::velocypack::Slice idSlice /* = arangodb::velocypack::Slice()*/ // id for normalized
 ) {
   if (!normalized.isOpenObject()) {
     return arangodb::Result(
@@ -678,7 +684,7 @@ namespace iresearch {
   //        IResearchLinkHelper::normalize(...) if creating via collection API
   //        ::modifyLinks(...) (via call to normalize(...) prior to getting
   //        superuser) if creating via IResearchLinkHelper API
-  if (!meta.init(definition, true, error, &vocbase)) {
+  if (!meta.init(vocbase.server(), definition, true, error, &vocbase)) {
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       std::string("error parsing arangosearch link parameters from json: ") + error
@@ -696,11 +702,18 @@ namespace iresearch {
   );
 
   // copy over IResearch Link identifier
-  if (definition.hasKey(arangodb::StaticStrings::IndexId)) {
-    normalized.add( // preserve field
-      arangodb::StaticStrings::IndexId, // key
-      definition.get(arangodb::StaticStrings::IndexId) // value
-    );
+  if (!idSlice.isNone()) {
+    if (idSlice.isNumber()) {
+      normalized.add(
+        arangodb::StaticStrings::IndexId,
+        arangodb::velocypack::Value(std::to_string(idSlice.getNumericValue<uint64_t>()))
+      );
+    } else {
+      normalized.add(
+        arangodb::StaticStrings::IndexId,
+        idSlice
+      );
+    }
   }
 
   // copy over IResearch View identifier
@@ -722,7 +735,12 @@ namespace iresearch {
     meta._sort = *primarySort;
   }
 
-  if (!meta.json(normalized, isCreation, nullptr, &vocbase)) { // 'isCreation' is set when forPersistence
+  if (storedValues) {
+    // normalize stored values if specified
+    meta._storedValues = *storedValues;
+  }
+
+  if (!meta.json(vocbase.server(), normalized, isCreation, nullptr, &vocbase)) { // 'isCreation' is set when forPersistence
     return arangodb::Result( // result
       TRI_ERROR_BAD_PARAMETER, // code
       "error generating arangosearch link normalized definition" // message
@@ -785,7 +803,7 @@ namespace iresearch {
     std::string errorField;
 
     if (!linkDefinition.isNull()) { // have link definition
-      if (!meta.init(linkDefinition, false, errorField, &vocbase)) { // for db-server analyzer validation should have already applied on coordinator
+      if (!meta.init(vocbase.server(), linkDefinition, true, errorField, &vocbase)) { // for db-server analyzer validation should have already applied on coordinator
         return arangodb::Result( // result
           TRI_ERROR_BAD_PARAMETER, // code
           errorField.empty()
@@ -797,17 +815,22 @@ namespace iresearch {
       // analyzer should be either from same database as view (and collection) or from system database
       {
         const auto& currentVocbase = vocbase.name();
-        for (const auto& analyzer : meta._analyzers) {
-          TRI_ASSERT(analyzer._pool); // should be checked in meta init
-          if (ADB_UNLIKELY(!analyzer._pool)) { 
+        for (const auto& analyzer : meta._analyzerDefinitions) {
+          TRI_ASSERT(analyzer); // should be checked in meta init
+          if (ADB_UNLIKELY(!analyzer)) {
             continue; 
           }
-          auto analyzerVocbase = IResearchAnalyzerFeature::extractVocbaseName(analyzer._pool->name());
+          auto* pool = analyzer.get();
+          auto analyzerVocbase = IResearchAnalyzerFeature::extractVocbaseName(pool->name());
+
           if (!IResearchAnalyzerFeature::analyzerReachableFromDb(analyzerVocbase, currentVocbase, true)) {
-            return arangodb::Result(
-                TRI_ERROR_BAD_PARAMETER,
-                std::string("Analyzer '").append(analyzer._pool->name())
-                .append("' is not accessible from database '").append(currentVocbase).append("'"));
+            return {
+              TRI_ERROR_BAD_PARAMETER,
+              std::string("Analyzer '")
+                  .append(pool->name())
+                  .append("' is not accessible from database '")
+                  .append(currentVocbase).append("'")
+            };
           }
         }
       }

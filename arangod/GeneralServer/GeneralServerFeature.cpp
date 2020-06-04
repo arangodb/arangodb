@@ -30,6 +30,7 @@
 #include "Agency/RestAgencyPrivHandler.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/RestAqlHandler.h"
+#include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Cluster/AgencyCallbackRegistry.h"
@@ -37,7 +38,6 @@
 #include "Cluster/MaintenanceRestHandler.h"
 #include "Cluster/RestAgencyCallbacksHandler.h"
 #include "Cluster/RestClusterHandler.h"
-#include "Cluster/TraverserEngineRegistry.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
@@ -47,6 +47,8 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Rest/HttpResponse.h"
+#include "RestHandler/RestAdminClusterHandler.h"
 #include "RestHandler/RestAdminDatabaseHandler.h"
 #include "RestHandler/RestAdminExecuteHandler.h"
 #include "RestHandler/RestAdminLogHandler.h"
@@ -55,7 +57,6 @@
 #include "RestHandler/RestAdminStatisticsHandler.h"
 #include "RestHandler/RestAnalyzerHandler.h"
 #include "RestHandler/RestAqlFunctionsHandler.h"
-#include "RestHandler/RestAqlReloadHandler.h"
 #include "RestHandler/RestAqlUserFunctionsHandler.h"
 #include "RestHandler/RestAuthHandler.h"
 #include "RestHandler/RestAuthReloadHandler.h"
@@ -74,15 +75,19 @@
 #include "RestHandler/RestImportHandler.h"
 #include "RestHandler/RestIndexHandler.h"
 #include "RestHandler/RestJobHandler.h"
+#include "RestHandler/RestMetricsHandler.h"
 #include "RestHandler/RestPleaseUpgradeHandler.h"
 #include "RestHandler/RestPregelHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
+#include "RestHandler/RestRedirectHandler.h"
 #include "RestHandler/RestRepairHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
+#include "RestHandler/RestSystemReportHandler.h"
 #include "RestHandler/RestStatusHandler.h"
+#include "RestHandler/RestSupervisionStateHandler.h"
 #include "RestHandler/RestTasksHandler.h"
 #include "RestHandler/RestTestHandler.h"
 #include "RestHandler/RestTimeHandler.h"
@@ -95,7 +100,6 @@
 #include "RestHandler/RestWalAccessHandler.h"
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -132,7 +136,7 @@ GeneralServerFeature::GeneralServerFeature(application_features::ApplicationServ
   startsAfter<UpgradeFeature>();
 
   _numIoThreads = (std::max)(static_cast<uint64_t>(1),
-                             static_cast<uint64_t>(TRI_numberProcessors() / 4));
+                             static_cast<uint64_t>(NumberOfCores::getValue() / 4));
   if (_numIoThreads > _maxIoThreads) {
     _numIoThreads = _maxIoThreads;
   }
@@ -152,14 +156,14 @@ void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOption("--server.io-threads",
                      "Number of threads used to handle IO",
                      new UInt64Parameter(&_numIoThreads),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Dynamic));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   options->addSection("http", "HttpServer features");
 
   options->addOption("--http.allow-method-override",
                      "allow HTTP method override using special headers",
                      new BooleanParameter(&_allowMethodOverride),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--http.keep-alive-timeout",
                      "keep-alive timeout in seconds",
@@ -177,12 +181,21 @@ void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addSection("frontend", "Frontend options");
 
   options->addOption("--frontend.proxy-request-check",
-                     "enable proxy request checking", new BooleanParameter(&_proxyCheck));
+                     "enable proxy request checking",
+                     new BooleanParameter(&_proxyCheck),
+                     arangodb::options::makeFlags(
+                     arangodb::options::Flags::DefaultNoComponents,
+                     arangodb::options::Flags::OnCoordinator,
+                     arangodb::options::Flags::OnSingle));
 
   options->addOption("--frontend.trusted-proxy",
                      "list of proxies to trust (may be IP or network). Make "
                      "sure --frontend.proxy-request-check is enabled",
-                     new VectorParameter<StringParameter>(&_trustedProxies));
+                     new VectorParameter<StringParameter>(&_trustedProxies),
+                     arangodb::options::makeFlags(
+                     arangodb::options::Flags::DefaultNoComponents,
+                     arangodb::options::Flags::OnCoordinator,
+                     arangodb::options::Flags::OnSingle));
 }
 
 void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
@@ -254,6 +267,9 @@ void GeneralServerFeature::beginShutdown() {
 
 void GeneralServerFeature::stop() {
   _jobManager->deleteJobs();
+  for (auto& server : _servers) {
+    server->stopConnections();
+  }
 }
 
 void GeneralServerFeature::unprepare() {
@@ -302,17 +318,6 @@ void GeneralServerFeature::defineHandlers() {
   HotBackupFeature& backup = server().getFeature<HotBackupFeature>();
 #endif
 
-
-  auto queryRegistry = QueryRegistryFeature::registry();
-  auto traverserEngineRegistry = TraverserEngineRegistryFeature::registry();
-  if (_combinedRegistries == nullptr) {
-    _combinedRegistries =
-        std::make_unique<std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>>(
-            queryRegistry, traverserEngineRegistry);
-  } else {
-    TRI_ASSERT(false);
-  }
-
   // ...........................................................................
   // /_msg
   // ...........................................................................
@@ -335,6 +340,7 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::CONTROL_PREGEL_PATH,
                                     RestHandlerCreator<RestControlPregelHandler>::createNoData);
 
+  auto queryRegistry = QueryRegistryFeature::registry();
   _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::CURSOR_PATH,
                                     RestHandlerCreator<RestCursorHandler>::createData<aql::QueryRegistry*>,
                                     queryRegistry);
@@ -400,8 +406,7 @@ void GeneralServerFeature::defineHandlers() {
   // for it.
   _handlerFactory->addPrefixHandler(
       "/_api/aql",
-      RestHandlerCreator<aql::RestAqlHandler>::createData<std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>*>,
-      _combinedRegistries.get());
+      RestHandlerCreator<aql::RestAqlHandler>::createData<aql::QueryRegistry*>, queryRegistry);
 
   _handlerFactory->addPrefixHandler("/_api/aql-builtin",
                                     RestHandlerCreator<RestAqlFunctionsHandler>::createNoData);
@@ -437,6 +442,7 @@ void GeneralServerFeature::defineHandlers() {
         agency.agent());
   }
 
+  
   if (cluster.isEnabled()) {
     // add "/agency-callbacks" handler
     _handlerFactory->addPrefixHandler(
@@ -449,16 +455,13 @@ void GeneralServerFeature::defineHandlers() {
   }
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH,
-      RestHandlerCreator<InternalRestTraverserHandler>::createData<traverser::TraverserEngineRegistry*>,
-      traverserEngineRegistry);
+      RestHandlerCreator<InternalRestTraverserHandler>::createData<aql::QueryRegistry*>,
+       queryRegistry);
 
   // And now some handlers which are registered in both /_api and /_admin
   _handlerFactory->addHandler("/_admin/actions",
                               RestHandlerCreator<MaintenanceRestHandler>::createNoData);
-
-  _handlerFactory->addHandler("/_admin/aql/reload",
-                              RestHandlerCreator<RestAqlReloadHandler>::createNoData);
-
+    
   _handlerFactory->addHandler("/_admin/auth/reload",
                               RestHandlerCreator<RestAuthReloadHandler>::createNoData);
 
@@ -490,8 +493,14 @@ void GeneralServerFeature::defineHandlers() {
   // /_admin
   // ...........................................................................
 
+  _handlerFactory->addPrefixHandler("/_admin/cluster",
+                                    RestHandlerCreator<arangodb::RestAdminClusterHandler>::createNoData);
+
   _handlerFactory->addHandler("/_admin/status",
                               RestHandlerCreator<RestStatusHandler>::createNoData);
+
+  _handlerFactory->addHandler("/_admin/system-report",
+                              RestHandlerCreator<RestSystemReportHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler("/_admin/job",
                                     RestHandlerCreator<arangodb::RestJobHandler>::createData<AsyncJobManager*>,
@@ -512,6 +521,9 @@ void GeneralServerFeature::defineHandlers() {
                                       RestHandlerCreator<arangodb::RestAdminRoutingHandler>::createNoData);
   }
 
+  _handlerFactory->addHandler("/_admin/supervisionState",
+                              RestHandlerCreator<arangodb::RestSupervisionStateHandler>::createNoData);
+
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // This handler is to activate SYS_DEBUG_FAILAT on DB servers
   _handlerFactory->addPrefixHandler("/_admin/debug",
@@ -531,6 +543,9 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addHandler("/_admin/statistics",
                               RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
+
+  _handlerFactory->addHandler("/_admin/metrics",
+                              RestHandlerCreator<arangodb::RestMetricsHandler>::createNoData);
 
   _handlerFactory->addHandler("/_admin/statistics-description",
                               RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
@@ -561,6 +576,22 @@ void GeneralServerFeature::defineHandlers() {
   // ...........................................................................
 
   _handlerFactory->addPrefixHandler("/", RestHandlerCreator<RestActionHandler>::createNoData);
+
+  // ...........................................................................
+  // redirects
+  // ...........................................................................
+
+  // UGLY HACK INCOMING!
+
+#define ADD_REDIRECT(from, to) do{_handlerFactory->addPrefixHandler(from, \
+                                    RestHandlerCreator<RestRedirectHandler>::createData<const char*>, \
+                                    (void*) to);}while(0)
+
+  ADD_REDIRECT("/_admin/clusterNodeVersion", "/_admin/cluster/nodeVersion");
+  ADD_REDIRECT("/_admin/clusterNodeEngine", "/_admin/cluster/nodeEngine");
+  ADD_REDIRECT("/_admin/clusterNodeStats", "/_admin/cluster/nodeStatistics");
+  ADD_REDIRECT("/_admin/clusterStatistics", "/_admin/cluster/statistics");
+
 
   // engine specific handlers
   StorageEngine* engine = EngineSelectorFeature::ENGINE;

@@ -36,20 +36,9 @@ var db = internal.db;
 var expect = require('chai').expect;
 var should = require('chai').should();
 
-function debugOut(item){
-  print("#############");
-  print(item);
-  print("#############");
-}
-var isRocksDB = db._engine().name === "rocksdb";
-var isMMFiles = db._engine().name === "mmfiles";
-
 function verifyMemory(index){
   expect(index.figures).to.be.ok;
   expect(index.figures.memory).to.be.a('number');
-  if(isMMFiles){
-    expect(index.figures.memory).to.be.a.above(0);
-  }
 }
 
 function verifyCache(index){
@@ -113,9 +102,6 @@ describe('Index figures', function () {
       });
 
       it('figures - cache', function() {
-        if(!isRocksDB){
-          this.skip();
-        }
         var indexes = col.getIndexes(true);
         indexes.forEach((i) => {
           verifyCache(i);
@@ -135,9 +121,6 @@ describe('Index figures', function () {
       });
 
       it('should fill the cache', function() {
-        if(!isRocksDB){
-          this.skip();
-        }
         // The cache does not expose fillgrades an such.
         // We can only check memory consumption...
         let indexes = col.getIndexes(true);
@@ -190,9 +173,6 @@ describe('Index figures', function () {
     });
     // FIXME not implemented
     it.skip('verify figures - cache', function() {
-      if(!isRocksDB){
-        this.skip();
-      }
       var indexes = col.getIndexes(true);
       indexes.forEach((i) => {
         verifyCache(i);
@@ -232,9 +212,6 @@ describe('Index figures', function () {
     });
     // FIXME not implemented
     it.skip('verify figures - cache', function() {
-      if(!isRocksDB){
-        this.skip();
-      }
       var indexes = col.getIndexes(true);
       indexes.forEach((i) => {
         verifyCache(i);
@@ -274,9 +251,6 @@ describe('Index figures', function () {
     });
     // FIXME not implemented
     it.skip('verify figures - cache', function() {
-      if(!isRocksDB){
-        this.skip();
-      }
       var indexes = col.getIndexes(true);
       indexes.forEach((i) => {
         verifyCache(i);
@@ -320,9 +294,6 @@ describe('Index figures', function () {
     });
     // FIXME not implemented
     it.skip('verify figures - cache', function() {
-      if(!isRocksDB){
-        this.skip();
-      }
       var indexes = col.getIndexes(true);
       indexes.forEach((i) => {
         verifyCache(i);

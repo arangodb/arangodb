@@ -52,4 +52,3 @@ Requesting the number of documents:
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

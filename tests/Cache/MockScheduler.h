@@ -21,20 +21,20 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef UNITTESTS_CACHE_MOCK_SCHEDULER_H
 #define UNITTESTS_CACHE_MOCK_SCHEDULER_H
 
-#include "Basics/Common.h"
-#include "Basics/asio_ns.h"
-
-#include <boost/asio/io_service.hpp>
 #include <memory>
 #include <thread>
 #include <vector>
+
+#include <boost/asio/io_service.hpp>
+
+#include "Basics/asio_ns.h"
 
 namespace arangodb {
 namespace cache {
@@ -46,7 +46,7 @@ class MockScheduler {
   std::vector<std::thread*> _group;
 
  public:
-  MockScheduler(size_t threads);
+  MockScheduler(std::size_t threads);
   ~MockScheduler();
   void post(std::function<void()> fn);
 };

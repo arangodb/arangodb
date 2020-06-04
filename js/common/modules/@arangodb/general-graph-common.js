@@ -1680,8 +1680,6 @@ exports._relation = function (relationName, fromVertexCollections, toVertexColle
 exports._graph = function (graphName) {
   let gdb = getGraphCollection();
   let g;
-  let collections;
-  let orphanCollections;
 
   try {
     g = gdb.document(graphName);
@@ -1697,7 +1695,13 @@ exports._graph = function (graphName) {
   if (g.isSmart) {
     let err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_GRAPH.code;
-    err.errorMessage = 'The graph you requested is a SmartGraph (Enterprise Only)';
+    err.errorMessage = 'The graph you requested is a SmartGraph (Enterprise Edition only)';
+    throw err;
+  }
+  if (g.isSatellite) {
+    let err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_GRAPH.code;
+    err.errorMessage = 'The graph you requested is a SatelliteGraph (Enterprise Edition only)';
     throw err;
   }
 
@@ -1835,8 +1839,8 @@ exports._create = function (graphName, edgeDefinitions, orphanCollections, optio
     'orphanCollections': orphanCollections,
     'edgeDefinitions': edgeDefinitions,
     '_key': graphName,
-    'numberOfShards': options.numberOfShards || 1,
-    'replicationFactor': options.replicationFactor || 1,
+    'numberOfShards': options.numberOfShards || undefined,
+    'replicationFactor': options.replicationFactor || undefined,
   }, options);
   data.orphanCollections = orphanCollections;
   data.edgeDefinitions = edgeDefinitions;

@@ -49,7 +49,7 @@ Equivalent AQL query (the RETURN clause is optional):
 
 The body of the response contains a JSON object with information how many
 documents were removed (and how many were not). The *removed* attribute will
-contain the number of actually removed documents. The *ignored* attribute 
+contain the number of actually removed documents. The *ignored* attribute
 will contain the number of keys in the request for which no matching document
 could be found.
 
@@ -109,4 +109,3 @@ is returned if the operation was called with a different HTTP METHOD than PUT.
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
-

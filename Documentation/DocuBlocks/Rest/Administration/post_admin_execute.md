@@ -19,9 +19,9 @@ returned.
 Note that this API endpoint will only be present if the server was
 started with the option `--javascript.allow-admin-execute true`.
 
-The default value of this option is `false`, which disables the execution of 
-user-defined code and disables this API endpoint entirely. 
-This is also the recommended setting for production. 
+The default value of this option is `false`, which disables the execution of
+user-defined code and disables this API endpoint entirely.
+This is also the recommended setting for production.
 
 @RESTRETURNCODE{200}
 is returned when everything went well, or if a timeout occurred. In the
@@ -35,4 +35,3 @@ is returned if ArangoDB is not running in cluster mode.
 is returned if ArangoDB was not compiled for cluster operation.
 
 @endDocuBlock
-

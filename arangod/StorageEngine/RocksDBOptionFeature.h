@@ -71,6 +71,8 @@ class RocksDBOptionFeature final : public application_features::ApplicationFeatu
   uint64_t _maxSubcompactions;
   uint32_t _numThreadsHigh;
   uint32_t _numThreadsLow;
+  uint64_t _targetFileSizeBase;
+  uint64_t _targetFileSizeMultiplier;
   uint64_t _blockCacheSize;
   int64_t _blockCacheShardBits;
   uint64_t _tableBlockSize;
@@ -80,6 +82,10 @@ class RocksDBOptionFeature final : public application_features::ApplicationFeatu
   int64_t _level0StopTrigger;
   bool _recycleLogFileNum;
   bool _enforceBlockCacheSizeLimit;
+  bool _cacheIndexAndFilterBlocks;
+  bool _cacheIndexAndFilterBlocksWithHighPriority;
+  bool _pinl0FilterAndIndexBlocksInCache;
+  bool _pinTopLevelIndexAndFilter;
   bool _blockAlignDataBlocks;
   bool _enablePipelinedWrite;
   bool _optimizeFiltersForHits;
@@ -92,6 +98,7 @@ class RocksDBOptionFeature final : public application_features::ApplicationFeatu
   bool _useFileLogging;
   bool _limitOpenFilesAtStartup;
   bool _allowFAllocate;
+  bool _exclusiveWrites;
 };
 
 }  // namespace arangodb

@@ -95,6 +95,46 @@ class AqlItemBlockTest : public ::testing::Test {
   }
 };
 
+TEST_F(AqlItemBlockTest, test_get_block_id) {
+  EXPECT_EQ(itemBlockManager.getBucketId(0), 0);
+  EXPECT_EQ(itemBlockManager.getBucketId(1), 0);
+  EXPECT_EQ(itemBlockManager.getBucketId(2), 1);
+  EXPECT_EQ(itemBlockManager.getBucketId(3), 1);
+  EXPECT_EQ(itemBlockManager.getBucketId(4), 2);
+  EXPECT_EQ(itemBlockManager.getBucketId(5), 2);
+  EXPECT_EQ(itemBlockManager.getBucketId(6), 2);
+  EXPECT_EQ(itemBlockManager.getBucketId(7), 2);
+  EXPECT_EQ(itemBlockManager.getBucketId(8), 3);
+  EXPECT_EQ(itemBlockManager.getBucketId(9), 3);
+  EXPECT_EQ(itemBlockManager.getBucketId(10), 3);
+  EXPECT_EQ(itemBlockManager.getBucketId(15), 3);
+  EXPECT_EQ(itemBlockManager.getBucketId(16), 4);
+  EXPECT_EQ(itemBlockManager.getBucketId(31), 4);
+  EXPECT_EQ(itemBlockManager.getBucketId(32), 5);
+  EXPECT_EQ(itemBlockManager.getBucketId(63), 5);
+  EXPECT_EQ(itemBlockManager.getBucketId(64), 6);
+  EXPECT_EQ(itemBlockManager.getBucketId(100), 6);
+  EXPECT_EQ(itemBlockManager.getBucketId(127), 6);
+  EXPECT_EQ(itemBlockManager.getBucketId(128), 7);
+  EXPECT_EQ(itemBlockManager.getBucketId(255), 7);
+  EXPECT_EQ(itemBlockManager.getBucketId(256), 8);
+  EXPECT_EQ(itemBlockManager.getBucketId(511), 8);
+  EXPECT_EQ(itemBlockManager.getBucketId(512), 9);
+  EXPECT_EQ(itemBlockManager.getBucketId(1000), 9);
+  EXPECT_EQ(itemBlockManager.getBucketId(1023), 9);
+  EXPECT_EQ(itemBlockManager.getBucketId(1024), 10);
+  EXPECT_EQ(itemBlockManager.getBucketId(2048), 11);
+  EXPECT_EQ(itemBlockManager.getBucketId(4095), 11);
+  EXPECT_EQ(itemBlockManager.getBucketId(4096), 11);
+  EXPECT_EQ(itemBlockManager.getBucketId(4097), 11);
+  EXPECT_EQ(itemBlockManager.getBucketId(5000), 11);
+  EXPECT_EQ(itemBlockManager.getBucketId(8192), 11);
+  EXPECT_EQ(itemBlockManager.getBucketId(10000), 11);
+  EXPECT_EQ(itemBlockManager.getBucketId(100000), 11);
+  EXPECT_EQ(itemBlockManager.getBucketId(1000000), 11);
+  EXPECT_EQ(itemBlockManager.getBucketId(10000000), 11);
+}
+
 TEST_F(AqlItemBlockTest, test_read_values_reference) {
   auto block = buildBlock<2>(itemBlockManager, {{{{1}, {2}}}, {{{3}, {4}}}});
   EXPECT_EQ(block->getValueReference(0, 0).toInt64(), 1);
@@ -143,7 +183,13 @@ TEST_F(AqlItemBlockTest, test_emplace_values) {
 }
 
 TEST_F(AqlItemBlockTest, test_block_contains_shadow_rows) {
-  auto block = buildBlock<1>(itemBlockManager, {{{{{5}}}, {{{6}}}, {{{7}}}, {{{8}}}}});
+  auto block = buildBlock<1>(itemBlockManager, {
+                                                   {{5}},
+                                                   {{6}},
+                                                   {{7}},
+                                                   {{8}}
+                                               });
+
   // No shadow Rows included
   assertShadowRowIndexes(block, {});
 
@@ -346,6 +392,77 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_slices) {
     // check data
     compareWithDummy(testee, 0, 0, 0);
     compareWithDummy(testee, 0, 1, 1);
+
+    assertShadowRowIndexes(testee, {});
+  }
+}
+
+TEST_F(AqlItemBlockTest, test_serialization_deserialization_with_ranges) {
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 3, 2)};
+  block->emplaceValue(0, 0, dummyData(4));
+  block->emplaceValue(0, 1, dummyData(5));
+  block->emplaceValue(1, 0, dummyData(0));
+  block->emplaceValue(1, 1, dummyData(1));
+  block->emplaceValue(2, 0, dummyData(2));
+  block->emplaceValue(2, 1, dummyData(3));
+  {
+    // test range 0->1
+    VPackBuilder result;
+    result.openObject();
+    block->toVelocyPack(0, 1, nullptr, result);
+    ASSERT_TRUE(result.isOpenObject());
+    result.close();
+
+    SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+
+    // Check exposed attributes
+    EXPECT_EQ(testee->size(), 1);
+    EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+    // check data
+    compareWithDummy(testee, 0, 0, 4);
+    compareWithDummy(testee, 0, 1, 5);
+
+    assertShadowRowIndexes(testee, {});
+  }
+
+  {
+    // Test range 1->2
+    VPackBuilder result;
+    result.openObject();
+    block->toVelocyPack(1, 2, nullptr, result);
+    ASSERT_TRUE(result.isOpenObject());
+    result.close();
+
+    SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+
+    // Check exposed attributes
+    EXPECT_EQ(testee->size(), 1);
+    EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+    // check data
+    compareWithDummy(testee, 0, 0, 0);
+    compareWithDummy(testee, 0, 1, 1);
+
+    assertShadowRowIndexes(testee, {});
+  }
+
+  {
+    // Test range 0->2
+    VPackBuilder result;
+    result.openObject();
+    block->toVelocyPack(0, 2, nullptr, result);
+    ASSERT_TRUE(result.isOpenObject());
+    result.close();
+
+    SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+
+    // Check exposed attributes
+    EXPECT_EQ(testee->size(), 2);
+    EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+    // check data
+    compareWithDummy(testee, 0, 0, 4);
+    compareWithDummy(testee, 0, 1, 5);
+    compareWithDummy(testee, 1, 0, 0);
+    compareWithDummy(testee, 1, 1, 1);
 
     assertShadowRowIndexes(testee, {});
   }

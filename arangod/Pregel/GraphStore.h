@@ -23,7 +23,6 @@
 #ifndef ARANGODB_PREGEL_GRAPH_STORE_H
 #define ARANGODB_PREGEL_GRAPH_STORE_H 1
 
-#include "Basics/StringHeap.h"
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Graph.h"
 #include "Pregel/GraphFormat.h"
@@ -99,11 +98,11 @@ class GraphStore final {
   void _storeVertices(std::vector<ShardID> const& globalShards,
                       RangeIterator<Vertex<V,E>>& it);
   
-  size_t vertexSegmentSize () const {
-    return std::ceil<size_t>( 64 * 1024 * 1024 / sizeof(Vertex<V,E>));
+  constexpr size_t vertexSegmentSize () const {
+    return 64 * 1024 * 1024 / sizeof(Vertex<V,E>);
   }
-  size_t edgeSegmentSize() const {
-    return std::ceil<size_t>( 64 * 1024 * 1024 / sizeof(Edge<E>));
+  constexpr size_t edgeSegmentSize() const {
+    return 64 * 1024 * 1024 / sizeof(Edge<E>);
   }
   
  private:

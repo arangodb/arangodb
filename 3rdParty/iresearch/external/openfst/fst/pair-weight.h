@@ -28,9 +28,6 @@ class PairWeight {
 
   PairWeight() {}
 
-  PairWeight(const PairWeight &weight)
-      : value1_(weight.value1_), value2_(weight.value2_) {}
-
   PairWeight(W1 w1, W2 w2) : value1_(std::move(w1)), value2_(std::move(w2)) {}
 
   static const PairWeight<W1, W2> &Zero() {
@@ -58,19 +55,13 @@ class PairWeight {
     return value2_.Write(strm);
   }
 
-  PairWeight<W1, W2> &operator=(const PairWeight<W1, W2> &weight) {
-    value1_ = weight.Value1();
-    value2_ = weight.Value2();
-    return *this;
-  }
-
   bool Member() const { return value1_.Member() && value2_.Member(); }
 
   size_t Hash() const {
     const auto h1 = value1_.Hash();
     const auto h2 = value2_.Hash();
-    static FST_CONSTEXPR const int lshift = 5;
-    static FST_CONSTEXPR const int rshift = CHAR_BIT * sizeof(size_t) - 5;
+    static constexpr int lshift = 5;
+    static constexpr int rshift = CHAR_BIT * sizeof(size_t) - 5;
     return h1 << lshift ^ h1 >> rshift ^ h2;
   }
 

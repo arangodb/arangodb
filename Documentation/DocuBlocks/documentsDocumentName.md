@@ -16,9 +16,9 @@ cloned/copied into a regular JavaScript object first. This is not necessary
 if the *_document* method is called from out of arangosh or from any
 other client.
 
-`db._document(document-handle)`
+`db._document(document-id)`
 
-As before. Instead of document a *document-handle* can be passed as
+As before. Instead of document a *document-id* can be passed as
 first argument.
 
 @EXAMPLES

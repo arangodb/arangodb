@@ -7,13 +7,6 @@ div.gv_zoom_widget {
   width: 40px;
   z-index: 1;
 
-  div.gv_zoom_buttons_bg {
-    background-image: url('../img/gv_button_bg_reverse.png');
-    background-size: contain;
-    height: 40px;
-    margin-bottom: 20px;
-  }
-
   div.gv_zoom_slider {
     background: $c-lightgreen-2-bg;
     border-radius: 3px;

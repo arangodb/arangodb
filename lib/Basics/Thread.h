@@ -90,10 +90,10 @@ class Thread {
   virtual ~Thread();
 
   // whether or not the thread is allowed to start during prepare
-  virtual bool isSystem() { return false; }
+  virtual bool isSystem() const { return false; }
 
   /// @brief whether or not the thread is chatty on shutdown
-  virtual bool isSilent() { return false; }
+  virtual bool isSilent() const { return false; }
 
   /// @brief the underlying application server
   application_features::ApplicationServer& server() { return _server; }

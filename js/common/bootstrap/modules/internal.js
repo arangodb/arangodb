@@ -258,7 +258,6 @@ global.DEFINE_MODULE('internal', (function () {
     exports.download = global.SYS_DOWNLOAD;
     delete global.SYS_DOWNLOAD;
   }
-
   if (global.SYS_CLUSTER_DOWNLOAD) {
     exports.clusterDownload = global.SYS_CLUSTER_DOWNLOAD;
     delete global.SYS_CLUSTER_DOWNLOAD;
@@ -1731,6 +1730,15 @@ global.DEFINE_MODULE('internal', (function () {
     delete global.SYS_OPTIONS;
   }
   
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief options
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (typeof ENCRYPTION_KEY_RELOAD !== 'undefined') {
+    exports.encryptionKeyReload = global.ENCRYPTION_KEY_RELOAD;
+    delete global.ENCRYPTION_KEY_RELOAD;
+  }
+
   let testsBasePaths = {};
   exports.pathForTesting = function(path, prefix = 'js') {
     let fs = require('fs');

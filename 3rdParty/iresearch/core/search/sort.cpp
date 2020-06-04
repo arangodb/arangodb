@@ -23,18 +23,25 @@
 
 #include "sort.hpp"
 
+#include "shared.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
 #include "utils/memory_pool.hpp"
 
 NS_ROOT
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      filter_boost
+// -----------------------------------------------------------------------------
+
+REGISTER_ATTRIBUTE(filter_boost);
+
 // ----------------------------------------------------------------------------
 // --SECTION--                                                             sort
 // ----------------------------------------------------------------------------
 
-sort::sort(const type_id& type) NOEXCEPT
-  : type_(&type) {
+sort::sort(const type_info& type) noexcept
+  : type_(type.id()) {
 }
 
 // ----------------------------------------------------------------------------
@@ -46,7 +53,7 @@ const order& order::unordered() {
   return ord;
 }
 
-void order::remove(const type_id& type) {
+void order::remove(type_info::type_id type) {
   order_.erase(
     std::remove_if(
       order_.begin(), order_.end(),
@@ -59,7 +66,7 @@ const order::prepared& order::prepared::unordered() {
   return ord;
 }
 
-order::prepared::prepared(order::prepared&& rhs) NOEXCEPT
+order::prepared::prepared(order::prepared&& rhs) noexcept
   : order_(std::move(rhs.order_)),
     features_(std::move(rhs.features_)),
     score_size_(rhs.score_size_),
@@ -68,7 +75,7 @@ order::prepared::prepared(order::prepared&& rhs) NOEXCEPT
   rhs.stats_size_ = 0;
 }
 
-order::prepared& order::prepared::operator=(order::prepared&& rhs) NOEXCEPT {
+order::prepared& order::prepared::operator=(order::prepared&& rhs) noexcept {
   if (this != &rhs) {
     order_ = std::move(rhs.order_);
     features_ = std::move(rhs.features_);
@@ -128,11 +135,11 @@ order::prepared order::prepare() const {
     }
 
     const auto score_size = prepared->score_size();
-    assert(score_size.second <= ALIGNOF(MAX_ALIGN_T));
+    assert(score_size.second <= alignof(std::max_align_t));
     assert(math::is_power2(score_size.second)); // math::is_power2(0) returns true
 
     const auto stats_size = prepared->stats_size();
-    assert(stats_size.second <= ALIGNOF(MAX_ALIGN_T));
+    assert(stats_size.second <= alignof(std::max_align_t));
     assert(math::is_power2(stats_size.second)); // math::is_power2(0) returns true
 
     stats_align = std::max(stats_align, stats_size.second);
@@ -159,117 +166,6 @@ order::prepared order::prepare() const {
   return pord;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        collectors
-// -----------------------------------------------------------------------------
-
-order::prepared::collectors::collectors(
-    const order::prepared& buckets,
-    size_t terms_count
-): buckets_(buckets.order_) {
-   field_collectors_.reserve(buckets_.size());
-   term_collectors_.reserve(buckets_.size() * terms_count);
-
-  // add field collectors from each bucket
-  for (auto& entry: buckets_) {
-    assert(entry.bucket); // ensured by order::prepare
-    field_collectors_.emplace_back(entry.bucket->prepare_field_collector());
-  }
-
-  // add term collectors from each bucket
-  // layout order [t0.b0, t0.b1, ... t0.bN, t1.b0, t1.b1 ... tM.BN]
-  for (size_t i = 0; i < terms_count; ++i) {
-    for (auto& entry: buckets_) {
-      assert(entry.bucket); // ensured by order::prepare
-      term_collectors_.emplace_back(entry.bucket->prepare_term_collector());
-    }
-  }
-}
-
-order::prepared::collectors::collectors(collectors&& other) NOEXCEPT
-  : buckets_(other.buckets_),
-    field_collectors_(std::move(other.field_collectors_)),
-    term_collectors_(std::move(other.term_collectors_)) {
-}
-
-void order::prepared::collectors::collect(
-  const sub_reader& segment,
-  const term_reader& field
-) const {
-  for (auto& entry: field_collectors_) {
-    if (entry) { // may be null if prepare_field_collector() returned nullptr
-      entry->collect(segment, field);
-    }
-  }
-}
-
-void order::prepared::collectors::collect(
-  const sub_reader& segment,
-  const term_reader& field,
-  size_t term_offset,
-  const attribute_view& term_attrs
-) const {
-  for (size_t i = 0, count = buckets_.size(); i < count; ++i) {
-    assert(i * buckets_.size() + term_offset < term_collectors_.size()); // enforced by allocation in the constructor
-    auto& entry = term_collectors_[term_offset * buckets_.size() + i];
-
-    if (entry) { // may be null if prepare_term_collector() returned nullptr
-      entry->collect(segment, field, term_attrs);
-    }
-  }
-}
-
-void order::prepared::collectors::finish(
-    byte_type* stats_buf,
-    const index_reader& index) const {
-  // special case where term statistics collection is not applicable
-  // e.g. by_column_existence filter
-  if (term_collectors_.empty()) {
-    assert(field_collectors_.size() == buckets_.size()); // enforced by allocation in the constructor
-
-    for (size_t i = 0, count = field_collectors_.size(); i < count; ++i) {
-      auto& sort = buckets_[i];
-      assert(sort.bucket); // ensured by order::prepare
-
-      sort.bucket->collect(
-        stats_buf + sort.stats_offset, // where stats for bucket start
-        index,
-        field_collectors_[i].get(),
-        nullptr
-      );
-    }
-  } else {
-    auto bucket_count = buckets_.size();
-    assert(term_collectors_.size() % bucket_count == 0); // enforced by allocation in the constructor
-
-    for (size_t i = 0, count = term_collectors_.size(); i < count; ++i) {
-      auto bucket_offset = i % bucket_count;
-      auto& sort = buckets_[bucket_offset];
-      assert(sort.bucket); // ensured by order::prepare
-
-      assert(i % bucket_count < field_collectors_.size()); // enforced by allocation in the constructor
-      sort.bucket->collect(
-        stats_buf + sort.stats_offset, // where stats for bucket start
-        index,
-        field_collectors_[bucket_offset].get(),
-        term_collectors_[i].get()
-      );
-    }
-  }
-}
-
-size_t order::prepared::collectors::push_back() {
-  auto term_offset = term_collectors_.size() / buckets_.size();
-
-  term_collectors_.reserve(term_collectors_.size() + buckets_.size());
-
-  for (auto& entry: buckets_) {
-    assert(entry.bucket); // ensured by order::prepare
-    term_collectors_.emplace_back(entry.bucket->prepare_term_collector());
-  }
-
-  return term_offset;
-}
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                          scorers
@@ -280,9 +176,8 @@ order::prepared::scorers::scorers(
     const sub_reader& segment,
     const term_reader& field,
     const byte_type* stats_buf,
-    const attribute_view& doc,
-    boost_t boost
-) {
+    const attribute_provider& doc,
+    boost_t boost) {
   scorers_.reserve(buckets.size());
 
   for (auto& entry: buckets) {
@@ -301,13 +196,13 @@ order::prepared::scorers::scorers(
   }
 }
 
-order::prepared::scorers::scorers(order::prepared::scorers&& other) NOEXCEPT
+order::prepared::scorers::scorers(order::prepared::scorers&& other) noexcept
   : scorers_(std::move(other.scorers_)) {
 }
 
 order::prepared::scorers& order::prepared::scorers::operator=(
     order::prepared::scorers&& other
-) NOEXCEPT {
+) noexcept {
   if (this != &other) {
     scorers_ = std::move(other.scorers_);
   }
@@ -373,15 +268,4 @@ bool order::prepared::less(const byte_type* lhs, const byte_type* rhs) const {
   return false;
 }
 
-void order::prepared::add(byte_type* lhs, const byte_type* rhs) const {
-  for_each([lhs, rhs] (const prepared_sort& sort) {
-    assert(sort.bucket);
-    sort.bucket->add(lhs + sort.score_offset, rhs + sort.score_offset);
-  });
-}
-
 NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

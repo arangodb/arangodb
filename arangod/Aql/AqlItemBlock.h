@@ -59,6 +59,7 @@ enum class SerializationFormat;
 
 class AqlItemBlock {
   friend class AqlItemBlockManager;
+  // needed for testing only
   friend class BlockCollector;
   friend class SharedAqlItemBlockPtr;
 
@@ -68,7 +69,7 @@ class AqlItemBlock {
   AqlItemBlock& operator=(AqlItemBlock const&) = delete;
 
   /// @brief create the block
-  AqlItemBlock(AqlItemBlockManager&, size_t nrItems, RegisterId nrRegs);
+  AqlItemBlock(AqlItemBlockManager&, size_t nrItems, RegisterCount nrRegs);
 
   void initFromSlice(arangodb::velocypack::Slice);
 
@@ -127,8 +128,6 @@ class AqlItemBlock {
     } catch (...) {
       // invoke dtor
       value->~AqlValue();
-      // TODO - instead of disabling it completly we could you use
-      // a constexpr if() with c++17
       _data[address].destroy();
       throw;
     }
@@ -149,10 +148,7 @@ class AqlItemBlock {
   /// elsewhere
   void eraseAll();
 
-  void copyValuesFromRow(size_t currentRow, RegisterId curRegs, size_t fromRow);
-
-  void copyValuesFromRow(size_t currentRow,
-                         std::unordered_set<RegisterId> const& regs, size_t fromRow);
+  void referenceValuesFromRow(size_t currentRow, RegIdFlatSet const& regs, size_t fromRow);
 
   /// @brief steal, steal an AqlValue from an AqlItemBlock, it will never free
   /// the same value again. Note that once you do this for a single AqlValue
@@ -160,11 +156,16 @@ class AqlItemBlock {
   /// might be deleted at any time!
   void steal(AqlValue const& value);
 
+  AqlValue stealAndEraseValue(size_t index, RegisterId varNr);
+
   /// @brief getter for _nrRegs
-  RegisterId getNrRegs() const noexcept;
+  RegisterCount getNrRegs() const noexcept;
 
   /// @brief getter for _nrItems
   size_t size() const noexcept;
+
+  /// @brief get the relevant consumable range of the block
+  std::tuple<size_t, size_t> getRelevantRange() const;
 
   /// @brief Number of entries in the matrix. If this changes, the memory usage
   /// must be / in- or decreased appropriately as well.
@@ -181,14 +182,30 @@ class AqlItemBlock {
   /// @brief rescales the block to the specified dimensions
   /// note that the block should be empty before rescaling to prevent
   /// losses of still managed AqlValues
-  void rescale(size_t nrItems, RegisterId nrRegs);
+  void rescale(size_t nrItems, RegisterCount nrRegs);
 
   /// @brief clears out some columns (registers), this deletes the values if
   /// necessary, using the reference count.
-  void clearRegisters(std::unordered_set<RegisterId> const& toClear);
+  void clearRegisters(RegIdFlatSet const& toClear);
+
+  /// @brief clone all data rows, but move all shadow rows
+  SharedAqlItemBlockPtr cloneDataAndMoveShadow();
 
   /// @brief slice/clone, this does a deep copy of all entries
   SharedAqlItemBlockPtr slice(size_t from, size_t to) const;
+
+  /**
+   * @brief Slice multiple ranges out of this AqlItemBlock.
+   *        This does a deep copy of all entries
+   *
+   * @param ranges list of ranges from(included) -> to(excluded)
+   *        Every range needs to be valid from[i] < to[i]
+   *        And every range needs to be within the block to[i] <= size()
+   *        The list is required to be ordered to[i] <= from[i+1]
+   *
+   * @return SharedAqlItemBlockPtr A block where all the slices are contained in the order of the list
+   */
+  auto slice(std::vector<std::pair<size_t, size_t>> const& ranges) const -> SharedAqlItemBlockPtr;
 
   /// @brief create an AqlItemBlock with a single row, with copies of the
   /// specified registers from the current block
@@ -206,9 +223,17 @@ class AqlItemBlock {
   /// to which our AqlValues point will vanish.
   SharedAqlItemBlockPtr steal(std::vector<size_t> const& chosen, size_t from, size_t to);
 
-  /// @brief toJson, transfer a whole AqlItemBlock to Json, the result can
+  /// @brief toJson, transfer all rows of this AqlItemBlock to Json, the result
+  /// can be used to recreate the AqlItemBlock via the Json constructor
+  void toVelocyPack(velocypack::Options const*, arangodb::velocypack::Builder&) const;
+
+  /// @brief toJson, transfer a slice of this AqlItemBlock to Json, the result can
   /// be used to recreate the AqlItemBlock via the Json constructor
-  void toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Builder&) const;
+  /// The slice will be starting at line `from` (including) and end at line `to` (excluding).
+  /// Only calls with 0 <= from < to <= this.size() are allowed.
+  /// If you want to transfer the full block, use from == 0, to == this.size()
+  void toVelocyPack(size_t from, size_t to, velocypack::Options const*,
+                    arangodb::velocypack::Builder&) const;
 
   /// @brief Creates a human-readable velocypack of the block. Adds an object
   /// `{nrItems, nrRegs, matrix}` to the builder.
@@ -217,9 +242,9 @@ class AqlItemBlock {
   // (of length nrRegs+1 (sic)). The first entry contains the shadow row depth,
   // or `null` for data rows. The entries with indexes 1..nrRegs contain the
   // registers 0..nrRegs-1, respectively.
-  void toSimpleVPack(transaction::Methods* trx, arangodb::velocypack::Builder&) const;
+  void toSimpleVPack(velocypack::Options const*, arangodb::velocypack::Builder&) const;
 
-  void rowToSimpleVPack(size_t row, transaction::Methods* trx,
+  void rowToSimpleVPack(size_t row, velocypack::Options const*,
                         velocypack::Builder& builder) const;
 
   /// @brief test if the given row is a shadow row and conveys subquery
@@ -250,11 +275,21 @@ class AqlItemBlock {
   /// @brief Quick test if we have any ShadowRows within this block;
   bool hasShadowRows() const noexcept;
 
+  /// @brief Moves all values *from* source *to* this block.
+  /// Returns the row index of the last written row plus one (may equal size()).
+  /// Expects size() - targetRow >= source->size(); and, of course, an equal
+  /// number of registers.
+  /// The source block will be cleared after this.
+  size_t moveOtherBlockHere(size_t targetRow, AqlItemBlock& source);
+
+  void copySubQueryDepthFromOtherBlock(size_t targetRow, AqlItemBlock const& source,
+                                       size_t sourceRow);
+
  protected:
   AqlItemBlockManager& aqlItemBlockManager() noexcept;
   size_t getRefCount() const noexcept;
   void incrRefCount() const noexcept;
-  void decrRefCount() const noexcept;
+  size_t decrRefCount() const noexcept;
 
  private:
   // This includes the amount of internal registers that are not visible to the outside.
@@ -266,9 +301,6 @@ class AqlItemBlock {
   size_t getSubqueryDepthAddress(size_t index) const noexcept;
 
   void copySubqueryDepth(size_t currentRow, size_t fromRow);
-
-  void copySubQueryDepthToOtherBlock(SharedAqlItemBlockPtr& target,
-                                     size_t sourceRow, size_t targetRow) const;
 
  private:
   /// @brief _data, the actual data as a single vector of dimensions _nrItems
@@ -299,6 +331,11 @@ class AqlItemBlock {
   /// @brief A list of indexes with all shadowRows within
   /// this ItemBlock. Used to easier split data based on them.
   std::set<size_t> _shadowRowIndexes;
+
+  /// @brief current row index we want to read from. This will be increased
+  /// after getRelevantRange function will be called, which will return a tuple
+  /// of the old _rowIndex and the newly calculated _rowIndex - 1
+  size_t _rowIndex;
 };
 
 }  // namespace aql

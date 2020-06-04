@@ -189,7 +189,7 @@ EndpointSrv::EndpointSrv(std::string const& specification)
     : Endpoint(DomainType::SRV, EndpointType::CLIENT, TransportType::HTTP,
                EncryptionType::NONE, specification, 0) {}
 
-EndpointSrv::~EndpointSrv() {}
+EndpointSrv::~EndpointSrv() = default;
 
 bool EndpointSrv::isConnected() const {
   if (_endpoint != nullptr) {

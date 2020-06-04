@@ -25,6 +25,12 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ShadowAqlItemRow.h"
+#include "Logger/LogMacros.h"
+#include "Transaction/Context.h"
+#include "Transaction/Methods.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -39,7 +45,7 @@ MultiDependencySingleRowFetcher::MultiDependencySingleRowFetcher(
 std::pair<ExecutionState, SharedAqlItemBlockPtr> MultiDependencySingleRowFetcher::fetchBlockForDependency(
     size_t dependency, size_t atMost) {
   TRI_ASSERT(!_dependencyInfos.empty());
-  atMost = (std::min)(atMost, ExecutionBlock::DefaultBatchSize());
+  atMost = (std::min)(atMost, ExecutionBlock::DefaultBatchSize);
   TRI_ASSERT(dependency < _dependencyInfos.size());
 
   auto& depInfo = _dependencyInfos[dependency];
@@ -50,23 +56,6 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> MultiDependencySingleRowFetcher
   // Thus the following assert is commented out.
   // TRI_ASSERT(_upstreamState != ExecutionState::DONE);
   auto res = _dependencyProxy->fetchBlockForDependency(dependency, atMost);
-  depInfo._upstreamState = res.first;
-
-  return res;
-}
-
-std::pair<ExecutionState, size_t> MultiDependencySingleRowFetcher::skipSomeForDependency(
-    size_t const dependency, size_t const atMost) {
-  TRI_ASSERT(!_dependencyInfos.empty());
-  TRI_ASSERT(dependency < _dependencyInfos.size());
-  auto& depInfo = _dependencyInfos[dependency];
-  TRI_ASSERT(depInfo._upstreamState != ExecutionState::DONE);
-
-  // There are still some blocks left that ask their parent even after they got
-  // DONE the last time, and I don't currently have time to track them down.
-  // Thus the following assert is commented out.
-  // TRI_ASSERT(_upstreamState != ExecutionState::DONE);
-  auto res = _dependencyProxy->skipSomeForDependency(dependency, atMost);
   depInfo._upstreamState = res.first;
 
   return res;
@@ -105,6 +94,14 @@ std::pair<ExecutionState, ShadowAqlItemRow> MultiDependencySingleRowFetcher::fet
   bool allDone = true;
   bool allShadow = true;
   auto row = ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
+  auto rowHasNonEmptyValue = [](ShadowAqlItemRow const& row) -> bool {
+    for (RegisterId registerId = 0; registerId < row.getNrRegisters(); ++registerId) {
+      if (!row.getValue(registerId).isEmpty()) {
+        return true;
+      }
+    }
+    return false;
+  };
   for (auto const& dep : _dependencyInfos) {
     if (!indexIsValid(dep)) {
       allShadow = false;
@@ -118,8 +115,13 @@ std::pair<ExecutionState, ShadowAqlItemRow> MultiDependencySingleRowFetcher::fet
         row = ShadowAqlItemRow{dep._currentBlock, dep._rowIndex};
       } else {
         TRI_ASSERT(row.isInitialized());
-        // All shadow rows must be equal!
-        TRI_ASSERT(row.equates(ShadowAqlItemRow{dep._currentBlock, dep._rowIndex}));
+        // TODO We could memorize that `row` has a value, in which case we won't
+        //      need to check `curRow` for values, except for assertions.
+        auto curRow = ShadowAqlItemRow{dep._currentBlock, dep._rowIndex};
+        if (rowHasNonEmptyValue(curRow)) {
+          TRI_ASSERT(!rowHasNonEmptyValue(row));
+          row = curRow;
+        }
       }
     }
   }
@@ -140,6 +142,8 @@ std::pair<ExecutionState, ShadowAqlItemRow> MultiDependencySingleRowFetcher::fet
         ++dep._rowIndex;
       }
     }
+    // We have delivered a shadowRow, we now may get additional subquery skip counters again.
+    _didReturnSubquerySkips = false;
   }
 
   ExecutionState const state = allDone ? ExecutionState::DONE : ExecutionState::HASMORE;
@@ -150,7 +154,7 @@ std::pair<ExecutionState, ShadowAqlItemRow> MultiDependencySingleRowFetcher::fet
 MultiDependencySingleRowFetcher::MultiDependencySingleRowFetcher()
     : _dependencyProxy(nullptr) {}
 
-RegisterId MultiDependencySingleRowFetcher::getNrInputRegisters() const {
+RegisterCount MultiDependencySingleRowFetcher::getNrInputRegisters() const {
   return _dependencyProxy->getNrInputRegisters();
 }
 
@@ -162,13 +166,20 @@ void MultiDependencySingleRowFetcher::initDependencies() {
   for (size_t i = 0; i < _dependencyProxy->numberDependencies(); ++i) {
     _dependencyInfos.emplace_back(DependencyInfo{});
   }
+  _dependencyStates.reserve(_dependencyProxy->numberDependencies());
+  for (size_t i = 0; i < _dependencyProxy->numberDependencies(); ++i) {
+    _dependencyStates.emplace_back(ExecutionState::HASMORE);
+  }
 }
 
 size_t MultiDependencySingleRowFetcher::numberDependencies() {
-  if (_dependencyInfos.empty()) {
-    initDependencies();
-  }
   return _dependencyInfos.size();
+}
+
+void MultiDependencySingleRowFetcher::init() {
+  TRI_ASSERT(_dependencyInfos.empty());
+  initDependencies();
+  _callsInFlight.resize(numberDependencies());
 }
 
 std::pair<ExecutionState, size_t> MultiDependencySingleRowFetcher::preFetchNumberOfRows(size_t atMost) {
@@ -200,7 +211,7 @@ std::pair<ExecutionState, InputAqlItemRow> MultiDependencySingleRowFetcher::fetc
              depInfo._rowIndex < depInfo._currentBlock->size());
 
   ExecutionState rowState;
-  InputAqlItemRow row = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  InputAqlItemRow row{CreateInvalidInputRowHint{}};
   if (depInfo._currentBlock == nullptr) {
     TRI_ASSERT(depInfo._upstreamState == ExecutionState::DONE);
     rowState = ExecutionState::DONE;
@@ -228,43 +239,6 @@ std::pair<ExecutionState, InputAqlItemRow> MultiDependencySingleRowFetcher::fetc
   return {rowState, row};
 }
 
-std::pair<ExecutionState, size_t> MultiDependencySingleRowFetcher::skipRowsForDependency(
-    size_t const dependency, size_t const atMost) {
-  TRI_ASSERT(dependency < _dependencyInfos.size());
-  auto& depInfo = _dependencyInfos[dependency];
-
-  TRI_ASSERT((!indexIsValid(depInfo) || !isAtShadowRow(depInfo) ||
-              ShadowAqlItemRow{depInfo._currentBlock, depInfo._rowIndex}.isRelevant()));
-
-  size_t skip = 0;
-  while (indexIsValid(depInfo) && !isAtShadowRow(depInfo) && skip < atMost) {
-    ++skip;
-    ++depInfo._rowIndex;
-  }
-
-  if (skip > 0) {
-    ExecutionState const state =
-        noMoreDataRows(depInfo) ? ExecutionState::DONE : ExecutionState::HASMORE;
-    return {state, skip};
-  }
-
-  TRI_ASSERT(!indexIsValid(depInfo) || isAtShadowRow(depInfo));
-  TRI_ASSERT(skip == 0);
-
-  if (noMoreDataRows(depInfo) || isDone(depInfo)) {
-    return {ExecutionState::DONE, 0};
-  }
-
-  TRI_ASSERT(!indexIsValid(depInfo));
-  ExecutionState state;
-  size_t skipped;
-  std::tie(state, skipped) = skipSomeForDependency(dependency, atMost);
-  if (state == ExecutionState::HASMORE && skipped < atMost) {
-    state = ExecutionState::DONE;
-  }
-  return {state, skipped};
-}
-
 bool MultiDependencySingleRowFetcher::indexIsValid(
     const MultiDependencySingleRowFetcher::DependencyInfo& info) const {
   return info._currentBlock != nullptr && info._rowIndex < info._currentBlock->size();
@@ -283,7 +257,8 @@ bool MultiDependencySingleRowFetcher::isLastRowInBlock(
 
 bool MultiDependencySingleRowFetcher::noMoreDataRows(
     const MultiDependencySingleRowFetcher::DependencyInfo& info) const {
-  return (isDone(info) && !indexIsValid(info)) || (indexIsValid(info) && isAtShadowRow(info));
+  return (isDone(info) && !indexIsValid(info)) ||
+         (indexIsValid(info) && isAtShadowRow(info));
 }
 
 std::pair<ExecutionState, size_t> MultiDependencySingleRowFetcher::preFetchNumberOfRowsForDependency(
@@ -328,7 +303,7 @@ bool MultiDependencySingleRowFetcher::isAtShadowRow(DependencyInfo const& depInf
 }
 
 bool MultiDependencySingleRowFetcher::fetchBlockIfNecessary(size_t const dependency,
-                                                                         size_t const atMost) {
+                                                            size_t const atMost) {
   MultiDependencySingleRowFetcher::DependencyInfo& depInfo = _dependencyInfos[dependency];
   if (!indexIsValid(depInfo) && !isDone(depInfo)) {
     // This returns the AqlItemBlock to the ItemBlockManager before fetching a
@@ -346,4 +321,137 @@ bool MultiDependencySingleRowFetcher::fetchBlockIfNecessary(size_t const depende
     depInfo._rowIndex = 0;
   }
   return true;
+}
+
+//@deprecated
+auto MultiDependencySingleRowFetcher::useStack(AqlCallStack const& stack) -> void {
+  _dependencyProxy->useStack(stack);
+}
+
+auto MultiDependencySingleRowFetcher::executeForDependency(size_t const dependency,
+                                                           AqlCallStack& stack)
+    -> std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange> {
+  auto [state, skipped, block] = _dependencyProxy->executeForDependency(dependency, stack);
+
+  if (state == ExecutionState::WAITING) {
+    return {state, SkipResult{}, AqlItemBlockInputRange{ExecutorState::HASMORE}};
+  }
+  ExecutorState execState =
+      state == ExecutionState::DONE ? ExecutorState::DONE : ExecutorState::HASMORE;
+
+  _dependencyStates.at(dependency) = state;
+
+  if (block == nullptr) {
+    return {state, skipped, AqlItemBlockInputRange{execState, skipped.getSkipCount()}};
+  }
+  TRI_ASSERT(block != nullptr);
+  auto [start, end] = block->getRelevantRange();
+  return {state, skipped,
+          AqlItemBlockInputRange{execState, skipped.getSkipCount(), block, start}};
+}
+
+auto MultiDependencySingleRowFetcher::execute(AqlCallStack const& stack,
+                                              AqlCallSet const& aqlCallSet)
+    -> std::tuple<ExecutionState, SkipResult, std::vector<std::pair<size_t, AqlItemBlockInputRange>>> {
+  TRI_ASSERT(_callsInFlight.size() == numberDependencies());
+
+  auto ranges = std::vector<std::pair<size_t, AqlItemBlockInputRange>>{};
+  ranges.reserve(aqlCallSet.size());
+
+  auto depCallIdx = size_t{0};
+  auto allAskedDepsAreWaiting = true;
+  auto askedAtLeastOneDep = false;
+  auto skippedTotal = SkipResult{};
+  // Iterate in parallel over `_callsInFlight` and `aqlCall.calls`.
+  // _callsInFlight[i] corresponds to aqlCalls.calls[k] iff
+  // aqlCalls.calls[k].dependency = i.
+  // So there is not always a matching entry in aqlCall.calls.
+  for (auto dependency = size_t{0}; dependency < _callsInFlight.size(); ++dependency) {
+    auto& maybeCallInFlight = _callsInFlight[dependency];
+
+    // See if there is an entry for `dependency` in `aqlCall.calls`
+    if (depCallIdx < aqlCallSet.calls.size() &&
+        aqlCallSet.calls[depCallIdx].dependency == dependency) {
+      // If there is a call in flight, we *must not* change the call,
+      // no matter what we got. Otherwise, we save the current call.
+      if (!maybeCallInFlight.has_value()) {
+        auto depStack = stack;
+        depStack.pushCall(aqlCallSet.calls[depCallIdx].call);
+        maybeCallInFlight = depStack;
+      }
+      ++depCallIdx;
+      if (depCallIdx < aqlCallSet.calls.size()) {
+        TRI_ASSERT(aqlCallSet.calls[depCallIdx - 1].dependency <
+                   aqlCallSet.calls[depCallIdx].dependency);
+      }
+    }
+
+    if (maybeCallInFlight.has_value()) {
+      // We either need to make a new call, or check whether we got a result
+      // for a call in flight.
+      auto& callInFlight = maybeCallInFlight.value();
+      auto [state, skipped, range] = executeForDependency(dependency, callInFlight);
+      askedAtLeastOneDep = true;
+      if (state != ExecutionState::WAITING) {
+        // Got a result, call is no longer in flight
+        maybeCallInFlight = std::nullopt;
+        allAskedDepsAreWaiting = false;
+
+        // NOTE:
+        // in this fetcher case we do not have and do not want to have
+        // any control of the order the upstream responses are entering.
+        // Every of the upstream response will contain an identical skipped
+        // stack on the subqueries.
+        // We only need to forward the skipping of any one of those.
+        // So we implemented the following logic to return the skip
+        // information for the first on that arrives and all other
+        // subquery skip informations will be discarded.
+        if (!_didReturnSubquerySkips) {
+          // We have nothing skipped locally.
+          TRI_ASSERT(skippedTotal.subqueryDepth() == 1);
+          TRI_ASSERT(skippedTotal.getSkipCount() == 0);
+
+          // We forward the skip block as is.
+          // This will also include the skips on subquery level
+          skippedTotal = skipped;
+          // Do this only once.
+          // The first response will contain the amount of rows skipped
+          // in subquery
+          _didReturnSubquerySkips = true;
+        } else {
+          // We only need the skip amount on the top level.
+          // Another dependency has forwarded the subquery level skips
+          // already
+          skippedTotal.mergeOnlyTopLevel(skipped);
+        }
+
+      } else {
+        TRI_ASSERT(skipped.nothingSkipped());
+      }
+
+      ranges.emplace_back(dependency, range);
+    }
+  }
+
+  auto const state = std::invoke([&]() {
+    if (askedAtLeastOneDep && allAskedDepsAreWaiting) {
+      TRI_ASSERT(skippedTotal.nothingSkipped());
+      return ExecutionState::WAITING;
+    } else {
+      return upstreamState();
+    }
+  });
+
+  return {state, skippedTotal, ranges};
+}
+
+auto MultiDependencySingleRowFetcher::upstreamState() const -> ExecutionState {
+  if (std::any_of(std::begin(_dependencyStates), std::end(_dependencyStates),
+                  [](ExecutionState const s) {
+                    return s == ExecutionState::HASMORE;
+                  })) {
+    return ExecutionState::HASMORE;
+  } else {
+    return ExecutionState::DONE;
+  }
 }

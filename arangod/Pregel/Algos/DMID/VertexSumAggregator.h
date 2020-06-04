@@ -43,7 +43,7 @@ struct VertexSumAggregator : public IAggregator {
   // if you use this from a vertex I will end you
   void aggregate(void const* valuePtr) override {
     VertexMap const* map = (VertexMap const*)valuePtr;
-    for (MyPair const& pair1 : *map) {
+    for (auto const& pair1 : *map) {
       for (auto const& pair2 : pair1.second) {
         _entries[pair1.first][pair2.first] += pair2.second;
       }
@@ -129,7 +129,7 @@ struct VertexSumAggregator : public IAggregator {
     for (auto const& pair : _entries) {
       PregelShard shard = pair.first;
       std::unordered_map<std::string, double> const& vertexMap = pair.second;
-      for (std::pair<std::string, double> const& vertexMessage : vertexMap) {
+      for (auto const& vertexMessage : vertexMap) {
         func(PregelID(shard, vertexMessage.first), vertexMessage.second);
       }
     }

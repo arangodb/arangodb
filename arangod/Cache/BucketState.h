@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_CACHE_BUCKET_STATE_H
@@ -27,8 +27,7 @@
 #include <atomic>
 #include <cstdint>
 #include <functional>
-
-#include "Basics/Common.h"
+#include <limits>
 
 namespace arangodb {
 namespace cache {
@@ -56,7 +55,7 @@ struct BucketState {
   /// and all flag values should be adjusted to keep bit-significance in
   /// ascending order.
   //////////////////////////////////////////////////////////////////////////////
-  enum class Flag : uint32_t {
+  enum class Flag : std::uint32_t {
     locked = 0x00000001,
     blacklisted = 0x00000002,
     disabled = 0x00000004,
@@ -98,7 +97,8 @@ struct BucketState {
   /// locked or not. The optional second parameter is a function which will be
   /// called upon successfully locking the state.
   //////////////////////////////////////////////////////////////////////////////
-  bool lock(uint64_t maxTries = UINT64_MAX, BucketState::CallbackType cb = []() -> void {});
+  bool lock(std::uint64_t maxTries = std::numeric_limits<std::uint64_t>::max(),
+            BucketState::CallbackType cb = []() -> void {});
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Unlocks the state. Requires state to be locked.
@@ -122,11 +122,11 @@ struct BucketState {
   void clear();
 
  private:
-  std::atomic<uint32_t> _state;
+  std::atomic<std::uint32_t> _state;
 };
 
 // ensure that state is exactly the size of uint32_t
-static_assert(sizeof(BucketState) == sizeof(uint32_t),
+static_assert(sizeof(BucketState) == sizeof(std::uint32_t),
               "Expected sizeof(BucketState) == sizeof(uint32_t).");
 
 };  // end namespace cache

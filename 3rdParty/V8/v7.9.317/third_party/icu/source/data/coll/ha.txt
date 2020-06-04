@@ -1,0 +1,18 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ha{
+    Version{"2.1.19.14"}
+    collations{
+        standard{
+            Sequence{
+                "&B<ɓ<<<Ɓ"
+                "&D<ɗ<<<Ɗ"
+                "&K<ƙ<<<Ƙ"
+                "&S<sh<<<Sh<<<SH"
+                "&T<ts<<<Ts<<<TS"
+                "&Y<ƴ<<<ʼy<<<''y<<<Ƴ<<<ʼY<<<''Y"
+            }
+            Version{"35.1"}
+        }
+    }
+}

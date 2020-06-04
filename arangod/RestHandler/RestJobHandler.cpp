@@ -26,6 +26,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
 #include "Cluster/ClusterFeature.h"
@@ -78,8 +79,8 @@ void RestJobHandler::putJob() {
 
   AsyncJobResult::Status status;
   uint64_t messageId = _response->messageId();
-  std::unique_ptr<GeneralResponse> response;
-  response.reset(_jobManager->getJobResult(jobId, status, true));  // gets job and removes it from the manager
+  // gets job and removes it from the manager
+  std::unique_ptr<GeneralResponse> response(_jobManager->getJobResult(jobId, status, true));  
 
   if (status == AsyncJobResult::JOB_UNDEFINED) {
     // unknown or already fetched job
@@ -244,24 +245,24 @@ void RestJobHandler::deleteJob() {
 }
 
 /// @brief returns the short id of the server which should handle this request
-std::string RestJobHandler::forwardingTarget() {
+ResultT<std::pair<std::string, bool>> RestJobHandler::forwardingTarget() {
   rest::RequestType const type = _request->requestType();
   if (type != rest::RequestType::GET && type != rest::RequestType::PUT &&
       type != rest::RequestType::DELETE_REQ) {
-    return "";
+    return {std::make_pair(StaticStrings::Empty, false)};
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() < 1) {
-    return "";
+    return {std::make_pair(StaticStrings::Empty, false)};
   }
 
   uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
   uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
 
   if (sourceServer == ServerState::instance()->getShortId()) {
-    return "";
+    return {std::make_pair(StaticStrings::Empty, false)};
   }
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-  return ci.getCoordinatorByShortID(sourceServer);
+  return {std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
 }

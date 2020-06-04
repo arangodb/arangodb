@@ -35,10 +35,10 @@ void Relabel(
   using Label = typename Arc::Label;
   const auto props = fst->Properties(kFstProperties, false);
   // Constructs label-to-label maps.
-  std::unordered_map<Label, Label> input_map;
-  for (auto &ipair : ipairs) input_map[ipair.first] = ipair.second;
-  std::unordered_map<Label, Label> output_map;
-  for (auto &opair : opairs) output_map[opair.first] = opair.second;
+  const std::unordered_map<Label, Label> input_map(
+      ipairs.begin(), ipairs.end());
+  const std::unordered_map<Label, Label> output_map(
+      opairs.begin(), opairs.end());
   for (StateIterator<MutableFst<Arc>> siter(*fst); !siter.Done();
        siter.Next()) {
     for (MutableArcIterator<MutableFst<Arc>> aiter(fst, siter.Value());
@@ -78,11 +78,11 @@ void Relabel(
 // FST. If the 'unknown_i(o)symbol' is non-empty, it is used to label any
 // missing symbol in new_i(o)symbols table.
 template <class Arc>
-void Relabel(MutableFst<Arc> *fst,
-             const SymbolTable *old_isymbols, const SymbolTable *new_isymbols,
-             const string &unknown_isymbol, bool attach_new_isymbols,
+void Relabel(MutableFst<Arc> *fst, const SymbolTable *old_isymbols,
+             const SymbolTable *new_isymbols,
+             const std::string &unknown_isymbol, bool attach_new_isymbols,
              const SymbolTable *old_osymbols, const SymbolTable *new_osymbols,
-             const string &unknown_osymbol, bool attach_new_osymbols) {
+             const std::string &unknown_osymbol, bool attach_new_osymbols) {
   using Label = typename Arc::Label;
   // Constructs vectors of input-side label pairs.
   std::vector<std::pair<Label, Label>> ipairs;
@@ -112,7 +112,7 @@ void Relabel(MutableFst<Arc> *fst,
           ++num_missing_syms;
         }
       }
-      ipairs.push_back(std::make_pair(old_index, new_index));
+      ipairs.emplace_back(old_index, new_index);
     }
     if (num_missing_syms > 0) {
       LOG(WARNING) << "Target symbol table missing: " << num_missing_syms
@@ -133,7 +133,6 @@ void Relabel(MutableFst<Arc> *fst,
         ++num_missing_syms;
       }
     }
-
     for (SymbolTableIterator siter(*old_osymbols); !siter.Done();
          siter.Next()) {
       const auto old_index = siter.Value();
@@ -148,7 +147,7 @@ void Relabel(MutableFst<Arc> *fst,
           ++num_missing_syms;
         }
       }
-      opairs.push_back(std::make_pair(old_index, new_index));
+      opairs.emplace_back(old_index, new_index);
     }
     if (num_missing_syms > 0) {
       LOG(WARNING) << "Target symbol table missing: " << num_missing_syms
@@ -228,26 +227,20 @@ class RelabelFstImpl : public CacheImpl<Arc> {
                  const RelabelFstOptions &opts)
       : CacheImpl<Arc>(opts),
         fst_(fst.Copy()),
-        relabel_input_(false),
-        relabel_output_(false) {
+        input_map_(ipairs.begin(), ipairs.end()),
+        output_map_(opairs.begin(), opairs.end()),
+        relabel_input_(!ipairs.empty()),
+        relabel_output_(!opairs.empty()) {
     SetProperties(RelabelProperties(fst.Properties(kCopyProperties, false)));
     SetType("relabel");
-    // Creates input label map.
-    if (!ipairs.empty()) {
-      for (auto &ipair : ipairs) input_map_[ipair.first] = ipair.second;
-      relabel_input_ = true;
-    }
-    // Creates output label map.
-    if (!opairs.empty()) {
-      for (auto &opair : opairs) output_map_[opair.first] = opair.second;
-      relabel_output_ = true;
-    }
   }
 
-  RelabelFstImpl(const Fst<Arc> &fst, const SymbolTable *old_isymbols,
+  RelabelFstImpl(const Fst<Arc> &fst,
+                 const SymbolTable *old_isymbols,
                  const SymbolTable *new_isymbols,
                  const SymbolTable *old_osymbols,
-                 const SymbolTable *new_osymbols, const RelabelFstOptions &opts)
+                 const SymbolTable *new_osymbols,
+                 const RelabelFstOptions &opts)
       : CacheImpl<Arc>(opts),
         fst_(fst.Copy()),
         relabel_input_(false),
@@ -342,7 +335,7 @@ class RelabelFstImpl : public CacheImpl<Arc> {
           arc.olabel = it->second;
         }
       }
-      PushArc(s, arc);
+      PushArc(s, std::move(arc));
     }
     SetArcs(s);
   }

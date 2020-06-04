@@ -41,4 +41,3 @@ Return information about all indexes
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

@@ -24,22 +24,41 @@
 #ifndef ARANGOD_IRESEARCH__IRESEARCH_VIEW_NODE_H
 #define ARANGOD_IRESEARCH__IRESEARCH_VIEW_NODE_H 1
 
+#include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
+#include "Aql/LateMaterializedOptimizerRulesCommon.h"
 #include "Aql/types.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchViewSort.h"
+#include "IResearch/IResearchViewStoredValues.h"
+#include "types.h"
+#include "utils/bit_utils.hpp"
 
 namespace arangodb {
 class LogicalView;
 
 namespace aql {
 struct Collection;
+class ExecutionNode;
 class ExecutionBlock;
 class ExecutionEngine;
+template<typename T> struct RegisterPlanT;
+using RegisterPlan = RegisterPlanT<ExecutionNode>;
 struct VarInfo;
 }  // namespace aql
 
 namespace iresearch {
+
+enum class MaterializeType {
+  Undefined = 0,        // an undefined initial value
+  NotMaterialize = 1,   // do not materialize a document
+  LateMaterialize = 2,  // a document will be materialized later
+  Materialize = 4,      // materialize a document
+  UseStoredValues = 8   // use stored or sort column values
+};
+
+ENABLE_BITMASK_ENUM(MaterializeType);
 
 /// @brief class EnumerateViewNode
 class IResearchViewNode final : public arangodb::aql::ExecutionNode {
@@ -56,9 +75,17 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
     /// @brief sync view before querying to get the latest index snapshot
     bool forceSync{false};
+
+    /// @brief try not to materialize documents
+    bool noMaterialization{true};
+
+    /// @brief condition optimization Auto - condition will be transformed to DNF.
+    arangodb::aql::ConditionOptimization conditionOptimization{
+        arangodb::aql::ConditionOptimization::Auto};
+
   };  // Options
 
-  IResearchViewNode(aql::ExecutionPlan& plan, size_t id, TRI_vocbase_t& vocbase,
+  IResearchViewNode(aql::ExecutionPlan& plan, aql::ExecutionNodeId id, TRI_vocbase_t& vocbase,
                     std::shared_ptr<const arangodb::LogicalView> const& view,
                     aql::Variable const& outVariable, aql::AstNode* filterCondition,
                     aql::AstNode* options, std::vector<Scorer>&& scorers);
@@ -81,13 +108,6 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   /// @returns true if underlying view has no links
   bool empty() const noexcept;
-
-  void setLateMaterialized(aql::Variable const* colPtrVariable,
-                             aql::Variable const* docIdVariable) noexcept {
-    TRI_ASSERT((docIdVariable != nullptr) == (colPtrVariable != nullptr));
-    _outNonMaterializedDocId = docIdVariable;
-    _outNonMaterializedColPtr = colPtrVariable;
-  }
 
   /// @brief the cost of an enumerate view node
   aql::CostEstimate estimateCost() const override final;
@@ -146,7 +166,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<aql::Variable const*>& vars) const override final;
+  void getVariablesUsedHere(aql::VarSet& vars) const override final;
 
   /// @brief returns IResearchViewNode options
   Options const& options() const noexcept { return _options; }
@@ -159,22 +179,90 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   ///       sort condition
   std::pair<bool, bool> volatility(bool force = false) const;
 
-  void planNodeRegisters(std::vector<aql::RegisterId>& nrRegsHere,
-                         std::vector<aql::RegisterId>& nrRegs,
-                         std::unordered_map<aql::VariableId, aql::VarInfo>& varInfo,
-                         unsigned int& totalNrRegs, unsigned int depth) const;
-
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<aql::ExecutionBlock> createBlock(
       aql::ExecutionEngine& engine,
       std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&) const override;
 
-  std::shared_ptr<std::unordered_set<aql::RegisterId>> calcInputRegs() const;
+  aql::RegIdSet calcInputRegs() const;
 
-  inline bool isLateMaterialized() const {
-    return _outNonMaterializedDocId != nullptr &&
-           _outNonMaterializedColPtr != nullptr;
+  bool isLateMaterialized() const noexcept {
+    return _outNonMaterializedDocId != nullptr && _outNonMaterializedColPtr != nullptr;
   }
+
+  void setLateMaterialized(aql::Variable const& colPtrVariable,
+                           aql::Variable const& docIdVariable) noexcept {
+    _outNonMaterializedDocId = &docIdVariable;
+    _outNonMaterializedColPtr = &colPtrVariable;
+  }
+
+  bool noMaterialization() const noexcept { return _noMaterialization; }
+
+  void setNoMaterialization() noexcept { _noMaterialization = true; }
+
+  static const ptrdiff_t SortColumnNumber;
+
+  // A variable with a field number in a column
+  struct ViewVariable {
+    size_t fieldNum;
+    aql::Variable const* var;
+  };
+
+  // A variable with column and field numbers
+  struct ViewVariableWithColumn : ViewVariable {
+    ptrdiff_t columnNum;
+  };
+
+  using ViewValuesVars = std::unordered_map<ptrdiff_t, std::vector<ViewVariable>>;
+
+  using ViewValuesRegisters = std::map<ptrdiff_t, std::map<size_t, aql::RegisterId>>;
+
+  using ViewVarsInfo =
+      std::unordered_map<std::vector<arangodb::basics::AttributeName> const*, ViewVariableWithColumn>;
+
+  void setViewVariables(ViewVarsInfo const& viewVariables) {
+    _outNonMaterializedViewVars.clear();
+    for (auto const& viewVars : viewVariables) {
+      _outNonMaterializedViewVars[viewVars.second.columnNum].emplace_back(
+          ViewVariable{viewVars.second.fieldNum, viewVars.second.var});
+    }
+  }
+
+  // The class is used for temporary saving of optimization rule data.
+  // It contains document references that could be replaced in late
+  // materialization and no materialization rules.
+  class OptimizationState {
+    using ViewVarsToBeReplaced = std::vector<aql::latematerialized::AstAndColumnFieldData>;
+
+    /// @brief calculation node with ast nodes that can be replaced by view values (e.g. primary sort)
+    std::unordered_map<aql::CalculationNode*, ViewVarsToBeReplaced> _nodesToChange;
+
+    /// @brief is no document materialization possible
+    bool _noDocMaterStatus = true;
+
+   public:
+    void saveCalcNodesForViewVariables(
+        std::vector<aql::latematerialized::NodeWithAttrsColumn> const& nodesToChange);
+
+    bool canVariablesBeReplaced(aql::CalculationNode* calclulationNode) const;
+
+    ViewVarsInfo replaceViewVariables(std::vector<aql::CalculationNode*> const& calcNodes,
+                                      arangodb::containers::HashSet<ExecutionNode*>& toUnlink);
+
+    ViewVarsInfo replaceAllViewVariables(arangodb::containers::HashSet<ExecutionNode*>& toUnlink);
+
+    void clearViewVariables() noexcept { _nodesToChange.clear(); }
+
+    bool isNoDocumentMaterializationPossible() const noexcept {
+      return _noDocMaterStatus;
+    }
+
+    void disableNoDocumentMaterialization() noexcept {
+      _noDocMaterStatus = false;
+    }
+  };
+
+  OptimizationState& state() noexcept { return _optState; }
 
  private:
   /// @brief the database
@@ -189,8 +277,8 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   // Following two variables should be set in pairs.
   // Info is split between 2 registers to allow constructing
-  // AqlValue with type VPACK_INLINE, which is much faster(no allocations!).
-  // CollectionPtr  is needed for materialization step -
+  // AqlValue with type VPACK_INLINE, which is much faster (no allocations!).
+  // CollectionPtr is needed for materialization step -
   // as view could return documents from different collections.
   // We store raw ptr to collection as materialization is expected to happen
   // on same server (it is ensured by optimizer rule as network hop is expensive!)
@@ -199,6 +287,13 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @brief output variable to write only non-materialized collection ids
   aql::Variable const* _outNonMaterializedColPtr;
 
+  /// @brief output variables to non-materialized document view sort references
+  ViewValuesVars _outNonMaterializedViewVars;
+
+  /// @brief is no materialization should be applied
+  bool _noMaterialization;
+
+  OptimizationState _optState;
 
   /// @brief filter node to pass to the view
   aql::AstNode const* _filterCondition;

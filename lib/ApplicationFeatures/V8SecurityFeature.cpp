@@ -121,21 +121,29 @@ void convertToSingleExpression(std::unordered_set<std::string> const& values,
   targetRegex = ss.str();
 }
 
-bool checkBlackAndWhitelist(std::string const& value, bool hasWhitelist,
+struct checkBlackWhiteResult {
+  bool result;
+  bool white;
+  bool black;
+};
+
+checkBlackWhiteResult checkBlackAndWhitelist(std::string const& value, bool hasWhitelist,
                             std::regex const& whitelist, bool hasBlacklist,
                             std::regex const& blacklist) {
   if (!hasWhitelist && !hasBlacklist) {
-    return true;
+    return {true, false, false};
   }
 
   if (!hasBlacklist) {
     // only have a whitelist
-    return std::regex_search(value, whitelist);
+    bool white = std::regex_search(value, whitelist);
+    return {white, white, false};
   }
 
   if (!hasWhitelist) {
     // only have a blacklist
-    return !std::regex_search(value, blacklist);
+    bool black = std::regex_search(value, blacklist);
+    return {!black, false, black};
   }
 
   std::smatch white_result{};
@@ -145,17 +153,18 @@ bool checkBlackAndWhitelist(std::string const& value, bool hasWhitelist,
 
   if (white && !black) {
     // we only have a whitelist hit => allow
-    return true;
+    return {true, white, black};
   } else if (!white && black) {
     // we only have a blacklist hit => deny
-    return false;
+    return {false, white, black};
   } else if (!white && !black) {
     // we have neither a whitelist nor a blacklist hit => deny
-    return false;
+    return {false, white, black};
   }
 
   // longer match or blacklist wins
-  return white_result[0].length() > black_result[0].length();
+  bool white_longer_black = white_result[0].length() > black_result[0].length();
+  return {white_longer_black, white_longer_black, !white_longer_black};
 }
 }  // namespace
 
@@ -170,12 +179,16 @@ V8SecurityFeature::V8SecurityFeature(application_features::ApplicationServer& se
 }
 
 void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("javascript", "Configure the Javascript engine");
+  options->addSection("javascript", "Configure the JavaScript engine");
   options
       ->addOption("--javascript.allow-port-testing",
                   "allow testing of ports from within JavaScript actions",
                   new BooleanParameter(&_allowPortTesting),
-                  arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                  arangodb::options::makeFlags(
+                  arangodb::options::Flags::DefaultNoComponents,
+                  arangodb::options::Flags::OnCoordinator,
+                  arangodb::options::Flags::OnSingle,
+                  arangodb::options::Flags::Hidden))
       .setIntroducedIn(30500);
 
   options
@@ -183,61 +196,97 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                   "allow execution and control of external processes from "
                   "within JavaScript actions",
                   new BooleanParameter(&_allowProcessControl),
-                  arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                  arangodb::options::makeFlags(
+                  arangodb::options::Flags::DefaultNoComponents,
+                  arangodb::options::Flags::OnCoordinator,
+                  arangodb::options::Flags::OnSingle,
+                  arangodb::options::Flags::Hidden))
       .setIntroducedIn(30500);
 
   options
       ->addOption("--javascript.harden",
                   "disables access to JavaScript functions in the internal "
                   "module: getPid() and logLevel()",
-                  new BooleanParameter(&_hardenInternalModule))
+                  new BooleanParameter(&_hardenInternalModule),
+                  arangodb::options::makeFlags(
+                  arangodb::options::Flags::DefaultNoComponents,
+                  arangodb::options::Flags::OnCoordinator,
+                  arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
 
   options
       ->addOption("--javascript.startup-options-whitelist",
                   "startup options whose names match this regular "
                   "expression will be whitelisted and exposed to JavaScript",
-                  new VectorParameter<StringParameter>(&_startupOptionsWhitelistVec))
+                  new VectorParameter<StringParameter>(&_startupOptionsWhitelistVec),
+                  arangodb::options::makeFlags(
+                  arangodb::options::Flags::DefaultNoComponents,
+                  arangodb::options::Flags::OnCoordinator,
+                  arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
   options
       ->addOption("--javascript.startup-options-blacklist",
                   "startup options whose names match this regular "
                   "expression will not be exposed (if not whitelisted) to "
                   "JavaScript actions",
-                  new VectorParameter<StringParameter>(&_startupOptionsBlacklistVec))
+                  new VectorParameter<StringParameter>(&_startupOptionsBlacklistVec),
+                  arangodb::options::makeFlags(
+                  arangodb::options::Flags::DefaultNoComponents,
+                  arangodb::options::Flags::OnCoordinator,
+                  arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
 
   options
       ->addOption("--javascript.environment-variables-whitelist",
                   "environment variables that will be accessible in JavaScript",
-                  new VectorParameter<StringParameter>(&_environmentVariablesWhitelistVec))
+                  new VectorParameter<StringParameter>(&_environmentVariablesWhitelistVec),
+                  arangodb::options::makeFlags(
+                  arangodb::options::Flags::DefaultNoComponents,
+                  arangodb::options::Flags::OnCoordinator,
+                  arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
   options
       ->addOption("--javascript.environment-variables-blacklist",
                   "environment variables that will be inaccessible in "
                   "JavaScript if not whitelisted",
-                  new VectorParameter<StringParameter>(&_environmentVariablesBlacklistVec))
+                  new VectorParameter<StringParameter>(&_environmentVariablesBlacklistVec),
+                  arangodb::options::makeFlags(
+                  arangodb::options::Flags::DefaultNoComponents,
+                  arangodb::options::Flags::OnCoordinator,
+                  arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
 
   options
       ->addOption("--javascript.endpoints-whitelist",
                   "endpoints that can be connected to via "
                   "@arangodb/request module in JavaScript actions",
-                  new VectorParameter<StringParameter>(&_endpointsWhitelistVec))
+                  new VectorParameter<StringParameter>(&_endpointsWhitelistVec),
+                  arangodb::options::makeFlags(
+                  arangodb::options::Flags::DefaultNoComponents,
+                  arangodb::options::Flags::OnCoordinator,
+                  arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
   options
       ->addOption("--javascript.endpoints-blacklist",
                   "endpoints that cannot be connected to via @arangodb/request "
                   "module in "
                   "JavaScript actions if not whitelisted",
-                  new VectorParameter<StringParameter>(&_endpointsBlacklistVec))
+                  new VectorParameter<StringParameter>(&_endpointsBlacklistVec),
+                  arangodb::options::makeFlags(
+                  arangodb::options::Flags::DefaultNoComponents,
+                  arangodb::options::Flags::OnCoordinator,
+                  arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
 
   options
       ->addOption("--javascript.files-whitelist",
                   "filesystem paths that will be accessible from within "
                   "JavaScript actions",
-                  new VectorParameter<StringParameter>(&_filesWhitelistVec))
+                  new VectorParameter<StringParameter>(&_filesWhitelistVec),
+                  arangodb::options::makeFlags(
+                  arangodb::options::Flags::DefaultNoComponents,
+                  arangodb::options::Flags::OnCoordinator,
+                  arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
 }
 
@@ -370,7 +419,7 @@ bool V8SecurityFeature::shouldExposeStartupOption(v8::Isolate* isolate,
   return checkBlackAndWhitelist(name, !_startupOptionsWhitelist.empty(),
                                 _startupOptionsWhitelistRegex,
                                 !_startupOptionsBlacklist.empty(),
-                                _startupOptionsBlacklistRegex);
+                                _startupOptionsBlacklistRegex).result;
 }
 
 bool V8SecurityFeature::shouldExposeEnvironmentVariable(v8::Isolate* isolate,
@@ -378,11 +427,12 @@ bool V8SecurityFeature::shouldExposeEnvironmentVariable(v8::Isolate* isolate,
   return checkBlackAndWhitelist(name, !_environmentVariablesWhitelist.empty(),
                                 _environmentVariablesWhitelistRegex,
                                 !_environmentVariablesBlacklist.empty(),
-                                _environmentVariablesBlacklistRegex);
+                                _environmentVariablesBlacklistRegex).result;
 }
 
 bool V8SecurityFeature::isAllowedToConnectToEndpoint(v8::Isolate* isolate,
-                                                     std::string const& name) const {
+                                                     std::string const& endpoint,
+                                                     std::string const& url) const {
   TRI_GET_GLOBALS();
   TRI_ASSERT(v8g != nullptr);
   if (v8g->_securityContext.isInternal()) {
@@ -391,8 +441,13 @@ bool V8SecurityFeature::isAllowedToConnectToEndpoint(v8::Isolate* isolate,
     return true;
   }
 
-  return checkBlackAndWhitelist(name, !_endpointsWhitelist.empty(), _endpointsWhitelistRegex,
+  auto endpointResult = checkBlackAndWhitelist(endpoint, !_endpointsWhitelist.empty(), _endpointsWhitelistRegex,
                                 !_endpointsBlacklist.empty(), _endpointsBlacklistRegex);
+
+  auto urlResult = checkBlackAndWhitelist(url, !_endpointsWhitelist.empty(), _endpointsWhitelistRegex,
+                                !_endpointsBlacklist.empty(), _endpointsBlacklistRegex);
+
+  return endpointResult.result || ( urlResult.result && !endpointResult.black);
 }
 
 bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, std::string const& path,
@@ -438,5 +493,5 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* 
   }
 
   return checkBlackAndWhitelist(path, !_filesWhitelist.empty(), _filesWhitelistRegex,
-                                false, _filesWhitelistRegex /*passed to match the signature but not used*/);
+                                false, _filesWhitelistRegex /*passed to match the signature but not used*/).result;
 }

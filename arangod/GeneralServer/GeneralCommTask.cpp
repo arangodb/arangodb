@@ -35,44 +35,68 @@ using namespace arangodb::rest;
 // -----------------------------------------------------------------------------
 
 template <SocketType T>
-GeneralCommTask<T>::GeneralCommTask(GeneralServer& server, char const* name,
+GeneralCommTask<T>::GeneralCommTask(GeneralServer& server,
                                     ConnectionInfo info,
                                     std::unique_ptr<AsioSocket<T>> socket)
-    : CommTask(server, name, std::move(info)), _protocol(std::move(socket)) {}
+: CommTask(server, std::move(info)), _protocol(std::move(socket)), _stopped(false) {
+  if (AsioSocket<T>::supportsMixedIO()) {
+    _protocol->setNonBlocking(true);
+  }
+}
 
 template <SocketType T>
-GeneralCommTask<T>::~GeneralCommTask() = default;
-
-template <SocketType T>
-void GeneralCommTask<T>::start() {
-  asio_ns::post(_protocol->context.io_context, [self = shared_from_this()] {
-    auto* thisPtr = static_cast<GeneralCommTask<T>*>(self.get());
-    if (thisPtr->_protocol->supportsMixedIO()) {
-      thisPtr->_protocol->setNonBlocking(true);
-    }
-    thisPtr->asyncReadSome();
+void GeneralCommTask<T>::stop() {
+  _stopped.store(true, std::memory_order_release);
+  if (!_protocol) {
+    return;
+  }
+  asio_ns::dispatch(_protocol->context.io_context, [self = shared_from_this()] {
+    static_cast<GeneralCommTask<T>&>(*self).close(asio_ns::error_code());
   });
 }
 
 template <SocketType T>
-void GeneralCommTask<T>::close() {
+void GeneralCommTask<T>::close(asio_ns::error_code const& ec) {
+  _stopped.store(true, std::memory_order_release);
+  if (ec && ec != asio_ns::error::misc_errors::eof) {
+    LOG_TOPIC("2b6b3", WARN, arangodb::Logger::REQUESTS)
+    << "asio IO error: '" << ec.message() << "'";
+  }
+  
   if (_protocol) {
     _protocol->timer.cancel();
-    asio_ns::error_code ec;
-    _protocol->shutdown(ec);
-    if (ec) {
-      LOG_TOPIC("2c6b4", DEBUG, arangodb::Logger::REQUESTS)
-          << "error shutting down asio socket: '" << ec.message() << "'";
-    }
+    _protocol->shutdown([this, self(shared_from_this())](asio_ns::error_code ec) {
+      if (ec) {
+        LOG_TOPIC("2c6b4", INFO, arangodb::Logger::REQUESTS)
+            << "error shutting down asio socket: '" << ec.message() << "'";
+      }
+      _server.unregisterTask(this);
+    });
+  } else {
+    _server.unregisterTask(this);  // will delete us
   }
-  _server.unregisterTask(this);  // will delete us
+}
+
+/// set / reset connection timeout
+template <SocketType T>
+void GeneralCommTask<T>::setTimeout(std::chrono::milliseconds millis) {
+  _protocol->timer.expires_after(millis);
+  _protocol->timer.async_wait([self = CommTask::weak_from_this()](asio_ns::error_code ec) {
+    std::shared_ptr<CommTask> s;
+    if (ec || !(s = self.lock())) {  // was canceled / deallocated
+      return;
+    }
+    LOG_TOPIC("5c1e0", INFO, Logger::REQUESTS)
+        << "keep alive timeout, closing stream!";
+    static_cast<GeneralCommTask<T>&>(*s).close(ec);
+  });
 }
 
 template <SocketType T>
 void GeneralCommTask<T>::asyncReadSome() try {
   asio_ns::error_code ec;
   // first try a sync read for performance
-  if (_protocol->supportsMixedIO()) {
+  if (AsioSocket<T>::supportsMixedIO()) {
     std::size_t available = _protocol->available(ec);
 
     while (!ec && available > 8) {
@@ -97,21 +121,30 @@ void GeneralCommTask<T>::asyncReadSome() try {
   if (_protocol->buffer.size() > 0 && !readCallback(ec)) {
     return;
   }
+  
+  // VST and H2 get a simple timeout here
+  if (enableReadTimeout()) {
+    setTimeout(DefaultTimeout);
+  }
 
   auto mutableBuff = _protocol->buffer.prepare(ReadBlockSize);
   _protocol->socket.async_read_some(
-      mutableBuff, [self = shared_from_this()](asio_ns::error_code const& ec, size_t transferred) {
-        auto* thisPtr = static_cast<GeneralCommTask<T>*>(self.get());
-        thisPtr->_protocol->buffer.commit(transferred);
+      mutableBuff, [self = shared_from_this()](asio_ns::error_code const& ec, size_t nread) {
+        auto& me = static_cast<GeneralCommTask<T>&>(*self);
+        me._protocol->buffer.commit(nread);
+  
+        if (me.enableReadTimeout()) {
+          me._protocol->timer.cancel();
+        }
 
         try {
-          if (thisPtr->readCallback(ec)) {
-            thisPtr->asyncReadSome();
+          if (me.readCallback(ec)) {
+            me.asyncReadSome();
           }
         } catch (...) {
           LOG_TOPIC("2c6b6", ERR, arangodb::Logger::REQUESTS)
               << "unhandled protocol exception, closing connection";
-          thisPtr->close();
+          me.close(ec);
         }
       });
 } catch (...) {

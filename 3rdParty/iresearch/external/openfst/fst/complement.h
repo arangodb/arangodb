@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <string>
 #include <vector>
+
 #include <fst/log.h>
 
 #include <fst/fst.h>
@@ -125,7 +126,7 @@ class ComplementFst : public ImplToFst<internal::ComplementFstImpl<A>> {
 
   explicit ComplementFst(const Fst<Arc> &fst)
       : ImplToFst<Impl>(std::make_shared<Impl>(fst)) {
-    static FST_CONSTEXPR const auto props =
+    static constexpr auto props =
         kUnweighted | kNoEpsilons | kIDeterministic | kAcceptor;
     if (fst.Properties(props, true) != props) {
       FSTERROR() << "ComplementFst: Argument not an unweighted "

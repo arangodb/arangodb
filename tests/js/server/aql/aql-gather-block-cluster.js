@@ -498,14 +498,43 @@ function gatherBlockTestSuite () {
     testSubqueryValuePropagation : function () {
       c4 = db._create(cn4, {numberOfShards:3});
       c4.insert({Hallo:1});
-      var query = "FOR i IN 1..1 LET s = (FOR j IN 1..i FOR k IN " + cn4 + " RETURN j) RETURN s";
+      const query = `FOR i IN 1..1 LET s = (FOR j IN 1..i FOR k IN ${cn4} RETURN j) RETURN s`;
       // check the return value
-      var expected = [ [ 1 ] ];
-      var actual = AQL_EXECUTE(query).json;
+      const expected = [ [ 1 ] ];
+      const rules = ['-splice-subqueries'];
+      const opts = {optimizer:{rules}};
+      const plan = AQL_EXPLAIN(query, {}, opts).plan;
+      const nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+      assertNotEqual(0, nodeTypes.filter(type => type === 'SubqueryNode').length);
+      assertEqual(0, nodeTypes.filter(type => type === 'SubqueryStartNode').length);
+      assertEqual(0, nodeTypes.filter(type => type === 'SubqueryEndNode').length);
+      const actual = AQL_EXECUTE(query, {}, opts).json;
 
       assertEqual(expected, actual, query);
     },
-    
+
+    testSplicedSubqueryValuePropagation : function () {
+      c4 = db._create(cn4, {numberOfShards:3});
+      c4.insert({Hallo:1});
+      const query = `FOR i IN 1..1 LET s = (FOR j IN 1..i FOR k IN ${cn4} RETURN j) RETURN s`;
+      // check the return value
+      const expected = [ [ 1 ] ];
+      const rules = ['+splice-subqueries'];
+      const opts = {optimizer:{rules}};
+      const plan = AQL_EXPLAIN(query, {}, opts).plan;
+      const nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+      assertEqual(0, nodeTypes.filter(type => type === 'SubqueryNode').length);
+      assertNotEqual(0, nodeTypes.filter(type => type === 'SubqueryStartNode').length);
+      assertNotEqual(0, nodeTypes.filter(type => type === 'SubqueryEndNode').length);
+      const actual = AQL_EXECUTE(query, {}, opts).json;
+
+      assertEqual(expected, actual, query);
+    },
+
     testCalculationNotMovedOverBoundary : function () {
       c4 = db._create(cn4, {numberOfShards:3});
       c4.insert({Hallo:1});

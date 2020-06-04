@@ -18,7 +18,7 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
+/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_FILE_UTILS_H
@@ -35,51 +35,53 @@
   #define file_blksize_t uint32_t // DWORD (same as GetDriveGeometry(...) DISK_GEOMETRY::BytesPerSector)
   #define file_path_delimiter L'\\'
   #define file_path_t wchar_t*
-  #define file_stat _wstat64
-  #define file_fstat _fstat64
   #define file_stat_t struct _stat64
-  #define file_no _fileno
   #define mode_t unsigned short
-  #define file_open(name, mode) iresearch::file_utils::open(name, IR_WSTR(mode))
+
   #define posix_create _wcreat
   #define posix_open _wopen
   #define posix_close _close
-  #define fwrite_unlocked _fwrite_nolock
-  #define fread_unlocked _fread_nolock
-  #define feof_unlocked feof // MSVC doesn't have nolock version of feof
+  #define file_fstat _fstat64
+  #define file_stat _wstat64
+
+  #define handle_cast(f) f
+  #define IR_WSTR(x) L ## x // cannot use _T(...) macro when _MBCS is defined
+  #define IR_DEVNULL IR_WSTR("NUL:")
 
   #define IR_FADVICE_NORMAL 0
-  #define IR_FADVICE_SEQUENTIAL 1
-  #define IR_FADVICE_RANDOM 2
-  #define IR_FADVICE_DONTNEED 4
-  #define IR_FADVICE_NOREUSE 5
-  #define IR_WSTR(x) L ## x // cannot use _T(...) macro when _MBCS is defined
+  #define IR_FADVICE_SEQUENTIAL FILE_FLAG_SEQUENTIAL_SCAN
+  #define IR_FADVICE_RANDOM FILE_FLAG_RANDOM_ACCESS
+  #define IR_FADVICE_DONTNEED 0
+  #define IR_FADVICE_NOREUSE 0
 #else
   #include <unistd.h> // close
   #include <sys/types.h> // for blksize_t
   #define file_blksize_t blksize_t
   #define file_path_delimiter '/'
   #define file_path_t char*
+  #define file_stat_t struct stat    
+
   #define file_stat stat
   #define file_fstat fstat
-  #define file_stat_t struct stat    
-  #define file_no fileno
-  #define file_open(name, mode) iresearch::file_utils::open(name, mode)
   #define posix_create creat
   #define posix_open open
   #define posix_close close
-#ifdef __APPLE__
-  // MAX doesn't have nolock functions
-  #define fwrite_unlocked fwrite
-  #define fread_unlocked fread
-  #define feof_unlocked feof
-#endif
 
+  #define handle_cast(f) static_cast<int>(reinterpret_cast<size_t>(f))
+  #define IR_DEVNULL "/dev/null"
+#ifndef __APPLE__
   #define IR_FADVICE_NORMAL POSIX_FADV_NORMAL
   #define IR_FADVICE_SEQUENTIAL POSIX_FADV_SEQUENTIAL
   #define IR_FADVICE_RANDOM POSIX_FADV_RANDOM
   #define IR_FADVICE_DONTNEED POSIX_FADV_DONTNEED
   #define IR_FADVICE_NOREUSE POSIX_FADV_NOREUSE
+#else
+  #define IR_FADVICE_NORMAL 0
+  #define IR_FADVICE_SEQUENTIAL 0
+  #define IR_FADVICE_RANDOM 0
+  #define IR_FADVICE_DONTNEED 0
+  #define IR_FADVICE_NOREUSE 0
+#endif
 #endif
 
 #include "shared.hpp"
@@ -105,43 +107,52 @@ bool verify_lock_file(const file_path_t file);
 // --SECTION--                                                             stats
 // -----------------------------------------------------------------------------
 
-bool absolute(bool& result, const file_path_t path) NOEXCEPT;
+bool absolute(bool& result, const file_path_t path) noexcept;
 
-bool block_size(file_blksize_t& result, const file_path_t file) NOEXCEPT;
-bool block_size(file_blksize_t& result, int fd) NOEXCEPT;
+bool block_size(file_blksize_t& result, const file_path_t file) noexcept;
+bool block_size(file_blksize_t& result, void* fd) noexcept;
+bool byte_size(uint64_t& result, const file_path_t file) noexcept;
+bool byte_size(uint64_t& result, int fd) noexcept; 
+bool byte_size(uint64_t& result, void* fd) noexcept;
 
-bool byte_size(uint64_t& result, const file_path_t file) NOEXCEPT;
-bool byte_size(uint64_t& result, int fd) NOEXCEPT;
+bool exists(bool& result, const file_path_t file) noexcept;
+bool exists_directory(bool& result, const file_path_t file) noexcept;
+bool exists_file(bool& result, const file_path_t file) noexcept;
 
-bool exists(bool& result, const file_path_t file) NOEXCEPT;
-bool exists_directory(bool& result, const file_path_t file) NOEXCEPT;
-bool exists_file(bool& result, const file_path_t file) NOEXCEPT;
-
-bool mtime(time_t& result, const file_path_t file) NOEXCEPT;
-bool mtime(time_t& result, int fd) NOEXCEPT;
+bool mtime(time_t& result, const file_path_t file) noexcept;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         open file
 // -----------------------------------------------------------------------------
+enum class OpenMode {
+  Read,
+  Write
+};
 
 struct file_deleter {
-  void operator()(FILE* f) const NOEXCEPT {
-    if (f) ::fclose(f);
-  }
+  void operator()(void* f) const noexcept;
 }; // file_deleter
 
-typedef std::unique_ptr<FILE, file_deleter> handle_t;
+typedef std::unique_ptr<void, file_deleter> handle_t;
 
-handle_t open(const file_path_t path, const file_path_t mode) NOEXCEPT;
-handle_t open(FILE* file, const file_path_t mode) NOEXCEPT;
+handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept;
+handle_t open(void* file, OpenMode mode, int advice) noexcept;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        path utils
 // -----------------------------------------------------------------------------
 
-bool mkdir(const file_path_t path, bool createNew) NOEXCEPT;  // recursive directory creation
+bool mkdir(const file_path_t path, bool createNew) noexcept;  // recursive directory creation
 
-bool move(const file_path_t src_path, const file_path_t dst_path) NOEXCEPT;
+bool move(const file_path_t src_path, const file_path_t dst_path) noexcept;
+
+size_t fread(void* fd, void* buf, size_t size);
+size_t fwrite(void* fd, const void* buf, size_t size);
+FORCE_INLINE bool write(void* fd, const void* buf, size_t size) { return fwrite(fd, buf, size) == size; }
+int fseek(void* fd, long pos, int origin);
+int ferror(void*);
+long ftell(void* fd);
+
 
 struct path_parts_t {
   typedef irs::basic_string_ref<std::remove_pointer<file_path_t>::type> ref_t;
@@ -151,15 +162,15 @@ struct path_parts_t {
   ref_t stem;      // basename without extension (ref_t::NIL if not present)
 };
 
-IRESEARCH_API path_parts_t path_parts(const file_path_t path) NOEXCEPT;
+IRESEARCH_API path_parts_t path_parts(const file_path_t path) noexcept;
 
 IRESEARCH_API bool read_cwd(
   std::basic_string<std::remove_pointer<file_path_t>::type>& result
-) NOEXCEPT;
+) noexcept;
 
-bool remove(const file_path_t path) NOEXCEPT;
+bool remove(const file_path_t path) noexcept;
 
-bool set_cwd(const file_path_t path) NOEXCEPT;
+bool set_cwd(const file_path_t path) noexcept;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   directory utils
@@ -175,8 +186,8 @@ bool visit_directory(
 // --SECTION--                                                              misc
 // -----------------------------------------------------------------------------
 
-bool file_sync(const file_path_t name) NOEXCEPT;
-bool file_sync(int fd) NOEXCEPT;
+bool file_sync(const file_path_t name) noexcept;
+bool file_sync(int fd) noexcept;
 
 NS_END
 NS_END

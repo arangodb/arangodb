@@ -21,6 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestUsersHandler.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Rest/Version.h"
@@ -40,8 +42,8 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 /// @return a collection exists in database or a wildcard was specified
 ////////////////////////////////////////////////////////////////////////////////
-arangodb::Result existsCollection(std::string const& database, std::string const& collection) {
-  auto& server = arangodb::application_features::ApplicationServer::server();
+arangodb::Result existsCollection(arangodb::application_features::ApplicationServer& server,
+                                  std::string const& database, std::string const& collection) {
   if (!server.hasFeature<arangodb::DatabaseFeature>()) {
     return arangodb::Result(TRI_ERROR_INTERNAL,
                             "failure to find feature 'Database'");
@@ -378,7 +380,7 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
 
       // validate that the collection is present
       if (suffixes.size() > 3) {
-        auto res = existsCollection(db, coll);
+        auto res = existsCollection(server(), db, coll);
 
         if (!res.ok()) {
           generateError(res);
@@ -545,7 +547,7 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
 
       // validate that the collection is present
       if (suffixes.size() > 3) {
-        auto res = existsCollection(db, coll);
+        auto res = existsCollection(server(), db, coll);
 
         if (!res.ok()) {
           generateError(res);

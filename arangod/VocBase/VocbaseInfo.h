@@ -68,7 +68,7 @@ struct DBUser {
 
 class CreateDatabaseInfo {
  public:
-  CreateDatabaseInfo(application_features::ApplicationServer&);
+  explicit CreateDatabaseInfo(application_features::ApplicationServer&);
   Result load(std::string const& name, uint64_t id);
 
   Result load(uint64_t id, VPackSlice const& options,
@@ -92,6 +92,8 @@ class CreateDatabaseInfo {
     TRI_ASSERT(_validId);
     return _id;
   }
+
+  bool valid() const { return _valid; }
 
   bool validId() const { return _validId; }
 
@@ -123,8 +125,6 @@ class CreateDatabaseInfo {
   ShardingPrototype shardingPrototype() const;
   void shardingPrototype(ShardingPrototype type);
 
-  void allowSystemDB(bool s) { _isSystemDB = s; }
-
  private:
   Result extractUsers(VPackSlice const& users);
   Result extractOptions(VPackSlice const& options, bool extactId = true,
@@ -145,7 +145,6 @@ class CreateDatabaseInfo {
 
   bool _validId = false;
   bool _valid = false;  // required because TRI_ASSERT needs variable in Release mode.
-  bool _isSystemDB = false;
 };
 
 struct VocbaseOptions {

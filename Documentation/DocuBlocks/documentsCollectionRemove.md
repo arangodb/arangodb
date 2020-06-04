@@ -25,9 +25,9 @@ applied. The *waitForSync* parameter cannot be used to disable
 synchronization for collections that have a default *waitForSync* value
 of *true*.
 
-`collection.remove(document-handle, data)`
+`collection.remove(document-id, data)`
 
-As before. Instead of document a *document-handle* can be passed as
+As before. Instead of document a *document-id* can be passed as
 first argument.
 
 @EXAMPLES

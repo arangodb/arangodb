@@ -345,6 +345,7 @@ bool CleanOutServer::start(bool& aborts) {
       addPreconditionServerHealth(*pending, _server, "GOOD");
       addPreconditionUnchanged(*pending, failedServersPrefix, failedServers);
       addPreconditionUnchanged(*pending, cleanedPrefix, cleanedServers);
+      addPreconditionUnchanged(*pending, planVersion, _snapshot(planVersion).slice());
     }
   }  // array for transaction done
 
@@ -405,13 +406,13 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
 
             MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
                     _jobId, database.first, collptr.first, shard.first, _server,
-                    toServer, isLeader, false)
+                    toServer, isLeader, false).withParent(_jobId)
               .create(trx);
 
           } else {
             // Intentionally do nothing. RemoveServer will remove the failed follower
             LOG_TOPIC("22ca1", DEBUG, Logger::SUPERVISION) <<
-              "Do nothing for cleanout of follower of the satellite collection " << collection.hasAsString("id").first;
+              "Do nothing for cleanout of follower of the SatelliteCollection " << collection.hasAsString("id").first;
             continue ;
           }
         } else {
@@ -439,7 +440,7 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
           // Schedule move into trx:
           MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
                     _jobId, database.first, collptr.first, shard.first, _server,
-                    toServer, isLeader, false)
+                    toServer, isLeader, false).withParent(_jobId)
               .create(trx);
         }
       }

@@ -19,7 +19,7 @@ returned.
 
 @RESTDESCRIPTION
 Returns an array of edges starting or ending in the vertex identified by
-*vertex-handle*.
+*vertex*.
 
 @RESTRETURNCODES
 
@@ -112,4 +112,3 @@ Out edges
     db._drop("vertices");
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

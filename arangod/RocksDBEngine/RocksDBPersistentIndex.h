@@ -25,13 +25,15 @@
 #define ARANGOD_ROCKSDB_ROCKSDB_PERSISTENT_INDEX_H 1
 
 #include "RocksDBEngine/RocksDBVPackIndex.h"
+#include "VocBase/Identifiers/IndexId.h"
+
 namespace arangodb {
 
 class RocksDBPersistentIndex final : public RocksDBVPackIndex {
  public:
   RocksDBPersistentIndex() = delete;
 
-  RocksDBPersistentIndex(TRI_idx_iid_t iid, LogicalCollection& coll,
+  RocksDBPersistentIndex(IndexId iid, LogicalCollection& coll,
                          arangodb::velocypack::Slice const& info)
       : RocksDBVPackIndex(iid, coll, info) {}
 

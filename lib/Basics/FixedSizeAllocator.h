@@ -115,7 +115,7 @@ class FixedSizeAllocator {
 #endif
   }
 
-  ~FixedSizeAllocator() {}
+  ~FixedSizeAllocator() = default;
 
   void* allocate() {
     if (_freelist != nullptr) {

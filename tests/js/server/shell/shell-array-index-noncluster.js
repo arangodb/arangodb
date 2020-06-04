@@ -161,13 +161,7 @@ function arrayHashIndexSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertBatches : function () {
-      var n = 1000 * 1000;
-      // this really needs to be 1,000,000 documents to reproduce a bug that
-      // occurred with exactly this value and no others
-
-      if (db._engine().name === "rocksdb") {
-        n = 1000;
-      }
+      var n = 1000;
 
       for (var i = 0; i < n; ++i) {
         collection.insert({ a: [ "foo", "bar" ] }); 

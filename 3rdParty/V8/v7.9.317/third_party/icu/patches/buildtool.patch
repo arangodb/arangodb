@@ -1,0 +1,91 @@
+diff --git a/source/data/BUILDRULES.py b/source/data/BUILDRULES.py
+index 696c7b8c..2442f4e3 100644
+--- a/source/data/BUILDRULES.py
++++ b/source/data/BUILDRULES.py
+@@ -516,7 +516,7 @@ def generate_tree(
+         )
+     ]
+ 
+-    # Generate index txt file
++    # Generate res_index file
+     synthetic_locales = set()
+     deprecates_xml_path = os.path.join(os.path.dirname(__file__), xml_filename)
+     deprecates_xml = ET.parse(deprecates_xml_path)
+@@ -540,30 +540,19 @@ def generate_tree(
+         IN_SUB_DIR = sub_dir,
+         **common_vars
+     ))
+-    index_file_target_name = "%s_index_txt" % sub_dir
+-    requests += [
+-        IndexTxtRequest(
+-            name = index_file_target_name,
+-            category = category,
+-            input_files = index_input_files,
+-            output_file = index_file_txt,
+-            cldr_version = cldr_version
+-        )
+-    ]
+-
+-    # Generate index res file
+     index_res_file = OutFile("{OUT_PREFIX}{INDEX_NAME}.res".format(
+         OUT_PREFIX = out_prefix,
+         **common_vars
+     ))
++    index_file_target_name = "%s_index_txt" % sub_dir
+     requests += [
+-        SingleExecutionRequest(
+-            name = "%s_index_res" % sub_dir,
++        IndexRequest(
++            name = index_file_target_name,
+             category = category,
+-            dep_targets = [DepTarget(index_file_target_name)],
+-            input_files = [],
+-            output_files = [index_res_file],
+-            tool = IcuTool("genrb"),
++            input_files = index_input_files,
++            txt_file = index_file_txt,
++            output_file = index_res_file,
++            cldr_version = cldr_version,
+             args = "-s {TMP_DIR}/{IN_SUB_DIR} -d {OUT_DIR}/{OUT_PREFIX} -i {OUT_DIR} "
+                 "-k "
+                 "{INDEX_NAME}.txt",
+diff --git a/source/data/buildtool/request_types.py b/source/data/buildtool/request_types.py
+index 0de02851..bcaccc58 100644
+--- a/source/data/buildtool/request_types.py
++++ b/source/data/buildtool/request_types.py
+@@ -284,12 +284,15 @@ class ListRequest(AbstractRequest):
+         return [self.output_file]
+ 
+ 
+-class IndexTxtRequest(AbstractRequest):
++class IndexRequest(AbstractRequest):
+     def __init__(self, **kwargs):
+         self.input_files = []
++        self.txt_file = None
+         self.output_file = None
+         self.cldr_version = ""
+-        super(IndexTxtRequest, self).__init__(**kwargs)
++        self.args = ""
++        self.format_with = {}
++        super(IndexRequest, self).__init__(**kwargs)
+ 
+     def apply_file_filter(self, filter):
+         i = 0
+@@ -303,8 +306,16 @@ class IndexTxtRequest(AbstractRequest):
+     def flatten(self, config, all_requests, common_vars):
+         return PrintFileRequest(
+             name = self.name,
+-            output_file = self.output_file,
++            output_file = self.txt_file,
+             content = self._generate_index_file(common_vars)
++        ).flatten(config, all_requests, common_vars) + SingleExecutionRequest(
++            name = "%s_res" % self.name,
++            category = self.category,
++            input_files = [self.txt_file],
++            output_files = [self.output_file],
++            tool = IcuTool("genrb"),
++            args = self.args,
++            format_with = self.format_with
+         ).flatten(config, all_requests, common_vars)
+ 
+     def _generate_index_file(self, common_vars):

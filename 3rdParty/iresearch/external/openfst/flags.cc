@@ -12,6 +12,9 @@
 //
 // Google-style flag handling definitions.
 
+#include <cstring>
+#include <string>
+
 #include <fst/compat.h>
 #include <fst/flags.h>
 
@@ -23,43 +26,51 @@ DEFINE_bool(helpshort, false, "show brief usage information");
 DEFINE_string(tmpdir, private_tmpdir ? private_tmpdir : "/tmp",
               "temporary directory");
 
-using namespace std;
+static std::string flag_usage;
+static std::string prog_src;
 
-static string flag_usage;
-static string prog_src;
+// Sets prog_src to src.
+static void SetProgSrc(const char *src) {
+  prog_src = src;
+  // Remove "-main" in src filename. Flags are defined in fstx.cc but SetFlags()
+  // is called in fstx-main.cc, which results in a filename mismatch in
+  // ShowUsageRestrict() below.
+  static constexpr char kMainSuffix[] = "-main.cc";
+  const int prefix_length = prog_src.size() - strlen(kMainSuffix);
+  if (prefix_length > 0 && prog_src.substr(prefix_length) == kMainSuffix) {
+    prog_src.erase(prefix_length, strlen("-main"));
+  }
+}
 
 void SetFlags(const char *usage, int *argc, char ***argv,
               bool remove_flags, const char *src) {
   flag_usage = usage;
-  prog_src = src;
+  SetProgSrc(src);
+
   int index = 1;
   for (; index < *argc; ++index) {
-    string argval = (*argv)[index];
+    std::string argval = (*argv)[index];
     if (argval[0] != '-' || argval == "-") break;
     while (argval[0] == '-') argval = argval.substr(1);  // Removes initial '-'.
-    string arg = argval;
-    string val = "";
+    std::string arg = argval;
+    std::string val = "";
     // Splits argval (arg=val) into arg and val.
     auto pos = argval.find("=");
-    if (pos != string::npos) {
+    if (pos != std::string::npos) {
       arg = argval.substr(0, pos);
       val = argval.substr(pos + 1);
     }
     auto bool_register = FlagRegister<bool>::GetRegister();
     if (bool_register->SetFlag(arg, val))
       continue;
-    auto string_register = FlagRegister<string>::GetRegister();
-    if (string_register->SetFlag(arg, val))
-      continue;
+    auto string_register = FlagRegister<std::string>::GetRegister();
+    if (string_register->SetFlag(arg, val)) continue;
     auto int32_register = FlagRegister<int32>::GetRegister();
-    if (int32_register->SetFlag(arg, val))
-      continue;
+    if (int32_register->SetFlag(arg, val)) continue;
     auto int64_register = FlagRegister<int64>::GetRegister();
-    if (int64_register->SetFlag(arg, val))
-      continue;
+    if (int64_register->SetFlag(arg, val)) continue;
     auto double_register = FlagRegister<double>::GetRegister();
-    if (double_register->SetFlag(arg, val))
-      continue;
+    if (double_register->SetFlag(arg, val)) continue;
     LOG(FATAL) << "SetFlags: Bad option: " << (*argv)[index];
   }
   if (remove_flags) {
@@ -80,10 +91,10 @@ void SetFlags(const char *usage, int *argc, char ***argv,
 
 // If flag is defined in file 'src' and 'in_src' true or is not
 // defined in file 'src' and 'in_src' is false, then print usage.
-static void
-ShowUsageRestrict(const std::set<pair<string, string>> &usage_set,
-		  const string &src, bool in_src, bool show_file) {
-  string old_file;
+static void ShowUsageRestrict(
+    const std::set<std::pair<std::string, std::string>> &usage_set,
+    const std::string &src, bool in_src, bool show_file) {
+  std::string old_file;
   bool file_out = false;
   bool usage_out = false;
   for (const auto &pair : usage_set) {
@@ -93,24 +104,27 @@ ShowUsageRestrict(const std::set<pair<string, string>> &usage_set,
     if ((match && !in_src) || (!match && in_src)) continue;
     if (file != old_file) {
       if (show_file) {
-        if (file_out) cout << "\n";
-	    cout << "Flags from: " << file << "\n";
+        if (file_out) std::cout << std::endl;;
+        std::cout << "Flags from: " << file << std::endl;
         file_out = true;
       }
       old_file = file;
     }
-    cout << usage << "\n";
+    std::cout << usage << std::endl;
+    ;
     usage_out = true;
   }
-  if (usage_out) cout << "\n";
+  if (usage_out) std::cout << std::endl;
+  ;
 }
 
 void ShowUsage(bool long_usage) {
-  std::set<pair<string, string>> usage_set;
-  cout << flag_usage << "\n";
+  std::set<std::pair<std::string, std::string>> usage_set;
+  std::cout << flag_usage << std::endl;
+  ;
   auto bool_register = FlagRegister<bool>::GetRegister();
   bool_register->GetUsage(&usage_set);
-  auto string_register = FlagRegister<string>::GetRegister();
+  auto string_register = FlagRegister<std::string>::GetRegister();
   string_register->GetUsage(&usage_set);
   auto int32_register = FlagRegister<int32>::GetRegister();
   int32_register->GetUsage(&usage_set);
@@ -119,10 +133,13 @@ void ShowUsage(bool long_usage) {
   auto double_register = FlagRegister<double>::GetRegister();
   double_register->GetUsage(&usage_set);
   if (!prog_src.empty()) {
-    cout << "PROGRAM FLAGS:\n\n";
+    std::cout << "PROGRAM FLAGS:" << std::endl << std::endl;
+    ;
     ShowUsageRestrict(usage_set, prog_src, true, false);
   }
   if (!long_usage) return;
-  if (!prog_src.empty()) cout << "LIBRARY FLAGS:\n\n";
+  if (!prog_src.empty()) {
+    std::cout << "LIBRARY FLAGS:" << std::endl << std::endl;
+  }
   ShowUsageRestrict(usage_set, prog_src, false, true);
 }

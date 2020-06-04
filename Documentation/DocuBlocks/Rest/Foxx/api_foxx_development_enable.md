@@ -10,9 +10,9 @@ While the service is running in development mode the service will be reloaded
 from the filesystem and its setup script (if any) will be re-executed every
 time the service handles a request.
 
-When running ArangoDB in a cluster with multiple coordinators note that changes
-to the filesystem on one coordinator will not be reflected across the other
-coordinators. This means you should treat your coordinators as inconsistent
+When running ArangoDB in a cluster with multiple Coordinators note that changes
+to the filesystem on one Coordinator will not be reflected across the other
+Coordinators. This means you should treat your Coordinators as inconsistent
 as long as any service is running in development mode.
 
 @RESTQUERYPARAMETERS
