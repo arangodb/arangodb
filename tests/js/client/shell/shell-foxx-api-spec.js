@@ -1059,7 +1059,7 @@ describe('Foxx service', () => {
   it('idiomatic tests reporter should return string', () => {
     const testPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'with-tests');
     FoxxManager.install(testPath, mount);
-    const resp = request.post('/_api/foxx/tests', {qs: { mount, reporter: "xunit", idiomatic: true }});
+    const resp = arango.POST('/_api/foxx/tests?reporter=xunit&idiomatic=true&mount=' + mount, '');
     expect(resp.status).to.equal(200);
     expect(resp.json).to.be.a("string");
   });
@@ -1067,7 +1067,7 @@ describe('Foxx service', () => {
   it('non-idiomatic tests reporter should not return string', () => {
     const testPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'with-tests');
     FoxxManager.install(testPath, mount);
-    const resp = request.post('/_api/foxx/tests', {qs: { mount, reporter: "xunit", idiomatic: false }});
+    const resp = arango.POST('/_api/foxx/tests?reporter=xunit&idiomatic=false&mount=' + mount, '');
     expect(resp.status).to.equal(200);
     expect(resp.json).to.be.an("array");
   });
