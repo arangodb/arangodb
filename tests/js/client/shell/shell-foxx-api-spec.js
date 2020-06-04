@@ -1060,16 +1060,14 @@ describe('Foxx service', () => {
     const testPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'with-tests');
     FoxxManager.install(testPath, mount);
     const resp = arango.POST('/_api/foxx/tests?reporter=xunit&idiomatic=true&mount=' + mount, '');
-    expect(resp.status).to.equal(200);
-    expect(resp.json).to.be.a("string");
+    expect(resp).to.be.a("string");
   });
 
   it('non-idiomatic tests reporter should not return string', () => {
     const testPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'with-tests');
     FoxxManager.install(testPath, mount);
     const resp = arango.POST('/_api/foxx/tests?reporter=xunit&idiomatic=false&mount=' + mount, '');
-    expect(resp.status).to.equal(200);
-    expect(resp.json).to.be.an("array");
+    expect(resp).to.be.an("array");
   });
 
   it('replace on invalid mount should not be installed', () => {
