@@ -1796,7 +1796,7 @@ function ahuacatlGeneratedSuite() {
       const resSplice = db._query(q, {}, activateSplice);
       const resNoSplice = db._query(q, {}, deactivateSplice);
       assertEqual(resSplice.getExtra().stats.writesExecuted, resNoSplice.getExtra().stats.writesExecuted);
-      assertEqual(resSplice.toArray(), resNoSplice.toArray());
+      assertEqual(resSplice.toArray().length, resNoSplice.toArray().length);
     },
 
     testNonSplicedViolatesPassthrough: function () {

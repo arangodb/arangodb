@@ -1241,9 +1241,9 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
     // The old subquery executor can in-fact return waiting on produce call.
     // if it needs to wait for the subquery.
     // So we need to allow the return state here as well.
-    TRI_ASSERT(_execState == ExecState::CHECKCALL ||
-               _execState == ExecState::SHADOWROWS || _execState == ExecState::UPSTREAM ||
-               _execState == ExecState::PRODUCE || _execState == ExecState::SKIP);
+    TRI_ASSERT(_execState == ExecState::CHECKCALL || _execState == ExecState::SHADOWROWS ||
+               _execState == ExecState::UPSTREAM || _execState == ExecState::PRODUCE ||
+               _execState == ExecState::SKIP || _execState == ExecState::FASTFORWARD);
   } else {
     // We can only have returned the following internal states
     TRI_ASSERT(_execState == ExecState::CHECKCALL || _execState == ExecState::SHADOWROWS ||
