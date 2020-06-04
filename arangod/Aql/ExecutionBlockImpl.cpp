@@ -1281,16 +1281,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         auto skippedSub = _skipped.getSkipOnSubqueryLevel(i + 1);
         if (skippedSub > 0) {
           auto& call = stack.modifyCallAtDepth(i);
-          if (!call.needSkipMore()) {
-            VPackBuilder hund;
-            stack.toVelocyPack(hund);
-            VPackBuilder katze;
-            _skipped.toVelocyPack(katze);
-            VPackBuilder maus;
-            call.toVelocyPack(maus);
-            LOG_DEVEL << "Stack: " << hund.toJson() << " Skipped: " << katze.toJson()
-                      << " at i: " << i << " call: " << maus.toJson();
-          }
           call.didSkip(skippedSub);
         }
       }
