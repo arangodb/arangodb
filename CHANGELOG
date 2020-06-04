@@ -1,7 +1,7 @@
 devel
 -----
 
-* Fix crash in execution of non-spliced subqueries if remainder of subquery is skipped 
+* Fix crash in execution of non-spliced subqueries if remainder of subquery is skipped.
 
 * Made modification subqueries non-passthrough. The passthrough logic only works
   if exactly as many output rows are produced as input rows are injected.
