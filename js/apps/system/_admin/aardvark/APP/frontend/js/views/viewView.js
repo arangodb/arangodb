@@ -96,7 +96,6 @@
       $('#propertiesEditor').height($('.centralRow').height() - 300 + 70 - $('.infoBox').innerHeight() - 10);
       this.initAce();
       this.getViewProperties();
-      arangoHelper.checkDatabasePermissions(this.setReadOnlyPermissions.bind(this));
       this.checkIfInProgress();
     },
 
@@ -245,6 +244,7 @@
         $('.jsoneditor-menu button').css('visibility', 'inline');
         $('.jsoneditor-modes').css('visibility', 'inline');
       }
+      arangoHelper.checkDatabasePermissions(this.setReadOnlyPermissions.bind(this));
     },
 
     deleteView: function () {
@@ -335,12 +335,6 @@
         $('#subNavigationBar .breadcrumb').html(
           'View: ' + arangoHelper.escapeHtml(title)
         );
-        window.setTimeout(function () {
-          $('#subNavigationBar .breadcrumb').html(
-            'View: ' + arangoHelper.escapeHtml(title)
-          );
-          self.checkIfInProgress();
-        }, 100);
       } else {
         window.setTimeout(function () {
           self.breadcrumb();
