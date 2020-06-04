@@ -1782,13 +1782,13 @@ function ahuacatlGeneratedSuite() {
       cleanup();
     },
 
-    testNonSplicedViolatesPassthrough: function () {
+    testNonSplicedExecutor: function () {
       const q = `
 	FOR fv0 IN ${cn}
 	  LET sq1 = (FOR fv2 IN ${cn2}
 	    UPSERT {value: fv0.value}
 	      INSERT {value: 24}
-	      UPDATE {value: 83, updated: true} IN ${cn2}
+	      UPDATE {updated: true} IN ${cn2}
 	    LIMIT 14,5
 	    RETURN {fv2: UNSET_RECURSIVE(fv2,"_rev", "_id", "_key")})
 	  LIMIT 3,2
@@ -1797,7 +1797,7 @@ function ahuacatlGeneratedSuite() {
       const resSplice = db._query(q, {}, activateSplice);
       const resNoSplice = db._query(q, {}, deactivateSplice);
       assertEqual(resSplice.getExtra().stats.writesExecuted, resNoSplice.getExtra().stats.writesExecuted);
-      assertEqual(resSplice.toArray().length, resNoSplice.toArray().length);
+      assertEqual(resSplice.toArray(), resNoSplice.toArray());
     }
   };
 };
