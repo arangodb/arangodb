@@ -68,8 +68,7 @@ MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& 
     : ApplicationFeature(server, "Maintenance"),
       _forceActivation(false),
       _maintenanceThreadsMax(2),
-      _resignLeadershipOnShutdown(false),
-      _currentCounter(0) {
+      _resignLeadershipOnShutdown(false) {
   // the number of threads will be adjusted later. it's just that we want to
   // initialize all members properly
 
@@ -354,16 +353,6 @@ void MaintenanceFeature::beginShutdown() {
 }  // MaintenanceFeature
 
 void MaintenanceFeature::stop() {
-  // There should be no new workers.
-  // Current workers could be stuck on the condition variable.
-  // Let's wake them up now.
-  {
-    // Only if we have flagged shutdown this operation is safe, all other threads potentially
-    // trying to get this mutex get into the shutdown case now, instead of getting into wait state.
-    TRI_ASSERT(_isShuttingDown);
-    std::unique_lock<std::mutex> guard(_currentCounterLock);
-    _currentCounterCondition.notify_all();
-  }
   for (auto const& itWorker : _activeWorkers) {
     CONDITION_LOCKER(cLock, _workerCompletion);
 
