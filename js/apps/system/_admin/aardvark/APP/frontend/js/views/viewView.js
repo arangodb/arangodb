@@ -82,6 +82,12 @@
     setReadOnlyPermissions: function () {
       this.readOnly = true;
       $('.bottomButtonBar button').attr('disabled', true);
+      // editor read only mode
+      this.editor.setMode('view');
+      $('.jsoneditor-modes').hide();
+
+      // update breadcrumb
+      this.breadcrumb(true);
     },
 
     render: function () {
@@ -94,7 +100,6 @@
       $('#propertiesEditor').height($('.centralRow').height() - 300 + 70 - $('.infoBox').innerHeight() - 10);
       this.initAce();
       this.getViewProperties();
-      arangoHelper.checkDatabasePermissions(this.setReadOnlyPermissions.bind(this));
       this.checkIfInProgress();
     },
 
@@ -243,6 +248,7 @@
         $('.jsoneditor-menu button').css('visibility', 'inline');
         $('.jsoneditor-modes').css('visibility', 'inline');
       }
+      arangoHelper.checkDatabasePermissions(this.setReadOnlyPermissions.bind(this));
     },
 
     deleteView: function () {
@@ -322,19 +328,17 @@
       });
     },
 
-    breadcrumb: function () {
+    breadcrumb: function (ro) {
       var self = this;
+      var title = self.name;
+      if (ro) {
+        title = title + ' (read-only)';
+      }
 
       if (window.App.naviView) {
         $('#subNavigationBar .breadcrumb').html(
-          'View: ' + arangoHelper.escapeHtml(self.name)
+          'View: ' + arangoHelper.escapeHtml(title)
         );
-        window.setTimeout(function () {
-          $('#subNavigationBar .breadcrumb').html(
-            'View: ' + arangoHelper.escapeHtml(self.name)
-          );
-          self.checkIfInProgress();
-        }, 100);
       } else {
         window.setTimeout(function () {
           self.breadcrumb();
