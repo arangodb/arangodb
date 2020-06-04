@@ -861,12 +861,14 @@ public:
   //////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<VPackBuilder> getPlan();
+  std::shared_ptr<VPackBuilder> getPlan(uint64_t& planIndex);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get current "Current" structure
   //////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<VPackBuilder> getCurrent();
+  std::shared_ptr<VPackBuilder> getCurrent(uint64_t& currentIndex);
 
   std::vector<std::string> getFailedServers() {
     MUTEX_LOCKER(guard, _failedServersMutex);

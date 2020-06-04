@@ -58,6 +58,7 @@ constexpr char const* OP = "op";
 constexpr char const* PHASE_ONE = "phaseOne";
 constexpr char const* PHASE_TWO = "phaseTwo";
 constexpr char const* PRIMARY = "primary";
+constexpr char const* PLAN_RAFT_INDEX = "planRaftIndex";
 constexpr char const* RESIGN_SHARD_LEADERSHIP = "ResignShardLeadership";
 constexpr char const* SCHEMA = "schema";
 constexpr char const* SELECTIVITY_ESTIMATE = "selectivityEstimate";
