@@ -1276,9 +1276,21 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
       // NOTE: We only apply the skipping on subquery level.
       TRI_ASSERT(_skipped.subqueryDepth() == stack.subqueryLevel() + 1);
       for (size_t i = 0; i < stack.subqueryLevel(); ++i) {
-        auto skippedSub = _skipped.getSkipOnSubqueryLevel(i);
+        // _skipped and stack are off by one, so we need to add 1 to access
+        // to _skipped.
+        auto skippedSub = _skipped.getSkipOnSubqueryLevel(i + 1);
         if (skippedSub > 0) {
           auto& call = stack.modifyCallAtDepth(i);
+          if (!call.needSkipMore()) {
+            VPackBuilder hund;
+            stack.toVelocyPack(hund);
+            VPackBuilder katze;
+            _skipped.toVelocyPack(katze);
+            VPackBuilder maus;
+            call.toVelocyPack(maus);
+            LOG_DEVEL << "Stack: " << hund.toJson() << " Skipped: " << katze.toJson()
+                      << " at i: " << i << " call: " << maus.toJson();
+          }
           call.didSkip(skippedSub);
         }
       }
