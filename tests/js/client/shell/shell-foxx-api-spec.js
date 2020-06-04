@@ -1056,6 +1056,21 @@ describe('Foxx service', () => {
     expect(resp).to.have.property('passes');
   });
 
+  it('idiomatic tests reporter should return string', () => {
+    const testPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'with-tests');
+    FoxxManager.install(testPath, mount);
+    const resp = arango.POST('/_api/foxx/tests?reporter=xunit&idiomatic=true&mount=' + mount, '');
+    expect(resp).to.be.instanceof(Buffer);
+    expect(resp.toString("utf-8").startsWith("<?xml")).to.equal(true);
+  });
+
+  it('non-idiomatic tests reporter should not return string', () => {
+    const testPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'with-tests');
+    FoxxManager.install(testPath, mount);
+    const resp = arango.POST('/_api/foxx/tests?reporter=xunit&idiomatic=false&mount=' + mount, '');
+    expect(resp).to.be.an("array");
+  });
+
   it('replace on invalid mount should not be installed', () => {
     const replaceResp = arango.PUT('/_api/foxx/service?mount=' + mount, {
         source: minimalWorkingZipPath
