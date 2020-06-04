@@ -4789,6 +4789,15 @@ std::shared_ptr<VPackBuilder> ClusterInfo::getPlan() {
   return _plan;
 }
 
+std::shared_ptr<VPackBuilder> ClusterInfo::getPlan(uint64_t& planIndex) {
+  if (!_planProt.isValid) {
+    loadPlan();
+  }
+  READ_LOCKER(readLocker, _planProt.lock);
+  planIndex = _planIndex;
+  return _plan;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief get current "Current" structure
 //////////////////////////////////////////////////////////////////////////////
@@ -4798,6 +4807,15 @@ std::shared_ptr<VPackBuilder> ClusterInfo::getCurrent() {
     loadCurrent();
   }
   READ_LOCKER(readLocker, _currentProt.lock);
+  return _current;
+}
+
+std::shared_ptr<VPackBuilder> ClusterInfo::getCurrent(uint64_t& currentIndex) {
+  if (!_currentProt.isValid) {
+    loadCurrent();
+  }
+  READ_LOCKER(readLocker, _currentProt.lock);
+  currentIndex = _currentIndex;
   return _current;
 }
 
