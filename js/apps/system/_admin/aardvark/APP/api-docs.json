@@ -4655,7 +4655,8 @@
                 }, 
                 "satelliteSyncWait": {
                     "description": "This *Enterprise Edition* parameter allows to configure how long a DBServer will have time\nto bring the satellite collections involved in the query into sync.\nThe default value is *60.0* (seconds). When the max time has been reached the query\nwill be stopped.\n\n", 
-                    "type": "boolean"
+                    "format": "double",
+                    "type": "number"
                 }, 
                 "skipInaccessibleCollections": {
                     "description": "AQL queries (especially graph traversals) will treat collection to which a user has no access rights as if these collections were empty. Instead of returning a forbidden access error, your queries will execute normally. This is intended to help with certain use-cases: A graph contains several collections and different users execute AQL queries on that graph. You can now naturally limit the accessible results by changing the access rights of users on collections. This feature is only available in the Enterprise Edition.\n\n", 
