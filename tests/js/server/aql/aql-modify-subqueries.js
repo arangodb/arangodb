@@ -1808,6 +1808,6 @@ function ahuacatlGeneratedSuite() {
 
 jsunity.run(ahuacatlModifySuite);
 jsunity.run(ahuacatlModifySkipSuite);
-jsunity.run(ahuacatlGenereratedSuite);
+jsunity.run(ahuacatlGeneratedSuite);
 
 return jsunity.done();
