@@ -60,9 +60,9 @@ void RegisterPlanWalkerT<T>::after(T* en) {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /*
-   * SubqueryEnd does indeed access a variable that is not valid. How can that be?
-   * The varsValid stack is already popped for SUBQUERY_END. But varsUsedHere includes
-   * the read of the return value from the subquery level.
+   * SubqueryEnd does indeed access a variable that is not valid. How can that
+   * be? The varsValid stack is already popped for SUBQUERY_END. But
+   * varsUsedHere includes the read of the return value from the subquery level.
    */
   if (en->getType() != ExecutionNode::SUBQUERY_END) {
     VarSet varsUsedHere;
@@ -70,7 +70,18 @@ void RegisterPlanWalkerT<T>::after(T* en) {
 
     VarSet const& varsValid = en->getVarsValid();
     for (auto&& var : varsUsedHere) {
-        TRI_ASSERT(varsValid.find(var) != varsValid.end());
+      if (varsValid.find(var) == varsValid.end()) {
+        /*
+         * There is a single IResearch tests that _requires_ this exception
+         * to be thrown.
+         */
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       en->getTypeString() + " " +
+                                           std::to_string(en->id().id()) + " " +
+                                           std::string("Variable ") + var->name +
+                                           " (" + std::to_string(var->id) +
+                                           ") is used before it was set.");
+      }
     }
   }
 #endif
@@ -87,7 +98,8 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     plan->addSubqueryNode(en);
   }
 
-  if (en->getType() == ExecutionNode::SUBQUERY_START || en->getType() == ExecutionNode::SUBQUERY_END) {
+  if (en->getType() == ExecutionNode::SUBQUERY_START ||
+      en->getType() == ExecutionNode::SUBQUERY_END) {
     // is SQS or SQE => mayReuseRegisterImmediately
     TRI_ASSERT(mayReuseRegisterImmediately);
   }
@@ -104,7 +116,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     for (Variable const* v : varsSetHere) {
       TRI_ASSERT(v != nullptr);
       RegisterId regId = plan->registerVariable(v, unusedRegisters.back());
-      regVarMappingStack.back().operator[](regId) = v; // overwrite if existing, create if not
+      regVarMappingStack.back().operator[](regId) = v;  // overwrite if existing, create if not
     }
   };
 
@@ -112,22 +124,20 @@ void RegisterPlanWalkerT<T>::after(T* en) {
                                        VarSet const& varsValid) {
     auto const& varsSetHere = en->getVariablesSetHere();
 
-    auto isSetHere = [&](Variable const *var) {
+    auto isSetHere = [&](Variable const* var) {
       return std::find(varsSetHere.begin(), varsSetHere.end(), var) !=
              varsSetHere.end();
     };
-    auto isUsedLater = [&](Variable const *var) {
+    auto isUsedLater = [&](Variable const* var) {
       return std::find(varsUsedLater.begin(), varsUsedLater.end(), var) !=
              varsUsedLater.end();
     };
 
-
-    // items are pushed for each SubqueryStartNode and popped for SubqueryEndNodes.
-    // as they come in pairs, the stack should never be empty.
+    // items are pushed for each SubqueryStartNode and popped for
+    // SubqueryEndNodes. as they come in pairs, the stack should never be empty.
     TRI_ASSERT(!regsToKeepStack.empty());
     regsToKeepStack.back().clear();
     for (auto const var : varsValid) {
-
       if (!isSetHere(var) && isUsedLater(var)) {
         auto reg = plan->variableToRegisterId(var);
         regsToKeepStack.back().emplace(reg);
@@ -135,7 +145,8 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     }
   };
 
-  auto const calculateRegistersToReuse = [](VarSet const& varsUsedLater, RegVarMap const& regVarMap) -> RegIdSet {
+  auto const calculateRegistersToReuse = [](VarSet const& varsUsedLater,
+                                            RegVarMap const& regVarMap) -> RegIdSet {
     RegIdSet regsToReuse;
     for (auto& [regId, variable] : regVarMap) {
       if (!varsUsedLater.contains(variable)) {
@@ -166,8 +177,10 @@ void RegisterPlanWalkerT<T>::after(T* en) {
 
       TRI_ASSERT(varsValid.size() > 1);
       TRI_ASSERT(varsUsedLater.size() > 1);
-      auto reuseOuter = calculateRegistersToReuse(varsUsedLater[stack_size - 2], regVarMappingStack[stack_size - 2]);
-      auto reuseInner = calculateRegistersToReuse(varsUsedLater[stack_size - 1], regVarMappingStack[stack_size - 1]);
+      auto reuseOuter = calculateRegistersToReuse(varsUsedLater[stack_size - 2],
+                                                  regVarMappingStack[stack_size - 2]);
+      auto reuseInner = calculateRegistersToReuse(varsUsedLater[stack_size - 1],
+                                                  regVarMappingStack[stack_size - 1]);
 
       auto topUnused = unusedRegisters.back();
       unusedRegisters.emplace_back(std::move(topUnused));
@@ -240,7 +253,6 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     planRegistersForCurrentNode(en);
   }
 
-
   updateRegsToKeep(en, en->getVarsUsedLater(), en->getVarsValid());
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -263,10 +275,7 @@ RegisterPlanT<T>::RegisterPlanT() : depth(0) {
 // Copy constructor used for a subquery:
 template <typename T>
 RegisterPlanT<T>::RegisterPlanT(RegisterPlan const& v, unsigned int newdepth)
-    : varInfo(v.varInfo),
-      nrRegs(v.nrRegs),
-      subQueryNodes(),
-      depth(newdepth + 1) {
+    : varInfo(v.varInfo), nrRegs(v.nrRegs), subQueryNodes(), depth(newdepth + 1) {
   if (depth + 1 < 8) {
     // do a minium initial allocation to avoid frequent reallocations
     nrRegs.reserve(8);
@@ -346,7 +355,8 @@ RegisterId RegisterPlanT<T>::addRegister() {
 }
 
 template <typename T>
-RegisterId RegisterPlanT<T>::registerVariable(Variable const* v, std::set<RegisterId>& unusedRegisters) {
+RegisterId RegisterPlanT<T>::registerVariable(Variable const* v,
+                                              std::set<RegisterId>& unusedRegisters) {
   RegisterId regId;
 
   if (unusedRegisters.empty()) {
