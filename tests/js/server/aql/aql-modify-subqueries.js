@@ -1749,7 +1749,7 @@ function ahuacatlModifySkipSuite () {
   };
 }
 
-function ahuacatlGenereratedSuite() {
+function ahuacatlGeneratedSuite() {
   var cn = "SubqueryChaosCollection0";
   var cn2 = "SubqueryChaosCollection1";
   const cleanup = () => {
