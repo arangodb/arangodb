@@ -1,6 +1,8 @@
 devel
 -----
 
+* Added missing mutex to ConnectionPool::cancelConnections().  
+
 * Fix crash in execution of non-spliced subqueries if remainder of subquery is skipped.
 
 * Made modification subqueries non-passthrough. The passthrough logic only works

@@ -81,71 +81,57 @@ void ConnectionPool::shutdownConnections() {
   }
 }
 
-void ConnectionPool::removeBrokenConnections(Bucket& buck) {
-  auto it = buck.list.begin();
-  while (it != buck.list.end()) {
-    // lets not keep around disconnected fuerte connection objects
-    if (it->fuerte->state() == fuerte::Connection::State::Failed) {
-      it = buck.list.erase(it);
-    } else {
-      it++;
-    }
-  }
-}
-
-/// remove unsued and broken connections
+/// remove unused and broken connections
 void ConnectionPool::pruneConnections() {
-  READ_LOCKER(guard, _lock);
-
   const auto ttl = std::chrono::milliseconds(_config.idleConnectionMilli * 2);
+
+  READ_LOCKER(guard, _lock);
   for (auto& pair : _connections) {
+    auto now = std::chrono::steady_clock::now();
+
     Bucket& buck = *(pair.second);
     std::lock_guard<std::mutex> lock(buck.mutex);
 
-    auto now = std::chrono::steady_clock::now();
+    // this loop removes broken connections, and closes the ones we don't
+    // need anymore
+    size_t aliveCount = 0;
 
-    removeBrokenConnections(buck);
-
-    // do not remove more connections than necessary
-    if (buck.list.size() <= _config.minOpenConnections) {
-      continue;
-    }
-
-    // first remove old connections
+    // make a single pass over the connections in this bucket
     auto it = buck.list.begin();
     while (it != buck.list.end()) {
-      std::shared_ptr<fuerte::Connection> const& c = it->fuerte;
+      bool remove = false;
 
-      if ((now - it->leased) > ttl) {
+      if (it->fuerte->state() == fuerte::Connection::State::Failed) {
+        // lets not keep around disconnected fuerte connection objects
+        remove = true;
+      } else {
+        // connection has not yet failed
+        if (it->fuerte->requestsLeft() > 0) {  // continuously update lastUsed
+          it->leased = now;
+          // connection will be kept
+        } else if (aliveCount >= _config.minOpenConnections && 
+                   (now - it->leased) > ttl) {
+          // connection hasn't been used for a while, remove it
+          // if we still have enough others
+          remove = true;
+        } else if (aliveCount >= _config.maxOpenConnections) {
+          // remove superfluous connections
+          remove = true;
+        } // else keep the connection
+      }
+
+      if (remove) {
         it = buck.list.erase(it);
-        // do not remove more connections than necessary
-        if (buck.list.size() <= _config.minOpenConnections) {
-          break;
+      } else {
+        ++aliveCount;
+        ++it;
+        
+        if (aliveCount == _config.maxOpenConnections && 
+            it != buck.list.end()) {
+          LOG_TOPIC("2d59a", DEBUG, Logger::COMMUNICATION)
+            << "pruning extra connections to '" << pair.first
+            << "' (" << buck.list.size() << ")";
         }
-        continue;
-      }
-
-      if (c->requestsLeft() > 0) {  // continuously update lastUsed
-        it->leased = now;
-      }
-      it++;
-    }
-
-    // do not remove connections if there are less
-    if (buck.list.size() <= _config.maxOpenConnections) {
-      continue; // done
-    }
-
-    LOG_TOPIC("2d59a", DEBUG, Logger::COMMUNICATION)
-        << "pruning extra connections to '" << pair.first
-        << "' (" << buck.list.size() << ")";
-
-    // remove any remaining connections, they will be closed eventually
-    it = buck.list.begin();
-    while (it != buck.list.end()) {
-      it = buck.list.erase(it);
-      if (buck.list.size() <= _config.maxOpenConnections) {
-        break;
       }
     }
   }
@@ -156,8 +142,10 @@ size_t ConnectionPool::cancelConnections(std::string const& endpoint) {
   WRITE_LOCKER(guard, _lock);
   auto const& it = _connections.find(endpoint);
   if (it != _connections.end()) {
-    size_t n = it->second->list.size();
-    for (auto& c : it->second->list) {
+    Bucket& buck = *(it->second);
+    std::lock_guard<std::mutex> lock(buck.mutex);
+    size_t n = buck.list.size();
+    for (auto& c : buck.list) {
       c.fuerte->cancel();
     }
     _connections.erase(it);
@@ -230,10 +218,9 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
     }
   }
   
+  // no free connection found, so we add one
   LOG_TOPIC("2d6ab", DEBUG, Logger::COMMUNICATION) << "creating connection to "
     << endpoint << " bucket size  " << bucket.list.size();
-    
-  // no free connection found, so we add one
 
   fuerte::ConnectionBuilder builder;
   builder.endpoint(endpoint); // picks the socket type
