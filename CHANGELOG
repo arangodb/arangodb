@@ -1,6 +1,8 @@
 devel
 -----
 
+* Optimized Web UI styling for ArangoSearch Views when in read-only mode.
+
 * Fixed a bug in the internal `recalculateCount()` method for adjusting
   collection counts. The bug could have led to count adjustments being
   applied with the wrong sign.
