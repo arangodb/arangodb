@@ -1,6 +1,8 @@
 v3.4.11 (XXXX-XX-XX)
 --------------------
 
+* Optimized Web UI styling for ArangoSearch Views when in read-only mode.
+
 * Fixed issue #11104 case with complex condition on second branch of OR
   operator.
 
