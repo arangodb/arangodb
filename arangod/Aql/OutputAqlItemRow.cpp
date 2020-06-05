@@ -128,6 +128,22 @@ void OutputAqlItemRow::moveValueInto(RegisterId registerId, ItemRowType const& s
   }
 }
 
+void OutputAqlItemRow::copyValueInto(RegisterId registerId, InputAqlItemRow const& sourceRow,
+                                     VPackSlice value) {
+  TRI_ASSERT(isOutputRegister(registerId));
+  // This is already implicitly asserted by isOutputRegister:
+  TRI_ASSERT(registerId < getNrRegisters());
+  TRI_ASSERT(_numValuesWritten < numRegistersToWrite());
+  TRI_ASSERT(block().getValueReference(_baseIndex, registerId).isNone());
+
+  block().emplaceValue(_baseIndex, registerId, value);
+  _numValuesWritten++;
+
+  if (allValuesWritten()) {
+    copyRow(sourceRow);
+  }
+}
+
 void OutputAqlItemRow::consumeShadowRow(RegisterId registerId, ShadowAqlItemRow& sourceRow,
                                         AqlValueGuard& guard) {
   TRI_ASSERT(sourceRow.isRelevant());
