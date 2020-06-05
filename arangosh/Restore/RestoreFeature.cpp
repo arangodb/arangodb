@@ -651,7 +651,9 @@ arangodb::Result restoreIndexes(arangodb::httpclient::SimpleHttpClient& httpClie
 
   arangodb::Result result{};
   VPackSlice const parameters = jobData.collection.get("parameters");
-  VPackSlice const indexes = jobData.collection.get("indexes");
+  VPackSlice const indexes = jobData.collection.get("indexes").isNone()
+                                 ? parameters.get("indexes")
+                                 : jobData.collection.get("indexes");
   // re-create indexes
   if (indexes.length() > 0) {
     // we actually have indexes
