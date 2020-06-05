@@ -104,14 +104,12 @@ bool SingleRowFetcher<passBlocksThrough>::fetchBlockIfNecessary(size_t atMost) {
     // new one, so we might reuse it immediately!
     _currentBlock = nullptr;
 
-    ExecutionState state;
-    SharedAqlItemBlockPtr newBlock;
-    std::tie(state, newBlock) = fetchBlock(atMost);
-    if (state == ExecutionState::WAITING) {
+    std::pair<ExecutionState, SharedAqlItemBlockPtr> res = fetchBlock(atMost);
+    if (res.first == ExecutionState::WAITING) {
       return false;
     }
 
-    _currentBlock = std::move(newBlock);
+    _currentBlock = std::move(res.second);
     _rowIndex = 0;
   }
   return true;
@@ -209,16 +207,14 @@ template <BlockPassthrough blockPassthrough>
 std::pair<ExecutionState, size_t> SingleRowFetcher<blockPassthrough>::preFetchNumberOfRows(size_t atMost) {
   if (_upstreamState != ExecutionState::DONE && !indexIsValid()) {
     // We have exhausted the current block and need to fetch a new one
-    ExecutionState state;
-    SharedAqlItemBlockPtr newBlock;
-    std::tie(state, newBlock) = fetchBlock(atMost);
+    std::pair<ExecutionState, SharedAqlItemBlockPtr> res = fetchBlock(atMost);
     // we de not need result as local members are modified
-    if (state == ExecutionState::WAITING) {
-      return {state, 0};
+    if (res.first == ExecutionState::WAITING) {
+      return {res.first, 0};
     }
     // The internal state should be in-line with the returned state.
-    TRI_ASSERT(_upstreamState == state);
-    _currentBlock = std::move(newBlock);
+    TRI_ASSERT(_upstreamState == res.first);
+    _currentBlock = std::move(res.second);
     _rowIndex = 0;
   }
 
