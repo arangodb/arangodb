@@ -58,11 +58,6 @@ Result ModificationExecutorHelpers::getKey(CollectionNameResolver const& resolve
   // not necessary to check if key exists. AqlValue::get() will return a
   // null-result in case key does not exist, so we are covering this case
   // already
-  //
-  // if (!value.hasKey(StaticStrings::KeyString)) {
-  //   return Result{TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING,
-  //                 std::string{"Expected _key to be present in document."}};
-  // }
 
   // Extract key from `value`, and make sure it is a string
   bool mustDestroyKey;
