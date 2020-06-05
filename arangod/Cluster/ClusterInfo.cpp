@@ -5318,11 +5318,11 @@ CollectionWatcher::~CollectionWatcher() {
 
 ClusterInfo::SyncerThread::SyncerThread(
   application_features::ApplicationServer& server, std::string const& section,
-  std::function<void()> f, AgencyCallbackRegistry* cregistry) :
+  std::function<void()> const& f, AgencyCallbackRegistry* cregistry) :
   arangodb::Thread(server, section + "Syncer"), _news(false), _server(server),
   _section(section), _f(f), _cr(cregistry) {}
 
-ClusterInfo::SyncerThread::~SyncerThread() {}
+ClusterInfo::SyncerThread::~SyncerThread() { shutdown(); }
 
 bool ClusterInfo::SyncerThread::notify(velocypack::Slice const& slice) {
   std::lock_guard<std::mutex> lck(_m);
@@ -5371,7 +5371,7 @@ void ClusterInfo::SyncerThread::run() {
     FATAL_ERROR_EXIT();
   }
 
-  while(!isStopping()) {
+  while (!isStopping()) {
     bool news = false;
     {
       std::unique_lock<std::mutex> lk(_m);
@@ -5391,8 +5391,17 @@ void ClusterInfo::SyncerThread::run() {
         std::unique_lock<std::mutex> lk(_m);
         _news = false;
       }
-      _f();
+      try {
+        _f();
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("752c4", ERR, arangodb::Logger::CLUSTER)
+          << "Caugt an error while loading Plan/Current: " << ex.what();
+      } catch (...) {
+        LOG_TOPIC("30968", ERR, arangodb::Logger::CLUSTER)
+          << "Caugt an error while loading Plan/Current";
+      }
     }
+    // next round...
   }
 
   _cr->unregisterCallback(_acb);
