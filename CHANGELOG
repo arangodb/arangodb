@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed `"Plan" is not an object in agency` error messages when restarting DBservers
+  that contained arangosearch views with links.
+
 * Fixed misordering of skipped number of rows report. Only triggered if you do a modification
   on a subquery nesting level 2 or more, e.g.:
   ```
@@ -16,7 +19,7 @@ devel
 
 * Fix crash in execution of non-spliced subqueries if remainder of subquery is skipped.
 
-* Added missing mutex to ConnectionPool::cancelConnections().  
+* Added missing mutex to ConnectionPool::cancelConnections().
 
 * Foxx API now respects "idiomatic" flag being explicitly set to false.
 
@@ -45,7 +48,7 @@ devel
   collections exist, arangodump/restore will issue warnings about the invalid
   collections, but will continue to work for the valid collections.
 
-* Improved network send request for more robustness. 
+* Improved network send request for more robustness.
 
 * Added multiple RocksDB configuration options to arangod:
   * `--rocksdb.cache-index-and-filter-blocks` to make the RocksDB block cache quota
