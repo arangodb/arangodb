@@ -1059,7 +1059,6 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
       "}");
   auto versionJson = arangodb::velocypack::Parser::fromJson(
       "{ \"version\": 0, \"tasks\": {} }");
-
   // add the UpgradeFeature, but make sure it is not prepared
   server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr, std::vector<std::type_index>{});
 
@@ -1080,6 +1079,12 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
   ASSERT_TRUE(irs::utf8_path(dbPathFeature.directory()).mkdir());
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
+
+  VPackBuilder bogus;
+  { VPackArrayBuilder guard(&bogus);
+    { VPackObjectBuilder guard2(&bogus);
+      bogus.add("a", VPackValue(12)); }}
+  server.server().getFeature<arangodb::ClusterFeature>().agencyCache().set(bogus.slice());
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
@@ -1154,6 +1159,13 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
   auto& engine = *static_cast<StorageEngineMock*>(
       &server.getFeature<arangodb::EngineSelectorFeature>().engine());
   engine.views.clear();
+
+  VPackBuilder bogus;
+  { VPackArrayBuilder guard(&bogus);
+    { VPackObjectBuilder guard2(&bogus);
+      bogus.add("a", VPackValue(12)); }}
+  server.server().getFeature<arangodb::ClusterFeature>().agencyCache().set(bogus.slice());
+
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());

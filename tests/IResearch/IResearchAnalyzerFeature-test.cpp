@@ -41,6 +41,7 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/files.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
@@ -1905,7 +1906,15 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
-  arangodb::consensus::Store agencyStore(server.server(), nullptr, "arango");
+
+  VPackBuilder bogus;
+  { VPackArrayBuilder guard(&bogus);
+    { VPackObjectBuilder guard2(&bogus);
+      bogus.add("a", VPackValue(12)); }}
+
+  arangodb::consensus::Store& agencyStore =
+    server.server().getFeature<arangodb::ClusterFeature>().agencyCache().store();
+  server.server().getFeature<arangodb::ClusterFeature>().agencyCache().set(bogus.slice());
 
   arangodb::network::ConnectionPool::Config poolConfig;
   poolConfig.clusterInfo = &server.getFeature<arangodb::ClusterFeature>().clusterInfo();
@@ -2020,6 +2029,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
       sysDatabase.start();  // get system database from DatabaseFeature
     }
 
+    newServer.getFeature<arangodb::ClusterFeature>().agencyCache().set(bogus.slice());
+
     // add analyzer
     {
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -2084,6 +2095,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
       sysDatabase.start();  // get system database from DatabaseFeature
     }
 
+    newServer.getFeature<arangodb::ClusterFeature>().agencyCache().set(bogus.slice());
     // add analyzer
     {
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -2093,7 +2105,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
                       .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer2",
                                "TestAnalyzer", VPackParser::fromJson("\"abc\"")->slice())
                       .ok());
-      ASSERT_NE(nullptr, feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer2", 
+      ASSERT_NE(nullptr, feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer2",
                                      arangodb::AnalyzersRevision::LATEST));
     }
 
@@ -2355,7 +2367,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
 
       EXPECT_EQUAL_SLICES(arangodb::iresearch::slice(expectedProperties),
                           analyzer->properties());
-
       EXPECT_TRUE((itr->second.features.is_subset_of(
           feature.get(analyzer->name(), arangodb::AnalyzersRevision::LATEST)->features())));
       expected.erase(itr);
