@@ -1,6 +1,8 @@
 devel
 -----
 
+* Remove a failover candidate if it is not present in plan.
+
 * Fixed a spuriously occuring shutdown deadlock between AgencyCallbackRegistry
   and AgencyCache.
 
