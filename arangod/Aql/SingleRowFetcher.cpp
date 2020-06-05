@@ -209,8 +209,8 @@ std::pair<ExecutionState, size_t> SingleRowFetcher<blockPassthrough>::preFetchNu
     // We have exhausted the current block and need to fetch a new one
    auto [state, newBlock] = fetchBlock(atMost);
     // we de not need result as local members are modified
-    if (res.first == ExecutionState::WAITING) {
-      return {res.first, 0};
+    if (state == ExecutionState::WAITING) {
+      return {state, 0};
     }
     // The internal state should be in-line with the returned state.
     TRI_ASSERT(_upstreamState == res.first);
