@@ -1,7 +1,7 @@
 devel
 -----
 
-* Taken collection dropping from fast track in maintenance
+* Taken collection dropping from fast track in maintenance.
 
 * Fixed a spuriously occuring shutdown deadlock between AgencyCallbackRegistry
   and AgencyCache.
