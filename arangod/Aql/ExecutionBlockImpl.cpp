@@ -173,18 +173,23 @@ ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() = default;
 
 template <class Executor>
 std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
-    SharedAqlItemBlockPtr& newBlock, AqlCall&& call) {
+    SharedAqlItemBlockPtr&& newBlock, AqlCall&& call) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (newBlock != nullptr) {
     // Assert that the block has enough registers. This must be guaranteed by
     // the register planning.
     TRI_ASSERT(newBlock->getNrRegs() == _registerInfos.numberOfOutputRegisters());
     // Check that all output registers are empty.
-    for (auto const& reg : _registerInfos.getOutputRegisters()) {
-      for (size_t row = 0; row < newBlock->size(); row++) {
-        if (!newBlock->isShadowRow(row)) {
-          AqlValue const& val = newBlock->getValueReference(row, reg);
-          TRI_ASSERT(val.isEmpty());
+    size_t const n = newBlock->size();
+    auto const& regs = _registerInfos.getOutputRegisters();
+    if (!regs.empty()) {
+      bool const hasShadowRows = newBlock->hasShadowRows();
+      for (size_t row = 0; row < n; row++) {
+        if (!hasShadowRows || !newBlock->isShadowRow(row)) {
+          for (auto const& reg : regs) {
+            AqlValue const& val = newBlock->getValueReference(row, reg);
+            TRI_ASSERT(val.isEmpty());
+          }
         }
       }
     }
@@ -199,7 +204,7 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
     }
   }();
 
-  return std::make_unique<OutputAqlItemRow>(newBlock, registerInfos().getOutputRegisters(),
+  return std::make_unique<OutputAqlItemRow>(std::move(newBlock), registerInfos().getOutputRegisters(),
                                             registerInfos().registersToKeep(),
                                             registerInfos().registersToClear(),
                                             call, copyRowBehaviour);
@@ -346,7 +351,7 @@ auto ExecutionBlockImpl<IdExecutor<ConstFetcher>>::injectConstantBlock<IdExecuto
   _hasUsedDataRangeBlock = false;
   _upstreamState = ExecutionState::HASMORE;
 
-  _rowFetcher.injectBlock(block);
+  _rowFetcher.injectBlock(std::move(block));
 
   resetExecutor();
 }
@@ -362,8 +367,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::
   TRI_ASSERT(_skipped.nothingSkipped());
   _skipped.reset();
   // We inject an empty copy of our skipped here,
-  // This is resettet, but will maintain the size
-  injectConstantBlock(block, _skipped);
+  // This is resetted, but will maintain the size
+  injectConstantBlock(std::move(block), _skipped);
 
   // end of default initializeCursor
   return ExecutionBlock::initializeCursor(input);
@@ -466,17 +471,17 @@ template <class Executor>
 auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call, DataRange const& inputRange)
     -> std::unique_ptr<OutputAqlItemRow> {
   if constexpr (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
-    SharedAqlItemBlockPtr newBlock{nullptr};
     // Passthrough variant, re-use the block stored in InputRange
     if (!_hasUsedDataRangeBlock) {
       // In the pass through variant we have the contract that we work on a
       // block all or nothing, so if we have used the block once, we cannot use it again
       // however we cannot remove the _lastRange as it may contain additional information.
-      newBlock = _lastRange.getBlock();
       _hasUsedDataRangeBlock = true;
+      SharedAqlItemBlockPtr newBlock = _lastRange.getBlock();
+      return createOutputRow(std::move(newBlock), std::move(call));
     }
 
-    return createOutputRow(newBlock, std::move(call));
+    return createOutputRow(SharedAqlItemBlockPtr{nullptr}, std::move(call));
   } else {
     if constexpr (isMultiDepExecutor<Executor>) {
       // MultiDepExecutor would require dependency handling.
@@ -484,16 +489,14 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call, DataRange
       if (!inputRange.hasShadowRow() && !inputRange.hasDataRow()) {
         // On empty input do not yet create output.
         // We are going to ask again later
-        SharedAqlItemBlockPtr newBlock{nullptr};
-        return createOutputRow(newBlock, std::move(call));
+        return createOutputRow(SharedAqlItemBlockPtr{nullptr}, std::move(call));
       }
     } else {
       if (!inputRange.hasShadowRow() && !inputRange.hasDataRow() &&
           inputRange.upstreamState() == ExecutorState::HASMORE) {
         // On empty input do not yet create output.
         // We are going to ask again later
-        SharedAqlItemBlockPtr newBlock{nullptr};
-        return createOutputRow(newBlock, std::move(call));
+        return createOutputRow(SharedAqlItemBlockPtr{nullptr}, std::move(call));
       }
     }
 
@@ -532,12 +535,11 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call, DataRange
 
     if (blockSize == 0) {
       // There is no data to be produced
-      SharedAqlItemBlockPtr newBlock{nullptr};
-      return createOutputRow(newBlock, std::move(call));
+      return createOutputRow(SharedAqlItemBlockPtr{nullptr}, std::move(call));
     }
     SharedAqlItemBlockPtr newBlock =
         _engine->itemBlockManager().requestBlock(blockSize, _registerInfos.numberOfOutputRegisters());
-    return createOutputRow(newBlock, std::move(call));
+    return createOutputRow(std::move(newBlock), std::move(call));
   }
 }
 

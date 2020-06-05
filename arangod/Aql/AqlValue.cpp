@@ -110,6 +110,15 @@ uint64_t AqlValue::hash(uint64_t seed) const {
   return 0;
 }
 
+/// @brief whether or not the value is a shadow row depth entry
+bool AqlValue::isShadowRowDepthValue() const noexcept {
+  /// this is a performance-optimized version of the check
+  /// isUInt() || isSmallInt()
+  /// VelocyPack UInts are in the range 0x28 - 0x2f, and
+  /// VelocyPack SmallInts are in the range 0x30 - 0x39
+  return _data.internal[0] >= 0x28 && _data.internal[0] <= 0x39 && ADB_LIKELY(type() == VPACK_INLINE);
+}
+
 /// @brief whether or not the value contains a none value
 bool AqlValue::isNone() const noexcept {
   switch (type()) {
@@ -1399,6 +1408,11 @@ AqlValue::AqlValue(uint8_t const* pointer) {
   TRI_ASSERT(!VPackSlice(_data.pointer).isExternal());
 }
 
+AqlValue::AqlValue(AqlValueHintNone const&) noexcept {
+  _data.internal[0] = 0x00;  // none in VPack
+  setType(AqlValueType::VPACK_INLINE);
+}
+
 AqlValue::AqlValue(AqlValueHintNull const&) noexcept {
   _data.internal[0] = 0x18;  // null in VPack
   setType(AqlValueType::VPACK_INLINE);
@@ -1467,9 +1481,10 @@ AqlValue::AqlValue(AqlValueHintInt const& v) noexcept {
 AqlValue::AqlValue(AqlValueHintUInt const& v) noexcept {
   uint64_t value = v.value;
   if (value <= 9) {
-    // a smallint
+    // a Smallint, 0x30 - 0x39
     _data.internal[0] = static_cast<uint8_t>(0x30U + value);
   } else {
+    // UInt, 0x28 - 0x2f
     int i = 1;
     uint8_t vSize = 0;
     do {
@@ -1520,6 +1535,7 @@ AqlValue::AqlValue(char const* value, size_t length) {
 
 AqlValue::AqlValue(std::string const& value)
     : AqlValue(value.c_str(), value.size()) {}
+
 AqlValue::AqlValue(AqlValueHintEmptyArray const&) noexcept {
   _data.internal[0] = 0x01;  // empty array in VPack
   setType(AqlValueType::VPACK_INLINE);

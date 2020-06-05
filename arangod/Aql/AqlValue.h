@@ -78,6 +78,10 @@ struct AqlValueHintDocumentNoCopy {
   uint8_t const* ptr;
 };
 
+struct AqlValueHintNone {
+  constexpr AqlValueHintNone() noexcept = default;
+};
+
 struct AqlValueHintNull {
   constexpr AqlValueHintNull() noexcept = default;
 };
@@ -172,6 +176,8 @@ struct AqlValue final {
 
   // construct from docvec, taking over its ownership
   explicit AqlValue(std::vector<arangodb::aql::SharedAqlItemBlockPtr>* docvec) noexcept;
+  
+  explicit AqlValue(AqlValueHintNone const&) noexcept;
 
   explicit AqlValue(AqlValueHintNull const&) noexcept;
 
@@ -246,8 +252,10 @@ struct AqlValue final {
   bool isDocvec() const noexcept;
 
   /// @brief hashes the value
-//  uint64_t hash(transaction::Methods*, uint64_t seed = 0xdeadbeef) const;
   uint64_t hash(uint64_t seed = 0xdeadbeef) const;
+
+  /// @brief whether or not the value is a shadow row depth entry
+  bool isShadowRowDepthValue() const noexcept;
 
   /// @brief whether or not the value contains a none value
   bool isNone() const noexcept;
