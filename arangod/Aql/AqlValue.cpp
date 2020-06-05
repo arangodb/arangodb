@@ -120,6 +120,15 @@ uint64_t AqlValue::hash(uint64_t seed) const {
   return 0;
 }
 
+/// @brief whether or not the value is a shadow row depth entry
+bool AqlValue::isShadowRowDepthValue() const noexcept {
+  /// this is a performance-optimized version of the check
+  /// isUInt() || isSmallInt()
+  /// VelocyPack UInts are in the range 0x28 - 0x2f, and
+  /// VelocyPack SmallInts are in the range 0x30 - 0x39
+  return _data.internal[0] >= 0x28 && _data.internal[0] <= 0x39 && ADB_LIKELY(type() == VPACK_INLINE);
+}
+
 /// @brief whether or not the value contains a none value
 bool AqlValue::isNone() const noexcept {
   switch (type()) {
@@ -1396,6 +1405,11 @@ AqlValue::AqlValue(uint8_t const* pointer) {
     setPointer<false>(pointer);
   }
   TRI_ASSERT(!VPackSlice(_data.pointer).isExternal());
+}
+
+AqlValue::AqlValue(AqlValueHintNone const&) noexcept {
+  _data.internal[0] = 0x00;  // none in VPack
+  setType(AqlValueType::VPACK_INLINE);
 }
 
 AqlValue::AqlValue(AqlValueHintNull const&) noexcept {

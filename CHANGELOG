@@ -5,6 +5,8 @@ devel
   blocking fast track maintenance threads when a shard cannot immediately
   be dropped because of some pending lock.
 
+* Updated ArangoDB Starter to 0.14.15.
+
 * Fixed a spuriously occuring shutdown deadlock between AgencyCallbackRegistry
   and AgencyCache.
 
