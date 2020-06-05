@@ -235,7 +235,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   auto executeFastForward(typename Fetcher::DataRange& inputRange, AqlCall& clientCall)
       -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCallType>;
 
-  [[nodiscard]] std::unique_ptr<OutputAqlItemRow> createOutputRow(SharedAqlItemBlockPtr& newBlock,
+  [[nodiscard]] std::unique_ptr<OutputAqlItemRow> createOutputRow(SharedAqlItemBlockPtr&& newBlock,
                                                                   AqlCall&& call);
 
   [[nodiscard]] QueryContext const& getQuery() const;
