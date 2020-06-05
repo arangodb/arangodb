@@ -109,7 +109,7 @@ bool SingleRowFetcher<passBlocksThrough>::fetchBlockIfNecessary(size_t atMost) {
       return false;
     }
 
-    _currentBlock = std::move(res.second);
+    _currentBlock = std::move(newBlock);
     _rowIndex = 0;
   }
   return true;
