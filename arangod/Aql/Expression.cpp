@@ -942,7 +942,7 @@ AqlValue Expression::executeSimpleExpressionFCallJS(AstNode const* node,
   {
     ISOLATE;
     TRI_ASSERT(isolate != nullptr);
-    v8::HandleScope scope(isolate);      
+    v8::HandleScope scope(isolate);           
     auto context = TRI_IGETC;
     
     VPackOptions const* options = trx->transactionContext()->getVPackOptions();
