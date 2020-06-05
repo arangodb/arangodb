@@ -30,6 +30,8 @@
 #include "Aql/InsertModifier.h"
 #include "Aql/UpdateReplaceModifier.h"
 
+#include <velocypack/Builder.h>
+
 namespace arangodb {
 namespace aql {
 
@@ -111,6 +113,8 @@ class UpsertModifier {
 
   OperationResult _updateResults;
   OperationResult _insertResults;
+
+  arangodb::velocypack::Builder _keyDocBuilder;
 
   size_t const _batchSize;
 };

@@ -129,39 +129,49 @@ typename UpsertModifier::OutputIterator UpsertModifier::OutputIterator::end() co
 }
 
 void UpsertModifier::reset() {
-  _insertAccumulator = std::make_unique<ModificationExecutorAccumulator>();
-  _insertResults = OperationResult{};
+  if (_insertAccumulator == nullptr) {
+    // create a new accumulator
+    _insertAccumulator = std::make_unique<ModificationExecutorAccumulator>();
+  } else {
+    // reuse an existing accumulator
+    _insertAccumulator->reset();
+  }
+  _insertResults.reset();
 
-  _updateAccumulator = std::make_unique<ModificationExecutorAccumulator>();
-  _updateResults = OperationResult{};
+  if (_updateAccumulator == nullptr) {
+    // create a new accumulator
+    _updateAccumulator = std::make_unique<ModificationExecutorAccumulator>();
+  } else {
+    // reuse an existing accumulator
+    _updateAccumulator->reset();
+  }
+  _updateResults.reset();
 
   _operations.clear();
 }
 
 UpsertModifier::OperationType UpsertModifier::updateReplaceCase(
     ModificationExecutorAccumulator& accu, AqlValue const& inDoc, AqlValue const& updateDoc) {
-  std::string key;
-  Result result;
-
   if (writeRequired(_infos, inDoc.slice(), StaticStrings::Empty)) {
     CollectionNameResolver const& collectionNameResolver{_infos._query.resolver()};
 
     // We are only interested in the key from `inDoc`
-    result = getKey(collectionNameResolver, inDoc, key);
+    std::string key;
+    Result result = getKey(collectionNameResolver, inDoc, key);
 
     if (!result.ok()) {
       if (!_infos._ignoreErrors) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
+        THROW_ARANGO_EXCEPTION(result);
       }
       return UpsertModifier::OperationType::SkipRow;
     }
 
     if (updateDoc.isObject()) {
       VPackSlice toUpdate = updateDoc.slice();
-      VPackBuilder keyDocBuilder;
+      _keyDocBuilder.clear();
 
-      buildKeyDocument(keyDocBuilder, key);
-      auto merger = VPackCollection::merge(toUpdate, keyDocBuilder.slice(), false, false);
+      buildKeyDocument(_keyDocBuilder, key);
+      auto merger = VPackCollection::merge(toUpdate, _keyDocBuilder.slice(), false, false);
       accu.add(merger.slice());
 
       return UpsertModifier::OperationType::UpdateReturnIfAvailable;

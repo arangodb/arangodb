@@ -35,8 +35,6 @@
 
 #include <string>
 
-#include "Logger/LogMacros.h"
-
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
@@ -57,10 +55,14 @@ Result ModificationExecutorHelpers::getKey(CollectionNameResolver const& resolve
                       value.slice().typeName());
   }
 
-  if (!value.hasKey(StaticStrings::KeyString)) {
-    return Result{TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING,
-                  std::string{"Expected _key to be present in document."}};
-  }
+  // not necessary to check if key exists. AqlValue::get() will return a
+  // null-result in case key does not exist, so we are covering this case
+  // already
+  //
+  // if (!value.hasKey(StaticStrings::KeyString)) {
+  //   return Result{TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING,
+  //                 std::string{"Expected _key to be present in document."}};
+  // }
 
   // Extract key from `value`, and make sure it is a string
   bool mustDestroyKey;
@@ -108,9 +110,7 @@ Result ModificationExecutorHelpers::getRevision(CollectionNameResolver const& re
 Result ModificationExecutorHelpers::getKeyAndRevision(CollectionNameResolver const& resolver,
                                                       AqlValue const& value,
                                                       std::string& key, std::string& rev) {
-  Result result;
-
-  result = getKey(resolver, value, key);
+  Result result = getKey(resolver, value, key);
   // The key can either be a string, or contained in an object
   // If it is passed in as a string, then there is no revision
   // and there is no point in extracting it further on.
@@ -199,7 +199,7 @@ OperationOptions ModificationExecutorHelpers::convertOptions(ModificationOptions
                                                              Variable const* outVariableOld) {
   OperationOptions out;
 
-  // commented out OperationOptions attributesare not provided
+  // commented out OperationOptions attributes are not provided
   // by the ModificationOptions or the information given by the
   // Variable pointer.
 

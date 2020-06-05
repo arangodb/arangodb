@@ -120,9 +120,15 @@ SimpleModifier<ModifierCompletion, Enable>::OutputIterator::end() const {
 
 template <typename ModifierCompletion, typename Enable>
 void SimpleModifier<ModifierCompletion, Enable>::reset() {
-  _accumulator = std::make_unique<ModificationExecutorAccumulator>();
+  if (_accumulator == nullptr) {
+    // create a new accumulator
+    _accumulator = std::make_unique<ModificationExecutorAccumulator>();
+  } else {
+    // reuse an existing accumulator
+    _accumulator->reset();
+  } 
   _operations.clear();
-  _results = OperationResult{};
+  _results.reset();
 }
 
 template <typename ModifierCompletion, typename Enable>
@@ -147,6 +153,7 @@ size_t SimpleModifier<ModifierCompletion, Enable>::nrOfOperations() const {
 
 template <typename ModifierCompletion, typename Enable>
 size_t SimpleModifier<ModifierCompletion, Enable>::nrOfDocuments() const {
+  TRI_ASSERT(_accumulator != nullptr);
   return _accumulator->nrOfDocuments();
 }
 
