@@ -87,7 +87,17 @@ uint64_t AqlValue::hash(uint64_t seed) const {
       // different representations in case it's an array/object/number
       return slice(t).normalizedHash(seed);
     }
-    case DOCVEC:
+    case DOCVEC: {
+      uint64_t const tmp = docvecSize() ^ 0xba5bedf00d;
+      uint64_t value = VELOCYPACK_HASH(&tmp, sizeof(tmp), seed);
+      for (auto const& it : *_data.docvec) {
+        size_t const n = it->size();
+        for (size_t i = 0; i < n; ++i) {
+          value = it->getValueReference(i, 0).hash(value);
+        }
+      }
+      return value;
+    }
     case RANGE: {
       uint64_t const n = _data.range->size();
       
@@ -1467,9 +1477,10 @@ AqlValue::AqlValue(AqlValueHintInt const& v) noexcept {
 AqlValue::AqlValue(AqlValueHintUInt const& v) noexcept {
   uint64_t value = v.value;
   if (value <= 9) {
-    // a smallint
+    // a Smallint, 0x30 - 0x39
     _data.internal[0] = static_cast<uint8_t>(0x30U + value);
   } else {
+    // UInt, 0x28 - 0x2f
     int i = 1;
     uint8_t vSize = 0;
     do {
@@ -1520,6 +1531,7 @@ AqlValue::AqlValue(char const* value, size_t length) {
 
 AqlValue::AqlValue(std::string const& value)
     : AqlValue(value.c_str(), value.size()) {}
+
 AqlValue::AqlValue(AqlValueHintEmptyArray const&) noexcept {
   _data.internal[0] = 0x01;  // empty array in VPack
   setType(AqlValueType::VPACK_INLINE);
@@ -1678,7 +1690,7 @@ AqlValueHintDouble::AqlValueHintDouble(double v) noexcept : value(v) {}
 AqlValueHintInt::AqlValueHintInt(int64_t v) noexcept : value(v) {}
 AqlValueHintInt::AqlValueHintInt(int v) noexcept : value(int64_t(v)) {}
 AqlValueHintUInt::AqlValueHintUInt(uint64_t v) noexcept : value(v) {}
-AqlValueGuard::AqlValueGuard(AqlValue& value, bool destroy)
+AqlValueGuard::AqlValueGuard(AqlValue& value, bool destroy) noexcept
     : _value(value), _destroy(destroy) {}
 AqlValueGuard::~AqlValueGuard() {
   if (_destroy) {
@@ -1686,9 +1698,9 @@ AqlValueGuard::~AqlValueGuard() {
   }
 }
 
-void AqlValueGuard::steal() { _destroy = false; }
+void AqlValueGuard::steal() noexcept { _destroy = false; }
 
-AqlValue& AqlValueGuard::value() { return _value; }
+AqlValue& AqlValueGuard::value() noexcept { return _value; }
 
 size_t std::hash<arangodb::aql::AqlValue>::operator()(arangodb::aql::AqlValue const& x) const
     noexcept {
