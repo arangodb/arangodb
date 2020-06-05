@@ -100,31 +100,49 @@ bool AgencyCallbackRegistry::unregisterCallback(std::shared_ptr<AgencyCallback> 
   bool found = false;
   uint64_t endpointToDelete = 0;
   {
+    // find the key of the callback while only holding a read lock
     READ_LOCKER(locker, _lock);
 
     for (auto const& it : _endpoints) {
       if (it.second.get() == cb.get()) {
         endpointToDelete = it.first;
-        if (cb->local()) {
-          auto& cache = _agency.server().getFeature<ClusterFeature>().agencyCache();
-          cache.unregisterCallback(cb->key, endpointToDelete);
-        } else {
-          _agency.unregisterCallback(cb->key, getEndpointUrl(endpointToDelete));
-        }
         found = true;
         break;
       }
     }
   }
+
+  // if we found the callback, we need to unregister it and remove it from
+  // the map. that requires a write lock
   if (found) {
-    WRITE_LOCKER(locker, _lock);
-    _endpoints.erase(endpointToDelete);
-    return true;
+    {
+      WRITE_LOCKER(locker, _lock);
+      if (_endpoints.erase(endpointToDelete) == 0) {
+        // callback not in map anymore. this can only happen if this method
+        // is called concurrently for the same callback and one thread has
+        // already deleted it from the map. in this case we act like as if
+        // the callback was not found, and leave the callback handling to
+        // the other thread.
+        found = false;
+      }
+    }
+    // we need to release the write lock for the map already, because we are
+    // now calling into other methods which may also acquire locks. and we
+    // don't want to be vulnerable to priority inversion.
+    
+    if (found) {
+      if (cb->local()) {
+        auto& cache = _agency.server().getFeature<ClusterFeature>().agencyCache();
+        cache.unregisterCallback(cb->key, endpointToDelete);
+      } else {
+        _agency.unregisterCallback(cb->key, getEndpointUrl(endpointToDelete));
+      }
+    }
   }
-  return false;
+  return found;
 }
 
-std::string AgencyCallbackRegistry::getEndpointUrl(uint64_t endpoint) {
+std::string AgencyCallbackRegistry::getEndpointUrl(uint64_t endpoint) const {
   std::stringstream url;
   url << Endpoint::uriForm(ServerState::instance()->getEndpoint())
       << _callbackBasePath << "/" << endpoint;
