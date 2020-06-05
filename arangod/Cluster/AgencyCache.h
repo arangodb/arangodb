@@ -46,6 +46,9 @@ public:
   /// @brief Clean up
   virtual ~AgencyCache();
 
+  // whether or not the thread is allowed to start during prepare
+  bool isSystem() const override;
+
   /// @brief 1. Long poll from agency's Raft log
   ///        2. Entertain local cache of agency's read db
   void run() override;

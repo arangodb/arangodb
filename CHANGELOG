@@ -4,8 +4,11 @@ devel
 * Fixed a spuriously occuring shutdown deadlock between AgencyCallbackRegistry
   and AgencyCache.
 
-* Fixed misordering of skipped number of rows report. Only triggered if you do a modification
-  on a subquery nesting level 2 or more, e.g.:
+* Fixed `"Plan" is not an object in agency` error messages when restarting 
+  DB-Servers that contained ArangoSearch Views with links.
+
+* Fixed misordering of skipped number of rows report. Only triggered if you do 
+  a modification on a subquery nesting level 2 or more, e.g.:
   ```
     LET s1 = (
       LET s2 = (
@@ -17,9 +20,10 @@ devel
   ```
   Here the c would be off, or a count on main query would be off.
 
-* Fix crash in execution of non-spliced subqueries if remainder of subquery is skipped.
+* Fix crash in execution of non-spliced subqueries if remainder of subquery is 
+  skipped.
 
-* Added missing mutex to ConnectionPool::cancelConnections().  
+* Added missing mutex to ConnectionPool::cancelConnections().
 
 * Foxx API now respects "idiomatic" flag being explicitly set to false.
 
@@ -48,7 +52,7 @@ devel
   collections exist, arangodump/restore will issue warnings about the invalid
   collections, but will continue to work for the valid collections.
 
-* Improved network send request for more robustness. 
+* Improved network send request for more robustness.
 
 * Added multiple RocksDB configuration options to arangod:
   * `--rocksdb.cache-index-and-filter-blocks` to make the RocksDB block cache quota
@@ -59,7 +63,8 @@ devel
   * `--rocksdb.pin-l0-filter-and-index-blocks-in-cache` make filter and index blocks
     be pinned and only evicted from cache when the table reader is freed
   * `--rocksdb.pin-top-level-index-and-filter` make the top-level index of partitioned
-    filter and index blocks pinned and only be evicted from cache when the table reader is freed
+    filter and index blocks pinned and only be evicted from cache when the table reader 
+    is freed
 
 * Don't move potentially expensive AQL function calls into loops in the
   `remove-unnecessary-calculations-rule`.
@@ -81,7 +86,8 @@ devel
   it merges calculations in the `remove-unnecessary-calculations` optimizer rule.
 
 * Fixed modification executors inside of a subquery, where the subquery decided to
-  fetch all rows from upstream first and the amount of rows is higher then the batch size.
+  fetch all rows from upstream first and the amount of rows is higher then the 
+  batch size.
 
 * Fixed reporting of skipped number of documents if we have a LIMIT x, 0
   right after the modification.
