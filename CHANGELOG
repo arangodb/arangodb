@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to 0.14.15.
+
 * Fixed a spuriously occuring shutdown deadlock between AgencyCallbackRegistry
   and AgencyCache.
 
