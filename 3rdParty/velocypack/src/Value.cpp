@@ -32,11 +32,20 @@ using namespace arangodb::velocypack;
   
 // creates a Value with the specified type Array or Object
 Value::Value(ValueType t, bool allowUnindexed)
-      : _valueType(t), _cType(CType::None), _unindexed(allowUnindexed) {
+      : _valueType(t), _cType(CType::None) {
   if (allowUnindexed &&
       (_valueType != ValueType::Array && _valueType != ValueType::Object)) {
     throw Exception(Exception::InvalidValueType, "Expecting compound type");
   }
+  // we use the boolean part to store the allowUnindexed value
+  _value.b = allowUnindexed;
+}
+
+bool Value::unindexed() const {
+  if (_valueType != ValueType::Array && _valueType != ValueType::Object) {
+    throw Exception(Exception::InvalidValueType, "Expecting compound type");
+  }
+  return _value.b;
 }
   
 ValuePair::ValuePair(StringRef const& value, ValueType type) noexcept
