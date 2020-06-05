@@ -463,26 +463,29 @@ arangodb::Result sendRestoreCollection(arangodb::httpclient::SimpleHttpClient& h
       "&ignoreDistributeShardsLikeErrors=" +
       std::string(options.ignoreDistributeShardsLikeErrors ? "true" : "false");
 
-  VPackSlice const parameters = slice.get("parameters");
+  VPackBuilder const parameters =
+      VPackCollection::remove(slice.get("parameters"), std::vector<std::string>{"indexes"});
 
   // build cluster options using command-line parameter values
   VPackBuilder newOptions;
   newOptions.openObject();
   bool isSatellite = false;
-  uint64_t replicationFactor = getReplicationFactor(options, parameters, isSatellite);
+  uint64_t replicationFactor =
+      getReplicationFactor(options, parameters.slice(), isSatellite);
   if (isSatellite) {
     newOptions.add(arangodb::StaticStrings::ReplicationFactor, VPackValue(arangodb::StaticStrings::Satellite));
   } else {
     newOptions.add(arangodb::StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
   }
-  newOptions.add(arangodb::StaticStrings::NumberOfShards, VPackValue(getNumberOfShards(options, parameters)));
+  newOptions.add(arangodb::StaticStrings::NumberOfShards,
+                 VPackValue(getNumberOfShards(options, parameters.slice())));
   newOptions.close();
 
   VPackBuilder b;
   b.openObject();
   b.add("indexes", slice.get("indexes"));
   b.add(VPackValue("parameters"));
-  VPackCollection::merge(b, parameters, newOptions.slice(), true, false);
+  VPackCollection::merge(b, parameters.slice(), newOptions.slice(), true, false);
   b.close();
 
   std::string const body = b.slice().toJson();
