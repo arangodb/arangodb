@@ -471,7 +471,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
     } else {
       auto tree = containers::RevisionTree::fromBuffer(
           std::string_view(value.data(), value.size() - sizeof(uint64_t)));
-      if (tree && tree->count() == _numberDocuments) {
+      if (tree) {
         uint64_t seq = rocksutils::uint64FromPersistent(
             value.data() + value.size() - sizeof(uint64_t));
         rcoll->setRevisionTree(std::move(tree), seq);
