@@ -4,6 +4,21 @@ devel
 * Fixed a spuriously occuring shutdown deadlock between AgencyCallbackRegistry
   and AgencyCache.
 
+* Fixed misordering of skipped number of rows report. Only triggered if you do a modification
+  on a subquery nesting level 2 or more, e.g.:
+  ```
+    LET s1 = (
+      LET s2 = (
+        INSERT {} INTO collection
+      )
+      COLLECT WITH COUNT INTO c
+      RETURN c
+    )
+  ```
+  Here the c would be off, or a count on main query would be off.
+
+* Fix crash in execution of non-spliced subqueries if remainder of subquery is skipped.
+
 * Added missing mutex to ConnectionPool::cancelConnections().  
 
 * Foxx API now respects "idiomatic" flag being explicitly set to false.

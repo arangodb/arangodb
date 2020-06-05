@@ -195,13 +195,13 @@ auto AqlCallStack::modifyCallAtDepth(size_t depth) -> AqlCall& {
   // depth 0 is back of vector
   TRI_ASSERT(_operations.size() > depth);
   // Take the depth-most from top of the vector.
-  auto& callList = *(_operations.rbegin() + depth);
+  auto& callList = _operations.at(_operations.size() - 1 - depth);
   return callList.modifyNextCall();
 }
 
 auto AqlCallStack::modifyCallListAtDepth(size_t depth) -> AqlCallList& {
   TRI_ASSERT(_operations.size() > depth);
-  return *(_operations.rbegin() + depth);
+  return _operations.at(_operations.size() - 1 - depth);
 }
 
 auto AqlCallStack::modifyTopCall() -> AqlCall& {
