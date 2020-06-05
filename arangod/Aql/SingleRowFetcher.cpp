@@ -213,8 +213,8 @@ std::pair<ExecutionState, size_t> SingleRowFetcher<blockPassthrough>::preFetchNu
       return {state, 0};
     }
     // The internal state should be in-line with the returned state.
-    TRI_ASSERT(_upstreamState == res.first);
-    _currentBlock = std::move(res.second);
+    TRI_ASSERT(_upstreamState == state);
+    _currentBlock = std::move(newBlock);
     _rowIndex = 0;
   }
 
