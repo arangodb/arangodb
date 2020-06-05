@@ -60,6 +60,7 @@ arangodb::Result diffPlanLocalForDatabases(VPackSlice const&,
  * @brief          Difference Plan and local for phase 1 of Maintenance run
  *
  * @param plan     Snapshot of agency's planned state
+ * @param planIndex Raft index of this plan version
  * @param local    Snapshot of local state
  * @param serverId This server's UUID
  * @param errors   Copy of last maintenance feature errors
@@ -68,7 +69,8 @@ arangodb::Result diffPlanLocalForDatabases(VPackSlice const&,
  *
  * @return         Result
  */
-arangodb::Result diffPlanLocal(VPackSlice const& plan, VPackSlice const& local,
+arangodb::Result diffPlanLocal(VPackSlice const& plan, uint64_t planIndex,
+                               VPackSlice const& local,
                                std::string const& serverId,
                                MaintenanceFeature::errors_t& errors,
                                MaintenanceFeature& feature,
@@ -78,6 +80,7 @@ arangodb::Result diffPlanLocal(VPackSlice const& plan, VPackSlice const& local,
  * @brief          Difference Plan and local for phase 1 of Maintenance run
  *
  * @param plan     Snapshot of agency's planned state
+ * @param planIndex Raft index of this plan version
  * @param current  Snapshot of agency's current state
  * @param local    Snapshot of local state
  * @param serverId This server's UUID
@@ -86,7 +89,7 @@ arangodb::Result diffPlanLocal(VPackSlice const& plan, VPackSlice const& local,
  *
  * @return         Result
  */
-arangodb::Result executePlan(VPackSlice const& plan, VPackSlice const& local,
+arangodb::Result executePlan(VPackSlice const& plan, uint64_t planIndex, VPackSlice const& local,
                              std::string const& serverId,
                              arangodb::MaintenanceFeature& feature, VPackBuilder& report);
 
@@ -108,6 +111,7 @@ arangodb::Result diffLocalCurrent(VPackSlice const& local, VPackSlice const& cur
  * @brief          Phase one: Execute plan, shard replication startups
  *
  * @param plan     Snapshot of agency's planned state
+ * @param planIndex Raft index of this version of the plan
  * @param current  Snapshot of agency's current state
  * @param local    Snapshot of local state
  * @param serverId This server's UUID
@@ -116,7 +120,7 @@ arangodb::Result diffLocalCurrent(VPackSlice const& local, VPackSlice const& cur
  *
  * @return         Result
  */
-arangodb::Result phaseOne(VPackSlice const& plan, VPackSlice const& local,
+arangodb::Result phaseOne(VPackSlice const& plan, uint64_t planIndex, VPackSlice const& local,
                           std::string const& serverId,
                           MaintenanceFeature& feature, VPackBuilder& report);
 

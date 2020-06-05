@@ -79,7 +79,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
   bool needToPersistRevisionTree(rocksdb::SequenceNumber maxCommitSeq) const;
   rocksdb::SequenceNumber lastSerializedRevisionTree(rocksdb::SequenceNumber maxCommitSeq);
   rocksdb::SequenceNumber serializeRevisionTree(std::string& output,
-                                                rocksdb::SequenceNumber commitSeq);
+                                                rocksdb::SequenceNumber commitSeq,
+                                                bool force);
 
   Result rebuildRevisionTree() override;
 

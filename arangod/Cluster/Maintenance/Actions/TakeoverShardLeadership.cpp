@@ -99,7 +99,7 @@ TakeoverShardLeadership::TakeoverShardLeadership(MaintenanceFeature& feature,
   }
   TRI_ASSERT(desc.has(LOCAL_LEADER));
 
-  TRI_ASSERT(desc.has(OLD_CURRENT_COUNTER));
+  TRI_ASSERT(desc.has(PLAN_RAFT_INDEX));
 
   if (!error.str().empty()) {
     LOG_TOPIC("2aa85", ERR, Logger::MAINTENANCE)
@@ -167,9 +167,10 @@ static void sendLeaderChangeRequests(network::ConnectionPool* pool,
   }
 }
 
-static void handleLeadership(LogicalCollection& collection, std::string const& localLeader,
-                             std::string const& plannedLeader, std::string const& databaseName,
-                             uint64_t oldCounter, MaintenanceFeature& feature) {
+static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
+                             std::string const& localLeader, std::string const& plannedLeader,
+                             std::string const& databaseName,
+                             MaintenanceFeature& feature) {
   auto& followers = collection.followers();
 
   if (plannedLeader.empty()) {   // Planned to lead
@@ -178,11 +179,12 @@ static void handleLeadership(LogicalCollection& collection, std::string const& l
       << "handling leadership of shard '" << databaseName << "/"
       << collection.name() << ": becoming leader";
 
-
-      // This will block the thread until we fetched a new current version
-      // in maintenance main thread.
-      feature.waitForLargerCurrentCounter(oldCounter);
       auto& ci = collection.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+      // This will block the thread until our ClusterInfo cache fetched a
+      // Current version in background thread which is at least as new as the
+      // Plan which brought us here. This is important for the assertion
+      // below where we check that we are in the list of failoverCandidates!
+      ci.waitForCurrent(planIndex);
       auto currentInfo =
           ci.getCollectionCurrent(databaseName, std::to_string(collection.planId()));
       if (currentInfo == nullptr) {
@@ -246,8 +248,8 @@ bool TakeoverShardLeadership::first() {
   std::string const& shard = _description.get(SHARD);
   std::string const& plannedLeader = _description.get(THE_LEADER);
   std::string const& localLeader = _description.get(LOCAL_LEADER);
-  std::string const& oldCounterString = _description.get(OLD_CURRENT_COUNTER);
-  uint64_t oldCounter = basics::StringUtils::uint64(oldCounterString);
+  std::string const& planRaftIndex = _description.get(PLAN_RAFT_INDEX);
+  uint64_t planIndex = basics::StringUtils::uint64(planRaftIndex);
 
   try {
     DatabaseGuard guard(database);
@@ -263,8 +265,8 @@ bool TakeoverShardLeadership::first() {
       // resignation case is not handled here, since then
       // ourselves does not appear in shards[shard] but only
       // "_" + ourselves.
-      handleLeadership(*coll, localLeader, plannedLeader, vocbase.name(),
-                       oldCounter, feature());
+      handleLeadership(planIndex, *coll, localLeader, plannedLeader, vocbase.name(),
+                       feature());
     } else {
       std::stringstream error;
       error << "TakeoverShardLeadership: failed to lookup local collection "

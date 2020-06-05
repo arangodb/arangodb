@@ -291,12 +291,13 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
     ++count;
   }
   
-  int64_t adjustment = snapNumberOfDocuments - count;
+  int64_t adjustment = count - snapNumberOfDocuments;
   if (adjustment != 0) {
+    auto seq = snapshot->GetSequenceNumber();
     LOG_TOPIC("ad6d3", WARN, Logger::REPLICATION)
     << "inconsistent collection count detected, "
     << "an offet of " << adjustment << " will be applied";
-    _meta.adjustNumberDocuments(0, static_cast<TRI_voc_rid_t>(0), adjustment);
+    _meta.adjustNumberDocuments(seq, static_cast<TRI_voc_rid_t>(0), adjustment);
   }
   
   return _meta.numberDocuments();
@@ -509,7 +510,7 @@ rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree(rocksd
 }
 
 rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
-    std::string& output, rocksdb::SequenceNumber commitSeq) {
+    std::string& output, rocksdb::SequenceNumber commitSeq, bool force) {
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
   if (_logicalCollection.useSyncByRevision()) {
     if (!_revisionTree) {
@@ -522,7 +523,7 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
     bool beenTooLong = 30 < std::chrono::duration_cast<std::chrono::seconds>(
                                 std::chrono::steady_clock::now() - _revisionTreeSerializedTime)
                                 .count();
-    if (neverDone || coinFlip || beenTooLong) {  // ...but only write the tree out sometimes
+    if (force || neverDone || coinFlip || beenTooLong) {  // ...but only write the tree out sometimes
       _revisionTree->serializeBinary(output, true);
       _revisionTreeSerializedSeq = commitSeq;
       _revisionTreeSerializedTime = std::chrono::steady_clock::now();

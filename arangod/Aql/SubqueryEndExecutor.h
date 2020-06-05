@@ -48,7 +48,7 @@ class SubqueryEndExecutorInfos {
                            RegisterId outReg, bool isModificationSubquery);
 
   SubqueryEndExecutorInfos() = delete;
-  SubqueryEndExecutorInfos(SubqueryEndExecutorInfos&&) noexcept = default;
+  SubqueryEndExecutorInfos(SubqueryEndExecutorInfos&&) = default;
   SubqueryEndExecutorInfos(SubqueryEndExecutorInfos const&) = delete;
   ~SubqueryEndExecutorInfos();
 

@@ -52,6 +52,7 @@
 #include "Random/RandomGenerator.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingInfo.h"
@@ -264,7 +265,13 @@ ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
     _planVersion(0),
     _currentVersion(0),
     _planLoader(std::thread::id()),
-    _uniqid() {
+    _uniqid(),
+    _lpTimer(_server.getFeature<MetricsFeature>().histogram(
+               "arangodb_load_plan_runtime", log_scale_t(std::exp(1.f), 0.f, 2500.f, 10),
+               "Plan loading runtimes [ms]")),
+    _lcTimer(_server.getFeature<MetricsFeature>().histogram(
+               "arangodb_load_current_runtime", log_scale_t(std::exp(1.f), 0.f, 2500.f, 10),
+               "Current loading runtimes [ms]")) {
   _uniqid._currentValue = 1ULL;
   _uniqid._upperValue = 0ULL;
   _uniqid._nextBatchStart = 1ULL;
@@ -552,15 +559,28 @@ void ClusterInfo::loadClusterId() {
 static std::string const prefixPlan = "Plan";
 
 void ClusterInfo::loadPlan() {
+
+  using namespace std::chrono;
+  using clock = std::chrono::high_resolution_clock;
+
   std::shared_ptr<VPackBuilder> acb;
   consensus::index_t idx = 0;
-  uint64_t newPlanVersion;
+  uint64_t newPlanVersion = 0;
 
-  newPlanVersion = 0;
-  DatabaseFeature& databaseFeature = _server.getFeature<DatabaseFeature>();
+  auto& clusterFeature = _server.getFeature<ClusterFeature>();
+  auto& databaseFeature = _server.getFeature<DatabaseFeature>();
 
-  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto start = clock::now();
+  auto& agencyCache = clusterFeature.agencyCache();
 
+  // We need to wait for any cluster operation, which needs access to the
+  // agency cache for it to become ready. The essentials in the cluster, namely
+  // ClusterInfo etc, need to start after first poll result from the agency.
+  // This is of great importance to not accidentally delete data facing an
+  // empty agency. There are also other measures that guard against such an
+  // outcome. But there is also no point continuing with a first agency poll.  
+  agencyCache.waitFor(1).get();
+  
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto tStart = TRI_microtime();
   auto longPlanWaitLogger = scopeGuard([&tStart]() {
@@ -1160,12 +1180,15 @@ void ClusterInfo::loadPlan() {
   {
     std::lock_guard w(_waitPlanLock);
     triggerWaiting(_waitPlan, idx);
-    auto heartbeatThread = _server.getFeature<ClusterFeature>().heartbeatThread();
+    auto heartbeatThread = clusterFeature.heartbeatThread();
     if (heartbeatThread) {
       // In the unittests, there is no heartbeatthread, and we do not need to notify
       heartbeatThread->notify();
     }
   }
+
+  _lpTimer.count(duration<float,std::milli>(clock::now()-start).count());
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1176,9 +1199,15 @@ void ClusterInfo::loadPlan() {
 static std::string const prefixCurrent = "Current";
 
 void ClusterInfo::loadCurrent() {
+
+  using namespace std::chrono;
+  using clock = std::chrono::high_resolution_clock;
+
   std::shared_ptr<VPackBuilder> acb;
   consensus::index_t idx = 0;
   uint64_t newCurrentVersion = 0;
+
+  auto start = clock::now();
 
   // We need to update ServersKnown to notice rebootId changes for all servers.
   // To keep things simple and separate, we call loadServers here instead of
@@ -1335,6 +1364,9 @@ void ClusterInfo::loadCurrent() {
       heartbeatThread->notify();
     }
   }
+
+  _lcTimer.count(duration<float,std::milli>(clock::now()-start).count());
+
 }
 
 /// @brief ask about a collection
@@ -4740,17 +4772,6 @@ ServerID ClusterInfo::getCoordinatorByShortID(ServerShortID shortId) {
 }
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief invalidate plan
-//////////////////////////////////////////////////////////////////////////////
-
-void ClusterInfo::invalidatePlan() {
-/*  {
-    WRITE_LOCKER(writeLocker, _planProt.lock);
-    _planProt.isValid = false;
-    }*/
-}
-
-//////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate current coordinators
 //////////////////////////////////////////////////////////////////////////////
 
@@ -4773,28 +4794,6 @@ void ClusterInfo::invalidateCurrentMappings() {
 }
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief invalidate current
-//////////////////////////////////////////////////////////////////////////////
-
-void ClusterInfo::invalidateCurrent() {
-/*  {
-    WRITE_LOCKER(writeLocker, _serversProt.lock);
-    _serversProt.isValid = false;
-  }
-  {
-    WRITE_LOCKER(writeLocker, _DBServersProt.lock);
-    _DBServersProt.isValid = false;
-  }
-  {
-    WRITE_LOCKER(writeLocker, _currentProt.lock);
-    _currentProt.isValid = false;
-  }
-  invalidateCurrentCoordinators();
-  invalidateCurrentMappings();*/
-}
-
-
-//////////////////////////////////////////////////////////////////////////////
 /// @brief get current "Plan" structure
 //////////////////////////////////////////////////////////////////////////////
 
@@ -4803,6 +4802,15 @@ std::shared_ptr<VPackBuilder> ClusterInfo::getPlan() {
     loadPlan();
   }
   READ_LOCKER(readLocker, _planProt.lock);
+  return _plan;
+}
+
+std::shared_ptr<VPackBuilder> ClusterInfo::getPlan(uint64_t& planIndex) {
+  if (!_planProt.isValid) {
+    loadPlan();
+  }
+  READ_LOCKER(readLocker, _planProt.lock);
+  planIndex = _planIndex;
   return _plan;
 }
 
@@ -4815,6 +4823,15 @@ std::shared_ptr<VPackBuilder> ClusterInfo::getCurrent() {
     loadCurrent();
   }
   READ_LOCKER(readLocker, _currentProt.lock);
+  return _current;
+}
+
+std::shared_ptr<VPackBuilder> ClusterInfo::getCurrent(uint64_t& currentIndex) {
+  if (!_currentProt.isValid) {
+    loadCurrent();
+  }
+  READ_LOCKER(readLocker, _currentProt.lock);
+  currentIndex = _currentIndex;
   return _current;
 }
 
@@ -5379,11 +5396,11 @@ CollectionWatcher::~CollectionWatcher() {
 
 ClusterInfo::SyncerThread::SyncerThread(
   application_features::ApplicationServer& server, std::string const& section,
-  std::function<void()> f, AgencyCallbackRegistry* cregistry) :
+  std::function<void()> const& f, AgencyCallbackRegistry* cregistry) :
   arangodb::Thread(server, section + "Syncer"), _news(false), _server(server),
   _section(section), _f(f), _cr(cregistry) {}
 
-ClusterInfo::SyncerThread::~SyncerThread() {}
+ClusterInfo::SyncerThread::~SyncerThread() { shutdown(); }
 
 bool ClusterInfo::SyncerThread::notify(velocypack::Slice const& slice) {
   std::lock_guard<std::mutex> lck(_m);
@@ -5395,7 +5412,7 @@ bool ClusterInfo::SyncerThread::notify(velocypack::Slice const& slice) {
 void ClusterInfo::SyncerThread::beginShutdown() {
 
   using namespace std::chrono_literals;
-  
+
   // set the shutdown state in parent class
   Thread::beginShutdown();
   {
@@ -5432,7 +5449,7 @@ void ClusterInfo::SyncerThread::run() {
     FATAL_ERROR_EXIT();
   }
 
-  while(!isStopping()) {
+  while (!isStopping()) {
     bool news = false;
     {
       std::unique_lock<std::mutex> lk(_m);
@@ -5452,8 +5469,17 @@ void ClusterInfo::SyncerThread::run() {
         std::unique_lock<std::mutex> lk(_m);
         _news = false;
       }
-      _f();
+      try {
+        _f();
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("752c4", ERR, arangodb::Logger::CLUSTER)
+          << "Caugt an error while loading Plan/Current: " << ex.what();
+      } catch (...) {
+        LOG_TOPIC("30968", ERR, arangodb::Logger::CLUSTER)
+          << "Caugt an error while loading Plan/Current";
+      }
     }
+    // next round...
   }
 
   _cr->unregisterCallback(_acb);

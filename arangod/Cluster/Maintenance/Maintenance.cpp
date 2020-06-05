@@ -184,7 +184,7 @@ static VPackBuilder compareIndexes(std::string const& dbname, std::string const&
   return builder;
 }
 
-void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
+void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice const& ldb,
                      std::string const& dbname, std::string const& colname,
                      std::string const& shname, std::string const& serverId,
                      std::string const& leaderId, std::unordered_set<std::string>& commonShrds,
@@ -291,7 +291,8 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
               {SHARD, shname},
               {THE_LEADER, shouldBeLeading ? std::string() : leaderId},
               {LOCAL_LEADER, std::string(localLeader)},
-              {OLD_CURRENT_COUNTER, std::to_string(feature.getCurrentCounter())}},
+              {OLD_CURRENT_COUNTER, "0"},   // legacy, no longer used
+              {PLAN_RAFT_INDEX, std::to_string(planIndex)}},
           LEADER_PRIORITY));
     }
 
@@ -455,7 +456,7 @@ struct NotEmpty {
 
 /// @brief calculate difference between plan and local for for databases
 arangodb::Result arangodb::maintenance::diffPlanLocal(
-    VPackSlice const& plan, VPackSlice const& local,
+    VPackSlice const& plan, uint64_t planIndex, VPackSlice const& local,
     std::string const& serverId, MaintenanceFeature::errors_t& errors,
     MaintenanceFeature& feature, std::vector<ActionDescription>& actions) {
   arangodb::Result result;
@@ -515,7 +516,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
               // "_serverId"
               if (dbs.isEqualString(serverId) || dbs.isEqualString(UNDERSCORE + serverId)) {
                 // at this point a shard is in plan, we have the db for it
-                handlePlanShard(cprops, ldb, dbname, pcol.key.copyString(),
+                handlePlanShard(planIndex, cprops, ldb, dbname, pcol.key.copyString(),
                                 shard.key.copyString(), serverId,
                                 shard.value[0].copyString(), commonShrds, indis,
                                 errors, feature, actions);
@@ -585,6 +586,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
 
 /// @brief handle plan for local databases
 arangodb::Result arangodb::maintenance::executePlan(VPackSlice const& plan,
+                                                    uint64_t planIndex,
                                                     VPackSlice const& local,
                                                     std::string const& serverId,
                                                     MaintenanceFeature& feature,
@@ -607,7 +609,7 @@ arangodb::Result arangodb::maintenance::executePlan(VPackSlice const& plan,
   {
     // TODO: Just putting an empty array does not make any sense here!
     VPackArrayBuilder a(&report);
-    diffPlanLocal(plan, local, serverId, errors, feature, actions);
+    diffPlanLocal(plan, planIndex, local, serverId, errors, feature, actions);
   }
 
   for (auto const& i : errors.databases) {
@@ -699,6 +701,7 @@ arangodb::Result arangodb::maintenance::diffLocalCurrent(VPackSlice const& local
 
 /// @brief Phase one: Compare plan and local and create descriptions
 arangodb::Result arangodb::maintenance::phaseOne(VPackSlice const& plan,
+                                                 uint64_t planIndex,
                                                  VPackSlice const& local,
                                                  std::string const& serverId,
                                                  MaintenanceFeature& feature,
@@ -713,7 +716,7 @@ arangodb::Result arangodb::maintenance::phaseOne(VPackSlice const& plan,
 
     // Execute database changes
     try {
-      result = executePlan(plan, local, serverId, feature, report);
+      result = executePlan(plan, planIndex, local, serverId, feature, report);
     } catch (std::exception const& e) {
       LOG_TOPIC("55938", ERR, Logger::MAINTENANCE)
           << "Error executing plan: " << e.what() << ". " << __FILE__ << ":" << __LINE__;
