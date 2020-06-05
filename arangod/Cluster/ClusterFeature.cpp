@@ -496,6 +496,13 @@ void ClusterFeature::prepare() {
         << "'. No role configured in agency (" << endpoints << ")";
     FATAL_ERROR_EXIT();
   }
+
+  // This must remain here for proper function after hot restores
+  if (role != ServerState::ROLE_AGENT && role != ServerState::ROLE_UNDEFINED) {
+    _agencyCache->start();
+    LOG_TOPIC("bae31", DEBUG, Logger::CLUSTER) << "Waiting for agency cache to become ready.";
+  }
+
 }
 
 // IMPORTANT: Please read the first comment block a couple of lines down, before
@@ -508,20 +515,20 @@ void ClusterFeature::start() {
     return;
   }
 
+  auto role = ServerState::instance()->getRole();
+
   // We need to wait for any cluster operation, which needs access to the
   // agency cache for it to become ready. The essentials in the cluster, namely
   // ClusterInfo etc, need to start after first poll result from the agency.
   // This is of great importance to not accidentally delete data facing an
   // empty agency. There are also other measures that guard against such a
-  // outcome. But there is also no point continuing with a first agency poll.
-  auto role = ServerState::instance()->getRole();
+  // outcome. But there is also no point continuing with a first agency poll.  
   if (role != ServerState::ROLE_AGENT && role != ServerState::ROLE_UNDEFINED) {
-    _agencyCache->start();
-    LOG_TOPIC("bae31", DEBUG, Logger::CLUSTER) << "Waiting for agency cache to become ready.";
     _agencyCache->waitFor(1).get();
-    LOG_TOPIC("13eab", DEBUG, Logger::CLUSTER) << "Agency cache is ready. Starting cluster cache syncers";
+    LOG_TOPIC("13eab", DEBUG, Logger::CLUSTER)
+      << "Agency cache is ready. Starting cluster cache syncers";
   }
-
+  
   // If we are a coordinator, we wait until at least one DBServer is there,
   // otherwise we can do very little, in particular, we cannot create
   // any collection:

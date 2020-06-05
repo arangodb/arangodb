@@ -998,7 +998,7 @@ size_t AqlValue::sizeofDocvec() const {
 }
 
 /// @brief construct a V8 value as input for the expression execution in V8
-v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate, transaction::Methods* trx) const {
+v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate, velocypack::Options const* options) const {
   auto context = TRI_IGETC;
   AqlValueType t = type();
   switch (t) {
@@ -1006,7 +1006,6 @@ v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate, transaction::Methods*
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE:
     case VPACK_MANAGED_BUFFER: {
-      VPackOptions* options = trx->transactionContext()->getVPackOptions();
       return TRI_VPackToV8(isolate, slice(t), options);
     }
     case DOCVEC: {
@@ -1018,7 +1017,7 @@ v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate, transaction::Methods*
       for (auto const& it : *_data.docvec) {
         size_t const n = it->size();
         for (size_t i = 0; i < n; ++i) {
-          result->Set(context, j++, it->getValueReference(i, 0).toV8(isolate, trx)).FromMaybe(false);
+          result->Set(context, j++, it->getValueReference(i, 0).toV8(isolate, options)).FromMaybe(false);
 
           if (V8PlatformFeature::isOutOfMemory(isolate)) {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -1104,11 +1103,6 @@ void AqlValue::toVelocyPack(VPackOptions const* options, arangodb::velocypack::B
   }
 }
 
-//void AqlValue::toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Builder& builder,
-//                            bool resolveExternals) const {
-//  toVelocyPack(trx->transactionContextPtr()->getVPackOptions(), builder, resolveExternals);
-//}
-
 /// @brief materializes a value into the builder
 AqlValue AqlValue::materialize(VPackOptions const* options, bool& hasCopied,
                                bool resolveExternals) const {
@@ -1135,11 +1129,6 @@ AqlValue AqlValue::materialize(VPackOptions const* options, bool& hasCopied,
   // we shouldn't get here
   hasCopied = false;
   return AqlValue();
-}
-
-AqlValue AqlValue::materialize(transaction::Methods* trx, bool& hasCopied,
-                               bool resolveExternals) const {
-  return materialize(trx->transactionContextPtr()->getVPackOptions(), hasCopied, resolveExternals);
 }
 
 /// @brief clone a value
