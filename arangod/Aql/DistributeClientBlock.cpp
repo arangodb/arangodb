@@ -33,13 +33,13 @@ using namespace arangodb::aql;
 
 DistributeClientBlock::QueueEntry::QueueEntry(SkipResult const& skipped,
                                               SharedAqlItemBlockPtr block,
-                                              std::vector<size_t> choosen)
-    : _skip(skipped), _block(block), _choosen(std::move(choosen)) {
-  TRI_ASSERT(_block != nullptr || choosen.empty());
+                                              std::vector<size_t> chosen)
+    : _skip(skipped), _block(std::move(block)), _chosen(std::move(chosen)) {
+  TRI_ASSERT(_block != nullptr || _chosen.empty());
 }
 
 auto DistributeClientBlock::QueueEntry::numRows() const -> size_t {
-  return _choosen.size();
+  return _chosen.size();
 }
 
 auto DistributeClientBlock::QueueEntry::skipResult() const -> SkipResult const& {
@@ -50,8 +50,8 @@ auto DistributeClientBlock::QueueEntry::block() const -> SharedAqlItemBlockPtr c
   return _block;
 }
 
-auto DistributeClientBlock::QueueEntry::choosen() const -> std::vector<size_t> const& {
-  return _choosen;
+auto DistributeClientBlock::QueueEntry::chosen() const -> std::vector<size_t> const& {
+  return _chosen;
 }
 
 DistributeClientBlock::DistributeClientBlock(ExecutionEngine& engine,
@@ -80,7 +80,7 @@ auto DistributeClientBlock::clear() -> void {
 auto DistributeClientBlock::addBlock(SkipResult const& skipResult, SharedAqlItemBlockPtr block,
                                      std::vector<size_t> usedIndexes) -> void {
   TRI_ASSERT(!usedIndexes.empty() || block == nullptr);
-  _queue.emplace_back(skipResult, block, std::move(usedIndexes));
+  _queue.emplace_back(skipResult, std::move(block), std::move(usedIndexes));
 }
 
 auto DistributeClientBlock::hasDataFor(AqlCall const& call) -> bool {
@@ -123,7 +123,7 @@ auto DistributeClientBlock::popJoinedBlock()
       auto const& entry = _queue.front();
       skipRes.merge(entry.skipResult(), false);
       TRI_ASSERT(entry.block() == nullptr);
-      TRI_ASSERT(entry.choosen().empty());
+      TRI_ASSERT(entry.chosen().empty());
       _queue.pop_front();
     }
     return {nullptr, skipRes};
@@ -145,9 +145,9 @@ auto DistributeClientBlock::popJoinedBlock()
     auto const& entry = _queue.front();
     skipRes.merge(entry.skipResult(), true);
     auto const& block = entry.block();
-    auto const& choosen = entry.choosen();
-    TRI_ASSERT(output.numRowsLeft() >= choosen.size());
-    for (auto const& i : choosen) {
+    auto const& chosen = entry.chosen();
+    TRI_ASSERT(output.numRowsLeft() >= chosen.size());
+    for (auto const& i : chosen) {
       // We do not really care what we copy. However
       // the API requires to know what it is.
       if (block->isShadowRow(i)) {
