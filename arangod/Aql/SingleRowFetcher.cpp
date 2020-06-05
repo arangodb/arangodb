@@ -207,7 +207,7 @@ template <BlockPassthrough blockPassthrough>
 std::pair<ExecutionState, size_t> SingleRowFetcher<blockPassthrough>::preFetchNumberOfRows(size_t atMost) {
   if (_upstreamState != ExecutionState::DONE && !indexIsValid()) {
     // We have exhausted the current block and need to fetch a new one
-    std::pair<ExecutionState, SharedAqlItemBlockPtr> res = fetchBlock(atMost);
+   auto [state, newBlock] = fetchBlock(atMost);
     // we de not need result as local members are modified
     if (res.first == ExecutionState::WAITING) {
       return {res.first, 0};
