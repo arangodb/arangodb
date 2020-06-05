@@ -49,7 +49,6 @@
 ///
 ///
 const db = require("@arangodb").db;
-const helper = require("@arangodb/aql-helper");
 const _ = require("lodash");
 
 // This is a seedable RandomNumberGenerator
@@ -148,21 +147,8 @@ function randomCollectWithCount(generator, indent, bias) {
 
 function randomUpsert(generator, indent, bias, variables, collectionName) {
   if (coinToss(generator, bias)) {
-    return (
-      indent +
-      " UPSERT {value: " +
-      pickRandomElement(generator, variables) +
-      ".value " +
-      " } " +
-      " INSERT {value: " +
-      randomInt(generator, 100) +
-      " } " +
-      " UPDATE {value: " +
-      randomInt(generator, 100) +
-      ", updated: true} IN " +
-      collectionName +
-      "\n"
-    );
+    const variable =  pickRandomElement(generator, variables)
+    return `${indent} UPSERT { value: ${variable}.value } INSERT { value: ${variable}.value } UPDATE {updated: true} IN ${collectionName}\n`;
   } else {
     return "";
   }
