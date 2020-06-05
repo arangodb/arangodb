@@ -70,7 +70,7 @@ class ConnectionPool final {
 
  public:
   explicit ConnectionPool(ConnectionPool::Config const& config);
-  virtual ~ConnectionPool();
+  TEST_VIRTUAL ~ConnectionPool();
 
   /// @brief request a connection for a specific endpoint
   /// note: it is the callers responsibility to ensure the endpoint
@@ -119,10 +119,8 @@ class ConnectionPool final {
   TEST_VIRTUAL ConnectionPtr createConnection(fuerte::ConnectionBuilder&);
   ConnectionPtr selectConnection(std::string const& endpoint, Bucket& bucket);
   
-  void removeBrokenConnections(Bucket&);
-
  private:
-  const Config _config;
+  Config const _config;
 
   mutable basics::ReadWriteSpinLock _lock;
   std::unordered_map<std::string, std::unique_ptr<Bucket>> _connections;

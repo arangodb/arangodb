@@ -545,7 +545,7 @@ std::shared_ptr<Action> MaintenanceFeature::createAction(std::shared_ptr<ActionD
   // if a new action constructed successfully
   if (!newAction->ok()) {
     LOG_TOPIC("ef5cb", ERR, Logger::MAINTENANCE)
-        << "createAction:  unknown action name given, \"" << name.c_str()
+        << "createAction:  unknown action name given, \"" << name
         << "\", or other construction failure.";
   }
 

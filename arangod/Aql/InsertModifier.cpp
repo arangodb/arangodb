@@ -23,20 +23,11 @@
 #include "InsertModifier.h"
 
 #include "Aql/AqlValue.h"
-#include "Aql/Collection.h"
+#include "Aql/ModificationExecutor.h"
 #include "Aql/ModificationExecutorHelpers.h"
-#include "Aql/OutputAqlItemRow.h"
 #include "Basics/Common.h"
-#include "ModificationExecutor.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
-
-#include <velocypack/Collection.h>
-#include <velocypack/velocypack-aliases.h>
-
-#include "Logger/LogMacros.h"
-
-class CollectionNameResolver;
 
 using namespace arangodb;
 using namespace arangodb::aql;
