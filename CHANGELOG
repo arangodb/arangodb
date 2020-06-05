@@ -3,8 +3,6 @@ devel
 
 * Fix arangosearch failure when restarting db servers
 
-* Removed external file loading in a used 3rd party library (Web UI).
-
 * Fixed misordering of skipped number of rows report. Only triggered if you do a modification
   on a subquery nesting level 2 or more, e.g.:
   ```
