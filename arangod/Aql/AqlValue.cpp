@@ -87,7 +87,17 @@ uint64_t AqlValue::hash(uint64_t seed) const {
       // different representations in case it's an array/object/number
       return slice(t).normalizedHash(seed);
     }
-    case DOCVEC:
+    case DOCVEC: {
+      uint64_t const tmp = docvecSize() ^ 0xba5bedf00d;
+      uint64_t value = VELOCYPACK_HASH(&tmp, sizeof(tmp), seed);
+      for (auto const& it : *_data.docvec) {
+        size_t const n = it->size();
+        for (size_t i = 0; i < n; ++i) {
+          value = it->getValueReference(i, 0).hash(value);
+        }
+      }
+      return value;
+    }
     case RANGE: {
       uint64_t const n = _data.range->size();
       
@@ -988,7 +998,7 @@ size_t AqlValue::sizeofDocvec() const {
 }
 
 /// @brief construct a V8 value as input for the expression execution in V8
-v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate, transaction::Methods* trx) const {
+v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate, velocypack::Options const* options) const {
   auto context = TRI_IGETC;
   AqlValueType t = type();
   switch (t) {
@@ -996,7 +1006,6 @@ v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate, transaction::Methods*
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE:
     case VPACK_MANAGED_BUFFER: {
-      VPackOptions* options = trx->transactionContext()->getVPackOptions();
       return TRI_VPackToV8(isolate, slice(t), options);
     }
     case DOCVEC: {
@@ -1008,7 +1017,7 @@ v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate, transaction::Methods*
       for (auto const& it : *_data.docvec) {
         size_t const n = it->size();
         for (size_t i = 0; i < n; ++i) {
-          result->Set(context, j++, it->getValueReference(i, 0).toV8(isolate, trx)).FromMaybe(false);
+          result->Set(context, j++, it->getValueReference(i, 0).toV8(isolate, options)).FromMaybe(false);
 
           if (V8PlatformFeature::isOutOfMemory(isolate)) {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -1094,11 +1103,6 @@ void AqlValue::toVelocyPack(VPackOptions const* options, arangodb::velocypack::B
   }
 }
 
-//void AqlValue::toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Builder& builder,
-//                            bool resolveExternals) const {
-//  toVelocyPack(trx->transactionContextPtr()->getVPackOptions(), builder, resolveExternals);
-//}
-
 /// @brief materializes a value into the builder
 AqlValue AqlValue::materialize(VPackOptions const* options, bool& hasCopied,
                                bool resolveExternals) const {
@@ -1125,11 +1129,6 @@ AqlValue AqlValue::materialize(VPackOptions const* options, bool& hasCopied,
   // we shouldn't get here
   hasCopied = false;
   return AqlValue();
-}
-
-AqlValue AqlValue::materialize(transaction::Methods* trx, bool& hasCopied,
-                               bool resolveExternals) const {
-  return materialize(trx->transactionContextPtr()->getVPackOptions(), hasCopied, resolveExternals);
 }
 
 /// @brief clone a value
@@ -1467,9 +1466,10 @@ AqlValue::AqlValue(AqlValueHintInt const& v) noexcept {
 AqlValue::AqlValue(AqlValueHintUInt const& v) noexcept {
   uint64_t value = v.value;
   if (value <= 9) {
-    // a smallint
+    // a Smallint, 0x30 - 0x39
     _data.internal[0] = static_cast<uint8_t>(0x30U + value);
   } else {
+    // UInt, 0x28 - 0x2f
     int i = 1;
     uint8_t vSize = 0;
     do {
@@ -1520,6 +1520,7 @@ AqlValue::AqlValue(char const* value, size_t length) {
 
 AqlValue::AqlValue(std::string const& value)
     : AqlValue(value.c_str(), value.size()) {}
+
 AqlValue::AqlValue(AqlValueHintEmptyArray const&) noexcept {
   _data.internal[0] = 0x01;  // empty array in VPack
   setType(AqlValueType::VPACK_INLINE);
@@ -1678,7 +1679,7 @@ AqlValueHintDouble::AqlValueHintDouble(double v) noexcept : value(v) {}
 AqlValueHintInt::AqlValueHintInt(int64_t v) noexcept : value(v) {}
 AqlValueHintInt::AqlValueHintInt(int v) noexcept : value(int64_t(v)) {}
 AqlValueHintUInt::AqlValueHintUInt(uint64_t v) noexcept : value(v) {}
-AqlValueGuard::AqlValueGuard(AqlValue& value, bool destroy)
+AqlValueGuard::AqlValueGuard(AqlValue& value, bool destroy) noexcept
     : _value(value), _destroy(destroy) {}
 AqlValueGuard::~AqlValueGuard() {
   if (_destroy) {
@@ -1686,9 +1687,9 @@ AqlValueGuard::~AqlValueGuard() {
   }
 }
 
-void AqlValueGuard::steal() { _destroy = false; }
+void AqlValueGuard::steal() noexcept { _destroy = false; }
 
-AqlValue& AqlValueGuard::value() { return _value; }
+AqlValue& AqlValueGuard::value() noexcept { return _value; }
 
 size_t std::hash<arangodb::aql::AqlValue>::operator()(arangodb::aql::AqlValue const& x) const
     noexcept {

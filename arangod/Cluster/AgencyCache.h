@@ -46,6 +46,9 @@ public:
   /// @brief Clean up
   virtual ~AgencyCache();
 
+  // whether or not the thread is allowed to start during prepare
+  bool isSystem() const override;
+
   /// @brief 1. Long poll from agency's Raft log
   ///        2. Entertain local cache of agency's read db
   void run() override;
@@ -74,8 +77,8 @@ public:
   /// @brief Register local callback
   bool registerCallback(std::string const& key, uint64_t const& id);
 
-  /// @brief Register local callback
-  bool unregisterCallback(std::string const& key, uint64_t const& id);
+  /// @brief Unregister local callback
+  void unregisterCallback(std::string const& key, uint64_t const& id);
 
   /// @brief Wait to be notified, when a Raft index has arrived.
   futures::Future<Result> waitFor(consensus::index_t index);
