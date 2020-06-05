@@ -104,8 +104,8 @@ bool SingleRowFetcher<passBlocksThrough>::fetchBlockIfNecessary(size_t atMost) {
     // new one, so we might reuse it immediately!
     _currentBlock = nullptr;
 
-    std::pair<ExecutionState, SharedAqlItemBlockPtr> res = fetchBlock(atMost);
-    if (res.first == ExecutionState::WAITING) {
+    auto [state, newBlock] = fetchBlock(atMost);
+    if (state == ExecutionState::WAITING) {
       return false;
     }
 
