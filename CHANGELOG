@@ -1,6 +1,8 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Take DropCollection off FAST_TRACK
+
 * Foxx API now respects "idiomatic" flag being explicitly set to false.
 
 * Fixed a bug in the internal `recalculateCount()` method for adjusting
