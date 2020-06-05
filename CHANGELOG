@@ -1,7 +1,8 @@
 devel
 -----
 
-* Fix arangosearch failure when restarting db servers
+* Fixed `"Plan" is not an object in agency` error messages when restarting DBservers
+  that contained arangosearch views with links.
 
 * Fixed misordering of skipped number of rows report. Only triggered if you do a modification
   on a subquery nesting level 2 or more, e.g.:
