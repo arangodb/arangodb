@@ -1009,16 +1009,37 @@ arangodb::Result processInputDirectory(
       }
     }
 
-    for (auto const& it : restrictColls) {
-      if (!it.second) {
-        LOG_TOPIC("5163e", WARN, Logger::RESTORE)
-          << "Requested collection '" << it.first << "' not found in dump";
+    if (!options.collections.empty()) {
+      bool found = false;
+      for (auto const& it : restrictColls) {
+        if (!it.second) {
+          LOG_TOPIC("5163e", WARN, Logger::RESTORE)
+            << "Requested collection '" << it.first << "' not found in dump";
+        } else {
+          found = true;
+        }
+      }
+      if (!found) {
+        LOG_TOPIC("3ef18", FATAL, arangodb::Logger::RESTORE)
+            << "None of the requested collections were found in the dump";
+        FATAL_ERROR_EXIT();
       }
     }
-    for (auto const& it : restrictViews) {
-      if (!it.second) {
-        LOG_TOPIC("810df", WARN, Logger::RESTORE)
-          << "Requested view '" << it.first << "' not found in dump";
+    
+    if (!options.views.empty()) {
+      bool found = false;
+      for (auto const& it : restrictViews) {
+        if (!it.second) {
+          LOG_TOPIC("810df", WARN, Logger::RESTORE)
+            << "Requested view '" << it.first << "' not found in dump";
+        } else {
+          found = true;
+        }
+      }
+      if (!found) {
+        LOG_TOPIC("14051", FATAL, arangodb::Logger::RESTORE)
+            << "None of the requested Views were found in the dump";
+        FATAL_ERROR_EXIT();
       }
     }
 

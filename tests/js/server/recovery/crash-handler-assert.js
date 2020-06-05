@@ -33,6 +33,11 @@ var jsunity = require('jsunity');
 
 function runSetup () {
   'use strict';
+  let platform = internal.platform;
+  if (platform !== 'linux') {
+    // crash handler only available on Linux
+    return;
+  }
   // produces an assertion failure in the server
   internal.debugTerminate('CRASH-HANDLER-TEST-ASSERT');
 }
@@ -47,6 +52,15 @@ function recoverySuite () {
 
   return {
     testLogOutput: function () {
+      // check if crash handler is turned off
+      let envVariable = internal.env["ARANGODB_OVERRIDE_CRASH_HANDLER"];
+      if (typeof envVariable === 'string') {
+        envVariable = envVariable.trim().toLowerCase();
+        if (!(envVariable === 'true' || envVariable === 'yes' || envVariable === 'on' || envVariable === 'y')) {
+          return;
+        }
+      }
+
       let fs = require("fs");
       let crashFile = internal.env["crash-log"];
 

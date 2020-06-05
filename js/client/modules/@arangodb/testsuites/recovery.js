@@ -75,6 +75,13 @@ function runArangodRecovery (params) {
       fs.remove(crashLog);
     } catch (err) {}
 
+
+    if (params.script.match(/crash-handler/)) {
+      // forcefully enable crash handler, even if turned off globally
+      // during testing
+      require('internal').env["ARANGODB_OVERRIDE_CRASH_HANDLER"] = "on";
+    }
+
     params.options.disableMonitor = true;
     params.testDir = fs.join(params.tempDir, `${params.count}`);
     pu.cleanupDBDirectoriesAppend(params.testDir);
