@@ -942,8 +942,10 @@ AqlValue Expression::executeSimpleExpressionFCallJS(AstNode const* node,
   {
     ISOLATE;
     TRI_ASSERT(isolate != nullptr);
-    v8::HandleScope scope(isolate);                                   \
+    v8::HandleScope scope(isolate);      
     auto context = TRI_IGETC;
+    
+    VPackOptions const* options = trx->transactionContext()->getVPackOptions();
 
     std::string jsName;
     size_t const n = member->numMembers();
@@ -962,7 +964,7 @@ AqlValue Expression::executeSimpleExpressionFCallJS(AstNode const* node,
         AqlValue a = executeSimpleExpression(arg, trx, localMustDestroy, false);
         AqlValueGuard guard(a, localMustDestroy);
 
-        params->Set(context, static_cast<uint32_t>(i), a.toV8(isolate, trx)).FromMaybe(false);
+        params->Set(context, static_cast<uint32_t>(i), a.toV8(isolate, options)).FromMaybe(false);
       }
 
       // function name
@@ -987,7 +989,7 @@ AqlValue Expression::executeSimpleExpressionFCallJS(AstNode const* node,
           AqlValue a = executeSimpleExpression(arg, trx, localMustDestroy, false);
           AqlValueGuard guard(a, localMustDestroy);
 
-          args[i] = a.toV8(isolate, trx);
+          args[i] = a.toV8(isolate, options);
         }
       }
     }
