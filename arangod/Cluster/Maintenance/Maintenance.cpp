@@ -844,12 +844,6 @@ static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
 
 bool equivalent(VPackSlice const& local, VPackSlice const& current) {
   return VPackNormalizedCompare::equals(local, current);
-  /*for (auto const& i : VPackObjectIterator(local)) {
-    if (!VPackNormalizedCompare::equals(i.value,
-  current.get(i.key.copyString()))) { return false;
-    }
-  }
-  return true;*/
 }
 
 static VPackBuilder assembleLocalDatabaseInfo(std::string const& database,
