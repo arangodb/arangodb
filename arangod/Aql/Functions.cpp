@@ -1127,6 +1127,7 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, transaction::Met
     v8::HandleScope scope(isolate);
     auto context = TRI_IGETC;
 
+    VPackOptions const* options = trx->transactionContext()->getVPackOptions();
     std::string jsName;
     int const n = static_cast<int>(invokeParams.size());
     int const callArgs = (func == nullptr ? 3 : n);
@@ -1143,7 +1144,7 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, transaction::Met
 
       for (int i = 0; i < n; ++i) {
         params
-            ->Set(context, static_cast<uint32_t>(i), invokeParams[i].toV8(isolate, trx))
+            ->Set(context, static_cast<uint32_t>(i), invokeParams[i].toV8(isolate, options))
             .FromMaybe(true);
       }
       args[1] = params;
@@ -1152,7 +1153,7 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, transaction::Met
       // a call to a built-in V8 function
       jsName = "AQL_" + func->name;
       for (int i = 0; i < n; ++i) {
-        args[i] = invokeParams[i].toV8(isolate, trx);
+        args[i] = invokeParams[i].toV8(isolate, options);
       }
     }
 
