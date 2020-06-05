@@ -572,7 +572,7 @@ void ClusterInfo::loadPlan() {
   // agency cache for it to become ready. The essentials in the cluster, namely
   // ClusterInfo etc, need to start after first poll result from the agency.
   // This is of great importance to not accidentally delete data facing an
-  // empty agency. There are also other measures that guard against such a
+  // empty agency. There are also other measures that guard against such an
   // outcome. But there is also no point continuing with a first agency poll.  
   agencyCache.waitFor(1).get();
   
