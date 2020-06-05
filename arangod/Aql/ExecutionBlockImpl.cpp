@@ -1278,7 +1278,14 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
       // NOTE: We only apply the skipping on subquery level.
       TRI_ASSERT(_skipped.subqueryDepth() == stack.subqueryLevel() + 1);
       for (size_t i = 0; i < stack.subqueryLevel(); ++i) {
-        auto skippedSub = _skipped.getSkipOnSubqueryLevel(i);
+        // _skipped and stack are off by one, so we need to add 1 to access
+        // to _skipped.
+        // They are off by one, because the callstack does not contain the
+        // call for the current subquery level (what we are working on right now)
+        // as this is replaced by whatever the executor would like to
+        // ask from upstream.
+        // The skip result is complete, and contains all subquery levels + current level.
+        auto skippedSub = _skipped.getSkipOnSubqueryLevel(i + 1);
         if (skippedSub > 0) {
           auto& call = stack.modifyCallAtDepth(i);
           call.didSkip(skippedSub);

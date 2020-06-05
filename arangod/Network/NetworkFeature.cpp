@@ -75,7 +75,8 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
       _maxOpenConnections(config.maxOpenConnections),
       _idleTtlMilli(config.idleConnectionMilli),
       _numIOThreads(config.numIOThreads),
-      _verifyHosts(config.verifyHosts) {
+      _verifyHosts(config.verifyHosts),
+      _prepared(false) {
   setOptional(true);
   startsAfter<ClusterFeature>();
   startsAfter<SchedulerFeature>();
@@ -100,7 +101,7 @@ void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
   options->addOption("--network.verify-hosts", "verify hosts when using TLS",
                      new BooleanParameter(&_verifyHosts))
                      .setIntroducedIn(30600);
-  
+
   std::unordered_set<std::string> protos = {
       "", "http", "http2", "h2", "vst"};
 
@@ -142,33 +143,37 @@ void NetworkFeature::prepare() {
   } else {
     config.protocol = fuerte::ProtocolType::Http;
   }
-  
+
   _pool = std::make_unique<network::ConnectionPool>(config);
   _poolPtr.store(_pool.get(), std::memory_order_relaxed);
-  
-  _gcfunc = [this, ci](bool canceled) {
-    if (canceled) {
-      return;
-    }
 
-    _pool->pruneConnections();
+  _gcfunc =
+    [this, ci](bool canceled) {
+      if (canceled) {
+        return;
+      }
 
-    if (ci != nullptr) {
-      auto failed = ci->getFailedServers();
-      for (ServerID const& srvId : failed) {
-        std::string endpoint = ci->getServerEndpoint(srvId);
-        size_t n = _pool->cancelConnections(endpoint);
-        LOG_TOPIC_IF("15d94", INFO, Logger::COMMUNICATION, n > 0)
+      _pool->pruneConnections();
+
+      if (ci != nullptr) {
+        auto failed = ci->getFailedServers();
+        for (ServerID const& srvId : failed) {
+          std::string endpoint = ci->getServerEndpoint(srvId);
+          size_t n = _pool->cancelConnections(endpoint);
+          LOG_TOPIC_IF("15d94", INFO, Logger::COMMUNICATION, n > 0)
             << "canceling " << n << " connection(s) to failed server '"
             << srvId << "' on endpoint '" << endpoint << "'";
+        }
       }
-    }
 
-    if (!server().isStopping() && !canceled) {
-      std::chrono::seconds off(12);
-      ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc, off);
-    }
-  };
+      if (!server().isStopping() && !canceled) {
+        std::chrono::seconds off(12);
+        ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc, off);
+      }
+    };
+
+  _prepared = true;
+
 }
 
 void NetworkFeature::start() {
@@ -178,6 +183,7 @@ void NetworkFeature::start() {
     ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc, off);
   }
 }
+
 
 void NetworkFeature::beginShutdown() {
   {
@@ -216,5 +222,9 @@ void NetworkFeature::setPoolTesting(arangodb::network::ConnectionPool* pool) {
   _poolPtr.store(pool, std::memory_order_release);
 }
 #endif
+
+bool NetworkFeature::prepared() const {
+  return _prepared;
+}
 
 }  // namespace arangodb
