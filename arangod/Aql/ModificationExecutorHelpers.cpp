@@ -55,9 +55,8 @@ Result ModificationExecutorHelpers::getKey(CollectionNameResolver const& resolve
                       value.slice().typeName());
   }
 
-  // not necessary to check if key exists. AqlValue::get() will return a
-  // null-result in case key does not exist, so we are covering this case
-  // already
+  // not necessary to check if key exists in object, since AqlValue::get() will return a
+  // null-result below in case key does not exist.
 
   // Extract key from `value`, and make sure it is a string
   bool mustDestroyKey;
