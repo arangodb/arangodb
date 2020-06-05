@@ -58,7 +58,11 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     plan->unusedRegsByNode.emplace(en->id(), unusedRegisters);
   }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+// TODO There are some difficulties with view nodes to resolve before this code
+//      can be activated. Also see the comment on assertNoVariablesMissing()
+//      below.
+//
+#if 0
   /*
    * SubqueryEnd does indeed access a variable that is not valid. How can that
    * be? The varsValid stack is already popped for SUBQUERY_END. But
@@ -71,6 +75,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     VarSet const& varsValid = en->getVarsValid();
     for (auto&& var : varsUsedHere) {
       if (varsValid.find(var) == varsValid.end()) {
+        TRI_ASSERT(false);
         /*
          * There is a single IResearch tests that _requires_ this exception
          * to be thrown.
@@ -141,6 +146,35 @@ void RegisterPlanWalkerT<T>::after(T* en) {
       if (!isSetHere(var) && isUsedLater(var)) {
         auto reg = plan->variableToRegisterId(var);
         regsToKeepStack.back().emplace(reg);
+      }
+    }
+  };
+
+  // TODO This is here to be backwards-compatible with some view tests relying
+  //      on this check. When that is cleaned up, uncomment the check further
+  //      above instead and remove this.
+  auto const assertNoVariablesMissing = [this](T* en) {
+    if (en->getType() != ExecutionNode::RETURN) {
+      auto const& varsUsedLater = en->getVarsUsedLaterStack().back();
+      VarSet varsUsedHere;
+      en->getVariablesUsedHere(varsUsedHere);
+      for (auto const& v : varsUsedHere) {
+        auto it = varsUsedLater.find(v);
+
+        if (it == varsUsedLater.end()) {
+          auto it2 = plan->varInfo.find(v->id);
+
+          if (it2 == plan->varInfo.end()) {
+            // report an error here to prevent crashing
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                           std::string("missing variable #") +
+                                               std::to_string(v->id) + " (" +
+                                               v->name + ") for node #" +
+                                               std::to_string(en->id().id()) +
+                                               " (" + en->getTypeString() +
+                                               ") while planning registers");
+          }
+        }
       }
     }
   };
@@ -230,6 +264,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
       // nodes that can create those may *not* reuse registers immediately.
       if (en->getType() != ExecutionNode::RETURN) {
         auto const& varsUsedLater = en->getVarsUsedLater();
+        assertNoVariablesMissing(en);
         auto regsToClear =
             calculateRegistersToReuse(varsUsedLater, regVarMappingStack.back());
         for (auto const& reg : regsToClear) {

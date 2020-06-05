@@ -1496,8 +1496,13 @@ TEST_F(IResearchQueryJoinTest, test) {
         "collection_1 FILTER x.seq == d.seq && x.name == d.name SORT "
         "customscorer(d, x.seq) DESC RETURN d";
 
+    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
+                                             {
+                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+                                             }));
+
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    ASSERT_TRUE(queryResult.result.is(TRI_ERROR_INTERNAL));
+    ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // FOR i IN 1..5
@@ -1708,8 +1713,13 @@ TEST_F(IResearchQueryJoinTest, test) {
         "    SORT customscorer(d, x.seq) "
         "RETURN x";
 
+    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
+                                             {
+                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+                                             }));
+
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    ASSERT_TRUE(queryResult.result.is(TRI_ERROR_INTERNAL));
+    ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // x.seq is used before being assigned
@@ -1721,7 +1731,12 @@ TEST_F(IResearchQueryJoinTest, test) {
         "    SORT customscorer(d, x.seq) "
         "RETURN x";
 
+    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
+                                             {
+                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+                                             }));
+
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    ASSERT_TRUE(queryResult.result.is(TRI_ERROR_INTERNAL));
+    ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 }
