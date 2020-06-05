@@ -103,7 +103,6 @@ class SimpleModifier {
   explicit SimpleModifier(ModificationExecutorInfos& infos)
       : _infos(infos),
         _completion(infos),
-        _accumulator(nullptr),
         _resultsIterator(VPackArrayIterator::Empty{}),
         _batchSize(ExecutionBlock::DefaultBatchSize) {}
   ~SimpleModifier() = default;
@@ -139,7 +138,7 @@ class SimpleModifier {
   ModifierCompletion _completion;
 
   std::vector<ModOp> _operations;
-  std::unique_ptr<ModificationExecutorAccumulator> _accumulator;
+  ModificationExecutorAccumulator _accumulator;
 
   OperationResult _results;
 

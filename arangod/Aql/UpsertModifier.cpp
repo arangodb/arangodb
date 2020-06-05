@@ -129,22 +129,9 @@ typename UpsertModifier::OutputIterator UpsertModifier::OutputIterator::end() co
 }
 
 void UpsertModifier::reset() {
-  if (_insertAccumulator == nullptr) {
-    // create a new accumulator
-    _insertAccumulator = std::make_unique<ModificationExecutorAccumulator>();
-  } else {
-    // reuse an existing accumulator
-    _insertAccumulator->reset();
-  }
+  _insertAccumulator.reset();
   _insertResults.reset();
-
-  if (_updateAccumulator == nullptr) {
-    // create a new accumulator
-    _updateAccumulator = std::make_unique<ModificationExecutorAccumulator>();
-  } else {
-    // reuse an existing accumulator
-    _updateAccumulator->reset();
-  }
+  _updateAccumulator.reset();
   _updateResults.reset();
 
   _operations.clear();
@@ -239,24 +226,24 @@ Result UpsertModifier::accumulate(InputAqlItemRow& row) {
   // update that document, otherwise, we insert
   if (inDoc.isObject()) {
     auto updateDoc = row.getValue(updateReg);
-    result = updateReplaceCase(*_updateAccumulator.get(), inDoc, updateDoc);
+    result = updateReplaceCase(_updateAccumulator, inDoc, updateDoc);
   } else {
     auto insertDoc = row.getValue(insertReg);
-    result = insertCase(*_insertAccumulator.get(), insertDoc);
+    result = insertCase(_insertAccumulator, insertDoc);
   }
   _operations.push_back({result, row});
   return Result{};
 }
 
 Result UpsertModifier::transact(transaction::Methods& trx) {
-  auto toInsert = _insertAccumulator->closeAndGetContents();
+  auto toInsert = _insertAccumulator.closeAndGetContents();
   if (toInsert.isArray() && toInsert.length() > 0) {
     _insertResults =
         trx.insert(_infos._aqlCollection->name(), toInsert, _infos._options);
     throwOperationResultException(_infos, _insertResults);
   }
 
-  auto toUpdate = _updateAccumulator->closeAndGetContents();
+  auto toUpdate = _updateAccumulator.closeAndGetContents();
   if (toUpdate.isArray() && toUpdate.length() > 0) {
     if (_infos._isReplace) {
       _updateResults = trx.replace(_infos._aqlCollection->name(),
@@ -272,7 +259,7 @@ Result UpsertModifier::transact(transaction::Methods& trx) {
 }
 
 size_t UpsertModifier::nrOfDocuments() const {
-  return _insertAccumulator->nrOfDocuments() + _updateAccumulator->nrOfDocuments();
+  return _insertAccumulator.nrOfDocuments() + _updateAccumulator.nrOfDocuments();
 }
 
 size_t UpsertModifier::nrOfOperations() const { return _operations.size(); }

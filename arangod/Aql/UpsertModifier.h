@@ -108,8 +108,8 @@ class UpsertModifier {
 
   ModificationExecutorInfos& _infos;
   std::vector<ModOp> _operations;
-  std::unique_ptr<ModificationExecutorAccumulator> _insertAccumulator;
-  std::unique_ptr<ModificationExecutorAccumulator> _updateAccumulator;
+  ModificationExecutorAccumulator _insertAccumulator;
+  ModificationExecutorAccumulator _updateAccumulator;
 
   OperationResult _updateResults;
   OperationResult _insertResults;

@@ -120,28 +120,21 @@ SimpleModifier<ModifierCompletion, Enable>::OutputIterator::end() const {
 
 template <typename ModifierCompletion, typename Enable>
 void SimpleModifier<ModifierCompletion, Enable>::reset() {
-  if (_accumulator == nullptr) {
-    // create a new accumulator
-    _accumulator = std::make_unique<ModificationExecutorAccumulator>();
-  } else {
-    // reuse an existing accumulator
-    _accumulator->reset();
-  } 
+  _accumulator.reset();
   _operations.clear();
   _results.reset();
 }
 
 template <typename ModifierCompletion, typename Enable>
 Result SimpleModifier<ModifierCompletion, Enable>::accumulate(InputAqlItemRow& row) {
-  TRI_ASSERT(_accumulator != nullptr);
-  auto result = _completion.accumulate(*_accumulator.get(), row);
+  auto result = _completion.accumulate(_accumulator, row);
   _operations.push_back({result, row});
   return Result{};
 }
 
 template <typename ModifierCompletion, typename Enable>
 void SimpleModifier<ModifierCompletion, Enable>::transact(transaction::Methods& trx) {
-  _results = _completion.transact(trx, _accumulator->closeAndGetContents());
+  _results = _completion.transact(trx, _accumulator.closeAndGetContents());
 
   throwOperationResultException(_infos, _results);
 }
@@ -153,8 +146,7 @@ size_t SimpleModifier<ModifierCompletion, Enable>::nrOfOperations() const {
 
 template <typename ModifierCompletion, typename Enable>
 size_t SimpleModifier<ModifierCompletion, Enable>::nrOfDocuments() const {
-  TRI_ASSERT(_accumulator != nullptr);
-  return _accumulator->nrOfDocuments();
+  return _accumulator.nrOfDocuments();
 }
 
 template <typename ModifierCompletion, typename Enable>
