@@ -5,12 +5,33 @@ devel
 
 * Removed external file loading in a used 3rd party library (Web UI).
 
+* Fixed misordering of skipped number of rows report. Only triggered if you do a modification
+  on a subquery nesting level 2 or more, e.g.:
+  ```
+    LET s1 = (
+      LET s2 = (
+        INSERT {} INTO collection
+      )
+      COLLECT WITH COUNT INTO c
+      RETURN c
+    )
+  ```
+  Here the c would be off, or a count on main query would be off.
+
 * Fix crash in execution of non-spliced subqueries if remainder of subquery is skipped.
+
+* Added missing mutex to ConnectionPool::cancelConnections().
+
+* Foxx API now respects "idiomatic" flag being explicitly set to false.
+
+* Fix crash in execution of non-spliced subqueries if remainder of subquery is
+  skipped.
 
 * Made modification subqueries non-passthrough. The passthrough logic only works
   if exactly as many output rows are produced as input rows are injected.
-  If the subquery with modification is skipped however this API is violated,
-  we perform the subquery with the modification, but then discard the input if skipped).
+  If the subquery with modification is skipped however this API is violated, we
+  perform the subquery with the modification, but then discard the input if
+  skipped).
 
 * Optimized Web UI styling for ArangoSearch Views when in read-only mode.
 
