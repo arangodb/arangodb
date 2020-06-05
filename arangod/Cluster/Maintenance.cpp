@@ -212,28 +212,36 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
       if (shards.isObject()) {
         VPackSlice planServers = shards.get(shname);
         if (planServers.isArray()) {
-          VPackSlice inSyncFollowers = lcol.get("servers");
-          if (inSyncFollowers.isArray()) {
-            // Now we have two server lists, we are looking for a server
-            // which does not occur in the plan, but is in the followers
-            // at an index > 0:
-            std::unordered_set<std::string> followersToDrop;
-            for (auto const& q : VPackArrayIterator(inSyncFollowers)) {
+          // Now we have two server lists, we are looking for a server
+          // which does not occur in the plan, but is in the followers
+          // at an index > 0:
+          std::unordered_set<std::string> followersToDrop;
+          if (VPackSlice inSyncFollowers = lcol.get(maintenance::SERVERS);
+              inSyncFollowers.isArray()) {
+            for (auto&& q : VPackArrayIterator(inSyncFollowers)) {
               followersToDrop.insert(q.copyString());
             }
-            for (auto const& p : VPackArrayIterator(planServers)) {
-              if (p.isString()) {
-                followersToDrop.erase(p.copyString());
-              }
+          }
+
+          if (VPackSlice failoverCandidates = lcol.get(StaticStrings::FailoverCandidates);
+              failoverCandidates.isArray()) {
+            for (auto&& q : VPackArrayIterator(failoverCandidates)) {
+              followersToDrop.insert(q.copyString());
             }
-            // Everything remaining in followersToDrop is something we
-            // need to act on
-            for (auto const& r : followersToDrop) {
-              if (!followersToDropString.empty()) {
-                followersToDropString.push_back(',');
-              }
-              followersToDropString += r;
+          }
+
+          for (auto&& p : VPackArrayIterator(planServers)) {
+            if (p.isString()) {
+              followersToDrop.erase(p.copyString());
             }
+          }
+          // Everything remaining in followersToDrop is something we
+          // need to act on
+          for (auto const& r : followersToDrop) {
+            if (!followersToDropString.empty()) {
+              followersToDropString.push_back(',');
+            }
+            followersToDropString += r;
           }
         }
       }
@@ -470,15 +478,15 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
 
   // Create or modify if local collections are affected
   pdbs = plan.get(COLLECTIONS);
-  for (auto const& pdb : VPackObjectIterator(pdbs)) {  // for each db in Plan
+  for (auto&& pdb : VPackObjectIterator(pdbs)) {  // for each db in Plan
     auto const& dbname = pdb.key.copyString();
     if (local.hasKey(dbname)) {  // have database in both
       auto const& ldb = local.get(dbname);
-      for (auto const& pcol : VPackObjectIterator(pdb.value)) {  // for each plan collection
+      for (auto&& pcol : VPackObjectIterator(pdb.value)) {  // for each plan collection
         auto const& cprops = pcol.value;
-        for (auto const& shard : VPackObjectIterator(cprops.get(SHARDS))) {  // for each shard in plan collection
+        for (auto&& shard : VPackObjectIterator(cprops.get(SHARDS))) {  // for each shard in plan collection
           if (shard.value.isArray()) {
-            for (auto const& dbs : VPackArrayIterator(shard.value)) {  // for each db server with that shard
+            for (auto&& dbs : VPackArrayIterator(shard.value)) {  // for each db server with that shard
               // We only care for shards, where we find us as "serverId" or
               // "_serverId"
               if (dbs.isEqualString(serverId) || dbs.isEqualString(UNDERSCORE + serverId)) {
