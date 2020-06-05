@@ -2097,6 +2097,8 @@ function debug(query, bindVars, options) {
   if (!input.options) {
     input.options = {};
   }
+  input.options.explainRegisters = true;
+
   let result = {
     engine: db._engine(),
     engineStats: db._engineStats(),
