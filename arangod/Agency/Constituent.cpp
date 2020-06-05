@@ -77,7 +77,7 @@ Constituent::Constituent(application_features::ApplicationServer& server)
       _queryRegistry(nullptr),
       _term(0),
       _gterm(_server.getFeature<arangodb::MetricsFeature>().gauge(
-               "agency_term", _term, "Agency's term")),
+               "arangodb_agency_term", _term, "Agency's term")),
       _leaderID(NO_LEADER),
       _lastHeartbeatSeen(0.0),
       _role(FOLLOWER),

@@ -200,12 +200,6 @@ class ConnectionBuilder {
     _conf._jwtToken = t;
     return *this;
   }
-  // Set the maximum size for chunks (VST only)
-  /*inline std::size_t maxChunkSize() const { return _conf._maxChunkSize; }
-  ConnectionBuilder& maxChunkSize(std::size_t c) {
-    _conf._maxChunkSize = c;
-    return *this;
-  }*/
 
   /// @brief tcp, ssl or unix
   inline SocketType socketType() const { return _conf._socketType; }
