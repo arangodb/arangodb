@@ -159,6 +159,12 @@ void AgencyCache::run() {
   _readDB.clear();
   double wait = 0.0;
 
+  auto increaseWaitTime = [&wait]() noexcept {
+    if (wait <= 1.9) {
+      wait += 0.1;
+    }
+  };
+
   // Long poll to agency
   auto sendTransaction =
     [&]() {
@@ -225,9 +231,7 @@ void AgencyCache::run() {
                     "Logs from poll start with index " << firstIndex <<
                     " we requested logs from and including " << curIndex << " retrying.";
                   LOG_TOPIC("457e9", TRACE, Logger::CLUSTER) << "Incoming: " << rs.toJson();
-                  if (wait <= 1.9) {
-                    wait += 0.1;
-                  }
+                  increaseWaitTime();
                 } else {
                   TRI_ASSERT(rs.hasKey("log"));
                   TRI_ASSERT(rs.get("log").isArray());
@@ -262,38 +266,34 @@ void AgencyCache::run() {
                 invokeAllCallbacks();
               }
             } else {
-              if (wait <= 1.9) {
-                wait += 0.1;
-              }
+              increaseWaitTime();
               LOG_TOPIC("9a93e", DEBUG, Logger::CLUSTER) <<
                 "Failed to get poll result from agency.";
             }
             return futures::makeFuture();
           })
         .thenError<VPackException>(
-          [&wait](VPackException const& e) {
+          [&increaseWaitTime](VPackException const& e) {
             LOG_TOPIC("9a9f3", ERR, Logger::CLUSTER) <<
               "Failed to parse poll result from agency: " << e.what();
-            if (wait <= 1.9) {
-              wait += 0.1;
-            }
+            increaseWaitTime();
           })
         .thenError<std::exception>(
-          [&wait](std::exception const& e) {
+          [&increaseWaitTime](std::exception const& e) {
             LOG_TOPIC("9a9e3", ERR, Logger::CLUSTER) <<
               "Failed to get poll result from agency: " << e.what();
-            if (wait <= 1.9) {
-              wait += 0.1;
-            }
+            increaseWaitTime();
           });
 
       ret.wait();
     } catch (std::exception const& e) {
       LOG_TOPIC("544da", ERR, Logger::CLUSTER) <<
         "Caught an error while polling agency updates: " << e.what();
+      increaseWaitTime();
     } catch (...) {
       LOG_TOPIC("78916", ERR, Logger::CLUSTER) <<
         "Caught an error while polling agency updates";
+      increaseWaitTime();
     }
     // off to next round we go...
   }
