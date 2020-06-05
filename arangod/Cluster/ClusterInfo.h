@@ -861,12 +861,14 @@ public:
   //////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<VPackBuilder> getPlan();
+  std::shared_ptr<VPackBuilder> getPlan(uint64_t& planIndex);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get current "Current" structure
   //////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<VPackBuilder> getCurrent();
+  std::shared_ptr<VPackBuilder> getCurrent(uint64_t& currentIndex);
 
   std::vector<std::string> getFailedServers() {
     MUTEX_LOCKER(guard, _failedServersMutex);
@@ -1170,7 +1172,9 @@ public:
   mutable std::mutex _waitCurrentLock;
   std::multimap<uint64_t, futures::Promise<arangodb::Result>> _waitCurrent;
 
-
+  Histogram<log_scale_t<float>>& _lpTimer;
+  Histogram<log_scale_t<float>>& _lcTimer;
+    
 };
 }  // end namespace arangodb
 

@@ -56,12 +56,12 @@ struct enumerate_iterator {
 
   explicit enumerate_iterator(T iter, C c = C()) : _iter(iter), _c(c) {}
   enumerate_iterator(enumerate_iterator const&) = default;
-  enumerate_iterator(enumerate_iterator&&) noexcept = default;
+  enumerate_iterator(enumerate_iterator&&) = default;
 
   enumerate_iterator& operator=(enumerate_iterator const&) = default;
-  enumerate_iterator& operator=(enumerate_iterator&&) noexcept = default;
+  enumerate_iterator& operator=(enumerate_iterator&&) = default;
 
-  ~enumerate_iterator() noexcept = default;
+  ~enumerate_iterator() = default;
 
   friend void swap<>(enumerate_iterator<T, C>& a, enumerate_iterator<T, C>& b);
 
