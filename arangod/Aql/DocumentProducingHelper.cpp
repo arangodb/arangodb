@@ -101,7 +101,7 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
     RegisterId registerId = context.getOutputRegister();
 
     TRI_ASSERT(!output.isFull());
-    output.copyValueInto(registerId, input, objectBuilder.slice());
+    output.moveValueInto<InputAqlItemRow, VPackSlice const>(registerId, input, objectBuilder.slice());
     TRI_ASSERT(output.produced());
     output.advanceRow();
 
@@ -112,7 +112,7 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
 template <bool checkUniqueness, bool skip>
 IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVariant::DocumentCopy,
                                                  DocumentProducingFunctionContext& context) {
-  return [&context](LocalDocumentId const& token, VPackSlice slice) {
+  return [&context](LocalDocumentId const& token, VPackSlice const slice) {
     if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
@@ -138,7 +138,7 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
     RegisterId registerId = context.getOutputRegister();
 
     TRI_ASSERT(!output.isFull());
-    output.copyValueInto(registerId, input, slice);
+    output.moveValueInto(registerId, input, slice);
     TRI_ASSERT(output.produced());
     output.advanceRow();
 
@@ -424,7 +424,7 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
       OutputAqlItemRow& output = context.getOutputRow();
       RegisterId registerId = context.getOutputRegister();
       TRI_ASSERT(!output.isFull());
-      output.copyValueInto(registerId, input, objectBuilder.slice());
+      output.moveValueInto<InputAqlItemRow, VPackSlice const>(registerId, input, objectBuilder.slice());
       TRI_ASSERT(output.produced());
       output.advanceRow();
     }

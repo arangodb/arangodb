@@ -76,13 +76,9 @@ class OutputAqlItemRow {
   // Note that there is no real move happening here, just a trivial copy of
   // the passed AqlValue. However, that means the output block will take
   // responsibility of possibly referenced external memory.
-  template <class ItemRowType>
+  template <class ItemRowType, class ValueType>
   void moveValueInto(RegisterId registerId, ItemRowType const& sourceRow,
-                     AqlValueGuard& guard);
-  
-  // Copies the given VPackSlice, so that the data is owned by the block.
-  void copyValueInto(RegisterId registerId, InputAqlItemRow const& sourceRow,
-                     arangodb::velocypack::Slice value);
+                     ValueType& value);
 
   // Consume the given shadow row and transform it into a InputAqlItemRow
   // for the next consumer of this block.
@@ -281,8 +277,8 @@ class OutputAqlItemRow {
 
   /// @brief move the value into the given output registers and count the value
   /// as written in _numValuesWritten.
-  template <class ItemRowType>
-  void moveValueWithoutRowCopy(RegisterId registerId, AqlValueGuard& guard);
+  template <class ItemRowType, class ValueType>
+  void moveValueWithoutRowCopy(RegisterId registerId, ValueType& value);
 
   template <class ItemRowType>
   void memorizeRow(ItemRowType const& sourceRow);

@@ -103,42 +103,31 @@ void OutputAqlItemRow::cloneValueInto(RegisterId registerId, ItemRowType const& 
   moveValueInto(registerId, sourceRow, guard);
 }
 
-template <class ItemRowType>
-void OutputAqlItemRow::moveValueWithoutRowCopy(RegisterId registerId, AqlValueGuard& guard) {
+template <class ItemRowType, class ValueType>
+void OutputAqlItemRow::moveValueWithoutRowCopy(RegisterId registerId, ValueType& value) {
   TRI_ASSERT(isOutputRegister(registerId));
   // This is already implicitly asserted by isOutputRegister:
   TRI_ASSERT(registerId < getNrRegisters());
   TRI_ASSERT(_numValuesWritten < numRegistersToWrite());
   TRI_ASSERT(block().getValueReference(_baseIndex, registerId).isNone());
-
-  block().setValue(_baseIndex, registerId, guard.value());
-  guard.steal();
+  
+  if constexpr (std::is_same_v<std::decay_t<ValueType>, AqlValueGuard>) {
+    block().setValue(_baseIndex, registerId, value.value());
+    value.steal();
+  } else {
+    static_assert(std::is_same_v<std::decay_t<ValueType>, VPackSlice>);
+    block().emplaceValue(_baseIndex, registerId, value);
+  }
   _numValuesWritten++;
 }
 
-template <class ItemRowType>
+template <class ItemRowType, class ValueType>
 void OutputAqlItemRow::moveValueInto(RegisterId registerId, ItemRowType const& sourceRow,
-                                     AqlValueGuard& guard) {
-  moveValueWithoutRowCopy<ItemRowType>(registerId, guard);
+                                     ValueType& value) {
+  moveValueWithoutRowCopy<ItemRowType, ValueType>(registerId, value);
 
   // allValuesWritten() must be called only *after* moveValueWithoutRowCopy(),
   // because it increases _numValuesWritten.
-  if (allValuesWritten()) {
-    copyRow(sourceRow);
-  }
-}
-
-void OutputAqlItemRow::copyValueInto(RegisterId registerId, InputAqlItemRow const& sourceRow,
-                                     VPackSlice value) {
-  TRI_ASSERT(isOutputRegister(registerId));
-  // This is already implicitly asserted by isOutputRegister:
-  TRI_ASSERT(registerId < getNrRegisters());
-  TRI_ASSERT(_numValuesWritten < numRegistersToWrite());
-  TRI_ASSERT(block().getValueReference(_baseIndex, registerId).isNone());
-
-  block().emplaceValue(_baseIndex, registerId, value);
-  _numValuesWritten++;
-
   if (allValuesWritten()) {
     copyRow(sourceRow);
   }
@@ -541,8 +530,15 @@ template void OutputAqlItemRow::cloneValueInto<InputAqlItemRow>(
     RegisterId registerId, const InputAqlItemRow& sourceRow, AqlValue const& value);
 template void OutputAqlItemRow::cloneValueInto<ShadowAqlItemRow>(
     RegisterId registerId, const ShadowAqlItemRow& sourceRow, AqlValue const& value);
-template void OutputAqlItemRow::moveValueInto<InputAqlItemRow>(RegisterId registerId,
+template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueGuard>(RegisterId registerId,
                                                                InputAqlItemRow const& sourceRow,
                                                                AqlValueGuard& guard);
-template void OutputAqlItemRow::moveValueInto<ShadowAqlItemRow>(
+template void OutputAqlItemRow::moveValueInto<ShadowAqlItemRow, AqlValueGuard>(
     RegisterId registerId, ShadowAqlItemRow const& sourceRow, AqlValueGuard& guard);
+
+template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, VPackSlice const>(RegisterId registerId,
+                                                               InputAqlItemRow const& sourceRow,
+                                                               VPackSlice const& guard);
+template void OutputAqlItemRow::moveValueInto<ShadowAqlItemRow, VPackSlice const>(
+    RegisterId registerId, ShadowAqlItemRow const& sourceRow, VPackSlice const& guard);
+
