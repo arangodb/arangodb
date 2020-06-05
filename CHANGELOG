@@ -12,7 +12,7 @@ devel
       RETURN c
     )
   ```
-  Here the c would be off, or a count on mainquery would be off.
+  Here the c would be off, or a count on main query would be off.
 
 * Fix crash in execution of non-spliced subqueries if remainder of subquery is skipped.
 
