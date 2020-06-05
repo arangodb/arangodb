@@ -1,6 +1,8 @@
 devel
 -----
 
+* Taken collection dropping from fast track in maintenance
+
 * Fixed `"Plan" is not an object in agency` error messages when restarting DBservers
   that contained arangosearch views with links.
 
