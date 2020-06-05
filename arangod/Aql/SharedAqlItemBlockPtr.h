@@ -87,8 +87,9 @@ arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(arangodb::aql::AqlIt
   // This constructor should only be used for fresh AqlItemBlocks in the
   // AqlItemBlockManager. All other places should already have a
   // SharedAqlItemBlockPtr.
-  TRI_ASSERT(aqlItemBlock->getRefCount() == 0);
-  incrRefCount();
+  TRI_ASSERT(_aqlItemBlock != nullptr);
+  TRI_ASSERT(_aqlItemBlock->getRefCount() == 0);
+  _aqlItemBlock->incrRefCount();
 }
 
 constexpr arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(std::nullptr_t) noexcept
