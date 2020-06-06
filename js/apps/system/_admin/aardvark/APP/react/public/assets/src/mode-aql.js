@@ -95,7 +95,7 @@ var AqlHighlightRules = function() {
         "(to_bool|to_number|to_string|to_list|is_null|is_bool|is_number|is_string|is_list|is_document|typename|json_stringify|json_parse|" +
         "concat|concat_separator|char_length|lower|upper|substring|left|right|trim|reverse|contains|" +
         "log|log2|log10|exp|exp2|sin|cos|tan|asin|acos|atan|atan2|radians|degrees|pi|regex_test|" +
-        "like|floor|ceil|round|abs|rand|sqrt|pow|length|count|min|max|average|sum|median|variance_population|" +
+        "like|floor|ceil|round|abs|rand|sqrt|pow|length|count|min|max|average|sum|product|median|variance_population|" +
         "variance_sample|first|last|unique|outersection|interleave|in_range|jaccard|matches|merge|merge_recursive|has|attributes|values|unset|unset_recursive|keep|" +
         "near|within|within_rectangle|is_in_polygon|distance|fulltext|paths|traversal|traversal_tree|edges|stddev_sample|stddev_population|" +
         "slice|nth|position|translate|zip|call|apply|push|append|pop|shift|unshift|remove_value|remove_values|" + 
@@ -104,7 +104,7 @@ var AqlHighlightRules = function() {
         "date_add|date_subtract|date_diff|date_compare|date_format|fail|passthru|sleep|not_null|" +
         "first_list|first_document|parse_identifier|current_user|current_database|" +
         "collections|document|decode_rev|union|union_distinct|intersection|flatten|is_same_collection|check_document|" +
-        "ltrim|rtrim|find_first|find_last|split|substitute|md5|sha1|crc32|fnv64|hash|random_token|to_base64|" +
+        "ltrim|rtrim|find_first|find_last|split|substitute|ip4_to_number|ip4_from_number|is_ip4|md5|sha1|crc32|fnv64|hash|random_token|to_base64|" +
         "to_hex|encode_uri_component|soundex|assert|warn|is_key|sorted|sorted_unique|count_distinct|" +
         "levenshtein_distance|levenshtein_match|regex_matches|regex_split|ngram_match|ngram_similarity|ngram_positional_similarity|uuid|" +
         "tokens|exists|starts_with|phrase|min_match|boost|analyzer|" +

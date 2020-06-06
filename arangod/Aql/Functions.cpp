@@ -4484,6 +4484,43 @@ AqlValue Functions::Average(ExpressionContext* expressionContext, transaction::M
   return AqlValue(AqlValueHintNull());
 }
 
+/// @brief function PRODUCT
+AqlValue Functions::Product(ExpressionContext* expressionContext, transaction::Methods* trx,
+                            VPackFunctionParameters const& parameters) {
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+
+  if (!value.isArray()) {
+    // not an array
+    registerWarning(expressionContext, "PRODUCT", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value, false);
+  double product = 0.0;
+  bool seen = false;
+  for (VPackSlice it : VPackArrayIterator(slice)) {
+    if (it.isNull()) {
+      continue;
+    }
+    if (!it.isNumber()) {
+      return AqlValue(AqlValueHintNull());
+    }
+    double const number = it.getNumericValue<double>();
+
+    if (!std::isnan(number) && number != HUGE_VAL && number != -HUGE_VAL) {
+      if (!seen) {
+        seen = true;
+        product = number;
+      } else {
+        product *= number;
+      }
+    }
+  }
+
+  return ::numberValue(product, false);
+}
+
 /// @brief function SLEEP
 AqlValue Functions::Sleep(ExpressionContext* expressionContext, transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
@@ -4567,6 +4604,158 @@ AqlValue Functions::RandomToken(ExpressionContext*, transaction::Methods*,
   UniformCharacter generator(
       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
   return AqlValue(generator.random(static_cast<size_t>(length)));
+}
+
+/// @brief function IP4_FROM_NUMBER
+AqlValue Functions::Ip4FromNumber(ExpressionContext* expressionContext, transaction::Methods*,
+                                  VPackFunctionParameters const& parameters) {
+  static char const* AFN = "IP4_FROM_NUMBER";
+
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+
+  if (!value.isNumber()) {
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(AqlValueHintNull());
+  }
+  
+  int64_t input = value.toInt64();
+  if (input < 0 || static_cast<uint64_t>(input) > UINT32_MAX) {
+    registerInvalidArgumentWarning(expressionContext, AFN);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  uint64_t number = static_cast<uint64_t>(input);
+  
+  // in theory, we only need a 15 bytes buffer here, as the maximum result
+  // string is "255.255.255.255"
+  char result[32]; 
+
+  char* p = &result[0];
+  // first part
+  uint64_t digit = (number & 0xff000000ULL) >> 24ULL; 
+  p += basics::StringUtils::itoa(digit, p);
+  *p++ = '.';
+  // second part
+  digit = (number & 0x00ff0000ULL) >> 16ULL; 
+  p += basics::StringUtils::itoa(digit, p);
+  *p++ = '.';
+  // third part
+  digit = (number & 0x0000ff00ULL) >> 8ULL; 
+  p += basics::StringUtils::itoa(digit, p);
+  *p++ = '.';
+  // fourth part
+  digit = (number & 0x0000ffULL); 
+  p += basics::StringUtils::itoa(digit, p);
+
+  return AqlValue(&result[0], p - &result[0]);
+}
+
+/// @brief function IP4_TO_NUMBER
+AqlValue Functions::Ip4ToNumber(ExpressionContext* expressionContext, transaction::Methods* trx,
+                                  VPackFunctionParameters const& parameters) {
+  static char const* AFN = "IP4_TO_NUMBER";
+
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+
+  if (!value.isString()) {
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  int64_t result = 0;
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value, false);
+
+  // parse the input string
+  TRI_ASSERT(slice.isString());
+  VPackValueLength l;
+  char const* p = slice.getString(l);
+  char const* e = p + l;
+
+  char const* current = p;
+  constexpr size_t parts = 4;
+  for (size_t i = 0; i < parts; ++i) {
+    if (i > 0) {
+      if (current < e && *current == '.') {
+        ++current;
+      } else {
+        registerInvalidArgumentWarning(expressionContext, AFN);
+        return AqlValue(AqlValueHintNull());
+      }
+    }
+    char const* start = current;
+    while (current < e && *current >= '0' && *current <= '9') {
+      ++current;
+    }
+
+    // max expected value is 3 digits long
+    if ((current == start) || (current - start) > 3) {
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+    int64_t number = NumberUtils::atoi_unchecked<int64_t>(start, current);
+    if (number > 255) {
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+    result += number << ((parts - 1 - i) * 8);
+  }
+
+  if (current != e) {
+    // trailing data
+    registerInvalidArgumentWarning(expressionContext, AFN);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  return AqlValue(AqlValueHintUInt(result));
+}
+
+/// @brief function IS_IP4
+AqlValue Functions::IsIp4(ExpressionContext* expressionContext, transaction::Methods* trx,
+                          VPackFunctionParameters const& parameters) {
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+
+  if (!value.isString()) {
+    return AqlValue(AqlValueHintBool(false));
+  }
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value, false);
+
+  // parse the input string
+  TRI_ASSERT(slice.isString());
+  VPackValueLength l;
+  char const* p = slice.getString(l);
+  char const* e = p + l;
+
+  char const* current = p;
+  constexpr size_t parts = 4;
+  for (size_t i = 0; i < parts; ++i) {
+    if (i > 0) {
+      if (current < e && *current == '.') {
+        ++current;
+      } else {
+        return AqlValue(AqlValueHintBool(false));
+      }
+    }
+    char const* start = current;
+    while (current < e && *current >= '0' && *current <= '9') {
+      ++current;
+    }
+
+    // max expected value is 3 digits long
+    bool valid = ((current != start) && (current - start) <= 3);
+    if (valid) {
+      int64_t number = NumberUtils::atoi_unchecked<int64_t>(start, current);
+      valid = (number <= 255);
+    }
+    if (!valid) {
+      return AqlValue(AqlValueHintBool(false));
+    }
+  }
+
+  return AqlValue(AqlValueHintBool(current == e));
 }
 
 /// @brief function MD5

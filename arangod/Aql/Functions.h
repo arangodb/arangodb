@@ -276,12 +276,20 @@ struct Functions {
                       VPackFunctionParameters const&);
   static AqlValue Average(arangodb::aql::ExpressionContext*,
                           transaction::Methods*, VPackFunctionParameters const&);
+  static AqlValue Product(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                          VPackFunctionParameters const&);
   static AqlValue Sleep(arangodb::aql::ExpressionContext*,
                         transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue Collections(arangodb::aql::ExpressionContext*,
                               transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue RandomToken(arangodb::aql::ExpressionContext*,
                               transaction::Methods*, VPackFunctionParameters const&);
+  static AqlValue Ip4FromNumber(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                                VPackFunctionParameters const&);
+  static AqlValue Ip4ToNumber(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                              VPackFunctionParameters const&);
+  static AqlValue IsIp4(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                        VPackFunctionParameters const&);
   static AqlValue Md5(arangodb::aql::ExpressionContext*, transaction::Methods*,
                       VPackFunctionParameters const&);
   static AqlValue Sha1(arangodb::aql::ExpressionContext*, transaction::Methods*,
