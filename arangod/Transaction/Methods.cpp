@@ -821,7 +821,7 @@ Future<OperationResult> transaction::Methods::documentCoordinator(
     }
   }
 
-  auto colptr = resolver().getCollectionStructCluster(collectionName);
+  auto colptr = resolver()->getCollectionStructCluster(collectionName);
   if (colptr == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
@@ -944,7 +944,7 @@ Future<OperationResult> transaction::Methods::insertAsync(std::string const& cna
 Future<OperationResult> transaction::Methods::insertCoordinator(std::string const& collectionName,
                                                                 VPackSlice const value,
                                                                 OperationOptions const& options) {
-  auto colptr = resolver().getCollectionStructCluster(collectionName);
+  auto colptr = resolver()->getCollectionStructCluster(collectionName);
   if (colptr == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
@@ -1224,7 +1224,7 @@ Future<OperationResult> transaction::Methods::modifyCoordinator(
     }
   }
 
-  auto colptr = resolver().getCollectionStructCluster(cname);
+  auto colptr = resolver()->getCollectionStructCluster(cname);
   if (colptr == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
@@ -1491,7 +1491,7 @@ Future<OperationResult> transaction::Methods::removeAsync(std::string const& cna
 Future<OperationResult> transaction::Methods::removeCoordinator(std::string const& cname,
                                                                 VPackSlice const value,
                                                                 OperationOptions const& options) {
-  auto colptr = resolver().getCollectionStructCluster(cname);
+  auto colptr = resolver()->getCollectionStructCluster(cname);
   if (colptr == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
@@ -1881,7 +1881,7 @@ futures::Future<OperationResult> transaction::Methods::countAsync(std::string co
 futures::Future<OperationResult> transaction::Methods::countCoordinator(
     std::string const& collectionName, transaction::CountType type) {
   // First determine the collection ID from the name:
-  auto colptr = resolver().getCollectionStructCluster(collectionName);
+  auto colptr = resolver()->getCollectionStructCluster(collectionName);
   if (collinfo == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
