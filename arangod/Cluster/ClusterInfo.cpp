@@ -1658,7 +1658,7 @@ std::vector<std::shared_ptr<LogicalView>> const ClusterInfo::getViews(DatabaseID
 //////////////////////////////////////////////////////////////////////////////
 
 AnalyzersRevision::Ptr ClusterInfo::getAnalyzersRevision(DatabaseID const& databaseID,
-                                                                     bool forceLoadPlan /* = false */) {
+                                                         bool forceLoadPlan /* = false */) {
   int tries = 0;
 
   if (!_planProt.isValid || forceLoadPlan) {
