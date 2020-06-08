@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed velocypack validator for proper check of keys.
+
 * Handle missing "shardingStrategy" in Plan agency entries for collections.
   "shardingStrategy" entries can be missing for collections created with
   ArangoDB clusters in version 3.3 or earlier. A missing "shardingStrategy"
