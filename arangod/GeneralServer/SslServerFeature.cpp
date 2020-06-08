@@ -720,7 +720,7 @@ static void dumpPEM(std::string const& pem, VPackBuilder& builder, std::string a
   // Now dump the certs and the hash of the key:
   {
     VPackObjectBuilder guard2(&builder, attrName);
-    builder.add("SHA256", VPackValue(func.finalize()));
+    builder.add("sha256", VPackValue(func.finalize()));
     {
       VPackArrayBuilder guard3(&builder, "certificates");
       for (auto const& c : certs) {
@@ -730,7 +730,7 @@ static void dumpPEM(std::string const& pem, VPackBuilder& builder, std::string a
     if (!keys.empty()) {
       TRI_SHA256Functor func2;
       func2(keys[0].c_str(), keys[0].size());
-      builder.add("privateKeySHA256", VPackValue(func2.finalize()));
+      builder.add("privateKeySha256", VPackValue(func2.finalize()));
     }
   }
 }
