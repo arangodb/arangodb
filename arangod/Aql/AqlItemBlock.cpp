@@ -297,9 +297,9 @@ void AqlItemBlock::destroy() noexcept {
 
     size_t totalUsed = 0;
     for (auto& it : _valueCount) {
-      auto value = it.first;
       auto const& count = it.second;
       if (ADB_LIKELY(count > 0)) {
+        auto value = it.first;
         value.destroy();
         totalUsed += value.memoryUsage();
       }
