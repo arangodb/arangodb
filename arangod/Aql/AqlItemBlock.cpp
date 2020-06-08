@@ -296,9 +296,12 @@ void AqlItemBlock::destroy() noexcept {
     _shadowRowIndexes.clear();
 
     size_t totalUsed = 0;
-    for (auto const& it : _valueCount) {
-      if (ADB_LIKELY(it.second > 0)) {
-        totalUsed += it.first.memoryUsage();
+    for (auto& it : _valueCount) {
+      auto value = it.first;
+      auto const& count = it.second;
+      if (ADB_LIKELY(count > 0)) {
+        value.destroy();
+        totalUsed += value.memoryUsage();
       }
     }
     decreaseMemoryUsage(totalUsed);
