@@ -423,8 +423,6 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
   if (_disallowInserts.load(std::memory_order_acquire)) {
     return nullptr;
   }
-  
-  std::chrono::time_point<std::chrono::steady_clock> startTime;
 
   size_t const bucket = getBucket(tid);
   int i = 0;
@@ -452,40 +450,36 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
       if (mtrx.rwlock.tryLockWrite()) {
         state = mtrx.state;
         break;
-      } 
+      }
     } else {
       if (mtrx.rwlock.tryLockRead()) {
         state = mtrx.state;
         break;
       }
+
+      LOG_TOPIC("abd72", DEBUG, Logger::TRANSACTIONS)
+          << "transaction '" << tid << "' is already in use";
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_LOCKED,
+                                     std::string("transaction '") + std::to_string(tid) +
+                                         "' is already in use");
     }
 
     writeLocker.unlock();  // failure;
     allTransactionsLocker.unlock();
     
-    // we should not be here unless some one does a bulk read or write
-    // within a el-cheapo / V8 transaction into multiple shards on the 
-    // same server (Then its bad though).
-    
-    if (i-- == 0) {
+    // we should not be here unless some one does a bulk write
+    // within a el-cheapo / V8 transaction into multiple shards
+    // on the same server (Then its bad though).
+    TRI_ASSERT(ServerState::instance()->isDBServer());
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    if (i++ > 32) {
+      LOG_TOPIC("9e972", DEBUG, Logger::TRANSACTIONS) << "waiting on trx lock " << tid;
+      i = 0;
       if (_feature.server().isStopping()) {
         return nullptr;  // shutting down
-      } 
-      LOG_TOPIC("9e972", DEBUG, Logger::TRANSACTIONS) << "waiting on trx lock " << tid;
-  
-      auto now = std::chrono::steady_clock::now();
-      if (startTime.time_since_epoch().count() == 0) {
-        startTime = now;
-      } else if (now > startTime + std::chrono::seconds(30)) {
-        LOG_TOPIC("abd72", DEBUG, Logger::TRANSACTIONS)
-            << "transaction '" << tid << "' is already in use";
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_LOCKED,
-                                       std::string("transaction '") + std::to_string(tid) +
-                                           "' is already in use");
       }
-      i = 10;
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(5));
   } while (true);
 
   if (state) {
