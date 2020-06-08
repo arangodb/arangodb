@@ -49,7 +49,7 @@ ClusterTransactionState::ClusterTransactionState(TRI_vocbase_t& vocbase,
   TRI_ASSERT(isCoordinator());
   acceptAnalyzersRevision(_vocbase.server()
     .getFeature< arangodb::iresearch::IResearchAnalyzerFeature>()
-    .getAnalyzersRevision(_vocbase, true)->getRevision());
+    .getAnalyzersRevision(_vocbase, false)->getRevision());
 }
 
 /// @brief start a transaction
@@ -95,12 +95,10 @@ Result ClusterTransactionState::commitTransaction(transaction::Methods* activeTr
     return Result(TRI_ERROR_DEBUG);
   }
 
-  arangodb::Result res;
-  
   updateStatus(transaction::Status::COMMITTED);
   _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsCommitted++;
 
-  return res;
+  return {};
 }
 
 /// @brief abort and rollback a transaction
@@ -111,5 +109,5 @@ Result ClusterTransactionState::abortTransaction(transaction::Methods* activeTrx
   updateStatus(transaction::Status::ABORTED);
   _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted++;
   
-  return Result();
+  return {};
 }
