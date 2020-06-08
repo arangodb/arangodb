@@ -5243,18 +5243,6 @@ ClusterInfo::ServersKnown::ServersKnown(VPackSlice const serversKnownSlice,
       }
     }
   }
-
-  // For backwards compatibility / rolling upgrades, add servers that aren't in
-  // ServersKnown but in ServersRegistered with a reboot ID of 0 as a fallback.
-  // We should be able to remove this in 3.6.
-  for (auto const& serverId : serverIds) {
-    auto const rv = _serversKnown.try_emplace(serverId, RebootId{0});
-    LOG_TOPIC_IF("0acbd", INFO, Logger::CLUSTER, rv.second)
-        << "Server " << serverId
-        << " is in Current/ServersRegistered, but not in "
-           "Current/ServersKnown. This is expected to happen "
-           "during a rolling upgrade.";
-  }
 }
 
 std::unordered_map<ServerID, ClusterInfo::ServersKnown::KnownServer> const&
