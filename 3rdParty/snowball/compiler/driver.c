@@ -567,6 +567,7 @@ extern int main(int argc, char * argv[]) {
             lose_b(p->b); FREE(p); p = q;
         }
     }
+    free((void*)o->name);
     FREE(o);
     if (space_count) fprintf(stderr, "%d blocks unfreed\n", space_count);
     return 0;
