@@ -123,7 +123,6 @@ let runTest = function(depth, startNodes, parallelism) {
   // common suffix
   query += " OPTIONS { parallelism: " + parallelism + " } LET level = LENGTH(p.edges) SORT level, v.value RETURN { level, value: v.value }";
 
-  print(query);
   let actual = db._query(query).toArray();
   let expected = buildNestedResult(graphSize, connections, startNodes, depth);
 
