@@ -295,34 +295,20 @@ void AqlItemBlock::destroy() noexcept {
   try {
     _shadowRowIndexes.clear();
 
-    if (_valueCount.empty()) {
-      eraseAll();
-      rescale(0, 0);
-      TRI_ASSERT(numEntries() == 0);
-      return;
-    }
-
-    size_t const n = numEntries();
-    for (size_t i = 0; i < n; i++) {
-      auto& it = _data[i];
-      if (it.requiresDestruction()) {
-        auto it2 = _valueCount.find(it);
-        if (it2 != _valueCount.end()) {  // if we know it, we are still responsible
-          TRI_ASSERT((*it2).second > 0);
-
-          if (--((*it2).second) == 0) {
-            decreaseMemoryUsage(it.memoryUsage());
-            it.destroy();
-            _valueCount.erase(it2);
-          }
-        }
+    size_t totalUsed = 0;
+    for (auto const& it : _valueCount) {
+      if (ADB_LIKELY(it.second > 0)) {
+        totalUsed += it.first.memoryUsage();
       }
-      // Note that if we do not know it the thing it has been stolen from us!
-      it.erase();
     }
+    decreaseMemoryUsage(totalUsed);
     _valueCount.clear();
-
     rescale(0, 0);
+
+    TRI_ASSERT(numEntries() == 0);
+    // We purposefully do not erase all elements, as we resize the _data vector
+    // to zero anyway. Assert that this holds true.
+    TRI_ASSERT(_data.empty());
   } catch (...) {
     TRI_ASSERT(false);
   }
