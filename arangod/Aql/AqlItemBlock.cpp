@@ -300,8 +300,8 @@ void AqlItemBlock::destroy() noexcept {
       auto const& count = it.second;
       if (ADB_LIKELY(count > 0)) {
         auto value = it.first;
-        value.destroy();
         totalUsed += value.memoryUsage();
+        value.destroy();
       }
     }
     decreaseMemoryUsage(totalUsed);
