@@ -198,9 +198,6 @@ int toArangoErrorCodeInternal(fuerte::Error err) {
       return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
 
     case fuerte::Error::ConnectionClosed:
-      // only here temporarily...
-      TRI_ASSERT(false);
-      return TRI_ERROR_CLUSTER_CONNECTION_LOST;
     case fuerte::Error::CloseRequested:
       return TRI_ERROR_CLUSTER_CONNECTION_LOST;
 
