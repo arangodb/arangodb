@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed velocypack validator for proper check of keys.
+
 * Taken collection dropping from fast track in maintenance. This avoids
   blocking fast track maintenance threads when a shard cannot immediately
   be dropped because of some pending lock.
