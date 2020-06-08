@@ -480,7 +480,7 @@ bool RocksDBMetaCollection::needToPersistRevisionTree(rocksdb::SequenceNumber ma
     return true;
   }
 
-  if (_revisionTreeSerializedSeq == 0) {
+  if (_revisionTreeSerializedSeq == _revisionTreeCreationSeq) {
     return true;
   }
 
