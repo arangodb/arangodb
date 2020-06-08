@@ -308,7 +308,7 @@ SharedAqlItemBlockPtr OutputAqlItemRow::stealBlock() {
     // written and takes into account whether the current row was written.
     block->shrink(numRows);
 
-    if (_doNotCopyInputRow) {
+    if (!registersToClear().empty()) {
       block->clearRegisters(registersToClear());
     }
   }
