@@ -3016,9 +3016,9 @@ function ahuacatlFunctionsTestSuite () {
     
     testProduct : function () {
       var data = [
-        [ 0, [ ] ],
-        [ 0, [ null ] ],
-        [ 0, [ null, null ] ],
+        [ 1, [ ] ],
+        [ 1, [ null ] ],
+        [ 1, [ null, null ] ],
         [ 1, [ 1 ] ],
         [ 33, [ 33 ] ],
         [ -1, [ -1 ] ],
@@ -3026,6 +3026,7 @@ function ahuacatlFunctionsTestSuite () {
         [ 0.25, [ 0.5, 0.5 ] ],
         [ 1, [ 1, null, null ] ],
         [ 1, [ 1, null, null, 1 ] ],
+        [ 0, [ 1, null, null, 0 ] ],
         [ 35, [ 1, null, null, 35 ] ],
         [ 120, [ 1, 2, 3, 4, 5 ] ],
         [ 120, [ 5, 4, 3, 2, 1 ] ],

@@ -33,6 +33,7 @@
 #include "Aql/Query.h"
 #include "Aql/Range.h"
 #include "Aql/V8Executor.h"
+#include "Basics/Endian.h"
 #include "Basics/Exceptions.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/Mutex.h"
@@ -102,6 +103,12 @@
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 #include <algorithm>
+
+#ifdef _WIN32
+#include "Basics/win-utils.h"
+#else
+#include <arpa/inet.h>
+#endif
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -4497,8 +4504,7 @@ AqlValue Functions::Product(ExpressionContext* expressionContext, transaction::M
 
   AqlValueMaterializer materializer(trx);
   VPackSlice slice = materializer.slice(value, false);
-  double product = 0.0;
-  bool seen = false;
+  double product = 1.0;
   for (VPackSlice it : VPackArrayIterator(slice)) {
     if (it.isNull()) {
       continue;
@@ -4509,12 +4515,7 @@ AqlValue Functions::Product(ExpressionContext* expressionContext, transaction::M
     double const number = it.getNumericValue<double>();
 
     if (!std::isnan(number) && number != HUGE_VAL && number != -HUGE_VAL) {
-      if (!seen) {
-        seen = true;
-        product = number;
-      } else {
-        product *= number;
-      }
+      product *= number;
     }
   }
 
@@ -4625,7 +4626,8 @@ AqlValue Functions::Ip4FromNumber(ExpressionContext* expressionContext, transact
   }
 
   uint64_t number = static_cast<uint64_t>(input);
-  
+
+  inet_ntop
   // in theory, we only need a 15 bytes buffer here, as the maximum result
   // string is "255.255.255.255"
   char result[32]; 
@@ -4662,8 +4664,6 @@ AqlValue Functions::Ip4ToNumber(ExpressionContext* expressionContext, transactio
     return AqlValue(AqlValueHintNull());
   }
 
-  int64_t result = 0;
-
   AqlValueMaterializer materializer(trx);
   VPackSlice slice = materializer.slice(value, false);
 
@@ -4671,44 +4671,30 @@ AqlValue Functions::Ip4ToNumber(ExpressionContext* expressionContext, transactio
   TRI_ASSERT(slice.isString());
   VPackValueLength l;
   char const* p = slice.getString(l);
-  char const* e = p + l;
 
-  char const* current = p;
-  constexpr size_t parts = 4;
-  for (size_t i = 0; i < parts; ++i) {
-    if (i > 0) {
-      if (current < e && *current == '.') {
-        ++current;
-      } else {
-        registerInvalidArgumentWarning(expressionContext, AFN);
-        return AqlValue(AqlValueHintNull());
-      }
-    }
-    char const* start = current;
-    while (current < e && *current >= '0' && *current <= '9') {
-      ++current;
-    }
+  if (l >= 7 && l <= 15) {
+    // min value is 0.0.0.0 (length = 7)
+    // max value is 255.255.255.255 (length = 15)
+    char buffer[16];
+    memcpy(&buffer[0], p, l);
+    // null-terminate the buffer
+    buffer[l] = '\0';
 
-    // max expected value is 3 digits long
-    if ((current == start) || (current - start) > 3) {
-      registerInvalidArgumentWarning(expressionContext, AFN);
-      return AqlValue(AqlValueHintNull());
+    struct in_addr addr;
+    memset(&addr, 0, sizeof(struct in_addr));
+#if _WIN32
+    int result = InetPton(AF_INET, &buffer[0], &addr);
+#else
+    int result = inet_pton(AF_INET, &buffer[0], &addr);
+#endif
+    
+    if (result == 1) {
+      return AqlValue(AqlValueHintUInt(basics::hostToBig(*reinterpret_cast<uint32_t*>(&addr))));
     }
-    int64_t number = NumberUtils::atoi_unchecked<int64_t>(start, current);
-    if (number > 255) {
-      registerInvalidArgumentWarning(expressionContext, AFN);
-      return AqlValue(AqlValueHintNull());
-    }
-    result += number << ((parts - 1 - i) * 8);
   }
 
-  if (current != e) {
-    // trailing data
-    registerInvalidArgumentWarning(expressionContext, AFN);
-    return AqlValue(AqlValueHintNull());
-  }
-
-  return AqlValue(AqlValueHintUInt(result));
+  registerInvalidArgumentWarning(expressionContext, AFN);
+  return AqlValue(AqlValueHintNull());
 }
 
 /// @brief function IS_IP4
@@ -4722,40 +4708,34 @@ AqlValue Functions::IsIp4(ExpressionContext* expressionContext, transaction::Met
 
   AqlValueMaterializer materializer(trx);
   VPackSlice slice = materializer.slice(value, false);
-
+  
   // parse the input string
   TRI_ASSERT(slice.isString());
   VPackValueLength l;
   char const* p = slice.getString(l);
-  char const* e = p + l;
 
-  char const* current = p;
-  constexpr size_t parts = 4;
-  for (size_t i = 0; i < parts; ++i) {
-    if (i > 0) {
-      if (current < e && *current == '.') {
-        ++current;
-      } else {
-        return AqlValue(AqlValueHintBool(false));
-      }
-    }
-    char const* start = current;
-    while (current < e && *current >= '0' && *current <= '9') {
-      ++current;
-    }
+  if (l >= 7 && l <= 15) {
+    // min value is 0.0.0.0 (length = 7)
+    // max value is 255.255.255.255 (length = 15)
+    char buffer[16];
+    memcpy(&buffer[0], p, l);
+    // null-terminate the buffer
+    buffer[l] = '\0';
 
-    // max expected value is 3 digits long
-    bool valid = ((current != start) && (current - start) <= 3);
-    if (valid) {
-      int64_t number = NumberUtils::atoi_unchecked<int64_t>(start, current);
-      valid = (number <= 255);
-    }
-    if (!valid) {
-      return AqlValue(AqlValueHintBool(false));
+    struct in_addr addr;
+    memset(&addr, 0, sizeof(struct in_addr));
+#if _WIN32
+    int result = InetPton(AF_INET, &buffer[0], &addr);
+#else
+    int result = inet_pton(AF_INET, &buffer[0], &addr);
+#endif
+    
+    if (result == 1) {
+      return AqlValue(AqlValueHintBool(true));
     }
   }
-
-  return AqlValue(AqlValueHintBool(current == e));
+      
+  return AqlValue(AqlValueHintBool(false));
 }
 
 /// @brief function MD5

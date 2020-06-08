@@ -2532,8 +2532,10 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ true ], getQueryResults(`RETURN IS_IP4('0.0.255.0')`));
       assertEqual([ true ], getQueryResults(`RETURN IS_IP4('0.0.0.255')`));
       assertEqual([ true ], getQueryResults(`RETURN IS_IP4('17.17.17.17')`));
-      assertEqual([ true ], getQueryResults(`RETURN IS_IP4('000.000.000.000')`));
-      assertEqual([ true ], getQueryResults(`RETURN IS_IP4('001.001.001.001')`));
+      
+      assertEqual([ false ], getQueryResults(`RETURN IS_IP4('01.01.01.01')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IP4('000.000.000.000')`));
+      assertEqual([ false ], getQueryResults(`RETURN IS_IP4('001.001.001.001')`));
     },
 
 // //////////////////////////////////////////////////////////////////////////////
