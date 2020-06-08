@@ -88,11 +88,11 @@ function TLSRotation() {
       expect(res.json.code).to.eq(200);
       expect(res.json).to.have.property('result');
       expect(res.json.result).to.have.property('keyfile');
-      expect(res.json.result.keyfile).to.have.property('SHA256');
+      expect(res.json.result.keyfile).to.have.property('sha256');
       let keyfileDB = res.json.result.keyfile;
       let keyfileDisk = fs.readFileSync(keyfileName).toString();
       let keyfileDiskSHA = sha256(keyfileDisk);
-      expect(keyfileDB.SHA256).to.eq(keyfileDiskSHA);
+      expect(keyfileDB.sha256).to.eq(keyfileDiskSHA);
     },
 
     testChangeTLS: function () {
@@ -108,11 +108,11 @@ function TLSRotation() {
       expect(res.json.code).to.eq(200);
       expect(res.json).to.have.property('result');
       expect(res.json.result).to.have.property('keyfile');
-      expect(res.json.result.keyfile).to.have.property('SHA256');
+      expect(res.json.result.keyfile).to.have.property('sha256');
       let keyfileDB = res.json.result.keyfile;
       let keyfileDisk = fs.readFileSync(keyfileName).toString();
       let keyfileDiskSHA = sha256(keyfileDisk);
-      expect(keyfileDB.SHA256).to.eq(keyfileDiskSHA);
+      expect(keyfileDB.sha256).to.eq(keyfileDiskSHA);
 
       // Exchange server key on disk:
       fs.remove(keyfileName);
@@ -133,9 +133,9 @@ function TLSRotation() {
       expect(res.json.code).to.eq(200);
       expect(res.json).to.have.property('result');
       expect(res.json.result).to.have.property('keyfile');
-      expect(res.json.result.keyfile).to.have.property('SHA256');
+      expect(res.json.result.keyfile).to.have.property('sha256');
       keyfileDB = res.json.result.keyfile;
-      expect(keyfileDB.SHA256).to.eq(keyfileDiskSHA);
+      expect(keyfileDB.sha256).to.eq(keyfileDiskSHA);
 
       res = request.get({
         url: baseUrl() + "/_admin/server/tls",
@@ -150,8 +150,8 @@ function TLSRotation() {
       expect(res.json.code).to.eq(200);
       expect(res.json).to.have.property('result');
       expect(res.json.result).to.have.property('keyfile');
-      expect(res.json.result.keyfile).to.have.property('SHA256');
-      expect(keyfileDB.SHA256).to.eq(keyfileDiskSHA);
+      expect(res.json.result.keyfile).to.have.property('sha256');
+      expect(keyfileDB.sha256).to.eq(keyfileDiskSHA);
     }
   };
 }
