@@ -32,8 +32,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 
-#include "Logger/LogMacros.h"
-
 namespace arangodb {
 
 constexpr char const* BAD_PARAMS_CREATE = "backup payload must be an object "
@@ -77,9 +75,7 @@ struct BackupMeta {
       builder.add(VERSION, VPackValue(_version));
       builder.add(DATETIME, VPackValue(_datetime));
       builder.add(SECRETHASH, VPackValue(VPackValueType::Array, true));
-      LOG_DEVEL << "writing HotBackupMeta";
       for (auto const& tmp : _userSecretHashes) {
-        LOG_DEVEL << "meta render some keys " << tmp;
         builder.openObject(/*unindexed*/true);
         builder.add("sha256", VPackValue(tmp));
         builder.close();
@@ -107,7 +103,6 @@ struct BackupMeta {
       meta._datetime = slice.get(DATETIME).copyString();
       VPackSlice hashes = slice.get(SECRETHASH);
       if (hashes.isArray()) {
-        LOG_DEVEL << "got some keys " << hashes.toJson();
         for (VPackSlice val : VPackArrayIterator(hashes)) {
           VPackSlice hash;
           if (val.isObject() && (hash = val.get("sha256")).isString()) {

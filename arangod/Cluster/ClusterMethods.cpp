@@ -2545,12 +2545,12 @@ arangodb::Result hotBackupList(network::ConnectionPool* pool,
   std::map<std::string, std::vector<BackupMeta>> dbsBackups;
 
   VPackBufferUInt8 body;
+  VPackBuilder b(body);
+  b.openObject();
   if (!idSlice.isNone()) {
-    VPackBuilder b(body);
-    b.openObject();
     b.add("id", idSlice);
-    b.close();
   }
+  b.close();
   
   network::RequestOptions reqOpts;
   reqOpts.skipScheduler = true;
@@ -2949,17 +2949,19 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature, VPackSlice const
   // 6. Wait until all dbservers up again and good
   //    - fail if not
 
-  if (!payload.isObject() || !payload.hasKey("id") || !payload.get("id").isString()) {
+  VPackSlice idSlice;
+  if (!payload.isObject() || !(idSlice = payload.get("id")).isString()) {
     events::RestoreHotbackup("", TRI_ERROR_BAD_PARAMETER);
     return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
         "restore payload must be an object with string attribute 'id'");
   }
+  TRI_ASSERT(idSlice.isString());
 
   bool ignoreVersion =
       payload.hasKey("ignoreVersion") && payload.get("ignoreVersion").isTrue();
 
-  std::string const backupId = payload.get("id").copyString();
+  std::string const backupId = idSlice.copyString();
   VPackBuilder plan;
   ClusterInfo& ci = feature.clusterInfo();
 
@@ -2973,7 +2975,7 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature, VPackSlice const
   std::vector<ServerID> dbServers = ci.getCurrentDBServers();
   std::unordered_map<std::string, BackupMeta> list;
 
-  auto result = hotBackupList(pool, dbServers, payload, list, plan);
+  auto result = hotBackupList(pool, dbServers, idSlice, list, plan);
   if (!result.ok()) {
     LOG_TOPIC("ed4dd", ERR, Logger::BACKUP)
         << "failed to find backup " << backupId
