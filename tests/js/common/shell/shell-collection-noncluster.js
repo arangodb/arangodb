@@ -410,7 +410,7 @@ function CollectionSuite () {
       var c = db._createEdgeCollection(cn);
       try {
         c.load();
-        for(let i=0;i<10000;i++) {
+        for (let i = 0; i < 10000; i++) {
           c.insert({_from:"c/v"+(i/100), _to:"c/v"+i});
           c.insert({_to:"c/v"+(i/100), _from:"c/v"+i});
         }
@@ -419,12 +419,12 @@ function CollectionSuite () {
         var idxs = c.getIndexes(true);
         assertEqual("edge", idxs[1].type, idxs);
 
-        var inital = [];
+        var initial = [];
         idxs.forEach(function(idx) {
           if (idx.figures.cacheInUse) {
-            inital.push(idx.figures);
+            initial.push(idx.figures);
           } else {
-            inital.push(-1);
+            initial.push(-1);
           }
         });
 
@@ -434,13 +434,13 @@ function CollectionSuite () {
         idxs = c.getIndexes(true);
         idxs.forEach(function(idx, i) {
           if (idx.figures.cacheInUse) {
-            assertTrue(idx.figures.cacheSize > inital[i].cacheSize, idx);
+            assertTrue(idx.figures.cacheSize > initial[i].cacheSize, idx);
             assertEqual(idx.figures.cacheLifeTimeHitRate, 0, idx);
-            inital[i] = idx.figures;
+            initial[i] = idx.figures;
           }
         });
 
-        for(let i=0;i<10000;i++) {
+        for (let i = 0; i < 10000; i++) {
           c.outEdges("c/v"+(i/100));
           c.inEdges("c/v"+(i/100));
         }
@@ -448,13 +448,13 @@ function CollectionSuite () {
         // cache was filled same queries, hit rate must be about
         idxs.forEach(function(idx, i) {
           if (idx.figures.cacheInUse) {
-            let diff = Math.abs(inital[i].cacheSize - idx.figures.cacheSize);
+            let diff = Math.abs(initial[i].cacheSize - idx.figures.cacheSize);
             assertTrue(diff <= Math.pow(2, 21), idx);
             assertTrue(idx.figures.cacheLifeTimeHitRate > 15, idx);
-            inital[i] = idx.figures;
+            initial[i] = idx.figures;
           }
         });
-        for(let i = 0; i < 10000; i++) {
+        for (let i = 0; i < 10000; i++) {
           c.outEdges("c/v" + (i / 100));
           c.inEdges("c/v" + (i / 100));
         }
@@ -462,8 +462,8 @@ function CollectionSuite () {
         // cache was filled with same queries, hit rate must be higher
         idxs.forEach(function(idx, i) {
           if (idx.figures.cacheInUse) {
-            assertTrue(Math.abs(inital[i].cacheSize - idx.figures.cacheSize) < 1024);
-            assertTrue(idx.figures.cacheLifeTimeHitRate > 30, idx);
+            assertTrue(Math.abs(initial[i].cacheSize - idx.figures.cacheSize) < 1024);
+            assertTrue(idx.figures.cacheLifeTimeHitRate > initial[i].cacheLifeTimeHitRate, idx, { idx, initial });
           }
         });
 
@@ -478,7 +478,7 @@ function CollectionSuite () {
         });
 
         // lets do some reads
-        for(let i = 0; i < 10000; i++) {
+        for (let i = 0; i < 10000; i++) {
           c.outEdges("c/v" + (i / 100));
           c.inEdges("c/v" + (i / 100));
         }
@@ -499,6 +499,8 @@ function CollectionSuite () {
         idxs = c.getIndexes(true);
         // cache was partially filled same queries, lifetime hit rate
         // should be about 50 %
+        // but actual lifetime hit rate is unpredictable due to varying
+        // load and memory constraints during tests
         idxs.forEach(function(idx) {
           if (idx.figures.cacheInUse) {
             assertTrue(idx.figures.cacheLifeTimeHitRate > 15, idx);
