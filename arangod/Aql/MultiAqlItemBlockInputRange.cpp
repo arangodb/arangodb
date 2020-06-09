@@ -151,13 +151,19 @@ auto MultiAqlItemBlockInputRange::nextShadowRow()
   // Only one (a random one) will contain the data.
   TRI_ASSERT(!_inputs.empty());
   auto [state, shadowRow] = _inputs.at(0).nextShadowRow();
-  
+
   bool foundData = ::RowHasNonEmptyValue(shadowRow);
   for (size_t i = 1; i < _inputs.size(); ++i) {
     auto [otherState, otherRow] = _inputs.at(i).nextShadowRow();
+    // if any dependency thinks it has more, maybe we'll have to be
+    // asked again to finish up.
+    // In maintainer mode we assert that not more data is being
+    // produced, because that must not happen!
+    if (otherState == ExecutorState::HASMORE) {
+      state = ExecutorState::HASMORE;
+    }
     // All inputs need to be in the same part of the query.
     // We cannot have overlapping subquery executions.
-    TRI_ASSERT(state == otherState);
     // We can only have all rows initialized or none.
     TRI_ASSERT(shadowRow.isInitialized() == otherRow.isInitialized());
     if (!foundData) {
@@ -166,9 +172,13 @@ auto MultiAqlItemBlockInputRange::nextShadowRow()
         // Take it
         shadowRow = otherRow;
         foundData = true;
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
+        TRI_ASSERT(_returnedData);
+        _returnedData = true;
+#endif
       }
     } else {
-      // we allready have the filled one.
+      // we already have the filled one.
       // Just assert the others are empty for correctness
       TRI_ASSERT(! ::RowHasNonEmptyValue(otherRow));
     }
