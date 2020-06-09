@@ -1,11 +1,29 @@
 devel
 -----
 
-* Fixed `"Plan" is not an object in agency` error messages when restarting DBservers
-  that contained arangosearch views with links.
+* Fixed velocypack validator for proper check of keys.
 
-* Fixed misordering of skipped number of rows report. Only triggered if you do a modification
-  on a subquery nesting level 2 or more, e.g.:
+* Handle missing "shardingStrategy" in Plan agency entries for collections.
+  "shardingStrategy" entries can be missing for collections created with
+  ArangoDB clusters in version 3.3 or earlier. A missing "shardingStrategy"
+  entry can cause issues for certain queries that need to check the shard
+  distribution on the DB-Servers.
+  This change transparently handles missing "shardingStrategy" entries.
+
+* Taken collection dropping from fast track in maintenance. This avoids
+  blocking fast track maintenance threads when a shard cannot immediately
+  be dropped because of some pending lock.
+
+* Updated ArangoDB Starter to 0.14.15.
+
+* Fixed a spuriously occuring shutdown deadlock between AgencyCallbackRegistry
+  and AgencyCache.
+
+* Fixed `"Plan" is not an object in agency` error messages when restarting
+  DB-Servers that contained ArangoSearch Views with links.
+
+* Fixed misordering of skipped number of rows report. Only triggered if you do
+  a modification on a subquery nesting level 2 or more, e.g.:
   ```
     LET s1 = (
       LET s2 = (
@@ -17,13 +35,14 @@ devel
   ```
   Here the c would be off, or a count on main query would be off.
 
-* Fix crash in execution of non-spliced subqueries if remainder of subquery is skipped.
+* Fix crash in execution of non-spliced subqueries if remainder of subquery is
+  skipped.
 
 * Added missing mutex to ConnectionPool::cancelConnections().
 
 * Foxx API now respects "idiomatic" flag being explicitly set to false.
 
-* Fix crash in execution of non-spliced subqueries if remainder of subquery is
+* Fixed crash in execution of non-spliced subqueries if remainder of subquery is
   skipped.
 
 * Made modification subqueries non-passthrough. The passthrough logic only works
@@ -59,7 +78,8 @@ devel
   * `--rocksdb.pin-l0-filter-and-index-blocks-in-cache` make filter and index blocks
     be pinned and only evicted from cache when the table reader is freed
   * `--rocksdb.pin-top-level-index-and-filter` make the top-level index of partitioned
-    filter and index blocks pinned and only be evicted from cache when the table reader is freed
+    filter and index blocks pinned and only be evicted from cache when the table reader 
+    is freed
 
 * Don't move potentially expensive AQL function calls into loops in the
   `remove-unnecessary-calculations-rule`.
@@ -81,7 +101,8 @@ devel
   it merges calculations in the `remove-unnecessary-calculations` optimizer rule.
 
 * Fixed modification executors inside of a subquery, where the subquery decided to
-  fetch all rows from upstream first and the amount of rows is higher then the batch size.
+  fetch all rows from upstream first and the amount of rows is higher then the 
+  batch size.
 
 * Fixed reporting of skipped number of documents if we have a LIMIT x, 0
   right after the modification.

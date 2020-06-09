@@ -30,6 +30,8 @@
 #include "Aql/InsertModifier.h"
 #include "Aql/UpdateReplaceModifier.h"
 
+#include <velocypack/Builder.h>
+
 namespace arangodb {
 namespace aql {
 
@@ -106,11 +108,13 @@ class UpsertModifier {
 
   ModificationExecutorInfos& _infos;
   std::vector<ModOp> _operations;
-  std::unique_ptr<ModificationExecutorAccumulator> _insertAccumulator;
-  std::unique_ptr<ModificationExecutorAccumulator> _updateAccumulator;
+  ModificationExecutorAccumulator _insertAccumulator;
+  ModificationExecutorAccumulator _updateAccumulator;
 
   OperationResult _updateResults;
   OperationResult _insertResults;
+
+  arangodb::velocypack::Builder _keyDocBuilder;
 
   size_t const _batchSize;
 };

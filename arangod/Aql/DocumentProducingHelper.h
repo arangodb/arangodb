@@ -29,6 +29,8 @@
 #include "Indexes/IndexIterator.h"
 #include "VocBase/voc-types.h"
 
+#include <velocypack/Builder.h>
+
 #include <functional>
 #include <string>
 #include <unordered_set>
@@ -119,6 +121,8 @@ struct DocumentProducingFunctionContext {
   
   aql::AqlFunctionsInternalCache& aqlFunctionsInternalCache() { return _aqlFunctionsInternalCache; }
 
+  arangodb::velocypack::Builder& getBuilder() noexcept;
+
  private:
   aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
 
@@ -134,6 +138,9 @@ struct DocumentProducingFunctionContext {
   std::vector<size_t> const& _coveringIndexAttributePositions;
   size_t _numScanned;
   size_t _numFiltered;
+
+  /// @brief Builder that is reused to generate projections 
+  arangodb::velocypack::Builder _objectBuilder;
 
   /// @brief set of already returned documents. Used to make the result distinct
   std::unordered_set<TRI_voc_rid_t> _alreadyReturned;

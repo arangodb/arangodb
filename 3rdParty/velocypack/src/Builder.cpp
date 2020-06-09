@@ -872,24 +872,6 @@ uint8_t* Builder::set(uint64_t tag, Value const& item) {
       appendLengthUnchecked<sizeof(double)>(x);
       break;
     }
-    case ValueType::External: {
-      if (options->disallowExternals) {
-        // External values explicitly disallowed as a security
-        // precaution
-        throw Exception(Exception::BuilderExternalsDisallowed);
-      }
-      if (VELOCYPACK_UNLIKELY(ctype != Value::CType::VoidPtr)) {
-        throw Exception(Exception::BuilderUnexpectedValue,
-                        "Must give void pointer for ValueType::External");
-      }
-      reserve(1 + sizeof(void*));
-      // store pointer. this doesn't need to be portable
-      appendByteUnchecked(0x1d);
-      void const* value = item.getExternal();
-      memcpy(_start + _pos, &value, sizeof(void*));
-      advance(sizeof(void*));
-      break;
-    }
     case ValueType::SmallInt: {
       int64_t vv = 0;
       switch (ctype) {
@@ -1005,11 +987,11 @@ uint8_t* Builder::set(uint64_t tag, Value const& item) {
       break;
     }
     case ValueType::Array: {
-      addArray(item._unindexed);
+      addArray(item.unindexed());
       break;
     }
     case ValueType::Object: {
-      addObject(item._unindexed);
+      addObject(item.unindexed());
       break;
     }
     case ValueType::UTCDate: {
@@ -1050,6 +1032,24 @@ uint8_t* Builder::set(uint64_t tag, Value const& item) {
       reserve(size);
       memcpy(_start + _pos, p, checkOverflow(size));
       advance(size);
+      break;
+    }
+    case ValueType::External: {
+      if (options->disallowExternals) {
+        // External values explicitly disallowed as a security
+        // precaution
+        throw Exception(Exception::BuilderExternalsDisallowed);
+      }
+      if (VELOCYPACK_UNLIKELY(ctype != Value::CType::VoidPtr)) {
+        throw Exception(Exception::BuilderUnexpectedValue,
+                        "Must give void pointer for ValueType::External");
+      }
+      reserve(1 + sizeof(void*));
+      // store pointer. this doesn't need to be portable
+      appendByteUnchecked(0x1d);
+      void const* value = item.getExternal();
+      memcpy(_start + _pos, &value, sizeof(void*));
+      advance(sizeof(void*));
       break;
     }
     case ValueType::Illegal: {
@@ -1119,15 +1119,7 @@ uint8_t* Builder::set(uint64_t tag, ValuePair const& pair) {
     appendTag(tag);
   }
 
-  if (pair.valueType() == ValueType::Binary) {
-    uint64_t v = pair.getSize();
-    reserve(9 + v);
-    appendUInt(v, 0xbf);
-    VELOCYPACK_ASSERT(pair.getStart() != nullptr);
-    memcpy(_start + _pos, pair.getStart(), checkOverflow(v));
-    advance(v);
-    return _start + oldPos;
-  } else if (pair.valueType() == ValueType::String) {
+  if (pair.valueType() == ValueType::String) {
     uint64_t size = pair.getSize();
     if (size > 126) {
       // long string
@@ -1142,6 +1134,14 @@ uint8_t* Builder::set(uint64_t tag, ValuePair const& pair) {
     VELOCYPACK_ASSERT(pair.getStart() != nullptr);
     memcpy(_start + _pos, pair.getStart(), checkOverflow(size));
     advance(size);
+    return _start + oldPos;
+  } else if (pair.valueType() == ValueType::Binary) {
+    uint64_t v = pair.getSize();
+    reserve(9 + v);
+    appendUInt(v, 0xbf);
+    VELOCYPACK_ASSERT(pair.getStart() != nullptr);
+    memcpy(_start + _pos, pair.getStart(), checkOverflow(v));
+    advance(v);
     return _start + oldPos;
   } else if (pair.valueType() == ValueType::Custom) {
     if (options->disallowCustom) {

@@ -148,13 +148,11 @@ auto ConstFetcher::execute(AqlCallStack& stack)
   if (canUseFullBlock(sliceIndexes)) {
     // FastPath
     // No need for slicing
-    SharedAqlItemBlockPtr resultBlock = _blockForPassThrough;
-    _blockForPassThrough.reset(nullptr);
     _rowIndex = 0;
     SkipResult skipped{};
     skipped.didSkip(call.getSkipCount());
     return {ExecutionState::DONE, skipped,
-            DataRange{ExecutorState::DONE, call.getSkipCount(), resultBlock, 0}};
+            DataRange{ExecutorState::DONE, call.getSkipCount(), std::move(_blockForPassThrough), 0}};
   }
 
   SharedAqlItemBlockPtr resultBlock = _blockForPassThrough;

@@ -120,7 +120,7 @@ class ConnectionPool final {
   ConnectionPtr selectConnection(std::string const& endpoint, Bucket& bucket);
   
  private:
-  Config _config;
+  Config const _config;
 
   mutable basics::ReadWriteSpinLock _lock;
   std::unordered_map<std::string, std::unique_ptr<Bucket>> _connections;
