@@ -457,7 +457,7 @@ void Validator::validateCompactObject(uint8_t const* ptr, std::size_t length) {
     validate(p, e - p, true);
     Slice key(p);
     bool isString = key.isString();
-    if (!isString && !key.isInteger()) {
+    if (!isString && !key.isSmallInt() && !key.isUInt()) {
       throw Exception(Exception::ValidatorInvalidLength, "Invalid object key type");
     }
     ValueLength keySize = key.byteSize();
@@ -562,7 +562,7 @@ void Validator::validateIndexedObject(uint8_t const* ptr, std::size_t length) {
 
     Slice key(member);
     bool const isString = key.isString();
-    if (!isString && !key.isInteger()) {
+    if (!isString && !key.isSmallInt() && !key.isUInt()) {
       throw Exception(Exception::ValidatorInvalidLength, "Invalid object key type");
     }
 
