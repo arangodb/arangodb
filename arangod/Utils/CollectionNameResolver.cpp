@@ -215,40 +215,26 @@ std::string CollectionNameResolver::getCollectionNameCluster(TRI_voc_cid_t cid) 
     }
   }
 
-  std::string name;
+  std::string name(::UNKNOWN);
 
   if (ServerState::isDBServer(_serverRole)) {
     // This might be a local system collection:
     name = lookupName(cid);
-    if (name != ::UNKNOWN) {
-      WRITE_LOCKER(locker, _lock);
-      _resolvedIds.emplace(cid, name);
-      return name;
-    }
   }
 
-  int tries = 0;
-
-  while (tries++ < 2) {
+  if (name == ::UNKNOWN) {
     auto ci = _vocbase.server().getFeature<ClusterFeature>().clusterInfo().getCollectionNT(
         _vocbase.name(), arangodb::basics::StringUtils::itoa(cid));
     if (ci != nullptr) {
       name = ci->name();
-      {
-        WRITE_LOCKER(locker, _lock);
-        _resolvedIds.emplace(cid, name);
-      }
-
-      return name;
-    } else {
-      // most likely collection not found. now try again
-      _vocbase.server().getFeature<ClusterFeature>().clusterInfo().flush();
     }
   }
 
-  LOG_TOPIC("817e8", DEBUG, arangodb::Logger::FIXME)
+  LOG_TOPIC_IF("817e8", DEBUG, arangodb::Logger::FIXME, name == ::UNKNOWN)
       << "CollectionNameResolver: was not able to resolve id " << cid;
-  return ::UNKNOWN;
+  WRITE_LOCKER(locker, _lock);
+  _resolvedIds.emplace(cid, name);
+  return name;
 }
 
 //////////////////////////////////////////////////////////////////////////////

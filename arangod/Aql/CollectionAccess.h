@@ -87,7 +87,7 @@ class CollectionAccess {
   aql::Collection const* _prototypeCollection = nullptr;
   aql::Variable const* _prototypeOutVariable = nullptr;
 
-  // is a non-nullptr iff used as a satellite collection.
+  // is a non-nullptr iff used as a SatelliteCollection.
   // mutable to allow path compression of chains of `isSatelliteOf`.
   mutable std::optional<ExecutionNodeId> _isSatelliteOf{std::nullopt};
 };

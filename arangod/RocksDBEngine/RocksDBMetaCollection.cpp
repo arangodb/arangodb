@@ -56,6 +56,7 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
       _objectId(basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId)),
       _tempObjectId(basics::VelocyPackHelper::stringUInt64(info, StaticStrings::TempObjectId)),
       _revisionTreeApplied(0),
+      _revisionTreeCreationSeq(0),
       _revisionTreeSerializedSeq(0),
       _revisionTreeSerializedTime(std::chrono::steady_clock::now()) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
@@ -70,6 +71,8 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
       _objectId.load(), _logicalCollection.vocbase().id(), _logicalCollection.id());
 
   if (collection.useSyncByRevision()) {
+    _revisionTreeCreationSeq = rocksutils::globalRocksDB()->GetLatestSequenceNumber();
+    _revisionTreeSerializedSeq = _revisionTreeCreationSeq;
     _revisionTree =
         std::make_unique<containers::RevisionTree>(6, collection.minRevision());
   }
@@ -81,12 +84,17 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
       _objectId(static_cast<RocksDBMetaCollection const*>(physical)->_objectId.load()),
       _tempObjectId(
           static_cast<RocksDBMetaCollection const*>(physical)->_tempObjectId.load()),
-      _revisionTreeApplied(0) {
+      _revisionTreeApplied(0),
+      _revisionTreeCreationSeq(0),
+      _revisionTreeSerializedSeq(0),
+      _revisionTreeSerializedTime(std::chrono::steady_clock::now()) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   rocksutils::globalRocksEngine()->addCollectionMapping(
       _objectId.load(), _logicalCollection.vocbase().id(), _logicalCollection.id());
 
   if (collection.useSyncByRevision()) {
+    _revisionTreeCreationSeq = rocksutils::globalRocksDB()->GetLatestSequenceNumber();
+    _revisionTreeSerializedSeq = _revisionTreeCreationSeq;
     _revisionTree =
         std::make_unique<containers::RevisionTree>(6, collection.minRevision());
   }
@@ -288,12 +296,13 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
     ++count;
   }
   
-  int64_t adjustment = snapNumberOfDocuments - count;
+  int64_t adjustment = count - snapNumberOfDocuments;
   if (adjustment != 0) {
+    auto seq = snapshot->GetSequenceNumber();
     LOG_TOPIC("ad6d3", WARN, Logger::REPLICATION)
     << "inconsistent collection count detected, "
     << "an offet of " << adjustment << " will be applied";
-    _meta.adjustNumberDocuments(0, static_cast<TRI_voc_rid_t>(0), adjustment);
+    _meta.adjustNumberDocuments(seq, static_cast<TRI_voc_rid_t>(0), adjustment);
   }
   
   return _meta.numberDocuments();
@@ -352,6 +361,8 @@ void RocksDBMetaCollection::setRevisionTree(std::unique_ptr<containers::Revision
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
   _revisionTree = std::move(tree);
   _revisionTreeApplied.store(seq);
+  _revisionTreeCreationSeq = seq;
+  _revisionTreeSerializedSeq = seq;
 }
 
 std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(transaction::Methods& trx) {
@@ -366,6 +377,10 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(tr
   rocksdb::SequenceNumber safeSeq = meta().committableSeq(db->GetLatestSequenceNumber());
 
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
+  if (!_revisionTree) {
+    return nullptr;
+  }
+
   applyUpdates(safeSeq);
 
   // now clone the tree so we can apply all updates consistent with our ongoing trx
@@ -409,6 +424,10 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(ui
   rocksdb::SequenceNumber safeSeq = meta().committableSeq(db->GetLatestSequenceNumber());
 
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
+  if (!_revisionTree) {
+    return nullptr;
+  }
+
   applyUpdates(safeSeq);
 
   // now clone the tree so we can apply all updates consistent with our ongoing trx
@@ -498,16 +517,23 @@ rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree(rocksd
 }
 
 rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
-    std::string& output, rocksdb::SequenceNumber commitSeq) {
+    std::string& output, rocksdb::SequenceNumber commitSeq, bool force) {
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
   if (_logicalCollection.useSyncByRevision()) {
+    if (!_revisionTree) {
+      // should only occur temporarily during upgrade, just return last number
+      return _revisionTreeSerializedSeq;
+    }
     applyUpdates(commitSeq);  // always apply updates...
-    bool neverDone = _revisionTreeSerializedSeq == 0;
+    bool neverDone = _revisionTreeSerializedSeq == _revisionTreeCreationSeq;
     bool coinFlip = RandomGenerator::interval(static_cast<uint32_t>(5)) == 0;
     bool beenTooLong = 30 < std::chrono::duration_cast<std::chrono::seconds>(
                                 std::chrono::steady_clock::now() - _revisionTreeSerializedTime)
                                 .count();
-    if (neverDone || coinFlip || beenTooLong) {  // ...but only write the tree out sometimes
+    TRI_IF_FAILURE("RocksDBMetaCollection::serializeRevisionTree") {
+      return _revisionTreeSerializedSeq;
+    }
+    if (force || neverDone || coinFlip || beenTooLong) {  // ...but only write the tree out sometimes
       _revisionTree->serializeBinary(output, true);
       _revisionTreeSerializedSeq = commitSeq;
       _revisionTreeSerializedTime = std::chrono::steady_clock::now();
@@ -560,6 +586,8 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
       _revisionTree->insert(revisions);
     }
     _revisionTreeApplied.store(state->beginSeq());
+    _revisionTreeCreationSeq = state->beginSeq();
+    _revisionTreeSerializedSeq = state->beginSeq();
     return Result();
   });
 
@@ -592,7 +620,10 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
     if (!revisions.empty()) {
       _revisionTree->insert(revisions);
     }
-    _revisionTreeApplied.store(db->GetLatestSequenceNumber());
+    rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber();
+    _revisionTreeApplied.store(seq);
+    _revisionTreeCreationSeq = seq;
+    _revisionTreeSerializedSeq = seq;
   }
 
   return res;
@@ -602,12 +633,13 @@ void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder) {
   if (!_logicalCollection.useSyncByRevision()) {
     return;
   }
-  TRI_ASSERT(_revisionTree);
 
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
-  VPackObjectBuilder obj(&builder);
-  obj->add(StaticStrings::RevisionTreeCount, VPackValue(_revisionTree->count()));
-  obj->add(StaticStrings::RevisionTreeHash, VPackValue(_revisionTree->rootValue()));
+  if (_revisionTree) {
+    VPackObjectBuilder obj(&builder);
+    obj->add(StaticStrings::RevisionTreeCount, VPackValue(_revisionTree->count()));
+    obj->add(StaticStrings::RevisionTreeHash, VPackValue(_revisionTree->rootValue()));
+  }
 }
 
 void RocksDBMetaCollection::placeRevisionTreeBlocker(TRI_voc_tid_t transactionId) {

@@ -78,7 +78,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
   bool needToPersistRevisionTree(rocksdb::SequenceNumber maxCommitSeq) const;
   rocksdb::SequenceNumber lastSerializedRevisionTree(rocksdb::SequenceNumber maxCommitSeq);
   rocksdb::SequenceNumber serializeRevisionTree(std::string& output,
-                                                rocksdb::SequenceNumber commitSeq);
+                                                rocksdb::SequenceNumber commitSeq,
+                                                bool force);
 
   Result rebuildRevisionTree() override;
 
@@ -131,6 +132,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   /// @revision tree management for replication
   std::unique_ptr<containers::RevisionTree> _revisionTree;
   std::atomic<rocksdb::SequenceNumber> _revisionTreeApplied;
+  rocksdb::SequenceNumber _revisionTreeCreationSeq;
   rocksdb::SequenceNumber _revisionTreeSerializedSeq;
   std::chrono::steady_clock::time_point _revisionTreeSerializedTime;
   mutable std::mutex _revisionTreeLock;

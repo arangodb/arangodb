@@ -25,7 +25,7 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/QueryContext.h"
-#include "Aql/RegexCache.h"
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Transaction/Methods.h"
 
 using namespace arangodb;
@@ -41,18 +41,22 @@ void QueryExpressionContext::registerError(int errorCode, char const* msg) {
 
 icu::RegexMatcher* QueryExpressionContext::buildRegexMatcher(char const* ptr, size_t length,
                                                              bool caseInsensitive) {
-  return _regexCache.buildRegexMatcher(ptr, length, caseInsensitive);
+  return _aqlFunctionsInternalCache.buildRegexMatcher(ptr, length, caseInsensitive);
 }
 
 icu::RegexMatcher* QueryExpressionContext::buildLikeMatcher(char const* ptr, size_t length,
                                                             bool caseInsensitive) {
-  return _regexCache.buildLikeMatcher(ptr, length, caseInsensitive);
+  return _aqlFunctionsInternalCache.buildLikeMatcher(ptr, length, caseInsensitive);
 }
 
 icu::RegexMatcher* QueryExpressionContext::buildSplitMatcher(AqlValue splitExpression,
                                                              velocypack::Options const* opts,
                                                              bool& isEmptyExpression) {
-  return _regexCache.buildSplitMatcher(splitExpression, opts, isEmptyExpression);
+  return _aqlFunctionsInternalCache.buildSplitMatcher(splitExpression, opts, isEmptyExpression);
+}
+
+arangodb::ValidatorBase* QueryExpressionContext::buildValidator(arangodb::velocypack::Slice const& params) {
+  return _aqlFunctionsInternalCache.buildValidator(params);
 }
 
 TRI_vocbase_t& QueryExpressionContext::vocbase() const {

@@ -315,6 +315,7 @@ void HttpCommTask<T>::checkVSTPrefix() {
                                                        std::move(me->_protocol),
                                                        fuerte::vst::VST1_0);
       me->_server.registerTask(std::move(commTask));
+      me->close(ec);
       return;  // vst 1.0
 
     } else if (std::equal(::vst11, ::vst11 + 11, bg, bg + 11)) {
@@ -323,6 +324,7 @@ void HttpCommTask<T>::checkVSTPrefix() {
                                                        std::move(me->_protocol),
                                                        fuerte::vst::VST1_1);
       me->_server.registerTask(std::move(commTask));
+      me->close(ec);
       return;  // vst 1.1
     }
 
@@ -360,6 +362,7 @@ void HttpCommTask<T>::processRequest() {
       auto task = std::make_shared<H2CommTask<T>>(this->_server, this->_connectionInfo,
                                                   std::move(this->_protocol));
       task->upgradeHttp1(std::move(_request));
+      this->close();
       return;
     }
   }

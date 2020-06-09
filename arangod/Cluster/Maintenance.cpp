@@ -182,7 +182,7 @@ static VPackBuilder compareIndexes(std::string const& dbname, std::string const&
   return builder;
 }
 
-void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
+void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice const& ldb,
                      std::string const& dbname, std::string const& colname,
                      std::string const& shname, std::string const& serverId,
                      std::string const& leaderId, std::unordered_set<std::string>& commonShrds,
@@ -192,11 +192,15 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
   bool shouldBeLeading = serverId == leaderId;
   bool shouldResign = UNDERSCORE + serverId == leaderId;
 
+
   commonShrds.emplace(shname);
 
   if (ldb.hasKey(shname)) {  // Have local collection with that name
+
     auto const lcol = ldb.get(shname);
-    bool leading = lcol.get(THE_LEADER).copyString().empty();
+    std::string_view const localLeader = lcol.get(THE_LEADER).stringView();
+    bool const leaderTouched = localLeader != LEADER_NOT_YET_KNOWN;
+    bool leading = localLeader.empty();
     auto const properties = compareRelevantProps(cprops, lcol);
 
     auto fullShardLabel = dbname + "/" + colname + "/" + shname;
@@ -269,12 +273,14 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
       shouldBeLeading = true;
       shouldResign = false;
     }
-    if (leading != shouldBeLeading && !shouldResign) {
+    if ((leading != shouldBeLeading && !shouldResign) || !leaderTouched) {
       LOG_TOPIC("52412", DEBUG, Logger::MAINTENANCE)
           << "Triggering TakeoverShardLeadership job for shard " << dbname
           << "/" << colname << "/" << shname
           << ", local leader: " << lcol.get(THE_LEADER).copyString()
-          << ", should be leader: " << (shouldBeLeading ? std::string() : leaderId);
+          << ", leader id: " << leaderId << ", my id: " << serverId
+          << ", should be leader: " << (shouldBeLeading ? std::string() : leaderId)
+          << ", leaderTouched = " << (leaderTouched ? "yes" : "no");
       actions.emplace_back(ActionDescription(
           std::map<std::string, std::string>{
               {NAME, TAKEOVER_SHARD_LEADERSHIP},
@@ -282,8 +288,9 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
               {COLLECTION, colname},
               {SHARD, shname},
               {THE_LEADER, shouldBeLeading ? std::string() : leaderId},
-              {LOCAL_LEADER, lcol.get(THE_LEADER).copyString()},
-              {OLD_CURRENT_COUNTER, std::to_string(feature.getCurrentCounter())}},
+              {LOCAL_LEADER, std::string(localLeader)},
+              {OLD_CURRENT_COUNTER, "0"},   // legacy, no longer used
+              {PLAN_RAFT_INDEX, std::to_string(planIndex)}},
           LEADER_PRIORITY));
     }
 
@@ -297,7 +304,7 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
       // Index errors are checked in `compareIndexes`. THe loop below only
       // cares about those indexes that have no error.
       if (difference.slice().isArray()) {
-        for (auto const& index : VPackArrayIterator(difference.slice())) {
+        for (auto&& index : VPackArrayIterator(difference.slice())) {
           actions.emplace_back(ActionDescription(
               {{NAME, "EnsureIndex"},
                {DATABASE, dbname},
@@ -416,7 +423,7 @@ struct NotEmpty {
 
 /// @brief calculate difference between plan and local for for databases
 arangodb::Result arangodb::maintenance::diffPlanLocal(
-    VPackSlice const& plan, VPackSlice const& local,
+    VPackSlice const& plan, uint64_t planIndex, VPackSlice const& local,
     std::string const& serverId, MaintenanceFeature::errors_t& errors,
     MaintenanceFeature& feature, std::vector<ActionDescription>& actions) {
   arangodb::Result result;
@@ -433,7 +440,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
         actions.emplace_back(
             ActionDescription({{std::string(NAME), std::string(CREATE_DATABASE)}, {std::string("tick"), std::to_string(TRI_NewTickServer())},
                                {std::string(DATABASE), std::string(dbname)}},
-                              HIGHER_PRIORITY));
+                              HIGHER_PRIORITY,
+                              std::make_shared<VPackBuilder>(pdb.value)));
       } else {
         LOG_TOPIC("3a6a8", DEBUG, Logger::MAINTENANCE)
             << "Previous failure exists for creating database " << dbname << "skipping";
@@ -475,7 +483,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
               // "_serverId"
               if (dbs.isEqualString(serverId) || dbs.isEqualString(UNDERSCORE + serverId)) {
                 // at this point a shard is in plan, we have the db for it
-                handlePlanShard(cprops, ldb, dbname, pcol.key.copyString(),
+                handlePlanShard(planIndex, cprops, ldb, dbname, pcol.key.copyString(),
                                 shard.key.copyString(), serverId,
                                 shard.value[0].copyString(), commonShrds, indis,
                                 errors, feature, actions);
@@ -545,6 +553,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
 
 /// @brief handle plan for local databases
 arangodb::Result arangodb::maintenance::executePlan(VPackSlice const& plan,
+                                                    uint64_t planIndex,
                                                     VPackSlice const& local,
                                                     std::string const& serverId,
                                                     MaintenanceFeature& feature,
@@ -567,7 +576,7 @@ arangodb::Result arangodb::maintenance::executePlan(VPackSlice const& plan,
   {
     // TODO: Just putting an empty array does not make any sense here!
     VPackArrayBuilder a(&report);
-    diffPlanLocal(plan, local, serverId, errors, feature, actions);
+    diffPlanLocal(plan, planIndex, local, serverId, errors, feature, actions);
   }
 
   for (auto const& i : errors.databases) {
@@ -659,6 +668,7 @@ arangodb::Result arangodb::maintenance::diffLocalCurrent(VPackSlice const& local
 
 /// @brief Phase one: Compare plan and local and create descriptions
 arangodb::Result arangodb::maintenance::phaseOne(VPackSlice const& plan,
+                                                 uint64_t planIndex,
                                                  VPackSlice const& local,
                                                  std::string const& serverId,
                                                  MaintenanceFeature& feature,
@@ -673,7 +683,7 @@ arangodb::Result arangodb::maintenance::phaseOne(VPackSlice const& plan,
 
     // Execute database changes
     try {
-      result = executePlan(plan, local, serverId, feature, report);
+      result = executePlan(plan, planIndex, local, serverId, feature, report);
     } catch (std::exception const& e) {
       LOG_TOPIC("55938", ERR, Logger::MAINTENANCE)
           << "Error executing plan: " << e.what() << ". " << __FILE__ << ":" << __LINE__;

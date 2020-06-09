@@ -99,6 +99,11 @@ class StaticStrings {
   static std::string const Statistics15Collection;
   static std::string const StatisticsRawCollection;
 
+  // analyzers names
+  static std::string const AnalyzersRevision;
+  static std::string const AnalyzersBuildingRevision;
+  static std::string const AnalyzersDeletedRevision;
+
   // database definition fields
   static std::string const DatabaseId;
   static std::string const DatabaseName;
@@ -231,6 +236,7 @@ class StaticStrings {
   static std::string const Schema;
   static std::string const Version;
   static std::string const WriteConcern;
+  static std::string const ShardingSingle;
 
   // graph attribute names
   static std::string const GraphCollection;
@@ -311,6 +317,7 @@ class StaticStrings {
   static std::string const AqlRemoteStateHasmore;
   static std::string const AqlCallListSpecific;
   static std::string const AqlCallListDefault;
+  static std::string const ArangoSearchAnalyzersRevision;
 
   // validation
   static std::string const ValidationLevelNone;

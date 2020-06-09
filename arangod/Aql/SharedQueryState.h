@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2018-2020 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -121,7 +121,7 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
     }
     return queued;
   }
-
+  
  private:
   /// execute the _continueCallback. must hold _mutex
   void notifyWaiter(std::unique_lock<std::mutex>& guard);

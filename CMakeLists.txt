@@ -286,7 +286,7 @@ if (USE_DTRACE)
   add_definitions("-DUSE_DTRACE=1")
 endif ()
 
-# enable enterprise features
+# enable Enterprise Edition features
 set(ENTERPRISE_INCLUDE_DIR "enterprise")
 option(USE_ENTERPRISE "enable enterprise build" OFF)
 
@@ -474,9 +474,20 @@ else ()
   )
 endif ()
 
+if (LINUX)
+  option(
+    USE_LIBUNWIND
+    "use libunwind for stack traces"
+    ON
+  )
+else ()
+  SET(USE_LIBUNWIND OFF)
+endif ()
+
 if (CROSS_COMPILING)
 # currently off, need additional params to configure like --host=triple <params>
   SET(USE_JEMALLOC OFF)
+  SET(USE_LIBUNWIND OFF)
 endif()
 
 ################################################################################
@@ -551,16 +562,14 @@ endif ()
 
 if (CMAKE_COMPILER_IS_GNUCC OR APPLE)
   set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std=c++17")
-endif ()
-
-if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   # MSVC2018.1 - MSVC2018.7 does not correctly support alignas()
   if (MSVC_VERSION VERSION_LESS 1915)
     message(FATAL_ERROR "ArangoDB Requires at least MSVC 2017 update 15.8!")
   endif()
-
   # MSVC2018.8 requires the following define
   add_definitions(-D_ENABLE_EXTENDED_ALIGNED_STORAGE)
+  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std:c++17")
 endif()
 
 if (CMAKE_COMPILER_IS_CLANG)
@@ -856,6 +865,10 @@ endfunction()
 
 if (USE_JEMALLOC)
   add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
+endif ()
+
+if (USE_LIBUNWIND)
+  add_definitions("-DARANGODB_HAVE_LIBUNWIND=1")
 endif ()
 
 # ------------------------------------------------------------------------------

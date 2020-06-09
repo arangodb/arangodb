@@ -672,6 +672,7 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   
   VPackSlice collections = queryBuilder->slice().get("collections");
   VPackSlice variables = queryBuilder->slice().get("variables");
+  VPackSlice analyzersRevision = queryBuilder->slice().get(arangodb::StaticStrings::ArangoSearchAnalyzersRevision);
   
   // simon: hack to get the behaviour of old second aql::Query constructor
   VPackBuilder snippetBuilder; // simon: hack to make format conform
@@ -685,7 +686,10 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackBuilder ignoreResponse;
   query.prepareClusterQuery(aql::SerializationFormat::SHADOWROWS, VPackSlice::emptyObjectSlice(),
                             collections, variables,
-                            snippetBuilder.slice(), VPackSlice::noneSlice(), ignoreResponse);
+                            snippetBuilder.slice(), VPackSlice::noneSlice(), ignoreResponse,
+                            analyzersRevision.isNumber() ? 
+                              static_cast<arangodb::AnalyzersRevision::Revision>(analyzersRevision.getUInt())
+                              : arangodb::AnalyzersRevision::MIN);
   
   aql::QueryResult queryResult = query.executeSync();
 
@@ -1817,7 +1821,7 @@ static void JS_LdapEnabled(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto& ldap = v8g->_server.getFeature<LdapFeature>();
   TRI_V8_RETURN(v8::Boolean::New(isolate, ldap.isEnabled()));
 #else
-  // LDAP only enabled in enterprise mode
+  // LDAP only enabled in Enterprise Edition
   TRI_V8_RETURN(v8::False(isolate));
 #endif
 

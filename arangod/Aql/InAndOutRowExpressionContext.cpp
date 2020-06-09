@@ -43,7 +43,7 @@ static bool testInternalIdValid(size_t id, std::vector<RegisterId> const& regs) 
 InAndOutRowExpressionContext::InAndOutRowExpressionContext(
     transaction::Methods& trx,
     QueryContext& context,
-    RegexCache& cache,
+    AqlFunctionsInternalCache& cache,
     std::vector<Variable const*> vars,
     std::vector<RegisterId> regs, size_t vertexVarIdx,
     size_t edgeVarIdx, size_t pathVarIdx)

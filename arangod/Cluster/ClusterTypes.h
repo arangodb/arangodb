@@ -26,6 +26,9 @@
 #include <limits>
 #include <string>
 #include <iostream>
+#include <memory>
+#include "velocypack/Builder.h"
+#include "velocypack/velocypack-aliases.h"
 
 namespace arangodb {
 
@@ -74,6 +77,56 @@ class RebootId {
 
  private:
   uint64_t _value;
+};
+
+namespace velocypack {
+class Builder;
+class Slice;
+}
+
+struct AnalyzersRevision {
+ public:
+  using Revision = uint64_t;
+  using Ptr = std::shared_ptr<AnalyzersRevision const>;
+
+  static constexpr Revision LATEST = std::numeric_limits<uint64_t>::max();
+  static constexpr Revision MIN = 0;
+
+  AnalyzersRevision(AnalyzersRevision const&) = delete;
+  AnalyzersRevision& operator=(AnalyzersRevision const&) = delete;
+
+  Revision getRevision() const noexcept {
+    return _revision;
+  }
+
+  Revision getBuildingRevision() const noexcept {
+    return _buildingRevision;
+  }
+
+  ServerID const& getServerID() const noexcept {
+    return _serverID;
+  }
+
+  RebootId const& getRebootID() const noexcept {
+    return _rebootID;
+  }
+
+  void toVelocyPack(VPackBuilder& builder) const;
+
+  static Ptr fromVelocyPack(VPackSlice const& slice, std::string& error);
+
+  static Ptr getEmptyRevision();
+ private:
+
+  AnalyzersRevision(Revision revision, Revision buildingRevision,
+    ServerID&& serverID, uint64_t rebootID) noexcept
+    : _revision(revision), _buildingRevision(buildingRevision),
+    _serverID(std::move(serverID)), _rebootID(rebootID) {}
+
+  Revision _revision;
+  Revision _buildingRevision;
+  ServerID _serverID;
+  RebootId _rebootID;
 };
 
 }  // namespace arangodb

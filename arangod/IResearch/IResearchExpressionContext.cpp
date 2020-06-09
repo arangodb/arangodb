@@ -24,7 +24,7 @@
 #include "IResearchExpressionContext.h"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/RegexCache.h"
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/QueryContext.h"
 #include "Aql/IResearchViewNode.h"
 #include "Basics/StaticStrings.h"
@@ -50,18 +50,22 @@ void ViewExpressionContextBase::registerError(int errorCode, char const* msg) {
 
 icu::RegexMatcher* ViewExpressionContextBase::buildRegexMatcher(char const* ptr, size_t length,
                                                              bool caseInsensitive) {
-  return _regexCache->buildRegexMatcher(ptr, length, caseInsensitive);
+  return _aqlFunctionsInternalCache->buildRegexMatcher(ptr, length, caseInsensitive);
 }
 
 icu::RegexMatcher* ViewExpressionContextBase::buildLikeMatcher(char const* ptr, size_t length,
                                                             bool caseInsensitive) {
-  return _regexCache->buildLikeMatcher(ptr, length, caseInsensitive);
+  return _aqlFunctionsInternalCache->buildLikeMatcher(ptr, length, caseInsensitive);
 }
 
 icu::RegexMatcher* ViewExpressionContextBase::buildSplitMatcher(AqlValue splitExpression,
                                                              velocypack::Options const* opts,
                                                              bool& isEmptyExpression) {
-  return _regexCache->buildSplitMatcher(splitExpression, opts, isEmptyExpression);
+  return _aqlFunctionsInternalCache->buildSplitMatcher(splitExpression, opts, isEmptyExpression);
+}
+
+arangodb::ValidatorBase* ViewExpressionContextBase::buildValidator(arangodb::velocypack::Slice const& params) {
+  return _aqlFunctionsInternalCache->buildValidator(params);
 }
 
 TRI_vocbase_t& ViewExpressionContextBase::vocbase() const {

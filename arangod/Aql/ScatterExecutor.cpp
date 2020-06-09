@@ -70,7 +70,11 @@ auto ScatterExecutor::ClientBlockData::addBlock(SharedAqlItemBlockPtr block,
   // is empty. If another peer-calculation has written to this value
   // this assertion does not hold true anymore.
   // Hence we are required to do an indepth cloning here.
-  _queue.emplace_back(block->cloneDataAndMoveShadow(), skipped);
+  if (block == nullptr) {
+    _queue.emplace_back(block, skipped);
+  } else {
+    _queue.emplace_back(block->cloneDataAndMoveShadow(), skipped);
+  }
 }
 
 auto ScatterExecutor::ClientBlockData::hasDataFor(AqlCall const& call) -> bool {
@@ -118,7 +122,7 @@ auto ScatterExecutor::ClientBlockData::execute(AqlCallStack callStack, Execution
 
 ScatterExecutor::ScatterExecutor(Infos const&) {}
 
-auto ScatterExecutor::distributeBlock(SharedAqlItemBlockPtr block, SkipResult skipped,
+auto ScatterExecutor::distributeBlock(SharedAqlItemBlockPtr const& block, SkipResult skipped,
                                       std::unordered_map<std::string, ClientBlockData>& blockMap) const
     -> void {
   // Scatter returns every block on every client as is.

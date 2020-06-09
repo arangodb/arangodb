@@ -37,27 +37,31 @@ var db = require("@arangodb").db, indexId;
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function blockReturnRegressionSuite() {
-  const activateSplicing = {optimizer: {rules: ["+splice-subqueries"]}};
-  const deactivateSplicing = {optimizer: {rules: ["-splice-subqueries"]}};
 
-  const deepAssertElements = (left, right, path) => {
-    if (Array.isArray(left)) {
-      assertTrue(Array.isArray(right), `On ${path}`);
-      assertEqual(left.length, right.length, `On ${path}`);
-      for (let i = 0; i < left.length; ++i) {
-        deepAssertElements(left[i], right[i], `${path}[${i}]`);
-      }
-    } else if (left instanceof Object) {
-      assertTrue(right instanceof Object, `On ${path}`);
-      assertEqual(Object.keys(left).sort(), Object.keys(right).sort(), `On ${path}`);
-      for (const [key, val] of Object.entries(left)) {
-        deepAssertElements(val, right[key], `${path}.${key}`);
-      }
-    } else {
-      assertEqual(left, right,`On ${path}`);
+const activateSplicing = {optimizer: {rules: ["+splice-subqueries"]}};
+const deactivateSplicing = {optimizer: {rules: ["-splice-subqueries"]}};
+
+
+const deepAssertElements = (left, right, path) => {
+  if (Array.isArray(left)) {
+    assertTrue(Array.isArray(right), `On ${path}`);
+    assertEqual(left.length, right.length, `On ${path}`);
+    for (let i = 0; i < left.length; ++i) {
+      deepAssertElements(left[i], right[i], `${path}[${i}]`);
     }
-  };
+  } else if (left instanceof Object) {
+    assertTrue(right instanceof Object, `On ${path}`);
+    assertEqual(Object.keys(left).sort(), Object.keys(right).sort(), `On ${path}`);
+    for (const [key, val] of Object.entries(left)) {
+      deepAssertElements(val, right[key], `${path}.${key}`);
+    }
+  } else {
+    assertEqual(left, right,`On ${path}`);
+  }
+};
+
+function blockReturnRegressionSuite() {
+
 
   return {
 
@@ -155,16 +159,103 @@ function blockReturnRegressionSuite() {
       const splicedRes = db._query(query, {}, activateSplicing).toArray();
       const nosplicedRes = db._query(query, {}, deactivateSplicing).toArray();
       deepAssertElements(splicedRes, nosplicedRes, "result");
-    }
+    },
 
+    testEmptyCollections: function () {
+      const col = db._createEdgeCollection("UnitTestCollection", {numberOfShards: 5});
+      try {
+        const query = `
+        FOR x IN @@collectionName
+          LET sq = (FOR y IN @@collectionName LIMIT 10 RETURN UNSET(y, "_rev"))
+          LET sq2 = (FOR z IN @@collectionName LIMIT 10 RETURN UNSET(z, "_rev"))
+            RETURN [sq, sq2]
+        `;
+        const bindVars = { "@collectionName": col.name() };
+        const splicedRes = db._query(query, bindVars, activateSplicing).toArray();
+        const nosplicedRes = db._query(query, bindVars, deactivateSplicing).toArray();
+        deepAssertElements(splicedRes, nosplicedRes, "result");
+      } finally {
+        col.drop();
+      }
+    }
   };
 
+}
+
+function collectionInSubqeryRegressionSuite() {
+  let col;
+
+  return {
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief set up
+    ////////////////////////////////////////////////////////////////////////////////
+
+    setUp: function () {
+      col = db._createEdgeCollection("UnitTestCollection", { numberOfShards: 5 });
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief tear down
+    ////////////////////////////////////////////////////////////////////////////////
+
+    tearDown: function () {
+      col.drop();
+    },
+
+
+    testEmptyCollections2: function () {
+      const query = `
+      FOR x IN @@collectionName
+        LET sq = (FOR y IN @@collectionName LIMIT 10 RETURN UNSET(y, "_rev"))
+        LET sq2 = (FOR z IN @@collectionName LIMIT 10 RETURN UNSET(z, "_rev"))
+          RETURN [sq, sq2]
+      `;
+      const bindVars = { "@collectionName": col.name() };
+      const splicedRes = db._query(query, bindVars, activateSplicing).toArray();
+      const nosplicedRes = db._query(query, bindVars, deactivateSplicing).toArray();
+      deepAssertElements(splicedRes, nosplicedRes, "result");
+    },
+
+    testInsertCollections: function () {
+      // We do not expect any inserts.
+      // However as opposed to the query in testEmptyCollections, we will use a Distribute
+      // instead of a Scatter here, using a different code path
+      const query = `
+      FOR x IN 1..10
+        LIMIT 100, null
+        LET sq2 = (INSERT {value: x._key} INTO @@collectionName)
+          RETURN [sq2]
+      `;
+      const bindVars = { "@collectionName": col.name() };
+      const splicedRes = db._query(query, bindVars, activateSplicing).toArray();
+      const nosplicedRes = db._query(query, bindVars, deactivateSplicing).toArray();
+      deepAssertElements(splicedRes, nosplicedRes, "result");
+    },
+
+    testParallelTraversal: function () {
+      // We do not expect any traversal
+      // however this should trigger the distribution
+      // into parallel threads.
+      const query = `
+      FOR x IN @@collectionName
+        LET sq = (FOR y IN @@collectionName LIMIT 10 RETURN UNSET(y, "_rev"))
+        LET sq2 = (FOR v,e,p IN 1 OUTBOUND x @@collectionName OPTIONS {parallelism: 5} RETURN v)
+          RETURN [sq, sq2]
+      `;
+      const bindVars = { "@collectionName": col.name() };
+      const splicedRes = db._query(query, bindVars, activateSplicing).toArray();
+      const nosplicedRes = db._query(query, bindVars, deactivateSplicing).toArray();
+      deepAssertElements(splicedRes, nosplicedRes, "result");
+    }
+  };
 }
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(blockReturnRegressionSuite);
+jsunity.run(collectionInSubqeryRegressionSuite);
 
 return jsunity.done();
 

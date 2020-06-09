@@ -152,7 +152,7 @@ struct write_trx {
     _buffer.openObject();
     return std::move(_buffer);
   }
-  write_trx& operator=(write_trx&&) noexcept = default;
+  write_trx& operator=(write_trx&&) = default;
 
  private:
   friend T;

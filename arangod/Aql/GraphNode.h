@@ -54,7 +54,7 @@ namespace aql {
 //        * graph info parsing
 //        * traverser-engine creation
 //        * option preparation
-//        * Smart Graph Handling
+//        * SmartGraph Handling
 class ExecutionEngine;
 
 class GraphNode : public ExecutionNode {
@@ -68,7 +68,7 @@ class GraphNode : public ExecutionNode {
 
  public:
   bool isUsedAsSatellite() const;
-  bool isSatelliteNode() const;
+  bool isLocalGraphNode() const;
   void waitForSatelliteIfRequired(ExecutionEngine const* engine) const;
 
   bool isEligibleAsSatelliteTraversal() const;
@@ -102,10 +102,10 @@ class GraphNode : public ExecutionNode {
   /// @brief the cost of a graph node
   CostEstimate estimateCost() const override;
 
-  /// @brief flag, if smart traversal (enterprise edition only!) is done
+  /// @brief flag, if smart traversal (Enterprise Edition only!) is done
   bool isSmart() const;
 
-  /// @brief flag, if the graph is a disjoint smart graph (enterprise edition only!)
+  /// @brief flag, if the graph is a Disjoint SmartGraph (Enterprise Edition only!)
   bool isDisjoint() const;
 
   /// @brief return the database
@@ -236,10 +236,10 @@ class GraphNode : public ExecutionNode {
   /// @brief The list of traverser engines grouped by server.
   std::unordered_map<ServerID, aql::EngineId> _engines;
 
-  /// @brief flag, if graph is smart (enterprise edition only!)
+  /// @brief flag, if graph is smart (Enterprise Edition only!)
   bool _isSmart;
 
-  /// @brief flag, if graph is smart *and* disjoint (enterprise edition only!)
+  /// @brief flag, if graph is smart *and* disjoint (Enterprise Edition only!)
   bool _isDisjoint;
 
   /// @brief list of shards involved, required for one-shard-databases

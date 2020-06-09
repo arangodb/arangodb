@@ -1092,13 +1092,13 @@ void Condition::deduplicateJunctionNode(AstNode* unlockedNode) {
 
         if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
           if (lhs->isConstant()) {
-            lhs = Ast::resolveConstAttributeAccess(lhs);
+            lhs = _ast->resolveConstAttributeAccess(lhs);
           }
           storeAttributeAccess(varAccess, variableUsage, lhs, j, ATTRIBUTE_LEFT);
         }
         if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS || rhs->type == NODE_TYPE_EXPANSION) {
           if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && rhs->isConstant()) {
-            rhs = Ast::resolveConstAttributeAccess(rhs);
+            rhs = _ast->resolveConstAttributeAccess(rhs);
           }
           storeAttributeAccess(varAccess, variableUsage, rhs, j, ATTRIBUTE_RIGHT);
         }
@@ -1279,13 +1279,13 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
 
         if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
           if (lhs->isConstant()) {
-            lhs = Ast::resolveConstAttributeAccess(lhs);
+            lhs = _ast->resolveConstAttributeAccess(lhs);
           }
           storeAttributeAccess(varAccess, variableUsage, lhs, j, ATTRIBUTE_LEFT);
         }
         if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS || rhs->type == NODE_TYPE_EXPANSION) {
           if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && rhs->isConstant()) {
-            rhs = Ast::resolveConstAttributeAccess(rhs);
+            rhs = _ast->resolveConstAttributeAccess(rhs);
           }
           storeAttributeAccess(varAccess, variableUsage, rhs, j, ATTRIBUTE_RIGHT);
         }

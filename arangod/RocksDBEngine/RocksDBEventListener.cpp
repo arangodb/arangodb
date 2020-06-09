@@ -139,11 +139,11 @@ bool RocksDBEventListenerThread::shaCalcFile(std::string const& filename) {
         good = false;
         LOG_TOPIC("8f7ef", DEBUG, arangodb::Logger::ENGINES)
           << "shaCalcFile: TRI_WriteFile failed with " << ret_val
-          << " for " << newfile.c_str();
+          << " for " << newfile;
       }
     } else {
       LOG_TOPIC("7f3fd", DEBUG, arangodb::Logger::ENGINES)
-        << "shaCalcFile:  TRI_ProcessFile failed for " << filename.c_str();
+        << "shaCalcFile:  TRI_ProcessFile failed for " << filename;
     } // else
   } // if
 
@@ -180,11 +180,11 @@ bool RocksDBEventListenerThread::deleteFile(std::string const& filename) {
         if (!good) {
           LOG_TOPIC("acb34", DEBUG, arangodb::Logger::ENGINES)
             << "deleteCalcFile:  TRI_UnlinkFile failed with " << ret_val
-            << " for " << deletefile.c_str();
+            << " for " << deletefile;
         } else {
           LOG_TOPIC("e0a0d", DEBUG, arangodb::Logger::ENGINES)
             << "deleteCalcFile:  TRI_UnlinkFile succeeded for "
-            << deletefile.c_str();
+            << deletefile;
         }// if
         break;
       } // if
