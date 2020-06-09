@@ -1,6 +1,10 @@
 devel
 -----
 
+* Allow specifiying arbitrary vertex attributes when creating a vertex via the 
+  graph viewer in the web UI. This is necessary for collections that have a
+  schema and that require new vertices to have certain attributes/values.
+
 * Fixed velocypack validator for proper check of keys.
 
 * Handle missing "shardingStrategy" in Plan agency entries for collections.
