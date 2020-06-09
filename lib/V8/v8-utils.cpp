@@ -3045,6 +3045,45 @@ static void JS_Read(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief was docuBlock JS_Read
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_ReadPipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("read(pipefd)");
+  }
+
+  int64_t f = TRI_ObjectToInt64(isolate, args[0]);
+  if (f == 0) {
+    TRI_V8_THROW_TYPE_ERROR("<filename> a file pointer");
+  }
+
+  // TRI_GET_GLOBALS();
+  // V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  // 
+  // if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
+  //   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+  //                                  std::string("not allowed to read files in this path: ") + *name);
+  // }
+
+  char content[1024];
+  size_t length = sizeof(content) - 1;
+  memset(content, 0, sizeof(content) - 1);
+  bool haveMore = TRI_ReadPointer(f, content, length);
+  if (!haveMore) {
+    length = strlen(content);
+  }
+
+  auto result = TRI_V8_PAIR_STRING(isolate, content, length);
+
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JS_ReadBuffer
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -5714,6 +5753,7 @@ void TRI_InitV8Utils(v8::Isolate* isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_GET_PID"), JS_GetPid);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_RAND"), JS_Rand);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_READ"), JS_Read);
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_READPIPE"), JS_ReadPipe);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_READ64"), JS_Read64);
   TRI_AddGlobalFunctionVocbase(isolate,
