@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed "Create Debug Package" in web UI in cluster mode.
+
 * Fixed velocypack validator for proper check of keys.
 
 * Handle missing "shardingStrategy" in Plan agency entries for collections.
