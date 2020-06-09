@@ -1,6 +1,8 @@
 devel
 -----
 
+* Augment nodes view in web UI with node id and full datetime of startup.
+
 * Fixed velocypack validator for proper check of keys.
 
 * Handle missing "shardingStrategy" in Plan agency entries for collections.

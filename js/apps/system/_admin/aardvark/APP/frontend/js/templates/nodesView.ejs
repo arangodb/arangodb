@@ -59,7 +59,7 @@
 
         <div class="pure-table-row <%= disabled %>" node="<%= id %>">
 
-          <div class="pure-u-9-24 left">
+          <div class="pure-u-9-24 left" title="<%= node.id %>">
             <%= node.ShortName %>
             <i class="fa fa-bar-chart"></i>
             <% if (node.CanBeDeleted && frontendConfig.db === '_system') { %>
@@ -70,10 +70,11 @@
 
           <div class="pure-u-3-24"><%= node.Version %></div>
 
-          <% var formatted = (node.LastAckedTime).substr(11, 18).slice(0, -1); %>
-          <div class="pure-u-2-24 hide-small mid"><%= formatted %></div>
+          <% var formatted = node.LastAckedTime.substr(11, 18); %>
+          <% var full = node.LastAckedTime; %>
+          <div class="pure-u-2-24 hide-small mid" title="<%= full %>"><%= formatted %></div>
 
-          <% if(node.Status === 'GOOD') { %>
+          <% if (node.Status === 'GOOD') { %>
             <div class="pure-u-1-24 mid state"><i class="fa fa-check-circle tippy" title="<%= node.SyncStatus %>"></i></div>
           <% } else { %>
             <div class="pure-u-1-24 mid state"><i class="fa fa-exclamation-circle"></i></div>
@@ -143,7 +144,7 @@
 
         <div class="pure-table-row <%= disabled %>" node="<%= id %>">
 
-          <div class="pure-u-9-24 left">
+          <div class="pure-u-9-24 left" title="<%= node.id %>">
             <%= node.ShortName %>
             <i class="fa fa-bar-chart"></i>
             <% if (node.CanBeDeleted && frontendConfig.db === '_system') { %>
@@ -154,10 +155,11 @@
 
           <div class="pure-u-3-24"><%= node.Version %></div>
 
-          <% var formatted = (node.LastAckedTime).substr(11, 18).slice(0, -1); %>
-          <div class="pure-u-2-24 hide-small mid"><%= formatted %></div>
+          <% var formatted = node.LastAckedTime.substr(11, 18); %>
+          <% var full = node.LastAckedTime; %>
+          <div class="pure-u-2-24 hide-small mid" title="<%= full %>"><%= formatted %></div>
 
-          <% if(node.Status === 'GOOD') { %>
+          <% if (node.Status === 'GOOD') { %>
             <div class="pure-u-1-24 mid state"><i class="fa fa-check-circle tippy" title="<%= node.SyncStatus %>"></i></div>
           <% } else { %>
             <div class="pure-u-1-24 mid state"><i class="fa fa-exclamation-circle"></i></div>
