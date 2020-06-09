@@ -771,11 +771,7 @@
         arangoHelper.arangoError("failed to parse JSON document", x.message);
         return;
       }
-      if (key !== '' || key !== undefined) {
-        this.documentStore.createTypeEdge(collid, from, to, key, body, this.goToDocument);
-      } else {
-        this.documentStore.createTypeEdge(collid, from, to, null, body, this.goToDocument);
-      }
+      this.documentStore.createTypeEdge(collid, from, to, (key !== '' || key !== undefined) ? key : null, body, this.goToDocument);
     },
 
     addDocument: function () {
@@ -789,11 +785,7 @@
         return;
       }
 
-      if (key !== '' || key !== undefined) {
-        this.documentStore.createTypeDocument(collid, key, body, this.goToDocument);
-      } else {
-        this.documentStore.createTypeDocument(collid, null, body, this.goToDocument);
-      }
+      this.documentStore.createTypeDocument(collid, (key !== '' || key !== undefined) ? key : null, body, this.goToDocument);
     },
 
     addSmartAttributeDocument: function () {
@@ -808,13 +800,8 @@
         return;
       }
 
-      if (key !== '' || key !== undefined) {
-        this.documentStore.createTypeDocument(collid, key, body, this.goToDocument, false,
+      this.documentStore.createTypeDocument(collid, (key !== '' || key !== undefined) ? key : null, body, this.goToDocument, false,
           this.collection.getSmartJoinAttribute(), smartJoinAttributeValue, null, null);
-      } else {
-        this.documentStore.createTypeDocument(collid, null, body, this.goToDocument, false,
-          this.collection.getSmartJoinAttribute(), smartJoinAttributeValue, null, null);
-      }
     },
 
     addSmartGraphDocument: function () {
