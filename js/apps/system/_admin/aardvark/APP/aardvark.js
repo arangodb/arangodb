@@ -212,7 +212,6 @@ authRouter.post('/query/debugDump', function (req, res) {
   try {
     explainer.debugDump(tmpDebugFileName, query, bindVars, options);
   } catch (e) {
-    print(String(e.stack));
     res.throw('bad request', e.message, {cause: e});
   }
   try {
