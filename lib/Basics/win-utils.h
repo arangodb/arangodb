@@ -130,7 +130,7 @@ bool terminalKnowsANSIColors();
 /// @brief mimics TRI_ReadPointer with a nonblocking windows handle
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_READ_POINTER(HANDLE fd, void* Buffer, size_t length);
+bool TRI_READ_POINTER(HANDLE fd, void* Buffer, size_t length);
 
 std::string getFileNameFromHandle(HANDLE fileHandle);
 #endif
