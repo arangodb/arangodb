@@ -682,13 +682,16 @@ function optimizerRuleTestSuite () {
             RETURN result
           )
           RETURN outerSubquery`;
-      for (const params of RulesCombinator(["splice-subqueries", "move-calculations-down"])) {
+      for (const params of RulesCombinator([
+        "splice-subqueries",
+        "move-calculations-down",
+      ])) {
         const { plan } = AQL_EXPLAIN(query, {}, params);
-        const {json , stats} = AQL_EXECUTE(query, {}, params);
+        const { json, stats } = AQL_EXECUTE(query, {}, params);
         const { writesExecuted } = stats;
-        assertEqual(100, writesExecuted, {query, params});
-        assertEqual(-1, plan.rules.indexOf(ruleName), {query, params});
-        assertEqual(json, expected, {query, params});
+        assertEqual(100, writesExecuted, { query, params });
+        assertEqual(-1, plan.rules.indexOf(ruleName), { query, params });
+        assertEqual(json, expected, { query, params });
       }
     },
 
@@ -708,13 +711,73 @@ function optimizerRuleTestSuite () {
           )
           LIMIT 1, 2
           RETURN outerSubquery`;
-      for (const params of RulesCombinator(["splice-subqueries", "move-calculations-down"])) {
+      for (const params of RulesCombinator([
+        "splice-subqueries",
+        "move-calculations-down",
+      ])) {
         const { plan } = AQL_EXPLAIN(query, {}, params);
-        const {json , stats} = AQL_EXECUTE(query, {}, params);
+        const { json, stats } = AQL_EXECUTE(query, {}, params);
         const { writesExecuted } = stats;
-        assertEqual(100, writesExecuted, {query, params});
-        assertEqual(-1, plan.rules.indexOf(ruleName), {query, params});
-        assertEqual(json, expected, {query, params});
+        assertEqual(100, writesExecuted, { query, params });
+        assertEqual(-1, plan.rules.indexOf(ruleName), { query, params });
+        assertEqual(json, expected, { query, params });
+      }
+    },
+
+    testNestedModifyLimitFilterTakeAll: function () {
+      var expected = [];
+      for (let i = 1; i < 3; ++i) {
+        expected.push([[`test${i}-${i}`]]);
+      }
+
+      var query = `FOR i IN 0..99
+          LET outerSubquery = (
+            LET result = (
+              UPDATE {_key: CONCAT('test', TO_STRING(i))} WITH {updated: true} IN ${cn}
+              RETURN CONCAT(NEW._key, '-', NEW.value)
+            )
+            RETURN result
+          )
+          FILTER LENGTH(outerSubquery) == 1
+          LIMIT 1, 2
+          RETURN outerSubquery`;
+      for (const params of RulesCombinator([
+        "splice-subqueries",
+        "move-calculations-down",
+      ])) {
+        const { plan } = AQL_EXPLAIN(query, {}, params);
+        const { json, stats } = AQL_EXECUTE(query, {}, params);
+        const { writesExecuted } = stats;
+        assertEqual(100, writesExecuted, { query, params });
+        assertEqual(-1, plan.rules.indexOf(ruleName), { query, params });
+        assertEqual(json, expected, { query, params });
+      }
+    },
+
+    testNestedModifyLimitFilterTakeNone: function () {
+      var expected = [];
+
+      var query = `FOR i IN 0..99
+          LET outerSubquery = (
+            LET result = (
+              UPDATE {_key: CONCAT('test', TO_STRING(i))} WITH {updated: true} IN ${cn}
+              RETURN CONCAT(NEW._key, '-', NEW.value)
+            )
+            RETURN result
+          )
+          FILTER LENGTH(outerSubquery) > 1
+          LIMIT 1, 2
+          RETURN outerSubquery`;
+      for (const params of RulesCombinator([
+        "splice-subqueries",
+        "move-calculations-down",
+      ])) {
+        const { plan } = AQL_EXPLAIN(query, {}, params);
+        const { json, stats } = AQL_EXECUTE(query, {}, params);
+        const { writesExecuted } = stats;
+        assertEqual(100, writesExecuted, { query, params });
+        assertEqual(-1, plan.rules.indexOf(ruleName), { query, params });
+        assertEqual(json, expected, { query, params });
       }
     },
   };
