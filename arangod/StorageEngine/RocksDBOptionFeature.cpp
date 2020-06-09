@@ -355,7 +355,7 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
 
   options->addOption(
       "--rocksdb.pin-l0-filter-and-index-blocks-in-cache",
-      "if true and `--rocksdb.cache-index-and-filter-blocks is also true, "
+      "if true and `--rocksdb.cache-index-and-filter-blocks` is also true, "
       "filter and index blocks are pinned and only evicted from cache when the table reader is freed",
       new BooleanParameter(&_pinl0FilterAndIndexBlocksInCache),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));

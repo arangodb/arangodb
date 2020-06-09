@@ -340,12 +340,12 @@ class AnalyzerModificationTransaction {
 };
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-class ClusterInfo  {
+class ClusterInfo {
 #else
-class ClusterInfo final  {
+class ClusterInfo final {
 #endif
 
-private:
+ private:
   typedef std::unordered_map<CollectionID, std::shared_ptr<LogicalCollection>> DatabaseCollections;
   typedef std::unordered_map<DatabaseID, DatabaseCollections> AllCollections;
   typedef std::unordered_map<CollectionID, std::shared_ptr<CollectionInfoCurrent>> DatabaseCollectionsCurrent;
@@ -354,15 +354,11 @@ private:
   typedef std::unordered_map<ViewID, std::shared_ptr<LogicalView>> DatabaseViews;
   typedef std::unordered_map<DatabaseID, DatabaseViews> AllViews;
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
   class SyncerThread final : public arangodb::Thread {
-#else
-  class SyncerThread : public arangodb::Thread {
-#endif
-  public:
+   public:
     explicit SyncerThread(
       application_features::ApplicationServer&, std::string const& section,
-      std::function<void()>, AgencyCallbackRegistry*);
+      std::function<void()> const&, AgencyCallbackRegistry*);
     explicit SyncerThread(SyncerThread const&);
     ~SyncerThread();
     void beginShutdown();
@@ -370,7 +366,7 @@ private:
     void start();
     bool notify(velocypack::Slice const&);
 
-  private:
+   private:
     std::mutex _m;
     std::condition_variable _cv;
     bool _news;
@@ -861,12 +857,14 @@ public:
   //////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<VPackBuilder> getPlan();
+  std::shared_ptr<VPackBuilder> getPlan(uint64_t& planIndex);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get current "Current" structure
   //////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<VPackBuilder> getCurrent();
+  std::shared_ptr<VPackBuilder> getCurrent(uint64_t& currentIndex);
 
   std::vector<std::string> getFailedServers() {
     MUTEX_LOCKER(guard, _failedServersMutex);

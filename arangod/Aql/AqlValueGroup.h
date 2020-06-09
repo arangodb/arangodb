@@ -28,15 +28,15 @@
 #include "Basics/Common.h"
 
 namespace arangodb {
-namespace transaction {
-class Methods;
+namespace velocypack {
+struct Options;
 }
 
 namespace aql {
 
 /// @brief hasher for a vector of AQL values
 struct AqlValueGroupHash {
-  AqlValueGroupHash(size_t num);
+  explicit AqlValueGroupHash(size_t num);
 
   size_t operator()(std::vector<AqlValue> const& value) const;
   size_t operator()(AqlValue const& value) const;

@@ -157,7 +157,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   Result tmp;
   VPackBuilder rb;
   auto& clusterInfo = _server.getFeature<ClusterFeature>().clusterInfo();
-  auto plan = clusterInfo.getPlan();
+  uint64_t planIndex = 0;
+  auto plan = clusterInfo.getPlan(planIndex);
   auto serverId = arangodb::ServerState::instance()->getId();
 
   if (plan == nullptr) {
@@ -187,7 +188,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     auto startTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("19aaf", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseOne";
-    tmp = arangodb::maintenance::phaseOne(plan->slice(), local.slice(),
+    tmp = arangodb::maintenance::phaseOne(plan->slice(), planIndex, local.slice(),
                                           serverId, mfeature, rb);
     auto endTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("93f83", DEBUG, Logger::MAINTENANCE)
@@ -213,8 +214,6 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     }
     LOG_TOPIC("675fd", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo - current state: " << current->toJson();
-
-    mfeature.increaseCurrentCounter();
 
     local.clear();
     glc = getLocalCollections(local);
