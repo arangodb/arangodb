@@ -1,6 +1,8 @@
 devel
 -----
 
+* Display "geoJson" value for geo indexes in index overview in web UI.
+
 * Fixed velocypack validator for proper check of keys.
 
 * Handle missing "shardingStrategy" in Plan agency entries for collections.
