@@ -147,14 +147,32 @@ auto MultiAqlItemBlockInputRange::nextShadowRow()
     -> std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> {
   TRI_ASSERT(!hasDataRow());
 
+  TRI_ASSERT(!_dependenciesDontAgreeOnState);
+
+  auto oneDependencyDone = bool{false};
+  auto oneDependencyHasMore = bool{false};
+
   // Need to consume all shadow rows simultaneously.
   // Only one (a random one) will contain the data.
   TRI_ASSERT(!_inputs.empty());
   auto [state, shadowRow] = _inputs.at(0).nextShadowRow();
 
+  if (state == ExecutorState::DONE) {
+    oneDependencyDone = true;
+  } else if (state == ExecutorState::HASMORE) {
+    oneDependencyHasMore = true;
+  }
+
   bool foundData = ::RowHasNonEmptyValue(shadowRow);
   for (size_t i = 1; i < _inputs.size(); ++i) {
     auto [otherState, otherRow] = _inputs.at(i).nextShadowRow();
+
+    if (otherState == ExecutorState::DONE) {
+      oneDependencyDone = true;
+    } else if (otherState == ExecutorState::HASMORE) {
+      oneDependencyHasMore = true;
+    }
+
     // if any dependency thinks it has more, maybe we'll have to be
     // asked again to finish up.
     // In maintainer mode we assert that not more data is being
@@ -172,10 +190,6 @@ auto MultiAqlItemBlockInputRange::nextShadowRow()
         // Take it
         shadowRow = otherRow;
         foundData = true;
-#if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
-        TRI_ASSERT(_returnedData);
-        _returnedData = true;
-#endif
       }
     } else {
       // we already have the filled one.
@@ -183,6 +197,9 @@ auto MultiAqlItemBlockInputRange::nextShadowRow()
       TRI_ASSERT(! ::RowHasNonEmptyValue(otherRow));
     }
   }
+
+  _dependenciesDontAgreeOnState = oneDependencyHasMore && oneDependencyDone;
+
   return {state, shadowRow};
 }
 
@@ -276,3 +293,4 @@ auto MultiAqlItemBlockInputRange::reset() -> void {
   }
   return ExecutorState::DONE;
 }
+
