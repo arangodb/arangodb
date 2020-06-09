@@ -158,7 +158,7 @@
           <% var formatted = node.LastAckedTime.substr(11, 18); %>
           <% var full = node.LastAckedTime; %>
           <div class="pure-u-2-24 hide-small mid" title="<%= full %>"><%= formatted %></div>
-
+          
           <% if (node.Status === 'GOOD') { %>
             <div class="pure-u-1-24 mid state"><i class="fa fa-check-circle tippy" title="<%= node.SyncStatus %>"></i></div>
           <% } else { %>
