@@ -90,7 +90,7 @@ function goDriver (options) {
   process.env['TEST_AUTHENTICATION'] = 'basic:root:';
   let jwt = pu.getJwtSecret(localOptions);
   if (jwt) {
-    process.env['TEST_JWTSECRET'] =
+    process.env['TEST_JWTSECRET'] = jwt;
   }
   process.env['TEST_CONNECTION'] = '';
   process.env['TEST_CVERSION'] = '';
