@@ -55,8 +55,8 @@ bool ShadowAqlItemRow::isInitialized() const {
 }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-bool ShadowAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other) const {
-  return _block == other;
+bool ShadowAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other, size_t index) const {
+  return _block == other && _baseIndex == index;
 }
 #endif
 
