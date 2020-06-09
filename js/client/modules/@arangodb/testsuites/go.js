@@ -29,7 +29,8 @@ const functionsDocumentation = {
   'go_driver': 'go client driver test',
 };
 const optionsDocumentation = [
-  '   - `gosource`: directory of the go driver'
+  '   - `gosource`: directory of the go driver',
+  '   - `goOptions`: additional argumnets to pass via the `TEST_OPTIONS` environment, i.e. ` -timeout 180m` (prepend blank!)'
 ];
 
 const internal = require('internal');
@@ -49,8 +50,8 @@ const time = require('internal').time;
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 // const CYAN = require('internal').COLORS.COLOR_CYAN;
 // const GREEN = require('internal').COLORS.COLOR_GREEN;
-const RED = require('internal').COLORS.COLOR_RED;
-const RESET = require('internal').COLORS.COLOR_RESET;
+// const RED = require('internal').COLORS.COLOR_RED;
+// const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 const testPaths = {
@@ -62,8 +63,12 @@ const testPaths = {
 // //////////////////////////////////////////////////////////////////////////////
 
 function goDriver (options) {
+  let localOptions = _.clone(options);
   let beforeStart = time();  
-  const adbInstance = pu.startInstance('tcp', options, {}, 'godriver');
+  if (localOptions.cluster && localOptions.dbServers < 3) {
+    localOptions.dbServers = 3;
+  }
+  const adbInstance = pu.startInstance('tcp', localOptions, {}, 'godriver');
   if (adbInstance === false) {
     results.failed += 1;
     results['test'] = {
@@ -72,7 +77,7 @@ function goDriver (options) {
       message: 'failed to start server!'
     };
   }
-  if (options.extremeVerbosity) {
+  if (localOptions.extremeVerbosity) {
     print(adbInstance);
   }
   let testrunStart = time();
@@ -80,16 +85,31 @@ function goDriver (options) {
     shutdown: true,
     startupTime: testrunStart - beforeStart
   };
+
+  let opts = '';
+  if (localOptions.testCase) {
+    opts = '-run ' + localOptions.testCase;
+  }
+  if (localOptions.hasOwnProperty('goOptions')) {
+    if (opts.length !== 0) {
+      opts += ' ';
+    }
+    opts += localOptions.goOptions;
+  }
+  
+  if (opts.length !== 0) {
+    process.env['TEST_OPTIONS'] = opts;
+  }
   process.env['TEST_ENDPOINTS'] = adbInstance.url;
   process.env['TEST_AUTHENTICATION'] = 'basic:root:';
-  process.env['TEST_JWTSECRET'] = 'testing';
+  process.env['TEST_JWTSECRET'] = pu.getJwtSecret(localOptions);
   process.env['TEST_CONNECTION'] = '';
   process.env['TEST_CVERSION'] = '';
   process.env['TEST_CONTENT_TYPE'] = 'json';
   process.env['TEST_PPROF'] = '';
-  if (options.cluster) {
+  if (localOptions.cluster) {
     process.env['TEST_MODE'] = 'cluster';
-  } else if (options.activefailover) {
+  } else if (localOptions.activefailover) {
     process.env['TEST_MODE'] = 'resilientsingle';
   } else {
     process.env['TEST_MODE'] = 'single';
@@ -98,7 +118,10 @@ function goDriver (options) {
   process.env['TEST_BACKUP_REMOTE_CONFIG'] = '';
   process.env['GODEBUG'] = 'tls13=1';
   process.env['CGO_ENABLED'] = '0';
-  let args = ['test', '-json', '-tags', 'auth', fs.join(options.gosource, 'test')];
+  if (localOptions.extremeVerbosity) {
+    print(process.env);
+  }
+  let args = ['test', '-json', '-tags', 'auth', fs.join(localOptions.gosource, 'test')];
   let start = Date();
   const res = executeExternal('go', args,true);
   // let alljsonLines = []
@@ -180,7 +203,7 @@ function goDriver (options) {
   // fs.write('/tmp/bla.json', JSON.stringify(alljsonLines))
   let shutDownStart = time();
   print(Date() + ' Shutting down...');
-  pu.shutdownInstance(adbInstance, options, false);
+  pu.shutdownInstance(adbInstance, localOptions, false);
   results['testDuration'] = shutDownStart - testrunStart;
   let end = time();
   results['go_driver']['status'] = status;

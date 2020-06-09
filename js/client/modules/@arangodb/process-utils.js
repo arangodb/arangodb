@@ -432,12 +432,32 @@ function getCleanupDBDirectories () {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief loads the JWT secret from the various ways possible
+// //////////////////////////////////////////////////////////////////////////////
+
+function getJwtSecret(options) {
+  let jwtSecret;
+  if (options['server.jwt-secret-folder']) {
+    let files = fs.list(options['server.jwt-secret-folder']);
+    files.sort();
+    if (files.length > 0) {
+      jwtSecret = fs.read(fs.join(options['server.jwt-secret-folder'], files[0]));
+    }
+  } else {
+    jwtSecret = options['server.jwt-secret'];
+  }
+  return jwtSecret;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief adds authorization headers
 // //////////////////////////////////////////////////////////////////////////////
 
 function makeAuthorizationHeaders (options) {
-  if (options['server.jwt-secret']) {
-    var jwt = crypto.jwtEncode(options['server.jwt-secret'],
+  const jwtSecret = getJwtSecret(options);
+
+  if (jwtSecret) {
+    let jwt = crypto.jwtEncode(jwtSecret,
                              {'server_id': 'none',
                               'iss': 'arangodb'}, 'HS256');
     if (options.extremeVerbosity) {
@@ -2186,6 +2206,7 @@ exports.arangod = {
 
 exports.findFreePort = findFreePort;
 exports.coverageEnvironment = coverageEnvironment;
+exports.getJwtSecret = getJwtSecret;
 
 exports.executeArangod = executeArangod;
 exports.executeAndWait = executeAndWait;
