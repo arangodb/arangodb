@@ -3012,7 +3012,7 @@ static void JS_ReadPipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  if (proc == nullptr) {
+  if (proc == nullptr || proc->_readPipe == 0) {
     TRI_V8_THROW_TYPE_ERROR("<external-identifier> of the spawned process");
   }
 
