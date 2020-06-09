@@ -49,6 +49,12 @@ ExecutionBlockImpl<AsyncExecutor>::ExecutionBlockImpl(
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl<AsyncExecutor>::execute(AqlCallStack stack) {
   traceExecuteBegin(stack);
   auto res = executeWithoutTrace(stack);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto const& [state, skipped, block] = res;
+  if (block != nullptr) {
+    block->validateShadowRowConsistency();
+  }
+#endif
   traceExecuteEnd(res);
   return res;
 }

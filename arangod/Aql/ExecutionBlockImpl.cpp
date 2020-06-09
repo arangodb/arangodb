@@ -84,7 +84,7 @@ using namespace arangodb::aql;
 
 #define LOG_QUERY(logId, level)            \
   LOG_TOPIC(logId, level, Logger::QUERIES) \
-    << "[query#" << this->_engine->getQuery().id() << "] "
+      << "[query#" << this->_engine->getQuery().id() << "] "
 
 /*
  * Creates a metafunction `checkName` that tests whether a class has a method
@@ -137,8 +137,7 @@ constexpr bool executorHasSideEffects =
                 ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>,
                 ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
                 ModificationExecutor<AllRowsFetcher, UpsertModifier>,
-                ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>,
-                SubqueryExecutor<true>>;
+                ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>, SubqueryExecutor<true>>;
 
 template <class Executor>
 ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
@@ -204,7 +203,8 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
     }
   }();
 
-  return std::make_unique<OutputAqlItemRow>(std::move(newBlock), registerInfos().getOutputRegisters(),
+  return std::make_unique<OutputAqlItemRow>(std::move(newBlock),
+                                            registerInfos().getOutputRegisters(),
                                             registerInfos().registersToKeep(),
                                             registerInfos().registersToClear(),
                                             call, copyRowBehaviour);
@@ -313,6 +313,12 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack stack) {
   }
   initOnce();
   auto res = executeWithoutTrace(stack);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto const& [state, skipped, block] = res;
+  if (block != nullptr) {
+    block->validateShadowRowConsistency();
+  }
+#endif
   traceExecuteEnd(res);
   return res;
 }
@@ -970,7 +976,6 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(AqlCallStack& s
   TRI_ASSERT(shadowRow.isInitialized());
   uint64_t depthSkippingNow = static_cast<uint64_t>(stack.shadowRowDepthToSkip());
   uint64_t shadowDepth = shadowRow.getDepth();
-
   bool didWriteRow = false;
   if (shadowRow.isRelevant()) {
     LOG_QUERY("1b257", DEBUG) << printTypeInfo() << " init executor.";
@@ -1556,7 +1561,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         TRI_ASSERT(isMultiDepExecutor<Executor> || !lastRangeHasDataRow());
         TRI_ASSERT(!_lastRange.hasShadowRow());
         SkipResult skippedLocal;
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         auto subqueryLevelBefore = stack.subqueryLevel();
 #endif
@@ -1575,6 +1579,33 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           // We do not return anything in WAITING state, also NOT skipped.
           return {_upstreamState, SkipResult{}, nullptr};
         }
+
+        // TODO: Adjust Stack
+        {
+          if (!skippedLocal.nothingSkipped()) {
+            // We get woken up on upstream, but we have not reported our
+            // local skip value to downstream
+            // In the sideEffect executor we need to apply the skip values on the
+            // incomming stack, which has not been modified yet.
+            // NOTE: We only apply the skipping on subquery level.
+            TRI_ASSERT(skippedLocal.subqueryDepth() == stack.subqueryLevel() + 1);
+            for (size_t i = 0; i < stack.subqueryLevel(); ++i) {
+              // _skipped and stack are off by one, so we need to add 1 to access
+              // to _skipped.
+              // They are off by one, because the callstack does not contain the
+              // call for the current subquery level (what we are working on right now)
+              // as this is replaced by whatever the executor would like to
+              // ask from upstream.
+              // The skip result is complete, and contains all subquery levels + current level.
+              auto skippedSub = skippedLocal.getSkipOnSubqueryLevel(i + 1);
+              if (skippedSub > 0) {
+                auto& call = stack.modifyCallAtDepth(i);
+                call.didSkip(skippedSub);
+              }
+            }
+          }
+        }
+
         if constexpr (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
           // We have a new range, passthrough can use this range.
           _hasUsedDataRangeBlock = false;
@@ -1594,10 +1625,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           // Subquery needs to include the topLevel Skip.
           // But does not need to apply the count to clientCall.
           _skipped.merge(skippedLocal, false);
-          // This is what has been asked for by the SubqueryEnd
-
-          auto& subqueryCall = stack.modifyTopCall();
-          subqueryCall.didSkip(skippedLocal.getSkipCount());
         } else {
           _skipped.merge(skippedLocal, true);
         }
@@ -1822,8 +1849,8 @@ void ExecutionBlockImpl<Executor>::initOnce() {
 }
 
 template <class Executor>
-auto ExecutionBlockImpl<Executor>::executorNeedsCall(AqlCallType& call) const noexcept
-    -> bool {
+auto ExecutionBlockImpl<Executor>::executorNeedsCall(AqlCallType& call) const
+    noexcept -> bool {
   if constexpr (isMultiDepExecutor<Executor>) {
     // call is an AqlCallSet. We need to call upstream if it's not empty.
     return !call.empty();

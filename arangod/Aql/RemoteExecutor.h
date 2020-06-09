@@ -71,11 +71,13 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   [[nodiscard]] auto api() const noexcept -> Api;
 
+  std::string const& distributeId() const { return _distributeId; }
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // only for asserts:
  public:
   std::string const& server() const { return _server; }
-  std::string const& distributeId() const { return _distributeId; }
+
   std::string const& queryId() const { return _queryId; }
 #endif
 
