@@ -87,6 +87,7 @@
 #include "Basics/operating-system.h"
 #include "Basics/tri-strings.h"
 #include "Basics/voc-errors.h"
+#include "Basics/files.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -959,6 +960,26 @@ void TRI_CreateExternalProcess(char const* executable,
     return;
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Reads from the pipe of processes
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ReadPipe(ExternalProcess const *process,
+                  char *buffer,
+                  size_t &bufferSize) {
+  if (process == nullptr || process->_readPipe == 0) {
+    return false;
+  }
+
+  bool haveMore = TRI_ReadPointer(process->_readPipe, buffer, bufferSize);
+
+  if (!haveMore) {
+    bufferSize = strlen(buffer);
+  }
+  return true;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the status of an external process
