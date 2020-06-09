@@ -3003,6 +3003,15 @@ static void JS_ReadPipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("readPipe(<external-identifier>)");
   }
 
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+
+  if (!v8security.isAllowedToControlProcesses(isolate)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        "not allowed to execute or modify state of external processes");
+  }
+
   ExternalProcess const *proc = nullptr;
   TRI_pid_t pid = TRI_ObjectToInt64(isolate, args[0]);
   for (auto const& process : ExternalProcesses) {
@@ -3012,16 +3021,12 @@ static void JS_ReadPipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  if (proc == nullptr || proc->_readPipe == 0) {
-    TRI_V8_THROW_TYPE_ERROR("<external-identifier> of the spawned process");
-  }
-
   char content[1024];
   size_t length = sizeof(content) - 1;
   memset(content, 0, sizeof(content) - 1);
-  bool haveMore = TRI_ReadPointer(proc->_readPipe, content, length);
-  if (!haveMore) {
-    length = strlen(content);
+
+  if (!TRI_ReadPipe(proc, content, length)) {
+    TRI_V8_THROW_TYPE_ERROR("<external-identifier> of the spawned process");
   }
 
   auto result = TRI_V8_PAIR_STRING(isolate, content, length);
