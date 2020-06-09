@@ -257,6 +257,35 @@ int TRI_OPEN_WIN32(char const* filename, int openFlags) {
   return fileDescriptor;
 }
 
+
+bool TRI_READ_POINTER(HANDLE fd, void* Buffer, size_t length) {
+  char* ptr = static_cast<char*>(buffer);
+  while (0 < length) {
+    DWORD read;
+    if (!ReadFile(fd, ptr, static_cast<DWORD>(length), &read)) {
+      auto err = GetLastError();
+
+      if (err == ERROR_NO_DATA) {
+        ptr += read;
+        length -= read;
+        continue;
+      } else if (err == ERROR_BROKEN_PIPE) {
+        TRI_set_errno(TRI_ERROR_SYS_ERROR);
+        LOG_TOPIC("87f53", ERR, arangodb::Logger::FIXME)
+          << "cannot read, end-of-file";
+        return false;
+      } else {
+        TRI_set_errno(TRI_ERROR_SYS_ERROR);
+        LOG_TOPIC("c9c0d", ERR, arangodb::Logger::FIXME) << "cannot read: " << TRI_LAST_ERROR_STR;
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+
 FILE* TRI_FOPEN(char const* filename, char const* mode) {
   icu::UnicodeString fn(filename);
   icu::UnicodeString umod(mode);
