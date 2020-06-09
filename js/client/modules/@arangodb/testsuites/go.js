@@ -88,7 +88,10 @@ function goDriver (options) {
 
   process.env['TEST_ENDPOINTS'] = adbInstance.url;
   process.env['TEST_AUTHENTICATION'] = 'basic:root:';
-  process.env['TEST_JWTSECRET'] = pu.getJwtSecret(localOptions);
+  let jwt = pu.getJwtSecret(localOptions);
+  if (jwt) {
+    process.env['TEST_JWTSECRET'] =
+  }
   process.env['TEST_CONNECTION'] = '';
   process.env['TEST_CVERSION'] = '';
   process.env['TEST_CONTENT_TYPE'] = 'json';
