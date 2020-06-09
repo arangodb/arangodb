@@ -182,7 +182,8 @@ auto AqlCallStack::shadowRowDepthToSkip() const -> size_t {
   TRI_ASSERT(needToCountSubquery());
   for (size_t i = 0; i < _operations.size(); ++i) {
     auto& call = _operations.at(i);
-    if (call.peekNextCall().needSkipMore()) {
+    auto const& nextCall = call.peekNextCall();
+     if (nextCall.needSkipMore() || nextCall.getLimit() == 0) {
       return _operations.size() - i - 1;
     }
   }
