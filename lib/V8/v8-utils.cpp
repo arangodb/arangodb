@@ -3000,26 +3000,26 @@ static void JS_ReadPipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("read(pipefd)");
+    TRI_V8_THROW_EXCEPTION_USAGE("readPipe(<external-identifier>)");
   }
 
-  int64_t f = TRI_ObjectToInt64(isolate, args[0]);
-  if (f == 0) {
-    TRI_V8_THROW_TYPE_ERROR("<filename> a file pointer");
+  ExternalProcess const *proc = nullptr;
+  TRI_pid_t pid = TRI_ObjectToInt64(isolate, args[0]);
+  for (auto const& process : ExternalProcesses) {
+    if (process->_pid == pid) {
+      proc = process;
+      break;
+    }
   }
 
-  // TRI_GET_GLOBALS();
-  // V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
-  // 
-  // if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
-  //   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-  //                                  std::string("not allowed to read files in this path: ") + *name);
-  // }
+  if (proc == nullptr) {
+    TRI_V8_THROW_TYPE_ERROR("<external-identifier> of the spawned process");
+  }
 
   char content[1024];
   size_t length = sizeof(content) - 1;
   memset(content, 0, sizeof(content) - 1);
-  bool haveMore = TRI_ReadPointer(f, content, length);
+  bool haveMore = TRI_ReadPointer(proc->_readPipe, content, length);
   if (!haveMore) {
     length = strlen(content);
   }
