@@ -585,6 +585,10 @@ function componentsTestSuite() {
     testWCC2: function() {
       const v = 'problematic_components';
 
+      if (internal.isCluster()) {
+        return;
+      }
+
       // weakly connected components algorithm
       var handle = pregel.start('wcc', problematicGraphName, {
         maxGSS: 250, resultField: 'component'
