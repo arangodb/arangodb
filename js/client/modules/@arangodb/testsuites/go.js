@@ -86,20 +86,6 @@ function goDriver (options) {
     startupTime: testrunStart - beforeStart
   };
 
-  let opts = '';
-  if (localOptions.testCase) {
-    opts = '-run ' + localOptions.testCase;
-  }
-  if (localOptions.hasOwnProperty('goOptions')) {
-    if (opts.length !== 0) {
-      opts += ' ';
-    }
-    opts += localOptions.goOptions;
-  }
-  
-  if (opts.length !== 0) {
-    process.env['TEST_OPTIONS'] = opts;
-  }
   process.env['TEST_ENDPOINTS'] = adbInstance.url;
   process.env['TEST_AUTHENTICATION'] = 'basic:root:';
   process.env['TEST_JWTSECRET'] = pu.getJwtSecret(localOptions);
@@ -118,22 +104,36 @@ function goDriver (options) {
   process.env['TEST_BACKUP_REMOTE_CONFIG'] = '';
   process.env['GODEBUG'] = 'tls13=1';
   process.env['CGO_ENABLED'] = '0';
+  let args = ['test', '-json', '-tags', 'auth', fs.join(localOptions.gosource, 'test')];
+
+  if (localOptions.testCase) {
+    args.push('-run');
+    args.push(localOptions.testCase);
+  }
+  if (localOptions.hasOwnProperty('goOptions')) {
+    for (var key in localOptions.goOptions) {
+      args.push('-'+key);
+      args.push(localOptions.goOptions[key]);
+    }
+  }
   if (localOptions.extremeVerbosity) {
     print(process.env);
+    print(args);
   }
-  let args = ['test', '-json', '-tags', 'auth', fs.join(localOptions.gosource, 'test')];
   let start = Date();
-  const res = executeExternal('go', args,true);
+  const res = executeExternal('go', args, true);
   // let alljsonLines = []
   let b = '';
   let status = true;
   let rc = {};
   results['go_driver'] = {};
   let testResults = results['go_driver'];
+  let count = 0;
   do {
     let buf = fs.readPipe(res.pid);
     b += buf;
-    while (buf.length === 1023) {
+    while ((buf.length === 1023) || count === 0) {
+      count += 1;
       let lineStart = 0;
       let maxBuffer = b.length;
       for (let j = 0; j < maxBuffer; j++) {
@@ -146,12 +146,26 @@ function goDriver (options) {
             let item = JSON.parse(line);
             // alljsonLines.push(item)
             // print(item)
-            let testcase = item.Test;
+            let testcase = 'WARN';
+            if (item.hasOwnProperty('Test')) {
+              testcase = item.Test;
+            } else {
+              if (item.Output === 'PASS\n') {
+                // this is the final PASS, ignore it.
+                print(item.Output);
+                continue;
+              } else if (item.Output.substring(0, 3) === 'ok '){
+                print(item.Output);
+                continue;
+              } else {
+                status = false;
+              }
+            }
             if (!testResults.hasOwnProperty(testcase)) {
               testResults[testcase] = {
                 "setUpDuration": 0,
                 "tearDownDuration": 0,
-                "status": false,
+                "status": testcase !== 'WARN',
                 "duration": 0,
                 "message": ''
               };
