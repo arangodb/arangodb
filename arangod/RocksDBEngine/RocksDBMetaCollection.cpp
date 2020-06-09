@@ -464,23 +464,28 @@ bool RocksDBMetaCollection::needToPersistRevisionTree(rocksdb::SequenceNumber ma
 
   std::unique_lock<std::mutex> guard(_revisionBufferLock);
 
+  // have a truncate to apply
   if (!_revisionTruncateBuffer.empty() && *_revisionTruncateBuffer.begin() <= maxCommitSeq) {
     return true;
   }
 
+  // have insertions to apply
   if (!_revisionInsertBuffers.empty() && _revisionInsertBuffers.begin()->first <= maxCommitSeq) {
     return true;
   }
 
+  // have removals to apply
   if (!_revisionRemovalBuffers.empty() && _revisionRemovalBuffers.begin()->first <= maxCommitSeq) {
     return true;
   }
 
+  // have applied updates that we haven't persisted
   if (_revisionTreeSerializedSeq < _revisionTreeApplied.load()) {
     return true;
   }
 
-  if (_revisionTreeSerializedSeq == _revisionTreeCreationSeq) {
+  // tree has never been persisted
+  if (_revisionTreeSerializedSeq <= _revisionTreeCreationSeq) {
     return true;
   }
 
@@ -491,6 +496,8 @@ rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree(rocksd
   // first update so we don't under-report
   std::unique_lock<std::mutex> guard(_revisionBufferLock);
   rocksdb::SequenceNumber seq = maxCommitSeq;
+
+  // limit to before any pending buffered updates
 
   if (!_revisionTruncateBuffer.empty() && *_revisionTruncateBuffer.begin() - 1 < seq) {
     seq = *_revisionTruncateBuffer.begin() - 1;
@@ -504,11 +511,13 @@ rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree(rocksd
     seq = _revisionRemovalBuffers.begin()->first - 1;
   }
 
+  // limit to before the last thing we applied, since we haven't persisted it
   rocksdb::SequenceNumber applied = _revisionTreeApplied.load();
   if (applied > _revisionTreeSerializedSeq && applied - 1 < seq) {
     seq = applied - 1;
   }
 
+  // now actually advance it if we can
   if (seq > _revisionTreeSerializedSeq) {
     _revisionTreeSerializedSeq = seq;
   }
@@ -540,6 +549,7 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
     }
     return _revisionTreeSerializedSeq;
   }
+  // if we get here, we aren't using the trees;
   // mark as don't persist again, tree should be deleted now
   _revisionTreeApplied.store(std::numeric_limits<rocksdb::SequenceNumber>::max());
   return commitSeq;
