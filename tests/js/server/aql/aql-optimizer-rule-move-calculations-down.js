@@ -42,8 +42,36 @@ function optimizerRuleTestSuite () {
 
   // various choices to control the optimizer: 
   var paramNone   = { optimizer: { rules: [ "-all" ] } };
-  var paramEnabled    = { profile: 4, optimizer: { rules: [ "-all", "+" + ruleName ] } };
-  var paramDisabled  = { profile: 4, optimizer: { rules: [ "+all", "-" + ruleName ] } };
+  var paramEnabled    = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
+  var paramDisabled  = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
+
+
+
+  const RulesCombinator = function*(listOfRules) {
+    const RuleOnOff = function* (rule) {
+      yield `-${rule}`;
+      yield `+${rule}`;
+    };
+    const RecursiveRuleOnOff = function* (list) {
+      if (list.length === 0) {
+        return;
+      }
+      const rule = list[0];
+      for (const r of RuleOnOff(rule)) {
+        if (list.length === 1) {
+          yield r;
+        } else {
+          for (const other of RecursiveRuleOnOff(list.slice(1))) {
+            yield `${r} ${other}`;
+          }
+        }
+      }
+    };
+    listOfRules.push("all");
+    for (const rules of RecursiveRuleOnOff(listOfRules)) {
+      yield {optimizer: {rules} };
+    }
+  };
 
   var c;
   var cn = "UnitTestsAhuacatlCalculation";
@@ -642,9 +670,9 @@ function optimizerRuleTestSuite () {
     testNestedModify: function () {
       var expected = [];
       for (let i = 0; i < 100; ++i) {
-        expected.push([`test${i}-${i}`]);
+        expected.push([[`test${i}-${i}`]]);
       }
-      
+
       var query = `FOR i IN 0..99
           LET outerSubquery = (
             LET result = (
@@ -654,24 +682,41 @@ function optimizerRuleTestSuite () {
             RETURN result
           )
           RETURN outerSubquery`;
-      require("internal").db._explain(query, {}, paramEnabled);
-      var planDisabled = AQL_EXPLAIN(query, {}, paramDisabled);
-      var planEnabled = AQL_EXPLAIN(query, {}, paramEnabled);
+      for (const params of RulesCombinator(["splice-subqueries", "move-calculations-down"])) {
+        const { plan } = AQL_EXPLAIN(query, {}, params);
+        const {json , stats} = AQL_EXECUTE(query, {}, params);
+        const { writesExecuted } = stats;
+        assertEqual(100, writesExecuted, {query, params});
+        assertEqual(-1, plan.rules.indexOf(ruleName), {query, params});
+        assertEqual(json, expected, {query, params});
+      }
+    },
 
-      var resultDisabled = AQL_EXECUTE(query, {}, paramDisabled);
-      var resultEnabled = AQL_EXECUTE(query, {}, paramEnabled);
-      const writesDisabled = resultDisabled.stats.writesExecuted;
-      const writesEnabled = resultEnabled.stats.writesExecuted;
-      assertEqual(100, writesDisabled);
-      assertEqual(100, writesEnabled);
+    testNestedModifyLimit: function () {
+      var expected = [];
+      for (let i = 1; i < 3; ++i) {
+        expected.push([[`test${i}-${i}`]]);
+      }
 
-      assertEqual(-1, planDisabled.plan.rules.indexOf(ruleName), query[0]);
-      assertEqual(-1, planEnabled.plan.rules.indexOf(ruleName), query[0]);
-
-      assertEqual(resultDisabled.json, expected, query[0]);
-      assertEqual(resultEnabled.json, expected, query[0]);
-      
-    }
+      var query = `FOR i IN 0..99
+          LET outerSubquery = (
+            LET result = (
+              UPDATE {_key: CONCAT('test', TO_STRING(i))} WITH {updated: true} IN ${cn}
+              RETURN CONCAT(NEW._key, '-', NEW.value)
+            )
+            RETURN result
+          )
+          LIMIT 1, 2
+          RETURN outerSubquery`;
+      for (const params of RulesCombinator(["splice-subqueries", "move-calculations-down"])) {
+        const { plan } = AQL_EXPLAIN(query, {}, params);
+        const {json , stats} = AQL_EXECUTE(query, {}, params);
+        const { writesExecuted } = stats;
+        assertEqual(100, writesExecuted, {query, params});
+        assertEqual(-1, plan.rules.indexOf(ruleName), {query, params});
+        assertEqual(json, expected, {query, params});
+      }
+    },
   };
 }
 
