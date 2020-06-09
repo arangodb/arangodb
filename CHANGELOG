@@ -1,6 +1,8 @@
 devel
 -----
 
+* Added WCC pregel algorithm.
+
 * Fixed velocypack validator for proper check of keys.
 
 * Handle missing "shardingStrategy" in Plan agency entries for collections.
