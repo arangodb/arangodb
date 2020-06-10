@@ -1,6 +1,10 @@
 v3.4.11 (XXXX-XX-XX)
 --------------------
 
+* Make the reboot tracker catch a failed server and permanently removed
+  servers. This allows other servers in the cluster to move on more quickly,
+  when a server fails and does not immediately come back.
+
 * Updated ArangoDB Starter to 0.14.15.
 
 * Optimized Web UI styling for ArangoSearch Views when in read-only mode.

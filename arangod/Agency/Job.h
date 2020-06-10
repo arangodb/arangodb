@@ -55,6 +55,7 @@ extern std::string const curColPrefix;
 extern std::string const blockedServersPrefix;
 extern std::string const blockedShardsPrefix;
 extern std::string const planVersion;
+extern std::string const currentVersion;
 extern std::string const plannedServers;
 extern std::string const healthPrefix;
 extern std::string const asyncReplLeader;
@@ -162,6 +163,8 @@ struct Job {
   // or pre must be in the state that an object has been opened, this
   // method adds some attribute/value pairs and leaves the object open:
   static void addIncreasePlanVersion(Builder& trx);
+  static void addIncreaseCurrentVersion(velocypack::Builder& trx);
+  static void addIncreaseRebootId(velocypack::Builder& trx, std::string const& server);
   static void addRemoveJobFromSomewhere(Builder& trx, std::string const& where,
                                         std::string const& jobId);
   static void addPutJobIntoSomewhere(Builder& trx, std::string const& where,
