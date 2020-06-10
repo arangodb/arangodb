@@ -1,6 +1,10 @@
 devel
 -----
 
+* Make the reboot tracker catch a failed server and permanently removed
+  servers. This allows other servers in the cluster to move on more quickly,
+  when a server fails and does not immediately come back.
+
 * Added WCC pregel algorithm for weakly connected components.
 
 * Display "geoJson" value for geo indexes in index overview in web UI.
