@@ -42,10 +42,9 @@ namespace pregel {
 
 template <typename V, typename E>
 struct GraphFormat {
-  std::atomic<uint64_t> vertexIdRange;
 
   GraphFormat(application_features::ApplicationServer& server)
-      : _server(server) {}
+      : _server(server), _vertexIdRange(0) {}
   virtual ~GraphFormat() = default;
 
   virtual size_t estimatedVertexSize() const { return sizeof(V); };
@@ -58,7 +57,7 @@ struct GraphFormat {
     if (arangodb::ServerState::instance()->isRunningInCluster()) {
       if (_server.hasFeature<ClusterFeature>()) {
         arangodb::ClusterInfo& ci = _server.getFeature<ClusterFeature>().clusterInfo();
-        vertexIdRange = ci.uniqid(count);
+        _vertexIdRange = ci.uniqid(count);
       }
     }
   }
@@ -76,6 +75,8 @@ struct GraphFormat {
 
  private:
   application_features::ApplicationServer& _server;
+ protected:
+  std::atomic<uint64_t> _vertexIdRange;
 };
 
 template <typename V, typename E>
@@ -189,14 +190,14 @@ class VertexGraphFormat : public GraphFormat<V, E> {
       : GraphFormat<V, E>(server), _resultField(result), _vDefault(vertexNull) {}
 
   size_t estimatedVertexSize() const override { return sizeof(V); };
-  size_t estimatedEdgeSize() const override { return 0; };
+  virtual size_t estimatedEdgeSize() const override { return 0; };
 
   void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
                       V& targetPtr) override {
     targetPtr = _vDefault;
   }
 
-  void copyEdgeData(arangodb::velocypack::Slice document, E& targetPtr) override {}
+  virtual void copyEdgeData(arangodb::velocypack::Slice document, E& targetPtr) override {}
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b, const V* ptr,
                            size_t size) const override {
