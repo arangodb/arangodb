@@ -3573,7 +3573,7 @@ void ClusterInfo::loadServers() {
       auto it = rebootIds.find(serverState->getId());
       if (it != rebootIds.end()) {
         // should always be ok
-        if (serverState->getRebootId() != it->second) {
+        if (serverState->getRebootId() != it->second.value()) {
           serverState->setRebootId(it->second);
           LOG_TOPIC("feaab", INFO, Logger::CLUSTER)
               << "Updating my own rebootId to " << it->second.value();
