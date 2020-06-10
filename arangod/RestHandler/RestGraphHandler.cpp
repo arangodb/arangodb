@@ -844,6 +844,10 @@ Result RestGraphHandler::documentCreate(graph::Graph& graph, std::string const& 
     return returnError(TRI_ERROR_BAD_PARAMETER, "unable to parse body");
   }
 
+  if (!body.isObject()) {
+    return returnError(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+
   bool waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
   bool returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
 

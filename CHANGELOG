@@ -1,7 +1,28 @@
 devel
 -----
 
-* Added WCC pregel algorithm.
+* Added WCC pregel algorithm for weakly connected components.
+
+* Display "geoJson" value for geo indexes in index overview in web UI.
+
+* Allow specifiying arbitrary vertex attributes when creating a vertex via the 
+  graph viewer in the web UI. This is necessary for collections that have a
+  schema and that require new vertices to have certain attributes/values.
+
+* Pass through AQL query errors to UI graph viewer without turning them into
+  "Internal Server Error"s.
+
+* Augment nodes view in web UI with node id and full datetime of startup.
+
+* Fixed "Create Debug Package" in web UI in cluster mode.
+
+* Pick up selected "write concern" value entered in web UI when creating a
+  collection in the cluster. Previously, the "write concern" value was not 
+  picked up correctly and collections were created with the default write
+  concern.
+
+* Fixed the creation of edges in the web UI, which did not work due to a
+  JavaScript error.
 
 * Fixed velocypack validator for proper check of keys.
 
