@@ -1,6 +1,8 @@
 devel
 -----
 
+* Augment nodes view in web UI with node id and full datetime of startup.
+
 * Fixed "Create Debug Package" in web UI in cluster mode.
 
 * Pick up selected "write concern" value entered in web UI when creating a
