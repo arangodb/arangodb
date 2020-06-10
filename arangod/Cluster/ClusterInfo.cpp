@@ -4152,9 +4152,20 @@ void ClusterInfo::loadServers() {
       _serversProt.doneVersion = storedVersion;
       _serversProt.isValid = true;
     }
+    // Our own RebootId might have changed if we have been FAILED at least once
+    // since our last actual reboot, let's update it:
+    auto rebootIds = _serversKnown.rebootIds();
+    auto* serverState = ServerState::instance();
+    auto it = rebootIds.find(serverState->getId());
+    if (it != rebootIds.end()) {
+      // should always be ok
+      if (serverState->getRebootId() != it->second) {
+        serverState->setRebootId(it->second);
+      }
+    }
     // RebootTracker has its own mutex, and doesn't strictly need to be in
     // sync with the other members.
-    rebootTracker().updateServerState(_serversKnown.rebootIds());
+    rebootTracker().updateServerState(rebootIds);
     return;
   }
 
