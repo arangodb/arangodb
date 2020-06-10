@@ -1,6 +1,8 @@
 devel
 -----
 
+* Added WCC pregel algorithm for weakly connected components.
+
 * Display "geoJson" value for geo indexes in index overview in web UI.
 
 * Allow specifiying arbitrary vertex attributes when creating a vertex via the 

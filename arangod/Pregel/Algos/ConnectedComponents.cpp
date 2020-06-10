@@ -32,14 +32,15 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 
-struct MyComputation : public VertexComputation<int64_t, int64_t, int64_t> {
+namespace {
+struct MyComputation : public VertexComputation<uint64_t, uint8_t, uint64_t> {
   MyComputation() {}
-  void compute(MessageIterator<int64_t> const& messages) override {
+  void compute(MessageIterator<uint64_t> const& messages) override {
     if (localSuperstep() == 0) {
       sendMessageToAllNeighbours(vertexData());
     } else {
-      int64_t currentComponent = vertexData();
-      for (const int64_t* msg : messages) {
+      uint64_t currentComponent = vertexData();
+      for (const uint64_t* msg : messages) {
         if (*msg < currentComponent) {
           currentComponent = *msg;
         };
@@ -54,27 +55,18 @@ struct MyComputation : public VertexComputation<int64_t, int64_t, int64_t> {
   }
 };
 
-VertexComputation<int64_t, int64_t, int64_t>* ConnectedComponents::createComputation(
-    WorkerConfig const* config) const {
-  return new MyComputation();
-}
-
-struct MyGraphFormat final : public VertexGraphFormat<int64_t, int64_t> {
+struct MyGraphFormat final : public VertexGraphFormat<uint64_t, uint8_t> {
   explicit MyGraphFormat(application_features::ApplicationServer& server,
                          std::string const& result)
-      : VertexGraphFormat<int64_t, int64_t>(server, result, 0) {}
+      : VertexGraphFormat<uint64_t, uint8_t>(server, result, /*vertexNull*/0) {}
 
   void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                      int64_t& targetPtr) override {
-    targetPtr = vertexIdRange++;
+                      uint64_t& targetPtr) override {
+    targetPtr = _vertexIdRange++;
   }
 };
 
-GraphFormat<int64_t, int64_t>* ConnectedComponents::inputFormat() const {
-  return new MyGraphFormat(_server, _resultField);
-}
-
-struct MyCompensation : public VertexCompensation<int64_t, int64_t, int64_t> {
+struct MyCompensation : public VertexCompensation<uint64_t, uint8_t, uint64_t> {
   MyCompensation() {}
   void compensate(bool inLostPartition) override {
     // actually don't do anything, graph format will reinitialize lost vertices
@@ -86,7 +78,18 @@ struct MyCompensation : public VertexCompensation<int64_t, int64_t, int64_t> {
   }
 };
 
-VertexCompensation<int64_t, int64_t, int64_t>* ConnectedComponents::createCompensation(
+}
+
+VertexComputation<uint64_t, uint8_t, uint64_t>* ConnectedComponents::createComputation(
+    WorkerConfig const* config) const {
+  return new MyComputation();
+}
+
+GraphFormat<uint64_t, uint8_t>* ConnectedComponents::inputFormat() const {
+  return new MyGraphFormat(_server, _resultField);
+}
+
+VertexCompensation<uint64_t, uint8_t, uint64_t>* ConnectedComponents::createCompensation(
     WorkerConfig const* config) const {
   return new MyCompensation();
 }
