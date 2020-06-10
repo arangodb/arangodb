@@ -2364,7 +2364,7 @@ AnalyzersRevision::Ptr IResearchAnalyzerFeature::getAnalyzersRevision(const irs:
 }
 
 AnalyzersRevision::Ptr IResearchAnalyzerFeature::getAnalyzersRevision(const TRI_vocbase_t& vocbase,
-                                                                     bool forceLoadPlan /* = false */) const {
+                                                                      bool forceLoadPlan /* = false */) const {
   if (ServerState::instance()->isRunningInCluster()) {
     auto const& server = vocbase.server();
     if (server.hasFeature<arangodb::ClusterFeature>()) {

@@ -71,6 +71,7 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
       _objectId.load(), _logicalCollection.vocbase().id(), _logicalCollection.id());
 
   if (collection.useSyncByRevision()) {
+    std::unique_lock<std::mutex> guard(_revisionTreeLock);
     _revisionTreeCreationSeq = rocksutils::globalRocksDB()->GetLatestSequenceNumber();
     _revisionTreeSerializedSeq = _revisionTreeCreationSeq;
     _revisionTree =
@@ -93,6 +94,7 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
       _objectId.load(), _logicalCollection.vocbase().id(), _logicalCollection.id());
 
   if (collection.useSyncByRevision()) {
+    std::unique_lock<std::mutex> guard(_revisionTreeLock);
     _revisionTreeCreationSeq = rocksutils::globalRocksDB()->GetLatestSequenceNumber();
     _revisionTreeSerializedSeq = _revisionTreeCreationSeq;
     _revisionTree =
@@ -133,47 +135,7 @@ uint64_t RocksDBMetaCollection::numberDocuments(transaction::Methods* trx) const
 
 /// @brief write locks a collection, with a timeout
 int RocksDBMetaCollection::lockWrite(double timeout) {
-  uint64_t waitTime = 0;  // indicates that time is uninitialized
-  double startTime = 0.0;
-  
-  while (true) {
-    TRY_WRITE_LOCKER(locker, _exclusiveLock);
-    
-    if (locker.isLocked()) {
-      // keep lock and exit loop
-      locker.steal();
-      return TRI_ERROR_NO_ERROR;
-    }
-    
-    double now = TRI_microtime();
-    
-    if (waitTime == 0) {  // initialize times
-      // set end time for lock waiting
-      if (timeout <= 0.0) {
-        timeout = defaultLockTimeout;
-      }
-      
-      startTime = now;
-      waitTime = 1;
-    }
-    
-    if (now > startTime + timeout) {
-      LOG_TOPIC("d1e52", TRACE, arangodb::Logger::ENGINES)
-      << "timed out after " << timeout << " s waiting for write-lock on collection '"
-      << _logicalCollection.name() << "'";
-      
-      return TRI_ERROR_LOCK_TIMEOUT;
-    }
-    
-    if (now - startTime < 0.001) {
-      std::this_thread::yield();
-    } else {
-      std::this_thread::sleep_for(std::chrono::microseconds(waitTime));
-      if (waitTime < 32) {
-        waitTime *= 2;
-      }
-    }
-  }
+  return doLock(timeout, AccessMode::Type::WRITE);
 }
 
 /// @brief write unlocks a collection
@@ -181,48 +143,7 @@ void RocksDBMetaCollection::unlockWrite() { _exclusiveLock.unlockWrite(); }
 
 /// @brief read locks a collection, with a timeout
 int RocksDBMetaCollection::lockRead(double timeout) {
-  uint64_t waitTime = 0;  // indicates that time is uninitialized
-  double startTime = 0.0;
-  
-  while (true) {
-    TRY_READ_LOCKER(locker, _exclusiveLock);
-    
-    if (locker.isLocked()) {
-      // keep lock and exit loop
-      locker.steal();
-      return TRI_ERROR_NO_ERROR;
-    }
-    
-    double now = TRI_microtime();
-    
-    if (waitTime == 0) {  // initialize times
-      // set end time for lock waiting
-      if (timeout <= 0.0) {
-        timeout = defaultLockTimeout;
-      }
-      
-      startTime = now;
-      waitTime = 1;
-    }
-    
-    if (now > startTime + timeout) {
-      LOG_TOPIC("dcbd2", TRACE, arangodb::Logger::ENGINES)
-      << "timed out after " << timeout << " s waiting for read-lock on collection '"
-      << _logicalCollection.name() << "'";
-      
-      return TRI_ERROR_LOCK_TIMEOUT;
-    }
-    
-    if (now - startTime < 0.001) {
-      std::this_thread::yield();
-    } else {
-      std::this_thread::sleep_for(std::chrono::microseconds(waitTime));
-      
-      if (waitTime < 32) {
-        waitTime *= 2;
-      }
-    }
-  }
+  return doLock(timeout, AccessMode::Type::READ);
 }
 
 /// @brief read unlocks a collection
@@ -898,4 +819,58 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(containers::RevisionTre
     }  // </while(true)>
   });
   return res;
+}
+
+/// @brief lock a collection, with a timeout
+int RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
+  uint64_t waitTime = 0;  // indicates that time is uninitialized
+  double startTime = 0.0;
+  
+  while (true) {
+    bool gotLock = false;
+    if (mode == AccessMode::Type::WRITE) {
+      gotLock = _exclusiveLock.tryLockWrite();
+    } else if (mode == AccessMode::Type::READ) {
+      gotLock = _exclusiveLock.tryLockRead();
+    } else {
+      // we should never get here
+      TRI_ASSERT(false);
+      return TRI_ERROR_INTERNAL;
+    }
+    if (gotLock) {
+      // keep lock and exit loop
+      return TRI_ERROR_NO_ERROR;
+    }
+    
+    double now = TRI_microtime();
+    
+    if (waitTime == 0) {  // initialize times
+      // set end time for lock waiting
+      if (timeout <= 0.0) {
+        timeout = defaultLockTimeout;
+      }
+      
+      startTime = now;
+      waitTime = 1;
+    }
+    
+    if (now > startTime + timeout) {
+      LOG_TOPIC("d1e52", TRACE, arangodb::Logger::ENGINES)
+      << "timed out after " << timeout << " s waiting for " 
+      << AccessMode::typeString(mode) << " lock on collection '"
+      << _logicalCollection.name() << "'";
+      
+      return TRI_ERROR_LOCK_TIMEOUT;
+    }
+    
+    if (now - startTime < 0.001) {
+      std::this_thread::yield();
+    } else {
+      std::this_thread::sleep_for(std::chrono::microseconds(waitTime));
+
+      if (waitTime < 32) {
+        waitTime *= 2;
+      }
+    }
+  }
 }
