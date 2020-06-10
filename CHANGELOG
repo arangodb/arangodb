@@ -3,6 +3,14 @@ devel
 
 * Fixed "Create Debug Package" in web UI in cluster mode.
 
+* Pick up selected "write concern" value entered in web UI when creating a
+  collection in the cluster. Previously, the "write concern" value was not 
+  picked up correctly and collections were created with the default write
+  concern.
+
+* Fixed the creation of edges in the web UI, which did not work due to a
+  JavaScript error.
+
 * Fixed velocypack validator for proper check of keys.
 
 * Handle missing "shardingStrategy" in Plan agency entries for collections.
