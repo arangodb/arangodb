@@ -1,6 +1,9 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
+* Fixed the creation of edges in the web UI, which did not work due to a
+  JavaScript error.
+
 * Updated ArangoDB Starter to 0.14.15.
 
 * Optimized Web UI styling for ArangoSearch Views when in read-only mode.
