@@ -1,6 +1,9 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Fixed the creation of edges in the web UI, which did not work due to a
+  JavaScript error.
+
 * Updated ArangoDB Starter to 0.14.15.
 
 * Foxx API now respects "idiomatic" flag being explicitly set to false.
