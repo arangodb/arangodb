@@ -3066,7 +3066,7 @@ static void JS_ReadPipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   ExternalProcess const *proc = nullptr;
-  TRI_pid_t pid = TRI_ObjectToInt64(isolate, args[0]);
+  TRI_pid_t pid = static_cast<TRI_pid_t>(TRI_ObjectToInt64(isolate, args[0]));
   for (auto const& process : ExternalProcesses) {
     if (process->_pid == pid) {
       proc = process;
