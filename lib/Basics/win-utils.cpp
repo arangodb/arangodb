@@ -272,10 +272,10 @@ int TRI_OPEN_WIN32(char const* filename, int openFlags) {
 
 
 bool TRI_READ_POINTER(HANDLE fd, void* Buffer, size_t length) {
-  char* ptr = static_cast<char*>(buffer);
+  char* ptr = static_cast<char*>(Buffer);
   while (0 < length) {
     DWORD read;
-    if (!ReadFile(fd, ptr, static_cast<DWORD>(length), &read)) {
+    if (!ReadFile(fd, ptr, static_cast<DWORD>(length), &read, nullptr)) {
       auto err = GetLastError();
 
       if (err == ERROR_NO_DATA) {
