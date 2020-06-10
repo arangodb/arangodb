@@ -69,7 +69,7 @@ class ScatterExecutor {
   explicit ScatterExecutor(Infos const&);
   ~ScatterExecutor() = default;
 
-  auto distributeBlock(SharedAqlItemBlockPtr block, SkipResult skipped,
+  auto distributeBlock(SharedAqlItemBlockPtr const& block, SkipResult skipped,
                        std::unordered_map<std::string, ClientBlockData>& blockMap) const
       -> void;
 };

@@ -122,7 +122,7 @@ auto ScatterExecutor::ClientBlockData::execute(AqlCallStack callStack, Execution
 
 ScatterExecutor::ScatterExecutor(Infos const&) {}
 
-auto ScatterExecutor::distributeBlock(SharedAqlItemBlockPtr block, SkipResult skipped,
+auto ScatterExecutor::distributeBlock(SharedAqlItemBlockPtr const& block, SkipResult skipped,
                                       std::unordered_map<std::string, ClientBlockData>& blockMap) const
     -> void {
   // Scatter returns every block on every client as is.

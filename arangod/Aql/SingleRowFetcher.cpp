@@ -104,9 +104,7 @@ bool SingleRowFetcher<passBlocksThrough>::fetchBlockIfNecessary(size_t atMost) {
     // new one, so we might reuse it immediately!
     _currentBlock = nullptr;
 
-    ExecutionState state;
-    SharedAqlItemBlockPtr newBlock;
-    std::tie(state, newBlock) = fetchBlock(atMost);
+    auto [state, newBlock] = fetchBlock(atMost);
     if (state == ExecutionState::WAITING) {
       return false;
     }
@@ -209,9 +207,7 @@ template <BlockPassthrough blockPassthrough>
 std::pair<ExecutionState, size_t> SingleRowFetcher<blockPassthrough>::preFetchNumberOfRows(size_t atMost) {
   if (_upstreamState != ExecutionState::DONE && !indexIsValid()) {
     // We have exhausted the current block and need to fetch a new one
-    ExecutionState state;
-    SharedAqlItemBlockPtr newBlock;
-    std::tie(state, newBlock) = fetchBlock(atMost);
+   auto [state, newBlock] = fetchBlock(atMost);
     // we de not need result as local members are modified
     if (state == ExecutionState::WAITING) {
       return {state, 0};
