@@ -153,34 +153,6 @@ auto SingleRowFetcher<blockPassthrough>::fetchRowWithGlobalState(size_t atMost)
 }
 
 template <BlockPassthrough passBlocksThrough>
-std::pair<ExecutionState, ShadowAqlItemRow> SingleRowFetcher<passBlocksThrough>::fetchShadowRow(size_t atMost) {
-  // TODO We should never fetch from upstream here, as we can't know atMost - only the executor does.
-  if (!fetchBlockIfNecessary(atMost)) {
-    return {ExecutionState::WAITING, ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
-  }
-
-  if (_currentBlock == nullptr) {
-    TRI_ASSERT(_upstreamState == ExecutionState::DONE);
-    _currentShadowRow = ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
-  } else {
-    if (_currentBlock->isShadowRow(_rowIndex)) {
-      auto next = ShadowAqlItemRow{_currentBlock, _rowIndex};
-      if (_currentShadowRow.isInitialized() && next.isRelevant()) {
-        // Special case, we are in the return shadow row case, but the next row
-        // is relevant We are required that we call fetchRow in between
-        return {returnState(true), ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
-      }
-      _currentShadowRow = ShadowAqlItemRow{_currentBlock, _rowIndex};
-      _rowIndex++;
-    } else {
-      _currentShadowRow = ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
-    }
-  }
-
-  return {returnState(true), _currentShadowRow};
-}
-
-template <BlockPassthrough passBlocksThrough>
 bool SingleRowFetcher<passBlocksThrough>::indexIsValid() const {
   return _currentBlock != nullptr && _rowIndex < _currentBlock->size();
 }

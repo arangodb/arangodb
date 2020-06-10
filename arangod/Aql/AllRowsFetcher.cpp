@@ -227,52 +227,6 @@ ExecutionState AllRowsFetcher::upstreamState() {
   return ExecutionState::HASMORE;
 }
 
-std::pair<ExecutionState, ShadowAqlItemRow> AllRowsFetcher::fetchShadowRow(size_t atMost) {
-  TRI_ASSERT(_dataFetchedState != DATA_FETCH_ONGOING);
-  if (ADB_UNLIKELY(_dataFetchedState == DATA_FETCH_ONGOING)) {
-    // If we get into this case the logic of the executors is violated.
-    // We urgently need to investigate every query that gets into this sate.
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "Internal AQL dataFlow error.");
-  }
-  // We are required to fetch data rows first!
-  TRI_ASSERT(_aqlItemMatrix != nullptr);
-
-  ExecutionState state = _upstreamState;
-
-  if (!_aqlItemMatrix->stoppedOnShadowRow() || _aqlItemMatrix->size() == 0) {
-    // We ended on a ShadowRow, we are required to fetch data.
-    state = fetchData();
-    if (state == ExecutionState::WAITING) {
-      return {ExecutionState::WAITING, ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
-    }
-    // reset to upstream state (might be modified by fetchData())
-    state = _upstreamState;
-  }
-
-  ShadowAqlItemRow row = ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
-  // We do only POP a shadow row, if we are actually stopping on one.
-  // and if we have either returned all data before it (ALL_DATA_FETCHED)
-  // or it is NOT relevant.
-  if (_aqlItemMatrix->stoppedOnShadowRow() &&
-      (_dataFetchedState == ALL_DATA_FETCHED ||
-       !_aqlItemMatrix->peekShadowRow().isRelevant())) {
-    row = _aqlItemMatrix->popShadowRow();
-    // We handed out a shadowRow
-    _dataFetchedState = SHADOW_ROW_FETCHED;
-  }
-
-  // We need to return more only if we are in the state that we have read a
-  // ShadowRow And we still have items in the Matrix.
-  // else we return the upstream state.
-  if (_dataFetchedState == SHADOW_ROW_FETCHED &&
-      (_aqlItemMatrix->size() > 0 || _aqlItemMatrix->stoppedOnShadowRow())) {
-    state = ExecutionState::HASMORE;
-  }
-
-  return {state, row};
-}
-
 //@deprecated
 auto AllRowsFetcher::useStack(AqlCallStack const& stack) -> void {
   _dependencyProxy->useStack(stack);

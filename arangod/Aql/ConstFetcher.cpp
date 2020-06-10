@@ -269,7 +269,3 @@ auto ConstFetcher::canUseFullBlock(std::vector<std::pair<size_t, size_t>> const&
   // If we get here, the ranges covers the full block
   return true;
 }
-
-std::pair<ExecutionState, ShadowAqlItemRow> ConstFetcher::fetchShadowRow(size_t) const {
-  return {ExecutionState::DONE, ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
-}

@@ -178,9 +178,6 @@ class AllRowsFetcher {
   // only for ModificationNodes
   ExecutionState upstreamState();
 
-  // NOLINTNEXTLINE google-default-arguments
-  std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(size_t atMost = ExecutionBlock::DefaultBatchSize);
-
   //@deprecated
   auto useStack(AqlCallStack const& stack) -> void;
 

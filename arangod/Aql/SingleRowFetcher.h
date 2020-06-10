@@ -114,10 +114,6 @@ class SingleRowFetcher {
   // Currently necessary only in the SubqueryStartExecutor.
   [[nodiscard]] RowWithStates fetchRowWithGlobalState(size_t atMost = ExecutionBlock::DefaultBatchSize);
 
-  // NOLINTNEXTLINE google-default-arguments
-  [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(
-      size_t atMost = ExecutionBlock::DefaultBatchSize);
-
   [[nodiscard]] std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t atMost);
 
   void setDistributeId(std::string const& id);

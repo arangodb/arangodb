@@ -101,10 +101,6 @@ class ConstFetcher {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
-  // At most does not matter for this fetcher. It will return DONE anyways
-  // NOLINTNEXTLINE google-default-arguments
-  std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(size_t atMost = 1) const;
-
   //@deprecated
   auto useStack(AqlCallStack const& stack) -> void{};
 
