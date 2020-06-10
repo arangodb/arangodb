@@ -86,7 +86,7 @@ struct ExternalId {
 };
 #else
 struct ExternalId {
-  DWORD _pid;
+  TRI_pid_t _pid;
   HANDLE _readPipe;
   HANDLE _writePipe;
 
