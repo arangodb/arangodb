@@ -24,11 +24,18 @@
 #include "Basics/debugging.h"
 #include "Basics/StaticStrings.h"
 
-std::ostream& operator<< (std::ostream& o, arangodb::RebootId const& r) {
+#include <iostream>
+  
+std::ostream& operator<<(std::ostream& o, arangodb::RebootId const& r) {
   return r.print(o);
 }
 
 namespace arangodb {
+
+std::ostream& RebootId::print(std::ostream& o) const {
+  o << _value;
+  return o;
+}
 
 AnalyzersRevision::Ptr AnalyzersRevision::getEmptyRevision() {
   static auto ptr =  std::shared_ptr<AnalyzersRevision::Ptr::element_type>(

@@ -1269,11 +1269,6 @@ void Node::clear() {
 
 auto Node::getIntWithDefault(Slice slice, std::string_view key, std::int64_t def)
     -> std::int64_t {
-  if (slice.isObject()) {
-    Slice value = slice.get(key.data(), key.size());
-    if (value.isInt()) {
-      return value.getInt();
-    }
-  }
-  return def;
+  return arangodb::basics::VelocyPackHelper::getNumericValue<std::int64_t>(
+      slice, VPackStringRef(key.data(), key.size()), def);
 }

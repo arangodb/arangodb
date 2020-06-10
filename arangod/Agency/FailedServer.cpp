@@ -237,6 +237,9 @@ bool FailedServer::start(bool& aborts) {
       // Delete todo
       addRemoveJobFromSomewhere(*transactions, "ToDo", _jobId);
       addBlockServer(*transactions, _server, _jobId);
+      // We increment the rebootId of the failed server to let the RebootId
+      // tracker do its magic to recognise the failure soon.
+      addIncreaseRebootId(*transactions, _server);
     }  // <------------ Operations
 
     // Preconditions ----------->

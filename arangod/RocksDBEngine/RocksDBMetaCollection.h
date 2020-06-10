@@ -30,6 +30,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMetadata.h"
 #include "StorageEngine/PhysicalCollection.h"
+#include "VocBase/AccessMode.h"
 #include "VocBase/LogicalCollection.h"
 
 namespace arangodb {
@@ -119,6 +120,9 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
   Result applyUpdatesForTransaction(containers::RevisionTree& tree,
                                     rocksdb::SequenceNumber commitSeq) const;
+
+ private:
+  int doLock(double timeout, AccessMode::Type mode);
 
  protected:
   RocksDBMetadata _meta;     /// collection metadata

@@ -28,7 +28,6 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
-#include "Containers/MerkleTree.h"
 #include "Futures/Future.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/CountCache.h"

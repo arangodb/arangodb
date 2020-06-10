@@ -294,7 +294,7 @@ void TransactionState::setExclusiveAccessType() {
 
 void TransactionState::acceptAnalyzersRevision(AnalyzersRevision::Revision analyzersRevision) noexcept {
   // only init from default allowed! Or we have problem -> different analyzersRevision in one transaction
-  LOG_TOPIC_IF("9127a", FATAL, Logger::AQL, (_analyzersRevision != analyzersRevision && _analyzersRevision != AnalyzersRevision::MIN))
+  LOG_TOPIC_IF("9127a", ERR, Logger::AQL, (_analyzersRevision != analyzersRevision && _analyzersRevision != AnalyzersRevision::MIN))
     << " Changing analyzers revision for transaction from " << _analyzersRevision << " to " << analyzersRevision;
   TRI_ASSERT(_analyzersRevision == analyzersRevision || _analyzersRevision == AnalyzersRevision::MIN);
   _analyzersRevision = analyzersRevision;
