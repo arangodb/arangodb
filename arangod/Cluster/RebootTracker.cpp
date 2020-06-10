@@ -70,6 +70,8 @@ void RebootTracker::updateServerState(std::unordered_map<ServerID, RebootId> con
     if (newIt == state.end()) {
       // Try to schedule all callbacks for serverId.
       // If that didn't throw, erase the entry.
+      LOG_TOPIC("88858", INFO, Logger::CLUSTER)
+          << "Server " << serverId << " removed, aborting its old jobs now.";
       scheduleAllCallbacksFor(serverId);
       auto it = _callbacks.find(serverId);
       if (it != _callbacks.end()) {
