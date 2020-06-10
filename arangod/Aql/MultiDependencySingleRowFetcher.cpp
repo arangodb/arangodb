@@ -455,3 +455,8 @@ auto MultiDependencySingleRowFetcher::upstreamState() const -> ExecutionState {
     return ExecutionState::DONE;
   }
 }
+
+// TODO FIXME WARNING THIS NEEDS TO BE REMOVED AGAIN!
+auto MultiDependencySingleRowFetcher::resetDidReturnSubquerySkips() -> void {
+  _didReturnSubquerySkips = false;
+}

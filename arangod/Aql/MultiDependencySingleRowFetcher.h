@@ -140,6 +140,9 @@ class MultiDependencySingleRowFetcher {
 
   [[nodiscard]] auto upstreamState() const -> ExecutionState;
 
+  // TODO FIXME WARNING THIS NEEDS TO BE REMOVED AGAIN!
+  auto resetDidReturnSubquerySkips() -> void;
+
  private:
   DependencyProxy<BlockPassthrough::Disable>* _dependencyProxy;
 

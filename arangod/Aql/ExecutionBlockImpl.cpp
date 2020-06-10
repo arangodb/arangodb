@@ -1054,6 +1054,18 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack) -> E
   auto&& [state, shadowRow] = _lastRange.nextShadowRow();
   TRI_ASSERT(shadowRow.isInitialized());
 
+  // TODO FIXME WARNING THIS IS AN UGLY HACK. PLEASE SOLVE ME IN A MORE
+  // SENSIBLE WAY!
+  //
+  // the row fetcher doesn't know its ranges, the ranges don't know the fetcher
+  //
+  // ranges synchronize shadow rows, and fetcher synchronizes skipping
+  //
+  // but there are interactions between the two.
+  if constexpr (std::is_same_v<DataRange, MultiAqlItemBlockInputRange>) {
+    _rowFetcher.resetDidReturnSubquerySkips();
+  }
+
   _outputItemRow->moveRow(shadowRow);
   countShadowRowProduced(stack, shadowRow.getDepth());
 
