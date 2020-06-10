@@ -3658,7 +3658,14 @@ void ClusterInfo::loadServers() {
         // should always be ok
         if (serverState->getRebootId() != it->second) {
           serverState->setRebootId(it->second);
+          LOG_TOPIC("feaab", INFO, Logger::CLUSTER)
+              << "Updating my own rebootId to " << it->second;
         }
+      } else {
+        LOG_TOPIC("feaaa", WARN, Logger::CLUSTER)
+            << "Cannot find my own rebootId in the list of known servers, this "
+               "is very strange and should not happen, if this persists, please "
+               "report this error!";
       }
       // RebootTracker has its own mutex, and doesn't strictly need to be in
       // sync with the other members.
