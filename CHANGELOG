@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix restoring old arangodumps from ArangoDB 3.3 and before, which had 
+  index information stored in slightly different places in the dump.
+
 * Added WCC pregel algorithm for weakly connected components.
 
 * Display "geoJson" value for geo indexes in index overview in web UI.
