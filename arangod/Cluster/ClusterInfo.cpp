@@ -4162,7 +4162,7 @@ void ClusterInfo::loadServers() {
       if (serverState->getRebootId() != it->second) {
         serverState->setRebootId(it->second);
         LOG_TOPIC("feaab", INFO, Logger::CLUSTER)
-            << "Updating my own rebootId to " << it->second;
+            << "Updating my own rebootId to " << it->second.value();
       }
     } else {
       LOG_TOPIC("feaaa", WARN, Logger::CLUSTER)
