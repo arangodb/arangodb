@@ -1,6 +1,9 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Modified the exception handling in the RestHandler. Asynchronous communication
+  could lead to less detailed failure information.
+
 * Updated ArangoDB Starter to 0.14.15.
 
 * Foxx API now respects "idiomatic" flag being explicitly set to false.
