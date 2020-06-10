@@ -1015,8 +1015,8 @@
               'new-smart-key-attr',
               this.graphSettings.smartGraphAttribute + '*',
               undefined,
-              'The attribute value that is used to smartly shard the vertices of a graph. \n' +
-              'Every vertex in this Graph has to have this attribute. \n' +
+              'The attribute value that is used to shard the vertices of a SmartGraph. \n' +
+              'Every vertex in this SmartGraph has to have this attribute. \n' +
               'Cannot be modified later.',
               'Cannot be modified later.',
               false,
@@ -1035,7 +1035,7 @@
             'new-node-collection-attr',
             'Collection',
             undefined,
-            'Please select the destination for the new node.',
+            'Please select the target collection for the new node.',
             collections
           )
         );
@@ -1600,7 +1600,7 @@
         delete ajaxData.renderer;
       }
 
-      ajaxData.query = 'FOR v, e, p IN 1..1 ANY "' + id + '" GRAPH "' + self.name + '" RETURN p';
+      ajaxData.query = 'FOR v, e, p IN 1..1 ANY ' + JSON.stringify(id) + ' GRAPH ' + JSON.stringify(self.name) + ' RETURN p';
 
       $.ajax({
         type: 'GET',

@@ -140,7 +140,7 @@
       } else if (err.status === 400) {
         arangoHelper.arangoError('DB', 'Invalid Parameters: ' + err.responseJSON.errorMessage);
       } else if (err.status === 403) {
-        arangoHelper.arangoError('DB', 'Insufficent rights. Execute this from _system database');
+        arangoHelper.arangoError('DB', 'Insufficient rights. Execute this from _system database');
       }
     },
 
@@ -319,6 +319,7 @@
       tableContent.push(
         window.modalView.createReadOnlyEntry('id_name', 'Name', dbName, '')
       );
+      
       if (isDeletable) {
         buttons.push(
           window.modalView.createDeleteButton(
@@ -349,7 +350,7 @@
           self.createAddDatabaseModalReal(data);
         },
         error: function () {
-          arangoHelper.arangoError('Engine', 'Could not fetch ArangoDB Database defaults.');
+          arangoHelper.arangoError('Engine', 'Could not fetch ArangoDB database defaults.');
         }
       });
     },
