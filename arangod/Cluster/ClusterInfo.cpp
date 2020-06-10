@@ -25,9 +25,10 @@
 
 #include "ClusterInfo.h"
 
+#include "Agency/AsyncAgencyComm.h"
 #include "Agency/TimeString.h"
+#include "Agency/TransactionBuilder.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/application-exit.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
@@ -37,6 +38,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/application-exit.h"
 #include "Basics/hashes.h"
 #include "Basics/system-functions.h"
 #include "Cluster/AgencyCache.h"
@@ -75,6 +77,8 @@
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
+
+#include <chrono>
 
 namespace {
 
@@ -1175,11 +1179,17 @@ void ClusterInfo::loadPlan() {
   {
     std::lock_guard w(_waitPlanLock);
     triggerWaiting(_waitPlan, idx);
+    // TODO Wouldn't it be better to notify only when the plan version changes?
     auto heartbeatThread = clusterFeature.heartbeatThread();
     if (heartbeatThread) {
       // In the unittests, there is no heartbeatthread, and we do not need to notify
       heartbeatThread->notify();
     }
+  }
+
+  {
+    std::lock_guard w(_waitPlanVersionLock);
+    triggerWaiting(_waitPlanVersion, _planVersion);
   }
 
   _lpTimer.count(duration<float,std::milli>(clock::now()-start).count());
@@ -1358,6 +1368,11 @@ void ClusterInfo::loadCurrent() {
       // In the unittests, there is no heartbeatthread, and we do not need to notify
       heartbeatThread->notify();
     }
+  }
+
+  {
+    std::lock_guard w(_waitCurrentVersionLock);
+    triggerWaiting(_waitCurrentVersion, _currentVersion);
   }
 
   _lcTimer.count(duration<float,std::milli>(clock::now()-start).count());
@@ -5404,26 +5419,68 @@ void ClusterInfo::SyncerThread::run() {
 
 }
 
-futures::Future<arangodb::Result> ClusterInfo::waitForCurrent(uint64_t index) {
+futures::Future<arangodb::Result> ClusterInfo::waitForCurrent(uint64_t raftIndex) {
   READ_LOCKER(readLocker, _currentProt.lock);
-  if (index <= _currentIndex) {
+  if (raftIndex <= _currentIndex) {
     return futures::makeFuture(arangodb::Result());
   }
   // intentionally don't release _storeLock here until we have inserted the promise
   std::lock_guard w(_waitCurrentLock);
-  return _waitCurrent.emplace(index, futures::Promise<arangodb::Result>())->second.getFuture();
+  return _waitCurrent.emplace(raftIndex, futures::Promise<arangodb::Result>())->second.getFuture();
 }
 
-futures::Future<arangodb::Result> ClusterInfo::waitForPlan(uint64_t index) {
+futures::Future<arangodb::Result> ClusterInfo::waitForCurrentVersion(uint64_t currentVersion) {
+  READ_LOCKER(readLocker, _currentProt.lock);
+  if (currentVersion <= _currentVersion) {
+    return futures::makeFuture(arangodb::Result());
+  }
+  // intentionally don't release _storeLock here until we have inserted the promise
+  std::lock_guard w(_waitCurrentVersionLock);
+  return _waitCurrentVersion
+      .emplace(currentVersion, futures::Promise<arangodb::Result>())
+      ->second.getFuture();
+}
+
+futures::Future<arangodb::Result> ClusterInfo::waitForPlan(uint64_t raftIndex) {
 
   READ_LOCKER(readLocker, _planProt.lock);
-  if (index <= _planIndex) {
+  if (raftIndex <= _planIndex) {
     return futures::makeFuture(arangodb::Result());
   }
 
   // intentionally don't release _storeLock here until we have inserted the promise
   std::lock_guard w(_waitPlanLock);
-  return _waitPlan.emplace(index, futures::Promise<arangodb::Result>())->second.getFuture();
+  return _waitPlan.emplace(raftIndex, futures::Promise<arangodb::Result>())->second.getFuture();
+}
+
+futures::Future<Result> ClusterInfo::waitForPlanVersion(uint64_t planVersion) {
+  READ_LOCKER(readLocker, _planProt.lock);
+  if (planVersion <= _planVersion) {
+    return futures::makeFuture(arangodb::Result());
+  }
+
+  // intentionally don't release _storeLock here until we have inserted the promise
+  std::lock_guard w(_waitPlanVersionLock);
+  return _waitPlanVersion
+      .emplace(planVersion, futures::Promise<arangodb::Result>())
+      ->second.getFuture();
+}
+
+futures::Future<Result> ClusterInfo::fetchAndWaitForPlanVersion(network::Timeout timeout) {
+  // Save the applicationServer, not the ClusterInfo, in case of shutdown.
+  return cluster::fetchPlanVersion(timeout).thenValue(
+      [&applicationServer = server()](auto maybePlanVersion) {
+        if (maybePlanVersion.ok()) {
+          auto planVersion = maybePlanVersion.get();
+
+          auto& clusterInfo =
+              applicationServer.getFeature<ClusterFeature>().clusterInfo();
+
+          return clusterInfo.waitForPlanVersion(planVersion);
+        } else {
+          return futures::Future<Result>{maybePlanVersion.result()};
+        }
+      });
 }
 
 void ClusterInfo::triggerWaiting(
@@ -5557,6 +5614,54 @@ void AnalyzerModificationTransaction::revertCounter() {
 
 std::atomic<int32_t>  arangodb::AnalyzerModificationTransaction::_pendingAnalyzerOperationsCount{ 0 };
 
+namespace {
+template <typename T>
+futures::Future<ResultT<T>> fetchNumberFromAgency(std::shared_ptr<cluster::paths::Path const> path,
+                                                  network::Timeout timeout) {
+  VPackBuffer<uint8_t> trx;
+  {
+    VPackBuilder builder(trx);
+    arangodb::agency::envelope<VPackBuilder>::create(builder)
+        .read()
+        .key(path->str())
+        .done()
+        .done();
+  }
+
+  auto fAacResult = AsyncAgencyComm().sendReadTransaction(timeout, std::move(trx));
+
+  auto fResult = std::move(fAacResult).thenValue([path = std::move(path)](auto&& result) {
+    if (result.ok() && result.statusCode() == fuerte::StatusOK) {
+      return ResultT<T>::success(
+          result.slice().at(0).get(path->vec()).template getNumber<T>());
+    } else {
+      return ResultT<T>::error(result.asResult());
+    }
+  });
+
+  return fResult;
+}
+}  // namespace
+
+futures::Future<ResultT<uint64_t>> cluster::fetchPlanVersion(network::Timeout timeout) {
+  using namespace std::chrono_literals;
+
+  auto planVersionPath = cluster::paths::root()->arango()->plan()->version();
+
+  return fetchNumberFromAgency<uint64_t>(std::static_pointer_cast<paths::Path const>(
+                                             std::move(planVersionPath)),
+                                         timeout);
+}
+
+futures::Future<ResultT<uint64_t>> cluster::fetchCurrentVersion(network::Timeout timeout) {
+  using namespace std::chrono_literals;
+
+  auto currentVersionPath = cluster::paths::root()->arango()->current()->version();
+
+  return fetchNumberFromAgency<uint64_t>(std::static_pointer_cast<paths::Path const>(
+                                             std::move(currentVersionPath)),
+                                         timeout);
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
