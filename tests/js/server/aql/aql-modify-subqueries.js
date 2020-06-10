@@ -1895,9 +1895,25 @@ function ahuacatlGeneratedSuite() {
           db._drop(cn);
         }
       }
+    },
+    testChaosGenerated15: function() {
+      const q = 
+        `FOR fv0 IN 1..10 /* SubqueryChaosCollection0  */
+           LET sq1 = (FOR fv2 IN SubqueryChaosCollection1 
+             LET sq3 = (FOR fv4 IN SubqueryChaosCollection2
+               UPDATE { _key: fv4._key } WITH {updated: true} IN SubqueryChaosCollection2 
+               RETURN {fv4})
+             LIMIT 5,3
+           RETURN {fv2: UNSET_RECURSIVE(fv2,"_rev", "_id", "_key"), sq3})
+         RETURN sq1`;
+
+      const resNoSplice = db._query(q, {}, deactivateSplice);
+      const resSplice = db._query(q, {}, activateSplice);
+      
+      assertEqual(resSplice.getExtra().stats.writesExecuted, resNoSplice.getExtra().stats.writesExecuted);
+      assertEqual(resSplice.toArray().length, resNoSplice.toArray().length);
     }
   };
-  
 };
 
 jsunity.run(ahuacatlModifySuite);
