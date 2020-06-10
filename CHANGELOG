@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed the creation of edges in the web UI, which did not work due to a
+  JavaScript error.
+
 * Fixed velocypack validator for proper check of keys.
 
 * Handle missing "shardingStrategy" in Plan agency entries for collections.
