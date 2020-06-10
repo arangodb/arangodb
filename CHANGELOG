@@ -1,6 +1,9 @@
 devel
 -----
 
+* Modified the exception handling in the RestHandler. Asynchronous communication
+  could lead to less detailed failure information.
+
 * Taken collection dropping from fast track in maintenance. This avoids
   blocking fast track maintenance threads when a shard cannot immediately
   be dropped because of some pending lock.
