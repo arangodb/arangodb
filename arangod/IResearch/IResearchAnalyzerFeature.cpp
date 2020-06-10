@@ -723,6 +723,11 @@ bool equalAnalyzer(
 arangodb::Result visitAnalyzers(
     TRI_vocbase_t& vocbase,
     std::function<arangodb::Result(VPackSlice const&)> const& visitor) {
+
+  // temporarily changes to superuser mode, in order to be able to enumerate
+  // all analyzers even from the _system database
+  arangodb::ExecContextSuperuserScope scope;
+
   static const auto resultVisitor = [](
       std::function<arangodb::Result(VPackSlice const&)> const& visitor,
       TRI_vocbase_t const& vocbase,

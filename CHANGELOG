@@ -1,6 +1,10 @@
 devel
 -----
 
+* Temporarily elevate permissions to read data from `_analyzers` collection.
+  If these permissions are not there, view creation can fail for users
+  that do not have read permissions in the `_system` database.
+
 * Updated arangosync to 0.7.6.
 
 * Make the reboot tracker catch a failed server and permanently removed
