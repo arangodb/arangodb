@@ -32,7 +32,7 @@ using namespace arangodb;
 
 thread_local ExecContext const* ExecContext::CURRENT = nullptr;
 
-ExecContext ExecContext::Superuser(ExecContext::Type::Internal, /*name*/"", /*db*/"",
+ExecContext const ExecContext::Superuser(ExecContext::Type::Internal, /*name*/"", /*db*/"",
                                    auth::Level::RW, auth::Level::RW, true);
 
 /// Should always contain a reference to current user context
@@ -128,7 +128,7 @@ auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
   if (!af->isActive()) {
     return auth::Level::RW;
   }
-  
+
   if (coll.size() >= 5 && coll[0] == '_') {
     // _users, _queues, _frontend
 

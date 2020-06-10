@@ -56,7 +56,7 @@ class ExecContext : public RequestContext {
 
   /// shortcut helper to check the AuthenticationFeature
   static bool isAuthEnabled();
-  
+
   /// Should always contain a reference to current user context
   static ExecContext const& current();
 
@@ -132,7 +132,7 @@ class ExecContext : public RequestContext {
   std::string const _user;
   /// current database to use
   std::string const _database;
-  
+
   Type _type;
   /// Flag if admin user access (not regarding cluster RO mode)
   bool _isAdminUser;
@@ -144,7 +144,7 @@ class ExecContext : public RequestContext {
   auth::Level _databaseAuthLevel;
 
  private:
-  static ExecContext Superuser;
+  static ExecContext const Superuser;
   static thread_local ExecContext const* CURRENT;
 };
 
@@ -160,21 +160,21 @@ struct ExecContextScope {
  private:
   ExecContext const* _old;
 };
-  
+
 struct ExecContextSuperuserScope {
   explicit ExecContextSuperuserScope()
   : _old(ExecContext::CURRENT) {
     ExecContext::CURRENT = &ExecContext::Superuser;
   }
-  
+
   explicit ExecContextSuperuserScope(bool cond) : _old(ExecContext::CURRENT) {
     if (cond) {
       ExecContext::CURRENT = &ExecContext::Superuser;
     }
   }
-  
+
   ~ExecContextSuperuserScope() { ExecContext::CURRENT = _old; }
-  
+
 private:
   ExecContext const* _old;
 };
