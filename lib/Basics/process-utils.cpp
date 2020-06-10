@@ -1017,7 +1017,7 @@ void TRI_CreateExternalProcess(char const* executable,
 bool TRI_ReadPipe(ExternalProcess const *process,
                   char *buffer,
                   size_t &bufferSize) {
-  if (process == nullptr || process->_readPipe == 0) {
+  if (process == nullptr || TRI_IS_INVALID_PIPE(process->_readPipe)) {
     return false;
   }
 

@@ -331,6 +331,7 @@
 #define TRI_UNLINK ::unlink
 #define TRI_WRITE ::write
 #define TRI_FDOPEN(a, b) ::fdopen((a), (b))
+#define TRI_IS_INVALID_PIPE(a) (a == 0)
 
 #define TRI_lseek_t off_t
 #define TRI_read_t size_t
@@ -476,6 +477,7 @@
 #define TRI_UNLINK ::unlink
 #define TRI_WRITE ::write
 #define TRI_FDOPEN(a, b) ::fdopen((a), (b))
+#define TRI_IS_INVALID_PIPE(a) (a == 0)
 
 #define TRI_lseek_t off_t
 #define TRI_read_t size_t
@@ -634,6 +636,7 @@
 #define TRI_UNLINK ::unlink
 #define TRI_WRITE ::write
 #define TRI_FDOPEN(a, b) ::fdopen((a), (b))
+#define TRI_IS_INVALID_PIPE(a) (a == 0)
 
 #define TRI_lseek_t off_t
 #define TRI_read_t size_t
@@ -835,6 +838,7 @@ typedef unsigned char bool;
 #define TRI_DUP ::_dup
 #define TRI_WRITE ::_write
 #define TRI_FDOPEN(a, b) ::_fdopen((a), (b))
+#define TRI_IS_INVALID_PIPE(a) (a == INVALID_HANDLE_VALUE)
 
 #define TRI_lseek_t __int64
 #define TRI_read_t unsigned int
