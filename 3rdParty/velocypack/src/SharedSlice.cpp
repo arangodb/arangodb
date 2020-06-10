@@ -40,7 +40,7 @@ std::shared_ptr<uint8_t const> SharedSlice::copyBuffer(Buffer<uint8_t> const& bu
   // template<class T> shared_ptr<T> make_shared( std::size_t N );
   // with T is U[] is only available since C++20 :(
   auto newBuffer = std::shared_ptr<uint8_t>(new uint8_t[buffer.byteSize()],
-                                            [](auto ptr) { delete[] ptr; });
+                                            [](uint8_t* ptr) { delete[] ptr; });
   memcpy(newBuffer.get(), buffer.data(), checkOverflow(buffer.byteSize()));
   return newBuffer;
 }
