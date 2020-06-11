@@ -1930,7 +1930,7 @@ Result IResearchAnalyzerFeature::loadAvailableAnalyzers(irs::string_ref const& d
   }
   if (dbName != arangodb::StaticStrings::SystemDatabase &&
       canUseVocbase(arangodb::StaticStrings::SystemDatabase, auth::Level::RO)) {
-    // System is available for all other databases. So reload it`s analyzers too
+    // System is available for all other databases. So reload its analyzers too
     res = loadAnalyzers(arangodb::StaticStrings::SystemDatabase);
   }
   return res;
