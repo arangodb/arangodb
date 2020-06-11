@@ -1,9 +1,10 @@
 devel
 -----
 
-* Added permissions check before trying to read data from `_analyzers` collection.
-  If these permissions are not there, no load is performed (user can not use analyzers from 
-  database anyway).
+* Added permissions check before trying to read data from `_analyzers`
+  collection.
+  If these permissions are not there, no load is performed (user can not use
+  analyzers from database anyway).
 
 * Updated arangosync to 0.7.6.
 
