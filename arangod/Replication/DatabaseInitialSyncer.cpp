@@ -2124,7 +2124,8 @@ Result DatabaseInitialSyncer::handleViewCreation(VPackSlice const& views) {
 }
 
 Result DatabaseInitialSyncer::batchStart(std::string const& patchCount) {
-  return _config.batch.start(_config.connection, _config.progress, _config.state.syncerId, patchCount);
+  return _config.batch.start(_config.connection, _config.progress,
+                             _config.master, _config.state.syncerId, patchCount);
 }
 
 Result DatabaseInitialSyncer::batchExtend() {
