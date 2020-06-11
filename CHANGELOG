@@ -1,9 +1,9 @@
 devel
 -----
 
-* Temporarily elevate permissions to read data from `_analyzers` collection.
-  If these permissions are not there, view creation can fail for users
-  that do not have read permissions in the `_system` database.
+* Added permissions chek before trying to read data from `_analyzers` collection.
+  If these permissions are not there, no load is performed (user can not use analyzers from 
+  database anyway)
 
 * Updated arangosync to 0.7.6.
 
