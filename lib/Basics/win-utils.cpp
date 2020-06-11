@@ -262,12 +262,12 @@ bool TRI_READ_POINTER(HANDLE fd, void* Buffer, size_t length) {
   char* ptr = static_cast<char*>(Buffer);
   while (0 < length) {
     DWORD read;
-    if (!ReadFile(fd, ptr, static_cast<DWORD>(length), &read, nullptr)) {
+    if (ReadFile(fd, ptr, static_cast<DWORD>(length), &read, nullptr)) {
+      ptr += read;
+      length -= read;
+    } else {
       auto err = GetLastError();
-
       if (err == ERROR_NO_DATA) {
-        ptr += read;
-        length -= read;
         continue;
       } else if (err == ERROR_BROKEN_PIPE) {
         TRI_set_errno(TRI_ERROR_SYS_ERROR);
