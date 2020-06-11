@@ -564,15 +564,18 @@ if (CMAKE_COMPILER_IS_GNUCC OR APPLE)
   set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std=c++17")
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   # MSVC2018.1 - MSVC2018.7 does not correctly support alignas()
-  if (MSVC_VERSION VERSION_LESS 1924)
+  if (MSVC_VERSION VERSION_LESS 1915)
+    message(FATAL_ERROR "ArangoDB doesn't support MSVC less than 2017 update 15.8!")
+  elseif (MSVC_VERSION VERSION_GREATER_EQUAL 1915 AND MSVC_VERSION VERSION_LESS 1920)
+    message(WARNING "ArangoDB requires MSVC 2019 update 16.4 or newer, building with older compiler versions is unsupported)
+    # according to https://developercommunity.visualstudio.com/solutions/616098/view.html,
+    # the following define is not necessary anymore, as it should be fixed in MSVC 16.0:
+    # MSVC2018.8 requires the following define
+    add_definitions(-D_ENABLE_EXTENDED_ALIGNED_STORAGE)
+  elseif (MSVC_VERSION VERSION_GREATER_EQUAL 1920 AND MSVC_VERSION VERSION_LESS 1924)
     message(FATAL_ERROR "ArangoDB requires at least MSVC 2019 update 16.4!")
   endif()
-  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std:c++17")
-
-  # according to https://developercommunity.visualstudio.com/solutions/616098/view.html,
-  # the following define is not necessary anymore, as it should be fixed in MSVC 16.0:
-  # MSVC2018.8 requires the following define
-  add_definitions(-D_ENABLE_EXTENDED_ALIGNED_STORAGE)
+  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std:c++17") 
 endif()
 
 if (CMAKE_COMPILER_IS_CLANG)
