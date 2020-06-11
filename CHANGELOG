@@ -1,6 +1,12 @@
 devel
 -----
 
+* Fixed problem with newer replication protocol and ArangoSearch which could
+  lead to server crashes during normal operation
+
+* Fixed bad behavior that led to unecessary additional revision tree rebuilding
+  on server restart
+
 * Updated arangosync to 0.7.6.
 
 * Make the reboot tracker catch a failed server and permanently removed
