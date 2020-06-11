@@ -567,7 +567,7 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   if (MSVC_VERSION VERSION_LESS 1915)
     message(FATAL_ERROR "ArangoDB doesn't support MSVC less than 2017 update 15.8!")
   elseif (MSVC_VERSION VERSION_GREATER_EQUAL 1915 AND MSVC_VERSION VERSION_LESS 1920)
-    message(WARNING "ArangoDB requires MSVC 2019 update 16.4 or newer, building with older compiler versions is unsupported)
+    message(WARNING "ArangoDB requires MSVC 2019 update 16.4 or newer, building with older compiler versions is unsupported")
     # according to https://developercommunity.visualstudio.com/solutions/616098/view.html,
     # the following define is not necessary anymore, as it should be fixed in MSVC 16.0:
     # MSVC2018.8 requires the following define
