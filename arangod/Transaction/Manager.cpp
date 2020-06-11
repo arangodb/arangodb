@@ -440,6 +440,9 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
     if (mtrx.type == MetaType::Tombstone) {
       return nullptr;  // already committed this trx
     }
+    
+    // always update transaction expiration
+    mtrx.updateExpiry();
 
     if (AccessMode::isWriteOrExclusive(mode)) {
       if (mtrx.type == MetaType::StandaloneAQL) {
