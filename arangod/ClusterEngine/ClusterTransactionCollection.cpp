@@ -45,7 +45,7 @@ ClusterTransactionCollection::~ClusterTransactionCollection() = default;
 
 /// @brief whether or not any write operations for the collection happened
 bool ClusterTransactionCollection::hasOperations() const {
-  return false;  //(_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0);
+  return false;  
 }
 
 bool ClusterTransactionCollection::canAccess(AccessMode::Type accessType) const {

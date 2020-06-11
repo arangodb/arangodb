@@ -41,12 +41,13 @@ namespace pregel {
 enum ExecutionState {
   DEFAULT = 0,  // before calling start
   RUNNING,      // during normal operation
+  STORING,      // store results
   DONE,         // after everyting is done
   CANCELED,     // after an terminal error or manual canceling
   IN_ERROR,     // after an error which should allow recovery
   RECOVERING    // during recovery
 };
-extern const char* ExecutionStateNames[6];
+extern const char* ExecutionStateNames[7];
 
 class PregelFeature;
 class MasterContext;

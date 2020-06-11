@@ -2764,7 +2764,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(Optimizer* opt,
         continue;
       }
 
-      if (nn->isModificationSubquery()) {
+      if (nn->isModificationNode()) {
         // subqueries that modify data must not be optimized away
         continue;
       }
@@ -6275,7 +6275,7 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
   for (auto const& n : nodes) {
     auto subqueryNode = ExecutionNode::castTo<SubqueryNode*>(n);
 
-    if (subqueryNode->isModificationSubquery()) {
+    if (subqueryNode->isModificationNode()) {
       // can't modify modifying subqueries
       continue;
     }
@@ -7352,7 +7352,7 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
     TRI_ASSERT(node->getType() == EN::SUBQUERY);
     auto sn = ExecutionNode::castTo<SubqueryNode const*>(node);
 
-    if (sn->isModificationSubquery()) {
+    if (sn->isModificationNode()) {
       // cannot push a LIMIT into data-modification subqueries
       continue;
     }
@@ -7650,7 +7650,7 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
             if (setter != nullptr && setter->getType() == EN::SUBQUERY) {
               // COUNT(subquery) / LENGTH(subquery)
               auto sn = ExecutionNode::castTo<SubqueryNode*>(setter);
-              if (sn->isModificationSubquery()) {
+              if (sn->isModificationNode()) {
                 // subquery modifies data
                 // cannot apply optimization for data-modification queries
                 return true;
@@ -8237,8 +8237,7 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
 
       // Create new end node
       auto end = plan->createNode<SubqueryEndNode>(plan.get(), plan->nextId(),
-                                                   inVariable, sq->outVariable(),
-                                                   sq->isModificationSubquery());
+                                                   inVariable, sq->outVariable());
       // start and end inherit this property from the subquery node
       end->setIsInSplicedSubquery(sq->isInSplicedSubquery());
       // insert a SubqueryEndNode after the SubqueryNode sq
