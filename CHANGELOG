@@ -1,7 +1,7 @@
 devel
 -----
 
-* Added permissions chek before trying to read data from `_analyzers` collection.
+* Added permissions check before trying to read data from `_analyzers` collection.
   If these permissions are not there, no load is performed (user can not use analyzers from 
   database anyway)
 
