@@ -1,6 +1,13 @@
 devel
 -----
 
+* Added permissions check before trying to read data from `_analyzers`
+  collection.
+  If these permissions are not there, no load is performed (user can not use
+  analyzers from database anyway).
+
+* Updated arangosync to 0.7.6.
+
 * Make the reboot tracker catch a failed server and permanently removed
   servers. This allows other servers in the cluster to move on more quickly,
   when a server fails and does not immediately come back.
