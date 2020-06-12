@@ -490,16 +490,6 @@ arangodb::Result SynchronizeShard::getReadLock(
                  .get();
     auto res = response.combinedResult();
     if (res.fail()) {
-      std::string addendum;
-      if (response.fail()) {
-        addendum = network::fuerteToArangoErrorMessage(response);
-      } else {
-        addendum.append("code '")
-                .append(std::to_string(response.statusCode()))
-                .append("', error '")
-                .append(network::resultFromBody(response.slice(), TRI_ERROR_INTERNAL).errorMessage())
-                .append("'");
-      }
       LOG_TOPIC("4f34d", WARN, Logger::MAINTENANCE)
           << "startReadLockOnLeader: cancelation error for shard - "
           << collection << ": " << res.errorMessage();
