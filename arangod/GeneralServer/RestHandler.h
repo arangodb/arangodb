@@ -30,7 +30,7 @@
 #include "Rest/GeneralResponse.h"
 #include "Statistics/RequestStatistics.h"
 
-#include <Cluster/ResultT.h>
+#include <Basics/ResultT.h>
 #include <atomic>
 #include <thread>
 
