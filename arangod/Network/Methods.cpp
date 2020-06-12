@@ -65,10 +65,12 @@ std::string Response::serverId() const {
 
 Result Response::combinedResult() const {
   if (fail()) {
+    // fuerte connection failed
     return Result{fuerteToArangoErrorCode(*this), fuerteToArangoErrorMessage(*this)};
   } else if (response->fail()) {
-    return Result{fuerteStatusToArangoErrorCode(*response),
-                  fuerteStatusToArangoErrorMessage(*response)};
+    // HTTP status error. Try to extract a precise error from the body, and fall
+    // back to the HTTP status.
+    return resultFromBody(response->slice(), fuerteStatusToArangoErrorCode(*response));
   } else {
     return Result{};
   }
