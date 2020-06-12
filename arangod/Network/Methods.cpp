@@ -62,6 +62,17 @@ std::string Response::serverId() const {
   return StaticStrings::Empty;
 }
 
+Result Response::combinedResult() const {
+  if (fail()) {
+    return Result{fuerteToArangoErrorCode(*this), fuerteToArangoErrorMessage(*this)};
+  } else if (response->fail()) {
+    return Result{fuerteStatusToArangoErrorCode(*response),
+                  fuerteStatusToArangoErrorMessage(*response)};
+  } else {
+    return Result{};
+  }
+}
+
 auto prepareRequest(RestVerb type, std::string path, VPackBufferUInt8 payload,
                     RequestOptions const& options, Headers headers) {
   auto req = fuerte::createRequest(type, path, options.parameters, std::move(payload));
