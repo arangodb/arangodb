@@ -58,8 +58,10 @@ struct Response {
   }
 
   /// @brief Build a Result that contains
-  ///   - the fuerte error, if there was a connectivity error, or
-  ///   - the Response error, if the HTTP status is an error
+  ///   - no error if everything went well, otherwise
+  ///   - the error from the body, if available, otherwise
+  ///   - the HTTP error, if available, otherwise
+  ///   - the fuerte error, if there was a connectivity error.
   [[nodiscard]] Result combinedResult() const;
 
  public:
