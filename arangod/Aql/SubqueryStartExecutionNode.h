@@ -58,13 +58,10 @@ class SubqueryStartNode : public ExecutionNode {
 
   bool isEqualTo(ExecutionNode const& other) const override final;
 
-  bool isModificationSubqueryNode();
-
  private:
   /// @brief This is only required for Explain output.
   ///        it has no practical usage other then to print this information during explain.
   Variable const* _subqueryOutVariable;
-  bool _isModificationSubquery;
 };
 
 }  // namespace aql
