@@ -78,6 +78,10 @@ struct AqlValueHintDocumentNoCopy {
   uint8_t const* ptr;
 };
 
+struct AqlValueHintNone {
+  constexpr AqlValueHintNone() noexcept = default;
+};
+
 struct AqlValueHintNull {
   constexpr AqlValueHintNull() noexcept = default;
 };
@@ -172,6 +176,8 @@ struct AqlValue final {
 
   // construct from docvec, taking over its ownership
   explicit AqlValue(std::vector<arangodb::aql::SharedAqlItemBlockPtr>* docvec) noexcept;
+  
+  explicit AqlValue(AqlValueHintNone const&) noexcept;
 
   explicit AqlValue(AqlValueHintNull const&) noexcept;
 
@@ -246,8 +252,10 @@ struct AqlValue final {
   bool isDocvec() const noexcept;
 
   /// @brief hashes the value
-//  uint64_t hash(transaction::Methods*, uint64_t seed = 0xdeadbeef) const;
   uint64_t hash(uint64_t seed = 0xdeadbeef) const;
+
+  /// @brief whether or not the value is a shadow row depth entry
+  bool isShadowRowDepthValue() const noexcept;
 
   /// @brief whether or not the value contains a none value
   bool isNone() const noexcept;
@@ -322,18 +330,14 @@ struct AqlValue final {
   AqlItemBlock* docvecAt(size_t position) const;
 
   /// @brief construct a V8 value as input for the expression execution in V8
-  v8::Handle<v8::Value> toV8(v8::Isolate* isolate, transaction::Methods*) const;
+  v8::Handle<v8::Value> toV8(v8::Isolate* isolate, arangodb::velocypack::Options const*) const;
 
   /// @brief materializes a value into the builder
   void toVelocyPack(velocypack::Options const*, arangodb::velocypack::Builder&, bool resolveExternals) const;
-//  [[deprecated("Pass VPackOptions instead of the transaction")]]
-//  void toVelocyPack(transaction::Methods*, arangodb::velocypack::Builder&, bool resolveExternals) const;
 
   /// @brief materialize a value into a new one. this expands docvecs and
   /// ranges
   AqlValue materialize(velocypack::Options const*, bool& hasCopied, bool resolveExternals) const;
-  [[deprecated("Pass VPackOptions instead of the transaction")]]
-  AqlValue materialize(transaction::Methods*, bool& hasCopied, bool resolveExternals) const;
 
   /// @brief return the slice for the value
   /// this will throw if the value type is not VPACK_SLICE_POINTER,
@@ -397,11 +401,11 @@ class AqlValueGuard {
   AqlValueGuard(AqlValueGuard&&) = delete;
   AqlValueGuard& operator=(AqlValueGuard&&) = delete;
 
-  AqlValueGuard(AqlValue& value, bool destroy);
+  AqlValueGuard(AqlValue& value, bool destroy) noexcept;
   ~AqlValueGuard();
-  void steal();
 
-  AqlValue& value();
+  void steal() noexcept;
+  AqlValue& value() noexcept;
 
  private:
   AqlValue& _value;

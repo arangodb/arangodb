@@ -1749,8 +1749,107 @@ function ahuacatlModifySkipSuite () {
   };
 }
 
+function ahuacatlGeneratedSuite() {
+  var cn = "SubqueryChaosCollection0";
+  var cn2 = "SubqueryChaosCollection1";
+  var cn3 = "SubqueryChaosCollection2";
+  const cleanup = () => {
+    try {
+      db._drop(cn);
+    } catch (e) { }
+    try {
+      db._drop(cn2);
+    } catch (e) { }
+    try {
+      db._drop(cn3);
+    } catch (e) { }
+  };
+
+  const activateSplice = { optimizer: { rules: ["+splice-subqueries"] } };
+  const deactivateSplice = { optimizer: { rules: ["-splice-subqueries"] } };
+
+  return {
+
+    setUp: function () {
+      cleanup();
+      let c = db._create(cn, { numberOfShards: 5 });
+      let c1 = db._create(cn2, { numberOfShards: 5 });
+      let c2 = db._create(cn3, { numberOfShards: 5 });
+      const docs = [];
+      for (let i = 1; i < 11; ++i) {
+        docs.push({ value: i });
+      }
+      c.save(docs);
+      c1.save(docs);
+    },
+
+    tearDown: function () {
+      cleanup();
+    },
+
+    testNonSplicedExecutor: function () {
+      const q = `
+	FOR fv0 IN ${cn}
+	  LET sq1 = (FOR fv2 IN ${cn2}
+	    UPSERT {value: fv0.value}
+	      INSERT {value: 24}
+	      UPDATE {updated: true} IN ${cn2}
+	    LIMIT 14,5
+	    RETURN {fv2: UNSET_RECURSIVE(fv2,"_rev", "_id", "_key")})
+	  LIMIT 3,2
+	  RETURN {fv0: UNSET_RECURSIVE(fv0,"_rev", "_id", "_key"), sq1: UNSET_RECURSIVE(sq1,"_rev", "_id",  "_key")}`;
+      const resSplice = db._query(q, {}, activateSplice);
+      const resNoSplice = db._query(q, {}, deactivateSplice);
+      assertEqual(resSplice.getExtra().stats.writesExecuted, resNoSplice.getExtra().stats.writesExecuted);
+      assertEqual(resSplice.toArray().length, resNoSplice.toArray().length);
+    },
+
+    testNonSplicedViolatesPassthrough: function () {
+      const q = `
+        FOR fv0 IN ${cn} 
+        LET sq1 = (FOR fv2 IN ${cn2} 
+          LIMIT 2,13
+          RETURN {fv2: UNSET_RECURSIVE(fv2,"_rev", "_id", "_key")})
+        LET sq3 = (FOR fv4 IN ${cn2} 
+          UPSERT {value: fv4.value  }  INSERT {value: 71 }  UPDATE {value: 21, updated: true} IN ${cn2}
+          LIMIT 11,2
+          RETURN {fv4: UNSET_RECURSIVE(fv4,"_rev", "_id", "_key"), sq1: UNSET_RECURSIVE(sq1,"_rev", "_id", 
+        "_key")})
+        LIMIT 8,3
+        RETURN {fv0: UNSET_RECURSIVE(fv0,"_rev", "_id", "_key"), sq1: UNSET_RECURSIVE(sq1,"_rev", "_id", 
+        "_key"), sq3: UNSET_RECURSIVE(sq3,"_rev", "_id", "_key")}`;
+
+      const resSplice = db._query(q, {}, activateSplice);
+      const resNoSplice = db._query(q, {}, deactivateSplice);
+      assertEqual(resSplice.getExtra().stats.writesExecuted, resNoSplice.getExtra().stats.writesExecuted);
+      assertEqual(resSplice.toArray().length, resNoSplice.toArray().length);
+    },
+
+    testSubquerySkipReporting: function () {
+      const q = `
+        FOR fv0 IN ${cn} 
+          LET sq1 = (FOR fv2 IN ${cn2} 
+            LET sq3 = (FOR fv4 IN ${cn3} 
+              UPSERT {value: fv4.value  }  INSERT {value: fv4.value }  UPDATE { updated: true } IN ${cn3}
+              LIMIT 14,4
+              RETURN {fv4: UNSET_RECURSIVE(fv4,"_rev", "_id", "_key")})
+            LIMIT 0,17
+            RETURN {fv2: UNSET_RECURSIVE(fv2,"_rev", "_id", "_key"), sq3: UNSET_RECURSIVE(sq3,"_rev", "_id", "_key")})
+          LIMIT 19,11
+          COLLECT WITH COUNT INTO counter 
+          RETURN {counter: UNSET_RECURSIVE(counter,"_rev", "_id", "_key")}
+      `;
+
+      const resSplice = db._query(q, {}, activateSplice);
+      const resNoSplice = db._query(q, {}, deactivateSplice);
+      assertEqual(resSplice.getExtra().stats.writesExecuted, resNoSplice.getExtra().stats.writesExecuted);
+      assertEqual(resSplice.toArray().length, resNoSplice.toArray().length);
+    }
+  };
+};
 
 jsunity.run(ahuacatlModifySuite);
 jsunity.run(ahuacatlModifySkipSuite);
+jsunity.run(ahuacatlGeneratedSuite);
 
 return jsunity.done();

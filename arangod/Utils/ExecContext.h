@@ -144,7 +144,7 @@ class ExecContext : public RequestContext {
   auth::Level _databaseAuthLevel;
 
  private:
-  static ExecContext Superuser;
+  static ExecContext const Superuser;
   static thread_local ExecContext const* CURRENT;
 };
 

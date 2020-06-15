@@ -262,10 +262,10 @@ ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
     _planLoader(std::thread::id()),
     _uniqid(),
     _lpTimer(_server.getFeature<MetricsFeature>().histogram(
-               "load_plan_runtime", log_scale_t(std::exp(1.f), 0.f, 2500.f, 10),
+               "arangodb_load_plan_runtime", log_scale_t(std::exp(1.f), 0.f, 2500.f, 10),
                "Plan loading runtimes [ms]")),
     _lcTimer(_server.getFeature<MetricsFeature>().histogram(
-               "load_current_runtime", log_scale_t(std::exp(1.f), 0.f, 2500.f, 10),
+               "arangodb_load_current_runtime", log_scale_t(std::exp(1.f), 0.f, 2500.f, 10),
                "Current loading runtimes [ms]")) {
   _uniqid._currentValue = 1ULL;
   _uniqid._upperValue = 0ULL;
@@ -568,6 +568,14 @@ void ClusterInfo::loadPlan() {
   auto start = clock::now();
   auto& agencyCache = clusterFeature.agencyCache();
 
+  // We need to wait for any cluster operation, which needs access to the
+  // agency cache for it to become ready. The essentials in the cluster, namely
+  // ClusterInfo etc, need to start after first poll result from the agency.
+  // This is of great importance to not accidentally delete data facing an
+  // empty agency. There are also other measures that guard against such an
+  // outcome. But there is also no point continuing with a first agency poll.  
+  agencyCache.waitFor(1).get();
+  
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto tStart = TRI_microtime();
   auto longPlanWaitLogger = scopeGuard([&tStart]() {
@@ -1650,7 +1658,7 @@ std::vector<std::shared_ptr<LogicalView>> const ClusterInfo::getViews(DatabaseID
 //////////////////////////////////////////////////////////////////////////////
 
 AnalyzersRevision::Ptr ClusterInfo::getAnalyzersRevision(DatabaseID const& databaseID,
-                                                                     bool forceLoadPlan /* = false */) {
+                                                         bool forceLoadPlan /* = false */) {
   int tries = 0;
 
   if (!_planProt.isValid || forceLoadPlan) {
@@ -4144,9 +4152,27 @@ void ClusterInfo::loadServers() {
       _serversProt.doneVersion = storedVersion;
       _serversProt.isValid = true;
     }
+    // Our own RebootId might have changed if we have been FAILED at least once
+    // since our last actual reboot, let's update it:
+    auto rebootIds = _serversKnown.rebootIds();
+    auto* serverState = ServerState::instance();
+    auto it = rebootIds.find(serverState->getId());
+    if (it != rebootIds.end()) {
+      // should always be ok
+      if (serverState->getRebootId() != it->second) {
+        serverState->setRebootId(it->second);
+        LOG_TOPIC("feaab", INFO, Logger::CLUSTER)
+            << "Updating my own rebootId to " << it->second.value();
+      }
+    } else {
+      LOG_TOPIC("feaaa", WARN, Logger::CLUSTER)
+          << "Cannot find my own rebootId in the list of known servers, this "
+             "is very strange and should not happen, if this persists, please "
+             "report this error!";
+    }
     // RebootTracker has its own mutex, and doesn't strictly need to be in
     // sync with the other members.
-    rebootTracker().updateServerState(_serversKnown.rebootIds());
+    rebootTracker().updateServerState(rebootIds);
     return;
   }
 
@@ -5235,18 +5261,6 @@ ClusterInfo::ServersKnown::ServersKnown(VPackSlice const serversKnownSlice,
       }
     }
   }
-
-  // For backwards compatibility / rolling upgrades, add servers that aren't in
-  // ServersKnown but in ServersRegistered with a reboot ID of 0 as a fallback.
-  // We should be able to remove this in 3.6.
-  for (auto const& serverId : serverIds) {
-    auto const rv = _serversKnown.try_emplace(serverId, RebootId{0});
-    LOG_TOPIC_IF("0acbd", INFO, Logger::CLUSTER, rv.second)
-        << "Server " << serverId
-        << " is in Current/ServersRegistered, but not in "
-           "Current/ServersKnown. This is expected to happen "
-           "during a rolling upgrade.";
-  }
 }
 
 std::unordered_map<ServerID, ClusterInfo::ServersKnown::KnownServer> const&
@@ -5318,11 +5332,11 @@ CollectionWatcher::~CollectionWatcher() {
 
 ClusterInfo::SyncerThread::SyncerThread(
   application_features::ApplicationServer& server, std::string const& section,
-  std::function<void()> f, AgencyCallbackRegistry* cregistry) :
+  std::function<void()> const& f, AgencyCallbackRegistry* cregistry) :
   arangodb::Thread(server, section + "Syncer"), _news(false), _server(server),
   _section(section), _f(f), _cr(cregistry) {}
 
-ClusterInfo::SyncerThread::~SyncerThread() {}
+ClusterInfo::SyncerThread::~SyncerThread() { shutdown(); }
 
 bool ClusterInfo::SyncerThread::notify(velocypack::Slice const& slice) {
   std::lock_guard<std::mutex> lck(_m);
@@ -5371,7 +5385,7 @@ void ClusterInfo::SyncerThread::run() {
     FATAL_ERROR_EXIT();
   }
 
-  while(!isStopping()) {
+  while (!isStopping()) {
     bool news = false;
     {
       std::unique_lock<std::mutex> lk(_m);
@@ -5391,8 +5405,17 @@ void ClusterInfo::SyncerThread::run() {
         std::unique_lock<std::mutex> lk(_m);
         _news = false;
       }
-      _f();
+      try {
+        _f();
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("752c4", ERR, arangodb::Logger::CLUSTER)
+          << "Caugt an error while loading Plan/Current: " << ex.what();
+      } catch (...) {
+        LOG_TOPIC("30968", ERR, arangodb::Logger::CLUSTER)
+          << "Caugt an error while loading Plan/Current";
+      }
     }
+    // next round...
   }
 
   _cr->unregisterCallback(_acb);

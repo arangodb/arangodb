@@ -30,6 +30,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMetadata.h"
 #include "StorageEngine/PhysicalCollection.h"
+#include "VocBase/AccessMode.h"
 #include "VocBase/LogicalCollection.h"
 
 namespace arangodb {
@@ -120,6 +121,9 @@ class RocksDBMetaCollection : public PhysicalCollection {
   Result applyUpdatesForTransaction(containers::RevisionTree& tree,
                                     rocksdb::SequenceNumber commitSeq) const;
 
+ private:
+  int doLock(double timeout, AccessMode::Type mode);
+
  protected:
   RocksDBMetadata _meta;     /// collection metadata
   /// @brief collection lock used for write access
@@ -132,6 +136,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   /// @revision tree management for replication
   std::unique_ptr<containers::RevisionTree> _revisionTree;
   std::atomic<rocksdb::SequenceNumber> _revisionTreeApplied;
+  rocksdb::SequenceNumber _revisionTreeCreationSeq;
   rocksdb::SequenceNumber _revisionTreeSerializedSeq;
   std::chrono::steady_clock::time_point _revisionTreeSerializedTime;
   mutable std::mutex _revisionTreeLock;

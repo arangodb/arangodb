@@ -1,6 +1,102 @@
 devel
 -----
 
+* Fix potential AQL query shutdown hanger.
+
+* Use smarter default value preset in web UI for replication factor in case
+  there are constraints established for the replication factor by the
+  startup options `--cluster.min-replication-factor` and 
+  `--cluster.max-replication-factor`.
+
+* Modified the exception handling in the RestHandler. Asynchronous communication
+  could lead to less detailed failure information.
+
+* Added permissions check before trying to read data from `_analyzers`
+  collection.
+  If these permissions are not there, no load is performed (user can not use
+  analyzers from database anyway).
+
+* Updated arangosync to 0.7.6.
+
+* Make the reboot tracker catch a failed server and permanently removed
+  servers. This allows other servers in the cluster to move on more quickly,
+  when a server fails and does not immediately come back.
+
+* Added WCC pregel algorithm for weakly connected components.
+
+* Display "geoJson" value for geo indexes in index overview in web UI.
+
+* Allow specifiying arbitrary vertex attributes when creating a vertex via the 
+  graph viewer in the web UI. This is necessary for collections that have a
+  schema and that require new vertices to have certain attributes/values.
+
+* Pass through AQL query errors to UI graph viewer without turning them into
+  "Internal Server Error"s.
+
+* Augment nodes view in web UI with node id and full datetime of startup.
+
+* Fixed "Create Debug Package" in web UI in cluster mode.
+
+* Pick up selected "write concern" value entered in web UI when creating a
+  collection in the cluster. Previously, the "write concern" value was not 
+  picked up correctly and collections were created with the default write
+  concern.
+
+* Fixed the creation of edges in the web UI, which did not work due to a
+  JavaScript error.
+
+* Fixed velocypack validator for proper check of keys.
+
+* Handle missing "shardingStrategy" in Plan agency entries for collections.
+  "shardingStrategy" entries can be missing for collections created with
+  ArangoDB clusters in version 3.3 or earlier. A missing "shardingStrategy"
+  entry can cause issues for certain queries that need to check the shard
+  distribution on the DB-Servers.
+  This change transparently handles missing "shardingStrategy" entries.
+
+* Taken collection dropping from fast track in maintenance. This avoids
+  blocking fast track maintenance threads when a shard cannot immediately
+  be dropped because of some pending lock.
+
+* Updated ArangoDB Starter to 0.14.15.
+
+* Fixed a spuriously occuring shutdown deadlock between AgencyCallbackRegistry
+  and AgencyCache.
+
+* Fixed `"Plan" is not an object in agency` error messages when restarting
+  DB-Servers that contained ArangoSearch Views with links.
+
+* Fixed misordering of skipped number of rows report. Only triggered if you do
+  a modification on a subquery nesting level 2 or more, e.g.:
+  ```
+    LET s1 = (
+      LET s2 = (
+        INSERT {} INTO collection
+      )
+      COLLECT WITH COUNT INTO c
+      RETURN c
+    )
+  ```
+  Here the c would be off, or a count on main query would be off.
+
+* Fix crash in execution of non-spliced subqueries if remainder of subquery is
+  skipped.
+
+* Added missing mutex to ConnectionPool::cancelConnections().
+
+* Foxx API now respects "idiomatic" flag being explicitly set to false.
+
+* Fixed crash in execution of non-spliced subqueries if remainder of subquery is
+  skipped.
+
+* Made modification subqueries non-passthrough. The passthrough logic only works
+  if exactly as many output rows are produced as input rows are injected.
+  If the subquery with modification is skipped however this API is violated, we
+  perform the subquery with the modification, but then discard the input if
+  skipped).
+
+* Optimized Web UI styling for ArangoSearch Views when in read-only mode.
+
 * Fixed a bug in the internal `recalculateCount()` method for adjusting
   collection counts. The bug could have led to count adjustments being
   applied with the wrong sign.
@@ -15,7 +111,7 @@ devel
   collections exist, arangodump/restore will issue warnings about the invalid
   collections, but will continue to work for the valid collections.
 
-* Improved network send request for more robustness. 
+* Improved network send request for more robustness.
 
 * Added multiple RocksDB configuration options to arangod:
   * `--rocksdb.cache-index-and-filter-blocks` to make the RocksDB block cache quota
@@ -26,7 +122,8 @@ devel
   * `--rocksdb.pin-l0-filter-and-index-blocks-in-cache` make filter and index blocks
     be pinned and only evicted from cache when the table reader is freed
   * `--rocksdb.pin-top-level-index-and-filter` make the top-level index of partitioned
-    filter and index blocks pinned and only be evicted from cache when the table reader is freed
+    filter and index blocks pinned and only be evicted from cache when the table reader 
+    is freed
 
 * Don't move potentially expensive AQL function calls into loops in the
   `remove-unnecessary-calculations-rule`.
@@ -48,7 +145,8 @@ devel
   it merges calculations in the `remove-unnecessary-calculations` optimizer rule.
 
 * Fixed modification executors inside of a subquery, where the subquery decided to
-  fetch all rows from upstream first and the amount of rows is higher then the batch size.
+  fetch all rows from upstream first and the amount of rows is higher then the 
+  batch size.
 
 * Fixed reporting of skipped number of documents if we have a LIMIT x, 0
   right after the modification.

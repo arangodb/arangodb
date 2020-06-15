@@ -25,7 +25,7 @@
 
 #include <limits>
 #include <string>
-#include <iostream>
+#include <iosfwd>
 #include <memory>
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-aliases.h"
@@ -69,11 +69,8 @@ class RebootId {
   static constexpr RebootId max() noexcept {
     return RebootId{std::numeric_limits<decltype(_value)>::max()};
   }
-
-  std::ostream& print(std::ostream& o) const {
-    o << _value;
-    return o;
-  }
+  
+  std::ostream& print(std::ostream& o) const;
 
  private:
   uint64_t _value;
@@ -131,6 +128,6 @@ struct AnalyzersRevision {
 
 }  // namespace arangodb
 
-std::ostream& operator<< (std::ostream& o, arangodb::RebootId const& r);
+std::ostream& operator<<(std::ostream& o, arangodb::RebootId const& r);
 
 #endif  // ARANGOD_CLUSTER_CLUSTERTYPES_H

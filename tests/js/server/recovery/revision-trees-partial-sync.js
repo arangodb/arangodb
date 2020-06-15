@@ -62,7 +62,13 @@ function runSetup () {
     c.save({ _key: "test_" + i });
   }
 
-  internal.debugSetFailAt("RocksDBSettingsManagerSync");
+  internal.waitForEstimatorSync();
+  internal.debugSetFailAt("RocksDBMetaCollection::serializeRevisionTree");
+
+  c = db._collection(colName1);
+  for (i = 1000; i < 2000; ++i) {
+    c.save({ _key: "test_" + i });
+  }
 
   c = db._collection(colName2);
   for (i = 0; i < 500; ++i) {
@@ -75,6 +81,8 @@ function runSetup () {
   db._drop('test');
   c = db._create('test');
   c.save({ _key: 'crashme' }, true);
+
+  internal.waitForEstimatorSync();
 
   internal.debugTerminate('crashing server');
 }
@@ -100,7 +108,7 @@ function recoverySuite () {
     testRevisionTreeCounts: function() {
       const c1 = db._collection(colName1);
       assertEqual(c1._revisionTreeSummary().count, c1.count());
-      assertEqual(c1._revisionTreeSummary().count, 1000);
+      assertEqual(c1._revisionTreeSummary().count, 2000);
 
       const c2 = db._collection(colName2);
       assertEqual(c2._revisionTreeSummary().count, c2.count());

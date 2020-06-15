@@ -522,6 +522,7 @@ QueryResult Query::executeSync() {
       ss = sharedState();
     }
 
+    TRI_ASSERT(ss != nullptr);
     ss->waitForAsyncWakeup();
   } while (true);
 }
@@ -639,7 +640,8 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
             AqlValue const& val = value->getValueReference(i, resultRegister);
 
             if (!val.isEmpty()) {
-              resArray->Set(context, j++, val.toV8(isolate, _trx.get())).FromMaybe(false);
+              VPackOptions const* options = _trx->transactionContext()->getVPackOptions();
+              resArray->Set(context, j++, val.toV8(isolate, options)).FromMaybe(false);
 
               if (useQueryCache) {
                 val.toVelocyPack(&vpackOptions(), *builder, true);

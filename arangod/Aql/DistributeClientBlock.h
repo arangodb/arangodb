@@ -44,7 +44,7 @@ class DistributeClientBlock {
   class QueueEntry {
    public:
     QueueEntry(SkipResult const& skipped, SharedAqlItemBlockPtr block,
-               std::vector<size_t> choosen);
+               std::vector<size_t> chosen);
 
     auto numRows() const -> size_t;
 
@@ -52,12 +52,12 @@ class DistributeClientBlock {
 
     auto block() const -> SharedAqlItemBlockPtr const&;
 
-    auto choosen() const -> std::vector<size_t> const&;
+    auto chosen() const -> std::vector<size_t> const&;
 
    private:
     SkipResult _skip;
     SharedAqlItemBlockPtr _block;
-    std::vector<size_t> _choosen;
+    std::vector<size_t> _chosen;
   };
 
  public:
