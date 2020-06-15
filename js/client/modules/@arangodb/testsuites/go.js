@@ -123,6 +123,10 @@ function goDriver (options) {
     print(process.env);
     print(args);
   }
+
+  let cwd = fs.makeAbsolute('');
+  fs.copyFile(fs.join(localOptions.gosource, 'go.mod'), cwd);
+
   let start = Date();
   const res = executeExternal('go', args, true);
   // let alljsonLines = []
