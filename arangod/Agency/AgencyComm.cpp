@@ -502,7 +502,19 @@ void AgencyCommResult::clear() {
   _connected = false;
 }
 
-VPackSlice AgencyCommResult::slice() const { return _vpack->slice(); }
+VPackSlice AgencyCommResult::slice() const {
+  // the "slice()" method must only be called in case the result
+  // was successful. Otherwise we will not have a valid result
+  // to look into
+  TRI_ASSERT(_vpack != nullptr);
+  if (_vpack == nullptr) {
+    // don't segfault in production when we don't have assertions
+    // turned on
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "call to AgencyCommResult::slice() without valid precondition check");
+  }
+  return _vpack->slice(); 
+}
 
 void AgencyCommResult::toVelocyPack(VPackBuilder& builder) const {
   {
