@@ -728,19 +728,19 @@ arangosh, use this:
 #### Go driver
 
 Pre-requisites: 
- - have a go-driver checkout next to the arangodb source tree
- - go binary in the path
+ - have a go-driver checkout next to the ArangoDB source tree
+ - have the go binary in the path
  - have all dependencies of it installed in the system (you may do this by try & error)
 
 Once this is completed, you may run it like this:
 
-    ./scripts/unittest go_driver --testCase View --goOptions:timeout 180m -cluster true
+    ./scripts/unittest go_driver --testCase View --goOptions:timeout 180m --cluster true
 
 This will invoke the test with a filter to only execute tests that have `View` in their name.
 As an aditional parameter we pass `-timeout 100m` to the driver test. 
 
-The driver integration also features JWT pss in. It will launch a cluster with 3 db-servers, as
-the tests expect to have at least 3 db-servers.
+The driver integration also features JWT pass in. It will launch a cluster with 3 DB-Servers, as
+the tests expect to have at least 3 DB-Servers.
 
 ### Debugging Tests
 
