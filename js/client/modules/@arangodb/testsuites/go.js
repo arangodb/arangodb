@@ -125,7 +125,9 @@ function goDriver (options) {
   }
 
   let cwd = fs.makeAbsolute('');
-  fs.copyFile(fs.join(localOptions.gosource, 'go.mod'), cwd);
+  if (! fs.exists(fs.join(cwd, 'go.mod'))) {
+    fs.copyFile(fs.join(localOptions.gosource, 'go.mod'), cwd);
+  }
 
   let start = Date();
   const res = executeExternal('go', args, true);
