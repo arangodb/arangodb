@@ -294,15 +294,25 @@
         var cssShadow = 'rgba(0, 0, 0, 0.3) 0px 1px 4px 4px';
         _.each(permissions, function (perms, database) {
           if (perms.collections) {
-            var defValue = perms.collections['*'];
+            // DB Permission
+            var defValueDB = perms.permission;
+            // Collection Permission
+            var defValueCollectionLevel = perms.collections['*'];
+
+            // DB Permission > Collection Permission (higher rated)
+            // If db level is set, use this for active class render instead (box-shadow)
+            if (defValueDB !== 'undefined') {
+              defValueCollectionLevel = defValueDB;
+            }
+
             _.each(perms.collections, function (access, collection) {
               if (collection.charAt(0) !== '_' && collection.charAt(0) !== '*') {
                 if (access === 'undefined') {
-                  if (defValue === 'rw') {
+                  if (defValueCollectionLevel === 'rw') {
                     $('#' + database + '-db #' + collection + '-collection .readWrite').css('box-shadow', cssShadow);
-                  } else if (defValue === 'ro') {
+                  } else if (defValueCollectionLevel === 'ro') {
                     $('#' + database + '-db #' + collection + '-collection .readOnly').css('box-shadow', cssShadow);
-                  } else if (defValue === 'none') {
+                  } else if (defValueCollectionLevel === 'none') {
                     $('#' + database + '-db #' + collection + '-collection .noAccess').css('box-shadow', cssShadow);
                   }
                 }
