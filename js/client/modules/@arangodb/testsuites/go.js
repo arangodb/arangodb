@@ -187,7 +187,7 @@ function goDriver (options) {
               break;
             case 'pass':
               thiscase.status = true;
-              thiscase.duration = item.Elapsed;
+              thiscase.duration = item.Elapsed * 1000; // s -> ms
               break;
             case 'run':
               // nothing interesting to see here...
@@ -225,6 +225,7 @@ function goDriver (options) {
   let end = time();
   results['go_driver']['status'] = status;
   results['go_driver']['startupTime'] =  0;
+  results['go_driver']['duration'] = shutDownStart - testrunStart;
   results['testDuration'] =  end - start;
   results['shutdownTime'] = time() - shutDownStart;
   return results;
