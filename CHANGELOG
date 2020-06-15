@@ -1,6 +1,11 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Pick up selected "write concern" value entered in web UI when creating a
+  collection in the cluster. Previously, the "write concern" value was not
+  picked up correctly and collections were created with the default write
+  concern.
+
 * Fixed the creation of edges in the web UI, which did not work due to a
   JavaScript error.
 
