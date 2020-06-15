@@ -242,6 +242,11 @@ class Response : public Message {
 
   // statusCode returns the (HTTP) status code for the request (200==OK).
   StatusCode statusCode() const noexcept { return header.responseCode; }
+
+  bool ok() const noexcept { return 200 <= statusCode() && statusCode() < 300; }
+
+  bool fail() const noexcept { return !ok(); }
+
   // checkStatus returns true if the statusCode equals one of the given valid
   // code, false otherwise.
   bool checkStatus(std::initializer_list<StatusCode> validStatusCodes) const {
