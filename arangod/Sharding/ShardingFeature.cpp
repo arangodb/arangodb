@@ -152,11 +152,6 @@ std::string ShardingFeature::getDefaultShardingStrategy(ShardingInfo const* shar
   // TODO change these to use better algorithms when we no longer
   //      need to support collections created before 3.4
 
-  if (ServerState::instance()->isDBServer()) {
-    // on a DB server, we will not use sharding
-    return ShardingStrategyNone::NAME;
-  }
-
   // before 3.4, there were only hard-coded sharding strategies
 
   // no sharding strategy found in collection meta data
