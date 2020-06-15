@@ -1,15 +1,15 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Use smarter default value preset in web UI for replication factor in case
+  there are constraints established for the replication factor by the startup
+  options `--cluster.min-replication-factor` and
+  `--cluster.max-replication-factor`.
+
 * Added permissions check before trying to read data from `_analyzers`
   collection.
   If these permissions are not there, no load is performed (user can not use
   analyzers from database anyway).
-
-* Use smarter default value preset in web UI for replication factor in case
-  there are constraints established for the replication factor by the
-  startup options `--cluster.min-replication-factor` and 
-  `--cluster.max-replication-factor`.
 
 * Updated arangosync to 0.7.6.
 
