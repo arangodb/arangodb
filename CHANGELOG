@@ -1,6 +1,9 @@
 devel
 -----
 
+* Web UI now shows correct permissions in case wildcard database level and
+  wildcard collection level permissions are both set.
+
 * Added permissions check before trying to read data from `_analyzers`
   collection.
   If these permissions are not there, no load is performed (user can not use
