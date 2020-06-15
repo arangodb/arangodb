@@ -3046,7 +3046,7 @@ static void JS_ReadPipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "not allowed to execute or modify state of external processes");
   }
 
-  ExternalProcess const *proc = nullptr;
+  ExternalProcess const* proc = nullptr;
   TRI_pid_t pid = static_cast<TRI_pid_t>(TRI_ObjectToInt64(isolate, args[0]));
   for (auto const& process : ExternalProcesses) {
     if (process->_pid == pid) {
