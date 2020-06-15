@@ -107,7 +107,7 @@ function goDriver (options) {
   process.env['TEST_BACKUP_REMOTE_CONFIG'] = '';
   process.env['GODEBUG'] = 'tls13=1';
   process.env['CGO_ENABLED'] = '0';
-  let args = ['test', '-json', '-tags', 'auth', fs.join(localOptions.gosource, 'test')];
+  let args = ['test', '-json', '-tags', 'auth', './test/'];
 
   if (localOptions.testCase) {
     args.push('-run');
@@ -125,112 +125,114 @@ function goDriver (options) {
   }
 
   let cwd = fs.makeAbsolute('');
-  fs.copyFile(fs.join(localOptions.gosource, 'go.mod'), cwd);
-
-  let start = Date();
-  const res = executeExternal('go', args, true);
-  // let alljsonLines = []
-  let b = '';
-  let status = true;
-  let rc = {};
-  results['go_driver'] = {};
-  let testResults = results['go_driver'];
-  let count = 0;
-  do {
-    let buf = fs.readPipe(res.pid);
-    b += buf;
-    while ((buf.length === 1023) || count === 0) {
-      count += 1;
-      let lineStart = 0;
-      let maxBuffer = b.length;
-      for (let j = 0; j < maxBuffer; j++) {
-        if (b[j] === '\n') { // \n
-          // OK, we've got a complete line. lets parse it.
-          let oldLineStart = lineStart;
-          const line = b.slice(lineStart, j);
-          lineStart = j + 1;
-          try {
-            let item = JSON.parse(line);
-            // alljsonLines.push(item)
-            // print(item)
-            let testcase = 'WARN';
-            if (item.hasOwnProperty('Test')) {
-              testcase = item.Test;
-            } else {
-              if (item.Output === 'PASS\n') {
-                // this is the final PASS, ignore it.
-                print(item.Output);
-                continue;
-              } else if (item.Output.substring(0, 3) === 'ok '){
-                print(item.Output);
-                continue;
+  fs.changeDirectory(localOptions.gosource);
+  try {
+    let start = Date();
+    const res = executeExternal('go', args, true);
+    // let alljsonLines = []
+    let b = '';
+    let status = true;
+    let rc = {};
+    results['go_driver'] = {};
+    let testResults = results['go_driver'];
+    let count = 0;
+    do {
+      let buf = fs.readPipe(res.pid);
+      b += buf;
+      while ((buf.length === 1023) || count === 0) {
+        count += 1;
+        let lineStart = 0;
+        let maxBuffer = b.length;
+        for (let j = 0; j < maxBuffer; j++) {
+          if (b[j] === '\n') { // \n
+            // OK, we've got a complete line. lets parse it.
+            let oldLineStart = lineStart;
+            const line = b.slice(lineStart, j);
+            lineStart = j + 1;
+            try {
+              let item = JSON.parse(line);
+              // alljsonLines.push(item)
+              // print(item)
+              let testcase = 'WARN';
+              if (item.hasOwnProperty('Test')) {
+                testcase = item.Test;
               } else {
-                status = false;
+                if (item.Output === 'PASS\n') {
+                  // this is the final PASS, ignore it.
+                  print(item.Output);
+                  continue;
+                } else if (item.Output.substring(0, 3) === 'ok '){
+                  print(item.Output);
+                  continue;
+                } else {
+                  status = false;
+                }
               }
-            }
-            if (!testResults.hasOwnProperty(testcase)) {
-              testResults[testcase] = {
-                "setUpDuration": 0,
-                "tearDownDuration": 0,
-                "status": testcase !== 'WARN',
-                "duration": 0,
-                "message": ''
-              };
-            }
-            let thiscase = testResults[testcase];
-            switch(item.Action) {
-            case 'fail':
+              if (!testResults.hasOwnProperty(testcase)) {
+                testResults[testcase] = {
+                  "setUpDuration": 0,
+                  "tearDownDuration": 0,
+                  "status": testcase !== 'WARN',
+                  "duration": 0,
+                  "message": ''
+                };
+              }
+              let thiscase = testResults[testcase];
+              switch(item.Action) {
+              case 'fail':
+                status = false;
+                thiscase.status = false;
+                thiscase.duration = item.Elapsed;
+                break;
+              case 'output':
+                thiscase.message += item.Output;
+                print(item.Output.replace(/^\s+|\s+$/g, ''));
+                break;
+              case 'pass':
+                thiscase.status = true;
+                thiscase.duration = item.Elapsed;
+                break;
+              case 'run':
+                // nothing interesting to see here...
+                break;
+              case 'skip':
+                thiscase.status = true;
+                break;
+              default:
+                status = false;
+                print("Don't know what to do with this line! " + line);
+                break;
+              }
+            } catch (x) {
               status = false;
-              thiscase.status = false;
-              thiscase.duration = item.Elapsed;
-              break;
-            case 'output':
-              thiscase.message += item.Output;
-              print(item.Output.replace(/^\s+|\s+$/g, ''));
-              break;
-            case 'pass':
-              thiscase.status = true;
-              thiscase.duration = item.Elapsed;
-              break;
-            case 'run':
-              // nothing interesting to see here...
-              break;
-            case 'skip':
-              thiscase.status = true;
-              break;
-            default:
-              status = false;
-              print("Don't know what to do with this line! " + line);
-              break;
+              print("Error while parsing line? - " + x);
+              print("offending Line: " + line);
+              // doesn't seem to be a good idea: lineStart = oldLineStart;
             }
-          } catch (x) {
-            status = false;
-            print("Error while parsing line? - " + x);
-            print("offending Line: " + line);
-            // doesn't seem to be a good idea: lineStart = oldLineStart;
           }
         }
-        
+        b = b.slice(lineStart, b.length);
+        buf = fs.readPipe(res.pid);
+        b += buf;
       }
-      b = b.slice(lineStart, b.length);
-      buf = fs.readPipe(res.pid);
-      b += buf;
-    }
-    let rc = statusExternal(res.pid);
-    if (rc.status === 'NOT-FOUND') {
-      break;
-    }
-  } while (rc.status === 'RUNNING');
-  // fs.write('/tmp/bla.json', JSON.stringify(alljsonLines))
-  let shutDownStart = time();
-  print(Date() + ' Shutting down...');
-  pu.shutdownInstance(adbInstance, localOptions, false);
-  results['testDuration'] = shutDownStart - testrunStart;
-  let end = time();
-  results['go_driver']['status'] = status;
-  results['go_driver']['startupTime'] =  0;
-  results['testDuration'] =  end - start;
-  results['shutdownTime'] = time() - shutDownStart;
+      let rc = statusExternal(res.pid);
+      if (rc.status === 'NOT-FOUND') {
+        break;
+      }
+    } while (rc.status === 'RUNNING');
+    // fs.write('/tmp/bla.json', JSON.stringify(alljsonLines))
+    let shutDownStart = time();
+    print(Date() + ' Shutting down...');
+    pu.shutdownInstance(adbInstance, localOptions, false);
+    results['testDuration'] = shutDownStart - testrunStart;
+    let end = time();
+    results['go_driver']['status'] = status;
+    results['go_driver']['startupTime'] =  0;
+    results['testDuration'] =  end - start;
+    results['shutdownTime'] = time() - shutDownStart;
+  } finally {
+    fs.changeDirectory(cwd);
+  }
   return results;
 }
 

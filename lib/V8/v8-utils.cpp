@@ -1679,6 +1679,40 @@ static void JS_MakeAbsolute(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief was docuBlock JS_ChangeDirectoy
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_ChangeDirectoy(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // extract arguments
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("changeDirectory(<path>)");
+  }
+
+  TRI_Utf8ValueNFC name(isolate, args[0]);
+
+  if (*name == nullptr) {
+    TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
+  }
+
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+
+  if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   std::string("not allowed to read files in this path: ") + *name);
+  }
+
+  FileUtils::changeDirectory(std::string(*name, name.length()));
+
+  // return result
+  TRI_V8_RETURN_BOOL(true);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JS_List
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -5640,6 +5674,9 @@ void TRI_InitV8Utils(v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "FS_MAKE_ABSOLUTE"),
                                JS_MakeAbsolute);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "FS_CD"),
+                               JS_ChangeDirectoy);
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "FS_MAKE_DIRECTORY"), JS_MakeDirectory);
   TRI_AddGlobalFunctionVocbase(
