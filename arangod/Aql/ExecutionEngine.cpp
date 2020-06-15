@@ -645,14 +645,6 @@ Result ExecutionEngine::shutdownSync(int errorCode) noexcept try {
       sharedState->resetWakeupHandler();
       while (state == ExecutionState::WAITING) {
         std::tie(state, res) = shutdown(errorCode);
-        
-        if ((errorCode == TRI_ERROR_INTERNAL || errorCode == TRI_ERROR_SHUTTING_DOWN) && 
-            !sharedState->isValid()) {
-          // exit early here instead of looping (indefinitely)
-          // this is supposed to fix hangers on shutdown, when there
-          // is nobody there to wake up queries anymore
-          return res.reset(errorCode);
-        }
         if (state == ExecutionState::WAITING) {
           sharedState->waitForAsyncWakeup();
         }
