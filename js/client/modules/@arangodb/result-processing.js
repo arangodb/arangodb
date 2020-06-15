@@ -582,7 +582,7 @@ function locateLongRunning(options, results) {
         return a.duration - b.duration;
       });
       let results = {};
-      for (let i = sortedByDuration.length - 1; (i >= 0) && (i > sortedByDuration.length - 11); i --) {
+      for (let i = sortedByDuration.length - 1; (i >= 0) && (i > sortedByDuration.length - 31); i --) {
         let key = " - " + fancyTimeFormat(sortedByDuration[i].duration / 1000) + " - " +
           sortedByDuration[i].count + " - " +
             sortedByDuration[i].testName.replace('/\\/g', '/');
@@ -613,8 +613,11 @@ function locateLongRunning(options, results) {
         });
 
         let statistics = [];
-        for (let j = Object.keys(testCases).length - 1; (j >= 0) && (j > Object.keys(testCases).length - 11); j --) {
-          statistics.push(fancyTimeFormat(testCases[j].duration / 1000) + " - " + testCases[j].testName);
+        for (let j = Object.keys(testCases).length - 1; (j >= 0) && (j > Object.keys(testCases).length - 31); j --) {
+          statistics.push(
+            fancyTimeFormat(testCases[j].duration / 1000) +
+              " - " +
+              testCases[j].testName);
         }
         results[key] = {
           'processStatistics': pu.summarizeStats(thisTestSuite.test['processStats']),
