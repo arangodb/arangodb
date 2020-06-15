@@ -45,7 +45,7 @@ class SingleRowFetcher;
 class SubqueryEndExecutorInfos {
  public:
   SubqueryEndExecutorInfos(velocypack::Options const* options, RegisterId inReg,
-                           RegisterId outReg, bool isModificationSubquery);
+                           RegisterId outReg);
 
   SubqueryEndExecutorInfos() = delete;
   SubqueryEndExecutorInfos(SubqueryEndExecutorInfos&&) = default;
@@ -56,13 +56,11 @@ class SubqueryEndExecutorInfos {
   [[nodiscard]] RegisterId getOutputRegister() const noexcept;
   [[nodiscard]] bool usesInputRegister() const noexcept;
   [[nodiscard]] RegisterId getInputRegister() const noexcept;
-  [[nodiscard]] bool isModificationSubquery() const noexcept;
 
  private:
   velocypack::Options const* _vpackOptions;
   RegisterId const _outReg;
   RegisterId const _inReg;
-  bool const _isModificationSubquery;
 };
 
 class SubqueryEndExecutor {
@@ -102,8 +100,6 @@ class SubqueryEndExecutor {
    * @param output Output block
    */
   auto consumeShadowRow(ShadowAqlItemRow shadowRow, OutputAqlItemRow& output) -> void;
-
-  [[nodiscard]] auto isModificationSubquery() const noexcept -> bool;
 
  private:
   enum class State {

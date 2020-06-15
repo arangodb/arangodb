@@ -2446,7 +2446,7 @@ static std::string const syncLatest = "/Sync/LatestID";
 void Supervision::getUniqueIds() {
   _lock.assertLockedByCurrentThread();
 
-  size_t n = 10000;
+  int64_t n = 10000;
 
   std::string path = _agencyPrefix + "/Sync/LatestID";
   auto builder = std::make_shared<Builder>();
