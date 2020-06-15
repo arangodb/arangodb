@@ -1,6 +1,9 @@
 devel
 -----
 
+* Modified the exception handling in the RestHandler. Asynchronous communication
+  could lead to less detailed failure information.
+
 * Added permissions check before trying to read data from `_analyzers`
   collection.
   If these permissions are not there, no load is performed (user can not use
