@@ -2,8 +2,7 @@ v3.6.5 (XXXX-XX-XX)
 -------------------
 
 * Take DropCollection off FAST_TRACK. This prevents blocking fast track
-  maintenance threads if a shard cannot be dropped immediately due to some
-  lock.
+  maintenance threads if a shard cannot be dropped immediately due to some lock.
 
 * Updated ArangoDB Starter to 0.14.15.
 
