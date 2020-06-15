@@ -4,6 +4,11 @@ v3.4.11 (XXXX-XX-XX)
 * Pass through AQL query errors to UI graph viewer without turning them into
   "Internal Server Error"s.
 
+* Fixed the creation of edges in the web UI, which did not work due to a
+  JavaScript error.
+
+* Updated arangosync to 0.7.6.
+
 * Updated ArangoDB Starter to 0.14.15.
 
 * Optimized Web UI styling for ArangoSearch Views when in read-only mode.

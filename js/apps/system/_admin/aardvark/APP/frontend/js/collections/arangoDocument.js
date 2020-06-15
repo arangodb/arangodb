@@ -61,7 +61,7 @@ window.ArangoDocument = Backbone.Collection.extend({
       contentType: 'application/json',
       processData: false,
       success: function (data) {
-        callback(false, data);
+        callback(false, data._id);
       },
       error: function (data) {
         callback(true, data._id, data.responseJSON);
