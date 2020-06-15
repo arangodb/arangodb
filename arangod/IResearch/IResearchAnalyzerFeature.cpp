@@ -1263,13 +1263,20 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(application_features::Applica
   };
 }
 
+/*static*/ bool IResearchAnalyzerFeature::canUseVocbase(irs::string_ref const& vocbaseName,
+                                                        auth::Level const& level) {
+  TRI_ASSERT(!vocbaseName.empty());
+  auto& ctx = arangodb::ExecContext::current();
+
+  return ctx.canUseDatabase(vocbaseName, level) &&  // can use vocbase
+         ctx.canUseCollection(vocbaseName, arangodb::StaticStrings::AnalyzersCollection,
+                              level);  // can use analyzers
+}
+
 /*static*/ bool IResearchAnalyzerFeature::canUse(
     TRI_vocbase_t const& vocbase,
     auth::Level const& level) {
-  auto& ctx = arangodb::ExecContext::current();
-
-  return ctx.canUseDatabase(vocbase.name(), level) && // can use vocbase
-         ctx.canUseCollection(vocbase.name(), arangodb::StaticStrings::AnalyzersCollection, level); // can use analyzers
+  return canUseVocbase(vocbase.name(), level);
 }
 
 /*static*/ bool IResearchAnalyzerFeature::canUse(
@@ -1914,12 +1921,16 @@ Result IResearchAnalyzerFeature::loadAvailableAnalyzers(irs::string_ref const& d
     // and dbservers never should start ddl by themselves.
     return {};
   }
-  auto res = loadAnalyzers(dbName);
-  if (res.fail()) {
-    return res;
+  Result res{};
+  if (canUseVocbase(dbName, auth::Level::RO)) {
+    res = loadAnalyzers(dbName);
+    if (res.fail()) {
+      return res;
+    }
   }
-  if (dbName != arangodb::StaticStrings::SystemDatabase) {
-    // System is available for all other databases. So reload it`s analyzers too
+  if (dbName != arangodb::StaticStrings::SystemDatabase &&
+      canUseVocbase(arangodb::StaticStrings::SystemDatabase, auth::Level::RO)) {
+    // System is available for all other databases. So reload its analyzers too
     res = loadAnalyzers(arangodb::StaticStrings::SystemDatabase);
   }
   return res;
