@@ -1179,7 +1179,6 @@ void ClusterInfo::loadPlan() {
   {
     std::lock_guard w(_waitPlanLock);
     triggerWaiting(_waitPlan, idx);
-    // TODO Wouldn't it be better to notify only when the plan version changes?
     auto heartbeatThread = clusterFeature.heartbeatThread();
     if (heartbeatThread) {
       // In the unittests, there is no heartbeatthread, and we do not need to notify
