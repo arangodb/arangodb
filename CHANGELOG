@@ -3,6 +3,8 @@ devel
 
 * Fix internal test helper function `removeCost` to really remove costs.
 
+* Fix potential AQL query shutdown hanger.
+
 * Use smarter default value preset in web UI for replication factor in case
   there are constraints established for the replication factor by the
   startup options `--cluster.min-replication-factor` and 
