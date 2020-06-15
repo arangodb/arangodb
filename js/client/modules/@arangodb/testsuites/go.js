@@ -68,6 +68,7 @@ function goDriver (options) {
   if (localOptions.cluster && localOptions.dbServers < 3) {
     localOptions.dbServers = 3;
   }
+  localOptions['server.jwt-secret'] = 'haxxmann';
   const adbInstance = pu.startInstance('tcp', localOptions, {}, 'godriver');
   if (adbInstance === false) {
     results.failed += 1;
