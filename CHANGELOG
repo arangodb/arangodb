@@ -1,6 +1,9 @@
 v3.4.11 (XXXX-XX-XX)
 --------------------
 
+* Web UI now shows correct permissions in case wildcard database level and
+  wildcard collection level permissions are both set.
+
 * Pass through AQL query errors to UI graph viewer without turning them into
   "Internal Server Error"s.
 
