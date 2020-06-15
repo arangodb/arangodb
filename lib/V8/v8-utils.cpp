@@ -1630,39 +1630,6 @@ static void JS_MakeAbsolute(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_ChangeDirectoy
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_ChangeDirectoy(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  // extract arguments
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("changeDirectory(<path>)");
-  }
-
-  TRI_Utf8ValueNFC name(isolate, args[0]);
-
-  if (*name == nullptr) {
-    TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
-  }
-
-  TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
-
-  if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to read files in this path: ") + *name);
-  }
-
-  FileUtils::changeDirectory(std::string(*name, name.length()));
-
-  // return result
-  TRI_V8_RETURN_BOOL(true);
-  TRI_V8_TRY_CATCH_END
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JS_List
@@ -3057,7 +3024,6 @@ static void JS_ReadPipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   char content[1024];
   size_t length = sizeof(content) - 1;
-  memset(content, 0, sizeof(content));
 
   if (!TRI_ReadPipe(proc, content, length)) {
     TRI_V8_THROW_TYPE_ERROR("<external-identifier> of the spawned process");
@@ -4339,9 +4305,9 @@ static void JS_ExecuteExternal(v8::FunctionCallbackInfo<v8::Value> const& args) 
   v8::HandleScope scope(isolate);
 
   // extract the arguments
-  if (4 < args.Length() || args.Length() < 1) {
+  if (5 < args.Length() || args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "executeExternal(<filename>[, <arguments> [,<usePipes> [,<env>] ] ])");
+        "executeExternal(<filename>[, <arguments> [,<usePipes> [,<env> [, <workingDirectory> ] ] ] ])");
   }
 
   auto& server = application_features::ApplicationServer::server();
@@ -4394,6 +4360,12 @@ static void JS_ExecuteExternal(v8::FunctionCallbackInfo<v8::Value> const& args) 
     }
   }
 
+  bool usePipes = false;
+
+  if (3 <= args.Length()) {
+    usePipes = TRI_ObjectToBoolean(isolate, args[2]);
+  }
+
   std::vector<std::string> additionalEnv;
 
   if (4 <= args.Length()) {
@@ -4416,14 +4388,23 @@ static void JS_ExecuteExternal(v8::FunctionCallbackInfo<v8::Value> const& args) 
     }
   }
 
-  bool usePipes = false;
+  auto workingDirectory = FileUtils::currentDirectory().result();
+  std::string subProcessWorkingDirectory = workingDirectory;
 
-  if (3 <= args.Length()) {
-    usePipes = TRI_ObjectToBoolean(isolate, args[2]);
+  if (5 <= args.Length()) {
+    TRI_Utf8ValueNFC name(isolate, args[4]);
+    if (*name == nullptr) {
+      TRI_V8_THROW_TYPE_ERROR("<workingDirectory> must be a string");
+    }
+
+    subProcessWorkingDirectory = std::string(*name, name.length());
   }
-
   ExternalId external;
+  if (subProcessWorkingDirectory != workingDirectory) {
+    FileUtils::changeDirectory(subProcessWorkingDirectory);
+  }
   TRI_CreateExternalProcess(*name, arguments, additionalEnv, usePipes, &external);
+  FileUtils::changeDirectory(workingDirectory);
 
   if (external._pid == TRI_INVALID_PROCESS_ID) {
     TRI_V8_THROW_ERROR("Process could not be started");
@@ -4503,9 +4484,9 @@ static void JS_ExecuteAndWaitExternal(v8::FunctionCallbackInfo<v8::Value> const&
   v8::HandleScope scope(isolate);
 
   // extract the arguments
-  if (5 < args.Length() || args.Length() < 1) {
+  if (6 < args.Length() || args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "executeExternalAndWait(<filename>[, <arguments> [,<usePipes>, [, <timeoutms> [, <env>] ] ] ])");
+        "executeExternalAndWait(<filename>[, <arguments> [,<usePipes>, [, <timeoutms> [, <env> [, <workingDirectory> ] ] ] ] ])");
   }
 
   TRI_Utf8ValueNFC name(isolate, args[0]);
@@ -4558,6 +4539,16 @@ static void JS_ExecuteAndWaitExternal(v8::FunctionCallbackInfo<v8::Value> const&
     }
   }
 
+  bool usePipes = false;
+  if (args.Length() >= 3) {
+    usePipes = TRI_ObjectToBoolean(isolate, args[2]);
+  }
+
+  uint32_t timeoutms = 0;
+  if (args.Length() >= 4) {
+    timeoutms = static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, args[3], true));
+  }
+
   std::vector<std::string> additionalEnv;
 
   if (5 <= args.Length()) {
@@ -4580,18 +4571,23 @@ static void JS_ExecuteAndWaitExternal(v8::FunctionCallbackInfo<v8::Value> const&
     }
   }
 
-  bool usePipes = false;
-  if (args.Length() >= 3) {
-    usePipes = TRI_ObjectToBoolean(isolate, args[2]);
-  }
+  auto workingDirectory = FileUtils::currentDirectory().result();
+  std::string subProcessWorkingDirectory = workingDirectory;
 
-  uint32_t timeoutms = 0;
-  if (args.Length() >= 4) {
-    timeoutms = static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, args[3], true));
-  }
+  if (5 <= args.Length()) {
+    TRI_Utf8ValueNFC name(isolate, args[4]);
+    if (*name == nullptr) {
+      TRI_V8_THROW_TYPE_ERROR("<workingDirectory> must be a string");
+    }
 
+    subProcessWorkingDirectory = std::string(*name, name.length());
+  }
   ExternalId external;
+  if (subProcessWorkingDirectory != workingDirectory) {
+    FileUtils::changeDirectory(subProcessWorkingDirectory);
+  }
   TRI_CreateExternalProcess(*name, arguments, additionalEnv, usePipes, &external);
+  FileUtils::changeDirectory(workingDirectory);
 
   if (external._pid == TRI_INVALID_PROCESS_ID) {
     TRI_V8_THROW_ERROR("Process could not be started");
@@ -5586,9 +5582,6 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "FS_MAKE_ABSOLUTE"),
                                JS_MakeAbsolute);
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "FS_CD"),
-                               JS_ChangeDirectoy);
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "FS_MAKE_DIRECTORY"), JS_MakeDirectory);
   TRI_AddGlobalFunctionVocbase(

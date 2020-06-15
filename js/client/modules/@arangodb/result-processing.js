@@ -319,9 +319,17 @@ function saveToJunitXML(options, results) {
         }
       }
       state.xml.elem('/testsuite');
-      fs.write(fs.join(options.testOutputDirectory,
-                       'UNITTEST_RESULT_' + state.xmlName + '.xml'),
-               state.xml.join(''));
+      try {
+        fs.write(fs.join(options.testOutputDirectory,
+                         'UNITTEST_RESULT_' + state.xmlName + '.xml'),
+                 state.xml.join(''));
+      } catch (x) {
+        print("Failed to write ` " +
+              fs.join(options.testOutputDirectory,
+                      'UNITTEST_RESULT_' + state.xmlName + '.xml') +
+              '`! - ' + x.message);
+        throw(x);
+      }
 
     },
     endTestRun: function(options, state, testRun, testRunName) {}
@@ -795,7 +803,14 @@ function dumpAllResults(options, results) {
     j = inspect(results);
   }
 
-  fs.write(options.testOutputDirectory + '/UNITTEST_RESULT.json', j, true);
+  try {
+    fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT.json'), j, true);
+  } catch (x) {
+    print("Failed to write ` " +
+          fs.join(options.testOutputDirectory, 'UNITTEST_RESULT.json') +
+          '`! - ' + x.message);
+    throw(x);
+  }
 }
 
 
