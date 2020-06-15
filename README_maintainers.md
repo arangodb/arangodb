@@ -729,7 +729,7 @@ arangosh, use this:
 
 Pre-requisites: 
  - have a go-driver checkout next to the ArangoDB source tree
- - go binary in the path
+ - have the go binary in the path
  - have all dependencies of it installed in the system (you may do this by try & error)
 
 Once this is completed, you may run it like this:
