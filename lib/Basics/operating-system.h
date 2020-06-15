@@ -193,7 +193,7 @@
 #define TRI_UNLINK ::unlink
 #define TRI_WRITE ::write
 #define TRI_FDOPEN(a, b) ::fdopen((a), (b))
-#define TRI_IS_INVALID_PIPE(a) (a == 0)
+#define TRI_IS_INVALID_PIPE(a) ((a) == 0)
 
 #define TRI_lseek_t off_t
 #define TRI_read_t size_t
