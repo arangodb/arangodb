@@ -3110,7 +3110,7 @@ static void JS_ReadPipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   char content[1024];
   size_t length = sizeof(content) - 1;
-  memset(content, 0, sizeof(content) - 1);
+  memset(content, 0, sizeof(content));
 
   if (!TRI_ReadPipe(proc, content, length)) {
     TRI_V8_THROW_TYPE_ERROR("<external-identifier> of the spawned process");
