@@ -1,8 +1,8 @@
 devel
 -----
 
-* Web UI now shows correct permissions in case wildcard database level and
-  wildcard collection level permissions are both set.
+* Fixed issue ES-598. Web UI now shows correct permissions in case wildcard
+  database level and wildcard collection level permissions are both set.
 
 * Added permissions check before trying to read data from `_analyzers`
   collection.
