@@ -3462,6 +3462,10 @@ Result ClusterInfo::ensureIndexCoordinator(LogicalCollection const& collection,
   //   - some other error
   // There is nothing more to do here.
 
+  if (!_server.isStopping()) {
+    loadPlan();
+  }
+
   return res;
 }
 
