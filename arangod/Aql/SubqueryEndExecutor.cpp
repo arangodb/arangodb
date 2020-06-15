@@ -40,12 +40,10 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(velocypack::Options const* const options,
-                                                   RegisterId inReg, RegisterId outReg,
-                                                   bool isModificationSubquery)
+                                                   RegisterId inReg, RegisterId outReg)
     : _vpackOptions(options),
       _outReg(outReg),
-      _inReg(inReg),
-      _isModificationSubquery(isModificationSubquery) {}
+      _inReg(inReg) {}
 
 SubqueryEndExecutorInfos::~SubqueryEndExecutorInfos() = default;
 
@@ -63,10 +61,6 @@ RegisterId SubqueryEndExecutorInfos::getOutputRegister() const noexcept {
 
 RegisterId SubqueryEndExecutorInfos::getInputRegister() const noexcept {
   return _inReg;
-}
-
-bool SubqueryEndExecutorInfos::isModificationSubquery() const noexcept {
-  return _isModificationSubquery;
 }
 
 SubqueryEndExecutor::SubqueryEndExecutor(Fetcher&, SubqueryEndExecutorInfos& infos)
@@ -123,10 +117,6 @@ auto SubqueryEndExecutor::consumeShadowRow(ShadowAqlItemRow shadowRow,
   AqlValue value;
   AqlValueGuard guard = _accumulator.stealValue(value);
   output.consumeShadowRow(_infos.getOutputRegister(), shadowRow, guard);
-}
-
-auto SubqueryEndExecutor::isModificationSubquery() const noexcept -> bool {
-  return _infos.isModificationSubquery();
 }
 
 void SubqueryEndExecutor::Accumulator::reset() {
