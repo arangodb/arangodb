@@ -82,7 +82,7 @@ function restoreIntegrationSuite () {
           parameters: {
             indexes: [
               { id: "0", fields: ["_key"], type: "primary", unique: true },
-              { id: "95", fields: ["loc"], type: "geo1", geoJson: false },
+              { id: "95", fields: ["loc"], type: "geo", geoJson: false },
               { id: "295", fields: ["value"], type: "skiplist", sparse: true },
             ],
             name: cn,
@@ -99,7 +99,7 @@ function restoreIntegrationSuite () {
         assertEqual(3, indexes.length);
         assertEqual("primary", indexes[0].type);
         assertEqual(["_key"], indexes[0].fields);
-        assertEqual("geo1", indexes[1].type);
+        assertEqual("geo", indexes[1].type);
         assertEqual(["loc"], indexes[1].fields);
         assertFalse(indexes[1].geoJson);
         assertEqual("skiplist", indexes[2].type);
@@ -129,7 +129,7 @@ function restoreIntegrationSuite () {
 
         fs.write(fn, JSON.stringify({
           indexes: [
-            { id: "95", fields: ["loc"], type: "geo1", geoJson: false },
+            { id: "95", fields: ["loc"], type: "geo", geoJson: false },
             { id: "295", fields: ["value"], type: "skiplist", sparse: true },
           ],
           parameters: {
@@ -147,7 +147,7 @@ function restoreIntegrationSuite () {
         assertEqual(3, indexes.length);
         assertEqual("primary", indexes[0].type);
         assertEqual(["_key"], indexes[0].fields);
-        assertEqual("geo1", indexes[1].type);
+        assertEqual("geo", indexes[1].type);
         assertEqual(["loc"], indexes[1].fields);
         assertFalse(indexes[1].geoJson);
         assertEqual("skiplist", indexes[2].type);
