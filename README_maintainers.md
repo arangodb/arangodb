@@ -788,7 +788,7 @@ To run those tests, e.g. in the arangosh, use this:
 #### Go driver
 
 Pre-requisites: 
- - have a go-driver checkout next to the arangodb source tree
+ - have a go-driver checkout next to the ArangoDB source tree
  - go binary in the path
  - have all dependencies of it installed in the system (you may do this by try & error)
 
