@@ -1,6 +1,8 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Remove unnecessary console log in web UI.
+
 * Pick up selected "write concern" value entered in web UI when creating a
   collection in the cluster. Previously, the "write concern" value was not
   picked up correctly and collections were created with the default write
