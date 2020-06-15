@@ -155,8 +155,10 @@ size_t ConnectionPool::cancelConnections(std::string const& endpoint) {
   WRITE_LOCKER(guard, _lock);
   auto const& it = _connections.find(endpoint);
   if (it != _connections.end()) {
-    size_t n = it->second->list.size();
-    for (auto& c : it->second->list) {
+    Bucket& buck = *(it->second);
+    std::lock_guard<std::mutex> lock(buck.mutex);
+    size_t n = buck.list.size();
+    for (auto& c : buck.list) {
       c.fuerte->cancel();
     }
     _connections.erase(it);
