@@ -740,7 +740,7 @@ This will invoke the test with a filter to only execute tests that have `View` i
 As an aditional parameter we pass `-timeout 100m` to the driver test. 
 
 The driver integration also features JWT pss in. It will launch a cluster with 3 db-servers, as
-the tests expect to have at least 3 db-servers.
+the tests expect to have at least 3 DB-Servers.
 
 ### Debugging Tests
 
