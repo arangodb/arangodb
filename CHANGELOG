@@ -1,6 +1,11 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Fix invalid calls to `AgencyCommResult::slice()` method, which must only
+  be made in case of an agency result was retrieved successfully. In case
+  the call to the agency was not successful, `slice()` must not be called
+  on it. This change makes sure this invariant holds true.
+
 * Modified the exception handling in the RestHandler. Asynchronous communication
   could lead to less detailed failure information.
 
@@ -8,11 +13,6 @@ v3.7.1-rc.1 (XXXX-XX-XX)
   there are constraints established for the replication factor by the startup
   options `--cluster.min-replication-factor` and
   `--cluster.max-replication-factor`.
-
-* Fix invalid calls to `AgencyCommResult::slice()` method, which must only
-  be made in case of an agency result was retrieved successfully. In case
-  the call to the agency was not successful, `slice()` must not be called
-  on it. This change makes sure this invariant holds true.
 
 * Added permissions check before trying to read data from `_analyzers`
   collection.
