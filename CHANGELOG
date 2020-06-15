@@ -4,6 +4,39 @@ v3.6.5 (XXXX-XX-XX)
 * Pass through AQL query errors to UI graph viewer without turning them into
   "Internal Server Error"s.
 
+* Remove unnecessary console log in web UI.
+
+* Pick up selected "write concern" value entered in web UI when creating a
+  collection in the cluster. Previously, the "write concern" value was not
+  picked up correctly and collections were created with the default write
+  concern.
+
+* Fixed the creation of edges in the web UI, which did not work due to a
+  JavaScript error.
+
+* Make the reboot tracker catch a failed server and permanently removed
+  servers. This allows other servers in the cluster to move on more quickly,
+  when a server fails and does not immediately come back.
+
+* Modified the exception handling in the RestHandler. Asynchronous communication
+  could lead to less detailed failure information.
+
+* Fixed velocypack validator for proper check of keys.
+
+* Handle missing "shardingStrategy" in Plan agency entries for collections.
+  "shardingStrategy" entries can be missing for collections created with
+  ArangoDB clusters in version 3.3 or earlier. A missing "shardingStrategy"
+  entry can cause issues for certain queries that need to check the shard
+  distribution on the DB-Servers.
+  This change transparently handles missing "shardingStrategy" entries.
+
+* Take DropCollection off FAST_TRACK. This prevents blocking fast track
+  maintenance threads if a shard cannot be dropped immediately due to some lock.
+
+* Added missing mutex to ConnectionPool::cancelConnections().
+
+* Updated arangosync to 0.7.6.
+
 * Updated ArangoDB Starter to 0.14.15.
 
 * Foxx API now respects "idiomatic" flag being explicitly set to false.
