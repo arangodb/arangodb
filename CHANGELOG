@@ -4,6 +4,16 @@ devel
 * Fixed issue ES-598. Web UI now shows correct permissions in case wildcard
   database level and wildcard collection level permissions are both set.
 
+* Fix potential AQL query shutdown hanger.
+
+* Use smarter default value preset in web UI for replication factor in case
+  there are constraints established for the replication factor by the
+  startup options `--cluster.min-replication-factor` and 
+  `--cluster.max-replication-factor`.
+
+* Modified the exception handling in the RestHandler. Asynchronous communication
+  could lead to less detailed failure information.
+
 * Added permissions check before trying to read data from `_analyzers`
   collection.
   If these permissions are not there, no load is performed (user can not use
