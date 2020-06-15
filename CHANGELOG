@@ -4,6 +4,8 @@ devel
 * Fix restoring old arangodumps from ArangoDB 3.3 and before, which had 
   index information stored in slightly different places in the dump.
 
+* Fix potential AQL query shutdown hanger.
+
 * Use smarter default value preset in web UI for replication factor in case
   there are constraints established for the replication factor by the
   startup options `--cluster.min-replication-factor` and 
