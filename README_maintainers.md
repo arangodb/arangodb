@@ -794,7 +794,7 @@ Pre-requisites:
 
 Once this is completed, you may run it like this:
 
-    ./scripts/unittest go_driver --testCase View --goOptions:timeout 180m -cluster true
+    ./scripts/unittest go_driver --testCase View --goOptions:timeout 180m --cluster true
 
 This will invoke the test with a filter to only execute tests that have `View` in their name.
 As an aditional parameter we pass `-timeout 100m` to the driver test. 
