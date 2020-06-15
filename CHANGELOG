@@ -1,9 +1,14 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
-* Make the reboot tracker catch a failed server and permanently removed
-  servers. This allows other servers in the cluster to move on more quickly,
-  when a server fails and does not immediately come back.
+* Make the reboot tracker catch a failed server and permanently removed servers.
+  This allows other servers in the cluster to move on more quickly, when a
+  server fails and does not immediately come back.
+
+* Fixed the creation of edges in the web UI, which did not work due to a
+  JavaScript error.
+
+* Updated arangosync to 0.7.6.
 
 * Updated ArangoDB Starter to 0.14.15.
 
