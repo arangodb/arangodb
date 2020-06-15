@@ -1,6 +1,8 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Fix potential AQL query shutdown hanger.
+
 * Modified the exception handling in the RestHandler. Asynchronous communication
   could lead to less detailed failure information.
 
