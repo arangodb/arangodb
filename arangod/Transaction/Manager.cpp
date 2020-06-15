@@ -423,6 +423,12 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
   if (_disallowInserts.load(std::memory_order_acquire)) {
     return nullptr;
   }
+  
+  auto const role = ServerState::instance()->getRole();
+  std::chrono::steady_clock::time_point endTime; // keep as small as possible
+  if (!ServerState::isDBServer(role)) {
+    endTime = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+  }
 
   size_t const bucket = getBucket(tid);
   int i = 0;
@@ -454,11 +460,6 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
         state = mtrx.state;
         break;
       }
-      if (!ServerState::instance()->isDBServer()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_LOCKED,
-                                       std::string("transaction '") + std::to_string(tid) +
-                                           "' is already in use");
-      }
     } else {
       if (mtrx.rwlock.tryLockRead()) {
         state = mtrx.state;
@@ -467,6 +468,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
 
       LOG_TOPIC("abd72", DEBUG, Logger::TRANSACTIONS)
           << "transaction '" << tid << "' is already in use";
+      // simon: never allow concurrent use of transactions
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_LOCKED,
                                      std::string("transaction '") + std::to_string(tid) +
                                          "' is already in use");
@@ -475,19 +477,27 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
     writeLocker.unlock();  // failure;
     allTransactionsLocker.unlock();
     
-    // we should not be here unless some one does a bulk write
-    // within a el-cheapo / V8 transaction into multiple shards
-    // on the same server (Then its bad though).
-    TRI_ASSERT(ServerState::instance()->isDBServer());
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    // simon: Two allowed scenarios:
+    // 1. User sends concurrent write (CRUD) requests, (which was never intended to be possible)
+    //    but now we do have to kind of support it otherwise apps break
+    // 2. one does a bulk write within a el-cheapo / V8 transaction into multiple shards
+    //    on the same DBServer (Then its bad though).
+    TRI_ASSERT(endTime.time_since_epoch().count() == 0 || !ServerState::instance()->isDBServer());
 
-    if (i++ > 32) {
+    if (!ServerState::isDBServer(role) && std::chrono::steady_clock::now() > endTime) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_LOCKED,
+                                     std::string("transaction '") + std::to_string(tid) +
+                                         "' is already in use");
+    } else if (i++ > 32) {
       LOG_TOPIC("9e972", DEBUG, Logger::TRANSACTIONS) << "waiting on trx lock " << tid;
       i = 0;
       if (_feature.server().isStopping()) {
         return nullptr;  // shutting down
       }
     }
+    
+    std::this_thread::sleep_for(std::chrono::milliseconds(25));
+
   } while (true);
 
   if (state) {
