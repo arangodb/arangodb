@@ -1256,10 +1256,12 @@ ClusterQuery::ClusterQuery(std::shared_ptr<transaction::Context> const& ctx,
   }
 }
 
-ClusterQuery::~ClusterQuery() try {
-  _traversers.clear();
-} catch (...) {
-} 
+ClusterQuery::~ClusterQuery() {
+  try {
+    _traversers.clear();
+  } catch (...) {
+  } 
+}
 
 void ClusterQuery::prepareClusterQuery(SerializationFormat format,
                                        VPackSlice querySlice,
