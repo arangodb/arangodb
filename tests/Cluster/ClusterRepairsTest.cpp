@@ -38,7 +38,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterRepairs.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 #include "Cluster/ServerState.h"
 #include "Random/RandomGenerator.h"
 

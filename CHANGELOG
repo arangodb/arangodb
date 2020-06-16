@@ -6,6 +6,8 @@ devel
   to the agency was not successful, `slice()` must not be called on it. This
   change makes sure this invariant holds true.
 
+* Fix internal test helper function `removeCost` to really remove costs.
+
 * Fix potential AQL query shutdown hanger.
 
 * Use smarter default value preset in web UI for replication factor in case
