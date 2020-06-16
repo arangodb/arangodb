@@ -121,6 +121,78 @@ function restoreIntegrationSuite () {
       }
     },
     
+    testRestoreIndexesOldFormatGeo1: function () {
+      let path = fs.getTempFile();
+      try {
+        fs.makeDirectory(path);
+        let fn = fs.join(path, cn + ".structure.json");
+
+        fs.write(fn, JSON.stringify({
+          indexes: [],
+          parameters: {
+            indexes: [
+              { id: "95", fields: ["loc"], type: "geo1", geoJson: false },
+            ],
+            name: cn,
+            numberOfShards: 3,
+            type: 2
+          }
+        }));
+
+        let args = ['--collection', cn, '--import-data', 'false'];
+        runRestore(path, args, 0); 
+
+        let c = db._collection(cn);
+        let indexes = c.indexes();
+        assertEqual(2, indexes.length);
+        assertEqual("primary", indexes[0].type);
+        assertEqual(["_key"], indexes[0].fields);
+        assertEqual("geo", indexes[1].type);
+        assertEqual(["loc"], indexes[1].fields);
+        assertFalse(indexes[1].geoJson);
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },
+    
+    testRestoreIndexesOldFormatGeo2: function () {
+      let path = fs.getTempFile();
+      try {
+        fs.makeDirectory(path);
+        let fn = fs.join(path, cn + ".structure.json");
+
+        fs.write(fn, JSON.stringify({
+          indexes: [],
+          parameters: {
+            indexes: [
+              { id: "95", fields: ["a", "b"], type: "geo2", geoJson: false },
+            ],
+            name: cn,
+            numberOfShards: 3,
+            type: 2
+          }
+        }));
+
+        let args = ['--collection', cn, '--import-data', 'false'];
+        runRestore(path, args, 0); 
+
+        let c = db._collection(cn);
+        let indexes = c.indexes();
+        assertEqual(2, indexes.length);
+        assertEqual("primary", indexes[0].type);
+        assertEqual(["_key"], indexes[0].fields);
+        assertEqual("geo", indexes[1].type);
+        assertEqual(["a", "b"], indexes[1].fields);
+        assertFalse(indexes[1].geoJson);
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },
+    
     testRestoreIndexesNewFormat: function () {
       let path = fs.getTempFile();
       try {
