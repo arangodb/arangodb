@@ -54,6 +54,7 @@ RestCollectionHandler::RestCollectionHandler(application_features::ApplicationSe
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestCollectionHandler::execute() {
+  LOG_DEVEL << "REST COLLETION HANDLER";
   switch (_request->requestType()) {
     case rest::RequestType::GET:
       return handleCommandGet();
@@ -81,6 +82,7 @@ void RestCollectionHandler::shutdownExecute(bool isFinalized) noexcept {
 }
 
 RestStatus RestCollectionHandler::handleCommandGet() {
+  LOG_DEVEL << "handle command get - rest collection handler";
 
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
@@ -131,6 +133,7 @@ RestStatus RestCollectionHandler::handleCommandGet() {
   }
 
   std::string const& sub = suffixes[1];
+  LOG_DEVEL << "SUFFIX IS " << sub;
   _builder.clear();
 
   std::shared_ptr<LogicalCollection> coll;
@@ -189,17 +192,22 @@ RestStatus RestCollectionHandler::handleCommandGet() {
             .thenValue([this](futures::Unit&&) { standardResponse(); }));
   } else if (sub == "count") {
     // /_api/collection/<identifier>/count
+    LOG_DEVEL << "COUNT";
     initializeTransaction(*coll);
+    LOG_DEVEL << "INIT";
     _ctxt = std::make_unique<methods::Collections::Context>(coll, _activeTrx.get());
 
     bool details = _request->parsedValue("details", false);
+    LOG_DEVEL << "DETAILS";
+    LOG_DEVEL << "wait for future async";
     return waitForFuture(
         collectionRepresentationAsync(*_ctxt,
                                       /*showProperties*/ true,
                                       /*showFigures*/ false,
                                       /*showCount*/ true,
                                       /*detailedCount*/ details)
-            .thenValue([this](futures::Unit&&) { standardResponse(); }));
+            .thenValue([this](futures::Unit&&) { LOG_DEVEL << "standard resp"; standardResponse(); })
+        );
   } else if (sub == "properties") {
     // /_api/collection/<identifier>/properties
     collectionRepresentation(coll,
@@ -748,6 +756,7 @@ futures::Future<futures::Unit> RestCollectionHandler::collectionRepresentationAs
                                  detailedCount ? transaction::CountType::Detailed
                                                : transaction::CountType::Normal);
         }
+        LOG_DEVEL << "Make future";
         return futures::makeFuture(OperationResult());
       })
       .thenValue([=, &ctxt](OperationResult&& opRes) -> void {
@@ -755,16 +764,29 @@ futures::Future<futures::Unit> RestCollectionHandler::collectionRepresentationAs
           if (showCount) {
             auto trx = ctxt.trx(AccessMode::Type::READ, true, true);
             TRI_ASSERT(trx != nullptr);
+            LOG_DEVEL << "trx finish";
             trx->finish(opRes.result);
           }
+          LOG_DEVEL << "why are we throwing here?";
+          LOG_DEVEL << "errmsg: " << opRes.errorMessage();
+          LOG_DEVEL << "errnr: " << opRes.errorNumber();
+          /*if (opRes.errorNumber() == TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE) {
+            generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                          opRes.errorNumber(), opRes.errorMessage());
+            return;
+          } else {
+            THROW_ARANGO_EXCEPTION_MESSAGE(opRes.errorNumber(), opRes.errorMessage());
+          }*/
           THROW_ARANGO_EXCEPTION(opRes.result);
         }
 
         if (showCount) {
+          LOG_DEVEL << "showCOunt";
           _builder.add("count", opRes.slice());
         }
 
         if (!wasOpen) {
+          LOG_DEVEL << "wasOpen";
           _builder.close();
         }
       });

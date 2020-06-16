@@ -209,6 +209,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(AsyncAgencyCommManage
               return futures::makeFuture(AsyncAgencyCommResult{result.error,
                                                                std::move(resp)});  // otherwise return error as is
             case Error::Canceled:
+            case Error::LocallyCanceled:
               if (man.server().isStopping()) {
                 return futures::makeFuture(
                   AsyncAgencyCommResult{result.error, std::move(resp)});
@@ -332,6 +333,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
               [[fallthrough]];
               /* fallthrough */
             case Error::Canceled:
+            case Error::LocallyCanceled:
               if (man.server().isStopping()) {
                 return futures::makeFuture(
                   AsyncAgencyCommResult{result.error, std::move(resp)});

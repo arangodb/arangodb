@@ -194,6 +194,7 @@ int toArangoErrorCodeInternal(fuerte::Error err) {
     case fuerte::Error::NoError:
       return TRI_ERROR_NO_ERROR;
 
+    case fuerte::Error::LocallyCanceled:
     case fuerte::Error::CouldNotConnect:
       return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
 
@@ -268,6 +269,7 @@ rest::RequestType fuerteRestVerbToArango(fuerte::RestVerb verb) {
 }
 
 int fuerteToArangoErrorCode(network::Response const& res) {
+  LOG_DEVEL << "FUERTE:" << fuerte::to_string(res.error);
   LOG_TOPIC_IF("abcde", ERR, Logger::COMMUNICATION, res.error != fuerte::Error::NoError)
       << "communication error: '" << fuerte::to_string(res.error)
       << "' from destination '" << res.destination << "'";

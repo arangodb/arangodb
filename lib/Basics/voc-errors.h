@@ -178,6 +178,11 @@ constexpr int TRI_ERROR_INCOMPATIBLE_VERSION                                    
 /// Will be raised when a requested resource is not enabled.
 constexpr int TRI_ERROR_DISABLED                                                = 36;
 
+/// 37: ERROR_LOCALLY_CANCELED
+/// "local canceled request"
+/// Will be raised when a request is canceled by the server.
+constexpr int TRI_ERROR_LOCALLY_CANCELED                                        = 37;
+
 /// 400: ERROR_HTTP_BAD_PARAMETER
 /// "bad parameter"
 /// Will be raised when the HTTP request does not fulfill the requirements.

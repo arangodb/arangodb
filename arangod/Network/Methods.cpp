@@ -227,7 +227,13 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
     arangodb::network::EndpointSpec spec;
     int res = resolveDestination(*_pool->config().clusterInfo, _destination, spec);
     if (res != TRI_ERROR_NO_ERROR) {  // ClusterInfo did not work
-      callResponse(Error::Canceled, nullptr, std::move(_request));
+      LOG_DEVEL << "res: " << res;
+      LOG_DEVEL << "found a potential canceled handler";
+      if (res == TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE) {
+        callResponse(Error::LocallyCanceled, nullptr, std::move(_request));
+      } else {
+        callResponse(Error::Canceled, nullptr, std::move(_request));
+      }
       return;
     }
 
@@ -338,6 +344,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
 
   /// @brief schedule calling the response promise
   void callResponse(Error err, std::unique_ptr<fuerte::Response> res, std::unique_ptr<fuerte::Request> req) {
+    LOG_DEVEL << "call resp";
 
     LOG_TOPIC_IF("2713e", DEBUG, Logger::COMMUNICATION, err != fuerte::Error::NoError)
         << "error on request to '" << _destination
@@ -346,6 +353,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
 
     Scheduler* sch = SchedulerFeature::SCHEDULER;
     if (_options.skipScheduler || sch == nullptr) {
+      LOG_DEVEL << "set promise 1";
       _promise.setValue(Response{std::move(_destination), err, std::move(res), std::move(req)});
       return;
     }
@@ -354,13 +362,16 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
     _request = std::move(req);
     bool queued =
         sch->queue(RequestLane::CLUSTER_INTERNAL, [self = shared_from_this(), err]() {
+          LOG_DEVEL << "set promies 3";
           self->_promise.setValue(Response{std::move(self->_destination), err,
                                            std::move(self->_response),
                                            std::move(self->_request)});
         });
     if (ADB_UNLIKELY(!queued)) {
+      LOG_DEVEL << "set promise 2";
       _promise.setValue(Response{std::move(_destination), fuerte::Error::QueueCapacityExceeded, nullptr, std::move(_request)});
     }
+    LOG_DEVEL << "End";
   }
 
   void retryLater(std::chrono::steady_clock::duration tryAgainAfter) {
