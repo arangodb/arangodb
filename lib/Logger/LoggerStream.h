@@ -42,6 +42,7 @@ class LoggerStream {
       : _topicId(LogTopic::MAX_LOG_TOPICS),
         _level(LogLevel::DEFAULT),
         _line(0),
+        _logid(nullptr),
         _file(nullptr),
         _function(nullptr) {}
 
@@ -55,7 +56,6 @@ class LoggerStream {
 
   LoggerStream& operator<<(LogTopic const& topic) {
     _topicId = topic.id();
-    _out << topic.displayName();
     return *this;
   }
 
@@ -82,6 +82,11 @@ class LoggerStream {
     return *this;
   }
 
+  LoggerStream& operator<<(Logger::LOGID const& logid) {
+    _logid = logid._logid;
+    return *this;
+  }
+
   template <typename T>
   LoggerStream& operator<<(T const& obj) {
     try {
@@ -97,6 +102,7 @@ class LoggerStream {
   size_t _topicId;
   LogLevel _level;
   int _line;
+  char const* _logid;
   char const* _file;
   char const* _function;
 };

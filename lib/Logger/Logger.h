@@ -233,6 +233,11 @@ class Logger {
     char const* _function;
   };
 
+  struct LOGID {
+    explicit LOGID(char const* logid) : _logid(logid) {}
+    char const* _logid;
+  };
+
  public:
   static LogLevel logLevel();
   static std::vector<std::pair<std::string, LogLevel>> logLevelTopics();
@@ -265,7 +270,7 @@ class Logger {
 
   static std::string const& translateLogLevel(LogLevel);
 
-  static void log(char const* function, char const* file, int line,
+  static void log(char const* logid, char const* function, char const* file, int line,
                   LogLevel level, size_t topicId, std::string const& message);
 
   static bool isEnabled(LogLevel level) {

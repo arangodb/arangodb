@@ -34,6 +34,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/application-exit.h"
@@ -301,10 +302,182 @@ std::string const& Logger::translateLogLevel(LogLevel level) {
   return UNKNOWN;
 }
 
-void Logger::log(char const* function, char const* file, int line,
+void Logger::log(char const* logid, char const* function, char const* file, int line,
                  LogLevel level, size_t topicId, std::string const& message) {
+  // we only determine our pid once, as currentProcessId() will
+  // likely do a syscall.
+  // this read-check-update sequence is not thread-safe, but this
+  // should not matter, as the pid value is only changed from 0 to the
+  // actual pid and never changes afterwards
+  if (_cachedPid == 0) {
+    _cachedPid = Thread::currentProcessId();
+  }
+
+  // construct JSON output
+  StringBuffer buf;
+  buf.appendText("{", 1);
+
+  // current time
+  {
+    static char const s[] = "time";
+
+    buf.appendText("\"", 1);
+    buf.appendText(s, sizeof(s)-1);
+    buf.appendText("\":", 2);
+
+    std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+    std::chrono::system_clock::time_point tp(std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()));
+    buf.appendInteger(uint64_t(std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch()).count()));
+  }
+
+  // prefix
+  if (!_outputPrefix.empty()) {
+    static char const s[] = "prefix";
+
+    buf.appendText(",\"", 2);
+    buf.appendText(s, sizeof(s)-1);
+    buf.appendText("\":", 2);
+    buf.appendJsonEncoded(_outputPrefix.c_str(), _outputPrefix.size());
+  }
+
+  // pid
+  {
+    static char const s[] = "pid";
+
+    buf.appendText(",\"", 2);
+    buf.appendText(s, sizeof(s)-1);
+    buf.appendText("\":", 2);
+    buf.appendInteger(uint64_t(_cachedPid));
+  }
+
+  // tid
+  {
+    static char const s[] = "tid";
+
+    buf.appendText(",\"", 2);
+    buf.appendText(s, sizeof(s)-1);
+    buf.appendText("\":", 2);
+    buf.appendInteger(uint64_t(Thread::currentThreadNumber()));
+  }
+
+  // thread name
+  {
+    static char const s[] = "thread";
+
+    buf.appendText(",\"", 2);
+    buf.appendText(s, sizeof(s)-1);
+    buf.appendText("\":", 2);
+
+    char const* threadName = Thread::currentThreadName();
+    if (threadName == nullptr) {
+      threadName = "main";
+    }
+
+    buf.appendJsonEncoded(threadName, strlen(threadName));
+  }
+
+  // role
+  {
+    static char const s[] = "role";
+
+    buf.appendText(",\"", 2);
+    buf.appendText(s, sizeof(s)-1);
+    buf.appendText("\":", 2);
+
+    if (_role != '\0') {
+      buf.appendJsonEncoded(&_role, 1);
+    } else {
+      buf.appendText("\"\"", 2);
+    }
+  }
+
+  // log level
+  {
+    static char const s[] = "level";
+
+    buf.appendText(",\"", 2);
+    buf.appendText(s, sizeof(s)-1);
+    buf.appendText("\":", 2);
+    auto ll = Logger::translateLogLevel(level);
+    buf.appendJsonEncoded(ll.c_str(), ll.size());
+  }
+
+  // file and line
+  if (file != nullptr) {
+    static char const s[] = "file";
+
+    buf.appendText(",\"", 2);
+    buf.appendText(s, sizeof(s)-1);
+    buf.appendText("\":", 2);
+
+    char const* filename = file;
+    char const* shortened = strrchr(filename, TRI_DIR_SEPARATOR_CHAR);
+    if (shortened != nullptr) {
+      filename = shortened + 1;
+    }
+
+    buf.appendJsonEncoded(filename, strlen(filename));
+  }
+
+  if (file != nullptr) {
+    static char const s[] = "line";
+
+    buf.appendText(",\"", 2);
+    buf.appendText(s, sizeof(s)-1);
+    buf.appendText("\":", 2);
+    buf.appendInteger(uint64_t(line));
+  }
+
+  if (function != nullptr) {
+    static char const s[] = "function";
+
+    buf.appendText(",\"", 2);
+    buf.appendText(s, sizeof(s)-1);
+    buf.appendText("\":", 2);
+    buf.appendJsonEncoded(function, strlen(function));
+  }
+
+  // the topic
+  {
+    static char const s[] = "topic";
+
+    buf.appendText(",\"", 2);
+    buf.appendText(s, sizeof(s)-1);
+    buf.appendText("\":", 2);
+
+    std::string topic = LogTopic::lookup(topicId);
+    buf.appendJsonEncoded(topic.c_str(), topic.size());
+  }
+
+  // the logid
+  {
+    static char const s[] = "lid";
+
+    buf.appendText(",\"", 2);
+    buf.appendText(s, sizeof(s)-1);
+    buf.appendText("\":", 2);
+    buf.appendJsonEncoded(logid, strlen(logid));
+  }
+
+  // the message itself
+  {
+    static char const s[] = "message";
+
+    buf.appendText(",\"", 2);
+    buf.appendText(s, sizeof(s)-1);
+    buf.appendText("\":", 2);
+    buf.appendJsonEncoded(message.c_str(), message.size());
+  }
+
+  buf.appendText("}", 1);
+
+  std::string out = buf.toString();
+  size_t offset = 0;
+  
+  
+#if 0
   std::string out;
-  out.reserve(64 + message.size());
+  out.reserve(256 + message.size());
 
   LogTimeFormats::writeTime(out, _timeFormat);
   out.push_back(' ');
@@ -316,15 +489,6 @@ void Logger::log(char const* function, char const* file, int line,
   }
 
   // append the process / thread identifier
-
-  // we only determine our pid once, as currentProcessId() will
-  // likely do a syscall.
-  // this read-check-update sequence is not thread-safe, but this
-  // should not matter, as the pid value is only changed from 0 to the
-  // actual pid and never changes afterwards
-  if (_cachedPid == 0) {
-    _cachedPid = Thread::currentProcessId();
-  }
   TRI_ASSERT(_cachedPid != 0);
   out.push_back('[');
   StringUtils::itoa(uint64_t(_cachedPid), out);
@@ -377,9 +541,23 @@ void Logger::log(char const* function, char const* file, int line,
   }
 
   // generate the complete message
+  size_t offset = out.size();
+
+  if (::arangodb::Logger::getShowIds()) {
+    out.push_pack('[');
+    out.append(logid);
+    out.append("] ", 2);
+  }
+
+  {
+    out.push_pack('{');
+    out.append(LogTopic::lookup(topicId));
+    out.append("} ", 2);
+  }
+
   out.append(message);
- 
-  size_t offset = out.size() - message.size();
+#endif
+
   auto msg = std::make_unique<LogMessage>(function, file, line, level, topicId, std::move(out), offset);
 
   // first log to all "global" appenders, which are the in-memory ring buffer logger plus
