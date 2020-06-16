@@ -198,7 +198,6 @@ void Query::injectTransaction(std::unique_ptr<transaction::Methods> trx) {
 }
 
 void Query::prepareQuery(SerializationFormat format) {
-
   init();
   enterState(QueryExecutionState::ValueType::PARSING);
 
@@ -1251,13 +1250,15 @@ ExecutionEngine* Query::rootEngine() const {
 
 ClusterQuery::ClusterQuery(std::shared_ptr<transaction::Context> const& ctx,
                            std::shared_ptr<arangodb::velocypack::Builder> const& options)
-: Query(ctx, aql::QueryString(), /*bindParams*/ nullptr, options) {}
-
-ClusterQuery::~ClusterQuery() {
-  try {
-    _traversers.clear();
-  } catch (...) {
+    : Query(ctx, aql::QueryString(), /*bindParams*/ nullptr, options) {
+  if (ServerState::instance()->isDBServer()) {
+    _sharedState.reset();
   }
+}
+
+ClusterQuery::~ClusterQuery() try {
+  _traversers.clear();
+} catch (...) {
 } 
 
 void ClusterQuery::prepareClusterQuery(SerializationFormat format,
