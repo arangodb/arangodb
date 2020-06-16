@@ -74,15 +74,16 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-/// @brief creates a query
+/// @brief internal constructor, Used to construct a full query or a ClusterQuery
 Query::Query(std::shared_ptr<transaction::Context> const& ctx,
              QueryString const& queryString, std::shared_ptr<VPackBuilder> const& bindParameters,
-             std::shared_ptr<VPackBuilder> const& options)
+             std::shared_ptr<VPackBuilder> const& options,
+             std::shared_ptr<SharedQueryState> sharedState)
     : QueryContext(ctx->vocbase()),
       _itemBlockManager(&_resourceMonitor, SerializationFormat::SHADOWROWS),
       _queryString(queryString),
       _transactionContext(ctx),
-      _sharedState(std::make_shared<SharedQueryState>()),
+      _sharedState(std::move(sharedState)),
       _v8Context(nullptr),
       _bindParameters(bindParameters),
       _options(options),
@@ -148,6 +149,12 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
   _resourceMonitor.setMemoryLimit(_queryOptions.memoryLimit);
   _warnings.updateOptions(_queryOptions);
 }
+
+/// @brief public constructor, Used to construct a full query
+Query::Query(std::shared_ptr<transaction::Context> const& ctx,
+             QueryString const& queryString, std::shared_ptr<VPackBuilder> const& bindParameters,
+             std::shared_ptr<VPackBuilder> const& options)
+    : Query(ctx, queryString, bindParameters, options, std::make_shared<SharedQueryState>()) {}
 
 /// @brief destroys a query
 Query::~Query() {
@@ -1250,11 +1257,8 @@ ExecutionEngine* Query::rootEngine() const {
 
 ClusterQuery::ClusterQuery(std::shared_ptr<transaction::Context> const& ctx,
                            std::shared_ptr<arangodb::velocypack::Builder> const& options)
-    : Query(ctx, aql::QueryString(), /*bindParams*/ nullptr, options) {
-  if (ServerState::instance()->isDBServer()) {
-    _sharedState.reset();
-  }
-}
+    : Query(ctx, aql::QueryString(), /*bindParams*/ nullptr, options, 
+            /*sharedState*/ ServerState::instance()->isDBServer() ? nullptr : std::make_shared<SharedQueryState>()) {}
 
 ClusterQuery::~ClusterQuery() {
   try {
