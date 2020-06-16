@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed unintentional connection re-use for cluster-internal communications
+
 * Fixed problem with newer replication protocol and ArangoSearch which could
   lead to server crashes during normal operation
 
