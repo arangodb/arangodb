@@ -3066,13 +3066,13 @@ static void JS_ReadPipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "not allowed to execute or modify state of external processes");
   }
 
-  ExternalProcess const* proc = nullptr;
   TRI_pid_t pid = static_cast<TRI_pid_t>(TRI_ObjectToInt64(isolate, args[0]));
-  for (auto const& process : ExternalProcesses) {
-    if (process->_pid == pid) {
-      proc = process;
-      break;
-    }
+  ExternalProcess const* proc = TRI_LookupSpawnedProcess(pid);
+
+  if (proc == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+      "didn't find the process identified by <external-identifier> to read the pipe from.");
   }
 
   char content[1024];
