@@ -28,7 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/CallbackGuard.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 
 struct TRI_vocbase_t;
 

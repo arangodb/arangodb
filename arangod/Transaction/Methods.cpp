@@ -821,8 +821,7 @@ Future<OperationResult> transaction::Methods::documentCoordinator(
     }
   }
 
-  ClusterInfo& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
-  auto colptr = ci.getCollectionNT(vocbase().name(), collectionName);
+  auto colptr = resolver()->getCollectionStructCluster(collectionName);
   if (colptr == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
@@ -945,8 +944,7 @@ Future<OperationResult> transaction::Methods::insertAsync(std::string const& cna
 Future<OperationResult> transaction::Methods::insertCoordinator(std::string const& collectionName,
                                                                 VPackSlice const value,
                                                                 OperationOptions const& options) {
-  auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
-  auto colptr = ci.getCollectionNT(vocbase().name(), collectionName);
+  auto colptr = resolver()->getCollectionStructCluster(collectionName);
   if (colptr == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
@@ -1226,8 +1224,7 @@ Future<OperationResult> transaction::Methods::modifyCoordinator(
     }
   }
 
-  ClusterInfo& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
-  auto colptr = ci.getCollectionNT(vocbase().name(), cname);
+  auto colptr = resolver()->getCollectionStructCluster(cname);
   if (colptr == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
@@ -1494,8 +1491,7 @@ Future<OperationResult> transaction::Methods::removeAsync(std::string const& cna
 Future<OperationResult> transaction::Methods::removeCoordinator(std::string const& cname,
                                                                 VPackSlice const value,
                                                                 OperationOptions const& options) {
-  ClusterInfo& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
-  auto colptr = ci.getCollectionNT(vocbase().name(), cname);
+  auto colptr = resolver()->getCollectionStructCluster(cname);
   if (colptr == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
@@ -1884,16 +1880,13 @@ futures::Future<OperationResult> transaction::Methods::countAsync(std::string co
 /// @brief count the number of documents in a collection
 futures::Future<OperationResult> transaction::Methods::countCoordinator(
     std::string const& collectionName, transaction::CountType type) {
-  auto& feature = vocbase().server().getFeature<ClusterFeature>();
-  ClusterInfo& ci = feature.clusterInfo();
-
   // First determine the collection ID from the name:
-  auto collinfo = ci.getCollectionNT(vocbase().name(), collectionName);
-  if (collinfo == nullptr) {
+  auto colptr = resolver()->getCollectionStructCluster(collectionName);
+  if (colptr == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
 
-  return countCoordinatorHelper(collinfo, collectionName, type);
+  return countCoordinatorHelper(colptr, collectionName, type);
 }
 
 #endif

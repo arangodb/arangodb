@@ -592,25 +592,35 @@
             );
           
             if (window.App.isCluster) {
+              var minReplicationFactor = (this.minReplicationFactor ? this.minReplicationFactor : 1); 
+              var maxReplicationFactor = (this.maxReplicationFactor ? this.maxReplicationFactor : 10); 
+
+              // clamp replicationFactor between min & max allowed values
+              var replicationFactor = '';
+              if (properties.replicationFactor) {
+                replicationFactor = parseInt(properties.replicationFactor);
+                if (replicationFactor < minReplicationFactor) {
+                  replicationFactor = minReplicationFactor;
+                }
+                if (replicationFactor > maxReplicationFactor) {
+                  replicationFactor = maxReplicationFactor;
+                }
+              }
+
               tableContent.push(
                 window.modalView.createTextEntry(
                   'new-replication-factor',
                   'Replication factor',
-                  properties.replicationFactor ? properties.replicationFactor : '',
-                  'Numeric value. Must be between ' + 
-                  (this.minReplicationFactor ? this.minReplicationFactor : 1) + 
-                  ' and ' + 
-                  (this.maxReplicationFactor ? this.maxReplicationFactor : 10) +
-                  '. Total number of copies of the data in the cluster',
+                  String(replicationFactor),
+                  'Numeric value. Must be between ' + minReplicationFactor + ' and ' + 
+                  maxReplicationFactor + '. Total number of copies of the data in the cluster',
                   '',
                   false,
                   [
                     {
                       rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
-                      msg: 'Must be a number between ' + 
-                           (this.minReplicationFactor ? this.minReplicationFactor : 1) + 
-                           ' and ' + 
-                           (this.maxReplicationFactor ? this.maxReplicationFactor : 10) + '.'
+                      msg: 'Must be a number between ' + minReplicationFactor +  
+                           ' and ' + maxReplicationFactor + '.'
                     }
                   ]
                 )

@@ -522,6 +522,7 @@ QueryResult Query::executeSync() {
       ss = sharedState();
     }
 
+    TRI_ASSERT(ss != nullptr);
     ss->waitForAsyncWakeup();
   } while (true);
 }
