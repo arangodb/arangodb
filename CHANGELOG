@@ -5,6 +5,9 @@ devel
   feature, but is sometimes used for debugging. Previous changes made it 
   impossible to run a query on a local shard.
 
+* Fix restoring old arangodumps from ArangoDB 3.3 and before, which had index
+  information stored in slightly different places in the dump.
+
 * Fix invalid calls to `AgencyCommResult::slice()` method, which must only be
   made in case of an agency result was retrieved successfully. In case the call
   to the agency was not successful, `slice()` must not be called on it. This
