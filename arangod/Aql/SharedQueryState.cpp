@@ -22,11 +22,10 @@
 
 #include "SharedQueryState.h"
 
+#include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-
-#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -54,7 +53,15 @@ void SharedQueryState::invalidate() {
 void SharedQueryState::waitForAsyncWakeup() {
   std::unique_lock<std::mutex> guard(_mutex);
   if (!_valid) {
-    return;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+/*    f ((errorCode == TRI_ERROR_INTERNAL || errorCode == TRI_ERROR_SHUTTING_DOWN) &&
++            !sharedState->isValid()) {
++          // exit early here instead of looping (indefinitely)
++          // this is supposed to fix hangers on shutdown, when there
++          // is nobody there to wake up queries anymore
++          return res.reset(errorCode);
++        }
+*/
   }
   
   TRI_ASSERT(!_wakeupCb);
