@@ -67,12 +67,14 @@ Result Response::combinedResult() const {
   if (fail()) {
     // fuerte connection failed
     return Result{fuerteToArangoErrorCode(*this), fuerteToArangoErrorMessage(*this)};
-  } else if (response->fail()) {
-    // HTTP status error. Try to extract a precise error from the body, and fall
-    // back to the HTTP status.
-    return resultFromBody(response->slice(), fuerteStatusToArangoErrorCode(*response));
   } else {
-    return Result{};
+    if (!statusIsSuccess(response->statusCode())) {
+      // HTTP status error. Try to extract a precise error from the body, and fall
+      // back to the HTTP status.
+      return resultFromBody(response->slice(), fuerteStatusToArangoErrorCode(*response));
+    } else {
+      return Result{};
+    }
   }
 }
 

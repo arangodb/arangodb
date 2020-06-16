@@ -34,6 +34,7 @@
 #include "Network/NetworkFeature.h"
 #include "VocBase/ticks.h"
 
+#include <fuerte/types.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
@@ -299,7 +300,7 @@ std::string fuerteToArangoErrorMessage(fuerte::Error err) {
 }
 
 int fuerteStatusToArangoErrorCode(fuerte::Response const& res) {
-  if (res.ok()) {
+  if (fuerte::statusIsSuccess(res.statusCode())) {
     return TRI_ERROR_NO_ERROR;
   } else if (res.statusCode() > 0) {
     return static_cast<int>(res.statusCode());

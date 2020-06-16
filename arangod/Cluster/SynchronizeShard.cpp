@@ -398,7 +398,7 @@ static arangodb::Result cancelBarrier(network::ConnectionPool* pool,
   auto res = response.combinedResult();
 
   if (res.fail()) {
-    if (response.ok() && response.response->fail()) {
+    if (response.ok() && !fuerte::statusIsSuccess(response.response->statusCode())) {
       std::string errorMessage =
           "got status " + std::to_string(response.response->statusCode());
       LOG_TOPIC("f5733", WARN, Logger::MAINTENANCE)

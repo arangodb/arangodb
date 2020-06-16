@@ -80,6 +80,10 @@ std::string status_code_to_string(StatusCode statusCode) {
   }
 }
 
+bool statusIsSuccess(StatusCode statusCode) {
+  return 200 <= statusCode && statusCode < 300;
+}
+
 std::string to_string(RestVerb type) {
   switch (type) {
     case RestVerb::Illegal:
