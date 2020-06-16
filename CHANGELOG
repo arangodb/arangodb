@@ -1,5 +1,6 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
+* Fixed internal issue #701: Dangling readers in index_writer cache 
 
 * Make the reboot tracker catch a failed server and permanently removed servers.
   This allows other servers in the cluster to move on more quickly, when a
