@@ -59,7 +59,7 @@ std::string status_code_to_string(StatusCode statusCode) {
       return "412 Precondition Failed";
     case StatusInternalError:
       return "500 Internal Error";
-    case StatusUnavailable:
+    case StatusServiceUnavailable:
       return "503 Unavailable";
     case StatusVersionNotSupported:
       return "505 Version Not Supported";
