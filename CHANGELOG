@@ -1,10 +1,10 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
-* Fix internal test helper function `removeCost` to really remove costs.
+* Fix restoring old arangodumps from ArangoDB 3.3 and before, which had index
+  information stored in slightly different places in the dump.
 
-* Fix restoring old arangodumps from ArangoDB 3.3 and before, which had 
-  index information stored in slightly different places in the dump.
+* Fix internal test helper function `removeCost` to really remove costs.
 
 * Fix invalid calls to `AgencyCommResult::slice()` method, which must only be
   made in case of an agency result was retrieved successfully. In case the call
