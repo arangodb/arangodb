@@ -1,8 +1,8 @@
 devel
 -----
 
-* Fix restoring old arangodumps from ArangoDB 3.3 and before, which had 
-  index information stored in slightly different places in the dump.
+* Fix restoring old arangodumps from ArangoDB 3.3 and before, which had index
+  information stored in slightly different places in the dump.
 
 * Fix invalid calls to `AgencyCommResult::slice()` method, which must only be
   made in case of an agency result was retrieved successfully. In case the call
