@@ -20,11 +20,11 @@ the corresponding information about the key file for that server name.
 In all cases the value of the attribute will be a JSON object, which
 has a subset of the following attributes (whatever is appropriate):
 
-  - `SHA256`: The value is a string with the SHA256 of the whole input
+  - `sha256`: The value is a string with the SHA256 of the whole input
     file.
   - `certificates`: The value is a JSON array with the public
     certificates in the chain in the file.
-  - `privateKeySHA256`: In cases where there is a private key (`keyfile`
+  - `privateKeySha256`: In cases where there is a private key (`keyfile`
     but not `clientCA`), this field is present and contains a
     JSON string with the SHA256 of the private key.
 
