@@ -186,6 +186,7 @@ std::string const StaticStrings::ContentTypeHeader("content-type");
 std::string const StaticStrings::CorsMethods(
     "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT");
 std::string const StaticStrings::Error("error");
+std::string const StaticStrings::ErrorCode("errorCode");
 std::string const StaticStrings::ErrorMessage("errorMessage");
 std::string const StaticStrings::ErrorNum("errorNum");
 std::string const StaticStrings::Errors("x-arango-errors");

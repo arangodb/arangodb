@@ -278,9 +278,8 @@ class AgencyOperation {
 
 class AgencyCommResult {
  public:
-  AgencyCommResult();
-  AgencyCommResult(int code, std::string const& message,
-                   std::string const& transactionId = std::string());
+  AgencyCommResult() = default;
+  AgencyCommResult(int code, std::string message);
 
   ~AgencyCommResult() = default;
 
@@ -291,54 +290,74 @@ class AgencyCommResult {
   AgencyCommResult& operator=(AgencyCommResult&& other) noexcept;
 
  public:
-  void set(int code, std::string const& message);
+  void set(int code, std::string message);
 
-  bool successful() const { return (_statusCode >= 200 && _statusCode <= 299); }
+  [[nodiscard]] bool successful() const { return (_statusCode >= 200 && _statusCode <= 299); }
 
-  bool connected() const;
+  [[nodiscard]] bool connected() const;
 
-  int httpCode() const;
+  [[nodiscard]] int httpCode() const;
 
-  int errorCode() const;
+  [[nodiscard]] int errorCode() const;
 
-  std::string errorMessage() const;
+  // TODO return string_view
+  [[nodiscard]] std::string errorMessage() const;
 
-  std::string errorDetails() const;
+  // TODO return string_view
+  [[nodiscard]] std::string errorDetails() const;
 
-  std::string const location() const { return _location; }
+  [[nodiscard]] std::string const& location() const { return _location; }
 
-  std::string const body() const { return _body; }
-  std::string const& bodyRef() const { return _body; }
+  std::string body() const {
+    if (_vpack != nullptr) {
+      return slice().toJson();
+    } else {
+      return "";
+    }
+  }
 
-  bool sent() const;
+  [[nodiscard]] bool sent() const;
 
   void clear();
 
-  velocypack::Slice slice() const;
+  [[nodiscard]] velocypack::Slice slice() const;
+
   void setVPack(std::shared_ptr<velocypack::Builder> const& vpack) {
     _vpack = vpack;
   }
 
-  Result asResult() {
+  [[nodiscard]] Result asResult() const {
     if (successful()) {
       return Result{};
+    } else if (auto const err = parseBodyError(); err.has_value()) {
+      return Result{err->first, std::string{err->second}};
+    } else if (_statusCode > 0) {
+      if (!_message.empty()) {
+        return Result{_statusCode, _message};
+      } else if (!_connected) {
+        return Result{_statusCode, "unable to connect to agency"};
+      } else {
+        return Result{_statusCode};
+      }
+    } else {
+      return Result{TRI_ERROR_INTERNAL};
     }
-    return Result{errorCode(), errorMessage()};
   }
 
   void toVelocyPack(VPackBuilder& builder) const;
 
-  VPackBuilder toVelocyPack() const;
+  [[nodiscard]] VPackBuilder toVelocyPack() const;
+
+  [[nodiscard]] std::optional<std::pair<int, std::string_view>> parseBodyError() const;
 
  public:
-  std::string _location;
-  std::string _message;
-  std::string _body;
+  std::string _location = "";
+  std::string _message = "";
 
-  std::unordered_map<std::string, AgencyCommResultEntry> _values;
-  int _statusCode;
-  bool _connected;
-  bool _sent;
+  std::unordered_map<std::string, AgencyCommResultEntry> _values = {};
+  int _statusCode = 0;
+  bool _connected = false;
+  bool _sent = false;
 
  private:
   std::shared_ptr<velocypack::Builder> _vpack;

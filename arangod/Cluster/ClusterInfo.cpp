@@ -609,7 +609,7 @@ void ClusterInfo::loadPlan() {
     _newPlannedViews.clear();
   });
 
-  bool planValid = true;  // has the loadPlan compleated without skipping valid objects
+  bool planValid = true;  // has the loadPlan completed without skipping valid objects
   // we will set in the end
 
   std::shared_ptr<arangodb::velocypack::Builder> planBuilder;
@@ -2562,7 +2562,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         events::CreateCollection(databaseName, info.name, res.errorCode());
       }
       loadCurrent();
-      return res.errorCode();
+      return res.asResult();
     }
     if (tmpRes > TRI_ERROR_NO_ERROR) {
       // We do not need to lock all condition variables
@@ -5039,7 +5039,7 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
               std::chrono::system_clock::now() + std::chrono::seconds(timeouti))));
       }
 
-      // Prevonditions
+      // Preconditions
       {
         VPackObjectBuilder precs(&builder);
         builder.add(VPackValue(backupKey));  // Backup key empty
@@ -5082,18 +5082,18 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
                             "failed to acquire backup lock in agency");
   }
 
-  auto rv = VPackParser::fromJson(result.bodyRef());
-
   LOG_TOPIC("a94d5", DEBUG, Logger::BACKUP)
-      << "agency lock response for backup id " << backupId << ": " << rv->toJson();
+      << "agency lock response for backup id " << backupId << ": "
+      << result.slice().toJson();
 
-  if (!rv->slice().isObject() || !rv->slice().hasKey("results") ||
-      !rv->slice().get("results").isArray() || rv->slice().get("results").length() != 2) {
+  if (!result.slice().isObject() || !result.slice().hasKey("results") ||
+      !result.slice().get("results").isArray() ||
+      result.slice().get("results").length() != 2) {
     return arangodb::Result(
-      TRI_ERROR_HOT_BACKUP_INTERNAL,
-      "invalid agency result while acquiring backup lock");
+        TRI_ERROR_HOT_BACKUP_INTERNAL,
+        "invalid agency result while acquiring backup lock");
   }
-  auto ar = rv->slice().get("results");
+  auto ar = result.slice().get("results");
 
   uint64_t first = ar[0].getNumber<uint64_t>();
   uint64_t second = ar[1].getNumber<uint64_t>();
@@ -5186,16 +5186,14 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId,
                             "failed to release backup lock in agency");
   }
 
-  auto rv = VPackParser::fromJson(result.bodyRef());
-
-  if (!rv->slice().isObject() || !rv->slice().hasKey("results") ||
-      !rv->slice().get("results").isArray()) {
+  if (!result.slice().isObject() || !result.slice().hasKey("results") ||
+      !result.slice().get("results").isArray()) {
     return arangodb::Result(
         TRI_ERROR_HOT_BACKUP_INTERNAL,
         "invalid agency result while releasing backup lock");
   }
 
-  auto ar = rv->slice().get("results");
+  auto ar = result.slice().get("results");
   if (!ar[0].isNumber()) {
     return arangodb::Result(
         TRI_ERROR_HOT_BACKUP_INTERNAL,
