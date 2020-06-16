@@ -153,15 +153,11 @@ arangodb::Result applyCollectionDumpMarkerInternal(
         if (coll->getPhysical()->lookupKey(&trx, keySlice.stringRef(), lookupResult).ok()) {
           // determine if we already have this revision or need to replace the
           // one we have
-          arangodb::LocalDocumentId docId{
-              arangodb::transaction::helpers::extractRevFromDocument(slice)};
-          if (docId.isSet()) {
-            arangodb::ManagedDocumentResult mdr;
-            if (coll->getPhysical()->readDocument(&trx, docId, mdr)) {
-              // we already have exactly this document, don't replace, just
-              // consider it already applied and bail
-              return {};
-            }
+          TRI_voc_rid_t rid = arangodb::transaction::helpers::extractRevFromDocument(slice);
+          if (rid != 0 && rid == lookupResult.second) {
+            // we already have exactly this document, don't replace, just
+            // consider it already applied and bail
+            return {};
           }
 
           // need to replace the one we have
