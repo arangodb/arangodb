@@ -3574,7 +3574,7 @@ void ClusterInfo::loadServers() {
       if (it != rebootIds.end()) {
         // should always be ok
         if (serverState->getRebootId() != it->second.value()) {
-          serverState->setRebootId(it->second);
+          serverState->setRebootId(it->second.value());
           LOG_TOPIC("feaab", INFO, Logger::CLUSTER)
               << "Updating my own rebootId to " << it->second.value();
         }
