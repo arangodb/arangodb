@@ -68,10 +68,9 @@ void ConnectionPool::drainConnections() {
   for (auto& pair : _connections) {
     Bucket& buck = *(pair.second);
     std::lock_guard<std::mutex> lock(buck.mutex);
-    for (std::shared_ptr<Context>& c : buck.list) {
-      c->fuerte->cancel();
-    }
+    buck.list.clear();
   }
+  _connections.clear();
 }
 
 /// @brief shutdown all connections
@@ -80,6 +79,9 @@ void ConnectionPool::shutdown() {
   for (auto& pair : _connections) {
     Bucket& buck = *(pair.second);
     std::lock_guard<std::mutex> lock(buck.mutex);
+    for (std::shared_ptr<Context>& c : buck.list) {
+      c->fuerte->cancel();
+    }
     buck.list.clear();
   }
   _connections.clear();
