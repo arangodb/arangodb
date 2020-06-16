@@ -117,7 +117,7 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
     }
     ClusterInfo& clusterInfo = server().getFeature<ClusterFeature>().clusterInfo();
 
-    auto waitForNewPlan = [this, &clusterInfo] {
+    auto waitForNewPlan = [&clusterInfo] {
       using namespace std::chrono_literals;
       auto fRes = clusterInfo.fetchAndWaitForPlanVersion(10.0s);
       // Note that get() might throw
