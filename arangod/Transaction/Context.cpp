@@ -92,18 +92,34 @@ transaction::Context::~Context() {
                                                                   _transaction.isReadOnlyTransaction);
   }
 
+  // call the actual cleanup routine which frees all
+  // hogged resources
+  cleanup();
+}
+  
+/// @brief destroys objects owned by the context,
+/// this can be called multiple times.
+/// currently called by dtor and by unit test mocks. 
+/// we cannot move this into the dtor (where it was before) because
+/// the mocked objects in unittests do not seem to call it and effectively leak.
+void transaction::Context::cleanup() noexcept {
   // free all VPackBuilders we handed out
   for (auto& it : _builders) {
     delete it;
   }
+  _builders.clear();
 
   // clear all strings handed out
   for (auto& it : _strings) {
     delete it;
   }
+  _strings.clear();
+
+  _stringBuffer.reset();
 
   if (_ownsResolver) {
     delete _resolver;
+    _resolver = nullptr;
   }
 }
 
