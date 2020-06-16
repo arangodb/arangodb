@@ -59,6 +59,8 @@ StatusCode constexpr StatusVersionNotSupported = 505;
 
 std::string status_code_to_string(StatusCode);
 
+bool statusIsSuccess(StatusCode);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                         enum class ErrorCondition
 // -----------------------------------------------------------------------------
