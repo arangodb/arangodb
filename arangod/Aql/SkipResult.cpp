@@ -23,7 +23,7 @@
 
 #include "SkipResult.h"
 
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>

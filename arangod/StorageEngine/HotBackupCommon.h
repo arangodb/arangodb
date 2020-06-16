@@ -23,7 +23,7 @@
 #ifndef ARANGOD_HOTBACKUP_COMMON_H
 #define ARANGOD_HOTBACKUP_COMMON_H 1
 
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>

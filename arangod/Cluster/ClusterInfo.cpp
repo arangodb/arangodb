@@ -1658,7 +1658,7 @@ std::vector<std::shared_ptr<LogicalView>> const ClusterInfo::getViews(DatabaseID
 //////////////////////////////////////////////////////////////////////////////
 
 AnalyzersRevision::Ptr ClusterInfo::getAnalyzersRevision(DatabaseID const& databaseID,
-                                                                     bool forceLoadPlan /* = false */) {
+                                                         bool forceLoadPlan /* = false */) {
   int tries = 0;
 
   if (!_planProt.isValid || forceLoadPlan) {
@@ -1944,15 +1944,13 @@ Result ClusterInfo::cancelCreateDatabaseCoordinator(CreateDatabaseInfo const& da
       LOG_TOPIC("b47aa", WARN, arangodb::Logger::CLUSTER)
         << "failed to cancel creation of database " << database.getName() << " with error "
         << res.errorMessage() << ". Retrying.";
-    }
-
-    if (res.slice().get("results").length()) {
+    } else if (res.slice().get("results").length()) {
       waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
     }
     if (_server.isStopping()) {
       return Result(TRI_ERROR_SHUTTING_DOWN);
     }
-  } while(!res.successful());
+  } while (!res.successful());
 
   return Result();
 }
@@ -2015,7 +2013,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
     if (res._statusCode == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
           return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     }
-      return Result(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN);
+    return Result(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN);
   }
   if (res.slice().get("results").length()) {
     waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
@@ -3013,7 +3011,7 @@ Result ClusterInfo::dropViewCoordinator(  // drop view
   AgencyComm ac(_server);
   auto const res = ac.sendTransactionWithFailover(trans);
 
-  if (res.slice().get("results").length()) {
+  if (res.successful() && res.slice().get("results").length()) {
     waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
   } else {
     loadPlan();  // this is only for the unittests, where no planSyncer thread runs
@@ -3136,10 +3134,12 @@ std::pair<Result, AnalyzersRevision::Revision> ClusterInfo::startModifyingAnalyz
                {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP}},
               {{anPath, AgencyPrecondition::Type::EMPTY, true}} };
           auto const res = ac.sendTransactionWithFailover(transaction);
-          auto results = res.slice().get("results");
-          if (results.isArray() && results.length() > 0) {
-            readLocker.unlock(); // we want to wait for plan to load - release reader
-            waitForPlan(results[0].getNumber<uint64_t>()).get();
+          if (res.successful()) {
+            auto results = res.slice().get("results");
+            if (results.isArray() && results.length() > 0) {
+              readLocker.unlock(); // we want to wait for plan to load - release reader
+              waitForPlan(results[0].getNumber<uint64_t>()).get();
+            }
           }
         }
         continue;
@@ -4152,9 +4152,27 @@ void ClusterInfo::loadServers() {
       _serversProt.doneVersion = storedVersion;
       _serversProt.isValid = true;
     }
+    // Our own RebootId might have changed if we have been FAILED at least once
+    // since our last actual reboot, let's update it:
+    auto rebootIds = _serversKnown.rebootIds();
+    auto* serverState = ServerState::instance();
+    auto it = rebootIds.find(serverState->getId());
+    if (it != rebootIds.end()) {
+      // should always be ok
+      if (serverState->getRebootId() != it->second) {
+        serverState->setRebootId(it->second);
+        LOG_TOPIC("feaab", INFO, Logger::CLUSTER)
+            << "Updating my own rebootId to " << it->second.value();
+      }
+    } else {
+      LOG_TOPIC("feaaa", WARN, Logger::CLUSTER)
+          << "Cannot find my own rebootId in the list of known servers, this "
+             "is very strange and should not happen, if this persists, please "
+             "report this error!";
+    }
     // RebootTracker has its own mutex, and doesn't strictly need to be in
     // sync with the other members.
-    rebootTracker().updateServerState(_serversKnown.rebootIds());
+    rebootTracker().updateServerState(rebootIds);
     return;
   }
 
@@ -5242,18 +5260,6 @@ ClusterInfo::ServersKnown::ServersKnown(VPackSlice const serversKnownSlice,
         }
       }
     }
-  }
-
-  // For backwards compatibility / rolling upgrades, add servers that aren't in
-  // ServersKnown but in ServersRegistered with a reboot ID of 0 as a fallback.
-  // We should be able to remove this in 3.6.
-  for (auto const& serverId : serverIds) {
-    auto const rv = _serversKnown.try_emplace(serverId, RebootId{0});
-    LOG_TOPIC_IF("0acbd", INFO, Logger::CLUSTER, rv.second)
-        << "Server " << serverId
-        << " is in Current/ServersRegistered, but not in "
-           "Current/ServersKnown. This is expected to happen "
-           "during a rolling upgrade.";
   }
 }
 

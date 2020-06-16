@@ -30,7 +30,7 @@
 #include "Rest/GeneralResponse.h"
 #include "Statistics/RequestStatistics.h"
 
-#include <Cluster/ResultT.h>
+#include <Basics/ResultT.h>
 #include <atomic>
 #include <thread>
 
@@ -162,8 +162,11 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
       return RestStatus::DONE;
     }
     bool done = false;
-    std::move(f).thenFinal([self = shared_from_this(), &done](futures::Try<T>) -> void {
+    std::move(f).thenFinal([self = shared_from_this(), &done](futures::Try<T>&& t) -> void {
       auto thisPtr = self.get();
+      if (t.hasException()) {
+        thisPtr->handleExceptionPtr(std::move(t).exception());
+      }
       if (std::this_thread::get_id() == thisPtr->_executionMutexOwner.load()) {
         done = true;
       } else {

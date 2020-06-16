@@ -30,9 +30,9 @@
 #include <variant>
 
 #include "Agency/AgencyComm.h"
+#include "Basics/ResultT.h"
 #include "ClusterInfo.h"
 #include "ClusterRepairOperations.h"
-#include "ResultT.h"
 
 namespace arangodb {
 namespace velocypack {
