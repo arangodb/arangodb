@@ -965,21 +965,20 @@ void TRI_CreateExternalProcess(char const* executable,
 /// @brief Reads from the pipe of processes
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ReadPipe(ExternalProcess const* process,
-                  char* buffer,
-                  size_t& bufferSize) {
+TRI_read_return_t TRI_ReadPipe(ExternalProcess const* process,
+                               char* buffer,
+                               size_t bufferSize) {
   if (process == nullptr || TRI_IS_INVALID_PIPE(process->_readPipe)) {
-    return false;
+    return 0;
   }
 
   memset(buffer, 0, bufferSize);
 
 #ifndef _WIN32
-  TRI_ReadPointer(process->_readPipe, buffer, bufferSize);
+  return TRI_ReadPointer(process->_readPipe, buffer, bufferSize);
 #else
-  TRI_READ_POINTER(process->_readPipe, buffer, bufferSize);
+  return TRI_READ_POINTER(process->_readPipe, buffer, bufferSize);
 #endif
-  return true;
 }
 
 
