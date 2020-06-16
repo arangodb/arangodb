@@ -87,6 +87,7 @@ bool Logger::_useEscaped(true);
 bool Logger::_keepLogRotate(false);
 bool Logger::_logRequestParameters(true);
 bool Logger::_showRole(false);
+bool Logger::_useJson(false);
 char Logger::_role('\0');
 TRI_pid_t Logger::_cachedPid(0);
 std::string Logger::_outputPrefix("");
@@ -281,6 +282,16 @@ void Logger::setLogRequestParameters(bool log) {
   _logRequestParameters = log;
 }
 
+// NOTE: this function should not be called if the logging is active.
+void Logger::setUseJson(bool value) {
+  if (_active) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
+  }
+
+  _useJson = value;
+}
+
 std::string const& Logger::translateLogLevel(LogLevel level) {
   switch (level) {
     case LogLevel::ERR:
@@ -313,250 +324,251 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
     _cachedPid = Thread::currentProcessId();
   }
 
-  // construct JSON output
-  StringBuffer buf;
-  buf.appendText("{", 1);
-
-  // current time
-  {
-    static char const s[] = "time";
-
-    buf.appendText("\"", 1);
-    buf.appendText(s, sizeof(s)-1);
-    buf.appendText("\":", 2);
-
-    std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
-    std::chrono::system_clock::time_point tp(std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()));
-    buf.appendInteger(uint64_t(std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch()).count()));
-  }
-
-  // prefix
-  if (!_outputPrefix.empty()) {
-    static char const s[] = "prefix";
-
-    buf.appendText(",\"", 2);
-    buf.appendText(s, sizeof(s)-1);
-    buf.appendText("\":", 2);
-    buf.appendJsonEncoded(_outputPrefix.c_str(), _outputPrefix.size());
-  }
-
-  // pid
-  {
-    static char const s[] = "pid";
-
-    buf.appendText(",\"", 2);
-    buf.appendText(s, sizeof(s)-1);
-    buf.appendText("\":", 2);
-    buf.appendInteger(uint64_t(_cachedPid));
-  }
-
-  // tid
-  {
-    static char const s[] = "tid";
-
-    buf.appendText(",\"", 2);
-    buf.appendText(s, sizeof(s)-1);
-    buf.appendText("\":", 2);
-    buf.appendInteger(uint64_t(Thread::currentThreadNumber()));
-  }
-
-  // thread name
-  {
-    static char const s[] = "thread";
-
-    buf.appendText(",\"", 2);
-    buf.appendText(s, sizeof(s)-1);
-    buf.appendText("\":", 2);
-
-    char const* threadName = Thread::currentThreadName();
-    if (threadName == nullptr) {
-      threadName = "main";
-    }
-
-    buf.appendJsonEncoded(threadName, strlen(threadName));
-  }
-
-  // role
-  {
-    static char const s[] = "role";
-
-    buf.appendText(",\"", 2);
-    buf.appendText(s, sizeof(s)-1);
-    buf.appendText("\":", 2);
-
-    if (_role != '\0') {
-      buf.appendJsonEncoded(&_role, 1);
-    } else {
-      buf.appendText("\"\"", 2);
-    }
-  }
-
-  // log level
-  {
-    static char const s[] = "level";
-
-    buf.appendText(",\"", 2);
-    buf.appendText(s, sizeof(s)-1);
-    buf.appendText("\":", 2);
-    auto ll = Logger::translateLogLevel(level);
-    buf.appendJsonEncoded(ll.c_str(), ll.size());
-  }
-
-  // file and line
-  if (file != nullptr) {
-    static char const s[] = "file";
-
-    buf.appendText(",\"", 2);
-    buf.appendText(s, sizeof(s)-1);
-    buf.appendText("\":", 2);
-
-    char const* filename = file;
-    char const* shortened = strrchr(filename, TRI_DIR_SEPARATOR_CHAR);
-    if (shortened != nullptr) {
-      filename = shortened + 1;
-    }
-
-    buf.appendJsonEncoded(filename, strlen(filename));
-  }
-
-  if (file != nullptr) {
-    static char const s[] = "line";
-
-    buf.appendText(",\"", 2);
-    buf.appendText(s, sizeof(s)-1);
-    buf.appendText("\":", 2);
-    buf.appendInteger(uint64_t(line));
-  }
-
-  if (function != nullptr) {
-    static char const s[] = "function";
-
-    buf.appendText(",\"", 2);
-    buf.appendText(s, sizeof(s)-1);
-    buf.appendText("\":", 2);
-    buf.appendJsonEncoded(function, strlen(function));
-  }
-
-  // the topic
-  {
-    static char const s[] = "topic";
-
-    buf.appendText(",\"", 2);
-    buf.appendText(s, sizeof(s)-1);
-    buf.appendText("\":", 2);
-
-    std::string topic = LogTopic::lookup(topicId);
-    buf.appendJsonEncoded(topic.c_str(), topic.size());
-  }
-
-  // the logid
-  {
-    static char const s[] = "lid";
-
-    buf.appendText(",\"", 2);
-    buf.appendText(s, sizeof(s)-1);
-    buf.appendText("\":", 2);
-    buf.appendJsonEncoded(logid, strlen(logid));
-  }
-
-  // the message itself
-  {
-    static char const s[] = "message";
-
-    buf.appendText(",\"", 2);
-    buf.appendText(s, sizeof(s)-1);
-    buf.appendText("\":", 2);
-    buf.appendJsonEncoded(message.c_str(), message.size());
-  }
-
-  buf.appendText("}", 1);
-
-  std::string out = buf.toString();
-  size_t offset = 0;
-  
-  
-#if 0
   std::string out;
-  out.reserve(256 + message.size());
+  size_t offset = 0;
 
-  LogTimeFormats::writeTime(out, _timeFormat);
-  out.push_back(' ');
+  if (Logger::_useJson) {
+    // construct JSON output
+    StringBuffer buf;
+    buf.appendText("{", 1);
 
-  // output prefix
-  if (!_outputPrefix.empty()) {
-    out.append(_outputPrefix);
-    out.push_back(' ');
-  }
+    // current time
+    {
+      static char const s[] = "time";
 
-  // append the process / thread identifier
-  TRI_ASSERT(_cachedPid != 0);
-  out.push_back('[');
-  StringUtils::itoa(uint64_t(_cachedPid), out);
+      buf.appendText("\"", 1);
+      buf.appendText(s, sizeof(s)-1);
+      buf.appendText("\":", 2);
 
-  if (_showThreadIdentifier) {
-    out.push_back('-');
-    StringUtils::itoa(uint64_t(Thread::currentThreadNumber()), out);
-  }
-
-  // log thread name
-  if (_showThreadName) {
-    char const* threadName = Thread::currentThreadName();
-    if (threadName == nullptr) {
-      threadName = "main";
+      std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+      std::chrono::system_clock::time_point tp(std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()));
+      buf.appendInteger(uint64_t(std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch()).count()));
     }
 
-    out.push_back('-');
-    out.append(threadName);
-  }
+    // prefix
+    if (!_outputPrefix.empty()) {
+      static char const s[] = "prefix";
 
-  out.append("] ", 2);
+      buf.appendText(",\"", 2);
+      buf.appendText(s, sizeof(s)-1);
+      buf.appendText("\":", 2);
+      buf.appendJsonEncoded(_outputPrefix.c_str(), _outputPrefix.size());
+    }
 
-  if (_showRole && _role != '\0') {
-    out.push_back(_role);
-    out.push_back(' ');
-  }
+    // pid
+    {
+      static char const s[] = "pid";
 
-  // log level
-  out.append(Logger::translateLogLevel(level));
-  out.push_back(' ');
+      buf.appendText(",\"", 2);
+      buf.appendText(s, sizeof(s)-1);
+      buf.appendText("\":", 2);
+      buf.appendInteger(uint64_t(_cachedPid));
+    }
 
-  // check if we must display the line number
-  if (_showLineNumber && file != nullptr && function != nullptr) {
-    char const* filename = file;
+    // tid
+    {
+      static char const s[] = "tid";
 
-    if (_shortenFilenames) {
-      // shorten file names from `/home/.../file.cpp` to just `file.cpp`
-      char const* shortened = strrchr(filename, TRI_DIR_SEPARATOR_CHAR);
-      if (shortened != nullptr) {
-        filename = shortened + 1;
+      buf.appendText(",\"", 2);
+      buf.appendText(s, sizeof(s)-1);
+      buf.appendText("\":", 2);
+      buf.appendInteger(uint64_t(Thread::currentThreadNumber()));
+    }
+
+    // thread name
+    {
+      static char const s[] = "thread";
+
+      buf.appendText(",\"", 2);
+      buf.appendText(s, sizeof(s)-1);
+      buf.appendText("\":", 2);
+
+      char const* threadName = Thread::currentThreadName();
+      if (threadName == nullptr) {
+	threadName = "main";
+      }
+
+      buf.appendJsonEncoded(threadName, strlen(threadName));
+    }
+
+    // role
+    {
+      static char const s[] = "role";
+
+      buf.appendText(",\"", 2);
+      buf.appendText(s, sizeof(s)-1);
+      buf.appendText("\":", 2);
+
+      if (_role != '\0') {
+	buf.appendJsonEncoded(&_role, 1);
+      } else {
+	buf.appendText("\"\"", 2);
       }
     }
+
+    // log level
+    {
+      static char const s[] = "level";
+
+      buf.appendText(",\"", 2);
+      buf.appendText(s, sizeof(s)-1);
+      buf.appendText("\":", 2);
+      auto ll = Logger::translateLogLevel(level);
+      buf.appendJsonEncoded(ll.c_str(), ll.size());
+    }
+
+    // file and line
+    if (file != nullptr) {
+      static char const s[] = "file";
+
+      buf.appendText(",\"", 2);
+      buf.appendText(s, sizeof(s)-1);
+      buf.appendText("\":", 2);
+
+      char const* filename = file;
+      char const* shortened = strrchr(filename, TRI_DIR_SEPARATOR_CHAR);
+      if (shortened != nullptr) {
+	filename = shortened + 1;
+      }
+
+      buf.appendJsonEncoded(filename, strlen(filename));
+    }
+
+    if (file != nullptr) {
+      static char const s[] = "line";
+
+      buf.appendText(",\"", 2);
+      buf.appendText(s, sizeof(s)-1);
+      buf.appendText("\":", 2);
+      buf.appendInteger(uint64_t(line));
+    }
+
+    if (function != nullptr) {
+      static char const s[] = "function";
+
+      buf.appendText(",\"", 2);
+      buf.appendText(s, sizeof(s)-1);
+      buf.appendText("\":", 2);
+      buf.appendJsonEncoded(function, strlen(function));
+    }
+
+    // the topic
+    {
+      static char const s[] = "topic";
+
+      buf.appendText(",\"", 2);
+      buf.appendText(s, sizeof(s)-1);
+      buf.appendText("\":", 2);
+
+      std::string topic = LogTopic::lookup(topicId);
+      buf.appendJsonEncoded(topic.c_str(), topic.size());
+    }
+
+    // the logid
+    {
+      static char const s[] = "lid";
+
+      buf.appendText(",\"", 2);
+      buf.appendText(s, sizeof(s)-1);
+      buf.appendText("\":", 2);
+      buf.appendJsonEncoded(logid, strlen(logid));
+    }
+
+    // the message itself
+    {
+      static char const s[] = "message";
+
+      buf.appendText(",\"", 2);
+      buf.appendText(s, sizeof(s)-1);
+      buf.appendText("\":", 2);
+      buf.appendJsonEncoded(message.c_str(), message.size());
+    }
+
+    buf.appendText("}", 1);
+
+    out = buf.toString();
+  } else {
+    // human readable format
+    out.reserve(256 + message.size());
+
+    LogTimeFormats::writeTime(out, _timeFormat);
+    out.push_back(' ');
+
+    // output prefix
+    if (!_outputPrefix.empty()) {
+      out.append(_outputPrefix);
+      out.push_back(' ');
+    }
+
+    // append the process / thread identifier
+    TRI_ASSERT(_cachedPid != 0);
     out.push_back('[');
-    out.append(function);
-    out.push_back('@');
-    out.append(filename);
-    out.push_back(':');
-    StringUtils::itoa(uint64_t(line), out);
+    StringUtils::itoa(uint64_t(_cachedPid), out);
+
+    if (_showThreadIdentifier) {
+      out.push_back('-');
+      StringUtils::itoa(uint64_t(Thread::currentThreadNumber()), out);
+    }
+
+    // log thread name
+    if (_showThreadName) {
+      char const* threadName = Thread::currentThreadName();
+      if (threadName == nullptr) {
+	threadName = "main";
+      }
+
+      out.push_back('-');
+      out.append(threadName);
+    }
+
     out.append("] ", 2);
+
+    if (_showRole && _role != '\0') {
+      out.push_back(_role);
+      out.push_back(' ');
+    }
+
+    // log level
+    out.append(Logger::translateLogLevel(level));
+    out.push_back(' ');
+
+    // check if we must display the line number
+    if (_showLineNumber && file != nullptr && function != nullptr) {
+      char const* filename = file;
+
+      if (_shortenFilenames) {
+	// shorten file names from `/home/.../file.cpp` to just `file.cpp`
+	char const* shortened = strrchr(filename, TRI_DIR_SEPARATOR_CHAR);
+	if (shortened != nullptr) {
+	  filename = shortened + 1;
+	}
+      }
+      out.push_back('[');
+      out.append(function);
+      out.push_back('@');
+      out.append(filename);
+      out.push_back(':');
+      StringUtils::itoa(uint64_t(line), out);
+      out.append("] ", 2);
+    }
+
+    // generate the complete message
+    offset = out.size();
+
+    if (::arangodb::Logger::getShowIds()) {
+      out.push_back('[');
+      out.append(logid);
+      out.append("] ", 2);
+    }
+
+    {
+      out.push_back('{');
+      out.append(LogTopic::lookup(topicId));
+      out.append("} ", 2);
+    }
+
+    out.append(message);
   }
-
-  // generate the complete message
-  size_t offset = out.size();
-
-  if (::arangodb::Logger::getShowIds()) {
-    out.push_pack('[');
-    out.append(logid);
-    out.append("] ", 2);
-  }
-
-  {
-    out.push_pack('{');
-    out.append(LogTopic::lookup(topicId));
-    out.append("} ", 2);
-  }
-
-  out.append(message);
-#endif
 
   auto msg = std::make_unique<LogMessage>(function, file, line, level, topicId, std::move(out), offset);
 

@@ -145,6 +145,11 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       .setIntroducedIn(30405)
       .setIntroducedIn(30500);
 
+  options
+      ->addOption("--log.use-json-format", "use json output format",
+                  new BooleanParameter(&_useJson))
+      .setIntroducedIn(30701);
+
 #ifdef ARANGODB_HAVE_SETGID
   options
       ->addOption(
@@ -331,6 +336,7 @@ void LoggerFeature::prepare() {
   Logger::setOutputPrefix(_prefix);
   Logger::setKeepLogrotate(_keepLogRotate);
   Logger::setLogRequestParameters(_logRequestParameters);
+  Logger::setUseJson(_useJson);
 
   for (auto const& definition : _output) {
     if (_supervisor && StringUtils::isPrefix(definition, "file://")) {

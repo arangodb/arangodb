@@ -1,6 +1,8 @@
 devel
 -----
 
+* added option `--log.use-json-format` to switch to JSON output.
+
 * Fix invalid calls to `AgencyCommResult::slice()` method, which must only be
   made in case of an agency result was retrieved successfully. In case the call
   to the agency was not successful, `slice()` must not be called on it. This
@@ -12,7 +14,7 @@ devel
 
 * Use smarter default value preset in web UI for replication factor in case
   there are constraints established for the replication factor by the
-  startup options `--cluster.min-replication-factor` and 
+  startup options `--cluster.min-replication-factor` and
   `--cluster.max-replication-factor`.
 
 * Modified the exception handling in the RestHandler. Asynchronous communication
@@ -33,7 +35,7 @@ devel
 
 * Display "geoJson" value for geo indexes in index overview in web UI.
 
-* Allow specifiying arbitrary vertex attributes when creating a vertex via the 
+* Allow specifiying arbitrary vertex attributes when creating a vertex via the
   graph viewer in the web UI. This is necessary for collections that have a
   schema and that require new vertices to have certain attributes/values.
 
@@ -45,7 +47,7 @@ devel
 * Fixed "Create Debug Package" in web UI in cluster mode.
 
 * Pick up selected "write concern" value entered in web UI when creating a
-  collection in the cluster. Previously, the "write concern" value was not 
+  collection in the cluster. Previously, the "write concern" value was not
   picked up correctly and collections were created with the default write
   concern.
 

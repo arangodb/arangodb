@@ -61,6 +61,7 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   std::string _fileMode;
   std::string _fileGroup;
   std::string _timeFormatString;
+  bool _useJson = false;
   bool _useLocalTime = false;
   bool _useColor = true;
   bool _useEscaped = true;
