@@ -179,7 +179,7 @@ int TRI_UnlinkFile(char const* filename);
 /// @brief reads into a buffer from a file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ReadPointer(int fd, void* buffer, size_t length);
+bool TRI_ReadPointer(int fd, void* buffer, size_t& length);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief writes buffer to a file

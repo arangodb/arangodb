@@ -258,13 +258,14 @@ int TRI_OPEN_WIN32(char const* filename, int openFlags) {
 }
 
 
-bool TRI_READ_POINTER(HANDLE fd, void* Buffer, size_t length) {
+bool TRI_READ_POINTER(HANDLE fd, void* Buffer, size_t& length) {
   char* ptr = static_cast<char*>(Buffer);
-  while (0 < length) {
+  size_t remain_length = length;
+  while (0 < remain_length) {
     DWORD read;
-    if (ReadFile(fd, ptr, static_cast<DWORD>(length), &read, nullptr)) {
+    if (ReadFile(fd, ptr, static_cast<DWORD>(remain_length), &read, nullptr)) {
       ptr += read;
-      length -= read;
+      remain_length -= read;
     } else {
       auto err = GetLastError();
       if (err == ERROR_NO_DATA) {
@@ -273,10 +274,12 @@ bool TRI_READ_POINTER(HANDLE fd, void* Buffer, size_t length) {
         TRI_set_errno(TRI_ERROR_SYS_ERROR);
         LOG_TOPIC("87f53", ERR, arangodb::Logger::FIXME)
           << "cannot read, end-of-file";
+        length -= remain_length;
         return false;
       } else {
         TRI_set_errno(TRI_ERROR_SYS_ERROR);
         LOG_TOPIC("c9c0d", ERR, arangodb::Logger::FIXME) << "cannot read: " << TRI_LAST_ERROR_STR;
+        length -= remain_length;
         return false;
       }
     }

@@ -975,13 +975,10 @@ bool TRI_ReadPipe(ExternalProcess const* process,
   memset(buffer, 0, bufferSize);
 
 #ifndef _WIN32
-  bool haveMore = TRI_ReadPointer(process->_readPipe, buffer, bufferSize);
+  TRI_ReadPointer(process->_readPipe, buffer, bufferSize);
 #else
-  bool haveMore = TRI_READ_POINTER(process->_readPipe, buffer, bufferSize);
+  TRI_READ_POINTER(process->_readPipe, buffer, bufferSize);
 #endif
-  if (!haveMore) {
-    bufferSize = strlen(buffer);
-  }
   return true;
 }
 
