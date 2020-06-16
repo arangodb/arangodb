@@ -72,6 +72,23 @@ function WeightedTraveralsTestSuite() {
       assertEqual(expectedResult, result);
     },
 
+    testSimpleTraversalSingleEdge : function () {
+      const query = `
+        FOR v, e, p IN 1..1 OUTBOUND "${vName}/1" GRAPH "${graphName}"
+          OPTIONS {mode: "weighted", weightAttribute: "weight"}
+          LIMIT 3
+          RETURN {path: p.vertices[*]._key, weight: p.weights[-1]}
+      `;
+
+      const expectedResult = [
+        { "path" : [ "1", "2" ], "weight" : 1 },
+        { "path" : [ "1", "4" ], "weight" : 1.5 },
+      ];
+
+      const result = db._query(query).toArray();
+      assertEqual(expectedResult, result);
+    },
+
     testShortestPath : function () {
       const target = `${vName}/5`;
 

@@ -101,7 +101,7 @@ bool WeightedEnumerator::expandVertex(size_t vertexIndex, size_t depth) {
     double forwardWeight = currentStep.accumWeight + weightEdge(e);
     VPackStringRef toVertex = _opts->cache()->persistString(getToVertex(e, vertex));
 
-    if (depth < _opts->maxDepth - 1) {
+    if (depth < _opts->maxDepth) {
       _queue.emplace(vertexIndex, forwardWeight, depth + 1, std::move(eid), toVertex);
     }
   });
