@@ -51,6 +51,7 @@
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Methods/Indexes.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -150,6 +151,20 @@ arangodb::Result applyCollectionDumpMarkerInternal(
       if (keySlice.isString()) {
         std::pair<arangodb::LocalDocumentId, TRI_voc_rid_t> lookupResult;
         if (coll->getPhysical()->lookupKey(&trx, keySlice.stringRef(), lookupResult).ok()) {
+          // determine if we already have this revision or need to replace the
+          // one we have
+          arangodb::LocalDocumentId docId{
+              arangodb::transaction::helpers::extractRevFromDocument(slice)};
+          if (docId.isSet()) {
+            arangodb::ManagedDocumentResult mdr;
+            if (coll->getPhysical()->readDocument(&trx, docId, mdr)) {
+              // we already have exactly this document, don't replace, just
+              // consider it already applied and bail
+              return {};
+            }
+          }
+
+          // need to replace the one we have
           useReplace = true;
           opRes.result.reset(TRI_ERROR_NO_ERROR, keySlice.copyString());
         }

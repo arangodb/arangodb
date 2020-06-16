@@ -260,6 +260,12 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
       if (res.fail()) {
         if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
             res.errorMessage() > keySlice.copyString()) {
+          TRI_voc_rid_t rid =
+              arangodb::transaction::helpers::extractRevFromDocument(masterDoc);
+          if (physical->readDocument(&trx, arangodb::LocalDocumentId(rid), mdr)) {
+            // already have exactly this revision no need to insert
+            continue;
+          }
           // remove conflict and retry
           // errorMessage() is this case contains the conflicting key
           auto inner = removeConflict(res.errorMessage());
