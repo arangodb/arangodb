@@ -1222,12 +1222,12 @@ index_writer::index_writer(
     writer_(codec->get_index_meta_writer()),
     write_lock_(std::move(lock)),
     write_lock_file_ref_(std::move(lock_file_ref)) {
-  static_assert(std::is_move_constructible<import_context>::value);
-  static_assert(std::is_move_constructible<modification_context>::value);
-  static_assert(std::is_move_constructible<consolidation_context_t>::value);
-  static_assert(std::is_move_constructible<pending_context_t>::value);
-  static_assert(std::is_move_constructible<merge_writer>::value);
-  static_assert(std::is_move_constructible<active_segment_context>::value);
+  static_assert(std::is_move_constructible<import_context>::value, "import_context is not move constructible");
+  static_assert(std::is_move_constructible<modification_context>::value, "modification_context is not move constructible");
+  static_assert(std::is_move_constructible<consolidation_context_t>::value, "consolidation_context_t is not move constructible");
+  static_assert(std::is_move_constructible<pending_context_t>::value, "pending_context_t is not move constructible");
+  static_assert(std::is_move_constructible<merge_writer>::value, "merge_writer is not move constructible");
+  static_assert(std::is_move_constructible<active_segment_context>::value, "active_segment_context is not move constructible");
   assert(column_info); // ensured by 'make'
   assert(codec);
   flush_context_.store(&flush_context_pool_[0]);
