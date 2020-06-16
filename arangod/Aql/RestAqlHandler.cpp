@@ -291,11 +291,6 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation, std::string co
       return RestStatus::DONE;
     }
     std::shared_ptr<SharedQueryState> ss = _engine->sharedState();
-    TRI_ASSERT(ss != nullptr);
-    if (ss == nullptr) {
-      generateError(Result(TRI_ERROR_INTERNAL, "invalid query state"));
-      return RestStatus::DONE;
-    }
     ss->setWakeupHandler(
         [self = shared_from_this()] { return self->wakeupHandler(); });
   }

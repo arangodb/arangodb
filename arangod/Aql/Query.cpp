@@ -74,15 +74,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-namespace {
-std::shared_ptr<SharedQueryState> ensureSQS() {
-  if (ServerState::instance()->isDBServer()) {
-    return nullptr;
-  }
-  return std::make_shared<SharedQueryState>();
-}
-}
-
 /// @brief creates a query
 Query::Query(std::shared_ptr<transaction::Context> const& ctx,
              QueryString const& queryString, std::shared_ptr<VPackBuilder> const& bindParameters,
@@ -91,7 +82,7 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
       _itemBlockManager(&_resourceMonitor, SerializationFormat::SHADOWROWS),
       _queryString(queryString),
       _transactionContext(ctx),
-      _sharedState(::ensureSQS()),
+      _sharedState(std::make_shared<SharedQueryState>()),
       _v8Context(nullptr),
       _bindParameters(bindParameters),
       _options(options),

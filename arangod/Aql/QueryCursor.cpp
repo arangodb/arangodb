@@ -202,12 +202,7 @@ QueryStreamCursor::~QueryStreamCursor() {
   _queryResults.clear();
 
   // now remove the continue handler we may have registered in the query
-  {
-    auto ss = _query->sharedState();
-    if (ss) {
-      ss->invalidate();
-    }
-  }
+  _query->sharedState()->invalidate();
 
   // Query destructor will cleanup plan and abort transaction
   _query.reset();
@@ -270,10 +265,6 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
       << _query->queryString().extract(1024) << "'";
 
   std::shared_ptr<SharedQueryState> ss = _query->sharedState();
-  TRI_ASSERT(ss != nullptr);
-  if (ss == nullptr) {
-    return Result(TRI_ERROR_INTERNAL, "invalid query state");
-  }
   ss->resetWakeupHandler();
 
   try {
@@ -316,23 +307,13 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
 /// Set wakeup callback on streaming cursor
 void QueryStreamCursor::setWakeupHandler(std::function<bool()> const& cb) {
   if (_query) {
-    auto ss = _query->sharedState();
-    TRI_ASSERT(ss != nullptr);
-    if (ss == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid query state");
-    }
-    ss->setWakeupHandler(cb);
+    _query->sharedState()->setWakeupHandler(cb);
   }
 }
 
 void QueryStreamCursor::resetWakeupHandler() {
   if (_query) {
-    auto ss = _query->sharedState();
-    TRI_ASSERT(ss != nullptr);
-    if (ss == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid query state");
-    }
-    ss->resetWakeupHandler();
+    _query->sharedState()->resetWakeupHandler();
   }
 }
 
@@ -396,7 +377,6 @@ Result QueryStreamCursor::writeResult(VPackBuilder& builder) {
 
     if (!hasMore) {
       std::shared_ptr<SharedQueryState> ss = _query->sharedState();
-      TRI_ASSERT(ss != nullptr);
       ss->resetWakeupHandler();
 
       // cleanup before transaction is committed
