@@ -1,5 +1,8 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
+
+* Fixed internal issue #701: Dangling readers in ArangoSearch index_writer
+  cache.
     
 * Fix internal test helper function `removeCost` to really remove costs.
 
