@@ -174,7 +174,7 @@ size_t ConnectionPool::numOpenConnections() const {
 
 ConnectionPool::Context::Context(std::shared_ptr<fuerte::Connection> c,
                                  std::chrono::steady_clock::time_point t, std::size_t l)
-    : fuerte(c), lastLeased(t), leases(l) {}
+    : fuerte(std::move(c)), lastLeased(t), leases(l) {}
 
 std::shared_ptr<fuerte::Connection> ConnectionPool::createConnection(fuerte::ConnectionBuilder& builder) {
   auto idle = std::chrono::milliseconds(_config.idleConnectionMilli);
