@@ -174,7 +174,7 @@ void TRI_CreateExternalProcess(char const* executable,
 
 bool TRI_ReadPipe(ExternalProcess const* process,
                   char* buffer,
-                  size_t &bufferSize);
+                  size_t& bufferSize);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the status of an external process
