@@ -260,6 +260,12 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
       if (res.fail()) {
         if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
             res.errorMessage() > keySlice.copyString()) {
+          TRI_voc_rid_t rid =
+              arangodb::transaction::helpers::extractRevFromDocument(masterDoc);
+          if (physical->readDocument(&trx, arangodb::LocalDocumentId(rid), mdr)) {
+            // already have exactly this revision no need to insert
+            continue;
+          }
           // remove conflict and retry
           // errorMessage() is this case contains the conflicting key
           auto inner = removeConflict(res.errorMessage());
@@ -2124,7 +2130,8 @@ Result DatabaseInitialSyncer::handleViewCreation(VPackSlice const& views) {
 }
 
 Result DatabaseInitialSyncer::batchStart(std::string const& patchCount) {
-  return _config.batch.start(_config.connection, _config.progress, _config.state.syncerId, patchCount);
+  return _config.batch.start(_config.connection, _config.progress,
+                             _config.master, _config.state.syncerId, patchCount);
 }
 
 Result DatabaseInitialSyncer::batchExtend() {
