@@ -195,7 +195,7 @@ TEST_P(CalculationExecutorTest, referece_some_input_skip) {
 
 TEST_P(CalculationExecutorTest, reference_some_input_limit) {
   AqlCall call{};
-  call.hardLimit = 4;
+  call.hardLimit = 4u;
   ExecutionStats stats{};
 
   makeExecutorTestHelper<2, 2>()
@@ -219,7 +219,7 @@ TEST_P(CalculationExecutorTest, reference_some_input_limit) {
 
 TEST_P(CalculationExecutorTest, reference_some_input_limit_fullcount) {
   AqlCall call{};
-  call.hardLimit = 4;
+  call.hardLimit = 4u;
   call.fullCount = true;
   ExecutionStats stats{};
 
@@ -292,7 +292,7 @@ TEST_P(CalculationExecutorTest, condition_some_input_skip) {
 
 TEST_P(CalculationExecutorTest, condition_some_input_limit) {
   AqlCall call{};
-  call.hardLimit = 4;
+  call.hardLimit = 4u;
   ExecutionStats stats{};
 
   makeExecutorTestHelper<2, 2>()
@@ -316,7 +316,7 @@ TEST_P(CalculationExecutorTest, condition_some_input_limit) {
 
 TEST_P(CalculationExecutorTest, condition_some_input_limit_fullcount) {
   AqlCall call{};
-  call.hardLimit = 4;
+  call.hardLimit = 4u;
   call.fullCount = true;
   ExecutionStats stats{};
 

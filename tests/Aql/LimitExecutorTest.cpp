@@ -220,7 +220,7 @@ TEST_P(LimitExecutorTest, testSuite) {
   auto const& [offset, limit, fullCount, inputLengths, clientCall, doneResultIsEmpty] =
       GetParam();
 
-  TRI_ASSERT(!(clientCall.getOffset() == 0 && clientCall.softLimit == AqlCall::Limit{0}));
+  TRI_ASSERT(!(clientCall.getOffset() == 0 && clientCall.softLimit == AqlCall::Limit{0u}));
   TRI_ASSERT(!(clientCall.hasSoftLimit() && clientCall.fullCount));
   TRI_ASSERT(!(clientCall.hasSoftLimit() && clientCall.hasHardLimit()));
 
@@ -271,7 +271,7 @@ TEST_P(LimitExecutorTest, testSuite) {
           auto const begin = effectiveOffset;
           auto const end = std::min(effectiveOffset + effectiveLimit, numInputRows);
           for (auto k = begin; k < end; ++k) {
-            output.emplace_back(RowBuilder<1>{k});
+            output.emplace_back(RowBuilder<1>{static_cast<int>(k)});
           }
 
           return output;
@@ -338,7 +338,7 @@ TEST_P(LimitExecutorTest, testSuite) {
       .run(true);
 }
 
-auto printTestCase =
+static auto printTestCase =
     [](testing::TestParamInfo<std::tuple<size_t, size_t, bool, std::vector<size_t>, AqlCall, bool>> const& paramInfo)
     -> std::string {
   auto const& [offset, limit, fullCount, inputLengths, clientCall, doneResultIsEmpty] =

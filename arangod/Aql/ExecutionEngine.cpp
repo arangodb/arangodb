@@ -196,7 +196,8 @@ ExecutionEngine::ExecutionEngine(QueryContext& query,
       _root(nullptr),
       _resultRegister(0),
       _initializeCursorCalled(false),
-      _wasShutdown(false) {
+      _wasShutdown(false),
+      _sentShutdownResponse(false) {
   _blocks.reserve(8);
 }
 
@@ -603,7 +604,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionEngine::getSome(size_t
   auto const [state, skipped, block] = _root->execute(std::move(compatibilityStack));
   // We cannot trigger a skip operation from here
   TRI_ASSERT(skipped.nothingSkipped());
-  return {state, block};
+  return {state, std::move(block)};
 }
 
 std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
@@ -666,7 +667,7 @@ Result ExecutionEngine::shutdownSync(int errorCode) noexcept try {
 
 /// @brief shutdown, will be called exactly once for the whole query
 std::pair<ExecutionState, Result> ExecutionEngine::shutdown(int errorCode) {
-  if (_root == nullptr || _wasShutdown) {
+  if (_root == nullptr || _wasShutdown.load(std::memory_order_relaxed)) {
     return {ExecutionState::DONE, _shutdownResult};
   }
   
@@ -683,7 +684,6 @@ std::pair<ExecutionState, Result> ExecutionEngine::shutdown(int errorCode) {
     }
     
     if (knowsAllQueryIds) {
-      TRI_ASSERT(!_wasShutdown);
       return shutdownDBServerQueries(errorCode);
     }
   }
@@ -694,7 +694,7 @@ std::pair<ExecutionState, Result> ExecutionEngine::shutdown(int errorCode) {
   }
 
   // prevent a duplicate shutdown
-  _wasShutdown = true;
+  _wasShutdown.store(true, std::memory_order_relaxed);
 
   return {state, res};
 }
@@ -841,10 +841,10 @@ void ExecutionEngine::collectExecutionStats(ExecutionStats& stats) {
 }
 
 std::pair<ExecutionState, Result> ExecutionEngine::shutdownDBServerQueries(int errorCode) {
-  TRI_ASSERT(!_wasShutdown);
   if (_sentShutdownResponse.exchange(true)) {
     return {ExecutionState::WAITING, Result()};
   }
+  TRI_ASSERT(!_wasShutdown.load(std::memory_order_relaxed));
   
   if (_serverToQueryId.empty()) { // happens during tests
     return {ExecutionState::DONE, Result()};
@@ -920,7 +920,7 @@ std::pair<ExecutionState, Result> ExecutionEngine::shutdownDBServerQueries(int e
   futures::collectAll(std::move(futures)).thenFinal([ss, this](auto&& vals) {
     TRI_ASSERT(ss->isValid());
     ss->executeAndWakeup([&] {
-      _wasShutdown = true; // prevent duplicates
+      _wasShutdown.store(true, std::memory_order_relaxed); // prevent duplicates
       return true;
     });
   });

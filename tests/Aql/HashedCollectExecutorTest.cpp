@@ -188,7 +188,7 @@ TEST_P(HashedCollectExecutorTest, fullcount_all) {
   auto registerInfos = buildRegisterInfos(1, 2, {{1, 0}});
   auto executorInfos = buildExecutorInfos(1, 2, {{1, 0}});
   AqlCall call{};
-  call.hardLimit = 0;      // HardLimit
+  call.hardLimit = 0u;     // HardLimit
   call.fullCount = true;   // count all
   ExecutionStats stats{};  // No stats here
   makeExecutorTestHelper()
@@ -210,7 +210,7 @@ TEST_P(HashedCollectExecutorTest, collect_only_soft_less) {
   auto registerInfos = buildRegisterInfos(1, 2, {{1, 0}});
   auto executorInfos = buildExecutorInfos(1, 2, {{1, 0}});
   AqlCall call{};
-  call.softLimit = 2;
+  call.softLimit = 2u;
   ExecutionStats stats{};  // No stats here
   makeExecutorTestHelper()
       .addConsumer<HashedCollectExecutor>(std::move(registerInfos), std::move(executorInfos))
@@ -269,7 +269,7 @@ TEST_P(HashedCollectExecutorTest, collect_only_soft_less_second_call) {
   std::vector<RegisterId> registersToTest{1};
   {
     AqlCall call{};
-    call.softLimit = 2;
+    call.softLimit = 2u;
     AqlCallStack stack{AqlCallList{call}};
     auto const [state, skipped, result] = testee.execute(stack);
     EXPECT_EQ(state, ExecutionState::HASMORE);
@@ -282,7 +282,7 @@ TEST_P(HashedCollectExecutorTest, collect_only_soft_less_second_call) {
   // Second call
   {
     AqlCall call{};
-    call.softLimit = 2;
+    call.softLimit = 2u;
     AqlCallStack stack{AqlCallList{call}};
     auto const [state, skipped, result] = testee.execute(stack);
     EXPECT_EQ(state, ExecutionState::DONE);
@@ -298,7 +298,7 @@ TEST_P(HashedCollectExecutorTest, collect_only_hard_less) {
   auto registerInfos = buildRegisterInfos(1, 2, {{1, 0}});
   auto executorInfos = buildExecutorInfos(1, 2, {{1, 0}});
   AqlCall call{};
-  call.hardLimit = 2;
+  call.hardLimit = 2u;
   ExecutionStats stats{};  // No stats here
   makeExecutorTestHelper()
       .addConsumer<HashedCollectExecutor>(std::move(registerInfos), std::move(executorInfos))
@@ -320,7 +320,7 @@ TEST_P(HashedCollectExecutorTest, skip_some) {
   auto executorInfos = buildExecutorInfos(1, 2, {{1, 0}});
   AqlCall call{};
   call.offset = 2;         // skip some
-  call.softLimit = 0;      // 0 limit
+  call.softLimit = 0u;      // 0 limit
   ExecutionStats stats{};  // No stats here
   makeExecutorTestHelper()
       .addConsumer<HashedCollectExecutor>(std::move(registerInfos), std::move(executorInfos))
@@ -342,7 +342,7 @@ TEST_P(HashedCollectExecutorTest, skip_and_get) {
   auto executorInfos = buildExecutorInfos(1, 2, {{1, 0}});
   AqlCall call{};
   call.offset = 2;         // skip some
-  call.softLimit = 1000;   // high limit
+  call.softLimit = 1000u;   // high limit
   ExecutionStats stats{};  // No stats here
   makeExecutorTestHelper()
       .addConsumer<HashedCollectExecutor>(std::move(registerInfos), std::move(executorInfos))
@@ -364,7 +364,7 @@ TEST_P(HashedCollectExecutorTest, skip_and_hardLimit) {
   auto executorInfos = buildExecutorInfos(1, 2, {{1, 0}});
   AqlCall call{};
   call.offset = 2;         // skip some
-  call.hardLimit = 1;      // hard limit
+  call.hardLimit = 1u;     // hard limit
   ExecutionStats stats{};  // No stats here
   makeExecutorTestHelper()
       .addConsumer<HashedCollectExecutor>(std::move(registerInfos), std::move(executorInfos))
@@ -386,7 +386,7 @@ TEST_P(HashedCollectExecutorTest, skip_and_fullCount) {
   auto executorInfos = buildExecutorInfos(1, 2, {{1, 0}});
   AqlCall call{};
   call.offset = 1;     // skip some
-  call.hardLimit = 2;  // hard limit
+  call.hardLimit = 2u; // hard limit
   call.fullCount = true;
   ExecutionStats stats{};  // No stats here
   makeExecutorTestHelper()

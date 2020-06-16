@@ -1315,6 +1315,9 @@ bool ExecutionNode::isIncreaseDepth(ExecutionNode::NodeType type) {
     case REMOTESINGLE:
     case ENUMERATE_IRESEARCH_VIEW:
     case MATERIALIZE:
+
+    case SUBQUERY_START:
+    case SUBQUERY_END:
       return true;
 
     default:
@@ -1383,9 +1386,17 @@ void ExecutionNode::setVarsValid(VarSetStack varStack) {
   _varsValidStack = std::move(varStack);
 }
 
+auto ExecutionNode::getVarsUsedLater() const noexcept -> VarSet const& {
+  return getVarsUsedLaterStack().back();
+}
+
 auto ExecutionNode::getVarsUsedLaterStack() const noexcept -> VarSetStack const& {
   TRI_ASSERT(_varUsageValid);
   return _varsUsedLaterStack;
+}
+
+auto ExecutionNode::getVarsValid() const noexcept -> VarSet const& {
+  return getVarsValidStack().back();
 }
 
 auto ExecutionNode::getVarsValidStack() const noexcept -> VarSetStack const& {
@@ -1935,7 +1946,7 @@ void SubqueryNode::invalidateCost() {
 }
 
 bool SubqueryNode::isConst() {
-  if (isModificationSubquery() || !isDeterministic()) {
+  if (isModificationNode() || !isDeterministic()) {
     return false;
   }
 
@@ -2028,7 +2039,7 @@ std::unique_ptr<ExecutionBlock> SubqueryNode::createBlock(
   // The const_cast has been taken from previous implementation.
   auto executorInfos =
       SubqueryExecutorInfos(*subquery, outReg, const_cast<SubqueryNode*>(this)->isConst());
-  if (isModificationSubquery()) {
+  if (isModificationNode()) {
     return std::make_unique<ExecutionBlockImpl<SubqueryExecutor<true>>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
   } else {
@@ -2051,7 +2062,7 @@ ExecutionNode* SubqueryNode::clone(ExecutionPlan* plan, bool withDependencies,
 }
 
 /// @brief whether or not the subquery is a data-modification operation
-bool SubqueryNode::isModificationSubquery() const {
+bool SubqueryNode::isModificationNode() const {
   std::vector<ExecutionNode*> stack({_subquery});
 
   while (!stack.empty()) {

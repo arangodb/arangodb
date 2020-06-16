@@ -116,7 +116,7 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
     TRI_ASSERT(shardList.isArray());
     for (VPackSlice const shard : VPackArrayIterator(shardList)) {
       TRI_ASSERT(shard.isString());
-      _query.collections().add(shard.copyString(), AccessMode::Type::READ);
+      _query.collections().add(shard.copyString(), AccessMode::Type::READ, aql::Collection::Hint::Collection);
     }
   }
 
@@ -128,7 +128,7 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
     for (VPackSlice const shard : VPackArrayIterator(collection.value)) {
       TRI_ASSERT(shard.isString());
       std::string name = shard.copyString();
-      _query.collections().add(name, AccessMode::Type::READ);
+      _query.collections().add(name, AccessMode::Type::READ, aql::Collection::Hint::Shard);
       shards.emplace_back(std::move(name));
     }
     _vertexShards.try_emplace(collection.key.copyString(), std::move(shards));
@@ -136,7 +136,7 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
 
 #ifdef USE_ENTERPRISE
   if (_query.queryOptions().transactionOptions.skipInaccessibleCollections) {
-      _trx = new transaction::IgnoreNoAccessMethods(_query.newTrxContext(), _query.queryOptions().transactionOptions);
+    _trx = new transaction::IgnoreNoAccessMethods(_query.newTrxContext(), _query.queryOptions().transactionOptions);
   } else {
     _trx = new transaction::Methods(_query.newTrxContext(), _query.queryOptions().transactionOptions);
   }
@@ -211,7 +211,7 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
 BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t& vocbase,
                                          aql::QueryContext& query,
                                          VPackSlice info)
-    : BaseEngine(vocbase, query, info) {}
+    : BaseEngine(vocbase, query, info), _variables(query.ast()->variables()) {}
 
 BaseTraverserEngine::~BaseTraverserEngine() = default;
 
@@ -337,6 +337,30 @@ void BaseTraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
   
 bool BaseTraverserEngine::produceVertices() const {
   return _opts->produceVertices();
+}
+
+aql::VariableGenerator const* BaseTraverserEngine::variables() const {
+  return _variables;
+}
+
+void BaseTraverserEngine::injectVariables(VPackSlice variableSlice) {
+  if (variableSlice.isArray()) {
+    _opts->clearVariableValues();
+    for (auto const& pair : VPackArrayIterator(variableSlice)) {
+      if ((!pair.isArray()) || pair.length() != 2) {
+        // Invalid communication. Skip
+        TRI_ASSERT(false);
+        continue;
+      }
+      auto varId =
+          arangodb::basics::VelocyPackHelper::getNumericValue<aql::VariableId>(pair.at(0),
+                                                                          "id", 0);
+      aql::Variable* var = variables()->getVariable(varId);
+      TRI_ASSERT(var != nullptr);
+      aql::AqlValue val(pair.at(1).start());
+      _opts->setVariableValue(var, val);
+    }
+  }
 }
 
 ShortestPathEngine::ShortestPathEngine(TRI_vocbase_t& vocbase,

@@ -76,7 +76,7 @@ class KShortestPathsExecutorInfos {
 
   KShortestPathsExecutorInfos() = delete;
 
-  KShortestPathsExecutorInfos(KShortestPathsExecutorInfos&&) noexcept = default;
+  KShortestPathsExecutorInfos(KShortestPathsExecutorInfos&&) = default;
   KShortestPathsExecutorInfos(KShortestPathsExecutorInfos const&) = delete;
   ~KShortestPathsExecutorInfos() = default;
 

@@ -89,7 +89,7 @@ class AqlItemMatrix {
 
   size_t numberOfBlocks() const noexcept;
 
-  SharedAqlItemBlockPtr getBlock(size_t index) const noexcept;
+  std::pair<SharedAqlItemBlockPtr, size_t> getBlock(size_t index) const noexcept;
 
   bool stoppedOnShadowRow() const noexcept;
 

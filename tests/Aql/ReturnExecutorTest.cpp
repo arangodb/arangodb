@@ -118,7 +118,7 @@ TEST_P(ReturnExecutorTest, handle_soft_limit) {
                               RegIdFlatSetStack{{}});
   ReturnExecutorInfos executorInfos(0 /*input register*/, doCount());
   AqlCall call{};
-  call.softLimit = 3;
+  call.softLimit = 3u;
   makeExecutorTestHelper()
       .addConsumer<ReturnExecutor>(std::move(registerInfos),
                                    std::move(executorInfos), ExecutionNode::RETURN)
@@ -137,7 +137,7 @@ TEST_P(ReturnExecutorTest, handle_hard_limit) {
                               RegIdFlatSetStack{{}});
   ReturnExecutorInfos executorInfos(0 /*input register*/, doCount());
   AqlCall call{};
-  call.hardLimit = 5;
+  call.hardLimit = 5u;
   makeExecutorTestHelper()
       .addConsumer<ReturnExecutor>(std::move(registerInfos),
                                    std::move(executorInfos), ExecutionNode::RETURN)
@@ -175,7 +175,7 @@ TEST_P(ReturnExecutorTest, handle_fullcount) {
                               RegIdFlatSetStack{{}});
   ReturnExecutorInfos executorInfos(0 /*input register*/, doCount());
   AqlCall call{};
-  call.hardLimit = 2;
+  call.hardLimit = 2u;
   call.fullCount = true;
   makeExecutorTestHelper()
       .addConsumer<ReturnExecutor>(std::move(registerInfos),
@@ -195,7 +195,7 @@ TEST_P(ReturnExecutorTest, handle_other_inputRegister) {
                               RegIdFlatSetStack{{}});
   ReturnExecutorInfos executorInfos(1 /*input register*/, doCount());
   AqlCall call{};
-  call.hardLimit = 5;
+  call.hardLimit = 5u;
   makeExecutorTestHelper<2, 1>()
       .addConsumer<ReturnExecutor>(std::move(registerInfos),
                                    std::move(executorInfos), ExecutionNode::RETURN)

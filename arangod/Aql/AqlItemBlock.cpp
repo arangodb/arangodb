@@ -302,6 +302,7 @@ void AqlItemBlock::destroy() noexcept {
       return;
     }
 
+    size_t totalUsed = 0;
     size_t const n = numEntries();
     for (size_t i = 0; i < n; i++) {
       auto& it = _data[i];
@@ -311,9 +312,11 @@ void AqlItemBlock::destroy() noexcept {
           TRI_ASSERT((*it2).second > 0);
 
           if (--((*it2).second) == 0) {
-            decreaseMemoryUsage(it.memoryUsage());
-            it.destroy();
             _valueCount.erase(it2);
+            totalUsed += it.memoryUsage();
+            it.destroy(); 
+            // destroy() calls erase, so no need to call erase() again later
+            continue;
           }
         }
       }
@@ -321,6 +324,7 @@ void AqlItemBlock::destroy() noexcept {
       it.erase();
     }
     _valueCount.clear();
+    decreaseMemoryUsage(totalUsed);
 
     rescale(0, 0);
   } catch (...) {
@@ -420,8 +424,11 @@ void AqlItemBlock::rescale(size_t nrItems, RegisterCount nrRegs) {
 /// @brief clears out some columns (registers), this deletes the values if
 /// necessary, using the reference count.
 void AqlItemBlock::clearRegisters(RegIdFlatSet const& toClear) {
+  bool const checkShadowRows = hasShadowRows();
+
+  size_t totalUsed = 0;
   for (size_t i = 0; i < _nrItems; i++) {
-    if (isShadowRow(i)) {
+    if (checkShadowRows && isShadowRow(i)) {
       // Do not clear shadow rows:
       // 1) our toClear set is only valid for data rows
       // 2) there will never be anything to clear for shadow rows
@@ -437,31 +444,32 @@ void AqlItemBlock::clearRegisters(RegIdFlatSet const& toClear) {
           TRI_ASSERT((*it).second > 0);
 
           if (--((*it).second) == 0) {
-            decreaseMemoryUsage(a.memoryUsage());
+            totalUsed += a.memoryUsage();
             a.destroy();
-            try {
-              _valueCount.erase(it);
-              continue;  // no need for an extra a.erase() here
-            } catch (...) {
-            }
+            _valueCount.erase(it);
+            continue;  // no need for an extra a.erase() here
           }
         }
       }
       a.erase();
     }
   }
+
+  decreaseMemoryUsage(totalUsed);
 }
 
 SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
   auto const numRows = size();
+  auto const numRegs = getNrRegs();
+  bool const checkShadowRows = hasShadowRows();
 
   std::unordered_set<AqlValue> cache;
   cache.reserve(_valueCount.size());
-  SharedAqlItemBlockPtr res{aqlItemBlockManager().requestBlock(numRows, getNrRegs())};
+  SharedAqlItemBlockPtr res{aqlItemBlockManager().requestBlock(numRows, numRegs)};
 
   for (size_t row = 0; row < numRows; row++) {
-    for (RegisterId col = 0; col < getNrRegs(); col++) {
-      if (isShadowRow(row)) {
+    if (checkShadowRows && isShadowRow(row)) {
+      for (RegisterId col = 0; col < numRegs; col++) {
         AqlValue a = stealAndEraseValue(row, col);
         AqlValueGuard guard{a, true};
         auto [it, inserted] = cache.emplace(a);
@@ -471,9 +479,10 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
           // otherwise, destroy this; we used a cached value.
           guard.steal();
         }
-      } else {
-        AqlValue a = getValue(row, col);
-        ::CopyValueOver(cache, a, row, col, res);
+      } 
+    } else {
+      for (RegisterId col = 0; col < numRegs; col++) {
+        ::CopyValueOver(cache, _data[getAddress(row, col)], row, col, res);
       }
     }
 
@@ -532,8 +541,7 @@ auto AqlItemBlock::slice(std::vector<std::pair<size_t, size_t>> const& ranges) c
     for (size_t row = from; row < to; row++, targetRow++) {
       // Note this loop is special, it will also Copy over the SubqueryDepth data in reg 0
       for (RegisterId col = 0; col < _nrRegs; col++) {
-        AqlValue const& a(_data[getAddress(row, col)]);
-        ::CopyValueOver(cache, a, targetRow, col, res);
+        ::CopyValueOver(cache, _data[getAddress(row, col)], targetRow, col, res);
       }
       res->copySubQueryDepthFromOtherBlock(targetRow, *this, row);
     }
@@ -553,13 +561,9 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(size_t row,
   std::unordered_set<AqlValue> cache;
 
   SharedAqlItemBlockPtr res{_manager.requestBlock(1, newNrRegs)};
-  for (RegisterId col = 0; col < _nrRegs; col++) {
-    if (registers.find(col) == registers.end()) {
-      continue;
-    }
-
-    AqlValue const& a(_data[getAddress(row, col)]);
-    ::CopyValueOver(cache, a, 0, col, res);
+  for (auto const& col : registers) {
+    TRI_ASSERT(col < _nrRegs);
+    ::CopyValueOver(cache, _data[getAddress(row, col)], 0, col, res);
   }
   res->copySubQueryDepthFromOtherBlock(0, *this, row);
 
@@ -580,9 +584,9 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(std::vector<size_t> const& chosen,
   size_t resultRowIdx = 0;
   for (size_t chosenIdx = from; chosenIdx < to; ++chosenIdx, ++resultRowIdx) {
     size_t const rowIdx = chosen[chosenIdx];
-    for (RegisterId col = 0; col < _nrRegs; col++) {
-      AqlValue const& a = _data[getAddress(rowIdx, col)];
-      ::CopyValueOver(cache, a, resultRowIdx, col, res);
+    // we can start at register 1, because depth of subqueries is copied afterwards 
+    for (RegisterId col = 1; col < _nrRegs; col++) {
+      ::CopyValueOver(cache, _data[getAddress(rowIdx, col)], resultRowIdx, col, res);
     }
     res->copySubQueryDepthFromOtherBlock(resultRowIdx, *this, rowIdx);
   }
@@ -856,7 +860,7 @@ void AqlItemBlock::copySubQueryDepthFromOtherBlock(size_t const targetRow,
 }
 
 AqlItemBlock::~AqlItemBlock() {
-  TRI_ASSERT(_refCount.load(std::memory_order_relaxed) == 0);
+  TRI_ASSERT(_refCount == 0);
   destroy();
   decreaseMemoryUsage(sizeof(AqlValue) * _nrItems * internalNrRegs());
 }
@@ -883,8 +887,7 @@ void AqlItemBlock::setValue(size_t index, RegisterId varNr, AqlValue const& valu
   // First update the reference count, if this fails, the value is empty
   if (value.requiresDestruction()) {
     if (++_valueCount[value] == 1) {
-      size_t mem = value.memoryUsage();
-      increaseMemoryUsage(mem);
+      increaseMemoryUsage(value.memoryUsage());
     }
   }
 
@@ -931,18 +934,21 @@ void AqlItemBlock::eraseValue(size_t index, RegisterId varNr) {
 }
 
 void AqlItemBlock::eraseAll() {
-  for (size_t i = 0; i < numEntries(); i++) {
+  size_t const n = numEntries();
+  for (size_t i = 0; i < n; i++) {
     auto& it = _data[i];
     if (!it.isEmpty()) {
       it.erase();
     }
   }
 
+  size_t totalUsed = 0;
   for (auto const& it : _valueCount) {
-    if (it.second > 0) {
-      decreaseMemoryUsage(it.first.memoryUsage());
+    if (ADB_LIKELY(it.second > 0)) {
+      totalUsed += it.first.memoryUsage();
     }
   }
+  decreaseMemoryUsage(totalUsed);
   _valueCount.clear();
 }
 
@@ -954,10 +960,11 @@ void AqlItemBlock::referenceValuesFromRow(size_t currentRow,
     TRI_ASSERT(reg < getNrRegs());
     if (getValueReference(currentRow, reg).isEmpty()) {
       // First update the reference count, if this fails, the value is empty
-      if (getValueReference(fromRow, reg).requiresDestruction()) {
-        ++_valueCount[getValueReference(fromRow, reg)];
+      AqlValue const& a = getValueReference(fromRow, reg);
+      if (a.requiresDestruction()) {
+        ++_valueCount[a];
       }
-      _data[getAddress(currentRow, reg)] = getValueReference(fromRow, reg);
+      _data[getAddress(currentRow, reg)] = a;
     }
   }
   // Copy over subqueryDepth
@@ -1010,7 +1017,10 @@ size_t AqlItemBlock::capacity() const noexcept { return _data.capacity(); }
 bool AqlItemBlock::isShadowRow(size_t row) const {
   /// This value is only filled for shadowRows.
   /// And it is guaranteed to be only filled by numbers this way.
-  return _data[getSubqueryDepthAddress(row)].isNumber();
+  
+  /// in case the format of shadowRows is ever adjusted, make sure to also
+  /// adjust the method AqlValue::isShadowRowDepthValue()
+  return _data[getSubqueryDepthAddress(row)].isShadowRowDepthValue();
 }
 
 AqlValue const& AqlItemBlock::getShadowRowDepth(size_t row) const {
@@ -1021,6 +1031,9 @@ AqlValue const& AqlItemBlock::getShadowRowDepth(size_t row) const {
 
 void AqlItemBlock::setShadowRowDepth(size_t row, AqlValue const& other) {
   TRI_ASSERT(other.isNumber());
+  TRI_ASSERT(other.isShadowRowDepthValue());
+  /// in case the format of shadowRows is ever adjusted, make sure to also
+  /// adjust the method AqlValue::isShadowRowDepthValue()
   _data[getSubqueryDepthAddress(row)] = other;
   TRI_ASSERT(isShadowRow(row));
   // Might be shadowRow before, but we do not care, set is unique
@@ -1029,14 +1042,14 @@ void AqlItemBlock::setShadowRowDepth(size_t row, AqlValue const& other) {
 
 void AqlItemBlock::makeShadowRow(size_t row) {
   TRI_ASSERT(!isShadowRow(row));
-  _data[getSubqueryDepthAddress(row)] = AqlValue{VPackSlice::zeroSlice()};
+  _data[getSubqueryDepthAddress(row)] = AqlValue{AqlValueHintZero()};
   TRI_ASSERT(isShadowRow(row));
   _shadowRowIndexes.emplace(row);
 }
 
 void AqlItemBlock::makeDataRow(size_t row) {
   TRI_ASSERT(isShadowRow(row));
-  _data[getSubqueryDepthAddress(row)] = AqlValue{VPackSlice::noneSlice()};
+  _data[getSubqueryDepthAddress(row)] = AqlValue{AqlValueHintNone()};
   TRI_ASSERT(!isShadowRow(row));
   _shadowRowIndexes.erase(row);
 }
@@ -1055,19 +1068,19 @@ AqlItemBlockManager& AqlItemBlock::aqlItemBlockManager() noexcept {
   return _manager;
 }
 
-size_t AqlItemBlock::getRefCount() const noexcept { return _refCount.load(std::memory_order_relaxed); }
+size_t AqlItemBlock::getRefCount() const noexcept { return _refCount; }
 
-void AqlItemBlock::incrRefCount() const noexcept { _refCount.fetch_add(1, std::memory_order_relaxed); }
+void AqlItemBlock::incrRefCount() const noexcept { ++_refCount; }
 
 size_t AqlItemBlock::decrRefCount() const noexcept {
-  size_t value = _refCount.fetch_sub(1, std::memory_order_release);
-  TRI_ASSERT(value > 0);
-  return value - 1;
+  TRI_ASSERT(_refCount > 0);
+  return --_refCount;
 }
 
 RegisterCount AqlItemBlock::internalNrRegs() const noexcept {
   return _nrRegs + 1;
 }
+
 size_t AqlItemBlock::getAddress(size_t index, RegisterId varNr) const noexcept {
   TRI_ASSERT(index < _nrItems);
   TRI_ASSERT(varNr < _nrRegs);

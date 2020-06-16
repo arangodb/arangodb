@@ -50,7 +50,7 @@ struct PlanMiniMock {
   auto increaseCounter(ExecutionNode::NodeType type) {
     // This is no longer true for subqueries because reasons, i.e. subqueries
     // are planned multiple times
-    // TODO: refactor subquery planing?
+    // TODO: refactor subquery planning?
     // EXPECT_FALSE(_called) << "Only count every node once per run";
     EXPECT_EQ(_expectedType, type) << "Count the correct type";
   }
@@ -135,9 +135,7 @@ struct ExecutionNodeMock {
     _regsToKeep = std::move(regsToKeep);
   }
 
-  auto getRegsToKeep() -> RegIdSetStack const& {
-    return _regsToKeep;
-  }
+  auto getRegsToKeep() -> RegIdSetStack const& { return _regsToKeep; }
 
   auto walk(WalkerWorker<ExecutionNodeMock>& worker) -> bool {
     if (worker.before(this)) {
@@ -253,7 +251,7 @@ class RegisterPlanTest : public ::testing::Test {
 
     std::vector<std::optional<Variable const*>> varsRequiredHere;
 
-    auto total = plan->getTotalNrRegs();
+    auto total = *std::max_element(plan->nrRegs.cbegin(), plan->nrRegs.cend());
     varsRequiredHere.reserve(total);
     for (size_t i = 0; i < total; ++i) {
       varsRequiredHere.emplace_back(std::nullopt);
@@ -354,7 +352,7 @@ TEST_F(RegisterPlanTest, walker_should_plan_registers) {
       ExecutionNodeMock{ExecutionNode::SINGLETON, {}, {&vars[0]}}};
   auto plan = walk(myList);
   ASSERT_NE(plan, nullptr);
-  EXPECT_EQ(plan->getTotalNrRegs(), 1);
+  EXPECT_EQ(plan->nrRegs.back(), 1);
   assertVariableInRegister(plan, vars[0], 0);
   assertPlanKeepsAllVariables(plan, myList);
 }
@@ -368,7 +366,7 @@ TEST_F(RegisterPlanTest, planRegisters_should_append_variables_if_all_are_needed
       ExecutionNodeMock{ExecutionNode::RETURN, {&vars[0], &vars[1]}, {}}};
   auto plan = walk(myList);
   ASSERT_NE(plan, nullptr);
-  EXPECT_EQ(plan->getTotalNrRegs(), 2);
+  EXPECT_EQ(plan->nrRegs.back(), 2);
   assertVariableInRegister(plan, vars[0], 0);
   assertVariableInRegister(plan, vars[1], 1);
   assertPlanKeepsAllVariables(plan, myList);
@@ -383,7 +381,7 @@ TEST_F(RegisterPlanTest, planRegisters_should_reuse_register_if_possible) {
       ExecutionNodeMock{ExecutionNode::RETURN, {&vars[1]}, {}}};
   auto plan = walk(myList);
   ASSERT_NE(plan, nullptr);
-  EXPECT_EQ(plan->getTotalNrRegs(), 1);
+  EXPECT_EQ(plan->nrRegs.back(), 1);
   assertVariableInRegister(plan, vars[0], 0);
   assertVariableInRegister(plan, vars[1], 0);
   assertPlanKeepsAllVariables(plan, myList);
@@ -398,7 +396,7 @@ TEST_F(RegisterPlanTest, planRegisters_should_not_reuse_register_if_block_is_pas
       ExecutionNodeMock{ExecutionNode::RETURN, {&vars[1]}, {}}};
   auto plan = walk(myList);
   ASSERT_NE(plan, nullptr);
-  EXPECT_EQ(plan->getTotalNrRegs(), 2);
+  EXPECT_EQ(plan->nrRegs.back(), 2);
   assertVariableInRegister(plan, vars[0], 0);
   assertVariableInRegister(plan, vars[1], 1);
   assertPlanKeepsAllVariables(plan, myList);
@@ -416,7 +414,7 @@ TEST_F(RegisterPlanTest, planRegisters_should_reuse_register_after_passthrough) 
       ExecutionNodeMock{ExecutionNode::RETURN, {&vars[4]}, {}}};
   auto plan = walk(myList);
   ASSERT_NE(plan, nullptr);
-  EXPECT_EQ(plan->getTotalNrRegs(), 2);
+  EXPECT_EQ(plan->nrRegs.back(), 2);
   assertVariableInRegister(plan, vars[0], 0);
   assertVariableInRegister(plan, vars[1], 1);
   assertVariableInRegister(plan, vars[2], 0);
@@ -609,6 +607,140 @@ TEST_F(RegisterPlanTest, variable_usage_with_subquery) {
     EXPECT_EQ((VarSetStack{VarSet{mark, debra, tobias, paul}}), subquery[2].getVarsValidStack());
     // RETURN
     EXPECT_EQ((VarSetStack{VarSet{mark, debra, tobias, paul}}), subquery[3].getVarsValidStack());
+  }
+}
+
+TEST_F(RegisterPlanTest, variable_usage_with_subquery_using_many_registers) {
+  auto&& [vars, ptrs] = generateVars<6>();
+  auto [mark, debra, mary, jesse, paul, tobias] = ptrs;
+  std::vector<ExecutionNodeMock> nodes{
+      ExecutionNodeMock{ExecutionNode::SINGLETON, {}, {}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, {}, {mark}},
+      ExecutionNodeMock{ExecutionNode::SUBQUERY_START, {}, {}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, {}, {tobias}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, {mark, tobias}, {paul}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, {mark, paul}, {debra}},
+      ExecutionNodeMock{ExecutionNode::SUBQUERY_END, {debra}, {mary}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, {mark, mary}, {jesse}},
+      ExecutionNodeMock{ExecutionNode::RETURN, {jesse}, {}}};
+  getVarUsage(nodes);
+  auto plan = walk(nodes);
+  {
+    SCOPED_TRACE("while checking mark");
+    assertVariableInRegister(plan, *mark, 0);
+  }
+  {
+    SCOPED_TRACE("while checking tobias");
+    assertVariableInRegister(plan, *tobias, 1);
+  }
+  {
+    SCOPED_TRACE("while checking paul");
+    assertVariableInRegister(plan, *paul, 2);
+  }
+  {
+    SCOPED_TRACE("while checking debra");
+    assertVariableInRegister(plan, *debra, 1);
+  }
+  {
+    SCOPED_TRACE("while checking mary");
+    assertVariableInRegister(plan, *mary, 1);
+  }
+  {
+    SCOPED_TRACE("while checking jesse");
+    assertVariableInRegister(plan, *jesse, 2);
+  }
+}
+
+// The current register planning isn't optimal enough to satisfy this test.
+TEST_F(RegisterPlanTest, DISABLED_multiple_spliced_subqueries) {
+  auto&& [vars, ptrs] = generateVars<10>();
+  auto [maria, andrew, douglas, christopher, patricia, betty, doris, christine,
+        wanda, ronald] = ptrs;
+  std::vector<ExecutionNodeMock> nodes{
+      ExecutionNodeMock{ExecutionNode::SINGLETON, {}, {}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, {}, {maria}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, {maria}, {andrew}},
+
+      ExecutionNodeMock{ExecutionNode::SUBQUERY_START, {}, {}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, {}, {douglas}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, {douglas, andrew}, {christopher}},
+      ExecutionNodeMock{ExecutionNode::SUBQUERY_END, {christopher}, {patricia}},
+
+      ExecutionNodeMock{ExecutionNode::CALCULATION, {maria, patricia}, {betty}},
+
+      ExecutionNodeMock{ExecutionNode::SUBQUERY_START, {}, {}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, {}, {doris}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, {doris}, {christine}},
+      ExecutionNodeMock{ExecutionNode::SUBQUERY_END, {christine}, {wanda}},
+
+      ExecutionNodeMock{ExecutionNode::CALCULATION, {betty, wanda}, {ronald}},
+
+      ExecutionNodeMock{ExecutionNode::RETURN, {ronald}, {}}};
+  getVarUsage(nodes);
+  auto plan = walk(nodes);
+  {
+    SCOPED_TRACE("while checking maria");
+    assertVariableInRegister(plan, *maria, 0);
+  }
+  {
+    SCOPED_TRACE("while checking andrew");
+    assertVariableInRegister(plan, *andrew, 1);
+  }
+  {
+    SCOPED_TRACE("while checking douglas");
+    assertVariableInRegister(plan, *douglas, 0);
+  }
+  {
+    SCOPED_TRACE("while checking christopher");
+    assertVariableInRegister(plan, *christopher, 2);
+  }
+  {
+    SCOPED_TRACE("while checking patricia");
+    assertVariableInRegister(plan, *patricia, 1);
+  }
+  {
+    SCOPED_TRACE("while checking betty");
+    assertVariableInRegister(plan, *betty, 2);
+  }
+  {
+    SCOPED_TRACE("while checking doris");
+    assertVariableInRegister(plan, *doris, 0);
+  }
+  {
+    SCOPED_TRACE("while checking christine");
+    assertVariableInRegister(plan, *christine, 1);
+  }
+  {
+    SCOPED_TRACE("while checking wanda");
+    assertVariableInRegister(plan, *wanda, 0);
+  }
+  {
+    SCOPED_TRACE("while checking ronald");
+    assertVariableInRegister(plan, *ronald, 1);
+  }
+}
+
+// The current register planning cannot reuse registers that are never used.
+// Also see the comment on "brenda".
+TEST_F(RegisterPlanTest, DISABLED_reuse_unused_register) {
+  auto&& [vars, ptrs] = generateVars<2>();
+  auto [howard, brenda] = ptrs;
+  std::vector<ExecutionNodeMock> nodes{
+      ExecutionNodeMock{ExecutionNode::SINGLETON, {}, {}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, {}, {howard}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, {}, {brenda}},
+      ExecutionNodeMock{ExecutionNode::RETURN, {brenda}, {}}};
+  getVarUsage(nodes);
+  auto plan = walk(nodes);
+  {
+    SCOPED_TRACE("while checking howard");
+    assertVariableInRegister(plan, *howard, 0);
+  }
+  {
+    // As howard is never used, we could reuse register 0 immediately.
+    // However, the current register planning does not do that.
+    SCOPED_TRACE("while checking steve");
+    assertVariableInRegister(plan, *brenda, 0);
   }
 }
 

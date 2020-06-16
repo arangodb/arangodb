@@ -1905,6 +1905,36 @@ static void JS_GetCollectionShardDistribution(v8::FunctionCallbackInfo<v8::Value
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns database analyzers revision
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_GetAnalyzersRevision(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+
+  onlyInCluster();
+
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("getAnalyzersRevision(<databaseName>)");
+  }
+
+  auto const databaseID = TRI_ObjectToString(isolate, args[0]);
+
+  TRI_GET_GLOBALS();
+  auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
+  auto const analyzerRevision = ci.getAnalyzersRevision(databaseID);
+
+  if (!analyzerRevision) {
+    TRI_V8_THROW_EXCEPTION_PARAMETER("<databaseName> is invalid");
+  }
+
+  VPackBuilder result;
+  analyzerRevision->toVelocyPack(result);
+
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a global cluster context
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2003,6 +2033,7 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(isolate, rt,
                        TRI_V8_ASCII_STRING(isolate, "getCoordinators"), JS_GetCoordinators);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "uniqid"), JS_UniqidClusterInfo);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getAnalyzersRevision"), JS_GetAnalyzersRevision);
 
   v8g->ClusterInfoTempl.Reset(isolate, rt);
   TRI_AddGlobalFunctionVocbase(isolate,

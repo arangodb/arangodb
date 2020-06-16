@@ -28,7 +28,6 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
-#include "Containers/MerkleTree.h"
 #include "Futures/Future.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/CountCache.h"
@@ -109,8 +108,8 @@ class LogicalCollection : public LogicalDataSource {
   std::string globallyUniqueId() const;
 
   // For normal collections the realNames is just a vector of length 1
-  // with its name. For smart edge collections (enterprise only) this is
-  // different.
+  // with its name. For smart edge collections (Enterprise Edition only)
+  // this is different.
   virtual std::vector<std::string> realNames() const {
     return std::vector<std::string>{name()};
   }
@@ -155,8 +154,8 @@ class LogicalCollection : public LogicalDataSource {
 
   bool hasClusterWideUniqueRevs() const;
 
-  /// @brief return the name of the smart join attribute (empty string
-  /// if no smart join attribute is present)
+  /// @brief return the name of the SmartJoin attribute (empty string
+  /// if no SmartJoin attribute is present)
   std::string const& smartJoinAttribute() const { return _smartJoinAttribute; }
 
   // SECTION: sharding
@@ -213,7 +212,7 @@ class LogicalCollection : public LogicalDataSource {
                        std::function<bool(arangodb::Index const*, uint8_t&)> const& filter) const;
 
   /// @brief a method to skip certain documents in AQL write operations,
-  /// this is only used in the enterprise edition for smart graphs
+  /// this is only used in the Enterprise Edition for SmartGraphs
   virtual bool skipForAqlWrite(velocypack::Slice document, std::string const& key) const;
 
   bool allowUserKeys() const;
@@ -374,12 +373,12 @@ class LogicalCollection : public LogicalDataSource {
   bool const _isAStub;
 
 #ifdef USE_ENTERPRISE
-  // @brief Flag if this collection is a disjoint smart one. (Enterprise only)
+  // @brief Flag if this collection is a disjoint smart one. (Enterprise Edition only)
   // can only be true if _isSmart is also true
   bool const _isDisjoint;
-  // @brief Flag if this collection is a smart one. (Enterprise only)
+  // @brief Flag if this collection is a smart one. (Enterprise Edition only)
   bool const _isSmart;
-  // @brief Flag if this collection is a child of a smart collection (Enterprise only)
+  // @brief Flag if this collection is a child of a smart collection (Enterprise Edition only)
   bool const _isSmartChild;
 #endif
 

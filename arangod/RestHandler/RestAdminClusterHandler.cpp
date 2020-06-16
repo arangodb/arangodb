@@ -38,7 +38,7 @@
 #include "Cluster/AgencyPaths.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FollowerInfo.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -333,7 +333,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::retryTryDeleteServe
           return tryDeleteServer(std::move(ctx));
         });
   } else {
-    generateError(rest::ResponseCode::REQUEST_TIMEOUT, TRI_ERROR_HTTP_PRECONDITION_FAILED,
+    generateError(rest::ResponseCode::PRECONDITION_FAILED, TRI_ERROR_HTTP_PRECONDITION_FAILED,
                   "server may not be deleted");
     return futures::makeFuture();
   }

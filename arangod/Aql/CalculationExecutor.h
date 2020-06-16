@@ -25,9 +25,8 @@
 
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/RegexCache.h"
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/RegisterInfos.h"
-#include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/Stats.h"
 #include "Aql/types.h"
 #include "Transaction/Methods.h"
@@ -123,7 +122,7 @@ class CalculationExecutor {
 
  private:
   transaction::Methods _trx;
-  aql::RegexCache _regexCache;
+  aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
   CalculationExecutorInfos& _infos;
 
   Fetcher& _fetcher;

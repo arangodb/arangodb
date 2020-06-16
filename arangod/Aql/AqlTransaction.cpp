@@ -79,28 +79,16 @@ AqlTransaction::AqlTransaction(
 
 /// @brief add a collection to the transaction
 Result AqlTransaction::processCollection(aql::Collection* collection) {
-  Result res;
-
-  if (_state->isCoordinator()) {
-    auto cid = resolver()->getCollectionId(collection->name());
-
-    return res.reset(addCollection(cid, collection->name(), collection->accessType()));
+  if (collection->hasCollectionObject()) {
+    // we should get here for all existing collections/shards, but
+    // not for views.
+    auto c = collection->getCollection();
+    // note that c->name() and collection->name() may differ if the collection
+    // is accessed in a query by its id instead of its name.
+    return addCollection(c->id(), c->name(), collection->accessType());
   }
 
-  TRI_voc_cid_t cid = 0;
-  auto col = resolver()->getCollection(collection->name());
-
-  if (col != nullptr) {
-    cid = col->id();
-  } else {
-    cid = resolver()->getCollectionId(collection->name());
-  }
-
-  res = addCollection(cid, collection->name(), collection->accessType());
-
-  if (res.ok() && col != nullptr) {
-    collection->setCollection(col);
-  }
-
-  return res;
+  // views
+  TRI_voc_cid_t cid = resolver()->getCollectionId(collection->name());
+  return addCollection(cid, collection->name(), collection->accessType());
 }

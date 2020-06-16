@@ -61,11 +61,6 @@ RegisterInfos::RegisterInfos(RegIdSet readableInputRegisters, RegIdSet writeable
       _numOutRegs(nrOutputRegisters),
       _registersToKeep(std::move(registersToKeep)),
       _registersToClear(std::move(registersToClear)) {
-  // The second assert part is from ReturnExecutor special case, we shrink all
-  // results into a single Register column.
-  TRI_ASSERT((nrInputRegisters <= nrOutputRegisters) ||
-             (nrOutputRegisters == 1 && _registersToKeep.back().empty() &&
-              _registersToClear.empty()));
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   for (RegisterId const inReg : _inRegs) {
@@ -76,13 +71,14 @@ RegisterInfos::RegisterInfos(RegIdSet readableInputRegisters, RegIdSet writeable
   }
   for (RegisterId const regToClear : _registersToClear) {
     // sic: It's possible that a current output register is immediately cleared!
-    TRI_ASSERT(regToClear < nrOutputRegisters);
+    TRI_ASSERT(regToClear < nrInputRegisters);
     TRI_ASSERT(_registersToKeep.back().find(regToClear) ==
                _registersToKeep.back().end());
   }
   TRI_ASSERT(!_registersToKeep.empty());
   for (RegisterId const regToKeep : _registersToKeep.back()) {
     TRI_ASSERT(regToKeep < nrInputRegisters);
+    TRI_ASSERT(regToKeep < nrOutputRegisters);
     TRI_ASSERT(_registersToClear.find(regToKeep) == _registersToClear.end());
   }
 #endif

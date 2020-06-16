@@ -143,7 +143,7 @@ class ExecutionEngine {
   ExecutionStats& globalStats() { return _execStats; }
   
   void setShutdown() {
-    _wasShutdown = true;
+    _wasShutdown.store(true, std::memory_order_relaxed);
   }
   
   bool waitForSatellites(aql::QueryContext& query, Collection const* collection) const;
@@ -194,9 +194,8 @@ class ExecutionEngine {
   /// @brief whether or not initializeCursor was called
   bool _initializeCursorCalled;
   
-  bool _wasShutdown;
-  
-  std::atomic<bool> _sentShutdownResponse{false};
+  std::atomic<bool> _wasShutdown;
+  std::atomic<bool> _sentShutdownResponse;
 };
 }  // namespace aql
 }  // namespace arangodb

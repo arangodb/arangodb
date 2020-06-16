@@ -68,7 +68,6 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/IndexHint.h"
 #include "Aql/Variable.h"
-#include "Aql/VarUsageFinder.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
@@ -396,6 +395,13 @@ class ExecutionNode {
 
   /// @brief getVarsUsedLater, this returns the set of variables that will be
   /// used later than this node, i.e. in the repeated parents.
+  auto getVarsUsedLater() const noexcept -> VarSet const&;
+
+  /// @brief Stack of getVarsUsedLater, needed for spliced subqueries. Index 0
+  /// corresponds to the outermost spliced subquery, up to either the top level
+  /// or a classic subquery. While the last entry corresponds to the current
+  /// level and is the same as getVarsUsedLater().
+  /// Is never empty (after the VarUsageFinder ran / if _varUsageValid is true).
   auto getVarsUsedLaterStack() const noexcept -> VarSetStack const&;
 
   /// @brief setVarsValid
@@ -410,11 +416,14 @@ class ExecutionNode {
   /// @brief getVarsValid, this returns the set of variables that is valid
   /// for items leaving this node, this includes those that will be set here
   /// (see getVariablesSetHere).
-  auto getVarsValidStack() const noexcept -> VarSetStack const&;
+  auto getVarsValid() const noexcept -> VarSet const&;
 
-  /// @brief shortcut functions matching the old interface
-  auto getVarsValid() const noexcept -> VarSet const& { return getVarsValidStack().back(); }
-  auto getVarsUsedLater() const noexcept -> VarSet const& { return getVarsUsedLaterStack().back(); }
+  /// @brief Stack of getVarsValid, needed for spliced subqueries. Index 0
+  /// corresponds to the outermost spliced subquery, up to either the top level
+  /// or a classic subquery. While the last entry corresponds to the current
+  /// level and is the same as getVarsValid().
+  /// Is never empty (after the VarUsageFinder ran / if _varUsageValid is true).
+  auto getVarsValidStack() const noexcept -> VarSetStack const&;
 
   /// @brief setVarUsageValid
   void setVarUsageValid();
@@ -505,12 +514,16 @@ class ExecutionNode {
   /// @brief cost estimate for the node
   CostEstimate mutable _costEstimate;
 
-  /// @brief _varsUsedLater and _varsValid, the former contains those
-  /// variables that are still needed further down in the chain. The
-  /// latter contains the variables that are set from the dependent nodes
-  /// when an item comes into the current node. Both are only valid if
-  /// _varUsageValid is true. Use ExecutionPlan::findVarUsage to set
-  /// this. TODO update this comment
+  /// @brief _varsUsedLaterStack and _varsValidStack.
+  /// The back() always corresponds to the current node, while the lower indexes
+  /// correspond to containing spliced subqueries, up to either the top level
+  /// or a containing SubqueryNode. Is thus never empty (after VarUsageFinder
+  /// ran, i.e. _varUsageValid is true).
+  /// VarsUsedLater are variables that are used by any of this node's ancestors.
+  /// VarsValid are variables that are either set here, of by any of its
+  /// descendants.
+  /// Both are set by calling ExecutionPlan::findVarUsage. After that,
+  /// _varUsageValid is true.
   VarSetStack _varsUsedLaterStack;
   VarSetStack _varsValidStack;
 
@@ -820,8 +833,10 @@ class SubqueryNode : public ExecutionNode {
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
 
-  /// @brief whether or not the subquery is a data-modification operation
-  bool isModificationSubquery() const;
+  /// @brief this is true iff the subquery contains a data-modification operation
+  ///        NOTE that this is tested recursively, that is, if this subquery contains
+  ///        a subquery that contains a modification operation, this is true too.
+  bool isModificationNode() const override;
 
   /// @brief getter for subquery
   ExecutionNode* getSubquery() const;

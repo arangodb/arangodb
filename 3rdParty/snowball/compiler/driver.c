@@ -140,8 +140,20 @@ static int read_options(struct options * o, int argc, char * argv[]) {
                 continue;
             }
             if (eq(s, "-n") || eq(s, "-name")) {
+                /* Copy here so we do not free an argv item. */
+                const char * name = NULL;
+                char * new_name = NULL;
+                size_t len = 0;
+
                 check_lim(i, argc);
-                o->name = argv[i++];
+                name = argv[i++];
+
+                len = strlen(name);
+                new_name = malloc(len+1);
+                memcpy(new_name, name, len);
+                new_name[len] = '\0';
+
+                o->name = new_name;
                 continue;
             }
 #ifndef DISABLE_JS
@@ -567,6 +579,7 @@ extern int main(int argc, char * argv[]) {
             lose_b(p->b); FREE(p); p = q;
         }
     }
+    free((void*)o->name);
     FREE(o);
     if (space_count) fprintf(stderr, "%d blocks unfreed\n", space_count);
     return 0;

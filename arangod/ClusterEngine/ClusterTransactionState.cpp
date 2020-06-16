@@ -27,6 +27,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ClusterTrxMethods.h"
 #include "ClusterEngine/ClusterEngine.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -44,7 +45,12 @@ using namespace arangodb;
 ClusterTransactionState::ClusterTransactionState(TRI_vocbase_t& vocbase,
                                                  TRI_voc_tid_t tid,
                                                  transaction::Options const& options)
-    : TransactionState(vocbase, tid, options) {}
+    : TransactionState(vocbase, tid, options) {
+  TRI_ASSERT(isCoordinator());
+  acceptAnalyzersRevision(_vocbase.server()
+    .getFeature< arangodb::iresearch::IResearchAnalyzerFeature>()
+    .getAnalyzersRevision(_vocbase, false)->getRevision());
+}
 
 /// @brief start a transaction
 Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
@@ -57,7 +63,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 
   // set hints
   _hints = hints;
-  
+
   auto cleanup = scopeGuard([&] {
     updateStatus(transaction::Status::ABORTED);
     _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted++;
@@ -89,12 +95,10 @@ Result ClusterTransactionState::commitTransaction(transaction::Methods* activeTr
     return Result(TRI_ERROR_DEBUG);
   }
 
-  arangodb::Result res;
-  
   updateStatus(transaction::Status::COMMITTED);
   _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsCommitted++;
 
-  return res;
+  return {};
 }
 
 /// @brief abort and rollback a transaction
@@ -105,5 +109,5 @@ Result ClusterTransactionState::abortTransaction(transaction::Methods* activeTrx
   updateStatus(transaction::Status::ABORTED);
   _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted++;
   
-  return Result();
+  return {};
 }

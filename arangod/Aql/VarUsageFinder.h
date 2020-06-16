@@ -44,8 +44,9 @@ using VarUsageFinder = VarUsageFinderT<ExecutionNode>;
 
 template <class T>
 struct VarUsageFinderT final : public WalkerWorker<T> {
-  VarSetStack _usedLaterStack = VarSetStack{{}};
-  VarSetStack _varsValidStack = VarSetStack{{}};
+  VarSetStack _usedLaterStack{VarSet{}};
+  VarSetStack _varsValidStack{VarSet{}};
+
   std::unordered_map<VariableId, T*>* _varSetBy;
   bool const _ownsVarSetBy;
 

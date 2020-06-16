@@ -24,6 +24,8 @@
 #define ARANGODB_PROGRAM_OPTIONS_TRANSLATOR_H 1
 
 #include "Basics/Common.h"
+#include <string>
+
 
 namespace arangodb {
 namespace options {

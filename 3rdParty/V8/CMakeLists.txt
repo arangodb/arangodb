@@ -148,9 +148,9 @@ if (WIN32)
     set(GYP_MSVS_VERSION "2017")
     MESSAGE(STATUS "setting GYP_MSVS_VERSION to 2017")
   elseif (${CMAKE_GENERATOR} MATCHES "2019")
-    # try to find 2017 in 'Visual Studio 15 2017 Win64'
+    # try to find 2019 in 'Visual Studio 16 2019 Win64'
     set(GYP_MSVS_VERSION "2019")
-    MESSAGE(STATUS "setting GYP_MSVS_VERSION to 2017")
+    MESSAGE(STATUS "setting GYP_MSVS_VERSION to 2019")
   else ()
     set(GYP_MSVS_VERSION "2017")
     MESSAGE(STATUS "setting GYP_MSVS_VERSION to 2017 by default")

@@ -26,7 +26,7 @@
 
 #include "Aql/Query.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 
 #include <map>
 #include <set>

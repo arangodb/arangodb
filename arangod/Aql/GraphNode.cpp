@@ -358,7 +358,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   auto getAqlCollectionFromName = [&](std::string const& name) -> aql::Collection* {
     // if the collection was already existent in the query, addCollection will
     // just return it.
-    return query.collections().add(name, AccessMode::Type::READ);
+    return query.collections().add(name, AccessMode::Type::READ, aql::Collection::Hint::Collection);
   };
 
   auto vPackDirListIter = VPackArrayIterator(dirList);
@@ -435,6 +435,9 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   _options = BaseOptions::createOptionsFromSlice(_plan->getAst()->query(), opts);
   // set traversal-translations
   _options->setCollectionToShard(_collectionToShard);  // could be moved as it will only be used here
+  if (_options->parallelism() > 1) {
+    _plan->getAst()->setContainsParallelNode();
+  }
 }
 
 /// @brief Internal constructor to clone the node.
@@ -522,7 +525,7 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   // TODO We need Both?!
   // Graph definition
   nodes.add("graph", _graphInfo.slice());
-  nodes.add("isSatelliteNode", VPackValue(isSatelliteNode()));
+  nodes.add("isLocalGraphNode", VPackValue(isLocalGraphNode()));
   nodes.add("isUsedAsSatellite", VPackValue(isUsedAsSatellite()));
 
   // Graph Definition
@@ -791,7 +794,7 @@ bool GraphNode::isEligibleAsSatelliteTraversal() const {
 
 bool GraphNode::isUsedAsSatellite() const { return false; }
 
-bool GraphNode::isSatelliteNode() const { return false; }
+bool GraphNode::isLocalGraphNode() const { return false; }
 
 void GraphNode::waitForSatelliteIfRequired(ExecutionEngine const* engine) const {}
 

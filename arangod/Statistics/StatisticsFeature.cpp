@@ -150,7 +150,7 @@ StatisticsFeature::StatisticsFeature(application_features::ApplicationServer& se
   startsAfter<AqlFeaturePhase>();
 }
 
-StatisticsFeature::~StatisticsFeature() {} // required by unique_ptrs to incomplete types
+StatisticsFeature::~StatisticsFeature() = default;
 
 void StatisticsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("server.disable-statistics", "server.statistics");

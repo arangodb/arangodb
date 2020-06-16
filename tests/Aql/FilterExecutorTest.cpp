@@ -172,7 +172,7 @@ TEST_P(FilterExecutorTest, hard_limit) {
   auto registerInfos = buildRegisterInfos();
   auto executorInfos = buildExecutorInfos();
   AqlCall call{};
-  call.hardLimit = 0;
+  call.hardLimit = 0u;
   call.fullCount = true;
   ExecutionStats{};
   makeExecutorTestHelper<2, 2>()
