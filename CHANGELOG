@@ -21,8 +21,6 @@ v3.4.11 (XXXX-XX-XX)
 * Fixed issue #11525: Address security vulnerability by updating Swagger-UI
   dependency (upgraded Swagger UI to 3.25.1).
 
-* Update arangosync to 0.7.5.
-
 * Fixed issue ES-605: arangodump broken when using encryption.
 
 * Do not always loadPlan from agency when collections of a database are listed.
