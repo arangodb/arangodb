@@ -1,6 +1,8 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Fixed unintentional connection re-use for cluster-internal communications.
+
 * Fixed internal issue #701: Dangling readers in ArangoSearch index_writer
   cache.
     
