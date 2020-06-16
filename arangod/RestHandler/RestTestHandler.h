@@ -26,7 +26,7 @@
 
 #include <chrono>
 
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {

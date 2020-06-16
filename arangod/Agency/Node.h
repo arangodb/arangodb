@@ -25,7 +25,7 @@
 #define ARANGOD_CONSENSUS_NODE_H 1
 
 #include "AgencyCommon.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/velocypack-aliases.h>
