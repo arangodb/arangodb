@@ -29,7 +29,7 @@
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Cluster/ClusterTypes.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 #include "Replication/Syncer.h"
 #include "Replication/common-defines.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"

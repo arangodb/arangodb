@@ -388,12 +388,11 @@ function removeCost (obj) {
   if (Array.isArray(obj)) {
     return obj.map(removeCost);
   } else if (typeof obj === 'object') {
-    var result = {};
+    let result = {};
     for (var key in obj) {
-      if (obj.hasOwnProperty(key)) {
-        if (key !== "estimatedCost" || key !== "selectivityEstimate") {
-          result[key] = removeCost(obj[key]);
-        }
+      if (obj.hasOwnProperty(key) &&
+          key !== "estimatedCost" && key !== "selectivityEstimate") {
+        result[key] = removeCost(obj[key]);
       }
     }
     return result;
@@ -401,7 +400,6 @@ function removeCost (obj) {
     return obj;
   }
 }
-
 
 exports.getParseResults = getParseResults;
 exports.assertParseError = assertParseError;

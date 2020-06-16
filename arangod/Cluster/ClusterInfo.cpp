@@ -1944,15 +1944,13 @@ Result ClusterInfo::cancelCreateDatabaseCoordinator(CreateDatabaseInfo const& da
       LOG_TOPIC("b47aa", WARN, arangodb::Logger::CLUSTER)
         << "failed to cancel creation of database " << database.getName() << " with error "
         << res.errorMessage() << ". Retrying.";
-    }
-
-    if (res.slice().get("results").length()) {
+    } else if (res.slice().get("results").length()) {
       waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
     }
     if (_server.isStopping()) {
       return Result(TRI_ERROR_SHUTTING_DOWN);
     }
-  } while(!res.successful());
+  } while (!res.successful());
 
   return Result();
 }
@@ -2015,7 +2013,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
     if (res._statusCode == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
           return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     }
-      return Result(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN);
+    return Result(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN);
   }
   if (res.slice().get("results").length()) {
     waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
@@ -3013,7 +3011,7 @@ Result ClusterInfo::dropViewCoordinator(  // drop view
   AgencyComm ac(_server);
   auto const res = ac.sendTransactionWithFailover(trans);
 
-  if (res.slice().get("results").length()) {
+  if (res.successful() && res.slice().get("results").length()) {
     waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
   } else {
     loadPlan();  // this is only for the unittests, where no planSyncer thread runs
@@ -3136,10 +3134,12 @@ std::pair<Result, AnalyzersRevision::Revision> ClusterInfo::startModifyingAnalyz
                {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP}},
               {{anPath, AgencyPrecondition::Type::EMPTY, true}} };
           auto const res = ac.sendTransactionWithFailover(transaction);
-          auto results = res.slice().get("results");
-          if (results.isArray() && results.length() > 0) {
-            readLocker.unlock(); // we want to wait for plan to load - release reader
-            waitForPlan(results[0].getNumber<uint64_t>()).get();
+          if (res.successful()) {
+            auto results = res.slice().get("results");
+            if (results.isArray() && results.length() > 0) {
+              readLocker.unlock(); // we want to wait for plan to load - release reader
+              waitForPlan(results[0].getNumber<uint64_t>()).get();
+            }
           }
         }
         continue;
