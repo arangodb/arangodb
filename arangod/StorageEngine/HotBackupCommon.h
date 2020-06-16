@@ -26,7 +26,7 @@
 #include "Basics/ResultT.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/VelocyPackHelper.h"
@@ -46,6 +46,7 @@ struct BackupMeta {
   std::string _id;
   std::string _version;
   std::string _datetime;
+  std::vector<std::string> _userSecretHashes; // might be empty
   size_t _sizeInBytes;
   size_t _nrFiles;
   unsigned int _nrDBServers;
@@ -57,6 +58,7 @@ struct BackupMeta {
   static constexpr const char *ID = "id";
   static constexpr const char *VERSION = "version";
   static constexpr const char *DATETIME = "datetime";
+  static constexpr const char *SECRETHASH = "keys";
   static constexpr const char *SIZEINBYTES = "sizeInBytes";
   static constexpr const char *NRFILES = "nrFiles";
   static constexpr const char *NRDBSERVERS = "nrDBServers";
@@ -72,6 +74,13 @@ struct BackupMeta {
       builder.add(ID, VPackValue(_id));
       builder.add(VERSION, VPackValue(_version));
       builder.add(DATETIME, VPackValue(_datetime));
+      builder.add(SECRETHASH, VPackValue(VPackValueType::Array, true));
+      for (auto const& tmp : _userSecretHashes) {
+        builder.openObject(/*unindexed*/true);
+        builder.add("sha256", VPackValue(tmp));
+        builder.close();
+      }
+      builder.close();
       builder.add(SIZEINBYTES, VPackValue(_sizeInBytes));
       builder.add(NRFILES, VPackValue(_nrFiles));
       builder.add(NRDBSERVERS, VPackValue(_nrDBServers));
@@ -92,6 +101,15 @@ struct BackupMeta {
       meta._id = slice.get(ID).copyString();
       meta._version  = slice.get(VERSION).copyString();
       meta._datetime = slice.get(DATETIME).copyString();
+      VPackSlice hashes = slice.get(SECRETHASH);
+      if (hashes.isArray()) {
+        for (VPackSlice val : VPackArrayIterator(hashes)) {
+          VPackSlice hash;
+          if (val.isObject() && (hash = val.get("sha256")).isString()) {
+            meta._userSecretHashes.push_back(hash.copyString());
+          }
+        }
+      }
       meta._sizeInBytes = basics::VelocyPackHelper::getNumericValue<size_t>(
           slice, SIZEINBYTES, 0);
       meta._nrFiles = basics::VelocyPackHelper::getNumericValue<size_t>(
@@ -109,8 +127,10 @@ struct BackupMeta {
     }
   }
 
-  BackupMeta(std::string const& id, std::string const& version, std::string const& datetime, size_t sizeInBytes, size_t nrFiles, unsigned int nrDBServers, std::string const& serverId, bool potentiallyInconsistent) :
-    _id(id), _version(version), _datetime(datetime),
+  BackupMeta(std::string const& id, std::string const& version, std::string const& datetime,
+             std::vector<std::string> const& hashes, size_t sizeInBytes,
+             size_t nrFiles, unsigned int nrDBServers, std::string const& serverId, bool potentiallyInconsistent) :
+    _id(id), _version(version), _datetime(datetime), _userSecretHashes(hashes),
     _sizeInBytes(sizeInBytes), _nrFiles(nrFiles), _nrDBServers(nrDBServers),
     _serverId(serverId), _potentiallyInconsistent(potentiallyInconsistent),_isAvailable(true), _nrPiecesPresent(1) {}
 
