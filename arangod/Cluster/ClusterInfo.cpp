@@ -2347,8 +2347,10 @@ Result ClusterInfo::createCollectionsCoordinator(
 
       auto const dslProtoColPath =
           paths::root()->arango()->plan()->collections()->database(databaseName)->collection(otherCidString);
+      // The distributeShardsLike prototype collection should exist in the plan...
       precs.emplace_back(AgencyPrecondition(dslProtoColPath,
                                             AgencyPrecondition::Type::EMPTY, false));
+      // ...and should not still be in creation.
       precs.emplace_back(AgencyPrecondition(dslProtoColPath->isBuilding(),
                                             AgencyPrecondition::Type::EMPTY, true));
 
