@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed non-deterministic test failure in Pregel WCC test.
+
 * Fixed unintentional connection re-use for cluster-internal communications.
 
 * Fixed problem with newer replication protocol and ArangoSearch which could
