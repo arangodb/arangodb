@@ -1,6 +1,8 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Fixed non-deterministic test failure in Pregel WCC test.
+
 * Add a recovery test to check that there are no warnings at server start after
   a graceful shutdown.
 
