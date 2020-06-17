@@ -920,7 +920,7 @@ int TRI_UnlinkFile(char const* filename) {
 TRI_read_return_t TRI_ReadPointer(int fd, char* buffer, size_t length) {
   char* ptr = buffer;
   size_t remainLength = length;
-  
+
   while (0 < remainLength) {
     TRI_read_return_t n = TRI_READ(fd, ptr, static_cast<TRI_read_t>(remainLength));
 
@@ -929,8 +929,6 @@ TRI_read_return_t TRI_ReadPointer(int fd, char* buffer, size_t length) {
       LOG_TOPIC("c9c0c", ERR, arangodb::Logger::FIXME) << "cannot read: " << TRI_LAST_ERROR_STR;
       return n; // always negative
     } else if (n == 0) {
-      TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      LOG_TOPIC("87f52", ERR, arangodb::Logger::FIXME) << "cannot read, end-of-file";
       break;
     }
 
