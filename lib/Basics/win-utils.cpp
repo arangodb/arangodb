@@ -284,7 +284,7 @@ TRI_read_return_t TRI_READ_POINTER(HANDLE fd, void* Buffer, size_t length) {
     }
   }
 
-  return length;
+  return static_cast<TRI_read_return_t>(length);
 }
 
 
