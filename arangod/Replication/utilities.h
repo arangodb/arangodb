@@ -140,30 +140,6 @@ struct BarrierInfo {
   Result remove(Connection&) noexcept;
 };
 
-struct BatchInfo {
-  static constexpr double DefaultTimeout = 7200.0;
-
-  /// @brief dump batch id
-  uint64_t id{0};
-  /// @brief ttl for batches
-  int ttl{static_cast<int>(DefaultTimeout)};
-  /// @brief dump batch last update time
-  double updateTime{0};
-
-  /// @brief send a "start batch" command
-  /// @param patchCount try to patch count of this collection
-  ///        only effective with the incremental sync
-  Result start(Connection const& connection, ProgressInfo& progress,
-               SyncerId syncerId, std::string const& patchCount = "");
-
-  /// @brief send an "extend batch" command
-  Result extend(Connection const& connection, ProgressInfo& progress, SyncerId syncerId);
-
-  /// @brief send a "finish batch" command
-  // TODO worker-safety
-  Result finish(Connection const& connection, ProgressInfo& progress, SyncerId syncerId);
-};
-
 struct MasterInfo {
   std::string endpoint;
   std::string engine;  // storage engine (optional)
@@ -186,6 +162,30 @@ struct MasterInfo {
  private:
   bool _force32mode{false};  // force client to act like 3.2
 #endif
+};
+
+struct BatchInfo {
+  static constexpr double DefaultTimeout = 7200.0;
+
+  /// @brief dump batch id
+  uint64_t id{0};
+  /// @brief ttl for batches
+  int ttl{static_cast<int>(DefaultTimeout)};
+  /// @brief dump batch last update time
+  double updateTime{0};
+
+  /// @brief send a "start batch" command
+  /// @param patchCount try to patch count of this collection
+  ///        only effective with the incremental sync
+  Result start(Connection const& connection, ProgressInfo& progress, MasterInfo& master,
+               SyncerId syncerId, std::string const& patchCount = "");
+
+  /// @brief send an "extend batch" command
+  Result extend(Connection const& connection, ProgressInfo& progress, SyncerId syncerId);
+
+  /// @brief send a "finish batch" command
+  // TODO worker-safety
+  Result finish(Connection const& connection, ProgressInfo& progress, SyncerId syncerId);
 };
 
 /// @brief generates basic source headers for ClusterComm requests
