@@ -598,8 +598,8 @@ void H2CommTask<T>::queueHttp2Responses() {
     }
 
     for (std::string const& cookie : res.cookies()) {
-      nva.push_back({(uint8_t*)"set-cookie", (uint8_t*)cookie.c_str(), 10,
-                     cookie.length(),
+      nva.push_back({(uint8_t*)"set-cookie", (uint8_t*)cookie.data(), 10,
+                     cookie.size(),
                      NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE});
     }
 
@@ -610,14 +610,14 @@ void H2CommTask<T>::queueHttp2Responses() {
                      type.length(), NGHTTP2_NV_FLAG_NO_COPY_NAME});
     }
 
+    std::string len;
     nghttp2_data_provider *prd_ptr = nullptr, prd;
     if (!res.generateBody() ||
         ::expectResponseBody(static_cast<int>(res.responseCode()))
       ) {
-      std::string len;
       len = std::to_string(res.bodySize());
       nva.push_back({(uint8_t*)"content-length", (uint8_t*)len.c_str(), 14,
-                     len.length(), NGHTTP2_NV_FLAG_NO_COPY_NAME});
+                     len.size(), NGHTTP2_NV_FLAG_NO_COPY_NAME});
     }
     
     RequestStatistics::Item const& stat = strm->statistics;
