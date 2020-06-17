@@ -1,6 +1,9 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue ES-598. Web UI now shows correct permissions in case wildcard
+  database level and wildcard collection level permissions are both set.
+
 * Fixed velocypack validator for proper check of keys.
 
 * Fixed internal issue #701: Dangling readers in ArangoSearch index_writer
