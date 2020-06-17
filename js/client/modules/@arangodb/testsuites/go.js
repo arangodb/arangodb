@@ -64,7 +64,6 @@ const testPaths = {
 
 function goDriver (options) {
   function runInGoTest (options, instanceInfo, file, addArgs) {
-    let results = {};
     process.env['TEST_ENDPOINTS'] = instanceInfo.url;
     process.env['TEST_AUTHENTICATION'] = 'basic:root:';
     let jwt = pu.getJwtSecret(options);
@@ -102,15 +101,13 @@ function goDriver (options) {
       print(process.env);
       print(args);
     }
-
     let start = Date();
     const res = executeExternal('go', args, true, [], options.gosource);
     // let alljsonLines = []
     let b = '';
+    let results = {};
     let status = true;
     let rc = {};
-    results['go_driver'] = {};
-    let testResults = results['go_driver'];
     let count = 0;
     do {
       let buf = fs.readPipe(res.pid);
@@ -127,6 +124,9 @@ function goDriver (options) {
             lineStart = j + 1;
             try {
               let item = JSON.parse(line);
+              if (options.extremeVerbosity) {
+                print(item);
+              }
               // alljsonLines.push(item)
               // print(item)
               let testcase = 'WARN';
@@ -144,8 +144,8 @@ function goDriver (options) {
                   status = false;
                 }
               }
-              if (!testResults.hasOwnProperty(testcase)) {
-                testResults[testcase] = {
+              if (!results.hasOwnProperty(testcase)) {
+                results[testcase] = {
                   "setUpDuration": 0,
                   "tearDownDuration": 0,
                   "status": testcase !== 'WARN',
@@ -153,7 +153,7 @@ function goDriver (options) {
                   "message": ''
                 };
               }
-              let thiscase = testResults[testcase];
+              let thiscase = results[testcase];
               switch(item.Action) {
               case 'fail':
                 status = false;
@@ -162,7 +162,7 @@ function goDriver (options) {
                 break;
               case 'output':
                 thiscase.message += item.Output;
-                print(item.Output.replace(/^\s+|\s+$/g, ''));
+                print(item.Time + " - " + item.Output.replace(/^\s+|\s+$/g, ''));
                 break;
               case 'pass':
                 thiscase.status = true;
@@ -191,12 +191,18 @@ function goDriver (options) {
         buf = fs.readPipe(res.pid);
         b += buf;
       }
-      let rc = statusExternal(res.pid);
+      rc = statusExternal(res.pid);
       if (rc.status === 'NOT-FOUND') {
         break;
       }
     } while (rc.status === 'RUNNING');
+    if (rc.exit !== 0) {
+      status = false;
+    }
     // fs.write('/tmp/bla.json', JSON.stringify(alljsonLines))
+    results['timeout'] = false;
+    results['status'] = status;
+    results['message'] = '';
     return results;
   }
   runInGoTest.info = 'runInGoTest';
