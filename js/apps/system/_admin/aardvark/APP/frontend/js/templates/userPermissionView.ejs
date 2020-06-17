@@ -4,7 +4,7 @@
 
   <div id="userPermissionView" class="innerContent">
     <div class="pure-g pure-table pure-table-header pure-title" style="clear: both">
-      <div class="pure-table-row">
+      <div class="pure-table-row" style="margin-right: 40px">
         <div class="<%= genClass %> left">Database</div>
         <div class="<%= genClass %> mid">Administrate <i class="fa fa-info-circle tippy" title="Allows creating/dropping of collections and setting user permissions in the database."></i></div>
         <div class="<%= genClass %> mid">Access <i class="fa fa-info-circle tippy" title="Allows access to the database. User cannot create or drop collections."></i></div>
@@ -20,7 +20,7 @@
           <% extraClass = 'noAction'; %>
         <% } %>
 
-        <div class="pure-table-row db-row noHover <%= extraClass %>" id="<%= db %>-db">
+        <div class="pure-table-row db-row noHover <%= extraClass %>" id="<%= db %>-db" style="margin-right: 40px;">
           <div class="<%= genClass2 %> left db-label">
 
             <% if (db.charAt(0) !== '*') { %>
@@ -106,7 +106,7 @@
             <% } %>
           <% } %>
 
-          <div class="collection-row pure-table-row noHover inner <%= extraClass %>" style="display: none">
+          <div class="collection-row pure-table-row noHover inner <%= extraClass %>" style="display: none;">
             <div class="<%= genClass %> left inner collection-label collection-label-first"><span class="collLabel">Collections<span></div>
             <div class="<%= genClass %> mid inner collection-label">Read/Write</div>
             <div class="<%= genClass %> mid inner collection-label">Read only</div>
