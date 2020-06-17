@@ -23,9 +23,11 @@
 
 #include "Query.h"
 
-#include "Aql/Ast.h"
+#include "Aql/AqlCallList.h"
+#include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlTransaction.h"
+#include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
@@ -45,6 +47,7 @@
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
 #include "Graph/Graph.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -63,7 +66,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
-#include "IResearch/IResearchAnalyzerFeature.h"
 
 #include <velocypack/Iterator.h>
 
@@ -403,16 +405,17 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         // In case of WAITING we return, this function is repeatable!
         // In case of HASMORE we loop
         while (true) {
-          auto res = engine->getSome(ExecutionBlock::DefaultBatchSize);
-          if (res.first == ExecutionState::WAITING) {
-            return res.first;
+          AqlCallStack defaultStack{AqlCallList{AqlCall{}}};
+          auto const& [state, skipped, block] = engine->execute(defaultStack);
+          // The default call asks for No skips.
+          TRI_ASSERT(skipped.nothingSkipped());
+          if (state == ExecutionState::WAITING) {
+            return state;
           }
 
-          // res.second == nullptr => state == DONE
-          TRI_ASSERT(res.second != nullptr || res.first == ExecutionState::DONE);
-
-          if (res.second == nullptr) {
-            TRI_ASSERT(res.first == ExecutionState::DONE);
+          // block == nullptr => state == DONE
+          if (block == nullptr) {
+            TRI_ASSERT(state == ExecutionState::DONE);
             break;
           }
 
@@ -421,10 +424,10 @@ ExecutionState Query::execute(QueryResult& queryResult) {
             TRI_ASSERT(_resultBuilder != nullptr);
             auto& resultBuilder = *_resultBuilder;
 
-            size_t const n = res.second->size();
+            size_t const n = block->size();
 
             for (size_t i = 0; i < n; ++i) {
-              AqlValue const& val = res.second->getValueReference(i, resultRegister);
+              AqlValue const& val = block->getValueReference(i, resultRegister);
 
               if (!val.isEmpty()) {
                 val.toVelocyPack(&vpackOptions(), resultBuilder, useQueryCache);
@@ -432,7 +435,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
             }
           }
 
-          if (res.first == ExecutionState::DONE) {
+          if (state == ExecutionState::DONE) {
             break;
           }
         }
