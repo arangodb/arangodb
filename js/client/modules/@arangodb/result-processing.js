@@ -621,7 +621,7 @@ function locateLongRunning(options, results, otherResults) {
 
         let statistics = [];
         for (let j = Object.keys(testCases).length - 1; (j >= 0) && (j > Object.keys(testCases).length - 31); j --) {
-          let otherTestTime;
+          let otherTestTime = "";
           if (otherResults) {
             otherTestTime = otherResults[pathForJson['testSuite']][pathForJson['testRunName']][testCases[j].testName]['duration'];
             otherTestTime = " - " + fancyTimeFormat(otherTestTime / 1000);
