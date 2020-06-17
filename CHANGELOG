@@ -1,6 +1,14 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Fixed unintentional connection re-use for cluster-internal communications.
+
+* Fixed problem with newer replication protocol and ArangoSearch which could
+  lead to server crashes during normal operation.
+
+* Fixed bad behavior that led to unnecessary additional revision tree rebuilding
+  on server restart.
+  
 * Allow AQL queries on DB-Servers again. This is not an official supported
   feature, but is sometimes used for debugging. Previous changes made it
   impossible to run a query on a local shard.
