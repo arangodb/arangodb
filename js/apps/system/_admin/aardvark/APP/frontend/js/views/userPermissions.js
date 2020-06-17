@@ -295,7 +295,7 @@
         }
       var self = this;
 
-      var getMaxPermissionAccess = function(databaseLevel, collectionLevel, serverLevel) {
+      var getMaxPermissionAccess = function (databaseLevel, collectionLevel, serverLevel) {
         // will return max permission level
         if (databaseLevel === 'undefined' && collectionLevel === 'undefined' && serverLevel !== 'undefined') {
           return serverLevel;
@@ -303,10 +303,10 @@
           // means - use default is selected here
           if (serverLevel === 'rw' || databaseLevel === 'rw') {
             return 'rw';
-          } else if (serverLevel === 'ro' || databaseLevel === 'ro') {
+          } else if (serverLevel === 'ro' || databaseLevel === 'ro') {
             return 'ro';
           }
-        } else if (serverLevel === 'rw' || databaseLevel === 'rw' || collectionLevel === 'rw') {
+        } else if (serverLevel === 'rw' || databaseLevel === 'rw' || collectionLevel === 'rw') {
           return 'rw';
         } else if (serverLevel === 'ro' || databaseLevel === 'ro' || collectionLevel === 'ro') {
           return 'ro';
@@ -348,7 +348,7 @@
                 if (access === 'undefined') {
                   // This means, we have no specific value set, we need now to compare if collection level wildcard is set and
                   // if database level wildcard is set and choose the max of it to display.
-                  let calculatedCollectionPermission = getMaxPermissionAccess(databaseLevelDefaultPermission, collectionLevelDefaultPermission, serverLevelDefaultPermission);
+                  var calculatedCollectionPermission = getMaxPermissionAccess(databaseLevelDefaultPermission, collectionLevelDefaultPermission, serverLevelDefaultPermission);
                   if (calculatedCollectionPermission === 'rw') {
                     $('#' + database + '-db #' + collection + '-collection .readWrite').css('box-shadow', cssShadow);
                   } else if (calculatedCollectionPermission === 'ro') {
