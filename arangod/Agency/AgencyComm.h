@@ -575,7 +575,7 @@ class AgencyComm {
  public:
   explicit AgencyComm(application_features::ApplicationServer&);
 
-  AgencyCommResult sendServerState();
+  AgencyCommResult sendServerState(double timeout);
 
   std::string version();
 
@@ -592,8 +592,9 @@ class AgencyComm {
 
   AgencyCommResult setValue(std::string const&, arangodb::velocypack::Slice const&, double);
 
-  AgencyCommResult setTransient(std::string const&,
-                                arangodb::velocypack::Slice const&, uint64_t);
+  AgencyCommResult setTransient(std::string const& key,
+                                arangodb::velocypack::Slice const& slice, 
+                                uint64_t ttl, double timeout);
 
   bool exists(std::string const&);
 

@@ -1,6 +1,10 @@
 devel
 -----
 
+* Allow for faster cluster shutdown. This should reduce the number of shutdown
+  hangers in case the agents are stopped already and then coordinators or
+  DB-Servers are shut down.
+
 * Fixed non-deterministic test failure in Pregel WCC test.
 
 * Fixed unintentional connection re-use for cluster-internal communications.
