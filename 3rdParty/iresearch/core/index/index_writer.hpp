@@ -41,7 +41,6 @@
 #include "utils/string.hpp"
 #include "utils/noncopyable.hpp"
 
-#include <cassert>
 #include <atomic>
 
 NS_ROOT
@@ -143,7 +142,7 @@ class IRESEARCH_API index_writer
         flush_context* flush_ctx = nullptr, // the flush_context the segment_context is currently registered with
         size_t pending_segment_context_offset = integer_traits<size_t>::const_max // the segment offset in flush_ctx_->pending_segments_
     ) NOEXCEPT;
-    active_segment_context(active_segment_context&& other) NOEXCEPT;
+    active_segment_context(active_segment_context&& other)  = default;
     ~active_segment_context();
     active_segment_context& operator=(active_segment_context&& other) NOEXCEPT;
 
@@ -336,7 +335,7 @@ class IRESEARCH_API index_writer
 
       // .......................................................................
       // perform rollback
-      // implicitly NOEXCEPT since memory reserved in the call to begin(...)
+      // implicitly noexcept since memory reserved in the call to begin(...)
       // .......................................................................
 
       writer.rollback(); // mark as failed
@@ -395,8 +394,7 @@ class IRESEARCH_API index_writer
       : filter(match_filter), generation(gen), update(isUpdate), seen(false) {}
     modification_context(irs::filter::ptr&& match_filter, size_t gen, bool isUpdate)
       : filter(std::move(match_filter)), generation(gen), update(isUpdate), seen(false) {}
-    modification_context(modification_context&& other) NOEXCEPT
-      : filter(std::move(other.filter)), generation(other.generation), update(other.update), seen(other.seen) {}
+    modification_context(modification_context&& other) = default;
     modification_context& operator=(const modification_context& other) = delete; // no default constructor
   };
 
@@ -649,11 +647,7 @@ class IRESEARCH_API index_writer
   struct consolidation_context_t : util::noncopyable {
     consolidation_context_t() = default;
 
-    consolidation_context_t(consolidation_context_t&& rhs) NOEXCEPT
-      : consolidaton_meta(std::move(rhs.consolidaton_meta)),
-        candidates(std::move(rhs.candidates)),
-        merger(std::move(rhs.merger)) {
-    }
+    consolidation_context_t(consolidation_context_t&& rhs) = default; 
 
     consolidation_context_t(
         std::shared_ptr<index_meta>&& consolidaton_meta,
@@ -734,12 +728,7 @@ class IRESEARCH_API index_writer
         segment(std::move(segment)) {
     }
 
-    import_context(import_context&& other) NOEXCEPT
-      : generation(other.generation),
-        segment(std::move(other.segment)),
-        refs(std::move(other.refs)),
-        consolidation_ctx(std::move(other.consolidation_ctx)) {
-    }
+    import_context(import_context&& other) = default;
 
     import_context& operator=(const import_context&) = delete;
 
@@ -993,11 +982,7 @@ class IRESEARCH_API index_writer
     sync_context to_sync; // file names and segments to be synced during next commit
 
     pending_context_t() = default;
-    pending_context_t(pending_context_t&& other) NOEXCEPT
-      : ctx(std::move(other.ctx)),
-        meta(std::move(other.meta)),
-        to_sync(std::move(other.to_sync)) {
-    }
+    pending_context_t(pending_context_t&& other) = default;
     operator bool() const NOEXCEPT { return ctx && meta; }
   }; // pending_context_t
 
