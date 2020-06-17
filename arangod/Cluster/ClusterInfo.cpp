@@ -2476,7 +2476,8 @@ Result ClusterInfo::createCollectionsCoordinator(
                   "operation aborted due to precondition failure"};
         }
         std::string errorMsg = "HTTP code: " + std::to_string(res.httpCode());
-        errorMsg += " error message: " + res.errorMessage();
+        errorMsg += " error message: ";
+        errorMsg += res.errorMessage();
         errorMsg += " error details: " + res.errorDetails();
         errorMsg += " body: " + res.body();
         for (auto const& info : infos) {
@@ -2978,7 +2979,7 @@ Result ClusterInfo::createViewCoordinator(  // create view
         TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN,  // code
         std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
             " HTTP code: " + std::to_string(res.httpCode()) +
-            " error message: " + res.errorMessage() +
+            " error message: " + std::string(res.errorMessage()) +
             " error details: " + res.errorDetails() + " body: " + res.body());
   }
 
@@ -3029,12 +3030,13 @@ Result ClusterInfo::dropViewCoordinator(  // drop view
       // Dump agency plan:
       logAgencyDump();
     } else {
-      result = Result(                                            // result
-          TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN,  // FIXME COULD_NOT_REMOVE_VIEW_IN_PLAN
-          std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
-              " HTTP code: " + std::to_string(res.httpCode()) +
-              " error message: " + res.errorMessage() +
-              " error details: " + res.errorDetails() + " body: " + res.body());
+      // FIXME COULD_NOT_REMOVE_VIEW_IN_PLAN
+      result =
+          Result(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN,
+                 std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
+                     " HTTP code: " + std::to_string(res.httpCode()) +
+                     " error message: " + std::string(res.errorMessage()) +
+                     " error details: " + res.errorDetails() + " body: " + res.body());
     }
   }
 
@@ -3184,12 +3186,13 @@ std::pair<Result, AnalyzersRevision::Revision> ClusterInfo::startModifyingAnalyz
         continue;
       }
 
-      return std::make_pair(Result(TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
-                                   std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
-                                   " HTTP code: " + std::to_string(res.httpCode()) +
-                                   " error message: " + res.errorMessage() +
-                                   " error details: " + res.errorDetails() + " body: " + res.body()),
-                            AnalyzersRevision::LATEST);
+      return std::make_pair(
+          Result(TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
+                 std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
+                     " HTTP code: " + std::to_string(res.httpCode()) +
+                     " error message: " + std::string(res.errorMessage()) +
+                     " error details: " + res.errorDetails() + " body: " + res.body()),
+          AnalyzersRevision::LATEST);
     } else {
       auto results = res.slice().get("results");
       if (results.isArray() && results.length() > 0) {
@@ -3288,12 +3291,11 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(DatabaseID const& databas
         break; // failed precondition means our revert is indirectly successful!
       }
 
-      return Result(
-          TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
-          std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
-              " HTTP code: " + std::to_string(res.httpCode()) +
-              " error message: " + res.errorMessage() +
-              " error details: " + res.errorDetails() + " body: " + res.body());
+      return Result(TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
+                    std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
+                        " HTTP code: " + std::to_string(res.httpCode()) +
+                        " error message: " + std::string(res.errorMessage()) +
+                        " error details: " + res.errorDetails() + " body: " + res.body());
     } else {
       auto results = res.slice().get("results");
       if (results.isArray() && results.length() > 0) {

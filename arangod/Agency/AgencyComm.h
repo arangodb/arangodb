@@ -28,14 +28,15 @@
 #include <deque>
 #include <list>
 #include <memory>
+#include <optional>
 #include <string>
+#include <type_traits>
 #include <unordered_map>
+#include <utility>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
-#include <type_traits>
-#include <utility>
 
 #include "Basics/Mutex.h"
 #include "Basics/Result.h"
@@ -300,10 +301,8 @@ class AgencyCommResult {
 
   [[nodiscard]] int errorCode() const;
 
-  // TODO return string_view
-  [[nodiscard]] std::string errorMessage() const;
+  [[nodiscard]] std::string_view errorMessage() const;
 
-  // TODO return string_view
   [[nodiscard]] std::string errorDetails() const;
 
   [[nodiscard]] std::string const& location() const { return _location; }
@@ -596,7 +595,7 @@ class AgencyComm {
 
   AgencyCommResult sendServerState();
 
-  std::string version();
+  std::string_view version();
 
   AgencyCommResult dump();
 

@@ -563,7 +563,7 @@ void ClusterFeature::start() {
   AgencyComm comm(server());
   comm.sendServerState();
 
-  std::string const version = comm.version();
+  auto const version = comm.version();
 
   ServerState::instance()->setInitialized();
 

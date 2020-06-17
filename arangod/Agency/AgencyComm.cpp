@@ -428,7 +428,7 @@ int AgencyCommResult::errorCode() const {
   return asResult().errorNumber();
 }
 
-std::string AgencyCommResult::errorMessage() const {
+std::string_view AgencyCommResult::errorMessage() const {
   return asResult().errorMessage();
 }
 
@@ -458,13 +458,13 @@ std::optional<std::pair<int, std::string_view>> AgencyCommResult::parseBodyError
 }
 
 std::string AgencyCommResult::errorDetails() const {
-  std::string const errorMessage = this->errorMessage();
+  auto const errorMessage = this->errorMessage();
 
   if (errorMessage.empty()) {
     return _message;
   }
 
-  return _message + " (" + errorMessage + ")";
+  return _message + " (" + std::string{errorMessage} + ")";
 }
 
 void AgencyCommResult::clear() {
@@ -618,14 +618,14 @@ AgencyCommResult AgencyComm::sendServerState() {
   return result;
 }
 
-std::string AgencyComm::version() {
+std::string_view AgencyComm::version() {
   AgencyCommResult result =
       sendWithFailover(arangodb::rest::RequestType::GET,
                        AgencyCommHelper::CONNECTION_OPTIONS._requestTimeout,
                        "/_api/version", VPackSlice::noneSlice());
 
-  if (result.successful()) {
-    return result._body;
+  if (result.successful() && result.slice().isString()) {
+    return result.slice().stringView();
   }
 
   return "";
@@ -721,7 +721,6 @@ AgencyCommResult AgencyComm::getValues(std::string const& key) {
       return result;
     }
 
-    result._body.clear();
     result._statusCode = 200;
 
   } catch (std::exception const& e) {

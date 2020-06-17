@@ -559,9 +559,9 @@ static void JS_VersionAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_GET_GLOBALS();
   AgencyComm comm(v8g->_server);
-  std::string const version = comm.version();
+  auto const version = comm.version();
 
-  TRI_V8_RETURN_STD_STRING(version);
+  TRI_V8_RETURN_STD_STRING_VIEW(version);
   TRI_V8_TRY_CATCH_END
 }
 

@@ -46,6 +46,10 @@ class Result final {
    */
   Result(int errorNumber, std::string&& errorMessage) noexcept;
 
+  Result(int errorNumber, std::string_view const& errorMessage);
+
+  Result(int errorNumber, const char* errorMessage);
+
   /**
    * @brief Construct as copy
    * @param  other  To copy from

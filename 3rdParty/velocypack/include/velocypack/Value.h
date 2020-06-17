@@ -51,7 +51,8 @@ class Value {
     UInt64 = 4,
     String = 5,
     CharPtr = 6,
-    VoidPtr = 7
+    VoidPtr = 7,
+    StringView = 8
   };
 
  private:
@@ -59,13 +60,14 @@ class Value {
   CType _cType;  // denotes variant used, 0: none
 
   union {
-    bool b;                // 1: bool
-    double d;              // 2: double
-    int64_t i;             // 3: int64_t
-    uint64_t u;            // 4: uint64_t
-    std::string const* s;  // 5: std::string
-    char const* c;         // 6: char const*
-    void const* e;         // 7: external
+    bool b;                      // 1: bool
+    double d;                    // 2: double
+    int64_t i;                   // 3: int64_t
+    uint64_t u;                  // 4: uint64_t
+    std::string const* s;        // 5: std::string
+    char const* c;               // 6: char const*
+    void const* e;               // 7: external
+    std::string_view const* sv;  // 8: std::string_view
   } _value;
 
  public:
@@ -135,6 +137,11 @@ class Value {
     _value.s = &s;
   }
 
+  explicit Value(std::string_view const& sv, ValueType t = ValueType::String) noexcept
+      : _valueType(t), _cType(CType::StringView) {
+    _value.sv = &sv;
+  }
+
   ValueType valueType() const { return _valueType; }
 
   CType cType() const { return _cType; }
@@ -168,6 +175,11 @@ class Value {
   std::string const* getString() const {
     VELOCYPACK_ASSERT(_cType == CType::String);
     return _value.s;
+  }
+
+  std::string_view const* getStringView() const {
+    VELOCYPACK_ASSERT(_cType == CType::StringView);
+    return _value.sv;
   }
 
   void const* getExternal() const {
