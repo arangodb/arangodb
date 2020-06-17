@@ -203,9 +203,6 @@ class Manager final {
 
   ManagerFeature& _feature;
 
-  // a lock protecting ALL buckets in _transactions
-  mutable basics::ReadWriteLock _allTransactionsLock;
-
   struct {
     // a lock protecting _managed
     mutable basics::ReadWriteLock _lock;
