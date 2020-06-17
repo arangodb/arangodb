@@ -77,8 +77,15 @@ class Query : public QueryContext {
   Query(Query const&) = delete;
   Query& operator=(Query const&) = delete;
 
+ protected:
+  /// @brief internal constructor, Used to construct a full query or a ClusterQuery
+  Query(std::shared_ptr<transaction::Context> const& ctx, QueryString const& queryString,
+        std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
+        std::shared_ptr<arangodb::velocypack::Builder> const& options,
+        std::shared_ptr<SharedQueryState> sharedState);
+
  public:
-  /// Used to construct a full query
+  /// @brief public constructor, Used to construct a full query
   Query(std::shared_ptr<transaction::Context> const& ctx, QueryString const& queryString,
         std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
         std::shared_ptr<arangodb::velocypack::Builder> const& options);
