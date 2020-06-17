@@ -422,7 +422,7 @@ void Validator::validateCompactObject(uint8_t const* ptr, size_t length) {
     // validate key
     validate(p, e - p, true);
     Slice key(p);
-    if (!isString && !key.isSmallInt() && !key.isUInt()) {
+    if (!key.isString() && !key.isSmallInt() && !key.isUInt()) {
       throw Exception(Exception::ValidatorInvalidLength, "Invalid object key type");
     }
 
@@ -521,7 +521,7 @@ void Validator::validateIndexedObject(uint8_t const* ptr, size_t length) {
     validate(member, indexTable - member, true);
 
     Slice key(member);
-    if (!isString && !key.isSmallInt() && !key.isUInt()) {
+    if (!key.isString() && !key.isSmallInt() && !key.isUInt()) {
       throw Exception(Exception::ValidatorInvalidLength, "Invalid object key type");
     }
 
