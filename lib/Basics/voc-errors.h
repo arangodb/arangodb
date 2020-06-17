@@ -178,9 +178,9 @@ constexpr int TRI_ERROR_INCOMPATIBLE_VERSION                                    
 /// Will be raised when a requested resource is not enabled.
 constexpr int TRI_ERROR_DISABLED                                                = 36;
 
-/// 37 ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED
-/// Will be raised when while creating a collection in the cluster
-/// updating the plan in the agency fails and we should be trying again
+/// 37: ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED
+/// "creating collection failed due to precondition"
+/// Will be raised when updating the plan on collection creatio failed.
 constexpr int TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED           = 37;
 
 /// 400: ERROR_HTTP_BAD_PARAMETER
