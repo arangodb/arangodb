@@ -22,8 +22,8 @@
 
 #include "gtest/gtest.h"
 
+#include "Agency/AgencyPaths.h"
 #include "Basics/StringUtils.h"
-#include "Cluster/AgencyPaths.h"
 
 #include <memory>
 #include <vector>

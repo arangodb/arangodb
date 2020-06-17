@@ -25,9 +25,9 @@
 
 #include "ClusterInfo.h"
 
+#include "Agency/AgencyPaths.h"
 #include "Agency/TimeString.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/application-exit.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
@@ -37,10 +37,10 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/application-exit.h"
 #include "Basics/hashes.h"
 #include "Basics/system-functions.h"
 #include "Cluster/AgencyCache.h"
-#include "Cluster/AgencyPaths.h"
 #include "Cluster/ClusterCollectionCreationInfo.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"

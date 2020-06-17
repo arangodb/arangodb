@@ -23,8 +23,7 @@
 #ifndef ARANGOD_CLUSTER_AGENCYPATHS_H
 #define ARANGOD_CLUSTER_AGENCYPATHS_H
 
-#include "PathComponent.h"
-
+#include "Agency/PathComponent.h"
 #include "Basics/debugging.h"
 #include "Cluster/ClusterTypes.h"
 
