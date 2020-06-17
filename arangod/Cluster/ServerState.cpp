@@ -43,7 +43,7 @@
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"

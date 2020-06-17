@@ -160,6 +160,14 @@ class IResearchAnalyzerFeature final
   static bool canUse(TRI_vocbase_t const& vocbase, auth::Level const& level);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief check permissions for analyzer usage from vocbase by name
+  /// @param vocbaseName  vocbase name to check
+  /// @param level access level
+  /// @return analyzers in the specified vocbase are granted 'level' access
+  //////////////////////////////////////////////////////////////////////////////
+  static bool canUseVocbase(irs::string_ref const& vocbaseName, auth::Level const& level);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief check permissions
   /// @param name analyzer name (already normalized)
   /// @param level access level

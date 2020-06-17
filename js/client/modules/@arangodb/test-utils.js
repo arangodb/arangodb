@@ -876,6 +876,7 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
       'return runTest(' + JSON.stringify(file) + ', true' + mochaGrep + ');\n';
   }
 
+  require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
   let testFunc;
   eval('testFunc = function () { \nglobal.instanceInfo = ' + JSON.stringify(instanceInfo) + ';\n' + testCode + "}");
   

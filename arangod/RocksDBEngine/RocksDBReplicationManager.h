@@ -25,7 +25,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 #include "Replication/utilities.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
 #include "VocBase/Identifiers/ServerId.h"

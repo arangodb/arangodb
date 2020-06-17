@@ -84,6 +84,7 @@ struct TypedBuffer {
     return static_cast<size_t>(_capacity - _end);
   }
   
+  /// move end cursor, calls placement new 
   T* appendElement() {
     TRI_ASSERT(_begin <= _end);
     TRI_ASSERT(_end < _capacity);

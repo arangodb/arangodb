@@ -48,6 +48,7 @@ set(LIB_ARANGO_VPACK
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Options.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Parser.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Serializable.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/SharedSlice.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Slice.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/SliceStaticData.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/StringRef.cpp
