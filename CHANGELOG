@@ -1,6 +1,8 @@
 v3.4.11 (XXXX-XX-XX)
 --------------------
 
+* Fixed velocypack validator for proper check of keys.
+
 * Fixed issue ES-598. Web UI now shows correct permissions in case wildcard
   database level and wildcard collection level permissions are both set.
 
