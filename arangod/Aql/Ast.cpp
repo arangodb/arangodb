@@ -115,9 +115,13 @@ LogicalDataSource::Category const* injectDataSourceInQuery(
   if (dataSource->category() == LogicalCollection::category()) {
     // it's a collection!
     // add datasource to query
-    ast.query().collections().add(nameRef.toString(), accessType, aql::Collection::Hint::Collection);
+    aql::Collection::Hint hint = aql::Collection::Hint::Collection;
+    if (ServerState::instance()->isDBServer()) {
+      hint = aql::Collection::Hint::Shard;
+    }
+    ast.query().collections().add(nameRef.toString(), accessType, hint);
     if (nameRef != name) {
-      ast.query().collections().add(name, accessType, aql::Collection::Hint::Collection);  // Add collection by ID as well
+      ast.query().collections().add(name, accessType, hint);  // Add collection by ID as well
     }
   } else if (dataSource->category() == LogicalView::category()) {
     // it's a view!
