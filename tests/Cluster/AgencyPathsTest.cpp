@@ -123,6 +123,7 @@ static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Da
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::Deleted>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::WriteConcern>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::CacheEnabled>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::IsBuilding>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Databases>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Databases::Database>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Databases::Database::Name>::value, CONSTRUCTIBLE_MESSAGE);
@@ -262,6 +263,7 @@ static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::
 static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::Deleted, Root::Arango::Plan::Collections::Database::Collection>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::WriteConcern, Root::Arango::Plan::Collections::Database::Collection>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::CacheEnabled, Root::Arango::Plan::Collections::Database::Collection>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::IsBuilding, Root::Arango::Plan::Collections::Database::Collection>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::Databases, Root::Arango::Plan>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::Databases::Database, Root::Arango::Plan::Databases>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::Databases::Database::Name, Root::Arango::Plan::Databases::Database>::value, CONSTRUCTIBLE_MESSAGE);
@@ -401,6 +403,7 @@ class AgencyPathsTest : public ::testing::Test {
       {{"arango", "Plan", "Collections", "_system", "12345", "deleted"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->deleted()},
       {{"arango", "Plan", "Collections", "_system", "12345", "writeConcern"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->writeConcern()},
       {{"arango", "Plan", "Collections", "_system", "12345", "cacheEnabled"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->cacheEnabled()},
+      {{"arango", "Plan", "Collections", "_system", "12345", "isBuilding"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->isBuilding()},
       {{"arango", "Plan", "Databases"}, root()->arango()->plan()->databases()},
       {{"arango", "Plan", "Databases", "_system"}, root()->arango()->plan()->databases()->database(DatabaseID{"_system"})},
       {{"arango", "Plan", "Databases", "someDb"}, root()->arango()->plan()->databases()->database(DatabaseID{"someDb"})},

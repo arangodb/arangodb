@@ -566,6 +566,19 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
             std::shared_ptr<CacheEnabled const> cacheEnabled() const {
               return CacheEnabled::make_shared(shared_from_this());
             }
+
+            class IsBuilding : public StaticComponent<IsBuilding, Collection> {
+             public:
+              constexpr char const* component() const noexcept {
+                return "isBuilding";
+              }
+
+              using BaseType::StaticComponent;
+            };
+
+            std::shared_ptr<IsBuilding const> isBuilding() const {
+              return IsBuilding::make_shared(shared_from_this());
+            }
           };
 
           std::shared_ptr<Collection const> collection(CollectionID name) const {
