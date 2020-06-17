@@ -346,7 +346,6 @@ auto ExecutionBlockImpl<IdExecutor<ConstFetcher>>::injectConstantBlock<IdExecuto
   // Or exactly of the size handed in
   TRI_ASSERT(_skipped.subqueryDepth() == 1 ||
              _skipped.subqueryDepth() == skipped.subqueryDepth());
-  _skipped = skipped;
 
   TRI_ASSERT(_state == InternalState::DONE || _state == InternalState::FETCH_DATA);
 
@@ -357,7 +356,7 @@ auto ExecutionBlockImpl<IdExecutor<ConstFetcher>>::injectConstantBlock<IdExecuto
   _hasUsedDataRangeBlock = false;
   _upstreamState = ExecutionState::HASMORE;
 
-  _rowFetcher.injectBlock(std::move(block));
+  _rowFetcher.injectBlock(std::move(block), std::move(skipped));
 
   resetExecutor();
 }
