@@ -1592,27 +1592,34 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           return {_upstreamState, SkipResult{}, nullptr};
         }
 
-        // TODO: Adjust Stack
         {
           if (!skippedLocal.nothingSkipped()) {
-            // We get woken up on upstream, but we have not reported our
-            // local skip value to downstream
-            // In the sideEffect executor we need to apply the skip values on the
-            // incomming stack, which has not been modified yet.
-            // NOTE: We only apply the skipping on subquery level.
-            TRI_ASSERT(skippedLocal.subqueryDepth() == stack.subqueryLevel() + 1);
-            for (size_t i = 0; i < stack.subqueryLevel(); ++i) {
-              // _skipped and stack are off by one, so we need to add 1 to access
-              // to _skipped.
-              // They are off by one, because the callstack does not contain the
-              // call for the current subquery level (what we are working on right now)
-              // as this is replaced by whatever the executor would like to
-              // ask from upstream.
-              // The skip result is complete, and contains all subquery levels + current level.
-              auto skippedSub = skippedLocal.getSkipOnSubqueryLevel(i + 1);
-              if (skippedSub > 0) {
-                auto& call = stack.modifyCallAtDepth(i);
-                call.didSkip(skippedSub);
+            if constexpr(std::is_same_v<Executor, SubqueryStartExecutor>) {
+              // In SubqueryStart the stack is exactly the same size as the skip result
+              // from above, the call we work on is inside the subquery.
+              // The stack is exactly what we send upstream, no added call on top.
+              TRI_ASSERT(skippedLocal.subqueryDepth() == stack.subqueryLevel());
+              for (size_t i = 0; i < stack.subqueryLevel(); ++i) {
+                auto skippedSub = skippedLocal.getSkipOnSubqueryLevel(i);
+                if (skippedSub > 0) {
+                  auto& call = stack.modifyCallAtDepth(i);
+                  call.didSkip(skippedSub);
+                }
+              }
+            } else {
+              // In all other executors the stack is 1 depth smaller then what
+              // we request from upstream. The top-most entry will be added
+              // by the executor and is not part of the stack here.
+              // However the returned skipped information is complete including
+              // the local call.
+              TRI_ASSERT(skippedLocal.subqueryDepth() == stack.subqueryLevel() + 1);
+
+              for (size_t i = 0; i < stack.subqueryLevel(); ++i) {
+                auto skippedSub = skippedLocal.getSkipOnSubqueryLevel(i + 1);
+                if (skippedSub > 0) {
+                  auto& call = stack.modifyCallAtDepth(i);
+                  call.didSkip(skippedSub);
+                }
               }
             }
           }
