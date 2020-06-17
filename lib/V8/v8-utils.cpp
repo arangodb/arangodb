@@ -25,6 +25,7 @@
 #include "v8-utils.h"
 
 #include "Basics/Common.h"
+#include "Basics/operating-system.h"
 
 #ifdef _WIN32
 #include <WinSock2.h>  // must be before windows.h
@@ -78,7 +79,6 @@
 #include "Basics/error.h"
 #include "Basics/files.h"
 #include "Basics/memory.h"
-#include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
 #include "Basics/signals.h"
 #include "Basics/socket-utils.h"

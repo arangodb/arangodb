@@ -937,7 +937,7 @@ TRI_read_return_t TRI_ReadPointer(int fd, char* buffer, size_t length) {
   }
 
   TRI_ASSERT(ptr >= buffer);
-  return ptr - buffer;
+  return static_cast<TRI_read_return_t>(ptr - buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
