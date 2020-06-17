@@ -37,11 +37,11 @@
 #include "Aql/QueryList.h"
 #include "Aql/QueryProfile.h"
 #include "Aql/QueryRegistry.h"
+#include "Aql/Timing.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
-#include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
 #include "Graph/Graph.h"
@@ -89,7 +89,7 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
       _options(options),
       _queryOptions(_vocbase.server().getFeature<QueryRegistryFeature>()),
       _trx(nullptr),
-      _startTime(TRI_microtime()),
+      _startTime(currentSteadyClockValue()),
       _queryHash(DontCache),
       _executionPhase(ExecutionPhase::INITIALIZE),
       _contextOwnedByExterior(ctx->isV8Context() && v8::Isolate::GetCurrent() != nullptr),
@@ -116,13 +116,13 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
 
   ProfileLevel level = _queryOptions.profile;
   if (level >= PROFILE_LEVEL_TRACE_1) {
-    LOG_TOPIC("22a70", INFO, Logger::QUERIES) << TRI_microtime() - _startTime << " "
-                                              << "Query::Query queryString: " << _queryString
+    LOG_TOPIC("22a70", INFO, Logger::QUERIES) << elapsedSince(_startTime)
+                                              << " Query::Query queryString: " << _queryString
                                               << " this: " << (uintptr_t)this;
   } else {
     LOG_TOPIC("11160", DEBUG, Logger::QUERIES)
-        << TRI_microtime() - _startTime << " "
-        << "Query::Query queryString: " << _queryString << " this: " << (uintptr_t)this;
+        << elapsedSince(_startTime)
+        << " Query::Query queryString: " << _queryString << " this: " << (uintptr_t)this;
   }
 
   if (bindParameters != nullptr && !bindParameters->isEmpty() &&
@@ -159,8 +159,8 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
 /// @brief destroys a query
 Query::~Query() {
   if (_queryOptions.profile >= PROFILE_LEVEL_TRACE_1) {
-    LOG_TOPIC("36a75", INFO, Logger::QUERIES) << TRI_microtime() - _startTime << " "
-                                              << "Query::~Query queryString: "
+    LOG_TOPIC("36a75", INFO, Logger::QUERIES) << elapsedSince(_startTime)
+                                              << " Query::~Query queryString: "
                                               << " this: " << (uintptr_t)this;
   }
 
@@ -174,13 +174,13 @@ Query::~Query() {
   _ast.reset();
 
   LOG_TOPIC("f5cee", DEBUG, Logger::QUERIES)
-      << TRI_microtime() - _startTime << " "
-      << "Query::~Query this: " << (uintptr_t)this;
+      << elapsedSince(_startTime)
+      << " Query::~Query this: " << (uintptr_t)this;
 }
 
 bool Query::killed() const {
   if (_queryOptions.maxRuntime > std::numeric_limits<double>::epsilon() &&
-      TRI_microtime() > (_startTime + _queryOptions.maxRuntime)) {
+      elapsedSince(_startTime) > _queryOptions.maxRuntime) {
     return true;
   }
   return _killed;
@@ -242,8 +242,8 @@ void Query::prepareQuery(SerializationFormat format) {
 /// QueryRegistry.
 std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   TRI_ASSERT(!_queryString.empty());
-  LOG_TOPIC("9625e", DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
-                                             << "Query::prepare"
+  LOG_TOPIC("9625e", DEBUG, Logger::QUERIES) << elapsedSince(_startTime)
+                                             << " Query::prepare"
                                              << " this: " << (uintptr_t)this;
 
   TRI_ASSERT(_ast != nullptr);
@@ -307,8 +307,8 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
 /// @brief execute an AQL query
 ExecutionState Query::execute(QueryResult& queryResult) {
-  LOG_TOPIC("e8ed7", DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
-                                             << "Query::execute"
+  LOG_TOPIC("e8ed7", DEBUG, Logger::QUERIES) << elapsedSince(_startTime)
+                                             << " Query::execute"
                                              << " this: " << (uintptr_t)this;
 
   try {
@@ -526,8 +526,8 @@ QueryResult Query::executeSync() {
 
 // execute an AQL query: may only be called with an active V8 handle scope
 QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
-  LOG_TOPIC("6cac7", DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
-                                             << "Query::executeV8"
+  LOG_TOPIC("6cac7", DEBUG, Logger::QUERIES) << elapsedSince(_startTime)
+                                             << " Query::executeV8"
                                              << " this: " << (uintptr_t)this;
 
   aql::QueryResultV8 queryResult;
@@ -659,8 +659,8 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
       builder->close();
     } catch (...) {
       LOG_TOPIC("8a6bf", DEBUG, Logger::QUERIES)
-          << TRI_microtime() - _startTime << " "
-          << "got an exception executing "
+          << elapsedSince(_startTime)
+          << " got an exception executing "
           << " this: " << (uintptr_t)this;
       throw;
     }
@@ -719,8 +719,8 @@ ExecutionState Query::finalize(QueryResult& result) {
   if (result.extra == nullptr || !result.extra->isOpenObject()) {
     // The above condition is not true if we have already waited.
     LOG_TOPIC("fc22c", DEBUG, Logger::QUERIES)
-        << TRI_microtime() - _startTime << " "
-        << "Query::finalize: before _trx->commit"
+        << elapsedSince(_startTime)
+        << " Query::finalize: before _trx->commit"
         << " this: " << (uintptr_t)this;
 
     Result commitResult = _trx->commit();
@@ -729,8 +729,8 @@ ExecutionState Query::finalize(QueryResult& result) {
     }
 
     LOG_TOPIC("7ef18", DEBUG, Logger::QUERIES)
-        << TRI_microtime() - _startTime << " "
-        << "Query::finalize: before cleanupPlanAndEngine"
+        << elapsedSince(_startTime)
+        << " Query::finalize: before cleanupPlanAndEngine"
         << " this: " << (uintptr_t)this;
 
     enterState(QueryExecutionState::ValueType::FINALIZATION);
@@ -748,7 +748,7 @@ ExecutionState Query::finalize(QueryResult& result) {
 
   _warnings.toVelocyPack(*result.extra);
 
-  double now = TRI_microtime();
+  double now = currentSteadyClockValue();
   if (_profile != nullptr && _queryOptions.profile >= PROFILE_LEVEL_BASIC) {
     _profile->setStateEnd(QueryExecutionState::ValueType::FINALIZATION, now);
     _profile->toVelocyPack(*(result.extra));
@@ -767,8 +767,8 @@ ExecutionState Query::finalize(QueryResult& result) {
   basics::VelocyPackHelper::patchDouble(result.extra->slice().get("stats").get("executionTime"),
                                         rt);
 
-  LOG_TOPIC("95996", DEBUG, Logger::QUERIES) << rt << " "
-                                             << "Query::finalize:returning"
+  LOG_TOPIC("95996", DEBUG, Logger::QUERIES) << rt 
+                                             << " Query::finalize:returning"
                                              << " this: " << (uintptr_t)this;
   return ExecutionState::DONE;
 }
@@ -1065,8 +1065,8 @@ bool Query::canUseQueryCache() const {
 /// @brief enter a new state
 void Query::enterState(QueryExecutionState::ValueType state) {
   LOG_TOPIC("d8767", DEBUG, Logger::QUERIES)
-      << TRI_microtime() - _startTime << " "
-      << "Query::enterState: " << state << " this: " << (uintptr_t)this;
+      << elapsedSince(_startTime)
+      << " Query::enterState: " << state << " this: " << (uintptr_t)this;
   if (_profile != nullptr) {
     // record timing for previous state
     _profile->setStateDone(_execState);
@@ -1109,7 +1109,7 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, bool sync,
     ExecutionStats stats;
     stats.requests += _numRequests.load(std::memory_order_relaxed);
     stats.setPeakMemoryUsage(_resourceMonitor.peakMemoryUsage());
-    stats.setExecutionTime(TRI_microtime() - _startTime);
+    stats.setExecutionTime(elapsedSince(_startTime));
     
     for (auto& [eId, engine] : _snippets) {
       engine->collectExecutionStats(stats);
@@ -1275,8 +1275,8 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
                                        VPackSlice traverserSlice,
                                        VPackBuilder& answerBuilder,
                                        arangodb::AnalyzersRevision::Revision analyzersRevision) {
-  LOG_TOPIC("9636f", DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
-                                             << "ClusterQuery::prepareClusterQuery"
+  LOG_TOPIC("9636f", DEBUG, Logger::QUERIES) << elapsedSince(_startTime)
+                                             << " ClusterQuery::prepareClusterQuery"
                                              << " this: " << (uintptr_t)this;
   
   init();
@@ -1386,8 +1386,8 @@ Result ClusterQuery::finalizeClusterQuery(ExecutionStats& stats, int errorCode) 
   TRI_ASSERT(ServerState::instance()->isDBServer());
   
   LOG_TOPIC("fc33c", DEBUG, Logger::QUERIES)
-       << TRI_microtime() - _startTime << " "
-       << "Query::finalizeSnippets: before _trx->commit, errorCode: "
+       << elapsedSince(_startTime)
+       << " Query::finalizeSnippets: before _trx->commit, errorCode: "
        << errorCode << ", this: " << (uintptr_t)this;
   
   for (auto& [eId, engine] : _snippets) {
@@ -1409,22 +1409,22 @@ Result ClusterQuery::finalizeClusterQuery(ExecutionStats& stats, int errorCode) 
   }
 
   LOG_TOPIC("8ea28", DEBUG, Logger::QUERIES)
-       << TRI_microtime() - _startTime << " "
-       << "Query::finalizeSnippets: before cleanupPlanAndEngine"
+       << elapsedSince(_startTime)
+       << " Query::finalizeSnippets: before cleanupPlanAndEngine"
        << " this: " << (uintptr_t)this;
 
   enterState(QueryExecutionState::ValueType::FINALIZATION);
   
   stats.requests += _numRequests.load(std::memory_order_relaxed);
   stats.setPeakMemoryUsage(_resourceMonitor.peakMemoryUsage());
-  stats.setExecutionTime(TRI_microtime() - _startTime);
+  stats.setExecutionTime(elapsedSince(_startTime));
   
   _snippets.clear();
   _traversers.clear();
   
   LOG_TOPIC("5fde0", DEBUG, Logger::QUERIES)
-      << TRI_microtime() - _startTime << " "
-      << "ClusterQuery::finalizeClusterQuery: done"
+      << elapsedSince(_startTime)
+      << " ClusterQuery::finalizeClusterQuery: done"
       << " this: " << (uintptr_t)this;
   
   return finishResult;
