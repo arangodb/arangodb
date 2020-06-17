@@ -44,9 +44,10 @@ struct AsyncAgencyStorePoolMock final : public arangodb::network::ConnectionPool
       explicit AsyncAgencyStorePoolMock(arangodb::consensus::Store* store)
       : ConnectionPool({}), _store(store) {}
 
-  arangodb::network::ConnectionPtr createConnection(arangodb::fuerte::ConnectionBuilder&) override;
+      std::shared_ptr<arangodb::fuerte::Connection> createConnection(
+          arangodb::fuerte::ConnectionBuilder&) override;
 
-  arangodb::consensus::Store* _store;
+      arangodb::consensus::Store* _store;
 };
 
 #endif

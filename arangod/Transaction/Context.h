@@ -66,6 +66,13 @@ class Context {
  public:
   /// @brief destroy the context
   virtual ~Context();
+  
+  /// @brief destroys objects owned by the context,
+  /// this can be called multiple times.
+  /// currently called by dtor and by unit test mocks. 
+  /// we cannot move this into the dtor (where it was before) because
+  /// the mocked objects in unittests do not seem to call it and effectively leak.
+  void cleanup() noexcept;
 
   /// @brief factory to create a custom type handler, not managed
   static std::unique_ptr<arangodb::velocypack::CustomTypeHandler> createCustomTypeHandler(

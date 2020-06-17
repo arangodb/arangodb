@@ -63,6 +63,21 @@ std::string Response::serverId() const {
   return StaticStrings::Empty;
 }
 
+Result Response::combinedResult() const {
+  if (fail()) {
+    // fuerte connection failed
+    return Result{fuerteToArangoErrorCode(*this), fuerteToArangoErrorMessage(*this)};
+  } else {
+    if (!statusIsSuccess(response->statusCode())) {
+      // HTTP status error. Try to extract a precise error from the body, and fall
+      // back to the HTTP status.
+      return resultFromBody(response->slice(), fuerteStatusToArangoErrorCode(*response));
+    } else {
+      return Result{};
+    }
+  }
+}
+
 auto prepareRequest(RestVerb type, std::string path, VPackBufferUInt8 payload,
                     RequestOptions const& options, Headers headers) {
   auto req = fuerte::createRequest(type, path, options.parameters, std::move(payload));
