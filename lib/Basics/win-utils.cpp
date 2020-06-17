@@ -39,6 +39,9 @@
 #include <iomanip>
 #include <locale>
 
+#include "Basics/Common.h"
+#include "Basics/operating-system.h"
+
 #include "win-utils.h"
 
 #include <VersionHelpers.h>
@@ -46,8 +49,6 @@
 #include <crtdbg.h>
 #include <malloc.h>
 #include <string.h>
-
-#include "Basics/Common.h"
 
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
