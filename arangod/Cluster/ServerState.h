@@ -29,7 +29,7 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteSpinLock.h"
 #include "Cluster/ClusterTypes.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {

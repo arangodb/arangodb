@@ -24,7 +24,7 @@
 #define ARANGOD_AQL_AQL_CALLSTACK_H 1
 
 #include "Aql/AqlCallList.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 
 #include <stack>
 

@@ -1,6 +1,60 @@
 devel
 -----
 
+* Fix restoring old arangodumps from ArangoDB 3.3 and before, which had index
+  information stored in slightly different places in the dump.
+
+* Fix invalid calls to `AgencyCommResult::slice()` method, which must only be
+  made in case of an agency result was retrieved successfully. In case the call
+  to the agency was not successful, `slice()` must not be called on it. This
+  change makes sure this invariant holds true.
+
+* Fix internal test helper function `removeCost` to really remove costs.
+
+* Fix potential AQL query shutdown hanger.
+
+* Use smarter default value preset in web UI for replication factor in case
+  there are constraints established for the replication factor by the
+  startup options `--cluster.min-replication-factor` and 
+  `--cluster.max-replication-factor`.
+
+* Modified the exception handling in the RestHandler. Asynchronous communication
+  could lead to less detailed failure information.
+
+* Added permissions check before trying to read data from `_analyzers`
+  collection.
+  If these permissions are not there, no load is performed (user can not use
+  analyzers from database anyway).
+
+* Updated arangosync to 0.7.6.
+
+* Make the reboot tracker catch a failed server and permanently removed
+  servers. This allows other servers in the cluster to move on more quickly,
+  when a server fails and does not immediately come back.
+
+* Added WCC pregel algorithm for weakly connected components.
+
+* Display "geoJson" value for geo indexes in index overview in web UI.
+
+* Allow specifiying arbitrary vertex attributes when creating a vertex via the 
+  graph viewer in the web UI. This is necessary for collections that have a
+  schema and that require new vertices to have certain attributes/values.
+
+* Pass through AQL query errors to UI graph viewer without turning them into
+  "Internal Server Error"s.
+
+* Augment nodes view in web UI with node id and full datetime of startup.
+
+* Fixed "Create Debug Package" in web UI in cluster mode.
+
+* Pick up selected "write concern" value entered in web UI when creating a
+  collection in the cluster. Previously, the "write concern" value was not 
+  picked up correctly and collections were created with the default write
+  concern.
+
+* Fixed the creation of edges in the web UI, which did not work due to a
+  JavaScript error.
+
 * Fixed velocypack validator for proper check of keys.
 
 * Handle missing "shardingStrategy" in Plan agency entries for collections.

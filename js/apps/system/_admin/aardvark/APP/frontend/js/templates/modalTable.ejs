@@ -12,7 +12,7 @@
         switch(row.type) {
         case "text":
           %>
-          <input type="text" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
+          <input type="text" id="<%=row.id%>" value="<%=_.escape(row.value||'')%>" placeholder="<%=row.placeholder||''%>"></input>
           <%
           break;
         case "blob":
