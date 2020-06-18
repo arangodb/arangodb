@@ -32,8 +32,8 @@ using namespace arangodb;
 
 thread_local ExecContext const* ExecContext::CURRENT = nullptr;
 
-ExecContext ExecContext::Superuser(ExecContext::Type::Internal, /*name*/"", /*db*/"",
-                                   auth::Level::RW, auth::Level::RW, true);
+ExecContext const ExecContext::Superuser(ExecContext::Type::Internal, /*name*/"", /*db*/"",
+                                         auth::Level::RW, auth::Level::RW, true);
 
 /// Should always contain a reference to current user context
 /*static*/ ExecContext const& ExecContext::current() {

@@ -25,13 +25,13 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryProfile.h"
+#include "Aql/Timing.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
-#include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -136,7 +136,7 @@ void QueryList::remove(Query* query) {
   }
 
   double const started = query->startTime();
-  double const now = TRI_microtime();
+  double const now = arangodb::aql::currentSteadyClockValue();
 
   query->vocbase().server().getFeature<arangodb::MetricsFeature>().counter(
       StaticStrings::AqlQueryRuntimeMs) += static_cast<uint64_t>(1000 * (now - started));
@@ -262,7 +262,7 @@ uint64_t QueryList::kill(std::function<bool(Query&)> const& filter, bool silent)
 
 /// @brief get the list of currently running queries
 std::vector<QueryEntryCopy> QueryList::listCurrent() {
-  double const now = TRI_microtime();
+  double const now = arangodb::aql::currentSteadyClockValue();
   size_t const maxLength = _maxQueryStringLength;
 
   std::vector<QueryEntryCopy> result;

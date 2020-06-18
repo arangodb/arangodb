@@ -191,13 +191,14 @@ ExecutionEngine::ExecutionEngine(QueryContext& query,
                                  std::shared_ptr<SharedQueryState> sqs)
     : _query(query),
       _itemBlockManager(itemBlockMgr),
-      _sharedState((sqs != nullptr) ? sqs : std::make_shared<SharedQueryState>()),
+      _sharedState((sqs != nullptr) ? std::move(sqs) : std::make_shared<SharedQueryState>()),
       _blocks(),
       _root(nullptr),
       _resultRegister(0),
       _initializeCursorCalled(false),
       _wasShutdown(false),
       _sentShutdownResponse(false) {
+  TRI_ASSERT(_sharedState != nullptr);
   _blocks.reserve(8);
 }
 
@@ -641,13 +642,12 @@ Result ExecutionEngine::shutdownSync(int errorCode) noexcept try {
     }
 
     std::shared_ptr<SharedQueryState> sharedState = _sharedState;
-    if (sharedState != nullptr) {
-      sharedState->resetWakeupHandler();
-      while (state == ExecutionState::WAITING) {
-        std::tie(state, res) = shutdown(errorCode);
-        if (state == ExecutionState::WAITING) {
-          sharedState->waitForAsyncWakeup();
-        }
+    TRI_ASSERT(sharedState != nullptr);
+    sharedState->resetWakeupHandler();
+    while (state == ExecutionState::WAITING) {
+      std::tie(state, res) = shutdown(errorCode);
+      if (state == ExecutionState::WAITING) {
+        sharedState->waitForAsyncWakeup();
       }
     }
   } catch (basics::Exception const& ex) {
@@ -672,6 +672,7 @@ std::pair<ExecutionState, Result> ExecutionEngine::shutdown(int errorCode) {
   }
   
   // enter shutdown phase, forget previous wakeups
+  TRI_ASSERT(_sharedState != nullptr);
   _sharedState->resetNumWakeups();
   
   if (ServerState::instance()->isCoordinator()) {
@@ -870,7 +871,9 @@ std::pair<ExecutionState, Result> ExecutionEngine::shutdownDBServerQueries(int e
    
   std::vector<futures::Future<futures::Unit>> futures;
   futures.reserve(_serverToQueryId.size());
-  auto ss = sharedState();
+  auto ss = _sharedState;
+  TRI_ASSERT(ss != nullptr);
+
   for (auto const& [serverDst, queryId] : _serverToQueryId) {
 
     TRI_ASSERT(serverDst.substr(0, 7) == "server:");

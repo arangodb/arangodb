@@ -38,7 +38,7 @@
 #include "Cluster/AgencyPaths.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FollowerInfo.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"

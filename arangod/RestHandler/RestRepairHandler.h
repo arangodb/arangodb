@@ -25,7 +25,7 @@
 
 #include "Agency/AgencyComm.h"
 #include "Cluster/ClusterRepairs.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 #include "GeneralServer/AsyncJobManager.h"
 #include "RestHandler/RestBaseHandler.h"
 

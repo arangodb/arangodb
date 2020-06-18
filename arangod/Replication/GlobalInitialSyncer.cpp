@@ -123,7 +123,7 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
   if (!_state.isChildSyncer) {
     // start batch is required for the inventory request
     LOG_TOPIC("0da14", DEBUG, Logger::REPLICATION) << "sending start batch";
-    r = _batch.start(_state.connection, _progress, _state.syncerId);
+    r = _batch.start(_state.connection, _progress, _state.master, _state.syncerId);
     if (r.fail()) {
       return r;
     }
@@ -360,7 +360,7 @@ Result GlobalInitialSyncer::getInventory(VPackBuilder& builder) {
     return Result(TRI_ERROR_SHUTTING_DOWN);
   }
 
-  auto r = _batch.start(_state.connection, _progress, _state.syncerId);
+  auto r = _batch.start(_state.connection, _progress, _state.master, _state.syncerId);
   if (r.fail()) {
     return r;
   }
