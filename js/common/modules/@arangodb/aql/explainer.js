@@ -1,5 +1,5 @@
 /* jshint strict: false, maxlen: 300 */
-/* global arango */
+/* global arango, ArangoClusterComm */
 
 var db = require('@arangodb').db,
   internal = require('internal'),
@@ -14,6 +14,25 @@ var console = require('console');
 const maxMembersToPrint = 20;
 
 let uniqueValue = 0;
+
+const isCoordinator = function () {
+  let isCoordinator = false;
+  if (typeof ArangoClusterComm === 'object') {
+    isCoordinator = require('@arangodb/cluster').isCoordinator();
+  } else {
+    try {
+      if (arango) {
+        var result = arango.GET('/_admin/server/role');
+        if (result.role === 'COORDINATOR') {
+          isCoordinator = true;
+        }
+      }
+    } catch (err) {
+      // ignore error
+    }
+  }
+  return isCoordinator;
+};
 
 const anonymize = function (doc) {
   if (Array.isArray(doc)) {
@@ -705,22 +724,6 @@ function processQuery(query, explain, planIndex) {
 
   /// mode with actual runtime stats per node
   let profileMode = stats && stats.hasOwnProperty('nodes');
-
-  var isCoordinator = false;
-  if (typeof ArangoClusterComm === 'object') {
-    isCoordinator = require('@arangodb/cluster').isCoordinator();
-  } else {
-    try {
-      if (arango) {
-        var result = arango.GET('/_admin/server/role');
-        if (result.role === 'COORDINATOR') {
-          isCoordinator = true;
-        }
-      }
-    } catch (err) {
-      // ignore error
-    }
-  }
 
   var recursiveWalk = function (partNodes, level, site) {
     let n = _.clone(partNodes);
@@ -1908,13 +1911,15 @@ function processQuery(query, explain, planIndex) {
     return '';
   };
 
+  const isCoord = isCoordinator();
+
   var printNode = function (node) {
     preHandle(node);
     var line = ' ' +
       pad(1 + maxIdLen - String(node.id).length) + variable(node.id) + '   ' +
       keyword(node.type) + pad(1 + maxTypeLen - String(node.type).length) + '   ';
 
-    if (isCoordinator) {
+    if (isCoord) {
       line += variable(node.site) + pad(1 + maxSiteLen - String(node.site).length) + '  ';
     }
 
@@ -1958,7 +1963,7 @@ function processQuery(query, explain, planIndex) {
     pad(1 + maxIdLen - String('Id').length) + header('Id') + '   ' +
     header('NodeType') + pad(1 + maxTypeLen - String('NodeType').length) + '   ';
 
-  if (isCoordinator) {
+  if (isCoord) {
     line += header('Site') + pad(1 + maxSiteLen - String('Site').length) + '  ';
   }
 
@@ -2101,7 +2106,6 @@ function debug(query, bindVars, options) {
 
   let result = {
     engine: db._engine(),
-    engineStats: db._engineStats(),
     version: db._version(true),
     database: db._name(),
     query: input,
@@ -2109,6 +2113,11 @@ function debug(query, bindVars, options) {
     collections: {},
     views: {}
   };
+
+  if (!isCoordinator()) {
+    // engine stats not available in cluster?
+    result.engineStats = db._engineStats();
+  }
 
   result.fancy = require('@arangodb/aql/explainer').explain(input, { colors: false }, false);
 

@@ -24,7 +24,7 @@
 
 #include "Aql/AqlItemBlockManager.h"
 #include "Basics/StaticStrings.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 

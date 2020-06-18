@@ -36,6 +36,7 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 
+namespace {
 static std::string const kPhase = "phase";
 static std::string const kFoundNewMax = "max";
 static std::string const kConverged = "converged";
@@ -139,6 +140,8 @@ struct SCCComputation
   }
 };
 
+}
+
 VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>>* SCC::createComputation(
     WorkerConfig const* config) const {
   return new SCCComputation();
@@ -157,7 +160,7 @@ struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
 
   void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
                       SCCValue& senders) override {
-    senders.vertexID = vertexIdRange++;
+    senders.vertexID = _vertexIdRange++;
   }
 
   void copyEdgeData(arangodb::velocypack::Slice document, int8_t& targetPtr) override {}
