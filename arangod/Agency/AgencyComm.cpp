@@ -90,6 +90,14 @@ AgencyPrecondition::AgencyPrecondition(std::string const& key, Type t, bool e)
 AgencyPrecondition::AgencyPrecondition(std::string const& key, Type t, VPackSlice const& s)
     : key(AgencyCommManager::path(key)), type(t), empty(false), value(s) {}
 
+AgencyPrecondition::AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path,
+                                       Type t, const velocypack::Slice& s)
+    : key(path->str()), type(t), empty(false), value(s) {}
+
+AgencyPrecondition::AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path,
+                                       Type t, bool e)
+    : key(path->str()), type(t), empty(e) {}
+
 void AgencyPrecondition::toVelocyPack(VPackBuilder& builder) const {
   if (type != AgencyPrecondition::Type::NONE) {
     builder.add(VPackValue(key));
