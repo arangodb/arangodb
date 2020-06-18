@@ -34,10 +34,10 @@
 #include "Agency/JobContext.h"
 #include "Agency/RemoveFollower.h"
 #include "Agency/Store.h"
+#include "AgencyPaths.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
-#include "Cluster/AgencyPaths.h"
 #include "Cluster/ServerState.h"
 #include "Random/RandomGenerator.h"
 

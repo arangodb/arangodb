@@ -20,8 +20,9 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
 #include "PathComponent.h"
+
+#include <iostream>
 
 using namespace arangodb;
 using namespace arangodb::cluster;

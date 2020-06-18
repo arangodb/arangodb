@@ -34,7 +34,7 @@
 
 #include "Agency/AgencyComm.h"
 
-#include "Cluster/PathComponent.h"
+#include "Agency/PathComponent.h"
 #include "Cluster/ResultT.h"
 #include "Futures/Future.h"
 #include "Network/Methods.h"
