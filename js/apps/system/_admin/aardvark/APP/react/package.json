@@ -105,7 +105,7 @@
   "devDependencies": {
     "arangojs": "^6.14.1",
     "imports-loader": "^0.8.0",
-    "jquery": "^2.2.4",
+    "jquery": "^3.5.1",
     "raw-loader": "^4.0.1",
     "react-redux": "^6.0.0",
     "redux": "^4.0.5",
