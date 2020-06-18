@@ -187,7 +187,7 @@
       $.ajax({
         type: 'DELETE',
         url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(user) + '/database/' + encodeURIComponent(db) + '/' + encodeURIComponent(collection)),
-        contentType: 'application/json'
+        contentType: 'application/json',
         success: function (e) {
           self.styleDefaultRadios(null, true);
         },
