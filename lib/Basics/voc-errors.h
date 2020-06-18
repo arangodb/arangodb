@@ -178,11 +178,6 @@ constexpr int TRI_ERROR_INCOMPATIBLE_VERSION                                    
 /// Will be raised when a requested resource is not enabled.
 constexpr int TRI_ERROR_DISABLED                                                = 36;
 
-/// 37: ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED
-/// "creating collection failed due to precondition"
-/// Will be raised when updating the plan on collection creatio failed.
-constexpr int TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED           = 37;
-
 /// 400: ERROR_HTTP_BAD_PARAMETER
 /// "bad parameter"
 /// Will be raised when the HTTP request does not fulfill the requirements.
@@ -662,6 +657,11 @@ constexpr int TRI_ERROR_REPLICATION_WRONG_CHECKSUM                              
 /// "shard not empty"
 /// Will be raised when a shard is not empty and the follower tries a shortcut
 constexpr int TRI_ERROR_REPLICATION_SHARD_NONEMPTY                              = 1417;
+
+/// 1448: ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED
+/// "creating collection failed due to precondition"
+/// Will be raised when updating the plan on collection creatio failed.
+constexpr int TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED           = 1448;
 
 /// 1449: ERROR_CLUSTER_SERVER_UNKNOWN
 /// "got a request from an unkown server"
