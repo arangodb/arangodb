@@ -25,6 +25,7 @@
 
 #include "ClusterInfo.h"
 
+#include "Agency/AgencyPaths.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/TimeString.h"
 #include "Agency/TransactionBuilder.h"
@@ -42,7 +43,6 @@
 #include "Basics/hashes.h"
 #include "Basics/system-functions.h"
 #include "Cluster/AgencyCache.h"
-#include "Cluster/AgencyPaths.h"
 #include "Cluster/ClusterCollectionCreationInfo.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
@@ -2358,6 +2358,16 @@ Result ClusterInfo::createCollectionsCoordinator(
       } else {
         otherCidShardMap = getCollection(databaseName, otherCidString)->shardIds();
       }
+
+      auto const dslProtoColPath =
+          paths::root()->arango()->plan()->collections()->database(databaseName)->collection(otherCidString);
+      // The distributeShardsLike prototype collection should exist in the plan...
+      precs.emplace_back(AgencyPrecondition(dslProtoColPath,
+                                            AgencyPrecondition::Type::EMPTY, false));
+      // ...and should not still be in creation.
+      precs.emplace_back(AgencyPrecondition(dslProtoColPath->isBuilding(),
+                                            AgencyPrecondition::Type::EMPTY, true));
+
       // Any of the shards locked?
       for (auto const& shard : *otherCidShardMap) {
         precs.emplace_back(AgencyPrecondition("Supervision/Shards/" + shard.first,
@@ -2486,7 +2496,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         if (res.httpCode() == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
           // use this special error code to signal that we got a precondition failure
           // in this case the caller can try again with an updated version of the plan change
-          return {TRI_ERROR_REQUEST_CANCELED,
+          return {TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED,
                   "operation aborted due to precondition failure"};
         }
         std::string errorMsg = "HTTP code: " + std::to_string(res.httpCode());
@@ -3431,6 +3441,13 @@ Result ClusterInfo::ensureIndexCoordinator(LogicalCollection const& collection,
   }
 
   std::string const idString = arangodb::basics::StringUtils::itoa(iid.id());
+
+  VPackSlice const typeSlice = slice.get(StaticStrings::IndexType);
+  if (!typeSlice.isString() || (typeSlice.isEqualString("geo1") || typeSlice.isEqualString("geo2"))) {
+    // geo1 and geo2 are disallowed here. Only "geo" should be used
+    return Result(TRI_ERROR_BAD_PARAMETER, "invalid index type");
+  }
+
   Result res;
 
   try {

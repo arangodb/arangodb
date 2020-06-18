@@ -24,8 +24,8 @@
 
 #include <chrono>
 
+#include "Agency/AgencyPaths.h"
 #include "Agency/AsyncAgencyComm.h"
-#include "Cluster/AgencyPaths.h"
 #include "Basics/ResultT.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
