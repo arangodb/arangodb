@@ -74,24 +74,16 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-namespace {
-std::shared_ptr<SharedQueryState> ensureSQS() {
-  if (ServerState::instance()->isDBServer()) {
-    return nullptr;
-  }
-  return std::make_shared<SharedQueryState>();
-}
-}
-
-/// @brief creates a query
+/// @brief internal constructor, Used to construct a full query or a ClusterQuery
 Query::Query(std::shared_ptr<transaction::Context> const& ctx,
              QueryString const& queryString, std::shared_ptr<VPackBuilder> const& bindParameters,
-             std::shared_ptr<VPackBuilder> const& options)
+             std::shared_ptr<VPackBuilder> const& options,
+             std::shared_ptr<SharedQueryState> sharedState)
     : QueryContext(ctx->vocbase()),
       _itemBlockManager(&_resourceMonitor, SerializationFormat::SHADOWROWS),
       _queryString(queryString),
       _transactionContext(ctx),
-      _sharedState(::ensureSQS()),
+      _sharedState(std::move(sharedState)),
       _v8Context(nullptr),
       _bindParameters(bindParameters),
       _options(options),
@@ -158,6 +150,12 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
   _warnings.updateOptions(_queryOptions);
 }
 
+/// @brief public constructor, Used to construct a full query
+Query::Query(std::shared_ptr<transaction::Context> const& ctx,
+             QueryString const& queryString, std::shared_ptr<VPackBuilder> const& bindParameters,
+             std::shared_ptr<VPackBuilder> const& options)
+    : Query(ctx, queryString, bindParameters, options, std::make_shared<SharedQueryState>()) {}
+
 /// @brief destroys a query
 Query::~Query() {
   if (_queryOptions.profile >= PROFILE_LEVEL_TRACE_1) {
@@ -207,7 +205,6 @@ void Query::injectTransaction(std::unique_ptr<transaction::Methods> trx) {
 }
 
 void Query::prepareQuery(SerializationFormat format) {
-
   init();
   enterState(QueryExecutionState::ValueType::PARSING);
 
@@ -1260,14 +1257,15 @@ ExecutionEngine* Query::rootEngine() const {
 
 ClusterQuery::ClusterQuery(std::shared_ptr<transaction::Context> const& ctx,
                            std::shared_ptr<arangodb::velocypack::Builder> const& options)
-: Query(ctx, aql::QueryString(), /*bindParams*/ nullptr, options) {}
+    : Query(ctx, aql::QueryString(), /*bindParams*/ nullptr, options, 
+            /*sharedState*/ ServerState::instance()->isDBServer() ? nullptr : std::make_shared<SharedQueryState>()) {}
 
 ClusterQuery::~ClusterQuery() {
   try {
     _traversers.clear();
   } catch (...) {
-  }
-} 
+  } 
+}
 
 void ClusterQuery::prepareClusterQuery(SerializationFormat format,
                                        VPackSlice querySlice,

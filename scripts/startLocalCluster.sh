@@ -52,7 +52,6 @@ if [ "$POOLSZ" == "" ] ; then
 fi
 
 STORAGE_ENGINE="--server.storage-engine=rocksdb"
-DEFAULT_REPLICATION=""
 
 if [ "$AUTOUPGRADE" == "1" ];then
   echo "-- Using autoupgrade procedure"
@@ -193,6 +192,11 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
 done
 
 start() {
+    if [ "$NRDBSERVERS" == "1" ]; then
+        SYSTEM_REPLICATION_FACTOR="--cluster.system-replication-factor=1"
+    else
+        SYSTEM_REPLICATION_FACTOR=""
+    fi
 
     if [ "$1" == "dbserver" ]; then
         ROLE="DBSERVER"
@@ -237,6 +241,7 @@ start() {
           --log.force-direct false \
           --log.level $LOG_LEVEL_CLUSTER \
           --javascript.allow-admin-execute true \
+          $SYSTEM_REPLICATION_FACTOR \
           $STORAGE_ENGINE \
           $AUTHENTICATION \
           $SSLKEYFILE \
@@ -262,6 +267,7 @@ start() {
         --log.thread true \
         --log.level $LOG_LEVEL_CLUSTER \
         --javascript.allow-admin-execute true \
+        $SYSTEM_REPLICATION_FACTOR \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \
