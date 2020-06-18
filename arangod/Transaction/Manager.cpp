@@ -737,12 +737,12 @@ bool Manager::garbageCollect(bool abortAll) {
           } else if (abortAll) {  // transaction is in use but we want to abort
             mtrx.expiryTime = 0;  // soft-abort transaction
             didWork = true;
-            LOG_TOPIC("7ad3f", INFO, Logger::TRANSACTIONS)
+            LOG_TOPIC("7ad4f", INFO, Logger::TRANSACTIONS)
             << "soft aborting transaction '" << it.first << "'";
           }
         }
       } else if (mtrx.type == MetaType::StandaloneAQL && mtrx.expired()) {
-        LOG_TOPIC("7ad3f", INFO, Logger::TRANSACTIONS)
+        LOG_TOPIC("7ad5f", INFO, Logger::TRANSACTIONS)
         << "expired AQL query transaction '" << it.first << "'";
       } else if (mtrx.type == MetaType::Tombstone && mtrx.expired()) {
         TRI_ASSERT(mtrx.state == nullptr);
