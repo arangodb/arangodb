@@ -40,8 +40,8 @@
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 
+#include "Agency/AgencyPaths.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "Cluster/AgencyPaths.h"
 #include "Cluster/ClusterFeature.h"
 #include "Network/ConnectionPool.h"
 #include "Network/Methods.h"

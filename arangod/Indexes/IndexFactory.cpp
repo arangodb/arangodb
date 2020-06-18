@@ -325,7 +325,7 @@ IndexId IndexFactory::validateSlice(arangodb::velocypack::Slice info,
   } else if (!generateKey) {
     // In the restore case it is forbidden to NOT have id
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "cannot restore index without index identifier");
+        TRI_ERROR_BAD_PARAMETER, "cannot restore index without index identifier");
   }
 
   if (iid.empty() && !isClusterConstructor) {

@@ -315,7 +315,7 @@ class RocksDBEngine final : public StorageEngine {
   void configureEnterpriseRocksDBOptions(rocksdb::Options& options, bool createdEngineDir);
   void validateJournalFiles() const;
   
-  Result readUserEncryptionKeys(std::map<std::string, std::string>& outlist) const;
+  Result readUserEncryptionSecrets(std::vector<enterprise::EncryptionSecret>& outlist) const;
 
   enterprise::RocksDBEngineEEData _eeData;
 
@@ -328,7 +328,7 @@ class RocksDBEngine final : public StorageEngine {
   
   std::string getKeyStoreFolder() const;
   
-  std::vector<std::string> userEncryptionKeys() const;
+  std::vector<enterprise::EncryptionSecret> userEncryptionSecrets() const;
   
   /// rotate user-provided keys, writes out the internal key files
   Result rotateUserEncryptionKeys();

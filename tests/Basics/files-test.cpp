@@ -25,10 +25,10 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/files.h"
 #include "Basics/Common.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/files.h"
 #include "Basics/operating-system.h"
 #include "Basics/system-functions.h"
 #include "Random/RandomGenerator.h"
@@ -36,6 +36,7 @@
 #include "gtest/gtest.h"
 #include <string>
 #include <iostream>
+#include <fcntl.h>
 
 using namespace arangodb::basics;
 
@@ -464,6 +465,74 @@ TEST_F(CFilesTest, tst_processFile) {
   EXPECT_TRUE(good);
   EXPECT_TRUE(sha.finalize().compare("9ecb36561341d18eb65484e833efea61edc74b84cf5e6ae1b81c63533e25fc8f") == 0);
 
+  TRI_UnlinkFile(filename->c_str());
+  delete filename;
+}
+
+TEST_F(CFilesTest, tst_readpointer) {
+  char const* buffer = "some random garbled stuff...\nabc\tabignndnf";
+  StringBuffer* filename = writeFile(buffer);
+
+  {
+    // buffer big enough
+    int fd = TRI_OPEN(filename->c_str(), O_RDONLY | TRI_O_CLOEXEC);
+    EXPECT_GE(fd, 0);
+  
+    char result[100];
+    TRI_read_return_t numRead = TRI_ReadPointer(fd, &result[0], sizeof(result));
+    EXPECT_EQ(numRead, static_cast<TRI_read_return_t>(strlen(buffer)));
+    EXPECT_EQ(0, strncmp(buffer, &result[0], strlen(buffer)));
+  
+    TRI_CLOSE(fd);
+  }
+  
+  {
+    // read multiple times
+    int fd = TRI_OPEN(filename->c_str(), O_RDONLY | TRI_O_CLOEXEC);
+    EXPECT_GE(fd, 0);
+
+    char result[10];
+    TRI_read_return_t numRead = TRI_ReadPointer(fd, &result[0], sizeof(result));
+    EXPECT_EQ(numRead, 10);
+    EXPECT_EQ(0, strncmp(buffer, &result[0], 10));
+    
+    numRead = TRI_ReadPointer(fd, &result[0], sizeof(result));
+    EXPECT_EQ(numRead, 10);
+    EXPECT_EQ(0, strncmp(buffer + 10, &result[0], 10));
+    
+    numRead = TRI_ReadPointer(fd, &result[0], sizeof(result));
+    EXPECT_EQ(numRead, 10);
+    EXPECT_EQ(0, strncmp(buffer + 20, &result[0], 10));
+    
+    TRI_CLOSE(fd);
+  }
+  
+  {
+    // buffer way too small
+    int fd = TRI_OPEN(filename->c_str(), O_RDONLY | TRI_O_CLOEXEC);
+    EXPECT_GE(fd, 0);
+
+    char result[5];
+    TRI_read_return_t numRead = TRI_ReadPointer(fd, &result[0], sizeof(result));
+    EXPECT_EQ(numRead, 5);
+    EXPECT_EQ(0, strncmp(buffer, &result[0], 5));
+    
+    TRI_CLOSE(fd);
+  }
+  
+  {
+    // buffer way too small
+    int fd = TRI_OPEN(filename->c_str(), O_RDONLY | TRI_O_CLOEXEC);
+    EXPECT_GE(fd, 0);
+
+    char result[1];
+    TRI_read_return_t numRead = TRI_ReadPointer(fd, &result[0], sizeof(result));
+    EXPECT_EQ(numRead, 1);
+    EXPECT_EQ(0, strncmp(buffer, &result[0], 1));
+    
+    TRI_CLOSE(fd);
+  }
+  
   TRI_UnlinkFile(filename->c_str());
   delete filename;
 }

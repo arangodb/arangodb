@@ -3,7 +3,7 @@
   <% var genClass2 = "pure-u-1-5"; %>
 
   <div id="userPermissionView" class="innerContent">
-    <div class="pure-g pure-table pure-table-header pure-title" style="clear: both">
+    <div class="pure-g pure-table pure-table-header pure-title" style="clear: both; width: auto;">
       <div class="pure-table-row">
         <div class="<%= genClass %> left">Database</div>
         <div class="<%= genClass %> mid">Administrate <i class="fa fa-info-circle tippy" title="Allows creating/dropping of collections and setting user permissions in the database."></i></div>
@@ -13,7 +13,7 @@
       </div>
     </div>
 
-    <div class="pure-g pure-table pure-table-body">
+    <div class="pure-g pure-table pure-table-body" style="width: auto;">
       <% _.each(permissions, function(content, db) { %>
         <% var extraClass = ''; %>
         <% if (db.charAt(0) === '*') { %>
@@ -119,7 +119,7 @@
                   <% if (collectionName !== '*') { %>
                     <div class="pure-table-row noHover" id="<%=collectionName%>-collection">
                   <% } else { %>
-                    <div class="pure-table-row noHover" id="___-collection">
+                    <div class="pure-table-row noHover" id="___-collection" style="margin-bottom: 0px;">
                   <% } %>
 
                     <% if (collectionName === '*') { %>
