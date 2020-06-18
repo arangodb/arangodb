@@ -216,6 +216,9 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   VPackSlice opts = _options->slice();
 
   bool stream = VelocyPackHelper::getBooleanValue(opts, "stream", false);
+  if (ServerState::instance()->isDBServer()) {
+    stream = false;
+  }
   size_t batchSize = VelocyPackHelper::getNumericValue<size_t>(opts, "batchSize", 1000);
   double ttl = VelocyPackHelper::getNumericValue<double>(opts, "ttl",
                                                          _queryRegistry->defaultTTL());
@@ -228,6 +231,7 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
       bindVarsBuilder, _options);
 
   if (stream) {
+    TRI_ASSERT(!ServerState::instance()->isDBServer());
     if (count) {
       generateError(Result(TRI_ERROR_BAD_PARAMETER,
                            "cannot use 'count' option for a streaming query"));
@@ -243,10 +247,19 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   }
 
   // non-stream case. Execute query, then build a cursor
-  //  with the entire result set.
-  query->sharedState()->setWakeupHandler([self = shared_from_this()] {
-    return self->wakeupHandler();
-  });
+  // with the entire result set.
+  if (!ServerState::instance()->isDBServer()) {
+    auto ss = query->sharedState();
+    TRI_ASSERT(ss != nullptr);
+    if (ss == nullptr) {
+      generateError(Result(TRI_ERROR_INTERNAL, "invalid query state"));
+      return RestStatus::DONE;
+    }
+
+    ss->setWakeupHandler([self = shared_from_this()] {
+      return self->wakeupHandler();
+    });
+  }
 
   registerQuery(std::move(query));
   return processQuery(/*continuation*/false);
@@ -450,7 +463,9 @@ void RestCursorHandler::cancelQuery() {
       return;
     }
 
-    ss->invalidate();
+    if (ss != nullptr) {
+      ss->invalidate();
+    }
   } else if (!_hasStarted) {
     _queryKilled = true;
   }
@@ -498,6 +513,12 @@ void RestCursorHandler::buildOptions(VPackSlice const& slice) {
       }
       _options->add(keyName, it.value);
     }
+  }
+
+  if (ServerState::instance()->isDBServer()) {
+    // we do not support creating streaming cursors on DB-Servers, at all.
+    // always turn such cursors into non-streaming cursors.
+    isStream = false;
   }
     
   _options->add("stream", VPackValue(isStream));

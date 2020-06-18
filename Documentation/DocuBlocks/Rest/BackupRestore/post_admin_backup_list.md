@@ -48,12 +48,14 @@ method other than `POST`, then an *HTTP 405 METHOD NOT ALLOWED* is returned.
             "2019-04-28T12.00.00Z_my-label": {
                 "id": "2019-04-28T12.00.00Z_my-label",
                 "version": "3.4.5",
-                "datetime": "2019-04-28T12.00.00Z"
+                "datetime": "2019-04-28T12.00.00Z",
+                "keys": [ {sha256": "861009ec4d599fab1f40abc76e6f89880cff5833c79c548c99f9045f191cd90b"} ]
             },
             "2019-04-28T12.10.00Z-other-label": {
                 "id": "2019-04-28T12.10.00Z-other-label",
                 "version": "3.4.5",
-                "datetime": "2019-04-28T12.10.00Z"
+                "datetime": "2019-04-28T12.10.00Z",
+                "keys": [ {sha256": "861009ed4d599fab1f40abc76e6f89880cff5833c79c548c99f9045f191cd90b"} ]
             }
         }
       }
@@ -61,5 +63,7 @@ method other than `POST`, then an *HTTP 405 METHOD NOT ALLOWED* is returned.
 @END_EXAMPLE_ARANGOSH_RUN
 
 The result consists of a `list` object of hot backups by their `id`, where `id` uniquely identifies a specific hot backup, `version` depicts the version of ArangoDB, which was used to create any individual hot backup and `datetime` displays the time of creation of the hot backup. Further parameters are the size of the backup in bytes as `sizeInBytes`, the number of individual data files as `nrFiles`, the number of db servers at time of creation as `nrDBServers`, the number of backup parts, which are found on the currently reachable db servers as `nrPiecesPresent`. If the backup was created allowing inconsistences, it is so denoted as `potentiallyInconsistent`. The `available` boolean parameter is tightly connected to the backup to be present and ready to be restored on all db servers. It is `true` except, when the number of db servers currently reachable does not match to the number of db servers listed in the backup.
+Should the backup be encrypted the sha256 hashes of the user secrets are published here. This will allow you to use the correct
+user secret for the encryption-at-rest feature to be able to restore the backup.
 
 @endDocuBlock

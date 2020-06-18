@@ -909,7 +909,8 @@ arangodb::Result processInputDirectory(
     std::vector<std::string> const files = listFiles(directory.path());
     std::string const collectionSuffix = std::string(".structure.json");
     std::string const viewsSuffix = std::string(".view.json");
-    std::vector<VPackBuilder> collections, views;
+    std::vector<VPackBuilder> collections;
+    std::vector<VPackBuilder> views;
 
     // Step 1 determine all collections to process
     {
@@ -1004,7 +1005,26 @@ arangodb::Result processInputDirectory(
           // TODO: we have a JSON object with sub-object "parameters" with
           // attribute "name". we only want to replace this. how?
         } else {
-          collections.emplace_back(std::move(fileContentBuilder));
+          VPackSlice s = fileContentBuilder.slice();
+          VPackSlice indexes = s.get("indexes");
+          VPackSlice parameters = s.get("parameters");
+          if ((indexes.isNone() || indexes.isEmptyArray()) &&
+              parameters.get("indexes").isArray()) {
+            // old format
+            VPackBuilder const parametersWithoutIndexes =
+              VPackCollection::remove(parameters, std::vector<std::string>{"indexes"});
+
+            VPackBuilder rewritten;
+            rewritten.openObject();
+            rewritten.add("indexes", parameters.get("indexes"));
+            rewritten.add("parameters", parametersWithoutIndexes.slice());
+            rewritten.close();
+          
+            collections.emplace_back(std::move(rewritten));
+          } else {
+            // new format
+            collections.emplace_back(std::move(fileContentBuilder));
+          }
         }
       }
     }
@@ -1064,8 +1084,8 @@ arangodb::Result processInputDirectory(
       if (params.isObject()) {
         name = params.get("name");
         // Only these two are relevant for FOXX.
-        if (name.isString() && (name.isEqualString("_apps") ||
-                                name.isEqualString("_appbundles"))) {
+        if (name.isString() && (name.isEqualString(arangodb::StaticStrings::AppsCollection) ||
+                                name.isEqualString(arangodb::StaticStrings::AppBundlesCollection))) {
           didModifyFoxxCollection = true;
         }
       }
@@ -1082,7 +1102,7 @@ arangodb::Result processInputDirectory(
         }
       }
 
-      if (name.isString() && name.stringRef() == "_users") {
+      if (name.isString() && name.stringRef() == arangodb::StaticStrings::UsersCollection) {
         // special treatment for _users collection - this must be the very last,
         // and run isolated from all previous data loading operations - the
         // reason is that loading into the users collection may change the
@@ -1224,7 +1244,7 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& httpClient,
   std::string const cname =
       arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
 
-  if (cname == "_users") {
+  if (cname == arangodb::StaticStrings::UsersCollection) {
     // special case: never restore data in the _users collection first as it could
     // potentially change user permissions. In that case index creation will fail.
     result = ::restoreIndexes(httpClient, jobData);
