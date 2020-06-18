@@ -116,7 +116,7 @@ class SplicedSubqueryIntegrationTest
   auto makeSubqueryEndExecutorInfos(RegisterId inputRegister) -> SubqueryEndExecutor::Infos {
     auto const outputRegister = RegisterId{inputRegister + 1};
 
-    return SubqueryEndExecutor::Infos(nullptr, inputRegister, outputRegister, false);
+    return SubqueryEndExecutor::Infos(nullptr, inputRegister, outputRegister);
   }
 
   auto makeDoNothingRegisterInfos() -> RegisterInfos {

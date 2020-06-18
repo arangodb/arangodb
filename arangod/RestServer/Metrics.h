@@ -148,7 +148,7 @@ public:
     TRI_ASSERT(n > 1);
     _delim.resize(n-1);
   }
-  virtual ~scale_t() {}
+  virtual ~scale_t() = default;
   /**
    * @brief number of buckets
    */
@@ -236,7 +236,7 @@ public:
     TRI_ASSERT(_div > T(0));
     _lbase = log(_base);
   }
-  virtual ~log_scale_t() {}
+  virtual ~log_scale_t() = default;
   /**
    * @brief index for val
    * @param val value
@@ -286,7 +286,7 @@ public:
       i = le;
     }
   }
-  virtual ~lin_scale_t() {}
+  virtual ~lin_scale_t() = default;
   /**
    * @brief index for val
    * @param val value

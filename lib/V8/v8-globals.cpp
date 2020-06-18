@@ -278,7 +278,7 @@ TRI_v8_global_t::SharedPtrPersistent::~SharedPtrPersistent() {
   );
 }
 
-TRI_v8_global_t::~TRI_v8_global_t() {}
+TRI_v8_global_t::~TRI_v8_global_t() = default;
 
 /// @brief creates a global context
 TRI_v8_global_t* TRI_CreateV8Globals(arangodb::application_features::ApplicationServer& server,
