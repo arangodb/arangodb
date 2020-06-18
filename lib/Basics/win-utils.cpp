@@ -25,7 +25,6 @@
 #include <shellapi.h>
 #include <windows.h>
 
-
 #include <errno.h>
 #include <fcntl.h>
 #include <io.h>
@@ -56,8 +55,10 @@
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Basics/directories.h"
+#include "Basics/error.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
+#include "Basics/voc-errors.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
