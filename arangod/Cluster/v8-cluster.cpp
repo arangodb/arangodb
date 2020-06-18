@@ -333,7 +333,7 @@ static void JS_APIAgency(std::string const& envelope,
   }
 
   try {
-    result.setVPack(VPackParser::fromJson(result.bodyRef()));
+    result.setVPack(VPackParser::fromJson(result.body()));
     result._body.clear();
   } catch (std::exception const& e) {
     LOG_TOPIC("57115", ERR, Logger::AGENCYCOMM) << "Error transforming result: " << e.what();
@@ -467,7 +467,7 @@ static void JS_Agency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   try {
-    result.setVPack(VPackParser::fromJson(result.bodyRef()));
+    result.setVPack(VPackParser::fromJson(result.body()));
     result._body.clear();
   } catch (std::exception const& e) {
     LOG_TOPIC("d8594", ERR, Logger::AGENCYCOMM) << "Error transforming result: " << e.what();

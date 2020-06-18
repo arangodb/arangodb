@@ -5093,7 +5093,7 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
                             "failed to acquire backup lock in agency");
   }
 
-  auto rv = VPackParser::fromJson(result.bodyRef());
+  auto rv = VPackParser::fromJson(result.body());
 
   LOG_TOPIC("a94d5", DEBUG, Logger::BACKUP)
       << "agency lock response for backup id " << backupId << ": " << rv->toJson();
@@ -5197,7 +5197,7 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId,
                             "failed to release backup lock in agency");
   }
 
-  auto rv = VPackParser::fromJson(result.bodyRef());
+  auto rv = VPackParser::fromJson(result.body());
 
   if (!rv->slice().isObject() || !rv->slice().hasKey("results") ||
       !rv->slice().get("results").isArray()) {

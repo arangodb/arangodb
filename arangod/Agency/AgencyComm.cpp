@@ -713,7 +713,7 @@ AgencyCommResult AgencyComm::getValues(std::string const& key) {
   }
 
   try {
-    result.setVPack(VPackParser::fromJson(result.bodyRef()));
+    result.setVPack(VPackParser::fromJson(result.body()));
 
     if (!result.slice().isArray()) {
       result.set(500, "got invalid result structure for getValues response");
@@ -755,7 +755,7 @@ AgencyCommResult AgencyComm::dump() {
   }
 
   try {
-    result.setVPack(VPackParser::fromJson(result.bodyRef()));
+    result.setVPack(VPackParser::fromJson(result.body()));
     result._body.clear();
     result._statusCode = 200;
 
@@ -988,14 +988,14 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(AgencyTransaction const
   }
 
   try {
-    result.setVPack(VPackParser::fromJson(result.bodyRef()));
+    result.setVPack(VPackParser::fromJson(result.body()));
 
     if (!transaction.validate(result)) {
       result.set(500, std::string("validation failed for response to URL " + url));
       LOG_TOPIC("f2083", DEBUG, Logger::AGENCYCOMM)
           << "validation failed for url: " << url
           << ", type: " << transaction.typeName()
-          << ", sent: " << builder.toJson() << ", received: " << result.bodyRef();
+          << ", sent: " << builder.toJson() << ", received: " << result.body();
       return result;
     }
 
@@ -1005,7 +1005,7 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(AgencyTransaction const
     LOG_TOPIC("e13a5", ERR, Logger::AGENCYCOMM)
         << "Error transforming result: " << e.what()
         << ", status code: " << result._statusCode
-        << ", incriminating body: " << result.bodyRef() << ", url: " << url
+        << ", incriminating body: " << result.body() << ", url: " << url
         << ", timeout: " << timeout << ", data sent: " << builder.toJson();
     result.clear();
   } catch (...) {
