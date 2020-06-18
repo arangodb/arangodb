@@ -305,6 +305,10 @@
             return 'rw';
           } else if (serverLevel === 'ro' || databaseLevel === 'ro') {
             return 'ro';
+          } else if (serverLevel === 'none' || databaseLevel === 'none') {
+            return 'none';
+          } else {
+            return 'undefined';
           }
         } else if (serverLevel === 'rw' || databaseLevel === 'rw' || collectionLevel === 'rw') {
           return 'rw';
