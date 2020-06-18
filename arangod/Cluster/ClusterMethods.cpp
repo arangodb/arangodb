@@ -2535,16 +2535,23 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
 std::string const apiStr("/_admin/backup/");
 
 arangodb::Result hotBackupList(network::ConnectionPool* pool,
-                               std::vector<ServerID> const& dbServers, VPackSlice const payload,
+                               std::vector<ServerID> const& dbServers, VPackSlice const idSlice,
                                std::unordered_map<std::string, BackupMeta>& hotBackups,
                                VPackBuilder& plan) {
   TRI_ASSERT(pool);
   hotBackups.clear();
-
+  TRI_ASSERT(idSlice.isArray() || idSlice.isString() || idSlice.isNone());
+  
   std::map<std::string, std::vector<BackupMeta>> dbsBackups;
 
   VPackBufferUInt8 body;
-  body.append(payload.begin(), payload.byteSize());
+  VPackBuilder b(body);
+  b.openObject();
+  if (!idSlice.isNone()) {
+    b.add("id", idSlice);
+  }
+  b.close();
+  
   network::RequestOptions reqOpts;
   reqOpts.skipScheduler = true;
 
@@ -2577,7 +2584,7 @@ arangodb::Result hotBackupList(network::ConnectionPool* pool,
   << futures.size() << " lists of local backups";
 
   // Any error if no id presented
-  if (payload.isObject() && !payload.hasKey("id") && nrGood < futures.size()) {
+  if (!idSlice.isNone() && nrGood < futures.size()) {
     return arangodb::Result(
       TRI_ERROR_HOT_BACKUP_DBSERVERS_AWOL,
       std::string("not all db servers could be reached for backup listing"));
@@ -2613,7 +2620,7 @@ arangodb::Result hotBackupList(network::ConnectionPool* pool,
       continue;
     }
 
-    if (!payload.isNone() && plan.slice().isNone()) {
+    if (!idSlice.isNone() && plan.slice().isNone()) {
       if (!resSlice.hasKey("agency-dump") || !resSlice.get("agency-dump").isArray() ||
           resSlice.get("agency-dump").length() != 1) {
         return arangodb::Result(TRI_ERROR_HTTP_NOT_FOUND,
@@ -2942,17 +2949,19 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature, VPackSlice const
   // 6. Wait until all dbservers up again and good
   //    - fail if not
 
-  if (!payload.isObject() || !payload.hasKey("id") || !payload.get("id").isString()) {
+  VPackSlice idSlice;
+  if (!payload.isObject() || !(idSlice = payload.get("id")).isString()) {
     events::RestoreHotbackup("", TRI_ERROR_BAD_PARAMETER);
     return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
         "restore payload must be an object with string attribute 'id'");
   }
+  TRI_ASSERT(idSlice.isString());
 
   bool ignoreVersion =
       payload.hasKey("ignoreVersion") && payload.get("ignoreVersion").isTrue();
 
-  std::string const backupId = payload.get("id").copyString();
+  std::string const backupId = idSlice.copyString();
   VPackBuilder plan;
   ClusterInfo& ci = feature.clusterInfo();
 
@@ -2966,7 +2975,7 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature, VPackSlice const
   std::vector<ServerID> dbServers = ci.getCurrentDBServers();
   std::unordered_map<std::string, BackupMeta> list;
 
-  auto result = hotBackupList(pool, dbServers, payload, list, plan);
+  auto result = hotBackupList(pool, dbServers, idSlice, list, plan);
   if (!result.ok()) {
     LOG_TOPIC("ed4dd", ERR, Logger::BACKUP)
         << "failed to find backup " << backupId
@@ -3310,6 +3319,7 @@ arangodb::Result hotBackupDBServers(network::ConnectionPool* pool,
   // Now listen to the results:
   size_t totalSize = 0;
   size_t totalFiles = 0;
+  std::vector<std::string> secretHashes;
   std::string version;
   bool sizeValid = true;
   for (Future<network::Response>& f : futures) {
@@ -3330,13 +3340,23 @@ arangodb::Result hotBackupDBServers(network::ConnectionPool* pool,
     }
     resSlice = resSlice.get("result");
 
-    if (!resSlice.hasKey(BackupMeta::ID) ||
-        !resSlice.get(BackupMeta::ID).isString()) {
+    // TODO: shouldn't the id be checked ?
+    VPackSlice value = resSlice.get(BackupMeta::ID);
+    if (!value.isString()) {
       LOG_TOPIC("6240a", ERR, Logger::BACKUP)
           << "DB server " << r.destination << "is missing backup " << backupId;
       return arangodb::Result(TRI_ERROR_FILE_NOT_FOUND,
                               std::string("no backup with id ") + backupId +
                                   " on server " + r.destination);
+    }
+    
+    value = resSlice.get(BackupMeta::SECRETHASH);
+    if (value.isArray()) {
+      for (VPackSlice hash : VPackArrayIterator(value)) {
+        if (hash.isString()) {
+          secretHashes.push_back(hash.copyString());
+        }
+      }
     }
 
     if (resSlice.hasKey(BackupMeta::SIZEINBYTES)) {
@@ -3359,11 +3379,17 @@ arangodb::Result hotBackupDBServers(network::ConnectionPool* pool,
     LOG_TOPIC("b370d", DEBUG, Logger::BACKUP) << r.destination << " created local backup "
                                               << resSlice.get(BackupMeta::ID).copyString();
   }
+  
+  // remove duplicate hashes
+  std::sort(secretHashes.begin(), secretHashes.end());
+  secretHashes.erase(std::unique(secretHashes.begin(), secretHashes.end()), secretHashes.end());
 
   if (sizeValid) {
-    meta = BackupMeta(backupId, version, timeStamp, totalSize, totalFiles, static_cast<unsigned int>(dbServers.size()), "", force);
+    meta = BackupMeta(backupId, version, timeStamp, secretHashes, totalSize, totalFiles,
+                      static_cast<unsigned int>(dbServers.size()), "", force);
   } else {
-    meta = BackupMeta(backupId, version, timeStamp, 0, 0, static_cast<unsigned int>(dbServers.size()), "", force);
+    meta = BackupMeta(backupId, version, timeStamp, secretHashes, 0, 0,
+                      static_cast<unsigned int>(dbServers.size()), "", force);
     LOG_TOPIC("54265", WARN, Logger::BACKUP)
       << "Could not determine total size of backup with id '" << backupId
       << "'!";
@@ -3847,7 +3873,8 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       return result;
     }
 
-    BackupMeta meta(backupId, "", timeStamp, 0, 0, static_cast<unsigned int>(dbServers.size()), "", !gotLocks);   // Temporary
+    BackupMeta meta(backupId, "", timeStamp, std::vector<std::string>{},
+                    0, 0, static_cast<unsigned int>(dbServers.size()), "", !gotLocks);   // Temporary
     std::vector<std::string> dummy;
     result = hotBackupDBServers(pool, backupId, timeStamp, dbServers, agency->slice(),
                                 /* force */ !gotLocks, meta);
@@ -3942,29 +3969,27 @@ arangodb::Result listHotBackupsOnCoordinator(ClusterFeature& feature, VPackSlice
 
   std::unordered_map<std::string, BackupMeta> list;
 
-  if (!payload.isNone()) {
-    if (payload.isObject() && payload.hasKey("id")) {
-      if (payload.get("id").isArray()) {
-        for (auto const i : VPackArrayIterator(payload.get("id"))) {
-          if (!i.isString()) {
-            return arangodb::Result(
-                TRI_ERROR_HTTP_BAD_PARAMETER,
-                "invalid list JSON: all ids must be string.");
-          }
-        }
-      } else {
-        if (!payload.get("id").isString()) {
+  VPackSlice idSlice;
+  if (payload.isObject() && payload.hasKey("id")) {
+    idSlice = payload.get("id");
+    if (idSlice.isArray()) {
+      for (auto const i : VPackArrayIterator(payload.get("id"))) {
+        if (!i.isString()) {
           return arangodb::Result(
               TRI_ERROR_HTTP_BAD_PARAMETER,
-              "invalid JSON: id must be string or array of strings.");
+              "invalid list JSON: all ids must be string.");
         }
       }
-    } else {
+    } else if (!idSlice.isString()) {
       return arangodb::Result(
           TRI_ERROR_HTTP_BAD_PARAMETER,
-          "invalid JSON: body must be empty or object with attribute 'id'.");
+          "invalid JSON: id must be string or array of strings.");
     }
-  }  // allow continuation with None slice
+  } else if (!payload.isNone()) {
+    return arangodb::Result(
+        TRI_ERROR_HTTP_BAD_PARAMETER,
+        "invalid JSON: body must be empty or object with attribute 'id'.");
+  } // allow continuation with None slice
 
   VPackBuilder dummy;
 
@@ -3978,12 +4003,12 @@ arangodb::Result listHotBackupsOnCoordinator(ClusterFeature& feature, VPackSlice
       return Result(TRI_ERROR_SHUTTING_DOWN, "server is shutting down");
     }
 
-    result = hotBackupList(pool, dbServers, payload, list, dummy);
+    result = hotBackupList(pool, dbServers, idSlice, list, dummy);
 
     if (!result.ok()) {
 
-      if (payload.isObject() && payload.hasKey("id") && result.is(TRI_ERROR_HTTP_NOT_FOUND)) {
-        auto error = std::string("failed to locate backup ") + payload.get("id").copyString();
+      if (payload.isObject() && !idSlice.isNone() && result.is(TRI_ERROR_HTTP_NOT_FOUND)) {
+        auto error = std::string("failed to locate backup '") + idSlice.toJson() + "'";
         LOG_TOPIC("2020b", DEBUG, Logger::BACKUP) << error;
         return arangodb::Result(TRI_ERROR_HTTP_NOT_FOUND, error);
       }

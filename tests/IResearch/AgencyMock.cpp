@@ -191,7 +191,8 @@ struct AsyncAgencyStorePoolConnection final : public fuerte::Connection {
   }
 };
 
-ConnectionPtr AsyncAgencyStorePoolMock::createConnection(fuerte::ConnectionBuilder& builder) {
+std::shared_ptr<fuerte::Connection> AsyncAgencyStorePoolMock::createConnection(
+    fuerte::ConnectionBuilder& builder) {
   return std::make_shared<AsyncAgencyStorePoolConnection>(this, builder.normalizedEndpoint());
 }
 

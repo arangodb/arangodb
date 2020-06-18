@@ -25,9 +25,9 @@
 
 #include "ClusterInfo.h"
 
+#include "Agency/AgencyPaths.h"
 #include "Agency/TimeString.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/application-exit.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
@@ -37,10 +37,10 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/application-exit.h"
 #include "Basics/hashes.h"
 #include "Basics/system-functions.h"
 #include "Cluster/AgencyCache.h"
-#include "Cluster/AgencyPaths.h"
 #include "Cluster/ClusterCollectionCreationInfo.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
@@ -2344,6 +2344,16 @@ Result ClusterInfo::createCollectionsCoordinator(
       } else {
         otherCidShardMap = getCollection(databaseName, otherCidString)->shardIds();
       }
+
+      auto const dslProtoColPath =
+          paths::root()->arango()->plan()->collections()->database(databaseName)->collection(otherCidString);
+      // The distributeShardsLike prototype collection should exist in the plan...
+      precs.emplace_back(AgencyPrecondition(dslProtoColPath,
+                                            AgencyPrecondition::Type::EMPTY, false));
+      // ...and should not still be in creation.
+      precs.emplace_back(AgencyPrecondition(dslProtoColPath->isBuilding(),
+                                            AgencyPrecondition::Type::EMPTY, true));
+
       // Any of the shards locked?
       for (auto const& shard : *otherCidShardMap) {
         precs.emplace_back(AgencyPrecondition("Supervision/Shards/" + shard.first,
@@ -3417,6 +3427,13 @@ Result ClusterInfo::ensureIndexCoordinator(LogicalCollection const& collection,
   }
 
   std::string const idString = arangodb::basics::StringUtils::itoa(iid.id());
+
+  VPackSlice const typeSlice = slice.get(StaticStrings::IndexType);
+  if (!typeSlice.isString() || (typeSlice.isEqualString("geo1") || typeSlice.isEqualString("geo2"))) {
+    // geo1 and geo2 are disallowed here. Only "geo" should be used
+    return Result(TRI_ERROR_BAD_PARAMETER, "invalid index type");
+  }
+
   Result res;
 
   try {
