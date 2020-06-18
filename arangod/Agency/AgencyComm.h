@@ -319,23 +319,7 @@ class AgencyCommResult {
     _vpack = vpack;
   }
 
-  [[nodiscard]] Result asResult() const {
-    if (successful()) {
-      return Result{};
-    } else if (auto const err = parseBodyError(); err.has_value()) {
-      return Result{err->first, std::string{err->second}};
-    } else if (_statusCode > 0) {
-      if (!_message.empty()) {
-        return Result{_statusCode, _message};
-      } else if (!_connected) {
-        return Result{_statusCode, "unable to connect to agency"};
-      } else {
-        return Result{_statusCode};
-      }
-    } else {
-      return Result{TRI_ERROR_INTERNAL};
-    }
-  }
+  [[nodiscard]] Result asResult() const;
 
   void toVelocyPack(VPackBuilder& builder) const;
 

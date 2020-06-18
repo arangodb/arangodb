@@ -535,6 +535,24 @@ VPackBuilder AgencyCommResult::toVelocyPack() const {
   return builder;
 }
 
+Result AgencyCommResult::asResult() const {
+  if (successful()) {
+    return Result{};
+  } else if (auto const err = parseBodyError(); err.has_value()) {
+    return Result{err->first, std::string{err->second}};
+  } else if (_statusCode > 0) {
+    if (!_message.empty()) {
+      return Result{_statusCode, _message};
+    } else if (!_connected) {
+      return Result{_statusCode, "unable to connect to agency"};
+    } else {
+      return Result{_statusCode};
+    }
+  } else {
+    return Result{TRI_ERROR_INTERNAL};
+  }
+}
+
 namespace std {
 ostream& operator<<(ostream& out, AgencyCommResult const& a) {
   out << a.toVelocyPack().toJson();
