@@ -819,6 +819,10 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
   uint64_t oldValue = 0;
 
   while (!writeResult.successful()) {
+    if (server().isStopping()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+
     readResult = getValues("Sync/LatestID");
     if (!readResult.successful()) {
       std::this_thread::sleep_for(std::chrono::milliseconds(2));
