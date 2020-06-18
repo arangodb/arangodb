@@ -2482,7 +2482,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         if (res.httpCode() == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
           // use this special error code to signal that we got a precondition failure
           // in this case the caller can try again with an updated version of the plan change
-          return {TRI_ERROR_REQUEST_CANCELED,
+          return {TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED,
                   "operation aborted due to precondition failure"};
         }
         std::string errorMsg = "HTTP code: " + std::to_string(res.httpCode());
