@@ -33,6 +33,11 @@
 #include "velocypack/velocypack-common.h"
 #include "velocypack/ValueType.h"
 
+#if __cplusplus >= 201703L
+#include <string_view>
+#define VELOCYPACK_HAS_STRING_VIEW 1
+#endif
+
 namespace arangodb {
 namespace velocypack {
 class StringRef;
@@ -67,7 +72,9 @@ class Value {
     std::string const* s;        // 5: std::string
     char const* c;               // 6: char const*
     void const* e;               // 7: external
+#ifdef VELOCYPACK_HAS_STRING_VIEW
     std::string_view const* sv;  // 8: std::string_view
+#endif
   } _value;
 
  public:
@@ -137,10 +144,12 @@ class Value {
     _value.s = &s;
   }
 
+#ifdef VELOCYPACK_HAS_STRING_VIEW
   explicit Value(std::string_view const& sv, ValueType t = ValueType::String) noexcept
       : _valueType(t), _cType(CType::StringView) {
     _value.sv = &sv;
   }
+#endif
 
   ValueType valueType() const { return _valueType; }
 
@@ -177,10 +186,12 @@ class Value {
     return _value.s;
   }
 
+#ifdef VELOCYPACK_HAS_STRING_VIEW
   std::string_view const* getStringView() const {
     VELOCYPACK_ASSERT(_cType == CType::StringView);
     return _value.sv;
   }
+#endif
 
   void const* getExternal() const {
     VELOCYPACK_ASSERT(_cType == CType::VoidPtr);

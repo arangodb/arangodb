@@ -34,6 +34,11 @@
 #include "velocypack/Sink.h"
 #include "velocypack/StringRef.h"
 
+#if __cplusplus >= 201703L
+#include <string_view>
+#define VELOCYPACK_HAS_STRING_VIEW 1
+#endif
+
 using namespace arangodb::velocypack;
 
 namespace {
@@ -957,11 +962,15 @@ uint8_t* Builder::set(uint64_t tag, Value const& item) {
       } else if (ctype == Value::CType::CharPtr) {
         p = item.getCharPtr();
         size = strlen(p);
-      } else if (ctype == Value::CType::StringView) {
+      }
+#ifdef VELOCYPACK_HAS_STRING_VIEW
+      else if (ctype == Value::CType::StringView) {
         std::string_view const* sv = item.getStringView();
         size = sv->size();
         p = sv->data();
-      } else {
+      }
+#endif
+      else {
         throw Exception(
             Exception::BuilderUnexpectedValue,
             "Must give a string or char const* for ValueType::String");
@@ -1008,21 +1017,33 @@ uint8_t* Builder::set(uint64_t tag, Value const& item) {
       break;
     }
     case ValueType::Binary: {
+#ifdef VELOCYPACK_HAS_STRING_VIEW
       if (VELOCYPACK_UNLIKELY(ctype != Value::CType::String && ctype != Value::CType::CharPtr &&
                               ctype != Value::CType::StringView)) {
+        throw Exception(Exception::BuilderUnexpectedValue,
+                        "Must provide std::string, std::string_view or char "
+                        "const* for ValueType::Binary");
+      }
+#else
+      if (VELOCYPACK_UNLIKELY(ctype != Value::CType::String && ctype != Value::CType::CharPtr)) {
         throw Exception(
             Exception::BuilderUnexpectedValue,
-            "Must provide std::string, std::string_view or char const* for ValueType::Binary");
+            "Must provide std::string or char const* for ValueType::Binary");
       }
+#endif
       char const* p;
       ValueLength size;
       if (ctype == Value::CType::String) {
         p = item.getString()->data();
         size = item.getString()->size();
-      } else if (ctype == Value::CType::StringView) {
+      }
+#ifdef VELOCYPACK_HAS_STRING_VIEW
+      else if (ctype == Value::CType::StringView) {
         p = item.getStringView()->data();
         size = item.getStringView()->size();
-      } else {
+      }
+#endif
+      else {
         p = item.getCharPtr();
         size = strlen(p);
       }
