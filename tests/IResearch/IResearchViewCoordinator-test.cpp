@@ -92,9 +92,8 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
  protected:
 
   arangodb::tests::mocks::MockCoordinator server;
-  arangodb::consensus::Store& _agencyStore;
 
-  IResearchViewCoordinatorTest() : server(), _agencyStore(server.getAgencyStore()) {
+  IResearchViewCoordinatorTest() : server() {
     arangodb::tests::init();
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
@@ -147,6 +146,7 @@ TEST_F(IResearchViewCoordinatorTest, test_rename) {
 
 TEST_F(IResearchViewCoordinatorTest, visit_collections) {
   auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
+
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
   createTestDatabase(vocbase);
@@ -163,26 +163,27 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
       "{ \"name\": \"testCollection2\", \"shards\":{} }");
   auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"view\": \"1\" }");
   auto json = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\" "
-      "}");
-
-  ci.loadPlan();
+      "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\" }");
 
   ASSERT_TRUE(ci.createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1, 1, false,
                                             collectionJson0->slice(), 0.0, false, nullptr).ok());
+
   auto logicalCollection0 = ci.getCollection(vocbase->name(), collectionId0);
   ASSERT_TRUE((false == !logicalCollection0));
   ASSERT_TRUE((ci.createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1, 1, false,
                                               collectionJson1->slice(), 0.0, false, nullptr)
                    .ok()));
+
   auto logicalCollection1 = ci.getCollection(vocbase->name(), collectionId1);
   ASSERT_TRUE((false == !logicalCollection1));
   ASSERT_TRUE((ci.createCollectionCoordinator(vocbase->name(), collectionId2, 0, 1, 1, false,
                                               collectionJson2->slice(), 0.0, false, nullptr)
                    .ok()));
+
   auto logicalCollection2 = ci.getCollection(vocbase->name(), collectionId2);
   ASSERT_TRUE((false == !logicalCollection2));
   ASSERT_TRUE((ci.createViewCoordinator(vocbase->name(), viewId, json->slice()).ok()));
+
   auto logicalView = ci.getView(vocbase->name(), viewId);
   ASSERT_TRUE((false == !logicalView));
   auto* view =
@@ -224,8 +225,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
   // view definition with LogicalView (for persistence)
   {
     auto json = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\" "
-        "}");
+        "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE(
@@ -559,8 +559,7 @@ TEST_F(IResearchViewCoordinatorTest, test_create_drop_view) {
   // create and drop view
   {
     auto json = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testView\", \"id\": \"42\", \"type\": "
-        "\"arangosearch\" }");
+        "{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
     auto viewId = std::to_string(42);
 
     EXPECT_TRUE(
@@ -651,10 +650,10 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
   {
     VPackBuilder agencyRecord;
     agencyRecord.openArray();
-    _agencyStore.read(arangodb::velocypack::Parser::fromJson(
-                          "[\"arango/Plan/Collections/testDatabase/" + collectionId + "\"]")
-                          ->slice(),
-                      agencyRecord);
+
+    server.getFeature<arangodb::ClusterFeature>().agencyCache().store().read(
+      arangodb::velocypack::Parser::fromJson(
+        "[\"arango/Plan/Collections/testDatabase/" + collectionId + "\"]")->slice(), agencyRecord);
     agencyRecord.close();
 
     ASSERT_TRUE(agencyRecord.slice().isArray());
@@ -819,6 +818,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
 
 TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
   auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
+  ci.startSyncers();
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
@@ -867,8 +867,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
     // update properties - full update
     {
       auto props = arangodb::velocypack::Parser::fromJson(
-          "{ \"cleanupIntervalStep\": 42, \"consolidationIntervalMsec\": 50 "
-          "}");
+          "{ \"cleanupIntervalStep\": 42, \"consolidationIntervalMsec\": 50 }");
       EXPECT_TRUE(view->properties(props->slice(), false).ok());
       EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));  // plan version changed
       planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
@@ -1494,7 +1493,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   // get current plan version
   auto planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
 
-  ci.loadCurrent();
+  ci.testOnlyLoadCurrent();
 
   // create view
   auto viewJson = arangodb::velocypack::Parser::fromJson(
@@ -2848,7 +2847,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   // get current plan version
   auto planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
 
-  ci.loadCurrent();
+  ci.testOnlyLoadCurrent();
 
   // create view
   auto viewJson = arangodb::velocypack::Parser::fromJson(
@@ -3494,7 +3493,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   // get current plan version
   auto planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
 
-  ci.loadCurrent();
+  ci.testOnlyLoadCurrent();
 
   // create view
   auto viewJson = arangodb::velocypack::Parser::fromJson(
@@ -3947,7 +3946,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     ASSERT_TRUE((nullptr != logicalCollection));
   }
 
-  ci.loadCurrent();
+  ci.testOnlyLoadCurrent();
 
   auto const currentCollectionPath = "/Current/Collections/" + vocbase->name() +
                                      "/" + std::to_string(logicalCollection->id());

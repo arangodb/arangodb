@@ -93,6 +93,10 @@ public:
   consensus::check_ret_t set(VPackSlice const trx);
 
   /// @brief Used exclusively in unit tests
+  std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> set(
+    consensus::query_t const& trx);
+
+  /// @brief Used exclusively in unit tests
   consensus::Store& store();
 
 private:

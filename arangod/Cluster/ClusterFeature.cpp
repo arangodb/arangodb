@@ -478,6 +478,13 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
+  // This must remain here for proper function after hot restores
+  auto role = ServerState::instance()->getRole();
+  if (role != ServerState::ROLE_AGENT && role != ServerState::ROLE_UNDEFINED) {
+    _agencyCache->start();
+    LOG_TOPIC("bae31", DEBUG, Logger::CLUSTER) << "Waiting for agency cache to become ready.";
+  }
+
   if (!ServerState::instance()->integrateIntoCluster(_requestedRole, _myEndpoint,
                                                      _myAdvertisedEndpoint)) {
     LOG_TOPIC("fea1e", FATAL, Logger::STARTUP)
@@ -485,7 +492,6 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
-  auto role = ServerState::instance()->getRole();
   auto endpoints = AsyncAgencyCommManager::INSTANCE->endpoints();
 
   if (role == ServerState::ROLE_UNDEFINED) {
@@ -495,12 +501,6 @@ void ClusterFeature::prepare() {
         << ServerState::instance()->getId()
         << "'. No role configured in agency (" << endpoints << ")";
     FATAL_ERROR_EXIT();
-  }
-
-  // This must remain here for proper function after hot restores
-  if (role != ServerState::ROLE_AGENT && role != ServerState::ROLE_UNDEFINED) {
-    _agencyCache->start();
-    LOG_TOPIC("bae31", DEBUG, Logger::CLUSTER) << "Waiting for agency cache to become ready.";
   }
 
 }
@@ -522,13 +522,13 @@ void ClusterFeature::start() {
   // ClusterInfo etc, need to start after first poll result from the agency.
   // This is of great importance to not accidentally delete data facing an
   // empty agency. There are also other measures that guard against such a
-  // outcome. But there is also no point continuing with a first agency poll.  
+  // outcome. But there is also no point continuing with a first agency poll.
   if (role != ServerState::ROLE_AGENT && role != ServerState::ROLE_UNDEFINED) {
     _agencyCache->waitFor(1).get();
     LOG_TOPIC("13eab", DEBUG, Logger::CLUSTER)
       << "Agency cache is ready. Starting cluster cache syncers";
   }
-  
+
   // If we are a coordinator, we wait until at least one DBServer is there,
   // otherwise we can do very little, in particular, we cannot create
   // any collection:

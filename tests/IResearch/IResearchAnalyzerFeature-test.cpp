@@ -1912,8 +1912,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     { VPackObjectBuilder guard2(&bogus);
       bogus.add("a", VPackValue(12)); }}
 
-  arangodb::consensus::Store& agencyStore =
-    server.server().getFeature<arangodb::ClusterFeature>().agencyCache().store();
   server.server().getFeature<arangodb::ClusterFeature>().agencyCache().set(bogus.slice());
 
   arangodb::network::ConnectionPool::Config poolConfig;
@@ -1923,7 +1921,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
   poolConfig.maxOpenConnections = 3;
   poolConfig.verifyHosts = false;
 
-  AsyncAgencyStorePoolMock pool(&agencyStore, poolConfig);
+  AsyncAgencyStorePoolMock pool(server.server(), poolConfig);
   arangodb::AgencyCommHelper::initialize("arango");
   arangodb::AsyncAgencyCommManager::initialize(server.server());
   arangodb::AsyncAgencyCommManager::INSTANCE->pool(&pool);

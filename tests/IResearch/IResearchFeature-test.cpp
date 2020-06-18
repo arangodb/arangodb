@@ -96,7 +96,8 @@ class IResearchFeatureTest
     server.startFeatures();
   }
 
-  ~IResearchFeatureTest() {}
+  ~IResearchFeatureTest() {
+  }
 
   // version 0 data-source path
   irs::utf8_path getPersistedPath0(arangodb::LogicalView const& view) {
@@ -731,7 +732,6 @@ class IResearchFeatureTestCoordinator
   arangodb::tests::mocks::MockV8Server server;
 
  private:
-  arangodb::consensus::Store* _agencyStore;
   arangodb::ServerState::RoleEnum _serverRoleBefore;
   std::unique_ptr<AsyncAgencyStorePoolMock> _pool;
 
@@ -740,7 +740,6 @@ class IResearchFeatureTestCoordinator
       : server(false),
         _serverRoleBefore(arangodb::ServerState::instance()->getRole()) {
     server.getFeature<arangodb::ClusterFeature>().allocateMembers();
-    _agencyStore = &server.getFeature<arangodb::ClusterFeature>().agencyCache().store();
 
     arangodb::tests::init();
 
@@ -760,11 +759,12 @@ class IResearchFeatureTestCoordinator
     poolConfig.minOpenConnections = 1;
     poolConfig.maxOpenConnections = 3;
     poolConfig.verifyHosts = false;
-    _pool = std::make_unique<AsyncAgencyStorePoolMock>(_agencyStore, poolConfig);
+    _pool = std::make_unique<AsyncAgencyStorePoolMock>(server.server(), poolConfig);
     arangodb::AsyncAgencyCommManager::initialize(server.server());
     arangodb::AsyncAgencyCommManager::INSTANCE->pool(_pool.get());
     arangodb::AsyncAgencyCommManager::INSTANCE->addEndpoint("tcp://localhost:4001");
     arangodb::AgencyComm(server.server()).ensureStructureInitialized();  // initialize agency
+    server.getFeature<arangodb::ClusterFeature>().clusterInfo().startSyncers();
   }
 
   ~IResearchFeatureTestCoordinator() {
@@ -773,16 +773,12 @@ class IResearchFeatureTestCoordinator
 
   void agencyTrx(std::string const& key, std::string const& value) {
     // Build an agency transaction:
-    VPackBuilder b;
-    {
-      VPackArrayBuilder guard(&b);
-      {
-        VPackObjectBuilder guard2(&b);
-        auto b2 = VPackParser::fromJson(value);
-        b.add(key, b2->slice());
-      }
-    }
-    server.getFeature<arangodb::ClusterFeature>().agencyCache().set(b.slice());
+    auto b2 = VPackParser::fromJson(value);
+    auto b = std::make_shared<VPackBuilder>();
+    { VPackArrayBuilder guard(b.get());
+      { VPackObjectBuilder guard2(b.get());
+        b->add(key, b2->slice()); }}
+    server.getFeature<arangodb::ClusterFeature>().agencyCache().set(b);
   }
 
   void agencyCreateDatabase(std::string const& name) {
@@ -877,10 +873,10 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
 
   agencyCreateDatabase(vocbase->name());
 
-  ASSERT_TRUE((ci.createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
-                                              collectionJson->slice(), 0.0, false, nullptr)
-                   .ok()));
-
+  ASSERT_TRUE(
+    ci.createCollectionCoordinator(
+      vocbase->name(), collectionId, 0, 1, 1, false, collectionJson->slice(), 0.0, false, nullptr)
+    .ok());
   auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
   ASSERT_FALSE(!logicalCollection);
   EXPECT_TRUE(
@@ -975,14 +971,13 @@ class IResearchFeatureTestDBServer
   arangodb::tests::mocks::MockV8Server server;
 
  private:
-  arangodb::consensus::Store _agencyStore;
+
   arangodb::ServerState::RoleEnum _serverRoleBefore;
   std::unique_ptr<AsyncAgencyStorePoolMock> _pool;
 
  protected:
   IResearchFeatureTestDBServer()
       : server(false),
-        _agencyStore(server.server(), nullptr, "arango"),
         _serverRoleBefore(arangodb::ServerState::instance()->getRole()),
         _pool(nullptr) {
 
@@ -1006,12 +1001,14 @@ class IResearchFeatureTestDBServer
     poolConfig.minOpenConnections = 1;
     poolConfig.maxOpenConnections = 3;
     poolConfig.verifyHosts = false;
-    _pool = std::make_unique<AsyncAgencyStorePoolMock>(&_agencyStore, poolConfig);
+    _pool = std::make_unique<AsyncAgencyStorePoolMock>(server.server(), poolConfig);
     arangodb::AsyncAgencyCommManager::initialize(server.server());
     arangodb::AsyncAgencyCommManager::INSTANCE->addEndpoint("tcp://localhost:4000/");
     arangodb::AsyncAgencyCommManager::INSTANCE->pool(_pool.get());
 
     arangodb::AgencyComm(server.server()).ensureStructureInitialized();  // initialize agency
+    server.getFeature<arangodb::ClusterFeature>().clusterInfo().startSyncers();
+
   }
 
   ~IResearchFeatureTestDBServer() {

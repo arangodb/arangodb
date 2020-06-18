@@ -150,7 +150,7 @@ class MockClusterServer : public MockServer,
  public:
   virtual TRI_vocbase_t* createDatabase(std::string const& name) = 0;
   virtual void dropDatabase(std::string const& name) = 0;
-  arangodb::consensus::Store& getAgencyStore() { return *_agencyStore; };
+//  arangodb::consensus::Store& getAgencyStore() { return *_agencyStore; };
   void startFeatures() override;
 
   // You can only create specialized types
@@ -165,7 +165,7 @@ class MockClusterServer : public MockServer,
   void agencyDropDatabase(std::string const& name);
 
  private:
-  arangodb::consensus::Store* _agencyStore;
+//  arangodb::consensus::Store* _agencyStore;
   arangodb::ServerState::RoleEnum _oldRole;
   std::unique_ptr<AsyncAgencyStorePoolMock> _pool;
   int _dummy;
