@@ -380,6 +380,8 @@ uint64_t ClusterInfo::uniqid(uint64_t count) {
   if (_uniqid._currentValue + count - 1 <= _uniqid._upperValue) {
     uint64_t result = _uniqid._currentValue;
     _uniqid._currentValue += count;
+
+    TRI_ASSERT(result != 0);
     return result;
   }
 
@@ -390,6 +392,7 @@ uint64_t ClusterInfo::uniqid(uint64_t count) {
     _uniqid._upperValue = _uniqid._nextUpperValue;
     triggerBackgroundGetIds();
 
+    TRI_ASSERT(result != 0);
     return result;
   }
 
@@ -409,6 +412,7 @@ uint64_t ClusterInfo::uniqid(uint64_t count) {
   _uniqid._nextBatchStart = _uniqid._upperValue + 1;
   _uniqid._nextUpperValue = _uniqid._upperValue + fetch - 1;
 
+  TRI_ASSERT(result != 0);
   return result;
 }
 
@@ -609,7 +613,7 @@ void ClusterInfo::loadPlan() {
     _newPlannedViews.clear();
   });
 
-  bool planValid = true;  // has the loadPlan compleated without skipping valid objects
+  bool planValid = true;  // has the loadPlan completed without skipping valid objects
   // we will set in the end
 
   std::shared_ptr<arangodb::velocypack::Builder> planBuilder;
@@ -2562,7 +2566,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         events::CreateCollection(databaseName, info.name, res.errorCode());
       }
       loadCurrent();
-      return res.errorCode();
+      return res.asResult();
     }
     if (tmpRes > TRI_ERROR_NO_ERROR) {
       // We do not need to lock all condition variables
@@ -5046,7 +5050,7 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
               std::chrono::system_clock::now() + std::chrono::seconds(timeouti))));
       }
 
-      // Prevonditions
+      // Preconditions
       {
         VPackObjectBuilder precs(&builder);
         builder.add(VPackValue(backupKey));  // Backup key empty
