@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/application-exit.h"
+#include "Cluster/AgencyPaths.h"
 #include "RestServer/ServerFeature.h"
 
 #include <memory>
@@ -810,66 +811,51 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
     return debugUniqId++;
   }
 #endif
-  static int const maxTries = 1000000;
-  // this is pretty much forever, but we simply cannot continue at all
-  // if we do not get a unique id from the agency.
-  int tries = 0;
+  AgencyCommResult readResult;
+  AgencyCommResult writeResult;
 
-  AgencyCommResult result;
+  TRI_ASSERT(!writeResult.successful());
 
   uint64_t oldValue = 0;
 
-  while (tries++ < maxTries) {
-    result = getValues("Sync/LatestID");
-    if (!result.successful()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  while (!writeResult.successful()) {
+    readResult = getValues("Sync/LatestID");
+    if (!readResult.successful()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(2));
       continue;
     }
 
-    VPackSlice oldSlice = result.slice()[0].get(std::vector<std::string>(
-        {AgencyCommHelper::path(), "Sync", "LatestID"}));
+    VPackSlice oldSlice = readResult.slice()[0].get(
+        cluster::paths::root()->arango()->sync()->latestId()->vec());
 
-    if (!(oldSlice.isSmallInt() || oldSlice.isUInt())) {
-      LOG_TOPIC("b30d9", WARN, Logger::AGENCYCOMM)
-          << "Sync/LatestID in agency is not an unsigned integer, fixing...";
-      try {
-        VPackBuilder builder;
-        builder.add(VPackValue(0));
-
-        // create the key on the fly
-        setValue("Sync/LatestID", builder.slice(), 0.0);
-
-      } catch (...) {
-        // Could not build local key. Try again
-      }
-      continue;
-    }
-
-    // If we get here, slice is pointing to an unsigned integer, which
-    // is the value in the agency.
-    oldValue = 0;
     try {
-      oldValue = oldSlice.getUInt();
-    } catch (...) {
+      oldValue = oldSlice.getNumber<decltype(oldValue)>();
+    } catch (velocypack::Exception& e) {
+      LOG_TOPIC("74f97", ERR, Logger::AGENCYCOMM)
+          << "Sync/LatestID in agency could not be parsed: " << e.what()
+          << "; If this error persists, contact the ArangoDB support.";
+      auto message = std::string("Failed to parse Sync/LatestID: ") + e.what();
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
     }
+
+    // If we get here, oldSlice is pointing to an unsigned integer, which
+    // is the value in the agency, and oldValue is set to its value.
+
     uint64_t const newValue = oldValue + count;
 
     VPackBuilder newBuilder;
     try {
       newBuilder.add(VPackValue(newValue));
+
+      writeResult = casValue("Sync/LatestID", oldSlice, newBuilder.slice(), 0.0, timeout);
     } catch (...) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(500));
-      continue;
     }
 
-    result = casValue("Sync/LatestID", oldSlice, newBuilder.slice(), 0.0, timeout);
-
-    if (result.successful()) {
-      break;
-    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
     // The cas did not work, simply try again!
   }
 
+  TRI_ASSERT(oldValue != 0);
   return oldValue;
 }
 
