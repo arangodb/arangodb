@@ -285,22 +285,28 @@
             self.jsonEditor.getSession().setMode('ace/mode/json');
 
             $.ajax({
+              type: "GET",
               url: this.appUrl(db),
               headers: {
                 accept: 'text/html,*/*;q=0.9'
+              },
+              success: function () {
+                $('.open', self.el).prop('disabled', false);
               }
-            }).success(function () {
-              $('.open', this.el).prop('disabled', false);
-            }.bind(this));
+            });
 
             this.updateConfig();
             this.updateDeps();
 
             if (mode === 'swagger') {
-              $.get('./foxxes/docs/swagger.json?mount=' + encodeURIComponent(this.model.get('mount')), function (data) {
-                if (Object.keys(data.paths).length < 1) {
-                  self.render('readme');
-                  $('#app-show-swagger').attr('disabled', 'true');
+              $.ajax({
+                url: './foxxes/docs/swagger.json?mount=' + encodeURIComponent(this.model.get('mount')),
+                success: function (data) {
+                  console.log(data);
+                  if (Object.keys(data.paths).length < 1) {
+                    self.render('readme');
+                    $('#app-show-swagger').attr('disabled', 'true');
+                  }
                 }
               });
             }
