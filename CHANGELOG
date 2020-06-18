@@ -1,6 +1,11 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Internal issue BTS-71: In a cluster, for collections in creation, suspend
+  supervision jobs concerning replication factor until creation is completed.
+  Previously, it could cause collection creation to fail (e.g. when a server
+  failed during creation), even when it didn't have to.
+
 * Correct some log entries.
 
 * Fixed BTS-110: Fulltext index with minLength <= 0 not allowed.
