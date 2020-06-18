@@ -69,8 +69,8 @@ class AqlExecutorTestCase : public ::testing::Test {
    *
    * @return ExecutionNode* Pointer to a dummy ExecutionNode. Memory is managed, do not delete.
    */
-  auto generateNodeDummy() -> ExecutionNode*;
-
+  auto generateNodeDummy(ExecutionNode::NodeType type = ExecutionNode::NodeType::SINGLETON)
+      -> ExecutionNode*;
 
   template <std::size_t inputColumns = 1, std::size_t outputColumns = 1>
   auto makeExecutorTestHelper() -> ExecutorTestHelper<inputColumns, outputColumns> {

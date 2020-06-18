@@ -26,7 +26,8 @@ using namespace arangodb::tests::aql;
 template <bool enableQueryTrace>
 AqlExecutorTestCase<enableQueryTrace>::AqlExecutorTestCase()
     : fakedQuery{_server->createFakeQuery(enableQueryTrace)} {
-  auto engine = std::make_unique<ExecutionEngine>(*fakedQuery, manager(), SerializationFormat::SHADOWROWS);
+  auto engine = std::make_unique<ExecutionEngine>(*fakedQuery, manager(),
+                                                  SerializationFormat::SHADOWROWS);
   /// TODO fakedQuery->setEngine(engine.release());
   if constexpr (enableQueryTrace) {
     Logger::QUERIES.setLogLevel(LogLevel::DEBUG);
@@ -41,9 +42,12 @@ AqlExecutorTestCase<enableQueryTrace>::~AqlExecutorTestCase() {
 }
 
 template <bool enableQueryTrace>
-auto AqlExecutorTestCase<enableQueryTrace>::generateNodeDummy() -> ExecutionNode* {
-  auto dummy = std::make_unique<SingletonNode>(const_cast<arangodb::aql::ExecutionPlan*>(fakedQuery->plan()),
-                                               ExecutionNodeId{_execNodes.size()});
+auto AqlExecutorTestCase<enableQueryTrace>::generateNodeDummy(ExecutionNode::NodeType type)
+    -> ExecutionNode* {
+  auto dummy =
+      std::make_unique<MockTypedNode>(const_cast<arangodb::aql::ExecutionPlan*>(
+                                          fakedQuery->plan()),
+                                      ExecutionNodeId{_execNodes.size()}, type);
   auto res = dummy.get();
   _execNodes.emplace_back(std::move(dummy));
   return res;
