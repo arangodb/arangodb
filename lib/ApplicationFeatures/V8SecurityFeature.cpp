@@ -215,19 +215,20 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
       .setIntroducedIn(30500);
 
   options
-      ->addOption("--javascript.startup-options-whitelist",
+      ->addOption("--javascript.startup-options-allowlist",
                   "startup options whose names match this regular "
-                  "expression will be whitelisted and exposed to JavaScript",
+                  "expression will be allowed and exposed to JavaScript",
                   new VectorParameter<StringParameter>(&_startupOptionsWhitelistVec),
                   arangodb::options::makeFlags(
                   arangodb::options::Flags::DefaultNoComponents,
                   arangodb::options::Flags::OnCoordinator,
                   arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
+
   options
-      ->addOption("--javascript.startup-options-blacklist",
+      ->addOption("--javascript.startup-options-denylist",
                   "startup options whose names match this regular "
-                  "expression will not be exposed (if not whitelisted) to "
+                  "expression will not be exposed (if not in allowlist) to "
                   "JavaScript actions",
                   new VectorParameter<StringParameter>(&_startupOptionsBlacklistVec),
                   arangodb::options::makeFlags(
@@ -235,9 +236,9 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                   arangodb::options::Flags::OnCoordinator,
                   arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
-
+  
   options
-      ->addOption("--javascript.environment-variables-whitelist",
+      ->addOption("--javascript.environment-variables-allowlist",
                   "environment variables that will be accessible in JavaScript",
                   new VectorParameter<StringParameter>(&_environmentVariablesWhitelistVec),
                   arangodb::options::makeFlags(
@@ -245,19 +246,20 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                   arangodb::options::Flags::OnCoordinator,
                   arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
+  
   options
-      ->addOption("--javascript.environment-variables-blacklist",
+      ->addOption("--javascript.environment-variables-denylist",
                   "environment variables that will be inaccessible in "
-                  "JavaScript if not whitelisted",
+                  "JavaScript (if not in allowlist)",
                   new VectorParameter<StringParameter>(&_environmentVariablesBlacklistVec),
                   arangodb::options::makeFlags(
                   arangodb::options::Flags::DefaultNoComponents,
                   arangodb::options::Flags::OnCoordinator,
                   arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
-
+  
   options
-      ->addOption("--javascript.endpoints-whitelist",
+      ->addOption("--javascript.endpoints-allowlist",
                   "endpoints that can be connected to via "
                   "@arangodb/request module in JavaScript actions",
                   new VectorParameter<StringParameter>(&_endpointsWhitelistVec),
@@ -266,20 +268,20 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                   arangodb::options::Flags::OnCoordinator,
                   arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
+
   options
-      ->addOption("--javascript.endpoints-blacklist",
+      ->addOption("--javascript.endpoints-denylist",
                   "endpoints that cannot be connected to via @arangodb/request "
-                  "module in "
-                  "JavaScript actions if not whitelisted",
+                  "module in JavaScript actions (if not in allowlist)",
                   new VectorParameter<StringParameter>(&_endpointsBlacklistVec),
                   arangodb::options::makeFlags(
                   arangodb::options::Flags::DefaultNoComponents,
                   arangodb::options::Flags::OnCoordinator,
                   arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
-
+  
   options
-      ->addOption("--javascript.files-whitelist",
+      ->addOption("--javascript.files-allowlist",
                   "filesystem paths that will be accessible from within "
                   "JavaScript actions",
                   new VectorParameter<StringParameter>(&_filesWhitelistVec),
@@ -288,6 +290,14 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                   arangodb::options::Flags::OnCoordinator,
                   arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
+  
+  options->addOldOption("--javascript.startup-options-whitelist", "--javascript.startup-options-allowlist");
+  options->addOldOption("--javascript.startup-options-blacklist", "--javascript.startup-options-denylist");
+  options->addOldOption("--javascript.environment-variables-whitelist", "--javascript.environment-variables-allowlist");
+  options->addOldOption("--javascript.environment-variables-blacklist", "--javascript.environment-variables-denylist");
+  options->addOldOption("--javascript.endpoints-whitelist", "--javascript.endpoints-allowlist");
+  options->addOldOption("--javascript.endpoints-blacklist", "--javascript.endpoints-denylist");
+  options->addOldOption("--javascript.files-whitelist", "--javascript.files-allowlist");
 }
 
 void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
