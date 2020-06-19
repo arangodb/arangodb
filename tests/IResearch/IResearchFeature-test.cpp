@@ -771,7 +771,7 @@ class IResearchFeatureTestCoordinator
     arangodb::ServerState::instance()->setRole(_serverRoleBefore);
   }
 
-  void agencyTrx(std::string const& key, std::string const& value) {
+  arangodb::consensus::index_t agencyTrx(std::string const& key, std::string const& value) {
     // Build an agency transaction:
     auto b2 = VPackParser::fromJson(value);
     auto b = std::make_shared<VPackBuilder>();
@@ -779,7 +779,7 @@ class IResearchFeatureTestCoordinator
       { VPackArrayBuilder trx(b.get());
         { VPackObjectBuilder op(b.get());
           b->add(key, b2->slice()); }}}
-    server.getFeature<arangodb::ClusterFeature>().agencyCache().set(b);
+    return std::get<1>(server.getFeature<arangodb::ClusterFeature>().agencyCache().set(b));
   }
 
   void agencyCreateDatabase(std::string const& name) {
@@ -792,8 +792,10 @@ class IResearchFeatureTestCoordinator
     agencyTrx("/arango/Current/Databases/" + name, st);
     st = ts.specialize(current_colls_string);
     agencyTrx("/arango/Current/Collections/" + name, st);
-    agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})=");
-    agencyTrx("/arango/Plan/Current", R"=({"op":"increment"})=");
+    server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForPlan(
+      agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})=")).wait();
+    server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForCurrent(
+      agencyTrx("/arango/Current/Version", R"=({"op":"increment"})=")).wait();
   }
 
   void agencyDropDatabase(std::string const& name) {
@@ -802,8 +804,10 @@ class IResearchFeatureTestCoordinator
     agencyTrx("/arango/Plan/Collections/" + name, st);
     agencyTrx("/arango/Current/Databases/" + name, st);
     agencyTrx("/arango/Current/Collections/" + name, st);
-    agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})=");
-    agencyTrx("/arango/Plan/Current", R"=({"op":"increment"})=");
+    server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForPlan(
+      agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})=")).wait();
+    server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForCurrent(
+      agencyTrx("/arango/Current/Version", R"=({"op":"increment"})=")).wait();
   }
 
   VPackBuilder agencyCreateIndex(

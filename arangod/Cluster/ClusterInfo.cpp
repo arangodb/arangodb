@@ -225,9 +225,8 @@ static std::string extractErrorMessage(std::string const& shardId, VPackSlice co
   if (slice.hasKey(StaticStrings::ErrorNum)) {
     VPackSlice const errorNum = slice.get(StaticStrings::ErrorNum);
     if (errorNum.isNumber()) {
-      msg += " (errNum=" +
-             arangodb::basics::StringUtils::itoa(errorNum.getNumericValue<uint32_t>()) +
-             ")";
+      msg +=
+        " (errNum="+arangodb::basics::StringUtils::itoa(errorNum.getNumericValue<uint32_t>())+")";
     }
   }
 
@@ -258,7 +257,9 @@ ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
     _agencyCallbackRegistry(agencyCallbackRegistry),
     _rebootTracker(SchedulerFeature::SCHEDULER),
     _planVersion(0),
+    _planIndex(0),
     _currentVersion(0),
+    _currentIndex(0),
     _planLoader(std::thread::id()),
     _uniqid(),
     _lpTimer(_server.getFeature<MetricsFeature>().histogram(
@@ -1178,6 +1179,7 @@ void ClusterInfo::loadPlan() {
   }
 
   _lpTimer.count(duration<float,std::milli>(clock::now()-start).count());
+
 
 }
 
@@ -3135,7 +3137,7 @@ std::pair<Result, AnalyzersRevision::Revision> ClusterInfo::startModifyingAnalyz
           if (results.isArray() && results.length() > 0) {
             readLocker.unlock(); // we want to wait for plan to load - release reader
             waitForPlan(results[0].getNumber<uint64_t>()).get();
-          } 
+          }
 
         }
         continue;
@@ -5410,10 +5412,10 @@ void ClusterInfo::SyncerThread::run() {
         _f();
       } catch (std::exception const& ex) {
         LOG_TOPIC("752c4", ERR, arangodb::Logger::CLUSTER)
-          << "Caugt an error while loading Plan/Current: " << ex.what();
+          << "Caugt an error while loading " << _section << ": " << ex.what();
       } catch (...) {
         LOG_TOPIC("30968", ERR, arangodb::Logger::CLUSTER)
-          << "Caugt an error while loading Plan/Current";
+          << "Caugt an error while loading " << _section;
       }
     }
     // next round...

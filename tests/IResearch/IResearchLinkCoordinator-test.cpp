@@ -120,8 +120,6 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     ASSERT_TRUE((nullptr != logicalCollection));
   }
 
-  ci.testOnlyLoadCurrent();
-
   // no view specified
   auto& factory =
       server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::ClusterEngine>();
@@ -166,8 +164,8 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
       auto const value = arangodb::velocypack::Parser::fromJson(
           "{ \"shard-id\": { \"indexes\" : [ { \"id\": \"42\" } ] } }");
       EXPECT_TRUE(arangodb::AgencyComm(server.server())
-                      .setValue(currentCollectionPath, value->slice(), 0.0)
-                      .successful());
+                  .setValue(currentCollectionPath, value->slice(), 0.0)
+                  .successful());
     }
 
     // unable to create index without timeout

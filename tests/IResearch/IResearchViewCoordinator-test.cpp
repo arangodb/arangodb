@@ -1493,8 +1493,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   // get current plan version
   auto planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
 
-  ci.testOnlyLoadCurrent();
-
   // create view
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" "
@@ -2847,8 +2845,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   // get current plan version
   auto planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
 
-  ci.testOnlyLoadCurrent();
-
   // create view
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" "
@@ -3493,8 +3489,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   // get current plan version
   auto planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
 
-  ci.testOnlyLoadCurrent();
-
   // create view
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" "
@@ -3945,8 +3939,6 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((nullptr != logicalCollection));
   }
-
-  ci.testOnlyLoadCurrent();
 
   auto const currentCollectionPath = "/Current/Collections/" + vocbase->name() +
                                      "/" + std::to_string(logicalCollection->id());

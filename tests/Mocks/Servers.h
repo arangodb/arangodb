@@ -160,7 +160,7 @@ class MockClusterServer : public MockServer,
 
  protected:
   // Implementation knows the place when all features are included
-  void agencyTrx(std::string const& key, std::string const& value);
+  consensus::index_t agencyTrx(std::string const& key, std::string const& value);
   void agencyCreateDatabase(std::string const& name);
   void agencyDropDatabase(std::string const& name);
 
