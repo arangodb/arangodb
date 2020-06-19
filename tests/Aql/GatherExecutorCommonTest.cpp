@@ -39,7 +39,8 @@ using CommonParameter = std::tuple<ExecutorType, size_t>;
 
 class DataBuilder {
  public:
-  DataBuilder(AqlItemBlockManager& manager) : _manager(manager) {
+  DataBuilder(AqlItemBlockManager& manager, bool storeShadowValue)
+      : _manager(manager), _storeShadowValue(storeShadowValue) {
     _data.push_back({});
   }
 
@@ -61,7 +62,9 @@ class DataBuilder {
 
   auto addShadowRow(int64_t val, uint64_t depth) -> void {
     ensureBlock();
-    _workingCopy->emplaceValue(_numRows, 0, AqlValue{AqlValueHintInt{val}});
+    if (_storeShadowValue) {
+      _workingCopy->emplaceValue(_numRows, 0, AqlValue{AqlValueHintInt{val}});
+    }
     _workingCopy->setShadowRowDepth(_numRows, AqlValue{AqlValueHintUInt{depth}});
     _subqueryData.emplace_back(std::make_pair(val, depth));
     if (depth == 0) {
@@ -95,6 +98,7 @@ class DataBuilder {
   std::vector<std::pair<int64_t, uint64_t>> _subqueryData{};
   std::deque<SharedAqlItemBlockPtr> _queue{};
   AqlItemBlockManager& _manager;
+  bool _storeShadowValue{false};
 };
 
 class ResultMaps {
@@ -149,6 +153,10 @@ class ResultMaps {
     ASSERT_LT(_subqueryReadIndex, _subqueryData.size());
     auto const& [expVal, expDepth] = _subqueryData[_subqueryReadIndex];
     _subqueryReadIndex++;
+    if (depth == 0) {
+      // We consumed the ShadowRow for the data, let us check for the next set of data rows.
+      _dataReadIndex++;
+    }
     EXPECT_EQ(val, expVal);
     EXPECT_EQ(depth, expDepth);
   }
@@ -238,7 +246,9 @@ class CommonGatherExecutorTest
     for (size_t i = 0; i < getClients(); ++i) {
       // The builder and Subquery value needs to be
       // per client, all of them get the same Subqueries.
-      DataBuilder builder{manager()};
+      // Only the first block will write the value into the shadowRow though.
+      // In AQL the shadowRow has been moved so only one branch is allowed to contain the data.
+      DataBuilder builder{manager(), i == 0};
       uint64_t subVal = 0;
       fillBlockQueue(builder, dataVal, subVal, subqueryRuns);
 
@@ -267,7 +277,7 @@ class CommonGatherExecutorTest
         // Fill in data from inner subqueries
         fillBlockQueue(builder, dataVal, subVal, subqueryRuns);
         // Fill in ShadowRow
-        builder.addShadowRow(dataVal++, subVal++);
+        builder.addShadowRow(subVal++, subqueryRuns.size());
       }
     }
   }
