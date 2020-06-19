@@ -5,6 +5,10 @@ devel
   Each log message then produces a seperate line with JSON-encoded log data,
   which can be consumed by applications.
 
+* Allow for faster cluster shutdown. This should reduce the number of shutdown
+  hangers in case the agents are stopped already and then coordinators or
+  DB-Servers are shut down.
+
 * Fixed issue ES-598. Web UI now shows correct permissions in case wildcard
   database level and wildcard collection level permissions are both set.
 
@@ -21,7 +25,6 @@ devel
 * Allow AQL queries on DB-Servers again. This is not an official supported
   feature, but is sometimes used for debugging. Previous changes made it 
   impossible to run a query on a local shard.
->>>>>>> fc227dd238e46948a4065c543968c03dea545aa5
 
 * Fix restoring old arangodumps from ArangoDB 3.3 and before, which had index
   information stored in slightly different places in the dump.
