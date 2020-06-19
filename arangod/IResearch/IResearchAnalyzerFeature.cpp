@@ -783,6 +783,25 @@ arangodb::Result visitAnalyzers(
       }
 
       auto shards = collection->shardIds();
+      if (ADB_UNLIKELY(!shards)) {
+        TRI_ASSERT(FALSE);
+        return {};  // treat missing collection as if there are no analyzers
+      }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      LOG_TOPIC("e07d4", WARN, arangodb::iresearch::TOPIC)
+          << "OneShard optimization found " << shards->size() << " shards "
+          << " for server " << arangodb::ServerState::instance()->getId();
+      for (auto const& shard : *shards) {
+        LOG_TOPIC("31300", WARN, arangodb::iresearch::TOPIC)
+            << "Shard '" << shard.first << "' on servers:";
+        for (auto const& server : shard.second) {
+          LOG_TOPIC("ead22", WARN, arangodb::iresearch::TOPIC)
+              << "Shard server '" << server << "'";
+        }
+      }
+#endif
+
       if (shards->empty()) {
         return {}; // treat missing collection as if there are no analyzers
       }
