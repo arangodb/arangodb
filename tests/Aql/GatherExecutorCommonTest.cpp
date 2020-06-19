@@ -195,11 +195,11 @@ class CommonGatherExecutorTest
  protected:
   CommonGatherExecutorTest() {}
 
-  auto getExecutor(std::deque<size_t> subqueryRuns)
+  auto getExecutor(std::deque<size_t> subqueryRuns, size_t dataSize = 10)
       -> std::pair<std::unique_ptr<ExecutionBlock>, ResultMaps> {
     auto exec = buildExecutor();
     TRI_ASSERT(exec != nullptr);
-    auto res = generateData(*exec, subqueryRuns);
+    auto res = generateData(*exec, subqueryRuns, dataSize);
     return {std::move(exec), res};
   }
 
@@ -224,6 +224,16 @@ class CommonGatherExecutorTest
     }
   }
 
+  auto toCallList(AqlCall const& call) -> AqlCallList {
+    return AqlCallList{call};
+  }
+
+  auto fetchAllCall() -> AqlCallList { return toCallList(AqlCall{}); }
+
+  auto skipThenFetchCall(size_t offset) -> AqlCallList {
+    return toCallList(AqlCall{offset});
+  }
+
  private:
   auto getType() -> ExecutorType {
     auto const& [type, clients, parallelism] = GetParam();
@@ -240,8 +250,6 @@ class CommonGatherExecutorTest
     return parallelism;
   }
 
-  auto getBatchSize() -> size_t { return 10; }
-
   /**
    * @brief Generate the data values.
    *        Every entry in the vector is a seperate subquery run
@@ -254,7 +262,8 @@ class CommonGatherExecutorTest
    *                     Empty vector means no shadowRows
    * @return std::pair<std::vector<std::unordered_map<size_t>>, std::vector<size_t>>
    */
-  auto generateData(ExecutionBlock& block, std::deque<size_t> subqueryRuns) -> ResultMaps {
+  auto generateData(ExecutionBlock& block, std::deque<size_t> subqueryRuns,
+                    size_t dataSize) -> ResultMaps {
     // ResultMaps
     ResultMaps res;
     int64_t dataVal = 0;
@@ -266,7 +275,7 @@ class CommonGatherExecutorTest
       // In AQL the shadowRow has been moved so only one branch is allowed to contain the data.
       DataBuilder builder{manager(), i == 0};
       uint64_t subVal = 0;
-      fillBlockQueue(builder, dataVal, subVal, subqueryRuns);
+      fillBlockQueue(builder, dataVal, subVal, subqueryRuns, dataSize);
 
       res.mergeBuilder(builder);
 
@@ -281,9 +290,9 @@ class CommonGatherExecutorTest
   }
 
   auto fillBlockQueue(DataBuilder& builder, int64_t& dataVal, uint64_t& subVal,
-                      std::deque<size_t> subqueryRuns) -> void {
+                      std::deque<size_t> subqueryRuns, size_t dataSize) -> void {
     if (subqueryRuns.empty()) {
-      for (size_t i = 0; i < getBatchSize(); ++i) {
+      for (size_t i = 0; i < dataSize; ++i) {
         builder.addValue(dataVal++);
       }
     } else {
@@ -291,7 +300,7 @@ class CommonGatherExecutorTest
       subqueryRuns.pop_front();
       for (size_t i = 0; i < runs; ++i) {
         // Fill in data from inner subqueries
-        fillBlockQueue(builder, dataVal, subVal, subqueryRuns);
+        fillBlockQueue(builder, dataVal, subVal, subqueryRuns, dataSize);
         // Fill in ShadowRow
         builder.addShadowRow(subVal++, subqueryRuns.size());
       }
@@ -349,7 +358,7 @@ TEST_P(CommonGatherExecutorTest, get_all) {
   auto [exec, result] = getExecutor({});
 
   // Default Stack, fetch all unlimited
-  AqlCallStack stack{AqlCallList{AqlCall{}}};
+  AqlCallStack stack{fetchAllCall()};
   ExecutionState state = ExecutionState::HASMORE;
   SkipResult skipped{};
   SharedAqlItemBlockPtr block{nullptr};
@@ -367,8 +376,8 @@ TEST_P(CommonGatherExecutorTest, get_all_sub_1) {
   auto [exec, result] = getExecutor({4});
 
   // Default Stack, fetch all unlimited
-  AqlCallStack stack{AqlCallList{AqlCall{}}};
-  stack.pushCall(AqlCallList{AqlCall{}});
+  AqlCallStack stack{fetchAllCall()};
+  stack.pushCall(fetchAllCall());
   ExecutionState state = ExecutionState::HASMORE;
   SkipResult skipped{};
   SharedAqlItemBlockPtr block{nullptr};
@@ -386,9 +395,9 @@ TEST_P(CommonGatherExecutorTest, get_all_sub_2) {
   auto [exec, result] = getExecutor({3, 5});
 
   // Default Stack, fetch all unlimited
-  AqlCallStack stack{AqlCallList{AqlCall{}}};
-  stack.pushCall(AqlCallList{AqlCall{}});
-  stack.pushCall(AqlCallList{AqlCall{}});
+  AqlCallStack stack{fetchAllCall()};
+  stack.pushCall(fetchAllCall());
+  stack.pushCall(fetchAllCall());
   ExecutionState state = ExecutionState::HASMORE;
   SkipResult skipped{};
   SharedAqlItemBlockPtr block{nullptr};
@@ -400,6 +409,64 @@ TEST_P(CommonGatherExecutorTest, get_all_sub_2) {
     assertResultValid(block, result);
   }
   result.testAllValuesProduced();
+}
+
+TEST_P(CommonGatherExecutorTest, skip_data) {
+  auto [exec, result] = getExecutor({});
+
+  // Default Stack, fetch all unlimited
+  AqlCallStack stack{skipThenFetchCall(5)};
+  ExecutionState state = ExecutionState::HASMORE;
+  SkipResult skipped{};
+  SharedAqlItemBlockPtr block{nullptr};
+  while (state != ExecutionState::DONE) {
+    // In this test we do not care for waiting.
+    std::tie(state, skipped, block) = exec->execute(stack);
+
+    ASSERT_FALSE(skipped.nothingSkipped());
+    EXPECT_EQ(skipped.getSkipOnSubqueryLevel(0), 5);
+    assertResultValid(block, result);
+  }
+}
+
+TEST_P(CommonGatherExecutorTest, skip_data_sub_1) {
+  auto [exec, result] = getExecutor({4});
+
+  // Default Stack, fetch all unlimited
+  AqlCallStack stack{fetchAllCall()};
+  stack.pushCall(skipThenFetchCall(5));
+  ExecutionState state = ExecutionState::HASMORE;
+  SkipResult skipped{};
+  SharedAqlItemBlockPtr block{nullptr};
+  while (state != ExecutionState::DONE) {
+    // In this test we do not care for waiting.
+    std::tie(state, skipped, block) = exec->execute(stack);
+
+    EXPECT_EQ(skipped.getSkipOnSubqueryLevel(0), 5);
+    EXPECT_EQ(skipped.getSkipOnSubqueryLevel(1), 0);
+    assertResultValid(block, result);
+  }
+}
+
+TEST_P(CommonGatherExecutorTest, skip_data_sub_2) {
+  auto [exec, result] = getExecutor({3, 5});
+
+  // Default Stack, fetch all unlimited
+  AqlCallStack stack{fetchAllCall()};
+  stack.pushCall(fetchAllCall());
+  stack.pushCall(skipThenFetchCall(5));
+  ExecutionState state = ExecutionState::HASMORE;
+  SkipResult skipped{};
+  SharedAqlItemBlockPtr block{nullptr};
+  while (state != ExecutionState::DONE) {
+    // In this test we do not care for waiting.
+    std::tie(state, skipped, block) = exec->execute(stack);
+    assertResultValid(block, result);
+    EXPECT_EQ(skipped.getSkipCount(), 5);
+    EXPECT_EQ(skipped.getSkipOnSubqueryLevel(0), 5);
+    EXPECT_EQ(skipped.getSkipOnSubqueryLevel(1), 0);
+    EXPECT_EQ(skipped.getSkipOnSubqueryLevel(2), 0);
+  }
 }
 
 }  // namespace arangodb::tests::aql
