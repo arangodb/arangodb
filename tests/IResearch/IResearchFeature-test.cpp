@@ -775,9 +775,10 @@ class IResearchFeatureTestCoordinator
     // Build an agency transaction:
     auto b2 = VPackParser::fromJson(value);
     auto b = std::make_shared<VPackBuilder>();
-    { VPackArrayBuilder guard(b.get());
-      { VPackObjectBuilder guard2(b.get());
-        b->add(key, b2->slice()); }}
+    { VPackArrayBuilder trxs(b.get());
+      { VPackArrayBuilder trx(b.get());
+        { VPackObjectBuilder op(b.get());
+          b->add(key, b2->slice()); }}}
     server.getFeature<arangodb::ClusterFeature>().agencyCache().set(b);
   }
 
