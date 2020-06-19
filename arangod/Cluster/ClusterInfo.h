@@ -961,9 +961,6 @@ public:
 
   application_features::ApplicationServer& server() const;
 
-  void testOnlyLoadPlan();
-  void testOnlyLoadCurrent();
-
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about our plan
