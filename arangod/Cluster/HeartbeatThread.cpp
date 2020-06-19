@@ -858,7 +858,12 @@ void HeartbeatThread::runSingleServer() {
         builder.close();
         double ttl =
             std::chrono::duration_cast<std::chrono::seconds>(_interval).count() * 5.0;
-        _agency.setTransient(transientPath, builder.slice(), static_cast<uint64_t>(ttl));
+
+        double timeout = 20.0;
+        if (isStopping()) {
+          timeout = 5.0;
+        }
+        _agency.setTransient(transientPath, builder.slice(), static_cast<uint64_t>(ttl), timeout);
       };
       TRI_DEFER(sendTransient());
 
@@ -1254,7 +1259,6 @@ void HeartbeatThread::notify() {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sends the current server's state to the agency
 ////////////////////////////////////////////////////////////////////////////////
@@ -1268,7 +1272,7 @@ bool HeartbeatThread::sendServerState() {
     _heartbeat_send_time_ms.count(
         std::chrono::duration_cast<std::chrono::milliseconds>(timeDiff).count());
 
-    if (timeDiff > std::chrono::seconds(2)) {
+    if (timeDiff > std::chrono::seconds(2) && !isStopping()) {
       LOG_TOPIC("77655", WARN, Logger::HEARTBEAT)
           << "ATTENTION: Sending a heartbeat took longer than 2 seconds, "
              "this might be causing trouble with health checks. Please "
@@ -1276,21 +1280,27 @@ bool HeartbeatThread::sendServerState() {
     }
   });
 
-  const AgencyCommResult result = _agency.sendServerState();
+  double timeout = 20.0;
+  if (isStopping()) {
+    timeout = 5.0;
+  }
+  const AgencyCommResult result = _agency.sendServerState(timeout);
 
   if (result.successful()) {
     _numFails = 0;
     return true;
   }
 
-  if (++_numFails % _maxFailsBeforeWarning == 0) {
-    _heartbeat_failure_counter.count();
-    std::string const endpoints = AsyncAgencyCommManager::INSTANCE->endpointsString();
+  if (!isStopping()) {
+    if (++_numFails % _maxFailsBeforeWarning == 0) {
+      _heartbeat_failure_counter.count();
+      std::string const endpoints = AsyncAgencyCommManager::INSTANCE->endpointsString();
 
-    LOG_TOPIC("3e2f5", WARN, Logger::HEARTBEAT)
-        << "heartbeat could not be sent to agency endpoints (" << endpoints
-        << "): http code: " << result.httpCode() << ", body: " << result.body();
-    _numFails = 0;
+      LOG_TOPIC("3e2f5", WARN, Logger::HEARTBEAT)
+          << "heartbeat could not be sent to agency endpoints (" << endpoints
+          << "): http code: " << result.httpCode() << ", body: " << result.body();
+      _numFails = 0;
+    }
   }
 
   return false;

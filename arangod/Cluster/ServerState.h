@@ -194,8 +194,17 @@ class ServerState {
   bool integrateIntoCluster(RoleEnum role, std::string const& myAddr,
                             std::string const& myAdvEndpoint);
 
-  /// @brief unregister this server with the agency
-  bool unregister();
+  /// @brief unregister this server with the agency, removing it from
+  /// the cluster setup.
+  /// the timeout can be used as the max wait time for the agency to
+  /// acknowledge the unregister action.
+  bool unregister(double timeout);
+
+  /// @brief mark this server as shut down in the agency, without removing it
+  /// from the cluster setup.
+  /// the timeout can be used as the max wait time for the agency to
+  /// acknowledge the logoff action.
+  bool logoff(double timeout);
 
   /// @brief set the server role
   void setRole(RoleEnum);
