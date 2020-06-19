@@ -38,6 +38,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Agency/PathComponent.h"
 #include "Basics/Mutex.h"
 #include "Basics/Result.h"
 #include "GeneralServer/GeneralDefinitions.h"
@@ -213,6 +214,17 @@ class AgencyPrecondition {
         type(t),
         empty(false),
         builder(std::make_shared<VPackBuilder>()) {
+    builder->add(VPackValue(v));
+    value = builder->slice();
+  };
+
+  AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path, Type, bool e);
+  AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path,
+                     Type, velocypack::Slice const&);
+  template <typename T>
+  AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path,
+                     Type t, T const& v)
+      : key(path->str()), type(t), empty(false), builder(std::make_shared<VPackBuilder>()) {
     builder->add(VPackValue(v));
     value = builder->slice();
   };
