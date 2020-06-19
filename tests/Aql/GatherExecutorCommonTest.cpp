@@ -24,7 +24,11 @@
 
 #include "AqlExecutorTestCase.h"
 
+#include "Aql/EmptyExecutorInfos.h"
 #include "Aql/IdExecutor.h"
+#include "Aql/ParallelUnsortedGatherExecutor.h"
+#include "Aql/SortRegister.h"
+#include "Aql/SortingGatherExecutor.h"
 #include "Aql/UnsortedGatherExecutor.h"
 
 using namespace arangodb;
@@ -32,10 +36,17 @@ using namespace arangodb::aql;
 
 namespace arangodb::tests::aql {
 
-enum class ExecutorType { UNSORTED };
+enum class ExecutorType { UNSORTED, SORTING_HEAP, SORTING_MINELEMENT };
 auto dependencyNumber = testing::Values(1, 2, 3);
+auto parallelism = testing::Values(GatherNode::Parallelism::Serial,
+                                   GatherNode::Parallelism::Parallel);
 
-using CommonParameter = std::tuple<ExecutorType, size_t>;
+auto combinations =
+    ::testing::Combine(::testing::Values(ExecutorType::UNSORTED, ExecutorType::SORTING_HEAP,
+                                         ExecutorType::SORTING_MINELEMENT),
+                       dependencyNumber, parallelism);
+
+using CommonParameter = std::tuple<ExecutorType, size_t, GatherNode::Parallelism>;
 
 class DataBuilder {
  public:
@@ -215,13 +226,18 @@ class CommonGatherExecutorTest
 
  private:
   auto getType() -> ExecutorType {
-    auto const& [type, clients] = GetParam();
+    auto const& [type, clients, parallelism] = GetParam();
     return type;
   }
 
   auto getClients() -> size_t {
-    auto const& [type, clients] = GetParam();
+    auto const& [type, clients, parallelism] = GetParam();
     return clients;
+  }
+
+  auto parallelism() -> GatherNode::Parallelism {
+    auto const& [type, clients, parallelism] = GetParam();
+    return parallelism;
   }
 
   auto getBatchSize() -> size_t { return 10; }
@@ -291,25 +307,43 @@ class CommonGatherExecutorTest
     switch (getType()) {
       case ExecutorType::UNSORTED:
         return unsortedExecutor(std::move(regInfos));
+      case ExecutorType::SORTING_HEAP:
+        return sortedExecutor(std::move(regInfos), GatherNode::SortMode::Heap);
+      case ExecutorType::SORTING_MINELEMENT:
+        return sortedExecutor(std::move(regInfos), GatherNode::SortMode::MinElement);
       default:
         THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
     }
   }
 
   auto unsortedExecutor(RegisterInfos&& regInfos) -> std::unique_ptr<ExecutionBlock> {
+    if (parallelism() == GatherNode::Parallelism::Parallel) {
+      return std::make_unique<ExecutionBlockImpl<ParallelUnsortedGatherExecutor>>(
+          fakedQuery->rootEngine(), generateNodeDummy(ExecutionNode::GATHER),
+          std::move(regInfos), EmptyExecutorInfos());
+    }
     IdExecutorInfos execInfos{false};
     return std::make_unique<ExecutionBlockImpl<UnsortedGatherExecutor>>(
         fakedQuery->rootEngine(), generateNodeDummy(ExecutionNode::GATHER),
         std::move(regInfos), std::move(execInfos));
   }
 
+  auto sortedExecutor(RegisterInfos&& regInfos, GatherNode::SortMode sortMode)
+      -> std::unique_ptr<ExecutionBlock> {
+    std::vector<SortRegister> sortRegister{SortRegister{0, SortElement{nullptr, true}}};
+    auto executorInfos =
+        SortingGatherExecutorInfos(std::move(sortRegister), *fakedQuery.get(),
+                                   sortMode, 0, parallelism());
+    return std::make_unique<ExecutionBlockImpl<SortingGatherExecutor>>(
+        fakedQuery->rootEngine(), generateNodeDummy(ExecutionNode::GATHER),
+        std::move(regInfos), std::move(executorInfos));
+  }
+
   // Memory Management for ExecutionBlocks
   std::vector<std::unique_ptr<ExecutionBlock>> _blockLake;
-};
+};  // namespace arangodb::tests::aql
 
-INSTANTIATE_TEST_CASE_P(CommonGatherTests, CommonGatherExecutorTest,
-                        ::testing::Combine(::testing::Values(ExecutorType::UNSORTED),
-                                           dependencyNumber));
+INSTANTIATE_TEST_CASE_P(CommonGatherTests, CommonGatherExecutorTest, combinations);
 
 TEST_P(CommonGatherExecutorTest, get_all) {
   auto [exec, result] = getExecutor({});
