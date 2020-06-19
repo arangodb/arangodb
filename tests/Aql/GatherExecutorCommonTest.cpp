@@ -37,9 +37,34 @@ using namespace arangodb::aql;
 namespace arangodb::tests::aql {
 
 enum class ExecutorType { UNSORTED, SORTING_HEAP, SORTING_MINELEMENT };
+
+std::ostream& operator<<(std::ostream& out, ExecutorType type) {
+  switch (type) {
+    case ExecutorType::UNSORTED:
+      return out << "UNSORTED";
+    case ExecutorType::SORTING_HEAP:
+      return out << "SORTING_HEAP";
+    case ExecutorType::SORTING_MINELEMENT:
+      return out << "SORTING_MINELEMENT";
+    default:
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+}
+
 auto dependencyNumber = testing::Values(1, 2, 3);
 auto parallelism = testing::Values(GatherNode::Parallelism::Serial,
                                    GatherNode::Parallelism::Parallel);
+
+std::ostream& operator<<(std::ostream& out, GatherNode::Parallelism type) {
+  switch (type) {
+    case GatherNode::Parallelism::Serial:
+      return out << "Serial";
+    case GatherNode::Parallelism::Parallel:
+      return out << "Parallel";
+    default:
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+}
 
 auto combinations =
     ::testing::Combine(::testing::Values(ExecutorType::UNSORTED, ExecutorType::SORTING_HEAP,
@@ -135,8 +160,15 @@ class ResultMaps {
     // For some reason merge is not implemeneted on const sets
     // but moves data from one set into the other
     auto data = builder.getData();
+    if (!_subqueryData.empty()) {
+      // We have a subquery, so the data container holds 1 element to much.
+      ASSERT_TRUE(data.back().empty())
+          << "Beyond the last shadowRow there is no data";
+      data.pop_back();
+    }
     if (_data.empty()) {
       _data = data;
+      _dataProduced.resize(_data.size(), false);
     } else {
       // Data needs to be integrated.
       // We do not care from which branch the data is provided
@@ -156,8 +188,10 @@ class ResultMaps {
 
   auto testValueAllowed(int64_t val) -> void {
     ASSERT_LT(_dataReadIndex, _data.size());
+    ASSERT_LT(_dataReadIndex, _dataProduced.size());
     auto& allowed = _data[_dataReadIndex];
     EXPECT_EQ(1, allowed.erase(val));
+    _dataProduced[_dataReadIndex] = true;
   }
 
   auto testSubqueryValue(int64_t val, uint64_t depth) -> void {
@@ -172,20 +206,38 @@ class ResultMaps {
     EXPECT_EQ(depth, expDepth);
   }
 
-  auto testAllValuesProduced() -> void {
-    EXPECT_TRUE(std::all_of(_data.begin(), _data.end(),
-                            [](auto list) -> bool { return list.empty(); }));
-    EXPECT_EQ(_subqueryReadIndex, _subqueryData.size());
+  auto testValuesSkippedInRun(size_t count, size_t index) -> void {
+    ASSERT_LT(index, _data.size());
+    EXPECT_EQ(_data[index].size(), count);
   }
 
+  auto testSkippedInEachRun(size_t count) -> void {
+    for (size_t i = 0; i < _data.size(); ++i) {
+      testValuesSkippedInRun(count, i);
+    }
+  }
+
+  auto testAllValuesProduced() -> void { testSkippedInEachRun(0); }
+
   auto testAllValuesProducedOfRun(size_t index) -> void {
-    ASSERT_LT(_dataReadIndex, _data.size());
-    EXPECT_TRUE(_data[_dataReadIndex].empty());
+    testValuesSkippedInRun(0, index);
+  }
+
+  auto testAllValuesSkippedInRun(size_t index) -> void {
+    ASSERT_LT(index, _dataProduced.size());
+    EXPECT_FALSE(_dataProduced[index]);
+  }
+
+  auto testAllValuesSkipped() -> void {
+    for (size_t i = 0; i < _data.size(); ++i) {
+      testAllValuesSkippedInRun(i);
+    }
   }
 
  private:
   std::vector<std::unordered_set<int64_t>> _data{};
   std::vector<std::pair<int64_t, uint64_t>> _subqueryData{};
+  std::vector<bool> _dataProduced{};
   size_t _dataReadIndex{0};
   size_t _subqueryReadIndex{0};
 };
@@ -427,6 +479,7 @@ TEST_P(CommonGatherExecutorTest, skip_data) {
     EXPECT_EQ(skipped.getSkipOnSubqueryLevel(0), 5);
     assertResultValid(block, result);
   }
+  result.testSkippedInEachRun(5);
 }
 
 TEST_P(CommonGatherExecutorTest, skip_data_sub_1) {
@@ -446,6 +499,7 @@ TEST_P(CommonGatherExecutorTest, skip_data_sub_1) {
     EXPECT_EQ(skipped.getSkipOnSubqueryLevel(1), 0);
     assertResultValid(block, result);
   }
+  result.testSkippedInEachRun(5);
 }
 
 TEST_P(CommonGatherExecutorTest, skip_data_sub_2) {
@@ -467,6 +521,30 @@ TEST_P(CommonGatherExecutorTest, skip_data_sub_2) {
     EXPECT_EQ(skipped.getSkipOnSubqueryLevel(1), 0);
     EXPECT_EQ(skipped.getSkipOnSubqueryLevel(2), 0);
   }
+  result.testSkippedInEachRun(5);
+}
+
+TEST_P(CommonGatherExecutorTest, skip_main_query_sub_1) {
+  auto [exec, result] = getExecutor({3});
+
+  // Default Stack, fetch all unlimited
+  AqlCallStack stack{skipThenFetchCall(1)};
+  stack.pushCall(fetchAllCall());
+  ExecutionState state = ExecutionState::HASMORE;
+  SkipResult skipped{};
+  SharedAqlItemBlockPtr block{nullptr};
+  while (state != ExecutionState::DONE) {
+    // In this test we do not care for waiting.
+    std::tie(state, skipped, block) = exec->execute(stack);
+    assertResultValid(block, result);
+    // TODO Apply skipped on Stack
+    EXPECT_EQ(skipped.getSkipCount(), 0);
+    EXPECT_EQ(skipped.getSkipOnSubqueryLevel(0), 0);
+    EXPECT_EQ(skipped.getSkipOnSubqueryLevel(1), 1);
+  }
+  result.testAllValuesSkippedInRun(0);
+  result.testValuesSkippedInRun(0, 1);
+  result.testValuesSkippedInRun(0, 2);
 }
 
 }  // namespace arangodb::tests::aql
