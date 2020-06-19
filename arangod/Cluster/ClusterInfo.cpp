@@ -432,7 +432,6 @@ bool ClusterInfo::doesDatabaseExist(DatabaseID const& databaseID, bool reload) {
   int tries = 0;
 
   if (reload || !_planProt.isValid || !_currentProt.isValid || !_DBServersProt.isValid) {
-    loadCurrent();
     loadCurrentDBServers();
     ++tries;  // no need to reload if the database is not found
   }
@@ -473,7 +472,6 @@ bool ClusterInfo::doesDatabaseExist(DatabaseID const& databaseID, bool reload) {
       break;
     }
 
-    loadCurrent();
     loadCurrentDBServers();
   }
 
@@ -492,7 +490,6 @@ std::vector<DatabaseID> ClusterInfo::databases(bool reload) {
   }
 
   if (reload || !_planProt.isValid || !_currentProt.isValid || !_DBServersProt.isValid) {
-    loadCurrent();
     loadCurrentDBServers();
   }
 
@@ -1508,7 +1505,6 @@ std::shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent(
   int tries = 0;
 
   if (!_currentProt.isValid) {
-    loadCurrent();
     ++tries;
   }
 
@@ -1531,9 +1527,6 @@ std::shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent(
     if (++tries >= 2) {
       break;
     }
-
-    // must load collections outside the lock
-    loadCurrent();
   }
 
   return std::make_shared<CollectionInfoCurrent>(0);
@@ -1769,7 +1762,6 @@ Result ClusterInfo::waitForDatabaseInCurrent(CreateDatabaseInfo const& database)
       // An error was detected on one of the DBServers
       if (tmpRes >= 0) {
         cbGuard.fire();  // unregister cb before accessing errMsg
-        loadCurrent();   // update our cache
 
         return Result(tmpRes, *errMsg);
       }
@@ -2565,7 +2557,6 @@ Result ClusterInfo::createCollectionsCoordinator(
         TRI_ASSERT(info.state == ClusterCollectionCreationState::DONE);
         events::CreateCollection(databaseName, info.name, res.errorCode());
       }
-      loadCurrent();
       return res.errorCode();
     }
     if (tmpRes > TRI_ERROR_NO_ERROR) {
@@ -2583,7 +2574,6 @@ Result ClusterInfo::createCollectionsCoordinator(
           events::CreateCollection(databaseName, info.name, tmpRes);
         }
       }
-      loadCurrent();
       return {tmpRes, *errMsg};
     }
 
@@ -2778,8 +2768,6 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
   }
 
   if (numberOfShards == 0) {
-    loadCurrent();
-
     events::DropCollection(dbName, collectionID, TRI_ERROR_NO_ERROR);
     return Result(TRI_ERROR_NO_ERROR);
   }
@@ -3695,8 +3683,6 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
       resultBuilder.add(StaticStrings::IsSmart, VPackValue(true));
     }
 
-    loadCurrent();
-
     return Result(TRI_ERROR_NO_ERROR);
   }
 
@@ -4035,7 +4021,6 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
 
   if (numberOfShards == 0) {  // smart "dummy" collection has no shards
     TRI_ASSERT(collection.get(StaticStrings::IsSmart).getBool());
-    loadCurrent();
 
     return Result(TRI_ERROR_NO_ERROR);
   }
@@ -4044,7 +4029,6 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
     while (true) {
       if (*dbServerResult >= 0) {
         cbGuard.fire();  // unregister cb
-        loadCurrent();
         events::DropIndex(databaseName, collectionID, idString, *dbServerResult);
 
         return Result(*dbServerResult);
@@ -4605,7 +4589,6 @@ std::shared_ptr<std::vector<ServerID>> ClusterInfo::getResponsibleServer(ShardID
   int tries = 0;
 
   if (!_currentProt.isValid) {
-    loadCurrent();
     tries++;
   }
 
@@ -4637,8 +4620,6 @@ std::shared_ptr<std::vector<ServerID>> ClusterInfo::getResponsibleServer(ShardID
       break;
     }
 
-    // must load collections outside the lock
-    loadCurrent();
   }
 
   return std::make_shared<std::vector<ServerID>>();
@@ -4661,7 +4642,6 @@ std::unordered_map<ShardID, ServerID> ClusterInfo::getResponsibleServers(
   int tries = 0;
 
   if (!_currentProt.isValid) {
-    loadCurrent();
     tries++;
   }
 
@@ -4712,8 +4692,6 @@ std::unordered_map<ShardID, ServerID> ClusterInfo::getResponsibleServers(
         << "waiting for half a second...";
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-    // must load collections outside the lock
-    loadCurrent();
   }
 
   return result;
