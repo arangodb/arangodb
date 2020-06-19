@@ -1391,8 +1391,6 @@ std::shared_ptr<LogicalCollection> ClusterInfo::getCollectionNT(DatabaseID const
       // look up database by id
       AllCollections::const_iterator it = _plannedCollections.find(databaseID);
 
-      _server.getFeature<ClusterFeature>().agencyCache().get("/");
-
       if (it != _plannedCollections.end()) {
         // look up collection by id (or by name)
         DatabaseCollections::const_iterator it2 = (*it).second.find(collectionID);
@@ -2907,7 +2905,6 @@ Result ClusterInfo::createViewCoordinator(  // create view
 
   {
     // check if a view with the same name is already planned
-    getPlan();
     READ_LOCKER(readLocker, _planProt.lock);
     {
       AllViews::const_iterator it = _plannedViews.find(databaseName);

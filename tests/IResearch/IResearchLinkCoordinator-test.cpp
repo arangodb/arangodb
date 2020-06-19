@@ -116,6 +116,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     EXPECT_TRUE(ci.createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
                                                collectionJson->slice(), 0.0, false, nullptr).ok());
 
+  LOG_DEVEL << collectionId;
     logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((nullptr != logicalCollection));
   }
@@ -144,6 +145,8 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
   auto const currentCollectionPath = "/Current/Collections/" + vocbase->name() +
                                      "/" + std::to_string(logicalCollection->id());
 
+  LOG_DEVEL << currentCollectionPath ;
+  
   // valid link creation
   {
     auto linkJson = arangodb::velocypack::Parser::fromJson(
@@ -168,6 +171,9 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
                   .successful());
     }
 
+    auto [a,b] = server.getFeature<arangodb::ClusterFeature>().agencyCache().get();
+    LOG_DEVEL << " ************* b: " << a->slice().toJson();
+    
     // unable to create index without timeout
     VPackBuilder outputDefinition;
     EXPECT_TRUE(
