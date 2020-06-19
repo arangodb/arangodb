@@ -3144,12 +3144,13 @@ std::pair<Result, AnalyzersRevision::Revision> ClusterInfo::startModifyingAnalyz
                {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP}},
               {{anPath, AgencyPrecondition::Type::EMPTY, true}} };
           auto const res = ac.sendTransactionWithFailover(transaction);
-          auto results = res.slice().get("results");
-          if (results.isArray() && results.length() > 0) {
-            readLocker.unlock(); // we want to wait for plan to load - release reader
-            waitForPlan(results[0].getNumber<uint64_t>()).get();
+          if (res.successful()) {
+            auto results = res.slice().get("results");
+            if (results.isArray() && results.length() > 0) {
+              readLocker.unlock(); // we want to wait for plan to load - release reader
+              waitForPlan(results[0].getNumber<uint64_t>()).get();
+            }
           }
-
         }
         continue;
       }
