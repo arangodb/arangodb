@@ -1308,6 +1308,8 @@ aql::CostEstimate IResearchViewNode::estimateCost() const {
 
 /// @brief getVariablesUsedHere, modifying the set in-place
 void IResearchViewNode::getVariablesUsedHere(aql::VarSet& vars) const {
+  auto const outVariableAlreadyInVarSet = vars.contains(_outVariable);
+
   if (!::filterConditionIsEmpty(_filterCondition)) {
     aql::Ast::getReferencedVariables(_filterCondition, vars);
   }
@@ -1316,7 +1318,7 @@ void IResearchViewNode::getVariablesUsedHere(aql::VarSet& vars) const {
     aql::Ast::getReferencedVariables(scorer.node, vars);
   }
 
-  if (noMaterialization()) {
+  if (!outVariableAlreadyInVarSet) {
     vars.erase(_outVariable);
   }
 }
