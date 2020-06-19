@@ -117,8 +117,17 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
     }
     ClusterInfo& clusterInfo = server().getFeature<ClusterFeature>().clusterInfo();
 
-    // WARNING
-    clusterInfo.getPlan();
+    auto waitForNewPlan = [&clusterInfo] {
+      using namespace std::chrono_literals;
+      auto fRes = clusterInfo.fetchAndWaitForPlanVersion(10.0s);
+      // Note that get() might throw
+      return fRes.get();
+    };
+
+    if (auto res = waitForNewPlan(); !res.ok()) {
+      generateError(res);
+      return RestStatus::DONE;
+    }
     std::shared_ptr<VPackBuilder> planBuilder = clusterInfo.getPlan();
 
     VPackSlice plan = planBuilder->slice();
@@ -187,17 +196,18 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
 
     generateResult(responseCode, response, errorOccurred);
 
-    // WARNING
-    clusterInfo.getPlan();
+    if (auto res = waitForNewPlan(); !res.ok()) {
+      LOG_TOPIC("293c5", WARN, arangodb::Logger::CLUSTER)
+          << "RestRepairHandler::repairDistributeShardsLike: "
+          << "failed to wait for new plan version after successful operation: "
+          << res.errorMessage();
+      return RestStatus::DONE;
+    }
   } catch (basics::Exception const& e) {
     LOG_TOPIC("78521", ERR, arangodb::Logger::CLUSTER)
         << "RestRepairHandler::repairDistributeShardsLike: "
         << "Caught exception: " << e.message();
     generateError(rest::ResponseCode::SERVER_ERROR, e.code());
-
-    if (server().hasFeature<ClusterFeature>()) {
-      server().getFeature<ClusterFeature>().clusterInfo().getPlan();
-    }
   }
   return RestStatus::DONE;
 }
