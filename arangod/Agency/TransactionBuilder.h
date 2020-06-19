@@ -205,7 +205,7 @@ void add_to_builder(VPackBuilder* b, V const& v) {
 }
 
 template<>
-void add_to_builder(VPackBuilder* b, VPackSlice const& v) {
+inline void add_to_builder(VPackBuilder* b, VPackSlice const& v) {
   b->add(v);
 }
 
