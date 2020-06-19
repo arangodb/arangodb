@@ -187,7 +187,7 @@ void OutputAqlItemRow::copyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissing)
   if (_doNotCopyInputRow) {
     TRI_ASSERT(sourceRow.isInitialized());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(sourceRow.internalBlockIs(_block));
+    TRI_ASSERT(sourceRow.internalBlockIs(_block, _baseIndex));
 #endif
     _inputRowCopied = true;
     memorizeRow(sourceRow);
@@ -200,7 +200,7 @@ void OutputAqlItemRow::copyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissing)
 auto OutputAqlItemRow::fastForwardAllRows(InputAqlItemRow const& sourceRow, size_t rows)
     -> void {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_ASSERT(sourceRow.internalBlockIs(_block));
+  TRI_ASSERT(sourceRow.internalBlockIs(_block, _baseIndex));
 #endif
   TRI_ASSERT(_doNotCopyInputRow);
   TRI_ASSERT(_call.getLimit() >= rows);
@@ -226,7 +226,7 @@ void OutputAqlItemRow::copyBlockInternalRegister(InputAqlItemRow const& sourceRo
   // This method is only allowed if the block of the input row is the same as
   // the block of the output row!
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_ASSERT(sourceRow.internalBlockIs(_block));
+  TRI_ASSERT(sourceRow.internalBlockIs(_block, _baseIndex));
 #endif
   TRI_ASSERT(isOutputRegister(output));
   // This is already implicitly asserted by isOutputRegister:
@@ -313,7 +313,7 @@ SharedAqlItemBlockPtr OutputAqlItemRow::stealBlock() {
     // written and takes into account whether the current row was written.
     block->shrink(numRows);
 
-    if (_doNotCopyInputRow) {
+    if (!registersToClear().empty()) {
       block->clearRegisters(registersToClear());
     }
   }
@@ -348,7 +348,7 @@ void OutputAqlItemRow::createShadowRow(InputAqlItemRow const& sourceRow) {
   TRI_ASSERT(sourceRow.isInitialized());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // We can only add shadow rows if source and this are different blocks
-  TRI_ASSERT(!sourceRow.internalBlockIs(_block));
+  TRI_ASSERT(!sourceRow.internalBlockIs(_block, _baseIndex));
 #endif
   block().makeShadowRow(_baseIndex);
   doCopyOrMoveRow<InputAqlItemRow const, CopyOrMove::COPY, AdaptRowDepth::IncreaseDepth>(sourceRow, true);

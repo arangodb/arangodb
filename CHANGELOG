@@ -5,6 +5,9 @@ devel
   hangers in case the agents are stopped already and then coordinators or
   DB-Servers are shut down.
 
+* Fixed issue ES-598. Web UI now shows correct permissions in case wildcard
+  database level and wildcard collection level permissions are both set.
+
 * Fixed non-deterministic test failure in Pregel WCC test.
 
 * Fixed unintentional connection re-use for cluster-internal communications.
