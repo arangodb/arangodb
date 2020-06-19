@@ -190,51 +190,56 @@ class Logger {
 
  public:
   struct FIXED {
-    explicit FIXED(double value, int precision = 6)
+    explicit FIXED(double value, int precision = 6) noexcept
         : _value(value), _precision(precision) {}
     double _value;
     int _precision;
   };
 
   struct CHARS {
-    CHARS(char const* data, size_t size) : data(data), size(size) {}
+    CHARS(char const* data, size_t size) noexcept 
+         : data(data), size(size) {}
     char const* data;
     size_t size;
   };
 
   struct BINARY {
-    BINARY(void const* baseAddress, size_t size)
+    BINARY(void const* baseAddress, size_t size) noexcept
         : baseAddress(baseAddress), size(size) {}
-    explicit BINARY(std::string const& data)
+    explicit BINARY(std::string const& data) noexcept 
         : BINARY(data.data(), data.size()) {}
     void const* baseAddress;
     size_t size;
   };
 
   struct RANGE {
-    RANGE(void const* baseAddress, size_t size)
+    RANGE(void const* baseAddress, size_t size) noexcept
         : baseAddress(baseAddress), size(size) {}
     void const* baseAddress;
     size_t size;
   };
 
   struct LINE {
-    explicit LINE(int line) : _line(line) {}
+    explicit LINE(int line) noexcept 
+        : _line(line) {}
     int _line;
   };
 
   struct FILE {
-    explicit FILE(char const* file) : _file(file) {}
+    explicit FILE(char const* file) noexcept 
+        : _file(file) {}
     char const* _file;
   };
 
   struct FUNCTION {
-    explicit FUNCTION(char const* function) : _function(function) {}
+    explicit FUNCTION(char const* function) noexcept 
+        : _function(function) {}
     char const* _function;
   };
 
   struct LOGID {
-    explicit LOGID(char const* logid) : _logid(logid) {}
+    explicit LOGID(char const* logid) noexcept 
+        : _logid(logid) {}
     char const* _logid;
   };
 
@@ -269,7 +274,7 @@ class Logger {
   // can be called after fork()
   static void clearCachedPid() { _cachedPid = 0; }
 
-  static std::string const& translateLogLevel(LogLevel);
+  static std::string const& translateLogLevel(LogLevel) noexcept;
 
   static void log(char const* logid, char const* function, char const* file, int line,
                   LogLevel level, size_t topicId, std::string const& message);

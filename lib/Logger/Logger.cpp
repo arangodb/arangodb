@@ -292,7 +292,7 @@ void Logger::setUseJson(bool value) {
   _useJson = value;
 }
 
-std::string const& Logger::translateLogLevel(LogLevel level) {
+std::string const& Logger::translateLogLevel(LogLevel level) noexcept {
   switch (level) {
     case LogLevel::ERR:
       return ERR;
@@ -314,7 +314,9 @@ std::string const& Logger::translateLogLevel(LogLevel level) {
 }
 
 void Logger::log(char const* logid, char const* function, char const* file, int line,
-                 LogLevel level, size_t topicId, std::string const& message) {
+                 LogLevel level, size_t topicId, std::string const& message) try {
+  TRI_ASSERT(logid != nullptr);
+
   // we only determine our pid once, as currentProcessId() will
   // likely do a syscall.
   // this read-check-update sequence is not thread-safe, but this
@@ -330,14 +332,14 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
   if (Logger::_useJson) {
     // construct JSON output
     StringBuffer buf;
-    buf.appendText("{", 1);
+    buf.appendChar('{');
 
     // current time
     {
       static char const s[] = "time";
 
-      buf.appendText("\"", 1);
-      buf.appendText(s, sizeof(s)-1);
+      buf.appendChar('"');
+      buf.appendText(s, sizeof(s) - 1);
       buf.appendText("\":", 2);
 
       std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
@@ -350,7 +352,7 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
       static char const s[] = "prefix";
 
       buf.appendText(",\"", 2);
-      buf.appendText(s, sizeof(s)-1);
+      buf.appendText(s, sizeof(s) - 1);
       buf.appendText("\":", 2);
       buf.appendJsonEncoded(_outputPrefix.c_str(), _outputPrefix.size());
     }
@@ -360,49 +362,49 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
       static char const s[] = "pid";
 
       buf.appendText(",\"", 2);
-      buf.appendText(s, sizeof(s)-1);
+      buf.appendText(s, sizeof(s) - 1);
       buf.appendText("\":", 2);
       buf.appendInteger(uint64_t(_cachedPid));
     }
 
     // tid
-    {
+    if (_showThreadIdentifier) {
       static char const s[] = "tid";
 
       buf.appendText(",\"", 2);
-      buf.appendText(s, sizeof(s)-1);
+      buf.appendText(s, sizeof(s) - 1);
       buf.appendText("\":", 2);
       buf.appendInteger(uint64_t(Thread::currentThreadNumber()));
     }
 
     // thread name
-    {
+    if (_showThreadName) {
       static char const s[] = "thread";
 
       buf.appendText(",\"", 2);
-      buf.appendText(s, sizeof(s)-1);
+      buf.appendText(s, sizeof(s) - 1);
       buf.appendText("\":", 2);
 
       char const* threadName = Thread::currentThreadName();
       if (threadName == nullptr) {
-	threadName = "main";
+        threadName = "main";
       }
 
       buf.appendJsonEncoded(threadName, strlen(threadName));
     }
 
     // role
-    {
+    if (_showRole) {
       static char const s[] = "role";
 
       buf.appendText(",\"", 2);
-      buf.appendText(s, sizeof(s)-1);
+      buf.appendText(s, sizeof(s) - 1);
       buf.appendText("\":", 2);
 
       if (_role != '\0') {
-	buf.appendJsonEncoded(&_role, 1);
+        buf.appendJsonEncoded(&_role, 1);
       } else {
-	buf.appendText("\"\"", 2);
+        buf.appendText("\"\"", 2);
       }
     }
 
@@ -411,43 +413,43 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
       static char const s[] = "level";
 
       buf.appendText(",\"", 2);
-      buf.appendText(s, sizeof(s)-1);
+      buf.appendText(s, sizeof(s) - 1);
       buf.appendText("\":", 2);
-      auto ll = Logger::translateLogLevel(level);
+      auto const& ll = Logger::translateLogLevel(level);
       buf.appendJsonEncoded(ll.c_str(), ll.size());
     }
 
     // file and line
-    if (file != nullptr) {
+    if (_showLineNumber && file != nullptr) {
       static char const s[] = "file";
 
       buf.appendText(",\"", 2);
-      buf.appendText(s, sizeof(s)-1);
+      buf.appendText(s, sizeof(s) - 1);
       buf.appendText("\":", 2);
 
       char const* filename = file;
       char const* shortened = strrchr(filename, TRI_DIR_SEPARATOR_CHAR);
       if (shortened != nullptr) {
-	filename = shortened + 1;
+        filename = shortened + 1;
       }
 
       buf.appendJsonEncoded(filename, strlen(filename));
     }
 
-    if (file != nullptr) {
+    if (_showLineNumber && file != nullptr) {
       static char const s[] = "line";
 
       buf.appendText(",\"", 2);
-      buf.appendText(s, sizeof(s)-1);
+      buf.appendText(s, sizeof(s) - 1);
       buf.appendText("\":", 2);
       buf.appendInteger(uint64_t(line));
     }
 
-    if (function != nullptr) {
+    if (_showLineNumber && function != nullptr) {
       static char const s[] = "function";
 
       buf.appendText(",\"", 2);
-      buf.appendText(s, sizeof(s)-1);
+      buf.appendText(s, sizeof(s) - 1);
       buf.appendText("\":", 2);
       buf.appendJsonEncoded(function, strlen(function));
     }
@@ -457,7 +459,7 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
       static char const s[] = "topic";
 
       buf.appendText(",\"", 2);
-      buf.appendText(s, sizeof(s)-1);
+      buf.appendText(s, sizeof(s) - 1);
       buf.appendText("\":", 2);
 
       std::string topic = LogTopic::lookup(topicId);
@@ -465,11 +467,11 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
     }
 
     // the logid
-    {
+    if (::arangodb::Logger::getShowIds()) {
       static char const s[] = "lid";
 
       buf.appendText(",\"", 2);
-      buf.appendText(s, sizeof(s)-1);
+      buf.appendText(s, sizeof(s) - 1);
       buf.appendText("\":", 2);
       buf.appendJsonEncoded(logid, strlen(logid));
     }
@@ -479,12 +481,12 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
       static char const s[] = "message";
 
       buf.appendText(",\"", 2);
-      buf.appendText(s, sizeof(s)-1);
+      buf.appendText(s, sizeof(s) - 1);
       buf.appendText("\":", 2);
       buf.appendJsonEncoded(message.c_str(), message.size());
     }
 
-    buf.appendText("}", 1);
+    buf.appendChar('}');
 
     out = buf.toString();
   } else {
@@ -514,7 +516,7 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
     if (_showThreadName) {
       char const* threadName = Thread::currentThreadName();
       if (threadName == nullptr) {
-	threadName = "main";
+        threadName = "main";
       }
 
       out.push_back('-');
@@ -537,11 +539,11 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
       char const* filename = file;
 
       if (_shortenFilenames) {
-	// shorten file names from `/home/.../file.cpp` to just `file.cpp`
-	char const* shortened = strrchr(filename, TRI_DIR_SEPARATOR_CHAR);
-	if (shortened != nullptr) {
-	  filename = shortened + 1;
-	}
+        // shorten file names from `/home/.../file.cpp` to just `file.cpp`
+        char const* shortened = strrchr(filename, TRI_DIR_SEPARATOR_CHAR);
+        if (shortened != nullptr) {
+          filename = shortened + 1;
+        }
       }
       out.push_back('[');
       out.append(function);
@@ -575,28 +577,26 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
   // first log to all "global" appenders, which are the in-memory ring buffer logger plus
   // some Windows-specifc appenders for the debug output windows and the Windows event log.
   // note that these loggers do not require any configuration so we can always and safely invoke them.
-  try {
-    LogAppender::logGlobal(*msg);
+  LogAppender::logGlobal(*msg);
 
-    if (!_active.load(std::memory_order_relaxed)) {
-      // logging is still turned off. now use hard-coded to-stderr logging
-      LogAppenderStdStream::writeLogMessage(STDERR_FILENO, (isatty(STDERR_FILENO) == 1),
-                                            level, topicId, msg->_message.data(), msg->_message.size(), true);
-    } else {
-      // now either queue or output the message
-      bool handled = false;
-      if (_threaded) {
-        handled = _loggingThread->log(msg);
-      }
-
-      if (!handled) {
-        TRI_ASSERT(msg != nullptr);
-        LogAppender::log(*msg);
-      }
+  if (!_active.load(std::memory_order_relaxed)) {
+    // logging is still turned off. now use hard-coded to-stderr logging
+    LogAppenderStdStream::writeLogMessage(STDERR_FILENO, (isatty(STDERR_FILENO) == 1),
+                                          level, topicId, msg->_message.data(), msg->_message.size(), true);
+  } else {
+    // now either queue or output the message
+    bool handled = false;
+    if (_threaded) {
+      handled = _loggingThread->log(msg);
     }
-  } catch (...) {
-    // logging itself must never cause an exeption to escape
+
+    if (!handled) {
+      TRI_ASSERT(msg != nullptr);
+      LogAppender::log(*msg);
+    }
   }
+} catch (...) {
+  // logging itself must never cause an exeption to escape
 }
 
 ////////////////////////////////////////////////////////////////////////////////
