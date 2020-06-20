@@ -34,7 +34,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/application-exit.h"
@@ -53,6 +52,9 @@
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
+
+#include <velocypack/Dumper.h>
+#include <velocypack/Sink.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -338,172 +340,123 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
   }
 
   std::string out;
+  out.reserve(256 + message.size());
+
   size_t offset = 0;
 
   if (Logger::_useJson) {
     // construct JSON output
-    StringBuffer buf;
-    buf.appendChar('{');
+    arangodb::velocypack::StringSink sink(&out);
+    arangodb::velocypack::Dumper dumper(&sink);
 
-    // current time
+    out.push_back('{');
+
+    // current date/time
     {
-      static char const s[] = "time";
-
-      buf.appendChar('"');
-      buf.appendText(s, sizeof(s) - 1);
-      buf.appendText("\":", 2);
-
-      std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
-      std::chrono::system_clock::time_point tp(std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()));
-      buf.appendInteger(uint64_t(std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch()).count()));
+      out.append("\"time\":");
+      if (LogTimeFormats::isStringFormat(_timeFormat)) {
+        out.push_back('"');
+      }
+      // value of date/time is always safe to print
+      LogTimeFormats::writeTime(out, _timeFormat);
+      if (LogTimeFormats::isStringFormat(_timeFormat)) {
+        out.push_back('"');
+      }
     }
 
     // prefix
     if (!_outputPrefix.empty()) {
-      static char const s[] = "prefix";
-
-      buf.appendText(",\"", 2);
-      buf.appendText(s, sizeof(s) - 1);
-      buf.appendText("\":", 2);
-      buf.appendJsonEncoded(_outputPrefix.c_str(), _outputPrefix.size());
+      out.append(",\"prefix\":");
+      dumper.appendString(_outputPrefix.data(), _outputPrefix.size());
     }
 
     // pid
     if (_showProcessIdentifier) {
-      static char const s[] = "pid";
-
-      buf.appendText(",\"", 2);
-      buf.appendText(s, sizeof(s) - 1);
-      buf.appendText("\":", 2);
-      buf.appendInteger(uint64_t(_cachedPid));
+      out.append(",\"pid\":");
+      StringUtils::itoa(uint64_t(_cachedPid), out);
     }
 
     // tid
     if (_showThreadIdentifier) {
-      static char const s[] = "tid";
-
-      buf.appendText(",\"", 2);
-      buf.appendText(s, sizeof(s) - 1);
-      buf.appendText("\":", 2);
-      buf.appendInteger(uint64_t(Thread::currentThreadNumber()));
+      out.append(",\"tid\":");
+      StringUtils::itoa(uint64_t(Thread::currentThreadNumber), out);
     }
 
     // thread name
     if (_showThreadName) {
-      static char const s[] = "thread";
-
-      buf.appendText(",\"", 2);
-      buf.appendText(s, sizeof(s) - 1);
-      buf.appendText("\":", 2);
-
       char const* threadName = Thread::currentThreadName();
       if (threadName == nullptr) {
         threadName = "main";
       }
 
-      buf.appendJsonEncoded(threadName, strlen(threadName));
+      out.append(",\"thread\":");
+      dumper.appendString(threadName, strlen(threadName));
     }
 
     // role
     if (_showRole) {
-      static char const s[] = "role";
-
-      buf.appendText(",\"", 2);
-      buf.appendText(s, sizeof(s) - 1);
-      buf.appendText("\":", 2);
-
+      out.append(",\"role\":\"");
       if (_role != '\0') {
-        buf.appendJsonEncoded(&_role, 1);
-      } else {
-        buf.appendText("\"\"", 2);
+        // value of _role is always safe to print
+        out.push_back(_role);
       }
+      out.push_back('"');
     }
 
     // log level
     {
-      static char const s[] = "level";
-
-      buf.appendText(",\"", 2);
-      buf.appendText(s, sizeof(s) - 1);
-      buf.appendText("\":", 2);
+      out.append(",\"level\":");
       auto const& ll = Logger::translateLogLevel(level);
-      buf.appendJsonEncoded(ll.c_str(), ll.size());
+      // value of level is always safe to print
+      dumper.appendString(ll.data(), ll.size());
     }
 
     // file and line
     if (_showLineNumber && file != nullptr) {
-      static char const s[] = "file";
-
-      buf.appendText(",\"", 2);
-      buf.appendText(s, sizeof(s) - 1);
-      buf.appendText("\":", 2);
-
       char const* filename = file;
       char const* shortened = strrchr(filename, TRI_DIR_SEPARATOR_CHAR);
       if (shortened != nullptr) {
         filename = shortened + 1;
       }
 
-      buf.appendJsonEncoded(filename, strlen(filename));
+      out.append(",\"file\":");
+      dumper.appendString(filename, strlen(filename));
     }
 
-    if (_showLineNumber && file != nullptr) {
-      static char const s[] = "line";
-
-      buf.appendText(",\"", 2);
-      buf.appendText(s, sizeof(s) - 1);
-      buf.appendText("\":", 2);
-      buf.appendInteger(uint64_t(line));
+    if (_showLineNumber) {
+      out.append(",\"line\":");
+      StringUtils::itoa(uint64_t(line), out);
     }
 
     if (_showLineNumber && function != nullptr) {
-      static char const s[] = "function";
-
-      buf.appendText(",\"", 2);
-      buf.appendText(s, sizeof(s) - 1);
-      buf.appendText("\":", 2);
-      buf.appendJsonEncoded(function, strlen(function));
+      out.append(",\"function\":");
+      dumper.appendString(function, strlen(function));
     }
 
     // the topic
     {
-      static char const s[] = "topic";
-
-      buf.appendText(",\"", 2);
-      buf.appendText(s, sizeof(s) - 1);
-      buf.appendText("\":", 2);
-
+      out.append(",\"topic\":");
       std::string topic = LogTopic::lookup(topicId);
-      buf.appendJsonEncoded(topic.c_str(), topic.size());
+      // value of topic is always safe to print
+      dumper.appendString(topic.data(), topic.size());
     }
 
     // the logid
     if (::arangodb::Logger::getShowIds()) {
-      static char const s[] = "id";
-
-      buf.appendText(",\"", 2);
-      buf.appendText(s, sizeof(s) - 1);
-      buf.appendText("\":", 2);
-      buf.appendJsonEncoded(logid, strlen(logid));
+      out.append(",\"id\":");
+      // value of id is always safe to print
+      dumper.appendString(logid, strlen(logid));
     }
 
     // the message itself
     {
-      static char const s[] = "message";
-
-      buf.appendText(",\"", 2);
-      buf.appendText(s, sizeof(s) - 1);
-      buf.appendText("\":", 2);
-      buf.appendJsonEncoded(message.c_str(), message.size());
+      out.append(",\"message\":");
+      dumper.appendString(message.c_str(), message.size());
     }
 
-    buf.appendChar('}');
-
-    out = buf.toString();
+    out.push_back('}');
   } else {
     // human readable format
-    out.reserve(256 + message.size());
-
     LogTimeFormats::writeTime(out, _timeFormat);
     out.push_back(' ');
 
