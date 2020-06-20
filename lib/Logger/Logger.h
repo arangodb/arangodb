@@ -258,6 +258,7 @@ class Logger {
   static void setShowRole(bool);
   static bool getShowRole() { return _showRole; };
   static void setShortenFilenames(bool);
+  static void setShowProcessIdentifier(bool);
   static void setShowThreadIdentifier(bool);
   static void setShowThreadName(bool);
   static void setUseColor(bool);
@@ -306,6 +307,7 @@ class Logger {
   static LogTimeFormats::TimeFormat _timeFormat;
   static bool _showLineNumber;
   static bool _shortenFilenames;
+  static bool _showProcessIdentifier;
   static bool _showThreadIdentifier;
   static bool _showThreadName;
   static bool _showRole;

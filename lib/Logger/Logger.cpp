@@ -79,6 +79,7 @@ LogTimeFormats::TimeFormat Logger::_timeFormat(LogTimeFormats::TimeFormat::UTCDa
 bool Logger::_showIds(false);
 bool Logger::_showLineNumber(false);
 bool Logger::_shortenFilenames(true);
+bool Logger::_showProcessIdentifier(true);
 bool Logger::_showThreadIdentifier(false);
 bool Logger::_showThreadName(false);
 bool Logger::_threaded(false);
@@ -200,6 +201,16 @@ void Logger::setShortenFilenames(bool shorten) {
   }
 
   _shortenFilenames = shorten;
+}
+
+// NOTE: this function should not be called if the logging is active.
+void Logger::setShowProcessIdentifier(bool show) {
+  if (_active) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
+  }
+
+  _showProcessIdentifier = show;
 }
 
 // NOTE: this function should not be called if the logging is active.
@@ -358,7 +369,7 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
     }
 
     // pid
-    {
+    if (_showProcessIdentifier) {
       static char const s[] = "pid";
 
       buf.appendText(",\"", 2);
@@ -468,7 +479,7 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
 
     // the logid
     if (::arangodb::Logger::getShowIds()) {
-      static char const s[] = "lid";
+      static char const s[] = "id";
 
       buf.appendText(",\"", 2);
       buf.appendText(s, sizeof(s) - 1);
@@ -502,14 +513,20 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
       out.push_back(' ');
     }
 
-    // append the process / thread identifier
-    TRI_ASSERT(_cachedPid != 0);
-    out.push_back('[');
-    StringUtils::itoa(uint64_t(_cachedPid), out);
+    // [pid-tid-threadname], all components are optional
+    bool haveProcessOutput = false;
+    if (_showProcessIdentifier) {
+      // append the process / thread identifier
+      TRI_ASSERT(_cachedPid != 0);
+      out.push_back('[');
+      StringUtils::itoa(uint64_t(_cachedPid), out);
+      haveProcessOutput = true;
+    }
 
     if (_showThreadIdentifier) {
-      out.push_back('-');
+      out.push_back(haveProcessOutput ? '-' : '[');
       StringUtils::itoa(uint64_t(Thread::currentThreadNumber()), out);
+      haveProcessOutput = true;
     }
 
     // log thread name
@@ -519,11 +536,14 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
         threadName = "main";
       }
 
-      out.push_back('-');
+      out.push_back(haveProcessOutput ? '-' : '[');
       out.append(threadName);
+      haveProcessOutput = true;
     }
 
-    out.append("] ", 2);
+    if (haveProcessOutput) {
+      out.append("] ", 2);
+    }
 
     if (_showRole && _role != '\0') {
       out.push_back(_role);

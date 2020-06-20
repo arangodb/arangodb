@@ -67,6 +67,7 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   bool _useEscaped = true;
   bool _lineNumber = false;
   bool _shortenFilenames = true;
+  bool _processId = true;
   bool _threadId = false;
   bool _threadName = false;
   bool _performance = false;
