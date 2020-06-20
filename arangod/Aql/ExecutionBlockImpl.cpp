@@ -312,7 +312,7 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack stack) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   initOnce();
-  auto res = executeWithoutTrace(stack);
+  auto res = executeWithoutTrace(std::move(stack));
   traceExecuteEnd(res);
   return res;
 }
@@ -1529,7 +1529,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         localExecutorState = state;
 
         if (state == ExecutorState::DONE) {
-          if (!_lastRange.hasShadowRow() && !_lastRange.hasDataRow()) {
+          if (!_lastRange.hasValidRow()) {
             _execState = ExecState::DONE;
           } else {
             _execState = ExecState::SHADOWROWS;
@@ -1615,8 +1615,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         break;
       }
       case ExecState::SHADOWROWS: {
-        // We only get Called with something in the input.
-        TRI_ASSERT(_lastRange.hasShadowRow() || _lastRange.hasDataRow());
+        // We only get called with something in the input.
+        TRI_ASSERT(_lastRange.hasValidRow());
         LOG_QUERY("7c63c", DEBUG)
             << printTypeInfo() << " (sub-)query completed. Move ShadowRows.";
 
