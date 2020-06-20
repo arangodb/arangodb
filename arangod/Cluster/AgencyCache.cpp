@@ -392,24 +392,6 @@ void AgencyCache::beginShutdown() {
     _waiting.clear();
   }
 
-  // trigger all callbacks
-  {
-    std::lock_guard g(_callbacksLock);
-    for (auto const& i : _callbacks) {
-      auto cb = _callbackRegistry.getCallback(i.second);
-      if (cb != nullptr) {
-        LOG_TOPIC("76bb8", DEBUG, Logger::CLUSTER)
-          << "Agency callback " << i << " has been triggered. refetching!";
-        try {
-          cb->refetchAndUpdate(true, false);
-        } catch (arangodb::basics::Exception const& e) {
-          LOG_TOPIC("c3111", WARN, Logger::AGENCYCOMM)
-            << "Error executing callback: " << e.message();
-        }
-      }
-    }
-    _callbacks.clear();
-  }
   Thread::beginShutdown();
 }
 
