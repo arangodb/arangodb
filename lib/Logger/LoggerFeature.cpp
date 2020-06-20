@@ -181,7 +181,8 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   
   options->addOption("--log.process", "show process identifier (pid) in log message",
                      new BooleanParameter(&_processId),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30701);
 
   options->addOption("--log.thread", "show thread identifier in log message",
                      new BooleanParameter(&_threadId),

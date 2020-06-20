@@ -10,6 +10,12 @@ devel
   arangod in Docker containers, as the pid will always be 1. So one may
   as well turn it off in these contexts.
 
+* added option `--log.in-memory` to toggle storing log messages in memory,
+  from which they can be consumed via the `/_admin/log` and by the web UI. By
+  default, this option is turned on, so log messages are consumable via API 
+  and the web UI. Turning this option off will disable that functionality and
+  save a tiny bit of memory for the in-memory log buffers.
+
 * Allow for faster cluster shutdown. This should reduce the number of shutdown
   hangers in case the agents are stopped already and then coordinators or
   DB-Servers are shut down.

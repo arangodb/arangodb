@@ -574,7 +574,9 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
       out.append("] ", 2);
     }
 
-    // generate the complete message
+    // the offset is used by the in-memory logger, and it cuts off everything from the start
+    // of the concatenated log string until the offset. only what's after the offset gets
+    // displayed in the web UI
     offset = out.size();
 
     if (::arangodb::Logger::getShowIds()) {
@@ -589,6 +591,7 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
       out.append("} ", 2);
     }
 
+    // generate the complete message
     out.append(message);
   }
 
