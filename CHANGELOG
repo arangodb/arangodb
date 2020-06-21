@@ -89,7 +89,7 @@ v3.7.1-rc.1 (XXXX-XX-XX)
   This change transparently handles missing "shardingStrategy" entries.
 
 
-v3.7.1-beta.1 (XXXX-XX-XX)
+v3.7.1-beta.1 (2020-06-07)
 --------------------------
 
 * Taken collection dropping from fast track in maintenance. This avoids blocking
