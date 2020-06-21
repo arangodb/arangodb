@@ -414,14 +414,16 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
 /// @brief lease the transaction, increases nesting
 std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid,
                                                                AccessMode::Type mode) {
+  TRI_ASSERT(mode != AccessMode::Type::NONE);
   if (_disallowInserts.load(std::memory_order_acquire)) {
     return nullptr;
   }
   
+  auto const orgMode = mode;
   auto const role = ServerState::instance()->getRole();
   std::chrono::steady_clock::time_point endTime;
   if (!ServerState::isDBServer(role)) { // keep end time as small as possible
-    endTime = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+    endTime = std::chrono::steady_clock::now() + std::chrono::seconds(8);
   }
   // always serialize access on coordinator,
   // TransactionState::_knownServers is modified even for READ
@@ -455,27 +457,31 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
         state = mtrx.state;
         break;
       }
-    } else {
-      if (mtrx.rwlock.tryLockRead()) {
-        state = mtrx.state;
-        break;
-      }
-
-      LOG_TOPIC("abd72", DEBUG, Logger::TRANSACTIONS)
-          << "transaction '" << tid << "' is already in use (RO)";
-      // simon: never allow concurrent use of transactions
+    } else if (mtrx.rwlock.tryLockRead()) {
+      TRI_ASSERT(mode == AccessMode::Type::READ);
+      state = mtrx.state;
+      break;
+    }
+    
+    // simon: never allow concurrent use of transactions
+    // either busy loop until we get the lock or throw an error
+    
+    if (orgMode == AccessMode::Type::READ) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_LOCKED,
                                      std::string("cannot read-lock, transaction '") + std::to_string(tid) +
                                           "' is already in use");
     }
+    
+    LOG_TOPIC("abd72", TRACE, Logger::TRANSACTIONS)
+        << "transaction '" << tid << "' is already in use (RO)";
 
     locker.unlock();  // failure;
     
     // simon: Two allowed scenarios:
     // 1. User sends concurrent write (CRUD) requests, (which was never intended to be possible)
-    //    but now we do have to kind of support it otherwise apps break
+    //    but now we do have to kind of support it otherwise shitty apps break
     // 2. one does a bulk write within a el-cheapo / V8 transaction into multiple shards
-    //    on the same DBServer (Then its bad though).
+    //    on the same DBServer (still bad design).
     TRI_ASSERT(endTime.time_since_epoch().count() == 0 || !ServerState::instance()->isDBServer());
 
     if (!ServerState::isDBServer(role) && std::chrono::steady_clock::now() > endTime) {

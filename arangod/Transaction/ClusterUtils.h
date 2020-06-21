@@ -31,6 +31,7 @@ class ClusterInfo;
 namespace transaction {
 namespace cluster {
   
+void abortTransactionsOnShard(TRI_voc_cid_t cid);
 void abortLeaderTransactionsOnShard(TRI_voc_cid_t cid);
 void abortFollowerTransactionsOnShard(TRI_voc_cid_t cid);
 void abortTransactionsWithFailedServers(ClusterInfo&);

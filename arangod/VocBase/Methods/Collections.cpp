@@ -40,8 +40,6 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Graph/GraphManager.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -49,6 +47,7 @@
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
+#include "Transaction/ClusterUtils.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
@@ -802,13 +801,17 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
   Result res;
 
   // If we are a coordinator in a cluster, we have to behave differently:
-  if (ServerState::instance()->isCoordinator()) {
+  auto const role = ServerState::instance()->getRole();
+  if (ServerState::isCoordinator(role)) {
 #ifdef USE_ENTERPRISE
     res = DropColCoordinatorEnterprise(&coll, allowDropSystem);
 #else
     res = DropVocbaseColCoordinator(&coll, allowDropSystem);
 #endif
   } else {
+    if (ServerState::isDBServer(role)) {
+      transaction::cluster::abortTransactionsOnShard(coll.id());
+    }
     res = coll.vocbase().dropCollection(coll.id(), allowDropSystem, timeout);
   }
 
