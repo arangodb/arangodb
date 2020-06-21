@@ -419,6 +419,9 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_TASK_DUPLICATE_ID:
     case TRI_ERROR_GRAPH_DUPLICATE:
       return ResponseCode::CONFLICT;
+    
+    case TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED:
+      return ResponseCode::PRECONDITION_FAILED;
 
     case TRI_ERROR_DEADLOCK:
     case TRI_ERROR_ARANGO_OUT_OF_KEYS:

@@ -37,6 +37,7 @@
 #include <type_traits>
 #include <utility>
 
+#include "Agency/PathComponent.h"
 #include "Basics/Mutex.h"
 #include "Basics/Result.h"
 #include "GeneralServer/GeneralDefinitions.h"
@@ -212,6 +213,17 @@ class AgencyPrecondition {
         type(t),
         empty(false),
         builder(std::make_shared<VPackBuilder>()) {
+    builder->add(VPackValue(v));
+    value = builder->slice();
+  };
+
+  AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path, Type, bool e);
+  AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path,
+                     Type, velocypack::Slice const&);
+  template <typename T>
+  AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path,
+                     Type t, T const& v)
+      : key(path->str()), type(t), empty(false), builder(std::make_shared<VPackBuilder>()) {
     builder->add(VPackValue(v));
     value = builder->slice();
   };
@@ -575,7 +587,7 @@ class AgencyComm {
  public:
   explicit AgencyComm(application_features::ApplicationServer&);
 
-  AgencyCommResult sendServerState();
+  AgencyCommResult sendServerState(double timeout);
 
   std::string version();
 
@@ -592,8 +604,9 @@ class AgencyComm {
 
   AgencyCommResult setValue(std::string const&, arangodb::velocypack::Slice const&, double);
 
-  AgencyCommResult setTransient(std::string const&,
-                                arangodb::velocypack::Slice const&, uint64_t);
+  AgencyCommResult setTransient(std::string const& key,
+                                arangodb::velocypack::Slice const& slice, 
+                                uint64_t ttl, double timeout);
 
   bool exists(std::string const&);
 

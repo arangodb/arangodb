@@ -30,9 +30,9 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/Timing.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
-#include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Transaction/Context.h"
@@ -171,7 +171,7 @@ bool ExecutionBlock::isInSplicedSubquery() const noexcept {
 void ExecutionBlock::traceExecuteBegin(AqlCallStack const& stack, std::string const& clientId) {
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
     if (_execNodeStats.runtime >= 0.0) {
-      _execNodeStats.runtime -= TRI_microtime();
+      _execNodeStats.runtime -= currentSteadyClockValue();
       TRI_ASSERT(_execNodeStats.runtime < 0.0);
     }
     
@@ -198,8 +198,8 @@ void ExecutionBlock::traceExecuteEnd(std::tuple<ExecutionState, SkipResult, Shar
     _execNodeStats.items += skipped.getSkipCount() + items;
     if (state != ExecutionState::WAITING) {
       TRI_ASSERT(_execNodeStats.runtime < 0.0);
-      _execNodeStats.runtime += TRI_microtime();
-      TRI_ASSERT(_execNodeStats.runtime > 0.0);
+      _execNodeStats.runtime += currentSteadyClockValue();
+      TRI_ASSERT(_execNodeStats.runtime >= 0.0);
     }
 
     if (_profile >= PROFILE_LEVEL_TRACE_1) {

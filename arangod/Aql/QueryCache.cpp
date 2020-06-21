@@ -636,7 +636,7 @@ void QueryCache::store(TRI_vocbase_t* vocbase, std::shared_ptr<QueryCacheResultE
     return;
   }
 
-  // set insertion time
+  // set insertion time (wall-clock time, only used for displaying it later)
   e->_stamp = TRI_microtime();
 
   // get the right part of the cache to store the result in
