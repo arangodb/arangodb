@@ -45,7 +45,6 @@ class ManagerFeature final : public application_features::ApplicationFeature {
   void unprepare() override;
 
   static transaction::Manager* manager() {
-    TRI_ASSERT(MANAGER != nullptr);
     return MANAGER.get();
   }
 
