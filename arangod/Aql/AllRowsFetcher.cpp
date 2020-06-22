@@ -32,34 +32,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-std::pair<ExecutionState, AqlItemMatrix const*> AllRowsFetcher::fetchAllRows() {
-  switch (_dataFetchedState) {
-    case ALL_DATA_FETCHED:
-      // Avoid unnecessary upstream calls
-      return {ExecutionState::DONE, nullptr};
-    case NONE:
-    case SHADOW_ROW_FETCHED: {
-      auto state = fetchData();
-      if (state == ExecutionState::WAITING) {
-        return {state, nullptr};
-      }
-      _dataFetchedState = ALL_DATA_FETCHED;
-      return {state, _aqlItemMatrix.get()};
-    }
-    case DATA_FETCH_ONGOING:
-      // Invalid state, we switch between singleRow
-      // and allRows fetches.
-      TRI_ASSERT(false);
-      // In production hand out the Matrix
-      // This way the function behaves as if no single row fetch would have taken place
-      _dataFetchedState = ALL_DATA_FETCHED;
-      return {ExecutionState::DONE, _aqlItemMatrix.get()};
-  }
-  // Unreachable code
-  TRI_ASSERT(false);
-  return {ExecutionState::DONE, nullptr};
-}
-
 std::tuple<ExecutionState, SkipResult, AqlItemBlockInputMatrix> AllRowsFetcher::execute(AqlCallStack& stack) {
   TRI_ASSERT(stack.peek().getOffset() == 0);
   TRI_ASSERT(!stack.peek().needsFullCount());
@@ -103,47 +75,6 @@ std::tuple<ExecutionState, SkipResult, AqlItemBlockInputMatrix> AllRowsFetcher::
   }
 }
 
-std::pair<ExecutionState, InputAqlItemRow> AllRowsFetcher::fetchRow(size_t atMost) {
-  switch (_dataFetchedState) {
-    case ALL_DATA_FETCHED:
-      // We have already returned all data to the next shadow row
-      // Avoid unnecessary upstream calls
-      return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
-    case NONE:
-    case SHADOW_ROW_FETCHED: {
-      // We need to get new data!
-      auto state = fetchData();
-      if (state == ExecutionState::WAITING) {
-        return {state, InputAqlItemRow{CreateInvalidInputRowHint{}}};
-      }
-      TRI_ASSERT(_aqlItemMatrix != nullptr);
-      _rowIndexes = _aqlItemMatrix->produceRowIndexes();
-      if (_rowIndexes.empty()) {
-        // We do not ahve indexes in the next block
-        // So we return invalid row and can set ALL_DATA_FETCHED
-        _dataFetchedState = ALL_DATA_FETCHED;
-        return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
-      }
-      _nextReturn = 0;
-      _dataFetchedState = DATA_FETCH_ONGOING;
-    }
-      [[fallthrough]];
-    case DATA_FETCH_ONGOING: {
-      TRI_ASSERT(_nextReturn < _rowIndexes.size());
-      TRI_ASSERT(_aqlItemMatrix != nullptr);
-      auto row = _aqlItemMatrix->getRow(_rowIndexes[_nextReturn]);
-      _nextReturn++;
-      if (_nextReturn == _rowIndexes.size()) {
-        _dataFetchedState = ALL_DATA_FETCHED;
-        return {ExecutionState::DONE, row};
-      }
-      return {ExecutionState::HASMORE, row};
-    }
-  }
-
-  return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
-}
-
 ExecutionState AllRowsFetcher::fetchData() {
   if (_upstreamState == ExecutionState::DONE) {
     TRI_ASSERT(_aqlItemMatrix != nullptr);
@@ -179,19 +110,6 @@ ExecutionState AllRowsFetcher::fetchUntilDone() {
 
   TRI_ASSERT(_aqlItemMatrix != nullptr);
   return state;
-}
-
-std::pair<ExecutionState, size_t> AllRowsFetcher::preFetchNumberOfRows(size_t) {
-  // TODO: Fix this as soon as we have counters for ShadowRows within here.
-  if (_upstreamState == ExecutionState::DONE) {
-    TRI_ASSERT(_aqlItemMatrix != nullptr);
-    return {ExecutionState::DONE, _aqlItemMatrix->size()};
-  }
-  if (fetchUntilDone() == ExecutionState::WAITING) {
-    return {ExecutionState::WAITING, 0};
-  }
-  TRI_ASSERT(_aqlItemMatrix != nullptr);
-  return {ExecutionState::DONE, _aqlItemMatrix->size()};
 }
 
 AllRowsFetcher::AllRowsFetcher(DependencyProxy<BlockPassthrough::Disable>& executionBlock)
