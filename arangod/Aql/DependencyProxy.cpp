@@ -166,7 +166,7 @@ DependencyProxy<blockPassthrough>::fetchBlock(size_t atMost) {
 
   TRI_ASSERT(!_blockQueue.empty());
 
-  auto&& [state, block] = _blockQueue.front();
+  auto [state, block] = std::move(_blockQueue.front());
   _blockQueue.pop_front();
 
   return {state, std::move(block)};
