@@ -825,7 +825,7 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
 
     readResult = getValues("Sync/LatestID");
     if (!readResult.successful()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(2));
+      std::this_thread::sleep_for(std::chrono::milliseconds(20));
       continue;
     }
 
@@ -855,7 +855,7 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
     } catch (...) {
     }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
     // The cas did not work, simply try again!
   }
 
