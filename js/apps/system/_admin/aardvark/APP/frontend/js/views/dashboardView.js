@@ -809,6 +809,18 @@
       }
 
       if (self.reRender && self.isVisible) {
+        var margin = {
+          top: ($('#residentSizeChartContainer').outerHeight() - $('#residentSizeChartContainer').height()) / 2,
+          right: 1,
+          bottom: ($('#residentSizeChartContainer').outerHeight() - $('#residentSizeChartContainer').height()) / 2,
+          left: 1
+        };
+        if (Number.isNaN(margin.top)) {
+          margin.top = 1;
+        }
+        if (Number.isNaN(margin.bottom)) {
+          margin.bottom = 1;
+        }
         nv.addGraph(function () {
           self.residentChart = nv.models.multiBarHorizontalChart()
             .x(function (d) {
@@ -819,17 +831,10 @@
             })
             .width(dimensions.width)
             .height(dimensions.height)
-            .margin({
-              top: ($('residentSizeChartContainer').outerHeight() - $('residentSizeChartContainer').height()) / 2,
-              right: 1,
-              bottom: ($('residentSizeChartContainer').outerHeight() - $('residentSizeChartContainer').height()) / 2,
-              left: 1
-            })
+            .margin(margin)
             .showValues(false)
             .showYAxis(false)
             .showXAxis(false)
-            // .transitionDuration(100)
-            // .tooltip(false)
             .showLegend(false)
             .showControls(false)
             .stacked(true);
