@@ -391,7 +391,9 @@ class CommonGatherExecutorTest
 
   auto sortedExecutor(RegisterInfos&& regInfos, GatherNode::SortMode sortMode)
       -> std::unique_ptr<ExecutionBlock> {
-    std::vector<SortRegister> sortRegister{SortRegister{0, SortElement{nullptr, true}}};
+    std::vector<SortRegister> sortRegister;
+    sortRegister.emplace_back(SortRegister{0, SortElement{nullptr, true}});
+
     auto executorInfos =
         SortingGatherExecutorInfos(std::move(sortRegister), *fakedQuery.get(),
                                    sortMode, 0, parallelism());
