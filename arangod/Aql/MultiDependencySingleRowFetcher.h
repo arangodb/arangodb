@@ -71,7 +71,7 @@ class MultiDependencySingleRowFetcher {
     SharedAqlItemBlockPtr _currentBlock;
 
     /**
-     * @brief Index of the row to be returned next by fetchRow(). This is valid
+     * @brief Index of the row to be returned next. This is valid
      *        iff _currentBlock != nullptr and it's smaller or equal than
      *        _currentBlock->size(). May be moved if the Fetcher implementations
      *        are moved into separate classes.

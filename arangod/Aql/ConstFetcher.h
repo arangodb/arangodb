@@ -42,10 +42,6 @@ class SkipResult;
 /**
  * @brief Interface for all AqlExecutors that do only need one
  *        row at a time in order to make progress.
- *        The guarantee is the following:
- *        If fetchRow returns a row the pointer to
- *        this row stays valid until the next call
- *        of fetchRow.
  */
 class ConstFetcher {
   using DependencyProxy = aql::DependencyProxy<BlockPassthrough::Enable>;
@@ -96,7 +92,7 @@ class ConstFetcher {
   SharedAqlItemBlockPtr _blockForPassThrough;
 
   /**
-   * @brief Index of the row to be returned next by fetchRow(). This is valid
+   * @brief Index of the row to be returned next. This is valid
    *        iff _currentBlock != nullptr and it's smaller or equal than
    *        _currentBlock->size(). May be moved if the Fetcher implementations
    *        are moved into separate classes.
