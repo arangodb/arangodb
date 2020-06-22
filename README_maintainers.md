@@ -723,6 +723,25 @@ arangosh, use this:
 
     require("@arangodb/mocha-runner").runTest('tests/js/client/endpoint-spec.js', true)
 
+### Driver tests
+
+#### Go driver
+
+Pre-requisites: 
+ - have a go-driver checkout next to the ArangoDB source tree
+ - have the go binary in the path
+ - have all dependencies of it installed in the system (you may do this by try & error)
+
+Once this is completed, you may run it like this:
+
+    ./scripts/unittest go_driver --gosource ../go-driver/ --testCase View --goOptions:timeout 180m --cluster true 
+
+This will invoke the test with a filter to only execute tests that have `View` in their name.
+As an aditional parameter we pass `-timeout 100m` to the driver test. 
+
+The driver integration also features JWT pass in. It will launch a cluster with 3 DB-Servers, as
+the tests expect to have at least 3 DB-Servers.
+
 ### Debugging Tests
 
 This is quick introduction only.
@@ -785,7 +804,7 @@ Currently available Analyzers are:
 
   - unitTestPrettyPrintResults - Prints a pretty summary and writes an ASCII representation into `out/testfailures.txt` (if any errors)
   - saveToJunitXML - saves jUnit compatible XML files
-  - locateLongRunning - searches the 10 longest running tests from a testsuite
+  - locateLongRunning - searches the 10 longest running tests from a testsuite; may add comparison to `--otherFile` specified times
   - locateShortServerLife - whether the servers lifetime for the tests isn't at least 10 times as long as startup/shutdown
   - locateLongSetupTeardown - locate tests that may use a lot of time in setup/teardown
   - yaml - dumps the json file as a yaml file

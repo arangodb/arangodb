@@ -411,6 +411,8 @@ void MockClusterServer::startFeatures() {
   AsyncAgencyCommManager::INSTANCE->updateEndpoints({"tcp://localhost:4000/"});
   arangodb::AgencyComm(server()).ensureStructureInitialized();
 
+  std::string st = "{\"" + arangodb::ServerState::instance()->getId() + "\":{\"rebootId\":1}}";
+  agencyTrx("/arango/Current/ServersKnown", st);
   arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1});
 
   // register factories & normalizers
@@ -436,7 +438,6 @@ void MockClusterServer::agencyTrx(std::string const& key, std::string const& val
 
 void MockClusterServer::agencyCreateDatabase(std::string const& name) {
   TemplateSpecializer ts(name);
-
 
   std::string st = ts.specialize(plan_dbs_string);
   agencyTrx("/arango/Plan/Databases/" + name, st);
