@@ -317,7 +317,7 @@ int MMFilesDatafile::judge(std::string const& filename) {
 
   uint64_t buffer[256];
 
-  if (!TRI_ReadPointer(fd, &buffer, 256 * sizeof(uint64_t))) {
+  if (TRI_ReadPointer(fd, (char*)&buffer, 256 * sizeof(uint64_t)) <= 0) {
     TRI_CLOSE(fd);
     return TRI_ERROR_ARANGO_DATAFILE_UNREADABLE;
   }

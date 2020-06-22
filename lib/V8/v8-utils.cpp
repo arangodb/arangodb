@@ -24,6 +24,7 @@
 #include "v8-utils.h"
 
 #include "Basics/Common.h"
+#include "Basics/operating-system.h"
 
 #ifdef _WIN32
 #include <WinSock2.h>  // must be before windows.h
@@ -77,7 +78,6 @@
 #include "Basics/error.h"
 #include "Basics/files.h"
 #include "Basics/memory.h"
-#include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
 #include "Basics/socket-utils.h"
 #include "Basics/system-compiler.h"
@@ -3013,23 +3013,20 @@ static void JS_ReadPipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "not allowed to execute or modify state of external processes");
   }
 
-  ExternalProcess const* proc = nullptr;
   TRI_pid_t pid = static_cast<TRI_pid_t>(TRI_ObjectToInt64(isolate, args[0]));
-  for (auto const& process : ExternalProcesses) {
-    if (process->_pid == pid) {
-      proc = process;
-      break;
-    }
+  ExternalProcess const* proc = TRI_LookupSpawnedProcess(pid);
+
+  if (proc == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+      "didn't find the process identified by <external-identifier> to read the pipe from.");
   }
 
   char content[1024];
   size_t length = sizeof(content) - 1;
+  auto read_len = TRI_ReadPipe(proc, content, length);
 
-  if (!TRI_ReadPipe(proc, content, length)) {
-    TRI_V8_THROW_TYPE_ERROR("<external-identifier> of the spawned process");
-  }
-
-  auto result = TRI_V8_PAIR_STRING(isolate, content, length);
+  auto result = TRI_V8_PAIR_STRING(isolate, content, read_len);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END

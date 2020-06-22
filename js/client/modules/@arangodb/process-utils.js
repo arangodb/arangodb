@@ -33,6 +33,7 @@ const yaml = require('js-yaml');
 const internal = require('internal');
 const crashUtils = require('@arangodb/crash-utils');
 const crypto = require('@arangodb/crypto');
+const ArangoError = require('@arangodb').ArangoError;
 
 /* Functions: */
 const toArgv = internal.toArgv;
@@ -461,7 +462,7 @@ function makeAuthorizationHeaders (options) {
                              {'server_id': 'none',
                               'iss': 'arangodb'}, 'HS256');
     if (options.extremeVerbosity) {
-      print(Date() + ' Using jwt token:     ' + jwt);
+      print(Date() + ' Using jw token:     ' + jwt);
     }
     return {
       'headers': {
@@ -652,17 +653,23 @@ function initProcessStats(instanceInfo) {
 }
 
 function getDeltaProcessStats(instanceInfo) {
-  let deltaStats = {};
-  instanceInfo.arangods.forEach((arangod) => {
-    let newStats = getProcessStats(arangod.pid);
-    let myDeltaStats = {};
-    for (let key in arangod.stats) {
-      myDeltaStats[key] = newStats[key] - arangod.stats[key];
-    }
-    deltaStats[arangod.pid + '_' + arangod.role] = myDeltaStats;
-    arangod.stats = newStats;
-  });
-  return deltaStats;
+  try {
+    let deltaStats = {};
+    instanceInfo.arangods.forEach((arangod) => {
+      let newStats = getProcessStats(arangod.pid);
+      let myDeltaStats = {};
+      for (let key in arangod.stats) {
+        myDeltaStats[key] = newStats[key] - arangod.stats[key];
+      }
+      deltaStats[arangod.pid + '_' + arangod.role] = myDeltaStats;
+      arangod.stats = newStats;
+    });
+    return deltaStats;
+  }
+  catch (x) {
+    print("aborting stats generation");
+    return {};
+  }
 }
 
 function summarizeStats(deltaStats) {
@@ -1570,7 +1577,12 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
   if (tcpdump !== undefined) {
     print(CYAN + "Stopping tcpdump" + RESET);
     killExternal(tcpdump.pid);
-    statusExternal(tcpdump.pid, true);
+    try {
+      statusExternal(tcpdump.pid, true);
+    } catch (x)
+    {
+      print(Date() + ' wasn\'t able to stop tcpdump: ' + x.message );
+    }
   }
   cleanupDirectories.unshift(instanceInfo.rootDir);
   return shutdownSuccess;

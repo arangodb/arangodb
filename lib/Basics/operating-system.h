@@ -335,6 +335,7 @@
 
 #define TRI_lseek_t off_t
 #define TRI_read_t size_t
+#define TRI_read_return_t ssize_t
 #define TRI_stat_t struct stat
 #define TRI_write_t size_t
 
@@ -481,6 +482,7 @@
 
 #define TRI_lseek_t off_t
 #define TRI_read_t size_t
+#define TRI_read_return_t ssize_t
 #define TRI_stat_t struct stat
 #define TRI_write_t size_t
 
@@ -640,6 +642,7 @@
 
 #define TRI_lseek_t off_t
 #define TRI_read_t size_t
+#define TRI_read_return_t ssize_t
 #define TRI_stat_t struct stat
 #define TRI_write_t size_t
 
@@ -842,6 +845,8 @@ typedef unsigned char bool;
 
 #define TRI_lseek_t __int64
 #define TRI_read_t unsigned int
+#define TRI_read_return_t int
+
 #define TRI_stat_t struct _stat64
 #define TRI_write_t unsigned int
 

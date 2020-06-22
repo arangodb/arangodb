@@ -532,10 +532,10 @@ ${failedMessages}${color} * Overall state: ${statusMessage}${RESET}${crashText}$
 // / @brief creates a chartlist of the longest running tests
 // //////////////////////////////////////////////////////////////////////////////
 
-function locateLongRunning(options, results) {
+function locateLongRunning(options, results, otherResults) {
   let testRunStatistics = "";
   let sortedByDuration = [];
-  
+  let pathForJson = {};
   let failedStates = {
     state: true,
     failCount: 0,
@@ -559,6 +559,7 @@ function locateLongRunning(options, results) {
 `;
     },
     testSuite: function(options, state, testSuite, testSuiteName) {
+      pathForJson['testSuite'] = testSuiteName;
       if (testSuite.hasOwnProperty('duration') && testSuite.duration !== 0.0) {
         sortedByDuration.push(
           {
@@ -578,6 +579,7 @@ function locateLongRunning(options, results) {
     endTestSuite: function(options, state, testSuite, testSuiteName) {
     },
     endTestRun: function(options, state, testRun, testRunName) {
+      pathForJson['testRunName'] = testRunName;
       sortedByDuration.sort(function(a, b) {
         return a.duration - b.duration;
       });
@@ -614,8 +616,15 @@ function locateLongRunning(options, results) {
 
         let statistics = [];
         for (let j = Object.keys(testCases).length - 1; (j >= 0) && (j > Object.keys(testCases).length - 31); j --) {
+          let otherTestTime = "";
+          if (otherResults) {
+            otherTestTime = otherResults[pathForJson['testSuite']][pathForJson['testRunName']][testCases[j].testName]['duration'];
+            otherTestTime = " - " + fancyTimeFormat(otherTestTime / 1000);
+          }
+
           statistics.push(
             fancyTimeFormat(testCases[j].duration / 1000) +
+              otherTestTime +
               " - " +
               testCases[j].testName);
         }
@@ -780,8 +789,8 @@ function locateShortServerLife(options, results) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function writeDefaultReports(options, testSuites) {
-  fs.write(options.testOutputDirectory + '/UNITTEST_RESULT_EXECUTIVE_SUMMARY.json', "false", true);
-  fs.write(options.testOutputDirectory + '/UNITTEST_RESULT_CRASHED.json', "true", true);
+  fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_EXECUTIVE_SUMMARY.json'), "false", true);
+  fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_CRASHED.json'), "true", true);
   let testFailureText = 'testfailures.txt';
   if (options.hasOwnProperty('testFailureText')) {
     testFailureText = options.testFailureText;
@@ -793,8 +802,8 @@ function writeDefaultReports(options, testSuites) {
 }
 
 function writeReports(options, results) {
-  fs.write(options.testOutputDirectory + '/UNITTEST_RESULT_EXECUTIVE_SUMMARY.json', String(results.status), true);
-  fs.write(options.testOutputDirectory + '/UNITTEST_RESULT_CRASHED.json', String(results.crashed), true);
+  fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_EXECUTIVE_SUMMARY.json'), String(results.status), true);
+  fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_CRASHED.json'), String(results.crashed), true);
 }
 
 function dumpAllResults(options, results) {

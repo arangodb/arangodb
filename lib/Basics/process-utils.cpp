@@ -178,7 +178,7 @@ ExternalProcess::~ExternalProcess() {
 ExternalProcessStatus::ExternalProcessStatus()
     : _status(TRI_EXT_NOT_STARTED), _exitStatus(0), _errorMessage() {}
 
-static ExternalProcess* TRI_LookupSpawnedProcess(TRI_pid_t pid) {
+ExternalProcess* TRI_LookupSpawnedProcess(TRI_pid_t pid) {
   {
     MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
     auto found = std::find_if(ExternalProcesses.begin(), ExternalProcesses.end(),
@@ -1014,24 +1014,20 @@ void TRI_CreateExternalProcess(char const* executable,
 /// @brief Reads from the pipe of processes
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ReadPipe(ExternalProcess const* process,
-                  char* buffer,
-                  size_t &bufferSize) {
+TRI_read_return_t TRI_ReadPipe(ExternalProcess const* process,
+                               char* buffer,
+                               size_t bufferSize) {
   if (process == nullptr || TRI_IS_INVALID_PIPE(process->_readPipe)) {
-    return false;
+    return 0;
   }
 
   memset(buffer, 0, bufferSize);
 
 #ifndef _WIN32
-  bool haveMore = TRI_ReadPointer(process->_readPipe, buffer, bufferSize);
+  return TRI_ReadPointer(process->_readPipe, buffer, bufferSize);
 #else
-  bool haveMore = TRI_READ_POINTER(process->_readPipe, buffer, bufferSize);
+  return TRI_READ_POINTER(process->_readPipe, buffer, bufferSize);
 #endif
-  if (!haveMore) {
-    bufferSize = strlen(buffer);
-  }
-  return true;
 }
 
 
