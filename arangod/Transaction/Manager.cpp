@@ -438,13 +438,14 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
     READ_LOCKER(locker, _transactions[bucket]._lock);
 
     auto it = _transactions[bucket]._managed.find(tid);
-    if (it == _transactions[bucket]._managed.end() || !::authorized(it->second.user)) {
+    if (it == _transactions[bucket]._managed.end()) {
       return nullptr;
     }
 
     ManagedTrx& mtrx = it->second;
-    if (mtrx.type == MetaType::Tombstone) {
-      return nullptr;  // already committed this trx
+    if (mtrx.type == MetaType::Tombstone || mtrx.expired() ||
+        !::authorized(mtrx.user)) {
+      return nullptr;  // no need to return anything
     }
     
     if (AccessMode::isWriteOrExclusive(mode)) {
@@ -488,7 +489,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_LOCKED,
                                      std::string("cannot write-lock, transaction '") + std::to_string(tid) +
                                          "' is already in use");
-    } else if (i++ > 32) {
+    } else if ((i % 32) == 0) {
       LOG_TOPIC("9e972", DEBUG, Logger::TRANSACTIONS) << "waiting on trx write-lock " << tid;
       i = 0;
       if (_feature.server().isStopping()) {
