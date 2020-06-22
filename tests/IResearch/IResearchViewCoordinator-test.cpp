@@ -818,7 +818,6 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
 
 TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
   auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
-  ci.startSyncers();
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 

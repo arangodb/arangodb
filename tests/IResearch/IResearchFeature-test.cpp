@@ -764,10 +764,11 @@ class IResearchFeatureTestCoordinator
     arangodb::AsyncAgencyCommManager::INSTANCE->pool(_pool.get());
     arangodb::AsyncAgencyCommManager::INSTANCE->addEndpoint("tcp://localhost:4001");
     arangodb::AgencyComm(server.server()).ensureStructureInitialized();  // initialize agency
-    server.getFeature<arangodb::ClusterFeature>().clusterInfo().startSyncers();
+    poolConfig.clusterInfo->startSyncers();
   }
 
   ~IResearchFeatureTestCoordinator() {
+    server.getFeature<arangodb::ClusterFeature>().clusterInfo().shutdownSyncers();
     arangodb::ServerState::instance()->setRole(_serverRoleBefore);
   }
 
@@ -1012,11 +1013,11 @@ class IResearchFeatureTestDBServer
     arangodb::AsyncAgencyCommManager::INSTANCE->pool(_pool.get());
 
     arangodb::AgencyComm(server.server()).ensureStructureInitialized();  // initialize agency
-    server.getFeature<arangodb::ClusterFeature>().clusterInfo().startSyncers();
-
+    poolConfig.clusterInfo->startSyncers();
   }
 
   ~IResearchFeatureTestDBServer() {
+    server.getFeature<arangodb::ClusterFeature>().clusterInfo().shutdownSyncers();
     arangodb::ServerState::instance()->setRole(_serverRoleBefore);
   }
 
