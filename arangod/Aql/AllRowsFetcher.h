@@ -78,13 +78,6 @@ class SkipResult;
  */
 class AllRowsFetcher {
  private:
-  enum FetchState {
-    NONE,
-    DATA_FETCH_ONGOING,
-    ALL_DATA_FETCHED,
-    SHADOW_ROW_FETCHED
-  };
-
  public:
   explicit AllRowsFetcher(DependencyProxy<BlockPassthrough::Disable>& executionBlock);
   TEST_VIRTUAL ~AllRowsFetcher() = default;
@@ -123,10 +116,7 @@ class AllRowsFetcher {
   ExecutionState _upstreamState;
   std::size_t _blockToReturnNext;
 
-  FetchState _dataFetchedState;
-
   std::vector<AqlItemMatrix::RowIndex> _rowIndexes;
-  std::size_t _nextReturn;
 
  private:
   /**

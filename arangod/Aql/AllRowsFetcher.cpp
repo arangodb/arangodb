@@ -116,8 +116,7 @@ AllRowsFetcher::AllRowsFetcher(DependencyProxy<BlockPassthrough::Disable>& execu
     : _dependencyProxy(&executionBlock),
       _aqlItemMatrix(nullptr),
       _upstreamState(ExecutionState::HASMORE),
-      _blockToReturnNext(0),
-      _dataFetchedState(NONE) {}
+      _blockToReturnNext(0) {}
 
 RegisterCount AllRowsFetcher::getNrInputRegisters() const {
   return _dependencyProxy->getNrInputRegisters();
