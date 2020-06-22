@@ -1171,7 +1171,7 @@ void SynchronizeShard::setState(ActionState state) {
     auto timeout = duration<double>(600.0);
     auto stoppage = clock::now() + timeout;
     auto snooze = milliseconds(100);
-    while (!_feature.server().isStopping() && v == 0 && clock::now() < stoppage ) {
+    while (!_feature.server().isStopping() && clock::now() < stoppage ) {
       cluster::fetchCurrentVersion(0.1 * timeout)
         .thenValue(
           [&v] (auto&& res) { v = res.get(); })
@@ -1182,14 +1182,22 @@ void SynchronizeShard::setState(ActionState state) {
               << " for shard "  << shard << e.what();
           })
         .wait();
+      if (v > 0) {
+        break;
+      }
       std::this_thread::sleep_for(snooze);
       if(snooze < seconds(2)) {
         snooze += milliseconds(100);
       }
     }
-    // We have lost patience. We will give up and just continue incrementing
-    // the shard version
-    _feature.server().getFeature<ClusterFeature>().clusterInfo().waitForCurrentVersion(v).wait();
+
+    // We're here, cause we either ran out of time or have an actual version number.
+    // In the former case, we tried our best and will safely continue some 10 min later.
+    // If however v is an actual positive integer, we'll wait for it to sync in out
+    // ClusterInfo cache through loadCurrent.
+    if ( v > 0) {
+      _feature.server().getFeature<ClusterFeature>().clusterInfo().waitForCurrentVersion(v).wait();
+    }
     _feature.incShardVersion(shard);
   }
   ActionBase::setState(state);
