@@ -652,7 +652,7 @@ function CollectionSuite () {
 /// @brief check that properties include syncByRevision
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSyncByRevision: function () {
+    /*testSyncByRevision: function () {
       var cn = "example";
 
       db._drop(cn);
@@ -670,7 +670,7 @@ function CollectionSuite () {
       assertEqual(true, p.syncByRevision);
 
       db._drop(cn);
-    },
+    },*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drop new-born
