@@ -789,14 +789,14 @@ arangodb::Result visitAnalyzers(
       }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      LOG_TOPIC("e07d4", WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("e07d4", TRACE, arangodb::iresearch::TOPIC)
           << "OneShard optimization found " << shards->size() << " shards "
           << " for server " << arangodb::ServerState::instance()->getId();
       for (auto const& shard : *shards) {
-        LOG_TOPIC("31300", WARN, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("31300", TRACE, arangodb::iresearch::TOPIC)
             << "Shard '" << shard.first << "' on servers:";
         for (auto const& server : shard.second) {
-          LOG_TOPIC("ead22", WARN, arangodb::iresearch::TOPIC)
+          LOG_TOPIC("ead22", TRACE, arangodb::iresearch::TOPIC)
               << "Shard server '" << server << "'";
         }
       }
