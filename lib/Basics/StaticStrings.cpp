@@ -283,6 +283,7 @@ std::string const StaticStrings::GraphQueryVertices("vertices");
 std::string const StaticStrings::GraphQueryPath("path");
 std::string const StaticStrings::GraphQueryGlobal("global");
 std::string const StaticStrings::GraphQueryNone("none");
+std::string const StaticStrings::GraphQueryWeights("weights");
 
 // rest query parameter
 std::string const StaticStrings::GraphDropCollections("dropCollections");

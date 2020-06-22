@@ -178,6 +178,7 @@ class LogicalCollection : public LogicalDataSource {
 
   // query shard for a given document
   int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete, std::string& shardID);
+  int getResponsibleShard(std::string_view key, std::string& shardID);
 
   int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete,
                           std::string& shardID, bool& usesDefaultShardKeys,

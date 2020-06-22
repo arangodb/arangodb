@@ -372,6 +372,12 @@ int LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
   return getResponsibleShard(slice, docComplete, shardID, usesDefaultShardKeys);
 }
 
+int LogicalCollection::getResponsibleShard(std::string_view key, std::string& shardID) {
+  bool usesDefaultShardKeys;
+  return getResponsibleShard(VPackSlice::emptyObjectSlice(), false, shardID, usesDefaultShardKeys,
+                             VPackStringRef(key.data(), key.size()));
+}
+
 int LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
                                            bool docComplete, std::string& shardID,
                                            bool& usesDefaultShardKeys,

@@ -176,6 +176,8 @@ class TraverserEngine : public BaseTraverserEngine {
   void smartSearch(arangodb::velocypack::Slice, arangodb::velocypack::Builder&) override;
 
   void smartSearchBFS(arangodb::velocypack::Slice, arangodb::velocypack::Builder&) override;
+
+  void smartSearchWeighted(arangodb::velocypack::Slice, arangodb::velocypack::Builder&) override;
 };
 
 }  // namespace traverser

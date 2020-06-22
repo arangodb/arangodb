@@ -346,7 +346,7 @@ aql::VariableGenerator const* BaseTraverserEngine::variables() const {
 void BaseTraverserEngine::injectVariables(VPackSlice variableSlice) {
   if (variableSlice.isArray()) {
     _opts->clearVariableValues();
-    for (auto const& pair : VPackArrayIterator(variableSlice)) {
+    for (auto&& pair : VPackArrayIterator(variableSlice)) {
       if ((!pair.isArray()) || pair.length() != 2) {
         // Invalid communication. Skip
         TRI_ASSERT(false);
@@ -466,5 +466,9 @@ void TraverserEngine::smartSearch(VPackSlice, VPackBuilder&) {
 }
 
 void TraverserEngine::smartSearchBFS(VPackSlice, VPackBuilder&) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_ONLY_ENTERPRISE);
+}
+
+void TraverserEngine::smartSearchWeighted(VPackSlice, VPackBuilder&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ONLY_ENTERPRISE);
 }

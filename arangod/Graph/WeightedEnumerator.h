@@ -86,7 +86,7 @@ class WeightedEnumerator final : public arangodb::traverser::PathEnumerator {
 
     void clear() { this->c.clear(); }
     T popTop() {
-      T top = std::move(this->top());
+      T top = std::move(this->c.front());
       this->pop();
       return top;
     }

@@ -182,7 +182,7 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/WeightedEnumerator.cpp
   InternalRestHandler/InternalRestTraverserHandler.cpp
   RestHandler/RestGraphHandler.cpp
-)
+        ../enterprise/Enterprise/Cluster/SmartWeightedPathEnumerator.cpp ../enterprise/Enterprise/Cluster/SmartWeightedPathEnumerator.h)
 
 set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/AggregatorHandler.cpp
