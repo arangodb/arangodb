@@ -1,6 +1,8 @@
 devel
 -----
 
+* Only advance shard version after follower is reported in sync in agency.
+
 * Allow for faster cluster shutdown. This should reduce the number of shutdown
   hangers in case the agents are stopped already and then coordinators or
   DB-Servers are shut down.
@@ -17,9 +19,9 @@ devel
 
 * Fixed bad behavior that led to unnecessary additional revision tree rebuilding
   on server restart.
-  
+
 * Allow AQL queries on DB-Servers again. This is not an official supported
-  feature, but is sometimes used for debugging. Previous changes made it 
+  feature, but is sometimes used for debugging. Previous changes made it
   impossible to run a query on a local shard.
 
 * Fix restoring old arangodumps from ArangoDB 3.3 and before, which had index
