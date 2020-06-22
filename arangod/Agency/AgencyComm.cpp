@@ -391,6 +391,7 @@ AgencyCommResult::AgencyCommResult(int code, std::string message)
 AgencyCommResult::AgencyCommResult(AgencyCommResult&& other) noexcept
     : _location(std::move(other._location)),
       _message(std::move(other._message)),
+      _body(std::move(other._body)),
       _values(std::move(other._values)),
       _statusCode(other._statusCode),
       _connected(other._connected),
