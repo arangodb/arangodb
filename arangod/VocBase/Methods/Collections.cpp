@@ -47,7 +47,6 @@
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
-#include "Transaction/ClusterUtils.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
@@ -809,9 +808,6 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
     res = DropVocbaseColCoordinator(&coll, allowDropSystem);
 #endif
   } else {
-    if (ServerState::isDBServer(role)) {
-      transaction::cluster::abortTransactionsOnShard(coll.id());
-    }
     res = coll.vocbase().dropCollection(coll.id(), allowDropSystem, timeout);
   }
 

@@ -35,17 +35,17 @@ namespace arangodb {
 namespace transaction {
 namespace cluster {
 
-void abortTransactionsOnShard(TRI_voc_cid_t cid) {
+void abortTransactions(LogicalCollection& coll) {
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
 
   bool didWork = mgr->abortManagedTrx(
-      [cid](TransactionState const& state, std::string const & /*user*/) -> bool {
-        TransactionCollection* tcoll = state.collection(cid, AccessMode::Type::NONE);
+      [&coll](TransactionState const& state, std::string const & /*user*/) -> bool {
+    TransactionCollection* tcoll = state.collection(coll.id(), AccessMode::Type::NONE);
         return tcoll != nullptr;
       });
   LOG_TOPIC_IF("7eda2", INFO, Logger::TRANSACTIONS, didWork) <<
-  "aborted leader transactions on shard '" << cid << "'";
+  "aborted leader transactions on shard '" << coll.id() << "'";
 }
 
 void abortLeaderTransactionsOnShard(TRI_voc_cid_t cid) {
