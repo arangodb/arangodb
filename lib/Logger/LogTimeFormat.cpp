@@ -69,6 +69,14 @@ bool isLocalFormat(TimeFormat format) {
   return format == TimeFormat::LocalDateString; 
 }
 
+/// @brief whether or not the specified format produces string outputs
+/// (in contrast to numeric outputs)
+bool isStringFormat(TimeFormat format) {
+  return format == TimeFormat::UTCDateString ||
+         format == TimeFormat::UTCDateStringMillis ||
+         format == TimeFormat::LocalDateString;
+}
+
 /// @brief return the name of the default log time format
 std::string defaultFormatName() {
   return "utc-datestring";
