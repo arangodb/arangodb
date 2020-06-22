@@ -1,6 +1,8 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Disabled new, potentially unsafe revision-based storage format
+
 * Allow for faster cluster shutdown. This should reduce the number of shutdown
   hangers in case the agents are stopped already and then coordinators or
   DB-Servers are shut down.
