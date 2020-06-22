@@ -37,7 +37,9 @@ namespace cluster {
 
 void abortTransactions(LogicalCollection& coll) {
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
-  TRI_ASSERT(mgr != nullptr);
+  if (!mgr) { // might be called during shutdown
+    return;
+  }
 
   bool didWork = mgr->abortManagedTrx(
       [&coll](TransactionState const& state, std::string const & /*user*/) -> bool {
@@ -49,6 +51,7 @@ void abortTransactions(LogicalCollection& coll) {
 }
 
 void abortLeaderTransactionsOnShard(TRI_voc_cid_t cid) {
+  TRI_ASSERT(ServerState::instance()->isRunningInCluster());
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
 
@@ -65,6 +68,7 @@ void abortLeaderTransactionsOnShard(TRI_voc_cid_t cid) {
 }
 
 void abortFollowerTransactionsOnShard(TRI_voc_cid_t cid) {
+  TRI_ASSERT(ServerState::instance()->isRunningInCluster());
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
 
