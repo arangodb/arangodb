@@ -24,9 +24,9 @@
 
 #include "AgencyComm.h"
 
+#include "Agency/AgencyPaths.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/application-exit.h"
-#include "Cluster/AgencyPaths.h"
 #include "RestServer/ServerFeature.h"
 
 #include <memory>
