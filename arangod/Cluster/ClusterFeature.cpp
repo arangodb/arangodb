@@ -559,9 +559,9 @@ void ClusterFeature::start() {
 
   ServerState::instance()->setState(ServerState::STATE_STARTUP);
 
-  // the agency about our state
+  // tell the agency about our state
   AgencyComm comm(server());
-  comm.sendServerState();
+  comm.sendServerState(120.0);
 
   std::string const version = comm.version();
 
@@ -645,62 +645,24 @@ void ClusterFeature::stop() {
   // change into shutdown state
   ServerState::instance()->setState(ServerState::STATE_SHUTDOWN);
 
+  // wait only a few seconds to broadcast our "shut down" state.
+  // if we wait much longer, and the agency has already been shut
+  // down, we may cause our instance to hopelessly hang and try
+  // to write something into a non-existing agency.
   AgencyComm comm(server());
-  comm.sendServerState();
+  // this will be stored in transient only
+  comm.sendServerState(4.0); 
 
+  // the following ops will be stored in Plan/Current (for unregister) or
+  // Current (for logoff)
   if (_unregisterOnShutdown) {
-    ServerState::instance()->unregister();
-  }
-
-  // Try only once to unregister because maybe the agencycomm
-  // is shutting down as well...
-
-  // Remove from role list
-  ServerState::RoleEnum role = ServerState::instance()->getRole();
-  // nice variable name :S
-  std::string alk = ServerState::roleToAgencyListKey(role);
-  std::string me = ServerState::instance()->getId();
-
-  AgencyWriteTransaction unreg;
-  unreg.operations.emplace_back("Current/" + alk + "/" + me,
-                                             AgencySimpleOperationType::DELETE_OP);
-  // Unregister
-  unreg.operations.emplace_back("Current/ServersRegistered/" + me,
-                                             AgencySimpleOperationType::DELETE_OP);
-  unreg.operations.emplace_back("Current/Version", AgencySimpleOperationType::INCREMENT_OP);
-
-
-  constexpr int maxTries = 10;
-  int tries = 0;
-  while (true) {
-    AgencyCommResult res = comm.sendTransactionWithFailover(unreg, 120.0);
-
-    if (res.successful()) {
-      break;
-    }
-
-    if (res.httpCode() == TRI_ERROR_HTTP_SERVICE_UNAVAILABLE || !res.connected()) {
-      LOG_TOPIC("1776b", INFO, Logger::CLUSTER)
-          << "unable to unregister server from agency, because agency is in "
-             "shutdown";
-      break;
-    }
-
-    if (++tries < maxTries) {
-      // try again
-      LOG_TOPIC("c7af5", ERR, Logger::CLUSTER)
-          << "unable to unregister server from agency "
-          << "(attempt " << tries << " of " << maxTries << "): " << res.errorMessage();
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    } else {
-      // give up
-      LOG_TOPIC("c8fc4", ERR, Logger::CLUSTER)
-          << "giving up unregistering server from agency: " << res.errorMessage();
-      break;
-    }
-  }
-
-  TRI_ASSERT(tries <= maxTries);
+    // also use a relatively short timeout here, for the same reason as above.
+    ServerState::instance()->unregister(30.0);
+  } else {
+    // log off the server from the agency, without permanently removing it from
+    // the cluster setup.
+    ServerState::instance()->logoff(10.0);
+  } 
 
   AsyncAgencyCommManager::INSTANCE->setStopping(true);
   shutdownAgencyCache();
