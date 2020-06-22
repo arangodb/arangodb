@@ -1,6 +1,9 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue ES-598. Web UI now shows correct permissions in case wildcard
+  database level and wildcard collection level permissions are both set.
+
 * Fixed velocypack validator for proper check of keys.
 
 * Fixed internal issue #701: Dangling readers in ArangoSearch index_writer
@@ -34,8 +37,6 @@ v3.5.6 (XXXX-XX-XX)
 
 * Fixed issue #11525: Address security vulnerability by updating Swagger-UI
   dependency (upgraded Swagger UI to 3.25.1).
-
-* Update arangosync to 0.7.5.
 
 * Do not always loadPlan from agency when collections of a database are listed.
   This is particularly important for arangosync.
