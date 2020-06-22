@@ -94,7 +94,7 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief hard-coded minimum version number for collections
   static constexpr Version minimumVersion() { return Version::v30; }
   /// @brief current version for collections
-  static constexpr Version currentVersion() { return Version::v37; }
+  static constexpr Version currentVersion() { return Version::v34; }
 
   // SECTION: Meta Information
   Version version() const { return _version; }
