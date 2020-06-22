@@ -929,12 +929,16 @@ uint64_t MaintenanceFeature::incShardVersion(std::string const& shname) {
   auto stoppage = clock::now();
   auto snooze = milliseconds(100);
 
+  // Acquire current version from agency and wait for it to have been dealt
+  // with in local current cache. Any future current version will do, as
+  // the version is incremented by the leader ahead of getting here on the
+  // follower.
   while (!server().isStopping() && clock::now() < stoppage) {
     cluster::fetchCurrentVersion(0.1 * timeout)
       .thenValue(
         [&v] (auto&& res) { v = res.get(); })
       .thenError<std::exception>(
-        [] (std::exception const& e) {
+        [&shname] (std::exception const& e) {
           LOG_TOPIC("3ae99", ERR, Logger::CLUSTER)
             << "Failed to acquire current version from agency while increasing shard version: "
             << " for shard "  << shname << e.what();
