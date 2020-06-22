@@ -32,7 +32,7 @@
 #include "Aql/ResourceUsage.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 #include "VocBase/voc-types.h"
 #include <velocypack/Builder.h>
 

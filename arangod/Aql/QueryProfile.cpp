@@ -25,8 +25,8 @@
 
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
+#include "Aql/Timing.h"
 #include "Basics/EnumIterator.h"
-#include "Basics/system-functions.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -73,7 +73,7 @@ void QueryProfile::unregisterFromQueryList() noexcept {
 
 /// @brief sets a state to done
 double QueryProfile::setStateDone(QueryExecutionState::ValueType state) {
-  double const now = TRI_microtime();
+  double const now = arangodb::aql::currentSteadyClockValue();
 
   if (state != QueryExecutionState::ValueType::INVALID_STATE &&
       state != QueryExecutionState::ValueType::KILLED) {

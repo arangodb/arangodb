@@ -2482,7 +2482,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
       break;
     }
 
-    if (res.is(TRI_ERROR_REQUEST_CANCELED)) {
+    if (res.is(TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED)) {
       // special error code indicating that storing the updated plan in the
       // agency didn't succeed, and that we should try again
 
