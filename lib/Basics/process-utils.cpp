@@ -87,6 +87,7 @@
 #include "Basics/operating-system.h"
 #include "Basics/tri-strings.h"
 #include "Basics/voc-errors.h"
+#include "Basics/files.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -211,7 +212,7 @@ ExternalProcess::~ExternalProcess() {
 ExternalProcessStatus::ExternalProcessStatus()
     : _status(TRI_EXT_NOT_STARTED), _exitStatus(0), _errorMessage() {}
 
-static ExternalProcess* TRI_LookupSpawnedProcess(TRI_pid_t pid) {
+ExternalProcess* TRI_LookupSpawnedProcess(TRI_pid_t pid) {
   {
     MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
     auto found = std::find_if(ExternalProcesses.begin(), ExternalProcesses.end(),
@@ -959,6 +960,27 @@ void TRI_CreateExternalProcess(char const* executable,
     return;
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Reads from the pipe of processes
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_read_return_t TRI_ReadPipe(ExternalProcess const* process,
+                               char* buffer,
+                               size_t bufferSize) {
+  if (process == nullptr || TRI_IS_INVALID_PIPE(process->_readPipe)) {
+    return 0;
+  }
+
+  memset(buffer, 0, bufferSize);
+
+#ifndef _WIN32
+  return TRI_ReadPointer(process->_readPipe, buffer, bufferSize);
+#else
+  return TRI_READ_POINTER(process->_readPipe, buffer, bufferSize);
+#endif
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the status of an external process

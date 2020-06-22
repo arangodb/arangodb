@@ -1049,9 +1049,7 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack) -> E
   auto&& [state, shadowRow] = _lastRange.nextShadowRow();
   TRI_ASSERT(shadowRow.isInitialized());
 
-  _outputItemRow->moveRow(shadowRow);
   countShadowRowProduced(stack, shadowRow.getDepth());
-
   if (shadowRow.isRelevant()) {
     LOG_QUERY("6d337", DEBUG) << printTypeInfo() << " init executor.";
     // We found a relevant shadow Row.
@@ -1059,6 +1057,7 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack) -> E
     resetExecutor();
   }
 
+  _outputItemRow->moveRow(shadowRow);
   TRI_ASSERT(_outputItemRow->produced());
   _outputItemRow->advanceRow();
   if (state == ExecutorState::DONE) {
