@@ -921,35 +921,6 @@ uint64_t MaintenanceFeature::shardVersion(std::string const& shname) const {
 
 uint64_t MaintenanceFeature::incShardVersion(std::string const& shname) {
   MUTEX_LOCKER(guard, _versionLock);
-
-  uint64_t v = 0;
-  using namespace std::chrono;
-  using clock = steady_clock;
-  auto timeout = duration<double>(600.0);
-  auto stoppage = clock::now();
-  auto snooze = milliseconds(100);
-
-  // Acquire current version from agency and wait for it to have been dealt
-  // with in local current cache. Any future current version will do, as
-  // the version is incremented by the leader ahead of getting here on the
-  // follower.
-  while (!server().isStopping() && clock::now() < stoppage) {
-    cluster::fetchCurrentVersion(0.1 * timeout)
-      .thenValue(
-        [&v] (auto&& res) { v = res.get(); })
-      .thenError<std::exception>(
-        [&shname] (std::exception const& e) {
-          LOG_TOPIC("3ae99", ERR, Logger::CLUSTER)
-            << "Failed to acquire current version from agency while increasing shard version: "
-            << " for shard "  << shname << e.what();
-        });
-    std::this_thread::sleep_for(snooze);
-    if(snooze < seconds(2)) {
-      snooze += milliseconds(100);
-    }
-  }
-  server().getFeature<ClusterFeature>().clusterInfo().waitForCurrentVersion(v).wait();
-  
   auto ret = ++_shardVersion[shname];
   LOG_TOPIC("cc492", TRACE, Logger::MAINTENANCE)
       << "incremented shard version for " << shname << " to " << ret;

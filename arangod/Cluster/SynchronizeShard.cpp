@@ -1160,6 +1160,36 @@ void SynchronizeShard::setState(ActionState state) {
       LOG_TOPIC("50827", INFO, Logger::MAINTENANCE)
         << "SynchronizeShard: synchronization completed for shard " << shard;
     }
+
+    // Acquire current version from agency and wait for it to have been dealt
+    // with in local current cache. Any future current version will do, as
+    // the version is incremented by the leader ahead of getting here on the
+    // follower.
+    uint64_t v = 0;
+    using namespace std::chrono;
+    using clock = steady_clock;
+    auto timeout = duration<double>(600.0);
+    auto stoppage = clock::now() + timeout;
+    auto snooze = milliseconds(100);
+    while (!_feature.server().isStopping() && v == 0 && clock::now() < stoppage ) {
+      cluster::fetchCurrentVersion(0.1 * timeout)
+        .thenValue(
+          [&v] (auto&& res) { v = res.get(); })
+        .thenError<std::exception>(
+          [&shard] (std::exception const& e) {
+            LOG_TOPIC("3ae99", ERR, Logger::CLUSTER)
+              << "Failed to acquire current version from agency while increasing shard version: "
+              << " for shard "  << shard << e.what();
+          })
+        .wait();
+      std::this_thread::sleep_for(snooze);
+      if(snooze < seconds(2)) {
+        snooze += milliseconds(100);
+      }
+    }
+    // We have lost patience. We will give up and just continue incrementing
+    // the shard version
+    _feature.server().getFeature<ClusterFeature>().clusterInfo().waitForCurrentVersion(v).wait();
     _feature.incShardVersion(shard);
   }
   ActionBase::setState(state);
