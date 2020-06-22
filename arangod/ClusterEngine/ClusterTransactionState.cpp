@@ -47,9 +47,6 @@ ClusterTransactionState::ClusterTransactionState(TRI_vocbase_t& vocbase,
                                                  transaction::Options const& options)
     : TransactionState(vocbase, tid, options) {
   TRI_ASSERT(isCoordinator());
-  acceptAnalyzersRevision(_vocbase.server()
-    .getFeature< arangodb::iresearch::IResearchAnalyzerFeature>()
-    .getAnalyzersRevision(_vocbase, false)->getRevision());
 }
 
 /// @brief start a transaction
@@ -60,6 +57,11 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   TRI_ASSERT(!hasHint(transaction::Hints::Hint::NO_USAGE_LOCK) ||
              !AccessMode::isWriteOrExclusive(_type));
   TRI_ASSERT(_status == transaction::Status::CREATED);
+
+  acceptAnalyzersRevision(_vocbase.server()
+                                  .getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
+                                  .getAnalyzersRevision(_vocbase, false)
+                                  ->getRevision());
 
   // set hints
   _hints = hints;
