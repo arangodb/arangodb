@@ -25,8 +25,7 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
-#include "Aql/Ast.h"
-#include "Aql/Query.h"
+#include "Aql/AstNode.h"
 
 #include "formats/empty_term_reader.hpp"
 #include "search/all_filter.hpp"
@@ -54,29 +53,6 @@ inline irs::filter::prepared::ptr compileQuery(
 
   return irs::filter::prepared::make<type_t>(ctx, std::move(stats), boost);
 }
-
-class V8ContextGuard {
- public:
-  void enter(arangodb::aql::QueryContext& ctx) {
-    if (!_ctx) {
-      ctx.enterV8Context();
-      _ctx = &ctx;
-    }
-  }
-
-  ~V8ContextGuard() {
-    if (!_ctx) {
-      return;
-    }
-
-    try {
-      _ctx->exitV8Context();
-    } catch (...) { }
-  }
-
- private:
-  arangodb::aql::QueryContext* _ctx{};
-}; // V8ContextGuard
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class NondeterministicExpressionIterator
@@ -171,12 +147,6 @@ class NondeterministicExpressionQuery final : public irs::filter::prepared {
         stats_(std::move(stats)) {
   }
 
-  virtual ~NondeterministicExpressionQuery() {
-    try {
-      _ctx.ast->query().exitV8Context();
-    } catch (...) { }
-  }
-
   virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader& rdr,
       const irs::order::prepared& order,
@@ -196,17 +166,12 @@ class NondeterministicExpressionQuery final : public irs::filter::prepared {
     // set expression for troubleshooting purposes
     execCtx->ctx->_expr = _ctx.node.get();
 
-    if (_ctx.node->willUseV8()) {
-      _v8context.enter(_ctx.ast->query());
-    }
-
     return irs::doc_iterator::make<NondeterministicExpressionIterator>(
       rdr, stats_.c_str(), order, rdr.docs_count(), _ctx, *execCtx, boost()
     );
   }
 
  private:
-  mutable V8ContextGuard _v8context;
   arangodb::iresearch::ExpressionCompilationContext _ctx;
   irs::bstring stats_;
 };  // NondeterministicExpressionQuery
@@ -243,10 +208,6 @@ class DeterministicExpressionQuery final : public irs::filter::prepared {
     // set expression for troubleshooting purposes
     execCtx->ctx->_expr = _ctx.node.get();
 
-    if (_ctx.node->willUseV8()) {
-      _v8context.enter(_ctx.ast->query());
-    }
-
     arangodb::aql::Expression expr(_ctx.ast, _ctx.node.get());
     bool mustDestroy = false;
     auto value = expr.execute(execCtx->ctx, mustDestroy);
@@ -261,7 +222,6 @@ class DeterministicExpressionQuery final : public irs::filter::prepared {
   }
 
  private:
-  mutable V8ContextGuard _v8context;
   arangodb::iresearch::ExpressionCompilationContext _ctx;
   irs::bstring stats_;
 };  // DeterministicExpressionQuery
@@ -327,11 +287,6 @@ irs::filter::prepared::ptr ByExpression::prepare(
 
   // set expression for troubleshooting purposes
   execCtx->ctx->_expr = _ctx.node.get();
-
-  V8ContextGuard v8context;
-  if (_ctx.node->willUseV8()) {
-    v8context.enter(_ctx.ast->query());
-  }
 
   // evaluate expression
   bool mustDestroy = false;
