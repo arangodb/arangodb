@@ -92,63 +92,6 @@ void MultiDependencySingleRowFetcher::init() {
   _callsInFlight.resize(numberDependencies());
 }
 
-std::pair<ExecutionState, size_t> MultiDependencySingleRowFetcher::preFetchNumberOfRows(size_t atMost) {
-  ExecutionState state = ExecutionState::DONE;
-  size_t available = 0;
-  for (size_t i = 0; i < numberDependencies(); ++i) {
-    auto res = preFetchNumberOfRowsForDependency(i, atMost);
-    if (res.first == ExecutionState::WAITING) {
-      return {ExecutionState::WAITING, 0};
-    }
-    available += res.second;
-    if (res.first == ExecutionState::HASMORE) {
-      state = ExecutionState::HASMORE;
-    }
-  }
-  return {state, available};
-}
-
-std::pair<ExecutionState, InputAqlItemRow> MultiDependencySingleRowFetcher::fetchRowForDependency(
-    size_t const dependency, size_t atMost) {
-  TRI_ASSERT(dependency < _dependencyInfos.size());
-  auto& depInfo = _dependencyInfos[dependency];
-  // Fetch a new block iff necessary
-  if (!fetchBlockIfNecessary(dependency, atMost)) {
-    return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
-  }
-
-  TRI_ASSERT(depInfo._currentBlock == nullptr ||
-             depInfo._rowIndex < depInfo._currentBlock->size());
-
-  ExecutionState rowState;
-  InputAqlItemRow row{CreateInvalidInputRowHint{}};
-  if (depInfo._currentBlock == nullptr) {
-    TRI_ASSERT(depInfo._upstreamState == ExecutionState::DONE);
-    rowState = ExecutionState::DONE;
-  } else if (!isAtShadowRow(depInfo)) {
-    TRI_ASSERT(depInfo._currentBlock != nullptr);
-    row = InputAqlItemRow{depInfo._currentBlock, depInfo._rowIndex};
-    TRI_ASSERT(depInfo._upstreamState != ExecutionState::WAITING);
-    ++depInfo._rowIndex;
-    if (noMoreDataRows(depInfo)) {
-      rowState = ExecutionState::DONE;
-    } else {
-      rowState = ExecutionState::HASMORE;
-    }
-    if (isDone(depInfo) && !indexIsValid(depInfo)) {
-      // Free block
-      depInfo._currentBlock = nullptr;
-      depInfo._rowIndex = 0;
-    }
-  } else {
-    ShadowAqlItemRow shadowAqlItemRow{depInfo._currentBlock, depInfo._rowIndex};
-    TRI_ASSERT(shadowAqlItemRow.isRelevant());
-    rowState = ExecutionState::DONE;
-  }
-
-  return {rowState, row};
-}
-
 bool MultiDependencySingleRowFetcher::indexIsValid(
     const MultiDependencySingleRowFetcher::DependencyInfo& info) const {
   return info._currentBlock != nullptr && info._rowIndex < info._currentBlock->size();
@@ -169,42 +112,6 @@ bool MultiDependencySingleRowFetcher::noMoreDataRows(
     const MultiDependencySingleRowFetcher::DependencyInfo& info) const {
   return (isDone(info) && !indexIsValid(info)) ||
          (indexIsValid(info) && isAtShadowRow(info));
-}
-
-std::pair<ExecutionState, size_t> MultiDependencySingleRowFetcher::preFetchNumberOfRowsForDependency(
-    size_t dependency, size_t atMost) {
-  TRI_ASSERT(dependency < _dependencyInfos.size());
-  auto& depInfo = _dependencyInfos[dependency];
-  // Fetch a new block iff necessary
-  if (!indexIsValid(depInfo) && !isDone(depInfo)) {
-    // This returns the AqlItemBlock to the ItemBlockManager before fetching a
-    // new one, so we might reuse it immediately!
-    depInfo._currentBlock = nullptr;
-
-    ExecutionState state;
-    SharedAqlItemBlockPtr newBlock;
-    std::tie(state, newBlock) = fetchBlockForDependency(dependency, atMost);
-    if (state == ExecutionState::WAITING) {
-      return {ExecutionState::WAITING, 0};
-    }
-
-    depInfo._currentBlock = std::move(newBlock);
-    depInfo._rowIndex = 0;
-  }
-
-  if (!indexIsValid(depInfo)) {
-    TRI_ASSERT(depInfo._upstreamState == ExecutionState::DONE);
-    return {ExecutionState::DONE, 0};
-  } else {
-    if (isDone(depInfo)) {
-      TRI_ASSERT(depInfo._currentBlock != nullptr);
-      TRI_ASSERT(depInfo._currentBlock->size() > depInfo._rowIndex);
-      return {depInfo._upstreamState, depInfo._currentBlock->size() - depInfo._rowIndex};
-    }
-    // In the HAS_MORE case we do not know exactly how many rows there are.
-    // So we need to return an uppter bound (atMost) here.
-    return {depInfo._upstreamState, atMost};
-  }
 }
 
 bool MultiDependencySingleRowFetcher::isAtShadowRow(DependencyInfo const& depInfo) const {
