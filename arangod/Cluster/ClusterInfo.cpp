@@ -4891,7 +4891,7 @@ arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
   return arangodb::Result();
 }
 
-std::string const backupKey = "/arango/Target/HotBackup/Create/";
+std::string const backupKey = "/arango/Target/HotBackup/Create";
 std::string const maintenanceKey = "/arango/Supervision/Maintenance";
 std::string const supervisionMode = "/arango/Supervision/State/Mode";
 std::string const toDoKey = "/arango/Target/ToDo";
@@ -4922,7 +4922,7 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
       {
         VPackObjectBuilder o(&builder);
         builder.add(                                      // Backup lock
-          backupKey + backupId,
+          backupKey,
           VPackValue(
             timepointToString(
               std::chrono::system_clock::now() + std::chrono::seconds(timeouti))));
@@ -4966,7 +4966,7 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
       {
         VPackObjectBuilder o(&builder);
         builder.add(                                      // Backup lock
-          backupKey + backupId,
+          backupKey,
           VPackValue(
             timepointToString(
               std::chrono::system_clock::now() + std::chrono::seconds(timeouti))));
