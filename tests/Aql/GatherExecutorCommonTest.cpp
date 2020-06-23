@@ -547,8 +547,8 @@ class CommonGatherExecutorTest
           std::ignore = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
         }
       }
-
-      return {inputRange.upstreamState(), NoStats{}, call.getSkipCount(), call};
+      // We need all data from upstream and cannot forward skip
+      return {inputRange.upstreamState(), NoStats{}, call.getSkipCount(), AqlCall{}};
     };
 
     ResetCall reset = [val]() -> void { *val = 0; };
