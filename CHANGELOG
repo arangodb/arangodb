@@ -1,8 +1,6 @@
 devel
 -----
 
-* Fixed hotbackup agency lock cleanup procedure.
-
 * Fixed that, when performing a graph AQL query while a (graceful) failover for
   the leader of the system collections is in progress, ArangoDB would report a
   "Graph not found error".
