@@ -398,7 +398,9 @@ void getDBProperties(arangodb::ManagedDirectory& directory, VPackBuilder& builde
   try {
     fileContentBuilder = directory.vpackFromJsonFile("dump.json");
   } catch (...) {
-    LOG_TOPIC("3a5a4", WARN, arangodb::Logger::RESTORE) << "could not read dump.json";
+    LOG_TOPIC("3a5a4", WARN, arangodb::Logger::RESTORE) 
+        << "could not read dump.json file: "
+        << directory.status().errorMessage();
     builder.add(slice);
     return;
   }
@@ -409,7 +411,8 @@ void getDBProperties(arangodb::ManagedDirectory& directory, VPackBuilder& builde
       slice = props;
     }
   } catch (...) {
-    LOG_TOPIC("3b6a4", INFO, arangodb::Logger::RESTORE) << "no properties object";
+    LOG_TOPIC("3b6a4", INFO, arangodb::Logger::RESTORE) 
+        << "no properties object found in dump.json file";
   }
   builder.add(slice);
 }
@@ -929,7 +932,7 @@ arangodb::Result processInputDirectory(
           VPackSlice const fileContent = contentBuilder.slice();
           if (!fileContent.isObject()) {
             return {TRI_ERROR_INTERNAL, "could not read view file '" +
-                                            directory.pathToFile(file) + "'"};
+                    directory.pathToFile(file) + "': " + directory.status().errorMessage()};
           }
         
           std::string const name =
@@ -961,15 +964,15 @@ arangodb::Result processInputDirectory(
         if (!fileContent.isObject()) {
           return {TRI_ERROR_INTERNAL,
                   "could not read collection structure file '" +
-                      directory.pathToFile(file) + "'"};
+                      directory.pathToFile(file) + "': " + directory.status().errorMessage()};
         }
 
         VPackSlice const parameters = fileContent.get("parameters");
         VPackSlice const indexes = fileContent.get("indexes");
         if (!parameters.isObject() || !indexes.isArray()) {
-          return {TRI_ERROR_INTERNAL,
+          return {TRI_ERROR_BAD_PARAMETER,
                   "could not read collection structure file '" +
-                      directory.pathToFile(file) + "'"};
+                      directory.pathToFile(file) + "': file has wrong internal format"};
         }
         std::string const cname =
             VelocyPackHelper::getStringValue(parameters,

@@ -318,9 +318,17 @@ function saveToJunitXML(options, results) {
         }
       }
       state.xml.elem('/testsuite');
-      fs.write(fs.join(options.testOutputDirectory,
-                       'UNITTEST_RESULT_' + state.xmlName + '.xml'),
-               state.xml.join(''));
+      try {
+        fs.write(fs.join(options.testOutputDirectory,
+                         'UNITTEST_RESULT_' + state.xmlName + '.xml'),
+                 state.xml.join(''));
+      } catch (x) {
+        print("Failed to write ` " +
+              fs.join(options.testOutputDirectory,
+                      'UNITTEST_RESULT_' + state.xmlName + '.xml') +
+              '`! - ' + x.message);
+        throw(x);
+      }
 
     },
     endTestRun: function(options, state, testRun, testRunName) {}
@@ -529,10 +537,10 @@ ${failedMessages}${color} * Overall state: ${statusMessage}${RESET}${crashText}$
 // / @brief creates a chartlist of the longest running tests
 // //////////////////////////////////////////////////////////////////////////////
 
-function locateLongRunning(options, results) {
+function locateLongRunning(options, results, otherResults) {
   let testRunStatistics = "";
   let sortedByDuration = [];
-  
+  let pathForJson = {};
   let failedStates = {
     state: true,
     failCount: 0,
@@ -556,6 +564,7 @@ function locateLongRunning(options, results) {
 `;
     },
     testSuite: function(options, state, testSuite, testSuiteName) {
+      pathForJson['testSuite'] = testSuiteName;
       if (testSuite.hasOwnProperty('duration') && testSuite.duration !== 0.0) {
         sortedByDuration.push(
           {
@@ -575,11 +584,12 @@ function locateLongRunning(options, results) {
     endTestSuite: function(options, state, testSuite, testSuiteName) {
     },
     endTestRun: function(options, state, testRun, testRunName) {
+      pathForJson['testRunName'] = testRunName;
       sortedByDuration.sort(function(a, b) {
         return a.duration - b.duration;
       });
       let results = {};
-      for (let i = sortedByDuration.length - 1; (i >= 0) && (i > sortedByDuration.length - 11); i --) {
+      for (let i = sortedByDuration.length - 1; (i >= 0) && (i > sortedByDuration.length - 31); i --) {
         let key = " - " + fancyTimeFormat(sortedByDuration[i].duration / 1000) + " - " +
           sortedByDuration[i].count + " - " +
             sortedByDuration[i].testName.replace('/\\/g', '/');
@@ -610,8 +620,18 @@ function locateLongRunning(options, results) {
         });
 
         let statistics = [];
-        for (let j = Object.keys(testCases).length - 1; (j >= 0) && (j > Object.keys(testCases).length - 11); j --) {
-          statistics.push(fancyTimeFormat(testCases[j].duration / 1000) + " - " + testCases[j].testName);
+        for (let j = Object.keys(testCases).length - 1; (j >= 0) && (j > Object.keys(testCases).length - 31); j --) {
+          let otherTestTime = "";
+          if (otherResults) {
+            otherTestTime = otherResults[pathForJson['testSuite']][pathForJson['testRunName']][testCases[j].testName]['duration'];
+            otherTestTime = " - " + fancyTimeFormat(otherTestTime / 1000);
+          }
+
+          statistics.push(
+            fancyTimeFormat(testCases[j].duration / 1000) +
+              otherTestTime +
+              " - " +
+              testCases[j].testName);
         }
         results[key] = {
           'processStatistics': pu.summarizeStats(thisTestSuite.test['processStats']),
@@ -799,7 +819,14 @@ function dumpAllResults(options, results) {
     j = inspect(results);
   }
 
-  fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT.json'), j, true);
+  try {
+    fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT.json'), j, true);
+  } catch (x) {
+    print("Failed to write ` " +
+          fs.join(options.testOutputDirectory, 'UNITTEST_RESULT.json') +
+          '`! - ' + x.message);
+    throw(x);
+  }
 }
 
 

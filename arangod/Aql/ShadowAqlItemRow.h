@@ -83,7 +83,7 @@ class ShadowAqlItemRow {
   /**
    * @brief Compare the underlying block. Only for assertions.
    */
-  [[nodiscard]] bool internalBlockIs(SharedAqlItemBlockPtr const& other) const;
+  [[nodiscard]] bool internalBlockIs(SharedAqlItemBlockPtr const& other, size_t index) const;
 #endif
 
   /**
