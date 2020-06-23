@@ -607,7 +607,7 @@ class AgencyComm {
 
   AgencyCommResult sendServerState(double timeout);
 
-  std::string_view version();
+  std::string version();
 
   AgencyCommResult dump();
 

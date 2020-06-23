@@ -625,14 +625,14 @@ AgencyCommResult AgencyComm::sendServerState(double timeout) {
                           builder.slice(), 0, timeout));
 }
 
-std::string_view AgencyComm::version() {
+std::string AgencyComm::version() {
   AgencyCommResult result =
       sendWithFailover(arangodb::rest::RequestType::GET,
                        AgencyCommHelper::CONNECTION_OPTIONS._requestTimeout,
                        "/_api/version", VPackSlice::noneSlice());
 
   if (result.successful() && result.slice().isString()) {
-    return result.slice().stringView();
+    return result.slice().copyString();
   }
 
   return "";
