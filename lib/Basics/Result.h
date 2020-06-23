@@ -26,6 +26,7 @@
 #include <iosfwd>
 #include <memory>
 #include <string>
+#include <string_view>
 
 namespace arangodb {
 class Result final {

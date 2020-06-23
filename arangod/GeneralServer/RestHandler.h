@@ -25,13 +25,13 @@
 #define ARANGOD_HTTP_SERVER_REST_HANDLER_H 1
 
 #include "Basics/Common.h"
-
+#include "Basics/ResultT.h"
 #include "GeneralServer/RequestLane.h"
 #include "Rest/GeneralResponse.h"
 #include "Statistics/RequestStatistics.h"
 
-#include <Basics/ResultT.h>
 #include <atomic>
+#include <string_view>
 #include <thread>
 
 namespace arangodb {
