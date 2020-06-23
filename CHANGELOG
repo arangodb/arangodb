@@ -1,6 +1,8 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Fixed hotbackup agency lock cleanup procedure.
+
 * The Web UI's replication view is now checking the replication state
   automatically without the need of a manual reload.
 
