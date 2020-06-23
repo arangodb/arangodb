@@ -188,6 +188,24 @@ class ResultMaps {
     }
   }
 
+  auto skipOverSubquery(size_t depth, size_t times = 1) -> void {
+    while (times > 0 && _subqueryReadIndex < _subqueryData.size()) {
+      auto const& [value, d] = _subqueryData[_subqueryReadIndex];
+      if (d > depth) {
+        // Cannot skip over outer shadowrow.
+        break;
+      }
+      if (d == 0) {
+        // Skipped over data
+        _dataReadIndex++;
+      }
+      if (d == depth) {
+        times--;
+      }
+      _subqueryReadIndex++;
+    }
+  }
+
   auto popLastInNestedCase() -> void {
     if (!_subqueryData.empty()) {
       TRI_ASSERT(_data.back().empty());
@@ -711,19 +729,32 @@ TEST_P(CommonGatherExecutorTest, skip_data_sub_2) {
   result.testSkippedInEachRun(5);
 }
 
-TEST_P(CommonGatherExecutorTest, DISABLED_skip_main_query_sub_1) {
+TEST_P(CommonGatherExecutorTest, skip_main_query_sub_1) {
   auto [exec, result] = getExecutor({3});
 
   // Default Stack, fetch all unlimited
   AqlCallStack stack{skipThenFetchCall(1)};
   stack.pushCall(fetchAllCall());
+  result.skipOverSubquery(0, 1);
   {
     auto [state, skipped, block] = executeUntilResponse(exec.get(), stack);
     // In the first round we need to skip
     EXPECT_EQ(skipped.getSkipCount(), 0);
-    EXPECT_EQ(skipped.getSkipOnSubqueryLevel(0), 1);
+    EXPECT_EQ(skipped.getSkipOnSubqueryLevel(1), 1);
     assertResultValid(block, result);
+    // we skipped 1 count it.
+    stack.modifyCallAtDepth(1).offset -= 1;
+    EXPECT_EQ(state, ExecutionState::HASMORE);
   }
+  {
+    auto [state, skipped, block] = executeUntilResponse(exec.get(), stack);
+    // In the second round we do not need to skip any more
+    EXPECT_EQ(skipped.getSkipCount(), 0);
+    EXPECT_EQ(skipped.getSkipOnSubqueryLevel(1), 0);
+    assertResultValid(block, result);
+    EXPECT_EQ(state, ExecutionState::DONE);
+  }
+
   // We can do this in one go, there is no need to recall again.
   result.testAllValuesSkippedInRun(0);
   result.testValuesSkippedInRun(0, 1);
