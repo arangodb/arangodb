@@ -147,7 +147,9 @@ auto MultiAqlItemBlockInputRange::nextShadowRow()
     -> std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> {
   TRI_ASSERT(!hasDataRow());
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(!_dependenciesDontAgreeOnState);
+#endif
 
   auto oneDependencyDone = bool{false};
   auto oneDependencyHasMore = bool{false};
