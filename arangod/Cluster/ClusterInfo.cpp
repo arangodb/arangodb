@@ -434,51 +434,47 @@ void ClusterInfo::flush() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ClusterInfo::doesDatabaseExist(DatabaseID const& databaseID, bool reload) {
-  int tries = 0;
 
-  if (reload || !_planProt.isValid || !_currentProt.isValid || !_DBServersProt.isValid) {
-    loadCurrentDBServers();
-    ++tries;  // no need to reload if the database is not found
+  // Wait for sensible data in agency cache
+  if (!_planProt.isValid) {
+    waitForPlan(1).wait();
+  }
+
+  if (!_currentProt.isValid) {
+    waitForCurrent(1).wait();
   }
 
   // From now on we know that all data has been valid once, so no need
   // to check the isValid flags again under the lock.
-
-  while (true) {
+  {
+    size_t expectedSize;
     {
-      size_t expectedSize;
-      {
-        READ_LOCKER(readLocker, _DBServersProt.lock);
-        expectedSize = _DBServers.size();
-      }
-
-      // look up database by name:
-
-      READ_LOCKER(readLocker, _planProt.lock);
-      // _plannedDatabases is a map-type<DatabaseID, VPackSlice>
-      auto it = _plannedDatabases.find(databaseID);
-
-      if (it != _plannedDatabases.end()) {
-        // found the database in Plan
-        READ_LOCKER(readLocker, _currentProt.lock);
-        // _currentDatabases is
-        //     a map-type<DatabaseID, a map-type<ServerID, VPackSlice>>
-        auto it2 = _currentDatabases.find(databaseID);
-
-        if (it2 != _currentDatabases.end()) {
-          // found the database in Current
-
-          return ((*it2).second.size() >= expectedSize);
-        }
-      }
+      READ_LOCKER(readLocker, _DBServersProt.lock);
+      expectedSize = _DBServers.size();
     }
 
-    if (++tries >= 2) {
-      break;
-    }
+    // look up database by name:
 
-    loadCurrentDBServers();
+    READ_LOCKER(readLocker, _planProt.lock);
+    // _plannedDatabases is a map-type<DatabaseID, VPackSlice>
+    auto it = _plannedDatabases.find(databaseID);
+
+    if (it != _plannedDatabases.end()) {
+      // found the database in Plan
+      READ_LOCKER(readLocker, _currentProt.lock);
+      // _currentDatabases is
+      //     a map-type<DatabaseID, a map-type<ServerID, VPackSlice>>
+      auto it2 = _currentDatabases.find(databaseID);
+
+      if (it2 != _currentDatabases.end()) {
+        // found the database in Current
+
+        return ((*it2).second.size() >= expectedSize);
+      }
+    }
   }
+
+  loadCurrentDBServers();
 
   return false;
 }
@@ -494,7 +490,15 @@ std::vector<DatabaseID> ClusterInfo::databases(bool reload) {
     loadClusterId();
   }
 
-  if (reload || !_planProt.isValid || !_currentProt.isValid || !_DBServersProt.isValid) {
+  if (!_planProt.isValid) {
+    waitForPlan(1).wait();
+  }
+
+  if (!_currentProt.isValid) {
+    waitForCurrent(1).wait();
+  }
+
+  if (reload || !_DBServersProt.isValid) {
     loadCurrentDBServers();
   }
 
@@ -624,7 +628,7 @@ void ClusterInfo::loadPlan() {
   LOG_TOPIC("c6303", TRACE, Logger::CLUSTER) << "loadPlan: newPlanVersion=" << newPlanVersion;
 
   if (newPlanVersion == 0) {
-    LOG_TOPIC("d68ae", DEBUG, Logger::CLUSTER)
+    LOG_TOPIC("d68ae", WARN, Logger::CLUSTER)
         << "Attention: /arango/Plan/Version in the agency is not set or not a "
            "positive number.";
       return;
@@ -1393,83 +1397,66 @@ std::shared_ptr<LogicalCollection> ClusterInfo::getCollection(DatabaseID const& 
 
 std::shared_ptr<LogicalCollection> ClusterInfo::getCollectionNT(DatabaseID const& databaseID,
                                                                 CollectionID const& collectionID) {
-  int tries = 0;
-
   if (!_planProt.isValid) {
-    ++tries;
+    waitForPlan(1).wait();
   }
 
-  while (true) {  // left by break
-    {
-      READ_LOCKER(readLocker, _planProt.lock);
-      // look up database by id
-      AllCollections::const_iterator it = _plannedCollections.find(databaseID);
+  READ_LOCKER(readLocker, _planProt.lock);
+  // look up database by id
+  AllCollections::const_iterator it = _plannedCollections.find(databaseID);
 
-      if (it != _plannedCollections.end()) {
-        // look up collection by id (or by name)
-        DatabaseCollections::const_iterator it2 = (*it).second.find(collectionID);
+  if (it != _plannedCollections.end()) {
+    // look up collection by id (or by name)
+    DatabaseCollections::const_iterator it2 = (*it).second.find(collectionID);
 
-        if (it2 != (*it).second.end()) {
-          return (*it2).second;
-        }
-      }
-    }
-    if (++tries >= 2) {
-      break;
+    if (it2 != (*it).second.end()) {
+      return (*it2).second;
     }
   }
+
   return nullptr;
 }
 
 std::shared_ptr<LogicalDataSource> ClusterInfo::getCollectionOrViewNT(DatabaseID const& databaseID,
                                                                       std::string const& name) {
-  int tries = 0;
-
   if (!_planProt.isValid) {
-    ++tries;
+    waitForPlan(1).wait();
   }
 
-  while (true) {  // left by break
-    {
-      READ_LOCKER(readLocker, _planProt.lock);
+  READ_LOCKER(readLocker, _planProt.lock);
 
-      // look up collection first
-      {
-        // look up database by id
-        auto it = _plannedCollections.find(databaseID);
+  // look up collection first
+  {
+    // look up database by id
+    auto it = _plannedCollections.find(databaseID);
 
-        if (it != _plannedCollections.end()) {
-          // look up collection by id (or by name)
-          auto it2 = (*it).second.find(name);
+    if (it != _plannedCollections.end()) {
+      // look up collection by id (or by name)
+      auto it2 = (*it).second.find(name);
 
-          if (it2 != (*it).second.end()) {
-            return (*it2).second;
-          }
-        }
+      if (it2 != (*it).second.end()) {
+        return (*it2).second;
       }
-
-      // look up views next
-      {
-        // look up database by id
-        auto it = _plannedViews.find(databaseID);
-
-        if (it != _plannedViews.end()) {
-          // look up collection by id (or by name)
-          auto it2 = (*it).second.find(name);
-
-          if (it2 != (*it).second.end()) {
-            return (*it2).second;
-          }
-        }
-      }
-
     }
-    if (++tries >= 2) {
-      break;
-    }
-
   }
+
+  // look up views next
+  {
+    // look up database by id
+    auto it = _plannedViews.find(databaseID);
+
+    if (it != _plannedViews.end()) {
+      // look up collection by id (or by name)
+      auto it2 = (*it).second.find(name);
+
+      if (it2 != (*it).second.end()) {
+        return (*it2).second;
+      }
+    }
+  }
+
   return nullptr;
+
 }
 
 std::string ClusterInfo::getCollectionNotFoundMsg(DatabaseID const& databaseID,
@@ -1516,30 +1503,21 @@ std::vector<std::shared_ptr<LogicalCollection>> const ClusterInfo::getCollection
 
 std::shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent(
     DatabaseID const& databaseID, CollectionID const& collectionID) {
-  int tries = 0;
 
   if (!_currentProt.isValid) {
-    ++tries;
+    waitForCurrent(1).get();
   }
 
-  while (true) {
-    {
-      READ_LOCKER(readLocker, _currentProt.lock);
-      // look up database by id
-      AllCollectionsCurrent::const_iterator it = _currentCollections.find(databaseID);
+  READ_LOCKER(readLocker, _currentProt.lock);
+  // look up database by id
+  AllCollectionsCurrent::const_iterator it = _currentCollections.find(databaseID);
 
-      if (it != _currentCollections.end()) {
-        // look up collection by id
-        DatabaseCollectionsCurrent::const_iterator it2 = (*it).second.find(collectionID);
+  if (it != _currentCollections.end()) {
+    // look up collection by id
+    DatabaseCollectionsCurrent::const_iterator it2 = (*it).second.find(collectionID);
 
-        if (it2 != (*it).second.end()) {
-          return (*it2).second;
-        }
-      }
-    }
-
-    if (++tries >= 2) {
-      break;
+    if (it2 != (*it).second.end()) {
+      return (*it2).second;
     }
   }
 
@@ -1588,25 +1566,15 @@ std::shared_ptr<LogicalView> ClusterInfo::getView(DatabaseID const& databaseID,
     return lookupView(_newPlannedViews, databaseID, viewID);
   }
 
-  int tries = 0;
-
   if (!_planProt.isValid) {
-    ++tries;
+    waitForPlan(1).wait();
   }
 
-  while (true) {  // left by break
-    {
-      READ_LOCKER(readLocker, _planProt.lock);
-      auto const view = lookupView(_plannedViews, databaseID, viewID);
+  READ_LOCKER(readLocker, _planProt.lock);
+  auto const view = lookupView(_plannedViews, databaseID, viewID);
 
-      if (view) {
-        return view;
-      }
-    }
-    if (++tries >= 2) {
-      break;
-    }
-
+  if (view) {
+    return view;
   }
 
   LOG_TOPIC("a227e", DEBUG, Logger::CLUSTER)
@@ -1650,25 +1618,15 @@ std::vector<std::shared_ptr<LogicalView>> const ClusterInfo::getViews(DatabaseID
 
 AnalyzersRevision::Ptr ClusterInfo::getAnalyzersRevision(DatabaseID const& databaseID,
                                                          bool forceLoadPlan /* = false */) {
-  int tries = 0;
-
   if (!_planProt.isValid || forceLoadPlan) {
-    ++tries;
+    waitForPlan(1).get();
   }
-  while (true) {  // left by break
-    {
-      READ_LOCKER(readLocker, _planProt.lock);
-      // look up database by id
-      auto it = _dbAnalyzersRevision.find(databaseID);
+  READ_LOCKER(readLocker, _planProt.lock);
+  // look up database by id
+  auto it = _dbAnalyzersRevision.find(databaseID);
 
-      if (it != _dbAnalyzersRevision.cend()) {
-        return it->second;
-      }
-    }
-    if (++tries >= 2) {
-      break;
-    }
-
+  if (it != _dbAnalyzersRevision.cend()) {
+    return it->second;
   }
   return nullptr;
 }
@@ -1827,8 +1785,6 @@ Result ClusterInfo::createIsBuildingDatabaseCoordinator(CreateDatabaseInfo const
 
   if (res.slice().get("results").length() > 0) {
     waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
-  } else {
-    TRI_ASSERT(false);
   }
 
   // And wait for our database to show up in `Current/Databases`
@@ -1888,8 +1844,6 @@ Result ClusterInfo::createFinalizeDatabaseCoordinator(CreateDatabaseInfo const& 
 
   if (res.slice().get("results").length()) {
     waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
-  } else {
-    TRI_ASSERT(false);
   }
 
   // The transaction was successful and the database should
@@ -1937,8 +1891,6 @@ Result ClusterInfo::cancelCreateDatabaseCoordinator(CreateDatabaseInfo const& da
         << res.errorMessage() << ". Retrying.";
     } else if (res.slice().get("results").length()) {
       waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
-    } else {
-      TRI_ASSERT(false);
     }
 
     if (_server.isStopping()) {
@@ -2011,8 +1963,6 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   }
   if (res.slice().get("results").length()) {
     waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
-  } else {
-    TRI_ASSERT(false);
   }
 
   // Now wait stuff in Current to disappear and thus be complete:
@@ -2417,8 +2367,6 @@ Result ClusterInfo::createCollectionsCoordinator(
       if (res.successful()) {
         if (res.slice().get("results").length()) {
           waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
-        } else {
-          TRI_ASSERT(false);
         }
         return;
       } else if (res.httpCode() == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
@@ -2494,8 +2442,6 @@ Result ClusterInfo::createCollectionsCoordinator(
 
       if (res.slice().get("results").length() > 0) {
         waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
-      } else {
-        TRI_ASSERT(false);
       }
     }
   }
@@ -2560,8 +2506,6 @@ Result ClusterInfo::createCollectionsCoordinator(
         deleteCollectionGuard.cancel();
         if (res.slice().get("results").length() > 0) {
           waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
-        } else {
-          TRI_ASSERT(false);
         }
       }
 
@@ -2777,8 +2721,6 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
   }
   if (res.slice().get("results").length()) {
     waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
-  } else {
-    TRI_ASSERT(false);
   }
 
   if (numberOfShards == 0) {
@@ -2875,8 +2817,6 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(std::string const& databa
   if (res.successful()) {
     if (res.slice().get("results").length()) {
       waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
-    } else {
-      TRI_ASSERT(false);
     }
     return Result();
   }
@@ -2993,8 +2933,6 @@ Result ClusterInfo::createViewCoordinator(  // create view
 
   if (res.slice().get("results").length() > 0) {
     waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
-  } else {
-    TRI_ASSERT(false);
   }
 
   events::CreateView(databaseName, name, TRI_ERROR_NO_ERROR);
@@ -3024,8 +2962,6 @@ Result ClusterInfo::dropViewCoordinator(  // drop view
 
   if (res.successful() && res.slice().get("results").length()) {
     waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
-  } else {
-    TRI_ASSERT(false);
   }
 
   Result result;
@@ -3097,8 +3033,6 @@ Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName
 
   if (res.slice().get("results").length()) {
     waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
-  } else {
-    TRI_ASSERT(false);
   }
   return {};
 }
@@ -3660,8 +3594,6 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
       auto& c = _server.getFeature<ClusterFeature>().agencyCache();
       auto [a,b] = c.get("/");
       waitForPlan(result.slice().get("results")[0].getNumber<uint64_t>()).get();
-    } else {
-      TRI_ASSERT(false);
     }
   }
 
@@ -3805,8 +3737,6 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
           if (update.successful()) {
             if (update.slice().get("results").length()) {
               waitForPlan(update.slice().get("results")[0].getNumber<uint64_t>()).get();
-            } else {
-              TRI_ASSERT(false);
             }
 
             if (tmpRes < 0) {                 // timeout
@@ -4656,7 +4586,7 @@ std::unordered_map<ShardID, ServerID> ClusterInfo::getResponsibleServers(
   int tries = 0;
 
   if (!_currentProt.isValid) {
-    tries++;
+    waitForCurrent(1).wait();
   }
 
   while (true) {
@@ -4716,6 +4646,8 @@ std::unordered_map<ShardID, ServerID> ClusterInfo::getResponsibleServers(
 ////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(CollectionID const& collectionID) {
+
+
 
   int tries = 0;
   while (true) {
@@ -5357,7 +5289,7 @@ void ClusterInfo::SyncerThread::beginShutdown() {
 
   using namespace std::chrono_literals;
 
-  // set the sh§utdown state in parent class
+  // set the shutdown state in parent class
   Thread::beginShutdown();
   {
     std::lock_guard<std::mutex> lck(_m);

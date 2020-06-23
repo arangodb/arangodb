@@ -780,7 +780,8 @@ class IResearchFeatureTestCoordinator
       { VPackArrayBuilder trx(b.get());
         { VPackObjectBuilder op(b.get());
           b->add(key, b2->slice()); }}}
-    return std::get<1>(server.getFeature<arangodb::ClusterFeature>().agencyCache().set(b));
+    return std::get<1>(
+      server.getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(b));
   }
 
   void agencyCreateDatabase(std::string const& name) {
@@ -943,11 +944,12 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
                     .setValue(path, value->slice(), 0.0)
                     .successful());
 
-    VPackBuilder b;
-    { VPackArrayBuilder oo(&b);
-      VPackObjectBuilder o(&b);
-      b.add(path, value->slice()); }
-    server.getFeature<arangodb::ClusterFeature>().agencyCache().set(b.slice());
+    auto b = std::make_shared<VPackBuilder>();
+    { VPackArrayBuilder trxs(b.get());
+      { VPackArrayBuilder trx(b.get());
+        { VPackObjectBuilder op(b.get());
+          b->add(path, value->slice()); }}}
+    server.getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(b);
       
   }
   EXPECT_TRUE(arangodb::methods::Upgrade::clusterBootstrap(*vocbase).ok());  // run upgrade
@@ -1083,11 +1085,13 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
-  VPackBuilder bogus;
-  { VPackArrayBuilder guard(&bogus);
-    { VPackObjectBuilder guard2(&bogus);
-      bogus.add("a", VPackValue(12)); }}
-  server.server().getFeature<arangodb::ClusterFeature>().agencyCache().set(bogus.slice());
+  auto bogus = std::make_shared<VPackBuilder>();
+  { VPackArrayBuilder trxs(bogus.get());
+    { VPackArrayBuilder trx(bogus.get());
+      { VPackObjectBuilder op(bogus.get());
+        bogus->add("a", VPackValue(12)); }}}
+  server.server().getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(
+    bogus);
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
@@ -1163,11 +1167,13 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
       &server.getFeature<arangodb::EngineSelectorFeature>().engine());
   engine.views.clear();
 
-  VPackBuilder bogus;
-  { VPackArrayBuilder guard(&bogus);
-    { VPackObjectBuilder guard2(&bogus);
-      bogus.add("a", VPackValue(12)); }}
-  server.server().getFeature<arangodb::ClusterFeature>().agencyCache().set(bogus.slice());
+  auto bogus = std::make_shared<VPackBuilder>();
+  { VPackArrayBuilder trxs(bogus.get());
+    { VPackArrayBuilder trx(bogus.get());
+      { VPackObjectBuilder op(bogus.get());
+        bogus->add("a", VPackValue(12)); }}}
+  server.server().getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(
+    bogus);
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));

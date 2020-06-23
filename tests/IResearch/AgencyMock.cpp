@@ -140,7 +140,7 @@ struct AsyncAgencyStorePoolConnection final : public fuerte::Connection {
     auto& cache = _mock->_server.getFeature<ClusterFeature>().agencyCache();
     auto bodyBuilder = std::make_shared<VPackBuilder>(body);
 
-    auto [success,index] = cache.set(bodyBuilder);
+    auto [success,index] = cache.applyTestTransaction(bodyBuilder);
 
     auto const code =
       std::find_if(success.begin(), success.end(),

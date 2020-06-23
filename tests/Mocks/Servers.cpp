@@ -360,12 +360,7 @@ MockRestServer::MockRestServer(bool start) : MockServer() {
   }
 }
 
-consensus::check_ret_t AgencyCache::set(VPackSlice const trx) {
-  ++_commitIndex;
-  return _readDB.applyTransaction(trx);
-}
-
-std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> AgencyCache::set(
+std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> AgencyCache::applyTestTransaction(
   consensus::query_t const& trxs) {
 
   std::unordered_set<uint64_t> uniq;
@@ -457,7 +452,7 @@ consensus::index_t MockClusterServer::agencyTrx(std::string const& key, std::str
         auto b2 = VPackParser::fromJson(value);
         b->add(key, b2->slice());
       }}}
-  return std::get<1>(_server.getFeature<ClusterFeature>().agencyCache().set(b));
+  return std::get<1>(_server.getFeature<ClusterFeature>().agencyCache().applyTestTransaction(b));
 }
 
 void MockClusterServer::agencyCreateDatabase(std::string const& name) {
