@@ -228,11 +228,14 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
   } else if (graph->isStringValue()) {
     std::string graphName = graph->getString();
     _graphInfo.add(VPackValue(graphName));
-    _graphObj = plan->getAst()->query().lookupGraphByName(graphName);
+    auto graphLookupResult = plan->getAst()->query().lookupGraphByName(graphName);
 
-    if (_graphObj == nullptr) {
-      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_GRAPH_NOT_FOUND, graphName.c_str());
+    if (graphLookupResult.fail()) {
+      THROW_ARANGO_EXCEPTION(graphLookupResult.result());
     }
+
+    TRI_ASSERT(graphLookupResult.ok());
+    _graphObj = graphLookupResult.get();
 
     auto eColls = _graphObj->edgeCollections();
     size_t length = eColls.size();
@@ -314,11 +317,13 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       graphName = base.get("graph").copyString();
       if (base.hasKey("graphDefinition")) {
         // load graph and store pointer
-        _graphObj = plan->getAst()->query().lookupGraphByName(graphName);
+        auto graphLookupResult = plan->getAst()->query().lookupGraphByName(graphName);
 
-        if (_graphObj == nullptr) {
-          THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_GRAPH_NOT_FOUND, graphName.c_str());
+        if (graphLookupResult.fail()) {
+          THROW_ARANGO_EXCEPTION(graphLookupResult.result());
         }
+
+        _graphObj = graphLookupResult.get();
       } else {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
                                        "missing graphDefinition.");
