@@ -27,7 +27,6 @@
 
 #include "AqlExecutorTestCase.h"
 #include "AqlItemBlockHelper.h"
-// // #include "RowFetcherHelper.h"
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlock.h"
