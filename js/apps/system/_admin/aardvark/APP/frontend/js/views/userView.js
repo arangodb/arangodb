@@ -228,14 +228,23 @@
     },
 
     submitEditCurrentUserProfile: function () {
+      var self = this;
       var name = $('#editCurrentName').val();
       var img = $('#editCurrentUserProfileImg').val();
       img = this.parseImgString(img);
 
-      var callback = function (error) {
+      var callback = function (error, data) {
         if (error) {
           arangoHelper.arangoError('User', 'Could not edit user settings');
         } else {
+          console.log(data);
+          if (data && data.extra && data.extra.img) {
+            var extra = self.currentUser.get('extra');
+            extra.img = data.extra.img;
+            self.currentUser.set('img.extra', extra);
+            // rerender navigation containing userBarView
+            window.App.naviView.render();
+          }
           arangoHelper.arangoNotification('User', 'Changes confirmed.');
           this.updateUserProfile();
         }
