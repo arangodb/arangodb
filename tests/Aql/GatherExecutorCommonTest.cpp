@@ -106,6 +106,10 @@ auto generateValue(std::vector<size_t> subqueryRuns, size_t branch) -> int64_t {
   return val;
 }
 
+#if 0
+// This is the backwards function for generate value.
+// I have not need this anywhere but maybe it is handy at one point
+// so i decided to keep it in.
 auto reverseValue(int64_t v) -> std::pair<std::vector<size_t>, size_t> {
   std::vector<size_t> subqueryValues{};
   size_t branch = (v / 100000) % 10;
@@ -120,6 +124,8 @@ auto reverseValue(int64_t v) -> std::pair<std::vector<size_t>, size_t> {
 
   return {subqueryValues, branch};
 }
+#endif
+
 };  // namespace
 
 class ResultMaps {

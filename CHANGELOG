@@ -1,6 +1,32 @@
 devel
 -----
 
+* Fixed that, when performing a graph AQL query while a (graceful) failover for
+  the leader of the system collections is in progress, ArangoDB would report a
+  "Graph not found error".
+  The real error, namely that an agency transaction failed, was swallowed in
+  the graph lookup code due to a wrong error code being used from Fuerte.
+  We now generate a more appropriate 503 - Service Unavailable error.
+
+* added option `--log.use-json-format` to switch log output to JSON format.
+  Each log message then produces a seperate line with JSON-encoded log data,
+  which can be consumed by applications.
+
+* added option `--log.process` to toggle the logging of the process id
+  (pid) in log messages. Logging the process id is useless when running
+  arangod in Docker containers, as the pid will always be 1. So one may
+  as well turn it off in these contexts.
+
+* added option `--log.in-memory` to toggle storing log messages in memory,
+  from which they can be consumed via the `/_admin/log` and by the web UI. By
+  default, this option is turned on, so log messages are consumable via API 
+  and the web UI. Turning this option off will disable that functionality and
+  save a tiny bit of memory for the in-memory log buffers.
+
+* Allow for faster cluster shutdown. This should reduce the number of shutdown
+  hangers in case the agents are stopped already and then coordinators or
+  DB-Servers are shut down.
+
 * Fixed issue ES-598. Web UI now shows correct permissions in case wildcard
   database level and wildcard collection level permissions are both set.
 
@@ -32,7 +58,7 @@ devel
 
 * Use smarter default value preset in web UI for replication factor in case
   there are constraints established for the replication factor by the
-  startup options `--cluster.min-replication-factor` and 
+  startup options `--cluster.min-replication-factor` and
   `--cluster.max-replication-factor`.
 
 * Modified the exception handling in the RestHandler. Asynchronous communication
@@ -53,7 +79,7 @@ devel
 
 * Display "geoJson" value for geo indexes in index overview in web UI.
 
-* Allow specifiying arbitrary vertex attributes when creating a vertex via the 
+* Allow specifiying arbitrary vertex attributes when creating a vertex via the
   graph viewer in the web UI. This is necessary for collections that have a
   schema and that require new vertices to have certain attributes/values.
 
@@ -65,7 +91,7 @@ devel
 * Fixed "Create Debug Package" in web UI in cluster mode.
 
 * Pick up selected "write concern" value entered in web UI when creating a
-  collection in the cluster. Previously, the "write concern" value was not 
+  collection in the cluster. Previously, the "write concern" value was not
   picked up correctly and collections were created with the default write
   concern.
 

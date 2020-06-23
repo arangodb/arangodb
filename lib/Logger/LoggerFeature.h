@@ -61,11 +61,13 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   std::string _fileMode;
   std::string _fileGroup;
   std::string _timeFormatString;
+  bool _useJson = false;
   bool _useLocalTime = false;
   bool _useColor = true;
   bool _useEscaped = true;
   bool _lineNumber = false;
   bool _shortenFilenames = true;
+  bool _processId = true;
   bool _threadId = false;
   bool _threadName = false;
   bool _performance = false;

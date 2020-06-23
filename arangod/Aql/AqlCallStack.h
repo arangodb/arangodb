@@ -26,7 +26,7 @@
 #include "Aql/AqlCallList.h"
 #include "Basics/ResultT.h"
 
-#include <stack>
+#include <vector>
 
 namespace arangodb {
 namespace velocypack {
@@ -55,9 +55,11 @@ class AqlCallStack {
   // Used in subquery
   AqlCallStack(AqlCallStack const& other, AqlCallList call);
   // Used to pass between blocks
-  AqlCallStack(AqlCallStack const& other);
+  AqlCallStack(AqlCallStack const& other) = default;
+  AqlCallStack(AqlCallStack&& other) = default;
 
   AqlCallStack& operator=(AqlCallStack const& other) = default;
+  AqlCallStack& operator=(AqlCallStack&& other) = default;
 
   static auto fromVelocyPack(velocypack::Slice) -> ResultT<AqlCallStack>;
 

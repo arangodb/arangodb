@@ -37,6 +37,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
+#include "Basics/ResultT.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/Thread.h"
 #include "Basics/VelocyPackHelper.h"
@@ -44,6 +45,7 @@
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/RebootTracker.h"
 #include "Futures/Future.h"
+#include "Network/types.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/VocbaseInfo.h"
@@ -470,18 +472,40 @@ public:
   arangodb::Result agencyReplan(VPackSlice const plan);
 
   /**
-   * @brief Wait for plan cache to be at Raft index
-   * @param    Plan to adapt to
+   * @brief Wait for Plan cache to be at the given Raft index
+   * @param    Plan Raft index to wait for
    * @return       Operation's result
    */
-  futures::Future<Result> waitForPlan(uint64_t index);
+  futures::Future<Result> waitForPlan(uint64_t raftIndex);
 
   /**
-   * @brief Wait for plan cache to be at Raft index
-   * @param    Plan to adapt to
+   * @brief Wait for Plan cache to be at the given Plan version
+   * @param    Plan version to wait for
    * @return       Operation's result
    */
-  futures::Future<Result> waitForCurrent(uint64_t index);
+  [[nodiscard]] futures::Future<Result> waitForPlanVersion(uint64_t planVersion);
+
+  /**
+  * @brief Fetch the current Plan version and wait for the cache to catch up to
+  *        it, if necessary.
+  * @param The timeout is for fetching the Plan version only. Waiting for the
+  *        Plan version afterwards will never timeout.
+  */
+  [[nodiscard]] futures::Future<Result> fetchAndWaitForPlanVersion(network::Timeout);
+
+  /**
+   * @brief Wait for Current cache to be at the given Raft index
+   * @param    Current Raft index to wait for
+   * @return       Operation's result
+   */
+  futures::Future<Result> waitForCurrent(uint64_t raftIndex);
+
+  /**
+   * @brief Wait for Current cache to be at the given Raft index
+   * @param    Current version to wait for
+   * @return       Operation's result
+   */
+  [[nodiscard]] futures::Future<Result> waitForCurrentVersion(uint64_t currentVersion);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief flush the caches (used for testing only)
@@ -1165,13 +1189,27 @@ public:
 
   mutable std::mutex _waitPlanLock;
   std::multimap<uint64_t, futures::Promise<arangodb::Result>> _waitPlan;
+  mutable std::mutex _waitPlanVersionLock;
+  std::multimap<uint64_t, futures::Promise<arangodb::Result>> _waitPlanVersion;
   mutable std::mutex _waitCurrentLock;
   std::multimap<uint64_t, futures::Promise<arangodb::Result>> _waitCurrent;
+  mutable std::mutex _waitCurrentVersionLock;
+  std::multimap<uint64_t, futures::Promise<arangodb::Result>> _waitCurrentVersion;
 
   Histogram<log_scale_t<float>>& _lpTimer;
   Histogram<log_scale_t<float>>& _lcTimer;
     
 };
+
+namespace cluster {
+
+// Note that while a network error will just return a failed `ResultT`, there
+// are still possible exceptions.
+futures::Future<ResultT<uint64_t>> fetchPlanVersion(network::Timeout timeout);
+futures::Future<ResultT<uint64_t>> fetchCurrentVersion(network::Timeout timeout);
+
+}  // namespace cluster
+
 }  // end namespace arangodb
 
 #endif

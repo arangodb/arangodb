@@ -49,13 +49,13 @@ method other than `POST`, then an *HTTP 405 METHOD NOT ALLOWED* is returned.
                 "id": "2019-04-28T12.00.00Z_my-label",
                 "version": "3.4.5",
                 "datetime": "2019-04-28T12.00.00Z",
-                "keys": [ {sha256": "861009ec4d599fab1f40abc76e6f89880cff5833c79c548c99f9045f191cd90b"} ]
+                "keys": [ {"sha256": "861009ec4d599fab1f40abc76e6f89880cff5833c79c548c99f9045f191cd90b"} ]
             },
             "2019-04-28T12.10.00Z-other-label": {
                 "id": "2019-04-28T12.10.00Z-other-label",
                 "version": "3.4.5",
                 "datetime": "2019-04-28T12.10.00Z",
-                "keys": [ {sha256": "861009ed4d599fab1f40abc76e6f89880cff5833c79c548c99f9045f191cd90b"} ]
+                "keys": [ {"sha256": "861009ed4d599fab1f40abc76e6f89880cff5833c79c548c99f9045f191cd90b"} ]
             }
         }
       }
