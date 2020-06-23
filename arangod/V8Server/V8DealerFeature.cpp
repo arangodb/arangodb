@@ -522,7 +522,7 @@ void V8DealerFeature::copyInstallationFiles() {
   }
 
   if (overwriteCopy) {
-    // sanity check before removing an existing directory:
+    // basic checks before removing an existing directory:
     // check if for some reason we will be trying to remove the entire database
     // directory...
     if (FileUtils::exists(FileUtils::buildFilename(copyJSPath, "ENGINE"))) {
@@ -797,7 +797,7 @@ void V8DealerFeature::collectGarbage() {
           }
         }
       } else {
-        useReducedWait = true;  // sanity
+        useReducedWait = true; 
       }
     } catch (...) {
       // simply ignore errors here

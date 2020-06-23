@@ -108,7 +108,7 @@ function backgroundIndexSuite() {
       // wait for insertion tasks to complete
       waitForTasks();
       
-      // sanity checks
+      // basic checks
       assertEqual(c.count(), 100000);
       for (let i = 0; i < 1000; i++) { // 100 entries of each value [0,999]
         let cursor = db._query("FOR doc IN @@coll FILTER doc.value == @val RETURN 1", 
@@ -166,7 +166,7 @@ function backgroundIndexSuite() {
       // wait for tasks to complete
       waitForTasks();
       
-      // sanity checks
+      // basic checks
       assertEqual(c.count(), 100000);
       for (let i = 0; i < 1000; i++) { // 100 entries of each value [0,999]
         let cursor = db._query("FOR doc IN @@coll FILTER doc.value == @val RETURN 1", 
@@ -225,7 +225,7 @@ function backgroundIndexSuite() {
       // wait for insertion tasks to complete
       waitForTasks();
       
-      // sanity checks
+      // basic checks
       assertEqual(c.count(), 25001);
 
       // verify that the index was created
@@ -295,7 +295,7 @@ function backgroundIndexSuite() {
       // wait for insertion tasks to complete
       waitForTasks();
       
-      // sanity checks
+      // basic checks
       assertEqual(c.count(), 50001);
     },
     
@@ -344,7 +344,7 @@ function backgroundIndexSuite() {
       // wait for insertion tasks to complete
       waitForTasks();
       
-      // sanity checks
+      // basic checks
       assertEqual(c.count(), 50000);
       for (let i = 0; i < 10; i++) { // check for remaining docs via index
         let invalues = [];
@@ -426,7 +426,7 @@ function backgroundIndexSuite() {
       // wait for insertion tasks to complete
       waitForTasks();
       
-      // sanity checks
+      // basic checks
       assertEqual(c.count(), 100000);
       // check for new entries via index
       const newCursor = db._query("FOR doc IN @@coll FILTER doc.value >= @val RETURN 1", 

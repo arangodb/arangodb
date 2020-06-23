@@ -864,7 +864,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
       }
 
       if (ServerState::instance()->isCoordinator() &&
-          replicationFactor != _sharding->replicationFactor()) {  // sanity checks
+          replicationFactor != _sharding->replicationFactor()) {  // basics checks
         if (!_sharding->distributeShardsLike().empty()) {
           return Result(TRI_ERROR_FORBIDDEN,
                         "cannot change replicationFactor for a collection using 'distributeShardsLike'");
@@ -917,7 +917,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
       }
 
       if (ServerState::instance()->isCoordinator() &&
-          replicationFactor != _sharding->writeConcern()) {  // sanity checks
+          replicationFactor != _sharding->writeConcern()) {  // basic checks
         if (!_sharding->distributeShardsLike().empty()) {
           return Result(TRI_ERROR_FORBIDDEN,
                         "Cannot change writeConcern, please change " +

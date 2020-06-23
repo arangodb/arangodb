@@ -64,7 +64,7 @@ class V8Wrapper {
   V8Wrapper(v8::Isolate* isolate, STRUCT* object, void (*free)(STRUCT* object),
             v8::Handle<v8::Object> result)
       : _refs(0), _object(object), _free(free), _isolate(isolate) {
-    // sanity checks
+    // basic checks
     TRI_ASSERT(_handle.IsEmpty());
     TRI_ASSERT(result->InternalFieldCount() > 0);
 

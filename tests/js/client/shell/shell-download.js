@@ -78,7 +78,7 @@ function DownloadSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      // some sanity check as we don't want to unintentionally remove "." or "/"
+      // some basic tests as we don't want to unintentionally remove "." or "/"
       if (tempDir.length > 5) {
         // remove our temporary directory with all its subdirectories
         // we created it, so we don't care what's in it

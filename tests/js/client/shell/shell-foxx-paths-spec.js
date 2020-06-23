@@ -13,7 +13,7 @@ const baseUrl = origin + '/_db/_system';
 describe('Foxx service path handling', () => {
   const mount = '/unittest/paths';
   before(function () {
-    // Sanity tests
+    // basics tests
     expect(encodeURIComponent('ö')).not.to.equal('ö');
     expect(encodeURIComponent('+')).not.to.equal('+');
     expect(encodeURIComponent('/')).not.to.equal('/');
