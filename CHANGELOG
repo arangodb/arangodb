@@ -1,6 +1,12 @@
 devel
 -----
 
+* Fixed a potential error scenario where a call could miss count skip. Have not
+  been able to write a user-query to trigger it though, so maybe this is just a
+  theoretical bug. If it hits in the number reported by skip on subsequent subqueries
+  was incorrect. First run reported correct number, second run reported again number
+  of first run, third the one of second etc.
+
 * Fixed that, when performing a graph AQL query while a (graceful) failover for
   the leader of the system collections is in progress, ArangoDB would report a
   "Graph not found error".
