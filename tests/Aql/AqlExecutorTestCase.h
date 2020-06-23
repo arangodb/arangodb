@@ -72,6 +72,8 @@ class AqlExecutorTestCase : public ::testing::Test {
   auto generateNodeDummy(ExecutionNode::NodeType type = ExecutionNode::NodeType::SINGLETON)
       -> ExecutionNode*;
 
+  auto generateScatterNodeDummy() -> ScatterNode*;
+
   template <std::size_t inputColumns = 1, std::size_t outputColumns = 1>
   auto makeExecutorTestHelper() -> ExecutorTestHelper<inputColumns, outputColumns> {
     return ExecutorTestHelper<inputColumns, outputColumns>(*fakedQuery, itemBlockManager);

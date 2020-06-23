@@ -54,6 +54,16 @@ auto AqlExecutorTestCase<enableQueryTrace>::generateNodeDummy(ExecutionNode::Nod
 }
 
 template <bool enableQueryTrace>
+auto AqlExecutorTestCase<enableQueryTrace>::generateScatterNodeDummy() -> ScatterNode* {
+  auto dummy = std::make_unique<ScatterNode>(
+      const_cast<arangodb::aql::ExecutionPlan*>(fakedQuery->plan()),
+      ExecutionNodeId{_execNodes.size()}, ScatterNode::ScatterType::SERVER);
+  auto res = dummy.get();
+  _execNodes.emplace_back(std::move(dummy));
+  return res;
+}
+
+template <bool enableQueryTrace>
 auto AqlExecutorTestCase<enableQueryTrace>::manager() const -> AqlItemBlockManager& {
   return fakedQuery->rootEngine()->itemBlockManager();
 }
