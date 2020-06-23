@@ -1907,14 +1907,13 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
 
 TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
 
-  VPackBuilder bogus;
-  { VPackArrayBuilder guard(&bogus);
-    { VPackObjectBuilder guard2(&bogus);
-      bogus.add("a", VPackValue(12)); }}
-
-  arangodb::consensus::Store& agencyStore =
-    server.server().getFeature<arangodb::ClusterFeature>().agencyCache().store();
-  server.server().getFeature<arangodb::ClusterFeature>().agencyCache().set(bogus.slice());
+  auto bogus = std::make_shared<VPackBuilder>();
+  { VPackArrayBuilder trxs(bogus.get());
+    { VPackArrayBuilder trx(bogus.get());
+      { VPackObjectBuilder op(bogus.get());
+        bogus->add("a", VPackValue(12)); }}}
+  server.server().getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(
+    bogus);
 
   arangodb::network::ConnectionPool::Config poolConfig;
   poolConfig.clusterInfo = &server.getFeature<arangodb::ClusterFeature>().clusterInfo();
@@ -1923,7 +1922,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
   poolConfig.maxOpenConnections = 3;
   poolConfig.verifyHosts = false;
 
-  AsyncAgencyStorePoolMock pool(&agencyStore, poolConfig);
+  AsyncAgencyStorePoolMock pool(server.server(), poolConfig);
   arangodb::AgencyCommHelper::initialize("arango");
   arangodb::AsyncAgencyCommManager::initialize(server.server());
   arangodb::AsyncAgencyCommManager::INSTANCE->pool(&pool);
@@ -2029,7 +2028,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
       sysDatabase.start();  // get system database from DatabaseFeature
     }
 
-    newServer.getFeature<arangodb::ClusterFeature>().agencyCache().set(bogus.slice());
+    newServer.getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(
+      bogus);
 
     // add analyzer
     {
@@ -2095,7 +2095,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
       sysDatabase.start();  // get system database from DatabaseFeature
     }
 
-    newServer.getFeature<arangodb::ClusterFeature>().agencyCache().set(bogus.slice());
+    newServer.getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(
+      bogus);
     // add analyzer
     {
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
