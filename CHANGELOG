@@ -4,6 +4,11 @@ v3.7.1-rc.1 (XXXX-XX-XX)
 * The Web UI's replication view is now checking the replication state
   automatically without the need of a manual reload.
 
+* Changing the current users profile icon in the Web UI now renders the new icon
+  and data directly without the need of a full UI browser reload.
+
+* Fixed cluster behavior with HotBackup and non-existing backups on DB-Servers.
+
 * Fixed that, when performing a graph AQL query while a (graceful) failover for
   the leader of the system collections is in progress, ArangoDB would report a
   "Graph not found error".
