@@ -25,7 +25,7 @@
 
 #include "AqlItemBlockHelper.h"
 #include "DependencyProxyMock.h"
-#include "RowFetcherHelper.h"
+// #include "RowFetcherHelper.h"
 #include "gtest/gtest.h"
 
 #include "Aql/AqlCallStack.h"

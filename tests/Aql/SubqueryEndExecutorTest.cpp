@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlItemBlockHelper.h"
-#include "RowFetcherHelper.h"
+// #include "RowFetcherHelper.h"
 #include "gtest/gtest.h"
 
 #include "Mocks/Death_Test.h"

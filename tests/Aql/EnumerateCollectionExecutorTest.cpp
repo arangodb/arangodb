@@ -31,7 +31,7 @@
 #include "IResearch/common.h"
 #include "Mocks/Servers.h"
 #include "QueryHelper.h"
-#include "RowFetcherHelper.h"
+// #include "RowFetcherHelper.h"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Ast.h"

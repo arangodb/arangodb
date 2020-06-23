@@ -20,7 +20,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RowFetcherHelper.h"
+// #include "RowFetcherHelper.h"
 #include "gtest/gtest.h"
 
 #include "Aql/AqlItemBlock.h"

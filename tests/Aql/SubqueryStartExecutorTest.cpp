@@ -23,7 +23,7 @@
 #include "gtest/gtest.h"
 
 #include "AqlExecutorTestCase.h"
-#include "RowFetcherHelper.h"
+// #include "RowFetcherHelper.h"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemBlockHelper.h"

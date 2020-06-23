@@ -23,7 +23,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RowFetcherHelper.h"
+// #include "RowFetcherHelper.h"
 #include "VelocyPackHelper.h"
 
 #include "Aql/AllRowsFetcher.h"
