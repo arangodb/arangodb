@@ -641,26 +641,8 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
               ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>, TraversalExecutor,
               EnumerateListExecutor, SubqueryStartExecutor, SubqueryEndExecutor, SortedCollectExecutor,
               LimitExecutor, UnsortedGatherExecutor, SortingGatherExecutor, SortExecutor,
-              IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize>,
-              IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialize>,
-              IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::Materialize>,
-              IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
-              IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
-              IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::NotMaterialize>,
-              IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialize>,
-              IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::Materialize>,
-              IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
-              IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
-              IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize>,
-              IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialize>,
-              IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::Materialize>,
-              IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
-              IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
-              IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::NotMaterialize>,
-              IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialize>,
-              IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::Materialize>,
-              IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
-              IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
+              INSTANTIATE_IRESEARCH_EXECUTOR(IResearchViewExecutor<,>,)
+              INSTANTIATE_IRESEARCH_EXECUTOR(IResearchViewMergeExecutor<,>,)
               TraversalExecutor, EnumerateListExecutor, SubqueryStartExecutor, SubqueryEndExecutor, SortedCollectExecutor,
               LimitExecutor, NoResultsExecutor, SingleRemoteModificationExecutor<IndexTag>, SingleRemoteModificationExecutor<Insert>,
               SingleRemoteModificationExecutor<Remove>, SingleRemoteModificationExecutor<Update>,
@@ -1894,34 +1876,8 @@ template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<HashedCollectExecutor>;
 
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialize>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::Materialize>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::NotMaterialize>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialize>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::Materialize>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialize>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::Materialize>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<
-    false, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<
-    false, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::NotMaterialize>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialize>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::Materialize>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<
-    true, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<
-    true, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
+INSTANTIATE_IRESEARCH_EXECUTOR(template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<,>>;)
+INSTANTIATE_IRESEARCH_EXECUTOR(template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<,>>;)
 
 template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<ConstFetcher>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>;

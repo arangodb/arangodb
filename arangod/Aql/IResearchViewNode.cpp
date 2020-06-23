@@ -807,39 +807,93 @@ void extractViewValuesVar(aql::VariableGenerator const* vars,
   viewValuesVars[columnNumber].emplace_back(IResearchViewNode::ViewVariable{fieldNumber, var});
 }
 
-template <MaterializeType materializeType>
-constexpr std::unique_ptr<aql::ExecutionBlock> (*executors[])(
+template <MaterializeType materializeType, V8Ownership v8ownership>
+constexpr std::unique_ptr<aql::ExecutionBlock> (*EXECUTORS[])(
     aql::ExecutionEngine*, IResearchViewNode const*, aql::RegisterInfos&&,
     aql::IResearchViewExecutorInfos&&) = {
     [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode,
        aql::RegisterInfos&& registerInfos,
        aql::IResearchViewExecutorInfos&& executorInfos) -> std::unique_ptr<aql::ExecutionBlock> {
-      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<false, materializeType>>>(
+      using Traits = aql::IResearchViewExecutorTraits<false, materializeType, v8ownership>;
+
+      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<Traits>>>(
           engine, viewNode, std::move(registerInfos), std::move(executorInfos));
     },
     [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode,
        aql::RegisterInfos&& registerInfos,
        aql::IResearchViewExecutorInfos&& executorInfos) -> std::unique_ptr<aql::ExecutionBlock> {
-      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<true, materializeType>>>(
+      using Traits = aql::IResearchViewExecutorTraits<true, materializeType, v8ownership>;
+
+      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<Traits>>>(
           engine, viewNode, std::move(registerInfos), std::move(executorInfos));
     },
     [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode,
        aql::RegisterInfos&& registerInfos,
        aql::IResearchViewExecutorInfos&& executorInfos) -> std::unique_ptr<aql::ExecutionBlock> {
-      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<false, materializeType>>>(
+      using Traits = aql::IResearchViewExecutorTraits<false, materializeType, v8ownership>;
+
+      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<Traits>>>(
           engine, viewNode, std::move(registerInfos), std::move(executorInfos));
     },
     [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode,
        aql::RegisterInfos&& registerInfos,
        aql::IResearchViewExecutorInfos&& executorInfos) -> std::unique_ptr<aql::ExecutionBlock> {
-      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<true, materializeType>>>(
+      using Traits = aql::IResearchViewExecutorTraits<false, materializeType, v8ownership>;
+
+      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<Traits>>>(
           engine, viewNode, std::move(registerInfos), std::move(executorInfos));
     }};
 
-constexpr size_t getExecutorIndex(bool sorted, bool ordered) {
-  auto index = static_cast<size_t>(ordered) + 2 * static_cast<size_t>(sorted);
-  TRI_ASSERT(index < IRESEARCH_COUNTOF(executors<MaterializeType::Materialize>));
-  return index;
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wswitch"
+#endif
+
+template<V8Ownership Ownership>
+std::unique_ptr<aql::ExecutionBlock> createBlock(
+    bool ordered,  bool sorted,  MaterializeType materializeType,
+    aql::ExecutionEngine& engine, IResearchViewNode const* node,
+    aql::RegisterInfos&& registerInfos,
+    aql::IResearchViewExecutorInfos&& executorInfos) {
+  const size_t index = static_cast<size_t>(ordered) + 2 * static_cast<size_t>(sorted);
+  TRI_ASSERT(index < IRESEARCH_COUNTOF((::EXECUTORS<MaterializeType::Materialize, arangodb::iresearch::V8Ownership::DoNotAcquire>)));
+
+  switch (materializeType) {
+    case MaterializeType::NotMaterialize:
+      return ::EXECUTORS<MaterializeType::NotMaterialize, Ownership>[index](
+        &engine, node, std::move(registerInfos), std::move(executorInfos));
+    case MaterializeType::LateMaterialize:
+      return ::EXECUTORS<MaterializeType::LateMaterialize, Ownership>[index](
+        &engine, node, std::move(registerInfos), std::move(executorInfos));
+    case MaterializeType::Materialize:
+      return ::EXECUTORS<MaterializeType::Materialize, Ownership>[index](
+        &engine, node, std::move(registerInfos), std::move(executorInfos));
+    case MaterializeType::NotMaterialize | MaterializeType::UseStoredValues:
+      return ::EXECUTORS<MaterializeType::NotMaterialize | MaterializeType::UseStoredValues, Ownership>[index](
+        &engine, node, std::move(registerInfos), std::move(executorInfos));
+    case MaterializeType::LateMaterialize | MaterializeType::UseStoredValues:
+      return ::EXECUTORS<MaterializeType::LateMaterialize | MaterializeType::UseStoredValues, Ownership>[index](
+        &engine, node, std::move(registerInfos), std::move(executorInfos));
+    default:
+      ADB_UNREACHABLE;
+  }
+}
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
+
+V8Ownership v8ownership(aql::IResearchViewExecutorInfos& infos) {
+  if (!infos.filterCondition().willUseV8()) {
+    return V8Ownership::DoNotAcquire;
+  }
+
+  static bool const isRunningInCluster = ServerState::instance()->isRunningInCluster();
+  bool const stream = infos.getQuery().queryOptions().stream;
+
+  return isRunningInCluster || stream
+    ? V8Ownership::Acquire
+    : V8Ownership::AcquireOnce;
 }
 
 }  // namespace
@@ -1384,11 +1438,6 @@ bool IResearchViewNode::filterConditionIsEmpty() const noexcept {
   return ::filterConditionIsEmpty(_filterCondition);
 }
 
-#if defined(__GNUC__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wswitch"
-#endif
-
 std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     aql::ExecutionEngine& engine,
     std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&) const {
@@ -1567,36 +1616,33 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     return createNoResultsExecutor(engine);
   }
 
+  TRI_ASSERT(_sort.first == nullptr || !_sort.first->empty());  // guaranteed by optimizer rule
+
   auto [materializeType, executorInfos, registerInfos] = buildExecutorInfo(engine, std::move(reader));
 
   TRI_ASSERT(_sort.first == nullptr || !_sort.first->empty());  // guaranteed by optimizer rule
+
   bool const ordered = !_scorers.empty();
-  switch (materializeType) {
-    case MaterializeType::NotMaterialize:
-      return ::executors<MaterializeType::NotMaterialize>[getExecutorIndex(_sort.first != nullptr, ordered)](
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
-    case MaterializeType::LateMaterialize:
-      return ::executors<MaterializeType::LateMaterialize>[getExecutorIndex(_sort.first != nullptr, ordered)](
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
-    case MaterializeType::Materialize:
-      return ::executors<MaterializeType::Materialize>[getExecutorIndex(_sort.first != nullptr, ordered)](
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
-    case MaterializeType::NotMaterialize | MaterializeType::UseStoredValues:
-      return ::executors<MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>[getExecutorIndex(
-          _sort.first != nullptr, ordered)](&engine, this, std::move(registerInfos),
-                                            std::move(executorInfos));
-    case MaterializeType::LateMaterialize | MaterializeType::UseStoredValues:
-      return ::executors<MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>[getExecutorIndex(
-          _sort.first != nullptr, ordered)](&engine, this, std::move(registerInfos),
-                                            std::move(executorInfos));
+  bool const sorted = _sort.first != nullptr;
+
+  switch (::v8ownership(executorInfos)) {
+    case V8Ownership::DoNotAcquire:
+      return ::createBlock<V8Ownership::DoNotAcquire>(
+        ordered, sorted, materializeType, engine,
+        this, std::move(registerInfos), std::move(executorInfos));
+    case V8Ownership::AcquireOnce:
+      return ::createBlock<V8Ownership::AcquireOnce>(
+        ordered, sorted, materializeType, engine,
+        this, std::move(registerInfos), std::move(executorInfos));
+    case V8Ownership::Acquire:
+      return ::createBlock<V8Ownership::Acquire>(
+        ordered, sorted, materializeType, engine,
+        this, std::move(registerInfos), std::move(executorInfos));
     default:
       ADB_UNREACHABLE;
   }
 }
 
-#if defined(__GNUC__)
-#pragma GCC diagnostic pop
-#endif
 
 bool IResearchViewNode::OptimizationState::canVariablesBeReplaced(aql::CalculationNode* calclulationNode) const {
   return _nodesToChange.find(calclulationNode) != _nodesToChange.cend();  // contains()

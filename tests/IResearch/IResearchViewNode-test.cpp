@@ -2595,10 +2595,13 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
 
     // after transaction has started
     {
+      using Traits = arangodb::aql::IResearchViewExecutorTraits<
+        false, arangodb::iresearch::MaterializeType::Materialize, arangodb::iresearch::V8Ownership::DoNotAcquire>;
+
       auto block = node.createBlock(engine, EMPTY);
       EXPECT_NE(nullptr, block);
       EXPECT_NE(nullptr,
-                  (dynamic_cast<arangodb::aql::ExecutionBlockImpl<arangodb::aql::IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::Materialize>>*>(
+                  (dynamic_cast<arangodb::aql::ExecutionBlockImpl<arangodb::aql::IResearchViewExecutor<Traits>>*>(
                       block.get())));
     }
   }

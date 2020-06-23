@@ -31,6 +31,7 @@
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
 var analyzers = require("@arangodb/analyzers");
+var aqlfunctions = require("@arangodb/aql/functions");
 var ERRORS = require("@arangodb").errors;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -44,6 +45,10 @@ function iResearchAqlTestSuite () {
   var v2;
   return {
     setUpAll : function () {
+      aqlfunctions.unregisterGroup("UnitTests::");
+      aqlfunctions.register("UnitTests::tryme::forward", function (v) { return v; }, true);
+      aqlfunctions.register("UnitTests::tryme::forwardNondeterm", function (v) { return v; }, false);
+
       db._drop("AuxUnitTestsCollection");
       let auxCol = db._create("AuxUnitTestsCollection");
       auxCol.save({ foobar: ['foo', 'bar'], foo: ['foo'], bar:['bar'], empty: []});
@@ -76,6 +81,7 @@ function iResearchAqlTestSuite () {
       arrayV.properties(meta);
     },
     tearDownAll : function () {
+      aqlfunctions.unregisterGroup("UnitTests::");
       db._drop("AnotherUnitTestsCollection");
       db._drop("AuxUnitTestsCollection");
       db._dropView("UnitTestsWithArrayView");
@@ -301,6 +307,34 @@ function iResearchAqlTestSuite () {
       result.forEach(function(res) {
         assertEqual(res.a, "foo");
       });
+    },
+
+    testDetermV8Function0: function () {
+      var result = db._query("FOR doc IN UnitTestsView SEARCH doc.a == 'foo' && UnitTests::tryme::forward(true) OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result.length, 10);
+      result.forEach(function(res) {
+        assertEqual(res.a, "foo");
+      });
+    },
+
+    testDetermV8Function1 : function () {
+      var result = db._query("FOR doc IN UnitTestsView SEARCH doc.a == 'foo' && UnitTests::tryme::forward(false) OPTIONS { waitForSync : true } RETURN doc").toArray();
+      assertEqual(result.length, 0);
+    },
+
+    testNonDetermV8Function0 : function () {
+      var result = db._query("FOR doc IN UnitTestsView SEARCH doc.a == 'foo' && UnitTests::tryme::forwardNondeterm(true) OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result.length, 10);
+      result.forEach(function(res) {
+        assertEqual(res.a, "foo");
+      });
+    },
+
+    testNonDetermV8Function1 : function () {
+      var result = db._query("FOR doc IN UnitTestsView SEARCH doc.a == 'foo' && UnitTests::tryme::forwardNondeterm(false) OPTIONS { waitForSync : true } RETURN doc").toArray();
+      assertEqual(result.length, 0);
     },
 
     testMultipleAttributeEqualityFilter : function () {

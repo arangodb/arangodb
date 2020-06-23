@@ -52,6 +52,13 @@ class LogicalCollection;
 
 namespace iresearch {
 struct Scorer;
+
+enum class V8Ownership {
+  DoNotAcquire,
+  AcquireOnce,
+  Acquire
+};
+
 }
 
 namespace aql {
@@ -62,6 +69,28 @@ class OutputAqlItemRow;
 template <BlockPassthrough>
 class SingleRowFetcher;
 class QueryContext;
+
+using iresearch::V8Ownership;
+
+template<V8Ownership Ownership>
+class V8ContextGuard {
+ public:
+  void enter(arangodb::aql::QueryContext& ctx);
+  void exit() noexcept;
+  [[maybe_unused]] bool owns() const noexcept { return nullptr != _ctx; }
+  ~V8ContextGuard();
+
+ private:
+  arangodb::aql::QueryContext* _ctx{};
+}; // V8ContextGuard
+
+template<>
+class V8ContextGuard<V8Ownership::DoNotAcquire> {
+ public:
+  void enter(arangodb::aql::QueryContext&) noexcept { }
+  void exit() noexcept { }
+  [[maybe_unused]] bool owns() const noexcept { return false; }
+}; // V8ContextGuard
 
 class IResearchViewExecutorInfos {
  public:
@@ -173,10 +202,17 @@ struct FilterCtx final : irs::attribute_provider {
   iresearch::ExpressionExecutionContext _execCtx;  // expression execution context
 }; // FilterCtx
 
-template <typename Impl>
-struct IResearchViewExecutorTraits;
+template<bool ordered, iresearch::MaterializeType materializeType, V8Ownership v8ownership>
+struct IResearchViewExecutorTraits {
+  static constexpr bool Ordered = ordered;
+  static constexpr iresearch::MaterializeType MaterializeType = materializeType;
+  static constexpr V8Ownership V8ContextOwnership = v8ownership;
+};
 
-template <typename Impl, typename Traits = IResearchViewExecutorTraits<Impl>>
+template<typename Impl>
+struct IResearchViewExecutorBaseTraits;
+
+template <typename Impl, typename ExecutorTraits = IResearchViewExecutorBaseTraits<Impl>>
 class IResearchViewExecutorBase {
  public:
   struct Properties {
@@ -190,6 +226,7 @@ class IResearchViewExecutorBase {
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = IResearchViewExecutorInfos;
   using Stats = IResearchViewStats;
+  using Traits = IResearchViewExecutorBaseTraits<Impl>;
 
   /**
    * @brief produce the next Rows of Aql Values.
@@ -392,16 +429,18 @@ class IResearchViewExecutorBase {
   irs::filter::prepared::ptr _filter;
   irs::order::prepared _order;
   std::vector<ColumnIterator> _storedValuesReaders;  // current stored values readers
+  V8ContextGuard<Traits::V8ContextOwnership> _v8ctx;
   bool _isInitialized;
 };  // IResearchViewExecutorBase
 
-template <bool ordered, iresearch::MaterializeType materializeType>
+template<typename ExecutorTraits>
 class IResearchViewExecutor
-    : public IResearchViewExecutorBase<IResearchViewExecutor<ordered, materializeType>> {
+    : public IResearchViewExecutorBase<IResearchViewExecutor<ExecutorTraits>> {
  public:
-  using Base = IResearchViewExecutorBase<IResearchViewExecutor<ordered, materializeType>>;
+  using Base = IResearchViewExecutorBase<IResearchViewExecutor<ExecutorTraits>>;
   using Fetcher = typename Base::Fetcher;
   using Infos = typename Base::Infos;
+  using Traits = typename Base::Traits;
 
   IResearchViewExecutor(IResearchViewExecutor&&) = default;
   IResearchViewExecutor(Fetcher& fetcher, Infos&);
@@ -442,24 +481,21 @@ class IResearchViewExecutor
   // case ordered only:
   irs::score const* _scr;
   irs::bytes_ref _scrVal;
-};  // IResearchViewExecutor
+}; // IResearchViewExecutor
 
-template <bool ordered, iresearch::MaterializeType materializeType>
-struct IResearchViewExecutorTraits<IResearchViewExecutor<ordered, materializeType>> {
+template<typename ExecutorTraits>
+struct IResearchViewExecutorBaseTraits<IResearchViewExecutor<ExecutorTraits>> : ExecutorTraits {
   using IndexBufferValueType = LocalDocumentId;
-  static constexpr bool Ordered = ordered;
-  static constexpr iresearch::MaterializeType MaterializeType = materializeType;
 };
 
-template <bool ordered, iresearch::MaterializeType materializeType>
+template<typename ExecutorTraits>
 class IResearchViewMergeExecutor
-    : public IResearchViewExecutorBase<IResearchViewMergeExecutor<ordered, materializeType>> {
+    : public IResearchViewExecutorBase<IResearchViewMergeExecutor<ExecutorTraits>> {
  public:
-  using Base = IResearchViewExecutorBase<IResearchViewMergeExecutor<ordered, materializeType>>;
+  using Base = IResearchViewExecutorBase<IResearchViewMergeExecutor<ExecutorTraits>>;
   using Fetcher = typename Base::Fetcher;
   using Infos = typename Base::Infos;
-
-  static constexpr bool Ordered = ordered;
+  using Traits = typename Base::Traits;
 
   IResearchViewMergeExecutor(IResearchViewMergeExecutor&&) = default;
   IResearchViewMergeExecutor(Fetcher& fetcher, Infos&);
@@ -523,14 +559,44 @@ class IResearchViewMergeExecutor
   irs::external_heap_iterator<MinHeapContext> _heap_it;
 };  // IResearchViewMergeExecutor
 
-template <bool ordered, iresearch::MaterializeType materializeType>
-struct IResearchViewExecutorTraits<IResearchViewMergeExecutor<ordered, materializeType>> {
+template<typename ExecutorTraits>
+struct IResearchViewExecutorBaseTraits<IResearchViewMergeExecutor<ExecutorTraits>> : ExecutorTraits {
   using IndexBufferValueType = std::pair<LocalDocumentId, LogicalCollection const*>;
-  static constexpr bool Ordered = ordered;
-  static constexpr iresearch::MaterializeType MaterializeType = materializeType;
 };
 
 }  // namespace aql
 }  // namespace arangodb
+
+#define INSTANTIATE_IRESEARCH_EXECUTOR(prefix, ...) \
+  prefix IResearchViewExecutorTraits<false, arangodb::iresearch::MaterializeType::NotMaterialize, arangodb::iresearch::V8Ownership::DoNotAcquire> __VA_ARGS__ \
+  prefix IResearchViewExecutorTraits<false, arangodb::iresearch::MaterializeType::NotMaterialize, arangodb::iresearch::V8Ownership::AcquireOnce> __VA_ARGS__ \
+  prefix IResearchViewExecutorTraits<false, arangodb::iresearch::MaterializeType::NotMaterialize, arangodb::iresearch::V8Ownership::Acquire> __VA_ARGS__ \
+  prefix IResearchViewExecutorTraits<false, arangodb::iresearch::MaterializeType::LateMaterialize, arangodb::iresearch::V8Ownership::DoNotAcquire> __VA_ARGS__ \
+  prefix IResearchViewExecutorTraits<false, arangodb::iresearch::MaterializeType::LateMaterialize, arangodb::iresearch::V8Ownership::AcquireOnce> __VA_ARGS__ \
+  prefix IResearchViewExecutorTraits<false, arangodb::iresearch::MaterializeType::LateMaterialize, arangodb::iresearch::V8Ownership::Acquire> __VA_ARGS__ \
+  prefix IResearchViewExecutorTraits<false, arangodb::iresearch::MaterializeType::Materialize, arangodb::iresearch::V8Ownership::DoNotAcquire> __VA_ARGS__ \
+  prefix IResearchViewExecutorTraits<false, arangodb::iresearch::MaterializeType::Materialize, arangodb::iresearch::V8Ownership::AcquireOnce> __VA_ARGS__ \
+  prefix IResearchViewExecutorTraits<false, arangodb::iresearch::MaterializeType::Materialize, arangodb::iresearch::V8Ownership::Acquire> __VA_ARGS__ \
+  prefix IResearchViewExecutorTraits<false, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues, arangodb::iresearch::V8Ownership::DoNotAcquire> __VA_ARGS__ \
+  prefix IResearchViewExecutorTraits<false, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues, arangodb::iresearch::V8Ownership::AcquireOnce> __VA_ARGS__ \
+  prefix IResearchViewExecutorTraits<false, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues, arangodb::iresearch::V8Ownership::Acquire> __VA_ARGS__ \
+  prefix IResearchViewExecutorTraits<false, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues, arangodb::iresearch::V8Ownership::DoNotAcquire> __VA_ARGS__ \
+  prefix IResearchViewExecutorTraits<false, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues, arangodb::iresearch::V8Ownership::AcquireOnce> __VA_ARGS__ \
+  prefix IResearchViewExecutorTraits<false, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues, arangodb::iresearch::V8Ownership::Acquire> __VA_ARGS__ \
+  prefix IResearchViewExecutorTraits<true, arangodb::iresearch::MaterializeType::NotMaterialize, arangodb::iresearch::V8Ownership::DoNotAcquire> __VA_ARGS__ \
+  prefix IResearchViewExecutorTraits<true, arangodb::iresearch::MaterializeType::NotMaterialize, arangodb::iresearch::V8Ownership::AcquireOnce> __VA_ARGS__ \
+  prefix IResearchViewExecutorTraits<true, arangodb::iresearch::MaterializeType::NotMaterialize, arangodb::iresearch::V8Ownership::Acquire> __VA_ARGS__ \
+  prefix IResearchViewExecutorTraits<true, arangodb::iresearch::MaterializeType::LateMaterialize, arangodb::iresearch::V8Ownership::DoNotAcquire> __VA_ARGS__ \
+  prefix IResearchViewExecutorTraits<true, arangodb::iresearch::MaterializeType::LateMaterialize, arangodb::iresearch::V8Ownership::AcquireOnce> __VA_ARGS__ \
+  prefix IResearchViewExecutorTraits<true, arangodb::iresearch::MaterializeType::LateMaterialize, arangodb::iresearch::V8Ownership::Acquire> __VA_ARGS__ \
+  prefix IResearchViewExecutorTraits<true, arangodb::iresearch::MaterializeType::Materialize, arangodb::iresearch::V8Ownership::DoNotAcquire> __VA_ARGS__ \
+  prefix IResearchViewExecutorTraits<true, arangodb::iresearch::MaterializeType::Materialize, arangodb::iresearch::V8Ownership::AcquireOnce> __VA_ARGS__ \
+  prefix IResearchViewExecutorTraits<true, arangodb::iresearch::MaterializeType::Materialize, arangodb::iresearch::V8Ownership::Acquire> __VA_ARGS__ \
+  prefix IResearchViewExecutorTraits<true, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues, arangodb::iresearch::V8Ownership::DoNotAcquire> __VA_ARGS__ \
+  prefix IResearchViewExecutorTraits<true, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues, arangodb::iresearch::V8Ownership::AcquireOnce> __VA_ARGS__ \
+  prefix IResearchViewExecutorTraits<true, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues, arangodb::iresearch::V8Ownership::Acquire> __VA_ARGS__ \
+  prefix IResearchViewExecutorTraits<true, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues, arangodb::iresearch::V8Ownership::DoNotAcquire> __VA_ARGS__ \
+  prefix IResearchViewExecutorTraits<true, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues, arangodb::iresearch::V8Ownership::AcquireOnce> __VA_ARGS__ \
+  prefix IResearchViewExecutorTraits<true, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues, arangodb::iresearch::V8Ownership::Acquire> __VA_ARGS__ \
 
 #endif  // ARANGOD_IRESEARCH__IRESEARCH_EXECUTOR_H

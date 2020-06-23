@@ -108,6 +108,56 @@ inline void reset(ColumnIterator& column, irs::doc_iterator::ptr&& itr) noexcept
 }  // namespace
 
 ///////////////////////////////////////////////////////////////////////////////
+/// --SECTION--                                                  V8ContextGuard
+///////////////////////////////////////////////////////////////////////////////
+
+template<>
+void V8ContextGuard<V8Ownership::Acquire>::enter(arangodb::aql::QueryContext& ctx) {
+  if (!_ctx) {
+    ctx.enterV8Context();
+    _ctx = &ctx;
+  }
+}
+
+template<>
+void V8ContextGuard<V8Ownership::Acquire>::exit() noexcept {
+  if (!_ctx) {
+    return;
+  }
+
+  try {
+    _ctx->exitV8Context();
+  } catch (...) { }
+}
+
+template<>
+V8ContextGuard<V8Ownership::Acquire>::~V8ContextGuard() {
+  exit();
+}
+
+template<>
+void V8ContextGuard<V8Ownership::AcquireOnce>::enter(arangodb::aql::QueryContext& ctx) {
+  if (!_ctx) {
+    ctx.enterV8Context();
+    _ctx = &ctx;
+  }
+}
+
+template<>
+void V8ContextGuard<V8Ownership::AcquireOnce>::exit() noexcept { }
+
+template<>
+V8ContextGuard<V8Ownership::AcquireOnce>::~V8ContextGuard() {
+  if (!_ctx) {
+    return;
+  }
+
+  try {
+    _ctx->exitV8Context();
+  } catch (...) { }
+}
+
+///////////////////////////////////////////////////////////////////////////////
 /// --SECTION--                                       IResearchViewExecutorBase
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -230,8 +280,8 @@ ExecutionStats& aql::operator+=(ExecutionStats& executionStats,
 /// --SECTION--                                       IResearchViewExecutorBase
 ///////////////////////////////////////////////////////////////////////////////
 
-template <typename Impl, typename Traits>
-template <arangodb::iresearch::MaterializeType, typename>
+template<typename Impl, typename Traits>
+template<arangodb::iresearch::MaterializeType, typename>
 IndexIterator::DocumentCallback IResearchViewExecutorBase<Impl, Traits>::ReadContext::copyDocumentCallback(
     ReadContext& ctx) {
   typedef std::function<IndexIterator::DocumentCallback(ReadContext&)> CallbackFactory;
@@ -247,7 +297,7 @@ IndexIterator::DocumentCallback IResearchViewExecutorBase<Impl, Traits>::ReadCon
 
   return callbackFactory(ctx);
 }
-template <typename Impl, typename Traits>
+template<typename Impl, typename Traits>
 IResearchViewExecutorBase<Impl, Traits>::ReadContext::ReadContext(
     aql::RegisterId documentOutReg, aql::RegisterId collectionPointerReg,
     InputAqlItemRow& inputRow, OutputAqlItemRow& outputRow)
@@ -262,11 +312,11 @@ IResearchViewExecutorBase<Impl, Traits>::ReadContext::ReadContext(
   }
 }
 
-template <typename Impl, typename Traits>
+template<typename Impl, typename Traits>
 IResearchViewExecutorBase<Impl, Traits>::IndexReadBufferEntry::IndexReadBufferEntry(size_t keyIdx) noexcept
     : _keyIdx(keyIdx) {}
 
-template <typename Impl, typename Traits>
+template<typename Impl, typename Traits>
 template <typename ValueType>
 IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::IndexReadBuffer::ScoreIterator::ScoreIterator(
     std::vector<AqlValue>& scoreBuffer, size_t keyIdx, size_t numScores) noexcept
@@ -274,26 +324,26 @@ IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::IndexReadBu
   TRI_ASSERT(_scoreBaseIdx + _numScores <= _scoreBuffer.size());
 }
 
-template <typename Impl, typename Traits>
+template<typename Impl, typename Traits>
 template <typename ValueType>
 std::vector<AqlValue>::iterator IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<
     ValueType>::IndexReadBuffer::ScoreIterator::begin() noexcept {
   return _scoreBuffer.begin() + static_cast<ptrdiff_t>(_scoreBaseIdx);
 }
 
-template <typename Impl, typename Traits>
+template<typename Impl, typename Traits>
 template <typename ValueType>
 std::vector<AqlValue>::iterator IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<
     ValueType>::IndexReadBuffer::ScoreIterator::end() noexcept {
   return _scoreBuffer.begin() + static_cast<ptrdiff_t>(_scoreBaseIdx + _numScores);
 }
 
-template <typename Impl, typename Traits>
+template<typename Impl, typename Traits>
 template <typename ValueType>
 IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::IndexReadBuffer(size_t const numScoreRegisters)
     : _numScoreRegisters(numScoreRegisters), _keyBaseIdx(0) {}
 
-template <typename Impl, typename Traits>
+template<typename Impl, typename Traits>
 template <typename ValueType>
 ValueType const& IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::getValue(
     const IResearchViewExecutorBase::IndexReadBufferEntry bufferEntry) const noexcept {
@@ -302,7 +352,7 @@ ValueType const& IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueT
   return _keyBuffer[bufferEntry._keyIdx];
 }
 
-template <typename Impl, typename Traits>
+template<typename Impl, typename Traits>
 template <typename ValueType>
 typename IResearchViewExecutorBase<Impl, Traits>::template IndexReadBuffer<ValueType>::ScoreIterator
 IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::getScores(
@@ -311,20 +361,20 @@ IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::getScores(
   return ScoreIterator{_scoreBuffer, bufferEntry._keyIdx, _numScoreRegisters};
 }
 
-template <typename Impl, typename Traits>
+template<typename Impl, typename Traits>
 template <typename ValueType>
 template <typename... Args>
 void IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::pushValue(Args&&... args) {
   _keyBuffer.emplace_back(std::forward<Args>(args)...);
 }
 
-template <typename Impl, typename Traits>
+template<typename Impl, typename Traits>
 template <typename ValueType>
 std::vector<irs::bytes_ref>& IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::getStoredValues() noexcept {
   return _storedValuesBuffer;
 }
 
-template <typename Impl, typename Traits>
+template<typename Impl, typename Traits>
 template <typename ValueType>
 std::vector<irs::bytes_ref> const&
 IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::getStoredValues() const
@@ -332,19 +382,19 @@ IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::getStoredVa
   return _storedValuesBuffer;
 }
 
-template <typename Impl, typename Traits>
+template<typename Impl, typename Traits>
 template <typename ValueType>
 void IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::pushScore(float_t const scoreValue) {
   _scoreBuffer.emplace_back(AqlValueHintDouble{static_cast<double>(scoreValue)});
 }
 
-template <typename Impl, typename Traits>
+template<typename Impl, typename Traits>
 template <typename ValueType>
 void IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::pushScoreNone() {
   _scoreBuffer.emplace_back();
 }
 
-template <typename Impl, typename Traits>
+template<typename Impl, typename Traits>
 template <typename ValueType>
 void IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::reset() noexcept {
   // Should only be called after everything was consumed
@@ -355,7 +405,7 @@ void IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::reset(
   _storedValuesBuffer.clear();
 }
 
-template <typename Impl, typename Traits>
+template<typename Impl, typename Traits>
 template <typename ValueType>
 size_t IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::size() const
     noexcept {
@@ -363,14 +413,14 @@ size_t IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::size
   return _keyBuffer.size() - _keyBaseIdx;
 }
 
-template <typename Impl, typename Traits>
+template<typename Impl, typename Traits>
 template <typename ValueType>
 bool IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::empty() const
     noexcept {
   return size() == 0;
 }
 
-template <typename Impl, typename Traits>
+template<typename Impl, typename Traits>
 template <typename ValueType>
 typename IResearchViewExecutorBase<Impl, Traits>::IndexReadBufferEntry
 IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::pop_front() noexcept {
@@ -382,14 +432,14 @@ IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::pop_front()
   return entry;
 }
 
-template <typename Impl, typename Traits>
+template<typename Impl, typename Traits>
 template <typename ValueType>
 void IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::assertSizeCoherence() const
     noexcept {
   TRI_ASSERT(_scoreBuffer.size() == _keyBuffer.size() * _numScoreRegisters);
 }
 
-template <typename Impl, typename Traits>
+template<typename Impl, typename Traits>
 IResearchViewExecutorBase<Impl, Traits>::IResearchViewExecutorBase(
     IResearchViewExecutorBase::Fetcher&, IResearchViewExecutorBase::Infos& infos)
     : _trx(infos.getQuery().newTrxContext()),
@@ -404,10 +454,16 @@ IResearchViewExecutorBase<Impl, Traits>::IResearchViewExecutorBase(
       _isInitialized(false) {
 }
 
-template <typename Impl, typename Traits>
+template<typename Impl, typename Traits>
 std::tuple<ExecutorState, typename IResearchViewExecutorBase<Impl, Traits>::Stats, AqlCall>
 IResearchViewExecutorBase<Impl, Traits>::produceRows(AqlItemBlockInputRange& inputRange,
                                                      OutputAqlItemRow& output) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto ensureV8ContextOwnership = scopeGuard([this](){
+    TRI_ASSERT(Traits::V8ContextOwnership == V8Ownership::AcquireOnce || !_v8ctx.owns());
+  });
+#endif
+
   IResearchViewStats stats{};
   AqlCall upstreamCall{};
   upstreamCall.fullCount = output.getClientCall().fullCount;
@@ -422,6 +478,9 @@ IResearchViewExecutorBase<Impl, Traits>::produceRows(AqlItemBlockInputRange& inp
         if (!_inputRow.isInitialized()) {
           return {ExecutorState::DONE, stats, upstreamCall};
         }
+
+        // we might need to enter V8 context before building a filter
+        _v8ctx.enter(_infos.getQuery());
 
         // reset must be called exactly after we've got a new and valid input row.
         static_cast<Impl&>(*this).reset();
@@ -445,10 +504,16 @@ IResearchViewExecutorBase<Impl, Traits>::produceRows(AqlItemBlockInputRange& inp
   return {inputRange.upstreamState(), stats, upstreamCall};
 }
 
-template <typename Impl, typename Traits>
+template<typename Impl, typename Traits>
 std::tuple<ExecutorState, typename IResearchViewExecutorBase<Impl, Traits>::Stats, size_t, AqlCall>
 IResearchViewExecutorBase<Impl, Traits>::skipRowsRange(AqlItemBlockInputRange& inputRange,
                                                        AqlCall& call) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto ensureV8ContextOwnership = scopeGuard([this](){
+    TRI_ASSERT(Traits::V8ContextOwnership == V8Ownership::AcquireOnce || !_v8ctx.owns());
+  });
+#endif
+
   TRI_ASSERT(_indexReadBuffer.empty());
   auto& impl = static_cast<Impl&>(*this);
 
@@ -462,19 +527,29 @@ IResearchViewExecutorBase<Impl, Traits>::skipRowsRange(AqlItemBlockInputRange& i
         break;
       }
 
+      // we might need to enter V8 context before building a filter
+      _v8ctx.enter(_infos.getQuery());
+
       // reset must be called exactly after we've got a new and valid input row.
       impl.reset();
     }
-    TRI_ASSERT(_inputRow.isInitialized());
-    if (call.getOffset() > 0) {
-      // OffsetPhase need to skip atMost offset
-      call.didSkip(impl.skip(call.getOffset()));
-    } else {
-      TRI_ASSERT(call.getLimit() == 0 && call.hasHardLimit());
-      // skip all - fullCount phase
-      call.didSkip(impl.skipAll());
+
+    {
+      // we might need to enter V8 context before skipping
+      _v8ctx.enter(_infos.getQuery());
+      auto exitContext = scopeGuard([this](){ _v8ctx.exit(); });
+
+      TRI_ASSERT(_inputRow.isInitialized());
+      if (call.getOffset() > 0) {
+        // OffsetPhase need to skip atMost offset
+        call.didSkip(impl.skip(call.getOffset()));
+      } else {
+        TRI_ASSERT(call.getLimit() == 0 && call.hasHardLimit());
+        // skip all - fullCount phase
+        call.didSkip(impl.skipAll());
+      }
+      TRI_ASSERT(_indexReadBuffer.empty());
     }
-    TRI_ASSERT(_indexReadBuffer.empty());
 
     if (call.shouldSkip()) {
       // We still need to fetch more
@@ -497,12 +572,16 @@ IResearchViewExecutorBase<Impl, Traits>::skipRowsRange(AqlItemBlockInputRange& i
   return {inputRange.upstreamState(), stats, call.getSkipCount(), upstreamCall};
 }
 
-template <typename Impl, typename Traits>
+template<typename Impl, typename Traits>
 bool IResearchViewExecutorBase<Impl, Traits>::next(ReadContext& ctx) {
   auto& impl = static_cast<Impl&>(*this);
 
   while (true) {
     if (_indexReadBuffer.empty()) {
+      // we need to enter V8 context before filling a buffer
+      _v8ctx.enter(_infos.getQuery());
+      auto exitContext = scopeGuard([this](){ _v8ctx.exit(); });
+
       impl.fillBuffer(ctx);
     }
 
@@ -524,13 +603,13 @@ bool IResearchViewExecutorBase<Impl, Traits>::next(ReadContext& ctx) {
   return true;
 }
 
-template <typename Impl, typename Traits>
+template<typename Impl, typename Traits>
 typename IResearchViewExecutorBase<Impl, Traits>::Infos const&
 IResearchViewExecutorBase<Impl, Traits>::infos() const noexcept {
   return _infos;
 }
 
-template <typename Impl, typename Traits>
+template<typename Impl, typename Traits>
 void IResearchViewExecutorBase<Impl, Traits>::fillScores(ReadContext const& /*ctx*/,
                                                          float_t const* begin,
                                                          float_t const* end) {
@@ -559,7 +638,7 @@ void IResearchViewExecutorBase<Impl, Traits>::fillScores(ReadContext const& /*ct
   TRI_ASSERT(numScoreReg == scoreRegs.size());
 }
 
-template <typename Impl, typename Traits>
+template<typename Impl, typename Traits>
 void IResearchViewExecutorBase<Impl, Traits>::reset() {
   _ctx._inputRow = _inputRow;
 
@@ -608,7 +687,7 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
   }
 }
 
-template <typename Impl, typename Traits>
+template<typename Impl, typename Traits>
 template <arangodb::iresearch::MaterializeType, typename>
 bool IResearchViewExecutorBase<Impl, Traits>::writeLocalDocumentId(
     ReadContext& ctx, LocalDocumentId const& documentId, LogicalCollection const& collection) {
@@ -634,7 +713,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeLocalDocumentId(
   }
 }
 
-template <typename Impl, typename Traits>
+template<typename Impl, typename Traits>
 inline bool IResearchViewExecutorBase<Impl, Traits>::writeStoredValue(
     ReadContext& ctx, std::vector<irs::bytes_ref> const& storedValues,
     size_t index, std::map<size_t, RegisterId> const& fieldsRegs) {
@@ -663,7 +742,7 @@ inline bool IResearchViewExecutorBase<Impl, Traits>::writeStoredValue(
   return true;
 }
 
-template <typename Impl, typename Traits>
+template<typename Impl, typename Traits>
 bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
                                                        IndexReadBufferEntry bufferEntry,
                                                        LocalDocumentId const& documentId,
@@ -718,7 +797,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
   return true;
 }
 
-template <typename Impl, typename Traits>
+template<typename Impl, typename Traits>
 void IResearchViewExecutorBase<Impl, Traits>::readStoredValues(irs::document const& doc,
                                                                size_t index) {
   TRI_ASSERT(index < _storedValuesReaders.size());
@@ -737,7 +816,7 @@ void IResearchViewExecutorBase<Impl, Traits>::readStoredValues(irs::document con
   }
 }
 
-template <typename Impl, typename Traits>
+template<typename Impl, typename Traits>
 void IResearchViewExecutorBase<Impl, Traits>::pushStoredValues(irs::document const& doc,
                                                                size_t storedValuesIndex /*= 0*/) {
   auto const& columnsFieldsRegs = _infos.getOutNonMaterializedViewRegs();
@@ -748,7 +827,7 @@ void IResearchViewExecutorBase<Impl, Traits>::pushStoredValues(irs::document con
   }
 }
 
-template <typename Impl, typename Traits>
+template<typename Impl, typename Traits>
 bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(
     irs::sub_reader const& segmentReader, size_t storedValuesIndex /*= 0*/) {
   auto const& columnsFieldsRegs = _infos.getOutNonMaterializedViewRegs();
@@ -794,22 +873,22 @@ bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(
 /// --SECTION--                                           IResearchViewExecutor
 ///////////////////////////////////////////////////////////////////////////////
 
-template <bool ordered, MaterializeType materializeType>
-IResearchViewExecutor<ordered, materializeType>::IResearchViewExecutor(Fetcher& fetcher,
-                                                                       Infos& infos)
-    : Base(fetcher, infos),
-      _pkReader(),
-      _itr(),
-      _readerOffset(0),
-      _scr(&irs::score::no_score()),
-      _scrVal() {
+template<typename Traits>
+IResearchViewExecutor<Traits>::IResearchViewExecutor(
+    Fetcher& fetcher, Infos& infos)
+  : Base(fetcher, infos),
+    _pkReader(),
+    _itr(),
+    _readerOffset(0),
+    _scr(&irs::score::no_score()),
+    _scrVal() {
   this->_storedValuesReaders.resize(this->_infos.getOutNonMaterializedViewRegs().size());
 }
 
-template <bool ordered, MaterializeType materializeType>
-void IResearchViewExecutor<ordered, materializeType>::evaluateScores(ReadContext const& ctx) {
+template<typename Traits>
+void IResearchViewExecutor<Traits>::evaluateScores(ReadContext const& ctx) {
   // This must not be called in the unordered case.
-  TRI_ASSERT(ordered);
+  TRI_ASSERT(Traits::Ordered);
 
   // evaluate scores
   _scr->evaluate();
@@ -821,8 +900,8 @@ void IResearchViewExecutor<ordered, materializeType>::evaluateScores(ReadContext
   this->fillScores(ctx, begin, end);
 }
 
-template <bool ordered, MaterializeType materializeType>
-bool IResearchViewExecutor<ordered, materializeType>::readPK(LocalDocumentId& documentId) {
+template<typename Traits>
+bool IResearchViewExecutor<Traits>::readPK(LocalDocumentId& documentId) {
   TRI_ASSERT(!documentId.isSet());
   TRI_ASSERT(_itr);
   TRI_ASSERT(_doc);
@@ -849,8 +928,8 @@ bool IResearchViewExecutor<ordered, materializeType>::readPK(LocalDocumentId& do
   return false;
 }
 
-template <bool ordered, MaterializeType materializeType>
-void IResearchViewExecutor<ordered, materializeType>::fillBuffer(IResearchViewExecutor::ReadContext& ctx) {
+template<typename Traits>
+void IResearchViewExecutor<Traits>::fillBuffer(IResearchViewExecutor::ReadContext& ctx) {
   TRI_ASSERT(this->_filter != nullptr);
 
   size_t const atMost = ctx.outputRow.numRowsLeft();
@@ -920,12 +999,12 @@ void IResearchViewExecutor<ordered, materializeType>::fillBuffer(IResearchViewEx
     this->_indexReadBuffer.pushValue(documentId);
 
     // in the ordered case we have to write scores as well as a document
-    if constexpr (ordered) {
+    if constexpr (Traits::Ordered) {
       // Writes into _scoreBuffer
       evaluateScores(ctx);
     }
 
-    if constexpr ((materializeType & MaterializeType::UseStoredValues) ==
+    if constexpr ((Traits::MaterializeType & MaterializeType::UseStoredValues) ==
                   MaterializeType::UseStoredValues) {
       TRI_ASSERT(_doc);
       this->pushStoredValues(*_doc);
@@ -949,8 +1028,8 @@ void IResearchViewExecutor<ordered, materializeType>::fillBuffer(IResearchViewEx
   }
 }
 
-template <bool ordered, MaterializeType materializeType>
-bool IResearchViewExecutor<ordered, materializeType>::resetIterator() {
+template<typename Traits>
+bool IResearchViewExecutor<Traits>::resetIterator() {
   TRI_ASSERT(this->_filter);
   TRI_ASSERT(!_itr);
 
@@ -967,7 +1046,7 @@ bool IResearchViewExecutor<ordered, materializeType>::resetIterator() {
 
   ::reset(_pkReader, std::move(it));
 
-  if constexpr ((materializeType & MaterializeType::UseStoredValues) ==
+  if constexpr ((Traits::MaterializeType & MaterializeType::UseStoredValues) ==
                 MaterializeType::UseStoredValues) {
     if (ADB_UNLIKELY(!this->getStoredValuesReaders(segmentReader))) {
       return false;
@@ -980,7 +1059,7 @@ bool IResearchViewExecutor<ordered, materializeType>::resetIterator() {
   _doc = irs::get<irs::document>(*_itr);
   TRI_ASSERT(_doc);
 
-  if constexpr (ordered) {
+  if constexpr (Traits::Ordered) {
     _scr = irs::get<irs::score>(*_itr);
 
     if (_scr && !_scr->empty()) {
@@ -1001,8 +1080,8 @@ bool IResearchViewExecutor<ordered, materializeType>::resetIterator() {
   return true;
 }
 
-template <bool ordered, MaterializeType materializeType>
-void IResearchViewExecutor<ordered, materializeType>::reset() {
+template<typename Traits>
+void IResearchViewExecutor<Traits>::reset() {
   Base::reset();
 
   // reset iterator state
@@ -1011,8 +1090,8 @@ void IResearchViewExecutor<ordered, materializeType>::reset() {
   _readerOffset = 0;
 }
 
-template <bool ordered, MaterializeType materializeType>
-size_t IResearchViewExecutor<ordered, materializeType>::skip(size_t limit) {
+template<typename Traits>
+size_t IResearchViewExecutor<Traits>::skip(size_t limit) {
   TRI_ASSERT(this->_indexReadBuffer.empty());
   TRI_ASSERT(this->_filter);
 
@@ -1041,8 +1120,8 @@ size_t IResearchViewExecutor<ordered, materializeType>::skip(size_t limit) {
   return toSkip - limit;
 }
 
-template <bool ordered, MaterializeType materializeType>
-size_t IResearchViewExecutor<ordered, materializeType>::skipAll() {
+template<typename Traits>
+size_t IResearchViewExecutor<Traits>::skipAll() {
   TRI_ASSERT(this->_indexReadBuffer.empty());
   TRI_ASSERT(this->_filter);
 
@@ -1065,8 +1144,8 @@ size_t IResearchViewExecutor<ordered, materializeType>::skipAll() {
   return skipped;
 }
 
-template <bool ordered, MaterializeType materializeType>
-void IResearchViewExecutor<ordered, materializeType>::saveCollection() {
+template<typename Traits>
+void IResearchViewExecutor<Traits>::saveCollection() {
   // We're in the middle of a reader, save the collection in case produceRows()
   // needs it.
   if (_itr) {
@@ -1095,8 +1174,8 @@ void IResearchViewExecutor<ordered, materializeType>::saveCollection() {
   }
 }
 
-template <bool ordered, MaterializeType materializeType>
-bool IResearchViewExecutor<ordered, materializeType>::writeRow(
+template<typename Traits>
+bool IResearchViewExecutor<Traits>::writeRow(
     IResearchViewExecutor::ReadContext& ctx,
     IResearchViewExecutor::IndexReadBufferEntry bufferEntry) {
   TRI_ASSERT(_collection);
@@ -1109,19 +1188,19 @@ bool IResearchViewExecutor<ordered, materializeType>::writeRow(
 /// --SECTION--                                      IResearchViewMergeExecutor
 ///////////////////////////////////////////////////////////////////////////////
 
-template <bool ordered, MaterializeType materializeType>
-IResearchViewMergeExecutor<ordered, materializeType>::IResearchViewMergeExecutor(Fetcher& fetcher,
-                                                                                 Infos& infos)
-    : Base{fetcher, infos},
-      _heap_it{MinHeapContext{*infos.sort().first, infos.sort().second, _segments}} {
+template<typename Traits>
+IResearchViewMergeExecutor<Traits>::IResearchViewMergeExecutor(
+    Fetcher& fetcher, Infos& infos)
+  : Base{fetcher, infos},
+    _heap_it{MinHeapContext{*infos.sort().first, infos.sort().second, _segments}} {
   TRI_ASSERT(infos.sort().first);
   TRI_ASSERT(!infos.sort().first->empty());
   TRI_ASSERT(infos.sort().first->size() >= infos.sort().second);
   TRI_ASSERT(infos.sort().second);
 }
 
-template <bool ordered, MaterializeType materializeType>
-IResearchViewMergeExecutor<ordered, materializeType>::Segment::Segment(
+template<typename Traits>
+IResearchViewMergeExecutor<Traits>::Segment::Segment(
     irs::doc_iterator::ptr&& docs, irs::document const& doc, irs::score const& score,
     LogicalCollection const& collection, irs::doc_iterator::ptr&& pkReader,
     ColumnIterator&& sortReader, size_t storedValuesIndex) noexcept
@@ -1142,13 +1221,13 @@ IResearchViewMergeExecutor<ordered, materializeType>::Segment::Segment(
   TRI_ASSERT(this->pkReader.value);
 }
 
-template <bool ordered, MaterializeType materializeType>
-IResearchViewMergeExecutor<ordered, materializeType>::MinHeapContext::MinHeapContext(
+template<typename Traits>
+IResearchViewMergeExecutor<Traits>::MinHeapContext::MinHeapContext(
     const IResearchViewSort& sort, size_t sortBuckets, std::vector<Segment>& segments) noexcept
     : _less(sort, sortBuckets), _segments(&segments) {}
 
-template <bool ordered, MaterializeType materializeType>
-bool IResearchViewMergeExecutor<ordered, materializeType>::MinHeapContext::operator()(const size_t i) const {
+template<typename Traits>
+bool IResearchViewMergeExecutor<Traits>::MinHeapContext::operator()(const size_t i) const {
   assert(i < _segments->size());
   auto& segment = (*_segments)[i];
   while (segment.docs->next()) {
@@ -1163,8 +1242,8 @@ bool IResearchViewMergeExecutor<ordered, materializeType>::MinHeapContext::opera
   return false;
 }
 
-template <bool ordered, MaterializeType materializeType>
-bool IResearchViewMergeExecutor<ordered, materializeType>::MinHeapContext::operator()(
+template<typename Traits>
+bool IResearchViewMergeExecutor<Traits>::MinHeapContext::operator()(
     const size_t lhs, const size_t rhs) const {
   assert(lhs < _segments->size());
   assert(rhs < _segments->size());
@@ -1172,11 +1251,11 @@ bool IResearchViewMergeExecutor<ordered, materializeType>::MinHeapContext::opera
                (*_segments)[lhs].sortReader.value->value);
 }
 
-template <bool ordered, MaterializeType materializeType>
-void IResearchViewMergeExecutor<ordered, materializeType>::evaluateScores(
+template<typename Traits>
+void IResearchViewMergeExecutor<Traits>::evaluateScores(
     ReadContext const& ctx, irs::score const& score) {
   // This must not be called in the unordered case.
-  TRI_ASSERT(ordered);
+  TRI_ASSERT(Traits::Ordered);
 
   // evaluate scores
   score.evaluate();
@@ -1189,8 +1268,8 @@ void IResearchViewMergeExecutor<ordered, materializeType>::evaluateScores(
   this->fillScores(ctx, begin, end);
 }
 
-template <bool ordered, MaterializeType materializeType>
-void IResearchViewMergeExecutor<ordered, materializeType>::reset() {
+template<typename Traits>
+void IResearchViewMergeExecutor<Traits>::reset() {
   Base::reset();
 
   _segments.clear();
@@ -1216,7 +1295,7 @@ void IResearchViewMergeExecutor<ordered, materializeType>::reset() {
 
     auto const* score = &irs::score::no_score();
 
-    if constexpr (ordered) {
+    if constexpr (Traits::Ordered) {
       auto* scoreRef = irs::get<irs::score>(*it);
 
       if (scoreRef) {
@@ -1258,7 +1337,7 @@ void IResearchViewMergeExecutor<ordered, materializeType>::reset() {
       continue;
     }
 
-    if constexpr ((materializeType & MaterializeType::UseStoredValues) ==
+    if constexpr ((Traits::MaterializeType & MaterializeType::UseStoredValues) ==
                   MaterializeType::UseStoredValues) {
       if (ADB_UNLIKELY(!this->getStoredValuesReaders(segment, i))) {
         continue;
@@ -1291,9 +1370,8 @@ void IResearchViewMergeExecutor<ordered, materializeType>::reset() {
   _heap_it.reset(_segments.size());
 }
 
-template <bool ordered, MaterializeType materializeType>
-LocalDocumentId IResearchViewMergeExecutor<ordered, materializeType>::readPK(
-    IResearchViewMergeExecutor<ordered, materializeType>::Segment const& segment) {
+template<typename Traits>
+LocalDocumentId IResearchViewMergeExecutor<Traits>::readPK(Segment const& segment) {
   TRI_ASSERT(segment.doc);
   TRI_ASSERT(segment.pkReader.itr);
   TRI_ASSERT(segment.pkReader.value);
@@ -1316,8 +1394,8 @@ LocalDocumentId IResearchViewMergeExecutor<ordered, materializeType>::readPK(
   return documentId;
 }
 
-template <bool ordered, MaterializeType materializeType>
-void IResearchViewMergeExecutor<ordered, materializeType>::fillBuffer(ReadContext& ctx) {
+template<typename Traits>
+void IResearchViewMergeExecutor<Traits>::fillBuffer(ReadContext& ctx) {
   TRI_ASSERT(this->_filter != nullptr);
 
   size_t const atMost = ctx.outputRow.numRowsLeft();
@@ -1342,12 +1420,12 @@ void IResearchViewMergeExecutor<ordered, materializeType>::fillBuffer(ReadContex
     this->_indexReadBuffer.pushValue(documentId, segment.collection);
 
     // in the ordered case we have to write scores as well as a document
-    if constexpr (ordered) {
+    if constexpr (Traits::Ordered) {
       // Writes into _scoreBuffer
       evaluateScores(ctx, *segment.score);
     }
 
-    if constexpr ((materializeType & MaterializeType::UseStoredValues) ==
+    if constexpr ((Traits::MaterializeType & MaterializeType::UseStoredValues) ==
                   MaterializeType::UseStoredValues) {
       TRI_ASSERT(segment.doc);
       this->pushStoredValues(*segment.doc, segment.storedValuesIndex);
@@ -1362,8 +1440,8 @@ void IResearchViewMergeExecutor<ordered, materializeType>::fillBuffer(ReadContex
   }
 }
 
-template <bool ordered, MaterializeType materializeType>
-size_t IResearchViewMergeExecutor<ordered, materializeType>::skip(size_t limit) {
+template<typename Traits>
+size_t IResearchViewMergeExecutor<Traits>::skip(size_t limit) {
   TRI_ASSERT(this->_indexReadBuffer.empty());
   TRI_ASSERT(this->_filter != nullptr);
 
@@ -1376,8 +1454,8 @@ size_t IResearchViewMergeExecutor<ordered, materializeType>::skip(size_t limit) 
   return toSkip - limit;
 }
 
-template <bool ordered, MaterializeType materializeType>
-size_t IResearchViewMergeExecutor<ordered, materializeType>::skipAll() {
+template<typename Traits>
+size_t IResearchViewMergeExecutor<Traits>::skipAll() {
   TRI_ASSERT(this->_indexReadBuffer.empty());
   TRI_ASSERT(this->_filter != nullptr);
 
@@ -1390,8 +1468,8 @@ size_t IResearchViewMergeExecutor<ordered, materializeType>::skipAll() {
   return skipped;
 }
 
-template <bool ordered, MaterializeType materializeType>
-bool IResearchViewMergeExecutor<ordered, materializeType>::writeRow(
+template<typename Traits>
+bool IResearchViewMergeExecutor<Traits>::writeRow(
     IResearchViewMergeExecutor::ReadContext& ctx,
     IResearchViewMergeExecutor::IndexReadBufferEntry bufferEntry) {
   auto const& id = this->_indexReadBuffer.getValue(bufferEntry);
@@ -1407,64 +1485,7 @@ bool IResearchViewMergeExecutor<ordered, materializeType>::writeRow(
 /// --SECTION--                                 explicit template instantiation
 ///////////////////////////////////////////////////////////////////////////////
 
-template class ::arangodb::aql::IResearchViewExecutor<false, MaterializeType::NotMaterialize>;
-template class ::arangodb::aql::IResearchViewExecutor<false, MaterializeType::LateMaterialize>;
-template class ::arangodb::aql::IResearchViewExecutor<false, MaterializeType::Materialize>;
-template class ::arangodb::aql::IResearchViewExecutor<false, MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>;
-template class ::arangodb::aql::IResearchViewExecutor<false, MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>;
-
-template class ::arangodb::aql::IResearchViewExecutor<true, MaterializeType::NotMaterialize>;
-template class ::arangodb::aql::IResearchViewExecutor<true, MaterializeType::LateMaterialize>;
-template class ::arangodb::aql::IResearchViewExecutor<true, MaterializeType::Materialize>;
-template class ::arangodb::aql::IResearchViewExecutor<true, MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>;
-template class ::arangodb::aql::IResearchViewExecutor<true, MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>;
-
-template class ::arangodb::aql::IResearchViewMergeExecutor<false, MaterializeType::NotMaterialize>;
-template class ::arangodb::aql::IResearchViewMergeExecutor<false, MaterializeType::LateMaterialize>;
-template class ::arangodb::aql::IResearchViewMergeExecutor<false, MaterializeType::Materialize>;
-template class ::arangodb::aql::IResearchViewMergeExecutor<false, MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>;
-template class ::arangodb::aql::IResearchViewMergeExecutor<false, MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>;
-
-template class ::arangodb::aql::IResearchViewMergeExecutor<true, MaterializeType::NotMaterialize>;
-template class ::arangodb::aql::IResearchViewMergeExecutor<true, MaterializeType::LateMaterialize>;
-template class ::arangodb::aql::IResearchViewMergeExecutor<true, MaterializeType::Materialize>;
-template class ::arangodb::aql::IResearchViewMergeExecutor<true, MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>;
-template class ::arangodb::aql::IResearchViewMergeExecutor<true, MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>;
-
-template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewExecutor<false, MaterializeType::NotMaterialize>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewExecutor<false, MaterializeType::LateMaterialize>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewExecutor<false, MaterializeType::Materialize>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewExecutor<false, MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewExecutor<false, MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
-
-template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewExecutor<true, MaterializeType::NotMaterialize>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewExecutor<true, MaterializeType::LateMaterialize>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewExecutor<true, MaterializeType::Materialize>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewExecutor<true, MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewExecutor<true, MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
-
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewMergeExecutor<false, MaterializeType::NotMaterialize>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewMergeExecutor<false, MaterializeType::LateMaterialize>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewMergeExecutor<false, MaterializeType::Materialize>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewMergeExecutor<false, MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewMergeExecutor<false, MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
-
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewMergeExecutor<true, MaterializeType::NotMaterialize>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewMergeExecutor<true, MaterializeType::LateMaterialize>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewMergeExecutor<true, MaterializeType::Materialize>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewMergeExecutor<true, MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewMergeExecutor<true, MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
+INSTANTIATE_IRESEARCH_EXECUTOR(template class ::arangodb::aql::IResearchViewExecutor<,>;)
+INSTANTIATE_IRESEARCH_EXECUTOR(template class ::arangodb::aql::IResearchViewMergeExecutor<,>;)
+INSTANTIATE_IRESEARCH_EXECUTOR(template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewExecutor<,>>;)
+INSTANTIATE_IRESEARCH_EXECUTOR(template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewMergeExecutor<,>>;)
