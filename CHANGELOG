@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed cluster behavior with HotBackup and non-existing backups on DB-Servers.
+
 * Fixed that, when performing a graph AQL query while a (graceful) failover for
   the leader of the system collections is in progress, ArangoDB would report a
   "Graph not found error".
