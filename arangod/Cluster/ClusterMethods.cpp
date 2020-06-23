@@ -2584,7 +2584,7 @@ arangodb::Result hotBackupList(network::ConnectionPool* pool,
   << futures.size() << " lists of local backups";
 
   // Any error if no id presented
-  if (!idSlice.isNone() && nrGood < futures.size()) {
+  if (idSlice.isNone() && nrGood < futures.size()) {
     return arangodb::Result(
       TRI_ERROR_HOT_BACKUP_DBSERVERS_AWOL,
       std::string("not all db servers could be reached for backup listing"));
