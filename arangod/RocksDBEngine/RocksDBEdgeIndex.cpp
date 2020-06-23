@@ -497,7 +497,7 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
   RocksDBValue value = RocksDBValue::EdgeIndexValue(VPackStringRef(toFrom));
 
   // always invalidate cache entry for all edges with same _from / _to
-  blackListKey(fromToRef);
+  invalidateCacheEntry(fromToRef);
 
   // acquire rocksdb transaction
   rocksdb::Status s = mthd->PutUntracked(_cf, key.ref(), value.string());
@@ -533,7 +533,7 @@ Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
       RocksDBValue::EdgeIndexValue(arangodb::velocypack::StringRef(toFrom));
 
   // always invalidate cache entry for all edges with same _from / _to
-  blackListKey(fromToRef);
+  invalidateCacheEntry(fromToRef);
 
   rocksdb::Status s = mthd->Delete(_cf, key.ref());
   if (s.ok()) {

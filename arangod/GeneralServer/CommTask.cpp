@@ -643,7 +643,7 @@ bool CommTask::allowCorsCredentials(std::string const& origin) const {
   }  // else handle origin headers
 
   // if the request asks to allow credentials, we'll check against the
-  // configured whitelist of origins
+  // configured allowed list of origins
   std::vector<std::string> const& accessControlAllowOrigins =
       GeneralServerFeature::accessControlAllowOrigins();
 
