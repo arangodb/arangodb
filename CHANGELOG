@@ -1,6 +1,8 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Fixed cluster behaviour with hot backup and non existing backups on db-servers
+
 * Fixed bad behavior that led to unnecessary additional revision tree rebuilding
   on server restart.
 
