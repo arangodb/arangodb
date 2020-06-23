@@ -57,6 +57,10 @@ StatusCode constexpr StatusInternalError = 500;
 StatusCode constexpr StatusServiceUnavailable = 503;
 StatusCode constexpr StatusVersionNotSupported = 505;
 
+std::string status_code_to_string(StatusCode);
+
+bool statusIsSuccess(StatusCode);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                         enum class ErrorCondition
 // -----------------------------------------------------------------------------

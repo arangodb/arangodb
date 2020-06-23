@@ -26,7 +26,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Basics/Common.h"
 #include "Basics/overload.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 
 #include <algorithm>
 #include <cstddef>

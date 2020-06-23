@@ -115,7 +115,7 @@ class InputAqlItemRow {
   /**
    * @brief Compare the underlying block. Only for assertions.
    */
-  bool internalBlockIs(SharedAqlItemBlockPtr const& other) const;
+  bool internalBlockIs(SharedAqlItemBlockPtr const& other, size_t index) const;
 #endif
 
   /**

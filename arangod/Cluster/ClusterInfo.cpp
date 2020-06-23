@@ -25,9 +25,11 @@
 
 #include "ClusterInfo.h"
 
+#include "Agency/AgencyPaths.h"
+#include "Agency/AsyncAgencyComm.h"
 #include "Agency/TimeString.h"
+#include "Agency/TransactionBuilder.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/application-exit.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
@@ -37,10 +39,10 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/application-exit.h"
 #include "Basics/hashes.h"
 #include "Basics/system-functions.h"
 #include "Cluster/AgencyCache.h"
-#include "Cluster/AgencyPaths.h"
 #include "Cluster/ClusterCollectionCreationInfo.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
@@ -75,6 +77,8 @@
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
+
+#include <chrono>
 
 namespace {
 
@@ -1182,6 +1186,11 @@ void ClusterInfo::loadPlan() {
     }
   }
 
+  {
+    std::lock_guard w(_waitPlanVersionLock);
+    triggerWaiting(_waitPlanVersion, _planVersion);
+  }
+
   _lpTimer.count(duration<float,std::milli>(clock::now()-start).count());
 
 }
@@ -1358,6 +1367,11 @@ void ClusterInfo::loadCurrent() {
       // In the unittests, there is no heartbeatthread, and we do not need to notify
       heartbeatThread->notify();
     }
+  }
+
+  {
+    std::lock_guard w(_waitCurrentVersionLock);
+    triggerWaiting(_waitCurrentVersion, _currentVersion);
   }
 
   _lcTimer.count(duration<float,std::milli>(clock::now()-start).count());
@@ -1944,15 +1958,13 @@ Result ClusterInfo::cancelCreateDatabaseCoordinator(CreateDatabaseInfo const& da
       LOG_TOPIC("b47aa", WARN, arangodb::Logger::CLUSTER)
         << "failed to cancel creation of database " << database.getName() << " with error "
         << res.errorMessage() << ". Retrying.";
-    }
-
-    if (res.slice().get("results").length()) {
+    } else if (res.slice().get("results").length()) {
       waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
     }
     if (_server.isStopping()) {
       return Result(TRI_ERROR_SHUTTING_DOWN);
     }
-  } while(!res.successful());
+  } while (!res.successful());
 
   return Result();
 }
@@ -2015,7 +2027,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
     if (res._statusCode == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
           return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     }
-      return Result(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN);
+    return Result(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN);
   }
   if (res.slice().get("results").length()) {
     waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
@@ -2346,6 +2358,16 @@ Result ClusterInfo::createCollectionsCoordinator(
       } else {
         otherCidShardMap = getCollection(databaseName, otherCidString)->shardIds();
       }
+
+      auto const dslProtoColPath =
+          paths::root()->arango()->plan()->collections()->database(databaseName)->collection(otherCidString);
+      // The distributeShardsLike prototype collection should exist in the plan...
+      precs.emplace_back(AgencyPrecondition(dslProtoColPath,
+                                            AgencyPrecondition::Type::EMPTY, false));
+      // ...and should not still be in creation.
+      precs.emplace_back(AgencyPrecondition(dslProtoColPath->isBuilding(),
+                                            AgencyPrecondition::Type::EMPTY, true));
+
       // Any of the shards locked?
       for (auto const& shard : *otherCidShardMap) {
         precs.emplace_back(AgencyPrecondition("Supervision/Shards/" + shard.first,
@@ -2474,7 +2496,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         if (res.httpCode() == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
           // use this special error code to signal that we got a precondition failure
           // in this case the caller can try again with an updated version of the plan change
-          return {TRI_ERROR_REQUEST_CANCELED,
+          return {TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED,
                   "operation aborted due to precondition failure"};
         }
         std::string errorMsg = "HTTP code: " + std::to_string(res.httpCode());
@@ -3013,7 +3035,7 @@ Result ClusterInfo::dropViewCoordinator(  // drop view
   AgencyComm ac(_server);
   auto const res = ac.sendTransactionWithFailover(trans);
 
-  if (res.slice().get("results").length()) {
+  if (res.successful() && res.slice().get("results").length()) {
     waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
   } else {
     loadPlan();  // this is only for the unittests, where no planSyncer thread runs
@@ -3136,10 +3158,12 @@ std::pair<Result, AnalyzersRevision::Revision> ClusterInfo::startModifyingAnalyz
                {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP}},
               {{anPath, AgencyPrecondition::Type::EMPTY, true}} };
           auto const res = ac.sendTransactionWithFailover(transaction);
-          auto results = res.slice().get("results");
-          if (results.isArray() && results.length() > 0) {
-            readLocker.unlock(); // we want to wait for plan to load - release reader
-            waitForPlan(results[0].getNumber<uint64_t>()).get();
+          if (res.successful()) {
+            auto results = res.slice().get("results");
+            if (results.isArray() && results.length() > 0) {
+              readLocker.unlock(); // we want to wait for plan to load - release reader
+              waitForPlan(results[0].getNumber<uint64_t>()).get();
+            }
           }
         }
         continue;
@@ -3417,6 +3441,13 @@ Result ClusterInfo::ensureIndexCoordinator(LogicalCollection const& collection,
   }
 
   std::string const idString = arangodb::basics::StringUtils::itoa(iid.id());
+
+  VPackSlice const typeSlice = slice.get(StaticStrings::IndexType);
+  if (!typeSlice.isString() || (typeSlice.isEqualString("geo1") || typeSlice.isEqualString("geo2"))) {
+    // geo1 and geo2 are disallowed here. Only "geo" should be used
+    return Result(TRI_ERROR_BAD_PARAMETER, "invalid index type");
+  }
+
   Result res;
 
   try {
@@ -5422,26 +5453,68 @@ void ClusterInfo::SyncerThread::run() {
 
 }
 
-futures::Future<arangodb::Result> ClusterInfo::waitForCurrent(uint64_t index) {
+futures::Future<arangodb::Result> ClusterInfo::waitForCurrent(uint64_t raftIndex) {
   READ_LOCKER(readLocker, _currentProt.lock);
-  if (index <= _currentIndex) {
+  if (raftIndex <= _currentIndex) {
     return futures::makeFuture(arangodb::Result());
   }
   // intentionally don't release _storeLock here until we have inserted the promise
   std::lock_guard w(_waitCurrentLock);
-  return _waitCurrent.emplace(index, futures::Promise<arangodb::Result>())->second.getFuture();
+  return _waitCurrent.emplace(raftIndex, futures::Promise<arangodb::Result>())->second.getFuture();
 }
 
-futures::Future<arangodb::Result> ClusterInfo::waitForPlan(uint64_t index) {
+futures::Future<arangodb::Result> ClusterInfo::waitForCurrentVersion(uint64_t currentVersion) {
+  READ_LOCKER(readLocker, _currentProt.lock);
+  if (currentVersion <= _currentVersion) {
+    return futures::makeFuture(arangodb::Result());
+  }
+  // intentionally don't release _storeLock here until we have inserted the promise
+  std::lock_guard w(_waitCurrentVersionLock);
+  return _waitCurrentVersion
+      .emplace(currentVersion, futures::Promise<arangodb::Result>())
+      ->second.getFuture();
+}
+
+futures::Future<arangodb::Result> ClusterInfo::waitForPlan(uint64_t raftIndex) {
 
   READ_LOCKER(readLocker, _planProt.lock);
-  if (index <= _planIndex) {
+  if (raftIndex <= _planIndex) {
     return futures::makeFuture(arangodb::Result());
   }
 
   // intentionally don't release _storeLock here until we have inserted the promise
   std::lock_guard w(_waitPlanLock);
-  return _waitPlan.emplace(index, futures::Promise<arangodb::Result>())->second.getFuture();
+  return _waitPlan.emplace(raftIndex, futures::Promise<arangodb::Result>())->second.getFuture();
+}
+
+futures::Future<Result> ClusterInfo::waitForPlanVersion(uint64_t planVersion) {
+  READ_LOCKER(readLocker, _planProt.lock);
+  if (planVersion <= _planVersion) {
+    return futures::makeFuture(arangodb::Result());
+  }
+
+  // intentionally don't release _storeLock here until we have inserted the promise
+  std::lock_guard w(_waitPlanVersionLock);
+  return _waitPlanVersion
+      .emplace(planVersion, futures::Promise<arangodb::Result>())
+      ->second.getFuture();
+}
+
+futures::Future<Result> ClusterInfo::fetchAndWaitForPlanVersion(network::Timeout timeout) {
+  // Save the applicationServer, not the ClusterInfo, in case of shutdown.
+  return cluster::fetchPlanVersion(timeout).thenValue(
+      [&applicationServer = server()](auto maybePlanVersion) {
+        if (maybePlanVersion.ok()) {
+          auto planVersion = maybePlanVersion.get();
+
+          auto& clusterInfo =
+              applicationServer.getFeature<ClusterFeature>().clusterInfo();
+
+          return clusterInfo.waitForPlanVersion(planVersion);
+        } else {
+          return futures::Future<Result>{maybePlanVersion.result()};
+        }
+      });
 }
 
 void ClusterInfo::triggerWaiting(
@@ -5575,6 +5648,54 @@ void AnalyzerModificationTransaction::revertCounter() {
 
 std::atomic<int32_t>  arangodb::AnalyzerModificationTransaction::_pendingAnalyzerOperationsCount{ 0 };
 
+namespace {
+template <typename T>
+futures::Future<ResultT<T>> fetchNumberFromAgency(std::shared_ptr<cluster::paths::Path const> path,
+                                                  network::Timeout timeout) {
+  VPackBuffer<uint8_t> trx;
+  {
+    VPackBuilder builder(trx);
+    arangodb::agency::envelope<VPackBuilder>::create(builder)
+        .read()
+        .key(path->str())
+        .done()
+        .done();
+  }
+
+  auto fAacResult = AsyncAgencyComm().sendReadTransaction(timeout, std::move(trx));
+
+  auto fResult = std::move(fAacResult).thenValue([path = std::move(path)](auto&& result) {
+    if (result.ok() && result.statusCode() == fuerte::StatusOK) {
+      return ResultT<T>::success(
+          result.slice().at(0).get(path->vec()).template getNumber<T>());
+    } else {
+      return ResultT<T>::error(result.asResult());
+    }
+  });
+
+  return fResult;
+}
+}  // namespace
+
+futures::Future<ResultT<uint64_t>> cluster::fetchPlanVersion(network::Timeout timeout) {
+  using namespace std::chrono_literals;
+
+  auto planVersionPath = cluster::paths::root()->arango()->plan()->version();
+
+  return fetchNumberFromAgency<uint64_t>(std::static_pointer_cast<paths::Path const>(
+                                             std::move(planVersionPath)),
+                                         timeout);
+}
+
+futures::Future<ResultT<uint64_t>> cluster::fetchCurrentVersion(network::Timeout timeout) {
+  using namespace std::chrono_literals;
+
+  auto currentVersionPath = cluster::paths::root()->arango()->current()->version();
+
+  return fetchNumberFromAgency<uint64_t>(std::static_pointer_cast<paths::Path const>(
+                                             std::move(currentVersionPath)),
+                                         timeout);
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

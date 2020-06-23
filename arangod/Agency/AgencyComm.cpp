@@ -74,14 +74,15 @@ bool AgencyComm::syncReplDebug = false;
 #endif
 
 static void addEmptyVPackObject(std::string const& name, VPackBuilder& builder) {
-  builder.add(VPackValue(name));
-  VPackObjectBuilder c(&builder);
+  builder.add(name, VPackSlice::emptyObjectSlice());
 }
+
+static std::string const writeURL{"/_api/agency/write"};
 
 const std::vector<std::string> AgencyTransaction::TypeUrl({"/read", "/write",
                                                            "/transact",
                                                            "/transient"});
-
+  
 // -----------------------------------------------------------------------------
 // --SECTION--                                                AgencyPrecondition
 // -----------------------------------------------------------------------------
@@ -94,6 +95,14 @@ AgencyPrecondition::AgencyPrecondition(std::string const& key, Type t, bool e)
 
 AgencyPrecondition::AgencyPrecondition(std::string const& key, Type t, VPackSlice const& s)
     : key(AgencyCommHelper::path(key)), type(t), empty(false), value(s) {}
+
+AgencyPrecondition::AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path,
+                                       Type t, const velocypack::Slice& s)
+    : key(path->str()), type(t), empty(false), value(s) {}
+
+AgencyPrecondition::AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path,
+                                       Type t, bool e)
+    : key(path->str()), type(t), empty(e) {}
 
 void AgencyPrecondition::toVelocyPack(VPackBuilder& builder) const {
   if (type != AgencyPrecondition::Type::NONE) {
@@ -502,7 +511,19 @@ void AgencyCommResult::clear() {
   _connected = false;
 }
 
-VPackSlice AgencyCommResult::slice() const { return _vpack->slice(); }
+VPackSlice AgencyCommResult::slice() const {
+  // the "slice()" method must only be called in case the result
+  // was successful. Otherwise we will not have a valid result
+  // to look into
+  TRI_ASSERT(_vpack != nullptr);
+  if (_vpack == nullptr) {
+    // don't segfault in production when we don't have assertions
+    // turned on
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "call to AgencyCommResult::slice() without valid precondition check");
+  }
+  return _vpack->slice(); 
+}
 
 void AgencyCommResult::toVelocyPack(VPackBuilder& builder) const {
   {
@@ -605,7 +626,7 @@ AgencyComm::AgencyComm(application_features::ApplicationServer& server)
       _agency_comm_request_time_ms(server.getFeature<arangodb::MetricsFeature>().histogram<log_scale_t<uint64_t>>(
           StaticStrings::AgencyCommRequestTimeMs)) {}
 
-AgencyCommResult AgencyComm::sendServerState() {
+AgencyCommResult AgencyComm::sendServerState(double timeout) {
   // construct JSON value { "status": "...", "time": "..." }
   VPackBuilder builder;
 
@@ -621,11 +642,8 @@ AgencyCommResult AgencyComm::sendServerState() {
     return AgencyCommResult();
   }
 
-  AgencyCommResult result(
-      setTransient("Sync/ServerStates/" + ServerState::instance()->getId(),
-                   builder.slice(), 0));
-
-  return result;
+  return AgencyCommResult(setTransient("Sync/ServerStates/" + ServerState::instance()->getId(),
+                          builder.slice(), 0, timeout));
 }
 
 std::string AgencyComm::version() {
@@ -674,12 +692,13 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
 
 AgencyCommResult AgencyComm::setTransient(std::string const& key,
                                           arangodb::velocypack::Slice const& slice,
-                                          uint64_t ttl) {
+                                          uint64_t ttl,
+                                          double timeout) {
   AgencyOperation operation(key, AgencyValueOperationType::SET, slice);
   operation._ttl = ttl;
   AgencyTransientTransaction transaction(operation);
 
-  return sendTransactionWithFailover(transaction);
+  return sendTransactionWithFailover(transaction, timeout);
 }
 
 bool AgencyComm::exists(std::string const& key) {
@@ -969,9 +988,7 @@ bool AgencyComm::unlockWrite(std::string const& key, double timeout) {
 
 AgencyCommResult AgencyComm::sendTransactionWithFailover(AgencyTransaction const& transaction,
                                                          double timeout) {
-  std::string url = AgencyComm::AGENCY_URL_PREFIX;
-
-  url += transaction.path();
+  std::string url = AgencyComm::AGENCY_URL_PREFIX + transaction.path();
 
   VPackBuilder builder;
   {
@@ -1182,30 +1199,15 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
                                               double const timeout,
                                               std::string const& initialUrl,
                                               VPackSlice inBody) {
-  AsyncAgencyComm comm;
-  AsyncAgencyCommResult result;
-
   VPackBuffer<uint8_t> buffer;
   {
     VPackBuilder builder(buffer);
     builder.add(inBody);
   }
 
-  std::vector<std::string> clientIds;
-  VPackSlice body = inBody.resolveExternals();
+  AsyncAgencyComm comm;
+  AsyncAgencyCommResult result;
 
-  if (body.isArray()) {
-    // In the writing case we want to find all transactions with client IDs
-    // and remember these IDs:
-    for (auto const& query : VPackArrayIterator(body)) {
-      if (query.isArray() && query.length() == 3 && query[0].isObject() &&
-          query[2].isString()) {
-        clientIds.push_back(query[2].copyString());
-      }
-    }
-  }
-
-  std::string url;
   auto started = std::chrono::steady_clock::now();
 
   TRI_DEFER({
@@ -1214,10 +1216,8 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
     _agency_comm_request_time_ms.count(std::chrono::duration_cast<std::chrono::milliseconds>(end - started).count());
   });
 
-  static std::string const writeURL{"/_api/agency/write"};
-  bool isWriteTrans = (initialUrl == writeURL);
-
   if (method == arangodb::rest::RequestType::POST) {
+    bool isWriteTrans = (initialUrl == ::writeURL);
     if (isWriteTrans) {
       LOG_TOPIC("4e44e", TRACE, Logger::AGENCYCOMM) << "sendWithFailover: "
           << "sending write transaction with POST " << inBody.toJson() << " '"

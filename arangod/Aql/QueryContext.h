@@ -32,6 +32,7 @@
 #include "Aql/ResourceUsage.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Basics/ResultT.h"
 #include "VocBase/voc-types.h"
 #include <velocypack/Builder.h>
 
@@ -86,7 +87,7 @@ class QueryContext {
   QueryWarnings& warnings() { return _warnings; }
 
   /// @brief look up a graph in the _graphs collection
-  graph::Graph const* lookupGraphByName(std::string const& name);
+  ResultT<graph::Graph const*> lookupGraphByName(std::string const& name);
   
   /// @brief note that the query uses the DataSource
   void addDataSource(std::shared_ptr<arangodb::LogicalDataSource> const& ds);
