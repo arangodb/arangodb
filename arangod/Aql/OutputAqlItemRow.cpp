@@ -137,7 +137,6 @@ void OutputAqlItemRow::consumeShadowRow(RegisterId registerId, ShadowAqlItemRow&
                                         AqlValueGuard& guard) {
   TRI_ASSERT(sourceRow.isRelevant());
 
-
   moveValueWithoutRowCopy<ShadowAqlItemRow>(registerId, guard);
   TRI_ASSERT(allValuesWritten());
   copyOrMoveRow<ShadowAqlItemRow, CopyOrMove::MOVE, AdaptRowDepth::DecreaseDepth>(sourceRow, false);
