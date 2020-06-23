@@ -141,6 +141,11 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       .setIntroducedIn(30405)
       .setIntroducedIn(30500);
 
+  options
+      ->addOption("--log.use-json-format", "use json output format",
+                  new BooleanParameter(&_useJson))
+      .setIntroducedIn(30701);
+
 #ifdef ARANGODB_HAVE_SETGID
   options
       ->addOption(
@@ -169,6 +174,11 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "shorten filenames in log output (use with --log.line-number)",
       new BooleanParameter(&_shortenFilenames),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  
+  options->addOption("--log.process", "show process identifier (pid) in log message",
+                     new BooleanParameter(&_processId),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30701);
 
   options->addOption("--log.thread", "show thread identifier in log message",
                      new BooleanParameter(&_threadId),
@@ -327,11 +337,13 @@ void LoggerFeature::prepare() {
   Logger::setUseEscaped(_useEscaped);
   Logger::setShowLineNumber(_lineNumber);
   Logger::setShortenFilenames(_shortenFilenames);
+  Logger::setShowProcessIdentifier(_processId);
   Logger::setShowThreadIdentifier(_threadId);
   Logger::setShowThreadName(_threadName);
   Logger::setOutputPrefix(_prefix);
   Logger::setKeepLogrotate(_keepLogRotate);
   Logger::setLogRequestParameters(_logRequestParameters);
+  Logger::setUseJson(_useJson);
 
   for (auto const& definition : _output) {
     if (_supervisor && StringUtils::isPrefix(definition, "file://")) {
