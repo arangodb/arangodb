@@ -200,7 +200,9 @@ auto MultiAqlItemBlockInputRange::nextShadowRow()
     }
   }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _dependenciesDontAgreeOnState = oneDependencyHasMore && oneDependencyDone;
+#endif
 
   return {state, shadowRow};
 }
