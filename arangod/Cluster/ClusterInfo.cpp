@@ -1618,9 +1618,6 @@ std::vector<std::shared_ptr<LogicalView>> const ClusterInfo::getViews(DatabaseID
 
 AnalyzersRevision::Ptr ClusterInfo::getAnalyzersRevision(DatabaseID const& databaseID,
                                                          bool forceLoadPlan /* = false */) {
-  if (!_planProt.isValid || forceLoadPlan) {
-    waitForPlan(1).get();
-  }
   READ_LOCKER(readLocker, _planProt.lock);
   // look up database by id
   auto it = _dbAnalyzersRevision.find(databaseID);
