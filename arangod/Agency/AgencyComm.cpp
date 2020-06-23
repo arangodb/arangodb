@@ -438,7 +438,7 @@ int AgencyCommResult::errorCode() const {
   return asResult().errorNumber();
 }
 
-std::string_view AgencyCommResult::errorMessage() const {
+std::string AgencyCommResult::errorMessage() const {
   return asResult().errorMessage();
 }
 
@@ -475,6 +475,32 @@ std::string AgencyCommResult::errorDetails() const {
   }
 
   return _message + " (" + std::string{errorMessage} + ")";
+}
+
+std::string AgencyCommResult::body() const {
+  if (_vpack != nullptr) {
+    return slice().toJson();
+  } else {
+    return "";
+  }
+}
+
+Result AgencyCommResult::asResult() const {
+  if (successful()) {
+    return Result{};
+  } else if (auto const err = parseBodyError(); err.has_value()) {
+    return Result{err->first, std::string{err->second}};
+  } else if (_statusCode > 0) {
+    if (!_message.empty()) {
+      return Result{_statusCode, _message};
+    } else if (!_connected) {
+      return Result{_statusCode, "unable to connect to agency"};
+    } else {
+      return Result{_statusCode};
+    }
+  } else {
+    return Result{TRI_ERROR_INTERNAL};
+  }
 }
 
 void AgencyCommResult::clear() {
@@ -1125,7 +1151,7 @@ AgencyCommResult toAgencyCommResult(AsyncAgencyCommResult const& result) {
       }
     }
 
-    oldResult._message = "no error";
+    oldResult._message = "";
     oldResult._statusCode = result.statusCode();
     if (result.response->isContentTypeJSON()) {
       auto vpack = VPackParser::fromJson(result.response->payloadAsString());
