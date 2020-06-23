@@ -26,7 +26,7 @@
 #include "gtest/gtest.h"
 
 #include "AqlExecutorTestCase.h"
-// // #include "RowFetcherHelper.h"
+#include "RowFetcherHelper.h"
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlock.h"

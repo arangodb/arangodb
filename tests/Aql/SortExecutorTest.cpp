@@ -29,7 +29,7 @@
 
 #include "fakeit.hpp"
 
-// #include "RowFetcherHelper.h"
+#include "RowFetcherHelper.h"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ConstrainedSortExecutor.h"
