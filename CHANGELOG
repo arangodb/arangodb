@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix hotbackup agency lock cleanup.
+
 * Allow for faster cluster shutdown. This should reduce the number of shutdown
   hangers in case the agents are stopped already and then coordinators or
   DB-Servers are shut down.
