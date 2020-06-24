@@ -42,49 +42,63 @@ const viewName = "testView";
 const N = 10001;
 
 const data1 = [
-  {"name":"A","seq":0,"same":"xyz", "value":100, "duplicated":"abcd", "prefix":"abcd" },
-  {"name":"B","seq":1,"same":"xyz", "value":101, "duplicated":"vczc"},
-  {"name":"C","seq":2,"same":"xyz", "value":123, "duplicated":"vczc"},
-  {"name":"D","seq":3,"same":"xyz", "value":12, "prefix":"abcde"},
-  {"name":"E","seq":4,"same":"xyz", "value":100, "duplicated":"abcd"},
-  {"name":"F","seq":5,"same":"xyz", "value":1234 },
-  {"name":"G","seq":6,"same":"xyz", "value":100 },
-  {"name":"H","seq":7,"same":"xyz", "value":123, "duplicated":"vczc"},
-  {"name":"I","seq":8,"same":"xyz", "value":100, "prefix":"bcd" },
-  {"name":"J","seq":9,"same":"xyz", "value":100 },
-  {"name":"K","seq":10,"same":"xyz","value":12, "duplicated":"abcd"},
-  {"name":"L","seq":11,"same":"xyz","value":95 },
-  {"name":"M","seq":12,"same":"xyz","value":90.564 },
-  {"name":"N","seq":13,"same":"xyz","value":1, "duplicated":"vczc"},
-  {"name":"O","seq":14,"same":"xyz","value":0 },
-  {"name":"P","seq":15,"same":"xyz","value":50, "prefix":"abde"},
-  {"name":"Q","seq":16,"same":"xyz", "value":-32.5, "duplicated":"vczc"},
-  {"name":"R","seq":17,"same":"xyz"},
-  {"name":"S","seq":18,"same":"xyz", "duplicated":"vczc"},
-  {"name":"T","seq":19,"same":"xyz"},
-  {"name":"U","seq":20,"same":"xyz", "prefix":"abc", "duplicated":"abcd"},
-  {"name":"V","seq":21,"same":"xyz"},
-  {"name":"W","seq":22,"same":"xyz"},
-  {"name":"X","seq":23,"same":"xyz", "duplicated":"vczc", "prefix":"bateradsfsfasdf" },
-  {"name":"Y","seq":24,"same":"xyz"},
-  {"name":"Z","seq":25,"same":"xyz", "prefix":"abcdrer" },
-  {"name":"~","seq":26,"same":"xyz", "duplicated":"abcd"},
-  {"name":"!","seq":27,"same":"xyz"},
-  {"name":"@","seq":28,"same":"xyz", "prefix":"ahtrtrt"},
-  {"name":"#","seq":29,"same":"xyz"},
-  {"name":"$","seq":30,"same":"xyz", "duplicated":"abcd", "prefix":"abcy" },
-  {"name":"%","seq":31,"same":"xyz", "prefix":"abcy"} ];
+  {
+    name: "A",
+    seq: 0,
+    same: "xyz",
+    value: 100,
+    duplicated: "abcd",
+    prefix: "abcd",
+  },
+  { name: "B", seq: 1, same: "xyz", value: 101, duplicated: "vczc" },
+  { name: "C", seq: 2, same: "xyz", value: 123, duplicated: "vczc" },
+  { name: "D", seq: 3, same: "xyz", value: 12, prefix: "abcde" },
+  { name: "E", seq: 4, same: "xyz", value: 100, duplicated: "abcd" },
+  { name: "F", seq: 5, same: "xyz", value: 1234 },
+  { name: "G", seq: 6, same: "xyz", value: 100 },
+  { name: "H", seq: 7, same: "xyz", value: 123, duplicated: "vczc" },
+  { name: "I", seq: 8, same: "xyz", value: 100, prefix: "bcd" },
+  { name: "J", seq: 9, same: "xyz", value: 100 },
+  { name: "K", seq: 10, same: "xyz", value: 12, duplicated: "abcd" },
+  { name: "L", seq: 11, same: "xyz", value: 95 },
+  { name: "M", seq: 12, same: "xyz", value: 90.564 },
+  { name: "N", seq: 13, same: "xyz", value: 1, duplicated: "vczc" },
+  { name: "O", seq: 14, same: "xyz", value: 0 },
+  { name: "P", seq: 15, same: "xyz", value: 50, prefix: "abde" },
+  { name: "Q", seq: 16, same: "xyz", value: -32.5, duplicated: "vczc" },
+  { name: "R", seq: 17, same: "xyz" },
+  { name: "S", seq: 18, same: "xyz", duplicated: "vczc" },
+  { name: "T", seq: 19, same: "xyz" },
+  { name: "U", seq: 20, same: "xyz", prefix: "abc", duplicated: "abcd" },
+  { name: "V", seq: 21, same: "xyz" },
+  { name: "W", seq: 22, same: "xyz" },
+  {
+    name: "X",
+    seq: 23,
+    same: "xyz",
+    duplicated: "vczc",
+    prefix: "bateradsfsfasdf",
+  },
+  { name: "Y", seq: 24, same: "xyz" },
+  { name: "Z", seq: 25, same: "xyz", prefix: "abcdrer" },
+  { name: "~", seq: 26, same: "xyz", duplicated: "abcd" },
+  { name: "!", seq: 27, same: "xyz" },
+  { name: "@", seq: 28, same: "xyz", prefix: "ahtrtrt" },
+  { name: "#", seq: 29, same: "xyz" },
+  { name: "$", seq: 30, same: "xyz", duplicated: "abcd", prefix: "abcy" },
+  { name: "%", seq: 31, same: "xyz", prefix: "abcy" },
+];
 
 const data2 = [
-  { "seq" : 0, "field": [ "6", "7", "7", "3", "7", "3" ] },
-  { "seq" : 1, "field": [ "4", "2", "4", "5", "2", "3", "4", "7", "2", "7" ] },
-  { "seq" : 2, "field": [ "9", "3", "6", "4", "2" ] },
-  { "seq" : 3, "field": [ "9", "9", "2", "5", "2", "8", "5" ] },
-  { "seq" : 4, "field": [ "3", "0", "0" ] },
-  { "seq" : 5, "field": [ "1", "2", "9", "7", "0", "9", "3", "6" ] },
-  { "seq" : 6, "field": [ "2", "1", "0", "9", "5" ] },
-  { "seq" : 7, "field": [ "4", "3", "7", "2", "1", "2", "8", "9" ] } ];
-
+  { seq: 0, field: ["6", "7", "7", "3", "7", "3"] },
+  { seq: 1, field: ["4", "2", "4", "5", "2", "3", "4", "7", "2", "7"] },
+  { seq: 2, field: ["9", "3", "6", "4", "2"] },
+  { seq: 3, field: ["9", "9", "2", "5", "2", "8", "5"] },
+  { seq: 4, field: ["3", "0", "0"] },
+  { seq: 5, field: ["1", "2", "9", "7", "0", "9", "3", "6"] },
+  { seq: 6, field: ["2", "1", "0", "9", "5"] },
+  { seq: 7, field: ["4", "3", "7", "2", "1", "2", "8", "9"] },
+];
 
 const tearDownAll = () => {
   try {
@@ -97,35 +111,47 @@ const tearDownAll = () => {
   }
 };
 
-
 function iResearchViewEnumerationRegressionTest() {
   return {
     setUpAll: function () {
       tearDownAll();
 
-      analyzers.save(analyzerName, "text", {
-        locale: "en.utf-8",
-        case: "lower",
-        accent: false,
-        stemming: false,
-        stopwords: [] }, ["frequency","norm","position"]);
+      analyzers.save(
+        analyzerName,
+        "text",
+        {
+          locale: "en.utf-8",
+          case: "lower",
+          accent: false,
+          stemming: false,
+          stopwords: [],
+        },
+        ["frequency", "norm", "position"]
+      );
 
       const c1 = db._create(collName1);
       const c2 = db._create(collName2);
 
-      for( var i = 0; i < data1.length; i+=2) {
+      for (var i = 0; i < data1.length; i += 2) {
         c1.save(data1[i]);
       }
-      for( var i = 1; i < data1.length; i+=2) {
+      for (var i = 1; i < data1.length; i += 2) {
         c2.save(data1[i]);
       }
 
-      const view = db._createView(viewName, "arangosearch",
-                                  { "links": {[collName1]: { "analyzers": [ analyzerName, "identity" ],
-                                                                "includeAllFields": true,
-                                                                "trackListPositions": true },
-                                              [collName2]: { "analyzers": [ analyzerName, "identity"],
-                                                                "includeAllFields": true }}});
+      const view = db._createView(viewName, "arangosearch", {
+        links: {
+          [collName1]: {
+            analyzers: [analyzerName, "identity"],
+            includeAllFields: true,
+            trackListPositions: true,
+          },
+          [collName2]: {
+            analyzers: [analyzerName, "identity"],
+            includeAllFields: true,
+          },
+        },
+      });
     },
     tearDownAll,
 
@@ -137,7 +163,6 @@ function iResearchViewEnumerationRegressionTest() {
 
       assertEqual(arr.length, N);
     },
-
   };
 }
 
