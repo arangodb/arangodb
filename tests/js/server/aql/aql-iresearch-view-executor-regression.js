@@ -132,10 +132,10 @@ function iResearchViewEnumerationRegressionTest() {
       const c1 = db._create(collName1);
       const c2 = db._create(collName2);
 
-      for (var i = 0; i < data1.length; i += 2) {
+      for (let i = 0; i < data1.length; i += 2) {
         c1.save(data1[i]);
       }
-      for (var i = 1; i < data1.length; i += 2) {
+      for (let i = 1; i < data1.length; i += 2) {
         c2.save(data1[i]);
       }
 
