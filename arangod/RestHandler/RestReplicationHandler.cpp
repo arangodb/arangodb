@@ -26,6 +26,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/ConditionLocker.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/RocksDBUtils.h"
@@ -958,7 +959,6 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
 
   bool overwrite = _request->parsedValue<bool>("overwrite", false);
   bool force = _request->parsedValue<bool>("force", false);
-  ;
   bool ignoreDistributeShardsLikeErrors =
       _request->parsedValue<bool>("ignoreDistributeShardsLikeErrors", false);
   uint64_t numberOfShards = _request->parsedValue<uint64_t>("numberOfShards", 0);
@@ -1278,6 +1278,19 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     }
     TRI_ASSERT(numberOfShards > 0);
     toMerge.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards));
+  }
+  
+  if (parameters.get(StaticStrings::DataSourceGuid).isString()) {
+    std::string const uuid = parameters.get(StaticStrings::DataSourceGuid).copyString();
+    bool valid = false;
+    NumberUtils::atoi_positive<uint64_t>(uuid.data(), uuid.data() + uuid.size(), valid);
+    if (valid) {
+      // globallyUniqueId is only numeric. This causes ambiguities later
+      // and can only happen for collections created with v3.3.0 (the GUID
+      // generation process was changed in v3.3.1 already to fix this issue).
+      // remove the globallyUniqueId so a new one will be generated server.side
+      toMerge.add(StaticStrings::DataSourceGuid, VPackSlice::nullSlice());
+    }
   }
 
   // Replication Factor. Will be overwritten if not existent
@@ -2856,10 +2869,21 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   // because the collection is effectively NEW
   VPackBuilder patch;
   patch.openObject();
-  patch.add("version", VPackValue(LogicalCollection::VERSION_31));
+  patch.add("version", VPackValue(static_cast<int>(LogicalCollection::currentVersion())));
   if (!name.empty() && name[0] == '_' && !slice.hasKey("isSystem")) {
     // system collection?
     patch.add("isSystem", VPackValue(true));
+  }
+  if (!uuid.empty()) {
+    bool valid = false;
+    NumberUtils::atoi_positive<uint64_t>(uuid.data(), uuid.data() + uuid.size(), valid);
+    if (valid) {
+      // globallyUniqueId is only numeric. This causes ambiguities later
+      // and can only happen for collections created with v3.3.0 (the GUID
+      // generation process was changed in v3.3.1 already to fix this issue).
+      // remove the globallyUniqueId so a new one will be generated server.side
+      patch.add(StaticStrings::DataSourceGuid, VPackSlice::nullSlice());
+    }
   }
   patch.add("objectId", VPackSlice::nullSlice());
   patch.add("cid", VPackSlice::nullSlice());
