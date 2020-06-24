@@ -1,3 +1,5 @@
 leak:create_conn
 leak:CRYPTO_zalloc
 leak:snowball
+leak:rocksdb::Arena::AllocateNewBlock
+leak:AllocateNewBlock
