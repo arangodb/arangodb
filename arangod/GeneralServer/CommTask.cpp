@@ -185,7 +185,7 @@ CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authTok
     }
     [[fallthrough]];
     case ServerState::Mode::TRYAGAIN: {
-      // the following paths are whitelisted on followers
+      // the following paths are allowed on followers
       if (!::startsWith(path, "/_admin/shutdown") &&
           !::startsWith(path, "/_admin/cluster/health") &&
           !::startsWith(path, "/_admin/log") &&
