@@ -24,7 +24,6 @@ set(ARANGODB_TESTS_SOURCES
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp
-  Aql/AllRowsFetcherTest.cpp
   Aql/BlockCollector.cpp
   Aql/AqlCallListTest.cpp
   Aql/AqlExecutorTestCase.cpp
@@ -60,7 +59,6 @@ set(ARANGODB_TESTS_SOURCES
   Aql/KShortestPathsExecutorTest.cpp
   Aql/LimitExecutorTest.cpp
   Aql/MockTypedNode.cpp
-  Aql/MultiDependencySingleRowFetcherTest.cpp
   Aql/NgramMatchFunctionTest.cpp
   Aql/NgramSimilarityFunctionTest.cpp
   Aql/NgramPosSimilarityFunctionTest.cpp
@@ -75,7 +73,6 @@ set(ARANGODB_TESTS_SOURCES
   Aql/ScatterExecutorTest.cpp
   Aql/ShortestPathExecutorTest.cpp
   Aql/SkipResultTest.cpp
-  Aql/SingleRowFetcherTest.cpp
   Aql/SortedCollectExecutorTest.cpp
   Aql/SortExecutorTest.cpp
   Aql/SortLimit-test.cpp
@@ -84,7 +81,6 @@ set(ARANGODB_TESTS_SOURCES
   Aql/SubqueryEndExecutorTest.cpp
   Aql/SubqueryStartExecutorTest.cpp
   Aql/TestEmptyExecutorHelper.cpp
-  Aql/TestExecutorHelper.cpp
   Aql/TestLambdaExecutor.cpp
   Aql/TraversalExecutorTest.cpp
   Aql/UpdateExecutorTest.cpp

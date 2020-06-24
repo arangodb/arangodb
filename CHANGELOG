@@ -7,6 +7,12 @@ devel
   was incorrect. First run reported correct number, second run reported again number
   of first run, third the one of second etc.
 
+* Fixed hotbackup agency lock cleanup procedure.
+
+* Only advance shard version after follower is reported in sync in agency.
+
+* Fixed cluster behavior with HotBackup and non-existing backups on DB-Servers.
+
 * Fixed that, when performing a graph AQL query while a (graceful) failover for
   the leader of the system collections is in progress, ArangoDB would report a
   "Graph not found error".
@@ -45,9 +51,9 @@ devel
 
 * Fixed bad behavior that led to unnecessary additional revision tree rebuilding
   on server restart.
-  
+
 * Allow AQL queries on DB-Servers again. This is not an official supported
-  feature, but is sometimes used for debugging. Previous changes made it 
+  feature, but is sometimes used for debugging. Previous changes made it
   impossible to run a query on a local shard.
 
 * Fix restoring old arangodumps from ArangoDB 3.3 and before, which had index

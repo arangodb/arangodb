@@ -302,6 +302,16 @@ static inline v8::Local<v8::String> v8Utf8StringFactory(v8::Isolate* isolate,
                                 .FromMaybe(v8::Local<v8::String>()));                          \
   return
 
+/// @brief return a std::string_view
+///   implicitly requires 'args and 'isolate' to be available
+/// @param WHAT the name of the std::string_view variable
+#define TRI_V8_RETURN_STD_STRING_VIEW(WHAT)                                     \
+  args.GetReturnValue().Set(v8::String::NewFromUtf8(isolate, WHAT.data(),       \
+                                                    v8::NewStringType::kNormal, \
+                                                    (int)WHAT.length())         \
+                                .FromMaybe(v8::Local<v8::String>()));           \
+  return
+
 /// @brief return a std::string
 ///   implicitly requires 'args and 'isolate' to be available
 /// @param WHAT the name of the std::string variable
