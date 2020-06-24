@@ -1234,6 +1234,9 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
   } else {
     clientCall = clientCallList.popNextCall();
   }
+  // We got called with a skip count already set!
+  // Caller is wrong fix it.
+  TRI_ASSERT(clientCall.getSkipCount() == 0);
 
   ExecutorState localExecutorState = ExecutorState::DONE;
 
@@ -1314,6 +1317,9 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
 
   LOG_QUERY("007ac", DEBUG) << "starting statemachine of executor " << printBlockInfo();
   while (_execState != ExecState::DONE) {
+    // We can never keep state in the skipCounter
+    TRI_ASSERT(clientCall.getSkipCount() == 0);
+    auto oldState = _execState;
     switch (_execState) {
       case ExecState::CHECKCALL: {
         LOG_QUERY("cfe46", DEBUG)
@@ -1481,6 +1487,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             << printTypeInfo() << " all produced, fast forward to end up (sub-)query.";
 
         AqlCall callCopy = clientCall;
+        TRI_DEFER(clientCall.resetSkipCount());
         if constexpr (executorHasSideEffects<Executor>) {
           if (stack.needToSkipSubquery()) {
             // Fast Forward call.
@@ -1700,6 +1707,10 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         TRI_ASSERT(false);
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
     }
+    if (clientCall.getSkipCount() != 0) {
+      LOG_DEVEL << "State now: " << (int)_execState << " before: " << (int)oldState;
+    }
+    TRI_ASSERT(clientCall.getSkipCount() == 0);
   }
   LOG_QUERY("80c24", DEBUG) << printBlockInfo() << " local statemachine done. Return now.";
   // If we do not have an output, we simply return a nullptr here.

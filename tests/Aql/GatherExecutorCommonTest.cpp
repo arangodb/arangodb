@@ -384,15 +384,15 @@ class CommonGatherExecutorTest
     return {state, skipped, block};
   }
 
+  auto getClients() -> size_t {
+    auto const& [type, clients, parallelism] = GetParam();
+    return clients;
+  }
+
  private:
   auto getType() -> ExecutorType {
     auto const& [type, clients, parallelism] = GetParam();
     return type;
-  }
-
-  auto getClients() -> size_t {
-    auto const& [type, clients, parallelism] = GetParam();
-    return clients;
   }
 
   auto parallelism() -> GatherNode::Parallelism {
@@ -875,6 +875,35 @@ TEST_P(CommonGatherExecutorTest, skip_main_query_sub_1) {
   result.testAllValuesSkippedInRun(0);
   result.testValuesSkippedInRun(0, 1);
   result.testValuesSkippedInRun(0, 2);
+}
+
+/**
+ * @brief Simulates:
+ * SCATTER
+ * EnumerateList (skip over dep 0, requrie data from dep 2)
+ * GATHER
+ */
+TEST_P(CommonGatherExecutorTest, skip_over_first_branch) {
+  size_t numberOfDocuments = 20;
+  auto [exec, result] = getExecutor({}, numberOfDocuments);
+
+  // We skip over the full first branch.
+  // And then continue skipping on second branch.
+  size_t offset = numberOfDocuments + (numberOfDocuments / 2);
+  AqlCallStack stack{skipThenFetchCall(offset)};
+  {
+    // In this test we do not care for waiting.
+    auto const [state, skipped, block] = executeUntilResponse(exec.get(), stack);
+
+    ASSERT_FALSE(skipped.nothingSkipped());
+    EXPECT_EQ(state, ExecutionState::DONE);
+    assertResultValid(block, result);
+  }
+  if (getClients() == 1) {
+    result.testValuesSkippedInRun(numberOfDocuments, 0);
+  } else {
+    result.testValuesSkippedInRun(offset, 0);
+  }
 }
 
 }  // namespace arangodb::tests::aql
