@@ -1707,9 +1707,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         TRI_ASSERT(false);
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
     }
-    if (clientCall.getSkipCount() != 0) {
-      LOG_DEVEL << "State now: " << (int)_execState << " before: " << (int)oldState;
-    }
     TRI_ASSERT(clientCall.getSkipCount() == 0);
   }
   LOG_QUERY("80c24", DEBUG) << printBlockInfo() << " local statemachine done. Return now.";
