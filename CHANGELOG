@@ -1,6 +1,10 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Fixed that the hotbackup agency lock is released under all circumstances
+  using scope guards. This addresses a rare case in which the lock was left
+  behind.
+
 * Web UI now shows correct permissions in case wildcard database level and
   wildcard collection level permissions are both set.
 
