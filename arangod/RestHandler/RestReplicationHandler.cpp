@@ -1672,7 +1672,7 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
                                      collectionName == TRI_COL_NAME_USERS);
 
   LogicalCollection* collection = trx.documentCollection(collectionName);
-  if (generateNewRevisionIds && !collection) {
+  if (!collection) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   PhysicalCollection* physical = collection->getPhysical();
@@ -1680,6 +1680,10 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   char ridBuffer[11];
+
+  if (collection->isSmartChild() && collection->version() >= LogicalCollection::Version::v37) {
+    generateNewRevisionIds = true;
+  }
 
   // Now try to insert all keys for which the last marker was a document
   // marker, note that these could still be replace markers!
