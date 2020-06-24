@@ -179,8 +179,8 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
         registerInfos(RegIdSet{0}, RegIdSet{1, 2}, 1 /*nrIn*/, 3 /*nrOut*/,
                       RegIdFlatSet{}, RegIdFlatSetStack{{}}),
         executorInfos(std::move(groupRegisters), collectRegister, expressionRegister,
-                      expressionVariable, std::move(aggregateTypes),
-                      std::move(variables), std::move(aggregateRegisters), &VPackOptions::Defaults, count),
+                      expressionVariable, std::move(aggregateTypes), std::move(variables),
+                      std::move(aggregateRegisters), &VPackOptions::Defaults, count),
         block(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)) {}
 };
 
@@ -416,7 +416,8 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
       SortedCollectExecutorInfos(std::move(groupRegisters), collectRegister,
                                  expressionRegister, expressionVariable,
                                  std::move(aggregateTypes), std::move(variables),
-                                 std::move(aggregateRegisters), &VPackOptions::Defaults, false);
+                                 std::move(aggregateRegisters),
+                                 &VPackOptions::Defaults, false);
 
   SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{1}, {2}});
   AqlCall clientCall;
@@ -504,10 +505,12 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
   auto registerInfos = RegisterInfos(std::move(readableInputRegisters),
                                      std::move(writeableOutputRegisters), 1,
                                      nrOutputRegister, regToClear, regToKeep);
-  auto executorInfos = SortedCollectExecutorInfos(std::move(groupRegisters), collectRegister,
+  auto executorInfos =
+      SortedCollectExecutorInfos(std::move(groupRegisters), collectRegister,
                                  expressionRegister, expressionVariable,
                                  std::move(aggregateTypes), std::move(variables),
-                                 std::move(aggregateRegisters), &VPackOptions::Defaults, false);
+                                 std::move(aggregateRegisters),
+                                 &VPackOptions::Defaults, false);
 
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
 
@@ -649,6 +652,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_1) {
     ASSERT_EQ(clientCall.fullCount, upstreamCall.fullCount);
     ASSERT_EQ(skipped, 0);
   }
+  clientCall.resetSkipCount();
 
   {
     auto [state, stats, skipped, upstreamCall] =
@@ -685,6 +689,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_2) {
     EXPECT_EQ(clientCall.fullCount, upstreamCall.fullCount);
     EXPECT_EQ(skipped, 0);
   }
+  clientCall.resetSkipCount();
 
   {
     auto [state, stats, skipped, upstreamCall] =
@@ -697,6 +702,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_2) {
     EXPECT_EQ(skipped, 1);
     EXPECT_EQ(inputRange.upstreamState(), ExecutorState::HASMORE);
   }
+  clientCall.resetSkipCount();
 
   {
     SharedAqlItemBlockPtr outputBlock =
@@ -747,6 +753,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_3) {
     EXPECT_EQ(clientCall.fullCount, upstreamCall.fullCount);
     EXPECT_EQ(skipped, 0);
   }
+  clientCall.resetSkipCount();
 
   {
     auto [state, stats, skipped, upstreamCall] =
@@ -756,6 +763,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_3) {
     EXPECT_EQ(skipped, 0);
     EXPECT_EQ(inputRange.upstreamState(), ExecutorState::HASMORE);
   }
+  clientCall.resetSkipCount();
 
   {
     auto [state, stats, skipped, upstreamCall] =
@@ -794,6 +802,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_4) {
     EXPECT_EQ(clientCall.fullCount, upstreamCall.fullCount);
     EXPECT_EQ(skipped, 0);
   }
+  clientCall.resetSkipCount();
 
   {
     // 1, 1
@@ -804,6 +813,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_4) {
     EXPECT_EQ(skipped, 0);
     EXPECT_EQ(inputRange.upstreamState(), ExecutorState::HASMORE);
   }
+  clientCall.resetSkipCount();
 
   {
     // 2
@@ -814,6 +824,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_4) {
     EXPECT_EQ(skipped, 1);
     EXPECT_EQ(inputRange.upstreamState(), ExecutorState::HASMORE);
   }
+  clientCall.resetSkipCount();
 
   {
     SharedAqlItemBlockPtr outputBlock =
@@ -828,6 +839,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_4) {
     EXPECT_EQ(result.numRowsWritten(), 0);
     EXPECT_FALSE(result.produced());
   }
+  clientCall.resetSkipCount();
 
   {
     SharedAqlItemBlockPtr outputBlock =
@@ -873,6 +885,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_5) {
     EXPECT_EQ(clientCall.fullCount, upstreamCall.fullCount);
     EXPECT_EQ(skipped, 0);
   }
+  clientCall.resetSkipCount();
 
   {
     // 1, 1, 2
@@ -883,6 +896,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_5) {
     EXPECT_EQ(skipped, 1);
     EXPECT_EQ(inputRange.upstreamState(), ExecutorState::HASMORE);
   }
+  clientCall.resetSkipCount();
 
   {
     SharedAqlItemBlockPtr outputBlock =
@@ -903,6 +917,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_5) {
       EXPECT_EQ(x.slice().getInt(), 2);
     }
   }
+  clientCall.resetSkipCount();
 }
 
 using SortedCollectTestHelper = ExecutorTestHelper<1, 1>;
@@ -911,7 +926,6 @@ using SortedCollectSplitType = SortedCollectTestHelper::SplitType;
 class SortedCollectExecutorTestSplit
     : public AqlExecutorTestCaseWithParam<std::tuple<SortedCollectSplitType>> {
  protected:
-
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
 
   RegisterId collectRegister;
