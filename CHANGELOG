@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixed that the hotbackup agency lock is released under all circumstances
+  using scope guards. This addresses a rare case in which the lock was left
+  behind.
+
 * Fixed that, when performing a graph AQL query while a (graceful) failover for
   the leader of the system collections is in progress, ArangoDB would report a
   "Graph not found error".
