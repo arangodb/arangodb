@@ -474,7 +474,7 @@ std::string AgencyCommResult::errorDetails() const {
     return _message;
   }
 
-  return _message + " (" + std::string{errorMessage} + ")";
+  return _message + " (" + errorMessage + ")";
 }
 
 std::string AgencyCommResult::body() const {
