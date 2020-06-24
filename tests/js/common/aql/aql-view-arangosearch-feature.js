@@ -30,6 +30,7 @@ var analyzers = require("@arangodb/analyzers");
 const arango = require('@arangodb').arango;
 const internal = require('internal');
 const isCluster = internal.isCluster();
+const isEnterprise = internal.isEnterprise();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -332,7 +333,7 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(oldListInCollection.length, db._analyzers.toArray().length);
     },
 
-   testAnalyzersFeatures: function() {
+    testAnalyzersFeatures: function() {
       try {
        analyzers.save("testAnalyzer", "identity", {}, [ "unknown" ]);
        fail(); // unsupported feature
@@ -407,8 +408,35 @@ function iResearchFeatureAqlTestSuite () {
 
       db._useDatabase("_system");
       db._dropDatabase(dbName);
-   },
-
+    },
+////////////////////////////////////////////////////////////////////////////////
+/// @brief OneShard analyzers loading tests
+////////////////////////////////////////////////////////////////////////////////
+    testAnalyzerGetFromSameDatabaseOneShard: function() {
+      if (!isEnterprise || !isCluster) {
+       return;
+      }
+      let dbName = "analyzerDbName";
+      let analyzerName = "my_identity";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch (e) {}
+      try {
+        db._createDatabase(dbName, {sharding: "single"});
+        db._useDatabase(dbName);
+        let analyzer = analyzers.save(analyzerName, "identity", {});
+        db._create("test_coll");
+        db._createView("tv", "arangosearch", 
+                       {links: { test_coll: { includeAllFields:true,
+                                              analyzers:[ "" + analyzerName ] } } });
+        db.test_coll.save({"field": "value1"});
+        var res = db._query("FOR d IN tv SEARCH ANALYZER(d.field == 'value1', '" + analyzerName + 
+                            "') OPTIONS {waitForSync:true}  RETURN d");
+        assertEqual(1, res.toArray().length);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
+    },
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IResearchFeature tests
 ////////////////////////////////////////////////////////////////////////////////
