@@ -108,7 +108,7 @@ auto generateValue(std::vector<size_t> subqueryRuns, size_t branch) -> int64_t {
 
 #if 0
 // This is the inverse function for generateValue above.
-// I have not need this anywhere but maybe it is handy at one point
+// It's not used anywhere yet, but maybe it is handy at one point
 // so i decided to keep it in.
 auto reverseValue(int64_t v) -> std::pair<std::vector<size_t>, size_t> {
   std::vector<size_t> subqueryValues{};
