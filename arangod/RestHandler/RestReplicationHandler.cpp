@@ -1681,7 +1681,7 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
   }
   char ridBuffer[11];
 
-  if (collection->isSmartChild() && collection->version() >= LogicalCollection::Version::v37) {
+  if (collection->hasClusterWideUniqueRevs()) {
     generateNewRevisionIds = true;
   }
 
