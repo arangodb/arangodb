@@ -38,6 +38,38 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+/**
+ * @brief Description of this test case class
+ *
+ * This test class is supposed to test
+ * the data flow in gather executors.
+ * Those executors have the very special case that they have more then 1 dependency
+ * so those dependencies can be asekd in any order, and it is unclear
+ * at which state which dependency returns.
+ * They all need to be syncronized in subquery situations.
+ *
+ * This test will combine over all GATHER types that we have.
+ * It will NOT check if the returned Rows are correct by the definition
+ * of the specific executor, it will only validate if the returned
+ * Rows are from the pool of allowed rows.
+ * e.g.: if we have 3 dependencies, each offering 10 rows, this test will
+ * assert that results are out of the above 30 rows, and none of them is returned
+ * twice. It will not assert that those rows are returned in sorting order.
+ *
+ * In subquery situations this test class will check that
+ * subquery synchronization works as desired. There is no overlapping
+ * of results from different subqueries, and all shadow-rows are in order.
+ *
+ * To achieve this, the test class will build partial queries
+ * With any combination of:
+ * (produce N values, start a subquery for each input)*
+ * SCATTER all rows (all data to all branches)
+ * Produce K values on each branch
+ * GATHER (this executor will be asked with a stack defined in the test.)
+ *
+ * All produced values are unique, so we can back-track where it originates from.
+ */
+
 namespace arangodb::tests::aql {
 
 enum class ExecutorType { UNSORTED, SORTING_HEAP, SORTING_MINELEMENT };
@@ -282,6 +314,24 @@ class CommonGatherExecutorTest
   CommonGatherExecutorTest()
       : _useLogging(false) /* activates result logging */ {}
 
+  /**
+   * @brief Get the Executor object
+   * Produces an Gather test ExecutionBlock.
+   * This Gather is attached to a tree of Subqueries and a Scatter
+   * originating from above.
+   *
+   * @param subqueryRuns Defines how many rows should be produced on every subquery level, where 0 is the main query. (produces this amount of rows per execution)
+   * @param dataSize Defines how many rows should be produced on every branch (produces this amount of rows on each nesting level)
+   *
+   * e.g. runs == [2, 4] dataSize == 8 will produce 2 Rows on the Main query, 4 on the subquery, for each mainquery run.
+   * Then it will produce 8 datarows for each subquery run, for each dependency
+   *
+   * => 64/128/192 data rows in total
+   *
+   * Keep in mind to ask the Executor with a callstack of subqueryRuns.size() + 1 many calls.
+   *
+   * @return std::pair<std::unique_ptr<ExecutionBlock>, ResultMaps>
+   */
   auto getExecutor(std::deque<size_t> subqueryRuns, size_t dataSize = 10)
       -> std::pair<std::unique_ptr<ExecutionBlock>, ResultMaps> {
     auto exec = buildExecutor(subqueryRuns.size() + 1);
