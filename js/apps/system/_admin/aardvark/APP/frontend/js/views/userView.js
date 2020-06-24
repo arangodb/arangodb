@@ -237,14 +237,25 @@
         if (error) {
           arangoHelper.arangoError('User', 'Could not edit user settings');
         } else {
-          console.log(data);
-          if (data && data.extra && data.extra.img) {
+          if (data) {
             var extra = self.currentUser.get('extra');
-            extra.img = data.extra.img;
-            self.currentUser.set('img.extra', extra);
+            if (data.extra && data.extra.name) {
+              extra.name = data.extra.name;
+            } else {
+              extra.name = null;
+            }
+
+            if (data.extra && data.extra.img) {
+              extra.img = data.extra.img;
+            } else {
+              extra.img = null;
+            }
+            self.currentUser.set('extra', extra);
+
             // rerender navigation containing userBarView
             window.App.naviView.render();
           }
+
           arangoHelper.arangoNotification('User', 'Changes confirmed.');
           this.updateUserProfile();
         }
