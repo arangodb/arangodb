@@ -87,6 +87,9 @@ OutputAqlItemRow::OutputAqlItemRow(SharedAqlItemBlockPtr block, RegIdSet const& 
       }
     }
   }
+  // We cannot create an output row if we still have unreported skipCount
+  // in the call.
+  TRI_ASSERT(_call.getSkipCount() == 0);
 #endif
 }
 
@@ -110,7 +113,7 @@ void OutputAqlItemRow::moveValueWithoutRowCopy(RegisterId registerId, ValueType&
   TRI_ASSERT(registerId < getNrRegisters());
   TRI_ASSERT(_numValuesWritten < numRegistersToWrite());
   TRI_ASSERT(block().getValueReference(_baseIndex, registerId).isNone());
-  
+
   if constexpr (std::is_same_v<std::decay_t<ValueType>, AqlValueGuard>) {
     block().setValue(_baseIndex, registerId, value.value());
     value.steal();
@@ -122,8 +125,8 @@ void OutputAqlItemRow::moveValueWithoutRowCopy(RegisterId registerId, ValueType&
 }
 
 template <class ItemRowType, class ValueType>
-void OutputAqlItemRow::moveValueInto(RegisterId registerId, ItemRowType const& sourceRow,
-                                     ValueType& value) {
+void OutputAqlItemRow::moveValueInto(RegisterId registerId,
+                                     ItemRowType const& sourceRow, ValueType& value) {
   moveValueWithoutRowCopy<ItemRowType, ValueType>(registerId, value);
 
   // allValuesWritten() must be called only *after* moveValueWithoutRowCopy(),
@@ -295,9 +298,12 @@ AqlCall& OutputAqlItemRow::getModifiableClientCall() { return _call; };
 
 AqlCall&& OutputAqlItemRow::stealClientCall() { return std::move(_call); }
 
-void OutputAqlItemRow::setCall(AqlCall call) { _call = call; }
-
-void OutputAqlItemRow::didSkip(size_t n) { _call.didSkip(n); }
+void OutputAqlItemRow::setCall(AqlCall call) {
+  // We cannot create an output row if we still have unreported skipCount
+  // in the call.
+  TRI_ASSERT(_call.getSkipCount() == 0);
+  _call = call;
+}
 
 SharedAqlItemBlockPtr OutputAqlItemRow::stealBlock() {
   // numRowsWritten() inspects _block, so save this before resetting it!
@@ -421,7 +427,8 @@ void OutputAqlItemRow::doCopyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissin
   // of all rows increases or decreases, respectively. In these cases, we have
   // to adapt the depth by plus one or minus one, respectively.
   auto const rowDepth = std::invoke([&sourceRow]() -> size_t {
-    static bool constexpr isShadowRow = std::is_same_v<std::decay_t<ItemRowType>, ShadowAqlItemRow>;
+    static bool constexpr isShadowRow =
+        std::is_same_v<std::decay_t<ItemRowType>, ShadowAqlItemRow>;
     auto const baseRowDepth = std::invoke([&sourceRow]() -> size_t {
       if constexpr (isShadowRow) {
         return sourceRow.getDepth() + 1;
@@ -529,15 +536,12 @@ template void OutputAqlItemRow::cloneValueInto<InputAqlItemRow>(
     RegisterId registerId, const InputAqlItemRow& sourceRow, AqlValue const& value);
 template void OutputAqlItemRow::cloneValueInto<ShadowAqlItemRow>(
     RegisterId registerId, const ShadowAqlItemRow& sourceRow, AqlValue const& value);
-template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueGuard>(RegisterId registerId,
-                                                               InputAqlItemRow const& sourceRow,
-                                                               AqlValueGuard& guard);
+template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueGuard>(
+    RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueGuard& guard);
 template void OutputAqlItemRow::moveValueInto<ShadowAqlItemRow, AqlValueGuard>(
     RegisterId registerId, ShadowAqlItemRow const& sourceRow, AqlValueGuard& guard);
 
-template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, VPackSlice const>(RegisterId registerId,
-                                                               InputAqlItemRow const& sourceRow,
-                                                               VPackSlice const& guard);
+template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, VPackSlice const>(
+    RegisterId registerId, InputAqlItemRow const& sourceRow, VPackSlice const& guard);
 template void OutputAqlItemRow::moveValueInto<ShadowAqlItemRow, VPackSlice const>(
     RegisterId registerId, ShadowAqlItemRow const& sourceRow, VPackSlice const& guard);
-
