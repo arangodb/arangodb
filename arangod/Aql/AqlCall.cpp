@@ -231,6 +231,8 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
   return call;
 }
 
+void AqlCall::resetSkipCount() noexcept { skippedRows = 0; }
+
 void AqlCall::toVelocyPack(velocypack::Builder& builder) const {
   using namespace velocypack;
 

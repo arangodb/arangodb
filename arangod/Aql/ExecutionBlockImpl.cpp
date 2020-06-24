@@ -536,7 +536,9 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call, DataRange
       // There is no data to be produced
       return createOutputRow(SharedAqlItemBlockPtr{nullptr}, std::move(call));
     }
-    return createOutputRow(_engine->itemBlockManager().requestBlock(blockSize, _registerInfos.numberOfOutputRegisters()), std::move(call));
+    return createOutputRow(_engine->itemBlockManager().requestBlock(
+                               blockSize, _registerInfos.numberOfOutputRegisters()),
+                           std::move(call));
   }
 }
 
@@ -795,7 +797,7 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(typename Fetcher::DataRa
     -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCallType> {
   // The skippedRows is a temporary counter used in this function
   // We need to make sure to reset it afterwards.
-  TRI_DEFER(call.skippedRows = 0);
+  TRI_DEFER(call.resetSkipCount());
   if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::EXECUTOR) {
     if constexpr (isMultiDepExecutor<Executor>) {
       TRI_ASSERT(inputRange.numberDependencies() == _dependencies.size());
@@ -987,6 +989,7 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(AqlCallStack& s
     AqlCall& shadowCall = stack.modifyCallAtDepth(shadowDepth);
     if (shadowCall.needSkipMore()) {
       shadowCall.didSkip(1);
+      shadowCall.resetSkipCount();
       skipResult.didSkipSubquery(1, shadowDepth);
     } else if (shadowCall.getLimit() > 0) {
       TRI_ASSERT(!shadowCall.needSkipMore() && shadowCall.getLimit() > 0);
@@ -1287,6 +1290,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         if (skippedSub > 0) {
           auto& call = stack.modifyCallAtDepth(i);
           call.didSkip(skippedSub);
+          call.resetSkipCount();
         }
       }
     }
@@ -1341,6 +1345,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         size_t skippedLocal = 0;
         AqlCallType call{};
         if constexpr (is_one_of_v<Executor, SubqueryExecutor<true>>) {
+          TRI_DEFER(clientCall.resetSkipCount());
           // NOTE: The subquery Executor will by itself call EXECUTE on it's
           // subquery. This can return waiting => we can get a WAITING state
           // here. We can only get the waiting state for Subquery executors.
@@ -1589,6 +1594,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           // We skipped through passthrough, so count that a skip was solved.
           _skipped.merge(skippedLocal, false);
           clientCall.didSkip(skippedLocal.getSkipCount());
+          clientCall.resetSkipCount();
         } else if constexpr (is_one_of_v<Executor, SubqueryStartExecutor, SubqueryEndExecutor>) {
           // Subquery needs to include the topLevel Skip.
           // But does not need to apply the count to clientCall.
@@ -1597,6 +1603,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
 
           auto& subqueryCall = stack.modifyTopCall();
           subqueryCall.didSkip(skippedLocal.getSkipCount());
+          subqueryCall.resetSkipCount();
         } else {
           _skipped.merge(skippedLocal, true);
         }
