@@ -3660,8 +3660,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
                               "\"type\": \"norm\", "
                               "\"properties\":{\"locale\":\"ru_RU.utf-8\","
                               "\"case\":\"upper\",\"accent\":true}, "
-                              "\"features\": [], "
-                              "\"revision\": 0 } ");
+                              "\"features\": [] } ");
 
     VPackBuilder builder;
     result.first->toVelocyPack(builder, false);
@@ -3675,8 +3674,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
         "\"type\": \"norm\", "
         "\"properties\":{\"locale\":\"ru_RU.utf-8\",\"case\":\"upper\","
         "\"accent\":true}, "
-        "\"features\": [],"
-        "\"revision\": 0 } ");
+        "\"features\": [] } ");
 
     VPackBuilder builder;
     result.first->toVelocyPack(builder, sysDatabase.use().get());
@@ -3695,8 +3693,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
         "\"type\": \"norm\", "
         "\"properties\":{\"locale\":\"ru_RU.utf-8\",\"case\":\"upper\","
         "\"accent\":true}, "
-        "\"features\": [],"
-        "\"revision\": 0 } ");
+        "\"features\": []} ");
 
     VPackBuilder builder;
     result.first->toVelocyPack(builder, vocbase);
@@ -3711,8 +3708,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
                               "\"type\": \"norm\", "
                               "\"properties\":{\"locale\":\"ru_RU.utf-8\","
                               "\"case\":\"upper\",\"accent\":true}, "
-                              "\"features\": [], "
-                              "\"revision\": 0 } ");
+                              "\"features\": []} ");
 
     VPackBuilder builder;
     result.first->toVelocyPack(builder, nullptr);

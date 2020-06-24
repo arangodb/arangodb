@@ -1026,8 +1026,7 @@ void AnalyzerPool::toVelocyPack(
   addStringRef(builder, StaticStrings::AnalyzerNameField, name);
   addStringRef(builder, StaticStrings::AnalyzerTypeField, type());
   builder.add(StaticStrings::AnalyzerPropertiesField, properties());
-  builder.add(arangodb::StaticStrings::AnalyzersRevision, VPackValue(static_cast<uint64_t>(_revision)));
-
+  
   // add features
   VPackArrayBuilder featuresScope(&builder, StaticStrings::AnalyzerFeaturesField);
   for (auto& feature : features()) {
@@ -1065,6 +1064,12 @@ void AnalyzerPool::toVelocyPack(VPackBuilder& builder,
 
     // ensure names are unique
     addStringRef(builder, arangodb::StaticStrings::KeyString, name);
+
+    // only persistence needs revision to be stored
+    // link definitions live always without revisions
+    // analyzer definitions are stored in link itself
+    builder.add(arangodb::StaticStrings::AnalyzersRevision, 
+                VPackValue(static_cast<uint64_t>(_revision)));
   }
 
   toVelocyPack(builder, name);
