@@ -134,7 +134,7 @@ class ResultMaps {
 
   auto addValue(int64_t val) -> void {
     ASSERT_TRUE(val >= 0)
-        << "Tried to insert a negative value, test stup broken";
+        << "Tried to insert a negative value, test setup broken";
     auto [it, inserted] = _data.back().emplace(val);
     ASSERT_TRUE(inserted) << "Tried to insert same value twice";
   }
