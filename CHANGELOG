@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed bug in IResearchViewExecutor that lead to only up to 1000 rows being
+  produced.
+
 * Fixed hotbackup agency lock cleanup procedure.
 
 * Only advance shard version after follower is reported in sync in agency.
