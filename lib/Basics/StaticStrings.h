@@ -318,6 +318,8 @@ class StaticStrings {
   static std::string const AqlCallListSpecific;
   static std::string const AqlCallListDefault;
   static std::string const ArangoSearchAnalyzersRevision;
+  static std::string const ArangoSearchCurrentAnalyzersRevision;
+  static std::string const ArangoSearchSystemAnalyzersRevision;
 
   // validation
   static std::string const ValidationLevelNone;

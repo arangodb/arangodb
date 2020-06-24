@@ -1711,7 +1711,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     irs::string_ref const& name,
     TRI_vocbase_t const& activeVocbase,
     TRI_vocbase_t const& systemVocbase,
-    arangodb::AnalyzersRevision::Revision const revision,
+    arangodb::AnalyzersRevision::QueryAnalyzerRevisions const& revision,
     bool onlyCached /*= false*/) const {
   auto const normalizedName = normalize(name, activeVocbase, systemVocbase, true);
 
@@ -1723,8 +1723,13 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     // accessing local analyzer from within another database
     return nullptr;
   }
-
-  return get(normalizedName, split, revision, onlyCached);
+  // getVocbaseRevision expects vocbase name and this is ensured by
+  // normalize with expandVocbasePrefx = true
+  TRI_ASSERT(split.first.null() || !split.first.empty()); 
+  return get(normalizedName, split,
+             split.first.null() ? AnalyzersRevision::MIN // built-in analyzers always has MIN revision
+               : revision.getVocbaseRevision(split.first),
+             onlyCached);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

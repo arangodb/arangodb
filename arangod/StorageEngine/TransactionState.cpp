@@ -39,7 +39,16 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
+
+namespace {
+std::ostream& operator<<(std::ostream& o, 
+  arangodb::AnalyzersRevision::QueryAnalyzerRevisions const& r) {
+  return r.print(o);
+}
+}
+
 using namespace arangodb;
+
 
 /// @brief transaction type
 TransactionState::TransactionState(TRI_vocbase_t& vocbase,
@@ -292,11 +301,12 @@ void TransactionState::setExclusiveAccessType() {
   _type = AccessMode::Type::EXCLUSIVE;
 }
 
-void TransactionState::acceptAnalyzersRevision(AnalyzersRevision::Revision analyzersRevision) noexcept {
+void TransactionState::acceptAnalyzersRevision(
+    AnalyzersRevision::QueryAnalyzerRevisions const& analyzersRevision) noexcept {
   // only init from default allowed! Or we have problem -> different analyzersRevision in one transaction
-  LOG_TOPIC_IF("9127a", ERR, Logger::AQL, (_analyzersRevision != analyzersRevision && _analyzersRevision != AnalyzersRevision::MIN))
+  LOG_TOPIC_IF("9127a", ERR, Logger::AQL, (_analyzersRevision != analyzersRevision && !_analyzersRevision.isDefault()))
     << " Changing analyzers revision for transaction from " << _analyzersRevision << " to " << analyzersRevision;
-  TRI_ASSERT(_analyzersRevision == analyzersRevision || _analyzersRevision == AnalyzersRevision::MIN);
+  TRI_ASSERT(_analyzersRevision == analyzersRevision || _analyzersRevision.isDefault());
   _analyzersRevision = analyzersRevision;
 }
 

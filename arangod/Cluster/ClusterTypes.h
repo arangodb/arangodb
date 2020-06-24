@@ -86,8 +86,50 @@ struct AnalyzersRevision {
   using Revision = uint64_t;
   using Ptr = std::shared_ptr<AnalyzersRevision const>;
 
+
   static constexpr Revision LATEST = std::numeric_limits<uint64_t>::max();
   static constexpr Revision MIN = 0;
+
+  /// @brief Analyzers revisions used in query.
+  /// Stores current database revision
+  /// and _system database revision (analyzers from _system are accessible from other databases)
+  /// If at some point we will decide to allow cross-database anayzer usage this could
+  /// became more complicated. But for now to keep it simple - store just two members
+  struct QueryAnalyzerRevisions {
+    constexpr QueryAnalyzerRevisions(Revision current, Revision system)
+      : currentDbRevision(current), systemDbRevision(system) {}
+
+    QueryAnalyzerRevisions() = default;
+
+    void toVelocyPack(VPackBuilder& builder) const;
+    bool fromVelocyPack(velocypack::Slice slice, std::string& error);
+
+    bool isDefault() const noexcept {
+      return currentDbRevision == AnalyzersRevision::MIN &&
+             systemDbRevision == AnalyzersRevision::MIN;
+    }
+
+    bool operator==(QueryAnalyzerRevisions const& other) const noexcept {
+      return currentDbRevision == other.currentDbRevision &&
+             systemDbRevision == other.systemDbRevision;
+    }
+
+    std::ostream& print(std::ostream& o) const;
+
+    bool operator!=(QueryAnalyzerRevisions const& other) const noexcept {
+      return !(*this == other);
+    }
+
+    /// @brief Gets analyzers revision to be used with specified database
+    /// @param vocbase database name
+    /// @return analyzers revision
+    Revision getVocbaseRevision(DatabaseID const& vocbase) const noexcept;
+
+    Revision currentDbRevision{ AnalyzersRevision::MIN};
+    Revision systemDbRevision{ AnalyzersRevision::MIN};
+  };
+
+  static QueryAnalyzerRevisions QUERY_LATEST;
 
   AnalyzersRevision(AnalyzersRevision const&) = delete;
   AnalyzersRevision& operator=(AnalyzersRevision const&) = delete;
@@ -113,8 +155,8 @@ struct AnalyzersRevision {
   static Ptr fromVelocyPack(VPackSlice const& slice, std::string& error);
 
   static Ptr getEmptyRevision();
- private:
 
+ private:
   AnalyzersRevision(Revision revision, Revision buildingRevision,
     ServerID&& serverID, uint64_t rebootID) noexcept
     : _revision(revision), _buildingRevision(buildingRevision),
