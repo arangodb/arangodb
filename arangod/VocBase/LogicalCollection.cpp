@@ -426,7 +426,7 @@ uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx,
 }
 
 bool LogicalCollection::hasClusterWideUniqueRevs() const {
-  return usesRevisionsAsDocumentIds() && isSmartChild();
+  return version() >= Version::v37 && isSmartChild();
 }
 
 uint32_t LogicalCollection::v8CacheVersion() const { return _v8CacheVersion; }
@@ -757,10 +757,10 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   result.add(StaticStrings::IsDisjoint, VPackValue(isDisjoint()));
   result.add(StaticStrings::IsSmart, VPackValue(isSmart()));
   result.add(StaticStrings::IsSmartChild, VPackValue(isSmartChild()));
-  result.add(StaticStrings::UsesRevisionsAsDocumentIds,
+  /*result.add(StaticStrings::UsesRevisionsAsDocumentIds,
              VPackValue(usesRevisionsAsDocumentIds()));
   result.add(StaticStrings::MinRevision, VPackValue(minRevision()));
-  result.add(StaticStrings::SyncByRevision, VPackValue(syncByRevision()));
+  result.add(StaticStrings::SyncByRevision, VPackValue(syncByRevision()));*/
 
   if (hasSmartJoinAttribute()) {
     result.add(StaticStrings::SmartJoinAttribute, VPackValue(_smartJoinAttribute));
