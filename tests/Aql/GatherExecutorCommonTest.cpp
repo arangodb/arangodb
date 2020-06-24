@@ -667,6 +667,12 @@ class CommonGatherExecutorTest
 
 INSTANTIATE_TEST_CASE_P(CommonGatherTests, CommonGatherExecutorTest, combinations);
 
+/**
+ * @brief Simulates:
+ * SCATTER
+ * EnumerateList
+ * GATHER
+ */
 TEST_P(CommonGatherExecutorTest, get_all) {
   auto [exec, result] = getExecutor({});
 
@@ -685,6 +691,14 @@ TEST_P(CommonGatherExecutorTest, get_all) {
   result.testAllValuesProduced();
 }
 
+/**
+ * @brief Simulates:
+ * EnumerateList
+ * SubqueryStart
+ * SCATTER
+ * EnumerateList
+ * GATHER
+ */
 TEST_P(CommonGatherExecutorTest, get_all_sub_1) {
   auto [exec, result] = getExecutor({4});
 
@@ -703,6 +717,17 @@ TEST_P(CommonGatherExecutorTest, get_all_sub_1) {
   }
   result.testAllValuesProduced();
 }
+
+/**
+ * @brief Simulates:
+ * EnumerateList
+ * SubqueryStart
+ * EnumerateList
+ * SubqueryStart
+ * SCATTER
+ * EnumerateList
+ * GATHER
+ */
 
 TEST_P(CommonGatherExecutorTest, get_all_sub_2) {
   auto [exec, result] = getExecutor({3, 5});
@@ -724,6 +749,13 @@ TEST_P(CommonGatherExecutorTest, get_all_sub_2) {
   result.testAllValuesProduced();
 }
 
+/**
+ * @brief Simulates:
+ * SCATTER
+ * EnumerateList (skipped some data)
+ * GATHER
+ */
+
 TEST_P(CommonGatherExecutorTest, skip_data) {
   auto [exec, result] = getExecutor({});
 
@@ -742,6 +774,15 @@ TEST_P(CommonGatherExecutorTest, skip_data) {
   }
   result.testSkippedInEachRun(5);
 }
+
+/**
+ * @brief Simulates:
+ * EnumerateList
+ * SubqueryStart
+ * SCATTER
+ * EnumerateList (skipped some data)
+ * GATHER
+ */
 
 TEST_P(CommonGatherExecutorTest, skip_data_sub_1) {
   auto [exec, result] = getExecutor({4});
@@ -763,6 +804,16 @@ TEST_P(CommonGatherExecutorTest, skip_data_sub_1) {
   result.testSkippedInEachRun(5);
 }
 
+/**
+ * @brief Simulates:
+ * EnumerateList
+ * SubqueryStart
+ * EnumerateList
+ * SubqueryStart
+ * SCATTER
+ * EnumerateList (skipped some data)
+ * GATHER
+ */
 TEST_P(CommonGatherExecutorTest, skip_data_sub_2) {
   auto [exec, result] = getExecutor({3, 5});
 
@@ -784,6 +835,15 @@ TEST_P(CommonGatherExecutorTest, skip_data_sub_2) {
   }
   result.testSkippedInEachRun(5);
 }
+
+/**
+ * @brief Simulates:
+ * Enumerate List (skipped some data)
+ * SubqueryStart
+ * SCATTER
+ * EnumerateList
+ * GATHER
+ */
 
 TEST_P(CommonGatherExecutorTest, skip_main_query_sub_1) {
   auto [exec, result] = getExecutor({3});
