@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed hotbackup agency lock cleanup procedure.
+
 * Only advance shard version after follower is reported in sync in agency.
 
 * Fixed cluster behavior with HotBackup and non-existing backups on DB-Servers.
