@@ -194,42 +194,6 @@ void ConstFetcher::injectBlock(SharedAqlItemBlockPtr block) {
   _rowIndex = 0;
 }
 
-std::pair<ExecutionState, InputAqlItemRow> ConstFetcher::fetchRow(size_t) {
-  // This fetcher does not use atMost
-  // This fetcher never waits because it can return only its
-  // injected block and does not have the ability to pull.
-  if (!indexIsValid()) {
-    return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
-  }
-  TRI_ASSERT(_currentBlock != nullptr);
-
-  // set state
-  ExecutionState rowState = ExecutionState::HASMORE;
-  if (isLastRowInBlock()) {
-    rowState = ExecutionState::DONE;
-  }
-
-  return {rowState, InputAqlItemRow{_currentBlock, _rowIndex++}};
-}
-
-std::pair<ExecutionState, size_t> ConstFetcher::skipRows(size_t) {
-  // This fetcher never waits because it can return only its
-  // injected block and does not have the ability to pull.
-  if (!indexIsValid()) {
-    return {ExecutionState::DONE, 0};
-  }
-  TRI_ASSERT(_currentBlock != nullptr);
-
-  // set state
-  ExecutionState rowState = ExecutionState::HASMORE;
-  if (isLastRowInBlock()) {
-    rowState = ExecutionState::DONE;
-  }
-  _rowIndex++;
-
-  return {rowState, 1};
-}
-
 auto ConstFetcher::indexIsValid() const noexcept -> bool {
   return _currentBlock != nullptr && _rowIndex + 1 <= _currentBlock->size();
 }
@@ -268,8 +232,4 @@ auto ConstFetcher::canUseFullBlock(std::vector<std::pair<size_t, size_t>> const&
   }
   // If we get here, the ranges covers the full block
   return true;
-}
-
-std::pair<ExecutionState, ShadowAqlItemRow> ConstFetcher::fetchShadowRow(size_t) const {
-  return {ExecutionState::DONE, ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
 }

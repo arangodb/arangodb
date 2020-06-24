@@ -1754,35 +1754,6 @@ void ExecutionBlockImpl<Executor>::resetExecutor() {
 }
 
 template <class Executor>
-ExecutionState ExecutionBlockImpl<Executor>::fetchShadowRowInternal() {
-  TRI_ASSERT(_state == InternalState::FETCH_SHADOWROWS);
-  TRI_ASSERT(!_outputItemRow->isFull());
-  ExecutionState state = ExecutionState::HASMORE;
-  ShadowAqlItemRow shadowRow{CreateInvalidShadowRowHint{}};
-  // TODO: Add lazy evaluation in case of LIMIT "lying" on done
-  std::tie(state, shadowRow) = _rowFetcher.fetchShadowRow();
-  if (state == ExecutionState::WAITING) {
-    TRI_ASSERT(!shadowRow.isInitialized());
-    return state;
-  }
-
-  if (state == ExecutionState::DONE) {
-    _state = InternalState::DONE;
-  }
-  if (shadowRow.isInitialized()) {
-    _outputItemRow->moveRow(shadowRow);
-    TRI_ASSERT(_outputItemRow->produced());
-    _outputItemRow->advanceRow();
-  } else {
-    if (_state != InternalState::DONE) {
-      _state = InternalState::FETCH_DATA;
-      resetExecutor();
-    }
-  }
-  return state;
-}
-
-template <class Executor>
 auto ExecutionBlockImpl<Executor>::outputIsFull() const noexcept -> bool {
   return _outputItemRow != nullptr && _outputItemRow->isInitialized() &&
          _outputItemRow->allRowsUsed();
