@@ -338,6 +338,7 @@
         if (entry.msg.indexOf('{' + entry.topic + '}') > -1) {
           entry.msg = entry.msg.replace('{' + entry.topic + '}', '');
         }
+        entry.msg = arangoHelper.escapeHtml(entry.msg); 
       });
 
       if (this.currentPage === 0) {

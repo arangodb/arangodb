@@ -76,8 +76,6 @@ class SingleRowFetcher;
 // The four completions for SimpleModifiers are defined in InsertModifier.h,
 // RemoveModifier.h, and UpdateReplaceModifier.h
 //
-// The FetcherType has to provide the function fetchRow with the parameter atMost
-//
 // The two types of modifiers (Simple and Upsert) follow a similar design. The main
 // data is held in
 //   * an operations vector which stores the type of operation
