@@ -445,22 +445,27 @@ ExecutionPlan* ExecutionPlan::clone(Ast* ast) {
 ExecutionPlan* ExecutionPlan::clone() { return clone(_ast); }
 
 /// @brief export to VelocyPack
-std::shared_ptr<VPackBuilder> ExecutionPlan::toVelocyPack(Ast* ast, bool verbose) const {
+std::shared_ptr<VPackBuilder> ExecutionPlan::toVelocyPack(Ast* ast, bool verbose,
+                                                          ExplainRegisterPlan explainRegisterPlan) const {
   VPackOptions options;
   options.checkAttributeUniqueness = false;
   options.buildUnindexedArrays = true;
   auto builder = std::make_shared<VPackBuilder>(&options);
 
-  toVelocyPack(*builder, ast, verbose);
+  toVelocyPack(*builder, ast, verbose, explainRegisterPlan);
   return builder;
 }
 
 /// @brief export to VelocyPack
-void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose) const {
+void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose,
+                                 ExplainRegisterPlan explainRegisterPlan) const {
   unsigned flags = ExecutionNode::SERIALIZE_ESTIMATES;
   if (verbose) {
     flags |= ExecutionNode::SERIALIZE_PARENTS | ExecutionNode::SERIALIZE_DETAILS |
              ExecutionNode::SERIALIZE_FUNCTIONS;
+  }
+  if (explainRegisterPlan == ExplainRegisterPlan::Yes) {
+    flags |= ExecutionNode::SERIALIZE_REGISTER_INFORMATION;
   }
   // keeps top level of built object open
   _root->toVelocyPack(builder, flags, true);
@@ -898,10 +903,16 @@ ExecutionNode* ExecutionPlan::registerNode(std::unique_ptr<ExecutionNode> node) 
   
   // may throw
   _ast->query().resourceMonitor().increaseMemoryUsage(sizeof(ExecutionNode));
-  
-  auto emplaced = _ids.try_emplace(node->id(), node.get()).second;  // take ownership
-  TRI_ASSERT(emplaced);
-  return node.release();
+ 
+  try {
+    auto emplaced = _ids.try_emplace(node->id(), node.get()).second;  // take ownership
+    TRI_ASSERT(emplaced);
+    return node.release();
+  } catch (...) {
+    // clean up
+    _ast->query().resourceMonitor().decreaseMemoryUsage(sizeof(ExecutionNode));
+    throw;
+  }
 }
 
 /// @brief register a node with the plan, will delete node if addition fails
@@ -2213,6 +2224,10 @@ void ExecutionPlan::findVarUsage() {
 
 /// @brief determine if the above are already set
 bool ExecutionPlan::varUsageComputed() const { return _varUsageComputed; }
+
+void ExecutionPlan::planRegisters(ExplainRegisterPlan explainRegisterPlan) {
+  _root->planRegisters(nullptr, explainRegisterPlan);
+}
 
 /// @brief unlinkNodes, note that this does not delete the removed
 /// nodes and that one cannot remove the root node of the plan.

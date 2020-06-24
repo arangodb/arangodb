@@ -46,6 +46,10 @@ enum class TimeFormat {
 /// @brief whether or not the specified format is a local one
 bool isLocalFormat(TimeFormat format);
 
+/// @brief whether or not the specified format produces string outputs
+/// (in contrast to numeric outputs)
+bool isStringFormat(TimeFormat format);
+
 /// @brief return the name of the default log time format
 std::string defaultFormatName();
 

@@ -48,8 +48,8 @@ using RequestType = arangodb::AsyncAgencyComm::RequestType;
 struct RequestMeta {
   network::Timeout timeout;
   fuerte::RestVerb method;
-  std::string url;
   RequestType type;
+  std::string url;
   std::vector<std::string> clientIds;
   network::Headers headers;
   clock::time_point startTime;
@@ -412,7 +412,7 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
   uint64_t requestId = _manager.nextRequestId();
 
   return agencyAsyncSend(_manager,
-                         RequestMeta({timeout, method, url, type, std::move(clientIds),
+                         RequestMeta({timeout, method, type, url, std::move(clientIds),
                                       std::move(headers), clock::now(), requestId,
                                       _skipScheduler || _manager.getSkipScheduler(), 0}),
                          std::move(body))
@@ -572,7 +572,6 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendReadTransaction(
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendPollTransaction(
   network::Timeout timeout, uint64_t index) const {
-  std::vector<ClientId> clientIds;
 
   return sendWithFailover(
     fuerte::RestVerb::Get, AGENCY_URL_POLL, timeout, RequestType::READ, index);

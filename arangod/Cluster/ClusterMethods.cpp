@@ -2482,7 +2482,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
       break;
     }
 
-    if (res.is(TRI_ERROR_REQUEST_CANCELED)) {
+    if (res.is(TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED)) {
       // special error code indicating that storing the updated plan in the
       // agency didn't succeed, and that we should try again
 
@@ -2584,7 +2584,7 @@ arangodb::Result hotBackupList(network::ConnectionPool* pool,
   << futures.size() << " lists of local backups";
 
   // Any error if no id presented
-  if (!idSlice.isNone() && nrGood < futures.size()) {
+  if (idSlice.isNone() && nrGood < futures.size()) {
     return arangodb::Result(
       TRI_ERROR_HOT_BACKUP_DBSERVERS_AWOL,
       std::string("not all db servers could be reached for backup listing"));
