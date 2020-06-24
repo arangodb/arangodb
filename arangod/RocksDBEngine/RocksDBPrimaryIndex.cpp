@@ -291,6 +291,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
         _index(index),
         _cmp(index->comparator()),
         _allowCoveringIndexOptimization(allowCoveringIndexOptimization),
+        _mustSeek(true),
         _bounds(std::move(bounds)) {
     TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::primary());
 
@@ -308,11 +309,6 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
 
     TRI_ASSERT(options.prefix_same_as_start);
     _iterator = mthds->NewIterator(options, index->columnFamily());
-    if constexpr (reverse) {
-      _iterator->SeekForPrev(_bounds.end());
-    } else {
-      _iterator->Seek(_bounds.start());
-    }
   }
 
  public:
@@ -323,6 +319,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
   /// @brief Get the next limit many elements in the index
   bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
     TRI_ASSERT(_trx->state()->isRunning());
+    seekIfRequired();
 
     if (limit == 0 || !_iterator->Valid() || outOfRange()) {
       // No limit no data, or we are actually done. The last call should have
@@ -331,7 +328,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
       return false;
     }
 
-    while (limit > 0) {
+    do {
       TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
 
       cb(RocksDBValue::documentId(_iterator->value()));
@@ -346,13 +343,14 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
       if (!_iterator->Valid() || outOfRange()) {
         return false;
       }
-    }
+    } while (limit > 0);
 
     return true;
   }
   
   bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
     TRI_ASSERT(_allowCoveringIndexOptimization);
+    seekIfRequired();
 
     if (limit == 0 || !_iterator->Valid() || outOfRange()) {
       // No limit no data, or we are actually done. The last call should have
@@ -363,7 +361,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
 
     transaction::BuilderLeaser builder(transaction());
 
-    while (limit > 0) {
+    do {
       LocalDocumentId documentId = RocksDBValue::documentId(_iterator->value());
       arangodb::velocypack::StringRef key = RocksDBKey::primaryKey(_iterator->key());
 
@@ -381,12 +379,14 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
       if (!_iterator->Valid() || outOfRange()) {
         return false;
       }
-    }
+    } while (limit > 0);
+
     return true;
   }
 
   void skipImpl(uint64_t count, uint64_t& skipped) override {
     TRI_ASSERT(_trx->state()->isRunning());
+    seekIfRequired();
 
     if (!_iterator->Valid() || outOfRange()) {
       return;
@@ -412,12 +412,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
   /// @brief Reset the cursor
   void resetImpl() override {
     TRI_ASSERT(_trx->state()->isRunning());
-
-    if constexpr (reverse) {
-      _iterator->SeekForPrev(_bounds.end());
-    } else {
-      _iterator->Seek(_bounds.start());
-    }
+    _mustSeek = true;
   }
 
   /// @brief we provide a method to provide the index attribute values
@@ -434,10 +429,22 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
     }
   }
 
+  void seekIfRequired() {
+    if (_mustSeek) {
+      if constexpr (reverse) {
+        _iterator->SeekForPrev(_bounds.end());
+      } else {
+        _iterator->Seek(_bounds.start());
+      }
+      _mustSeek = false;
+    }
+  }
+
   arangodb::RocksDBPrimaryIndex const* _index;
   rocksdb::Comparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   bool const _allowCoveringIndexOptimization;
+  bool _mustSeek;
   RocksDBKeyBounds _bounds;
   // used for iterate_upper_bound iterate_lower_bound
   rocksdb::Slice _rangeBound;

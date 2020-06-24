@@ -72,6 +72,13 @@ std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::peekDataRow() 
                         InputAqlItemRow{CreateInvalidInputRowHint{}});
 }
 
+std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::peekDataRow(HasDataRow /*tag unused*/) const {
+  TRI_ASSERT(_block != nullptr);
+  TRI_ASSERT(hasDataRow());
+  return std::make_pair(nextState<LookAhead::NEXT, RowType::DATA>(),
+                        InputAqlItemRow{_block, _rowIndex});
+}
+
 std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::nextDataRow() {
   // this is an optimized version that intentionally does not call peekDataRow()
   // in order to save a few if conditions
@@ -92,6 +99,13 @@ std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::nextDataRow(Ha
   // must calculate nextState() before the increase of _rowIndex here.
   auto state = nextState<LookAhead::NEXT, RowType::DATA>();
   return std::make_pair(state, InputAqlItemRow{_block, _rowIndex++});
+}
+
+/// @brief moves the row index one forward if we are at a row right now
+void AqlItemBlockInputRange::advanceDataRow() noexcept {
+  if (hasDataRow()) {
+    ++_rowIndex;
+  }
 }
 
 ExecutorState AqlItemBlockInputRange::upstreamState() const noexcept {

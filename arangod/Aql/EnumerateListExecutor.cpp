@@ -66,7 +66,7 @@ EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher, EnumerateListExec
 
 void EnumerateListExecutor::initializeNewRow(AqlItemBlockInputRange& inputRange) {
   if (_currentRow) {
-    std::ignore = inputRange.nextDataRow();
+    inputRange.advanceDataRow();
   }
   std::tie(_currentRowState, _currentRow) = inputRange.peekDataRow();
   if (!_currentRow) {
