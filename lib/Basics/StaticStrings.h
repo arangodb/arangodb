@@ -175,6 +175,7 @@ class StaticStrings {
   static std::string const ContentTypeHeader;
   static std::string const CorsMethods;
   static std::string const Error;
+  static std::string const ErrorCode;
   static std::string const ErrorMessage;
   static std::string const ErrorNum;
   static std::string const Errors;

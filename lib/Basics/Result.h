@@ -26,6 +26,7 @@
 #include <iosfwd>
 #include <memory>
 #include <string>
+#include <string_view>
 
 namespace arangodb {
 class Result final {
@@ -45,6 +46,10 @@ class Result final {
    * @param  errorMessage  Said error message
    */
   Result(int errorNumber, std::string&& errorMessage) noexcept;
+
+  Result(int errorNumber, std::string_view const& errorMessage);
+
+  Result(int errorNumber, const char* errorMessage);
 
   /**
    * @brief Construct as copy
