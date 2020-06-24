@@ -245,8 +245,6 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   /// @brief request an AqlItemBlock from the memory manager
   [[nodiscard]] SharedAqlItemBlockPtr requestBlock(size_t nrItems, RegisterCount nrRegs);
 
-  [[nodiscard]] ExecutionState fetchShadowRowInternal();
-
   // Allocate an output block and install a call in it
   [[nodiscard]] auto allocateOutputBlock(AqlCall&& call, DataRange const& inputRange)
       -> std::unique_ptr<OutputAqlItemRow>;
