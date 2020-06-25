@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed bug in IResearchViewExecutor that lead to only up to 1000 rows being
+  produced.
+
 * Changing the current users profile icon in the Web UI now renders the new
   icon directly without the need of a full UI browser reload.
 
