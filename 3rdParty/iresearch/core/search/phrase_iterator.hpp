@@ -461,7 +461,7 @@ class phrase_iterator final : public doc_iterator {
         ord, segment, field, stats,
         score_.data(), *this, boost);
 
-      prepare_score(score_, std::move(scorers));
+      irs::reset(score_, std::move(scorers));
     }
   }
 

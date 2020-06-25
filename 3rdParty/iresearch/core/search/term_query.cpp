@@ -77,7 +77,7 @@ doc_iterator::ptr term_query::execute(
         stats_.c_str(), score->realloc(ord),
         *docs, boost());
 
-      prepare_score(*score, std::move(scorers));
+      irs::reset(*score, std::move(scorers));
     }
   }
 

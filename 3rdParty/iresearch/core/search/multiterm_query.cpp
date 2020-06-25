@@ -90,7 +90,7 @@ doc_iterator::ptr multiterm_query::execute(
           ord, segment, *state->reader, stat,
           score->realloc(ord), *docs, entry.boost*boost());
 
-        prepare_score(*score, std::move(scorers));
+        irs::reset(*score, std::move(scorers));
       }
     }
 

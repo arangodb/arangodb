@@ -53,7 +53,7 @@ TEST(bitset_iterator_test, next) {
     auto* score  = irs::get_mutable<irs::score>(&it);
     ASSERT_EQ(score, &irs::score::get(it));
     ASSERT_TRUE(score);
-    ASSERT_TRUE(score->empty());
+    ASSERT_TRUE(score->is_default());
 
     ASSERT_FALSE(it.next());
     ASSERT_TRUE(irs::doc_limits::eof(it.value()));

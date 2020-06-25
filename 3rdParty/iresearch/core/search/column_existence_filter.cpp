@@ -72,7 +72,7 @@ class column_existence_query : public irs::filter::prepared {
           ord, segment, empty_term_reader(column.size()),
           stats_.c_str(), score->realloc(ord), *it, boost());
 
-        prepare_score(*score, std::move(scorers));
+        irs::reset(*score, std::move(scorers));
       }
     }
 

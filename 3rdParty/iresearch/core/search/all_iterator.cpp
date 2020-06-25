@@ -45,7 +45,7 @@ all_iterator::all_iterator(
       query_stats, score_.data(),
       *this, boost);
 
-    prepare_score(score_, std::move(scorers));
+    irs::reset(score_, std::move(scorers));
   }
 }
 

@@ -59,7 +59,7 @@ bitset_doc_iterator::bitset_doc_iterator(
       *this, // doc_iterator attributes
       boost);
 
-    prepare_score(score_, std::move(scorers));
+    irs::reset(score_, std::move(scorers));
   }
 }
 

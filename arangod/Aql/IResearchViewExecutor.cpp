@@ -812,7 +812,7 @@ void IResearchViewExecutor<ordered, materializeType>::evaluateScores(ReadContext
   TRI_ASSERT(ordered);
 
   // in arangodb we assume all scorers return float_t
-  auto begin = reinterpret_cast<const float_t*>(_scr->evaluate());
+  auto begin = reinterpret_cast<float_t const*>(_scr->evaluate());
 
   this->fillScores(ctx, begin, begin + _numScores);
 }
@@ -970,8 +970,7 @@ bool IResearchViewExecutor<ordered, materializeType>::resetIterator() {
     }
   }
 
-  _itr = segmentReader.mask(
-      this->_filter->execute(segmentReader, this->_order, &this->_filterCtx));
+  _itr = this->_filter->execute(segmentReader, this->_order, &this->_filterCtx);
   TRI_ASSERT(_itr);
   _doc = irs::get<irs::document>(*_itr);
   TRI_ASSERT(_doc);
@@ -981,10 +980,14 @@ bool IResearchViewExecutor<ordered, materializeType>::resetIterator() {
 
     if (!_scr) {
       _scr = &irs::score::no_score();
+      _numScores = 0;
     }
 
-    _numScores = _scr->empty() ? 0 : this->infos().scorers().size();
+    _numScores = this->infos().scorers().size();
   }
+
+  _itr = segmentReader.mask(std::move(_itr));
+  TRI_ASSERT(_itr);
 
   return true;
 }
@@ -1175,7 +1178,7 @@ void IResearchViewMergeExecutor<ordered, materializeType>::evaluateScores(
   TRI_ASSERT(ordered);
 
   // in arangodb we assume all scorers return float_t
-  auto begin = reinterpret_cast<const float_t*>(score.evaluate());
+  auto begin = reinterpret_cast<float_t const*>(score.evaluate());
 
   this->fillScores(ctx, begin, begin + numScores);
 }
@@ -1206,16 +1209,16 @@ void IResearchViewMergeExecutor<ordered, materializeType>::reset() {
     TRI_ASSERT(doc);
 
     auto const* score = &irs::score::no_score();
+    size_t numScores = 0;
 
     if constexpr (ordered) {
       auto* scoreRef = irs::get<irs::score>(*it);
 
       if (scoreRef) {
         score = scoreRef;
+        numScores = this->infos().scorers().size();
       }
     }
-
-    const size_t numScores = score->empty() ? 0 : this->infos().scorers().size();
 
     TRI_voc_cid_t const cid = this->_reader->cid(i);
     aql::QueryContext& query = this->_infos.getQuery();

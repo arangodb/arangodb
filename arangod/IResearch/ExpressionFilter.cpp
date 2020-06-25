@@ -85,7 +85,7 @@ class NondeterministicExpressionIterator final
         order, reader, irs::empty_term_reader(docs_count),
         stats, score_.data(), *this, boost);
 
-      irs::prepare_score(score_, std::move(scorers));
+      irs::reset(score_, std::move(scorers));
     }
   }
 

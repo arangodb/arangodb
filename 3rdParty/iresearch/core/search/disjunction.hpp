@@ -57,7 +57,7 @@ template<typename DocIterator>
 FORCE_INLINE void evaluate_score_iter(const irs::byte_type**& pVal, DocIterator& src) {
   const auto* score = src.score;
   assert(score); // must be ensure by the adapter
-  if (!score->empty()) {
+  if (!score->is_default()) {
     *pVal++ = score->evaluate();
   }
 };
@@ -311,12 +311,12 @@ class basic_disjunction final
 
     assert(lhs_.score && rhs_.score); // must be ensure by the adapter
 
-    const bool lhs_score_empty = lhs_.score->empty();
-    const bool rhs_score_empty = rhs_.score->empty();
+    const bool lhs_score_empty = lhs_.score->is_default();
+    const bool rhs_score_empty = rhs_.score->is_default();
 
     if (!lhs_score_empty && !rhs_score_empty) {
       // both sub-iterators have score
-      score_.prepare(this, [](score_ctx* ctx) -> const byte_type* {
+      score_.reset(this, [](score_ctx* ctx) -> const byte_type* {
         auto& self = *static_cast<basic_disjunction*>(ctx);
 
         const byte_type* score_values[2] {
@@ -330,22 +330,18 @@ class basic_disjunction final
       });
     } else if (!lhs_score_empty) {
       // only left sub-iterator has score
-      score_.prepare(this, [](score_ctx* ctx) -> const byte_type* {
+      score_.reset(this, [](score_ctx* ctx) -> const byte_type* {
         auto& self = *static_cast<basic_disjunction*>(ctx);
         return self.score_iterator_impl(self.lhs_);
       });
     } else if (!rhs_score_empty) {
       // only right sub-iterator has score
-      score_.prepare(this, [](score_ctx* ctx) -> const byte_type* {
+      score_.reset(this, [](score_ctx* ctx) -> const byte_type* {
         auto& self = *static_cast<basic_disjunction*>(ctx);
         return self.score_iterator_impl(self.rhs_);
       });
     } else {
-      score_.prepare(
-          reinterpret_cast<score_ctx*>(score_.data()),
-          [](irs::score_ctx* ctx) -> const byte_type* {
-        return reinterpret_cast<irs::byte_type*>(ctx);
-      });
+      assert(score_.is_default());
     }
   }
 
@@ -548,7 +544,7 @@ class small_disjunction final
       merger_(ord.prepare_merger(merge_type)) {
     auto rbegin = itrs_.rbegin();
     for (auto& it : itrs) {
-      if (it.score->empty()) {
+      if (it.score->is_default()) {
         *scored_begin_ = std::move(it);
         ++scored_begin_;
       } else {
@@ -569,7 +565,7 @@ class small_disjunction final
     if (scored_begin_ != end_) {
       scores_vals_.resize(size_t(std::distance(scored_begin_, end_)));
 
-      score_.prepare(this, [](irs::score_ctx* ctx) -> const byte_type* {
+      score_.reset(this, [](irs::score_ctx* ctx) -> const byte_type* {
         auto& self = *static_cast<small_disjunction*>(ctx);
         auto* score_buf = self.score_.data();
         const irs::byte_type** pVal = self.scores_vals_.data();
@@ -592,15 +588,12 @@ class small_disjunction final
         return score_buf;
       });
     } else {
-      score_.prepare(this, [](irs::score_ctx* ctx) -> const byte_type* {
-        const auto& self = *static_cast<small_disjunction*>(ctx);
-        return self.score_.data();
-      });
+      assert(score_.is_default());
     }
   }
 
   bool remove_iterator(typename doc_iterators_t::iterator it) {
-    if (it->score->empty()) {
+    if (it->score->is_default()) {
       std::swap(*it, *begin_);
       ++begin_;
     } else {
@@ -801,7 +794,7 @@ class disjunction final
     }
 
     scores_vals_.resize(itrs_.size(), nullptr);
-    score_.prepare(this, [](score_ctx* ctx) -> const byte_type* {
+    score_.reset(this, [](score_ctx* ctx) -> const byte_type* {
       auto& self = *static_cast<disjunction*>(ctx);
       assert(!self.heap_.empty());
       auto* score_buf = self.score_.data();
@@ -1148,7 +1141,7 @@ class block_disjunction final
         if constexpr (traits_type::score()) {
           std::memset(score_buf_.data(), 0, score_buf_.bucket_size());
           for (auto& it : itrs_) {
-            if (!it.score->empty() && doc_.value == it->value()) {
+            if (!it.score->is_default() && doc_.value == it->value()) {
               assert(it.score);
               merger_(score_buf_.data(), it.score->evaluate());
             }
@@ -1209,7 +1202,7 @@ class block_disjunction final
       match_buf_(min_match_count),
       merger_(ord.prepare_merger(merge_type)) {
     if (traits_type::score() && !ord.empty()) {
-      score_.prepare(this, [](score_ctx* ctx) noexcept -> const byte_type* {
+      score_.reset(this, [](score_ctx* ctx) noexcept -> const byte_type* {
         return static_cast<block_disjunction*>(ctx)->score_value_;
       });
     }
@@ -1303,7 +1296,7 @@ class block_disjunction final
         //}
 
         if constexpr (traits_type::score()) {
-          if (!it.score->empty()) {
+          if (!it.score->is_default()) {
             return refill<true>(it, empty);
           }
         }

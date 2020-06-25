@@ -28,17 +28,17 @@
 
 NS_ROOT
 
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// @class score
 /// @brief represents a score related for the particular document
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API score : public attribute {
  public:
   static constexpr string_ref type_name() noexcept {
     return "iresearch::score";
   }
 
-  static const irs::score& no_score() noexcept;
+  static const score& no_score() noexcept;
 
   template<typename Provider>
   static const score& get(const Provider& attrs) {
@@ -49,26 +49,31 @@ class IRESEARCH_API score : public attribute {
   score() noexcept;
   explicit score(const order::prepared& ord);
 
-  bool empty() const noexcept;
+  bool is_default() const noexcept;
 
   [[nodiscard]] const byte_type* evaluate() const {
     assert(func_);
     return (*func_)(ctx_.get());
   }
 
-  void prepare(const score& score) noexcept {
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief reset score to default value
+  //////////////////////////////////////////////////////////////////////////////
+  void reset() noexcept;
+
+  void reset(const score& score) noexcept {
     assert(score.func_);
     ctx_ = memory::to_managed<score_ctx, false>(score.ctx_.get());
     func_ = score.func_;
   }
 
-  void prepare(score_ctx_ptr&& ctx, const score_f func) noexcept {
+  void reset(score_ctx_ptr&& ctx, const score_f func) noexcept {
     assert(func);
     ctx_ = memory::to_managed<score_ctx>(std::move(ctx));
     func_ = func;
   }
 
-  void prepare(score_ctx* ctx, const score_f func) noexcept {
+  void reset(score_ctx* ctx, const score_f func) noexcept {
     assert(func);
     ctx_ = memory::to_managed<score_ctx, false>(ctx);
     func_ = func;
@@ -100,7 +105,7 @@ class IRESEARCH_API score : public attribute {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // score
 
-IRESEARCH_API void prepare_score(
+IRESEARCH_API void reset(
   irs::score& score, order::prepared::scorers&& scorers);
 
 NS_END // ROOT

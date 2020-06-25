@@ -180,7 +180,7 @@ class conjunction
     for (auto& it : itrs_) {
       const auto* score = it.score;
       assert(score); // ensured by score_iterator_adapter
-      if (!score->empty()) {
+      if (!score->is_default()) {
         scores_.push_back(score);
       }
     }
@@ -189,17 +189,13 @@ class conjunction
     // prepare score
     switch (scores_.size()) {
       case 0:
-        score_.prepare(
-            reinterpret_cast<score_ctx*>(score_.data()),
-            [](score_ctx* ctx) -> const byte_type* {
-          return reinterpret_cast<irs::byte_type*>(ctx);
-        });
+        assert(score_.is_default());
         break;
       case 1:
-        score_.prepare(*scores_.front());
+        score_.reset(*scores_.front());
         break;
       case 2:
-        score_.prepare(this, [](score_ctx* ctx) -> const byte_type* {
+        score_.reset(this, [](score_ctx* ctx) -> const byte_type* {
           auto& self = *static_cast<conjunction*>(ctx);
           auto* score_buf = self.score_.data();
           self.score_vals_.front() = self.scores_.front()->evaluate();
@@ -210,7 +206,7 @@ class conjunction
         });
         break;
       case 3:
-        score_.prepare(this, [](score_ctx* ctx) -> const byte_type* {
+        score_.reset(this, [](score_ctx* ctx) -> const byte_type* {
           auto& self = *static_cast<conjunction*>(ctx);
           auto* score_buf = self.score_.data();
           self.score_vals_.front() = self.scores_.front()->evaluate();
@@ -222,7 +218,7 @@ class conjunction
         });
         break;
       default:
-        score_.prepare(this, [](score_ctx* ctx) -> const byte_type* {
+        score_.reset(this, [](score_ctx* ctx) -> const byte_type* {
           auto& self = *static_cast<conjunction*>(ctx);
           auto* score_buf = self.score_.data();
           auto* score_val = self.score_vals_.data();

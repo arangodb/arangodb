@@ -175,7 +175,7 @@ class same_position_query final : public filter::prepared {
             term_stats->c_str(), score->realloc(ord),
             *docs, boost());
 
-          prepare_score(*score, std::move(scorers));
+          irs::reset(*score, std::move(scorers));
         }
       }
 

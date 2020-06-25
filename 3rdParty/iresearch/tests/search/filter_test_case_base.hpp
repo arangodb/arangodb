@@ -607,7 +607,7 @@ class filter_test_case_base : public index_test_base {
       while (docs->next()) {
         ASSERT_EQ(docs->value(), doc->value);
 
-        if (score && !score->empty()) {
+        if (score && !score->is_default()) {
           scored_result.emplace(
             irs::bytes_ref{ score->evaluate(), prepared_order.score_size() },
             docs->value());

@@ -25,10 +25,16 @@
 
 NS_LOCAL
 
-const irs::score EMPTY_SCORE;
+using namespace irs;
 
-const irs::byte_type* no_score(irs::score_ctx*) noexcept {
-  return irs::bytes_ref::EMPTY.c_str();
+const score EMPTY_SCORE;
+
+const byte_type* default_score(score_ctx* ctx) noexcept {
+  return reinterpret_cast<byte_type*>(ctx);
+}
+
+memory::managed_ptr<score_ctx> to_managed(byte_type* value) noexcept {
+  return memory::to_managed<score_ctx, false>(reinterpret_cast<score_ctx*>(value));
 }
 
 NS_END
@@ -44,26 +50,34 @@ NS_ROOT
 }
 
 score::score() noexcept
-  : func_(&::no_score) {
+  : ctx_(to_managed(data())),
+    func_(&::default_score) {
 }
 
 score::score(const order::prepared& ord)
   : buf_(ord.score_size(), 0),
-    func_(&::no_score) {
+    ctx_(to_managed(data())),
+    func_(&::default_score) {
 }
 
-bool score::empty() const noexcept {
-  return func_ == &::no_score;
+bool score::is_default() const noexcept {
+  return reinterpret_cast<score_ctx*>(data()) == ctx_.get()
+    && func_ == &::default_score;
 }
 
-void prepare_score(irs::score& score, order::prepared::scorers&& scorers) {
+void score::reset() noexcept {
+  ctx_ = to_managed(data());
+  func_ = &::default_score;
+}
+
+void reset(irs::score& score, order::prepared::scorers&& scorers) {
   switch (scorers.size()) {
     case 0: {
-      score.prepare(nullptr, &::no_score);
+      score.reset();
     } break;
     case 1: {
       auto& scorer = scorers.front();
-      score.prepare(std::move(scorer.ctx), scorer.func);
+      score.reset(std::move(scorer.ctx), scorer.func);
     } break;
     case 2: {
       struct ctx : score_ctx {
@@ -74,7 +88,7 @@ void prepare_score(irs::score& score, order::prepared::scorers&& scorers) {
         order::prepared::scorers scorers;
       };
 
-      score.prepare(
+      score.reset(
         memory::make_unique<ctx>(std::move(scorers)),
         [](score_ctx* ctx) {
           auto& scorers = static_cast<struct ctx*>(ctx)->scorers;
@@ -94,7 +108,7 @@ void prepare_score(irs::score& score, order::prepared::scorers&& scorers) {
         order::prepared::scorers scorers;
       };
 
-      score.prepare(
+      score.reset(
         memory::make_unique<ctx>(std::move(scorers)),
         [](score_ctx* ctx) {
           auto& scorers = static_cast<struct ctx*>(ctx)->scorers;
