@@ -5016,7 +5016,8 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
         _lastNode = en;
         auto expr = cn->expression();
 
-        // Nein.
+        // If we find an expression that is not allowed to run on a DBServer,
+        // we cannot undistribute (as then the expression *would* run on a dbserver)
         if (!expr->canRunOnDBServer()) {
           break;
         }
