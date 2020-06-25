@@ -1,6 +1,11 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Fixed an error scenario where a call could miss count skip.
+  It was triggered in the case of Gather in Cluster, if we skipped over a full
+  shard, and the shard did actually skip, but there are more documents to skip
+  on another shard.
+
 * Fixed that the hotbackup agency lock is released under all circumstances
   using scope guards. This addresses a rare case in which the lock was left
   behind.
