@@ -1320,7 +1320,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
   while (_execState != ExecState::DONE) {
     // We can never keep state in the skipCounter
     TRI_ASSERT(clientCall.getSkipCount() == 0);
-    auto oldState = _execState;
     switch (_execState) {
       case ExecState::CHECKCALL: {
         LOG_QUERY("cfe46", DEBUG)
