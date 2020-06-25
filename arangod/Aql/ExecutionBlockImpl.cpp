@@ -312,7 +312,7 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack stack) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   initOnce();
-  auto res = executeWithoutTrace(stack);
+  auto res = executeWithoutTrace(std::move(stack));
   traceExecuteEnd(res);
   return res;
 }
@@ -477,8 +477,7 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call, DataRange
       // block all or nothing, so if we have used the block once, we cannot use it again
       // however we cannot remove the _lastRange as it may contain additional information.
       _hasUsedDataRangeBlock = true;
-      SharedAqlItemBlockPtr newBlock = _lastRange.getBlock();
-      return createOutputRow(std::move(newBlock), std::move(call));
+      return createOutputRow(SharedAqlItemBlockPtr(_lastRange.getBlock()), std::move(call));
     }
 
     return createOutputRow(SharedAqlItemBlockPtr{nullptr}, std::move(call));
@@ -486,14 +485,13 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call, DataRange
     if constexpr (isMultiDepExecutor<Executor>) {
       // MultiDepExecutor would require dependency handling.
       // We do not have it here.
-      if (!inputRange.hasShadowRow() && !inputRange.hasDataRow()) {
+      if (!inputRange.hasValidRow()) {
         // On empty input do not yet create output.
         // We are going to ask again later
         return createOutputRow(SharedAqlItemBlockPtr{nullptr}, std::move(call));
       }
     } else {
-      if (!inputRange.hasShadowRow() && !inputRange.hasDataRow() &&
-          inputRange.upstreamState() == ExecutorState::HASMORE) {
+      if (!inputRange.hasValidRow() && inputRange.upstreamState() == ExecutorState::HASMORE) {
         // On empty input do not yet create output.
         // We are going to ask again later
         return createOutputRow(SharedAqlItemBlockPtr{nullptr}, std::move(call));
@@ -515,19 +513,20 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call, DataRange
           blockSize = std::max(call.getLimit(), blockSize);
         }
 
+        auto const numShadowRows = inputRange.countShadowRows();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         // The executor cannot expect to produce more then the limit!
         if constexpr (!std::is_same_v<Executor, SubqueryStartExecutor>) {
           // Except the subqueryStartExecutor, it's limit differs
           // from it's output (it needs to count the new ShadowRows in addition)
           // This however is only correct, as long as we are in no subquery context
-          if (inputRange.countShadowRows() == 0) {
+          if (numShadowRows == 0) {
             TRI_ASSERT(blockSize <= call.getLimit());
           }
         }
 #endif
 
-        blockSize += inputRange.countShadowRows();
+        blockSize += numShadowRows;
         // We have an upper bound by DefaultBatchSize;
         blockSize = std::min(ExecutionBlock::DefaultBatchSize, blockSize);
       }
@@ -537,9 +536,7 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call, DataRange
       // There is no data to be produced
       return createOutputRow(SharedAqlItemBlockPtr{nullptr}, std::move(call));
     }
-    SharedAqlItemBlockPtr newBlock =
-        _engine->itemBlockManager().requestBlock(blockSize, _registerInfos.numberOfOutputRegisters());
-    return createOutputRow(std::move(newBlock), std::move(call));
+    return createOutputRow(_engine->itemBlockManager().requestBlock(blockSize, _registerInfos.numberOfOutputRegisters()), std::move(call));
   }
 }
 
@@ -1532,7 +1529,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         localExecutorState = state;
 
         if (state == ExecutorState::DONE) {
-          if (!_lastRange.hasShadowRow() && !_lastRange.hasDataRow()) {
+          if (!_lastRange.hasValidRow()) {
             _execState = ExecState::DONE;
           } else {
             _execState = ExecState::SHADOWROWS;
@@ -1618,8 +1615,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         break;
       }
       case ExecState::SHADOWROWS: {
-        // We only get Called with something in the input.
-        TRI_ASSERT(_lastRange.hasShadowRow() || _lastRange.hasDataRow());
+        // We only get called with something in the input.
+        TRI_ASSERT(_lastRange.hasValidRow());
         LOG_QUERY("7c63c", DEBUG)
             << printTypeInfo() << " (sub-)query completed. Move ShadowRows.";
 
