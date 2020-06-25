@@ -56,6 +56,12 @@ class IRESEARCH_API score : public attribute {
     return (*func_)(ctx_.get());
   }
 
+  void prepare(const score& score) noexcept {
+    assert(score.func_);
+    ctx_ = memory::to_managed<score_ctx, false>(score.ctx_.get());
+    func_ = score.func_;
+  }
+
   void prepare(score_ctx_ptr&& ctx, const score_f func) noexcept {
     assert(func);
     ctx_ = memory::to_managed<score_ctx>(std::move(ctx));

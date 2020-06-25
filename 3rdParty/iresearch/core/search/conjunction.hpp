@@ -196,14 +196,7 @@ class conjunction
         });
         break;
       case 1:
-        score_.prepare(
- //           const_cast<score_ctx*>(reinterpret_cast<const score_ctx*>(&scores_.front())),
-            this,
-            [](score_ctx* ctx) -> const byte_type* {
-          auto& self = *static_cast<conjunction*>(ctx);
-          return self.scores_.front()->evaluate();
-//          return reinterpret_cast<irs::score*>(ctx)->evaluate();
-        });
+        score_.prepare(*scores_.front());
         break;
       case 2:
         score_.prepare(this, [](score_ctx* ctx) -> const byte_type* {
