@@ -1,6 +1,9 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Fixed bug in IResearchViewExecutor that lead to only up to 1000 rows being
+  produced.
+
 * Fixed an error scenario where a call could miss count skip.
   It was triggered in the case of Gather in Cluster, if we skipped over a full
   shard, and the shard did actually skip, but there are more documents to skip
