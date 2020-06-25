@@ -1699,6 +1699,53 @@ AnalyzersRevision::Ptr ClusterInfo::getAnalyzersRevision(DatabaseID const& datab
   return nullptr;
 }
 
+AnalyzersRevision::QueryAnalyzerRevisions ClusterInfo::getQueryAnalyzersRevision(
+    DatabaseID const& databaseID) {
+  int tries = 0;
+
+  if (!_planProt.isValid) {
+    loadPlan();
+    ++tries;
+  }
+  AnalyzersRevision::QueryAnalyzerRevisions revisions;
+  while (true) {  // left by break
+    {
+      READ_LOCKER(readLocker, _planProt.lock);
+      // look up database by id
+      auto it = _dbAnalyzersRevision.find(databaseID);
+
+      if (it != _dbAnalyzersRevision.cend()) {
+        revisions.currentDbRevision = it->second->getRevision();
+        // analyzers from system also available
+        // so grab revision for system database as well
+        if (databaseID != StaticStrings::SystemDatabase) {
+          auto sysIt = _dbAnalyzersRevision.find(StaticStrings::SystemDatabase);
+          // if we have non-system database in plan system should be here for sure!
+          TRI_ASSERT(sysIt != _dbAnalyzersRevision.cend());
+          if (ADB_LIKELY(sysIt != _dbAnalyzersRevision.cend())) {
+            revisions.systemDbRevision = sysIt->second->getRevision();
+          }
+        } else {
+          // micro-optimization. If we are querying system database 
+          // than current always equal system. And all requests for revision
+          // will be resolved only with systemDbRevision member. So we copy
+          // current to system and set current to MIN. As MIN value is default
+          // and not transferred at all we will reduce json size for query
+          revisions.systemDbRevision = revisions.currentDbRevision;
+          revisions.currentDbRevision = AnalyzersRevision::MIN;
+        }
+      }
+    }
+    if (++tries >= 2) {
+      break;
+    }
+    // must load outside the lock
+    loadPlan();
+  }
+
+  return revisions;
+}
+
 // Build the VPackSlice that contains the `isBuilding` entry
 void ClusterInfo::buildIsBuildingSlice(CreateDatabaseInfo const& database,
                                        VPackBuilder& builder) {
