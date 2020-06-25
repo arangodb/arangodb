@@ -596,7 +596,7 @@ TEST_F(IResearchQueryJoinTest, test) {
     EXPECT_TRUE(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    ASSERT_EQ(100000, resultIt.size());
+    ASSERT_EQ(10000, resultIt.size());
 
     // Check documents
     for (; resultIt.valid(); resultIt.next()) {
