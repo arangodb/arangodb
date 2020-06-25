@@ -5014,6 +5014,12 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
           break;  // abort . . .
         }
         _lastNode = en;
+        auto expr = cn->expression();
+
+        // Nein.
+        if (!expr->canRunOnDBServer()) {
+          break;
+        }
         return false;  // continue . . .
       }
       case EN::ENUMERATE_COLLECTION:
