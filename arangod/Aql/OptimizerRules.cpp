@@ -5019,6 +5019,13 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
         return false;  // continue . . .
       }
       case EN::CALCULATION: {
+        auto calculationNode = ExecutionNode::castTo<CalculationNode*>(en);
+        auto expr = calculationNode->expression();
+
+        // Nein.
+        if (!expr->canRunOnDBServer()) {
+          break;
+        }
         return false;  // continue . . .
       }
       case EN::ENUMERATE_COLLECTION:
