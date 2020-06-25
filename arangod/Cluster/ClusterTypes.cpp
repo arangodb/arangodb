@@ -66,14 +66,14 @@ bool AnalyzersRevision::QueryAnalyzerRevisions::fromVelocyPack(velocypack::Slice
     auto sys = revisions.get(StaticStrings::ArangoSearchSystemAnalyzersRevision);
     if (!sys.isNone()) {
       if (sys.isNumber()) {
-        systemDbRevision = current.getNumber<AnalyzersRevision::Revision>();
+        systemDbRevision = sys.getNumber<AnalyzersRevision::Revision>();
       } else {
         error = "Invalid ";
         error.append(StaticStrings::ArangoSearchAnalyzersRevision);
         error += ".";
         error += StaticStrings::ArangoSearchSystemAnalyzersRevision;
         error += " attribute value. Number expected got ";
-        error += current.typeName();
+        error += sys.typeName();
         return false;
       }
     } else {
