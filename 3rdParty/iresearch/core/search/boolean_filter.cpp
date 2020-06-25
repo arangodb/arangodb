@@ -264,10 +264,8 @@ class or_query final : public boolean_query {
 //////////////////////////////////////////////////////////////////////////////
 class min_match_query final : public boolean_query {
  private:
-  using scored_disjunction_t = block_disjunction<doc_iterator::ptr,
-    block_disjunction_traits<true, irs::MatchType::MIN_MATCH, false, 32>>;
-  using disjunction_t = block_disjunction<doc_iterator::ptr,
-    block_disjunction_traits<false, irs::MatchType::MIN_MATCH_FAST, false, 32>>;
+  using scored_disjunction_t = scored_min_match_iterator<doc_iterator::ptr>;
+  using disjunction_t = min_match_iterator<doc_iterator::ptr>; // FIXME use FAST version
 
  public:
   explicit min_match_query(size_t min_match_count)
@@ -347,7 +345,6 @@ class min_match_query final : public boolean_query {
 
     if (ord.empty()) {
       return memory::make_managed<disjunction_t>(std::move(itrs), min_match_count);
-
     }
 
     return memory::make_managed<scored_disjunction_t>(std::move(itrs), min_match_count, ord);

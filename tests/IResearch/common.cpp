@@ -252,19 +252,20 @@ struct CustomScorer : public irs::sort {
                     irs::byte_type const*, irs::byte_type* score_buf,
                     irs::attribute_provider const&, irs::boost_t) const override {
       struct ScoreCtx : public irs::score_ctx {
-        ScoreCtx(const irs::byte_type* score_buf) noexcept
-          : score_buf(score_buf) {
+        ScoreCtx(float_t scoreValue, irs::byte_type* scoreBuf) noexcept
+          : scoreValue(scoreValue), scoreBuf(scoreBuf) {
         }
 
-        const irs::byte_type* score_buf;
+        float_t scoreValue;
+        irs::byte_type* scoreBuf;
       };
 
-      irs::sort::score_cast<float_t>(score_buf) = this->i;
-
       return {
-          std::make_unique<ScoreCtx>(score_buf),
-          [](irs::score_ctx* ctx) noexcept {
-            return static_cast<ScoreCtx const*>(ctx)->score_buf;
+          std::make_unique<ScoreCtx>(this->i, score_buf),
+          [](irs::score_ctx* ctx) noexcept -> irs::byte_type const* {
+            auto& state = *static_cast<ScoreCtx const*>(ctx);
+            *reinterpret_cast<float_t*>(state.scoreBuf) = state.scoreValue;
+            return state.scoreBuf;
           }
       };
     }
