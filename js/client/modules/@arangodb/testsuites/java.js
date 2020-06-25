@@ -74,13 +74,21 @@ function javaDriver (options) {
     } else {
       topology = 'SINGLE_SERVER';
     }
+    print(instanceInfo)
+    let enterprise = '"false"';
+    if (global.ARANGODB_CLIENT_VERSION(true).hasOwnProperty('enterprise-version')) {
+      enterprise = '"true"';
+    }
+    db._version(true)
+    let rx = /.*:\/\//gi
+    print(instanceInfo.url.replace(rx, ''))
     let args = [
       'test', '-U',
-      // TODO: whats this? '-Dgroups="api"',
+      '-Dgroups="api"',
       '-Dtest.useProvidedDeployment="true"',
-      '-Dtest.arangodb.version="'+ 'devel' + '"',
-      '-Dtest.arangodb.isEnterprise="' + 'true' + '"',
-      '-Dtest.arangodb.hosts="' + instanceInfo.url + '"',
+      '-Dtest.arangodb.version="'+ db._version() + '"',
+      '-Dtest.arangodb.isEnterprise=' + enterprise,
+      '-Dtest.arangodb.hosts="' + instanceInfo.url.replace(rx,'') + '"',
       '-Dtest.arangodb.authentication="root:"',
       '-Dtest.arangodb.topology="' + topology + '"'
     ];
@@ -99,7 +107,8 @@ function javaDriver (options) {
     }
     let start = Date();
     let status = true;
-    const rc = executeExternalAndWait('mvn', args, true, [], options.javasource);
+    const rc = executeExternalAndWait('mvn', args, false, [], options.javasource);
+    print(rc)
     if (rc.exit !== 0) {
       status = false;
     }
