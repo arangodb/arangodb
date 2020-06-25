@@ -5301,7 +5301,8 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
         auto calculationNode = ExecutionNode::castTo<CalculationNode*>(en);
         auto expr = calculationNode->expression();
 
-        // Nein.
+        // If we find an expression that is not allowed to run on a DBServer,
+        // we cannot undistribute (as then the expression *would* run on a dbserver)
         if (!expr->canRunOnDBServer()) {
           break;
         }
