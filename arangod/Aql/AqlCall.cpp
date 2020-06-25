@@ -307,5 +307,5 @@ auto aql::operator<<(std::ostream& out, AqlCall::Limit const& limit) -> std::ost
 auto aql::operator<<(std::ostream& out, AqlCall const& call) -> std::ostream& {
   return out << "{ skip: " << call.getOffset() << ", softLimit: " << call.softLimit
              << ", hardLimit: " << call.hardLimit << ", fullCount: " << std::boolalpha
-             << call.fullCount << " skipCount: " << call.getSkipCount() << " }";
+             << call.fullCount << ", skipCount: " << call.getSkipCount() << " }";
 }
