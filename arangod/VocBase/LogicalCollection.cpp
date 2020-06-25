@@ -277,15 +277,19 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
 
 Result LogicalCollection::updateValidators(VPackSlice validatorSlice) {
   using namespace std::literals::string_literals;
-  if (validatorSlice.isNone() || validatorSlice.isNull()) {
+  if (validatorSlice.isNone()) {
     return { TRI_ERROR_NO_ERROR };
-  } else if (!validatorSlice.isObject()) {
+  } 
+  if (validatorSlice.isNull()) {
+    validatorSlice = VPackSlice::emptyObjectSlice();
+  }
+  if (!validatorSlice.isObject()) {
     return {TRI_ERROR_VALIDATION_BAD_PARAMETER, "Schema description is not an object."};
   }
 
   TRI_ASSERT(validatorSlice.isObject());
 
-  std::shared_ptr<ValidatorVec> newVec = std::make_shared<ValidatorVec>();
+  auto newVec = std::make_shared<ValidatorVec>();
 
   // delete validators if empty object is given
   if (!validatorSlice.isEmptyObject()) {
@@ -817,7 +821,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
   // - _isSystem
   // - _isVolatile
   // ... probably a few others missing here ...
-
+      
   if (!vocbase().server().hasFeature<DatabaseFeature>()) {
     return Result(
         TRI_ERROR_INTERNAL,
