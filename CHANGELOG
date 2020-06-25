@@ -21,15 +21,9 @@ devel
   automatically without the need of a manual reload.
 
 * Fixed an error scenario where a call could miss count skip.
-  It was triggered in the case of Gather in Cluster, if we skipped
-  over a full shard, and the shard did actually skip, but there are more
-  documents to skip on another shard. There is a potential that
-  this was triggered on some other executors, but I have not been able to write 
-  a user-query to trigger it though, so maybe this is just a theoretical bug in 
-  those cases.
-  If it hits in the number reported by skip on subsequent subqueries was incorrect. 
-  First run reported correct number, second run reported again number
-  of first run, third the one of second etc.
+  It was triggered in the case of Gather in Cluster, if we skipped over a full
+  shard, and the shard did actually skip, but there are more documents to skip
+  on another shard.
 
 * Fixed hotbackup agency lock cleanup procedure.
 
