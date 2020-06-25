@@ -302,7 +302,3 @@ auto MultiAqlItemBlockInputRange::reset() -> void {
   }
   return ExecutorState::DONE;
 }
-<<<<<<< HEAD
-
-=======
->>>>>>> 11459907d7087e6ee03952543843befc3d40f980
