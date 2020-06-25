@@ -674,9 +674,9 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackSlice variables = queryBuilder->slice().get("variables");
   
   QueryAnalyzerRevisions analyzersRevision;
-  std::string analyzersError;
-  if (ADB_UNLIKELY(!analyzersRevision.fromVelocyPack(queryBuilder->slice(), analyzersError))) {
-    TRI_V8_THROW_EXCEPTION_FULL(TRI_ERROR_INTERNAL, analyzersError);
+  auto revisionRes = analyzersRevision.fromVelocyPack(queryBuilder->slice());
+  if (ADB_UNLIKELY(revisionRes.fail())) {
+    TRI_V8_THROW_EXCEPTION(revisionRes);
   }
   
   // simon: hack to get the behaviour of old second aql::Query constructor

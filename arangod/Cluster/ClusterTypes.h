@@ -30,6 +30,8 @@
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-aliases.h"
 
+#include "Basics/Result.h"
+
 namespace arangodb {
 
 typedef std::string ServerID;         // ID of a server
@@ -142,7 +144,7 @@ struct QueryAnalyzerRevisions {
   QueryAnalyzerRevisions& operator=(QueryAnalyzerRevisions const&) = default;
 
   void toVelocyPack(VPackBuilder& builder) const;
-  bool fromVelocyPack(velocypack::Slice slice, std::string& error);
+  Result fromVelocyPack(velocypack::Slice slice);
 
   bool isDefault() const noexcept {
     return currentDbRevision == AnalyzersRevision::MIN &&

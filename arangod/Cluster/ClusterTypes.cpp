@@ -23,6 +23,7 @@
 #include "ClusterTypes.h"
 #include "Basics/debugging.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/voc-errors.h"
 
 #include <iostream>
 
@@ -49,7 +50,7 @@ void QueryAnalyzerRevisions::toVelocyPack(VPackBuilder& builder) const {
   }
 }
 
-bool QueryAnalyzerRevisions::fromVelocyPack(velocypack::Slice slice, std::string& error) {
+Result QueryAnalyzerRevisions::fromVelocyPack(velocypack::Slice slice) {
   auto revisions = slice.get(StaticStrings::ArangoSearchAnalyzersRevision);
   if (revisions.isObject()) {
     auto current = revisions.get(StaticStrings::ArangoSearchCurrentAnalyzersRevision);
@@ -57,13 +58,13 @@ bool QueryAnalyzerRevisions::fromVelocyPack(velocypack::Slice slice, std::string
       if (current.isNumber()) {
         currentDbRevision = current.getNumber<AnalyzersRevision::Revision>();
       } else {
-        error = "Invalid ";
+        std::string error{ "Invalid " };
         error.append(StaticStrings::ArangoSearchAnalyzersRevision);
         error += ".";
         error += StaticStrings::ArangoSearchCurrentAnalyzersRevision;
         error += " attribute value. Number expected got ";
         error += current.typeName();
-        return false;
+        return Result(TRI_ERROR_INTERNAL, error);
       }
     } else {
       currentDbRevision = AnalyzersRevision::MIN;
@@ -73,13 +74,13 @@ bool QueryAnalyzerRevisions::fromVelocyPack(velocypack::Slice slice, std::string
       if (sys.isNumber()) {
         systemDbRevision = sys.getNumber<AnalyzersRevision::Revision>();
       } else {
-        error = "Invalid ";
+        std::string error{ "Invalid " };
         error.append(StaticStrings::ArangoSearchAnalyzersRevision);
         error += ".";
         error += StaticStrings::ArangoSearchSystemAnalyzersRevision;
         error += " attribute value. Number expected got ";
         error += sys.typeName();
-        return false;
+        return Result(TRI_ERROR_INTERNAL, error);
       }
     } else {
       systemDbRevision = AnalyzersRevision::MIN;
@@ -89,13 +90,14 @@ bool QueryAnalyzerRevisions::fromVelocyPack(velocypack::Slice slice, std::string
     currentDbRevision = AnalyzersRevision::MIN;
     systemDbRevision = AnalyzersRevision::MIN;
   } else {
+    std::string error;
     error = "Invalid ";
     error.append(StaticStrings::ArangoSearchAnalyzersRevision);
     error += " attribute value. Object expected got ";
     error += revisions.typeName();
-    return false;
+    return Result(TRI_ERROR_INTERNAL, error);
   }
-  return true;
+  return {};
 }
 
 AnalyzersRevision::Revision QueryAnalyzerRevisions::getVocbaseRevision(

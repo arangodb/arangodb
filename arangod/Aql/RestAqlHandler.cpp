@@ -254,11 +254,11 @@ void RestAqlHandler::setupClusterQuery() {
   answerBuilder.add(StaticStrings::AqlRemoteResult, VPackValue(VPackValueType::Object));
   answerBuilder.add("queryId", VPackValue(q->id()));
   QueryAnalyzerRevisions analyzersRevision;
-  std::string analyzersError;
-  if(ADB_UNLIKELY(!analyzersRevision.fromVelocyPack(querySlice, analyzersError))) {
+  auto revisionRes = analyzersRevision.fromVelocyPack(querySlice);
+  if(ADB_UNLIKELY(revisionRes.fail())) {
     LOG_TOPIC("b2a37", ERR, arangodb::Logger::AQL)
-      << "Failed to read ArangoSearch analyzers revision " << analyzersError;
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL, analyzersError);
+      << "Failed to read ArangoSearch analyzers revision " << revisionRes.errorMessage();
+    generateError(revisionRes);
     return;
   }
   q->prepareClusterQuery(format, querySlice, collectionBuilder.slice(),
