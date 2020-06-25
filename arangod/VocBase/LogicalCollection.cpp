@@ -821,7 +821,6 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
   // - _isSystem
   // - _isVolatile
   // ... probably a few others missing here ...
-      
   if (!vocbase().server().hasFeature<DatabaseFeature>()) {
     return Result(
         TRI_ERROR_INTERNAL,
