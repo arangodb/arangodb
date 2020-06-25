@@ -68,11 +68,11 @@ function javaDriver (options) {
     let topology;
     let results = {};
     if (options.cluster) {
-      topology = 'cluster';
+      topology = 'CLUSTER';
     } else if (options.activefailover) {
-      topology = 'resilientsingle';
+      topology = 'ACTIVE_FAILOVER';
     } else {
-      topology = 'single';
+      topology = 'SINGLE_SERVER';
     }
     let args = [
       'test', '-U',
