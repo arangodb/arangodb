@@ -68,10 +68,11 @@ class column_existence_query : public irs::filter::prepared {
       auto* score = irs::get_mutable<irs::score>(it.get());
 
       if (score) {
-        score->prepare(
-          ord,
-          ord.prepare_scorers(segment, empty_term_reader(column.size()),
-                              stats_.c_str(), *it, boost()));
+        order::prepared::scorers scorers(
+          ord, segment, empty_term_reader(column.size()),
+          stats_.c_str(), score->realloc(ord), *it, boost());
+
+        prepare_score(*score, std::move(scorers));
       }
     }
 
@@ -95,6 +96,9 @@ class column_prefix_existence_query final : public column_existence_query {
       const irs::sub_reader& segment,
       const irs::order::prepared& ord,
       const irs::attribute_provider* /*ctx*/) const override {
+    using scored_disjunction_t = irs::scored_disjunction_iterator<irs::doc_iterator::ptr>;
+    using disjunction_t = irs::disjunction_iterator<irs::doc_iterator::ptr>;
+
     const string_ref prefix = field_;
 
     auto it = segment.columns();
@@ -104,7 +108,6 @@ class column_prefix_existence_query final : public column_existence_query {
       return irs::doc_iterator::empty();
     }
 
-    typedef irs::disjunction<irs::doc_iterator::ptr> disjunction_t;
     disjunction_t::doc_iterators_t itrs;
 
     while (irs::starts_with(it->value().name, prefix)) {
@@ -121,7 +124,11 @@ class column_prefix_existence_query final : public column_existence_query {
       }
     }
 
-    return irs::make_disjunction<disjunction_t>(std::move(itrs), ord);
+    if (ord.empty()) {
+      return irs::make_disjunction<disjunction_t>(std::move(itrs));
+    }
+
+    return irs::make_disjunction<scored_disjunction_t>(std::move(itrs), ord);
   }
 }; // column_prefix_existence_query
 
@@ -146,14 +153,13 @@ filter::prepared::ptr by_column_existence::prepare(
   bstring stats(order.stats_size(), 0);
   auto* stats_buf = const_cast<byte_type*>(stats.data());
 
-  order.prepare_stats(stats_buf);
   order.prepare_collectors(stats_buf, reader);
 
   filter_boost *= boost();
 
   return options().prefix_match
-    ? filter::prepared::make<column_prefix_existence_query>(field(), std::move(stats), filter_boost)
-    : filter::prepared::make<column_existence_query>(field(), std::move(stats), filter_boost);
+    ? memory::make_managed<column_prefix_existence_query>(field(), std::move(stats), filter_boost)
+    : memory::make_managed<column_existence_query>(field(), std::move(stats), filter_boost);
 }
 
 NS_END // ROOT

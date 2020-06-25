@@ -84,9 +84,11 @@ struct basic_sort : irs::sort {
   }
 
   struct basic_scorer final : irs::score_ctx {
-    explicit basic_scorer(size_t idx) : idx(idx) {}
+    basic_scorer(size_t idx, irs::byte_type* score_buf) noexcept
+      : idx(idx), score_buf(score_buf) {}
 
     size_t idx;
+    irs::byte_type* score_buf;
   };
 
   struct prepared_sort final : irs::prepared_sort_basic<size_t> {
@@ -101,13 +103,16 @@ struct basic_sort : irs::sort {
         const irs::sub_reader&,
         const irs::term_reader&,
         const irs::byte_type*,
+        irs::byte_type* score_buf,
         const irs::attribute_provider&,
         irs::boost_t) const override {
       return {
-        irs::score_ctx_ptr(new basic_scorer(idx)),
-        [](const irs::score_ctx* ctx, irs::byte_type* score) {
-          auto& state = *reinterpret_cast<const basic_scorer*>(ctx);
-          sort::score_cast<size_t>(score) = state.idx;
+        irs::score_ctx_ptr(new basic_scorer(idx, score_buf)),
+        [](irs::score_ctx* ctx) -> const irs::byte_type* {
+          const auto& state = *reinterpret_cast<basic_scorer*>(ctx);
+          sort::score_cast<size_t>(state.score_buf) = state.idx;
+
+          return state.score_buf;
         }
       };
     }
@@ -150,16 +155,18 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
     if (!ord.empty()) {
       assert(stats_);
 
-      scorers_ = ord.prepare_scorers(
+      scorers_ = irs::order::prepared::scorers(
+        ord,
         irs::sub_reader::empty(),
         empty_term_reader::instance(),
         stats_,
+        score_.realloc(ord),
         *this,
         boost);
 
-      score_.prepare(ord, this, [](const irs::score_ctx* ctx, irs::byte_type* score) {
-        auto& self = *static_cast<const basic_doc_iterator*>(ctx);
-        self.scorers_.score(score);
+      score_.prepare(this, [](irs::score_ctx* ctx) {
+        const auto& self = *static_cast<basic_doc_iterator*>(ctx);
+        return self.scorers_.evaluate();
       });
 
       attrs_[irs::type<irs::score>::id()] = &score_;
@@ -195,8 +202,8 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
       return doc_.value;
     }
 
-    do { 
-      next(); 
+    do {
+      next();
     } while (doc_.value < doc);
 
     return doc_.value;
@@ -232,9 +239,8 @@ std::vector<DocIterator> execute_all(
   std::vector<DocIterator> itrs;
   itrs.reserve(docs.size());
   for (const auto& doc : docs) {
-    itrs.emplace_back(irs::doc_iterator::make<detail::basic_doc_iterator>(
-      doc.begin(), doc.end()
-    ));
+    itrs.emplace_back(irs::memory::make_managed<detail::basic_doc_iterator>(
+      doc.begin(), doc.end()));
   }
 
   return itrs;
@@ -253,16 +259,14 @@ std::pair<std::vector<DocIterator>, std::vector<irs::order::prepared>> execute_a
     auto& doc = entry.first;
     auto& ord = entry.second;
 
-    if (ord.empty()) {
-      itrs.emplace_back(irs::doc_iterator::make<detail::basic_doc_iterator>(
-        doc.begin(), doc.end()
-      ));
-    } else {
-      order.emplace_back(ord.prepare());
+    order.emplace_back(ord.prepare());
 
-      itrs.emplace_back(irs::doc_iterator::make<detail::basic_doc_iterator>(
-        doc.begin(), doc.end(), stats, order.back(), irs::no_boost()
-      ));
+    if (ord.empty()) {
+      itrs.emplace_back(irs::memory::make_managed<detail::basic_doc_iterator>(
+        doc.begin(), doc.end()));
+    } else {
+      itrs.emplace_back(irs::memory::make_managed<detail::basic_doc_iterator>(
+        doc.begin(), doc.end(), stats, order.back(), irs::no_boost()));
     }
   }
 
@@ -294,7 +298,8 @@ struct boosted: public irs::filter {
       const irs::sub_reader& rdr,
       const irs::order::prepared& ord,
       const irs::attribute_provider* /*ctx*/) const override {
-      return irs::doc_iterator::make<basic_doc_iterator>(
+      boosted::execute_count++;
+      return irs::memory::make_managed<basic_doc_iterator>(
         docs.begin(), docs.end(), stats.c_str(), ord, boost()
       );
     }
@@ -310,7 +315,7 @@ struct boosted: public irs::filter {
       const irs::order::prepared&,
       irs::boost_t boost,
       const irs::attribute_provider* /*ctx*/) const override {
-    return filter::prepared::make<boosted::prepared>(docs, this->boost()*boost);
+    return irs::memory::make_managed<boosted::prepared>(docs, this->boost()*boost);
   }
 
   static constexpr irs::string_ref type_name() noexcept {
@@ -320,9 +325,12 @@ struct boosted: public irs::filter {
   boosted(): filter(irs::type<boosted>::get()) { }
 
   basic_doc_iterator::docids_t docs;
+  static unsigned execute_count;
 }; // boosted
 
 DEFINE_FACTORY_DEFAULT(boosted)
+
+unsigned boosted::execute_count{ 0 };
 
 NS_END // detail
 
@@ -393,8 +401,7 @@ TEST(boolean_query_boost, hierarchy) {
     {
       ASSERT_TRUE(docs->next());
       ASSERT_EQ(docs->value(), doc->value);
-      scr->evaluate();
-      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0);
       ASSERT_EQ(4*value*value*value+value*value, doc_boost);
     }
 
@@ -403,8 +410,7 @@ TEST(boolean_query_boost, hierarchy) {
     {
       ASSERT_TRUE(docs->next());
       ASSERT_EQ(docs->value(), doc->value);
-      scr->evaluate();
-      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0);
       ASSERT_EQ(4*value*value*value+value*value, doc_boost);
     }
 
@@ -484,8 +490,7 @@ TEST(boolean_query_boost, hierarchy) {
     {
       ASSERT_TRUE(docs->next());
       ASSERT_EQ(docs->value(), doc->value);
-      scr->evaluate();
-      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0);
       ASSERT_EQ(2*value*value*value+4*value*value+value, doc_boost);
     }
 
@@ -494,8 +499,7 @@ TEST(boolean_query_boost, hierarchy) {
     {
       ASSERT_TRUE(docs->next());
       ASSERT_EQ(docs->value(), doc->value);
-      scr->evaluate();
-      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0);
       ASSERT_EQ(value*value*value+3*value*value+value, doc_boost);
     }
 
@@ -504,8 +508,7 @@ TEST(boolean_query_boost, hierarchy) {
     {
       ASSERT_TRUE(docs->next());
       ASSERT_EQ(docs->value(), doc->value);
-      scr->evaluate();
-      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0);
       ASSERT_EQ(value*value*value+value*value+value, doc_boost);
     }
 
@@ -581,8 +584,7 @@ TEST(boolean_query_boost, hierarchy) {
     // the first hit should be scored as value^3+2*value^2+3*value^2+value
     {
       ASSERT_TRUE(docs->next());
-      scr->evaluate();
-      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0);
       ASSERT_EQ(value*value*value+5*value*value+value, doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -590,8 +592,7 @@ TEST(boolean_query_boost, hierarchy) {
     // the second hit should be scored as value
     {
       ASSERT_TRUE(docs->next());
-      scr->evaluate();
-      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0);
       ASSERT_EQ(value, doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -599,8 +600,7 @@ TEST(boolean_query_boost, hierarchy) {
     // the third hit should be scored as value
     {
       ASSERT_TRUE(docs->next());
-      scr->evaluate();
-      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0);
       ASSERT_EQ(value, doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -663,8 +663,7 @@ TEST(boolean_query_boost, and) {
     auto* scr = irs::get<irs::score>(*docs);
     ASSERT_FALSE(!scr);
     ASSERT_TRUE(docs->next());
-    scr->evaluate();
-    auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0) ;
+    auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0) ;
     ASSERT_EQ(value, doc_boost);
     ASSERT_FALSE(docs->next());
   }
@@ -698,8 +697,7 @@ TEST(boolean_query_boost, and) {
     auto* scr = irs::get<irs::score>(*docs);
     ASSERT_FALSE(!scr);
     ASSERT_TRUE(docs->next());
-    scr->evaluate();
-    auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0) ;
+    auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0) ;
     ASSERT_EQ(value*value, doc_boost);
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(docs->next());
@@ -742,8 +740,7 @@ TEST(boolean_query_boost, and) {
     auto* scr = irs::get<irs::score>(*docs);
     ASSERT_FALSE(!scr);
     ASSERT_TRUE(docs->next());
-    scr->evaluate();
-    auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0) ;
+    auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0) ;
     ASSERT_EQ(2*value*value, doc_boost);
     ASSERT_EQ(docs->value(), doc->value);
 
@@ -791,8 +788,7 @@ TEST(boolean_query_boost, and) {
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_TRUE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
-    scr->evaluate();
-    auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0) ;
+    auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0) ;
     ASSERT_EQ(3*value*value+value, doc_boost);
 
     ASSERT_FALSE(docs->next());
@@ -839,8 +835,7 @@ TEST(boolean_query_boost, and) {
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_TRUE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
-    scr->evaluate();
-    auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0) ;
+    auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0) ;
     ASSERT_EQ(3*value, doc_boost);
 
     ASSERT_FALSE(docs->next());
@@ -888,8 +883,7 @@ TEST(boolean_query_boost, and) {
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_TRUE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
-    scr->evaluate();
-    auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0) ;
+    auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0) ;
     ASSERT_EQ(irs::boost_t(0), doc_boost);
 
     ASSERT_FALSE(docs->next());
@@ -951,8 +945,7 @@ TEST(boolean_query_boost, or) {
     ASSERT_FALSE(!scr);
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_TRUE(docs->next());
-    scr->evaluate();
-    auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
+    auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0);
     ASSERT_EQ(value, doc_boost);
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(docs->next());
@@ -989,8 +982,7 @@ TEST(boolean_query_boost, or) {
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_TRUE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
-    scr->evaluate();
-    auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
+    auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0);
     ASSERT_EQ(value*value, doc_boost);
     ASSERT_FALSE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
@@ -1029,8 +1021,7 @@ TEST(boolean_query_boost, or) {
     // exists in both results
     {
       ASSERT_TRUE(docs->next());
-      scr->evaluate();
-      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0);
       ASSERT_EQ(2 * value * value, doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -1039,8 +1030,7 @@ TEST(boolean_query_boost, or) {
     // exists in second result only
     {
       ASSERT_TRUE(docs->next());
-      scr->evaluate();
-      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0);
       ASSERT_EQ(value * value, doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -1091,8 +1081,7 @@ TEST(boolean_query_boost, or) {
     // first hit
     {
       ASSERT_TRUE(docs->next());
-      scr->evaluate();
-      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0);
       ASSERT_EQ(3*value*value + value, doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -1100,8 +1089,7 @@ TEST(boolean_query_boost, or) {
     // second hit
     {
       ASSERT_TRUE(docs->next());
-      scr->evaluate();
-      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0);
       ASSERT_EQ(2*value*value + value, doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -1152,8 +1140,7 @@ TEST(boolean_query_boost, or) {
     // first hit
     {
       ASSERT_TRUE(docs->next());
-      scr->evaluate();
-      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0);
       ASSERT_EQ(3*value, doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -1161,8 +1148,7 @@ TEST(boolean_query_boost, or) {
     // second hit
     {
       ASSERT_TRUE(docs->next());
-      scr->evaluate();
-      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0);
       ASSERT_EQ(2*value, doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -1212,8 +1198,7 @@ TEST(boolean_query_boost, or) {
     // first hit
     {
       ASSERT_TRUE(docs->next());
-      scr->evaluate();
-      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0);
       ASSERT_EQ(irs::boost_t(0), doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -1221,8 +1206,7 @@ TEST(boolean_query_boost, or) {
     // second hit
     {
       ASSERT_TRUE(docs->next());
-      scr->evaluate();
-      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
+      auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0);
       ASSERT_EQ(irs::boost_t(0), doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -1262,7 +1246,7 @@ struct unestimated: public irs::filter {
       const irs::sub_reader&,
       const irs::order::prepared&,
       const irs::attribute_provider*) const override {
-      return irs::doc_iterator::make<unestimated::doc_iterator>();
+      return irs::memory::make_managed<unestimated::doc_iterator>();
     }
   }; // prepared
 
@@ -1271,7 +1255,7 @@ struct unestimated: public irs::filter {
       const irs::order::prepared&,
       irs::boost_t,
       const irs::attribute_provider*) const override {
-    return filter::prepared::make<unestimated::prepared>();
+    return irs::memory::make_managed<unestimated::prepared>();
   }
 
   static constexpr irs::string_ref type_name() noexcept {
@@ -1324,7 +1308,7 @@ struct estimated: public irs::filter {
       const irs::sub_reader&,
       const irs::order::prepared&,
       const irs::attribute_provider*) const override {
-      return irs::doc_iterator::make<estimated::doc_iterator>(
+      return irs::memory::make_managed<estimated::doc_iterator>(
         est, evaluated
       );
     }
@@ -1332,13 +1316,13 @@ struct estimated: public irs::filter {
     bool* evaluated;
     irs::cost::cost_t est;
   }; // prepared
-  
+
   virtual filter::prepared::ptr prepare(
       const irs::index_reader&,
       const irs::order::prepared&,
       irs::boost_t,
       const irs::attribute_provider*) const override {
-    return filter::prepared::make<estimated::prepared>(est,&evaluated);
+    return irs::memory::make_managed<estimated::prepared>(est,&evaluated);
   }
 
   static constexpr irs::string_ref type_name() noexcept {
@@ -1400,7 +1384,7 @@ TEST( boolean_query_estimation, or ) {
       irs::sub_reader::empty(),
       irs::order::prepared::unordered()
     );
-   
+
     auto docs = prep->execute(irs::sub_reader::empty());
     ASSERT_EQ(0, irs::cost::extract(*docs));
   }
@@ -1458,9 +1442,14 @@ TEST( boolean_query_estimation, or ) {
     root.add<irs::Not>().filter<detail::estimated>().est = 0;
     root.add<detail::unestimated>();
 
+    // we need order to suppress optimization
+    // which will clean include group and leave only 'all' filter
+    irs::order ord;
+    ord.add<tests::sort::boost>(false);
+    auto pord = ord.prepare();
     auto prep = root.prepare(
       irs::sub_reader::empty(),
-      irs::order::prepared::unordered()
+      pord
     );
 
     auto docs = prep->execute(irs::sub_reader::empty());
@@ -1512,7 +1501,7 @@ TEST( boolean_query_estimation, and ) {
       irs::sub_reader::empty(),
       irs::order::prepared::unordered()
     );
-    
+
     auto docs = prep->execute(irs::sub_reader::empty());
 
     // check that subqueries were estimated
@@ -1538,7 +1527,7 @@ TEST( boolean_query_estimation, and ) {
       irs::sub_reader::empty(),
       irs::order::prepared::unordered()
     );
-    
+
     auto docs = prep->execute(irs::sub_reader::empty());
 
     // check that subqueries were estimated
@@ -1630,7 +1619,6 @@ TEST( boolean_query_estimation, and ) {
     ASSERT_EQ(0, irs::cost::extract(*docs));
   }
 }
-
 // ----------------------------------------------------------------------------
 // --SECTION--                       basic disjunction (iterator0 OR iterator1)
 // ----------------------------------------------------------------------------
@@ -1643,11 +1631,11 @@ TEST(basic_disjunction, next) {
     std::vector<irs::doc_id_t> last{ 1, 5, 6, 12, 29 };
     std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45 };
     std::vector<irs::doc_id_t> result;
+
     {
       disjunction it(
-        irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-        irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
-      );
+        disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end())),
+        disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end())));
 
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
@@ -1673,9 +1661,8 @@ TEST(basic_disjunction, next) {
     std::vector<irs::doc_id_t> result;
     {
       disjunction it(
-        irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-        irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
-      );
+        disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end())),
+        disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end())));
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it));
@@ -1698,8 +1685,8 @@ TEST(basic_disjunction, next) {
     std::vector<irs::doc_id_t> result;
     {
       disjunction it(
-        irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-        irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
+        disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end())),
+        disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end()))
       );
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
@@ -1722,8 +1709,8 @@ TEST(basic_disjunction, next) {
     std::vector<irs::doc_id_t> result;
     {
       disjunction it(
-        irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-        irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
+        disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end())),
+        disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end()))
       );
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
@@ -1746,8 +1733,8 @@ TEST(basic_disjunction, next) {
     std::vector<irs::doc_id_t> result;
     {
       disjunction it(
-        irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-        irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
+        disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end())),
+        disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end()))
       );
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
@@ -1771,8 +1758,8 @@ TEST(basic_disjunction, next) {
     std::vector<irs::doc_id_t> result;
     {
       disjunction it(
-        irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-        irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
+        disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end())),
+        disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end()))
       );
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
@@ -1809,9 +1796,8 @@ TEST(basic_disjunction_test, seek) {
     };
 
       disjunction it(
-        irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-        irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
-      );
+        disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end())),
+        disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end())));
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it));
@@ -1833,8 +1819,8 @@ TEST(basic_disjunction_test, seek) {
     };
 
     disjunction it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end())),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end()))
     );
     ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it));
     auto* doc = irs::get<irs::document>(it);
@@ -1861,8 +1847,8 @@ TEST(basic_disjunction_test, seek) {
     };
 
     disjunction it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end())),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end()))
     );
     ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it));
     auto* doc = irs::get<irs::document>(it);
@@ -1888,8 +1874,8 @@ TEST(basic_disjunction_test, seek) {
     };
 
     disjunction it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end())),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end()))
     );
     ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it));
     auto* doc = irs::get<irs::document>(it);
@@ -1910,8 +1896,8 @@ TEST(basic_disjunction_test, seek_next) {
     std::vector<irs::doc_id_t> last{ 1, 5, 6 };
 
     disjunction it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end()),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end())
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end())),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end()))
     );
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -1957,8 +1943,8 @@ TEST(basic_disjunction_test, scored_seek_next) {
     auto prepared_last_order = last_order.prepare();
 
     disjunction it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats, prepared_first_order),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats, prepared_last_order)
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats, prepared_first_order)),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats, prepared_last_order))
     );
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -2005,12 +1991,12 @@ TEST(basic_disjunction_test, scored_seek_next) {
     auto prepared_order = order.prepare();
 
     disjunction it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats, prepared_first_order),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats, prepared_last_order),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats, prepared_first_order)),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats, prepared_last_order)),
       prepared_order,
       irs::sort::MergeType::AGGREGATE,
-      1 // custom cost
-    );
+      1); // custom cost
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -2026,26 +2012,20 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(3, *reinterpret_cast<const size_t*>(score.c_str())); // 1 + 2
+    ASSERT_EQ(3, *reinterpret_cast<const size_t*>(score.evaluate())); // 1 + 2
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate();
-    ASSERT_EQ(3, *reinterpret_cast<const size_t*>(score.c_str())); // 1 + 2
+    ASSERT_EQ(3, *reinterpret_cast<const size_t*>(score.evaluate())); // 1 + 2
     ASSERT_TRUE(it.next());
-    score.evaluate();
-    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.c_str())); // 2
+    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.evaluate())); // 2
     ASSERT_EQ(6, it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // 1
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
     ASSERT_EQ(11, it.seek(10));
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // 1
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // 1
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -2069,12 +2049,11 @@ TEST(basic_disjunction_test, scored_seek_next) {
     auto prepared_order = order.prepare();
 
     disjunction it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats, prepared_first_order),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats, prepared_last_order),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats, prepared_first_order)),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats, prepared_last_order)),
       prepared_order,
       irs::sort::MergeType::MAX,
-      1 // custom cost
-    );
+      1); // custom cost
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -2090,26 +2069,20 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1, 2)
+    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1, 2)
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate();
-    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1, 2)
+    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1, 2)
     ASSERT_TRUE(it.next());
-    score.evaluate();
-    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(2)
+    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(2)
     ASSERT_EQ(6, it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1)
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
     ASSERT_EQ(11, it.seek(10));
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1)
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1)
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -2126,11 +2099,10 @@ TEST(basic_disjunction_test, scored_seek_next) {
     auto prepared_order = order.prepare();
 
     disjunction it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats)),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats)),
       prepared_order,
-      irs::sort::MergeType::AGGREGATE
-    );
+      irs::sort::MergeType::AGGREGATE);
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -2146,26 +2118,20 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_TRUE(it.next());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_EQ(6, it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_EQ(11, it.seek(10));
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -2182,11 +2148,10 @@ TEST(basic_disjunction_test, scored_seek_next) {
     auto prepared_order = order.prepare();
 
     disjunction it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats)),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats)),
       prepared_order,
-      irs::sort::MergeType::MAX
-    );
+      irs::sort::MergeType::MAX);
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -2202,26 +2167,20 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_TRUE(it.next());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_EQ(6, it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_EQ(11, it.seek(10));
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -2242,11 +2201,10 @@ TEST(basic_disjunction_test, scored_seek_next) {
     auto prepared_order = order.prepare();
 
     disjunction it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats, prepared_first_order),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats, prepared_first_order)),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats)),
       prepared_order,
-      irs::sort::MergeType::AGGREGATE
-    );
+      irs::sort::MergeType::AGGREGATE);
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -2262,26 +2220,20 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_EQ(11, it.seek(10));
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -2302,11 +2254,10 @@ TEST(basic_disjunction_test, scored_seek_next) {
     auto prepared_order = order.prepare();
 
     disjunction it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats, prepared_first_order),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats, prepared_first_order)),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats)),
       prepared_order,
-      irs::sort::MergeType::MAX
-    );
+      irs::sort::MergeType::MAX);
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -2322,26 +2273,20 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_EQ(11, it.seek(10));
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -2361,11 +2306,10 @@ TEST(basic_disjunction_test, scored_seek_next) {
     auto prepared_order = order.prepare();
 
     disjunction it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats, prepared_last_order),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats)),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats, prepared_last_order)),
       prepared_order,
-      irs::sort::MergeType::AGGREGATE
-    );
+      irs::sort::MergeType::AGGREGATE);
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -2381,26 +2325,20 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_EQ(11, it.seek(10));
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -2420,11 +2358,10 @@ TEST(basic_disjunction_test, scored_seek_next) {
     auto prepared_order = order.prepare();
 
     disjunction it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats, prepared_last_order),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(first.begin(), first.end(), empty_stats)),
+      disjunction::adapter(irs::memory::make_managed<detail::basic_doc_iterator>(last.begin(), last.end(), empty_stats, prepared_last_order)),
       prepared_order,
-      irs::sort::MergeType::MAX
-    );
+      irs::sort::MergeType::MAX);
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -2440,26 +2377,20 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_EQ(11, it.seek(10));
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -2495,7 +2426,7 @@ TEST(small_disjunction_test, next) {
     std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45 };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
@@ -2517,7 +2448,7 @@ TEST(small_disjunction_test, next) {
     };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
@@ -2540,7 +2471,7 @@ TEST(small_disjunction_test, next) {
     };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
@@ -2561,7 +2492,7 @@ TEST(small_disjunction_test, next) {
     };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
@@ -2583,7 +2514,7 @@ TEST(small_disjunction_test, next) {
     std::vector<irs::doc_id_t> expected{};
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
@@ -2608,7 +2539,7 @@ TEST(small_disjunction_test, next) {
     std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45 };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
@@ -2635,7 +2566,7 @@ TEST(small_disjunction_test, next) {
     std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45, 79, 101, 141, 256, 1025, 1101 };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
@@ -2660,7 +2591,7 @@ TEST(small_disjunction_test, next) {
     std::vector<irs::doc_id_t> expected{ 1, 2, 3 };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
@@ -2682,7 +2613,7 @@ TEST(small_disjunction_test, next) {
 
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
@@ -2706,7 +2637,7 @@ TEST(small_disjunction_test, next) {
 
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
@@ -2729,7 +2660,7 @@ TEST(small_disjunction_test, next) {
     std::vector<irs::doc_id_t> expected{ };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
@@ -2768,7 +2699,7 @@ TEST(small_disjunction_test, seek) {
         {57, irs::doc_limits::eof()}
     };
 
-    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
@@ -2789,7 +2720,7 @@ TEST(small_disjunction_test, seek) {
       {irs::doc_limits::invalid(), irs::doc_limits::eof()}
     };
 
-    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
@@ -2816,7 +2747,7 @@ TEST(small_disjunction_test, seek) {
       {57, irs::doc_limits::eof()}
     };
 
-    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
@@ -2841,7 +2772,7 @@ TEST(small_disjunction_test, seek) {
         {57, irs::doc_limits::eof()}
     };
 
-    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
@@ -2873,7 +2804,7 @@ TEST(small_disjunction_test, seek) {
     std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45 };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
@@ -2900,7 +2831,7 @@ TEST(small_disjunction_test, seek) {
     std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45, 79, 101, 141, 256, 1025, 1101 };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
@@ -2925,7 +2856,7 @@ TEST(small_disjunction_test, seek) {
     std::vector<irs::doc_id_t> expected{ 1, 2, 3 };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
@@ -2947,7 +2878,7 @@ TEST(small_disjunction_test, seek) {
 
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
@@ -2971,7 +2902,7 @@ TEST(small_disjunction_test, seek) {
 
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
@@ -2994,7 +2925,7 @@ TEST(small_disjunction_test, seek) {
     std::vector<irs::doc_id_t> expected{ };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
@@ -3020,7 +2951,7 @@ TEST(small_disjunction_test, seek_next) {
       { 1, 5, 6 }
     };
 
-    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -3070,7 +3001,7 @@ TEST(small_disjunction_test, scored_seek_next) {
       docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, std::move(ord));
     }
 
-    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
+    auto res = detail::execute_all<disjunction::adapter>(docs);
     disjunction it(std::move(res.first), irs::order::prepared::unordered(), irs::sort::MergeType::AGGREGATE, 1); // custom cost
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -3121,7 +3052,7 @@ TEST(small_disjunction_test, scored_seek_next) {
     ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
     auto prepared_order = ord.prepare();
 
-    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
+    auto res = detail::execute_all<disjunction::adapter>(docs);
     disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE, 1); // custom cost
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -3137,26 +3068,20 @@ TEST(small_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.c_str())); // 1+2+4
+    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate();
-    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.c_str())); // 1+2+4
+    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate();
-    ASSERT_EQ(6, *reinterpret_cast<const size_t*>(score.c_str())); // 2+4
+    ASSERT_EQ(6, *reinterpret_cast<const size_t*>(score.evaluate())); // 2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // 1
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate();
-    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.c_str())); // 2
+    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.evaluate())); // 2
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // 1
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -3186,7 +3111,7 @@ TEST(small_disjunction_test, scored_seek_next) {
     ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
     auto prepared_order = ord.prepare();
 
-    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
+    auto res = detail::execute_all<disjunction::adapter>(docs);
     disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::MAX, 1); // custom cost
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -3202,26 +3127,20 @@ TEST(small_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1, 2, 4)
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1, 2, 4)
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1, 2, 4)
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1, 2, 4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(2, 4)
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(2, 4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1)
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate();
-    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(2)
+    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(2)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1)
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -3250,7 +3169,7 @@ TEST(small_disjunction_test, scored_seek_next) {
     ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
     auto prepared_order = ord.prepare();
 
-    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
+    auto res = detail::execute_all<disjunction::adapter>(docs);
     disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE, 1); // custom cost
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -3266,26 +3185,20 @@ TEST(small_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.c_str())); // 1+4
+    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate();
-    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.c_str())); // 1+4
+    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // 4
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // 4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // 1
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str())); //
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); //
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // 1
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -3314,7 +3227,7 @@ TEST(small_disjunction_test, scored_seek_next) {
     ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
     auto prepared_order = ord.prepare();
 
-    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
+    auto res = detail::execute_all<disjunction::adapter>(docs);
     disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::MAX, 1); // custom cost
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -3330,26 +3243,20 @@ TEST(small_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1, 4)
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1, 4)
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1, 4)
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1, 4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(4)
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1)
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str())); // default value
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // default value
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1)
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -3376,15 +3283,15 @@ TEST(small_disjunction_test, scored_seek_next) {
     ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
     auto prepared_order = ord.prepare();
 
-    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
+    auto res = detail::execute_all<disjunction::adapter>(docs);
     disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE, 1); // custom cost
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.empty());
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+    ASSERT_FALSE(score.empty());
 
     // cost
     ASSERT_EQ(1, irs::cost::extract(it));
@@ -3392,26 +3299,20 @@ TEST(small_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str())); // 1+4
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str())); // 1+4
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str())); // 4
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str())); // 1
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str())); //
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); //
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str())); // 1
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -3438,7 +3339,7 @@ TEST(small_disjunction_test, scored_seek_next) {
     ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
     auto prepared_order = ord.prepare();
 
-    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
+    auto res = detail::execute_all<disjunction::adapter>(docs);
     disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::MAX, 1); // custom cost
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -3454,26 +3355,20 @@ TEST(small_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -3482,14 +3377,184 @@ TEST(small_disjunction_test, scored_seek_next) {
 }
 
 // ----------------------------------------------------------------------------
-// --SECTION--         disjunction (iterator0 OR iterator1 OR iterator2 OR ...)
+// --SECTION--         block_disjunction (iterator0 OR iterator1 OR iterator2 OR ...)
 // ----------------------------------------------------------------------------
 
-TEST(disjunction_test, next) {
-  using disjunction = irs::disjunction<irs::doc_iterator::ptr>;
+TEST(block_disjunction_test, check_attributes) {
+  // no scoring, no order
+  {
+    using disjunction = irs::block_disjunction<
+      irs::doc_iterator::ptr,
+      irs::block_disjunction_traits<false, irs::MatchType::MATCH, false, 1>>;
+
+    disjunction it({});
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_NE(nullptr, doc);
+    ASSERT_TRUE(irs::doc_limits::eof(doc->value));
+    auto* cost = irs::get<irs::cost>(it);
+    ASSERT_NE(nullptr, cost);
+    ASSERT_EQ(0, cost->estimate());
+    auto* score = irs::get<irs::score>(it);
+    ASSERT_NE(nullptr, score);
+    ASSERT_TRUE(score->empty());
+  }
+
+  // scoring, no order
+  {
+    using disjunction = irs::block_disjunction<
+      irs::doc_iterator::ptr,
+      irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
+
+    disjunction it({});
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_NE(nullptr, doc);
+    ASSERT_TRUE(irs::doc_limits::eof(doc->value));
+    auto* cost = irs::get<irs::cost>(it);
+    ASSERT_NE(nullptr, cost);
+    ASSERT_EQ(0, cost->estimate());
+    auto* score = irs::get<irs::score>(it);
+    ASSERT_NE(nullptr, score);
+    ASSERT_TRUE(score->empty());
+  }
+
+  // no scoring, order
+  {
+    irs::order ord;
+    ord.add<irs::bm25_sort>(true);
+
+    auto prepared = ord.prepare();
+
+    using disjunction = irs::block_disjunction<
+      irs::doc_iterator::ptr,
+      irs::block_disjunction_traits<false, irs::MatchType::MATCH, false, 1>>;
+
+    disjunction it({}, prepared);
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_NE(nullptr, doc);
+    ASSERT_TRUE(irs::doc_limits::eof(doc->value));
+    auto* cost = irs::get<irs::cost>(it);
+    ASSERT_NE(nullptr, cost);
+    ASSERT_EQ(0, cost->estimate());
+    auto* score = irs::get<irs::score>(it);
+    ASSERT_NE(nullptr, score);
+    ASSERT_TRUE(score->empty());
+  }
+
+  // scoring, order
+  {
+    irs::order ord;
+    ord.add<irs::bm25_sort>(true);
+
+    auto prepared = ord.prepare();
+
+    using disjunction = irs::block_disjunction<
+      irs::doc_iterator::ptr,
+      irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
+
+    disjunction it({}, prepared);
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_NE(nullptr, doc);
+    ASSERT_TRUE(irs::doc_limits::eof(doc->value));
+    auto* cost = irs::get<irs::cost>(it);
+    ASSERT_NE(nullptr, cost);
+    ASSERT_EQ(0, cost->estimate());
+    auto* score = irs::get<irs::score>(it);
+    ASSERT_NE(nullptr, score);
+    ASSERT_FALSE(score->empty());
+  }
+}
+
+TEST(block_disjunction_test, next) {
+  using disjunction = irs::block_disjunction<
+    irs::doc_iterator::ptr,
+    irs::block_disjunction_traits<false, irs::MatchType::MATCH, false, 1>>;
+
   auto sum = [](size_t sum, const std::vector<irs::doc_id_t>& docs) { return sum += docs.size(); };
 
-  // simple case
+  // single iterator case, values fit 1 block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+    };
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 7, 9, 11, 45 };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      while (it.next()) {
+        ASSERT_EQ(doc->value, it.value());
+        result.push_back(it.value());
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ( expected, result );
+  }
+
+  // single iterator case, values don't fit single block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45, 65, 78, 127},
+    };
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 7, 9, 11, 45, 65, 78, 127 };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      for (; it.next();) {
+        ASSERT_EQ(doc->value, it.value());
+        result.push_back(it.value());
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ( expected, result );
+  }
+
+  // single iterator case, values don't fit single block, gap between block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 1145, 111165, 1111178, 111111127 }
+    };
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 7, 9, 11, 1145, 111165, 1111178, 111111127 };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (; it.next();) {
+        ASSERT_EQ(doc->value, it.value());
+        result.push_back(it.value());
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // single block
   {
     std::vector<std::vector<irs::doc_id_t>> docs{
       { 1, 2, 5, 7, 9, 11, 45 },
@@ -3498,44 +3563,111 @@ TEST(disjunction_test, next) {
     std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45 };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
       auto* doc = irs::get<irs::document>(it);
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
-      for ( ; it.next(); ) {
-        result.push_back( it.value() );
+      for (;it.next();) {
+        result.push_back(it.value());
+        ASSERT_EQ(1, it.match_count());
       }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
       ASSERT_FALSE(it.next());
       ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
 
-    ASSERT_EQ( expected, result );
+    ASSERT_EQ(expected, result);
   }
 
-  // basic case : single dataset
+  // values don't fit single block
   {
     std::vector<std::vector<irs::doc_id_t>> docs{
-      { 1, 2, 5, 7, 9, 11, 45 }
+      { 1, 2, 5, 7, 9, 11, 45, 65, 78, 127},
+      { 1, 5, 6, 12, 29, 126 }
     };
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45, 65, 78, 126, 127 };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
       auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (;it.next();) {
+        result.push_back(it.value());
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // values don't fit single block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 1145, 111165, 1111178, 111111127 },
+      { 1, 5, 6, 12, 29, 126 }
+    };
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 126, 1145, 111165, 1111178, 111111127 };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
-      for ( ; it.next(); ) {
-        result.push_back( it.value() );
+      for (; it.next();) {
+        result.push_back(it.value());
+        ASSERT_EQ(1, it.match_count());
       }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // single dataset
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 1145, 111165, 1111178, 111111127 },
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1111111127 }
+    };
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 7, 9, 11, 45, 1145, 111165, 1111178, 111111127, 1111111127 };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (; it.next();) {
+        result.push_back(it.value());
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
       ASSERT_FALSE( it.next() );
       ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
 
-    ASSERT_EQ(docs[0], result);
+    ASSERT_EQ(expected, result);
   }
 
-  // basic case : same datasets
+  // same datasets
   {
     std::vector<std::vector<irs::doc_id_t>> docs{
       { 1, 2, 5, 7, 9, 11, 45 },
@@ -3543,36 +3675,42 @@ TEST(disjunction_test, next) {
     };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
+        ASSERT_EQ(1, it.match_count());
       }
-      ASSERT_FALSE( it.next() );
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
       ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ(docs[0], result );
   }
 
-  // basic case : single dataset
+  // single dataset
   {
     std::vector<std::vector<irs::doc_id_t>> docs{
       { 24 }
     };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
+        ASSERT_EQ(1, it.match_count());
       }
-      ASSERT_FALSE( it.next() );
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
       ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ(docs[0], result );
@@ -3586,15 +3724,18 @@ TEST(disjunction_test, next) {
     std::vector<irs::doc_id_t> expected{};
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
       ASSERT_TRUE(!irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
+        ASSERT_EQ(1, it.match_count());
       }
-      ASSERT_FALSE( it.next() );
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
       ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( expected, result );
@@ -3603,15 +3744,16 @@ TEST(disjunction_test, next) {
   // no iterators provided
   {
     disjunction it({});
-      auto* doc = irs::get<irs::document>(it);
-      ASSERT_TRUE(bool(doc));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
     ASSERT_EQ(0, irs::cost::extract(it));
+    ASSERT_EQ(0, it.match_count());
     ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     ASSERT_FALSE(it.next());
+    ASSERT_EQ(0, it.match_count());
     ASSERT_TRUE(irs::doc_limits::eof(it.value()));
   }
 
-  // simple case
   {
     std::vector<std::vector<irs::doc_id_t>> docs{
       { 1, 2, 5, 7, 9, 11, 45 },
@@ -3622,21 +3764,23 @@ TEST(disjunction_test, next) {
     std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45 };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
+        ASSERT_EQ(1, it.match_count());
       }
-      ASSERT_FALSE( it.next() );
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
       ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( expected, result );
   }
 
-  // simple case
   {
     std::vector<std::vector<irs::doc_id_t>> docs{
       { 1, 2, 5, 7, 9, 11, 45 },
@@ -3649,15 +3793,1909 @@ TEST(disjunction_test, next) {
     std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45, 79, 101, 141, 256, 1025, 1101 };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
+        ASSERT_EQ(1, it.match_count());
       }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ( expected, result );
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1 },
+      { 2 },
+      { 3 }
+    };
+
+    std::vector<irs::doc_id_t> expected{ 1, 2, 3 };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for ( ; it.next(); ) {
+        result.push_back( it.value() );
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ( expected, result );
+  }
+
+  // single dataset
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+    };
+
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for ( ; it.next(); ) {
+        result.push_back( it.value() );
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ(docs.front(), result );
+  }
+
+  // same datasets
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 2, 5, 7, 9, 11, 45 }
+    };
+
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for ( ; it.next(); ) {
+        result.push_back( it.value() );
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
       ASSERT_FALSE( it.next() );
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ(docs[0], result);
+  }
+
+  // empty datasets
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { }, { }, { }
+    };
+
+    std::vector<irs::doc_id_t> expected{ };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (;it.next();) {
+        result.push_back(it.value());
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ(expected, result);
+  }
+}
+
+TEST(block_disjunction_test, next_scored) {
+  using disjunction = irs::block_disjunction<
+    irs::doc_iterator::ptr,
+    irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
+
+  auto order = [](size_t i, bool reverse = false) -> irs::order {
+    irs::order order;
+    order.add<detail::basic_sort>(reverse, i);
+    return order;
+  };
+
+  // single iterator case, values fit 1 block
+  // disjunction without score, sub-iterators with scores
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, order(1)));
+
+    std::vector<std::pair<irs::doc_id_t, size_t>> expected{
+      { 1, 0 }, { 2, 0 }, { 5, 0 },
+      { 7, 0 }, { 9, 0 }, { 11, 0 },
+      { 45, 0 }
+    };
+    std::vector<std::pair<irs::doc_id_t, size_t>> result;
+    {
+      auto res = detail::execute_all<disjunction::adapter>(docs);
+
+      // custom cost
+      disjunction it(std::move(res.first), irs::order::prepared::unordered(),
+                     irs::sort::MergeType::AGGREGATE, 1);
+
+      // score, no order set
+      auto& score = irs::score::get(it);
+      ASSERT_TRUE(score.empty());
+      ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+      ASSERT_EQ(1, irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      while (it.next()) {
+        ASSERT_EQ(doc->value, it.value());
+        result.emplace_back(it.value(), 0);
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // single iterator case, values don't fit single block
+  // disjunction score, sub-iterators with scores
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45, 65, 78, 127}, order(1)));
+
+    std::vector<std::pair<irs::doc_id_t, size_t>> expected{
+      { 1, 1 }, { 2, 1 }, { 5, 1 }, { 7, 1 }, { 9, 1 },
+      { 11, 1 }, { 45, 1 }, { 65, 1 }, { 78, 1 }, { 127, 1 } };
+    std::vector<std::pair<irs::doc_id_t, size_t>> result;
+    {
+      auto res = detail::execute_all<disjunction::adapter>(docs);
+      disjunction it(std::move(res.first), res.second.front(),
+                     irs::sort::MergeType::AGGREGATE, 1); // custom cost
+
+      // score is set
+      auto& score = irs::score::get(it);
+      ASSERT_FALSE(score.empty());
+      ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_EQ(1, irs::cost::extract(it));
+      for (; it.next();) {
+        ASSERT_EQ(doc->value, it.value());
+        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // single iterator case, values don't fit single block, gap between block
+  // disjunction score, sub-iterators with scores
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(
+      std::make_pair(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 1145, 111165, 1111178, 111111127 },
+                     order(2)));
+
+    std::vector<std::pair<irs::doc_id_t, size_t>> expected{
+      { 1, 2 }, { 2, 2 }, { 5, 2 }, { 7, 2 }, { 9, 2 }, { 11, 2 },
+      { 1145, 2 }, { 111165, 2 }, { 1111178, 2 }, { 111111127, 2 }};
+    std::vector<std::pair<irs::doc_id_t, size_t>> result;
+    {
+      auto res = detail::execute_all<disjunction::adapter>(docs);
+      disjunction it(std::move(res.first), res.second.front(),
+                     irs::sort::MergeType::AGGREGATE, 2); // custom cost
+
+      // score is set
+      auto& score = irs::score::get(it);
+      ASSERT_FALSE(score.empty());
+      ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(2, irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (; it.next();) {
+        ASSERT_EQ(doc->value, it.value());
+        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // single block
+  // disjunction without score, sub-iterators with scores
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, order(2));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, irs::order());
+    std::vector<std::pair<irs::doc_id_t, size_t>> expected{
+      { 1, 0 }, { 2,  0 }, { 5,  0 }, { 6,  0 }, { 7,  0 },
+      { 9, 0 }, { 11, 0 }, { 12, 0 }, { 29, 0 }, { 45, 0 } };
+    std::vector<std::pair<irs::doc_id_t, size_t>> result;
+    {
+      auto res = detail::execute_all<disjunction::adapter>(docs);
+      disjunction it(std::move(res.first), irs::order::prepared::unordered(),
+                     irs::sort::MergeType::AGGREGATE, 2); // custom cost
+
+      // score, no order set
+      auto& score = irs::score::get(it);
+      ASSERT_TRUE(score.empty());
+      ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(2, irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (;it.next();) {
+        ASSERT_EQ(doc->value, it.value());
+        result.emplace_back(it.value(), 0);
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // values don't fit single block
+  // disjunction score, sub-iterators with partially with scores
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45, 65, 78, 127}, order(3)));
+    docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29, 126 }, irs::order()));
+
+    std::vector<std::pair<irs::doc_id_t, size_t>> expected{
+      { 1, 3 }, { 2, 3 }, { 5, 3 }, { 6, 0 }, { 7, 3 }, { 9, 3 }, {11, 3 },
+      { 12, 0 }, {29, 0 }, {45, 3 }, { 65, 3 }, {78, 3 }, {126, 0 }, {127, 3 }
+    };
+    std::vector<std::pair<irs::doc_id_t, size_t>> result;
+    {
+      auto res = detail::execute_all<disjunction::adapter>(docs);
+      disjunction it(std::move(res.first), res.second.front(),
+                     irs::sort::MergeType::AGGREGATE, 2); // custom cost
+
+      // score is set
+      auto& score = irs::score::get(it);
+      ASSERT_FALSE(score.empty());
+      ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_EQ(2, irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (;it.next();) {
+        ASSERT_EQ(doc->value, it.value());
+        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // values don't fit single block, aggregation
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 1145, 111165, 1111178, 111111127 }, order(3)));
+    docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29, 126 }, order(2)));
+
+    std::vector<std::pair<irs::doc_id_t, size_t>> expected{
+      { 1, 5 }, { 2, 3 }, { 5, 5 }, { 6, 2 },  { 7, 3 }, { 9, 3 }, { 11, 3 }, { 12, 2, },
+      { 29, 2 }, { 126, 2 }, { 1145, 3 }, { 111165, 3 }, { 1111178, 3 }, { 111111127, 3 } };
+    std::vector<std::pair<irs::doc_id_t, size_t>> result;
+    {
+      auto res = detail::execute_all<disjunction::adapter>(docs);
+      disjunction it(std::move(res.first), res.second.front(),
+                     irs::sort::MergeType::AGGREGATE, 2); // custom sort
+
+      // score is set
+      auto& score = irs::score::get(it);
+      ASSERT_FALSE(score.empty());
+      ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(2, irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (;it.next();) {
+        ASSERT_EQ(doc->value, it.value());
+        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // values don't fit single block, max
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 1145, 111165, 1111178, 111111127 }, order(3)));
+    docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29, 126 }, order(2)));
+
+    std::vector<std::pair<irs::doc_id_t, size_t>> expected{
+      { 1, 3 }, { 2, 3 }, { 5, 3 }, { 6, 2 },  { 7, 3 }, { 9, 3 }, { 11, 3 }, { 12, 2, },
+      { 29, 2 }, { 126, 2 }, { 1145, 3 }, { 111165, 3 }, { 1111178, 3 }, { 111111127, 3 } };
+    std::vector<std::pair<irs::doc_id_t, size_t>> result;
+    {
+      auto res = detail::execute_all<disjunction::adapter>(docs);
+      disjunction it(std::move(res.first), res.second.front(),
+                     irs::sort::MergeType::MAX, 2); // custom sort
+
+      // score is set
+      auto& score = irs::score::get(it);
+      ASSERT_FALSE(score.empty());
+      ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(2, irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (;it.next();) {
+        ASSERT_EQ(doc->value, it.value());
+        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // disjunction score, sub-iterators partially with scores
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 1145, 111165, 1111178, 111111127 }, order(4));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, irs::order());
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1111111127 }, order(1));
+    std::vector<std::pair<irs::doc_id_t, size_t>> expected{
+      { 1, 4 }, { 2, 4 }, { 5, 4 }, { 7, 4 } , { 9, 4 }, { 11, 4 }, { 45, 0 },
+      { 1145, 4 }, { 111165, 4 }, { 1111178, 4 }, { 111111127, 4 }, { 1111111127, 1 }};
+    std::vector<std::pair<irs::doc_id_t, size_t>> result;
+    {
+      auto res = detail::execute_all<disjunction::adapter>(docs);
+      disjunction it(std::move(res.first), res.second.front(),
+                     irs::sort::MergeType::AGGREGATE, 2); // custom sort
+
+      // score is set
+      auto& score = irs::score::get(it);
+      ASSERT_FALSE(score.empty());
+      ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(2, irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (; it.next();) {
+        ASSERT_EQ(doc->value, it.value());
+        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE( it.next() );
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // same datasets
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, order(4));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, order(5));
+    std::vector<irs::doc_id_t> result;
+    {
+      auto res = detail::execute_all<disjunction::adapter>(docs);
+
+      disjunction it(std::move(res.first), res.second.front(),
+                     irs::sort::MergeType::AGGREGATE, 2); // custom sort
+
+      // score is set
+      auto& score = irs::score::get(it);
+      ASSERT_FALSE(score.empty());
+      ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(2, irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (; it.next();) {
+        ASSERT_EQ(doc->value, it.value());
+        result.push_back(it.value());
+        ASSERT_EQ(9, *reinterpret_cast<const size_t*>(score.evaluate()));
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ(docs.front().first, result);
+  }
+
+
+  // single dataset
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 24 }, order(4));
+    std::vector<irs::doc_id_t> result;
+    {
+      auto res = detail::execute_all<disjunction::adapter>(docs);
+
+      disjunction it(std::move(res.first), res.second.front(),
+                     irs::sort::MergeType::AGGREGATE, 2); // custom sort
+
+      // score is set
+      auto& score = irs::score::get(it);
+      ASSERT_FALSE(score.empty());
+      ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(2, irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (; it.next();) {
+        result.push_back(it.value());
+        ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate()));
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ(docs.front().first, result);
+  }
+
+  // empty
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ }, order(4));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ }, order(5));
+    {
+      auto res = detail::execute_all<disjunction::adapter>(docs);
+
+      disjunction it(std::move(res.first), res.second.front(),
+                     irs::sort::MergeType::AGGREGATE);
+
+      // score is set
+      auto& score = irs::score::get(it);
+      ASSERT_FALSE(score.empty());
+      ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(0, irs::cost::extract(it));
+      ASSERT_TRUE(!irs::doc_limits::valid(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+  }
+
+  // no iterators provided
+  {
+    disjunction it({}, order(1).prepare());
+
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(0, irs::cost::extract(it));
+    ASSERT_EQ(0, it.match_count());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(0, it.match_count());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+  }
+
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, order(4));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, order(2));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, order(1));
+
+    std::vector<std::pair<irs::doc_id_t, size_t>> expected{
+      { 1, 4 }, { 2, 4 }, { 5, 4 }, { 6, 2 }, { 7, 4 },
+      { 9, 4 }, { 11, 4 }, { 12, 2 }, { 29, 2 }, { 45, 4 } };
+    std::vector<std::pair<irs::doc_id_t, size_t>> result;
+    {
+      auto res = detail::execute_all<disjunction::adapter>(docs);
+
+      disjunction it(std::move(res.first), res.second.front(), irs::sort::MergeType::MAX, 3);
+
+      // score is set
+      auto& score = irs::score::get(it);
+      ASSERT_FALSE(score.empty());
+      ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(3, irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (;it.next();) {
+        ASSERT_EQ(doc->value, it.value());
+        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ(expected, result);
+  }
+
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, order(16));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, order(8));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, order(4));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 256 }, order(2));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 11, 79, 101, 141, 1025, 1101 }, order(1));
+
+    std::vector<std::pair<irs::doc_id_t, size_t>> expected{
+      { 1, 28 }, { 2, 16 }, { 5, 28 }, { 6, 12 }, { 7, 16 }, { 9, 16 }, { 11, 17 },
+      { 12, 8 }, { 29, 8 }, { 45, 16 }, { 79, 1 }, { 101, 1 }, { 141, 1 }, { 256, 2 },
+      { 1025, 1 }, { 1101, 1 } };
+    std::vector<std::pair<irs::doc_id_t, size_t>> result;
+    {
+      auto res = detail::execute_all<disjunction::adapter>(docs);
+
+      disjunction it(std::move(res.first), res.second.front(), irs::sort::MergeType::AGGREGATE, 3);
+
+      // score is set
+      auto& score = irs::score::get(it);
+      ASSERT_FALSE(score.empty());
+      ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(3, irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (;it.next();) {
+        ASSERT_EQ(doc->value, it.value());
+        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ(expected, result);
+  }
+
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1 }, order(1));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 2 }, order(2));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 3 }, order(4));
+
+    std::vector<std::pair<irs::doc_id_t, size_t>> expected{
+      { 1, 1 }, { 2, 2 }, { 3, 4} };
+    std::vector<std::pair<irs::doc_id_t, size_t>> result;
+    {
+      auto res = detail::execute_all<disjunction::adapter>(docs);
+
+      disjunction it(std::move(res.first), res.second.front(), irs::sort::MergeType::AGGREGATE, 3);
+
+      // score is set
+      auto& score = irs::score::get(it);
+      ASSERT_FALSE(score.empty());
+      ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(3, irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (; it.next();) {
+        ASSERT_EQ(doc->value, it.value());
+        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ(expected, result);
+  }
+
+  // same datasets
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, order(1));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, order(2));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, order(4));
+
+    std::vector<irs::doc_id_t> result;
+    {
+      auto res = detail::execute_all<disjunction::adapter>(docs);
+
+      disjunction it(std::move(res.first), res.second.front(), irs::sort::MergeType::MAX, 3);
+
+      // score is set
+      auto& score = irs::score::get(it);
+      ASSERT_FALSE(score.empty());
+      ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(3, irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (;it.next();) {
+        ASSERT_EQ(doc->value, it.value());
+        result.push_back(it.value());
+        ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate()));
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ(docs.front().first, result);
+  }
+
+  // empty datasets
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ }, order(1));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ }, order(2));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ }, order(4));
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+
+    disjunction it(std::move(res.first), res.second.front(), irs::sort::MergeType::MAX, 3);
+
+    // score is set
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(3, irs::cost::extract(it));
+    ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+    ASSERT_FALSE(it.next());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    ASSERT_FALSE(it.next());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+  }
+}
+
+TEST(block_disjunction_test, next_scored_two_blocks) {
+  using disjunction = irs::block_disjunction<
+    irs::doc_iterator::ptr,
+    irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
+
+  auto order = [](size_t i, bool reverse = false) -> irs::order {
+    irs::order order;
+    order.add<detail::basic_sort>(reverse, i);
+    return order;
+  };
+
+  // single iterator case, values fit 1 block
+  // disjunction without score, sub-iterators with scores
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, order(1)));
+
+    std::vector<std::pair<irs::doc_id_t, size_t>> expected{
+      { 1, 0 }, { 2, 0 }, { 5, 0 },
+      { 7, 0 }, { 9, 0 }, { 11, 0 },
+      { 45, 0 }
+    };
+    std::vector<std::pair<irs::doc_id_t, size_t>> result;
+    {
+      auto res = detail::execute_all<disjunction::adapter>(docs);
+
+      // custom cost
+      disjunction it(std::move(res.first), irs::order::prepared::unordered(),
+                     irs::sort::MergeType::AGGREGATE, 1);
+
+      // score, no order set
+      auto& score = irs::score::get(it);
+      ASSERT_TRUE(score.empty());
+      ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+      ASSERT_EQ(1, irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      while (it.next()) {
+        ASSERT_EQ(doc->value, it.value());
+        result.emplace_back(it.value(), 0);
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // single iterator case, values don't fit single block
+  // disjunction score, sub-iterators with scores
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45, 65, 78, 127}, order(1)));
+
+    std::vector<std::pair<irs::doc_id_t, size_t>> expected{
+      { 1, 1 }, { 2, 1 }, { 5, 1 }, { 7, 1 }, { 9, 1 },
+      { 11, 1 }, { 45, 1 }, { 65, 1 }, { 78, 1 }, { 127, 1 } };
+    std::vector<std::pair<irs::doc_id_t, size_t>> result;
+    {
+      auto res = detail::execute_all<disjunction::adapter>(docs);
+      disjunction it(std::move(res.first), res.second.front(),
+                     irs::sort::MergeType::AGGREGATE, 1); // custom cost
+
+      // score is set
+      auto& score = irs::score::get(it);
+      ASSERT_FALSE(score.empty());
+      ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_EQ(1, irs::cost::extract(it));
+      for (; it.next();) {
+        ASSERT_EQ(doc->value, it.value());
+        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // single iterator case, values don't fit single block, gap between block
+  // disjunction score, sub-iterators with scores
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(
+      std::make_pair(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 1145, 1264, 111165, 1111178, 111111127 },
+                     order(2)));
+
+    std::vector<std::pair<irs::doc_id_t, size_t>> expected{
+      { 1, 2 }, { 2, 2 }, { 5, 2 }, { 7, 2 }, { 9, 2 }, { 11, 2 },
+      { 1145, 2 }, {1264, 2 }, { 111165, 2 }, { 1111178, 2 }, { 111111127, 2 }};
+    std::vector<std::pair<irs::doc_id_t, size_t>> result;
+    {
+      auto res = detail::execute_all<disjunction::adapter>(docs);
+      disjunction it(std::move(res.first), res.second.front(),
+                     irs::sort::MergeType::AGGREGATE, 2); // custom cost
+
+      // score is set
+      auto& score = irs::score::get(it);
+      ASSERT_FALSE(score.empty());
+      ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(2, irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (; it.next();) {
+        ASSERT_EQ(doc->value, it.value());
+        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // single block
+  // disjunction without score, sub-iterators with scores
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, order(2));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, irs::order());
+    std::vector<std::pair<irs::doc_id_t, size_t>> expected{
+      { 1, 0 }, { 2,  0 }, { 5,  0 }, { 6,  0 }, { 7,  0 },
+      { 9, 0 }, { 11, 0 }, { 12, 0 }, { 29, 0 }, { 45, 0 } };
+    std::vector<std::pair<irs::doc_id_t, size_t>> result;
+    {
+      auto res = detail::execute_all<disjunction::adapter>(docs);
+      disjunction it(std::move(res.first), irs::order::prepared::unordered(),
+                     irs::sort::MergeType::AGGREGATE, 2); // custom cost
+
+      // score, no order set
+      auto& score = irs::score::get(it);
+      ASSERT_TRUE(score.empty());
+      ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(2, irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (;it.next();) {
+        ASSERT_EQ(doc->value, it.value());
+        result.emplace_back(it.value(), 0);
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // values don't fit single block
+  // disjunction score, sub-iterators with partially with scores
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45, 65, 78, 127}, order(3)));
+    docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29, 126 }, irs::order()));
+
+    std::vector<std::pair<irs::doc_id_t, size_t>> expected{
+      { 1, 3 }, { 2, 3 }, { 5, 3 }, { 6, 0 }, { 7, 3 }, { 9, 3 }, {11, 3 },
+      { 12, 0 }, {29, 0 }, {45, 3 }, { 65, 3 }, {78, 3 }, {126, 0 }, {127, 3 }
+    };
+    std::vector<std::pair<irs::doc_id_t, size_t>> result;
+    {
+      auto res = detail::execute_all<disjunction::adapter>(docs);
+      disjunction it(std::move(res.first), res.second.front(),
+                     irs::sort::MergeType::AGGREGATE, 2); // custom cost
+
+      // score is set
+      auto& score = irs::score::get(it);
+      ASSERT_FALSE(score.empty());
+      ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_EQ(2, irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (;it.next();) {
+        ASSERT_EQ(doc->value, it.value());
+        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // values don't fit single block, aggregation
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 1145, 111165, 1111178, 111111127 }, order(3)));
+    docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29, 126 }, order(2)));
+
+    std::vector<std::pair<irs::doc_id_t, size_t>> expected{
+      { 1, 5 }, { 2, 3 }, { 5, 5 }, { 6, 2 },  { 7, 3 }, { 9, 3 }, { 11, 3 }, { 12, 2, },
+      { 29, 2 }, { 126, 2 }, { 1145, 3 }, { 111165, 3 }, { 1111178, 3 }, { 111111127, 3 } };
+    std::vector<std::pair<irs::doc_id_t, size_t>> result;
+    {
+      auto res = detail::execute_all<disjunction::adapter>(docs);
+      disjunction it(std::move(res.first), res.second.front(),
+                     irs::sort::MergeType::AGGREGATE, 2); // custom sort
+
+      // score is set
+      auto& score = irs::score::get(it);
+      ASSERT_FALSE(score.empty());
+      ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(2, irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (;it.next();) {
+        ASSERT_EQ(doc->value, it.value());
+        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // values don't fit single block, max
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 1145, 111165, 1111178, 111111127 }, order(3)));
+    docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29, 126 }, order(2)));
+
+    std::vector<std::pair<irs::doc_id_t, size_t>> expected{
+      { 1, 3 }, { 2, 3 }, { 5, 3 }, { 6, 2 },  { 7, 3 }, { 9, 3 }, { 11, 3 }, { 12, 2, },
+      { 29, 2 }, { 126, 2 }, { 1145, 3 }, { 111165, 3 }, { 1111178, 3 }, { 111111127, 3 } };
+    std::vector<std::pair<irs::doc_id_t, size_t>> result;
+    {
+      auto res = detail::execute_all<disjunction::adapter>(docs);
+      disjunction it(std::move(res.first), res.second.front(),
+                     irs::sort::MergeType::MAX, 2); // custom sort
+
+      // score is set
+      auto& score = irs::score::get(it);
+      ASSERT_FALSE(score.empty());
+      ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(2, irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (;it.next();) {
+        ASSERT_EQ(doc->value, it.value());
+        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // disjunction score, sub-iterators partially with scores
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 1145, 111165, 1111178, 111111127 }, order(4));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, irs::order());
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1111111127 }, order(1));
+    std::vector<std::pair<irs::doc_id_t, size_t>> expected{
+      { 1, 4 }, { 2, 4 }, { 5, 4 }, { 7, 4 } , { 9, 4 }, { 11, 4 }, { 45, 0 },
+      { 1145, 4 }, { 111165, 4 }, { 1111178, 4 }, { 111111127, 4 }, { 1111111127, 1 }};
+    std::vector<std::pair<irs::doc_id_t, size_t>> result;
+    {
+      auto res = detail::execute_all<disjunction::adapter>(docs);
+      disjunction it(std::move(res.first), res.second.front(),
+                     irs::sort::MergeType::AGGREGATE, 2); // custom sort
+
+      // score is set
+      auto& score = irs::score::get(it);
+      ASSERT_FALSE(score.empty());
+      ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(2, irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (; it.next();) {
+        ASSERT_EQ(doc->value, it.value());
+        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE( it.next() );
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // same datasets
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, order(4));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, order(5));
+    std::vector<irs::doc_id_t> result;
+    {
+      auto res = detail::execute_all<disjunction::adapter>(docs);
+
+      disjunction it(std::move(res.first), res.second.front(),
+                     irs::sort::MergeType::AGGREGATE, 2); // custom sort
+
+      // score is set
+      auto& score = irs::score::get(it);
+      ASSERT_FALSE(score.empty());
+      ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(2, irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (; it.next();) {
+        ASSERT_EQ(doc->value, it.value());
+        result.push_back(it.value());
+        ASSERT_EQ(9, *reinterpret_cast<const size_t*>(score.evaluate()));
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ(docs.front().first, result);
+  }
+
+
+  // single dataset
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 24 }, order(4));
+    std::vector<irs::doc_id_t> result;
+    {
+      auto res = detail::execute_all<disjunction::adapter>(docs);
+
+      disjunction it(std::move(res.first), res.second.front(),
+                     irs::sort::MergeType::AGGREGATE, 2); // custom sort
+
+      // score is set
+      auto& score = irs::score::get(it);
+      ASSERT_FALSE(score.empty());
+      ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(2, irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (; it.next();) {
+        result.push_back(it.value());
+        ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate()));
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ(docs.front().first, result);
+  }
+
+  // empty
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ }, order(4));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ }, order(5));
+    {
+      auto res = detail::execute_all<disjunction::adapter>(docs);
+
+      disjunction it(std::move(res.first), res.second.front(),
+                     irs::sort::MergeType::AGGREGATE);
+
+      // score is set
+      auto& score = irs::score::get(it);
+      ASSERT_FALSE(score.empty());
+      ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(0, irs::cost::extract(it));
+      ASSERT_TRUE(!irs::doc_limits::valid(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+  }
+
+  // no iterators provided
+  {
+    disjunction it({}, order(1).prepare());
+
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(0, irs::cost::extract(it));
+    ASSERT_EQ(0, it.match_count());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(0, it.match_count());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+  }
+
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, order(4));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, order(2));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, order(1));
+
+    std::vector<std::pair<irs::doc_id_t, size_t>> expected{
+      { 1, 4 }, { 2, 4 }, { 5, 4 }, { 6, 2 }, { 7, 4 },
+      { 9, 4 }, { 11, 4 }, { 12, 2 }, { 29, 2 }, { 45, 4 } };
+    std::vector<std::pair<irs::doc_id_t, size_t>> result;
+    {
+      auto res = detail::execute_all<disjunction::adapter>(docs);
+
+      disjunction it(std::move(res.first), res.second.front(), irs::sort::MergeType::MAX, 3);
+
+      // score is set
+      auto& score = irs::score::get(it);
+      ASSERT_FALSE(score.empty());
+      ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(3, irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (;it.next();) {
+        ASSERT_EQ(doc->value, it.value());
+        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ(expected, result);
+  }
+
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, order(16));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, order(8));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, order(4));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 256 }, order(2));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 11, 79, 101, 141, 1025, 1101 }, order(1));
+
+    std::vector<std::pair<irs::doc_id_t, size_t>> expected{
+      { 1, 28 }, { 2, 16 }, { 5, 28 }, { 6, 12 }, { 7, 16 }, { 9, 16 }, { 11, 17 },
+      { 12, 8 }, { 29, 8 }, { 45, 16 }, { 79, 1 }, { 101, 1 }, { 141, 1 }, { 256, 2 },
+      { 1025, 1 }, { 1101, 1 } };
+    std::vector<std::pair<irs::doc_id_t, size_t>> result;
+    {
+      auto res = detail::execute_all<disjunction::adapter>(docs);
+
+      disjunction it(std::move(res.first), res.second.front(), irs::sort::MergeType::AGGREGATE, 3);
+
+      // score is set
+      auto& score = irs::score::get(it);
+      ASSERT_FALSE(score.empty());
+      ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(3, irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (;it.next();) {
+        ASSERT_EQ(doc->value, it.value());
+        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ(expected, result);
+  }
+
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1 }, order(1));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 2 }, order(2));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 3 }, order(4));
+
+    std::vector<std::pair<irs::doc_id_t, size_t>> expected{
+      { 1, 1 }, { 2, 2 }, { 3, 4} };
+    std::vector<std::pair<irs::doc_id_t, size_t>> result;
+    {
+      auto res = detail::execute_all<disjunction::adapter>(docs);
+
+      disjunction it(std::move(res.first), res.second.front(), irs::sort::MergeType::AGGREGATE, 3);
+
+      // score is set
+      auto& score = irs::score::get(it);
+      ASSERT_FALSE(score.empty());
+      ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(3, irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (; it.next();) {
+        ASSERT_EQ(doc->value, it.value());
+        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ(expected, result);
+  }
+
+  // same datasets
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, order(1));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, order(2));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, order(4));
+
+    std::vector<irs::doc_id_t> result;
+    {
+      auto res = detail::execute_all<disjunction::adapter>(docs);
+
+      disjunction it(std::move(res.first), res.second.front(), irs::sort::MergeType::MAX, 3);
+
+      // score is set
+      auto& score = irs::score::get(it);
+      ASSERT_FALSE(score.empty());
+      ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(3, irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (;it.next();) {
+        ASSERT_EQ(doc->value, it.value());
+        result.push_back(it.value());
+        ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate()));
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ(docs.front().first, result);
+  }
+
+  // empty datasets
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ }, order(1));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ }, order(2));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ }, order(4));
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+
+    disjunction it(std::move(res.first), res.second.front(), irs::sort::MergeType::MAX, 3);
+
+    // score is set
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(3, irs::cost::extract(it));
+    ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+    ASSERT_FALSE(it.next());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    ASSERT_FALSE(it.next());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+  }
+}
+
+TEST(block_disjunction_test, min_match_next) {
+  using disjunction = irs::block_disjunction<
+    irs::doc_iterator::ptr,
+    irs::block_disjunction_traits<false, irs::MatchType::MIN_MATCH, false, 1>>;
+
+  auto sum = [](size_t sum, const std::vector<irs::doc_id_t>& docs) { return sum += docs.size(); };
+
+  // single iterator case, values fit 1 block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+    };
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 7, 9, 11, 45 };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      while (it.next()) {
+        ASSERT_EQ(doc->value, it.value());
+        result.push_back(it.value());
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ( expected, result );
+  }
+
+  // single iterator case, unreachable condition
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+    };
+
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs), 2);
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+  }
+
+  // single iterator case, values don't fit single block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45, 65, 78, 127},
+    };
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 7, 9, 11, 45, 65, 78, 127 };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      for (; it.next();) {
+        ASSERT_EQ(doc->value, it.value());
+        result.push_back(it.value());
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ( expected, result );
+  }
+
+  // single iterator case, values don't fit single block, gap between block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 1145, 111165, 1111178, 111111127 }
+    };
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 7, 9, 11, 1145, 111165, 1111178, 111111127 };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (; it.next();) {
+        ASSERT_EQ(doc->value, it.value());
+        result.push_back(it.value());
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // single block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 }
+    };
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45 };
+    std::vector<size_t> match_counts{ 2, 1, 2, 1, 1, 1, 1, 1, 1, 1};
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      auto match_count = match_counts.begin();
+      for (;it.next();++match_count) {
+        result.push_back(it.value());
+        ASSERT_EQ(*match_count, it.match_count());
+      }
+      ASSERT_EQ(match_count, match_counts.end());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // values don't fit single block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45, 65, 78, 126, 127},
+      { 1, 5, 6, 12, 29, 126 }
+    };
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45, 65, 78, 126, 127 };
+    std::vector<size_t> match_counts{ 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1};
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      auto match_count = match_counts.begin();
+      for (;it.next();++match_count) {
+        result.push_back(it.value());
+        ASSERT_EQ(*match_count, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_EQ(match_count, match_counts.end());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // values don't fit single block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45, 65, 78, 126, 127},
+      { 1, 5, 6, 12, 29, 126 },
+      { 126 }
+    };
+    std::vector<irs::doc_id_t> expected{ 1, 5, 126 };
+    std::vector<size_t> match_counts{ 2, 2, 3 };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs), 2);
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      auto match_count = match_counts.begin();
+      for (;it.next();++match_count) {
+        result.push_back(it.value());
+        ASSERT_EQ(*match_count, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_EQ(match_count, match_counts.end());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // early break
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45, 65, 78, 126, 127},
+      { 1, 5, 6, 12, 29, 126 },
+      { 1, 129 }
+    };
+    std::vector<irs::doc_id_t> expected{ 1 };
+    std::vector<size_t> match_counts{ 3 };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs), 3);
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      auto match_count = match_counts.begin();
+      for (;it.next();++match_count) {
+        result.push_back(it.value());
+        ASSERT_EQ(*match_count, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_EQ(match_count, match_counts.end());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // early break
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45, 65, 78, 126, 127},
+      { 1, 5, 6, 12, 29, 126 },
+      { 129 }
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs), 3);
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(0, it.match_count());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    ASSERT_FALSE(it.next());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+  }
+
+  // values don't fit single block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 1145, 111165, 1111178, 111111127 },
+      { 1, 5, 6, 12, 29, 126, 111111127 }
+    };
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 126, 1145, 111165, 1111178, 111111127 };
+    std::vector<size_t> match_counts{ 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2 };
+    ASSERT_EQ(expected.size(), match_counts.size());
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs), 1);
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      auto match_count = match_counts.begin();
+      for (;it.next();++match_count) {
+        result.push_back(it.value());
+        ASSERT_EQ(*match_count, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_EQ(match_count, match_counts.end());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 1145, 111165, 1111178, 111111127 },
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1111178, 1111111127 }
+    };
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 7, 9, 11, 45, 1145, 111165, 1111178, 111111127, 1111111127 };
+    std::vector<size_t> match_counts{ 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 1, 1 };
+    ASSERT_EQ(expected.size(), match_counts.size());
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      auto match_count = match_counts.begin();
+      for (;it.next();++match_count) {
+        result.push_back(it.value());
+        ASSERT_EQ(*match_count, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_EQ(match_count, match_counts.end());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE( it.next() );
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // min_match == 0
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 1145, 111165, 1111178, 111111127 },
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1111178, 1111111127 }
+    };
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 7, 9, 11, 45, 1145, 111165, 1111178, 111111127, 1111111127 };
+    std::vector<size_t> match_counts{ 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 1, 1 };
+    ASSERT_EQ(expected.size(), match_counts.size());
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs), 0);
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      auto match_count = match_counts.begin();
+      for (;it.next();++match_count) {
+        result.push_back(it.value());
+        ASSERT_EQ(*match_count, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_EQ(match_count, match_counts.end());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 1145, 111165, 1111178, 111111127 },
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1111178, 1111111127 }
+    };
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 7, 9, 11, 1111178 };
+    std::vector<size_t> match_counts{ 2, 2, 2, 2, 2, 2, 2 };
+    ASSERT_EQ(expected.size(), match_counts.size());
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs), 2);
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      auto match_count = match_counts.begin();
+      for (;it.next();++match_count) {
+        result.push_back(it.value());
+        ASSERT_EQ(*match_count, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_EQ(match_count, match_counts.end());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // same datasets
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 2, 5, 7, 9, 11, 45 }
+    };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (;it.next();) {
+        result.push_back(it.value());
+        ASSERT_EQ(2, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ(docs[0], result);
+  }
+
+  // single dataset
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 24 }
+    };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (; it.next();) {
+        result.push_back(it.value());
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ(docs[0], result);
+  }
+
+  // single dataset
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 24 },
+      { 24 },
+      { 24 }
+    };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs), 2);
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (; it.next();) {
+        result.push_back( it.value() );
+        ASSERT_EQ(3, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ(docs[0], result );
+  }
+
+  // empty
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      {}, {}
+    };
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    ASSERT_EQ(0, it.match_count());
+    ASSERT_TRUE(!irs::doc_limits::valid(it.value()));
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(0, it.match_count());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+  }
+
+  // no iterators provided
+  {
+    disjunction it({});
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(0, irs::cost::extract(it));
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    ASSERT_FALSE(it.next());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 },
+      { 1 ,5, 6 }
+    };
+
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45 };
+    std::vector<size_t> match_counts{ 3, 1, 3, 2, 1, 1, 1, 1, 1, 1 };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      auto match_count = match_counts.begin();
+      for (;it.next();++match_count) {
+        result.push_back(it.value());
+        ASSERT_EQ(*match_count, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ(expected, result);
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 },
+      { 1, 5, 6 },
+      { 256 },
+      { 11, 79, 101, 141, 1025, 1101 }
+    };
+
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45, 79, 101, 141, 256, 1025, 1101 };
+    std::vector<size_t> match_counts{ 3, 1, 3, 2, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+    ASSERT_EQ(expected.size(), match_counts.size());
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      auto match_count = match_counts.begin();
+      for (;it.next();++match_count) {
+        result.push_back(it.value());
+        ASSERT_EQ(*match_count, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_EQ(0, it.match_count());
       ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( expected, result );
@@ -3674,15 +5712,19 @@ TEST(disjunction_test, next) {
     std::vector<irs::doc_id_t> expected{ 1, 2, 3 };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
+        ASSERT_EQ(1, it.match_count());
       }
-      ASSERT_FALSE( it.next() );
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_EQ(0, it.match_count());
       ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( expected, result );
@@ -3696,15 +5738,19 @@ TEST(disjunction_test, next) {
 
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
+        ASSERT_EQ(1, it.match_count());
       }
-      ASSERT_FALSE( it.next() );
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_EQ(0, it.match_count());
       ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ(docs.front(), result );
@@ -3720,18 +5766,22 @@ TEST(disjunction_test, next) {
 
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
-      for ( ; it.next(); ) {
-        result.push_back( it.value() );
+      for (;it.next();) {
+        result.push_back(it.value());
+        ASSERT_EQ(3, it.match_count());
       }
-      ASSERT_FALSE( it.next() );
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_EQ(0, it.match_count());
       ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
-    ASSERT_EQ( docs[0], result );
+    ASSERT_EQ(docs[0], result);
   }
 
   // empty datasets
@@ -3740,27 +5790,678 @@ TEST(disjunction_test, next) {
       { }, { }, { }
     };
 
-    std::vector<irs::doc_id_t> expected{ };
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    ASSERT_EQ(0, it.match_count());
+    ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(0, it.match_count());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+  }
+}
+
+TEST(block_disjunction_test, min_match_next_two_blocks) {
+  using disjunction = irs::block_disjunction<
+    irs::doc_iterator::ptr,
+    irs::block_disjunction_traits<false, irs::MatchType::MIN_MATCH, false, 2>>;
+
+  auto sum = [](size_t sum, const std::vector<irs::doc_id_t>& docs) { return sum += docs.size(); };
+
+  // single iterator case, values fit 1 block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+    };
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 7, 9, 11, 45 };
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      while (it.next()) {
+        ASSERT_EQ(doc->value, it.value());
+        result.push_back(it.value());
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ( expected, result );
+  }
+
+  // single iterator case, unreachable condition
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+    };
+
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs), 2);
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+  }
+
+  // single iterator case, values don't fit single block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45, 65, 78, 127},
+    };
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 7, 9, 11, 45, 65, 78, 127 };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      for (; it.next();) {
+        ASSERT_EQ(doc->value, it.value());
+        result.push_back(it.value());
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ( expected, result );
+  }
+
+  // single iterator case, values don't fit single block, gap between block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 1145, 111165, 1111178, 111111127 }
+    };
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 7, 9, 11, 1145, 111165, 1111178, 111111127 };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (; it.next();) {
+        ASSERT_EQ(doc->value, it.value());
+        result.push_back(it.value());
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // single block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 }
+    };
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45 };
+    std::vector<size_t> match_counts{ 2, 1, 2, 1, 1, 1, 1, 1, 1, 1};
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      auto match_count = match_counts.begin();
+      for (;it.next();++match_count) {
+        result.push_back(it.value());
+        ASSERT_EQ(*match_count, it.match_count());
+      }
+      ASSERT_EQ(match_count, match_counts.end());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // values don't fit single block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45, 65, 78, 126, 127},
+      { 1, 5, 6, 12, 29, 126 }
+    };
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45, 65, 78, 126, 127 };
+    std::vector<size_t> match_counts{ 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1};
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      auto match_count = match_counts.begin();
+      for (;it.next();++match_count) {
+        result.push_back(it.value());
+        ASSERT_EQ(*match_count, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_EQ(match_count, match_counts.end());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // values don't fit single block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45, 65, 78, 126, 127},
+      { 1, 5, 6, 12, 29, 126 },
+      { 126 }
+    };
+    std::vector<irs::doc_id_t> expected{ 1, 5, 126 };
+    std::vector<size_t> match_counts{ 2, 2, 3 };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs), 2);
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      auto match_count = match_counts.begin();
+      for (;it.next();++match_count) {
+        result.push_back(it.value());
+        ASSERT_EQ(*match_count, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_EQ(match_count, match_counts.end());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // early break
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45, 65, 78, 126, 127},
+      { 1, 5, 6, 12, 29, 126 },
+      { 1, 129 }
+    };
+    std::vector<irs::doc_id_t> expected{ 1 };
+    std::vector<size_t> match_counts{ 3 };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs), 3);
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      auto match_count = match_counts.begin();
+      for (;it.next();++match_count) {
+        result.push_back(it.value());
+        ASSERT_EQ(*match_count, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_EQ(match_count, match_counts.end());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // early break
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45, 65, 78, 126, 127},
+      { 1, 5, 6, 12, 29, 126 },
+      { 129 }
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs), 3);
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(0, it.match_count());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    ASSERT_FALSE(it.next());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+  }
+
+  // values don't fit single block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 1145, 111165, 1111178, 111111127 },
+      { 1, 5, 6, 12, 29, 126, 111111127 }
+    };
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 126, 1145, 111165, 1111178, 111111127 };
+    std::vector<size_t> match_counts{ 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2 };
+    ASSERT_EQ(expected.size(), match_counts.size());
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs), 1);
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      auto match_count = match_counts.begin();
+      for (;it.next();++match_count) {
+        result.push_back(it.value());
+        ASSERT_EQ(*match_count, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_EQ(match_count, match_counts.end());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 1145, 111165, 1111178, 111111127 },
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1111178, 1111111127 }
+    };
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 7, 9, 11, 45, 1145, 111165, 1111178, 111111127, 1111111127 };
+    std::vector<size_t> match_counts{ 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 1, 1 };
+    ASSERT_EQ(expected.size(), match_counts.size());
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      auto match_count = match_counts.begin();
+      for (;it.next();++match_count) {
+        result.push_back(it.value());
+        ASSERT_EQ(*match_count, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_EQ(match_count, match_counts.end());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE( it.next() );
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // min_match == 0
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 1145, 111165, 1111178, 111111127 },
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1111178, 1111111127 }
+    };
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 7, 9, 11, 45, 1145, 111165, 1111178, 111111127, 1111111127 };
+    std::vector<size_t> match_counts{ 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 1, 1 };
+    ASSERT_EQ(expected.size(), match_counts.size());
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs), 0);
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      auto match_count = match_counts.begin();
+      for (;it.next();++match_count) {
+        result.push_back(it.value());
+        ASSERT_EQ(*match_count, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_EQ(match_count, match_counts.end());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 1145, 111165, 1111178, 111111127 },
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1111178, 1111111127 }
+    };
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 7, 9, 11, 1111178 };
+    std::vector<size_t> match_counts{ 2, 2, 2, 2, 2, 2, 2 };
+    ASSERT_EQ(expected.size(), match_counts.size());
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs), 2);
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      auto match_count = match_counts.begin();
+      for (;it.next();++match_count) {
+        result.push_back(it.value());
+        ASSERT_EQ(*match_count, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_EQ(match_count, match_counts.end());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(expected, result);
+  }
+
+  // same datasets
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 2, 5, 7, 9, 11, 45 }
+    };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (;it.next();) {
+        result.push_back(it.value());
+        ASSERT_EQ(2, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ(docs[0], result);
+  }
+
+  // single dataset
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 24 }
+    };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (; it.next();) {
+        result.push_back(it.value());
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ(docs[0], result);
+  }
+
+  // single dataset
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 24 },
+      { 24 },
+      { 24 }
+    };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs), 2);
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (; it.next();) {
+        result.push_back( it.value() );
+        ASSERT_EQ(3, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ(docs[0], result );
+  }
+
+  // empty
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      {}, {}
+    };
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    ASSERT_EQ(0, it.match_count());
+    ASSERT_TRUE(!irs::doc_limits::valid(it.value()));
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(0, it.match_count());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+  }
+
+  // no iterators provided
+  {
+    disjunction it({});
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(0, irs::cost::extract(it));
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    ASSERT_FALSE(it.next());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 },
+      { 1 ,5, 6 }
+    };
+
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45 };
+    std::vector<size_t> match_counts{ 3, 1, 3, 2, 1, 1, 1, 1, 1, 1 };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      auto match_count = match_counts.begin();
+      for (;it.next();++match_count) {
+        result.push_back(it.value());
+        ASSERT_EQ(*match_count, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ(expected, result);
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 },
+      { 1, 5, 6 },
+      { 256 },
+      { 11, 79, 101, 141, 1025, 1101 }
+    };
+
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45, 79, 101, 141, 256, 1025, 1101 };
+    std::vector<size_t> match_counts{ 3, 1, 3, 2, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+    ASSERT_EQ(expected.size(), match_counts.size());
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      auto match_count = match_counts.begin();
+      for (;it.next();++match_count) {
+        result.push_back(it.value());
+        ASSERT_EQ(*match_count, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ( expected, result );
+  }
+
+  // simple case
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1 },
+      { 2 },
+      { 3 }
+    };
+
+    std::vector<irs::doc_id_t> expected{ 1, 2, 3 };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
         result.push_back( it.value() );
+        ASSERT_EQ(1, it.match_count());
       }
-      ASSERT_FALSE( it.next() );
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_EQ(0, it.match_count());
       ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
     ASSERT_EQ( expected, result );
   }
+
+  // single dataset
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+    };
+
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for ( ; it.next(); ) {
+        result.push_back( it.value() );
+        ASSERT_EQ(1, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ(docs.front(), result );
+  }
+
+  // same datasets
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 2, 5, 7, 9, 11, 45 }
+    };
+
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for (;it.next();) {
+        result.push_back(it.value());
+        ASSERT_EQ(3, it.match_count());
+      }
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+      ASSERT_FALSE(it.next());
+      ASSERT_EQ(0, it.match_count());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ(docs[0], result);
+  }
+
+  // empty datasets
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { }, { }, { }
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    ASSERT_EQ(0, it.match_count());
+    ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(0, it.match_count());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+  }
 }
 
-TEST(disjunction_test, seek) {
-  using disjunction = irs::disjunction<irs::doc_iterator::ptr>;
+TEST(block_disjunction_test, seek_no_readahead) {
+  using disjunction = irs::block_disjunction<
+    irs::doc_iterator::ptr,
+    irs::block_disjunction_traits<false, irs::MatchType::MATCH, false, 1>>;
+
   auto sum = [](size_t sum, const std::vector<irs::doc_id_t>& docs) { return sum += docs.size(); };
+
+  struct seek_doc {
+    irs::doc_id_t target;
+    irs::doc_id_t expected;
+    size_t match_count;
+  };
 
   // no iterators provided
   {
@@ -3773,32 +6474,142 @@ TEST(disjunction_test, seek) {
     ASSERT_TRUE(irs::doc_limits::eof(it.value()));
   }
 
-  // simple case
+  // single iterator case, values fit 1 block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 12, 29, 45 },
+    };
+
+    std::vector<seek_doc> expected{
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1},
+        {1, 1, 1},
+        {9, 9, 1},
+        {8, 9, 1},
+        {irs::doc_limits::invalid(), 9, 1},
+        {12, 12, 1},
+        {8, 12,  1},
+        {13, 29, 1},
+        {45, 45, 1},
+        {57, irs::doc_limits::eof(), 0},
+        {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+        {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  // single iterator case, values don't fit single block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 12, 29, 45, 65, 78, 127},
+    };
+
+    std::vector<seek_doc> expected{
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1},
+        {1, 1, 1},
+        {9, 9, 1},
+        {8, 9, 1},
+        {irs::doc_limits::invalid(), 9, 1},
+        {12, 12, 1},
+        {8, 12,  1},
+        {13, 29, 1},
+        {45, 45, 1},
+        {57, 65, 1},
+        {126, 127, 1},
+        {128, irs::doc_limits::eof(), 0},
+        {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  // single iterator case, values don't fit single block, gap between block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 12, 29, 45, 65, 127, 1145, 111165, 1111178, 111111127 }
+    };
+
+    std::vector<seek_doc> expected{
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1},
+        {1, 1, 1},
+        {9, 9, 1},
+        {8, 9, 1},
+        {irs::doc_limits::invalid(), 9, 1},
+        {12, 12, 1},
+        {8, 12,  1},
+        {13, 29, 1},
+        {45, 45, 1},
+        {57, 65, 1},
+        {126, 127, 1},
+        {111165, 111165, 1},
+        {111166, 1111178, 1},
+        {1111177, 1111178, 1},
+        {1111178, 1111178, 1},
+        {111111127, 111111127 , 1},
+        {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
   {
     std::vector<std::vector<irs::doc_id_t>> docs{
       { 1, 2, 5, 7, 9, 11, 45 },
       { 1, 5, 6, 12, 29 }
     };
 
-    std::vector<detail::seek_doc> expected{
-        {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
-        {1, 1},
-        {9, 9},
-        {8, 9},
-        {irs::doc_limits::invalid(), 9},
-        {12, 12},
-        {8, 12},
-        {13, 29},
-        {45, 45},
-        {57, irs::doc_limits::eof()}
+    std::vector<seek_doc> expected{
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1},
+        {1, 1, 1},
+        {9, 9, 1},
+        {8, 9, 1},
+        {irs::doc_limits::invalid(), 9, 1},
+        {12, 12, 1},
+        {8, 12, 1},
+        {13, 29, 1},
+        {45, 45, 1},
+        {57, irs::doc_limits::eof(), 0}
     };
 
-    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
     ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
     for (const auto& target : expected) {
-      ASSERT_EQ(target.expected, it.seek( target.target ));
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
     }
   }
 
@@ -3808,75 +6619,81 @@ TEST(disjunction_test, seek) {
       {}, {}
     };
 
-    std::vector<detail::seek_doc> expected{
-      {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
-      {6, irs::doc_limits::eof()},
-      {irs::doc_limits::invalid(), irs::doc_limits::eof()}
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1},
+      {6, irs::doc_limits::eof(), 0},
+      {irs::doc_limits::invalid(), irs::doc_limits::eof(), 0}
     };
 
-    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
     ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
 
     for (const auto& target : expected) {
       ASSERT_EQ(target.expected, it.seek( target.target ));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
     }
   }
 
-  // NO_MORE_DOCS
   {
     std::vector<std::vector<irs::doc_id_t>> docs{
       { 1, 2, 5, 7, 9, 11, 45 },
       { 1, 5, 6, 12, 29 }
     };
 
-    std::vector<detail::seek_doc> expected{
-      {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
-      {irs::doc_limits::eof(), irs::doc_limits::eof()},
-      {9, irs::doc_limits::eof()},
-      {12, irs::doc_limits::eof()},
-      {13, irs::doc_limits::eof()},
-      {45, irs::doc_limits::eof()},
-      {57, irs::doc_limits::eof()}
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1},
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+      {9, irs::doc_limits::eof(), 0},
+      {12, irs::doc_limits::eof(), 0},
+      {13, irs::doc_limits::eof(), 0},
+      {45, irs::doc_limits::eof(), 0},
+      {57, irs::doc_limits::eof(), 0}
     };
 
-    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
     ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
 
     for (const auto& target : expected) {
       ASSERT_EQ(target.expected, it.seek( target.target ));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
     }
   }
 
-  // INVALID_DOC
   {
     std::vector<std::vector<irs::doc_id_t>> docs{
       { 1, 2, 5, 7, 9, 11, 45 },
       { 1, 5, 6, 12, 29 }
     };
-    std::vector<detail::seek_doc> expected{
-        {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
-        {9, 9},
-        {12, 12},
-        {irs::doc_limits::invalid(), 12},
-        {45, 45},
-        {57, irs::doc_limits::eof()}
+    std::vector<seek_doc> expected{
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1},
+        {9, 9, 1},
+        {12, 12, 1},
+        {irs::doc_limits::invalid(), 12, 1},
+        {45, 45, 1},
+        {57, irs::doc_limits::eof(), 0}
     };
 
-    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
     ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
 
     for (const auto& target : expected) {
       ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
     }
   }
 
-  // simple case
   {
     std::vector<std::vector<irs::doc_id_t>> docs{
       { 1, 2, 5, 7, 9, 11, 45 },
@@ -3884,29 +6701,31 @@ TEST(disjunction_test, seek) {
       { 1, 5, 6 }
     };
 
-    std::vector<detail::seek_doc> expected{
-        {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
-        {1, 1},
-        {9, 9},
-        {8, 9},
-        {12, 12},
-        {13, 29},
-        {45, 45},
-        {44, 45},
-        {irs::doc_limits::invalid(), 45},
-        {57, irs::doc_limits::eof()}
+    std::vector<seek_doc> expected{
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1},
+        {1, 1, 1},
+        {9, 9, 1},
+        {8, 9, 1},
+        {12, 12, 1},
+        {13, 29, 1},
+        {45, 45, 1},
+        {44, 45, 1},
+        {irs::doc_limits::invalid(), 45, 1},
+        {57, irs::doc_limits::eof(), 0}
     };
 
-    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
     ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
     for (const auto& target : expected) {
       ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
     }
   }
 
-  // simple case
   {
     std::vector<std::vector<irs::doc_id_t>> docs{
       { 1, 2, 5, 7, 9, 11, 45 },
@@ -3916,26 +6735,29 @@ TEST(disjunction_test, seek) {
       { 11, 79, 101, 141, 1025, 1101 }
     };
 
-    std::vector<detail::seek_doc> expected{
-        {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
-        {1, 1},
-        {9, 9},
-        {8, 9},
-        {13, 29},
-        {45, 45},
-        {80, 101},
-        {513, 1025},
-        {2, 1025},
-        {irs::doc_limits::invalid(), 1025},
-        {2001, irs::doc_limits::eof()}
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1},
+      {1, 1, 1},
+      {9, 9, 1},
+      {8, 9, 1},
+      {13, 29, 1},
+      {45, 45, 1},
+      {80, 101, 1},
+      {513, 1025, 1},
+      {2, 1025, 1},
+      {irs::doc_limits::invalid(), 1025, 1},
+      {2001, irs::doc_limits::eof(), 0}
     };
 
-    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
     ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
     for (const auto& target : expected) {
       ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
     }
   }
 
@@ -3944,22 +6766,24 @@ TEST(disjunction_test, seek) {
     std::vector<std::vector<irs::doc_id_t>> docs{
       {}, {}, {}, {}
     };
-    std::vector<detail::seek_doc> expected{
-      {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
-      {6, irs::doc_limits::eof()},
-      {irs::doc_limits::invalid(), irs::doc_limits::eof()}
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1},
+      {6, irs::doc_limits::eof(), 0},
+      {irs::doc_limits::invalid(), irs::doc_limits::eof(), 0}
     };
 
-    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
     ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
     for (const auto& target : expected) {
       ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
     }
   }
 
-  // NO_MORE_DOCS
   {
     std::vector<std::vector<irs::doc_id_t>> docs{
       { 1, 2, 5, 7, 9, 11, 45 },
@@ -3969,26 +6793,28 @@ TEST(disjunction_test, seek) {
       { 11, 79, 101, 141, 1025, 1101 }
     };
 
-    std::vector<detail::seek_doc> expected{
-      {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
-      {irs::doc_limits::eof(), irs::doc_limits::eof()},
-      {9, irs::doc_limits::eof()},
-      {12, irs::doc_limits::eof()},
-      {13, irs::doc_limits::eof()},
-      {45, irs::doc_limits::eof()},
-      {57, irs::doc_limits::eof()}
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1},
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+      {9, irs::doc_limits::eof(), 0},
+      {12, irs::doc_limits::eof(), 0},
+      {13, irs::doc_limits::eof(), 0},
+      {45, irs::doc_limits::eof(), 0},
+      {57, irs::doc_limits::eof(), 0}
     };
 
-    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
     ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
     for (const auto& target : expected) {
       ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
     }
   }
 
-  // INVALID_DOC
   {
     std::vector<std::vector<irs::doc_id_t>> docs{
       { 1, 2, 5, 7, 9, 11, 45 },
@@ -3998,27 +6824,2476 @@ TEST(disjunction_test, seek) {
       { 11, 79, 101, 141, 1025, 1101 }
     };
 
-    std::vector<detail::seek_doc> expected{
-        {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
-        {9, 9},
-        {12, 12},
-        {irs::doc_limits::invalid(), 12},
-        {45, 45},
-        {1201, irs::doc_limits::eof()}
+    std::vector<seek_doc> expected{
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1},
+        {9, 9, 1},
+        {12, 12, 1},
+        {irs::doc_limits::invalid(), 12, 1},
+        {45, 45, 1},
+        {1201, irs::doc_limits::eof(), 0}
     };
 
-    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
     ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
     for (const auto& target : expected) {
       ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
     }
   }
 }
 
-TEST(disjunction_test, seek_next) {
-  using disjunction = irs::disjunction<irs::doc_iterator::ptr>;
+TEST(block_disjunction_test, seek_scored_no_readahead) {
+  using disjunction = irs::block_disjunction<
+    irs::doc_iterator::ptr,
+    irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
+
+  auto order = [](size_t i, bool reverse = false) -> irs::order {
+    irs::order order;
+    order.add<detail::basic_sort>(reverse, i);
+    return order;
+  };
+
+  struct seek_doc {
+    irs::doc_id_t target;
+    irs::doc_id_t expected;
+    size_t match_count;
+    size_t score;
+  };
+
+  // no iterators provided
+  {
+    disjunction it({});
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(0, irs::cost::extract(it));
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    ASSERT_EQ(irs::doc_limits::eof(), it.seek(42));
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+  }
+
+  // single iterator case, values fit 1 block
+  // disjunction without score, sub-iterators with scores
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 12, 29, 45 }, order(4));
+
+    std::vector<seek_doc> expected{
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1, 0 },
+        {1, 1, 1, 0 },
+        {9, 9, 1, 0 },
+        {8, 9, 1, 0 },
+        {irs::doc_limits::invalid(), 9, 1, 0 },
+        {12, 12, 1, 0 },
+        {8, 12,  1, 0 },
+        {13, 29, 1, 0 },
+        {45, 45, 1, 0 },
+        {57, irs::doc_limits::eof(), 0, 0 },
+        {irs::doc_limits::eof(), irs::doc_limits::eof(), 0, 0 },
+        {irs::doc_limits::eof(), irs::doc_limits::eof(), 0, 0 },
+    };
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+
+    disjunction it(std::move(res.first), irs::order::prepared::unordered(),
+                   irs::sort::MergeType::AGGREGATE, 2); // custom cost
+
+    // no order set
+    auto& score = irs::score::get(it);
+    ASSERT_TRUE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(2, irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  // single iterator case, values don't fit single block
+  // disjunction with score, sub-iterators with scores
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 12, 29, 45, 65, 78, 127}, order(4));
+
+    std::vector<seek_doc> expected{
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1, 0 },
+        {1, 1, 1, 4 },
+        {9, 9, 1, 4 },
+        {8, 9, 1, 4 },
+        {irs::doc_limits::invalid(), 9, 1, 4 },
+        {12, 12, 1, 4 },
+        {8, 12,  1, 4 },
+        {13, 29, 1, 4 },
+        {45, 45, 1, 4 },
+        {57, 65, 1, 4 },
+        {126, 127, 1, 4 },
+        {128, irs::doc_limits::eof(), 0, 4 }, // stay at previous score
+        {irs::doc_limits::eof(), irs::doc_limits::eof(), 0, 4},
+    };
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+
+    disjunction it(std::move(res.first), res.second.front(),
+                   irs::sort::MergeType::AGGREGATE, 2); // custom cost
+
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(2, irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+    }
+  }
+
+  // single iterator case, values don't fit single block, gap between block
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(
+      std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 12, 29, 45, 65, 127, 1145, 111165, 1111178, 111111127 },
+      order(4));
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1, 0},
+      {1, 1, 1, 4 },
+      {9, 9, 1, 4 },
+      {8, 9, 1, 4 },
+      {irs::doc_limits::invalid(), 9, 1, 4},
+      {12, 12, 1, 4 },
+      {8, 12,  1, 4 },
+      {13, 29, 1, 4 },
+      {45, 45, 1, 4 },
+      {57, 65, 1, 4 },
+      {126, 127, 1, 4 },
+      {111165, 111165, 1, 4 },
+      {111166, 1111178, 1, 4 },
+      {1111177, 1111178, 1, 4 },
+      {1111178, 1111178, 1, 4 },
+      {111111127, 111111127, 1, 4 },
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0, 4}, // stay at previous score
+    };
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+
+    disjunction it(std::move(res.first), res.second.front(),
+                   irs::sort::MergeType::MAX, 2); // custom cost
+
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(2, irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+    }
+  }
+
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, order(4));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, order(2));
+
+    std::vector<seek_doc> expected{
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1, 0 },
+        {1, 1, 1, 6 },
+        {9, 9, 1, 4 },
+        {8, 9, 1, 4 },
+        {irs::doc_limits::invalid(), 9, 1, 4 },
+        {12, 12, 1, 2 },
+        {8, 12, 1, 2 },
+        {13, 29, 1, 2 },
+        {45, 45, 1, 4 },
+        {57, irs::doc_limits::eof(), 0, 4} // stay at previous score
+    };
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+
+    disjunction it(std::move(res.first), res.second.front(),
+                   irs::sort::MergeType::AGGREGATE, 2); // custom cost
+
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(2, irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+    }
+  }
+
+  // empty datasets
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ }, order(4));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ }, order(2));
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1, 0},
+      {6, irs::doc_limits::eof(), 0, 0},
+      {irs::doc_limits::invalid(), irs::doc_limits::eof(), 0, 0}
+    };
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+
+    disjunction it(std::move(res.first), res.second.front(),
+                   irs::sort::MergeType::AGGREGATE, 2); // custom cost
+
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(2, irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek( target.target ));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+    }
+  }
+
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, order(4));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, order(2));
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1, 0 },
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0, 0 },
+      {9, irs::doc_limits::eof(), 0, 0 },
+      {12, irs::doc_limits::eof(), 0, 0 },
+      {13, irs::doc_limits::eof(), 0, 0 },
+      {45, irs::doc_limits::eof(), 0, 0 },
+      {57, irs::doc_limits::eof(), 0, 0 }
+    };
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+
+    disjunction it(std::move(res.first), res.second.front(),
+                   irs::sort::MergeType::AGGREGATE, 2); // custom cost
+
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(2, irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+    }
+  }
+
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, order(4));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, order(2));
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1, 0 },
+      {9, 9, 1, 4},
+      {12, 12, 1, 2},
+      {irs::doc_limits::invalid(), 12, 1, 2},
+      {45, 45, 1, 4},
+      {57, irs::doc_limits::eof(), 0, 4}
+    };
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+
+    disjunction it(std::move(res.first), res.second.front(),
+                   irs::sort::MergeType::MAX, 2); // custom cost
+
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(2, irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+    }
+  }
+
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, order(4));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, order(2));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, order(1));
+
+    std::vector<seek_doc> expected{
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1, 0},
+        {1, 1, 1, 7 },
+        {9, 9, 1, 4 },
+        {8, 9, 1, 4 },
+        {12, 12, 1, 2},
+        {13, 29, 1, 2},
+        {45, 45, 1, 4},
+        {44, 45, 1, 4},
+        {irs::doc_limits::invalid(), 45, 1, 4},
+        {57, irs::doc_limits::eof(), 0, 4}
+    };
+
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+
+    disjunction it(std::move(res.first), res.second.front(),
+                   irs::sort::MergeType::AGGREGATE, 2); // custom cost
+
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(2, irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+    }
+  }
+
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, order(4));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, order(2));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, order(1));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 256 }, irs::order());
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 11, 79, 101, 141, 1025, 1101 }, order(8));
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1, 0},
+      {1, 1, 1, 7},
+      {9, 9, 1, 4},
+      {8, 9, 1, 4},
+      {13, 29, 1, 2},
+      {45, 45, 1, 4},
+      {80, 101, 1, 8},
+      {256, 256, 1, 0},
+      {513, 1025, 1, 8},
+      {2, 1025, 1, 8},
+      {irs::doc_limits::invalid(), 1025, 1, 8},
+      {2001, irs::doc_limits::eof(), 0, 8}
+    };
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+
+    disjunction it(std::move(res.first), res.second.front(),
+                   irs::sort::MergeType::AGGREGATE, 2); // custom cost
+
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(2, irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+    }
+  }
+
+  // empty datasets
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ }, order(8));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ }, order(4));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ }, order(2));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ }, order(1));
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1, 0},
+      {6, irs::doc_limits::eof(), 0, 0},
+      {irs::doc_limits::invalid(), irs::doc_limits::eof(), 0, 0}
+    };
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+
+    disjunction it(std::move(res.first), res.second.front(),
+                   irs::sort::MergeType::AGGREGATE, 2); // custom cost
+
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(2, irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+    }
+  }
+
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, order(8));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, order(4));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, order(2));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 256 }, order(1));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 11, 79, 101, 141, 1025, 1101 }, order(1));
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1, 0},
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0, 0},
+      {9, irs::doc_limits::eof(), 0, 0},
+      {12, irs::doc_limits::eof(), 0, 0},
+      {13, irs::doc_limits::eof(), 0, 0},
+      {45, irs::doc_limits::eof(), 0, 0},
+      {57, irs::doc_limits::eof(), 0, 0}
+    };
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+
+    disjunction it(std::move(res.first), res.second.front(),
+                   irs::sort::MergeType::MAX, 2); // custom cost
+
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(2, irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+    }
+  }
+
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, irs::order());
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, irs::order());
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, irs::order());
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 256 }, irs::order());
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 11, 79, 101, 141, 1025, 1101 }, irs::order());
+
+
+    std::vector<seek_doc> expected{
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1, 0},
+        {9, 9, 1, 0},
+        {12, 12, 1, 0},
+        {irs::doc_limits::invalid(), 12, 1, 0},
+        {45, 45, 1, 0},
+        {1201, irs::doc_limits::eof(), 0, 0}
+    };
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+
+    disjunction it(std::move(res.first), res.second.front(),
+                   irs::sort::MergeType::AGGREGATE, 2); // custom cost
+
+    auto& score = irs::score::get(it);
+    ASSERT_TRUE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(2, irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+}
+
+TEST(block_disjunction_test, seek_scored_readahead) {
+  using disjunction = irs::block_disjunction<
+    irs::doc_iterator::ptr,
+    irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
+
+  auto order = [](size_t i, bool reverse = false) -> irs::order {
+    irs::order order;
+    order.add<detail::basic_sort>(reverse, i);
+    return order;
+  };
+
+  struct seek_doc {
+    irs::doc_id_t target;
+    irs::doc_id_t expected;
+    size_t match_count;
+    size_t score;
+  };
+
+  // no iterators provided
+  {
+    disjunction it({});
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(0, irs::cost::extract(it));
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    ASSERT_EQ(irs::doc_limits::eof(), it.seek(42));
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+  }
+
+  // single iterator case, values fit 1 block
+  // disjunction without score, sub-iterators with scores
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 12, 29, 45 }, order(4));
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1, 0 },
+      {1, 1, 1, 0 },
+      {9, 9, 1, 0 },
+      {8, 9, 1, 0 },
+      {irs::doc_limits::invalid(), 9, 1, 0 },
+      {12, 12, 1, 0 },
+      {8, 12,  1, 0 },
+      {13, 29, 1, 0 },
+      {45, 45, 1, 0 },
+      {57, irs::doc_limits::eof(), 0, 0 },
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0, 0 },
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0, 0 },
+    };
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+
+    disjunction it(std::move(res.first), irs::order::prepared::unordered(),
+                   irs::sort::MergeType::AGGREGATE, 2); // custom cost
+
+    // no order set
+    auto& score = irs::score::get(it);
+    ASSERT_TRUE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(2, irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  // single iterator case, values don't fit single block
+  // disjunction with score, sub-iterators with scores
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 12, 29, 45, 65, 78, 127}, order(4));
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1, 0 },
+      {1, 1, 1, 4 },
+      {9, 9, 1, 4 },
+      {8, 9, 1, 4 },
+      {irs::doc_limits::invalid(), 9, 1, 4 },
+      {12, 12, 1, 4 },
+      {8, 12,  1, 4 },
+      {13, 29, 1, 4 },
+      {45, 45, 1, 4 },
+      {57, 65, 1, 4 },
+      {126, 127, 1, 4 },
+      {128, irs::doc_limits::eof(), 0, 4 }, // stay at previous score
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0, 4},
+    };
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+
+    disjunction it(std::move(res.first), res.second.front(),
+                   irs::sort::MergeType::AGGREGATE, 2); // custom cost
+
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(2, irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+    }
+  }
+
+  // single iterator case, values don't fit single block, gap between block
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(
+      std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 12, 29, 45, 65, 127, 1145, 111165, 1111178, 111111127 },
+      order(4));
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1, 0},
+      {1, 1, 1, 4 },
+      {9, 9, 1, 4 },
+      {8, 9, 1, 4 },
+      {irs::doc_limits::invalid(), 9, 1, 4},
+      {12, 12, 1, 4 },
+      {8, 12,  1, 4 },
+      {13, 29, 1, 4 },
+      {45, 45, 1, 4 },
+      {57, 65, 1, 4 },
+      {126, 127, 1, 4 },
+      {111165, 111165, 1, 4 },
+      {111166, 1111178, 1, 4 },
+      {1111177, 1111178, 1, 4 },
+      {1111178, 1111178, 1, 4 },
+      {111111127, 111111127, 1, 4 },
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0, 4}, // stay at previous score
+    };
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+
+    disjunction it(std::move(res.first), res.second.front(),
+                   irs::sort::MergeType::MAX, 2); // custom cost
+
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(2, irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+    }
+  }
+
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, order(4));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, order(2));
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1, 0 },
+      {1, 1, 1, 6 },
+      {9, 9, 1, 4 },
+      {8, 9, 1, 4 },
+      {irs::doc_limits::invalid(), 9, 1, 4 },
+      {12, 12, 1, 2 },
+      {8, 12, 1, 2 },
+      {13, 29, 1, 2 },
+      {45, 45, 1, 4 },
+      {57, irs::doc_limits::eof(), 0, 4} // stay at previous score
+    };
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+
+    disjunction it(std::move(res.first), res.second.front(),
+                   irs::sort::MergeType::AGGREGATE, 2); // custom cost
+
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(2, irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+    }
+  }
+
+  // empty datasets
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ }, order(4));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ }, order(2));
+
+    std::vector<seek_doc> expected{
+      {6, irs::doc_limits::eof(), 0, 0},
+      {irs::doc_limits::invalid(), irs::doc_limits::eof(), 0, 0}
+    };
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+
+    disjunction it(std::move(res.first), res.second.front(),
+                   irs::sort::MergeType::AGGREGATE, 2); // custom cost
+
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(2, irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+    }
+  }
+
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, order(4));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, order(2));
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1, 0 },
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0, 0 },
+      {9, irs::doc_limits::eof(), 0, 0 },
+      {12, irs::doc_limits::eof(), 0, 0 },
+      {13, irs::doc_limits::eof(), 0, 0 },
+      {45, irs::doc_limits::eof(), 0, 0 },
+      {57, irs::doc_limits::eof(), 0, 0 }
+    };
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+
+    disjunction it(std::move(res.first), res.second.front(),
+                   irs::sort::MergeType::AGGREGATE, 2); // custom cost
+
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(2, irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+    }
+  }
+
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, order(4));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, order(2));
+
+    std::vector<seek_doc> expected{
+      {9, 9, 1, 4},
+      {12, 12, 1, 2},
+      {irs::doc_limits::invalid(), 12, 1, 2},
+      {45, 45, 1, 4},
+      {57, irs::doc_limits::eof(), 0, 4}
+    };
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+
+    disjunction it(std::move(res.first), res.second.front(),
+                   irs::sort::MergeType::MAX, 2); // custom cost
+
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(2, irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+    }
+  }
+
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, order(4));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, order(2));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, order(1));
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1, 0},
+      {1, 1, 1, 7 },
+      {9, 9, 1, 4 },
+      {8, 9, 1, 4 },
+      {12, 12, 1, 2},
+      {13, 29, 1, 2},
+      {45, 45, 1, 4},
+      {44, 45, 1, 4},
+      {irs::doc_limits::invalid(), 45, 1, 4},
+      {57, irs::doc_limits::eof(), 0, 4}
+    };
+
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+
+    disjunction it(std::move(res.first), res.second.front(),
+                   irs::sort::MergeType::AGGREGATE, 2); // custom cost
+
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(2, irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+    }
+  }
+
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, order(4));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, order(2));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, order(1));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 256 }, irs::order());
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 11, 79, 101, 141, 1025, 1101 }, order(8));
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1, 0},
+      {1, 1, 1, 7},
+      {9, 9, 1, 4},
+      {8, 9, 1, 4},
+      {13, 29, 1, 2},
+      {45, 45, 1, 4},
+      {80, 101, 1, 8},
+      {256, 256, 1, 0},
+      {513, 1025, 1, 8},
+      {2, 1025, 1, 8},
+      {irs::doc_limits::invalid(), 1025, 1, 8},
+      {2001, irs::doc_limits::eof(), 0, 8}
+    };
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+
+    disjunction it(std::move(res.first), res.second.front(),
+                   irs::sort::MergeType::AGGREGATE, 2); // custom cost
+
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(2, irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+    }
+  }
+
+  // empty datasets
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ }, order(8));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ }, order(4));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ }, order(2));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ }, order(1));
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1, 0},
+      {6, irs::doc_limits::eof(), 0, 0},
+      {irs::doc_limits::invalid(), irs::doc_limits::eof(), 0, 0}
+    };
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+
+    disjunction it(std::move(res.first), res.second.front(),
+                   irs::sort::MergeType::AGGREGATE, 2); // custom cost
+
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(2, irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+    }
+  }
+
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, order(8));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, order(4));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, order(2));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 256 }, order(1));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 11, 79, 101, 141, 1025, 1101 }, order(1));
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1, 0},
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0, 0},
+      {9, irs::doc_limits::eof(), 0, 0},
+      {12, irs::doc_limits::eof(), 0, 0},
+      {13, irs::doc_limits::eof(), 0, 0},
+      {45, irs::doc_limits::eof(), 0, 0},
+      {57, irs::doc_limits::eof(), 0, 0}
+    };
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+
+    disjunction it(std::move(res.first), res.second.front(),
+                   irs::sort::MergeType::MAX, 2); // custom cost
+
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(2, irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+    }
+  }
+
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, irs::order());
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, irs::order());
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, irs::order());
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 256 }, irs::order());
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 11, 79, 101, 141, 1025, 1101 }, irs::order());
+
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1, 0},
+      {9, 9, 1, 0},
+      {12, 12, 1, 0},
+      {irs::doc_limits::invalid(), 12, 1, 0},
+      {45, 45, 1, 0},
+      {1201, irs::doc_limits::eof(), 0, 0}
+    };
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+
+    disjunction it(std::move(res.first), res.second.front(),
+                   irs::sort::MergeType::AGGREGATE, 2); // custom cost
+
+    auto& score = irs::score::get(it);
+    ASSERT_TRUE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(2, irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+}
+
+TEST(block_disjunction_test, min_match_seek_no_readahead) {
+  using disjunction = irs::block_disjunction<
+    irs::doc_iterator::ptr,
+    irs::block_disjunction_traits<false, irs::MatchType::MIN_MATCH, false, 1>>;
+
+  auto sum = [](size_t sum, const std::vector<irs::doc_id_t>& docs) { return sum += docs.size(); };
+
+  struct seek_doc {
+    irs::doc_id_t target;
+    irs::doc_id_t expected;
+    size_t match_count;
+  };
+
+  // no iterators provided
+  {
+    disjunction it({});
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(0, irs::cost::extract(it));
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    ASSERT_EQ(irs::doc_limits::eof(), it.seek(42));
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+  }
+
+  // single iterator case, values fit 1 block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 12, 29, 45 },
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 0},
+      {1, 1, 1},
+      {9, 9, 1},
+      {8, 9, 1},
+      {irs::doc_limits::invalid(), 9, 1},
+      {12, 12, 1},
+      {8, 12,  1},
+      {13, 29, 1},
+      {45, 45, 1},
+      {57, irs::doc_limits::eof(), 0},
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  // single iterator case, values fit 1 block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 12, 29, 45 },
+    };
+
+    std::vector<seek_doc> expected{
+      {1, irs::doc_limits::eof(), 0},
+      {9, irs::doc_limits::eof(), 0},
+      {8, irs::doc_limits::eof(), 0},
+      {irs::doc_limits::invalid(), irs::doc_limits::eof(), 0},
+      {12, irs::doc_limits::eof(), 0},
+      {8, irs::doc_limits::eof(),  0},
+      {13, irs::doc_limits::eof(), 0},
+      {45, irs::doc_limits::eof(), 0},
+      {57, irs::doc_limits::eof(), 0},
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs), 2);
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  // single iterator case, values fit 1 block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 12, 29, 45 },
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 0},
+      {1, irs::doc_limits::eof(), 0},
+      {9, irs::doc_limits::eof(), 0},
+      {8, irs::doc_limits::eof(), 0},
+      {irs::doc_limits::invalid(), irs::doc_limits::eof(), 0},
+      {12, irs::doc_limits::eof(), 0},
+      {8, irs::doc_limits::eof(),  0},
+      {13, irs::doc_limits::eof(), 0},
+      {45, irs::doc_limits::eof(), 0},
+      {57, irs::doc_limits::eof(), 0},
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs), 2);
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  // single iterator case, values don't fit single block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 12, 29, 45, 65, 78, 127},
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 0},
+      {1, 1, 1},
+      {9, 9, 1},
+      {8, 9, 1},
+      {irs::doc_limits::invalid(), 9, 1},
+      {12, 12, 1},
+      {8, 12,  1},
+      {13, 29, 1},
+      {45, 45, 1},
+      {57, 65, 1},
+      {126, 127, 1},
+      {128, irs::doc_limits::eof(), 0},
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  // single iterator case, values don't fit single block, gap between block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 12, 29, 45, 65, 127, 1145, 111165, 1111178, 111111127 }
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 0},
+      {1, 1, 1},
+      {9, 9, 1},
+      {8, 9, 1},
+      {irs::doc_limits::invalid(), 9, 1},
+      {12, 12, 1},
+      {8, 12,  1},
+      {13, 29, 1},
+      {45, 45, 1},
+      {57, 65, 1},
+      {126, 127, 1},
+      {111165, 111165, 1},
+      {111166, 1111178, 1},
+      {1111177, 1111178, 1},
+      {1111178, 1111178, 1},
+      {111111127, 111111127 , 1},
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 }
+    };
+
+    std::vector<seek_doc> expected{
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 0},
+        {1, 1, 2},
+        {9, 9, 1},
+        {8, 9, 1},
+        {irs::doc_limits::invalid(), 9, 1},
+        {12, 12, 1},
+        {8, 12 , 1},
+        {13, 29, 1},
+        {45, 45, 1},
+        {57, irs::doc_limits::eof(), 0}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  // empty datasets
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      {}, {}
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 0},
+      {6, irs::doc_limits::eof(), 0},
+      {irs::doc_limits::invalid(), irs::doc_limits::eof(), 0}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek( target.target ));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 }
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 0},
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+      {9, irs::doc_limits::eof(), 0},
+      {12, irs::doc_limits::eof(), 0},
+      {13, irs::doc_limits::eof(), 0},
+      {45, irs::doc_limits::eof(), 0},
+      {57, irs::doc_limits::eof(), 0}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek( target.target ));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 }
+    };
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 0},
+      {9, 9, 1},
+      {12, 12, 1},
+      {irs::doc_limits::invalid(), 12, 1},
+      {45, 45, 1},
+      {57, irs::doc_limits::eof(), 0}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 },
+      { 1, 5, 6 }
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 0},
+      {1, 1, 3},
+      {9, 9, 1},
+      {8, 9, 1},
+      {12, 12, 1},
+      {13, 29, 1},
+      {45, 45, 1},
+      {44, 45, 1},
+      {irs::doc_limits::invalid(), 45, 1},
+      {57, irs::doc_limits::eof(), 0}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 },
+      { 1, 5, 6 },
+      { 256 },
+      { 11, 79, 101, 141, 1025, 1101 }
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 0},
+      {1, 1, 3},
+      {9, 9, 1},
+      {8, 9, 1},
+      {13, 29, 1},
+      {45, 45, 1},
+      {80, 101, 1},
+      {513, 1025, 1},
+      {2, 1025, 1},
+      {irs::doc_limits::invalid(), 1025, 1},
+      {2001, irs::doc_limits::eof(), 0}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  // empty datasets
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      {}, {}, {}, {}
+    };
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 0},
+      {6, irs::doc_limits::eof(), 0},
+      {irs::doc_limits::invalid(), irs::doc_limits::eof(), 0}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 },
+      { 1, 5, 6 },
+      { 256 },
+      { 11, 79, 101, 141, 1025, 1101 }
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 0},
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+      {9, irs::doc_limits::eof(), 0},
+      {12, irs::doc_limits::eof(), 0},
+      {13, irs::doc_limits::eof(), 0},
+      {45, irs::doc_limits::eof(), 0},
+      {57, irs::doc_limits::eof(), 0}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 },
+      { 1, 5, 6 },
+      { 256 },
+      { 11, 79, 101, 141, 1025, 1101 }
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 0},
+      {6, 6, 2},
+      {9, 9, 1},
+      {12, 12, 1},
+      {irs::doc_limits::invalid(), 12, 1},
+      {45, 45, 1},
+      {1201, irs::doc_limits::eof(), 0}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 8, 12, 29 },
+      { 1, 5, 6 },
+      { 8, 256 },
+      { 8, 11, 79, 101, 141, 1025, 1101 }
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 0},
+      {5, 5, 3},
+      {7, 8, 3},
+      {9, irs::doc_limits::eof(), 0},
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs), 3);
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+}
+
+TEST(block_disjunction_test, seek_readahead) {
+  using disjunction = irs::block_disjunction<
+    irs::doc_iterator::ptr,
+    irs::block_disjunction_traits<false, irs::MatchType::MATCH, true, 1>>;
+
+  auto sum = [](size_t sum, const std::vector<irs::doc_id_t>& docs) { return sum += docs.size(); };
+
+  struct seek_doc {
+    irs::doc_id_t target;
+    irs::doc_id_t expected;
+    size_t match_count;
+  };
+
+  // no iterators provided
+  {
+    disjunction it({});
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(0, irs::cost::extract(it));
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    ASSERT_EQ(irs::doc_limits::eof(), it.seek(42));
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+  }
+
+  // single iterator case, values fit 1 block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 12, 29, 45 },
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1},
+      {1, 1, 1},
+      {9, 9, 1},
+      {8, 9, 1},
+      {irs::doc_limits::invalid(), 9, 1},
+      {12, 12, 1},
+      {8, 12,  1},
+      {13, 29, 1},
+      {45, 45, 1},
+      {57, irs::doc_limits::eof(), 0},
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  // single iterator case, values don't fit single block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 12, 29, 45, 65, 78, 127},
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1},
+      {1, 1, 1},
+      {9, 9, 1},
+      {8, 9, 1},
+      {irs::doc_limits::invalid(), 9, 1},
+      {12, 12, 1},
+      {8, 12,  1},
+      {13, 29, 1},
+      {45, 45, 1},
+      {57, 65, 1},
+      {126, 127, 1},
+      {128, irs::doc_limits::eof(), 0},
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  // single iterator case, values don't fit single block, gap between block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 12, 29, 45, 65, 127, 1145, 111165, 1111178, 111111127 }
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1},
+      {1, 1, 1},
+      {9, 9, 1},
+      {8, 9, 1},
+      {irs::doc_limits::invalid(), 9, 1},
+      {12, 12, 1},
+      {8, 12,  1},
+      {13, 29, 1},
+      {45, 45, 1},
+      {57, 65, 1},
+      {126, 127, 1},
+      {111165, 111165, 1},
+      {111166, 1111178, 1},
+      {1111177, 1111178, 1},
+      {1111178, 1111178, 1},
+      {111111127, 111111127 , 1},
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 }
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1 },
+      {1, 1, 1},
+      {9, 9, 1},
+      {8, 9, 1},
+      {irs::doc_limits::invalid(), 9, 1},
+      {12, 12, 1},
+      {8,  12, 1},
+      {13, 29, 1},
+      {45, 45, 1},
+      {57, irs::doc_limits::eof(), 0}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(it.match_count(), it.match_count());
+    }
+  }
+
+  // empty datasets
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      {}, {}
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 0},
+      {6, irs::doc_limits::eof(), 0},
+      {irs::doc_limits::invalid(), irs::doc_limits::eof(), 0}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(it.match_count(), it.match_count());
+    }
+  }
+
+  // empty datasets
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      {}, {}
+    };
+
+    std::vector<seek_doc> expected{
+      {6, irs::doc_limits::eof(), 0 },
+      {irs::doc_limits::invalid(), irs::doc_limits::eof(), 0}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 }
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+      {9, irs::doc_limits::eof(), 0},
+      {12, irs::doc_limits::eof(), 0},
+      {13, irs::doc_limits::eof(), 0},
+      {45, irs::doc_limits::eof(), 0},
+      {57, irs::doc_limits::eof(), 0}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek( target.target ));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 }
+    };
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1},
+      {9, 9, 1},
+      {12, 12, 1},
+      {irs::doc_limits::invalid(), 12, 1},
+      {45, 45, 1},
+      {57, irs::doc_limits::eof(), 0}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 },
+      { 1, 5, 6 }
+    };
+
+    std::vector<seek_doc> expected{
+      {1, 1, 1},
+      {9, 9, 1},
+      {8, 9, 1},
+      {12, 12, 1},
+      {13, 29, 1},
+      {45, 45, 1},
+      {44, 45, 1},
+      {irs::doc_limits::invalid(), 45, 1},
+      {57, irs::doc_limits::eof(), 0}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 },
+      { 1, 5, 6 },
+      { 256 },
+      { 11, 79, 101, 141, 1025, 1101 }
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1},
+      {1, 1, 1},
+      {9, 9, 1},
+      {8, 9, 1},
+      {13, 29, 1},
+      {45, 45, 1},
+      {80, 101, 1},
+      {513, 1025, 1},
+      {2, 1025, 1},
+      {irs::doc_limits::invalid(), 1025, 1},
+      {2001, irs::doc_limits::eof(), 0}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      {}, {}, {}, {}
+    };
+    std::vector<seek_doc> expected{
+      {6, irs::doc_limits::eof(), 0},
+      {irs::doc_limits::invalid(), irs::doc_limits::eof(), 0}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 },
+      { 1, 5, 6 },
+      { 256 },
+      { 11, 79, 101, 141, 1025, 1101 }
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+      {9, irs::doc_limits::eof(), 0},
+      {12, irs::doc_limits::eof(), 0},
+      {13, irs::doc_limits::eof(), 0},
+      {45, irs::doc_limits::eof(), 0},
+      {57, irs::doc_limits::eof(), 0}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 },
+      { 1, 5, 6 },
+      { 256 },
+      { 11, 79, 101, 141, 1025, 1101 }
+    };
+
+    std::vector<seek_doc> expected{
+      {9, 9, 1},
+      {12, 12, 1},
+      {irs::doc_limits::invalid(), 12, 1},
+      {45, 45, 1},
+      {1024, 1025, 1 },
+      {1201, irs::doc_limits::eof(), 0}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 },
+      { 1, 5, 6 },
+      { 256 },
+      { 11, 79, 101, 141, 1025, 1101 }
+    };
+
+    std::vector<seek_doc> expected{
+      {9, 9, 1},
+      {12, 12, 1},
+      {irs::doc_limits::invalid(), 12, 1},
+      {45, 45, 1},
+      {1201, irs::doc_limits::eof(), 0}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+}
+
+TEST(block_disjunction_test, min_match_seek_readahead) {
+  using disjunction = irs::block_disjunction<
+    irs::doc_iterator::ptr,
+    irs::block_disjunction_traits<false, irs::MatchType::MIN_MATCH, true, 1>>;
+
+  auto sum = [](size_t sum, const std::vector<irs::doc_id_t>& docs) { return sum += docs.size(); };
+
+  struct seek_doc {
+    irs::doc_id_t target;
+    irs::doc_id_t expected;
+    size_t match_count;
+  };
+
+  // no iterators provided
+  {
+    disjunction it({});
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(0, irs::cost::extract(it));
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    ASSERT_EQ(irs::doc_limits::eof(), it.seek(42));
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+  }
+
+  // single iterator case, values fit 1 block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 12, 29, 45 },
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 0},
+      {1, 1, 1},
+      {9, 9, 1},
+      {8, 9, 1},
+      {irs::doc_limits::invalid(), 9, 1},
+      {12, 12, 1},
+      {8, 12,  1},
+      {13, 29, 1},
+      {45, 45, 1},
+      {57, irs::doc_limits::eof(), 0},
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  // single iterator case, values fit 1 block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 12, 29, 45 },
+    };
+
+    std::vector<seek_doc> expected{
+      {1, irs::doc_limits::eof(), 0},
+      {9, irs::doc_limits::eof(), 0},
+      {8, irs::doc_limits::eof(), 0},
+      {irs::doc_limits::invalid(), irs::doc_limits::eof(), 0},
+      {12, irs::doc_limits::eof(), 0},
+      {8, irs::doc_limits::eof(),  0},
+      {13, irs::doc_limits::eof(), 0},
+      {45, irs::doc_limits::eof(), 0},
+      {57, irs::doc_limits::eof(), 0},
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs), 2);
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  // single iterator case, values fit 1 block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 12, 29, 45 },
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 0},
+      {1, irs::doc_limits::eof(), 0},
+      {9, irs::doc_limits::eof(), 0},
+      {8, irs::doc_limits::eof(), 0},
+      {irs::doc_limits::invalid(), irs::doc_limits::eof(), 0},
+      {12, irs::doc_limits::eof(), 0},
+      {8, irs::doc_limits::eof(),  0},
+      {13, irs::doc_limits::eof(), 0},
+      {45, irs::doc_limits::eof(), 0},
+      {57, irs::doc_limits::eof(), 0},
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs), 2);
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  // single iterator case, values don't fit single block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 12, 29, 45, 65, 78, 127},
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 0},
+      {1, 1, 1},
+      {9, 9, 1},
+      {8, 9, 1},
+      {irs::doc_limits::invalid(), 9, 1},
+      {12, 12, 1},
+      {8, 12,  1},
+      {13, 29, 1},
+      {45, 45, 1},
+      {57, 65, 1},
+      {126, 127, 1},
+      {128, irs::doc_limits::eof(), 0},
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  // single iterator case, values don't fit single block, gap between block
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 12, 29, 45, 65, 127, 1145, 111165, 1111178, 111111127 }
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 0},
+      {1, 1, 1},
+      {9, 9, 1},
+      {8, 9, 1},
+      {irs::doc_limits::invalid(), 9, 1},
+      {12, 12, 1},
+      {8, 12,  1},
+      {13, 29, 1},
+      {45, 45, 1},
+      {57, 65, 1},
+      {126, 127, 1},
+      {111165, 111165, 1},
+      {111166, 1111178, 1},
+      {1111177, 1111178, 1},
+      {1111178, 1111178, 1},
+      {111111127, 111111127 , 1},
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 }
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 0},
+      {1, 1, 2},
+      {9, 9, 1},
+      {8, 9, 1},
+      {irs::doc_limits::invalid(), 9, 1},
+      {12, 12, 1},
+      {8, 12 , 1},
+      {13, 29, 1},
+      {45, 45, 1},
+      {57, irs::doc_limits::eof(), 0}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  // empty datasets
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      {}, {}
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 0},
+      {6, irs::doc_limits::eof(), 0},
+      {irs::doc_limits::invalid(), irs::doc_limits::eof(), 0}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek( target.target ));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 }
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+      {9, irs::doc_limits::eof(), 0},
+      {12, irs::doc_limits::eof(), 0},
+      {13, irs::doc_limits::eof(), 0},
+      {45, irs::doc_limits::eof(), 0},
+      {57, irs::doc_limits::eof(), 0}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek( target.target ));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 }
+    };
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 0},
+      {9, 9, 1},
+      {12, 12, 1},
+      {irs::doc_limits::invalid(), 12, 1},
+      {45, 45, 1},
+      {57, irs::doc_limits::eof(), 0}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 },
+      { 1, 5, 6 }
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 0},
+      {1, 1, 3},
+      {9, 9, 1},
+      {8, 9, 1},
+      {12, 12, 1},
+      {13, 29, 1},
+      {45, 45, 1},
+      {44, 45, 1},
+      {irs::doc_limits::invalid(), 45, 1},
+      {57, irs::doc_limits::eof(), 0}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 },
+      { 1, 5, 6 },
+      { 256 },
+      { 11, 79, 101, 141, 1025, 1101 }
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 0},
+      {1, 1, 3},
+      {9, 9, 1},
+      {8, 9, 1},
+      {13, 29, 1},
+      {45, 45, 1},
+      {80, 101, 1},
+      {513, 1025, 1},
+      {2, 1025, 1},
+      {irs::doc_limits::invalid(), 1025, 1},
+      {2001, irs::doc_limits::eof(), 0}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  // empty datasets
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      {}, {}, {}, {}
+    };
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 0},
+      {6, irs::doc_limits::eof(), 0},
+      {irs::doc_limits::invalid(), irs::doc_limits::eof(), 0}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 },
+      { 1, 5, 6 },
+      { 256 },
+      { 11, 79, 101, 141, 1025, 1101 }
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
+      {9, irs::doc_limits::eof(), 0},
+      {12, irs::doc_limits::eof(), 0},
+      {13, irs::doc_limits::eof(), 0},
+      {45, irs::doc_limits::eof(), 0},
+      {57, irs::doc_limits::eof(), 0}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 },
+      { 1, 5, 6 },
+      { 256 },
+      { 11, 79, 101, 141, 1025, 1101 }
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 0},
+      {6, 6, 2},
+      {9, 9, 1},
+      {12, 12, 1},
+      {irs::doc_limits::invalid(), 12, 1},
+      {45, 45, 1},
+      {1201, irs::doc_limits::eof(), 0}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 8, 12, 29 },
+      { 1, 5, 6 },
+      { 8, 256 },
+      { 8, 11, 79, 101, 141, 1025, 1101 }
+    };
+
+    std::vector<seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 0},
+      {5, 5, 3},
+      {7, 8, 3},
+      {9, irs::doc_limits::eof(), 0},
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs), 3);
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+      ASSERT_EQ(doc->value, it.value());
+      ASSERT_EQ(target.match_count, it.match_count());
+    }
+  }
+}
+
+TEST(block_disjunction_test, seek_next_no_readahead) {
+  using disjunction = irs::block_disjunction<
+    irs::doc_iterator::ptr,
+    irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
   auto sum = [](size_t sum, const std::vector<irs::doc_id_t>& docs) { return sum += docs.size(); };
 
   {
@@ -4028,7 +9303,7 @@ TEST(disjunction_test, seek_next) {
       { 1, 5, 6 }
     };
 
-    disjunction it(detail::execute_all<disjunction::doc_iterator_t>(docs));
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -4054,10 +9329,110 @@ TEST(disjunction_test, seek_next) {
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
   }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45, 256, 1145 },
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+
+    // score, no order set
+    auto& score = irs::score::get(it);
+    ASSERT_TRUE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    // cost
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
+    ASSERT_EQ(45, it.seek(45));
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(256, it.value());
+    ASSERT_EQ(1145, it.seek(1144));
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+  }
 }
 
-TEST(disjunction_test, scored_seek_next) {
-  using disjunction = irs::disjunction<irs::doc_iterator::ptr>;
+TEST(block_disjunction_test, seek_next_no_readahead_two_blocks) {
+  using disjunction = irs::block_disjunction<
+    irs::doc_iterator::ptr,
+    irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
+  auto sum = [](size_t sum, const std::vector<irs::doc_id_t>& docs) { return sum += docs.size(); };
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 },
+      { 1, 5, 6 }
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+
+    // score, no order set
+    auto& score = irs::score::get(it);
+    ASSERT_TRUE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    // cost
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
+    ASSERT_EQ(5, it.seek(5));
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(6, it.value());
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(7, it.value());
+    ASSERT_EQ(29, it.seek(27));
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(45, it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+  }
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45, 170, 255, 1145 },
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+
+    // score, no order set
+    auto& score = irs::score::get(it);
+    ASSERT_TRUE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    // cost
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
+    ASSERT_EQ(45, it.seek(45));
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(170, it.value());
+    ASSERT_EQ(1145, it.seek(1144));
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+  }
+
+}
+
+TEST(block_disjunction_test, scored_seek_next_no_readahead) {
+  using disjunction = irs::block_disjunction<
+    irs::doc_iterator::ptr,
+    irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
 
   // disjunction without score, sub-iterators with scores
   {
@@ -4078,7 +9453,7 @@ TEST(disjunction_test, scored_seek_next) {
       docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, std::move(ord));
     }
 
-    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
+    auto res = detail::execute_all<disjunction::adapter>(docs);
     disjunction it(std::move(res.first), irs::order::prepared::unordered(), irs::sort::MergeType::AGGREGATE, 1); // custom cost
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -4129,7 +9504,7 @@ TEST(disjunction_test, scored_seek_next) {
     ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
     auto prepared_order = ord.prepare();
 
-    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
+    auto res = detail::execute_all<disjunction::adapter>(docs);
     disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE, 1); // custom cost
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -4145,26 +9520,20 @@ TEST(disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.c_str())); // 1+2+4
+    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate();
-    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.c_str())); // 1+2+4
+    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate();
-    ASSERT_EQ(6, *reinterpret_cast<const size_t*>(score.c_str())); // 2+4
+    ASSERT_EQ(6, *reinterpret_cast<const size_t*>(score.evaluate())); // 2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // 1
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate();
-    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.c_str())); // 2
+    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.evaluate())); // 2
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // 1
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -4194,7 +9563,7 @@ TEST(disjunction_test, scored_seek_next) {
     ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
     auto prepared_order = ord.prepare();
 
-    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
+    auto res = detail::execute_all<disjunction::adapter>(docs);
     disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::MAX, 1); // custom cost
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -4210,26 +9579,20 @@ TEST(disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1,2,4)
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1,2,4)
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(2,4)
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1)
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate();
-    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(2)
+    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(2)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1)
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -4258,7 +9621,7 @@ TEST(disjunction_test, scored_seek_next) {
     ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
     auto prepared_order = ord.prepare();
 
-    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
+    auto res = detail::execute_all<disjunction::adapter>(docs);
     disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE, 1); // custom cost
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -4274,26 +9637,20 @@ TEST(disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.c_str())); // 1+4
+    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate();
-    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.c_str())); // 1+4
+    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // 4
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // 4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // 1
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str())); //
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); //
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // 1
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -4322,7 +9679,7 @@ TEST(disjunction_test, scored_seek_next) {
     ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
     auto prepared_order = ord.prepare();
 
-    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
+    auto res = detail::execute_all<disjunction::adapter>(docs);
     disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::MAX, 1); // custom cost
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -4338,26 +9695,20 @@ TEST(disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1,4)
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,4)
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1,4)
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(4)
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1)
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str())); //
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); //
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate();
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1)
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -4384,7 +9735,7 @@ TEST(disjunction_test, scored_seek_next) {
     ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
     auto prepared_order = ord.prepare();
 
-    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
+    auto res = detail::execute_all<disjunction::adapter>(docs);
     disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE, 1); // custom cost
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -4400,26 +9751,20 @@ TEST(disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str())); // 1+4
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str())); // 1+4
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str())); // 4
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str())); // 1
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str())); //
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); //
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str())); // 1
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -4446,7 +9791,7 @@ TEST(disjunction_test, scored_seek_next) {
     ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
     auto prepared_order = ord.prepare();
 
-    auto res = detail::execute_all<disjunction::doc_iterator_t>(docs);
+    auto res = detail::execute_all<disjunction::adapter>(docs);
     disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::MAX, 1); // custom cost
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -4462,26 +9807,992 @@ TEST(disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+  }
+}
+
+// ----------------------------------------------------------------------------
+// --SECTION--         disjunction (iterator0 OR iterator1 OR iterator2 OR ...)
+// ----------------------------------------------------------------------------
+
+TEST(disjunction_test, next) {
+  using disjunction = irs::disjunction<irs::doc_iterator::ptr>;
+  auto sum = [](size_t sum, const std::vector<irs::doc_id_t>& docs) { return sum += docs.size(); };
+
+  // simple case
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 }
+    };
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45 };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for ( ; it.next(); ) {
+        result.push_back( it.value() );
+      }
+      ASSERT_FALSE(it.next());
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ( expected, result );
+  }
+
+  // basic case : single dataset
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 }
+    };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for ( ; it.next(); ) {
+        result.push_back( it.value() );
+      }
+      ASSERT_FALSE( it.next() );
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+
+    ASSERT_EQ(docs[0], result);
+  }
+
+  // basic case : same datasets
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 2, 5, 7, 9, 11, 45 }
+    };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for ( ; it.next(); ) {
+        result.push_back( it.value() );
+      }
+      ASSERT_FALSE( it.next() );
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ(docs[0], result );
+  }
+
+  // basic case : single dataset
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 24 }
+    };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for ( ; it.next(); ) {
+        result.push_back( it.value() );
+      }
+      ASSERT_FALSE( it.next() );
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ(docs[0], result );
+  }
+
+  // empty
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      {}, {}
+    };
+    std::vector<irs::doc_id_t> expected{};
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_TRUE(!irs::doc_limits::valid(it.value()));
+      for ( ; it.next(); ) {
+        result.push_back( it.value() );
+      }
+      ASSERT_FALSE( it.next() );
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ( expected, result );
+  }
+
+  // no iterators provided
+  {
+    disjunction it({});
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(0, irs::cost::extract(it));
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    ASSERT_FALSE(it.next());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+  }
+
+  // simple case
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 },
+      { 1 ,5, 6 }
+    };
+
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45 };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for ( ; it.next(); ) {
+        result.push_back( it.value() );
+      }
+      ASSERT_FALSE( it.next() );
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ( expected, result );
+  }
+
+  // simple case
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 },
+      { 1, 5, 6 },
+      { 256 },
+      { 11, 79, 101, 141, 1025, 1101 }
+    };
+
+    std::vector<irs::doc_id_t> expected{ 1, 2, 5, 6, 7, 9, 11, 12, 29, 45, 79, 101, 141, 256, 1025, 1101 };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for ( ; it.next(); ) {
+        result.push_back( it.value() );
+      }
+      ASSERT_FALSE( it.next() );
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ( expected, result );
+  }
+
+  // simple case
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1 },
+      { 2 },
+      { 3 }
+    };
+
+    std::vector<irs::doc_id_t> expected{ 1, 2, 3 };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for ( ; it.next(); ) {
+        result.push_back( it.value() );
+      }
+      ASSERT_FALSE( it.next() );
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ( expected, result );
+  }
+
+  // single dataset
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+    };
+
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for ( ; it.next(); ) {
+        result.push_back( it.value() );
+      }
+      ASSERT_FALSE( it.next() );
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ(docs.front(), result );
+  }
+
+  // same datasets
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 2, 5, 7, 9, 11, 45 }
+    };
+
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for ( ; it.next(); ) {
+        result.push_back( it.value() );
+      }
+      ASSERT_FALSE( it.next() );
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ( docs[0], result );
+  }
+
+  // empty datasets
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { }, { }, { }
+    };
+
+    std::vector<irs::doc_id_t> expected{ };
+    std::vector<irs::doc_id_t> result;
+    {
+      disjunction it(detail::execute_all<disjunction::adapter>(docs));
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+      ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+      for ( ; it.next(); ) {
+        result.push_back( it.value() );
+      }
+      ASSERT_FALSE( it.next() );
+      ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    }
+    ASSERT_EQ( expected, result );
+  }
+}
+
+TEST(disjunction_test, seek) {
+  using disjunction = irs::disjunction<irs::doc_iterator::ptr>;
+  auto sum = [](size_t sum, const std::vector<irs::doc_id_t>& docs) { return sum += docs.size(); };
+
+  // no iterators provided
+  {
+    disjunction it({});
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(0, irs::cost::extract(it));
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    ASSERT_EQ(irs::doc_limits::eof(), it.seek(42));
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+  }
+
+  // simple case
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 }
+    };
+
+    std::vector<detail::seek_doc> expected{
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+        {1, 1},
+        {9, 9},
+        {8, 9},
+        {irs::doc_limits::invalid(), 9},
+        {12, 12},
+        {8, 12},
+        {13, 29},
+        {45, 45},
+        {57, irs::doc_limits::eof()}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek( target.target ));
+    }
+  }
+
+  // empty datasets
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      {}, {}
+    };
+
+    std::vector<detail::seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+      {6, irs::doc_limits::eof()},
+      {irs::doc_limits::invalid(), irs::doc_limits::eof()}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek( target.target ));
+    }
+  }
+
+  // NO_MORE_DOCS
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 }
+    };
+
+    std::vector<detail::seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+      {irs::doc_limits::eof(), irs::doc_limits::eof()},
+      {9, irs::doc_limits::eof()},
+      {12, irs::doc_limits::eof()},
+      {13, irs::doc_limits::eof()},
+      {45, irs::doc_limits::eof()},
+      {57, irs::doc_limits::eof()}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek( target.target ));
+    }
+  }
+
+  // INVALID_DOC
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 }
+    };
+    std::vector<detail::seek_doc> expected{
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+        {9, 9},
+        {12, 12},
+        {irs::doc_limits::invalid(), 12},
+        {45, 45},
+        {57, irs::doc_limits::eof()}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+    }
+  }
+
+  // simple case
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 },
+      { 1, 5, 6 }
+    };
+
+    std::vector<detail::seek_doc> expected{
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+        {1, 1},
+        {9, 9},
+        {8, 9},
+        {12, 12},
+        {13, 29},
+        {45, 45},
+        {44, 45},
+        {irs::doc_limits::invalid(), 45},
+        {57, irs::doc_limits::eof()}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+    }
+  }
+
+  // simple case
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 },
+      { 1, 5, 6 },
+      { 256 },
+      { 11, 79, 101, 141, 1025, 1101 }
+    };
+
+    std::vector<detail::seek_doc> expected{
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+        {1, 1},
+        {9, 9},
+        {8, 9},
+        {13, 29},
+        {45, 45},
+        {80, 101},
+        {513, 1025},
+        {2, 1025},
+        {irs::doc_limits::invalid(), 1025},
+        {2001, irs::doc_limits::eof()}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+    }
+  }
+
+  // empty datasets
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      {}, {}, {}, {}
+    };
+    std::vector<detail::seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+      {6, irs::doc_limits::eof()},
+      {irs::doc_limits::invalid(), irs::doc_limits::eof()}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+    }
+  }
+
+  // NO_MORE_DOCS
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 },
+      { 1, 5, 6 },
+      { 256 },
+      { 11, 79, 101, 141, 1025, 1101 }
+    };
+
+    std::vector<detail::seek_doc> expected{
+      {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+      {irs::doc_limits::eof(), irs::doc_limits::eof()},
+      {9, irs::doc_limits::eof()},
+      {12, irs::doc_limits::eof()},
+      {13, irs::doc_limits::eof()},
+      {45, irs::doc_limits::eof()},
+      {57, irs::doc_limits::eof()}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+    }
+  }
+
+  // INVALID_DOC
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 },
+      { 1, 5, 6 },
+      { 256 },
+      { 11, 79, 101, 141, 1025, 1101 }
+    };
+
+    std::vector<detail::seek_doc> expected{
+        {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
+        {9, 9},
+        {12, 12},
+        {irs::doc_limits::invalid(), 12},
+        {45, 45},
+        {1201, irs::doc_limits::eof()}
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+    for (const auto& target : expected) {
+      ASSERT_EQ(target.expected, it.seek(target.target));
+    }
+  }
+}
+
+TEST(disjunction_test, seek_next) {
+  using disjunction = irs::disjunction<irs::doc_iterator::ptr>;
+  auto sum = [](size_t sum, const std::vector<irs::doc_id_t>& docs) { return sum += docs.size(); };
+
+  {
+    std::vector<std::vector<irs::doc_id_t>> docs{
+      { 1, 2, 5, 7, 9, 11, 45 },
+      { 1, 5, 6, 12, 29 },
+      { 1, 5, 6 }
+    };
+
+    disjunction it(detail::execute_all<disjunction::adapter>(docs));
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+
+    // score, no order set
+    auto& score = irs::score::get(it);
+    ASSERT_TRUE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    // cost
+    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum), irs::cost::extract(it));
+
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
+    ASSERT_EQ(5, it.seek(5));
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(6, it.value());
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(7, it.value());
+    ASSERT_EQ(29, it.seek(27));
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(45, it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+  }
+}
+
+TEST(disjunction_test, scored_seek_next) {
+  using disjunction = irs::disjunction<irs::doc_iterator::ptr>;
+
+  // disjunction without score, sub-iterators with scores
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 1);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 2);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 4);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, std::move(ord));
+    }
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+    disjunction it(std::move(res.first), irs::order::prepared::unordered(), irs::sort::MergeType::AGGREGATE, 1); // custom cost
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+
+    // score, no order set
+    auto& score = irs::score::get(it);
+    ASSERT_TRUE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    // cost
+    ASSERT_EQ(1, irs::cost::extract(it));
+
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
+    ASSERT_EQ(5, it.seek(5));
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(6, it.value());
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(7, it.value());
+    ASSERT_EQ(29, it.seek(27));
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(45, it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+  }
+
+  // disjunction with score, sub-iterators with scores, aggregate
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 1);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 2);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 4);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, std::move(ord));
+    }
+
+    irs::order ord;
+    ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
+    auto prepared_order = ord.prepare();
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE, 1); // custom cost
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+
+    // score
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    // cost
+    ASSERT_EQ(1, irs::cost::extract(it));
+
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(1, it.value());
+    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(5, it.seek(5));
+    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(6, it.value());
+    ASSERT_EQ(6, *reinterpret_cast<const size_t*>(score.evaluate())); // 2+4
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(7, it.value());
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(29, it.seek(27));
+    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.evaluate())); // 2
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(45, it.value());
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+  }
+
+  // disjunction with score, sub-iterators with scores, max
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 1);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 2);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 4);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, std::move(ord));
+    }
+
+    irs::order ord;
+    ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
+    auto prepared_order = ord.prepare();
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::MAX, 1); // custom cost
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+
+    // score
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    // cost
+    ASSERT_EQ(1, irs::cost::extract(it));
+
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(1, it.value());
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
+    ASSERT_EQ(5, it.seek(5));
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(6, it.value());
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(2,4)
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(7, it.value());
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
+    ASSERT_EQ(29, it.seek(27));
+    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(2)
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(45, it.value());
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+  }
+
+  // disjunction with score, sub-iterators with scores partially, aggregate
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 1);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 4);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, std::move(ord));
+    }
+
+    irs::order ord;
+    ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
+    auto prepared_order = ord.prepare();
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE, 1); // custom cost
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+
+    // score
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    // cost
+    ASSERT_EQ(1, irs::cost::extract(it));
+
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(1, it.value());
+    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
+    ASSERT_EQ(5, it.seek(5));
+    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(6, it.value());
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // 4
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(7, it.value());
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(29, it.seek(27));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); //
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(45, it.value());
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+  }
+
+  // disjunction with score, sub-iterators with scores partially, max
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 1);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      ord.add<detail::basic_sort>(false, 4);
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, std::move(ord));
+    }
+
+    irs::order ord;
+    ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
+    auto prepared_order = ord.prepare();
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::MAX, 1); // custom cost
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+
+    // score
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    // cost
+    ASSERT_EQ(1, irs::cost::extract(it));
+
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(1, it.value());
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,4)
+    ASSERT_EQ(5, it.seek(5));
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,4)
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(6, it.value());
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(4)
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(7, it.value());
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
+    ASSERT_EQ(29, it.seek(27));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); //
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(45, it.value());
+    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+  }
+
+  // disjunction with score, sub-iterators without scores, aggregate
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    {
+      irs::order ord;
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, std::move(ord));
+    }
+
+    irs::order ord;
+    ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
+    auto prepared_order = ord.prepare();
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE, 1); // custom cost
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+
+    // score
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    // cost
+    ASSERT_EQ(1, irs::cost::extract(it));
+
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(1, it.value());
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
+    ASSERT_EQ(5, it.seek(5));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(6, it.value());
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 4
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(7, it.value());
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(29, it.seek(27));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); //
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(45, it.value());
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+    ASSERT_FALSE(it.next());
+    ASSERT_EQ(irs::doc_limits::eof(), it.value());
+  }
+
+  // disjunction with score, sub-iterators without scores, max
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    {
+      irs::order ord;
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, std::move(ord));
+    }
+    {
+      irs::order ord;
+      docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, std::move(ord));
+    }
+
+    irs::order ord;
+    ord.add<detail::basic_sort>(false, std::numeric_limits<size_t>::max());
+    auto prepared_order = ord.prepare();
+
+    auto res = detail::execute_all<disjunction::adapter>(docs);
+    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::MAX, 1); // custom cost
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+
+    // score
+    auto& score = irs::score::get(it);
+    ASSERT_FALSE(score.empty());
+    ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
+
+    // cost
+    ASSERT_EQ(1, irs::cost::extract(it));
+
+    ASSERT_EQ(irs::doc_limits::invalid(), it.value());
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(1, it.value());
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(5, it.seek(5));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(6, it.value());
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(7, it.value());
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(29, it.seek(27));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(45, it.value());
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -5767,22 +12078,17 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.c_str())); // 1+2+4
+    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate();
-    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.c_str())); // 1+2+4
+    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate();
-    ASSERT_EQ(6, *reinterpret_cast<const size_t*>(score.c_str())); // 2+4
+    ASSERT_EQ(6, *reinterpret_cast<const size_t*>(score.evaluate())); // 2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(9, it.value());
-    score.evaluate();
-    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.c_str())); // 1+4
+    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate();
-    ASSERT_EQ(6, *reinterpret_cast<const size_t*>(score.c_str())); // 2+4
+    ASSERT_EQ(6, *reinterpret_cast<const size_t*>(score.evaluate())); // 2+4
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -5828,22 +12134,17 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1,2,4)
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1,2,4)
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(2,4)
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(9, it.value());
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1,4)
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,4)
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(2,4)
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(2,4)
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -5888,22 +12189,17 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.c_str())); // 1+2+4
+    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate();
-    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.c_str())); // 1+2+4
+    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // 2+4
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // 2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(9, it.value());
-    score.evaluate();
-    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.c_str())); // 1+4
+    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // 2+4
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // 2+4
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -5948,22 +12244,17 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(9, it.value());
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -6006,22 +12297,17 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str())); // 1+2+4
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str())); // 1+2+4
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str())); // 2+4
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(9, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str())); // 1+4
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str())); // 2+4
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 2+4
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -6064,22 +12350,17 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(9, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -6088,7 +12369,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 }
 
 // ----------------------------------------------------------------------------
-// --SECTION--                    iterator0 AND iterator1 AND iterator2 AND ... 
+// --SECTION--                    iterator0 AND iterator1 AND iterator2 AND ...
 // ----------------------------------------------------------------------------
 
 TEST(conjunction_test, next) {
@@ -6568,22 +12849,17 @@ TEST(conjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.c_str())); // 1+2+4
+    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
     ASSERT_EQ(4, it.seek(3));
-    score.evaluate();
-    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.c_str())); // 1+2+4
+    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(5, it.value());
-    score.evaluate();
-    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.c_str())); // 1+2+4
+    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(8, it.value());
-    score.evaluate();
-    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.c_str())); // 1+2+4
+    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
     ASSERT_EQ(14, it.seek(14));
-    score.evaluate();
-    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.c_str())); // 1+2+4
+    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -6629,22 +12905,17 @@ TEST(conjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1,2,4)
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
     ASSERT_EQ(4, it.seek(3));
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1,2,4)
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(5, it.value());
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1,2,4)
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(8, it.value());
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1,2,4)
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
     ASSERT_EQ(14, it.seek(14));
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1,2,4)
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -6689,22 +12960,17 @@ TEST(conjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.c_str())); // 1+2+4
+    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
     ASSERT_EQ(4, it.seek(3));
-    score.evaluate();
-    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.c_str())); // 1+2+4
+    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(5, it.value());
-    score.evaluate();
-    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.c_str())); // 1+2+4
+    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(8, it.value());
-    score.evaluate();
-    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.c_str())); // 1+2+4
+    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
     ASSERT_EQ(14, it.seek(14));
-    score.evaluate();
-    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.c_str())); // 1+2+4
+    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -6749,22 +13015,17 @@ TEST(conjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1,2,4)
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
     ASSERT_EQ(4, it.seek(3));
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1,2,4)
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(5, it.value());
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1,2,4)
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(8, it.value());
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1,2,4)
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
     ASSERT_EQ(14, it.seek(14));
-    score.evaluate();
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.c_str())); // std::max(1,2,4)
+    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -6807,22 +13068,17 @@ TEST(conjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str())); // 1+2+4
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
     ASSERT_EQ(4, it.seek(3));
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str())); // 1+2+4
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(5, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str())); // 1+2+4
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(8, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str())); // 1+2+4
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
     ASSERT_EQ(14, it.seek(14));
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str())); // 1+2+4
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -6865,22 +13121,17 @@ TEST(conjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_EQ(4, it.seek(3));
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(5, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_TRUE(it.next());
     ASSERT_EQ(8, it.value());
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_EQ(14, it.seek(14));
-    score.evaluate();
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.c_str()));
+    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -6901,8 +13152,8 @@ TEST(exclusion_test, next) {
     std::vector<irs::doc_id_t> result;
     {
       irs::exclusion it(
-        irs::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
-        irs::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
+        irs::memory::make_managed<detail::basic_doc_iterator>(included.begin(), included.end()),
+        irs::memory::make_managed<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
       );
 
       // score, no order set
@@ -6930,8 +13181,8 @@ TEST(exclusion_test, next) {
     std::vector<irs::doc_id_t> result;
     {
       irs::exclusion it(
-        irs::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
-        irs::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
+        irs::memory::make_managed<detail::basic_doc_iterator>(included.begin(), included.end()),
+        irs::memory::make_managed<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
       );
       ASSERT_EQ(included.size(), irs::cost::extract(it));
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
@@ -6951,8 +13202,8 @@ TEST(exclusion_test, next) {
     std::vector<irs::doc_id_t> result;
     {
       irs::exclusion it(
-        irs::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
-        irs::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
+        irs::memory::make_managed<detail::basic_doc_iterator>(included.begin(), included.end()),
+        irs::memory::make_managed<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
       );
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
@@ -6972,8 +13223,8 @@ TEST(exclusion_test, next) {
     std::vector<irs::doc_id_t> result;
     {
       irs::exclusion it(
-        irs::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
-        irs::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
+        irs::memory::make_managed<detail::basic_doc_iterator>(included.begin(), included.end()),
+        irs::memory::make_managed<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
       );
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for ( ; it.next(); ) {
@@ -6992,8 +13243,8 @@ TEST(exclusion_test, next) {
     std::vector<irs::doc_id_t> result;
     {
       irs::exclusion it(
-        irs::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
-        irs::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
+        irs::memory::make_managed<detail::basic_doc_iterator>(included.begin(), included.end()),
+        irs::memory::make_managed<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
       );
       ASSERT_EQ(included.size(), irs::cost::extract(it));
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
@@ -7014,8 +13265,8 @@ TEST(exclusion_test, next) {
     std::vector<irs::doc_id_t> result;
     {
       irs::exclusion it(
-        irs::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
-        irs::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
+        irs::memory::make_managed<detail::basic_doc_iterator>(included.begin(), included.end()),
+        irs::memory::make_managed<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
       );
       ASSERT_EQ(included.size(), irs::cost::extract(it));
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
@@ -7046,8 +13297,8 @@ TEST(exclusion_test, seek) {
         {57, irs::doc_limits::eof()}
     };
     irs::exclusion it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
+      irs::memory::make_managed<detail::basic_doc_iterator>(included.begin(), included.end()),
+      irs::memory::make_managed<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
     );
     ASSERT_EQ(included.size(), irs::cost::extract(it));
 
@@ -7066,8 +13317,8 @@ TEST(exclusion_test, seek) {
       {irs::doc_limits::invalid(), irs::doc_limits::eof()}
     };
     irs::exclusion it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
+      irs::memory::make_managed<detail::basic_doc_iterator>(included.begin(), included.end()),
+      irs::memory::make_managed<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
     );
     ASSERT_EQ(included.size(), irs::cost::extract(it));
 
@@ -7091,8 +13342,8 @@ TEST(exclusion_test, seek) {
       {57, irs::doc_limits::eof()}
     };
     irs::exclusion it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
+      irs::memory::make_managed<detail::basic_doc_iterator>(included.begin(), included.end()),
+      irs::memory::make_managed<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
     );
     ASSERT_EQ(included.size(), irs::cost::extract(it));
 
@@ -7115,8 +13366,8 @@ TEST(exclusion_test, seek) {
       {57, irs::doc_limits::eof()}
     };
     irs::exclusion it(
-      irs::doc_iterator::make<detail::basic_doc_iterator>(included.begin(), included.end()),
-      irs::doc_iterator::make<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
+      irs::memory::make_managed<detail::basic_doc_iterator>(included.begin(), included.end()),
+      irs::memory::make_managed<detail::basic_doc_iterator>(excluded.begin(), excluded.end())
     );
     ASSERT_EQ(included.size(), irs::cost::extract(it));
 
@@ -7127,7 +13378,7 @@ TEST(exclusion_test, seek) {
 }
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                                Boolean test case 
+// --SECTION--                                                Boolean test case
 // ----------------------------------------------------------------------------
 
 class boolean_filter_test_case : public filter_test_case_base { };
@@ -7240,7 +13491,7 @@ TEST_P(boolean_filter_test_case, or_sequential) {
   // empty query
   {
     check_query(irs::Or(), docs_t{}, rdr);
-  } 
+  }
 
   {
     irs::Or root;
@@ -7369,6 +13620,86 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     root.add<irs::empty>();
 
     check_query(root, docs_t{ 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 }, rdr);
+  }
+
+  // Not with impossible name!=A OR same="NOT POSSIBLE"
+  {
+    irs::Or root;
+    root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name", "A"); // 1
+    append<irs::by_term>(root, "same", "NOT POSSIBLE");
+    check_query(root, docs_t{ 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 }, rdr);
+  }
+
+  // optimization should adjust min_match
+  {
+    irs::Or root;
+    append<irs::by_term>(root,"name", "A");
+    root.add<irs::all>();
+    root.add<irs::all>();
+    root.add<irs::all>();
+    append<irs::by_term>(root, "duplicated", "abcd");
+    root.min_match_count(5);
+    check_query(root, docs_t{1}, rdr);
+  }
+
+  // optimization should adjust min_match same but with score to check scored optimization
+  {
+    irs::Or root;
+    append<irs::by_term>(root, "name", "A");
+    root.add<irs::all>();
+    root.add<irs::all>();
+    root.add<irs::all>();
+    append<irs::by_term>(root, "duplicated", "abcd");
+    root.min_match_count(5);
+    irs::order ord;
+    ord.add<sort::custom_sort>(false);
+    check_query(root, ord, docs_t{ 1 }, rdr);
+  }
+
+  // optimization should adjust min_match
+  // case where it should be dropped to 1
+  // as optimized more filters than min_match
+  // unscored
+  {
+    irs::Or root;
+    append<irs::by_term>(root, "name", "A");
+    root.add<irs::all>();
+    root.add<irs::all>();
+    root.add<irs::all>();
+    root.add<irs::all>();
+    root.add<irs::all>();
+    root.add<irs::all>();
+    root.add<irs::all>();
+    root.add<irs::all>();
+    append<irs::by_term>(root, "duplicated", "abcd");
+    root.min_match_count(3);
+    check_query(root, docs_t{ 1,  2, 3, 4, 5, 6, 7, 8,
+                              9, 10, 11, 12, 13, 14, 15,
+                              16, 17, 18, 19, 20, 21, 22,
+                              23, 24, 25, 26, 27, 28, 29,
+                              30, 31, 32 }, rdr);
+  }
+  //scored
+  {
+    irs::Or root;
+    append<irs::by_term>(root, "name", "A");
+    root.add<irs::all>();
+    root.add<irs::all>();
+    root.add<irs::all>();
+    root.add<irs::all>();
+    root.add<irs::all>();
+    root.add<irs::all>();
+    root.add<irs::all>();
+    root.add<irs::all>();
+    append<irs::by_term>(root, "duplicated", "abcd");
+    root.min_match_count(3);
+    irs::order ord;
+    ord.add<sort::custom_sort>(false);
+    check_query(root, ord, docs_t{ 1,  2, 3, 4, 5, 6, 7, 8,
+                                   9, 10, 11, 12, 13, 14, 15,
+                                   16, 17, 18, 19, 20, 21, 22,
+                                   23, 24, 25, 26, 27, 28, 29,
+                                   30, 31, 32 }, rdr);
   }
 }
 
@@ -7523,13 +13854,11 @@ TEST_P(boolean_filter_test_case, not_standalone_sequential_ordered) {
     size_t docs_count = 0;
     auto* score = irs::get<irs::score>(*filter_itr);
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
-
     while (filter_itr->next()) {
-      score->evaluate();
       ASSERT_FALSE(!score);
-      scored_result.emplace(score_value, filter_itr->value());
+      scored_result.emplace(
+        irs::bytes_ref{score->evaluate(), prepared_order.score_size() },
+        filter_itr->value());
       ++docs_count;
     }
 
@@ -7616,13 +13945,11 @@ TEST_P(boolean_filter_test_case, not_sequential_ordered) {
     size_t docs_count = 0;
     auto* score = irs::get<irs::score>(*filter_itr);
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
-
     while (filter_itr->next()) {
-      score->evaluate();
       ASSERT_FALSE(!score);
-      scored_result.emplace(score_value, filter_itr->value());
+      scored_result.emplace(
+        irs::bytes_ref{ score->evaluate(), prepared_order.score_size() },
+        filter_itr->value());
       ++docs_count;
     }
 
@@ -7714,7 +14041,32 @@ TEST_P(boolean_filter_test_case, not_sequential) {
       irs::Or root;
       root.add<irs::by_term>() = make_filter<irs::by_term>("duplicated", "abcd");
       root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name", "A");
-      check_query(root, docs_t{ 5, 11, 21, 27, 31 }, rdr);
+      check_query(root, docs_t{ 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+                                13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+                                24, 25, 26, 27, 28, 29, 30, 31, 32 },
+                  rdr);
+    }
+    // check 'all' filter added for Not nodes does not affects score
+    {
+      irs::Or root;
+      auto& left_branch = root.add<irs::And>();
+      // this three filters fire at same doc so it will get score = 3
+      append<irs::by_term>(left_branch, "name", "A");
+      append<irs::by_term>(left_branch, "duplicated", "abcd");
+      append<irs::by_term>(left_branch, "same", "xyz");
+
+      auto& right_branch = root.add<irs::And>();
+      append<irs::by_term>(right_branch, "name", "B"); // +1 score
+      auto& sub = right_branch.add<irs::Or>();// this OR we actually test
+      append<irs::by_term>(sub, "name", "B"); // +1 score
+      // will exclude some docs (but A will stay) and produce 'all'
+      sub.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("prefix", "abcde");
+      // will exclude some docs (but A will stay) and produce another 'all'
+      sub.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("duplicated", "abcd");
+      // if 'all' will add at least 1 to score totals score will be 3 and expected order will break
+      irs::order ord;
+      ord.add<tests::sort::boost>(false);
+      check_query(root, ord, docs_t{ 2, 1}, rdr);
     }
   }
 
@@ -7733,7 +14085,10 @@ TEST_P(boolean_filter_test_case, not_sequential) {
       root.add<irs::by_term>() = make_filter<irs::by_term>("duplicated", "abcd");
       root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name", "A");
       root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name", "A");
-      check_query(root, docs_t{ 5, 11, 21, 27, 31 }, rdr);
+      check_query(root, docs_t{ 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+                                13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+                                24, 25, 26, 27, 28, 29, 30, 31, 32 },
+                  rdr);
     }
   }
 
@@ -7751,8 +14106,11 @@ TEST_P(boolean_filter_test_case, not_sequential) {
       irs::Or root;
       root.add<irs::by_term>() = make_filter<irs::by_term>("duplicated", "abcd");
       root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name", "A");
-      root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name", "E");
-      check_query(root, docs_t{ 11, 21, 27, 31 }, rdr);
+      root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("prefix", "abcd");
+      check_query(root, docs_t{ 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+                                13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+                                24, 25, 26, 27, 28, 29, 30, 31, 32 },
+                  rdr);
     }
   }
 }
@@ -8025,16 +14383,12 @@ TEST_P(boolean_filter_test_case, mixed_ordered) {
       const auto* score = irs::get<irs::score>(*docs);
       ASSERT_NE(nullptr, score);
 
-      // ensure that we avoid COW for pre c++11 std::basic_string
-      irs::bytes_ref score_value = score->value();
-
       std::vector<irs::bstring> scores;
       while (docs->next()) {
         EXPECT_EQ(*expected_doc, doc->value);
         ++expected_doc;
 
-        score->evaluate();
-        scores.emplace_back(score_value.c_str(), score_value.size());
+        scores.emplace_back(score->evaluate(), prepared_ord.score_size());
       }
 
       ASSERT_EQ(expected_docs.end(), expected_doc);
@@ -8084,7 +14438,7 @@ TEST(Not_test, equal) {
 }
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                                   And base tests 
+// --SECTION--                                                   And base tests
 // ----------------------------------------------------------------------------
 
 TEST(And_test, ctor) {
@@ -8202,19 +14556,22 @@ TEST(And_test, optimize_all_filters) {
 
     auto prepared = root.prepare(irs::sub_reader::empty());
     ASSERT_EQ(typeid(irs::all().prepare(irs::sub_reader::empty()).get()), typeid(prepared.get()));
-    ASSERT_EQ(30.f, prepared->boost());
+    ASSERT_EQ(10.f, prepared->boost());
   }
 
   // multiple `all` filters + term filter
   {
     irs::And root;
-    append<irs::by_term>(root, "test_field", "test_term");
     root.add<irs::all>().boost(5.f);
     root.add<irs::all>().boost(2.f);
+    append<irs::by_term>(root, "test_field", "test_term");
 
-    auto prepared = root.prepare(irs::sub_reader::empty());
+    irs::order ord;
+    ord.add<tests::sort::boost>(false);
+    auto pord = ord.prepare();
+    auto prepared = root.prepare(irs::sub_reader::empty(), pord);
     ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
-    ASSERT_EQ(10.f, prepared->boost());
+    ASSERT_EQ(8.f, prepared->boost());
   }
 
   // `all` filter + term filter
@@ -8222,17 +14579,49 @@ TEST(And_test, optimize_all_filters) {
     irs::And root;
     append<irs::by_term>(root, "test_field", "test_term");
     root.add<irs::all>().boost(5.f);
-
-    auto prepared = root.prepare(irs::sub_reader::empty());
+    irs::order ord;
+    ord.add<tests::sort::boost>(false);
+    auto pord = ord.prepare();
+    auto prepared = root.prepare(irs::sub_reader::empty(), pord);
     ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
-    ASSERT_EQ(5.f, prepared->boost());
+    ASSERT_EQ(6.f, prepared->boost());
   }
+}
+
+TEST(And_test, not_boosted) {
+  irs::order ord;
+  ord.add<tests::sort::boost>(false);
+  auto pord = ord.prepare();
+  irs::And root;
+  {
+    auto& neg = root.add<irs::Not>();
+    auto& node = neg.filter<detail::boosted>();
+    node.docs = { 5 , 6 };
+    node.boost(4);
+  }
+  {
+    auto& node = root.add<detail::boosted>();
+    node.docs = { 1 };
+    node.boost(5);
+  }
+  auto prep = root.prepare(irs::sub_reader::empty(), pord);
+  auto docs = prep->execute(irs::sub_reader::empty(), pord);
+  auto* scr = irs::get<irs::score>(*docs);
+  ASSERT_FALSE(!scr);
+  auto* doc = irs::get<irs::document>(*docs);
+
+  ASSERT_TRUE(docs->next());
+  auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0);
+  ASSERT_EQ(5., doc_boost); // FIXME: should be 9 if we will boost negation
+  ASSERT_EQ(1, doc->value);
+
+  ASSERT_FALSE(docs->next());
 }
 
 #endif // IRESEARCH_DLL
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                                    Or base tests 
+// --SECTION--                                                    Or base tests
 // ----------------------------------------------------------------------------
 
 TEST(Or_test, ctor) {
@@ -8323,6 +14712,110 @@ TEST(Or_test, optimize_single_node) {
     ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
   }
 }
+
+TEST(Or_test, optimize_all_unscored ) {
+  irs::Or root;
+  detail::boosted::execute_count = 0;
+  {
+    auto& node = root.add<detail::boosted>();
+    node.docs = { 1 };
+  }
+  {
+    auto& node = root.add<detail::boosted>();
+    node.docs = { 2 };
+  }
+  {
+    auto& node = root.add<detail::boosted>();
+    node.docs = { 3 };
+  }
+  root.add<irs::all>();
+  root.add<irs::empty>();
+  root.add<irs::all>();
+  root.add<irs::empty>();
+
+  auto prep = root.prepare(irs::sub_reader::empty(),
+                           irs::order::prepared::unordered());
+
+  prep->execute(irs::sub_reader::empty());
+  ASSERT_EQ(0, detail::boosted::execute_count); // specific filters should be opt out
+}
+
+
+TEST(Or_test, optimize_all_scored) {
+  irs::Or root;
+  detail::boosted::execute_count = 0;
+  {
+    auto& node = root.add<detail::boosted>();
+    node.docs = { 1 };
+  }
+  {
+    auto& node = root.add<detail::boosted>();
+    node.docs = { 2 };
+  }
+  {
+    auto& node = root.add<detail::boosted>();
+    node.docs = { 3 };
+  }
+  root.add<irs::all>();
+  root.add<irs::empty>();
+  root.add<irs::all>();
+  root.add<irs::empty>();
+  irs::order ord;
+  ord.add<tests::sort::boost>(false);
+  auto pord = ord.prepare();
+  auto prep = root.prepare(irs::sub_reader::empty(),
+                           pord);
+
+  prep->execute(irs::sub_reader::empty());
+  ASSERT_EQ(3, detail::boosted::execute_count); // specific filters should executed as score needs them
+}
+
+
+TEST(Or_test, optimize_only_all_boosted) {
+  irs::order ord;
+  ord.add<tests::sort::boost>(false);
+  auto pord = ord.prepare();
+  irs::Or root;
+  root.boost(2);
+  root.add<irs::all>().boost(3);
+  root.add<irs::all>().boost(5);
+
+  auto prep = root.prepare(irs::sub_reader::empty(),
+                           pord);
+
+  prep->execute(irs::sub_reader::empty());
+  ASSERT_EQ(16, prep->boost());
+}
+
+TEST(Or_test, boosted_not) {
+  irs::order ord;
+  ord.add<tests::sort::boost>(false);
+  auto pord = ord.prepare();
+  irs::Or root;
+  {
+    auto& neg = root.add<irs::Not>();
+    auto& node = neg.filter<detail::boosted>();
+    node.docs = { 5 , 6 };
+    node.boost(4);
+  }
+  {
+    auto& node = root.add<detail::boosted>();
+    node.docs = { 1 };
+    node.boost(5);
+  }
+  auto prep = root.prepare(irs::sub_reader::empty(), pord);
+  auto docs = prep->execute(irs::sub_reader::empty(), pord);
+  auto* scr = irs::get<irs::score>(*docs);
+  ASSERT_FALSE(!scr);
+  auto* doc = irs::get<irs::document>(*docs);
+
+  ASSERT_TRUE(docs->next());
+  auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0);
+  ASSERT_EQ(5., doc_boost); // FIXME: should be 9 if we will boost negation
+  ASSERT_EQ(1, doc->value);
+  ASSERT_FALSE(docs->next());
+}
+
 
 #endif // IRESEARCH_DLL
 

@@ -82,7 +82,7 @@ TEST_P(bm25_test, test_load) {
   auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
 
   ASSERT_NE(nullptr, scorer);
-  ASSERT_EQ(1, order.add(true, scorer).size());
+  ASSERT_EQ(1, order.add(true, std::move(scorer)).size());
 }
 
 #ifndef IRESEARCH_DLL
@@ -255,11 +255,10 @@ TEST_P(bm25_test, test_phrase) {
     auto values = column->values();
 
     // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
     irs::bytes_ref key_value;
 
     while (docs->next()) {
-      score->evaluate();
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
       ASSERT_TRUE(values(docs->value(), key_value));
 
       sorted.emplace(
@@ -309,12 +308,10 @@ TEST_P(bm25_test, test_phrase) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
     irs::bytes_ref key_value;
 
     while (docs->next()) {
-      score->evaluate();
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
       ASSERT_TRUE(values(docs->value(), key_value));
 
       sorted.emplace(
@@ -378,11 +375,8 @@ TEST_P(bm25_test, test_query) {
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
-
     while(docs->next()) {
-      score->evaluate();
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
@@ -466,11 +460,8 @@ TEST_P(bm25_test, test_query) {
       auto* score = irs::get<irs::score>(*docs);
       ASSERT_TRUE(bool(score));
 
-      // ensure that we avoid COW for pre c++11 std::basic_string
-      const irs::bytes_ref score_value = score->value();
-
       while(docs->next()) {
-        score->evaluate();
+        const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
         ASSERT_TRUE(values(docs->value(), actual_value));
         in.reset(actual_value);
 
@@ -565,11 +556,8 @@ TEST_P(bm25_test, test_query) {
       auto* score = irs::get<irs::score>(*docs);
       ASSERT_TRUE(bool(score));
 
-      // ensure that we avoid COW for pre c++11 std::basic_string
-      const irs::bytes_ref score_value = score->value();
-
       while(docs->next()) {
-        score->evaluate();
+        const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
         ASSERT_TRUE(values(docs->value(), actual_value));
         in.reset(actual_value);
 
@@ -655,11 +643,8 @@ TEST_P(bm25_test, test_query) {
       auto* score = irs::get<irs::score>(*docs);
       ASSERT_TRUE(bool(score));
 
-      // ensure that we avoid COW for pre c++11 std::basic_string
-      const irs::bytes_ref score_value = score->value();
-
       while(docs->next()) {
-        score->evaluate();
+        const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
         ASSERT_TRUE(values(docs->value(), actual_value));
         in.reset(actual_value);
 
@@ -695,11 +680,8 @@ TEST_P(bm25_test, test_query) {
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto* score = irs::get<irs::score>(*docs);
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
-
     while(docs->next()) {
-      score->evaluate();
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
@@ -736,11 +718,8 @@ TEST_P(bm25_test, test_query) {
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
-
     while(docs->next()) {
-      score->evaluate();
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
@@ -776,11 +755,8 @@ TEST_P(bm25_test, test_query) {
 //    auto* score = irs::get<irs::score>(*docs);
 //    ASSERT_TRUE(bool(score));
 //
-//    // ensure that we avoid COW for pre c++11 std::basic_string
-//    const irs::bytes_ref score_value = score->value();
-//
 //    while(docs->next()) {
-//      score->evaluate();
+//      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
 //      ASSERT_TRUE(values(docs->value(), actual_value));
 //      in.reset(actual_value);
 //
@@ -822,11 +798,8 @@ TEST_P(bm25_test, test_query) {
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto* score = irs::get<irs::score>(*docs);
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
-
     while(docs->next()) {
-      score->evaluate();
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
@@ -870,11 +843,8 @@ TEST_P(bm25_test, test_query) {
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
-
     while(docs->next()) {
-      score->evaluate();
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
@@ -911,11 +881,8 @@ TEST_P(bm25_test, test_query) {
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto* score = irs::get<irs::score>(*docs);
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
-
     while(docs->next()) {
-      score->evaluate();
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
@@ -948,13 +915,10 @@ TEST_P(bm25_test, test_query) {
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
-
     irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
     while(docs->next()) {
       ASSERT_EQ(doc, docs->value());
-      score->evaluate();
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
       ASSERT_TRUE(values(docs->value(), actual_value));
       ++doc;
       ASSERT_EQ(1.5f, *reinterpret_cast<const float_t*>(score_value.c_str()));
@@ -1021,11 +985,8 @@ TEST_P(bm25_test, test_query_norms) {
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
-
     while(docs->next()) {
-      score->evaluate();
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
@@ -1068,11 +1029,8 @@ TEST_P(bm25_test, test_query_norms) {
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto* score = irs::get<irs::score>(*docs);
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
-
     while(docs->next()) {
-      score->evaluate();
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
@@ -1373,11 +1331,8 @@ TEST_P(bm25_test, test_order) {
     auto* score = irs::get<iresearch::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
-
     for (; docs->next();) {
-      score->evaluate();
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 

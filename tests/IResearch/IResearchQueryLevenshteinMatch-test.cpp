@@ -504,13 +504,13 @@ TEST_F(IResearchQueryLevenhsteinMatchTest, test) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     ASSERT_TRUE(slice.isArray());
+    ASSERT_EQ(expected.size(), slice.length());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr, ++i) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i],
-        resolved, true)));
+      EXPECT_EQUAL_SLICES(expected[i], resolved);
     }
 
     EXPECT_EQ(i, expected.size());

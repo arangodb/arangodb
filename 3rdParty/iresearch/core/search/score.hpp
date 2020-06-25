@@ -46,54 +46,56 @@ class IRESEARCH_API score : public attribute {
     return score ? *score : no_score();
   }
 
-  const byte_type* c_str() const noexcept {
-    return value_.c_str();
-  }
+  score() noexcept;
+  explicit score(const order::prepared& ord);
 
-  const bstring& value() const noexcept {
-    return value_;
-  }
+  bool empty() const noexcept;
 
-  bool empty() const noexcept {
-    return value_.empty();
-  }
-
-  void evaluate() const {
+  [[nodiscard]] const byte_type* evaluate() const {
     assert(func_);
-    (*func_)(ctx_.get(), leak());
+    return (*func_)(ctx_.get());
   }
 
-  bool prepare(const order::prepared& ord,
-               const score_ctx* ctx,
-               const score_f func) {
+  void prepare(score_ctx_ptr&& ctx, const score_f func) noexcept {
     assert(func);
-
-    if (ord.empty()) {
-      return false;
-    }
-
-    value_.resize(ord.score_size());
-    ord.prepare_score(leak());
-
-    ctx_ = memory::managed_ptr<const score_ctx>(ctx, nullptr);
+    ctx_ = memory::to_managed<score_ctx>(std::move(ctx));
     func_ = func;
-    return true;
   }
 
-  bool prepare(const order::prepared& ord,
-               order::prepared::scorers&& scorers);
+  void prepare(score_ctx* ctx, const score_f func) noexcept {
+    assert(func);
+    ctx_ = memory::to_managed<score_ctx, false>(ctx);
+    func_ = func;
+  }
+
+  byte_type* realloc(const order::prepared& order) {
+    buf_.resize(order.score_size());
+    return const_cast<byte_type*>(buf_.data());
+  }
+
+  byte_type* data() const noexcept {
+    return const_cast<byte_type*>(buf_.c_str());
+  }
+
+  size_t size() const noexcept {
+    return buf_.size();
+  }
+
+  void clear() noexcept {
+    assert(!buf_.empty());
+    std::memset(const_cast<byte_type*>(buf_.data()), 0, buf_.size());
+  }
 
  private:
-  byte_type* leak() const noexcept {
-    return const_cast<byte_type*>(&(value_[0]));
-  }
-
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  bstring value_;     // score buffer
-  memory::managed_ptr<const score_ctx> ctx_{}; // arbitrary scoring context
-  score_f func_{[](const score_ctx*, byte_type*){}};    // scoring function
+  bstring buf_;
+  memory::managed_ptr<score_ctx> ctx_; // arbitrary scoring context
+  score_f func_; // scoring function
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // score
+
+IRESEARCH_API void prepare_score(
+  irs::score& score, order::prepared::scorers&& scorers);
 
 NS_END // ROOT
 

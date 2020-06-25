@@ -128,7 +128,9 @@ TEST(bitset_iterator_test, next) {
     ASSERT_TRUE(irs::get<irs::score>(it));
 
     ASSERT_EQ(it.value(), doc->value);
-    for (auto i = 1; i < size; ++i) {
+    // note that bitset iterator doesn't care about
+    // emitting doc_limits::invalid() if first bit is set
+    for (auto i = 0; i < size; ++i) {
       ASSERT_TRUE(it.next());
       ASSERT_EQ(it.value(), doc->value);
       ASSERT_EQ(i, it.value());

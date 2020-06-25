@@ -111,8 +111,6 @@ class same_position_query final : public filter::prepared {
   typedef states_cache<terms_states_t> states_t;
   typedef std::vector<bstring> stats_t;
 
-  DECLARE_SHARED_PTR(same_position_query);
-
   explicit same_position_query(
       states_t&& states,
       stats_t&& stats,
@@ -172,10 +170,12 @@ class same_position_query final : public filter::prepared {
         auto* score = irs::get_mutable<irs::score>(docs.get());
 
         if (score) {
-          score->prepare(
-            ord,
-            ord.prepare_scorers(segment, *term_state.reader,
-                                term_stats->c_str(), *docs, boost()));
+          order::prepared::scorers scorers(
+            ord, segment, *term_state.reader,
+            term_stats->c_str(), score->realloc(ord),
+            *docs, boost());
+
+          prepare_score(*score, std::move(scorers));
         }
       }
 
@@ -299,7 +299,7 @@ filter::prepared::ptr by_same_position::prepare(
     term_stats.finish(stats_buf, term_idx++, field_stats, index);
   }
 
-  return memory::make_shared<same_position_query>(
+  return memory::make_managed<same_position_query>(
     std::move(query_states),
     std::move(stats),
     this->boost() * boost);

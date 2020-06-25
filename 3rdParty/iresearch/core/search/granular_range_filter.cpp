@@ -631,17 +631,17 @@ DEFINE_FACTORY_DEFAULT(by_granular_range)
     virtual filter::prepared::ptr prepare(
         const index_reader&, const order::prepared&,
         boost_t, const attribute_provider*) const override {
-      return query_;
+      return std::move(query_);
     }
 
-    multiterm_query::ptr query_;
+    mutable multiterm_query::ptr query_;
   };
 
   Or multirange_filter;
 
   for (auto& range_state: range_states) {
     multirange_filter.add<multiterm_filter_proxy>().query_
-        = memory::make_shared<multiterm_query>(std::move(range_state), shared_stats,
+        = memory::make_managed<multiterm_query>(std::move(range_state), shared_stats,
                                                no_boost(), sort::MergeType::AGGREGATE);
   }
 
