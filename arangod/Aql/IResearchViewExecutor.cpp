@@ -420,7 +420,7 @@ IResearchViewExecutorBase<Impl, Traits>::produceRows(AqlItemBlockInputRange& inp
         std::tie(std::ignore, _inputRow) = inputRange.peekDataRow();
 
         if (!_inputRow.isInitialized()) {
-          return {ExecutorState::DONE, stats, upstreamCall};
+          return {inputRange.upstreamState(), stats, upstreamCall};
         }
 
         // reset must be called exactly after we've got a new and valid input row.

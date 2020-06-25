@@ -97,10 +97,8 @@ AllRowsFetcherHelper::AllRowsFetcherHelper(std::shared_ptr<VPackBuffer<uint8_t>>
                                            bool returnsWaiting)
     : AllRowsFetcher(),
       _vPackBuffer(std::move(vPackBuffer)),
-      _returnsWaiting(returnsWaiting),
       _nrItems(0),
       _nrRegs(0),
-      _nrCalled(0),
       _resourceMonitor(),
       _itemBlockManager(&_resourceMonitor, SerializationFormat::SHADOWROWS),
       _matrix(nullptr) {
