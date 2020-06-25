@@ -28,7 +28,6 @@
 
 #include "velocypack/Iterator.h"
 
-#include "Aql/TestExecutorHelper.h"
 #include "IResearch/common.h"
 #include "Mocks/IResearchLinkMock.h"
 #include "Mocks/LogLevels.h"

@@ -231,6 +231,8 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
   return call;
 }
 
+void AqlCall::resetSkipCount() noexcept { skippedRows = 0; }
+
 void AqlCall::toVelocyPack(velocypack::Builder& builder) const {
   using namespace velocypack;
 
@@ -304,6 +306,6 @@ auto aql::operator<<(std::ostream& out, AqlCall::Limit const& limit) -> std::ost
 
 auto aql::operator<<(std::ostream& out, AqlCall const& call) -> std::ostream& {
   return out << "{ skip: " << call.getOffset() << ", softLimit: " << call.softLimit
-             << ", hardLimit: " << call.hardLimit
-             << ", fullCount: " << std::boolalpha << call.fullCount << " }";
+             << ", hardLimit: " << call.hardLimit << ", fullCount: " << std::boolalpha
+             << call.fullCount << " skipCount: " << call.getSkipCount() << " }";
 }

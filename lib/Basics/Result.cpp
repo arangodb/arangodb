@@ -46,6 +46,12 @@ Result::Result(int errorNumber, std::string const& errorMessage)
 Result::Result(int errorNumber, std::string&& errorMessage) noexcept
     : _errorNumber(errorNumber), _errorMessage(std::move(errorMessage)) {}
 
+Result::Result(int errorNumber, std::string_view const& errorMessage)
+    : _errorNumber(errorNumber), _errorMessage(errorMessage) {}
+
+Result::Result(int errorNumber, const char* errorMessage)
+    : _errorNumber(errorNumber), _errorMessage(errorMessage) {}
+
 Result::Result(Result const& other)
     : _errorNumber(other._errorNumber), _errorMessage(other._errorMessage) {}
 
