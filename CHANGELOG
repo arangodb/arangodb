@@ -1,5 +1,7 @@
 devel
 -----
+* Fixed internal issue #725: Added analyzers revision for system database
+  in queries.
 
 * Fixed hotbackup agency lock cleanup procedure.
 
