@@ -48,10 +48,17 @@ auto getStringView(VPackSlice slice) -> std::string_view {
 }
 }  // namespace
 
-AqlCallList::AqlCallList(AqlCall const& call) : _specificCalls{call} {}
+AqlCallList::AqlCallList(AqlCall const& call) : _specificCalls{call} {
+  // We can never create a new CallList with existing skipCounter
+  TRI_ASSERT(call.getSkipCount() == 0);
+}
 
 AqlCallList::AqlCallList(AqlCall const& specificCall, AqlCall const& defaultCall)
-    : _specificCalls{specificCall}, _defaultCall{defaultCall} {}
+    : _specificCalls{specificCall}, _defaultCall{defaultCall} {
+  // We can never create a new CallList with existing skipCounter
+  TRI_ASSERT(specificCall.getSkipCount() == 0);
+  TRI_ASSERT(defaultCall.getSkipCount() == 0);
+}
 
 [[nodiscard]] auto AqlCallList::popNextCall() -> AqlCall {
   TRI_ASSERT(hasMoreCalls());
