@@ -1165,13 +1165,13 @@ constexpr int TRI_ERROR_CURSOR_NOT_FOUND                                        
 constexpr int TRI_ERROR_CURSOR_BUSY                                             = 1601;
 
 /// 1620: ERROR_VALIDATION_FAILED
-/// "validation failed"
-/// Will be raised when a document does not pass validation.
+/// "schema validation failed"
+/// Will be raised when a document does not pass schema validation.
 constexpr int TRI_ERROR_VALIDATION_FAILED                                       = 1620;
 
 /// 1621: ERROR_VALIDATION_BAD_PARAMETER
-/// "invalid validation parameter"
-/// Will be raised when the validator description is invalid.
+/// "invalid schema validation parameter"
+/// Will be raised when the schema description is invalid.
 constexpr int TRI_ERROR_VALIDATION_BAD_PARAMETER                                = 1621;
 
 /// 1650: ERROR_TRANSACTION_INTERNAL
