@@ -219,8 +219,8 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_QUERY_USER_WARN, "%s");
   REG_ERROR(ERROR_CURSOR_NOT_FOUND, "cursor not found");
   REG_ERROR(ERROR_CURSOR_BUSY, "cursor is busy");
-  REG_ERROR(ERROR_VALIDATION_FAILED, "validation failed");
-  REG_ERROR(ERROR_VALIDATION_BAD_PARAMETER, "invalid validation parameter");
+  REG_ERROR(ERROR_VALIDATION_FAILED, "schema validation failed");
+  REG_ERROR(ERROR_VALIDATION_BAD_PARAMETER, "invalid schema validation parameter");
   REG_ERROR(ERROR_TRANSACTION_INTERNAL, "internal transaction error");
   REG_ERROR(ERROR_TRANSACTION_NESTED, "nested transactions detected");
   REG_ERROR(ERROR_TRANSACTION_UNREGISTERED_COLLECTION, "unregistered collection used in transaction");

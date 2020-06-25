@@ -169,7 +169,7 @@ TEST_P(CalculationExecutorTest, reference_some_input) {
       .run(true);
 }
 
-TEST_P(CalculationExecutorTest, referece_some_input_skip) {
+TEST_P(CalculationExecutorTest, reference_some_input_skip) {
   AqlCall call{};
   call.offset = 4;
   ExecutionStats stats{};
