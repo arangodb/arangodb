@@ -163,6 +163,27 @@ function iResearchViewEnumerationRegressionTest() {
 
       assertEqual(arr.length, N);
     },
+
+    /**
+     * Test the same query es testRegression but will trigger a skip
+     * in the Search executor. This Skip on purpose uses
+     * values around 1000 which is the default batch size.
+     */
+    testRegressionSkip: function () {
+      const k = 1200;
+      for (const k of [10, 999, 1000, 1001, 1200]) {
+        const query = `
+        FOR x IN 1..@n
+          FOR d in @@view SEARCH 1 == d.seq OPTIONS { waitForSync: true }
+          LIMIT ${k}, null
+          RETURN d`;
+
+        const res = db._query(query, { n: N, "@view": viewName });
+        const arr = res.toArray();
+
+        assertEqual(arr.length, N - k);
+      }
+    },
   };
 }
 
