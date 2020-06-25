@@ -1,6 +1,9 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
+* Fix undistribute-remove-after-enum-coll which would allow calculations
+  to be pushed to a DBServer which are not allowed to run there.
+
 * Fixed issue ES-598. Web UI now shows correct permissions in case wildcard
   database level and wildcard collection level permissions are both set.
 
