@@ -256,10 +256,10 @@ Result Collections::create(TRI_vocbase_t& vocbase,
   TRI_ASSERT(!vocbase.isDangling());
   bool haveShardingFeature = ServerState::instance()->isCoordinator() &&
                              vocbase.server().hasFeature<ShardingFeature>();
-  bool addUseRevs = ServerState::instance()->isSingleServerOrCoordinator();
+  /*bool addUseRevs = ServerState::instance()->isSingleServerOrCoordinator();
   bool useRevs =
-      vocbase.server().getFeature<arangodb::EngineSelectorFeature>().isRocksDB() &&
-      LogicalCollection::currentVersion() >= LogicalCollection::Version::v37;
+      vocbase.server().getFeature<arangodb::EngineSelectorFeature>().isRocksDB()
+  && LogicalCollection::currentVersion() >= LogicalCollection::Version::v37;*/
   VPackBuilder builder;
   VPackBuilder helper;
   builder.openArray();
@@ -292,14 +292,14 @@ Result Collections::create(TRI_vocbase_t& vocbase,
     helper.add(arangodb::StaticStrings::DataSourceName, VPackValue(info.name));
 
     bool isSystem = vocbase.IsSystemName(info.name);
-    if (addUseRevs) {
+    /*if (addUseRevs) {
       helper.add(arangodb::StaticStrings::UsesRevisionsAsDocumentIds,
                  arangodb::velocypack::Value(useRevs));
       bool isSmartChild =
           Helper::getBooleanValue(info.properties, StaticStrings::IsSmartChild, false);
       TRI_voc_rid_t minRev = (isSystem || isSmartChild) ? 0 : TRI_HybridLogicalClock();
       helper.add(arangodb::StaticStrings::MinRevision, arangodb::velocypack::Value(minRev));
-    }
+    }*/
 
     if (ServerState::instance()->isCoordinator()) {
       auto replicationFactorSlice = info.properties.get(StaticStrings::ReplicationFactor);
