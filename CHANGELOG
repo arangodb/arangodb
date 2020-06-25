@@ -10,6 +10,16 @@ devel
   function will now return nulland register a warning in the query, so
   the user can handle it.
 
+* Allow restoring collections from v3.3.0 with their all-numeric collection
+  GUID values, by creating a new, unambiguous collection GUID for them. 
+  v3.3.0 had a bug because it created all-numeric GUID values, which can be
+  confused with numeric collection ids in lookups. v3.3.1 already changed the
+  GUID routine to produce something non-numeric already, but collections
+  created with v3.3.0 can still have an ambiguous GUID. This fix adjusts
+  the restore routine to drop such GUID values, so it only changes something
+  if v3.3.0 collections are dumped, dropped on the server and then restored
+  with the flawed GUIDs.
+
 * Fixed bug in IResearchViewExecutor that lead to only up to 1000 rows being
   produced.
 
