@@ -1,5 +1,7 @@
 devel
 -----
+* Fix undistribute-remove-after-enum-coll which would allow calculations
+  to be pushed to a DBServer which are not allowed to run there.
 
 * Allow restoring collections from v3.3.0 with their all-numeric collection
   GUID values, by creating a new, unambiguous collection GUID for them. 
