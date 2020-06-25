@@ -739,45 +739,10 @@ ExecutionState Query::finalize(QueryResult& result) {
 
     result.extra = std::make_shared<VPackBuilder>();
     result.extra->openObject(true);
-    auto role = ServerState::instance()->getRole();
-    if (_queryOptions.profile >= PROFILE_LEVEL_BLOCKS &&
-        (ServerState::isCoordinator(role) ||
-         ServerState::isSingleServer(role))) {
-      TRI_ASSERT(_plans.size() == 1);
-      auto& plan = _plans[0];
-
-      if (ServerState::isCoordinator(role)) {
-        std::vector<arangodb::aql::ExecutionNode::NodeType> const collectionNodeTypes{
-            arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
-            arangodb::aql::ExecutionNode::INDEX,
-            arangodb::aql::ExecutionNode::REMOVE,
-            arangodb::aql::ExecutionNode::INSERT,
-            arangodb::aql::ExecutionNode::UPDATE,
-            arangodb::aql::ExecutionNode::REPLACE,
-            arangodb::aql::ExecutionNode::UPSERT};
-
-        ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-        ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
-        plan->findNodesOfType(nodes, collectionNodeTypes, true);
-
-        for (auto& n : nodes) {
-          // clear shards so we get back the full collection name when
-          // serializing the plan
-          auto cn = dynamic_cast<CollectionAccessingNode*>(n);
-          if (cn) {
-            cn->setUsedShard("");
-          }
-        }
-      }
-
-      result.extra->add(VPackValue("plan"));
-      plan->toVelocyPack(*result.extra, _ast.get(), false, ExplainRegisterPlan::No);
-      // needed to happen before plan cleanup
-    }
   }
 
   const bool addPlan = _queryOptions.profile >= PROFILE_LEVEL_BLOCKS &&
-  (ServerState::instance()->isSingleServerOrCoordinator());
+                       ServerState::instance()->isSingleServerOrCoordinator();
   auto state = cleanupPlanAndEngine(TRI_ERROR_NO_ERROR, /*sync*/false, result.extra.get(), addPlan);
   if (state == ExecutionState::WAITING) {
     return state;
