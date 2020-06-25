@@ -35,19 +35,6 @@ var db = require("@arangodb").db,
 const collectionName1 = "collection1";
 const collectionName2 = "collection2";
 
-const expectedResult = [
-  {
-    name: "Adam",
-    lastname: "Smith",
-    number: 294,
-  },
-  {
-    name: "Matt",
-    lastname: "Smith",
-    number: 34,
-  },
-];
-
 var cleanup = function () {
   db._drop(collectionName2);
   db._drop(collectionName1);
