@@ -169,6 +169,7 @@ ERROR_REPLICATION_SHARD_NONEMPTY,1417,"shard not empty","Will be raised when a s
 ## ArangoDB cluster errors
 ################################################################################
 
+ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED,1448,"creating collection failed due to precondition","Will be raised when updating the plan on collection creatio failed."
 ERROR_CLUSTER_SERVER_UNKNOWN,1449,"got a request from an unkown server","Will be raised on some occasions when one server gets a request from another, which has not (yet?) been made known via the Agency."
 ERROR_CLUSTER_TOO_MANY_SHARDS,1450,"too many shards","Will be raised when the number of shards for a collection is higher than allowed."
 ERROR_CLUSTER_COLLECTION_ID_EXISTS,1453,"collection ID already exists","Will be raised when a Coordinator in a cluster tries to create a collection and the collection ID already exists."
@@ -279,11 +280,11 @@ ERROR_CURSOR_NOT_FOUND,1600,"cursor not found","Will be raised when a cursor is 
 ERROR_CURSOR_BUSY,1601,"cursor is busy","Will be raised when a cursor is requested via its id but a concurrent request is still using the cursor."
 
 ################################################################################
-## ArangoDB validation errors
+## ArangoDB schema validation errors
 ################################################################################
 
-ERROR_VALIDATION_FAILED,1620,"validation failed","Will be raised when a document does not pass validation."
-ERROR_VALIDATION_BAD_PARAMETER,1621,"invalid validation parameter","Will be raised when the validator description is invalid."
+ERROR_VALIDATION_FAILED,1620,"schema validation failed","Will be raised when a document does not pass schema validation."
+ERROR_VALIDATION_BAD_PARAMETER,1621,"invalid schema validation parameter","Will be raised when the schema description is invalid."
 
 ################################################################################
 ## ArangoDB transaction errors

@@ -61,96 +61,6 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> MultiDependencySingleRowFetcher
   return res;
 }
 
-std::pair<ExecutionState, ShadowAqlItemRow> MultiDependencySingleRowFetcher::fetchShadowRow(size_t const atMost) {
-  // If any dependency is in an invalid state, but not done, refetch it
-  for (size_t dependency = 0; dependency < _dependencyInfos.size(); ++dependency) {
-    // TODO We should never fetch from upstream here, as we can't know atMost - only the executor does.
-    if (!fetchBlockIfNecessary(dependency, atMost)) {
-      return {ExecutionState::WAITING, ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
-    }
-  }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  {
-    auto const begin = _dependencyInfos.cbegin();
-    auto const end = _dependencyInfos.cend();
-    // The previous loop assures that all dependencies must either have a valid
-    // index, or be both done and have no valid index.
-    TRI_ASSERT(std::all_of(begin, end, [this](auto const& dep) {
-      return isDone(dep) || indexIsValid(dep);
-    }));
-
-    bool const anyDone = std::any_of(begin, end, [this](auto const& dep) {
-      return !indexIsValid(dep);
-    });
-    bool const anyShadow = std::any_of(begin, end, [this](auto const& dep) {
-      return indexIsValid(dep) && isAtShadowRow(dep);
-    });
-    // We must not both have a dependency that's completely done, and a shadow row in another dependency. Otherwise it indicates an error upstream, because each shadow row must have been inserted in all dependencies by the distribute/scatter block.
-    TRI_ASSERT(!(anyShadow && anyDone));
-  }
-#endif
-
-  bool allDone = true;
-  bool allShadow = true;
-  auto row = ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
-  auto rowHasNonEmptyValue = [](ShadowAqlItemRow const& row) -> bool {
-    for (RegisterId registerId = 0; registerId < row.getNrRegisters(); ++registerId) {
-      if (!row.getValue(registerId).isEmpty()) {
-        return true;
-      }
-    }
-    return false;
-  };
-  for (auto const& dep : _dependencyInfos) {
-    if (!indexIsValid(dep)) {
-      allShadow = false;
-    } else {
-      allDone = false;
-      if (!isAtShadowRow(dep)) {
-        // We have one dependency that's not done and not a shadow row.
-        return {ExecutionState::HASMORE, ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
-      } else if (!row.isInitialized()) {
-        // Save the first shadow row we encounter
-        row = ShadowAqlItemRow{dep._currentBlock, dep._rowIndex};
-      } else {
-        TRI_ASSERT(row.isInitialized());
-        // TODO We could memorize that `row` has a value, in which case we won't
-        //      need to check `curRow` for values, except for assertions.
-        auto curRow = ShadowAqlItemRow{dep._currentBlock, dep._rowIndex};
-        if (rowHasNonEmptyValue(curRow)) {
-          TRI_ASSERT(!rowHasNonEmptyValue(row));
-          row = curRow;
-        }
-      }
-    }
-  }
-  // Obviously, at most one of those can be true.
-  TRI_ASSERT(!(allDone && allShadow));
-  // If we've encountered any shadow row, no dependency may be done.
-  // And if we've encountered any non-shadow row, we must have returned in the
-  // loop immediately.
-  TRI_ASSERT(allShadow == row.isInitialized());
-
-  if (allShadow) {
-    TRI_ASSERT(row.isInitialized());
-    for (auto& dep : _dependencyInfos) {
-      if (isLastRowInBlock(dep) && isDone(dep)) {
-        dep._currentBlock = nullptr;
-        dep._rowIndex = 0;
-      } else {
-        ++dep._rowIndex;
-      }
-    }
-    // We have delivered a shadowRow, we now may get additional subquery skip counters again.
-    _didReturnSubquerySkips = false;
-  }
-
-  ExecutionState const state = allDone ? ExecutionState::DONE : ExecutionState::HASMORE;
-
-  return {state, row};
-}
-
 MultiDependencySingleRowFetcher::MultiDependencySingleRowFetcher()
     : _dependencyProxy(nullptr) {}
 
@@ -182,63 +92,6 @@ void MultiDependencySingleRowFetcher::init() {
   _callsInFlight.resize(numberDependencies());
 }
 
-std::pair<ExecutionState, size_t> MultiDependencySingleRowFetcher::preFetchNumberOfRows(size_t atMost) {
-  ExecutionState state = ExecutionState::DONE;
-  size_t available = 0;
-  for (size_t i = 0; i < numberDependencies(); ++i) {
-    auto res = preFetchNumberOfRowsForDependency(i, atMost);
-    if (res.first == ExecutionState::WAITING) {
-      return {ExecutionState::WAITING, 0};
-    }
-    available += res.second;
-    if (res.first == ExecutionState::HASMORE) {
-      state = ExecutionState::HASMORE;
-    }
-  }
-  return {state, available};
-}
-
-std::pair<ExecutionState, InputAqlItemRow> MultiDependencySingleRowFetcher::fetchRowForDependency(
-    size_t const dependency, size_t atMost) {
-  TRI_ASSERT(dependency < _dependencyInfos.size());
-  auto& depInfo = _dependencyInfos[dependency];
-  // Fetch a new block iff necessary
-  if (!fetchBlockIfNecessary(dependency, atMost)) {
-    return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
-  }
-
-  TRI_ASSERT(depInfo._currentBlock == nullptr ||
-             depInfo._rowIndex < depInfo._currentBlock->size());
-
-  ExecutionState rowState;
-  InputAqlItemRow row{CreateInvalidInputRowHint{}};
-  if (depInfo._currentBlock == nullptr) {
-    TRI_ASSERT(depInfo._upstreamState == ExecutionState::DONE);
-    rowState = ExecutionState::DONE;
-  } else if (!isAtShadowRow(depInfo)) {
-    TRI_ASSERT(depInfo._currentBlock != nullptr);
-    row = InputAqlItemRow{depInfo._currentBlock, depInfo._rowIndex};
-    TRI_ASSERT(depInfo._upstreamState != ExecutionState::WAITING);
-    ++depInfo._rowIndex;
-    if (noMoreDataRows(depInfo)) {
-      rowState = ExecutionState::DONE;
-    } else {
-      rowState = ExecutionState::HASMORE;
-    }
-    if (isDone(depInfo) && !indexIsValid(depInfo)) {
-      // Free block
-      depInfo._currentBlock = nullptr;
-      depInfo._rowIndex = 0;
-    }
-  } else {
-    ShadowAqlItemRow shadowAqlItemRow{depInfo._currentBlock, depInfo._rowIndex};
-    TRI_ASSERT(shadowAqlItemRow.isRelevant());
-    rowState = ExecutionState::DONE;
-  }
-
-  return {rowState, row};
-}
-
 bool MultiDependencySingleRowFetcher::indexIsValid(
     const MultiDependencySingleRowFetcher::DependencyInfo& info) const {
   return info._currentBlock != nullptr && info._rowIndex < info._currentBlock->size();
@@ -259,42 +112,6 @@ bool MultiDependencySingleRowFetcher::noMoreDataRows(
     const MultiDependencySingleRowFetcher::DependencyInfo& info) const {
   return (isDone(info) && !indexIsValid(info)) ||
          (indexIsValid(info) && isAtShadowRow(info));
-}
-
-std::pair<ExecutionState, size_t> MultiDependencySingleRowFetcher::preFetchNumberOfRowsForDependency(
-    size_t dependency, size_t atMost) {
-  TRI_ASSERT(dependency < _dependencyInfos.size());
-  auto& depInfo = _dependencyInfos[dependency];
-  // Fetch a new block iff necessary
-  if (!indexIsValid(depInfo) && !isDone(depInfo)) {
-    // This returns the AqlItemBlock to the ItemBlockManager before fetching a
-    // new one, so we might reuse it immediately!
-    depInfo._currentBlock = nullptr;
-
-    ExecutionState state;
-    SharedAqlItemBlockPtr newBlock;
-    std::tie(state, newBlock) = fetchBlockForDependency(dependency, atMost);
-    if (state == ExecutionState::WAITING) {
-      return {ExecutionState::WAITING, 0};
-    }
-
-    depInfo._currentBlock = std::move(newBlock);
-    depInfo._rowIndex = 0;
-  }
-
-  if (!indexIsValid(depInfo)) {
-    TRI_ASSERT(depInfo._upstreamState == ExecutionState::DONE);
-    return {ExecutionState::DONE, 0};
-  } else {
-    if (isDone(depInfo)) {
-      TRI_ASSERT(depInfo._currentBlock != nullptr);
-      TRI_ASSERT(depInfo._currentBlock->size() > depInfo._rowIndex);
-      return {depInfo._upstreamState, depInfo._currentBlock->size() - depInfo._rowIndex};
-    }
-    // In the HAS_MORE case we do not know exactly how many rows there are.
-    // So we need to return an uppter bound (atMost) here.
-    return {depInfo._upstreamState, atMost};
-  }
 }
 
 bool MultiDependencySingleRowFetcher::isAtShadowRow(DependencyInfo const& depInfo) const {

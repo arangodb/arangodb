@@ -280,7 +280,7 @@ Result LogicalCollection::updateValidators(VPackSlice validatorSlice) {
   if (validatorSlice.isNone() || validatorSlice.isNull()) {
     return { TRI_ERROR_NO_ERROR };
   } else if (!validatorSlice.isObject()) {
-    return {TRI_ERROR_VALIDATION_BAD_PARAMETER, "Validator description is not an object."};
+    return {TRI_ERROR_VALIDATION_BAD_PARAMETER, "Schema description is not an object."};
   }
 
   TRI_ASSERT(validatorSlice.isObject());
@@ -293,7 +293,7 @@ Result LogicalCollection::updateValidators(VPackSlice validatorSlice) {
       auto validator = std::make_unique<ValidatorJsonSchema>(validatorSlice);
       newVec->push_back(std::move(validator));
     } catch (std::exception const& ex) {
-      return { TRI_ERROR_VALIDATION_BAD_PARAMETER, "Error when building validator: "s + ex.what() };
+      return { TRI_ERROR_VALIDATION_BAD_PARAMETER, "Error when building schema: "s + ex.what() };
     }
   }
 

@@ -87,6 +87,9 @@ OutputAqlItemRow::OutputAqlItemRow(SharedAqlItemBlockPtr block, RegIdSet const& 
       }
     }
   }
+  // We cannot create an output row if we still have unreported skipCount
+  // in the call.
+  TRI_ASSERT(_call.getSkipCount() == 0);
 #endif
 }
 
@@ -110,7 +113,7 @@ void OutputAqlItemRow::moveValueWithoutRowCopy(RegisterId registerId, ValueType&
   TRI_ASSERT(registerId < getNrRegisters());
   TRI_ASSERT(_numValuesWritten < numRegistersToWrite());
   TRI_ASSERT(block().getValueReference(_baseIndex, registerId).isNone());
-  
+
   if constexpr (std::is_same_v<std::decay_t<ValueType>, AqlValueGuard>) {
     block().setValue(_baseIndex, registerId, value.value());
     value.steal();
@@ -122,8 +125,8 @@ void OutputAqlItemRow::moveValueWithoutRowCopy(RegisterId registerId, ValueType&
 }
 
 template <class ItemRowType, class ValueType>
-void OutputAqlItemRow::moveValueInto(RegisterId registerId, ItemRowType const& sourceRow,
-                                     ValueType& value) {
+void OutputAqlItemRow::moveValueInto(RegisterId registerId,
+                                     ItemRowType const& sourceRow, ValueType& value) {
   moveValueWithoutRowCopy<ItemRowType, ValueType>(registerId, value);
 
   // allValuesWritten() must be called only *after* moveValueWithoutRowCopy(),
@@ -136,7 +139,6 @@ void OutputAqlItemRow::moveValueInto(RegisterId registerId, ItemRowType const& s
 void OutputAqlItemRow::consumeShadowRow(RegisterId registerId, ShadowAqlItemRow& sourceRow,
                                         AqlValueGuard& guard) {
   TRI_ASSERT(sourceRow.isRelevant());
-
 
   moveValueWithoutRowCopy<ShadowAqlItemRow>(registerId, guard);
   TRI_ASSERT(allValuesWritten());
@@ -187,7 +189,7 @@ void OutputAqlItemRow::copyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissing)
   if (_doNotCopyInputRow) {
     TRI_ASSERT(sourceRow.isInitialized());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(sourceRow.internalBlockIs(_block));
+    TRI_ASSERT(sourceRow.internalBlockIs(_block, _baseIndex));
 #endif
     _inputRowCopied = true;
     memorizeRow(sourceRow);
@@ -200,7 +202,7 @@ void OutputAqlItemRow::copyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissing)
 auto OutputAqlItemRow::fastForwardAllRows(InputAqlItemRow const& sourceRow, size_t rows)
     -> void {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_ASSERT(sourceRow.internalBlockIs(_block));
+  TRI_ASSERT(sourceRow.internalBlockIs(_block, _baseIndex));
 #endif
   TRI_ASSERT(_doNotCopyInputRow);
   TRI_ASSERT(_call.getLimit() >= rows);
@@ -226,7 +228,7 @@ void OutputAqlItemRow::copyBlockInternalRegister(InputAqlItemRow const& sourceRo
   // This method is only allowed if the block of the input row is the same as
   // the block of the output row!
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_ASSERT(sourceRow.internalBlockIs(_block));
+  TRI_ASSERT(sourceRow.internalBlockIs(_block, _baseIndex));
 #endif
   TRI_ASSERT(isOutputRegister(output));
   // This is already implicitly asserted by isOutputRegister:
@@ -296,9 +298,12 @@ AqlCall& OutputAqlItemRow::getModifiableClientCall() { return _call; };
 
 AqlCall&& OutputAqlItemRow::stealClientCall() { return std::move(_call); }
 
-void OutputAqlItemRow::setCall(AqlCall call) { _call = call; }
-
-void OutputAqlItemRow::didSkip(size_t n) { _call.didSkip(n); }
+void OutputAqlItemRow::setCall(AqlCall call) {
+  // We cannot create an output row if we still have unreported skipCount
+  // in the call.
+  TRI_ASSERT(_call.getSkipCount() == 0);
+  _call = call;
+}
 
 SharedAqlItemBlockPtr OutputAqlItemRow::stealBlock() {
   // numRowsWritten() inspects _block, so save this before resetting it!
@@ -313,7 +318,7 @@ SharedAqlItemBlockPtr OutputAqlItemRow::stealBlock() {
     // written and takes into account whether the current row was written.
     block->shrink(numRows);
 
-    if (_doNotCopyInputRow) {
+    if (!registersToClear().empty()) {
       block->clearRegisters(registersToClear());
     }
   }
@@ -348,7 +353,7 @@ void OutputAqlItemRow::createShadowRow(InputAqlItemRow const& sourceRow) {
   TRI_ASSERT(sourceRow.isInitialized());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // We can only add shadow rows if source and this are different blocks
-  TRI_ASSERT(!sourceRow.internalBlockIs(_block));
+  TRI_ASSERT(!sourceRow.internalBlockIs(_block, _baseIndex));
 #endif
   block().makeShadowRow(_baseIndex);
   doCopyOrMoveRow<InputAqlItemRow const, CopyOrMove::COPY, AdaptRowDepth::IncreaseDepth>(sourceRow, true);
@@ -422,7 +427,8 @@ void OutputAqlItemRow::doCopyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissin
   // of all rows increases or decreases, respectively. In these cases, we have
   // to adapt the depth by plus one or minus one, respectively.
   auto const rowDepth = std::invoke([&sourceRow]() -> size_t {
-    static bool constexpr isShadowRow = std::is_same_v<std::decay_t<ItemRowType>, ShadowAqlItemRow>;
+    static bool constexpr isShadowRow =
+        std::is_same_v<std::decay_t<ItemRowType>, ShadowAqlItemRow>;
     auto const baseRowDepth = std::invoke([&sourceRow]() -> size_t {
       if constexpr (isShadowRow) {
         return sourceRow.getDepth() + 1;
@@ -530,15 +536,12 @@ template void OutputAqlItemRow::cloneValueInto<InputAqlItemRow>(
     RegisterId registerId, const InputAqlItemRow& sourceRow, AqlValue const& value);
 template void OutputAqlItemRow::cloneValueInto<ShadowAqlItemRow>(
     RegisterId registerId, const ShadowAqlItemRow& sourceRow, AqlValue const& value);
-template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueGuard>(RegisterId registerId,
-                                                               InputAqlItemRow const& sourceRow,
-                                                               AqlValueGuard& guard);
+template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueGuard>(
+    RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueGuard& guard);
 template void OutputAqlItemRow::moveValueInto<ShadowAqlItemRow, AqlValueGuard>(
     RegisterId registerId, ShadowAqlItemRow const& sourceRow, AqlValueGuard& guard);
 
-template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, VPackSlice const>(RegisterId registerId,
-                                                               InputAqlItemRow const& sourceRow,
-                                                               VPackSlice const& guard);
+template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, VPackSlice const>(
+    RegisterId registerId, InputAqlItemRow const& sourceRow, VPackSlice const& guard);
 template void OutputAqlItemRow::moveValueInto<ShadowAqlItemRow, VPackSlice const>(
     RegisterId registerId, ShadowAqlItemRow const& sourceRow, VPackSlice const& guard);
-

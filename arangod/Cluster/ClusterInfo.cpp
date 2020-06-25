@@ -25,9 +25,11 @@
 
 #include "ClusterInfo.h"
 
+#include "Agency/AgencyPaths.h"
+#include "Agency/AsyncAgencyComm.h"
 #include "Agency/TimeString.h"
+#include "Agency/TransactionBuilder.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/application-exit.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
@@ -37,10 +39,10 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/application-exit.h"
 #include "Basics/hashes.h"
 #include "Basics/system-functions.h"
 #include "Cluster/AgencyCache.h"
-#include "Cluster/AgencyPaths.h"
 #include "Cluster/ClusterCollectionCreationInfo.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
@@ -75,6 +77,8 @@
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
+
+#include <chrono>
 
 namespace {
 
@@ -380,6 +384,8 @@ uint64_t ClusterInfo::uniqid(uint64_t count) {
   if (_uniqid._currentValue + count - 1 <= _uniqid._upperValue) {
     uint64_t result = _uniqid._currentValue;
     _uniqid._currentValue += count;
+
+    TRI_ASSERT(result != 0);
     return result;
   }
 
@@ -390,6 +396,7 @@ uint64_t ClusterInfo::uniqid(uint64_t count) {
     _uniqid._upperValue = _uniqid._nextUpperValue;
     triggerBackgroundGetIds();
 
+    TRI_ASSERT(result != 0);
     return result;
   }
 
@@ -409,6 +416,7 @@ uint64_t ClusterInfo::uniqid(uint64_t count) {
   _uniqid._nextBatchStart = _uniqid._upperValue + 1;
   _uniqid._nextUpperValue = _uniqid._upperValue + fetch - 1;
 
+  TRI_ASSERT(result != 0);
   return result;
 }
 
@@ -609,7 +617,7 @@ void ClusterInfo::loadPlan() {
     _newPlannedViews.clear();
   });
 
-  bool planValid = true;  // has the loadPlan compleated without skipping valid objects
+  bool planValid = true;  // has the loadPlan completed without skipping valid objects
   // we will set in the end
 
   std::shared_ptr<arangodb::velocypack::Builder> planBuilder;
@@ -1182,6 +1190,11 @@ void ClusterInfo::loadPlan() {
     }
   }
 
+  {
+    std::lock_guard w(_waitPlanVersionLock);
+    triggerWaiting(_waitPlanVersion, _planVersion);
+  }
+
   _lpTimer.count(duration<float,std::milli>(clock::now()-start).count());
 
 }
@@ -1358,6 +1371,11 @@ void ClusterInfo::loadCurrent() {
       // In the unittests, there is no heartbeatthread, and we do not need to notify
       heartbeatThread->notify();
     }
+  }
+
+  {
+    std::lock_guard w(_waitCurrentVersionLock);
+    triggerWaiting(_waitCurrentVersion, _currentVersion);
   }
 
   _lcTimer.count(duration<float,std::milli>(clock::now()-start).count());
@@ -2344,6 +2362,16 @@ Result ClusterInfo::createCollectionsCoordinator(
       } else {
         otherCidShardMap = getCollection(databaseName, otherCidString)->shardIds();
       }
+
+      auto const dslProtoColPath =
+          paths::root()->arango()->plan()->collections()->database(databaseName)->collection(otherCidString);
+      // The distributeShardsLike prototype collection should exist in the plan...
+      precs.emplace_back(AgencyPrecondition(dslProtoColPath,
+                                            AgencyPrecondition::Type::EMPTY, false));
+      // ...and should not still be in creation.
+      precs.emplace_back(AgencyPrecondition(dslProtoColPath->isBuilding(),
+                                            AgencyPrecondition::Type::EMPTY, true));
+
       // Any of the shards locked?
       for (auto const& shard : *otherCidShardMap) {
         precs.emplace_back(AgencyPrecondition("Supervision/Shards/" + shard.first,
@@ -2472,11 +2500,12 @@ Result ClusterInfo::createCollectionsCoordinator(
         if (res.httpCode() == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
           // use this special error code to signal that we got a precondition failure
           // in this case the caller can try again with an updated version of the plan change
-          return {TRI_ERROR_REQUEST_CANCELED,
+          return {TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED,
                   "operation aborted due to precondition failure"};
         }
         std::string errorMsg = "HTTP code: " + std::to_string(res.httpCode());
-        errorMsg += " error message: " + res.errorMessage();
+        errorMsg += " error message: ";
+        errorMsg += res.errorMessage();
         errorMsg += " error details: " + res.errorDetails();
         errorMsg += " body: " + res.body();
         for (auto const& info : infos) {
@@ -2562,7 +2591,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         events::CreateCollection(databaseName, info.name, res.errorCode());
       }
       loadCurrent();
-      return res.errorCode();
+      return res.asResult();
     }
     if (tmpRes > TRI_ERROR_NO_ERROR) {
       // We do not need to lock all condition variables
@@ -2978,7 +3007,7 @@ Result ClusterInfo::createViewCoordinator(  // create view
         TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN,  // code
         std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
             " HTTP code: " + std::to_string(res.httpCode()) +
-            " error message: " + res.errorMessage() +
+            " error message: " + std::string(res.errorMessage()) +
             " error details: " + res.errorDetails() + " body: " + res.body());
   }
 
@@ -3029,12 +3058,13 @@ Result ClusterInfo::dropViewCoordinator(  // drop view
       // Dump agency plan:
       logAgencyDump();
     } else {
-      result = Result(                                            // result
-          TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN,  // FIXME COULD_NOT_REMOVE_VIEW_IN_PLAN
-          std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
-              " HTTP code: " + std::to_string(res.httpCode()) +
-              " error message: " + res.errorMessage() +
-              " error details: " + res.errorDetails() + " body: " + res.body());
+      // FIXME COULD_NOT_REMOVE_VIEW_IN_PLAN
+      result =
+          Result(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN,
+                 std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
+                     " HTTP code: " + std::to_string(res.httpCode()) +
+                     " error message: " + std::string(res.errorMessage()) +
+                     " error details: " + res.errorDetails() + " body: " + res.body());
     }
   }
 
@@ -3184,12 +3214,13 @@ std::pair<Result, AnalyzersRevision::Revision> ClusterInfo::startModifyingAnalyz
         continue;
       }
 
-      return std::make_pair(Result(TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
-                                   std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
-                                   " HTTP code: " + std::to_string(res.httpCode()) +
-                                   " error message: " + res.errorMessage() +
-                                   " error details: " + res.errorDetails() + " body: " + res.body()),
-                            AnalyzersRevision::LATEST);
+      return std::make_pair(
+          Result(TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
+                 std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
+                     " HTTP code: " + std::to_string(res.httpCode()) +
+                     " error message: " + std::string(res.errorMessage()) +
+                     " error details: " + res.errorDetails() + " body: " + res.body()),
+          AnalyzersRevision::LATEST);
     } else {
       auto results = res.slice().get("results");
       if (results.isArray() && results.length() > 0) {
@@ -3288,12 +3319,11 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(DatabaseID const& databas
         break; // failed precondition means our revert is indirectly successful!
       }
 
-      return Result(
-          TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
-          std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
-              " HTTP code: " + std::to_string(res.httpCode()) +
-              " error message: " + res.errorMessage() +
-              " error details: " + res.errorDetails() + " body: " + res.body());
+      return Result(TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
+                    std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
+                        " HTTP code: " + std::to_string(res.httpCode()) +
+                        " error message: " + std::string(res.errorMessage()) +
+                        " error details: " + res.errorDetails() + " body: " + res.body());
     } else {
       auto results = res.slice().get("results");
       if (results.isArray() && results.length() > 0) {
@@ -4960,7 +4990,7 @@ arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
   return arangodb::Result();
 }
 
-std::string const backupKey = "/arango/Target/HotBackup/Create/";
+std::string const backupKey = "/arango/Target/HotBackup/Create";
 std::string const maintenanceKey = "/arango/Supervision/Maintenance";
 std::string const supervisionMode = "/arango/Supervision/State/Mode";
 std::string const toDoKey = "/arango/Target/ToDo";
@@ -4991,7 +5021,7 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
       {
         VPackObjectBuilder o(&builder);
         builder.add(                                      // Backup lock
-          backupKey + backupId,
+          backupKey,
           VPackValue(
             timepointToString(
               std::chrono::system_clock::now() + std::chrono::seconds(timeouti))));
@@ -5035,7 +5065,7 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
       {
         VPackObjectBuilder o(&builder);
         builder.add(                                      // Backup lock
-          backupKey + backupId,
+          backupKey,
           VPackValue(
             timepointToString(
               std::chrono::system_clock::now() + std::chrono::seconds(timeouti))));
@@ -5046,7 +5076,7 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
               std::chrono::system_clock::now() + std::chrono::seconds(timeouti))));
       }
 
-      // Prevonditions
+      // Preconditions
       {
         VPackObjectBuilder precs(&builder);
         builder.add(VPackValue(backupKey));  // Backup key empty
@@ -5089,18 +5119,18 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
                             "failed to acquire backup lock in agency");
   }
 
-  auto rv = VPackParser::fromJson(result.bodyRef());
-
   LOG_TOPIC("a94d5", DEBUG, Logger::BACKUP)
-      << "agency lock response for backup id " << backupId << ": " << rv->toJson();
+      << "agency lock response for backup id " << backupId << ": "
+      << result.slice().toJson();
 
-  if (!rv->slice().isObject() || !rv->slice().hasKey("results") ||
-      !rv->slice().get("results").isArray() || rv->slice().get("results").length() != 2) {
+  if (!result.slice().isObject() || !result.slice().hasKey("results") ||
+      !result.slice().get("results").isArray() ||
+      result.slice().get("results").length() != 2) {
     return arangodb::Result(
-      TRI_ERROR_HOT_BACKUP_INTERNAL,
-      "invalid agency result while acquiring backup lock");
+        TRI_ERROR_HOT_BACKUP_INTERNAL,
+        "invalid agency result while acquiring backup lock");
   }
-  auto ar = rv->slice().get("results");
+  auto ar = result.slice().get("results");
 
   uint64_t first = ar[0].getNumber<uint64_t>();
   uint64_t second = ar[1].getNumber<uint64_t>();
@@ -5193,16 +5223,14 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId,
                             "failed to release backup lock in agency");
   }
 
-  auto rv = VPackParser::fromJson(result.bodyRef());
-
-  if (!rv->slice().isObject() || !rv->slice().hasKey("results") ||
-      !rv->slice().get("results").isArray()) {
+  if (!result.slice().isObject() || !result.slice().hasKey("results") ||
+      !result.slice().get("results").isArray()) {
     return arangodb::Result(
         TRI_ERROR_HOT_BACKUP_INTERNAL,
         "invalid agency result while releasing backup lock");
   }
 
-  auto ar = rv->slice().get("results");
+  auto ar = result.slice().get("results");
   if (!ar[0].isNumber()) {
     return arangodb::Result(
         TRI_ERROR_HOT_BACKUP_INTERNAL,
@@ -5429,26 +5457,68 @@ void ClusterInfo::SyncerThread::run() {
 
 }
 
-futures::Future<arangodb::Result> ClusterInfo::waitForCurrent(uint64_t index) {
+futures::Future<arangodb::Result> ClusterInfo::waitForCurrent(uint64_t raftIndex) {
   READ_LOCKER(readLocker, _currentProt.lock);
-  if (index <= _currentIndex) {
+  if (raftIndex <= _currentIndex) {
     return futures::makeFuture(arangodb::Result());
   }
   // intentionally don't release _storeLock here until we have inserted the promise
   std::lock_guard w(_waitCurrentLock);
-  return _waitCurrent.emplace(index, futures::Promise<arangodb::Result>())->second.getFuture();
+  return _waitCurrent.emplace(raftIndex, futures::Promise<arangodb::Result>())->second.getFuture();
 }
 
-futures::Future<arangodb::Result> ClusterInfo::waitForPlan(uint64_t index) {
+futures::Future<arangodb::Result> ClusterInfo::waitForCurrentVersion(uint64_t currentVersion) {
+  READ_LOCKER(readLocker, _currentProt.lock);
+  if (currentVersion <= _currentVersion) {
+    return futures::makeFuture(arangodb::Result());
+  }
+  // intentionally don't release _storeLock here until we have inserted the promise
+  std::lock_guard w(_waitCurrentVersionLock);
+  return _waitCurrentVersion
+      .emplace(currentVersion, futures::Promise<arangodb::Result>())
+      ->second.getFuture();
+}
+
+futures::Future<arangodb::Result> ClusterInfo::waitForPlan(uint64_t raftIndex) {
 
   READ_LOCKER(readLocker, _planProt.lock);
-  if (index <= _planIndex) {
+  if (raftIndex <= _planIndex) {
     return futures::makeFuture(arangodb::Result());
   }
 
   // intentionally don't release _storeLock here until we have inserted the promise
   std::lock_guard w(_waitPlanLock);
-  return _waitPlan.emplace(index, futures::Promise<arangodb::Result>())->second.getFuture();
+  return _waitPlan.emplace(raftIndex, futures::Promise<arangodb::Result>())->second.getFuture();
+}
+
+futures::Future<Result> ClusterInfo::waitForPlanVersion(uint64_t planVersion) {
+  READ_LOCKER(readLocker, _planProt.lock);
+  if (planVersion <= _planVersion) {
+    return futures::makeFuture(arangodb::Result());
+  }
+
+  // intentionally don't release _storeLock here until we have inserted the promise
+  std::lock_guard w(_waitPlanVersionLock);
+  return _waitPlanVersion
+      .emplace(planVersion, futures::Promise<arangodb::Result>())
+      ->second.getFuture();
+}
+
+futures::Future<Result> ClusterInfo::fetchAndWaitForPlanVersion(network::Timeout timeout) {
+  // Save the applicationServer, not the ClusterInfo, in case of shutdown.
+  return cluster::fetchPlanVersion(timeout).thenValue(
+      [&applicationServer = server()](auto maybePlanVersion) {
+        if (maybePlanVersion.ok()) {
+          auto planVersion = maybePlanVersion.get();
+
+          auto& clusterInfo =
+              applicationServer.getFeature<ClusterFeature>().clusterInfo();
+
+          return clusterInfo.waitForPlanVersion(planVersion);
+        } else {
+          return futures::Future<Result>{maybePlanVersion.result()};
+        }
+      });
 }
 
 void ClusterInfo::triggerWaiting(
@@ -5582,6 +5652,54 @@ void AnalyzerModificationTransaction::revertCounter() {
 
 std::atomic<int32_t>  arangodb::AnalyzerModificationTransaction::_pendingAnalyzerOperationsCount{ 0 };
 
+namespace {
+template <typename T>
+futures::Future<ResultT<T>> fetchNumberFromAgency(std::shared_ptr<cluster::paths::Path const> path,
+                                                  network::Timeout timeout) {
+  VPackBuffer<uint8_t> trx;
+  {
+    VPackBuilder builder(trx);
+    arangodb::agency::envelope<VPackBuilder>::create(builder)
+        .read()
+        .key(path->str())
+        .done()
+        .done();
+  }
+
+  auto fAacResult = AsyncAgencyComm().sendReadTransaction(timeout, std::move(trx));
+
+  auto fResult = std::move(fAacResult).thenValue([path = std::move(path)](auto&& result) {
+    if (result.ok() && result.statusCode() == fuerte::StatusOK) {
+      return ResultT<T>::success(
+          result.slice().at(0).get(path->vec()).template getNumber<T>());
+    } else {
+      return ResultT<T>::error(result.asResult());
+    }
+  });
+
+  return fResult;
+}
+}  // namespace
+
+futures::Future<ResultT<uint64_t>> cluster::fetchPlanVersion(network::Timeout timeout) {
+  using namespace std::chrono_literals;
+
+  auto planVersionPath = cluster::paths::root()->arango()->plan()->version();
+
+  return fetchNumberFromAgency<uint64_t>(std::static_pointer_cast<paths::Path const>(
+                                             std::move(planVersionPath)),
+                                         timeout);
+}
+
+futures::Future<ResultT<uint64_t>> cluster::fetchCurrentVersion(network::Timeout timeout) {
+  using namespace std::chrono_literals;
+
+  auto currentVersionPath = cluster::paths::root()->arango()->current()->version();
+
+  return fetchNumberFromAgency<uint64_t>(std::static_pointer_cast<paths::Path const>(
+                                             std::move(currentVersionPath)),
+                                         timeout);
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

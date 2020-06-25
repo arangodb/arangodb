@@ -417,6 +417,20 @@ function componentsTestSuite() {
   const m = 300; // edges
   const problematicGraphName = 'problematic';
 
+  // a simple LCG to create deterministic pseudorandom numbers, 
+  // from https://gist.github.com/Protonk/5389384
+  let createRand = function(seed) {
+    const m = 25;
+    const a = 11;
+    const c = 17;
+
+    let z = seed || 3;
+    return function() {
+      z = (a * z + c) % m;
+      return z / m;
+    };
+  };
+
   return {
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -462,11 +476,13 @@ function componentsTestSuite() {
 
       console.log("Done inserting vertices, inserting edges");
 
+      let lcg = createRand();
+
       for (let c = 0; c < numComponents; c++) {
         let edges = [];
         for (let x = 0; x < m; x++) {
-          let fromID = String(c) + ":" + Math.floor(Math.random() * n);
-          let toID = String(c) + ":" + Math.floor(Math.random() * n);
+          let fromID = String(c) + ":" + Math.floor(lcg() * n);
+          let toID = String(c) + ":" + Math.floor(lcg() * n);
           let from = vColl + '/' + fromID;
           let to = vColl + '/' + toID;
           edges.push({ _from: from, _to: to, vertex: String(fromID) });
@@ -475,7 +491,7 @@ function componentsTestSuite() {
 
         for (let x = 0; x < n; x++) {
           let fromID = String(c) + ":" + x;
-          let toID = String(c) + ":" + (x+1);
+          let toID = String(c) + ":" + (x + 1);
           let from = vColl + '/' + fromID;
           let to = vColl + '/' + toID;
           db[eColl].insert({ _from: from, _to: to, vertex: String(fromID) });

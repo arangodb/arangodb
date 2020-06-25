@@ -835,7 +835,9 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
     nodes.add("estimatedNrItems", VPackValue(estimate.estimatedNrItems));
   }
 
-  if (flags & ExecutionNode::SERIALIZE_DETAILS) {
+  // SERIALIZE_REGISTER_INFORMATION => SERIALIZE_DETAILS
+  TRI_ASSERT(!ExecutionNode::SERIALIZE_REGISTER_INFORMATION || ExecutionNode::SERIALIZE_DETAILS);
+  if (flags & (ExecutionNode::SERIALIZE_DETAILS | ExecutionNode::SERIALIZE_REGISTER_INFORMATION)) {
     nodes.add("depth", VPackValue(_depth));
 
     if (_registerPlan) {
@@ -883,6 +885,55 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
       for (auto const& stackEntry : _varsValidStack) {
         VPackArrayBuilder stackEntryGuard(&nodes);
         for (auto const& oneVar : stackEntry) {
+          oneVar->toVelocyPack(nodes);
+        }
+      }
+    }
+
+    if (flags & ExecutionNode::SERIALIZE_REGISTER_INFORMATION) {
+      nodes.add(VPackValue("unusedRegsStack"));
+      auto const& unusedRegsStack = _registerPlan->unusedRegsByNode.at(id());
+      {
+        VPackArrayBuilder guard(&nodes);
+        TRI_ASSERT(!unusedRegsStack.empty());
+        for (auto const& stackEntry : unusedRegsStack) {
+          VPackArrayBuilder stackEntryGuard(&nodes);
+          for (auto const& reg : stackEntry) {
+            nodes.add(VPackValue(reg));
+          }
+        }
+      }
+
+      nodes.add(VPackValue("regVarMapStack"));
+      auto const& regVarMapStack = _registerPlan->regVarMapStackByNode.at(id());
+      {
+        VPackArrayBuilder guard(&nodes);
+        TRI_ASSERT(!regVarMapStack.empty());
+        for (auto const& stackEntry : regVarMapStack) {
+          VPackObjectBuilder stackEntryGuard(&nodes);
+          for (auto const& reg : stackEntry) {
+            using std::to_string;
+            nodes.add(VPackValue(to_string(reg.first)));
+            reg.second->toVelocyPack(nodes);
+          }
+        }
+      }
+
+      nodes.add(VPackValue("varsSetHere"));
+      {
+        VPackArrayBuilder guard(&nodes);
+        auto const& varsSetHere = getVariablesSetHere();
+        for (auto const& oneVar : varsSetHere) {
+          oneVar->toVelocyPack(nodes);
+        }
+      }
+
+      nodes.add(VPackValue("varsUsedHere"));
+      {
+        VPackArrayBuilder guard(&nodes);
+        auto varsUsedHere = VarSet{};
+        getVariablesUsedHere(varsUsedHere);
+        for (auto const& oneVar : varsUsedHere) {
           oneVar->toVelocyPack(nodes);
         }
       }
@@ -941,7 +992,7 @@ struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode> {
 #endif
 
 /// @brief planRegisters
-void ExecutionNode::planRegisters(ExecutionNode* super) {
+void ExecutionNode::planRegisters(ExecutionNode* super, ExplainRegisterPlan explainRegisterPlan) {
   // The super is only for the case of subqueries.
   std::shared_ptr<RegisterPlan> v;
 
@@ -951,13 +1002,13 @@ void ExecutionNode::planRegisters(ExecutionNode* super) {
     v = std::make_shared<RegisterPlan>(*(super->_registerPlan), super->_depth);
   }
 
-  RegisterPlanWalker walker(v);
+  auto walker = RegisterPlanWalker{v, explainRegisterPlan};
   walk(walker);
 
   // Now handle the subqueries:
   for (auto& s : v->subQueryNodes) {
     auto sq = ExecutionNode::castTo<SubqueryNode*>(s);
-    sq->getSubquery()->planRegisters(s);
+    sq->getSubquery()->planRegisters(s, explainRegisterPlan);
   }
   walker.reset();
 }

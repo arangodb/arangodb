@@ -26,7 +26,7 @@
 #include "Aql/AqlCallList.h"
 #include "Basics/ResultT.h"
 
-#include <stack>
+#include <vector>
 
 namespace arangodb {
 namespace velocypack {
@@ -55,9 +55,11 @@ class AqlCallStack {
   // Used in subquery
   AqlCallStack(AqlCallStack const& other, AqlCallList call);
   // Used to pass between blocks
-  AqlCallStack(AqlCallStack const& other);
+  AqlCallStack(AqlCallStack const& other) = default;
+  AqlCallStack(AqlCallStack&& other) = default;
 
   AqlCallStack& operator=(AqlCallStack const& other) = default;
+  AqlCallStack& operator=(AqlCallStack&& other) = default;
 
   static auto fromVelocyPack(velocypack::Slice) -> ResultT<AqlCallStack>;
 
@@ -168,11 +170,15 @@ class AqlCallStack {
  private:
   explicit AqlCallStack(std::vector<AqlCallList>&& operations);
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto validateNoCallHasSkippedRows() -> void;
+#endif
+
  private:
-  // The list of operations, stacked by depth (e.g. bottom element is from main
-  // query) NOTE: This is only mutable on 3.6 compatibility mode. We need to
-  // inject an additional call in any const operation here just to pretend we
-  // are not empty. Can be removed after 3.7.
+  // The list of operations, stacked by depth (e.g. bottom element is from
+  // main query) NOTE: This is only mutable on 3.6 compatibility mode. We
+  // need to inject an additional call in any const operation here just to
+  // pretend we are not empty. Can be removed after 3.7.
   mutable std::vector<AqlCallList> _operations;
 
   // This flag will be set if and only if

@@ -39,19 +39,30 @@ AqlCallStack::AqlCallStack(AqlCallList call, bool compatibilityMode3_6)
     : _operations{{std::move(call)}}, _compatibilityMode3_6(compatibilityMode3_6) {}
 
 AqlCallStack::AqlCallStack(AqlCallStack const& other, AqlCallList call)
-    : _operations{other._operations} {
+    : _operations{other._operations}, _compatibilityMode3_6{other._compatibilityMode3_6} {
   // We can only use this constructor on relevant levels
-  // Alothers need to use passThrough constructor
+  // All others need to use passThrough constructor
   _operations.emplace_back(std::move(call));
   _compatibilityMode3_6 = other._compatibilityMode3_6;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  validateNoCallHasSkippedRows();
+#endif
 }
 
-AqlCallStack::AqlCallStack(AqlCallStack const& other)
-    : _operations{other._operations},
-      _compatibilityMode3_6(other._compatibilityMode3_6) {}
-
 AqlCallStack::AqlCallStack(std::vector<AqlCallList>&& operations)
-    : _operations(std::move(operations)) {}
+    : _operations(std::move(operations)) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  validateNoCallHasSkippedRows();
+#endif
+}
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+auto AqlCallStack::validateNoCallHasSkippedRows() -> void {
+  for (auto const& list : _operations) {
+    TRI_ASSERT(list.peekNextCall().getSkipCount() == 0);
+  }
+}
+#endif
 
 auto AqlCallStack::popCall() -> AqlCallList {
   TRI_ASSERT(_compatibilityMode3_6 || !_operations.empty());
