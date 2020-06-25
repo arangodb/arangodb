@@ -1707,7 +1707,8 @@ QueryAnalyzerRevisions ClusterInfo::getQueryAnalyzersRevision(
     loadPlan();
     ++tries;
   }
-  QueryAnalyzerRevisions revisions;
+  AnalyzersRevision::Revision currentDbRevision{ AnalyzersRevision::MIN };
+  AnalyzersRevision::Revision systemDbRevision{ AnalyzersRevision::MIN };
   while (true) {  // left by break
     {
       READ_LOCKER(readLocker, _planProt.lock);
@@ -1715,7 +1716,7 @@ QueryAnalyzerRevisions ClusterInfo::getQueryAnalyzersRevision(
       auto it = _dbAnalyzersRevision.find(databaseID);
 
       if (it != _dbAnalyzersRevision.cend()) {
-        revisions.currentDbRevision = it->second->getRevision();
+        currentDbRevision = it->second->getRevision();
         // analyzers from system also available
         // so grab revision for system database as well
         if (databaseID != StaticStrings::SystemDatabase) {
@@ -1723,7 +1724,7 @@ QueryAnalyzerRevisions ClusterInfo::getQueryAnalyzersRevision(
           // if we have non-system database in plan system should be here for sure!
           TRI_ASSERT(sysIt != _dbAnalyzersRevision.cend());
           if (ADB_LIKELY(sysIt != _dbAnalyzersRevision.cend())) {
-            revisions.systemDbRevision = sysIt->second->getRevision();
+            systemDbRevision = sysIt->second->getRevision();
           }
         } else {
           // micro-optimization. If we are querying system database 
@@ -1731,8 +1732,8 @@ QueryAnalyzerRevisions ClusterInfo::getQueryAnalyzersRevision(
           // will be resolved only with systemDbRevision member. So we copy
           // current to system and set current to MIN. As MIN value is default
           // and not transferred at all we will reduce json size for query
-          revisions.systemDbRevision = revisions.currentDbRevision;
-          revisions.currentDbRevision = AnalyzersRevision::MIN;
+          systemDbRevision = currentDbRevision;
+          currentDbRevision = AnalyzersRevision::MIN;
         }
       }
     }
@@ -1743,7 +1744,7 @@ QueryAnalyzerRevisions ClusterInfo::getQueryAnalyzersRevision(
     loadPlan();
   }
 
-  return revisions;
+  return QueryAnalyzerRevisions(currentDbRevision, systemDbRevision);
 }
 
 // Build the VPackSlice that contains the `isBuilding` entry

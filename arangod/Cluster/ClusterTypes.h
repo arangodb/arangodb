@@ -138,6 +138,8 @@ struct QueryAnalyzerRevisions {
     : currentDbRevision(current), systemDbRevision(system) {}
 
   QueryAnalyzerRevisions() = default;
+  QueryAnalyzerRevisions(QueryAnalyzerRevisions const&) = default;
+  QueryAnalyzerRevisions& operator=(QueryAnalyzerRevisions const&) = default;
 
   void toVelocyPack(VPackBuilder& builder) const;
   bool fromVelocyPack(velocypack::Slice slice, std::string& error);
@@ -163,10 +165,11 @@ struct QueryAnalyzerRevisions {
   /// @return analyzers revision
   AnalyzersRevision::Revision getVocbaseRevision(DatabaseID const& vocbase) const noexcept;
 
+  static QueryAnalyzerRevisions QUERY_LATEST;
+
+ private:
   AnalyzersRevision::Revision currentDbRevision{ AnalyzersRevision::MIN};
   AnalyzersRevision::Revision systemDbRevision{ AnalyzersRevision::MIN};
-
-  static QueryAnalyzerRevisions QUERY_LATEST;
 };
 
 }  // namespace arangodb
