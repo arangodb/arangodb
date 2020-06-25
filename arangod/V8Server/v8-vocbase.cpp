@@ -673,7 +673,7 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackSlice collections = queryBuilder->slice().get("collections");
   VPackSlice variables = queryBuilder->slice().get("variables");
   
-  AnalyzersRevision::QueryAnalyzerRevisions analyzersRevision;
+  QueryAnalyzerRevisions analyzersRevision;
   std::string analyzersError;
   if (ADB_UNLIKELY(!analyzersRevision.fromVelocyPack(queryBuilder->slice(), analyzersError))) {
     TRI_V8_THROW_EXCEPTION_FULL(TRI_ERROR_INTERNAL, analyzersError);

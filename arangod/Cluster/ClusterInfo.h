@@ -592,7 +592,7 @@ public:
   /// @param databaseID database to query
   /// @return extracted revisions
   //////////////////////////////////////////////////////////////////////////////
-  AnalyzersRevision::QueryAnalyzerRevisions getQueryAnalyzersRevision(
+  QueryAnalyzerRevisions getQueryAnalyzersRevision(
       DatabaseID const& databaseID);
 
   //////////////////////////////////////////////////////////////////////////////

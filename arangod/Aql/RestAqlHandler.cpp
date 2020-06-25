@@ -253,7 +253,7 @@ void RestAqlHandler::setupClusterQuery() {
 
   answerBuilder.add(StaticStrings::AqlRemoteResult, VPackValue(VPackValueType::Object));
   answerBuilder.add("queryId", VPackValue(q->id()));
-  AnalyzersRevision::QueryAnalyzerRevisions analyzersRevision;
+  QueryAnalyzerRevisions analyzersRevision;
   std::string analyzersError;
   if(ADB_UNLIKELY(!analyzersRevision.fromVelocyPack(querySlice, analyzersError))) {
     LOG_TOPIC("b2a37", ERR, arangodb::Logger::AQL)

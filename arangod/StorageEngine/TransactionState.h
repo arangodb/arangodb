@@ -211,9 +211,9 @@ class TransactionState {
 
 
   void acceptAnalyzersRevision(
-      AnalyzersRevision::QueryAnalyzerRevisions const& analyzersRevsion) noexcept;
+      QueryAnalyzerRevisions const& analyzersRevsion) noexcept;
 
-  const AnalyzersRevision::QueryAnalyzerRevisions& analyzersRevision() const noexcept {
+  const QueryAnalyzerRevisions& analyzersRevision() const noexcept {
     return _analyzersRevision;
   }
   
@@ -265,7 +265,7 @@ class TransactionState {
   /// @brief servers we already talked to for this transactions
   ::arangodb::containers::HashSet<std::string> _knownServers;
 
-  AnalyzersRevision::QueryAnalyzerRevisions _analyzersRevision;
+  QueryAnalyzerRevisions _analyzersRevision;
   bool _registeredTransaction;
 };
 

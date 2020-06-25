@@ -279,7 +279,7 @@ class IResearchAnalyzerFeature final
   /// @return analyzer with the specified name or nullptr
   //////////////////////////////////////////////////////////////////////////////
   AnalyzerPool::ptr get(irs::string_ref const& name,
-                        arangodb::AnalyzersRevision::QueryAnalyzerRevisions const& revision,
+                        arangodb::QueryAnalyzerRevisions const& revision,
                         bool onlyCached = false) const noexcept {
     auto splittedName = splitAnalyzerName(name);
     TRI_ASSERT(splittedName.first.null() || !splittedName.first.empty());
@@ -300,7 +300,7 @@ class IResearchAnalyzerFeature final
   AnalyzerPool::ptr get(irs::string_ref const& name,
                         TRI_vocbase_t const& activeVocbase,
                         TRI_vocbase_t const& systemVocbase,
-                        arangodb::AnalyzersRevision::QueryAnalyzerRevisions const& revision,
+                        arangodb::QueryAnalyzerRevisions const& revision,
                         bool onlyCached = false) const;
 
   //////////////////////////////////////////////////////////////////////////////

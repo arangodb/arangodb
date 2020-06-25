@@ -1699,7 +1699,7 @@ AnalyzersRevision::Ptr ClusterInfo::getAnalyzersRevision(DatabaseID const& datab
   return nullptr;
 }
 
-AnalyzersRevision::QueryAnalyzerRevisions ClusterInfo::getQueryAnalyzersRevision(
+QueryAnalyzerRevisions ClusterInfo::getQueryAnalyzersRevision(
     DatabaseID const& databaseID) {
   int tries = 0;
 
@@ -1707,7 +1707,7 @@ AnalyzersRevision::QueryAnalyzerRevisions ClusterInfo::getQueryAnalyzersRevision
     loadPlan();
     ++tries;
   }
-  AnalyzersRevision::QueryAnalyzerRevisions revisions;
+  QueryAnalyzerRevisions revisions;
   while (true) {  // left by break
     {
       READ_LOCKER(readLocker, _planProt.lock);

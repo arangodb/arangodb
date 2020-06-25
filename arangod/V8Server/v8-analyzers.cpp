@@ -471,7 +471,7 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   try {
-    auto analyzer = analyzers.get(name, arangodb::AnalyzersRevision::QUERY_LATEST);
+    auto analyzer = analyzers.get(name, arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
 
     if (!analyzer) {
       TRI_V8_RETURN_NULL();

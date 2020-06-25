@@ -31,13 +31,13 @@ std::ostream& operator<<(std::ostream& o, arangodb::RebootId const& r) {
 }
 
 std::ostream& operator<<(std::ostream& o, 
-  arangodb::AnalyzersRevision::QueryAnalyzerRevisions const& r) {
+  arangodb::QueryAnalyzerRevisions const& r) {
   return r.print(o);
 }
 
 namespace arangodb {
 
-void AnalyzersRevision::QueryAnalyzerRevisions::toVelocyPack(VPackBuilder& builder) const {
+void QueryAnalyzerRevisions::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder scope(&builder, StaticStrings::ArangoSearchAnalyzersRevision);
   if (currentDbRevision != AnalyzersRevision::MIN) {
     scope->add(StaticStrings::ArangoSearchCurrentAnalyzersRevision,
@@ -49,7 +49,7 @@ void AnalyzersRevision::QueryAnalyzerRevisions::toVelocyPack(VPackBuilder& build
   }
 }
 
-bool AnalyzersRevision::QueryAnalyzerRevisions::fromVelocyPack(velocypack::Slice slice, std::string& error) {
+bool QueryAnalyzerRevisions::fromVelocyPack(velocypack::Slice slice, std::string& error) {
   auto revisions = slice.get(StaticStrings::ArangoSearchAnalyzersRevision);
   if (revisions.isObject()) {
     auto current = revisions.get(StaticStrings::ArangoSearchCurrentAnalyzersRevision);
@@ -98,18 +98,18 @@ bool AnalyzersRevision::QueryAnalyzerRevisions::fromVelocyPack(velocypack::Slice
   return true;
 }
 
-AnalyzersRevision::Revision AnalyzersRevision::QueryAnalyzerRevisions::getVocbaseRevision(
+AnalyzersRevision::Revision QueryAnalyzerRevisions::getVocbaseRevision(
   DatabaseID const& vocbase) const noexcept {
   return vocbase == StaticStrings::SystemDatabase ? systemDbRevision : currentDbRevision;
 }
 
-std::ostream& AnalyzersRevision::QueryAnalyzerRevisions::print(std::ostream& o) const {
+std::ostream& QueryAnalyzerRevisions::print(std::ostream& o) const {
   o << "[Current:" << currentDbRevision << " System:" << systemDbRevision << "]";
   return o;
 }
 
-AnalyzersRevision::QueryAnalyzerRevisions AnalyzersRevision::QUERY_LATEST(AnalyzersRevision::LATEST,
-  AnalyzersRevision::LATEST);
+QueryAnalyzerRevisions QueryAnalyzerRevisions::QUERY_LATEST(AnalyzersRevision::LATEST,
+                                                            AnalyzersRevision::LATEST);
 
 std::ostream& RebootId::print(std::ostream& o) const {
   o << _value;

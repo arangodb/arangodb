@@ -1716,7 +1716,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     irs::string_ref const& name,
     TRI_vocbase_t const& activeVocbase,
     TRI_vocbase_t const& systemVocbase,
-    arangodb::AnalyzersRevision::QueryAnalyzerRevisions const& revision,
+    arangodb::QueryAnalyzerRevisions const& revision,
     bool onlyCached /*= false*/) const {
   auto const normalizedName = normalize(name, activeVocbase, systemVocbase, true);
 
