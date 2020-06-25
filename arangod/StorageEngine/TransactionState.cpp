@@ -39,14 +39,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
-
-namespace {
-std::ostream& operator<<(std::ostream& o, 
-  arangodb::AnalyzersRevision::QueryAnalyzerRevisions const& r) {
-  return r.print(o);
-}
-}
-
 using namespace arangodb;
 
 

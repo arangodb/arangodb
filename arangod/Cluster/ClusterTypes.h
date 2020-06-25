@@ -94,7 +94,7 @@ struct AnalyzersRevision {
   /// Stores current database revision
   /// and _system database revision (analyzers from _system are accessible from other databases)
   /// If at some point we will decide to allow cross-database anayzer usage this could
-  /// became more complicated. But for now to keep it simple - store just two members
+  /// became more complicated. But for now  we keep it simple - store just two members
   struct QueryAnalyzerRevisions {
     constexpr QueryAnalyzerRevisions(Revision current, Revision system)
       : currentDbRevision(current), systemDbRevision(system) {}
@@ -167,9 +167,9 @@ struct AnalyzersRevision {
   ServerID _serverID;
   RebootId _rebootID;
 };
-
 }  // namespace arangodb
 
 std::ostream& operator<<(std::ostream& o, arangodb::RebootId const& r);
+std::ostream& operator<<(std::ostream& o, arangodb::AnalyzersRevision::QueryAnalyzerRevisions const& r);
 
 #endif  // ARANGOD_CLUSTER_CLUSTERTYPES_H

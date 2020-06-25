@@ -30,6 +30,11 @@ std::ostream& operator<<(std::ostream& o, arangodb::RebootId const& r) {
   return r.print(o);
 }
 
+std::ostream& operator<<(std::ostream& o, 
+  arangodb::AnalyzersRevision::QueryAnalyzerRevisions const& r) {
+  return r.print(o);
+}
+
 namespace arangodb {
 
 void AnalyzersRevision::QueryAnalyzerRevisions::toVelocyPack(VPackBuilder& builder) const {
