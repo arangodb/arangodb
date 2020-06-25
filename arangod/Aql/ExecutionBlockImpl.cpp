@@ -1612,6 +1612,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
               if (skippedSub > 0) {
                 auto& call = stack.modifyCallAtDepth(i);
                 call.didSkip(skippedSub);
+                call.resetSkipCount();
               }
             }
           } else {
@@ -1627,6 +1628,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
               if (skippedSub > 0) {
                 auto& call = stack.modifyCallAtDepth(i);
                 call.didSkip(skippedSub);
+                call.resetSkipCount();
               }
             }
           }
@@ -1646,17 +1648,11 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::FETCHER) {
           // We skipped through passthrough, so count that a skip was solved.
           _skipped.merge(skippedLocal, false);
-          clientCall.didSkip(skippedLocal.getSkipCount());
-          clientCall.resetSkipCount();
         } else if constexpr (is_one_of_v<Executor, SubqueryStartExecutor, SubqueryEndExecutor>) {
           // Subquery needs to include the topLevel Skip.
           // But does not need to apply the count to clientCall.
           _skipped.merge(skippedLocal, false);
-          // This is what has been asked for by the SubqueryEnd
-
-          auto& subqueryCall = stack.modifyTopCall();
-          subqueryCall.didSkip(skippedLocal.getSkipCount());
-          subqueryCall.resetSkipCount();
+   
         } else {
           _skipped.merge(skippedLocal, true);
         }
