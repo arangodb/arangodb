@@ -11,6 +11,9 @@ devel
   if v3.3.0 collections are dumped, dropped on the server and then restored
   with the flawed GUIDs.
 
+* Fixed bug in IResearchViewExecutor that lead to only up to 1000 rows being
+  produced.
+
 * Changing the current users profile icon in the Web UI now renders the new
   icon directly without the need of a full UI browser reload.
 
