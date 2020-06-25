@@ -243,7 +243,8 @@ class KShortestPathsExecutorTest
       auto target = std::string{};
 
       if (executorInfos.useRegisterForSourceInput()) {
-        AqlValue value = block->getValue(blockIndex, executorInfos.getSourceInputRegister());
+        AqlValue value =
+            block->getValue(blockIndex, executorInfos.getSourceInputRegister());
         ASSERT_TRUE(value.isString());
         source = value.slice().copyString();
       } else {
@@ -251,7 +252,8 @@ class KShortestPathsExecutorTest
       }
 
       if (executorInfos.useRegisterForTargetInput()) {
-        AqlValue value = block->getValue(blockIndex, executorInfos.getTargetInputRegister());
+        AqlValue value =
+            block->getValue(blockIndex, executorInfos.getTargetInputRegister());
         ASSERT_TRUE(value.isString());
         target = value.slice().copyString();
       } else {
@@ -281,7 +283,8 @@ class KShortestPathsExecutorTest
     for (auto const& block : results) {
       if (block != nullptr) {
         for (size_t blockIndex = 0; blockIndex < block->size(); ++blockIndex, ++expectedRowsIndex) {
-          AqlValue value = block->getValue(blockIndex, executorInfos.getOutputRegister());
+          AqlValue value =
+              block->getValue(blockIndex, executorInfos.getOutputRegister());
           EXPECT_TRUE(value.isArray());
 
           // Note that the correct layout of the result path is currently the
@@ -329,13 +332,15 @@ class KShortestPathsExecutorTest
       std::tie(state, stats, skippedInitial, std::ignore) =
           testee.skipRowsRange(input, ourCall);
     }
+    ourCall.resetSkipCount();
 
     while (state == ExecutorState::HASMORE && ourCall.getLimit() > 0) {
       SharedAqlItemBlockPtr block =
           itemBlockManager.requestBlock(parameters._blockSize, 4);
 
       OutputAqlItemRow output(std::move(block), registerInfos.getOutputRegisters(),
-          registerInfos.registersToKeep(), registerInfos.registersToClear());
+                              registerInfos.registersToKeep(),
+                              registerInfos.registersToClear());
       output.setCall(std::move(ourCall));
 
       std::tie(state, std::ignore, std::ignore) = testee.produceRows(input, output);
@@ -348,13 +353,16 @@ class KShortestPathsExecutorTest
       std::tie(state, stats, skippedFullCount, std::ignore) =
           testee.skipRowsRange(input, ourCall);
     }
+    ourCall.resetSkipCount();
 
     ValidateCalledWith();
     ValidateResult(outputs, skippedInitial, skippedFullCount);
   }
 };  // namespace aql
 
-TEST_P(KShortestPathsExecutorTest, the_test) { TestExecutor(registerInfos, executorInfos, input); }
+TEST_P(KShortestPathsExecutorTest, the_test) {
+  TestExecutor(registerInfos, executorInfos, input);
+}
 
 // Conflict with the other shortest path finder
 namespace {
