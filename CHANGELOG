@@ -1,6 +1,9 @@
 devel
 -----
 
+* Changing the current users profile icon in the Web UI now renders the new
+  icon directly without the need of a full UI browser reload.
+
 * The Web UI's replication view is now checking the replication state
   automatically without the need of a manual reload.
 
