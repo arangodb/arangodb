@@ -25,8 +25,8 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Basics/Common.h"
-#include "Basics/overload.h"
 #include "Basics/ResultT.h"
+#include "Basics/overload.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -181,6 +181,8 @@ struct AqlCall {
     std::visit(minus, softLimit);
     std::visit(minus, hardLimit);
   }
+
+  void resetSkipCount() noexcept;
 
   bool hasLimit() const { return hasHardLimit() || hasSoftLimit(); }
 
