@@ -1025,19 +1025,19 @@ class IResearchAnalyzerFeatureCoordinatorTest
       public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::FATAL>,
       public arangodb::tests::LogSuppressor<arangodb::Logger::ENGINES, arangodb::LogLevel::FATAL>,
       public arangodb::tests::LogSuppressor<arangodb::Logger::FIXME, arangodb::LogLevel::ERR> {
- public:
+public:
   arangodb::tests::mocks::MockCoordinator server;
   std::string _dbName;
   arangodb::SystemDatabaseFeature::ptr _system;
   TRI_vocbase_t* _vocbase;
   arangodb::iresearch::IResearchAnalyzerFeature& _feature;
 
- protected:
+protected:
   IResearchAnalyzerFeatureCoordinatorTest()
-      : server(),
-        _dbName("TestVocbase"),
-        _system(server.getFeature<arangodb::SystemDatabaseFeature>().use()),
-        _feature(server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()) {
+    : server(),
+      _dbName("TestVocbase"),
+      _system(server.getFeature<arangodb::SystemDatabaseFeature>().use()),
+      _feature(server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()) {
     arangodb::tests::init();
 
     // server.addFeature<arangodb::ViewTypesFeature>(true);
@@ -1117,6 +1117,15 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
 
   // get missing via link creation (coordinator) ensure no recursive ClusterInfo::loadPlan() call
   {
+
+    auto bogus = std::make_shared<VPackBuilder>();
+    { VPackArrayBuilder trxs(bogus.get());
+      { VPackArrayBuilder trx(bogus.get());
+        { VPackObjectBuilder op(bogus.get());
+          bogus->add("a", VPackValue(12)); }}}
+    server.server().getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(
+      bogus);
+
     auto createCollectionJson = VPackParser::fromJson(
         std::string("{ \"id\": 42, \"name\": \"") + arangodb::tests::AnalyzerCollectionName +
         "\", \"isSystem\": true, \"shards\": { }, \"type\": 2 }");  // 'id' and 'shards' required for coordinator tests
