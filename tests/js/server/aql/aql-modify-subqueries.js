@@ -1888,7 +1888,6 @@ function ahuacatlGeneratedSuite() {
               )
             LIMIT 1,0
             RETURN noModSub`;
-          db._explain(q, {}, opt);
           db._query(q, {}, opt);
           //assertEqual(db[cn].count(), 4);
         } finally {
