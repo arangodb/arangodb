@@ -1,7 +1,7 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
-* Return `AQL_WARNING()` to emit warnings from UDFs.
+* Returned `AQL_WARNING()` to emit warnings from UDFs.
 
 * Allow removal of existing schemas by saving a schema of either `null` or `{}`
   (empty object). Using an empty string as schema will produce  an error in the
