@@ -27,6 +27,7 @@
 #include "Aql/Query.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/HybridLogicalClock.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/RocksDBUtils.h"
@@ -1237,6 +1238,19 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
       toMerge.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards));
     } else {
       numberOfShards = numberOfShardsSlice.getUInt();
+    }
+  }
+
+  if (parameters.get(StaticStrings::DataSourceGuid).isString()) {
+    std::string const uuid = parameters.get(StaticStrings::DataSourceGuid).copyString();
+    bool valid = false;
+    NumberUtils::atoi_positive<uint64_t>(uuid.data(), uuid.data() + uuid.size(), valid);
+    if (valid) {
+      // globallyUniqueId is only numeric. This causes ambiguities later
+      // and can only happen for collections created with v3.3.0 (the GUID
+      // generation process was changed in v3.3.1 already to fix this issue).
+      // remove the globallyUniqueId so a new one will be generated server.side
+      toMerge.add(StaticStrings::DataSourceGuid, VPackSlice::nullSlice());
     }
   }
 
@@ -3347,6 +3361,17 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   patch.openObject();
   patch.add("version", VPackValue(static_cast<int>(LogicalCollection::currentVersion())));
   patch.add(StaticStrings::DataSourceSystem, VPackValue(TRI_vocbase_t::IsSystemName(name)));
+  if (!uuid.empty()) {
+    bool valid = false;
+    NumberUtils::atoi_positive<uint64_t>(uuid.data(), uuid.data() + uuid.size(), valid);
+    if (valid) {
+      // globallyUniqueId is only numeric. This causes ambiguities later
+      // and can only happen for collections created with v3.3.0 (the GUID
+      // generation process was changed in v3.3.1 already to fix this issue).
+      // remove the globallyUniqueId so a new one will be generated server.side
+      patch.add(StaticStrings::DataSourceGuid, VPackSlice::nullSlice());
+    }
+  }
   patch.add("objectId", VPackSlice::nullSlice());
   patch.add("cid", VPackSlice::nullSlice());
   patch.add("id", VPackSlice::nullSlice());
