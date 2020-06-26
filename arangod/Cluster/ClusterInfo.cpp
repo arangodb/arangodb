@@ -1739,6 +1739,7 @@ QueryAnalyzerRevisions ClusterInfo::getQueryAnalyzersRevision(
           systemDbRevision = currentDbRevision;
           currentDbRevision = AnalyzersRevision::MIN;
         }
+        break;
       }
     }
     if (++tries >= 2) {
