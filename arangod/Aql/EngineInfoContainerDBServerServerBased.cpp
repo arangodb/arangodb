@@ -326,9 +326,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
                     VPackValue(static_cast<SerializationFormatType>(
                         aql::SerializationFormat::SHADOWROWS)));
 
-    infoBuilder.add(StaticStrings::ArangoSearchAnalyzersRevision, 
-                    VPackValue(trx.state()->analyzersRevision()));
-
+    trx.state()->analyzersRevision().toVelocyPack(infoBuilder);
     infoBuilder.close();  // Base object
     TRI_ASSERT(infoBuilder.isClosed());
 

@@ -209,9 +209,11 @@ class TransactionState {
     return _lastWrittenOperationTick;
   }
 
-  void acceptAnalyzersRevision(AnalyzersRevision::Revision analyzersRevision) noexcept;
 
-  AnalyzersRevision::Revision analyzersRevision() const noexcept {
+  void acceptAnalyzersRevision(
+      QueryAnalyzerRevisions const& analyzersRevsion) noexcept;
+
+  const QueryAnalyzerRevisions& analyzersRevision() const noexcept {
     return _analyzersRevision;
   }
   
@@ -263,8 +265,7 @@ class TransactionState {
   /// @brief servers we already talked to for this transactions
   ::arangodb::containers::HashSet<std::string> _knownServers;
 
-  arangodb::AnalyzersRevision::Revision _analyzersRevision{ ::arangodb::AnalyzersRevision::MIN };
-
+  QueryAnalyzerRevisions _analyzersRevision;
   bool _registeredTransaction;
 };
 
