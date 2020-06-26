@@ -78,12 +78,28 @@ static std::string translateStatus(TRI_vocbase_col_status_e status) {
 }
 
 std::string readGloballyUniqueId(arangodb::velocypack::Slice info) {
-  static const std::string empty;
   auto guid = arangodb::basics::VelocyPackHelper::getStringValue(info, arangodb::StaticStrings::DataSourceGuid,
-                                                                 empty);
+                                                                 arangodb::StaticStrings::Empty);
 
   if (!guid.empty()) {
-    return guid;
+    // check if the globallyUniqueId is only numeric. This causes ambiguities later
+    // and can only happen (only) for collections created with v3.3.0 (the GUID
+    // generation process was changed in v3.3.1 already to fix this issue).
+    // remove the globallyUniqueId so a new one will be generated server.side
+    bool validNumber = false;
+    NumberUtils::atoi_positive<uint64_t>(guid.data(), guid.data() + guid.size(), validNumber);
+    if (!validNumber) { 
+      // GUID is not just numeric, this is fine
+      return guid;
+    }
+
+    // GUID is only numeric - we must not use it
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // this should never happen for any collections created during testing. the
+    // only way to make this happen is using a collection created with v3.3.0, 
+    // which we will not have in our tests.
+    TRI_ASSERT(false);
+#endif
   }
 
   auto version = arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
@@ -93,10 +109,10 @@ std::string readGloballyUniqueId(arangodb::velocypack::Slice info) {
   // predictable UUID for legacy collections
   if (static_cast<LogicalCollection::Version>(version) < LogicalCollection::Version::v33 && info.isObject()) {
     return arangodb::basics::VelocyPackHelper::getStringValue(info, arangodb::StaticStrings::DataSourceName,
-                                                              empty);
+                                                              arangodb::StaticStrings::Empty);
   }
 
-  return empty;
+  return arangodb::StaticStrings::Empty;
 }
 
 std::string readStringValue(arangodb::velocypack::Slice info,
@@ -280,7 +296,7 @@ Result LogicalCollection::updateValidators(VPackSlice validatorSlice) {
   if (validatorSlice.isNone() || validatorSlice.isNull()) {
     return { TRI_ERROR_NO_ERROR };
   } else if (!validatorSlice.isObject()) {
-    return {TRI_ERROR_VALIDATION_BAD_PARAMETER, "Validator description is not an object."};
+    return {TRI_ERROR_VALIDATION_BAD_PARAMETER, "Schema description is not an object."};
   }
 
   TRI_ASSERT(validatorSlice.isObject());
@@ -293,7 +309,7 @@ Result LogicalCollection::updateValidators(VPackSlice validatorSlice) {
       auto validator = std::make_unique<ValidatorJsonSchema>(validatorSlice);
       newVec->push_back(std::move(validator));
     } catch (std::exception const& ex) {
-      return { TRI_ERROR_VALIDATION_BAD_PARAMETER, "Error when building validator: "s + ex.what() };
+      return { TRI_ERROR_VALIDATION_BAD_PARAMETER, "Error when building schema: "s + ex.what() };
     }
   }
 

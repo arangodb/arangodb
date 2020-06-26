@@ -5,6 +5,36 @@ devel
 
 * Fixed hotbackup agency lock cleanup procedure.
 
+* Allow restoring collections from v3.3.0 with their all-numeric collection
+  GUID values, by creating a new, unambiguous collection GUID for them. 
+  v3.3.0 had a bug because it created all-numeric GUID values, which can be
+  confused with numeric collection ids in lookups. v3.3.1 already changed the
+  GUID routine to produce something non-numeric already, but collections
+  created with v3.3.0 can still have an ambiguous GUID. This fix adjusts
+  the restore routine to drop such GUID values, so it only changes something
+  if v3.3.0 collections are dumped, dropped on the server and then restored
+  with the flawed GUIDs.
+
+* Fixed bug in IResearchViewExecutor that lead to only up to 1000 rows being
+  produced.
+
+* Changing the current users profile icon in the Web UI now renders the new
+  icon directly without the need of a full UI browser reload.
+
+* The Web UI's replication view is now checking the replication state
+  automatically without the need of a manual reload.
+
+* Fixed an error scenario where a call could miss count skip.
+  It was triggered in the case of Gather in Cluster, if we skipped over a full
+  shard, and the shard did actually skip, but there are more documents to skip
+  on another shard.
+
+* Fixed hotbackup agency lock cleanup procedure.
+
+* Only advance shard version after follower is reported in sync in agency.
+
+* Fixed cluster behavior with HotBackup and non-existing backups on DB-Servers.
+
 * Fixed that, when performing a graph AQL query while a (graceful) failover for
   the leader of the system collections is in progress, ArangoDB would report a
   "Graph not found error".
@@ -43,9 +73,9 @@ devel
 
 * Fixed bad behavior that led to unnecessary additional revision tree rebuilding
   on server restart.
-  
+
 * Allow AQL queries on DB-Servers again. This is not an official supported
-  feature, but is sometimes used for debugging. Previous changes made it 
+  feature, but is sometimes used for debugging. Previous changes made it
   impossible to run a query on a local shard.
 
 * Fix restoring old arangodumps from ArangoDB 3.3 and before, which had index
