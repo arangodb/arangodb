@@ -50,12 +50,12 @@ arangodb::Result RestAdminLogHandler::verifyPermitted() {
   if (loggerFeature.onlySuperUser()) {
     if (!ExecContext::current().isSuperuser()) {
       return arangodb::Result(
-          TRI_ERROR_HTTP_FORBIDDEN, "you need super user rights for hotbackup operations");
+          TRI_ERROR_HTTP_FORBIDDEN, "you need super user rights for log operations");
     } // if
   } else {
     if (!ExecContext::current().isAdminUser()) {
       return arangodb::Result(
-          TRI_ERROR_HTTP_FORBIDDEN, "you need admin rights for hotbackup operations");
+          TRI_ERROR_HTTP_FORBIDDEN, "you need admin rights for log operations");
     } // if
   }
 
