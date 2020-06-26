@@ -154,8 +154,10 @@ auto MultiAqlItemBlockInputRange::peekShadowRow() const -> arangodb::aql::Shadow
 auto MultiAqlItemBlockInputRange::nextShadowRow()
     -> std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> {
   TRI_ASSERT(!hasDataRow());
-
+  
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(!_dependenciesDontAgreeOnState);
+#endif
 
   auto oneDependencyDone = bool{false};
   auto oneDependencyHasMore = bool{false};
@@ -207,7 +209,9 @@ auto MultiAqlItemBlockInputRange::nextShadowRow()
     }
   }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _dependenciesDontAgreeOnState = oneDependencyHasMore && oneDependencyDone;
+#endif
 
   return {state, std::move(shadowRow)};
 }

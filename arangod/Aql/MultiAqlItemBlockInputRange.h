@@ -117,7 +117,7 @@ class MultiAqlItemBlockInputRange {
   [[nodiscard]] auto finalState() const noexcept -> ExecutorState;
 
  private:
-#if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool _dependenciesDontAgreeOnState{false};
 #endif
   std::vector<AqlItemBlockInputRange> _inputs;
