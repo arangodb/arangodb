@@ -639,7 +639,7 @@ void Communicator::logHttpHeaders(std::string const& prefix, std::string const& 
     if (n == std::string::npos) {
       break;
     }
-    if (n - last >= 15 && (headerData.compare(last, 13, "authorization") == 0 |
+    if (n - last >= 15 && (headerData.compare(last, 13, "authorization") == 0 ||
                            headerData.compare(last, 13, "Authorization") == 0)) {
       LOG_TOPIC("36b7f", DEBUG, Logger::COMMUNICATION)
           << prefix << " " << headerData.substr(last, 15) << "SENSITIVE_DETAILS HIDDEN";
