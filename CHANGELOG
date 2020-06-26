@@ -1,7 +1,7 @@
 devel
 -----
 
-* Return `AQL_WARNING()` to emit warnings from UDFs.
+* Returned `AQL_WARNING()` to emit warnings from UDFs.
 
 * Allow restoring collections from v3.3.0 with their all-numeric collection
   GUID values, by creating a new, unambiguous collection GUID for them. 
