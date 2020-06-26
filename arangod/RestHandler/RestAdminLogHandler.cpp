@@ -46,7 +46,7 @@ RestAdminLogHandler::RestAdminLogHandler(application_features::ApplicationServer
 
 arangodb::Result RestAdminLogHandler::verifyPermitted() {
   auto& server = application_features::ApplicationServer::server();
-  auto& loggerFeature = server().getFeature<arangodb::LoggerFeature>();
+  auto& loggerFeature = server.getFeature<arangodb::LoggerFeature>();
 
   // do we have admin rights (if rights are active)
   if (loggerFeature.onlySuperUser()) {
