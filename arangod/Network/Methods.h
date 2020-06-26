@@ -45,22 +45,30 @@ struct Response {
   fuerte::Error error;  /// connectivity error
   std::unique_ptr<arangodb::fuerte::Response> response;
 
-  bool ok() const { return fuerte::Error::NoError == this->error; }
+  [[nodiscard]] bool ok() const { return fuerte::Error::NoError == this->error; }
 
-  bool fail() const { return !ok(); }
+  [[nodiscard]] bool fail() const { return !ok(); }
 
   // returns a slice of the payload if there was no error
-  velocypack::Slice slice() const {
+  [[nodiscard]] velocypack::Slice slice() const {
     if (error == fuerte::Error::NoError && response) {
       return response->slice();
     }
     return velocypack::Slice();  // none slice
   }
 
+  /// @brief Build a Result that contains
+  ///   - no error if everything went well, otherwise
+  ///   - the error from the body, if available, otherwise
+  ///   - the HTTP error, if available, otherwise
+  ///   - the fuerte error, if there was a connectivity error.
+  [[nodiscard]] Result combinedResult() const;
+
  public:
-  std::string destinationShard() const;  /// @brief shardId or empty
-  std::string serverId() const;          /// @brief server ID
+  [[nodiscard]] std::string destinationShard() const;  /// @brief shardId or empty
+  [[nodiscard]] std::string serverId() const;          /// @brief server ID
 };
+
 static_assert(std::is_nothrow_move_constructible<Response>::value, "");
 using FutureRes = arangodb::futures::Future<Response>;
 

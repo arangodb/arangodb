@@ -110,23 +110,6 @@ Mount: /unittest/paths
 
 ======================================================================
 
-- `tests/js/server/resilience/failover/resilience-synchronous-repl-cluster.js`
-
-    [FAILED]  tests/js/server/resilience/failover/resilience-synchronous-repl-cluster.js
-
-      "testBasicOperationsLeaderFail4" failed: ArangoError 1457: timeout in cluster operation - ArangoError: timeout in cluster operation
-    at ArangoDatabase._drop (/work/ArangoDB/js/server/modules/@arangodb/arango-database.js:190:23)
-    at Object.tearDown (tests/js/server/resilience/failover/resilience-synchronous-repl-cluster.js:352:10)
-    at /work/ArangoDB/js/common/modules/jsunity/jsunity.js:468:16
-    at Object.run (/work/ArangoDB/js/common/modules/jsunity/jsunity.js:522:15)
-    at Object.Run [as run] (/work/ArangoDB/js/common/modules/jsunity.js:173:24)
-    at tests/js/server/resilience/failover/resilience-synchronous-repl-cluster.js:874:9
-    at tests/js/server/resilience/failover/resilience-synchronous-repl-cluster.js:878:3
-    at RunTest (/work/ArangoDB/js/common/modules/jsunity.js:250:12)
-    at source (eval at <anonymous> (unknown source), <anonymous>:4:52)
-
-======================================================================
-
 - `./tests/js/server/resilience/moving-shards-with-arangosearch-view-cluster.js` always fails (and needs refactoring) due to changes from PR 7748 with
 
     [FAILED]  tests/js/server/resilience/moving-shards-with-arangosearch-view-cluster.js

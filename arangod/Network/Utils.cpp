@@ -282,5 +282,19 @@ std::string fuerteToArangoErrorMessage(fuerte::Error err) {
   return TRI_errno_string(fuerteToArangoErrorCode(err));
 }
 
+int fuerteStatusToArangoErrorCode(fuerte::Response const& res) {
+  if (res.ok()) {
+    return TRI_ERROR_NO_ERROR;
+  } else if (res.statusCode() > 0) {
+    return static_cast<int>(res.statusCode());
+  } else {
+    return TRI_ERROR_INTERNAL;
+  }
+}
+
+std::string fuerteStatusToArangoErrorMessage(fuerte::Response const& res) {
+  return fuerte::status_code_to_string(res.statusCode());
+}
+
 }  // namespace network
 }  // namespace arangodb
