@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 200, unused: false*/
-/*global assertEqual, assertTrue, assertFalse, fail */
+/*global assertEqual, assertTrue, assertFalse, fail, AQL_WARNING */
 
 /* unused for functions with 'what' parameter.*/
 ////////////////////////////////////////////////////////////////////////////////
@@ -567,6 +567,30 @@ function AqlFunctionsSuite () {
 
       var actual = db._query({ query: "RETURN UnitTests::tryme(4)" }).toArray();
       assertEqual([ false ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a function and run a query
+////////////////////////////////////////////////////////////////////////////////
+
+    testQueryReturnError : function () {
+      unregister("UnitTests::tryme");
+      aqlfunctions.register("UnitTests::tryme", function (what) {
+        const error = require("@arangodb").errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH;
+        AQL_WARNING(error.code,'ALL THY ERRORS ARE BELONG TO US!');
+      },
+                            true);
+
+      var actual = db._query({ query: "RETURN UnitTests::tryme(4)" });
+      assertTrue(actual.hasOwnProperty('_extra'));
+      assertTrue(actual._extra.hasOwnProperty('warnings'));
+      assertTrue(Array.isArray(actual._extra.warnings));
+      assertEqual(actual._extra.warnings.length, 1);
+      var warn = actual._extra.warnings[0];
+      assertTrue(warn.hasOwnProperty('code'));
+      assertTrue(warn.hasOwnProperty('message'));
+      assertEqual(warn.code, require("@arangodb").errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code);
+      assertEqual(warn.message, 'ALL THY ERRORS ARE BELONG TO US!');
     },
 
 ////////////////////////////////////////////////////////////////////////////////
