@@ -582,11 +582,11 @@ function AqlFunctionsSuite () {
                             true);
 
       var actual = db._query({ query: "RETURN UnitTests::tryme(4)" });
-      assertTrue(actual.hasOwnProperty('_extra'));
-      assertTrue(actual._extra.hasOwnProperty('warnings'));
-      assertTrue(Array.isArray(actual._extra.warnings));
-      assertEqual(actual._extra.warnings.length, 1);
-      var warn = actual._extra.warnings[0];
+      let extra = actual.getExtra();
+      assertTrue(extra.hasOwnProperty('warnings'));
+      assertTrue(Array.isArray(extra.warnings));
+      assertEqual(extra.warnings.length, 1);
+      var warn = extra.warnings[0];
       assertTrue(warn.hasOwnProperty('code'));
       assertTrue(warn.hasOwnProperty('message'));
       assertEqual(warn.code, require("@arangodb").errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code);
