@@ -1,7 +1,7 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
-* re-add AQL_WARNING() to emit warnings from UDFs
+* Return `AQL_WARNING()` to emit warnings from UDFs.
 
 * Fixed issue ES-598. Web UI now shows correct permissions in case wildcard
   database level and wildcard collection level permissions are both set.
