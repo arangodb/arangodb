@@ -3,8 +3,6 @@ devel
 * Fixed internal issue #725: Added analyzers revision for system database
   in queries.
 
-* Fixed hotbackup agency lock cleanup procedure.
-
 * Allow restoring collections from v3.3.0 with their all-numeric collection
   GUID values, by creating a new, unambiguous collection GUID for them. 
   v3.3.0 had a bug because it created all-numeric GUID values, which can be
