@@ -1083,12 +1083,13 @@ protected:
 };
 
 TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
+
   // add index factory
   {
     struct IndexTypeFactory : public arangodb::IndexTypeFactory {
       IndexTypeFactory(arangodb::application_features::ApplicationServer& server)
         : arangodb::IndexTypeFactory(server) {}
-      
+
       virtual bool equal(arangodb::velocypack::Slice const& lhs,
                          arangodb::velocypack::Slice const& rhs) const override {
         return false;
@@ -1148,8 +1149,9 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
           "/Current/Collections/_system/" + std::to_string(logicalCollection->id());
       auto const colValue =
           VPackParser::fromJson(
-              "{ \"same-as-dummy-shard-id\": { \"indexes\": [ { \"id\": \"1\" "
+              "{ \"same-as-dummy-shard-id\": { \"indexes\": [ { \"id\": \"43\" "
               "} ], \"servers\": [ \"same-as-dummy-shard-server\" ] } }");  // '1' must match 'idString' in ClusterInfo::ensureIndexCoordinatorInner(...)
+
       EXPECT_TRUE(arangodb::AgencyComm(server.server())
                       .setValue(colPath, colValue->slice(), 0.0)
                       .successful());
@@ -1159,12 +1161,14 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
           "\": { \"name\": \"testCollection\", "
           "\"shards\": { \"same-as-dummy-shard-id\": [ "
           "\"same-as-dummy-shard-server\" ] } } } }");
+
       EXPECT_TRUE(arangodb::AgencyComm(server.server())
                       .setValue(dummyPath, dummyValue->slice(), 0.0)
                       .successful());
       auto const versionPath = "/Plan/Version";
       auto const versionValue =
           VPackParser::fromJson(std::to_string(ci.getPlanVersion() + 1));
+
       EXPECT_TRUE((arangodb::AgencyComm(server.server())
                        .setValue(versionPath, versionValue->slice(), 0.0)
                        .successful()));  // force loadPlan() update
@@ -1177,9 +1181,9 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
     builder.add(arangodb::StaticStrings::IndexType, arangodb::velocypack::Value("testType"));
     builder.add(arangodb::StaticStrings::IndexFields,
                 arangodb::velocypack::Slice::emptyArraySlice());
+    builder.add("id", VPackValue("43"));
     builder.close();
-    res = arangodb::methods::Indexes::ensureIndex(logicalCollection.get(),
-                                                  builder.slice(), true, tmp);
+    res = arangodb::methods::Indexes::ensureIndex(logicalCollection.get(), builder.slice(), true, tmp);
     EXPECT_TRUE(res.ok());
   }
 }
