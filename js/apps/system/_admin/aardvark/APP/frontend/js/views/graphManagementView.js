@@ -158,21 +158,19 @@
 
       if ($('#dropGraphCollections').is(':checked')) {
         var callback = function (success, data) {
+          window.modalView.hide();
           if (success) {
             self.collection.remove(self.collection.get(name));
-            self.updateGraphManagementView();
-            window.modalView.hide();
           } else {
-            window.modalView.hide();
             if (data && data.error && data.errorMessage) {
               arangoHelper.arangoError('Graph', data.errorMessage);
             } else {
               arangoHelper.arangoError('Graph', 'Could not delete Graph.');
             }
-            // also trigger update of view here as graph deletion might work,
-            // but e.g. some collections could not be dropped (distributeShardsLike)
-            self.updateGraphManagementView();
           }
+          // trigger in success and error case
+          // e.g. graph deletion might work, but e.g. some collections could not be dropped (distributeShardsLike)
+          self.updateGraphManagementView();
         };
 
         this.collection.dropAndDeleteGraph(name, callback);
