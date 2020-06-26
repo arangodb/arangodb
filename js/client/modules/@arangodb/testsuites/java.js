@@ -75,22 +75,22 @@ function javaDriver (options) {
       topology = 'SINGLE_SERVER';
     }
     print(instanceInfo)
-    let enterprise = '"false"';
+    let enterprise = 'false';
     if (global.ARANGODB_CLIENT_VERSION(true).hasOwnProperty('enterprise-version')) {
-      enterprise = '"true"';
+      enterprise = 'true';
     }
     db._version(true)
     let rx = /.*:\/\//gi
     print(instanceInfo.url.replace(rx, ''))
     let args = [
       'test', '-U',
-      '-Dgroups="api"',
-      '-Dtest.useProvidedDeployment="true"',
-      '-Dtest.arangodb.version="'+ db._version() + '"',
+      '-Dgroups=api',
+      '-Dtest.useProvidedDeployment=true',
+      '-Dtest.arangodb.version='+ db._version(),
       '-Dtest.arangodb.isEnterprise=' + enterprise,
-      '-Dtest.arangodb.hosts="' + instanceInfo.url.replace(rx,'') + '"',
-      '-Dtest.arangodb.authentication="root:"',
-      '-Dtest.arangodb.topology="' + topology + '"'
+      '-Dtest.arangodb.hosts=' + instanceInfo.url.replace(rx,''),
+      '-Dtest.arangodb.authentication=root:',
+      '-Dtest.arangodb.topology=' + topology
     ];
 
     if (options.testCase) {
@@ -102,7 +102,7 @@ function javaDriver (options) {
         args.push('-D' + key + '="' + options.javaOptions[key] + '"');
       }
     }
-    if (options.extremeVerbosity) {
+    if (options.extremeVerbosity || true) {
       print(args);
     }
     let start = Date();
