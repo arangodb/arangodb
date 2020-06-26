@@ -1087,20 +1087,12 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
   {
     struct IndexTypeFactory : public arangodb::IndexTypeFactory {
       IndexTypeFactory(arangodb::application_features::ApplicationServer& server)
-          : arangodb::IndexTypeFactory(server) {}
-
+        : arangodb::IndexTypeFactory(server) {}
+      
       virtual bool equal(arangodb::velocypack::Slice const& lhs,
                          arangodb::velocypack::Slice const& rhs) const override {
         return false;
       }
-
-      auto bogus = std::make_shared<VPackBuilder>();
-        { VPackArrayBuilder trxs(bogus.get());
-          { VPackArrayBuilder trx(bogus.get());
-            { VPackObjectBuilder op(bogus.get());
-              bogus->add("a", VPackValue(12)); }}}
-      server.server().getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(
-        bogus);
 
       std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                    arangodb::velocypack::Slice const& definition,
