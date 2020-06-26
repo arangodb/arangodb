@@ -540,11 +540,6 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
         state = mtrx.state;
         break;
       }
-      if (!ServerState::instance()->isDBServer()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_LOCKED,
-                                       std::string("transaction '") + std::to_string(tid) +
-                                           "' is already in use");
-      }
     } else {
       if (mtrx.rwlock.tryReadLock()) {
         TRI_ASSERT(mode == AccessMode::Type::READ);
@@ -552,7 +547,6 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
         break;
       }
 
-      LOG_TOPIC("abd72", DEBUG, Logger::TRANSACTIONS) << "transaction '" << tid << "' is already in use";
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_LOCKED,
                                      std::string("transaction '") + std::to_string(tid) + "' is already in use");
     }
