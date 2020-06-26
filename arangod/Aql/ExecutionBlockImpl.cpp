@@ -1064,7 +1064,7 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack) -> E
   //
   // but there are interactions between the two.
   if constexpr (std::is_same_v<DataRange, MultiAqlItemBlockInputRange>) {
-    _rowFetcher.resetDidReturnSubquerySkips();
+    _rowFetcher.resetDidReturnSubquerySkips(shadowRow.getDepth());
   }
 
   countShadowRowProduced(stack, shadowRow.getDepth());
@@ -1648,6 +1648,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::FETCHER) {
           // We skipped through passthrough, so count that a skip was solved.
           _skipped.merge(skippedLocal, false);
+          clientCall.didSkip(skippedLocal.getSkipCount());
+          clientCall.resetSkipCount();
         } else if constexpr (is_one_of_v<Executor, SubqueryStartExecutor, SubqueryEndExecutor>) {
           // Subquery needs to include the topLevel Skip.
           // But does not need to apply the count to clientCall.

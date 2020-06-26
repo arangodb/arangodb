@@ -214,6 +214,14 @@ auto AqlCallStack::modifyCallListAtDepth(size_t depth) -> AqlCallList& {
   return _operations.at(_operations.size() - 1 - depth);
 }
 
+auto AqlCallStack::getCallAtDepth(size_t depth) const -> AqlCall const& {
+  // depth 0 is back of vector
+  TRI_ASSERT(_operations.size() > depth);
+  // Take the depth-most from top of the vector.
+  auto& callList = _operations.at(_operations.size() - 1 - depth);
+  return callList.peekNextCall();
+}
+
 auto AqlCallStack::modifyTopCall() -> AqlCall& {
   TRI_ASSERT(_compatibilityMode3_6 || !_operations.empty());
   if (is36Compatible() && _operations.empty()) {
