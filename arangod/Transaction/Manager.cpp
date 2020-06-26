@@ -419,7 +419,6 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
     return nullptr;
   }
   
-  auto const orgMode = mode;
   auto const role = ServerState::instance()->getRole();
   std::chrono::steady_clock::time_point endTime;
   if (!ServerState::isDBServer(role)) { // keep end time as small as possible
@@ -458,20 +457,19 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
         state = mtrx.state;
         break;
       }
-    } else if (mtrx.rwlock.tryLockRead()) {
-      TRI_ASSERT(mode == AccessMode::Type::READ);
-      state = mtrx.state;
-      break;
-    }
-    
-    // simon: never allow concurrent use of transactions
-    // either busy loop until we get the lock or throw an error
-    
-    if (orgMode == AccessMode::Type::READ) {
+    } else {
+      if (mtrx.rwlock.tryLockRead()) {
+        TRI_ASSERT(mode == AccessMode::Type::READ);
+        state = mtrx.state;
+        break;
+      }
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_LOCKED,
                                      std::string("cannot read-lock, transaction '") + std::to_string(tid) +
                                           "' is already in use");
     }
+    
+    // simon: never allow concurrent use of transactions
+    // either busy loop until we get the lock or throw an error
     
     LOG_TOPIC("abd72", TRACE, Logger::TRANSACTIONS)
         << "transaction '" << tid << "' is already in use (RO)";
