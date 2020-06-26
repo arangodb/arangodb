@@ -1,7 +1,8 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
-* Fixed internal issue #725: Added analyzers revision for system database
-  in queries.
+
+* Fixed internal issue #725: Added analyzers revision for system database in
+  queries.
 
 * Allow removal of existing schemas by saving a schema of either `null` or `{}`
   (empty object). Using an empty string as schema will produce  an error in the
