@@ -7505,12 +7505,6 @@ AqlValue Functions::SchemaGet(ExpressionContext* expressionContext,
                               transaction::Methods* trx,
                               VPackFunctionParameters const& parameters) {
   // SCHEMA_GET(collectionName) -> schema object
-  static char const* AFN = "SCHEMA_GET";
-
-  if (parameters.size() != 1) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, AFN);
-  }
-
   std::string const collectionName = ::extractCollectionName(trx, parameters, 0);
 
   if (collectionName.empty()) {
@@ -7538,7 +7532,7 @@ AqlValue Functions::SchemaGet(ExpressionContext* expressionContext,
 
   if (!ruleSlice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "validation object of collection " +
+                                   "schema definition for collection " +
                                        collectionName + " has no rule object");
   }
 
@@ -7552,14 +7546,19 @@ AqlValue Functions::SchemaValidate(ExpressionContext* expressionContext,
   static char const* AFN = "SCHEMA_VALIDATE";
   auto const* vpackOptions = trx->transactionContext()->getVPackOptions();
 
-  if (parameters.size() != 2) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, AFN);
-  }
-
   AqlValue const& docValue = extractFunctionParameterValue(parameters, 0);
   AqlValue const& schemaValue = extractFunctionParameterValue(parameters, 1);
 
-  if (schemaValue.isNull(false)) {
+  if (!docValue.isObject()) {
+    registerWarning(expressionContext, AFN,
+                    Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                           "expecting document object"));
+    return AqlValue(AqlValueHintNull());
+  }
+
+  if (schemaValue.isNull(false) || 
+      (schemaValue.isObject() && schemaValue.length() == 0)) {
+    // schema is null or {}
     transaction::BuilderLeaser resultBuilder(trx);
     {
       VPackObjectBuilder guard(resultBuilder.builder());
@@ -7575,10 +7574,10 @@ AqlValue Functions::SchemaValidate(ExpressionContext* expressionContext,
   }
   auto* validator = expressionContext->buildValidator(schemaValue.slice());
 
-  //store and restore validation level this is cheaper than modifying the VPack
+  // store and restore validation level this is cheaper than modifying the VPack
   auto storedLevel = validator->level();
 
-  //override level so the validation will be executed no matter what
+  // override level so the validation will be executed no matter what
   validator->setLevel(ValidationLevel::Strict);
 
   Result res;

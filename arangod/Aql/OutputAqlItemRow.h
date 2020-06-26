@@ -77,8 +77,7 @@ class OutputAqlItemRow {
   // the passed AqlValue. However, that means the output block will take
   // responsibility of possibly referenced external memory.
   template <class ItemRowType, class ValueType>
-  void moveValueInto(RegisterId registerId, ItemRowType const& sourceRow,
-                     ValueType& value);
+  void moveValueInto(RegisterId registerId, ItemRowType const& sourceRow, ValueType& value);
 
   // Consume the given shadow row and transform it into a InputAqlItemRow
   // for the next consumer of this block.
@@ -212,8 +211,6 @@ class OutputAqlItemRow {
   AqlCall&& stealClientCall();
 
   void setCall(AqlCall call);
-
-  void didSkip(size_t n);
 
  private:
   [[nodiscard]] RegIdSet const& outputRegisters() const {

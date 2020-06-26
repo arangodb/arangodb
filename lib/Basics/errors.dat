@@ -280,11 +280,11 @@ ERROR_CURSOR_NOT_FOUND,1600,"cursor not found","Will be raised when a cursor is 
 ERROR_CURSOR_BUSY,1601,"cursor is busy","Will be raised when a cursor is requested via its id but a concurrent request is still using the cursor."
 
 ################################################################################
-## ArangoDB validation errors
+## ArangoDB schema validation errors
 ################################################################################
 
-ERROR_VALIDATION_FAILED,1620,"validation failed","Will be raised when a document does not pass validation."
-ERROR_VALIDATION_BAD_PARAMETER,1621,"invalid validation parameter","Will be raised when the validator description is invalid."
+ERROR_VALIDATION_FAILED,1620,"schema validation failed","Will be raised when a document does not pass schema validation."
+ERROR_VALIDATION_BAD_PARAMETER,1621,"invalid schema validation parameter","Will be raised when the schema description is invalid."
 
 ################################################################################
 ## ArangoDB transaction errors

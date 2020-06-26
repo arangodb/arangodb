@@ -277,15 +277,19 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
 
 Result LogicalCollection::updateValidators(VPackSlice validatorSlice) {
   using namespace std::literals::string_literals;
-  if (validatorSlice.isNone() || validatorSlice.isNull()) {
+  if (validatorSlice.isNone()) {
     return { TRI_ERROR_NO_ERROR };
-  } else if (!validatorSlice.isObject()) {
-    return {TRI_ERROR_VALIDATION_BAD_PARAMETER, "Validator description is not an object."};
+  } 
+  if (validatorSlice.isNull()) {
+    validatorSlice = VPackSlice::emptyObjectSlice();
+  }
+  if (!validatorSlice.isObject()) {
+    return {TRI_ERROR_VALIDATION_BAD_PARAMETER, "Schema description is not an object."};
   }
 
   TRI_ASSERT(validatorSlice.isObject());
 
-  std::shared_ptr<ValidatorVec> newVec = std::make_shared<ValidatorVec>();
+  auto newVec = std::make_shared<ValidatorVec>();
 
   // delete validators if empty object is given
   if (!validatorSlice.isEmptyObject()) {
@@ -293,7 +297,7 @@ Result LogicalCollection::updateValidators(VPackSlice validatorSlice) {
       auto validator = std::make_unique<ValidatorJsonSchema>(validatorSlice);
       newVec->push_back(std::move(validator));
     } catch (std::exception const& ex) {
-      return { TRI_ERROR_VALIDATION_BAD_PARAMETER, "Error when building validator: "s + ex.what() };
+      return { TRI_ERROR_VALIDATION_BAD_PARAMETER, "Error when building schema: "s + ex.what() };
     }
   }
 
@@ -426,7 +430,7 @@ uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx,
 }
 
 bool LogicalCollection::hasClusterWideUniqueRevs() const {
-  return usesRevisionsAsDocumentIds() && isSmartChild();
+  return version() >= Version::v37 && isSmartChild();
 }
 
 uint32_t LogicalCollection::v8CacheVersion() const { return _v8CacheVersion; }
@@ -757,10 +761,10 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   result.add(StaticStrings::IsDisjoint, VPackValue(isDisjoint()));
   result.add(StaticStrings::IsSmart, VPackValue(isSmart()));
   result.add(StaticStrings::IsSmartChild, VPackValue(isSmartChild()));
-  result.add(StaticStrings::UsesRevisionsAsDocumentIds,
+  /*result.add(StaticStrings::UsesRevisionsAsDocumentIds,
              VPackValue(usesRevisionsAsDocumentIds()));
   result.add(StaticStrings::MinRevision, VPackValue(minRevision()));
-  result.add(StaticStrings::SyncByRevision, VPackValue(syncByRevision()));
+  result.add(StaticStrings::SyncByRevision, VPackValue(syncByRevision()));*/
 
   if (hasSmartJoinAttribute()) {
     result.add(StaticStrings::SmartJoinAttribute, VPackValue(_smartJoinAttribute));
@@ -817,7 +821,6 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
   // - _isSystem
   // - _isVolatile
   // ... probably a few others missing here ...
-
   if (!vocbase().server().hasFeature<DatabaseFeature>()) {
     return Result(
         TRI_ERROR_INTERNAL,
