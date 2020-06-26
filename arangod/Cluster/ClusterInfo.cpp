@@ -1570,7 +1570,9 @@ std::shared_ptr<LogicalView> ClusterInfo::getView(DatabaseID const& databaseID,
     return lookupView(_newPlannedViews, databaseID, viewID);
   }
 
-  loadPlan();
+  if (!_planProt.isValid) {
+    return nullptr;
+  }
 
   READ_LOCKER(readLocker, _planProt.lock);
   auto const view = lookupView(_plannedViews, databaseID, viewID);
