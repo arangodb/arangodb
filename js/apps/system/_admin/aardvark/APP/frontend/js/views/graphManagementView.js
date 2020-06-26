@@ -164,12 +164,14 @@
             window.modalView.hide();
           } else {
             window.modalView.hide();
-            console.log(data);
             if (data && data.error && data.errorMessage) {
               arangoHelper.arangoError('Graph', data.errorMessage);
             } else {
               arangoHelper.arangoError('Graph', 'Could not delete Graph.');
             }
+            // also trigger update of view here as graph deletion might work,
+            // but e.g. some collections could not be dropped (distributeShardsLike)
+            self.updateGraphManagementView();
           }
         };
 
