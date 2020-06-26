@@ -1,6 +1,9 @@
 devel
 -----
 
+* Privatised load plan / current in cluster info and cleanup following agency
+  cache implementation.
+
 * Allow for faster cluster shutdown. This should reduce the number of shutdown
   hangers in case the agents are stopped already and then coordinators or
   DB-Servers are shut down.
