@@ -1,6 +1,9 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* In case of a graph deletion failure, the Web UI displays now the correct
+  error message.
+
 * Privatised load plan / current in cluster info and cleanup following agency
   cache implementation.
 
