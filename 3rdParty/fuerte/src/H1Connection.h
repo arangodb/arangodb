@@ -28,7 +28,6 @@
 #include <fuerte/message.h>
 
 #include <atomic>
-#include <boost/lockfree/queue.hpp>
 #include <chrono>
 
 #include "GeneralConnection.h"
@@ -37,9 +36,28 @@
 
 namespace arangodb { namespace fuerte { inline namespace v1 { namespace http {
 
+// in-flight request data
+struct RequestItem {
+  /// the request header
+  std::string requestHeader;
+
+  /// Callback for when request is done (in error or succeeded)
+  RequestCallback callback;
+
+  /// Reference to the request we're processing
+  std::unique_ptr<arangodb::fuerte::v1::Request> request;
+  
+  /// point in time when the request expires
+  std::chrono::steady_clock::time_point expires;
+
+  inline void invokeOnError(Error e) {
+    callback(e, std::move(request), nullptr);
+  }
+};
+
 // Implements a client->server connection using node.js http-parser
 template <SocketType ST>
-class H1Connection final : public fuerte::GeneralConnection<ST> {
+class H1Connection final : public fuerte::GeneralConnection<ST, RequestItem> {
  public:
   explicit H1Connection(EventLoopService& loop,
                         detail::ConnectionConfiguration const&);
@@ -55,57 +73,30 @@ class H1Connection final : public fuerte::GeneralConnection<ST> {
 
   /// All methods below here must only be called from the IO thread.
  protected:
-  /// This is posted by `sendRequest` to the _io_context thread, the `_active`
-  /// flag is already set to `true` by an exchange operation
-  void activate();
 
   void finishConnect() override;
-
-  /// The following is called when the connection is permanently failed. It is
-  /// used to shut down any activity in a way that avoids sleeping barbers
-  void terminateActivity() override;
-
-  // Thread-Safe: activate the writer loop (if off and items are queud)
-  void startWriting() override;
+  
+  /// perform writes
+  void doWrite() override {
+    this->asyncWriteNextRequest();
+  }
 
   // called by the async_read handler (called from IO thread)
   void asyncReadCallback(asio_ns::error_code const&) override;
 
   /// abort ongoing / unfinished requests
   void abortOngoingRequests(const fuerte::Error) override;
-
-  /// abort all requests lingering in the queue
-  void drainQueue(const fuerte::Error) override;
+  
+  // abort all expired requests
+  void abortExpiredRequests() override;
+  
+  // calculate smallest timeout
+  std::chrono::steady_clock::time_point getTimeout(bool& isIdle) override;
 
  private:
-  // Reason for timeout:
-  enum class TimeoutType: int {
-    IDLE = 0,
-    READ = 1,
-    WRITE = 2
-  };
-
-  // in-flight request data
-  struct RequestItem {
-    /// the request header
-    std::string requestHeader;
-
-    /// Callback for when request is done (in error or succeeded)
-    RequestCallback callback;
-
-    /// Reference to the request we're processing
-    std::unique_ptr<arangodb::fuerte::v1::Request> request;
-
-    inline void invokeOnError(Error e) {
-      callback(e, std::move(request), nullptr);
-    }
-  };
 
   // build request body for given request
   std::string buildRequestBody(Request const& req);
-
-  /// set the timer accordingly
-  void setTimeout(std::chrono::milliseconds, TimeoutType type);
 
   ///  Call on IO-Thread: writes out one queued request
   void asyncWriteNextRequest();
@@ -123,28 +114,12 @@ class H1Connection final : public fuerte::GeneralConnection<ST> {
   static int on_message_complete(http_parser* p);
 
  private:
-  /// elements to send out
-  boost::lockfree::queue<RequestItem*, boost::lockfree::capacity<64>> _queue;
-
   /// cached authentication header
   std::string _authHeader;
 
   /// the node http-parser
   http_parser _parser;
   http_parser_settings _parserSettings;
-  
-  std::atomic<bool> _active;  /// is loop active
-  bool _reading;    // set between starting an asyncRead operation and executing
-                    // the completion handler
-  bool _writing;    // set between starting an asyncWrite operation and executing
-                    // the completion handler
-  // both are used in the timeout handlers to decide if the timeout still
-  // has to have an effect or if it is merely still on the iocontext and is now
-  // obsolete.
-  std::chrono::steady_clock::time_point _writeStart;
-  // This is the time when the latest write operation started.
-  // We use this to compute the timeout of the corresponding read if the
-  // write was done.
 
   // parser state
   std::string _lastHeaderField;
@@ -161,7 +136,6 @@ class H1Connection final : public fuerte::GeneralConnection<ST> {
   bool _lastHeaderWasValue = false;
   bool _shouldKeepAlive = false;
   bool _messageComplete = false;
-  bool _timeoutOnReadWrite = false;   // indicates that a timeout has happened
 };
 }}}}  // namespace arangodb::fuerte::v1::http
 

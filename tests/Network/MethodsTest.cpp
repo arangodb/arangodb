@@ -62,7 +62,6 @@ struct DummyConnection final : public fuerte::Connection {
   }
   
   void cancel() override {}
-  void start() override {}
   
   fuerte::Connection::State _state = fuerte::Connection::State::Connected;
   

@@ -241,7 +241,7 @@ std::string makeAuthHeader(fu::detail::ConnectionConfiguration const& config) {
 template <SocketType T>
 H2Connection<T>::H2Connection(EventLoopService& loop,
                               fu::detail::ConnectionConfiguration const& config)
-    : fuerte::GeneralConnection<T>(loop, config),
+    : fuerte::GeneralConnection<T, Stream>(loop, config),
       _ping(*(this->_io_context)),
       _authHeader(makeAuthHeader(config)) {
   // Set ALPN "h2" advertisement on connection
@@ -253,7 +253,6 @@ H2Connection<T>::H2Connection(EventLoopService& loop,
 
 template <SocketType T>
 H2Connection<T>::~H2Connection() try {
-  drainQueue(Error::Canceled);
   abortOngoingRequests(Error::Canceled);
   nghttp2_session_del(_session);
   _session = nullptr;
@@ -317,7 +316,7 @@ void H2Connection<T>::sendRequest(std::unique_ptr<Request> req,
 
   // Add item to send queue
   this->_numQueued.fetch_add(1, std::memory_order_relaxed);
-  if (!_queue.push(item.get())) {
+  if (!this->_queue.push(item.get())) {
     FUERTE_LOG_ERROR << "connection queue capacity exceeded\n";
     uint32_t q = this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
     FUERTE_ASSERT(q > 0);
@@ -327,18 +326,18 @@ void H2Connection<T>::sendRequest(std::unique_ptr<Request> req,
   item.release();  // queue owns this now
 
   FUERTE_LOG_HTTPTRACE << "queued item: this=" << this << "\n";
-
-  // _state.load() after queuing request, to prevent race with connect
-  Connection::State state = this->_state.load(std::memory_order_acquire);
-  if (state == Connection::State::Connected) {
-    FUERTE_LOG_HTTPTRACE << "sendRequest (vst): start sending & reading\n";
-    startWriting();  // try to start write loop
-  } else if (state == Connection::State::Disconnected) {
-    FUERTE_LOG_HTTPTRACE << "sendRequest (vst): not connected\n";
-    this->start();  // <- thread-safe connection start
-  } else if (state == Connection::State::Failed) {
-    FUERTE_LOG_ERROR << "queued request on failed connection\n";
-    drainQueue(fuerte::Error::ConnectionClosed);
+  
+  // Note that we have first posted on the queue with std::memory_order_seq_cst
+  // and now we check _active std::memory_order_seq_cst. This prevents a sleeping
+  // barber with the check-set-check combination in `asyncWriteNextRequest`.
+  // If we are the ones to exchange the value to `true`, then we post
+  // on the `_io_context` to activate the connection. Note that the
+  // connection can be in the `Disconnected` or `Connected` or `Failed`
+  // state, but not in the `Connecting` state in this case.
+  if (!this->_active.exchange(true)) {
+    this->_io_context->post([self(Connection::shared_from_this())] {
+        static_cast<H2Connection<T>&>(*self).activate();
+      });
   }
 }
 
@@ -462,7 +461,6 @@ void H2Connection<SocketType::Ssl>::finishConnect() {
   SSL_get0_alpn_selected(this->_proto.socket.native_handle(), &alpn, &alpnlen);
 
   if (alpn == NULL || alpnlen != 2 || memcmp("h2", alpn, 2) != 0) {
-    this->_state.store(Connection::State::Failed);
     FUERTE_LOG_ERROR << "h2 is not negotiated";
     shutdownConnection(Error::ProtocolError, "h2 is not negotiated");
     return;
@@ -487,32 +485,27 @@ void H2Connection<SocketType::Ssl>::finishConnect() {
 // ------------------------------------
 
 // Thread-Safe: activate the writer loop (if off and items are queud)
-template <SocketType T>
-void H2Connection<T>::startWriting() {
-  FUERTE_ASSERT(this->_state.load(std::memory_order_acquire) ==
-                Connection::State::Connected);
-  FUERTE_LOG_HTTPTRACE << "startWriting: this=" << this << "\n";
-  bool tmp = _signaledWrite.load();
-  if (!tmp && !_signaledWrite.exchange(true)) {
-    this->_io_context->post([self = Connection::shared_from_this(), this] {
-      _signaledWrite.store(false);
-      // we have been in a race with shutdownConnection()
-      Connection::State state = this->_state.load();
-      if (state != Connection::State::Connected) {
-        if (state == Connection::State::Disconnected) {
-          this->startConnection();
-        }
-      } else {
-        this->doWrite();
-      }
-    });
-  }
-}
-
-template <SocketType T>
-void H2Connection<T>::terminateActivity() {
-  // TODO: fill in the necessary stuff to fix bugs in this class
-}
+//template <SocketType T>
+//void H2Connection<T>::startWriting() {
+//  FUERTE_ASSERT(this->_state.load(std::memory_order_acquire) ==
+//                Connection::State::Connected);
+//  FUERTE_LOG_HTTPTRACE << "startWriting: this=" << this << "\n";
+//  bool tmp = _signaledWrite.load();
+//  if (!tmp && !_signaledWrite.exchange(true)) {
+//    this->_io_context->post([self = Connection::shared_from_this(), this] {
+//      _signaledWrite.store(false);
+//      // we have been in a race with shutdownConnection()
+//      Connection::State state = this->_state.load();
+//      if (state != Connection::State::Connected) {
+//        if (state == Connection::State::Disconnected) {
+//          this->startConnection();
+//        }
+//      } else {
+//        this->doWrite();
+//      }
+//    });
+//  }
+//}
 
 // queue the response onto the session, call only on IO thread
 template <SocketType T>
@@ -520,7 +513,7 @@ void H2Connection<T>::queueHttp2Requests() {
   int numQueued = 0;  // make sure we do send too many request
 
   Stream* tmp = nullptr;
-  while (numQueued++ < 4 && _queue.pop(tmp)) {
+  while (numQueued++ < 4 && this->_queue.pop(tmp)) {
     std::unique_ptr<Stream> strm(tmp);
     uint32_t q = this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
     FUERTE_ASSERT(q > 0);
@@ -615,9 +608,8 @@ void H2Connection<T>::queueHttp2Requests() {
                                uint8_t* buf, size_t length, uint32_t* data_flags,
                                nghttp2_data_source* source,
                                void* user_data) -> ssize_t {
-          auto strm = static_cast<typename H2Connection<T>::Stream*>(source->ptr);
-
-          auto payload = strm->request->payload();
+          auto strm = static_cast<Stream*>(source->ptr);
+          asio_ns::const_buffer payload = strm->request->payload();
 
           // TODO do not copy the body if it is > 16kb
           FUERTE_ASSERT(payload.size() > strm->responseOffset);
@@ -659,10 +651,10 @@ template <SocketType T>
 void H2Connection<T>::doWrite() {
   FUERTE_LOG_HTTPTRACE << "doWrite\n";
 
-  if (_writing) {
+  if (this->_writing) {
     return;
   }
-  _writing = true;
+  this->_writing = true;
 
   queueHttp2Requests();
 
@@ -675,7 +667,8 @@ void H2Connection<T>::doWrite() {
     const uint8_t* data;
     ssize_t rv = nghttp2_session_mem_send(_session, &data);
     if (rv < 0) {  // error
-      _writing = false;
+      this->_writing = false;
+      this->_active.store(false);
       FUERTE_LOG_ERROR << "http2 framing error";
       this->shutdownConnection(Error::ProtocolError, "http2 framing error");
       return;
@@ -695,17 +688,21 @@ void H2Connection<T>::doWrite() {
   outBuffers[0] = asio_ns::buffer(_outbuffer.data(), _outbuffer.size());
 
   if (asio_ns::buffer_size(outBuffers) == 0) {
-    _writing = false;
+    this->_writing = false;
+    this->_active.store(false);
     if (shouldStop()) {
       this->shutdownConnection(Error::CloseRequested,
                                "nothing to write and connection should stop");
+    } else if (!this->_queue.empty() &&
+               !this->_active.exchange(true)) {
+      doWrite(); // no idea if this can happen
     }
     return;
   }
 
   // Reset read timer here, because normally client is sending
   // something, it does not expect timeout while doing it.
-  setTimeout();
+  this->setTimeout();
 
   asio_ns::async_write(this->_proto.socket, outBuffers,
                        [self = this->shared_from_this()](
@@ -713,7 +710,7 @@ void H2Connection<T>::doWrite() {
                          auto& me = static_cast<H2Connection<T>&>(*self);
                          me._writing = false;
                          if (ec) {
-                           me.restartConnection(Error::WriteError);
+                           me.shutdownConnection(Error::WriteError);
                          } else {
                            me.doWrite();
                          }
@@ -733,7 +730,7 @@ void H2Connection<T>::asyncReadCallback(asio_ns::error_code const& ec) {
     FUERTE_LOG_DEBUG
         << "asyncReadCallback: Error while reading from socket: "
         << ec.message() << "\n";
-    this->restartConnection(translateError(ec, Error::ReadError));
+    this->shutdownConnection(translateError(ec, Error::ReadError));
     return;
   }
 
@@ -760,17 +757,18 @@ void H2Connection<T>::asyncReadCallback(asio_ns::error_code const& ec) {
 
   doWrite();
 
-  if (!_writing && shouldStop()) {
+  if (!this->_writing && shouldStop()) {
     this->shutdownConnection(Error::CloseRequested,
                              "nothing more to read or write on connection");
     return;  // stop read loop
   }
 
-  setTimeout();
+  this->setTimeout();
 
   this->asyncReadSome();  // Continue read loop
 }
 
+#if 0
 // adjust the timeouts (only call from IO-Thread)
 template <SocketType T>
 void H2Connection<T>::setTimeout() {
@@ -780,7 +778,7 @@ void H2Connection<T>::setTimeout() {
     expires = std::chrono::steady_clock::now() + this->_config._idleTimeout;
   } else {
     for (auto const& pair : _streams) {
-      expires = std::max(expires, pair.second->expires);
+      expires = std::min(expires, pair.second->expires);
     }
   }
 
@@ -818,6 +816,7 @@ void H2Connection<T>::setTimeout() {
         }
       });
 }
+#endif
 
 /// abort ongoing / unfinished requests (locally)
 template <SocketType T>
@@ -833,20 +832,56 @@ void H2Connection<T>::abortOngoingRequests(const fuerte::Error err) {
   _streamCount.store(0);
 }
 
-/// abort all requests lingering in the queue
-template <SocketType T>
-void H2Connection<T>::drainQueue(const fuerte::Error ec) {
-  Stream* item = nullptr;
-  while (_queue.pop(item)) {
-    std::unique_ptr<Stream> guard(item);
-    uint32_t q = this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
-    FUERTE_ASSERT(q > 0);
-    guard->invokeOnError(ec);
+// abort all expired requests
+template <SocketType ST>
+void H2Connection<ST>::abortExpiredRequests() {
+  // cancel expired requests
+  auto now = std::chrono::steady_clock::now();
+  std::vector<int32_t> expired;
+  for (auto const& pair : _streams) {
+    if (pair.second->expires < now) {
+      expired.push_back(pair.first);
+    }
   }
+  std::for_each(expired.begin(), expired.end(), [&](auto sid) {
+    auto strm = eraseStream(sid);
+    if (strm) {
+      strm->invokeOnError(Error::Timeout);
+    }
+  });
+}
+
+// calculate smallest timeout
+template <SocketType ST>
+std::chrono::steady_clock::time_point H2Connection<ST>::getTimeout(bool& isIdle) {
+  // set to smallest point in time
+  auto expires = std::chrono::steady_clock::time_point::max();
+  if (_streams.empty()) {  // use default connection timeout
+    expires = std::chrono::steady_clock::now() + this->_config._idleTimeout;
+    isIdle = true;
+  } else {
+    for (auto const& pair : _streams) {
+      expires = std::min(expires, pair.second->expires);
+    }
+    isIdle = false;
+  }
+  return expires;
+}
+
+
+// subclasses may override this for a gracefuly shutdown
+template <SocketType ST>
+void H2Connection<ST>::handleIdleTimeout() {
+  FUERTE_ASSERT(_streams.empty());
+  // no more messages to wait on
+  FUERTE_LOG_DEBUG << "HTTP2-Connection timeout\n";
+  // shouldWrite() == false after GOAWAY frame is send
+  nghttp2_session_terminate_session(_session, 0);
+  doWrite();
 }
 
 template <SocketType T>
-typename H2Connection<T>::Stream* H2Connection<T>::findStream(
+Stream* H2Connection<T>::findStream(
     int32_t sid) const {
   auto const& it = _streams.find(sid);
   if (it != _streams.end()) {
@@ -856,7 +891,7 @@ typename H2Connection<T>::Stream* H2Connection<T>::findStream(
 }
 
 template <SocketType T>
-std::unique_ptr<typename H2Connection<T>::Stream> H2Connection<T>::eraseStream(int32_t sid) {
+std::unique_ptr<Stream> H2Connection<T>::eraseStream(int32_t sid) {
   std::unique_ptr<Stream> tmp;
   auto it = _streams.find(sid);
   if (it != _streams.end()) {

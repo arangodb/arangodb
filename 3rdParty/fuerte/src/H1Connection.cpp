@@ -132,16 +132,10 @@ int H1Connection<ST>::on_message_complete(http_parser* parser) {
 template <SocketType ST>
 H1Connection<ST>::H1Connection(EventLoopService& loop,
                                ConnectionConfiguration const& config)
-    : GeneralConnection<ST>(loop, config),
-      _queue(),
-      _active(false),
-      _reading(false),
-      _writing(false),
-      _writeStart(),
+    : GeneralConnection<ST, RequestItem>(loop, config),
       _lastHeaderWasValue(false),
       _shouldKeepAlive(false),
-      _messageComplete(false),
-      _timeoutOnReadWrite(false) {
+      _messageComplete(false) {
   // initialize http parsing code
   http_parser_settings_init(&_parserSettings);
   _parserSettings.on_message_begin = &on_message_begin;
@@ -175,7 +169,6 @@ H1Connection<ST>::H1Connection(EventLoopService& loop,
 
 template <SocketType ST>
 H1Connection<ST>::~H1Connection() try {
-  drainQueue(Error::Canceled);
   abortOngoingRequests(Error::Canceled);
 } catch (...) {
 }
@@ -190,9 +183,10 @@ void H1Connection<ST>::sendRequest(std::unique_ptr<Request> req,
   item->requestHeader = buildRequestBody(*req);
   item->callback = std::move(cb);
   item->request = std::move(req);
+  item->expires = std::chrono::steady_clock::now() + item->request->timeout();
 
-  // Don't send once in Failed state:
-  if (this->_state.load(std::memory_order_relaxed) == Connection::State::Failed) {
+  // Don't send once in Closed state:
+  if (this->_state.load(std::memory_order_relaxed) == Connection::State::Closed) {
     FUERTE_LOG_ERROR << "connection already failed\n";
     item->invokeOnError(Error::Canceled);
     return;
@@ -200,7 +194,7 @@ void H1Connection<ST>::sendRequest(std::unique_ptr<Request> req,
 
   // Prepare a new request
   this->_numQueued.fetch_add(1, std::memory_order_relaxed);
-  if (!_queue.push(item.get())) {
+  if (!this->_queue.push(item.get())) {
     FUERTE_LOG_ERROR << "connection queue capacity exceeded\n";
     uint32_t q = this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
     FUERTE_ASSERT(q > 0);
@@ -220,8 +214,7 @@ void H1Connection<ST>::sendRequest(std::unique_ptr<Request> req,
   // state, but not in the `Connecting` state in this case.
   if (!this->_active.exchange(true)) {
     this->_io_context->post([self(Connection::shared_from_this())] {
-        auto& me = static_cast<H1Connection<ST>&>(*self);
-        me.activate();
+        static_cast<H1Connection<ST>&>(*self).activate();
       });
   }
 }
@@ -236,32 +229,12 @@ size_t H1Connection<ST>::requestsLeft() const {
 }
 
 template <SocketType ST>
-void H1Connection<ST>::activate() {
-  Connection::State state = this->_state.load();
-  FUERTE_ASSERT(state != Connection::State::Connecting);
-  if (state == Connection::State::Connected) {
-    FUERTE_LOG_HTTPTRACE << "activate: connected\n";
-    this->asyncWriteNextRequest();
-  } else if (state == Connection::State::Disconnected) {
-    FUERTE_LOG_HTTPTRACE << "activate: not connected\n";
-    this->startConnection();
-  } else if (state == Connection::State::Failed) {
-    FUERTE_LOG_ERROR << "activate: queued request on failed connection\n";
-    drainQueue(fuerte::Error::ConnectionClosed);
-    _active.store(false);    // No more activity from our side
-  }
-  // If the state is `Connecting`, we do not need to do anything, this can
-  // happen if this `activate` was posted when the connection was still
-  // `Disconnected`, but in the meantime the connect has started.
-}
-
-template <SocketType ST>
 void H1Connection<ST>::finishConnect() {
   // Note that the connection timeout alarm has already been disarmed.
   // If it has already gone off, we might have a completion handler
   // already posted on the iocontext. However, this will not touch anything
   // if we have first set the state to `Connected`.
-  FUERTE_ASSERT(_active.load());
+  FUERTE_ASSERT(this->_active.load());
   auto exp = Connection::State::Connecting;
   if (this->_state.compare_exchange_strong(exp, Connection::State::Connected)) {
     this->asyncWriteNextRequest();  // starts writing if queue non-empty
@@ -272,43 +245,29 @@ void H1Connection<ST>::finishConnect() {
   }
 }
 
-// This is no longer used, we call directly `asyncWriteNextRequest` if we need
-// to start writing. We will remove it once H2Connection and VstConnection
-// have also lost it (if possible).
-//
-// startWriting must only be executed on the IO thread and only with active==true
-// and with state `Connected`
-template <SocketType ST>
-void H1Connection<ST>::startWriting() {
-  FUERTE_ASSERT(_active.load());
-  FUERTE_ASSERT(this->_state.load() == Connection::State::Connected);
-  FUERTE_LOG_HTTPTRACE << "startWriting: active=true, this=" << this << "\n";
-  this->asyncWriteNextRequest();
-}
-
 /// The following is called when the connection is permanently failed. It is
 /// used to shut down any activity in the derived classes in a way that avoids
 /// sleeping barbers
-template <SocketType ST>
-void H1Connection<ST>::terminateActivity() {
-  // Usually, we are `active == true` when we get here, except for the following
-  // case: If we are inactive but the connection is still open and then the
-  // idle timeout goes off, then we shutdownConnection and in the TLS case we
-  // call this method here. In this case it is OK to simply proceed, therefore
-  // no assertion on `_active`.
-  FUERTE_ASSERT(this->_state.load() == Connection::State::Failed);
-  FUERTE_LOG_HTTPTRACE << "terminateActivity: active=true, this=" << this << "\n";
-  while (true) {
-    drainQueue(Error::Canceled);
-    _active.store(false);
-    // Now need to check again:
-    if (_queue.empty()) {
-      return;
-    }
-    _active.store(true);
-  }
-}
-
+//template <SocketType ST>
+//void H1Connection<ST>::terminateActivity() {
+//  // Usually, we are `active == true` when we get here, except for the following
+//  // case: If we are inactive but the connection is still open and then the
+//  // idle timeout goes off, then we shutdownConnection and in the TLS case we
+//  // call this method here. In this case it is OK to simply proceed, therefore
+//  // no assertion on `_active`.
+//  FUERTE_ASSERT(this->_state.load() == Connection::State::Closed);
+//  FUERTE_LOG_HTTPTRACE << "terminateActivity: active=true, this=" << this << "\n";
+//  while (true) {
+//    this->drainQueue(Error::Canceled);
+//    this->_active.store(false);
+//    // Now need to check again:
+//    if (this->_queue.empty()) {
+//      return;
+//    }
+//    this->_active.store(true);
+//  }
+//}
+//
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -387,34 +346,34 @@ void H1Connection<ST>::asyncWriteNextRequest() {
   FUERTE_ASSERT(this->_active.load());
   auto state = this->_state.load();
   FUERTE_ASSERT(state == Connection::State::Connected ||
-                state == Connection::State::Failed);
-  if (state != Connection::State::Connected &&
-      state != Connection::State::Failed) {
-    FUERTE_LOG_ERROR << "asyncWriteNextRequest found an unexpected state: "
-                     << static_cast<int>(state)
-                     << " instead of the expected 'Connected'\n";
-  }
+                state == Connection::State::Closed);
+//  if (state != Connection::State::Connected &&
+//      state != Connection::State::Closed) {
+//    FUERTE_LOG_ERROR << "asyncWriteNextRequest found an unexpected state: "
+//                     << static_cast<int>(state)
+//                     << " instead of the expected 'Connected'\n";
+//  }
   FUERTE_ASSERT(_item == nullptr);
 
   RequestItem* ptr = nullptr;
-  if (!_queue.pop(ptr)) {     // check
-    _active.store(false);      // set
-    if (_queue.empty()) {        // check again
+  if (!this->_queue.pop(ptr)) {     // check
+    this->_active.store(false);      // set
+    if (this->_queue.empty()) {        // check again
       FUERTE_LOG_HTTPTRACE << "asyncWriteNextRequest: stopped writing, this="
                            << this << "\n";
       if (_shouldKeepAlive && this->_config._idleTimeout.count() > 0) {
         FUERTE_LOG_HTTPTRACE << "setting idle keep alive timer, this=" << this
                              << "\n";
-        setTimeout(this->_config._idleTimeout, TimeoutType::IDLE);
+        this->setTimeout();
       } else {
         this->shutdownConnection(Error::CloseRequested);
       }
       return;
     }
-    if (_active.exchange(true)) {
+    if (this->_active.exchange(true)) {
       return; // someone else restarted
     }
-    bool success = _queue.pop(ptr);
+    bool success = this->_queue.pop(ptr);
     FUERTE_ASSERT(success);
   }
   uint32_t q = this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
@@ -424,10 +383,7 @@ void H1Connection<ST>::asyncWriteNextRequest() {
   
   _item.reset(ptr);
 
-  setTimeout(_item->request->timeout(), TimeoutType::WRITE);
-  _timeoutOnReadWrite = false;
-  _writeStart = std::chrono::steady_clock::now();
-  _writing = true;
+  this->setTimeout();
 
   std::array<asio_ns::const_buffer, 2> buffers;
   buffers[0] =
@@ -438,6 +394,7 @@ void H1Connection<ST>::asyncWriteNextRequest() {
     buffers[1] = _item->request->payload();
   }
 
+  this->_writing = true;
   asio_ns::async_write(
       this->_proto.socket, std::move(buffers),
       [self(Connection::shared_from_this())](
@@ -458,46 +415,38 @@ void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
   FUERTE_ASSERT(this->_state != Connection::State::Connecting);
   this->_writing = false;       // indicate that no async write is ongoing any more
   this->_proto.timer.cancel();  // cancel alarm for timeout
-  auto timePassed = std::chrono::duration_cast<std::chrono::milliseconds>(
-      std::chrono::steady_clock::now() - _writeStart);
-  if (ec || _item == nullptr || _item->request->timeout() <= timePassed) {
+
+  auto const now = std::chrono::steady_clock::now();
+  if (ec || _item == nullptr || _item->expires < now) {
     // Send failed
     FUERTE_LOG_DEBUG << "asyncWriteCallback (http): error '" << ec.message()
                      << "', this=" << this << "\n";
     if (_item != nullptr) {
       FUERTE_LOG_DEBUG << "asyncWriteCallback (http): timeoutLeft: "
-                       << (_item->request->timeout() - timePassed).count()
+                       << std::chrono::duration_cast<std::chrono::milliseconds>(_item->expires - now).count()
                        << " milliseconds\n";
     }
-    auto item = std::move(_item);
-
-    // keepalive timeout may have expired
-    auto err = translateError(ec, Error::WriteError);
-    if (this->_timeoutOnReadWrite && err == fuerte::Error::Canceled) {
-      err = fuerte::Error::Timeout;
-    }
-    if (item) { // may be null if connection was canceled
-      if (ec == asio_ns::error::broken_pipe && nwrite == 0) {  // re-queue
-        // Note that this has the potential to change the order in which requests
-        // are sent off from the client call order to something else!
-        sendRequest(std::move(item->request), item->callback);
-      } else {
-        // let user know that this request caused the error
-        item->callback(err, std::move(item->request), nullptr);
-      }
-    } else {
-      err = Error::Canceled;
-    }
-
-    auto state = this->_state.load();
-    if (state != Connection::State::Failed) {
-      // Stop current connection and try to restart a new one.
-      this->restartConnection(err);
-    } else {
-      drainQueue(Error::Canceled);
-      abortOngoingRequests(Error::Canceled);
-      this->terminateActivity();    // will reset `active`
-    }
+//    auto item = std::move(_item);
+//
+//    // keepalive timeout may have expired
+//    auto err = translateError(ec, Error::WriteError);
+//    if (this->_timeoutOnReadWrite && err == fuerte::Error::Canceled) {
+//      err = fuerte::Error::Timeout;
+//    }
+//    if (item) { // may be null if connection was canceled
+//      if (ec == asio_ns::error::broken_pipe && nwrite == 0) {  // re-queue
+//        // Note that this has the potential to change the order in which requests
+//        // are sent off from the client call order to something else!
+//        sendRequest(std::move(item->request), item->callback);
+//      } else {
+//        // let user know that this request caused the error
+//        item->callback(err, std::move(item->request), nullptr);
+//      }
+//    } else {
+//      err = Error::Canceled;
+//    }
+    
+    this->shutdownConnection(translateError(ec, Error::WriteError));
     return;
   }
   FUERTE_ASSERT(_item != nullptr);
@@ -511,10 +460,8 @@ void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
 
   // Continue with a read, use the remaining part of the timeout as
   // timeout:
-  setTimeout(_item->request->timeout() - timePassed, TimeoutType::READ);    // extend timeout
-  _timeoutOnReadWrite = false;
+  this->setTimeout();    // extend timeout
 
-  _reading = true;
   this->asyncReadSome();  // listen for the response
 }
 
@@ -525,27 +472,19 @@ void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
 // called by the async_read handler (called from IO thread)
 template <SocketType ST>
 void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
-  this->_reading = false;
   // Do not cancel timeout now, because we might be going on to read!
   if (ec || _item == nullptr) {
     this->_proto.timer.cancel();
 
     FUERTE_LOG_DEBUG << "asyncReadCallback: Error while reading from socket: '"
                      << ec.message() << "' , this=" << this << "\n";
-
-    auto state = this->_state.load();
-    if (state != Connection::State::Failed) {
-      // Restart connection, will invoke _item cb
-      auto err = translateError(ec, Error::ReadError);
-      if (_timeoutOnReadWrite && err == fuerte::Error::Canceled) {
-        err = fuerte::Error::Timeout;
-      }
-      this->restartConnection(err);
-    } else {
-      drainQueue(Error::Canceled);
-      abortOngoingRequests(Error::Canceled);
-      this->terminateActivity();    // will reset `active`
+    
+    // Restart connection, will invoke _item cb
+    auto err = translateError(ec, Error::ReadError);
+    if (this->_timeoutOnReadWrite && err == fuerte::Error::Canceled) {
+      err = fuerte::Error::Timeout;
     }
+    this->shutdownConnection(err);
     return;
   }
   FUERTE_ASSERT(_item != nullptr);
@@ -594,46 +533,47 @@ void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
     return;
   }
 
-  _reading = true;
   FUERTE_LOG_HTTPTRACE << "asyncReadCallback: response not complete yet\n";
   this->asyncReadSome();  // keep reading from socket
   // leave read timeout in place!
 }
 
-/// Set timeout accordingly
-template <SocketType ST>
-void H1Connection<ST>::setTimeout(std::chrono::milliseconds millis, TimeoutType type) {
-  if (millis.count() == 0) {
-    this->_proto.timer.cancel();
-    return;
-  }
-
-  // expires_after cancels pending ops
-  this->_proto.timer.expires_after(millis);
-  this->_proto.timer.async_wait(
-      [type, self = Connection::weak_from_this()](auto const& ec) {
-        std::shared_ptr<Connection> s;
-        if (ec || !(s = self.lock())) {  // was canceled / deallocated
-          return;
-        }
-        auto* me = static_cast<H1Connection<ST>*>(s.get());
-        if ((type == TimeoutType::WRITE && me->_writing) ||
-            (type == TimeoutType::READ && me->_reading)) {
-          FUERTE_LOG_DEBUG << "HTTP-Request timeout\n";
-          me->_proto.cancel();
-          me->_timeoutOnReadWrite = true;
-          // We simply cancel all ongoing asynchronous operations, the completion
-          // handlers will do the rest.
-          return;
-        } else if (type == TimeoutType::IDLE) {
-          if (!me->_active && me->_state == Connection::State::Connected) {
-            me->shutdownConnection(Error::CloseRequested);
-          }
-        }
-        // In all other cases we do nothing, since we have been posted to the
-        // iocontext but the thing we should be timing out has already completed.
-      });
-}
+///// Set timeout accordingly
+//template <SocketType ST>
+//void H1Connection<ST>::setTimeout(std::chrono::milliseconds millis, TimeoutType type) {
+//  if (millis.count() == 0) {
+//    this->_proto.timer.cancel();
+//    return;
+//  }
+//
+//  _timeoutOnReadWrite = false;
+//
+//  // expires_after cancels pending ops
+//  this->_proto.timer.expires_after(millis);
+//  this->_proto.timer.async_wait(
+//      [type, self = Connection::weak_from_this()](auto const& ec) {
+//        std::shared_ptr<Connection> s;
+//        if (ec || !(s = self.lock())) {  // was canceled / deallocated
+//          return;
+//        }
+//        auto* me = static_cast<H1Connection<ST>*>(s.get());
+//        if ((type == TimeoutType::Write && me->_writing) ||
+//            (type == TimeoutType::Read && me->_reading)) {
+//          FUERTE_LOG_DEBUG << "HTTP-Request timeout\n";
+//          me->_timeoutOnReadWrite = true;
+//          me->_proto.cancel();
+//          // We simply cancel all ongoing asynchronous operations, the completion
+//          // handlers will do the rest.
+//          return;
+//        } else if (type == TimeoutType::Idle) {
+//          if (!me->_active && me->_state == Connection::State::Connected) {
+//            me->shutdownConnection(Error::CloseRequested);
+//          }
+//        }
+//        // In all other cases we do nothing, since we have been posted to the
+//        // iocontext but the thing we should be timing out has already completed.
+//      });
+//}
 
 /// abort ongoing / unfinished requests
 template <SocketType ST>
@@ -647,17 +587,26 @@ void H1Connection<ST>::abortOngoingRequests(const fuerte::Error ec) {
   }
 }
 
-/// abort all requests lingering in the queue
+
+// abort all expired requests
 template <SocketType ST>
-void H1Connection<ST>::drainQueue(const fuerte::Error ec) {
-  RequestItem* item = nullptr;
-  while (_queue.pop(item)) {
-    FUERTE_ASSERT(item);
-    std::unique_ptr<RequestItem> guard(item);
-    uint32_t q = this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
-    FUERTE_ASSERT(q > 0);
-    guard->invokeOnError(ec);
+void H1Connection<ST>::abortExpiredRequests() {
+  if (_item && _item->expires < std::chrono::steady_clock::now()) {
+    // Item has failed, remove from message store
+    _item->invokeOnError(Error::Timeout);
+    _item.reset();
   }
+}
+
+// calculate smallest timeout
+template <SocketType ST>
+std::chrono::steady_clock::time_point H1Connection<ST>::getTimeout(bool& isIdle) {
+  if (_item) {
+    isIdle = false;
+    return _item->expires;
+  }
+  isIdle = true;
+  return std::chrono::steady_clock::now() + this->_config._idleTimeout;
 }
 
 template class arangodb::fuerte::v1::http::H1Connection<SocketType::Tcp>;

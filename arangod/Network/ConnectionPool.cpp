@@ -106,7 +106,7 @@ void ConnectionPool::pruneConnections() {
     while (it != buck.list.end()) {
       bool remove = false;
 
-      if ((*it)->fuerte->state() == fuerte::Connection::State::Failed) {
+      if ((*it)->fuerte->state() == fuerte::Connection::State::Closed) {
         // lets not keep around disconnected fuerte connection objects
         remove = true;
       } else {
@@ -203,7 +203,7 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
 
   for (std::shared_ptr<Context>& c : bucket.list) {
     const fuerte::Connection::State state = c->fuerte->state();
-    if (state == fuerte::Connection::State::Failed) {
+    if (state == fuerte::Connection::State::Closed) {
       continue;
     }
     

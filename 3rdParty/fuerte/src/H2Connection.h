@@ -25,8 +25,6 @@
 
 #include <nghttp2/nghttp2.h>
 
-#include <boost/lockfree/queue.hpp>
-
 #include "GeneralConnection.h"
 #include "http.h"
 
@@ -36,10 +34,26 @@
 
 namespace arangodb { namespace fuerte { inline namespace v1 { namespace http {
 
+// ongoing Http2 stream
+struct Stream {
+  velocypack::Buffer<uint8_t> data;
+
+  RequestCallback callback;
+  std::unique_ptr<arangodb::fuerte::v1::Request> request;
+  std::unique_ptr<arangodb::fuerte::v1::Response> response;
+  size_t responseOffset = 0;
+  /// point in time when the message expires
+  std::chrono::steady_clock::time_point expires;
+
+  inline void invokeOnError(Error e) {
+    callback(e, std::move(request), nullptr);
+  }
+};
+
 // Connection object that handles sending and receiving of
 //  Velocystream Messages.
 template <SocketType T>
-class H2Connection final : public fuerte::GeneralConnection<T> {
+class H2Connection final : public fuerte::GeneralConnection<T, Stream> {
  public:
   explicit H2Connection(EventLoopService& loop,
                         detail::ConnectionConfiguration const&);
@@ -61,23 +75,25 @@ class H2Connection final : public fuerte::GeneralConnection<T> {
 
  protected:
   void finishConnect() override;
-
-  /// The following is called when the connection is permanently failed. It is
-  /// used to shut down any activity in a way that avoids sleeping barbers
-  void terminateActivity() override;
-
-  // Thread-Safe: activate the writer loop (if off and items are queud)
-  void startWriting() override;
-
+  
+  /// perform writes
+  void doWrite() override;
+  
   // called by the async_read handler (called from IO thread)
   void asyncReadCallback(asio_ns::error_code const&) override;
 
   /// abort ongoing / unfinished requests (locally)
   void abortOngoingRequests(const fuerte::Error) override;
-
-  /// abort all requests lingering in the queue
-  void drainQueue(const fuerte::Error) override;
-
+  
+  // abort all expired requests
+  void abortExpiredRequests() override;
+  
+  // calculate smallest timeout
+  std::chrono::steady_clock::time_point getTimeout(bool& isIdle) override;
+  
+  // subclasses may override this for a gracefuly shutdown
+  void handleIdleTimeout() override;
+  
  private:
   static int on_begin_headers(nghttp2_session* session,
                               const nghttp2_frame* frame, void* user_data);
@@ -97,34 +113,13 @@ class H2Connection final : public fuerte::GeneralConnection<T> {
                                void* user_data);
 
  private:
-  // ongoing Http2 stream
-  struct Stream {
-    velocypack::Buffer<uint8_t> data;
-
-    RequestCallback callback;
-    std::unique_ptr<arangodb::fuerte::v1::Request> request;
-    std::unique_ptr<arangodb::fuerte::v1::Response> response;
-    size_t responseOffset = 0;
-    /// point in time when the message expires
-    std::chrono::steady_clock::time_point expires;
-
-    inline void invokeOnError(Error e) {
-      callback(e, std::move(request), nullptr);
-    }
-  };
-
+  
   void initNgHttp2Session();
 
   void readSwitchingProtocolsResponse();
 
-  // adjust the timeouts (only call from IO-Thread)
-  void setTimeout();
-
   // queue the response onto the session, call only on IO thread
   void queueHttp2Requests();
-
-  /// actually perform writing
-  void doWrite();
 
   Stream* findStream(int32_t sid) const;
   
@@ -139,9 +134,6 @@ class H2Connection final : public fuerte::GeneralConnection<T> {
  private:
   velocypack::Buffer<uint8_t> _outbuffer;
 
-  /// elements to send out
-  boost::lockfree::queue<Stream*, boost::lockfree::capacity<512>> _queue;
-
   std::map<int32_t, std::unique_ptr<Stream>> _streams;
   
   asio_ns::steady_timer _ping; // keep connection open
@@ -151,9 +143,6 @@ class H2Connection final : public fuerte::GeneralConnection<T> {
   nghttp2_session* _session = nullptr;
 
   std::atomic<uint32_t> _streamCount{0};
-
-  bool _writing = false;
-  std::atomic<bool> _signaledWrite{false};
 };
 
 }}}}  // namespace arangodb::fuerte::v1::http

@@ -210,8 +210,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::acquireConnection() {
   _lastHttpReturnCode = 0;
 
   if (!_connection ||
-      (_connection->state() == fu::Connection::State::Disconnected ||
-       _connection->state() == fu::Connection::State::Failed)) {
+      (_connection->state() == fu::Connection::State::Closed)) {
     return createConnection();
   }
   return _connection;
@@ -222,8 +221,7 @@ void V8ClientConnection::setInterrupted(bool interrupted) {
   if (interrupted && _connection != nullptr) {
     shutdownConnection();
   } else if (!interrupted && (_connection == nullptr ||
-                              (_connection->state() == fu::Connection::State::Disconnected ||
-                               _connection->state() == fu::Connection::State::Failed))) {
+                              (_connection->state() == fu::Connection::State::Closed))) {
     createConnection();
   }
 }
@@ -1755,7 +1753,7 @@ again:
         std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout)));
 
   std::shared_ptr<fu::Connection> connection = acquireConnection();
-  if (!connection || connection->state() == fu::Connection::State::Failed) {
+  if (!connection || connection->state() == fu::Connection::State::Closed) {
     TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
                                  "not connected");
     return v8::Undefined(isolate);
@@ -1839,7 +1837,7 @@ again:
         std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout)));
 
   std::shared_ptr<fu::Connection> connection = acquireConnection();
-  if (!connection || connection->state() == fu::Connection::State::Failed) {
+  if (!connection || connection->state() == fu::Connection::State::Closed) {
     TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
                                  "not connected");
     return v8::Undefined(isolate);
