@@ -1,7 +1,8 @@
 devel
 -----
-* Fixed internal issue #725: Added analyzers revision for system database
-  in queries.
+
+* Fixed internal issue #725: Added analyzers revision for _system database in
+  queries.
 
 * Allow restoring collections from v3.3.0 with their all-numeric collection
   GUID values, by creating a new, unambiguous collection GUID for them. 
