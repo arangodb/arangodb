@@ -400,7 +400,7 @@ void VstCommTask<T>::doWrite() {
 
   DTraceVstCommTaskBeforeAsyncWrite((size_t) this);
   
-#warning fix timeout
+  // TODO: should we have a better timeout mechanism?
 //  this->setTimeout(GeneralCommTask<T>::DefaultTimeout);
 
   auto& buffers = item->buffers;
