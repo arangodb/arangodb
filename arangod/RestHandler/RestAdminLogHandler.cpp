@@ -32,6 +32,8 @@
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/LogBufferFeature.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerFeature.h"
+#include "Utils/ExecContext.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -41,11 +43,30 @@ RestAdminLogHandler::RestAdminLogHandler(arangodb::application_features::Applica
                                          GeneralRequest* request, GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
-RestStatus RestAdminLogHandler::execute() {
-  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
+arangodb::Result RestAdminLogHandler::verifyPermitted() {
+  auto& loggerFeature = server().getFeature<arangodb::LoggerFeature>();
 
-  if (!security.canAccessHardenedApi()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+  // do we have admin rights (if rights are active)
+  if (loggerFeature.onlySuperUser()) {
+    if (!ExecContext::current().isSuperuser()) {
+      return arangodb::Result(
+          TRI_ERROR_HTTP_FORBIDDEN, "you need super user rights for hotbackup operations");
+    } // if
+  } else {
+    if (!ExecContext::current().isAdminUser()) {
+      return arangodb::Result(
+          TRI_ERROR_HTTP_FORBIDDEN, "you need admin rights for hotbackup operations");
+    } // if
+  }
+
+  return arangodb::Result();
+}
+
+RestStatus RestAdminLogHandler::execute() {
+  auto result = verifyPermitted();
+  if (!result.ok()) {
+    generateError(
+        rest::ResponseCode::FORBIDDEN, result.errorNumber(), result.errorMessage());
     return RestStatus::DONE;
   }
 
