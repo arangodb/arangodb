@@ -1,6 +1,8 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* re-add AQL_WARNING() to emmit errors from UDFs
+
 * Web UI now shows correct permissions in case wildcard database level and
   wildcard collection level permissions are both set.
 
@@ -8,7 +10,7 @@ v3.6.5 (XXXX-XX-XX)
 
 * Fixed internal issue #701: Dangling readers in ArangoSearch index_writer
   cache.
-    
+
 * Fix internal test helper function `removeCost` to really remove costs.
 
 * Pass through AQL query errors to UI graph viewer without turning them into
