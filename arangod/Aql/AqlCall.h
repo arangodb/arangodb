@@ -182,6 +182,8 @@ struct AqlCall {
     std::visit(minus, hardLimit);
   }
 
+  void resetSkipCount() noexcept;
+
   bool hasLimit() const { return hasHardLimit() || hasSoftLimit(); }
 
   bool hasHardLimit() const {

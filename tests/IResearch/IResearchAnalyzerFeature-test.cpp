@@ -1025,19 +1025,19 @@ class IResearchAnalyzerFeatureCoordinatorTest
       public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::FATAL>,
       public arangodb::tests::LogSuppressor<arangodb::Logger::ENGINES, arangodb::LogLevel::FATAL>,
       public arangodb::tests::LogSuppressor<arangodb::Logger::FIXME, arangodb::LogLevel::ERR> {
- public:
+public:
   arangodb::tests::mocks::MockCoordinator server;
   std::string _dbName;
   arangodb::SystemDatabaseFeature::ptr _system;
   TRI_vocbase_t* _vocbase;
   arangodb::iresearch::IResearchAnalyzerFeature& _feature;
 
- protected:
+protected:
   IResearchAnalyzerFeatureCoordinatorTest()
-      : server(),
-        _dbName("TestVocbase"),
-        _system(server.getFeature<arangodb::SystemDatabaseFeature>().use()),
-        _feature(server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()) {
+    : server(),
+      _dbName("TestVocbase"),
+      _system(server.getFeature<arangodb::SystemDatabaseFeature>().use()),
+      _feature(server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()) {
     arangodb::tests::init();
 
     // server.addFeature<arangodb::ViewTypesFeature>(true);
@@ -1083,11 +1083,12 @@ class IResearchAnalyzerFeatureCoordinatorTest
 };
 
 TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
+
   // add index factory
   {
     struct IndexTypeFactory : public arangodb::IndexTypeFactory {
       IndexTypeFactory(arangodb::application_features::ApplicationServer& server)
-          : arangodb::IndexTypeFactory(server) {}
+        : arangodb::IndexTypeFactory(server) {}
 
       virtual bool equal(arangodb::velocypack::Slice const& lhs,
                          arangodb::velocypack::Slice const& rhs) const override {
@@ -1117,6 +1118,15 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
 
   // get missing via link creation (coordinator) ensure no recursive ClusterInfo::loadPlan() call
   {
+
+    auto bogus = std::make_shared<VPackBuilder>();
+    { VPackArrayBuilder trxs(bogus.get());
+      { VPackArrayBuilder trx(bogus.get());
+        { VPackObjectBuilder op(bogus.get());
+          bogus->add("a", VPackValue(12)); }}}
+    server.server().getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(
+      bogus);
+
     auto createCollectionJson = VPackParser::fromJson(
         std::string("{ \"id\": 42, \"name\": \"") + arangodb::tests::AnalyzerCollectionName +
         "\", \"isSystem\": true, \"shards\": { }, \"type\": 2 }");  // 'id' and 'shards' required for coordinator tests
@@ -1139,8 +1149,9 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
           "/Current/Collections/_system/" + std::to_string(logicalCollection->id());
       auto const colValue =
           VPackParser::fromJson(
-              "{ \"same-as-dummy-shard-id\": { \"indexes\": [ { \"id\": \"1\" "
+              "{ \"same-as-dummy-shard-id\": { \"indexes\": [ { \"id\": \"43\" "
               "} ], \"servers\": [ \"same-as-dummy-shard-server\" ] } }");  // '1' must match 'idString' in ClusterInfo::ensureIndexCoordinatorInner(...)
+
       EXPECT_TRUE(arangodb::AgencyComm(server.server())
                       .setValue(colPath, colValue->slice(), 0.0)
                       .successful());
@@ -1150,12 +1161,14 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
           "\": { \"name\": \"testCollection\", "
           "\"shards\": { \"same-as-dummy-shard-id\": [ "
           "\"same-as-dummy-shard-server\" ] } } } }");
+
       EXPECT_TRUE(arangodb::AgencyComm(server.server())
                       .setValue(dummyPath, dummyValue->slice(), 0.0)
                       .successful());
       auto const versionPath = "/Plan/Version";
       auto const versionValue =
           VPackParser::fromJson(std::to_string(ci.getPlanVersion() + 1));
+
       EXPECT_TRUE((arangodb::AgencyComm(server.server())
                        .setValue(versionPath, versionValue->slice(), 0.0)
                        .successful()));  // force loadPlan() update
@@ -1168,9 +1181,9 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
     builder.add(arangodb::StaticStrings::IndexType, arangodb::velocypack::Value("testType"));
     builder.add(arangodb::StaticStrings::IndexFields,
                 arangodb::velocypack::Slice::emptyArraySlice());
+    builder.add("id", VPackValue("43"));
     builder.close();
-    res = arangodb::methods::Indexes::ensureIndex(logicalCollection.get(),
-                                                  builder.slice(), true, tmp);
+    res = arangodb::methods::Indexes::ensureIndex(logicalCollection.get(), builder.slice(), true, tmp);
     EXPECT_TRUE(res.ok());
   }
 }
@@ -1907,14 +1920,13 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
 
 TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
 
-  VPackBuilder bogus;
-  { VPackArrayBuilder guard(&bogus);
-    { VPackObjectBuilder guard2(&bogus);
-      bogus.add("a", VPackValue(12)); }}
-
-  arangodb::consensus::Store& agencyStore =
-    server.server().getFeature<arangodb::ClusterFeature>().agencyCache().store();
-  server.server().getFeature<arangodb::ClusterFeature>().agencyCache().set(bogus.slice());
+  auto bogus = std::make_shared<VPackBuilder>();
+  { VPackArrayBuilder trxs(bogus.get());
+    { VPackArrayBuilder trx(bogus.get());
+      { VPackObjectBuilder op(bogus.get());
+        bogus->add("a", VPackValue(12)); }}}
+  server.server().getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(
+    bogus);
 
   arangodb::network::ConnectionPool::Config poolConfig;
   poolConfig.clusterInfo = &server.getFeature<arangodb::ClusterFeature>().clusterInfo();
@@ -1923,7 +1935,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
   poolConfig.maxOpenConnections = 3;
   poolConfig.verifyHosts = false;
 
-  AsyncAgencyStorePoolMock pool(&agencyStore, poolConfig);
+  AsyncAgencyStorePoolMock pool(server.server(), poolConfig);
   arangodb::AgencyCommHelper::initialize("arango");
   arangodb::AsyncAgencyCommManager::initialize(server.server());
   arangodb::AsyncAgencyCommManager::INSTANCE->pool(&pool);
@@ -2029,7 +2041,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
       sysDatabase.start();  // get system database from DatabaseFeature
     }
 
-    newServer.getFeature<arangodb::ClusterFeature>().agencyCache().set(bogus.slice());
+    newServer.getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(
+      bogus);
 
     // add analyzer
     {
@@ -2095,7 +2108,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
       sysDatabase.start();  // get system database from DatabaseFeature
     }
 
-    newServer.getFeature<arangodb::ClusterFeature>().agencyCache().set(bogus.slice());
+    newServer.getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(
+      bogus);
     // add analyzer
     {
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
