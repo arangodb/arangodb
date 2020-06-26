@@ -91,7 +91,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     bool overwrite{true};
     bool cleanupDuplicateAttributes{false};
     bool progress{true};
-    bool preserveRevisionIds{false};
+    bool preserveRevisionIds{true};
   };
 
   /// @brief Stores stats about the overall restore progress

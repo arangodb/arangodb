@@ -740,7 +740,7 @@ ExecutionState Query::finalize(QueryResult& result) {
   }
   
   const bool addPlan = _queryOptions.profile >= PROFILE_LEVEL_BLOCKS &&
-  (ServerState::instance()->isSingleServerOrCoordinator());
+                       ServerState::instance()->isSingleServerOrCoordinator();
   auto state = cleanupPlanAndEngine(TRI_ERROR_NO_ERROR, /*sync*/false, result.extra.get(), addPlan);
   if (state == ExecutionState::WAITING) {
     return state;
