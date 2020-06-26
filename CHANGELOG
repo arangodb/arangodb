@@ -10,6 +10,9 @@ v3.7.1-rc.1 (XXXX-XX-XX)
   will now return nulland register a warning in the query, so the user can
   handle it.
 
+* The Web UI is now reporting errors properly in case of editing ArangoSearch
+  Views with invalid properties.
+
 * Fixed bug in IResearchViewExecutor that lead to only up to 1000 rows being
   produced.
 
