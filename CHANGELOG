@@ -1,6 +1,9 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Changing the current users profile icon in the Web UI now renders the new icon
+  directly without the need of a full UI browser reload.
+
 * Fixed hotbackup agency lock cleanup.
 
 * Web UI now shows correct permissions in case wildcard database level and
