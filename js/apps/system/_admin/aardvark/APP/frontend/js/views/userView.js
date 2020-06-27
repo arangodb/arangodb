@@ -237,7 +237,6 @@
         if (error) {
           arangoHelper.arangoError('User', 'Could not edit user settings');
         } else {
-          var extra = self.currentUser.get('extra');
           if (data) {
             var extra = self.currentUser.get('extra');
             if (data.extra && data.extra.name) {
