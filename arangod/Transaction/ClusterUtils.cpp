@@ -37,7 +37,7 @@ namespace cluster {
 
  void abortTransactions(LogicalCollection& coll) {
    transaction::Manager* mgr = transaction::ManagerFeature::manager();
-   if (!mgr) { // might be called during shutdown
+   if (!mgr) { // should only happen during unit tests
      return;
    }
 
