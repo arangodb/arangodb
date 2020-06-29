@@ -312,7 +312,13 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack stack) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   initOnce();
-  auto res = executeWithoutTrace(stack);
+  auto res = executeWithoutTrace(std::move(stack));
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto const& [state, skipped, block] = res;
+  if (block != nullptr) {
+    block->validateShadowRowConsistency();
+  }
+#endif
   traceExecuteEnd(res);
   return res;
 }
@@ -340,7 +346,6 @@ auto ExecutionBlockImpl<IdExecutor<ConstFetcher>>::injectConstantBlock<IdExecuto
   // Or exactly of the size handed in
   TRI_ASSERT(_skipped.subqueryDepth() == 1 ||
              _skipped.subqueryDepth() == skipped.subqueryDepth());
-  _skipped = skipped;
 
   TRI_ASSERT(_state == InternalState::DONE || _state == InternalState::FETCH_DATA);
 
@@ -351,7 +356,7 @@ auto ExecutionBlockImpl<IdExecutor<ConstFetcher>>::injectConstantBlock<IdExecuto
   _hasUsedDataRangeBlock = false;
   _upstreamState = ExecutionState::HASMORE;
 
-  _rowFetcher.injectBlock(std::move(block));
+  _rowFetcher.injectBlock(std::move(block), std::move(skipped));
 
   resetExecutor();
 }
@@ -972,7 +977,6 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(AqlCallStack& s
   TRI_ASSERT(shadowRow.isInitialized());
   uint64_t depthSkippingNow = static_cast<uint64_t>(stack.shadowRowDepthToSkip());
   uint64_t shadowDepth = shadowRow.getDepth();
-
   bool didWriteRow = false;
   if (shadowRow.isRelevant()) {
     LOG_QUERY("1b257", DEBUG) << printTypeInfo() << " init executor.";
@@ -1051,6 +1055,18 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack) -> E
 
   auto&& [state, shadowRow] = _lastRange.nextShadowRow();
   TRI_ASSERT(shadowRow.isInitialized());
+
+  // TODO FIXME WARNING THIS IS AN UGLY HACK. PLEASE SOLVE ME IN A MORE
+  // SENSIBLE WAY!
+  //
+  // the row fetcher doesn't know its ranges, the ranges don't know the fetcher
+  //
+  // ranges synchronize shadow rows, and fetcher synchronizes skipping
+  //
+  // but there are interactions between the two.
+  if constexpr (std::is_same_v<DataRange, MultiAqlItemBlockInputRange>) {
+    _rowFetcher.resetDidReturnSubquerySkips(shadowRow.getDepth());
+  }
 
   countShadowRowProduced(stack, shadowRow.getDepth());
   if (shadowRow.isRelevant()) {
@@ -1567,7 +1583,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         TRI_ASSERT(isMultiDepExecutor<Executor> || !lastRangeHasDataRow());
         TRI_ASSERT(!_lastRange.hasShadowRow());
         SkipResult skippedLocal;
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         auto subqueryLevelBefore = stack.subqueryLevel();
 #endif
@@ -1586,6 +1601,40 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           // We do not return anything in WAITING state, also NOT skipped.
           return {_upstreamState, SkipResult{}, nullptr};
         }
+
+        if (!skippedLocal.nothingSkipped()) {
+          if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
+            // In SubqueryStart the stack is exactly the same size as the skip result
+            // from above, the call we work on is inside the subquery.
+            // The stack is exactly what we send upstream, no added call on top.
+            TRI_ASSERT(skippedLocal.subqueryDepth() == stack.subqueryLevel());
+            for (size_t i = 0; i < stack.subqueryLevel(); ++i) {
+              auto skippedSub = skippedLocal.getSkipOnSubqueryLevel(i);
+              if (skippedSub > 0) {
+                auto& call = stack.modifyCallAtDepth(i);
+                call.didSkip(skippedSub);
+                call.resetSkipCount();
+              }
+            }
+          } else {
+            // In all other executors the stack is 1 depth smaller then what
+            // we request from upstream. The top-most entry will be added
+            // by the executor and is not part of the stack here.
+            // However the returned skipped information is complete including
+            // the local call.
+            TRI_ASSERT(skippedLocal.subqueryDepth() == stack.subqueryLevel() + 1);
+
+            for (size_t i = 0; i < stack.subqueryLevel(); ++i) {
+              auto skippedSub = skippedLocal.getSkipOnSubqueryLevel(i + 1);
+              if (skippedSub > 0) {
+                auto& call = stack.modifyCallAtDepth(i);
+                call.didSkip(skippedSub);
+                call.resetSkipCount();
+              }
+            }
+          }
+        }
+
         if constexpr (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
           // We have a new range, passthrough can use this range.
           _hasUsedDataRangeBlock = false;
@@ -1606,20 +1655,17 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           // Subquery needs to include the topLevel Skip.
           // But does not need to apply the count to clientCall.
           _skipped.merge(skippedLocal, false);
-          // This is what has been asked for by the SubqueryEnd
-
-          auto& subqueryCall = stack.modifyTopCall();
-          subqueryCall.didSkip(skippedLocal.getSkipCount());
-          subqueryCall.resetSkipCount();
+   
         } else {
           _skipped.merge(skippedLocal, true);
         }
         if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
           // For the subqueryStart, we need to increment the SkipLevel by one
           // as we may trigger this multiple times, check if we need to do it.
-          while (_skipped.subqueryDepth() < stack.subqueryLevel() + 1) {
+          while (_skipped.subqueryDepth() <= skippedLocal.subqueryDepth()) {
             // In fact, we only need to increase by 1
-            TRI_ASSERT(_skipped.subqueryDepth() == stack.subqueryLevel());
+            // the lower levels have been merged above
+            TRI_ASSERT(_skipped.subqueryDepth() == skippedLocal.subqueryDepth());
             _skipped.incrementSubquery();
           }
         }
@@ -1769,35 +1815,6 @@ void ExecutionBlockImpl<Executor>::resetExecutor() {
                 "initializeCursor method!");
   InitializeCursor<customInit>::init(_executor, _rowFetcher, _executorInfos);
   _executorReturnedDone = false;
-}
-
-template <class Executor>
-ExecutionState ExecutionBlockImpl<Executor>::fetchShadowRowInternal() {
-  TRI_ASSERT(_state == InternalState::FETCH_SHADOWROWS);
-  TRI_ASSERT(!_outputItemRow->isFull());
-  ExecutionState state = ExecutionState::HASMORE;
-  ShadowAqlItemRow shadowRow{CreateInvalidShadowRowHint{}};
-  // TODO: Add lazy evaluation in case of LIMIT "lying" on done
-  std::tie(state, shadowRow) = _rowFetcher.fetchShadowRow();
-  if (state == ExecutionState::WAITING) {
-    TRI_ASSERT(!shadowRow.isInitialized());
-    return state;
-  }
-
-  if (state == ExecutionState::DONE) {
-    _state = InternalState::DONE;
-  }
-  if (shadowRow.isInitialized()) {
-    _outputItemRow->moveRow(shadowRow);
-    TRI_ASSERT(_outputItemRow->produced());
-    _outputItemRow->advanceRow();
-  } else {
-    if (_state != InternalState::DONE) {
-      _state = InternalState::FETCH_DATA;
-      resetExecutor();
-    }
-  }
-  return state;
 }
 
 template <class Executor>
