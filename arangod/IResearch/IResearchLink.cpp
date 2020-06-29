@@ -85,8 +85,8 @@ struct LinkTrxState final : public arangodb::TransactionState::Cookie {
 
     try {
       // hold references even after transaction
-      _ctx.remove(irs::filter::make<arangodb::iresearch::PrimaryKeyFilterContainer>(
-          std::move(_removals)));
+      auto filter = std::make_unique<arangodb::iresearch::PrimaryKeyFilterContainer>(std::move(_removals));
+      _ctx.remove(std::unique_ptr<irs::filter>(std::move(filter)));
     } catch (std::exception const& e) {
       LOG_TOPIC("eb463", ERR, arangodb::iresearch::TOPIC)
           << "caught exception while applying accumulated removals: " << e.what();
@@ -1051,8 +1051,7 @@ Result IResearchLink::initDataStore(
                 std::to_string(_id.id()) + "'"};
   }
 
-  _dataStore._directory =
-      irs::directory::make<irs::mmap_directory>(_dataStore._path.utf8());
+  _dataStore._directory = std::make_unique<irs::mmap_directory>(_dataStore._path.utf8());
 
   if (!_dataStore._directory) {
     return {TRI_ERROR_INTERNAL,
