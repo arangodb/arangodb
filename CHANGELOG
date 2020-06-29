@@ -3,6 +3,9 @@ v3.7.1-rc.1 (XXXX-XX-XX)
 
 * Fixed a misleading error message in AQL.
 
+* Fix undistribute-remove-after-enum-coll which would allow calculations to be
+  pushed to a DBServer which are not allowed to run there.
+
 * Removed the edge id's hover styling in case of embedded document editor in the
   Web UI as this functionality is disabled. This was misleading because the
   elements are not clickable.
