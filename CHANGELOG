@@ -1,6 +1,8 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Returned `AQL_WARNING()` to emit warnings from UDFs.
+
 * The Web UI is now reporting errors properly in case of editing ArangoSearch
   Views with invalid properties.
 
@@ -36,7 +38,7 @@ v3.6.5 (XXXX-XX-XX)
 
 * Fixed internal issue #701: Dangling readers in ArangoSearch index_writer
   cache.
-    
+
 * Fix internal test helper function `removeCost` to really remove costs.
 
 * Pass through AQL query errors to UI graph viewer without turning them into
