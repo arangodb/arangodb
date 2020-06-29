@@ -469,7 +469,13 @@ auto ExecutionBlockImpl<RemoteExecutor>::execute(AqlCallStack stack)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   traceExecuteBegin(stack);
   auto res = executeWithoutTrace(stack);
-  traceExecuteEnd(res);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto const& [state, skipped, block] = res;
+  if (block != nullptr) {
+    block->validateShadowRowConsistency();
+  }
+#endif
+  traceExecuteEnd(res, server() + ":" + distributeId());
   return res;
 }
 

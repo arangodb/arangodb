@@ -103,7 +103,7 @@ void EnumerateListExecutor::processArrayElement(OutputAqlItemRow& output) {
   output.moveValueInto(_infos.getOutputRegister(), _currentRow, guard);
   output.advanceRow();
 
-  // set position to +1 for next iteration after new fetchRow
+  // set position to +1 for next iteration
   _inputArrayPosition++;
 }
 
