@@ -3,6 +3,18 @@ v3.6.5 (XXXX-XX-XX)
 
 * Correct some log entries.
 
+* Fixed that, when performing a graph AQL query while a (graceful) failover for
+  the leader of the system collections is in progress, ArangoDB would report a 
+  "Graph not found error".
+  The real error, namely that an agency transaction failed, was swallowed in 
+  the graph lookup code due to a wrong error code being used from Fuerte. 
+  We now generate a more appropriate 503 - Service Unavailable error
+
+* Changing the current users profile icon in the Web UI now renders the new icon
+  directly without the need of a full UI browser reload.
+
+* Fixed hotbackup agency lock cleanup.
+
 * Web UI now shows correct permissions in case wildcard database level and
   wildcard collection level permissions are both set.
 
