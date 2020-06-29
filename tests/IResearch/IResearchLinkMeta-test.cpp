@@ -204,7 +204,7 @@ TEST_F(IResearchLinkMetaTest, test_inheritDefaults) {
   defaults._storeValues = arangodb::iresearch::ValueStorage::VALUE;
   defaults._analyzers.clear();
   defaults._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(
-      analyzers.get("testVocbase::empty", arangodb::AnalyzersRevision::LATEST), "empty"));
+      analyzers.get("testVocbase::empty", arangodb::QueryAnalyzerRevisions::QUERY_LATEST), "empty"));
   defaults._fields["abc"]->_fields["xyz"] = arangodb::iresearch::IResearchLinkMeta();
   defaults._sort.emplace_back(std::vector<arangodb::basics::AttributeName>{{"foo",false}}, true);
 
@@ -589,14 +589,14 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
   meta._trackListPositions = true;
   meta._storeValues = arangodb::iresearch::ValueStorage::VALUE;
   meta._analyzerDefinitions.clear();
-  meta._analyzerDefinitions.emplace(analyzers.get("identity", arangodb::AnalyzersRevision::LATEST));
+  meta._analyzerDefinitions.emplace(analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
   meta._analyzerDefinitions.emplace(analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty", 
-                                                  arangodb::AnalyzersRevision::LATEST));
+                                                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
   meta._analyzers.clear();
   meta._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(
-      analyzers.get("identity", arangodb::AnalyzersRevision::LATEST), "identity"));
+      analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST), "identity"));
   meta._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(
-      analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty", arangodb::AnalyzersRevision::LATEST),
+      analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty", arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
       "empty"));
   meta._fields["a"] = meta;            // copy from meta
   meta._fields["a"]->_fields.clear();  // do not inherit fields to match jSon inheritance
@@ -624,7 +624,7 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
   overrideAll._storeValues = arangodb::iresearch::ValueStorage::NONE;
   overrideAll._analyzers.clear();
   overrideAll._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(
-      analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty", arangodb::AnalyzersRevision::LATEST),
+      analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty", arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
       "empty"));
   overrideSome._fields.clear();  // do not inherit fields to match jSon inheritance
   overrideSome._trackListPositions = false;
@@ -2244,9 +2244,9 @@ TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
     arangodb::iresearch::IResearchLinkMeta meta;
 
     std::unordered_set<std::string> expectedAnalyzers;
-    expectedAnalyzers.insert(analyzers.get("identity", arangodb::AnalyzersRevision::LATEST)->name());
-    expectedAnalyzers.insert(analyzers.get(analyzerCustomInTestVocbase, arangodb::AnalyzersRevision::LATEST)->name());
-    expectedAnalyzers.insert(analyzers.get(analyzerCustomInSystem, arangodb::AnalyzersRevision::LATEST)->name());
+    expectedAnalyzers.insert(analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->name());
+    expectedAnalyzers.insert(analyzers.get(analyzerCustomInTestVocbase, arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->name());
+    expectedAnalyzers.insert(analyzers.get(analyzerCustomInSystem, arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->name());
 
     arangodb::iresearch::IResearchLinkMeta::Mask mask(false);
     auto json = VPackParser::fromJson(testJson);

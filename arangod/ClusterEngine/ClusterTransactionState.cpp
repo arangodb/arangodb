@@ -47,9 +47,12 @@ ClusterTransactionState::ClusterTransactionState(TRI_vocbase_t& vocbase,
                                                  transaction::Options const& options)
     : TransactionState(vocbase, tid, options) {
   TRI_ASSERT(isCoordinator());
-  acceptAnalyzersRevision(_vocbase.server()
-    .getFeature< arangodb::iresearch::IResearchAnalyzerFeature>()
-    .getAnalyzersRevision(_vocbase, false)->getRevision());
+  // we have to read revisions here as validateAndOptimize is executed before
+  // transaction is started and during validateAndOptimize some simple
+  // function calls could be executed and calls requires valid analyzers revisions.
+  acceptAnalyzersRevision(
+      _vocbase.server().getFeature<arangodb::ClusterFeature>()
+        .clusterInfo().getQueryAnalyzersRevision(vocbase.name()));
 }
 
 /// @brief start a transaction

@@ -741,6 +741,14 @@
         contentType: 'application/json',
         processData: false,
         success: function (data) {
+          if (data && data.error) {
+            if (data.errorNum && data.errorMessage) {
+              arangoHelper.arangoError(`Error ${data.errorNum}`, data.errorMessage);
+            } else {
+              arangoHelper.arangoError('Failure', 'Got unexpected server response: ' + JSON.stringify(data));
+            }
+            return;
+          }
           if (callback) {
             callback(false, data);
           }
@@ -761,6 +769,18 @@
         contentType: 'application/json',
         processData: false,
         success: function (data) {
+          if (data.result && data.result.length > 0) {
+            _.each(data.result, function (resp) {
+              if (resp.error) {
+                if (resp.errorNum && resp.errorMessage) {
+                  arangoHelper.arangoError(`Error ${resp.errorNum}`, resp.errorMessage);
+                } else {
+                  arangoHelper.arangoError('Failure', 'Got unexpected server response: ' + JSON.stringify(resp));
+                }
+                return;
+              }
+            });
+          }
           if (callback) {
             callback(false, data);
           }
@@ -879,7 +899,6 @@
       if (refresh || this.CollectionTypes[identifier] === undefined) {
         var callback = function (error, data, toRun) {
           if (error) {
-            arangoHelper.arangoError('Error', 'Could not detect collection type');
             if (toRun) {
               toRun(error);
             }
