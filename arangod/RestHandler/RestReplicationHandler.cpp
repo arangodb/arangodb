@@ -27,6 +27,7 @@
 #include "Aql/Query.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/HybridLogicalClock.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/RocksDBUtils.h"
@@ -1240,6 +1241,19 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     }
   }
 
+  if (parameters.get(StaticStrings::DataSourceGuid).isString()) {
+    std::string const uuid = parameters.get(StaticStrings::DataSourceGuid).copyString();
+    bool valid = false;
+    NumberUtils::atoi_positive<uint64_t>(uuid.data(), uuid.data() + uuid.size(), valid);
+    if (valid) {
+      // globallyUniqueId is only numeric. This causes ambiguities later
+      // and can only happen for collections created with v3.3.0 (the GUID
+      // generation process was changed in v3.3.1 already to fix this issue).
+      // remove the globallyUniqueId so a new one will be generated server.side
+      toMerge.add(StaticStrings::DataSourceGuid, VPackSlice::nullSlice());
+    }
+  }
+
   // Replication Factor. Will be overwritten if not existent
   VPackSlice const replicationFactorSlice = parameters.get(StaticStrings::ReplicationFactor);
   // not an error: for historical reasons the write concern is read from the
@@ -1283,7 +1297,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   // always use current version number when restoring a collection,
   // because the collection is effectively NEW
-  toMerge.add("version", VPackValue(static_cast<int>(LogicalCollection::Version::v33)));
+  toMerge.add(StaticStrings::Version, VPackSlice::nullSlice());
   if (!name.empty() && name[0] == '_' && !parameters.hasKey(StaticStrings::DataSourceSystem)) {
     // system collection?
     toMerge.add(StaticStrings::DataSourceSystem, VPackValue(true));
@@ -1360,7 +1374,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   VPackSlice const sliceToMerge = toMerge.slice();
   VPackBuilder mergedBuilder =
-      VPackCollection::merge(parameters, sliceToMerge, false, true);
+      VPackCollection::merge(parameters, sliceToMerge, false, /*nullMeansRemove*/ true);
   VPackBuilder arrayWrapper;
   arrayWrapper.openArray();
   arrayWrapper.add(mergedBuilder.slice());
@@ -3316,7 +3330,7 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
 
   std::string const uuid =
       arangodb::basics::VelocyPackHelper::getStringValue(slice,
-                                                         "globallyUniqueId", "");
+                                                         StaticStrings::DataSourceGuid, "");
 
   TRI_col_type_e const type = static_cast<TRI_col_type_e>(
       arangodb::basics::VelocyPackHelper::getNumericValue<int>(slice, "type",
@@ -3341,11 +3355,22 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   // because the collection is effectively NEW
   VPackBuilder patch;
   patch.openObject();
-  patch.add("version", VPackValue(static_cast<int>(LogicalCollection::currentVersion())));
+  patch.add(StaticStrings::Version, VPackSlice::nullSlice());
   patch.add(StaticStrings::DataSourceSystem, VPackValue(TRI_vocbase_t::IsSystemName(name)));
-  patch.add("objectId", VPackSlice::nullSlice());
+  if (!uuid.empty()) {
+    bool valid = false;
+    NumberUtils::atoi_positive<uint64_t>(uuid.data(), uuid.data() + uuid.size(), valid);
+    if (valid) {
+      // globallyUniqueId is only numeric. This causes ambiguities later
+      // and can only happen for collections created with v3.3.0 (the GUID
+      // generation process was changed in v3.3.1 already to fix this issue).
+      // remove the globallyUniqueId so a new one will be generated server.side
+      patch.add(StaticStrings::DataSourceGuid, VPackSlice::nullSlice());
+    }
+  }
+  patch.add(StaticStrings::ObjectId, VPackSlice::nullSlice());
   patch.add("cid", VPackSlice::nullSlice());
-  patch.add("id", VPackSlice::nullSlice());
+  patch.add(StaticStrings::DataSourceId, VPackSlice::nullSlice());
   patch.close();
 
   VPackBuilder builder =
