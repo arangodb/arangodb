@@ -436,7 +436,7 @@ IResearchViewExecutorBase<Impl, Traits>::produceRows(AqlItemBlockInputRange& inp
         output.advanceRow();
       } else {
         _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-        std::ignore = inputRange.nextDataRow();
+        inputRange.advanceDataRow();
         // no document written, repeat.
       }
     }
@@ -479,7 +479,7 @@ IResearchViewExecutorBase<Impl, Traits>::skipRowsRange(AqlItemBlockInputRange& i
     if (call.shouldSkip()) {
       // We still need to fetch more
       // trigger refetch of new input row
-      std::ignore = inputRange.nextDataRow();
+      inputRange.advanceDataRow();
       _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
     }
   }
