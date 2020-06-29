@@ -167,7 +167,7 @@ std::tuple<Result, TRI_voc_cid_t, uint64_t> RocksDBReplicationContext::bindColle
   std::shared_ptr<LogicalCollection> logical{vocbase.lookupCollection(cname)};
 
   if (!logical) {
-    return std::make_tuple(TRI_ERROR_BAD_PARAMETER, 0, 0);
+    return std::make_tuple(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, 0, 0);
   }
   TRI_voc_cid_t cid = logical->id();
 

@@ -185,11 +185,11 @@ CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authTok
     }
     [[fallthrough]];
     case ServerState::Mode::TRYAGAIN: {
+      // the following paths are allowed on followers
       if (!::startsWith(path, "/_admin/shutdown") &&
           !::startsWith(path, "/_admin/cluster/health") &&
           !::startsWith(path, "/_admin/log") &&
-          !::startsWith(path, "/_admin/server/role") &&
-          !::startsWith(path, "/_admin/server/availability") &&
+          !::startsWith(path, "/_admin/server/") &&
           !::startsWith(path, "/_admin/status") &&
           !::startsWith(path, "/_admin/statistics") &&
           !::startsWith(path, "/_api/agency/agency-callbacks") &&
