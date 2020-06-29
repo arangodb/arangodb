@@ -1,6 +1,10 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* In case a document got requested via the UI of a collection which does not
+  exist, the UI now properly displays an error view instead of having a bad
+  display state.
+
 * Web UI now shows correct permissions in case wildcard database level and
   wildcard collection level permissions are both set.
 
