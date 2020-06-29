@@ -4,7 +4,10 @@ devel
 * Fix undistribute-remove-after-enum-coll which would allow calculations
   to be pushed to a DBServer which are not allowed to run there.
 
-* Added option `--transaction.streaming-lock-timeout` to control the timeout
+* Fixed issue ES-609: "Transaction already in use" error when running
+  transaction.
+
+	Added option `--transaction.streaming-lock-timeout` to control the timeout
   in seconds in case of parallel access to a streaming transaction.
 
 * Returned `AQL_WARNING()` to emit warnings from UDFs.
