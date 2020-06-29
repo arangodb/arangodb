@@ -3,6 +3,18 @@ v3.7.1-rc.1 (XXXX-XX-XX)
 
 * Correct some log entries.
 
+* Fixed internal issue #725: Added analyzers revision for _system database in
+  queries.
+
+* The Web UI is not disabling the query import button after file upload takes
+  place.
+
+* In case of a graph deletion failure, the Web UI displays now the correct
+  error message.
+
+* Privatised load plan / current in cluster info and cleanup following agency
+  cache implementation.
+
 * Allow removal of existing schemas by saving a schema of either `null` or `{}`
   (empty object). Using an empty string as schema will produce  an error in the
   web interface and will not remove the schema.
