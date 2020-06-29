@@ -1,6 +1,9 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* The Web UI's replication view is now checking the replication state
+  automatically without the need of a manual reload.
+
 * Fixed that, when performing a graph AQL query while a (graceful) failover for
   the leader of the system collections is in progress, ArangoDB would report a 
   "Graph not found error".
