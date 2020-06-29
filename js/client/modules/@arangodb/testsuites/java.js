@@ -66,22 +66,25 @@ const testPaths = {
 function javaDriver (options) {
   function runInJavaTest (options, instanceInfo, file, addArgs) {
     let topology;
+    let testResultsDir = fs.join(instanceInfo.rootDir, 'javaresults');
     let results = {};
+    let matchTopology;
     if (options.cluster) {
       topology = 'CLUSTER';
+      matchTopology = /^CLUSTER/;
     } else if (options.activefailover) {
       topology = 'ACTIVE_FAILOVER';
+      matchTopology = /^ACTIVE_FAILOVER/;
     } else {
       topology = 'SINGLE_SERVER';
+      matchTopology = /^SINGLE_SERVER/;
     }
-    print(instanceInfo)
     let enterprise = 'false';
     if (global.ARANGODB_CLIENT_VERSION(true).hasOwnProperty('enterprise-version')) {
       enterprise = 'true';
     }
-    db._version(true)
-    let rx = /.*:\/\//gi
-    print(instanceInfo.url.replace(rx, ''))
+     // strip i.e. http:// from the URL to conform with what the driver expects:
+    let rx = /.*:\/\//gi;
     let args = [
       'test', '-U',
       '-Dgroups=api',
@@ -90,7 +93,8 @@ function javaDriver (options) {
       '-Dtest.arangodb.isEnterprise=' + enterprise,
       '-Dtest.arangodb.hosts=' + instanceInfo.url.replace(rx,''),
       '-Dtest.arangodb.authentication=root:',
-      '-Dtest.arangodb.topology=' + topology
+      '-Dtest.arangodb.topology=' + topology,
+      '-Dallure.results.directory=' + testResultsDir
     ];
 
     if (options.testCase) {
@@ -108,10 +112,109 @@ function javaDriver (options) {
     let start = Date();
     let status = true;
     const rc = executeExternalAndWait('mvn', args, false, [], options.javasource);
-    print(rc)
     if (rc.exit !== 0) {
       status = false;
     }
+
+    let allResultJsons = {};
+    let topLevelContainers = [];
+    let allContainerJsons = {};
+    let containerRe = /-container.json/;
+    let resultRe = /-result.json/;
+    let resultFiles = fs.list(testResultsDir).filter(file => {
+      return file.match(resultRe) !== null;
+    });
+    //print(resultFiles)
+    resultFiles.forEach(containerFile => {
+      let resultJson = JSON.parse(fs.read(fs.join(testResultsDir, containerFile)));
+      resultJson['parents'] = [];
+      allResultJsons[resultJson.uuid] = resultJson;
+    });
+    
+    let containerFiles = fs.list(testResultsDir).filter(file => file.match(containerRe) !== null);
+    containerFiles.forEach(containerFile => {
+      let container = JSON.parse(fs.read(fs.join(testResultsDir, containerFile)));
+      container['childContainers'] = [];
+      container['isToplevel'] = false;
+      //print(container)
+      container.children.forEach(child => {
+        allResultJsons[child]['parents'].push(container.uuid);
+      });
+      allContainerJsons[container.uuid] = container;
+    });
+
+    for(let oneResultKey in allResultJsons) {
+      allResultJsons[oneResultKey].parents = 
+        allResultJsons[oneResultKey].parents.sort(function(aUuid, bUuid) {
+          let a = allContainerJsons[aUuid];
+          let b = allContainerJsons[bUuid];
+          if ((a.start !== b.start) || (a.stop !== b.stop)) {
+            return (b.stop - b.start) - (a.stop - a.start);
+          }
+          if (a.children.length !== b.children.length) {
+            return b.children.length - a.children.length;
+          }
+          //print(a)
+          //print(b)
+          //print('--------')
+          return 0;
+        });
+      for (let i = 0; i + 1 < allResultJsons[oneResultKey].parents.length; i++) {
+        let parent = allResultJsons[oneResultKey].parents[i];
+        let child = allResultJsons[oneResultKey].parents[i + 1];
+        if(i === 0) {
+          topLevelContainers.push(parent);
+        }
+        if (!allContainerJsons[parent]['childContainers'].includes(child)) {
+          allContainerJsons[parent]['childContainers'].push(child);
+        }
+        // print(allContainerJsons[parent])
+      }
+      //print(allResultJsons[oneResultKey])
+      //print('vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv')
+    }
+    //print(topLevelContainers)
+    topLevelContainers.forEach(id => {
+      //print('zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz')
+      let tlContainer = allContainerJsons[id];
+      //print(tlContainer['childContainers'])
+
+      let resultSet = {
+        duration: tlContainer.stop - tlContainer.start,
+        total: tlContainer.children.length,
+        failed: 0,
+        status: true
+      };
+      results[tlContainer.name] = resultSet;
+      
+      tlContainer['childContainers'].forEach(childContainerId => {
+        let childContainer = allContainerJsons[childContainerId];
+        let suiteResult = {};
+        resultSet[childContainer.name] = suiteResult;
+        //print(childContainer);
+        childContainer['childContainers'].forEach(grandChildContainerId => {
+          let grandChildContainer = allContainerJsons[grandChildContainerId];
+          //print(grandChildContainer);
+          let name = childContainer.name + "." + grandChildContainer.name;
+          if (grandChildContainer.children.length !== 1) {
+            print("This grandchild has more than one item - not supported!");
+            print(grandChildContainer.children);
+          }
+          let gcTestResult = allResultJsons[grandChildContainer.children[0]];
+          let message = "";
+          if (gcTestResult.hasOwnProperty('statusDetails')) {
+            message = gcTestResult.statusDetails.message + "\n\n" + gcTestResult.statusDetails.trace;
+          }
+          suiteResult[grandChildContainer.name + '.' + gcTestResult.name] = {
+            duration: gcTestResult.stop - gcTestResult.start,
+            status: (gcTestResult.status === "passed") || (gcTestResult.status === "skipped"),
+            message: message
+          };
+        });
+      });
+      //print('zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz')
+      
+    });
     results['timeout'] = false;
     results['status'] = status;
     results['message'] = '';
