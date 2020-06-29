@@ -95,7 +95,7 @@ bool RocksDBAllIndexIterator::nextImpl(LocalDocumentIdCallback const& cb, size_t
 
   TRI_ASSERT(limit > 0);
 
-  do {
+  while (limit > 0) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(_bounds.objectId() == RocksDBKey::objectId(_iterator->key()));
 #endif
@@ -111,7 +111,7 @@ bool RocksDBAllIndexIterator::nextImpl(LocalDocumentIdCallback const& cb, size_t
     } else if (outOfRange()) {
       return false;
     }
-  } while (limit > 0);
+  }
 
   return true;
 }
@@ -130,7 +130,7 @@ bool RocksDBAllIndexIterator::nextDocumentImpl(IndexIterator::DocumentCallback c
     return false;
   }
 
-  do {
+  while (limit > 0) {
     cb(RocksDBKey::documentId(_iterator->key()), VPackSlice(reinterpret_cast<uint8_t const*>(_iterator->value().data())));
     --limit;
     _iterator->Next();
@@ -142,7 +142,7 @@ bool RocksDBAllIndexIterator::nextDocumentImpl(IndexIterator::DocumentCallback c
     } else if (outOfRange()) {
       return false;
     }
-  } while (limit > 0);
+  }
 
   return true;
 }

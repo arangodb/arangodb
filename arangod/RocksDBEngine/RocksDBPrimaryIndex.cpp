@@ -328,7 +328,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
       return false;
     }
 
-    do {
+    while (limit > 0) {
       TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
 
       cb(RocksDBValue::documentId(_iterator->value()));
@@ -343,7 +343,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
       if (!_iterator->Valid() || outOfRange()) {
         return false;
       }
-    } while (limit > 0);
+    }
 
     return true;
   }
@@ -361,7 +361,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
 
     transaction::BuilderLeaser builder(transaction());
 
-    do {
+    while (limit > 0) {
       LocalDocumentId documentId = RocksDBValue::documentId(_iterator->value());
       arangodb::velocypack::StringRef key = RocksDBKey::primaryKey(_iterator->key());
 
@@ -379,7 +379,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
       if (!_iterator->Valid() || outOfRange()) {
         return false;
       }
-    } while (limit > 0);
+    }
 
     return true;
   }

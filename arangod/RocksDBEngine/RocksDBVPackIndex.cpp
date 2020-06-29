@@ -217,19 +217,20 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       return false;
     }
 
-    do {
+    while (limit > 0) {
       TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
 
       cb(_index->_unique ? RocksDBValue::documentId(_iterator->value())
                          : RocksDBKey::indexDocumentId(_iterator->key()));
 
-      --limit;
       if (!advance()) {
         // validate that Iterator is in a good shape and hasn't failed
         arangodb::rocksutils::checkIteratorStatus(_iterator.get());
         return false;
       }
-    } while (limit > 0);
+      
+      --limit;
+    } 
 
     return true;
   }
@@ -247,7 +248,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       return false;
     }
 
-    do {
+    while (limit > 0) {
       rocksdb::Slice const& key = _iterator->key();
       TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(key));
 
@@ -256,13 +257,14 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
                           : RocksDBKey::indexDocumentId(key));
       cb(documentId, RocksDBKey::indexedVPack(key));
 
-      --limit;
       if (!advance()) {
         // validate that Iterator is in a good shape and hasn't failed
         arangodb::rocksutils::checkIteratorStatus(_iterator.get());
         return false;
       }
-    } while (limit > 0);
+      
+      --limit;
+    }
 
     return true;
   }
