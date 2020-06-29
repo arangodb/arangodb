@@ -39,8 +39,10 @@
 #include "Aql/QueryRegistry.h"
 #include "Aql/Timing.h"
 #include "Basics/Exceptions.h"
+#include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/WriteLocker.h"
 #include "Basics/fasthash.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
@@ -191,11 +193,18 @@ bool Query::killed() const {
 /// @brief set the query to killed
 void Query::kill() {
   _killed = true;
+
+  // protect this method from concurrent destruction of
+  // snippets by another thread
+  READ_LOCKER(locker, _snippetsLock);
+
   for (auto& pair : _snippets) {
     ExecutionEngine* engine = pair.second.get();
     if (engine != nullptr) {
       // killing is best effort...
       // intentionally ignoring the result of this call here
+      
+      // this may do HTTP communication
       engine->kill();
     }
   }
@@ -216,6 +225,9 @@ void Query::prepareQuery(SerializationFormat format) {
 
   TRI_ASSERT(_trx != nullptr);
   TRI_ASSERT(_trx->status() == transaction::Status::RUNNING);
+ 
+  // prepareQuery must not overlap with kill()
+  WRITE_LOCKER(locker, _snippetsLock);
 
   // note that the engine returned here may already be present in our
   // own _engine attribute (the instanciation procedure may modify us
@@ -1107,90 +1119,99 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, bool sync,
       // (we're also called from the destructor)
     }
   }
+    
+  {
+    READ_LOCKER(locker, _snippetsLock);
+    if (!_snippets.empty()) {
+      if (statsBuilder != nullptr) {
+        TRI_ASSERT(statsBuilder->isOpenObject());
+        ExecutionStats stats;
+        stats.requests += _numRequests.load(std::memory_order_relaxed);
+        stats.setPeakMemoryUsage(_resourceMonitor.peakMemoryUsage());
+        stats.setExecutionTime(elapsedSince(_startTime));
+        for (auto& [eId, engine] : _snippets) {
+          engine->collectExecutionStats(stats);
+          engine->setShutdown();
+        }
 
-  if (statsBuilder != nullptr && !_snippets.empty()) {
-    TRI_ASSERT(statsBuilder->isOpenObject());
-    ExecutionStats stats;
-    stats.requests += _numRequests.load(std::memory_order_relaxed);
-    stats.setPeakMemoryUsage(_resourceMonitor.peakMemoryUsage());
-    stats.setExecutionTime(elapsedSince(_startTime));
-    for (auto& [eId, engine] : _snippets) {
-      engine->collectExecutionStats(stats);
-      engine->setShutdown();
-    }
+        statsBuilder->add(VPackValue("stats"));
+        stats.toVelocyPack(*statsBuilder, _queryOptions.fullCount);
 
-    statsBuilder->add(VPackValue("stats"));
-    stats.toVelocyPack(*statsBuilder, _queryOptions.fullCount);
+        if (includePlan) {
+          TRI_ASSERT(_plans.size() == 1);
+          auto& plan = _plans[0];
 
-    if (includePlan) {
-      TRI_ASSERT(_plans.size() == 1);
-      auto& plan = _plans[0];
+          if (ServerState::instance()->isCoordinator()) {
+            std::vector<arangodb::aql::ExecutionNode::NodeType> const collectionNodeTypes{
+              arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
+                arangodb::aql::ExecutionNode::INDEX,
+                arangodb::aql::ExecutionNode::REMOVE,
+                arangodb::aql::ExecutionNode::INSERT,
+                arangodb::aql::ExecutionNode::UPDATE,
+                arangodb::aql::ExecutionNode::REPLACE,
+                arangodb::aql::ExecutionNode::UPSERT};
 
-      if (ServerState::instance()->isCoordinator()) {
-        std::vector<arangodb::aql::ExecutionNode::NodeType> const collectionNodeTypes{
-            arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
-            arangodb::aql::ExecutionNode::INDEX,
-            arangodb::aql::ExecutionNode::REMOVE,
-            arangodb::aql::ExecutionNode::INSERT,
-            arangodb::aql::ExecutionNode::UPDATE,
-            arangodb::aql::ExecutionNode::REPLACE,
-            arangodb::aql::ExecutionNode::UPSERT};
+            ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+            ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+            plan->findNodesOfType(nodes, collectionNodeTypes, true);
 
-        ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-        ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
-        plan->findNodesOfType(nodes, collectionNodeTypes, true);
-
-        for (ExecutionNode* n : nodes) {
-          // clear shards so we get back the full collection name when
-          // serializing the plan
-          auto cn = dynamic_cast<CollectionAccessingNode*>(n);
-          if (cn) {
-            cn->setUsedShard("");
+            for (ExecutionNode* n : nodes) {
+              // clear shards so we get back the full collection name when
+              // serializing the plan
+              auto cn = dynamic_cast<CollectionAccessingNode*>(n);
+              if (cn) {
+                cn->setUsedShard("");
+              }
+            }
           }
+
+          // remove additional ASYNC and TraversalNodes added for traversal parallelization
+          ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+          ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+          plan->findUniqueNodesOfType(nodes, std::vector<ExecutionNode::NodeType>{
+              arangodb::aql::ExecutionNode::MUTEX}, true);
+
+          for (ExecutionNode* n : nodes) {
+            auto parents = n->getParents();
+            for (size_t i = 0; i < parents.size(); i++) {
+              TRI_ASSERT(parents[i]->getType() == ExecutionNode::DISTRIBUTE_CONSUMER);
+              ExecutionNode* graph = parents[i]->getFirstParent();
+              TRI_ASSERT(graph->getType() == ExecutionNode::TRAVERSAL);
+              plan->unlinkNode(parents[i]); // Dist-Consumer node does not like toVelocyPack
+              if (i > 0) {
+                // unlink additional ASYNC nodes, explainer does not handle cycles
+                ExecutionNode* async = graph->getFirstParent();
+                TRI_ASSERT(async->getType() == ExecutionNode::ASYNC);
+                ExecutionNode* gather = async->getFirstParent();
+                TRI_ASSERT(gather->getType() == ExecutionNode::GATHER);
+                gather->removeDependency(async);
+                plan->clearVarUsageComputed();
+              }
+            }
+          }
+          plan->findVarUsage();
+
+          statsBuilder->add(VPackValue("plan"));
+          plan->toVelocyPack(*statsBuilder, _ast.get(), false, ExplainRegisterPlan::No);
+          // needed to happen before plan cleanup
         }
       }
 
-      // remove additional ASYNC and TraversalNodes added for traversal parallelization
-      ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-      ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
-      plan->findUniqueNodesOfType(nodes, std::vector<ExecutionNode::NodeType>{
-        arangodb::aql::ExecutionNode::MUTEX}, true);
-
-      for (ExecutionNode* n : nodes) {
-        auto parents = n->getParents();
-        for (size_t i = 0; i < parents.size(); i++) {
-          TRI_ASSERT(parents[i]->getType() == ExecutionNode::DISTRIBUTE_CONSUMER);
-          ExecutionNode* graph = parents[i]->getFirstParent();
-          TRI_ASSERT(graph->getType() == ExecutionNode::TRAVERSAL);
-          plan->unlinkNode(parents[i]); // Dist-Consumer node does not like toVelocyPack
-          if (i > 0) {
-            // unlink additional ASYNC nodes, explainer does not handle cycles
-            ExecutionNode* async = graph->getFirstParent();
-            TRI_ASSERT(async->getType() == ExecutionNode::ASYNC);
-            ExecutionNode* gather = async->getFirstParent();
-            TRI_ASSERT(gather->getType() == ExecutionNode::GATHER);
-            gather->removeDependency(async);
-            plan->clearVarUsageComputed();
-          }
+      if (_trx && _trx->state()->isCoordinator()) {
+        auto* registry = QueryRegistryFeature::registry();
+        if (registry) {
+          registry->unregisterEngines(_snippets);
         }
       }
-      plan->findVarUsage();
-
-      statsBuilder->add(VPackValue("plan"));
-      plan->toVelocyPack(*statsBuilder, _ast.get(), false, ExplainRegisterPlan::No);
-      // needed to happen before plan cleanup
     }
   }
 
-  if (!_snippets.empty() && _trx && _trx->state()->isCoordinator()) {
-    auto* registry = QueryRegistryFeature::registry();
-    if (registry) {
-      registry->unregisterEngines(_snippets);
-    }
+  {
+    // this operation must not overlap with kill()
+    WRITE_LOCKER(locker, _snippetsLock);
+    _snippets.clear();
+    _plans.clear();
   }
-
-  _snippets.clear();
-  _plans.clear();
 
   // the following call removes the query from the list of currently
   // running queries. so whoever fetches that list will not see a Query that

@@ -35,6 +35,7 @@
 #include "Aql/ResourceUsage.h"
 #include "Aql/SharedQueryState.h"
 #include "Basics/Common.h"
+#include "Basics/ReadWriteLock.h"
 #include "V8Server/V8Context.h"
 #include "Cluster/ClusterTypes.h"
 
@@ -305,6 +306,9 @@ class Query : public QueryContext {
   
   /// @brief whether or not the hash was already calculated
   bool _queryHashCalculated;
+
+  /// @brief a lock protecting _snippets against parallel access
+  arangodb::basics::ReadWriteLock _snippetsLock;
 };
 
 // additonally allows TraversalEngines
