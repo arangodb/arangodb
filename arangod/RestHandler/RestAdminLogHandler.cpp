@@ -28,9 +28,11 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/StringUtils.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Logger/LogBuffer.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
+#include "Utils/ExecContext.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -40,9 +42,6 @@ RestAdminLogHandler::RestAdminLogHandler(GeneralRequest* request, GeneralRespons
     : RestBaseHandler(request, response) {}
 
 arangodb::Result RestAdminLogHandler::verifyPermitted() {
-  ServerSecurityFeature* security =
-    application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
-        "ServerSecurity");
   auto* loggerFeature = application_features::ApplicationServer::getFeature<arangodb::LoggerFeature>("Logger");
 
   // do we have admin rights (if rights are active)
