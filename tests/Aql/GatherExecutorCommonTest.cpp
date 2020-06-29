@@ -906,4 +906,56 @@ TEST_P(CommonGatherExecutorTest, skip_over_first_branch) {
   }
 }
 
+/**
+ * @brief Simulates:
+ * EnumerateList (skip 3, produce 2)
+ * SubqueryStart
+ * SCATTER
+ * EnumerateList (skip over dep 0, requrie data from dep 2)
+ * GATHER
+ */
+TEST_P(CommonGatherExecutorTest, skip_over_subquery) {
+  size_t numberOfDocuments = 20;
+  auto [exec, result] = getExecutor({5}, numberOfDocuments);
+
+  // We skip over the full first branch.
+  // And then continue skipping on second branch.
+  size_t offset = 3;
+  AqlCallStack stack{skipThenFetchCall(offset)};
+  stack.pushCall(fetchAllCall());
+
+  result.skipOverSubquery(0, offset);
+  {
+    // In this test we do not care for waiting.
+    auto const [state, skipped, block] = executeUntilResponse(exec.get(), stack);
+
+    // We can only produce 1 subquery, not two in a row.
+    EXPECT_FALSE(skipped.nothingSkipped());
+    EXPECT_EQ(skipped.getSkipOnSubqueryLevel(0), 0)
+        << "We did skip over data query, this was not requested";
+    EXPECT_EQ(skipped.getSkipOnSubqueryLevel(1), offset)
+        << "We did not skip over main query, this was not requested";
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+    assertResultValid(block, result);
+
+    // Fix the stack for the next call
+    stack.modifyCallAtDepth(1).didSkip(offset);
+    stack.modifyCallAtDepth(1).resetSkipCount();
+  }
+
+  {
+    // In this test we do not care for waiting.
+    auto const [state, skipped, block] = executeUntilResponse(exec.get(), stack);
+
+    // We can only produce 1 subquery, not two in a row.
+    EXPECT_TRUE(skipped.nothingSkipped());
+    EXPECT_EQ(skipped.getSkipOnSubqueryLevel(0), 0)
+        << "We did skip over data query, this was not requested";
+    EXPECT_EQ(skipped.getSkipOnSubqueryLevel(1), 0)
+        << "We did skip over main query, this was not requested";
+    EXPECT_EQ(state, ExecutionState::DONE);
+    assertResultValid(block, result);
+  }
+}
+
 }  // namespace arangodb::tests::aql
