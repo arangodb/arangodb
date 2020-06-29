@@ -587,6 +587,15 @@ public:
                                                           bool forceLoadPlan = false);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Reads analyzers revisions needed for querying specified database.
+  ///        Could trigger plan load if database is not found in plan.
+  /// @param databaseID database to query
+  /// @return extracted revisions
+  //////////////////////////////////////////////////////////////////////////////
+  QueryAnalyzerRevisions getQueryAnalyzersRevision(
+      DatabaseID const& databaseID);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection in current. This returns information about
   /// all shards in the collection.
   /// If it is not found in the cache, the cache is reloaded once.
@@ -961,6 +970,7 @@ public:
 
   application_features::ApplicationServer& server() const;
 
+ private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about our plan
   /// Usually one does not have to call this directly.
@@ -975,8 +985,6 @@ public:
 
   void loadCurrent();
 
-
- private:
   void buildIsBuildingSlice(CreateDatabaseInfo const& database,
                               VPackBuilder& builder);
 
