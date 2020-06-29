@@ -85,19 +85,14 @@ auto FilterExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIt
   }
   FilterStats stats{};
 
-  if (!output.isFull()) {
-    while (inputRange.hasDataRow()) {
-      auto [state, input] = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
-      TRI_ASSERT(input.isInitialized());
-      if (input.getValue(_infos.getInputRegister()).toBoolean()) {
-        output.copyRow(input);
-        output.advanceRow();
-        if (output.isFull()) {
-          break;
-        }
-      } else {
-        stats.incrFiltered();
-      }
+  while (inputRange.hasDataRow() && !output.isFull()) {
+    auto const& [state, input] = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+    TRI_ASSERT(input.isInitialized());
+    if (input.getValue(_infos.getInputRegister()).toBoolean()) {
+      output.copyRow(input);
+      output.advanceRow();
+    } else {
+      stats.incrFiltered();
     }
   }
 
