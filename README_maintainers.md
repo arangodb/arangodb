@@ -749,7 +749,15 @@ Pre-requisites:
  
 Once this is completed, you may run it like this:
 
-    ./scripts/unittest java_driver --javasource ../arangodb-java-driver/ --cluster true 
+    ./scripts/unittest java_driver --javasource ../arangodb-java-driver/ \
+        --javaOptions:failIfNoTests false \
+        --testCase com.arangodb.next.api.collection.CollectionApiTest#countAndDropCollection \
+        --cluster true 
+
+For possible `javaOptions` see
+[arangodb-java-driver/dev-README.md#test-provided-deployment](https://github.com/arangodb/arangodb-java-driver/blob/next/arangodb-java-driver/dev-README.md)
+in the java source, or the 
+[surefire documentation](https://maven.apache.org/surefire/maven-surefire-plugin/examples/single-test.html]
 
 ### Debugging Tests
 
