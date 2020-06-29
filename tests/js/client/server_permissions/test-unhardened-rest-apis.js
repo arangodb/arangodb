@@ -30,16 +30,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
-  return {
-    'server.harden': 'false',
-    'server.authentication': 'true',
-    'server.jwt-secret': 'abc123',
-    'runSetup': true
-  };
-}
-
-if (runSetup === true) {
-    let users = require("@arangodb/users");
+  let users = require("@arangodb/users");
   
   users.save("test_rw", "testi");
   users.grantDatabase("test_rw", "_system", "rw");
@@ -47,7 +38,11 @@ if (runSetup === true) {
   users.save("test_ro", "testi");
   users.grantDatabase("test_ro", "_system", "ro");
   
-  return true;
+  return {
+    'server.harden': 'false',
+    'server.authentication': 'true',
+    'server.jwt-secret': 'abc123'
+  };
 }
 
 var jsunity = require('jsunity');

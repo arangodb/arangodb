@@ -35,17 +35,7 @@ const request = require('@arangodb/request');
 const jwtSecret = 'abc123';
 
 if (getOptions === true) {
-  return {
-    'server.harden': 'false',
-    'log.api-enabled': 'jwt',
-    'server.authentication': 'true',
-    'server.jwt-secret': jwtSecret,
-    'runSetup': true
-  };
-}
-
-if (runSetup === true) {
-    let users = require("@arangodb/users");
+  let users = require("@arangodb/users");
   
   users.save("test_rw", "testi");
   users.grantDatabase("test_rw", "_system", "rw");
@@ -53,7 +43,12 @@ if (runSetup === true) {
   users.save("test_ro", "testi");
   users.grantDatabase("test_ro", "_system", "ro");
   
-  return true;
+  return {
+    'server.harden': 'false',
+    'log.api-enabled': 'jwt',
+    'server.authentication': 'true',
+    'server.jwt-secret': jwtSecret
+  };
 }
 
 var jsunity = require('jsunity');
