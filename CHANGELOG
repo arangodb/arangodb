@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed a misleading error message in AQL.
+
 * Allow removal of existing schemas by saving a schema of either `null` or `{}`
   (empty object). Using an empty string as schema will produce  an error in the
   web interface and will not remove the schema.
