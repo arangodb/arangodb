@@ -76,9 +76,10 @@ function undistributeAfterEnumCollRegressionSuite() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test object access for path object
+    /// @brief test whether the undistribute-remove-after-enum-coll rule
+    /// messes up the execution plan badly.
     ////////////////////////////////////////////////////////////////////////////////
-    testTraversalResetCrashes: function () {
+    testUndistributeRule: function () {
       const query = `
         FOR x IN @@c1
           LET gl = DOCUMENT(@c2, x._key)
