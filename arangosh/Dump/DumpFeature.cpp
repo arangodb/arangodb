@@ -987,11 +987,13 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client,
       continue;
     }
     // filter by specified names
-    if (!restrictList.empty() && restrictList.find(name) == restrictList.end()) {
-      // collection name not in list
-      continue;
+    if (!restrictList.empty()) {
+      if (restrictList.find(name) == restrictList.end()) {
+        // collection name not in list
+        continue;
+      }
+      restrictList[name] = true;
     }
-    restrictList[name] = true;
   }
   
   if (!_options.collections.empty()) {
@@ -999,7 +1001,9 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client,
     for (auto const& it : restrictList) {
       if (it.second) {
         found = true;
-        break;
+      } else {
+        LOG_TOPIC("2cbe6", WARN, arangodb::Logger::DUMP)
+            << "Requested collection '" << it.first << "' not found in database";
       }
     }
     if (!found) {
