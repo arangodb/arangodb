@@ -1,6 +1,10 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* In case a document got requested via the UI of a collection which does not
+  exist, the UI now properly displays an error view instead of having a bad
+  display state.
+
 * Fixed hotbackup agency lock cleanup procedure.
 
 * The Web UI's replication view is now checking the replication state
