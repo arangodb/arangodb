@@ -26,6 +26,7 @@
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/SkipResult.h"
 
 #include <memory>
 
@@ -37,7 +38,6 @@ class AqlItemBlock;
 template <BlockPassthrough>
 class DependencyProxy;
 class ShadowAqlItemRow;
-class SkipResult;
 
 /**
  * @brief Interface for all AqlExecutors that do only need one
@@ -70,7 +70,7 @@ class ConstFetcher {
    */
   auto execute(AqlCallStack& stack) -> std::tuple<ExecutionState, SkipResult, DataRange>;
 
-  void injectBlock(SharedAqlItemBlockPtr block);
+  void injectBlock(SharedAqlItemBlockPtr block, SkipResult skipped);
 
   void setDistributeId(std::string const&) {
     // This is not implemented for this fetcher
@@ -88,6 +88,12 @@ class ConstFetcher {
    *        are moved into separate classes.
    */
   SharedAqlItemBlockPtr _currentBlock;
+
+  /**
+   * @brief The amount of documents skipped in outer subqueries.
+   *
+   */
+  SkipResult _skipped;
 
   SharedAqlItemBlockPtr _blockForPassThrough;
 

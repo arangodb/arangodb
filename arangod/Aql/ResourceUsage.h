@@ -40,8 +40,6 @@ struct ResourceUsage final {
       : memoryUsage(0), 
         peakMemoryUsage(0) {}
 
-//  ResourceUsage(ResourceUsage const& other) = default;
-
   void clear() { 
     memoryUsage = 0; 
     peakMemoryUsage = 0;
@@ -54,14 +52,15 @@ struct ResourceUsage final {
 struct ResourceMonitor final {
   ResourceMonitor() : currentResources(), maxMemoryUsage(0) {}
 
-  void setMemoryLimit(size_t value) { maxMemoryUsage.store(value, std::memory_order_relaxed); }
+  void setMemoryLimit(size_t value) { maxMemoryUsage = value; }
+
+  size_t memoryLimit() const { return maxMemoryUsage; }
 
   inline void increaseMemoryUsage(size_t value) {
-    size_t max = maxMemoryUsage.load(std::memory_order_relaxed);
     size_t current = currentResources.memoryUsage.fetch_add(value, std::memory_order_relaxed);
     current += value;
 
-    if (max > 0 && ADB_UNLIKELY(current > max)) {
+    if (maxMemoryUsage > 0 && ADB_UNLIKELY(current > maxMemoryUsage)) {
       currentResources.memoryUsage.fetch_sub(value, std::memory_order_relaxed);
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_RESOURCE_LIMIT, "query would use more memory than allowed");
@@ -91,7 +90,7 @@ struct ResourceMonitor final {
 private:
 
   ResourceUsage currentResources;
-  std::atomic<size_t> maxMemoryUsage;
+  std::size_t maxMemoryUsage;
 };
 
 }  // namespace aql
