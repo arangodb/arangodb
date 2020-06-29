@@ -180,7 +180,7 @@ struct BoostScorer : public irs::sort {
       return nullptr;
     }
 
-    virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
+    virtual irs::score_function prepare_scorer(
                     irs::sub_reader const&, irs::term_reader const&,
                     irs::byte_type const*, irs::byte_type* score_buf,
                     irs::attribute_provider const&, irs::boost_t boost) const override {
@@ -247,7 +247,7 @@ struct CustomScorer : public irs::sort {
       return nullptr;
     }
 
-    virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
+    virtual irs::score_function prepare_scorer(
                     irs::sub_reader const&, irs::term_reader const&,
                     irs::byte_type const*, irs::byte_type* score_buf,
                     irs::attribute_provider const&, irs::boost_t) const override {

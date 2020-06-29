@@ -30,8 +30,14 @@
 
 NS_LOCAL
 
-const irs::order UNORDERED;
-const irs::order::prepared PREPARED_UNORDERED;
+using namespace irs;
+
+const order UNORDERED;
+const order::prepared PREPARED_UNORDERED;
+
+const byte_type* no_score(score_ctx* ctx) noexcept {
+  return reinterpret_cast<byte_type*>(ctx);
+}
 
 NS_END
 
@@ -43,9 +49,32 @@ NS_ROOT
 
 REGISTER_ATTRIBUTE(filter_boost);
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                             sort
-// ----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    score_function
+// -----------------------------------------------------------------------------
+
+score_function::score_function() noexcept
+  : func_(&::no_score) {
+}
+
+score_function::score_function(score_function&& rhs) noexcept
+  : ctx_(std::move(rhs.ctx_)),
+    func_(rhs.func_) {
+  rhs.func_ = &::no_score;
+}
+
+score_function& score_function::operator=(score_function&& rhs) noexcept {
+  if (this != &rhs) {
+    ctx_ = std::move(rhs.ctx_);
+    func_ = rhs.func_;
+    rhs.func_ = &::no_score;
+  }
+  return *this;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                              sort
+// -----------------------------------------------------------------------------
 
 sort::sort(const type_info& type) noexcept
   : type_(type.id()) {
@@ -176,16 +205,16 @@ order::prepared::scorers::scorers(
       score_buf + entry.score_offset,
       doc, boost);
 
-    if (scorer.second) {
+    if (scorer) {
       // skip empty scorers
-      scorers_.emplace_back(std::move(scorer.first), scorer.second, entry);
+      scorers_.emplace_back(std::move(scorer), &entry);
     }
   }
 }
 
 const byte_type* order::prepared::scorers::evaluate() const {
   for (auto& scorer : scorers_) {
-    scorer.evaluate();
+    scorer.func();
   }
   return score_buf_;
 }

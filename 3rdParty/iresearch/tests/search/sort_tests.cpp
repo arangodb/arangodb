@@ -72,7 +72,7 @@ struct aligned_scorer : public irs::sort {
     ) const override {
       // NOOP
     }
-    virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
+    virtual irs::score_function prepare_scorer(
         const irs::sub_reader& /*segment*/,
         const irs::term_reader& /*field*/,
         const irs::byte_type* /*stats*/,
@@ -419,7 +419,7 @@ TEST(sort_tests, prepare_order) {
     ASSERT_TRUE(1 == scorers.size());
     auto& scorer = scorers.front();
     ASSERT_NE(nullptr, scorer.func());
-    ASSERT_EQ(&prepared[0], &scorer.bucket());
+    ASSERT_EQ(&prepared[0], scorer.bucket);
 
     irs::score score;
     ASSERT_TRUE(score.is_default());
@@ -470,7 +470,7 @@ TEST(sort_tests, prepare_order) {
     ASSERT_TRUE(1 == scorers.size());
     auto& scorer = scorers.front();
     ASSERT_NE(nullptr, scorer.func());
-    ASSERT_EQ(&prepared[1], &scorer.bucket());
+    ASSERT_EQ(&prepared[1], scorer.bucket);
 
     irs::score score;
     ASSERT_TRUE(score.is_default());
@@ -566,10 +566,10 @@ TEST(sort_tests, prepare_order) {
     ASSERT_TRUE(2 == scorers.size());
     auto& front = scorers.front();
     ASSERT_NE(nullptr, front.func());
-    ASSERT_EQ(&prepared[0], &front.bucket());
+    ASSERT_EQ(&prepared[0], front.bucket);
     auto& back = scorers.back();
     ASSERT_NE(nullptr, back.func());
-    ASSERT_EQ(&prepared[1], &back.bucket());
+    ASSERT_EQ(&prepared[1], back.bucket);
 
     irs::score score;
     ASSERT_TRUE(score.is_default());
@@ -621,17 +621,17 @@ TEST(sort_tests, prepare_order) {
     {
       auto& scorer = scorers[0];
       ASSERT_NE(nullptr, scorer.func());
-      ASSERT_EQ(&prepared[0], &scorer.bucket());
+      ASSERT_EQ(&prepared[0], scorer.bucket);
     }
     {
       auto& scorer = scorers[1];
       ASSERT_NE(nullptr, scorer.func());
-      ASSERT_EQ(&prepared[1], &scorer.bucket());
+      ASSERT_EQ(&prepared[1], scorer.bucket);
     }
     {
       auto& scorer = scorers[2];
       ASSERT_NE(nullptr, scorer.func());
-      ASSERT_EQ(&prepared[2], &scorer.bucket());
+      ASSERT_EQ(&prepared[2], scorer.bucket);
     }
 
     irs::score score;
@@ -684,12 +684,12 @@ TEST(sort_tests, prepare_order) {
     {
       auto& scorer = scorers[0];
       ASSERT_NE(nullptr, scorer.func());
-      ASSERT_EQ(&prepared[0], &scorer.bucket());
+      ASSERT_EQ(&prepared[0], scorer.bucket);
     }
     {
       auto& scorer = scorers[1];
       ASSERT_NE(nullptr, scorer.func());
-      ASSERT_EQ(&prepared[2], &scorer.bucket());
+      ASSERT_EQ(&prepared[2], scorer.bucket);
     }
 
     irs::score score;
@@ -1004,4 +1004,244 @@ TEST(sort_tests, prepare_order) {
     irs::reset(score, std::move(scorers));
     ASSERT_TRUE(score.is_default());
   }
+}
+
+TEST(score_function_test, construct) {
+  struct ctx : irs::score_ctx {
+    irs::byte_type buf[1]{};
+  };
+
+  {
+    irs::score_function func;
+    ASSERT_TRUE(func);
+    ASSERT_NE(nullptr, func.func());
+    ASSERT_EQ(nullptr, func.ctx());
+    ASSERT_EQ(nullptr, func());
+  }
+
+  {
+    struct ctx ctx;
+
+    auto score_func = [](irs::score_ctx* ctx) -> const irs::byte_type* {
+      return static_cast<struct ctx*>(ctx)->buf;
+    };
+
+    irs::score_function func(&ctx, score_func);
+    ASSERT_TRUE(func);
+    ASSERT_EQ(static_cast<irs::score_f>(score_func), func.func());
+    ASSERT_EQ(&ctx, func.ctx());
+    ASSERT_EQ(ctx.buf, func());
+  }
+
+  {
+    struct ctx ctx;
+
+    auto score_func = [](irs::score_ctx* ctx) -> const irs::byte_type* {
+      return static_cast<struct ctx*>(ctx)->buf;
+    };
+
+    irs::score_function func(
+      irs::memory::to_managed<irs::score_ctx, false>(&ctx),
+      score_func);
+    ASSERT_TRUE(func);
+    ASSERT_EQ(static_cast<irs::score_f>(score_func), func.func());
+    ASSERT_EQ(&ctx, func.ctx());
+    ASSERT_EQ(ctx.buf, func());
+  }
+
+  {
+    auto score_func = [](irs::score_ctx* ctx) -> const irs::byte_type* {
+      auto* buf = static_cast<struct ctx*>(ctx)->buf;
+      buf[0] = 42;
+      return buf;
+    };
+
+    irs::score_function func(std::make_unique<struct ctx>(), score_func);
+    ASSERT_TRUE(func);
+    ASSERT_EQ(static_cast<irs::score_f>(score_func), func.func());
+    ASSERT_NE(nullptr, func.ctx());
+    auto* value = func();
+    ASSERT_NE(nullptr, value);
+    ASSERT_EQ(42, *value);
+  }
+
+  {
+    auto score_func = [](irs::score_ctx* ctx) -> const irs::byte_type* {
+      auto* buf = static_cast<struct ctx*>(ctx)->buf;
+      buf[0] = 42;
+      return buf;
+    };
+
+    irs::score_function func(
+      irs::memory::to_managed<irs::score_ctx>(std::make_unique<struct ctx>()),
+      score_func);
+    ASSERT_TRUE(func);
+    ASSERT_EQ(static_cast<irs::score_f>(score_func), func.func());
+    ASSERT_NE(nullptr, func.ctx());
+    auto* value = func();
+    ASSERT_NE(nullptr, value);
+    ASSERT_EQ(42, *value);
+  }
+}
+
+TEST(score_function_test, reset) {
+  struct ctx : irs::score_ctx {
+    irs::byte_type buf[1]{};
+  };
+
+  irs::score_function func;
+
+  ASSERT_TRUE(func);
+  ASSERT_NE(nullptr, func.func());
+  ASSERT_EQ(nullptr, func.ctx());
+  ASSERT_EQ(nullptr, func());
+
+  {
+    struct ctx ctx;
+
+    auto score_func = [](irs::score_ctx* ctx) -> const irs::byte_type* {
+      return static_cast<struct ctx*>(ctx)->buf;
+    };
+
+    func.reset(&ctx, score_func);
+
+    ASSERT_TRUE(func);
+    ASSERT_EQ(static_cast<irs::score_f>(score_func), func.func());
+    ASSERT_EQ(&ctx, func.ctx());
+    ASSERT_EQ(ctx.buf, func());
+
+    func.reset(
+      irs::memory::to_managed<irs::score_ctx, false>(&ctx),
+      score_func);
+    ASSERT_TRUE(func);
+    ASSERT_EQ(static_cast<irs::score_f>(score_func), func.func());
+    ASSERT_EQ(&ctx, func.ctx());
+    ASSERT_EQ(ctx.buf, func());
+  }
+
+  {
+    auto score_func = [](irs::score_ctx* ctx) -> const irs::byte_type* {
+      auto* buf = static_cast<struct ctx*>(ctx)->buf;
+      buf[0] = 42;
+      return buf;
+    };
+
+    func.reset(std::make_unique<struct ctx>(), score_func);
+    ASSERT_TRUE(func);
+    ASSERT_EQ(static_cast<irs::score_f>(score_func), func.func());
+    ASSERT_NE(nullptr, func.ctx());
+    auto* value = func();
+    ASSERT_NE(nullptr, value);
+    ASSERT_EQ(42, *value);
+  }
+
+  {
+    auto score_func = [](irs::score_ctx* ctx) -> const irs::byte_type* {
+      auto* buf = static_cast<struct ctx*>(ctx)->buf;
+      buf[0] = 43;
+      return buf;
+    };
+
+    func.reset(
+      irs::memory::to_managed<irs::score_ctx>(std::make_unique<struct ctx>()),
+      score_func);
+    ASSERT_TRUE(func);
+    ASSERT_EQ(static_cast<irs::score_f>(score_func), func.func());
+    ASSERT_NE(nullptr, func.ctx());
+    auto* value = func();
+    ASSERT_NE(nullptr, value);
+    ASSERT_EQ(43, *value);
+  }
+
+  {
+    struct ctx ctx;
+    func.reset(&ctx, nullptr);
+    ASSERT_FALSE(func);
+  }
+}
+
+TEST(score_function_test, move) {
+  struct ctx : irs::score_ctx {
+    irs::byte_type buf[1]{};
+  };
+
+  // move construction
+  {
+    struct ctx ctx;
+
+    auto score_func = [](irs::score_ctx* ctx) -> const irs::byte_type* {
+      return static_cast<struct ctx*>(ctx)->buf;
+    };
+
+    irs::score_function func(&ctx, score_func);
+    ASSERT_TRUE(func);
+    ASSERT_EQ(&ctx, func.ctx());
+    ASSERT_EQ(static_cast<irs::score_f>(score_func), func.func());
+    ASSERT_EQ(ctx.buf, func());
+    irs::score_function moved(std::move(func));
+    ASSERT_TRUE(moved);
+    ASSERT_EQ(&ctx, moved.ctx());
+    ASSERT_EQ(static_cast<irs::score_f>(score_func), moved.func());
+    ASSERT_EQ(ctx.buf, moved());
+    ASSERT_TRUE(func);
+    ASSERT_EQ(nullptr, func.ctx());
+    ASSERT_NE(static_cast<irs::score_f>(score_func), func.func());
+    ASSERT_EQ(nullptr, func());
+  }
+
+  // move assignment
+  {
+    struct ctx ctx;
+
+    auto score_func = [](irs::score_ctx* ctx) -> const irs::byte_type* {
+      return static_cast<struct ctx*>(ctx)->buf;
+    };
+
+    irs::score_function moved;
+    ASSERT_TRUE(moved);
+    ASSERT_EQ(nullptr, moved.ctx());
+    ASSERT_NE(static_cast<irs::score_f>(score_func), moved.func());
+    ASSERT_EQ(nullptr, moved());
+    irs::score_function func(&ctx, score_func);
+    ASSERT_TRUE(func);
+    ASSERT_EQ(&ctx, func.ctx());
+    ASSERT_EQ(static_cast<irs::score_f>(score_func), func.func());
+    ASSERT_EQ(ctx.buf, func());
+    moved = std::move(func);
+    ASSERT_TRUE(moved);
+    ASSERT_EQ(&ctx, moved.ctx());
+    ASSERT_EQ(static_cast<irs::score_f>(score_func), moved.func());
+    ASSERT_EQ(ctx.buf, moved());
+    ASSERT_TRUE(func);
+    ASSERT_EQ(nullptr, func.ctx());
+    ASSERT_NE(static_cast<irs::score_f>(score_func), func.func());
+    ASSERT_EQ(nullptr, func());
+  }
+}
+
+TEST(score_function_test, equality) {
+  struct ctx : irs::score_ctx {
+    irs::byte_type buf[1]{};
+  } ctx0, ctx1;
+
+  auto score_func0 = [](irs::score_ctx* ctx) -> const irs::byte_type* {
+    return static_cast<struct ctx*>(ctx)->buf;
+  };
+
+  auto score_func1 = [](irs::score_ctx* ctx) -> const irs::byte_type* {
+    return static_cast<struct ctx*>(ctx)->buf;
+  };
+
+  irs::score_function func0;
+  irs::score_function func1(&ctx0, score_func0);
+  irs::score_function func2(&ctx1, score_func1);
+  irs::score_function func3(&ctx0, score_func1);
+  irs::score_function func4(&ctx1, score_func0);
+
+  ASSERT_EQ(func0, irs::score_function());
+  ASSERT_NE(func0, func1);
+  ASSERT_NE(func2, func3);
+  ASSERT_NE(func2, func4);
+  ASSERT_EQ(func1, irs::score_function(&ctx0, score_func0));
+  ASSERT_EQ(func2, irs::score_function(&ctx1, score_func1));
 }

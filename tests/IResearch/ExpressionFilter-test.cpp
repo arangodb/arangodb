@@ -174,7 +174,7 @@ struct custom_sort : public irs::sort {
       return irs::memory::make_unique<custom_sort::prepared::field_collector>(sort_);
     }
 
-    virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
+    virtual irs::score_function prepare_scorer(
         irs::sub_reader const& segment_reader, irs::term_reader const& term_reader,
         irs::byte_type const* filter_node_attrs, irs::byte_type* score_buf,
         irs::attribute_provider const& document_attrs, irs::boost_t boost) const override {
@@ -223,8 +223,9 @@ struct custom_sort : public irs::sort {
   std::function<void(const irs::sub_reader&, const irs::term_reader&, const irs::attribute_provider&)> term_collector_collect;
   std::function<void(irs::byte_type*, const irs::index_reader&)> collector_finish;
   std::function<irs::sort::field_collector::ptr()> prepare_field_collector;
-  std::function<std::pair<irs::score_ctx_ptr, irs::score_f>(
-      const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*, irs::byte_type*,
+  std::function<irs::score_function(
+      const irs::sub_reader&, const irs::term_reader&,
+      const irs::byte_type*, irs::byte_type*,
       const irs::attribute_provider&, irs::boost_t)> prepare_scorer;
   std::function<irs::sort::term_collector::ptr()> prepare_term_collector;
   std::function<void(irs::doc_id_t&, const irs::doc_id_t&)> scorer_add;

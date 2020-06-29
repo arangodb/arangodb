@@ -62,7 +62,7 @@ struct boost : public irs::sort {
       return irs::flags::empty_instance();
     }
 
-    virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
+    virtual irs::score_function prepare_scorer(
         const irs::sub_reader&,
         const irs::term_reader&,
         const irs::byte_type* /*query_attrs*/,
@@ -258,7 +258,7 @@ struct custom_sort: public irs::sort {
       return irs::memory::make_unique<field_collector>(sort_);
     }
 
-    virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
+    virtual irs::score_function prepare_scorer(
         const irs::sub_reader& segment_reader,
         const irs::term_reader& term_reader,
         const irs::byte_type* filter_node_attrs,
@@ -310,9 +310,9 @@ struct custom_sort: public irs::sort {
   std::function<void(const irs::sub_reader&, const irs::term_reader&, const irs::attribute_provider&)> collector_collect_term;
   std::function<void(irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)> collectors_collect_;
   std::function<irs::sort::field_collector::ptr()> prepare_field_collector_;
-  std::function<std::pair<irs::score_ctx_ptr, irs::score_f>(const irs::sub_reader&, const irs::term_reader&,
-                                                            const irs::byte_type*, irs::byte_type*,
-                                                            const irs::attribute_provider&)> prepare_scorer;
+  std::function<irs::score_function(const irs::sub_reader&, const irs::term_reader&,
+                                    const irs::byte_type*, irs::byte_type*,
+                                    const irs::attribute_provider&)> prepare_scorer;
   std::function<irs::sort::term_collector::ptr()> prepare_term_collector_;
   std::function<void(irs::doc_id_t&, const irs::doc_id_t&)> scorer_add;
   std::function<void(irs::doc_id_t&, const irs::doc_id_t&)> scorer_max;
@@ -487,7 +487,7 @@ struct frequency_sort: public irs::sort {
       return nullptr; // do not need to collect stats
     }
 
-    virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
+    virtual irs::score_function prepare_scorer(
         const irs::sub_reader&,
         const irs::term_reader&,
         const irs::byte_type* stats_buf,

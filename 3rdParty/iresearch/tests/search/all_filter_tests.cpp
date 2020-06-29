@@ -149,7 +149,7 @@ TEST_P(all_filter_test_case, all_order) {
         const irs::term_reader&,
         const irs::byte_type*,
         irs::byte_type*,
-        const irs::attribute_provider&)->std::pair<irs::score_ctx_ptr, irs::score_f> {
+        const irs::attribute_provider&) -> irs::score_function {
       return { nullptr, nullptr };
     };
     sort.prepare_term_collector_ = []()->irs::sort::term_collector::ptr { return nullptr; };

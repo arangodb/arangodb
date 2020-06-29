@@ -69,7 +69,6 @@ struct IRESEARCH_API score_ctx {
   virtual ~score_ctx() = default;
 }; // score_ctx
 
-using score_ctx_ptr = std::unique_ptr<score_ctx>;
 using score_less_f = bool(*)(const byte_type* lhs, const byte_type* rhs);
 using score_f = const byte_type*(*)(score_ctx* ctx);
 
@@ -87,6 +86,65 @@ using bulk_merge_f = void(*)(const order_bucket* ctx, byte_type* dst,
 using merge_f = void(*)(const order_bucket* ctx,
                         byte_type* dst,
                         const byte_type* src);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class score_function
+/// @brief a convenient wrapper around score_f and score_ctx
+////////////////////////////////////////////////////////////////////////////////
+class score_function : util::noncopyable {
+ public:
+  score_function() noexcept;
+  score_function(memory::managed_ptr<score_ctx>&& ctx, const score_f func) noexcept
+    : ctx_(std::move(ctx)), func_(func) {
+  }
+  score_function(std::unique_ptr<score_ctx>&& ctx, const score_f func) noexcept
+    : score_function(memory::to_managed<score_ctx>(std::move(ctx)), func) {
+  }
+  score_function(score_ctx* ctx, const score_f func) noexcept
+    : score_function(memory::to_managed<score_ctx, false>(std::move(ctx)), func) {
+  }
+  score_function(score_function&& rhs) noexcept;
+  score_function& operator=(score_function&& rhs) noexcept;
+
+  const byte_type* operator()() const {
+    assert(func_);
+    return func_(ctx_.get());
+  }
+
+  bool operator==(const score_function& rhs) const noexcept {
+    return ctx_ == rhs.ctx_ && func_ == rhs.func_;
+  }
+
+  bool operator!=(const score_function& rhs) const noexcept {
+    return !(*this == rhs);
+  }
+
+  const score_ctx* ctx() const noexcept { return ctx_.get(); }
+  score_f func() const noexcept { return func_; }
+
+  void reset(memory::managed_ptr<score_ctx>&& ctx, const score_f func) noexcept {
+    ctx_ = std::move(ctx);
+    func_ = func;
+  }
+
+  void reset(std::unique_ptr<score_ctx>&& ctx, const score_f func) noexcept {
+    ctx_ = memory::to_managed<score_ctx>(std::move(ctx));
+    func_ = func;
+  }
+
+  void reset(score_ctx* ctx, const score_f func) noexcept {
+    ctx_ = memory::to_managed<score_ctx, false>(ctx);
+    func_ = func;
+  }
+
+  explicit operator bool() const noexcept {
+    return nullptr != func_;
+  }
+
+ private:
+  memory::managed_ptr<score_ctx> ctx_;
+  score_f func_;
+}; // score_function
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class sort
@@ -318,7 +376,7 @@ class IRESEARCH_API sort {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief create a stateful scorer used for computation of document scores
     ////////////////////////////////////////////////////////////////////////////////
-    virtual std::pair<score_ctx_ptr, score_f> prepare_scorer(
+    virtual score_function prepare_scorer(
       const sub_reader& segment,
       const term_reader& field,
       const byte_type* stats,
@@ -764,38 +822,24 @@ class IRESEARCH_API order final {
    public:
     using prepared_order_t = std::vector<order_bucket>;
 
-    class scorer {
-     public:
-      scorer(score_ctx_ptr&& ctx, score_f func, const order_bucket& bucket) noexcept
-        : ctx_(std::move(ctx)),
-          func_(func),
-          bucket_(&bucket) {
-        assert(func);
-      }
-
-      FORCE_INLINE const byte_type* evaluate() const {
-        return func_(ctx_.get());
-      }
-
-      score_ctx_ptr& ctx() noexcept { return ctx_; }
-      score_f func() const noexcept { return func_; }
-
-      const order_bucket& bucket() const noexcept {
-        return *bucket_;
-      }
-
-     private:
-      score_ctx_ptr ctx_;
-      score_f func_;
-      const order_bucket* bucket_;
-    }; // scorer
-
     ////////////////////////////////////////////////////////////////////////////
     /// @brief a convinience class for doc_iterators to invoke scorer functions
     ///        on scorers in each order bucket
     ////////////////////////////////////////////////////////////////////////////
     class IRESEARCH_API scorers : private util::noncopyable { // noncopyable required by MSVC
      public:
+      struct scorer {
+        scorer(score_function&& func, const order_bucket* bucket) noexcept
+          : func(std::move(func)),
+            bucket(bucket) {
+          assert(this->func);
+          assert(this->bucket);
+        }
+
+        score_function func;
+        const order_bucket* bucket;
+      }; // scorer
+
       scorers() = default;
       scorers(
         const order::prepared& buckets,

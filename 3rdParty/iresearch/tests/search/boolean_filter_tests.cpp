@@ -99,7 +99,7 @@ struct basic_sort : irs::sort {
       return irs::flags::empty_instance();
     }
 
-    std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
+    irs::score_function prepare_scorer(
         const irs::sub_reader&,
         const irs::term_reader&,
         const irs::byte_type*,
@@ -107,7 +107,7 @@ struct basic_sort : irs::sort {
         const irs::attribute_provider&,
         irs::boost_t) const override {
       return {
-        irs::score_ctx_ptr(new basic_scorer(idx, score_buf)),
+        std::unique_ptr<irs::score_ctx>(new basic_scorer(idx, score_buf)),
         [](irs::score_ctx* ctx) -> const irs::byte_type* {
           const auto& state = *reinterpret_cast<basic_scorer*>(ctx);
           sort::score_cast<size_t>(state.score_buf) = state.idx;

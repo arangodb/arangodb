@@ -53,7 +53,7 @@ class IRESEARCH_API score : public attribute {
 
   [[nodiscard]] const byte_type* evaluate() const {
     assert(func_);
-    return (*func_)(ctx_.get());
+    return func_();
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -63,20 +63,23 @@ class IRESEARCH_API score : public attribute {
 
   void reset(const score& score) noexcept {
     assert(score.func_);
-    ctx_ = memory::to_managed<score_ctx, false>(score.ctx_.get());
-    func_ = score.func_;
+    func_.reset(const_cast<score_ctx*>(score.func_.ctx()),
+                score.func_.func());
   }
 
-  void reset(score_ctx_ptr&& ctx, const score_f func) noexcept {
+  void reset(std::unique_ptr<score_ctx>&& ctx, const score_f func) noexcept {
     assert(func);
-    ctx_ = memory::to_managed<score_ctx>(std::move(ctx));
-    func_ = func;
+    func_.reset(std::move(ctx), func);
   }
 
   void reset(score_ctx* ctx, const score_f func) noexcept {
     assert(func);
-    ctx_ = memory::to_managed<score_ctx, false>(ctx);
-    func_ = func;
+    func_.reset(ctx, func);
+  }
+
+  void reset(score_function&& func) noexcept {
+    assert(func);
+    func_ = std::move(func);
   }
 
   byte_type* realloc(const order::prepared& order) {
@@ -100,8 +103,9 @@ class IRESEARCH_API score : public attribute {
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   bstring buf_;
-  memory::managed_ptr<score_ctx> ctx_; // arbitrary scoring context
-  score_f func_; // scoring function
+  score_function func_;
+//  memory::managed_ptr<score_ctx> ctx_; // arbitrary scoring context
+//  score_f func_; // scoring function
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // score
 

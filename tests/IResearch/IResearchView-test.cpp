@@ -111,14 +111,13 @@ struct DocIdScorer: public irs::sort {
     virtual bool less(const irs::byte_type* lhs, const irs::byte_type* rhs) const override { return traits_t::score_cast(lhs) < traits_t::score_cast(rhs); }
     virtual irs::sort::field_collector::ptr prepare_field_collector() const override { return nullptr; }
     virtual irs::sort::term_collector::ptr prepare_term_collector() const override { return nullptr; }
-    virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
-      irs::sub_reader const& segment,
-      irs::term_reader const& field,
-      irs::byte_type const*,
-      irs::byte_type* score_buf,
-      irs::attribute_provider const& doc_attrs,
-      irs::boost_t
-    ) const override {
+    virtual irs::score_function prepare_scorer(
+        irs::sub_reader const& segment,
+        irs::term_reader const& field,
+        irs::byte_type const*,
+        irs::byte_type* score_buf,
+        irs::attribute_provider const& doc_attrs,
+        irs::boost_t) const override {
       auto* doc = irs::get<irs::document>(doc_attrs);
       EXPECT_NE(nullptr, doc);
 
