@@ -135,6 +135,14 @@ class AqlCallStack {
   auto modifyCallListAtDepth(size_t depth) -> AqlCallList&;
 
   /**
+   * @brief Get a const reference to the call at the given shadowRowDepth
+   *
+   * @param depth ShadowRow depth we need to work on
+   * @return AqlCall& reference to the call, can be modified.
+   */
+  auto getCallAtDepth(size_t depth) const -> AqlCall const&;
+
+  /**
    * @brief Get a reference to the top most call.
    *        This is modifiable, but caller will not take
    *        responsibility.

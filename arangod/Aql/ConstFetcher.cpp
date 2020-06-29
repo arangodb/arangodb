@@ -43,8 +43,10 @@ auto ConstFetcher::execute(AqlCallStack& stack)
   // We can replace this by pop again if all executors also only take a reference to the stack.
   auto call = stack.peek();
   if (_blockForPassThrough == nullptr) {
+    SkipResult skipped = _skipped;
+    _skipped.reset();
     // we are done, nothing to move arround here.
-    return {ExecutionState::DONE, SkipResult{}, AqlItemBlockInputRange{ExecutorState::DONE}};
+    return {ExecutionState::DONE, skipped, AqlItemBlockInputRange{ExecutorState::DONE}};
   }
   std::vector<std::pair<size_t, size_t>> sliceIndexes;
   sliceIndexes.emplace_back(_rowIndex, _blockForPassThrough->size());
@@ -149,7 +151,8 @@ auto ConstFetcher::execute(AqlCallStack& stack)
     // FastPath
     // No need for slicing
     _rowIndex = 0;
-    SkipResult skipped{};
+    SkipResult skipped = _skipped;
+    _skipped.reset();
     skipped.didSkip(call.getSkipCount());
     return {ExecutionState::DONE, skipped,
             DataRange{ExecutorState::DONE, call.getSkipCount(), std::move(_blockForPassThrough), 0}};
@@ -174,7 +177,8 @@ auto ConstFetcher::execute(AqlCallStack& stack)
   ExecutorState rangeState =
       _blockForPassThrough == nullptr ? ExecutorState::DONE : ExecutorState::HASMORE;
 
-  SkipResult skipped{};
+  SkipResult skipped = _skipped;
+  _skipped.reset();
   skipped.didSkip(call.getSkipCount());
 
   if (sliceIndexes.empty()) {
@@ -188,8 +192,12 @@ auto ConstFetcher::execute(AqlCallStack& stack)
   return {resState, skipped, DataRange{rangeState, call.getSkipCount(), resultBlock, 0}};
 }
 
-void ConstFetcher::injectBlock(SharedAqlItemBlockPtr block) {
+void ConstFetcher::injectBlock(SharedAqlItemBlockPtr block, SkipResult skipped) {
+  // If this assert triggers, we have injected a block adn skip pair
+  // that has not yet been fetched.
+  TRI_ASSERT(_skipped.nothingSkipped());
   _currentBlock = block;
+  _skipped = skipped;
   _blockForPassThrough = std::move(block);
   _rowIndex = 0;
 }
