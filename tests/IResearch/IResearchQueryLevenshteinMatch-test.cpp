@@ -489,6 +489,7 @@ TEST_F(IResearchQueryLevenhsteinMatchTest, test) {
     EXPECT_EQ(i, expected.size());
   }
 
+
 // FIXME
 //  // distance 4, no limit, SORT
 //  {
