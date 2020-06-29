@@ -1,6 +1,9 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Fixed undefined behavior that may occur when concurrently killing a
+  query while it is still in setup or shutdown.
+
 * Returned `AQL_WARNING()` to emit warnings from UDFs.
 
 * Fixed internal issue #725: Added analyzers revision for _system database in
