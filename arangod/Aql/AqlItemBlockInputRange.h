@@ -57,7 +57,7 @@ class AqlItemBlockInputRange {
   bool hasDataRow() const noexcept;
 
   std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> peekDataRow() const;
-  
+
   std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> nextDataRow();
   
   /// @brief optimized version of nextDataRow, only to be used when it is known that 
