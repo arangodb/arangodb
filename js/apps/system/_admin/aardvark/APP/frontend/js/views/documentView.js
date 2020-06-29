@@ -464,7 +464,7 @@
             var model = this.collection.first();
             // update local model
             var newFrom = data[0].new._from;
-            var newTo = data[0].new._to
+            var newTo = data[0].new._to;
             model.set('_from', newFrom);
             model.set('_to', newTo);
             // remove unsaved classes
