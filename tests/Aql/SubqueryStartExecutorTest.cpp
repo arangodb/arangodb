@@ -241,13 +241,7 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding) {
       .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
       .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1), ExecutionNode::SUBQUERY_START);
 
-  if (GetCompatMode() == CompatibilityMode::VERSION36) {
-    // We will not get this infromation because the
-    // query stack is too small on purpose
-    helper.expectSkipped(0, 0);
-  } else {
-    helper.expectSkipped(0, 0, 0);
-  }
+  helper.expectSkipped(0, 0, 0);
 
   helper.setInputValue({{R"("a")"}})
       .expectedStats(ExecutionStats{})
@@ -267,13 +261,7 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_single_call)
       .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
       .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1), ExecutionNode::SUBQUERY_START);
 
-  if (GetCompatMode() == CompatibilityMode::VERSION36) {
-    // We will not get this infromation because the
-    // query stack is too small on purpose
-    helper.expectSkipped(0, 0);
-  } else {
-    helper.expectSkipped(0, 0, 0);
-  }
+  helper.expectSkipped(0, 0, 0);
 
   helper.setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}})
       .expectedStats(ExecutionStats{})
@@ -290,15 +278,13 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_many_request
   stack.pushCall(AqlCallList{AqlCall{}});
 
   helper
-      .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
-      .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1), ExecutionNode::SUBQUERY_START);
-  if (GetCompatMode() == CompatibilityMode::VERSION36) {
-    // We will not get this infromation because the
-    // query stack is too small on purpose
-    helper.expectSkipped(0, 0);
-  } else {
-    helper.expectSkipped(0, 0, 0);
-  }
+      .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1),
+                                          ExecutionNode::SUBQUERY_START)
+      .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1),
+                                          ExecutionNode::SUBQUERY_START);
+
+  helper.expectSkipped(0, 0, 0);
+
   helper.setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}})
       .expectedStats(ExecutionStats{})
       .expectedState(ExecutionState::DONE)
@@ -327,16 +313,13 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_not_enough_s
     stack.pushCall(AqlCallList{AqlCall{}});
 
     helper
-        .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
-        .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1), ExecutionNode::SUBQUERY_START);
+        .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1),
+                                            ExecutionNode::SUBQUERY_START)
+        .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1),
+                                            ExecutionNode::SUBQUERY_START);
 
-    if (GetCompatMode() == CompatibilityMode::VERSION36) {
-      // We will not get this infromation because the
-      // query stack is too small on purpose
-      helper.expectSkipped(0, 0);
-    } else {
-      helper.expectSkipped(0, 0, 0);
-    }
+    helper.expectSkipped(0, 0, 0);
+
     helper.setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}})
         .expectedStats(ExecutionStats{})
         .expectedState(ExecutionState::HASMORE)
@@ -354,16 +337,12 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_not_enough_s
     stack.pushCall(AqlCallList{AqlCall{}});
 
     helper
-        .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
-        .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1), ExecutionNode::SUBQUERY_START);
+        .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1),
+                                            ExecutionNode::SUBQUERY_START)
+        .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1),
+                                            ExecutionNode::SUBQUERY_START);
 
-    if (GetCompatMode() == CompatibilityMode::VERSION36) {
-      // We will not get this infromation because the
-      // query stack is too small on purpose
-      helper.expectSkipped(0, 0);
-    } else {
-      helper.expectSkipped(0, 0, 0);
-    }
+    helper.expectSkipped(0, 0, 0);
 
     helper.setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}})
         .expectedStats(ExecutionStats{})

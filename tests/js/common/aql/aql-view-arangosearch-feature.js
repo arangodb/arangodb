@@ -75,81 +75,81 @@ function iResearchFeatureAqlTestSuite () {
     testAnalyzersInvalidPropertiesDiscarded : function() {
       {
         try {analyzers.remove("normPropAnalyzer"); } catch (e) {}
-        assertEqual(0, db._analyzers.count());
+        let oldCount = db._analyzers.count();
         let analyzer = analyzers.save("normPropAnalyzer", "norm", { "locale":"en", "invalid_param":true});
         try {
-          assertEqual(1, db._analyzers.count());
+          assertEqual(oldCount + 1, db._analyzers.count());
           assertNotNull(analyzer);
           assertUndefined(analyzer.properties.invalid_param);
         } finally {
           analyzers.remove("normPropAnalyzer", true);
         }
-        assertEqual(0, db._analyzers.count());
+        assertEqual(oldCount, db._analyzers.count());
       }
       {
         try {analyzers.remove("textPropAnalyzer"); } catch (e) {}
-        assertEqual(0, db._analyzers.count());
+        let oldCount = db._analyzers.count();
         let analyzer = analyzers.save("textPropAnalyzer", "text", {"stopwords" : [], "locale":"en", "invalid_param":true});
         try {
-          assertEqual(1, db._analyzers.count());
+          assertEqual(oldCount + 1, db._analyzers.count());
           assertNotNull(analyzer);
           assertUndefined(analyzer.properties.invalid_param);
         } finally {
           analyzers.remove("textPropAnalyzer", true);
         }
-        assertEqual(0, db._analyzers.count());
+        assertEqual(oldCount, db._analyzers.count());
       }
       {
         try {analyzers.remove("textPropAnalyzerWithNgram"); } catch (e) {}
-        assertEqual(0, db._analyzers.count());
+        let oldCount = db._analyzers.count();
         let analyzer = analyzers.save("textPropAnalyzerWithNgram", "text", {"stopwords" : [], "locale":"en", "edgeNgram" : { "min" : 2, "invalid_param":true}});
         try {
-          assertEqual(1, db._analyzers.count());
+          assertEqual(oldCount + 1, db._analyzers.count());
           assertNotNull(analyzer);
           assertUndefined(analyzer.properties.invalid_param);
         } finally {
           analyzers.remove("textPropAnalyzerWithNgram", true);
         }
-        assertEqual(0, db._analyzers.count());
+        assertEqual(oldCount, db._analyzers.count());
       }
       {
         try {analyzers.remove("delimiterPropAnalyzer"); } catch (e) {}
-        assertEqual(0, db._analyzers.count());
+        let oldCount = db._analyzers.count();
         let analyzer = analyzers.save("delimiterPropAnalyzer", "delimiter", { "delimiter":"|", "invalid_param":true});
         try {
-          assertEqual(1, db._analyzers.count());
+          assertEqual(oldCount + 1, db._analyzers.count());
           assertNotNull(analyzer);
           assertUndefined(analyzer.properties.invalid_param);
         } finally {
           analyzers.remove("delimiterPropAnalyzer", true);
         }
-        assertEqual(0, db._analyzers.count());
+        assertEqual(oldCount, db._analyzers.count());
       }
       {
         try {analyzers.remove("stemPropAnalyzer"); } catch (e) {}
-        assertEqual(0, db._analyzers.count());
+        let oldCount = db._analyzers.count();
         let analyzer = analyzers.save("stemPropAnalyzer", "stem", { "locale":"en", "invalid_param":true});
         try {
-          assertEqual(1, db._analyzers.count());
+          assertEqual(oldCount + 1, db._analyzers.count());
           assertNotNull(analyzer);
           assertUndefined(analyzer.properties.invalid_param);
         } finally {
           analyzers.remove("stemPropAnalyzer", true);
         }
-        assertEqual(0, db._analyzers.count());
+        assertEqual(oldCount, db._analyzers.count());
       }
       {
         try {analyzers.remove("ngramPropAnalyzer"); } catch (e) {}
-        assertEqual(0, db._analyzers.count());
+        let oldCount = db._analyzers.count();
         let analyzer = analyzers.save("ngramPropAnalyzer", "ngram", { "min":1, "max":5, "preserveOriginal":true, "invalid_param":true});
         try {
-          assertEqual(1, db._analyzers.count());
+          assertEqual(oldCount + 1, db._analyzers.count());
           assertNotNull(analyzer);
           assertUndefined(analyzer.properties.invalid_param);
         } finally {
           analyzers.remove("ngramPropAnalyzer", true);
         }
-        assertEqual(0, db._analyzers.count());
+        assertEqual(oldCount, db._analyzers.count());
       }
     },
 
@@ -341,7 +341,6 @@ function iResearchFeatureAqlTestSuite () {
       assertTrue(Array === oldList.constructor);
 
       assertEqual(0, db._analyzers.count(), db._analyzers.toArray());
-
       // creation
       analyzers.save("testAnalyzer", "stem", { "locale":"en"}, [ "frequency" ]);
 
@@ -357,7 +356,6 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual([ "frequency" ], analyzer.features());
 
       // check persisted analyzer
-      assertEqual(1, db._analyzers.count());
       let savedAnalyzer = db._analyzers.toArray()[0];
       assertNotNull(savedAnalyzer);
       assertEqual(8, Object.keys(savedAnalyzer).length);

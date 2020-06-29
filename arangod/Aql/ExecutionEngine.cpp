@@ -921,7 +921,6 @@ std::pair<ExecutionState, Result> ExecutionEngine::shutdownDBServerQueries(int e
   
   
   futures::collectAll(std::move(futures)).thenFinal([ss, this](auto&& vals) {
-    TRI_ASSERT(ss->isValid());
     ss->executeAndWakeup([&] {
       _wasShutdown.store(true, std::memory_order_relaxed); // prevent duplicates
       return true;

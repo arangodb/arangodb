@@ -94,6 +94,13 @@ std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::nextDataRow(Ha
   return std::make_pair(state, InputAqlItemRow{_block, _rowIndex++});
 }
 
+/// @brief moves the row index one forward if we are at a row right now
+void AqlItemBlockInputRange::advanceDataRow() noexcept {
+  if (hasDataRow()) {
+    ++_rowIndex;
+  }
+}
+
 ExecutorState AqlItemBlockInputRange::upstreamState() const noexcept {
   return nextState<LookAhead::NOW, RowType::DATA>();
 }

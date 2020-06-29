@@ -734,7 +734,7 @@ auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIte
         if (!advanceCursor()) {
           INTERNAL_LOG_IDX << "IndexExecutor::produceRows failed to advanceCursor "
                            "after init";
-          std::ignore = inputRange.nextDataRow();
+          inputRange.advanceDataRow();
           _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
           // just to validate that after continue we get into retry mode
           TRI_ASSERT(!_input);
@@ -754,7 +754,7 @@ auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIte
       if (!getCursor().hasMore() && !advanceCursor()) {
         INTERNAL_LOG_IDX << "IndexExecutor::produceRows::innerLoop cursor does "
                          "not have more and advancing failed";
-        std::ignore = inputRange.nextDataRow();
+        inputRange.advanceDataRow();
         _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
         break;
       }
@@ -818,7 +818,7 @@ auto IndexExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& c
           INTERNAL_LOG_IDX
               << "IndexExecutor::skipRowsRange failed to advanceCursor "
                  "after init";
-          std::ignore = inputRange.nextDataRow();
+          inputRange.advanceDataRow();
           _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
           // just to validate that after continue we get into retry mode
           TRI_ASSERT(!_input);
@@ -832,7 +832,7 @@ auto IndexExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& c
     if (!getCursor().hasMore() && !advanceCursor()) {
       INTERNAL_LOG_IDX << "IndexExecutor::skipRowsRange cursor does not "
                        "have more and advancing failed";
-      std::ignore = inputRange.nextDataRow();
+      inputRange.advanceDataRow();
       _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
       continue;
     }
