@@ -1,6 +1,10 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Removed the edge id's hover styling in case of embedded document editor in the
+  Web UI as this functionality is disabled. This was misleading because the
+  elements are not clickable.
+
 * Internal issue BTS-71: Fixed error handling regarding communication with the
   agency. This could in a specific case cause collection creation in a cluster
   report success when it failed.
