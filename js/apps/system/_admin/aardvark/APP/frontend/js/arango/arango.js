@@ -874,7 +874,6 @@
       if (refresh || this.CollectionTypes[identifier] === undefined) {
         var callback = function (error, data, toRun) {
           if (error) {
-            arangoHelper.arangoError('Error', 'Could not detect collection type');
             if (toRun) {
               toRun(error);
             }
