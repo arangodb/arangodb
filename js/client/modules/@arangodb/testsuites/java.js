@@ -22,14 +22,14 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Max Neunhoeffer
+// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
   'java_driver': 'go client driver test',
 };
 const optionsDocumentation = [
-  '   - `javasource`: directory of the go driver',
+  '   - `javasource`: directory of the java driver',
   '   - `javaOptions`: additional argumnets to pass via the commandline'
 ];
 
