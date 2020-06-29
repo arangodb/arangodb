@@ -780,7 +780,7 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* req) const {
 
     if (Logger::logRequestParameters()) {
       LOG_TOPIC(DEBUG, arangodb::Logger::REQUESTS)
-          << "\"authorization-header\",\"" << (void*)this << "\",\"" << authStr << "\"";
+          << "\"authorization-header\",\"" << (void*)this << "\",SENSITIVE_DETAILS_HIDDEN";
     }
 
     try {
