@@ -51,7 +51,10 @@ namespace arangodb {
 LoggerFeature::LoggerFeature(application_features::ApplicationServer& server, bool threaded)
   : ApplicationFeature(server, "Logger"),
     _timeFormatString(LogTimeFormats::defaultFormatName()),
-    _threaded(threaded) {
+    _threaded(threaded),
+    _apiSwitch("true"),
+    _apiEnabled(true) {
+
   setOptional(false);
 
   startsAfter("ShellColors");
@@ -118,6 +121,13 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new StringParameter(&_fileMode))
                      .setIntroducedIn(30405)
                      .setIntroducedIn(30500);
+
+  options->addOption("--log.api-enabled",
+                     "whether the log api is enabled (true) or not (false), or only enabled for superuser JWT (jwt)",
+                     new StringParameter(&_apiSwitch))
+      .setIntroducedIn(30506)
+      .setIntroducedIn(30605);
+
 
 #ifdef ARANGODB_HAVE_SETGID
   options->addOption("--log.file-group",
@@ -226,6 +236,18 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     // if not valid, the following call will throw an exception and
     // abort the startup
     LogTimeFormats::formatFromName(_timeFormatString);
+  }
+
+  if (_apiSwitch == "true" || _apiSwitch == "on" ||
+      _apiSwitch == "On") {
+    _apiEnabled = true;
+    _apiSwitch = "true";
+  } else if (_apiSwitch == "jwt" || _apiSwitch == "JWT") {
+    _apiEnabled = true;
+    _apiSwitch = "jwt";
+  } else {
+    _apiEnabled = false;
+    _apiSwitch = "false";
   }
 
   if (!_fileMode.empty()) {

@@ -43,8 +43,10 @@ class RestAdminLogHandler : public RestBaseHandler {
   RestStatus execute() override;
 
  private:
+  arangodb::Result verifyPermitted();
   void reportLogs();
   void setLogLevel();
+
 };
 }  // namespace arangodb
 
