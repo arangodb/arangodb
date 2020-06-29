@@ -178,15 +178,14 @@ order::prepared::scorers::scorers(
 
     if (scorer.second) {
       // skip empty scorers
-      scorers_.emplace_back(std::move(scorer.first), scorer.second);
+      scorers_.emplace_back(std::move(scorer.first), scorer.second, entry);
     }
   }
 }
 
 const byte_type* order::prepared::scorers::evaluate() const {
   for (auto& scorer : scorers_) {
-    assert(scorer.func);
-    (*scorer.func)(scorer.ctx.get());
+    scorer.evaluate();
   }
   return score_buf_;
 }

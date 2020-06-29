@@ -77,7 +77,28 @@ void reset(irs::score& score, order::prepared::scorers&& scorers) {
     } break;
     case 1: {
       auto& scorer = scorers.front();
-      score.reset(std::move(scorer.ctx), scorer.func);
+      if (!scorer.bucket().score_offset) {
+        score.reset(std::move(scorer.ctx()), scorer.func());
+      } else {
+        struct ctx : score_ctx {
+          explicit ctx(order::prepared::scorer&& scorer,
+                       const byte_type* score_buf) noexcept
+            : scorer(std::move(scorer)),
+              score_buf(score_buf) {
+          }
+
+          order::prepared::scorer scorer;
+          const byte_type* score_buf;
+        };
+
+        score.reset(
+          memory::make_unique<ctx>(std::move(scorer), scorers.score_buf()),
+          [](score_ctx* ctx) {
+            auto& state = *static_cast<struct ctx*>(ctx);
+            state.scorer.evaluate();
+            return state.score_buf;
+        });
+      }
     } break;
     case 2: {
       struct ctx : score_ctx {
@@ -92,10 +113,8 @@ void reset(irs::score& score, order::prepared::scorers&& scorers) {
         memory::make_unique<ctx>(std::move(scorers)),
         [](score_ctx* ctx) {
           auto& scorers = static_cast<struct ctx*>(ctx)->scorers;
-          auto& front = scorers.front();
-          auto& back = scorers.back();
-          (*front.func)(front.ctx.get());
-          (*back.func)(back.ctx.get());
+          scorers.front().evaluate();
+          scorers.back().evaluate();
           return scorers.score_buf();
       });
     } break;

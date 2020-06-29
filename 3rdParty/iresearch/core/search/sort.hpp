@@ -63,6 +63,9 @@ struct IRESEARCH_API filter_boost final : attribute {
 ///        stored state
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API score_ctx {
+  score_ctx() = default;
+  score_ctx(score_ctx&&) = default;
+  score_ctx& operator=(score_ctx&&) = default;
   virtual ~score_ctx() = default;
 }; // score_ctx
 
@@ -761,22 +764,38 @@ class IRESEARCH_API order final {
    public:
     using prepared_order_t = std::vector<order_bucket>;
 
+    class scorer {
+     public:
+      scorer(score_ctx_ptr&& ctx, score_f func, const order_bucket& bucket) noexcept
+        : ctx_(std::move(ctx)),
+          func_(func),
+          bucket_(&bucket) {
+        assert(func);
+      }
+
+      FORCE_INLINE const byte_type* evaluate() const {
+        return func_(ctx_.get());
+      }
+
+      score_ctx_ptr& ctx() noexcept { return ctx_; }
+      score_f func() const noexcept { return func_; }
+
+      const order_bucket& bucket() const noexcept {
+        return *bucket_;
+      }
+
+     private:
+      score_ctx_ptr ctx_;
+      score_f func_;
+      const order_bucket* bucket_;
+    }; // scorer
+
     ////////////////////////////////////////////////////////////////////////////
     /// @brief a convinience class for doc_iterators to invoke scorer functions
     ///        on scorers in each order bucket
     ////////////////////////////////////////////////////////////////////////////
-    class IRESEARCH_API scorers: private util::noncopyable { // noncopyable required by MSVC
+    class IRESEARCH_API scorers : private util::noncopyable { // noncopyable required by MSVC
      public:
-      struct entry {
-        entry(score_ctx_ptr&& ctx, score_f func)
-          : ctx(std::move(ctx)),
-            func(func) {
-        }
-
-        score_ctx_ptr ctx;
-        score_f func;
-      };
-
       scorers() = default;
       scorers(
         const order::prepared& buckets,
@@ -795,32 +814,32 @@ class IRESEARCH_API order final {
         return score_buf_;
       }
 
-      const entry& operator[](size_t i) const noexcept {
+      const scorer& operator[](size_t i) const noexcept {
         assert(i < scorers_.size());
         return scorers_[i];
       }
 
-      const entry& front() const noexcept {
+      const scorer& front() const noexcept {
         assert(!scorers_.empty());
         return scorers_.front();
       }
 
-      const entry& back() const noexcept {
+      const scorer& back() const noexcept {
         assert(!scorers_.empty());
         return scorers_.back();
       }
 
-      entry& front() noexcept {
+      scorer& front() noexcept {
         assert(!scorers_.empty());
         return scorers_.front();
       }
 
-      entry& back() noexcept {
+      scorer& back() noexcept {
         assert(!scorers_.empty());
         return scorers_.back();
       }
 
-      entry& operator[](size_t i) noexcept {
+      scorer& operator[](size_t i) noexcept {
         assert(i < scorers_.size());
         return scorers_[i];
       }
@@ -831,7 +850,7 @@ class IRESEARCH_API order final {
 
      private:
       IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-      std::vector<entry> scorers_; // scorer + offset
+      std::vector<scorer> scorers_; // scorer + offset
       const byte_type* score_buf_;
       IRESEARCH_API_PRIVATE_VARIABLES_END
     }; // scorers
