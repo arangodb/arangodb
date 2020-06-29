@@ -6,9 +6,8 @@ devel
 
 * Fixed issue ES-609: "Transaction already in use" error when running
   transaction.
-
-	Added option `--transaction.streaming-lock-timeout` to control the timeout
-  in seconds in case of parallel access to a streaming transaction.
+  Added option `--transaction.streaming-lock-timeout` to control the timeout in
+  seconds in case of parallel access to a streaming transaction.
 
 * Returned `AQL_WARNING()` to emit warnings from UDFs.
 
