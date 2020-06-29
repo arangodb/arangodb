@@ -4,6 +4,12 @@ v3.7.1-rc.1 (XXXX-XX-XX)
 * Internal issue BTS-71: Added a precondition to prevent creating a collection
   with an invalid `distributeShardsLike` property.
 
+* In case a document got requested via the UI of a collection which does not
+  exist, the UI now properly displays an error view instead of having a bad
+  display state.
+
+* Returned `AQL_WARNING()` to emit warnings from UDFs.
+
 * Fixed internal issue #725: Added analyzers revision for _system database in
   queries.
 
