@@ -237,21 +237,20 @@
         if (error) {
           arangoHelper.arangoError('User', 'Could not edit user settings');
         } else {
-          var extra = self.currentUser.get('extra');
           if (data) {
+            var extra = self.currentUser.get('extra');
             if (data.extra && data.extra.name) {
               extra.name = data.extra.name;
             } else {
               extra.name = null;
             }
-            self.currentUser.set('name.extra', extra);
 
             if (data.extra && data.extra.img) {
               extra.img = data.extra.img;
             } else {
               extra.img = null;
             }
-            self.currentUser.set('img.extra', extra);
+            self.currentUser.set('extra', extra);
 
             // rerender navigation containing userBarView
             window.App.naviView.render();

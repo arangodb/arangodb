@@ -709,7 +709,12 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   
   VPackSlice collections = queryBuilder->slice().get("collections");
   VPackSlice variables = queryBuilder->slice().get("variables");
-  VPackSlice analyzersRevision = queryBuilder->slice().get(arangodb::StaticStrings::ArangoSearchAnalyzersRevision);
+  
+  QueryAnalyzerRevisions analyzersRevision;
+  auto revisionRes = analyzersRevision.fromVelocyPack(queryBuilder->slice());
+  if (ADB_UNLIKELY(revisionRes.fail())) {
+    TRI_V8_THROW_EXCEPTION(revisionRes);
+  }
   
   // simon: hack to get the behaviour of old second aql::Query constructor
   VPackBuilder snippetBuilder; // simon: hack to make format conform
@@ -724,9 +729,7 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   query.prepareClusterQuery(aql::SerializationFormat::SHADOWROWS, VPackSlice::emptyObjectSlice(),
                             collections, variables,
                             snippetBuilder.slice(), VPackSlice::noneSlice(), ignoreResponse,
-                            analyzersRevision.isNumber() ? 
-                              static_cast<arangodb::AnalyzersRevision::Revision>(analyzersRevision.getUInt())
-                              : arangodb::AnalyzersRevision::MIN);
+                            analyzersRevision);
   
   aql::QueryResult queryResult = query.executeSync();
 

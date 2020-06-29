@@ -324,7 +324,7 @@ void RestAnalyzerHandler::getAnalyzer(IResearchAnalyzerFeature& analyzers,
     return;
   }
 
-  auto pool = analyzers.get(normalizedName, AnalyzersRevision::LATEST);
+  auto pool = analyzers.get(normalizedName, QueryAnalyzerRevisions::QUERY_LATEST);
   if (!pool) {
     generateError(arangodb::Result(
       TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,

@@ -1274,7 +1274,7 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
                                        VPackSlice snippets,
                                        VPackSlice traverserSlice,
                                        VPackBuilder& answerBuilder,
-                                       arangodb::AnalyzersRevision::Revision analyzersRevision) {
+                                       arangodb::QueryAnalyzerRevisions const& analyzersRevision) {
   LOG_TOPIC("9636f", DEBUG, Logger::QUERIES) << elapsedSince(_startTime)
                                              << " ClusterQuery::prepareClusterQuery"
                                              << " this: " << (uintptr_t)this;
