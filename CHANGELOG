@@ -1,6 +1,9 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Added option `--transaction.streaming-lock-timeout` to control the timeout
+  in seconds in case of parallel access to a streaming transaction.
+
 * Web UI now shows correct permissions in case wildcard database level and
   wildcard collection level permissions are both set.
 
@@ -8,7 +11,7 @@ v3.6.5 (XXXX-XX-XX)
 
 * Fixed internal issue #701: Dangling readers in ArangoSearch index_writer
   cache.
-    
+
 * Fix internal test helper function `removeCost` to really remove costs.
 
 * Pass through AQL query errors to UI graph viewer without turning them into
