@@ -58,10 +58,6 @@ class AqlItemBlockInputRange {
 
   std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> peekDataRow() const;
   
-  /// @brief optimized version of peekDataRow, only to be used when it is known that 
-  /// there is a next data row (i.e. if a previous call to hasDataRow() returned true)
-  std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> peekDataRow(HasDataRow) const;
-
   std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> nextDataRow();
   
   /// @brief optimized version of nextDataRow, only to be used when it is known that 
