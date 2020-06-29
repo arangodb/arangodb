@@ -955,6 +955,18 @@ std::string const& AstNode::getTypeString() const {
 
 /// @brief return the value type name of a node
 std::string const& AstNode::getValueTypeString() const {
+  if (type == NODE_TYPE_ARRAY || type == NODE_TYPE_OBJECT) {
+    // actually the types ARRAY and OBJECT are no value types.
+    // anyway, they need to be supported here because this function
+    // can be called to determine the type of user-defined data for
+    // error messages.
+    auto it = TypeNames.find(static_cast<int>(type));
+    if (it != TypeNames.end()) {
+      return (*it).second;
+    }
+    // should not happen
+    TRI_ASSERT(false);
+  }
   auto it = ValueTypeNames.find(static_cast<int>(value.type));
 
   if (it != ValueTypeNames.end()) {
