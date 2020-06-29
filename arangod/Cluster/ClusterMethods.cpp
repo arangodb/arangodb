@@ -3751,7 +3751,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
     }
 
     auto releaseAgencyLock = scopeGuard([&]{
-      LOG_TOPIC("52416", INFO, Logger::BACKUP)
+      LOG_TOPIC("52416", DEBUG, Logger::BACKUP)
           << "Releasing agency lock with scope guard! backupId: " << backupId;
       ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
     });
