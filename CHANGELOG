@@ -1,6 +1,9 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Fix undistribute-remove-after-enum-coll which would allow calculations to be
+  pushed to a DBServer which are not allowed to run there.
+
 * Returned `AQL_WARNING()` to emit warnings from UDFs.
 
 * The Web UI is now reporting errors properly in case of editing ArangoSearch
