@@ -267,8 +267,26 @@ constexpr bool operator==(AqlCall const& left, AqlCall const& right) {
          left.skippedRows == right.skippedRows;
 }
 
+/**
+ * @brief We need to disable this specific warning here.
+ * For some reason (see bug-report here: https://developercommunity.visualstudio.com/content/problem/1031281/improper-c4244-warning-in-variant-code.html)
+ * the MSVC compiler decides on every operator<< usage if this implementation could be used.
+ * This causes every operator<<(numberType) to test this implementation (and discard it afterwards), however if the
+ * Number type is too large, this will result in a valid compilation unit, emitting this warning (possible dataloss e.g. double -> size_t), which is neither used
+ * nor compiled, but the error is reported.
+ * As we disallow any warnings in the build this will stop compilation here.
+ *
+ * Remove this as soon as the MSVC compiler is fixed.
+ */
+#if (_MSC_VER >= 1)
+#pragma warning(push)
+#pragma warning(disable : 4244)
+#endif
 auto operator<<(std::ostream& out, const arangodb::aql::AqlCall::Limit& limit)
     -> std::ostream&;
+#if (_MSC_VER >= 1)
+#pragma warning(pop)
+#endif
 
 auto operator<<(std::ostream& out, const arangodb::aql::AqlCall& call) -> std::ostream&;
 
