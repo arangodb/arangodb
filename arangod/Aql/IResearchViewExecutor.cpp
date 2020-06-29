@@ -548,7 +548,7 @@ void IResearchViewExecutorBase<Impl, Traits>::fillScores(ReadContext const& /*ct
   }
 
   // We should either have no _scrVals to evaluate, or all
-  TRI_ASSERT(begin == nullptr || numScoreReg >= scoreRegs.size());
+//  TRI_ASSERT(begin == nullptr || numScoreReg >= scoreRegs.size());
 
   while (numScoreReg < scoreRegs.size()) {
     _indexReadBuffer.pushScoreNone();
@@ -802,7 +802,7 @@ IResearchViewExecutor<ordered, materializeType>::IResearchViewExecutor(Fetcher& 
       _itr(),
       _readerOffset(0),
       _scr(&irs::score::no_score()),
-      _scrVal() {
+      _numScores(0) {
   this->_storedValuesReaders.resize(this->_infos.getOutNonMaterializedViewRegs().size());
 }
 
@@ -811,14 +811,10 @@ void IResearchViewExecutor<ordered, materializeType>::evaluateScores(ReadContext
   // This must not be called in the unordered case.
   TRI_ASSERT(ordered);
 
-  // evaluate scores
-  _scr->evaluate();
-
   // in arangodb we assume all scorers return float_t
-  auto begin = reinterpret_cast<const float_t*>(_scrVal.begin());
-  auto end = reinterpret_cast<const float_t*>(_scrVal.end());
+  auto begin = reinterpret_cast<float_t const*>(_scr->evaluate());
 
-  this->fillScores(ctx, begin, end);
+  this->fillScores(ctx, begin, begin + _numScores);
 }
 
 template <bool ordered, MaterializeType materializeType>
@@ -974,8 +970,7 @@ bool IResearchViewExecutor<ordered, materializeType>::resetIterator() {
     }
   }
 
-  _itr = segmentReader.mask(
-      this->_filter->execute(segmentReader, this->_order, &this->_filterCtx));
+  _itr = this->_filter->execute(segmentReader, this->_order, &this->_filterCtx);
   TRI_ASSERT(_itr);
   _doc = irs::get<irs::document>(*_itr);
   TRI_ASSERT(_doc);
@@ -983,20 +978,16 @@ bool IResearchViewExecutor<ordered, materializeType>::resetIterator() {
   if constexpr (ordered) {
     _scr = irs::get<irs::score>(*_itr);
 
-    if (_scr && !_scr->empty()) {
-      _scrVal = _scr->value();
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto const numScores =
-          static_cast<size_t>(std::distance(_scrVal.begin(), _scrVal.end())) /
-          sizeof(float_t);
-
-      TRI_ASSERT(numScores == this->infos().scorers().size());
-#endif
-    } else {
+    if (!_scr) {
       _scr = &irs::score::no_score();
-      _scrVal = irs::bytes_ref::NIL;
+      _numScores = 0;
     }
+
+    _numScores = this->infos().scorers().size();
   }
+
+  _itr = segmentReader.mask(std::move(_itr));
+  TRI_ASSERT(_itr);
 
   return true;
 }
@@ -1122,21 +1113,29 @@ IResearchViewMergeExecutor<ordered, materializeType>::IResearchViewMergeExecutor
 
 template <bool ordered, MaterializeType materializeType>
 IResearchViewMergeExecutor<ordered, materializeType>::Segment::Segment(
-    irs::doc_iterator::ptr&& docs, irs::document const& doc, irs::score const& score,
-    LogicalCollection const& collection, irs::doc_iterator::ptr&& pkReader,
-    ColumnIterator&& sortReader, size_t storedValuesIndex) noexcept
-    : docs(std::move(docs)),
-      doc(&doc),
-      score(&score),
-      collection(&collection),
-      sortReader(std::move(sortReader)),
-      storedValuesIndex(storedValuesIndex) {
+    irs::doc_iterator::ptr&& docs, irs::document const& doc,
+    irs::score const& score, size_t numScores,
+    LogicalCollection const& collection,
+    irs::doc_iterator::ptr&& pkReader,
+    size_t storedValuesIndex,
+    irs::doc_iterator* sortReaderRef,
+    irs::payload const* sortReaderValue,
+    irs::doc_iterator::ptr&& sortReader) noexcept
+  : docs(std::move(docs)),
+    doc(&doc),
+    score(&score),
+    numScores(numScores),
+    collection(&collection),
+    storedValuesIndex(storedValuesIndex),
+    sortReaderRef(sortReaderRef),
+    sortValue(sortReaderValue),
+    sortReader(std::move(sortReader)) {
   TRI_ASSERT(this->docs);
   TRI_ASSERT(this->doc);
   TRI_ASSERT(this->score);
   TRI_ASSERT(this->collection);
-  TRI_ASSERT(this->sortReader.itr);
-  TRI_ASSERT(this->sortReader.value);
+  TRI_ASSERT(this->sortReaderRef);
+  TRI_ASSERT(this->sortValue);
   ::reset(this->pkReader, std::move(pkReader));
   TRI_ASSERT(this->pkReader.itr);
   TRI_ASSERT(this->pkReader.value);
@@ -1154,7 +1153,7 @@ bool IResearchViewMergeExecutor<ordered, materializeType>::MinHeapContext::opera
   while (segment.docs->next()) {
     auto const doc = segment.docs->value();
 
-    if (doc == segment.sortReader.itr->seek(doc)) {
+    if (doc == segment.sortReaderRef->seek(doc)) {
       return true;
     }
 
@@ -1168,25 +1167,20 @@ bool IResearchViewMergeExecutor<ordered, materializeType>::MinHeapContext::opera
     const size_t lhs, const size_t rhs) const {
   assert(lhs < _segments->size());
   assert(rhs < _segments->size());
-  return _less((*_segments)[rhs].sortReader.value->value,
-               (*_segments)[lhs].sortReader.value->value);
+  return _less((*_segments)[rhs].sortValue->value,
+               (*_segments)[lhs].sortValue->value);
 }
 
 template <bool ordered, MaterializeType materializeType>
 void IResearchViewMergeExecutor<ordered, materializeType>::evaluateScores(
-    ReadContext const& ctx, irs::score const& score) {
+    ReadContext const& ctx, irs::score const& score, size_t numScores) {
   // This must not be called in the unordered case.
   TRI_ASSERT(ordered);
 
-  // evaluate scores
-  score.evaluate();
-
   // in arangodb we assume all scorers return float_t
-  auto& scrVal = score.value();
-  auto begin = reinterpret_cast<const float_t*>(scrVal.c_str());
-  auto end = reinterpret_cast<const float_t*>(scrVal.c_str() + scrVal.size());
+  auto begin = reinterpret_cast<float_t const*>(score.evaluate());
 
-  this->fillScores(ctx, begin, end);
+  this->fillScores(ctx, begin, begin + numScores);
 }
 
 template <bool ordered, MaterializeType materializeType>
@@ -1215,22 +1209,14 @@ void IResearchViewMergeExecutor<ordered, materializeType>::reset() {
     TRI_ASSERT(doc);
 
     auto const* score = &irs::score::no_score();
+    size_t numScores = 0;
 
     if constexpr (ordered) {
       auto* scoreRef = irs::get<irs::score>(*it);
 
       if (scoreRef) {
         score = scoreRef;
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        irs::bytes_ref const scrVal = score->value();
-
-        auto const numScores =
-            static_cast<size_t>(std::distance(scrVal.begin(), scrVal.end())) /
-            sizeof(float_t);
-
-        TRI_ASSERT(numScores == this->infos().scorers().size());
-#endif
+        numScores = this->infos().scorers().size();
       }
     }
 
@@ -1267,10 +1253,13 @@ void IResearchViewMergeExecutor<ordered, materializeType>::reset() {
       TRI_ASSERT(!isSortReaderUsedInStoredValues);
     }
 
-    ColumnIterator sortReader;
     if (isSortReaderUsedInStoredValues) {
       TRI_ASSERT(i * storedValuesCount < this->_storedValuesReaders.size());
-      sortReader = this->_storedValuesReaders[i * storedValuesCount];
+      auto& sortReader = this->_storedValuesReaders[i * storedValuesCount];
+
+      _segments.emplace_back(std::move(it), *doc, *score, numScores,
+                             *collection, std::move(pkReader), i,
+                             sortReader.itr.get(), sortReader.value, nullptr);
     } else {
       auto itr = ::sortColumn(segment);
 
@@ -1281,11 +1270,15 @@ void IResearchViewMergeExecutor<ordered, materializeType>::reset() {
         continue;
       }
 
-      ::reset(sortReader, std::move(itr));
-    }
+      irs::payload const* sortValue = irs::get<irs::payload>(*itr);
+      if (ADB_UNLIKELY(!sortValue)) {
+        sortValue = &NoPayload;
+      }
 
-    _segments.emplace_back(std::move(it), *doc, *score, *collection,
-                           std::move(pkReader), std::move(sortReader), i);
+      _segments.emplace_back(std::move(it), *doc, *score, numScores,
+                             *collection, std::move(pkReader), i,
+                             itr.get(), sortValue, std::move(itr));
+    }
   }
 
   _heap_it.reset(_segments.size());
@@ -1344,7 +1337,7 @@ void IResearchViewMergeExecutor<ordered, materializeType>::fillBuffer(ReadContex
     // in the ordered case we have to write scores as well as a document
     if constexpr (ordered) {
       // Writes into _scoreBuffer
-      evaluateScores(ctx, *segment.score);
+      evaluateScores(ctx, *segment.score, segment.numScores);
     }
 
     if constexpr ((materializeType & MaterializeType::UseStoredValues) ==

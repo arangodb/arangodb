@@ -55,7 +55,7 @@ class test_env {
  private:
   static void make_directories();
   static void parse_command_line(cmdline::parser& vm);
-  static void prepare(const cmdline::parser& vm );
+  static bool prepare(const cmdline::parser& vm );
 
   static int argc_;
   static char** argv_;

@@ -311,6 +311,9 @@ class raw_block_vector_base
     typename Allocator::value_type ptr;
   };
 
+  static_assert(std::is_nothrow_move_constructible<buffer_entry_t>::value,
+                "default move constructor expected");
+
   buffer_t& push_buffer(size_t offset, const bucket_size_t& bucket) {
     auto& allocator = allocator_ref_t::get();
     buffers_.emplace_back(offset, bucket.size, allocator.allocate(bucket));
