@@ -30,7 +30,8 @@ const functionsDocumentation = {
 };
 const optionsDocumentation = [
   '   - `javasource`: directory of the java driver',
-  '   - `javaOptions`: additional argumnets to pass via the commandline'
+  '   - `javaOptions`: additional arguments to pass via the commandline',
+  '                    can be found in arangodb-java-driver/src/test/java/utils/TestUtils.java'
 ];
 
 const internal = require('internal');
@@ -67,7 +68,9 @@ function javaDriver (options) {
   function runInJavaTest (options, instanceInfo, file, addArgs) {
     let topology;
     let testResultsDir = fs.join(instanceInfo.rootDir, 'javaresults');
-    let results = {};
+    let results = {
+      'message': ''
+    };
     let matchTopology;
     if (options.cluster) {
       topology = 'CLUSTER';
@@ -98,12 +101,12 @@ function javaDriver (options) {
     ];
 
     if (options.testCase) {
-      args.push('-run');
-      args.push(options.testCase);
+      args.push('-Dtest=' + options.testCase);
+      args.push('-DfailIfNoTests=false'); // if we don't specify this, errors will occur.
     }
     if (options.hasOwnProperty('javaOptions')) {
       for (var key in options.javaOptions) {
-        args.push('-D' + key + '="' + options.javaOptions[key] + '"');
+        args.push('-D' + key + '=' + options.javaOptions[key]);
       }
     }
     if (options.extremeVerbosity || true) {
@@ -130,7 +133,7 @@ function javaDriver (options) {
       resultJson['parents'] = [];
       allResultJsons[resultJson.uuid] = resultJson;
     });
-    
+
     let containerFiles = fs.list(testResultsDir).filter(file => file.match(containerRe) !== null);
     containerFiles.forEach(containerFile => {
       let container = JSON.parse(fs.read(fs.join(testResultsDir, containerFile)));
@@ -186,7 +189,7 @@ function javaDriver (options) {
         status: true
       };
       results[tlContainer.name] = resultSet;
-      
+
       tlContainer['childContainers'].forEach(childContainerId => {
         let childContainer = allContainerJsons[childContainerId];
         let suiteResult = {};
@@ -205,19 +208,25 @@ function javaDriver (options) {
           if (gcTestResult.hasOwnProperty('statusDetails')) {
             message = gcTestResult.statusDetails.message + "\n\n" + gcTestResult.statusDetails.trace;
           }
-          suiteResult[grandChildContainer.name + '.' + gcTestResult.name] = {
+          let myResult = {
             duration: gcTestResult.stop - gcTestResult.start,
             status: (gcTestResult.status === "passed") || (gcTestResult.status === "skipped"),
             message: message
           };
+
+          suiteResult[grandChildContainer.name + '.' + gcTestResult.name] = myResult;
+          if (!myResult.status) {
+            status = false;
+            suiteResult.status = false;
+            // suiteResult.message = myResult.message;
+            results.message += myResult.message;
+          }
         });
       });
       //print('zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz')
-      
     });
     results['timeout'] = false;
     results['status'] = status;
-    results['message'] = '';
     return results;
   }
   runInJavaTest.info = 'runInJavaTest';
