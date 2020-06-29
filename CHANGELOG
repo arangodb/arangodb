@@ -43,6 +43,10 @@ devel
   Previously, it could cause collection creation to fail (e.g. when a server
   failed during creation), even when it didn't have to.
 
+* Internal issue BTS-71: Fixed error handling regarding communication with the
+  agency. This could in a specific case cause collection creation in a cluster
+  report success when it failed.
+
 * Fixed internal issue #725: Added analyzers revision for _system database in
   queries.
 
