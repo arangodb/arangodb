@@ -1,6 +1,41 @@
 devel
 -----
 
+* Returned `AQL_WARNING()` to emit warnings from UDFs.
+
+* Fixed internal issue BTS-107, offset over the main query
+  passed through a subquery which has modification access to
+  shards could yield incorrect results, if shards are large enough
+  and skipping was large enough, both to overflow the batch-size in
+  AQL for each shard individually.
+  The following query would be affected:
+
+  FOR x IN 1..100
+  LET sub = (
+    FOR y IN Collection
+    UPDATE y WITH {updated: true} IN Collection
+    RETURN new
+  )
+  LIMIT 5, 10
+  REUTRN {x,sub}
+
+  If a shard in Collection, has enough entries to fill a batch, the second shard 
+  could run into the issue that it actually does not skip the first 5 main queries, 
+  but reports their results in addition.
+  This has the negative side effect that merging the subqueries back together was off.
+
+* Allow removal of existing schemas by saving a schema of either `null` or `{}`
+  (empty object). Using an empty string as schema will produce  an error in the
+  web interface and will not remove the schema.
+
+  The change also adjusts the behavior for the SCHEMA_VALIDATE AQL function in
+  case the first parameter was no document/object. In this case, the function
+  will now return nulland register a warning in the query, so the user can
+  handle it.
+
+* Fixed internal issue #725: Added analyzers revision for _system database in
+  queries.
+
 * Allow restoring collections from v3.3.0 with their all-numeric collection
   GUID values, by creating a new, unambiguous collection GUID for them. 
   v3.3.0 had a bug because it created all-numeric GUID values, which can be
@@ -21,15 +56,9 @@ devel
   automatically without the need of a manual reload.
 
 * Fixed an error scenario where a call could miss count skip.
-  It was triggered in the case of Gather in Cluster, if we skipped
-  over a full shard, and the shard did actually skip, but there are more
-  documents to skip on another shard. There is a potential that
-  this was triggered on some other executors, but I have not been able to write 
-  a user-query to trigger it though, so maybe this is just a theoretical bug in 
-  those cases.
-  If it hits in the number reported by skip on subsequent subqueries was incorrect. 
-  First run reported correct number, second run reported again number
-  of first run, third the one of second etc.
+  It was triggered in the case of Gather in Cluster, if we skipped over a full
+  shard, and the shard did actually skip, but there are more documents to skip
+  on another shard.
 
 * Fixed hotbackup agency lock cleanup procedure.
 
