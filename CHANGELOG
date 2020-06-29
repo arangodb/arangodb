@@ -4,43 +4,6 @@ v3.6.5 (XXXX-XX-XX)
 * Fix undistribute-remove-after-enum-coll which would allow calculations
   to be pushed to a DBServer which are not allowed to run there.
 
-* Allow restoring collections from v3.3.0 with their all-numeric collection
-  GUID values, by creating a new, unambiguous collection GUID for them. 
-  v3.3.0 had a bug because it created all-numeric GUID values, which can be
-  confused with numeric collection ids in lookups. v3.3.1 already changed the
-  GUID routine to produce something non-numeric already, but collections
-  created with v3.3.0 can still have an ambiguous GUID. This fix adjusts
-  the restore routine to drop such GUID values, so it only changes something
-  if v3.3.0 collections are dumped, dropped on the server and then restored
-  with the flawed GUIDs.
-
-* Fixed bug in IResearchViewExecutor that lead to only up to 1000 rows being
-  produced.
-
-* Changing the current users profile icon in the Web UI now renders the new
-  icon directly without the need of a full UI browser reload.
-
-* The Web UI's replication view is now checking the replication state
-  automatically without the need of a manual reload.
-
-* Fixed an error scenario where a call could miss count skip.
-  It was triggered in the case of Gather in Cluster, if we skipped
-  over a full shard, and the shard did actually skip, but there are more
-  documents to skip on another shard. There is a potential that
-  this was triggered on some other executors, but I have not been able to write 
-  a user-query to trigger it though, so maybe this is just a theoretical bug in 
-  those cases.
-  If it hits in the number reported by skip on subsequent subqueries was incorrect. 
-  First run reported correct number, second run reported again number
-  of first run, third the one of second etc.
-
-* Fixed hotbackup agency lock cleanup procedure.
-
-* Only advance shard version after follower is reported in sync in agency.
-
-* Fixed cluster behavior with HotBackup and non-existing backups on DB-Servers.
->>>>>>> 964d611c5dc... CHANGELOG
-
 * Fixed that, when performing a graph AQL query while a (graceful) failover for
   the leader of the system collections is in progress, ArangoDB would report a 
   "Graph not found error".
