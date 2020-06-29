@@ -730,7 +730,6 @@ arangosh, use this:
 Pre-requisites: 
  - have a go-driver checkout next to the ArangoDB source tree
  - have the go binary in the path
- - have all dependencies of it installed in the system (you may do this by try & error)
 
 Once this is completed, you may run it like this:
 
@@ -741,6 +740,16 @@ As an aditional parameter we pass `-timeout 100m` to the driver test.
 
 The driver integration also features JWT pass in. It will launch a cluster with 3 DB-Servers, as
 the tests expect to have at least 3 DB-Servers.
+
+#### Java driver
+
+Pre-requisites:
+ - have a arangodb-java-driver checkout next to the ArangoDB source tree in the 'next' branch
+ - have a maven binary in the path (mvn)
+ 
+Once this is completed, you may run it like this:
+
+    ./scripts/unittest java_driver --javasource ../arangodb-java-driver/ --cluster true 
 
 ### Debugging Tests
 
