@@ -2,7 +2,8 @@ v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
 * Adjust arangodump integration test to desired behavior, and make sure
-  arangodump behaves as specified when invoking it with non-existing collections.
+  arangodump behaves as specified when invoking it with non-existing
+  collections.
 
 * Fixed issue ES-609: "Transaction already in use" error when running
   transaction.
