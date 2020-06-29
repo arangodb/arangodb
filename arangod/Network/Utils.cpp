@@ -199,8 +199,6 @@ int toArangoErrorCodeInternal(fuerte::Error err) {
       return TRI_ERROR_CLUSTER_TIMEOUT;
 
     case fuerte::Error::Canceled:
-      return TRI_ERROR_REQUEST_CANCELED;
-
     case fuerte::Error::QueueCapacityExceeded:  // there is no result
     case fuerte::Error::ReadError:
     case fuerte::Error::WriteError:
