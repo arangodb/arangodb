@@ -285,6 +285,13 @@ class AqlItemBlock {
   void copySubQueryDepthFromOtherBlock(size_t targetRow, AqlItemBlock const& source,
                                        size_t sourceRow);
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+// MaintainerMode method to validate if ShadowRows organization are consistent.
+// e.g. If a block always follows this pattern:
+// ((Data* Shadow(0))* Shadow(1))* ...
+  void validateShadowRowConsistency() const;
+#endif
+
  protected:
   AqlItemBlockManager& aqlItemBlockManager() noexcept;
   size_t getRefCount() const noexcept;
