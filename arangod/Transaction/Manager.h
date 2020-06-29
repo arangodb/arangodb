@@ -95,11 +95,7 @@ class Manager final {
   Manager(Manager const&) = delete;
   Manager& operator=(Manager const&) = delete;
 
-  explicit Manager(ManagerFeature& feature)
-      : _feature(feature),
-        _nrRunning(0),
-        _disallowInserts(false),
-        _writeLockHeld(false) {}
+  explicit Manager(ManagerFeature& feature);
 
   // register a transaction
   void registerTransaction(TRI_voc_tid_t transactionId, bool isReadOnlyTransaction);
@@ -221,6 +217,8 @@ class Manager final {
                       // time.
   basics::ReadWriteLock _rwLock;
   bool _writeLockHeld;
+
+  double _streamingLockTimeout;
 };
 }  // namespace transaction
 }  // namespace arangodb

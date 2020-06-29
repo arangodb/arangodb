@@ -85,6 +85,13 @@ struct MGMethods final : arangodb::transaction::Methods {
 };
 }  // namespace
 
+Manager::Manager(ManagerFeature& feature)
+  : _feature(feature),
+    _nrRunning(0),
+    _disallowInserts(false),
+    _writeLockHeld(false),
+    _streamingLockTimeout(feature.streamingLockTimeout()) {}
+
 void Manager::registerTransaction(TRI_voc_tid_t /*transactionId*/, bool isReadOnlyTransaction) {
   if (!isReadOnlyTransaction) {
     _rwLock.lockRead();
@@ -422,7 +429,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
   auto const role = ServerState::instance()->getRole();
   std::chrono::steady_clock::time_point endTime;
   if (!ServerState::isDBServer(role)) { // keep end time as small as possible
-    endTime = std::chrono::steady_clock::now() + std::chrono::seconds(8);
+    endTime = std::chrono::steady_clock::now() + std::chrono::milliseconds(int64_t(1000 * _streamingLockTimeout));
   }
   // always serialize access on coordinator,
   // TransactionState::_knownServers is modified even for READ
