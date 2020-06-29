@@ -146,18 +146,48 @@ auto MultiAqlItemBlockInputRange::peekShadowRow() const -> arangodb::aql::Shadow
 auto MultiAqlItemBlockInputRange::nextShadowRow()
     -> std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> {
   TRI_ASSERT(!hasDataRow());
+  
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(!_dependenciesDontAgreeOnState);
+  auto oneDependencyDone = bool{false};
+  auto oneDependencyHasMore = bool{false};
+#endif
 
   // Need to consume all shadow rows simultaneously.
   // Only one (a random one) will contain the data.
   TRI_ASSERT(!_inputs.empty());
   auto [state, shadowRow] = _inputs.at(0).nextShadowRow();
-  
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (state == ExecutorState::DONE) {
+    oneDependencyDone = true;
+  } else if (state == ExecutorState::HASMORE) {
+    oneDependencyHasMore = true;
+  }
+#endif
+
   bool foundData = ::RowHasNonEmptyValue(shadowRow);
-  for (size_t i = 1; i < _inputs.size(); ++i) {
-    auto [otherState, otherRow] = _inputs.at(i).nextShadowRow();
+  size_t const n = _inputs.size();
+  for (size_t i = 1; i < n; ++i) {
+    auto [otherState, otherRow] = _inputs[i].nextShadowRow();
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    if (otherState == ExecutorState::DONE) {
+      oneDependencyDone = true;
+    } else if (otherState == ExecutorState::HASMORE) {
+      oneDependencyHasMore = true;
+    }
+#endif
+
+    // if any dependency thinks it has more, maybe we'll have to be
+    // asked again to finish up.
+    // In maintainer mode we assert that not more data is being
+    // produced, because that must not happen!
+    if (otherState == ExecutorState::HASMORE) {
+      state = ExecutorState::HASMORE;
+    }
     // All inputs need to be in the same part of the query.
     // We cannot have overlapping subquery executions.
-    TRI_ASSERT(state == otherState);
     // We can only have all rows initialized or none.
     TRI_ASSERT(shadowRow.isInitialized() == otherRow.isInitialized());
     if (!foundData) {
@@ -168,12 +198,17 @@ auto MultiAqlItemBlockInputRange::nextShadowRow()
         foundData = true;
       }
     } else {
-      // we allready have the filled one.
+      // we already have the filled one.
       // Just assert the others are empty for correctness
       TRI_ASSERT(! ::RowHasNonEmptyValue(otherRow));
     }
   }
-  return {state, shadowRow};
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  _dependenciesDontAgreeOnState = oneDependencyHasMore && oneDependencyDone;
+#endif
+
+  return {state, std::move(shadowRow)};
 }
 
 auto MultiAqlItemBlockInputRange::getBlock(size_t const dependency) const

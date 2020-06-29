@@ -44,15 +44,32 @@ class SkipResult;
 /**
  * @brief Interface for all AqlExecutors that do need one
  *        row at a time from every dependency in order to make progress.
- *        The guarantee is the following:
- *        If fetchRowForDependency returns a row of the given dependency,
- *        the pointer to
- *        this row stays valid until the next call
- *        of fetchRowForDependency.
- *        So we can have one Row per dependency in flight.
  */
 class MultiDependencySingleRowFetcher {
  private:
+  class UpstreamSkipReport {
+   public:
+    UpstreamSkipReport();
+    ~UpstreamSkipReport() = default;
+
+    auto isInitialized() const -> bool;
+
+    auto initialize(size_t depth) -> void;
+
+    auto getSkipped(size_t subqueryDepth) const -> size_t;
+
+    auto getFullCount(size_t subqueryDepth) const-> size_t;
+
+    auto clearCounts(size_t subqueryDepth) -> void;
+
+    auto setSkipped(size_t subqueryDepth, size_t skipped) -> void;
+    auto setFullCount(size_t subqueryDepth, size_t skipped) -> void;
+
+   private:
+    bool _isInitialized{false};
+    std::vector<std::pair<size_t, size_t>> _report;
+  };
+
   /**
    * @brief helper struct to contain all information about dependency-states
    */
@@ -77,7 +94,7 @@ class MultiDependencySingleRowFetcher {
     SharedAqlItemBlockPtr _currentBlock;
 
     /**
-     * @brief Index of the row to be returned next by fetchRow(). This is valid
+     * @brief Index of the row to be returned next. This is valid
      *        iff _currentBlock != nullptr and it's smaller or equal than
      *        _currentBlock->size(). May be moved if the Fetcher implementations
      *        are moved into separate classes.
@@ -97,40 +114,10 @@ class MultiDependencySingleRowFetcher {
   MultiDependencySingleRowFetcher();
 
  public:
-  std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t atMost);
-  std::pair<ExecutionState, size_t> preFetchNumberOfRowsForDependency(size_t dependency,
-                                                                      size_t atMost);
-
   // May only be called once, after the dependencies are injected.
   void initDependencies();
 
   size_t numberDependencies();
-
-  /**
-   * @brief Fetch one new AqlItemRow from the specified upstream dependency.
-   *
-   * @param atMost may be passed if a block knows the maximum it might want to
-   *        fetch from upstream. Will not fetch more than the default batch
-   *        size, so passing something greater than it will not have any effect.
-   *
-   * @return A pair with the following properties:
-   *         ExecutionState:
-   *           WAITING => IO going on, immediately return to caller.
-   *           DONE => No more to expect from Upstream, if you are done with
-   *                   this row return DONE to caller.
-   *           HASMORE => There is potentially more from above, call again if
-   *                      you need more input.
-   *         AqlItemRow:
-   *           If WAITING => Do not use this Row, it is a nullptr.
-   *           If HASMORE => The Row is guaranteed to not be a nullptr.
-   *           If DONE => Row can be a nullptr (nothing received) or valid.
-   */
-  // This is only TEST_VIRTUAL, so we ignore this lint warning:
-  // NOLINTNEXTLINE google-default-arguments
-  TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRowForDependency(
-      size_t dependency, size_t atMost = ExecutionBlock::DefaultBatchSize);
-
-  std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(size_t atMost = ExecutionBlock::DefaultBatchSize);
 
   //@deprecated
   auto useStack(AqlCallStack const& stack) -> void;
@@ -140,6 +127,8 @@ class MultiDependencySingleRowFetcher {
 
   [[nodiscard]] auto upstreamState() const -> ExecutionState;
 
+  auto resetDidReturnSubquerySkips(size_t shadowRowDepth) -> void;
+
  private:
   DependencyProxy<BlockPassthrough::Disable>* _dependencyProxy;
 
@@ -148,6 +137,9 @@ class MultiDependencySingleRowFetcher {
    */
   std::vector<DependencyInfo> _dependencyInfos;
   std::vector<ExecutionState> _dependencyStates;
+  std::vector<UpstreamSkipReport> _dependencySkipReports;
+
+  UpstreamSkipReport _maximumSkipReport;
 
   /// @brief Only needed for parallel executors; could be omitted otherwise
   ///        It's size is >0 after init() is called, and this is currently used
@@ -165,8 +157,6 @@ class MultiDependencySingleRowFetcher {
    */
   std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForDependency(size_t dependency,
                                                                            size_t atMost);
-
-  std::pair<ExecutionState, size_t> skipSomeForDependency(size_t dependency, size_t atMost);
 
   /**
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()
@@ -188,6 +178,11 @@ class MultiDependencySingleRowFetcher {
   bool isAtShadowRow(DependencyInfo const& info) const;
 
   bool fetchBlockIfNecessary(const size_t dependency, const size_t atMost);
+
+  AqlCallStack adjustStackWithSkipReport(AqlCallStack const& stack, const size_t dependency);
+
+  void reportSkipForDependency(AqlCallStack const& originalStack,
+                               SkipResult const& skipped, const size_t dependency);
 };
 
 }  // namespace arangodb::aql
