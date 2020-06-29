@@ -31,6 +31,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Logger/LogBuffer.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerFeature.h"
 #include "Rest/HttpRequest.h"
 #include "Utils/ExecContext.h"
 
