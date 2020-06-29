@@ -3901,8 +3901,8 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
     }
 
     unlockDBServerTransactions(pool, backupId, dbServers);
-    ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
-    releaseAgencyLock.cancel();
+    // release the lock
+    releaseAgencyLock.fire();
 
     auto agencyCheck = std::make_shared<VPackBuilder>();
     result = ci.agencyPlan(agencyCheck);
