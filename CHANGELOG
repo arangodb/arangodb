@@ -1,6 +1,9 @@
 devel
 -----
 
+* Internal issue BTS-71: Added a precondition to prevent creating a collection
+  with an invalid `distributeShardsLike` property.
+
 * Fixed internal issue #725: Added analyzers revision for _system database in
   queries.
 
