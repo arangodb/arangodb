@@ -1,6 +1,9 @@
 devel
 -----
 
+* The `_from` and `_to` attributes of an edge document can now be edited from
+  within the UI.
+
 * Allow removal of existing schemas by saving a schema of either `null` or `{}`
   (empty object). Using an empty string as schema will produce  an error in the
   web interface and will not remove the schema.
