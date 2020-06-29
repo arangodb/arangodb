@@ -157,32 +157,35 @@ auto MultiAqlItemBlockInputRange::nextShadowRow()
   
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(!_dependenciesDontAgreeOnState);
-#endif
-
   auto oneDependencyDone = bool{false};
   auto oneDependencyHasMore = bool{false};
+#endif
 
   // Need to consume all shadow rows simultaneously.
   // Only one (a random one) will contain the data.
   TRI_ASSERT(!_inputs.empty());
   auto [state, shadowRow] = _inputs.at(0).nextShadowRow();
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (state == ExecutorState::DONE) {
     oneDependencyDone = true;
   } else if (state == ExecutorState::HASMORE) {
     oneDependencyHasMore = true;
   }
+#endif
 
   bool foundData = ::RowHasNonEmptyValue(shadowRow);
   size_t const n = _inputs.size();
   for (size_t i = 1; i < n; ++i) {
     auto [otherState, otherRow] = _inputs[i].nextShadowRow();
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     if (otherState == ExecutorState::DONE) {
       oneDependencyDone = true;
     } else if (otherState == ExecutorState::HASMORE) {
       oneDependencyHasMore = true;
     }
+#endif
 
     // if any dependency thinks it has more, maybe we'll have to be
     // asked again to finish up.
