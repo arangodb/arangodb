@@ -1,6 +1,8 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Returned `AQL_WARNING()` to emit warnings from UDFs.
+
 * Fixed internal issue #725: Added analyzers revision for _system database in
   queries.
 
