@@ -1,6 +1,10 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Removed the edge id's hover styling in case of embedded document editor in 
+  the Web UI as this functionality is disabled. This was misleading because
+  the elements are not clickable.
+
 * Fixed hotbackup agency lock cleanup procedure.
 
 * The Web UI's replication view is now checking the replication state
