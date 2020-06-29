@@ -522,7 +522,6 @@ static void JS_ParseAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief registers a warning for the currently running AQL query
-
 static void JS_WarningAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
