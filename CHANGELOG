@@ -1,5 +1,7 @@
 devel
 -----
+* Fix undistribute-remove-after-enum-coll which would allow calculations
+  to be pushed to a DBServer which are not allowed to run there.
 
 * Fixed that the hotbackup agency lock is released under all circumstances
   using scope guards. This addresses a rare case in which the lock was left
