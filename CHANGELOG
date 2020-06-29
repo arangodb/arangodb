@@ -1,6 +1,9 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Adjust arangodump integration test to desired behavior, and make sure
+  arangodump behaves as specified when invoking it with non-existing collections.
+
 * Returned `AQL_WARNING()` to emit warnings from UDFs.
 
 * Fixed internal issue #725: Added analyzers revision for _system database in
