@@ -1,6 +1,10 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
+* Internal issue BTS-71: Fixed error handling regarding communication with the
+  agency. This could in a specific case cause collection creation in a cluster
+  report success when it failed.
+
 * Correct some log entries.
 
 * The `_from` and `_to` attributes of an edge document can now be edited from
