@@ -280,7 +280,7 @@ constexpr bool operator==(AqlCall const& left, AqlCall const& right) {
  */
 #if (_MSC_VER >= 1)
 #pragma warning(push)
-#pragma warning(disable : 4244)
+#pragma warning(disable : 2220)
 #endif
 auto operator<<(std::ostream& out, const arangodb::aql::AqlCall::Limit& limit)
     -> std::ostream&;
