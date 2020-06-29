@@ -1,6 +1,15 @@
 devel
 -----
 
+* Allow removal of existing schemas by saving a schema of either `null` or `{}`
+  (empty object). Using an empty string as schema will produce  an error in the
+  web interface and will not remove the schema.
+
+  The change also adjusts the behavior for the SCHEMA_VALIDATE AQL function in
+  case the first parameter was no document/object. In this case, the function
+  will now return nulland register a warning in the query, so the user can
+  handle it.
+
 * Fixed internal issue #725: Added analyzers revision for _system database in
   queries.
 
