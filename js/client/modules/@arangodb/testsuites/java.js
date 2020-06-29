@@ -51,8 +51,8 @@ const time = require('internal').time;
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 // const CYAN = require('internal').COLORS.COLOR_CYAN;
 // const GREEN = require('internal').COLORS.COLOR_GREEN;
-// const RED = require('internal').COLORS.COLOR_RED;
-// const RESET = require('internal').COLORS.COLOR_RESET;
+const RED = require('internal').COLORS.COLOR_RED;
+const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 const testPaths = {
@@ -197,8 +197,8 @@ function javaDriver (options) {
           //print(grandChildContainer);
           let name = childContainer.name + "." + grandChildContainer.name;
           if (grandChildContainer.children.length !== 1) {
-            print("This grandchild has more than one item - not supported!");
-            print(grandChildContainer.children);
+            print(RED+"This grandchild has more than one item - not supported!"+RESET);
+            print(RED+grandChildContainer.children+RESET);
           }
           let gcTestResult = allResultJsons[grandChildContainer.children[0]];
           let message = "";
