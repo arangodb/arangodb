@@ -327,7 +327,7 @@ class ClusterQuery final : public Query {
                            arangodb::velocypack::Slice snippets,
                            arangodb::velocypack::Slice traversals,
                            arangodb::velocypack::Builder& answer,
-                           arangodb::AnalyzersRevision::Revision analyzersRevision);
+                           arangodb::QueryAnalyzerRevisions const& analyzersRevision);
   
   Result finalizeClusterQuery(ExecutionStats& stats, int errorCode);
 
