@@ -255,6 +255,30 @@ function iResearchFeatureAqlTestSuite () {
       db._dropDatabase(dbName);
       db._dropDatabase(anotherDbName);
     },
+    testAnalyzerGetFromSystemDatabaseDifferentRevision: function() {
+      if (!isCluster) { // only cluster has revisions. Do not waste time on single
+       return;
+      }
+      let dbName = "analyzerDbName";
+      let analyzerName = "my_identity";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch (e) {}
+      try { analyzers.remove(analyzerName, true); } catch (e) {}
+      try {
+        db._createDatabase(dbName, {sharding: "single"});
+        let analyzer = analyzers.save(analyzerName, "identity", {}); // so system revision is at least 1
+        db._useDatabase(dbName); // fresh database will have revision 0 ( 0 < 1 so using db revision for system analyzer will fail!)
+        db._create("test_coll"); 
+        db._createView("tv", "arangosearch", {links: { test_coll: { includeAllFields:true, analyzers:[ "::" + analyzerName ] } } });
+        db.test_coll.save({field: "value1"});
+        var res = db._query("FOR d IN tv SEARCH ANALYZER(d.field == 'value1', '::" + analyzerName + "') OPTIONS {waitForSync:true}  RETURN d");
+        assertEqual(1, res.toArray().length);
+      } finally {
+        db._useDatabase("_system");
+        analyzers.remove(analyzerName, true);
+        db._dropDatabase(dbName);
+      }
+    },
     testAnalyzers: function() {
       let oldList = analyzers.toArray();
       let oldListInCollection = db._analyzers.toArray();
