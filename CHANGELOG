@@ -5,6 +5,54 @@ v3.7.1-rc.1 (XXXX-XX-XX)
   exist, the UI now properly displays an error view instead of having a bad
   display state.
 
+* Returned `AQL_WARNING()` to emit warnings from UDFs.
+
+* Fixed internal issue #725: Added analyzers revision for _system database in
+  queries.
+
+* The Web UI is not disabling the query import button after file upload takes
+  place.
+
+* In case of a graph deletion failure, the Web UI displays now the correct
+  error message.
+
+* Privatised load plan / current in cluster info and cleanup following agency
+  cache implementation.
+
+* Allow removal of existing schemas by saving a schema of either `null` or `{}`
+  (empty object). Using an empty string as schema will produce  an error in the
+  web interface and will not remove the schema.
+
+  The change also adjusts the behavior for the SCHEMA_VALIDATE AQL function in
+  case the first parameter was no document/object. In this case, the function
+  will now return nulland register a warning in the query, so the user can
+  handle it.
+
+* The Web UI is now reporting errors properly in case of editing ArangoSearch
+  Views with invalid properties.
+
+* Fixed bug in IResearchViewExecutor that lead to only up to 1000 rows being
+  produced.
+
+* Fixed an error scenario where a call could miss count skip.
+  It was triggered in the case of Gather in Cluster, if we skipped over a full
+  shard, and the shard did actually skip, but there are more documents to skip
+  on another shard.
+
+* Fixed that the hotbackup agency lock is released under all circumstances
+  using scope guards. This addresses a rare case in which the lock was left
+  behind.
+
+* Allow restoring collections from v3.3.0 with their all-numeric collection GUID
+  values, by creating a new, unambiguous collection GUID for them.
+  v3.3.0 had a bug because it created all-numeric GUID values, which can be
+  confused with numeric collection ids in lookups. v3.3.1 already changed the
+  GUID routine to produce something non-numeric already, but collections created
+  with v3.3.0 can still have an ambiguous GUID. This fix adjusts the restore
+  routine to drop such GUID values, so it only changes something if v3.3.0
+  collections are dumped, dropped on the server and then restored with the
+  flawed GUIDs.
+
 * Fixed hotbackup agency lock cleanup procedure.
 
 * The Web UI's replication view is now checking the replication state

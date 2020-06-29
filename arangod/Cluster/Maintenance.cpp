@@ -240,8 +240,8 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
     }
 
     // If comparison has brought any updates
-    if (!properties->slice().isObject() || properties->slice().length() > 0 ||
-        !followersToDropString.empty()) {
+    TRI_ASSERT(properties->slice().isObject());
+    if (properties->slice().length() > 0 || !followersToDropString.empty()) {
       if (errors.shards.find(fullShardLabel) == errors.shards.end()) {
         actions.emplace_back(ActionDescription(
             std::map<std::string, std::string>{{NAME, UPDATE_COLLECTION},

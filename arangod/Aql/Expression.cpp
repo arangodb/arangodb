@@ -942,10 +942,14 @@ AqlValue Expression::executeSimpleExpressionFCallJS(AstNode const* node,
   {
     ISOLATE;
     TRI_ASSERT(isolate != nullptr);
-    v8::HandleScope scope(isolate);           
+    TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
     auto context = TRI_IGETC;
-    
+
     VPackOptions const* options = trx->transactionContext()->getVPackOptions();
+
+    auto old = v8g->_expressionContext;
+    v8g->_expressionContext = _expressionContext;
+    TRI_DEFER(v8g->_expressionContext = old);
 
     std::string jsName;
     size_t const n = member->numMembers();
