@@ -1,6 +1,9 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* In case of a graph deletion failure, the Web UI displays now the correct
+  error message.
+
 * Fix undistribute-remove-after-enum-coll which would allow calculations to be
   pushed to a DBServer which are not allowed to run there.
 
