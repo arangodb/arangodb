@@ -1,6 +1,9 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* The `_from` and `_to` attributes of an edge document can now be edited from
+  within the UI.
+
 * Fixed hotbackup agency lock cleanup procedure.
 
 * The Web UI's replication view is now checking the replication state
