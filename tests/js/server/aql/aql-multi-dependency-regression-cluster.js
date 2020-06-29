@@ -70,22 +70,28 @@ function multiDependencyRegressionSuite() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test object access for path object
+    /// @brief 
     ////////////////////////////////////////////////////////////////////////////////
     testMultiDependencyRegression: function() {
       const query = `
-	  LET sq1 = (FOR fv2 IN 1..10 
-	    LET sq3 = (FOR fv4 IN SubqueryChaosCollection2 
-	      UPDATE { _key: fv4._key } WITH {updated: true} IN  SubqueryChaosCollection2
+	  LET sq1 = (FOR fv2 IN 1..10
+	    LET sq3 = (FOR fv4 IN ${collectionName}
+	      UPDATE { _key: fv4._key } WITH {updated: true} IN  ${collectionName}
 	      LIMIT 10,10
-	      COLLECT WITH COUNT INTO counter 
+	      COLLECT WITH COUNT INTO counter
 	      RETURN {counter})
-	    LIMIT 5,3
-	    RETURN {fv2: UNSET_RECURSIVE(fv2,"_rev", "_id", "_key"), sq3})
+      LIMIT 5,3
+	    RETURN {fv2, sq3})
 	  RETURN sq1`;
 
       var actual = db._query(query, {});
-      assertEqual(actual.toArray(), [ [ ] ]);
+      assertEqual(actual.toArray(), [
+        [
+          { fv2: 6, sq3: [{ counter: 0 }] },
+          { fv2: 7, sq3: [{ counter: 0 }] },
+          { fv2: 8, sq3: [{ counter: 0 }] }
+        ]
+      ]);
     }
   };
 }
