@@ -52,6 +52,31 @@ struct AqlCall {
   class Infinity {};
   using Limit = std::variant<std::size_t, Infinity>;
 
+  /**
+   * @brief We need to implement this wrappter class only for a MSVC compiler insufficency:
+   * For some reason (see bug-report here: https://developercommunity.visualstudio.com/content/problem/1031281/improper-c4244-warning-in-variant-code.html)
+   * the MSVC compiler decides on every operator<< usage if this implementation could be used.
+   * This causes every operator<<(numberType) to test this implementation (and discard it afterwards), however if the
+   * Number type is too large, this will result in a valid compilation unit, emitting this warning (possible dataloss e.g. double -> size_t), which is neither used
+   * nor compiled, but the error is reported.
+   * As we disallow any warnings in the build this will stop compilation here.
+   *
+   * Remove this as soon as the MSVC compiler is fixed.
+   * 
+   * So this wrapper class will be wrapped arround every limit to print now.
+   */
+
+  struct LimitPrinter {
+    explicit LimitPrinter (Limit const& limit) : _limit(limit) {}
+    ~LimitPrinter() = default;
+
+    // Never allow any kind of copying
+    LimitPrinter(LimitPrinter const& other) = delete;
+    LimitPrinter(LimitPrinter&& other) = delete;
+
+    Limit _limit;
+  };
+
   AqlCall() = default;
   // Replacements for struct initialization
   // cppcheck-suppress *
@@ -267,26 +292,8 @@ constexpr bool operator==(AqlCall const& left, AqlCall const& right) {
          left.skippedRows == right.skippedRows;
 }
 
-/**
- * @brief We need to disable this specific warning here.
- * For some reason (see bug-report here: https://developercommunity.visualstudio.com/content/problem/1031281/improper-c4244-warning-in-variant-code.html)
- * the MSVC compiler decides on every operator<< usage if this implementation could be used.
- * This causes every operator<<(numberType) to test this implementation (and discard it afterwards), however if the
- * Number type is too large, this will result in a valid compilation unit, emitting this warning (possible dataloss e.g. double -> size_t), which is neither used
- * nor compiled, but the error is reported.
- * As we disallow any warnings in the build this will stop compilation here.
- *
- * Remove this as soon as the MSVC compiler is fixed.
- */
-#if (_MSC_VER >= 1)
-#pragma warning(push)
-#pragma warning(disable : 2220)
-#endif
-auto operator<<(std::ostream& out, const arangodb::aql::AqlCall::Limit& limit)
+auto operator<<(std::ostream& out, const arangodb::aql::AqlCall::LimitPrinter& limit)
     -> std::ostream&;
-#if (_MSC_VER >= 1)
-#pragma warning(pop)
-#endif
 
 auto operator<<(std::ostream& out, const arangodb::aql::AqlCall& call) -> std::ostream&;
 
