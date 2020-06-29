@@ -39,6 +39,7 @@
 #include "Aql/SharedQueryState.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Cluster/ResultT.h"
 #include "V8Server/V8Context.h"
 #include "VocBase/voc-types.h"
 
@@ -293,7 +294,7 @@ class Query {
   void addWarningsToVelocyPack(arangodb::velocypack::Builder&) const;
 
   /// @brief look up a graph in the _graphs collection
-  graph::Graph const* lookupGraphByName(std::string const& name);
+  ResultT<graph::Graph const*> lookupGraphByName(std::string const& name);
 
   /// @brief return the bind parameters as passed by the user
   std::shared_ptr<arangodb::velocypack::Builder> bindParameters() const {
