@@ -31,6 +31,7 @@ const fs = require('fs');
 const internal = require("internal");
 const jsunity = require("jsunity");
 const arangosh = require('@arangodb/arangosh');
+var analyzers = require("@arangodb/analyzers");
 const isEnterprise = internal.isEnterprise();
 const db = internal.db;
 const _ = require('lodash');
@@ -367,8 +368,22 @@ function dumpTestSuite () {
 
       res = db._query("FOR doc IN UnitTestsDumpView SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en')  RETURN doc").toArray();
       assertEqual(1, res.length);
-    }
+    },
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test custom analyzers restoring
+////////////////////////////////////////////////////////////////////////////////
+    testAnalyzers: function() {
+      assertNotEqual(null, db._collection("_analyzers"));
+      assertEqual(2, db._analyzers.count()); // only 2 stored custom analyzers
 
+      let analyzer = analyzers.analyzer("custom");
+      assertEqual(db._name() + "::custom", analyzer.name());
+      assertEqual("delimiter", analyzer.type());
+      assertEqual(Object.keys(analyzer.properties()).length, 1);
+      assertEqual(" ", analyzer.properties().delimiter);
+      assertEqual(1, analyzer.features().length);
+      assertEqual("frequency", analyzer.features()[0]);
+    },
   };
 }
 
