@@ -26,7 +26,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
-  'java_driver': 'go client driver test',
+  'java_driver': 'java client driver test',
 };
 const optionsDocumentation = [
   '   - `javasource`: directory of the java driver',
