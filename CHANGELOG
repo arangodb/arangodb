@@ -5,7 +5,8 @@ devel
   to be pushed to a DBServer which are not allowed to run there.
 
 * Adjust arangodump integration test to desired behavior, and make sure
-  arangodump behaves as specified when invoking it with non-existing collections.
+  arangodump behaves as specified when invoking it with non-existing
+  collections.
 
 * Added option `--transaction.streaming-lock-timeout` to control the timeout
   in seconds in case of parallel access to a streaming transaction.
