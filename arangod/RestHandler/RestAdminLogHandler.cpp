@@ -48,12 +48,12 @@ arangodb::Result RestAdminLogHandler::verifyPermitted() {
   // do we have admin rights (if rights are active)
   ExecContext const* exec = ExecContext::CURRENT;
   if (loggerFeature->onlySuperUser()) {
-    if (exec == nullptr || exec->isAdminUser() || !exec->user().empty()) {
+    if (exec == nullptr || !exec->isAdminUser() || !exec->user().empty()) {
       return arangodb::Result(
           TRI_ERROR_HTTP_FORBIDDEN, "you need super user rights for log operations");
     }
   } else {
-    if (exec == nullptr || exec->isAdminUser()) {
+    if (exec == nullptr || !exec->isAdminUser()) {
       return arangodb::Result(
           TRI_ERROR_HTTP_FORBIDDEN, "you need admin rights for log operations");
     } // if
