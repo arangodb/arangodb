@@ -38,6 +38,18 @@ devel
   will now return nulland register a warning in the query, so the user can
   handle it.
 
+* Internal issue BTS-71: Added a precondition to prevent creating a collection
+  with an invalid `distributeShardsLike` property.
+
+* Internal issue BTS-71: In a cluster, for collections in creation, suspend
+  supervision jobs concerning replication factor until creation is completed.
+  Previously, it could cause collection creation to fail (e.g. when a server
+  failed during creation), even when it didn't have to.
+
+* Internal issue BTS-71: Fixed error handling regarding communication with the
+  agency. This could in a specific case cause collection creation in a cluster
+  report success when it failed.
+
 * Fixed internal issue #725: Added analyzers revision for _system database in
   queries.
 
