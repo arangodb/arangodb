@@ -662,13 +662,6 @@
       docFrameView.render();
       docFrameView.setType(type);
 
-      /*
-      if (docFrameView.collection.toJSON().length === 0) {
-        this.closeDocEditor();
-        return;
-      }
-      */
-
       // remove header
       $('.arangoFrame .headerBar').remove();
       // append close button
@@ -705,7 +698,13 @@
       $('.arangoFrame #saveDocumentButton').click(function () {
         docFrameView.saveDocument();
       });
+
+      // custom css (embedded view)
       $('.arangoFrame #deleteDocumentButton').css('display', 'none');
+      $('.document-link').hover(function() {
+        $(this).css('cursor','default');
+        $(this).css('text-decoration','none');
+      });
     },
 
     closeDocEditor: function () {
