@@ -183,6 +183,9 @@ static void JS_Transactions(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   bool const fanout = ServerState::instance()->isCoordinator();
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
+  if (!mgr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
   std::string user;
   if (arangodb::ExecContext::isAuthEnabled()) {
     user = ExecContext::current().user();

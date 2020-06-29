@@ -3,6 +3,9 @@ devel
 * Fix undistribute-remove-after-enum-coll which would allow calculations
   to be pushed to a DBServer which are not allowed to run there.
 
+* Added option `--transaction.streaming-lock-timeout` to control the timeout
+  in seconds in case of parallel access to a streaming transaction.
+
 * Returned `AQL_WARNING()` to emit warnings from UDFs.
 
 * Fixed internal issue BTS-107, offset over the main query
