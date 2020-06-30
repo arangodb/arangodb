@@ -372,7 +372,7 @@ ArangoCollection.prototype.properties = function (properties) {
     'minReplicationFactor': true,
     'writeConcern': true,
     'distributeShardsLike': false,
-    'shardingStrategy': false,
+    'shardingStrategy': true,
     'cacheEnabled': true,
     'syncByRevision': true,
     'schema' : true,

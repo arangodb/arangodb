@@ -45,7 +45,7 @@ using namespace arangodb;
 ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* collection)
     : _collection(collection),
       _numberOfShards(basics::VelocyPackHelper::getNumericValue<size_t>(info, StaticStrings::NumberOfShards,
-                                                                         1)),
+                                                                        1)),
       _replicationFactor(1),
       _writeConcern(1),
       _distributeShardsLike(basics::VelocyPackHelper::getStringValue(info, StaticStrings::DistributeShardsLike,
@@ -295,27 +295,41 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids) const 
 
   result.close();  // shards
 
-  if (isSatellite()) {
-    result.add(StaticStrings::ReplicationFactor, VPackValue(StaticStrings::Satellite));
-  } else {
-    result.add(StaticStrings::ReplicationFactor, VPackValue(_replicationFactor));
-  }
+  size_t writeConcern = _writeConcern;
+  size_t replicationFactor = _replicationFactor;
 
-  // minReplicationFactor deprecated in 3.6
-  result.add(StaticStrings::WriteConcern, VPackValue(_writeConcern));
-  result.add(StaticStrings::MinReplicationFactor, VPackValue(_writeConcern));
-
+  // honor replicationFactor of other collection that uses distributeShardsLike
   if (!_distributeShardsLike.empty() && ServerState::instance()->isCoordinator()) {
     if (translateCids) {
       CollectionNameResolver resolver(_collection->vocbase());
+                
+      auto const otherName = resolver.getCollectionNameCluster(static_cast<TRI_voc_cid_t>(
+                                 basics::StringUtils::uint64(distributeShardsLike())));
 
-      result.add(StaticStrings::DistributeShardsLike,
-                 VPackValue(resolver.getCollectionNameCluster(static_cast<TRI_voc_cid_t>(
-                     basics::StringUtils::uint64(distributeShardsLike())))));
+      // fetch replicationFactor and writeConcern from prototype collection
+      if (!isSatellite()) {
+        auto otherCollection = resolver.getCollectionStructCluster(otherName);
+        if (otherCollection != nullptr) {
+          replicationFactor = otherCollection->replicationFactor();
+          writeConcern = otherCollection->writeConcern();
+        }
+      }
+
+      result.add(StaticStrings::DistributeShardsLike, VPackValue(otherName));
     } else {
       result.add(StaticStrings::DistributeShardsLike, VPackValue(distributeShardsLike()));
     }
   }
+  
+  if (isSatellite()) {
+    result.add(StaticStrings::ReplicationFactor, VPackValue(StaticStrings::Satellite));
+  } else {
+    result.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
+  }
+  
+  // minReplicationFactor deprecated in 3.6
+  result.add(StaticStrings::WriteConcern, VPackValue(writeConcern));
+  result.add(StaticStrings::MinReplicationFactor, VPackValue(writeConcern));
 
   result.add(VPackValue(StaticStrings::ShardKeys));
   result.openArray();

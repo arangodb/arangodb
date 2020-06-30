@@ -727,7 +727,7 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   result.add(StaticStrings::Version, VPackValue(static_cast<uint32_t>(_version)));
 
   // Collection Flags
-  result.add("waitForSync", VPackValue(_waitForSync));
+  result.add(StaticStrings::WaitForSyncString, VPackValue(_waitForSync));
 
   if (!forPersistence) {
     // with 'forPersistence' added by LogicalDataSource::toVelocyPack
@@ -937,19 +937,17 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
       }
 
       if (ServerState::instance()->isCoordinator() &&
-          replicationFactor != _sharding->writeConcern()) {  // sanity checks
+          writeConcern != _sharding->writeConcern()) {  // sanity checks
         if (!_sharding->distributeShardsLike().empty()) {
           return Result(TRI_ERROR_FORBIDDEN,
-                        "Cannot change writeConcern, please change " +
-                            _sharding->distributeShardsLike());
+                        "cannot change writeConcern for a collection using 'distributeShardsLike'");
         } else if (_type == TRI_COL_TYPE_EDGE && isSmart()) {
           return Result(TRI_ERROR_NOT_IMPLEMENTED,
-                        "Changing writeConcern "
+                        "changing writeConcern "
                         "not supported for smart edge collections");
         } else if (isSatellite()) {
           return Result(TRI_ERROR_FORBIDDEN,
-                        "SatelliteCollection, "
-                        "cannot change writeConcern");
+                        "cannot change writeConcern of a SatelliteCollection");
         }
       }
     } else {
@@ -957,6 +955,19 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
                     "bad value for writeConcern");
     }
     TRI_ASSERT((writeConcern <= replicationFactor && !isSatellite()) || (writeConcern == 0 && isSatellite()));
+  }
+  
+  if (ServerState::instance()->isCoordinator()) {
+    VPackSlice shardingStrategySlice = slice.get(StaticStrings::ShardingStrategy);
+    if (shardingStrategySlice.isString()) {
+      if (shardingStrategySlice.copyString() != _sharding->shardingStrategyName()) {
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      "cannot change shardingStrategy of an existing collection");
+      }
+    } else if (!shardingStrategySlice.isNone()) {
+      return Result(TRI_ERROR_BAD_PARAMETER,
+                    "bad value for shardingStrategy");
+    }
   }
 
   auto doSync = !engine.inRecovery() && databaseFeature.forceSyncProperties();
@@ -969,7 +980,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
   }
 
   TRI_ASSERT(!isSatellite() || replicationFactor == 0);
-  _waitForSync = Helper::getBooleanValue(slice, "waitForSync", _waitForSync);
+  _waitForSync = Helper::getBooleanValue(slice, StaticStrings::WaitForSyncString, _waitForSync);
   _sharding->setWriteConcernAndReplicationFactor(writeConcern, replicationFactor);
 
   if (ServerState::instance()->isCoordinator()) {
