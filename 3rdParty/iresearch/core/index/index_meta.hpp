@@ -87,6 +87,9 @@ struct IRESEARCH_API segment_meta {
   bool column_store{};
 };
 
+static_assert(std::is_move_constructible<segment_meta>::value,
+              "default move constructor expected");
+
 /* -------------------------------------------------------------------
  * index_meta
  * ------------------------------------------------------------------*/
@@ -98,11 +101,12 @@ class IRESEARCH_API index_meta {
  public:
   struct IRESEARCH_API index_segment_t {
     index_segment_t() = default;
-    index_segment_t(segment_meta&& v_meta);
+    index_segment_t(segment_meta&& meta);
     index_segment_t(const index_segment_t& other) = default;
     index_segment_t& operator=(const index_segment_t& other) = default;
-    index_segment_t(index_segment_t&& other) noexcept;
-    index_segment_t& operator=(index_segment_t&& other) noexcept;
+    index_segment_t(index_segment_t&&) = default;
+    index_segment_t& operator=(index_segment_t&&) = default;
+
     bool operator==(const index_segment_t& other) const noexcept;
     bool operator!=(const index_segment_t& other) const noexcept;
 
@@ -110,8 +114,11 @@ class IRESEARCH_API index_meta {
     segment_meta meta;
   }; // index_segment_t
 
-  typedef std::vector<index_segment_t> index_segments_t;
-  DECLARE_UNIQUE_PTR(index_meta);
+  static_assert(std::is_nothrow_move_constructible_v<index_segment_t>);
+  static_assert(std::is_nothrow_move_assignable_v<index_segment_t>);
+
+  using index_segments_t = std::vector<index_segment_t>;
+  using ptr = std::unique_ptr<index_meta>;
 
   index_meta();
   index_meta(index_meta&& rhs) noexcept;

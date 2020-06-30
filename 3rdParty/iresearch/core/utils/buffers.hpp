@@ -60,6 +60,7 @@ template<
   }
 
   pointer allocate(size_t len) {
+    static_assert(std::is_nothrow_move_constructible_v<std::remove_pointer_t<decltype(this)>>);
     return allocator_t::get().allocate(len);
   }
   void deallocate(pointer ptr, size_t size) {
