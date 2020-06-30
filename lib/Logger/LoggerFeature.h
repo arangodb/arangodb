@@ -82,8 +82,8 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   bool _supervisor = false;
   bool _backgrounded = false;
   bool _threaded = false;
-  std::string _apiSwitch;
-  bool _apiEnabled;
+  std::string _apiSwitch = "true";
+  bool _apiEnabled = true;
 };
 
 }  // namespace arangodb
