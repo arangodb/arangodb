@@ -416,7 +416,8 @@ function iResearchFeatureAqlTestSuite () {
         analyzers.save("testAnalyzer", "identity", {}, [ "unknown" ]);
         fail(); // unsupported feature
       } catch(e) {
-        assertTrue(e instanceof TypeError);
+        assertTrue(e instanceof TypeError ||
+                   require("internal").errors.ERROR_BAD_PARAMETER.code === e.errorNum);
       }
 
       try {
