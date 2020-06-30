@@ -3,6 +3,23 @@ v3.7.1-rc.1 (XXXX-XX-XX)
 
 * Correct some log entries.
 
+* Web UI: Removed unnecessary menubar entry in case of database node inspection.
+
+* Adjust arangodump integration test to desired behavior, and make sure
+  arangodump behaves as specified when invoking it with non-existing
+  collections.
+
+* Disallow using V8 dependent functions in SEARCH statement.
+
+* Remove superflous `%>` output in the UI modal dialog in case the JSON editor
+  was embedded.
+
+* The Web UI now displays an error message inside the node information view in
+  case the user has no access to retreive the neccessary information.
+
+* The `_from` and `_to` attributes of an edge document can now be edited from
+  within the UI.
+
 * Fixed a misleading error message in AQL.
 
 * Fixed issue ES-609: "Transaction already in use" error when running
@@ -10,7 +27,7 @@ v3.7.1-rc.1 (XXXX-XX-XX)
   Added option `--transaction.streaming-lock-timeout` to control the timeout in
   seconds in case of parallel access to a streaming transaction.
 
-* Fixed internal issue BTS-107, offset over the mainquery passed through a
+* Fixed internal issue BTS-107, offset over the main query passed through a
   subquery which has modification access to shards could yield incorrect
   results, if shards are large enough and skipping was large enough, both to
   overflow the batch-size in AQL for each shard individually.
