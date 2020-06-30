@@ -1,6 +1,9 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* The `_from` and `_to` attributes of an edge document can now be edited from
+  within the UI.
+
 * Disallow using V8 dependent functions in SEARCH statement.
 
 * Fixed issue ES-609: "Transaction already in use" error when running
