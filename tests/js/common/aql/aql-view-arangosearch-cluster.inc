@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse*/
+/*global assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse, fail*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for iresearch usage
@@ -153,6 +153,15 @@
       testViewInFunctionCall : function () {
         try {
           db._query("FOR doc IN 1..1 RETURN COUNT(UnitTestsView)");
+        } catch (e) {
+          assertEqual(ERRORS.ERROR_NOT_IMPLEMENTED.code, e.errorNum);
+        }
+      },
+
+      testV8FunctionInSearch: function () {
+        try {
+          db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' && APPLY('LOWER', 'abc') == 'ABC' OPTIONS { waitForSync: true } RETURN doc");
+          fail();
         } catch (e) {
           assertEqual(ERRORS.ERROR_NOT_IMPLEMENTED.code, e.errorNum);
         }
