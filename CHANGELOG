@@ -1,6 +1,8 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Web UI: Removed unnecessary menubar entry in case of database node inspection.
+
 * Adjust arangodump integration test to desired behavior, and make sure
   arangodump behaves as specified when invoking it with non-existing
   collections.
