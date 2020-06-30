@@ -244,7 +244,7 @@ filter::prepared::ptr prepare_levenshtein_filter(
   auto* stats_buf = const_cast<byte_type*>(stats[0].data());
   term_stats.finish(stats_buf, 0, field_stats, index);
 
-  return memory::make_shared<multiterm_query>(
+  return memory::make_managed<multiterm_query>(
     std::move(states), std::move(stats),
     boost, sort::MergeType::MAX);
 }
