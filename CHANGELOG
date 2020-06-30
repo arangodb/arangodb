@@ -1,6 +1,9 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Remove superflous `%>` output in the UI modal dialog in case the JSON editor
+  was embedded.
+
 * The Web UI now displays an error message inside the node information view in
   case the user has no access to retreive the neccessary information.
 
