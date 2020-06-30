@@ -1,6 +1,9 @@
 devel
 -----
 
+* The Web UI now displays an error message inside the node information view in
+  case the user has no access to retreive the neccessary information.
+
 * Allow removal of existing schemas by saving a schema of either `null` or `{}`
   (empty object). Using an empty string as schema will produce  an error in the
   web interface and will not remove the schema.
