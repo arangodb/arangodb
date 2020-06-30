@@ -1,6 +1,8 @@
 devel
 -----
 
+* Web UI: Removed unnecessary menubar entry in case of database node inspection.
+
 * Remove superflous `%>` output in the UI modal dialog in case the JSON editor
   was embedded.
 
