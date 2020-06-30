@@ -1,8 +1,6 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
-* Fixed missing cleaup of analyzers in tests.
-
 * Fixed a misleading error message in AQL.
 
 * Fixed issue ES-609: "Transaction already in use" error when running
