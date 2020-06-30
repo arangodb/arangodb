@@ -53,7 +53,7 @@ bytes_ref delta_compressor::compress(byte_type* src, size_t size, bstring& buf) 
 }
 
 bytes_ref delta_decompressor::decompress(
-    byte_type* src, size_t src_size,
+    const byte_type* src, size_t src_size,
     byte_type* dst, size_t dst_size) {
 
   auto* dst_end = reinterpret_cast<uint64_t*>(dst);

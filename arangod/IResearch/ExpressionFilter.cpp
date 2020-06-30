@@ -48,10 +48,9 @@ inline irs::filter::prepared::ptr compileQuery(
   auto* stats_buf = const_cast<irs::byte_type*>(stats.data());
 
   // skip filed-level/term-level statistics because there are no fields/terms
-  order.prepare_stats(stats_buf);
   order.prepare_collectors(stats_buf, index);
 
-  return irs::filter::prepared::make<type_t>(ctx, std::move(stats), boost);
+  return irs::memory::make_managed<type_t>(ctx, std::move(stats), boost);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -73,21 +72,20 @@ class NondeterministicExpressionIterator final
         { irs::type<irs::cost>::id(),     &cost_  },
         { irs::type<irs::score>::id(),    &score_ },
       }},
+      score_(order),
       max_doc_(irs::doc_id_t(irs::doc_limits::min() + docs_count - 1)),
+      cost_(max_doc_),
       expr_(cctx.ast, cctx.node.get()),
       ctx_(ectx) {
     TRI_ASSERT(ctx_.ctx);
 
-    // set estimation value
-    cost_.value(max_doc_);
-
     // set scorers
     if (!order.empty()) {
-      score_.prepare(
-        order,
-        order.prepare_scorers(reader, irs::empty_term_reader(docs_count),
-                              stats, *this, boost)
-      );
+      irs::order::prepared::scorers scorers(
+        order, reader, irs::empty_term_reader(docs_count),
+        stats, score_.data(), *this, boost);
+
+      irs::reset(score_, std::move(scorers));
     }
   }
 
@@ -125,9 +123,9 @@ class NondeterministicExpressionIterator final
   }
 
   irs::document doc_;
-  irs::cost cost_;
   irs::score score_;
   irs::doc_id_t max_doc_;  // largest valid doc_id
+  irs::cost cost_;
   arangodb::aql::Expression expr_;
   arangodb::aql::AqlValue val_;
   arangodb::iresearch::ExpressionExecutionContext ctx_;
@@ -166,9 +164,8 @@ class NondeterministicExpressionQuery final : public irs::filter::prepared {
     // set expression for troubleshooting purposes
     execCtx->ctx->_expr = _ctx.node.get();
 
-    return irs::doc_iterator::make<NondeterministicExpressionIterator>(
-      rdr, stats_.c_str(), order, rdr.docs_count(), _ctx, *execCtx, boost()
-    );
+    return irs::memory::make_managed<NondeterministicExpressionIterator>(
+      rdr, stats_.c_str(), order, rdr.docs_count(), _ctx, *execCtx, boost());
   }
 
  private:
@@ -214,7 +211,7 @@ class DeterministicExpressionQuery final : public irs::filter::prepared {
     arangodb::aql::AqlValueGuard guard(value, mustDestroy);
 
     if (value.toBoolean()) {
-      return irs::doc_iterator::make<irs::all_iterator>(
+      return irs::memory::make_managed<irs::all_iterator>(
         segment, stats_.c_str(), order, segment.docs_count(), boost());
     }
 
