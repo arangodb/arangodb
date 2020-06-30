@@ -93,12 +93,7 @@ class Manager final {
   Manager(Manager const&) = delete;
   Manager& operator=(Manager const&) = delete;
 
-  explicit Manager(ManagerFeature& feature, bool keepData)
-      : _feature(feature),
-        _keepTransactionData(keepData),
-        _nrRunning(0),
-        _disallowInserts(false),
-        _writeLockHeld(false) {}
+  Manager(ManagerFeature& feature, bool keepData);
 
   // register a list of failed transactions
   void registerFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions);
@@ -241,6 +236,8 @@ class Manager final {
                       // time.
   basics::ReadWriteLock _rwLock;
   bool _writeLockHeld;
+
+  double _streamingLockTimeout;
 };
 }  // namespace transaction
 }  // namespace arangodb
