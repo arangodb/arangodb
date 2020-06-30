@@ -44,8 +44,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 LoggerFeature::LoggerFeature(application_features::ApplicationServer& server, bool threaded)
-  : ApplicationFeature(server, "Logger"), _threaded(threaded),
-    _apiSwitch("true"), _apiEnabled(true) {
+  : ApplicationFeature(server, "Logger"), _threaded(threaded) {
   setOptional(false);
 
   startsAfter("ShellColors");
