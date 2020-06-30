@@ -1,6 +1,10 @@
 devel
 -----
 
+* Allow changing collection properties for smart edge collections as well. 
+  Previously, collection property changes for smart edge collections were not
+  propagated.
+
 * Fixed a misleading error message in AQL.
 
 * Fix undistribute-remove-after-enum-coll which would allow calculations
