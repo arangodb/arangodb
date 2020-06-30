@@ -3,6 +3,13 @@ v3.6.5 (XXXX-XX-XX)
 
 * Correct some log entries.
 
+* Disallow using V8 dependent functions in SEARCH statement.
+
+* Fixed issue ES-609: "Transaction already in use" error when running
+  transaction.
+  Added option `--transaction.streaming-lock-timeout` to control the timeout in
+  seconds in case of parallel access to a streaming transaction.
+
 * Removed the edge id's hover styling in case of embedded document editor in 
   the Web UI as this functionality is disabled. This was misleading because
   the elements are not clickable.
@@ -145,9 +152,6 @@ v3.6.5 (XXXX-XX-XX)
     this check is enforced and arangorestore will bail out with an error if the
     requested encryption mode for restore is not the same as for the stored dump
     files.
-
-* Fixed issue ES-609: "Transaction already in use" error when running
-  transaction.
 
 * Fixed bad behaviour when dropping followers. A follower should be dropped
   immediately when it is officially FAILED, not only after a longish timeout.

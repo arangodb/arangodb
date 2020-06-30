@@ -59,8 +59,6 @@
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/ReplicationClients.h"
 #include "RestServer/DatabaseFeature.h"
@@ -68,6 +66,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/ClusterUtils.h"
 #include "Utils/CollectionKeysRepository.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
@@ -1255,6 +1254,13 @@ arangodb::Result TRI_vocbase_t::dropCollection(TRI_voc_cid_t cid,
     events::DropCollection(dbName, collection->name(), TRI_ERROR_FORBIDDEN);
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
   }
+  
+  if (ServerState::instance()->isDBServer()) {  // maybe unconditionally ?
+    // hack to avoid busy looping on DBServers
+    try {
+      transaction::cluster::abortTransactions(*collection);
+    } catch (...) { /* ignore */ }
+  }
 
   while (true) {
     DropState state = DROP_EXIT;
@@ -1751,6 +1757,9 @@ TRI_vocbase_t::~TRI_vocbase_t() {
 
   // do a final cleanup of collections
   for (auto& it : _collections) {
+    try {  // simon: this status lock is terrible software design
+      transaction::cluster::abortTransactions(*it);
+    } catch (...) { /* ignore */ }
     WRITE_LOCKER_EVENTUAL(locker, it->statusLock());
     it->close();  // required to release indexes
   }
