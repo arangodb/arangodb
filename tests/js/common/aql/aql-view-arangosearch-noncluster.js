@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse*/
+/*global assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse, fail*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for iresearch usage
