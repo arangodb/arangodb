@@ -53,8 +53,8 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   void disableThreaded() { _threaded = false; }
   void setSupervisor(bool supervisor) { _supervisor = supervisor; }
 
-  bool isAPIEnabled() { return _apiEnabled; }
-  bool onlySuperUser() { return _apiSwitch == "jwt"; }
+  bool isAPIEnabled() const { return _apiEnabled; }
+  bool onlySuperUser() const { return _apiSwitch == "jwt"; }
 
  private:
   std::vector<std::string> _output;
