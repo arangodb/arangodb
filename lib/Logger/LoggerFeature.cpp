@@ -66,9 +66,7 @@ namespace arangodb {
 LoggerFeature::LoggerFeature(application_features::ApplicationServer& server, bool threaded)
     : ApplicationFeature(server, "Logger"),
       _timeFormatString(LogTimeFormats::defaultFormatName()),
-      _threaded(threaded),
-      _apiSwitch("true"),
-      _apiEnabled(true) {
+      _threaded(threaded) {
 
   setOptional(false);
 

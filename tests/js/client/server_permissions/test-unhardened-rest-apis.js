@@ -39,7 +39,7 @@ if (getOptions === true) {
 }
 
 if (runSetup === true) {
-    let users = require("@arangodb/users");
+  let users = require("@arangodb/users");
   
   users.save("test_rw", "testi");
   users.grantDatabase("test_rw", "_system", "rw");
