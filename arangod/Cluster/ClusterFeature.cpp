@@ -664,6 +664,9 @@ void ClusterFeature::stop() {
     ServerState::instance()->logoff(10.0);
   } 
 
+  // make sure ClusterInfo's syncer threads have stopped.
+  _clusterInfo->waitForSyncersToStop();
+  
   AsyncAgencyCommManager::INSTANCE->setStopping(true);
   shutdownAgencyCache();
 }

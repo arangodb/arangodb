@@ -1,6 +1,8 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* ClusterInfo will wait for syncer threads to shutdown.
+
 * Fixed issue ES-609: "Transaction already in use" error when running
   transaction.
   Added option `--transaction.streaming-lock-timeout` to control the timeout in

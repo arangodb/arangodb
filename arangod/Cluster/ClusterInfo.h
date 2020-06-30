@@ -440,6 +440,11 @@ public:
    */
   void startSyncers();
 
+  /**
+   * @brief wait for syncers' full stop
+   */
+  void waitForSyncersToStop();
+
   /// @brief produces an agency dump and logs it
   void logAgencyDump() const;
 
