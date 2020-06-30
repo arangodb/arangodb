@@ -142,6 +142,7 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--log.api-enabled",
                      "whether the log api is enabled (true) or not (false), or only enabled for superuser JWT (jwt)",
                      new StringParameter(&_apiSwitch))
+      .setIntroducedIn(30411)
       .setIntroducedIn(30506)
       .setIntroducedIn(30605);
 
