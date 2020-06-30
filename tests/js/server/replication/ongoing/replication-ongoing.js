@@ -83,7 +83,7 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
     username: 'root',
     password: '',
     verbose: true,
-    includeSystem: false,
+    includeSystem: true,
     keepBarrier: true
   });
 
@@ -1348,6 +1348,7 @@ function BaseTestConfig () {
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
           assertEqual(5001, state.count);
+          analyzers.save('custom2', 'identity', {});
         },
         function (state) { // slaveFuncOngoing
           if (!state.arangoSearchEnabled) {
@@ -1359,6 +1360,9 @@ function BaseTestConfig () {
           assertTrue(props.hasOwnProperty('links'));
           assertEqual(Object.keys(props.links).length, 1);
           assertTrue(props.links.hasOwnProperty(cn));
+          // do not check results. We need to trigger analyzers cache reload
+          db._query('FOR doc IN ' + view.name() + ' SEARCH PHRASE(doc.text, "foxx", "custom") '
+                    + ' OPTIONS { waitForSync: true } RETURN doc').toArray();
         }, // slaveFuncOngoing
         function (state) { // slaveFuncFinal
           if (!state.arangoSearchEnabled) {
@@ -1379,8 +1383,8 @@ function BaseTestConfig () {
 
           let res = db._query('FOR doc IN ' + view.name() + ' SEARCH doc.value >= 2500 OPTIONS { waitForSync: true } RETURN doc').toArray();
           assertEqual(2500, res.length);
-
-          res = db._query('FOR doc IN ' + view.name() + ' SEARCH PHRASE(doc.text, "foxx", "custom") OPTIONS { waitForSync: true } RETURN doc').toArray();
+          // analyzer here was added later so slave must properly reload its analyzers cache
+          res = db._query('FOR doc IN ' + view.name() + ' SEARCH PHRASE(doc.text, TOKENS("foxx","custom2")[0], "custom") OPTIONS { waitForSync: true } RETURN doc').toArray();
           assertEqual(1, res.length);
         });
     }
@@ -1427,6 +1431,9 @@ function ReplicationSuite () {
       db._dropView(cn + 'View');
       db._drop(cn);
       db._drop(cn2);
+      db._analyzers.toArray().forEach(function(analyzer) {
+        try { analyzers.remove(analyzer.name, true); } catch (err) {}
+      });
 
       connectToSlave();
       replication.applier.stop();
@@ -1486,7 +1493,7 @@ function ReplicationOtherDBSuite () {
       username: 'root',
       password: '',
       verbose: true,
-      includeSystem: false
+      includeSystem: true
     };
 
     replication.setupReplication(config);

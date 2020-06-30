@@ -203,6 +203,9 @@ class TailingSyncer : public Syncer {
   /// @brief whether or not an operation modified the _users collection
   bool _usersModified;
 
+  /// @brief database list with modified _analyzers collection
+  std::vector<TRI_vocbase_t*> _analyzersModified;
+
   /// @brief use the initial tick
   bool _useTick;
 
