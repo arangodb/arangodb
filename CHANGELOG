@@ -1,6 +1,9 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* The Web UI now displays an error message inside the node information view in
+  case the user has no access to retreive the neccessary information.
+
 * Fixed that, when performing a graph AQL query while a (graceful) failover for
   the leader of the system collections is in progress, ArangoDB would report a 
   "Graph not found error".
