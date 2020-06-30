@@ -1194,6 +1194,10 @@
         // hide menu entries
         if (!frontendConfig.isCluster) {
           $('#subNavigationBar .breadcrumb').html('');
+        } else {
+          // in cluster mode and db node got found, remove menu entries, as we do not have them here
+          $('#requests-statistics').remove();
+          $('#system-statistics').remove();
         }
         this.getNodeInfo();
       }
