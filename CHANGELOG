@@ -1,6 +1,8 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Disallow using V8 dependent functions in SEARCH statement.
+
 * Remove superflous `%>` output in the UI modal dialog in case the JSON editor
   was embedded.
 
