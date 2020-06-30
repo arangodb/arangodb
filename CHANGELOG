@@ -1,10 +1,9 @@
 devel
 -----
 
-<<<<<<< HEAD
 * Privatised load plan / current in cluster info and cleanup following agency
   cache implementation.
-=======
+
 * Fix undistribute-remove-after-enum-coll which would allow calculations
   to be pushed to a DBServer which are not allowed to run there.
 
