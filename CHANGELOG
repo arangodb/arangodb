@@ -1,6 +1,8 @@
 devel
 -----
 
+* Disallow using V8 dependent functions in SEARCH statement.
+
 * Remove superflous `%>` output in the UI modal dialog in case the JSON editor
   was embedded.
 
