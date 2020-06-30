@@ -34,6 +34,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/system-functions.h"
 #include "Indexes/Index.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/Logger.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/utilities.h"
@@ -1870,6 +1871,10 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
     if (masterName == TRI_COL_NAME_USERS) {
       reloadUsers();
+    } else if(masterName == StaticStrings::AnalyzersCollection &&
+              ServerState::instance()->isSingleServer() &&
+              vocbase().server().hasFeature<iresearch::IResearchAnalyzerFeature>()) {
+        vocbase().server().getFeature<iresearch::IResearchAnalyzerFeature>().invalidate(vocbase());
     }
 
     // schmutz++ creates indexes on DBServers
