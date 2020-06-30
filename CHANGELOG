@@ -1,6 +1,8 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Fixed BTS-110: Fulltext index with minLength <= 0 not allowed.
+
 * Fixed issue ES-609: "Transaction already in use" error when running
   transaction.
   Added option `--transaction.streaming-lock-timeout` to control the timeout in
