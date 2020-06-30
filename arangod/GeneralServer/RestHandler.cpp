@@ -478,7 +478,7 @@ void RestHandler::executeEngine(bool isContinue) {
 }
 
 void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
-                                std::string const& message) {
+                                std::string_view const message) {
   resetResponse(code);
 
   if (_request->requestType() != rest::RequestType::HEAD) {
@@ -500,7 +500,7 @@ void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
         _response->setContentType(_request->contentTypeResponse());
       }
       _response->setPayload(std::move(buffer), options,
-                            /*resolveExternals*/false);
+                            /*resolveExternals*/ false);
     } catch (...) {
       // exception while generating error
     }

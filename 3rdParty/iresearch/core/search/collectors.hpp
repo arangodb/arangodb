@@ -169,7 +169,8 @@ class field_collector_wrapper
   IRESEARCH_API static collector_type& noop() noexcept;
 
   field_collector_wrapper() = default;
-  field_collector_wrapper(field_collector_wrapper&& rhs) = default;
+  field_collector_wrapper(field_collector_wrapper&&) = default;
+  field_collector_wrapper& operator=(field_collector_wrapper&&) = default;
   field_collector_wrapper(collector_type::ptr&& collector) noexcept
     : base_type(collector.release()) {
   }
@@ -179,6 +180,9 @@ class field_collector_wrapper
   }
 }; // field_collector_wrapper
 
+static_assert(std::is_nothrow_move_constructible_v<field_collector_wrapper>);
+static_assert(std::is_nothrow_move_assignable_v<field_collector_wrapper>);
+
 ////////////////////////////////////////////////////////////////////////////
 /// @class field_collectors
 /// @brief create an field level index statistics compound collector for
@@ -187,8 +191,8 @@ class field_collector_wrapper
 class IRESEARCH_API field_collectors : public collectors_base<field_collector_wrapper> {
  public:
   explicit field_collectors(const order::prepared& buckets);
-  field_collectors(field_collectors&& rhs) = default;
-  field_collectors& operator=(field_collectors&& rhs) = default;
+  field_collectors(field_collectors&&) = default;
+  field_collectors& operator=(field_collectors&&) = default;
 
   size_t size() const noexcept {
     return collectors_.size();
@@ -217,6 +221,9 @@ class IRESEARCH_API field_collectors : public collectors_base<field_collector_wr
   void finish(byte_type* stats_buf, const index_reader& index) const;
 }; // field_collectors
 
+static_assert(std::is_nothrow_move_constructible_v<field_collectors>);
+static_assert(std::is_nothrow_move_assignable_v<field_collectors>);
+
 ////////////////////////////////////////////////////////////////////////////
 /// @class term_collector_wrapper
 /// @brief wrapper around sort::term_collector which guarantees collector
@@ -231,7 +238,8 @@ class term_collector_wrapper
   IRESEARCH_API static collector_type& noop() noexcept;
 
   term_collector_wrapper() = default;
-  term_collector_wrapper(term_collector_wrapper&& rhs) = default;
+  term_collector_wrapper(term_collector_wrapper&&) = default;
+  term_collector_wrapper& operator=(term_collector_wrapper&&) = default;
   term_collector_wrapper(collector_type::ptr&& collector) noexcept
     : base_type(collector.release()) {
   }
@@ -240,6 +248,9 @@ class term_collector_wrapper
     return *this;
   }
 }; // term_collector_wrapper
+
+static_assert(std::is_nothrow_move_constructible_v<term_collector_wrapper>);
+static_assert(std::is_nothrow_move_assignable_v<term_collector_wrapper>);
 
 ////////////////////////////////////////////////////////////////////////////
 /// @class term_collectors
@@ -250,8 +261,8 @@ class term_collector_wrapper
 class IRESEARCH_API term_collectors : public collectors_base<term_collector_wrapper> {
  public:
   term_collectors(const order::prepared& buckets, size_t size);
-  term_collectors(term_collectors&& rhs) = default;
-  term_collectors& operator=(term_collectors&& rhs) = default;
+  term_collectors(term_collectors&&) = default;
+  term_collectors& operator=(term_collectors&&) = default;
 
   size_t size() const noexcept {
     return buckets_->size() ? collectors_.size() / buckets_->size() : 0;
@@ -294,6 +305,9 @@ class IRESEARCH_API term_collectors : public collectors_base<term_collector_wrap
               const field_collectors& field_collectors,
               const index_reader& index) const;
 };
+
+static_assert(std::is_nothrow_move_constructible_v<term_collectors>);
+static_assert(std::is_nothrow_move_assignable_v<term_collectors>);
 
 NS_END
 

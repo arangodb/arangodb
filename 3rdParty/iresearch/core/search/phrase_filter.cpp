@@ -38,7 +38,7 @@ using phrase_state = std::vector<StateType>;
 /// @class fixed_phrase_state
 /// @brief cached per reader phrase state
 //////////////////////////////////////////////////////////////////////////////
-struct fixed_phrase_state {
+struct fixed_phrase_state : util::noncopyable {
   // mimic std::pair interface
   struct term_state {
     term_state(seek_term_iterator::cookie_ptr&& first,
@@ -49,13 +49,12 @@ struct fixed_phrase_state {
     seek_term_iterator::cookie_ptr first;
   };
 
-  fixed_phrase_state() = default;
-  fixed_phrase_state(fixed_phrase_state&& rhs) = default;
-  fixed_phrase_state& operator=(const fixed_phrase_state&) = delete;
-
   phrase_state<term_state> terms;
   const term_reader* reader{};
 }; // fixed_phrase_state
+
+static_assert(std::is_nothrow_move_constructible_v<fixed_phrase_state>);
+static_assert(std::is_nothrow_move_assignable_v<fixed_phrase_state>);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class variadic_phrase_state
@@ -64,15 +63,14 @@ struct fixed_phrase_state {
 struct variadic_phrase_state : fixed_phrase_state {
   using term_state = std::pair<seek_term_iterator::cookie_ptr, boost_t>;
 
-  variadic_phrase_state() = default;
-  variadic_phrase_state(variadic_phrase_state&& rhs) = default;
-  variadic_phrase_state& operator=(const variadic_phrase_state&) = delete;
-
   std::vector<size_t> num_terms; // number of terms per phrase part
   phrase_state<term_state> terms;
   const term_reader* reader{};
   bool volatile_boost{};
 }; // variadic_phrase_state
+
+static_assert(std::is_nothrow_move_constructible_v<variadic_phrase_state>);
+static_assert(std::is_nothrow_move_assignable_v<variadic_phrase_state>);
 
 struct get_visitor {
   using result_type = field_visitor;
@@ -355,14 +353,14 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
       ++position;
     }
 
-    return memory::make_shared<phrase_iterator_t>(
-      std::move(itrs),
-      std::move(positions),
-      rdr,
-      *phrase_state->reader,
-      stats_.c_str(),
-      ord,
-      boost());
+    return memory::make_managed<phrase_iterator_t>(
+        std::move(itrs),
+        std::move(positions),
+        rdr,
+        *phrase_state->reader,
+        stats_.c_str(),
+        ord,
+        boost());
   }
 }; // fixed_phrase_query
 
@@ -432,8 +430,8 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
           continue;
         }
 
-        disjunction_t::doc_iterator_t docs(terms->postings(features),
-                                           term_state->second);
+        disjunction_t::adapter docs(terms->postings(features),
+                                    term_state->second);
 
         if (!docs.position) {
           // positions not found
@@ -460,7 +458,7 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
     assert(term_state == phrase_state->terms.end());
 
     if (phrase_state->volatile_boost) {
-      return memory::make_shared<phrase_iterator_t<true>>(
+      return memory::make_managed<phrase_iterator_t<true>>(
         std::move(conj_itrs),
         std::move(positions),
         rdr,
@@ -470,7 +468,7 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
         boost());
     }
 
-    return memory::make_shared<phrase_iterator_t<false>>(
+    return memory::make_managed<phrase_iterator_t<false>>(
       std::move(conj_itrs),
       std::move(positions),
       rdr,
@@ -591,7 +589,6 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
   // finish stats
   bstring stats(ord.stats_size(), 0); // aggregated phrase stats
   auto* stats_buf = const_cast<byte_type*>(stats.data());
-  ord.prepare_stats(stats_buf);
 
   fixed_phrase_query::positions_t positions(phrase_size);
   auto pos_itr = positions.begin();
@@ -604,12 +601,11 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
     ++term_idx;
   }
 
-  return memory::make_shared<fixed_phrase_query>(
+  return memory::make_managed<fixed_phrase_query>(
     std::move(phrase_states),
     std::move(positions),
     std::move(stats),
-    this->boost() * boost
-  );
+    this->boost() * boost);
 }
 
 filter::prepared::ptr by_phrase::variadic_prepare_collect(
@@ -708,7 +704,6 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
   assert(phrase_size == phrase_part_stats.size());
   bstring stats(ord.stats_size(), 0); // aggregated phrase stats
   auto* stats_buf = const_cast<byte_type*>(stats.data());
-  ord.prepare_stats(stats_buf);
   auto collector = phrase_part_stats.begin();
 
   variadic_phrase_query::positions_t positions(phrase_size);
@@ -723,12 +718,11 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
     ++collector;
   }
 
-  return memory::make_shared<variadic_phrase_query>(
+  return memory::make_managed<variadic_phrase_query>(
     std::move(phrase_states),
     std::move(positions),
     std::move(stats),
-    this->boost() * boost
-  );
+    this->boost() * boost);
 }
 
 NS_END // ROOT

@@ -26,9 +26,9 @@
 #include <queue>
 
 #include "conjunction.hpp"
+#include "index/iterators.hpp"
 #include "utils/std.hpp"
 #include "utils/type_limits.hpp"
-#include "index/iterators.hpp"
 
 NS_ROOT
 NS_BEGIN(detail)
@@ -57,11 +57,112 @@ template<typename DocIterator>
 FORCE_INLINE void evaluate_score_iter(const irs::byte_type**& pVal, DocIterator& src) {
   const auto* score = src.score;
   assert(score); // must be ensure by the adapter
-  if (!score->empty()) {
-    score->evaluate();
-    *pVal++ = score->c_str();
+  if (!score->is_default()) {
+    *pVal++ = score->evaluate();
   }
 };
+
+template<size_t Size>
+class min_match_buffer {
+ public:
+  explicit min_match_buffer(size_t min_match_count) noexcept
+    : min_match_count_(std::max(size_t(1), min_match_count)) {
+  }
+
+  uint32_t match_count(size_t i) const noexcept {
+    assert(i < Size);
+    return match_count_[i];
+  }
+
+  bool inc(size_t i) noexcept {
+    return ++match_count_[i] < min_match_count_;
+  }
+
+  void clear() noexcept {
+    std::memset(match_count_, 0, sizeof match_count_);
+  }
+
+  size_t min_match_count() const noexcept {
+    return min_match_count_;
+  }
+
+ private:
+  const size_t min_match_count_;
+  uint32_t match_count_[Size];
+}; // min_match_buffer
+
+template<>
+class min_match_buffer<0> {
+ public:
+  explicit min_match_buffer(size_t) noexcept {}
+  bool inc(size_t) noexcept {
+    assert(false);
+    return true;
+  }
+  void clear() noexcept { assert(false); }
+  uint32_t match_count(size_t) const noexcept {
+    assert(false);
+    return 1;
+  }
+  uint32_t min_match_count() const noexcept {
+    return 1;
+   }
+}; // min_match_buffer
+
+class score_buffer {
+ public:
+  score_buffer(const order::prepared& ord, size_t size)
+    : bucket_size_(ord.score_size()),
+      buf_size_(bucket_size_*size),
+      buf_(ord.empty() ? nullptr : new byte_type[buf_size_]) {
+    if (buf_) {
+      std::memset(data(), 0, this->size());
+    }
+  }
+
+  byte_type* get(size_t i) noexcept {
+    assert(!buf_ || bucket_size_*i < buf_size_);
+    return buf_.get() + bucket_size_*i;
+  }
+
+  byte_type* data() noexcept {
+    return buf_.get();
+  }
+
+  size_t size() const noexcept {
+    return buf_size_;
+  }
+
+  size_t bucket_size() const noexcept {
+    return bucket_size_;
+  }
+
+ private:
+  size_t bucket_size_;
+  size_t buf_size_;
+  std::unique_ptr<byte_type[]> buf_;
+}; // score_buffer
+
+struct empty_score_buffer {
+  explicit empty_score_buffer(const order::prepared&, size_t) noexcept { }
+
+  byte_type* get(size_t) noexcept {
+    assert(false);
+    return nullptr;
+  }
+
+  byte_type* data() noexcept {
+    return nullptr;
+  }
+
+  size_t size() const noexcept {
+    return 0;
+  }
+
+  size_t bucket_size() const noexcept {
+    return 0;
+  }
+}; // empty_score_buffer
 
 NS_END // detail
 
@@ -76,7 +177,7 @@ struct compound_doc_iterator : doc_iterator {
 template<typename DocIterator, typename Adapter = score_iterator_adapter<DocIterator>>
 class unary_disjunction final : public compound_doc_iterator<Adapter> {
  public:
-  typedef Adapter doc_iterator_t;
+  using doc_iterator_t = Adapter;
 
   unary_disjunction(doc_iterator_t&& it)
     : it_(std::move(it)) {
@@ -118,29 +219,29 @@ class basic_disjunction final
     : public frozen_attributes<3, compound_doc_iterator<Adapter>>,
       private score_ctx {
  public:
-  typedef Adapter doc_iterator_t;
+  using adapter = Adapter;
 
   basic_disjunction(
-      doc_iterator_t&& lhs,
-      doc_iterator_t&& rhs,
+      adapter&& lhs,
+      adapter&& rhs,
       const order::prepared& ord = order::prepared::unordered(),
       sort::MergeType merge_type = sort::MergeType::AGGREGATE)
-    : basic_disjunction(std::move(lhs), std::move(rhs),
-                        ord, merge_type, resolve_overload_tag()) {
-    cost_.rule([this](){
-      return cost::extract(lhs_, 0) + cost::extract(rhs_, 0);
-    });
+    : basic_disjunction(
+        std::move(lhs), std::move(rhs), ord, merge_type,
+        [this](){ return cost::extract(lhs_, 0) + cost::extract(rhs_, 0); },
+        resolve_overload_tag{}) {
   }
 
   basic_disjunction(
-      doc_iterator_t&& lhs,
-      doc_iterator_t&& rhs,
+      adapter&& lhs,
+      adapter&& rhs,
       const order::prepared& ord,
       sort::MergeType merge_type,
       cost::cost_t est)
-    : basic_disjunction(std::move(lhs), std::move(rhs),
-                        ord, merge_type, resolve_overload_tag()) {
-    cost_.value(est);
+    : basic_disjunction(
+        std::move(lhs), std::move(rhs),
+        ord, merge_type, est,
+        resolve_overload_tag{}) {
   }
 
   virtual doc_id_t value() const noexcept override {
@@ -179,13 +280,15 @@ class basic_disjunction final
   }
 
  private:
-  struct resolve_overload_tag { };
+  struct resolve_overload_tag{};
 
+  template<typename Estimation>
   basic_disjunction(
-      doc_iterator_t&& lhs,
-      doc_iterator_t&& rhs,
+      adapter&& lhs,
+      adapter&& rhs,
       const order::prepared& ord,
       sort::MergeType merge_type,
+      Estimation&& estimation,
       resolve_overload_tag)
     : frozen_attributes<3, compound_doc_iterator<Adapter>>{{
         { type<document>::id(), &doc_   },
@@ -194,7 +297,9 @@ class basic_disjunction final
       }},
       lhs_(std::move(lhs)),
       rhs_(std::move(rhs)),
-      doc_(doc_limits::invalid()),
+      score_(ord),
+      no_score_value_(ord.score_size(), 0),
+      cost_(std::forward<Estimation>(estimation)),
       merger_(ord.prepare_merger(merge_type)) {
     prepare_score(ord);
   }
@@ -206,47 +311,45 @@ class basic_disjunction final
 
     assert(lhs_.score && rhs_.score); // must be ensure by the adapter
 
-    const bool lhs_score_empty = lhs_.score->empty();
-    const bool rhs_score_empty = rhs_.score->empty();
+    const bool lhs_score_empty = lhs_.score->is_default();
+    const bool rhs_score_empty = rhs_.score->is_default();
 
     if (!lhs_score_empty && !rhs_score_empty) {
-      // both sub-iterators has score
-      scores_vals_[0] = lhs_.score->c_str();
-      scores_vals_[1] = rhs_.score->c_str();
-      score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
-        auto& self = *static_cast<const basic_disjunction*>(ctx);
+      // both sub-iterators have score
+      score_.reset(this, [](score_ctx* ctx) -> const byte_type* {
+        auto& self = *static_cast<basic_disjunction*>(ctx);
 
-        const irs::byte_type** pVal = self.scores_vals_;
-        size_t matched_iterators = (size_t)self.score_iterator_impl(self.lhs_);
-        pVal += !matched_iterators;
-        matched_iterators += (size_t)self.score_iterator_impl(self.rhs_);
-        // always call merge. even if zero matched - we need to reset last accumulated score at least.
-        self.merger_(score, pVal, matched_iterators);
+        const byte_type* score_values[2] {
+          self.score_iterator_impl(self.lhs_),
+          self.score_iterator_impl(self.rhs_) };
+
+        auto* score_buf = self.score_.data();
+        self.merger_(score_buf, score_values, 2);
+
+        return score_buf;
       });
     } else if (!lhs_score_empty) {
       // only left sub-iterator has score
-      scores_vals_[0] = lhs_.score->c_str();
-      score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
-        auto& self = *static_cast<const basic_disjunction*>(ctx);
-        self.merger_(score, self.scores_vals_, (size_t)self.score_iterator_impl(self.lhs_));
+      score_.reset(this, [](score_ctx* ctx) -> const byte_type* {
+        auto& self = *static_cast<basic_disjunction*>(ctx);
+        return self.score_iterator_impl(self.lhs_);
       });
     } else if (!rhs_score_empty) {
       // only right sub-iterator has score
-      scores_vals_[0] = rhs_.score->c_str();
-      score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
-        auto& self = *static_cast<const basic_disjunction*>(ctx);
-        self.merger_(score, self.scores_vals_, (size_t)self.score_iterator_impl(self.rhs_));
+      score_.reset(this, [](score_ctx* ctx) -> const byte_type* {
+        auto& self = *static_cast<basic_disjunction*>(ctx);
+        return self.score_iterator_impl(self.rhs_);
       });
     } else {
-      score_.prepare(ord, nullptr, [](const score_ctx*, byte_type*) {/*NOOP*/});
+      assert(score_.is_default());
     }
   }
 
-  bool seek_iterator_impl(doc_iterator_t& it, doc_id_t target) {
+  bool seek_iterator_impl(adapter& it, doc_id_t target) {
     return it.value() < target && target == it->seek(target);
   }
 
-  void next_iterator_impl(doc_iterator_t& it) {
+  void next_iterator_impl(adapter& it) {
     const auto doc = it.value();
 
     if (doc_.value == doc) {
@@ -256,7 +359,7 @@ class basic_disjunction final
     }
   }
 
-  bool score_iterator_impl(doc_iterator_t& it) const {
+  const byte_type* score_iterator_impl(adapter& it) const {
     auto doc = it.value();
 
     if (doc < doc_.value) {
@@ -264,18 +367,17 @@ class basic_disjunction final
     }
 
     if (doc == doc_.value) {
-      const auto* rhs = it.score;
-      rhs->evaluate();
-      return true;
+      return it.score->evaluate();
     }
-    return false;
+
+    return no_score_value_.c_str();
   }
 
-  mutable doc_iterator_t lhs_;
-  mutable doc_iterator_t rhs_;
-  mutable const irs::byte_type* scores_vals_[2];
+  mutable adapter lhs_;
+  mutable adapter rhs_;
   document doc_;
   score score_;
+  bstring no_score_value_; // empty score value
   cost cost_;
   order::prepared::merger merger_;
 }; // basic_disjunction
@@ -283,43 +385,52 @@ class basic_disjunction final
 ////////////////////////////////////////////////////////////////////////////////
 /// @class small_disjunction
 /// @brief linear search based disjunction
+/// ----------------------------------------------------------------------------
+///  Unscored iterators   Scored iterators
+///   [0]   [1]   [2]   |   [3]    [4]     [5]
+///    ^                |    ^                    ^
+///    |                |    |                    |
+///   begin             |   scored               end
+///                     |   begin
+/// ----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator, typename Adapter = score_iterator_adapter<DocIterator>>
 class small_disjunction final
     : public frozen_attributes<3, compound_doc_iterator<Adapter>>,
       private score_ctx {
  public:
-  typedef Adapter doc_iterator_t;
-  typedef std::vector<doc_iterator_t> doc_iterators_t;
+  using adapter = Adapter;
+  using doc_iterators_t = std::vector<adapter>;
 
   small_disjunction(
       doc_iterators_t&& itrs,
       const order::prepared& ord,
       sort::MergeType merge_type,
       cost::cost_t est)
-    : small_disjunction(std::move(itrs), ord, merge_type, resolve_overload_tag()) {
-    cost_.value(est);
+    : small_disjunction(std::move(itrs), ord, merge_type, est, resolve_overload_tag()) {
   }
 
   explicit small_disjunction(
       doc_iterators_t&& itrs,
       const order::prepared& ord = order::prepared::unordered(),
       sort::MergeType merge_type = sort::MergeType::AGGREGATE)
-    : small_disjunction(std::move(itrs), ord, merge_type, resolve_overload_tag()) {
-    cost_.rule([this](){
-      return std::accumulate(
-        itrs_.begin(), itrs_.end(), cost::cost_t(0),
-        [](cost::cost_t lhs, const doc_iterator_t& rhs) {
-          return lhs + cost::extract(rhs, 0);
-      });
-    });
+    : small_disjunction(
+        std::move(itrs), ord, merge_type,
+        [this](){
+          return std::accumulate(
+            begin_, end_, cost::cost_t(0),
+            [](cost::cost_t lhs, const adapter& rhs) {
+              return lhs + cost::extract(rhs, 0);
+          });
+        },
+        resolve_overload_tag()) {
   }
 
   virtual doc_id_t value() const noexcept override {
     return doc_.value;
   }
 
-  bool next_iterator_impl(doc_iterator_t& it) {
+  bool next_iterator_impl(adapter& it) {
     const auto doc = it.value();
 
     if (doc == doc_.value) {
@@ -338,10 +449,10 @@ class small_disjunction final
 
     doc_id_t min = doc_limits::eof();
 
-    for (auto begin = itrs_.begin(); begin != itrs_.end(); ) {
+    for (auto begin = begin_; begin != end_; ) {
       auto& it = *begin;
       if (!next_iterator_impl(it)) {
-        if (!remove_iterator(it)) {
+        if (!remove_iterator(begin)) {
           doc_.value = doc_limits::eof();
           return false;
         }
@@ -366,7 +477,7 @@ class small_disjunction final
 
     doc_id_t min = doc_limits::eof();
 
-    for (auto begin = itrs_.begin(); begin != itrs_.end(); ) {
+    for (auto begin = begin_; begin != end_; ) {
       auto& it = *begin;
 
       if (it.value() < target) {
@@ -375,7 +486,7 @@ class small_disjunction final
         if (doc == target) {
           return doc_.value = doc;
         } else if (doc_limits::eof(doc)) {
-          if (!remove_iterator(it)) {
+          if (!remove_iterator(begin)) {
             // exhausted
             return doc_.value = doc_limits::eof();
           }
@@ -398,7 +509,8 @@ class small_disjunction final
     assert(ctx);
     assert(visitor);
     hitch_all_iterators();
-    for (auto& it : itrs_) {
+    for (auto begin = begin_; begin != end_; ++begin) {
+      auto& it = *begin;
       if (it->value() == doc_.value && !visitor(ctx, it)) {
         return;
       }
@@ -408,21 +520,39 @@ class small_disjunction final
  private:
   struct resolve_overload_tag{};
 
+  template<typename Estimation>
   small_disjunction(
       doc_iterators_t&& itrs,
       const order::prepared& ord,
       sort::MergeType merge_type,
+      Estimation&& estimation,
       resolve_overload_tag)
     : frozen_attributes<3, compound_doc_iterator<Adapter>>{{
         { type<document>::id(), &doc_   },
         { type<cost>::id(),     &cost_  },
         { type<score>::id(),    &score_ },
       }},
-      itrs_(std::move(itrs)),
+      itrs_(itrs.size()),
+      scored_begin_(itrs_.begin()),
+      begin_(scored_begin_),
+      end_(itrs_.end()),
       doc_(itrs_.empty()
         ? doc_limits::eof()
         : doc_limits::invalid()),
+      score_(ord),
+      cost_(std::forward<Estimation>(estimation)),
       merger_(ord.prepare_merger(merge_type)) {
+    auto rbegin = itrs_.rbegin();
+    for (auto& it : itrs) {
+      if (it.score->is_default()) {
+        *scored_begin_ = std::move(it);
+        ++scored_begin_;
+      } else {
+        *rbegin = std::move(it);
+        ++rbegin;
+      }
+    }
+
     prepare_score(ord);
   }
 
@@ -431,68 +561,72 @@ class small_disjunction final
       return;
     }
 
-    // copy iterators with scores into separate container
-    // to avoid extra checks
-    scored_itrs_.reserve(itrs_.size());
-    for (auto& it : itrs_) {
-      if (!it.score->empty()) {
-        scored_itrs_.emplace_back(it);
-      }
-    }
-
     // prepare score
-    if (scored_itrs_.empty()) {
-      score_.prepare(ord, nullptr, [](const irs::score_ctx*, byte_type*){ /*NOOP*/ });
-    } else {
-      scores_vals_.resize(scored_itrs_.size());
-      score_.prepare(ord, this, [](const irs::score_ctx* ctx, byte_type* score) {
-        auto& self = *static_cast<const small_disjunction*>(ctx);
+    if (scored_begin_ != end_) {
+      scores_vals_.resize(size_t(std::distance(scored_begin_, end_)));
+
+      score_.reset(this, [](irs::score_ctx* ctx) -> const byte_type* {
+        auto& self = *static_cast<small_disjunction*>(ctx);
+        auto* score_buf = self.score_.data();
         const irs::byte_type** pVal = self.scores_vals_.data();
-        for (auto& it : self.scored_itrs_) {
-          auto doc = it.value();
+        for (auto begin = self.scored_begin_, end = self.end_; begin != end; ++begin) {
+          auto doc = begin->value();
 
           if (doc < self.doc_.value) {
-            doc = it->seek(self.doc_.value);
+            doc = (*begin)->seek(self.doc_.value);
           }
 
           if (doc == self.doc_.value) {
-            it.score->evaluate();
-            *pVal++ = it.score->c_str();
+            *pVal++ = begin->score->evaluate();
           }
         }
-        self.merger_(score, self.scores_vals_.data(),
+
+        self.merger_(score_buf,
+                     self.scores_vals_.data(),
                      std::distance(self.scores_vals_.data(), pVal));
+
+        return score_buf;
       });
+    } else {
+      assert(score_.is_default());
     }
   }
 
-  bool remove_iterator(doc_iterator_t& it) {
-    std::swap(it, itrs_.back());
-    itrs_.pop_back();
-    return !itrs_.empty();
+  bool remove_iterator(typename doc_iterators_t::iterator it) {
+    if (it->score->is_default()) {
+      std::swap(*it, *begin_);
+      ++begin_;
+    } else {
+      std::swap(*it, *(--end_));
+    }
+
+    return begin_ != end_;
   }
 
   void hitch_all_iterators() {
     if (last_hitched_doc_ == doc_.value) {
       return; // nothing to do
     }
-    for (auto rbegin = itrs_.rbegin(); rbegin != itrs_.rend();) {
-      auto& it = *rbegin;
-      ++rbegin;
+    for (auto begin = begin_; begin != end_;++begin) {
+      auto& it = *begin;
       if (it.value() < doc_.value && doc_limits::eof(it->seek(doc_.value))) {
         #ifdef IRESEARCH_DEBUG
-          assert(remove_iterator(it));
+          assert(remove_iterator(begin));
         #else
-          remove_iterator(it);
+          remove_iterator(begin);
         #endif
       }
     }
     last_hitched_doc_ = doc_.value;
   }
 
+  using iterator = typename doc_iterators_t::iterator;
+
   doc_id_t last_hitched_doc_{ doc_limits::invalid() };
   doc_iterators_t itrs_;
-  doc_iterators_t scored_itrs_; // iterators with scores
+  iterator scored_begin_; // beginning of scored doc iterator range
+  iterator begin_; // beginning of unscored doc iterators range
+  iterator end_; // end of scored doc iterator range
   document doc_;
   score score_;
   cost cost_;
@@ -517,38 +651,40 @@ class disjunction final
     : public frozen_attributes<3, compound_doc_iterator<Adapter>>,
       private score_ctx {
  public:
-  typedef small_disjunction<DocIterator, Adapter> small_disjunction_t;
-  typedef basic_disjunction<DocIterator, Adapter> basic_disjunction_t;
-  typedef unary_disjunction<DocIterator, Adapter> unary_disjunction_t;
-  typedef Adapter doc_iterator_t;
-  typedef std::vector<doc_iterator_t> doc_iterators_t;
+  using unary_disjunction_t = unary_disjunction<DocIterator, Adapter>;
+  using basic_disjunction_t = basic_disjunction<DocIterator, Adapter>;
+  using small_disjunction_t = small_disjunction<DocIterator, Adapter>;
 
-  typedef std::vector<size_t> heap_container;
-  typedef heap_container::iterator heap_iterator;
+  using adapter = Adapter;
+  using doc_iterators_t = std::vector<adapter>;
+  using heap_container  = std::vector<size_t>;
+  using heap_iterator   = heap_container::iterator;
 
-  static constexpr bool ENABLE_UNARY = EnableUnary;
+  static constexpr bool enable_unary() noexcept { return EnableUnary; };
+  static constexpr size_t small_disjunction_upper_bound() noexcept { return 5; }
 
   disjunction(
       doc_iterators_t&& itrs,
       const order::prepared& ord,
       sort::MergeType merge_type,
       cost::cost_t est)
-    : disjunction(std::move(itrs), ord, merge_type, resolve_overload_tag()) {
-    cost_.value(est);
+    : disjunction(std::move(itrs), ord, merge_type, est, resolve_overload_tag()) {
   }
 
   explicit disjunction(
       doc_iterators_t&& itrs,
       const order::prepared& ord = order::prepared::unordered(),
       sort::MergeType merge_type = sort::MergeType::AGGREGATE)
-    : disjunction(std::move(itrs), ord, merge_type, resolve_overload_tag()) {
-    cost_.rule([this](){
-      return std::accumulate(
-        itrs_.begin(), itrs_.end(), cost::cost_t(0),
-        [](cost::cost_t lhs, const doc_iterator_t& rhs) {
-          return lhs + cost::extract(rhs, 0);
-      });
-    });
+    : disjunction(
+        std::move(itrs), ord, merge_type,
+        [this](){
+          return std::accumulate(
+            itrs_.begin(), itrs_.end(), cost::cost_t(0),
+            [](cost::cost_t lhs, const adapter& rhs) {
+              return lhs + cost::extract(rhs, 0);
+          });
+        },
+        resolve_overload_tag()) {
   }
 
   virtual doc_id_t value() const noexcept override {
@@ -621,10 +757,12 @@ class disjunction final
  private:
   struct resolve_overload_tag{};
 
+  template<typename Estimation>
   disjunction(
       doc_iterators_t&& itrs,
       const order::prepared& ord,
       sort::MergeType merge_type,
+      Estimation&& estimation,
       resolve_overload_tag)
     : frozen_attributes<3, compound_doc_iterator<Adapter>>{{
         { type<document>::id(), &doc_   },
@@ -635,6 +773,8 @@ class disjunction final
       doc_(itrs_.empty()
         ? doc_limits::eof()
         : doc_limits::invalid()),
+      score_(ord),
+      cost_(std::forward<Estimation>(estimation)),
       merger_(ord.prepare_merger(merge_type)) {
     // since we are using heap in order to determine next document,
     // in order to avoid useless make_heap call we expect that all
@@ -654,9 +794,10 @@ class disjunction final
     }
 
     scores_vals_.resize(itrs_.size(), nullptr);
-    score_.prepare(ord, this, [](const score_ctx* ctx, byte_type* score) {
-      auto& self = const_cast<disjunction&>(*static_cast<const disjunction*>(ctx));
+    score_.reset(this, [](score_ctx* ctx) -> const byte_type* {
+      auto& self = *static_cast<disjunction*>(ctx);
       assert(!self.heap_.empty());
+      auto* score_buf = self.score_.data();
 
       const auto its = self.hitch_all_iterators();
       const irs::byte_type** pVal = self.scores_vals_.data();
@@ -673,8 +814,10 @@ class disjunction final
             detail::evaluate_score_iter(pVal, self.itrs_[it]);
         });
       }
-      self.merger_(score, self.scores_vals_.data(),
+      self.merger_(score_buf, self.scores_vals_.data(),
                    std::distance(self.scores_vals_.data(), pVal));
+
+      return score_buf;
     });
   }
 
@@ -720,13 +863,13 @@ class disjunction final
     pop(begin, end);
   }
 
-  inline doc_iterator_t& lead() noexcept {
+  inline adapter& lead() noexcept {
     assert(!heap_.empty());
     assert(heap_.back() < itrs_.size());
     return itrs_[heap_.back()];
   }
 
-  inline doc_iterator_t& top() noexcept {
+  inline adapter& top() noexcept {
     assert(!heap_.empty());
     assert(heap_.front() < itrs_.size());
     return itrs_[heap_.front()];
@@ -762,6 +905,519 @@ class disjunction final
   order::prepared::merger merger_;
 }; // disjunction
 
+enum class MatchType {
+  MATCH,
+  MIN_MATCH_FAST,
+  MIN_MATCH
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @struct block_disjunction_traits
+////////////////////////////////////////////////////////////////////////////////
+template<bool Score, MatchType MinMatch, bool SeekReadahead, size_t NumBlocks = 32>
+struct block_disjunction_traits {
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief "false" - iterator is used for filtering only,
+  ///        "true" - otherwise
+  //////////////////////////////////////////////////////////////////////////////
+  static constexpr bool score() noexcept { return Score; }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief "false" - iterator is used for min match filtering,
+  ///        "true" - otherwise
+  //////////////////////////////////////////////////////////////////////////////
+  static constexpr bool min_match() noexcept {
+    return MatchType::MATCH != MinMatch;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief "false" - iterator is used for min match filtering,
+  ///        "true" - otherwise
+  //////////////////////////////////////////////////////////////////////////////
+  static constexpr bool min_match_early_pruning() noexcept {
+    return MatchType::MIN_MATCH_FAST == MinMatch;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief use readahead buffer for random access
+  //////////////////////////////////////////////////////////////////////////////
+  static constexpr bool seek_readahead() noexcept { return SeekReadahead; }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief size of the readhead buffer in blocks
+  //////////////////////////////////////////////////////////////////////////////
+  static constexpr size_t num_blocks() noexcept { return NumBlocks; };
+}; // block_disjunction_traits
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class block_disjunction
+/// @brief the implementation reads ahead 64*NumBlocks documents
+/// @note the implementation isn't optimized for conjunction case
+///       when the requected min match count equals to a number of input
+///       iterators. It's better to to use a dedicated "conjunction" iterator.
+////////////////////////////////////////////////////////////////////////////////
+template<typename DocIterator,
+         typename Traits,
+         typename Adapter = score_iterator_adapter<DocIterator>>
+class block_disjunction final
+    : public frozen_attributes<3, doc_iterator>,
+      private score_ctx {
+ public:
+  using traits_type = Traits;
+  using adapter  = Adapter;
+  using doc_iterators_t = std::vector<adapter>;
+
+  using unary_disjunction_t = unary_disjunction<DocIterator, Adapter>;
+  using basic_disjunction_t = basic_disjunction<DocIterator, Adapter>;
+  using small_disjunction_t = block_disjunction;
+
+  static constexpr bool enable_unary() { return false; } // FIXME
+
+  // Block disjunction is faster than small_disjunction
+  static constexpr size_t small_disjunction_upper_bound() noexcept { return 0; }
+
+  block_disjunction(
+      doc_iterators_t&& itrs,
+      const order::prepared& ord,
+      sort::MergeType merge_type,
+      cost::cost_t est)
+    : block_disjunction(std::move(itrs), 1, ord, merge_type, est) {
+  }
+
+  block_disjunction(
+      doc_iterators_t&& itrs,
+      size_t min_match_count,
+      const order::prepared& ord,
+      sort::MergeType merge_type,
+      cost::cost_t est)
+    : block_disjunction(std::move(itrs), min_match_count, ord,
+                        merge_type, est, resolve_overload_tag()) {
+  }
+
+  explicit block_disjunction(
+      doc_iterators_t&& itrs,
+      const order::prepared& ord = order::prepared::unordered(),
+      sort::MergeType merge_type = sort::MergeType::AGGREGATE)
+    : block_disjunction(std::move(itrs), 1, ord, merge_type) {
+  }
+
+  block_disjunction(
+      doc_iterators_t&& itrs,
+      size_t min_match_count,
+      const order::prepared& ord = order::prepared::unordered(),
+      sort::MergeType merge_type = sort::MergeType::AGGREGATE)
+    : block_disjunction(
+        std::move(itrs), min_match_count, ord, merge_type,
+        [this](){
+          return std::accumulate(
+            itrs_.begin(), itrs_.end(), cost::cost_t(0),
+            [](cost::cost_t lhs, const adapter& rhs) {
+              return lhs + cost::extract(rhs, 0);
+          });
+        },
+        resolve_overload_tag()) {
+  }
+
+  size_t match_count() const noexcept {
+    return match_count_;
+  }
+
+  virtual doc_id_t value() const noexcept override {
+    return doc_.value;
+  }
+
+  virtual bool next() override {
+    do {
+      while (!cur_) {
+        if (begin_ >= std::end(mask_)) {
+          if (refill()) {
+            assert(cur_);
+            break;
+          }
+
+          doc_.value = doc_limits::eof();
+          match_count_ = 0;
+
+          return false;
+        }
+
+        cur_ = *begin_++;
+        doc_base_ += bits_required<uint64_t>();
+        if constexpr (traits_type::min_match() || traits_type::score()) {
+          buf_offset_ += bits_required<uint64_t>();
+        }
+      }
+
+      const size_t offset = math::math_traits<uint64_t>::ctz(cur_);
+      irs::unset_bit(cur_, offset);
+
+      [[maybe_unused]] const size_t buf_offset = buf_offset_ + offset;
+
+      if constexpr (traits_type::min_match()) {
+        match_count_ = match_buf_.match_count(buf_offset);
+
+        if (match_count_ < match_buf_.min_match_count()) {
+          continue;
+        }
+      }
+
+      doc_.value = doc_base_ + doc_id_t(offset);
+      if constexpr (traits_type::score()) {
+        score_value_ = score_buf_.get(buf_offset);
+      }
+
+      return true;
+    } while (traits_type::min_match());
+
+    assert(false);
+    return true;
+  }
+
+  virtual doc_id_t seek(doc_id_t target) override {
+    if (target <= doc_.value) {
+      return doc_.value;
+    } else if (target < max_) {
+      target -= (max_ - window());
+      begin_ = mask_ + target / block_size();
+      doc_base_ += doc_id_t(std::distance(mask_, begin_) * bits_required<uint64_t>());
+      cur_ = (*begin_++) & ((~UINT64_C(0)) << target % block_size());
+
+      next();
+    } else {
+      doc_.value = doc_limits::eof();
+
+      if constexpr (traits_type::min_match()) {
+        match_count_ = 0;
+      }
+
+      visit_and_purge([this, target](auto& it) mutable {
+        const auto doc = it->seek(target);
+
+        if (doc_limits::eof(doc)) {
+          // exhausted
+          return false;
+        }
+
+        if (doc < doc_.value) {
+          doc_.value = doc;
+          if constexpr (traits_type::min_match()) {
+            match_count_ = 1;
+          }
+        } else if constexpr (traits_type::min_match()) {
+          if (target == doc) {
+            ++match_count_;
+          }
+        }
+
+        return true;
+      });
+
+      if (itrs_.empty()) {
+        doc_.value = doc_limits::eof();
+        match_count_ = 0;
+
+        return doc_limits::eof();
+      }
+
+      assert(!doc_limits::eof(doc_.value));
+      cur_ = 0;
+      begin_ = std::end(mask_); // enforce "refill()" for upcoming "next()"
+      max_ = doc_.value;
+
+      if constexpr (traits_type::seek_readahead()) {
+        min_ = doc_.value;
+        next();
+      } else {
+        min_ = doc_.value + 1;
+        buf_offset_ = 0;
+
+        if constexpr (traits_type::min_match()) {
+          if (match_count_ < match_buf_.min_match_count()) {
+            next();
+            return doc_.value;
+          }
+        }
+
+        if constexpr (traits_type::score()) {
+          std::memset(score_buf_.data(), 0, score_buf_.bucket_size());
+          for (auto& it : itrs_) {
+            if (!it.score->is_default() && doc_.value == it->value()) {
+              assert(it.score);
+              merger_(score_buf_.data(), it.score->evaluate());
+            }
+          }
+
+          score_value_ = score_buf_.data();
+        }
+      }
+    }
+
+    return doc_.value;
+  }
+
+ private:
+  static constexpr doc_id_t block_size() noexcept {
+    return bits_required<uint64_t>();
+  }
+
+  static constexpr doc_id_t num_blocks() noexcept {
+    return std::max(size_t(1), traits_type::num_blocks());
+  }
+
+  static constexpr size_t window() noexcept {
+    return block_size()*num_blocks();
+  }
+
+  using score_buffer_type = std::conditional_t<traits_type::score(),
+    detail::score_buffer,
+    detail::empty_score_buffer>;
+
+  using min_match_buffer_type = detail::min_match_buffer<
+    traits_type::min_match() ? window() : 0>;
+
+  struct resolve_overload_tag{};
+
+  template<typename Estimation>
+  block_disjunction(
+      doc_iterators_t&& itrs,
+      size_t min_match_count,
+      const order::prepared& ord,
+      sort::MergeType merge_type,
+      Estimation&& estimation,
+      resolve_overload_tag)
+    : frozen_attributes<3, doc_iterator>{{
+        { type<document>::id(), &doc_   },
+        { type<cost>::id(),     &cost_  },
+        { type<score>::id(),    &score_ },
+      }},
+      itrs_(std::move(itrs)),
+      doc_(itrs_.empty()
+        ? doc_limits::eof()
+        : doc_limits::invalid()),
+      match_count_(itrs_.empty()
+        ? size_t(0)
+        : static_cast<size_t>(!traits_type::min_match())),
+      cost_(std::forward<Estimation>(estimation)),
+      score_buf_(ord, window()),
+      match_buf_(min_match_count),
+      merger_(ord.prepare_merger(merge_type)) {
+    if (traits_type::score() && !ord.empty()) {
+      score_.reset(this, [](score_ctx* ctx) noexcept -> const byte_type* {
+        return static_cast<block_disjunction*>(ctx)->score_value_;
+      });
+    }
+
+    if (traits_type::min_match() && min_match_count > 1) {
+      // sort subnodes in ascending order by their cost
+      // FIXME don't use extract
+      std::sort(
+        itrs_.begin(), itrs_.end(),
+        [](const adapter& lhs, const adapter& rhs) {
+          return cost::extract(lhs, 0) < cost::extract(rhs, 0);
+      });
+    }
+  }
+
+  template<typename Visitor>
+  void visit_and_purge(Visitor visitor) {
+    auto* begin = itrs_.data();
+    auto* end = itrs_.data() + itrs_.size();
+
+    while (begin != end) {
+      if (!visitor(*begin)) {
+        irstd::swap_remove(itrs_, begin);
+        --end;
+
+        if constexpr (traits_type::min_match_early_pruning()) {
+          // we don't need precise match count
+          if (itrs_.size() < match_buf_.min_match_count()) {
+            // can't fulfill min match requirement anymore
+            itrs_.clear();
+            return;
+          }
+        }
+      } else {
+        ++begin;
+      }
+    }
+
+    if constexpr (traits_type::min_match() && !traits_type::min_match_early_pruning()) {
+      // we need precise match count, so can't break earlier
+      if (itrs_.size() < match_buf_.min_match_count()) {
+        // can't fulfill min match requirement anymore
+        itrs_.clear();
+        return;
+      }
+    }
+  }
+
+  void reset() noexcept {
+    std::memset(mask_, 0, sizeof mask_);
+    if constexpr (traits_type::score()) {
+      score_value_ = score_buf_.data();
+      std::memset(score_buf_.data(), 0, score_buf_.size());
+    }
+    if constexpr (traits_type::min_match()) {
+      match_buf_.clear();
+    }
+  }
+
+  bool refill() {
+    if (itrs_.empty()) {
+      return false;
+    }
+
+    if constexpr (!traits_type::min_match()) {
+      reset();
+    }
+
+    bool empty = true;
+
+    do {
+      if constexpr (traits_type::min_match()) {
+        // in min match case we need to clear
+        // internal buffers on every iteration
+        reset();
+      }
+
+      doc_base_ = min_;
+      max_ = min_ + window();
+      min_ = doc_limits::eof();
+
+      visit_and_purge([this, &empty](auto& it) mutable {
+        // FIXME
+        // for min match case we can skip the whole block if
+        // we can't satisfy match_buf_.min_match_count() conditions, namely
+        //if constexpr (traits_type::min_match()) {
+        //  if (empty && (&it + (match_buf_.min_match_count() - match_buf_.max_match_count()) < (itrs_.data() + itrs_.size()))) {
+        //    // skip current block
+        //    return true;
+        //  }
+        //}
+
+        if constexpr (traits_type::score()) {
+          if (!it.score->is_default()) {
+            return refill<true>(it, empty);
+          }
+        }
+
+        return refill<false>(it, empty);
+      });
+    } while (empty && !itrs_.empty());
+
+    if (empty) {
+      // exhausted
+      assert(itrs_.empty());
+      return false;
+    }
+
+    cur_ = *mask_;
+    begin_ = mask_ + 1;
+    while (!cur_) {
+      cur_ = *begin_++;
+      doc_base_ += bits_required<uint64_t>();
+    }
+    assert(cur_);
+
+    if constexpr (traits_type::min_match() || traits_type::score()) {
+      buf_offset_ = 0;
+    }
+
+    return true;
+  }
+
+  template<bool Score>
+  bool refill(adapter& it, bool& empty) {
+    assert(it.doc);
+    const auto* doc = &it.doc->value;
+    assert(!doc_limits::eof(*doc));
+
+    // disjunction is 1 step next behind, that may happen:
+    // - before the very first next()
+    // - after seek() in case of 'seek_readahead() == false'
+    if (*doc < doc_base_ && !it->next()) {
+      // exhausted
+      return false;
+    }
+
+    for (;;) {
+      if (*doc >= max_) {
+        min_ = std::min(*doc, min_);
+        return true;
+      }
+
+      const size_t offset = *doc - doc_base_;
+
+      irs::set_bit(mask_[offset / block_size()], offset % block_size());
+
+      if constexpr (Score) {
+        assert(it.score);
+        merger_(score_buf_.get(offset), it.score->evaluate());
+      }
+
+      if constexpr (traits_type::min_match()) {
+        empty &= match_buf_.inc(offset);
+      } else {
+        empty = false;
+      }
+
+      if (!it->next()) {
+        // exhausted
+        return false;
+      }
+    }
+  }
+
+  doc_iterators_t itrs_;
+  uint64_t mask_[num_blocks()]{};
+  uint64_t* begin_{std::end(mask_)};
+  uint64_t cur_{};
+  document doc_;
+  doc_id_t doc_base_{doc_limits::invalid()};
+  doc_id_t min_{doc_limits::min()}; // base doc id for the next mask
+  doc_id_t max_{doc_limits::invalid()}; // max doc id in the current mask
+  score score_;
+  size_t match_count_;
+  cost cost_;
+  size_t buf_offset_{}; // offset within a buffer
+  score_buffer_type score_buf_;
+  min_match_buffer_type match_buf_;
+  const byte_type* score_value_{score_buf_.data()};
+  order::prepared::merger merger_;
+}; // block_disjunction
+
+template<
+  typename DocIterator,
+  typename Adapter = score_iterator_adapter<DocIterator>>
+using scored_disjunction_iterator = block_disjunction<
+  DocIterator,
+  block_disjunction_traits<true, MatchType::MATCH, false>,
+  Adapter>;
+
+template<
+  typename DocIterator,
+  typename Adapter = score_iterator_adapter<DocIterator>>
+using disjunction_iterator = block_disjunction<
+  DocIterator,
+  block_disjunction_traits<false, MatchType::MATCH, false>,
+  Adapter>;
+
+template<
+  typename DocIterator,
+  typename Adapter = score_iterator_adapter<DocIterator>>
+using scored_min_match_iterator = block_disjunction<
+  DocIterator,
+  block_disjunction_traits<true, MatchType::MIN_MATCH, false>,
+  Adapter>;
+
+template<
+  typename DocIterator,
+  typename Adapter = score_iterator_adapter<DocIterator>>
+using min_match_iterator = block_disjunction<
+  DocIterator,
+  block_disjunction_traits<false, MatchType::MIN_MATCH, false>,
+  Adapter>;
+
 //////////////////////////////////////////////////////////////////////////////
 /// @returns disjunction iterator created from the specified sub iterators
 //////////////////////////////////////////////////////////////////////////////
@@ -776,41 +1432,36 @@ doc_iterator::ptr make_disjunction(
       // empty or unreachable search criteria
       return doc_iterator::empty();
     case 1:
-      if constexpr (Disjunction::ENABLE_UNARY) {
-        typedef typename Disjunction::unary_disjunction_t unary_disjunction_t;
-        return doc_iterator::make<unary_disjunction_t>(
-          std::move(itrs.front())
-        );
+      if constexpr (Disjunction::enable_unary()) {
+        using unary_disjunction_t = typename Disjunction::unary_disjunction_t;
+        return memory::make_managed<unary_disjunction_t>(std::move(itrs.front()));
       }
+
       // single sub-query
       return std::move(itrs.front());
     case 2: {
-      typedef typename Disjunction::basic_disjunction_t basic_disjunction_t;
+      using basic_disjunction_t = typename Disjunction::basic_disjunction_t;
 
       // simple disjunction
-      auto first = itrs.begin();
-      auto second = first;
-      std::advance(second, 1);
-
-      return doc_iterator::make<basic_disjunction_t>(
-        std::move(*first),
-        std::move(*second),
-        std::forward<Args>(args)...);
+      return memory::make_managed<basic_disjunction_t>(
+         std::move(itrs.front()),
+         std::move(itrs.back()),
+         std::forward<Args>(args)...);
     }
   }
 
-  constexpr size_t LINEAR_MERGE_UPPER_BOUND = 5;
-  if (size <= LINEAR_MERGE_UPPER_BOUND) {
-    typedef typename Disjunction::small_disjunction_t small_disjunction_t;
+  if (Disjunction::small_disjunction_upper_bound() &&
+        size <= Disjunction::small_disjunction_upper_bound()) {
+    using small_disjunction_t = typename Disjunction::small_disjunction_t;
 
     // small disjunction
-    return doc_iterator::make<small_disjunction_t>(
+    return memory::make_managed<small_disjunction_t>(
       std::move(itrs),
       std::forward<Args>(args)...);
   }
 
   // disjunction
-  return doc_iterator::make<Disjunction>(
+  return memory::make_managed<Disjunction>(
     std::move(itrs),
     std::forward<Args>(args)...);
 }

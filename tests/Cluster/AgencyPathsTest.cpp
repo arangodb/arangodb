@@ -503,7 +503,7 @@ class AgencyPathsTest : public ::testing::Test {
       {{"arango", "Sync", "ServerStates"}, root()->arango()->sync()->serverStates()},
       {{"arango", "Sync", "Problems"}, root()->arango()->sync()->problems()},
       {{"arango", "Sync", "HeartbeatIntervalMs"}, root()->arango()->sync()->heartbeatIntervalMs()},
-      {{"arango", "Sync", "LatestID"}, root()->arango()->sync()->latestID()},
+      {{"arango", "Sync", "LatestID"}, root()->arango()->sync()->latestId()},
       {{"arango", "Bootstrap"}, root()->arango()->bootstrap()},
       {{"arango", "Cluster"}, root()->arango()->cluster()},
       {{"arango", "Agency"}, root()->arango()->agency()},

@@ -881,10 +881,16 @@ ExecutionNode* ExecutionPlan::registerNode(std::unique_ptr<ExecutionNode> node) 
   
   // may throw
   _ast->query().resourceMonitor().increaseMemoryUsage(sizeof(ExecutionNode));
-  
-  auto emplaced = _ids.try_emplace(node->id(), node.get()).second;  // take ownership
-  TRI_ASSERT(emplaced);
-  return node.release();
+ 
+  try {
+    auto emplaced = _ids.try_emplace(node->id(), node.get()).second;  // take ownership
+    TRI_ASSERT(emplaced);
+    return node.release();
+  } catch (...) {
+    // clean up
+    _ast->query().resourceMonitor().decreaseMemoryUsage(sizeof(ExecutionNode));
+    throw;
+  }
 }
 
 /// @brief register a node with the plan, will delete node if addition fails
