@@ -105,6 +105,10 @@ auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, A
     skipped = input.skipAllForDependency(currentDependency());
   }
   call.didSkip(skipped);
+  // The Skip reporting to client does not
+  // rely on the call, so reset it here.
+  // We are not allowed to send it to upstream.
+  call.resetSkipCount();
 
   // Skip over dependencies that are DONE, they cannot skip more
   while (!done() && input.upstreamState(currentDependency()) == ExecutorState::DONE) {

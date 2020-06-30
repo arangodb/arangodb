@@ -30,6 +30,7 @@ var analyzers = require("@arangodb/analyzers");
 const arango = require('@arangodb').arango;
 const internal = require('internal');
 const isCluster = internal.isCluster();
+const isEnterprise = internal.isEnterprise();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -58,63 +59,63 @@ function iResearchFeatureAqlTestSuite () {
     testAnalyzersInvalidPropertiesDiscarded : function() {
       {
         try {analyzers.remove("normPropAnalyzer"); } catch (e) {}
-        assertEqual(0, db._analyzers.count());
+        let oldCount = db._analyzers.count();
         let analyzer = analyzers.save("normPropAnalyzer", "norm", { "locale":"en", "invalid_param":true});
-        assertEqual(1, db._analyzers.count());
+        assertEqual(oldCount + 1, db._analyzers.count());
         assertTrue(null != analyzer);
         assertTrue(null == analyzer.properties.invalid_param);
         analyzers.remove("normPropAnalyzer", true);
-        assertEqual(0, db._analyzers.count());
+        assertEqual(oldCount, db._analyzers.count());
       }
       {
         try {analyzers.remove("textPropAnalyzer"); } catch (e) {}
-        assertEqual(0, db._analyzers.count());
+        let oldCount = db._analyzers.count();
         let analyzer = analyzers.save("textPropAnalyzer", "text", {"stopwords" : [], "locale":"en", "invalid_param":true});
-        assertEqual(1, db._analyzers.count());
+        assertEqual(oldCount + 1, db._analyzers.count());
         assertTrue(null != analyzer);
         assertTrue(null == analyzer.properties.invalid_param);
         analyzers.remove("textPropAnalyzer", true);
-        assertEqual(0, db._analyzers.count());
+        assertEqual(oldCount, db._analyzers.count());
       }
       {
         try {analyzers.remove("textPropAnalyzerWithNGram"); } catch (e) {}
-        assertEqual(0, db._analyzers.count());
+        let oldCount = db._analyzers.count();
         let analyzer = analyzers.save("textPropAnalyzerWithNgram", "text", {"stopwords" : [], "locale":"en", "edgeNgram" : { "min" : 2, "invalid_param":true}});
-        assertEqual(1, db._analyzers.count());
+        assertEqual(oldCount + 1, db._analyzers.count());
         assertTrue(null != analyzer);
         assertTrue(null == analyzer.properties.invalid_param);
         analyzers.remove("textPropAnalyzerWithNgram", true);
-        assertEqual(0, db._analyzers.count());
+        assertEqual(oldCount, db._analyzers.count());
       }
       {
         try {analyzers.remove("delimiterPropAnalyzer"); } catch (e) {}
-        assertEqual(0, db._analyzers.count());
+        let oldCount = db._analyzers.count();
         let analyzer = analyzers.save("delimiterPropAnalyzer", "delimiter", { "delimiter":"|", "invalid_param":true});
-        assertEqual(1, db._analyzers.count());
+        assertEqual(oldCount + 1, db._analyzers.count());
         assertTrue(null != analyzer);
         assertTrue(null == analyzer.properties.invalid_param);
         analyzers.remove("delimiterPropAnalyzer", true);
-        assertEqual(0, db._analyzers.count());
+        assertEqual(oldCount, db._analyzers.count());
       }
       {
         try {analyzers.remove("stemPropAnalyzer"); } catch (e) {}
-        assertEqual(0, db._analyzers.count());
+        let oldCount = db._analyzers.count();
         let analyzer = analyzers.save("stemPropAnalyzer", "stem", { "locale":"en", "invalid_param":true});
-        assertEqual(1, db._analyzers.count());
+        assertEqual(oldCount + 1, db._analyzers.count());
         assertTrue(null != analyzer);
         assertTrue(null == analyzer.properties.invalid_param);
         analyzers.remove("stemPropAnalyzer", true);
-        assertEqual(0, db._analyzers.count());
+        assertEqual(oldCount, db._analyzers.count());
       }
       {
         try {analyzers.remove("ngramPropAnalyzer"); } catch (e) {}
-        assertEqual(0, db._analyzers.count());
+        let oldCount = db._analyzers.count();
         let analyzer = analyzers.save("ngramPropAnalyzer", "ngram", { "min":1, "max":5, "preserveOriginal":true, "invalid_param":true});
-        assertEqual(1, db._analyzers.count());
+        assertEqual(oldCount + 1, db._analyzers.count());
         assertTrue(null != analyzer);
         assertTrue(null == analyzer.properties.invalid_param);
         analyzers.remove("ngramPropAnalyzer", true);
-        assertEqual(0, db._analyzers.count());
+        assertEqual(oldCount, db._analyzers.count());
       }
     },
     testAnalyzerRemovalWithDatabaseName_InSystem: function() {
@@ -254,12 +255,34 @@ function iResearchFeatureAqlTestSuite () {
       db._dropDatabase(dbName);
       db._dropDatabase(anotherDbName);
     },
+    testAnalyzerGetFromSystemDatabaseDifferentRevision: function() {
+      if (!isCluster) { // only cluster has revisions. Do not waste time on single
+       return;
+      }
+      let dbName = "analyzerDbName";
+      let analyzerName = "my_identity";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch (e) {}
+      try { analyzers.remove(analyzerName, true); } catch (e) {}
+      try {
+        db._createDatabase(dbName, {sharding: "single"});
+        let analyzer = analyzers.save(analyzerName, "identity", {}); // so system revision is at least 1
+        db._useDatabase(dbName); // fresh database will have revision 0 ( 0 < 1 so using db revision for system analyzer will fail!)
+        db._create("test_coll"); 
+        db._createView("tv", "arangosearch", {links: { test_coll: { includeAllFields:true, analyzers:[ "::" + analyzerName ] } } });
+        db.test_coll.save({field: "value1"});
+        var res = db._query("FOR d IN tv SEARCH ANALYZER(d.field == 'value1', '::" + analyzerName + "') OPTIONS {waitForSync:true}  RETURN d");
+        assertEqual(1, res.toArray().length);
+      } finally {
+        db._useDatabase("_system");
+        analyzers.remove(analyzerName, true);
+        db._dropDatabase(dbName);
+      }
+    },
     testAnalyzers: function() {
       let oldList = analyzers.toArray();
       let oldListInCollection = db._analyzers.toArray();
       assertTrue(Array === oldList.constructor);
-
-      assertEqual(0, db._analyzers.count());
 
       // creation
       analyzers.save("testAnalyzer", "stem", { "locale":"en"}, [ "frequency" ]);
@@ -276,7 +299,6 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual([ "frequency" ], analyzer.features());
 
       // check persisted analyzer
-      assertEqual(1, db._analyzers.count());
       let savedAnalyzer = db._analyzers.toArray()[0];
       assertTrue(null !== savedAnalyzer);
       assertEqual(8, Object.keys(savedAnalyzer).length);
@@ -332,7 +354,7 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(oldListInCollection.length, db._analyzers.toArray().length);
     },
 
-   testAnalyzersFeatures: function() {
+    testAnalyzersFeatures: function() {
       try {
        analyzers.save("testAnalyzer", "identity", {}, [ "unknown" ]);
        fail(); // unsupported feature
@@ -407,8 +429,35 @@ function iResearchFeatureAqlTestSuite () {
 
       db._useDatabase("_system");
       db._dropDatabase(dbName);
-   },
-
+    },
+////////////////////////////////////////////////////////////////////////////////
+/// @brief OneShard analyzers loading tests
+////////////////////////////////////////////////////////////////////////////////
+    testAnalyzerGetFromSameDatabaseOneShard: function() {
+      if (!isEnterprise || !isCluster) {
+       return;
+      }
+      let dbName = "analyzerDbName";
+      let analyzerName = "my_identity";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch (e) {}
+      try {
+        db._createDatabase(dbName, {sharding: "single"});
+        db._useDatabase(dbName);
+        let analyzer = analyzers.save(analyzerName, "identity", {});
+        db._create("test_coll");
+        db._createView("tv", "arangosearch", 
+                       {links: { test_coll: { includeAllFields:true,
+                                              analyzers:[ "" + analyzerName ] } } });
+        db.test_coll.save({"field": "value1"});
+        var res = db._query("FOR d IN tv SEARCH ANALYZER(d.field == 'value1', '" + analyzerName + 
+                            "') OPTIONS {waitForSync:true}  RETURN d");
+        assertEqual(1, res.toArray().length);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
+    },
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IResearchFeature tests
 ////////////////////////////////////////////////////////////////////////////////

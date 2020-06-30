@@ -34,7 +34,7 @@ using namespace arangodb;
 
 LoggerStream::~LoggerStream() {
   try {
-    Logger::log(_function, _file, _line, _level, _topicId, _out.str());
+    Logger::log(_logid, _function, _file, _line, _level, _topicId, _out.str());
   } catch (...) {
     try {
       // logging the error may fail as well, and we should never throw in the

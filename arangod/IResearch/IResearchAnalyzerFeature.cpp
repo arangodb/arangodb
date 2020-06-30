@@ -783,6 +783,25 @@ arangodb::Result visitAnalyzers(
       }
 
       auto shards = collection->shardIds();
+      if (ADB_UNLIKELY(!shards)) {
+        TRI_ASSERT(FALSE);
+        return {};  // treat missing collection as if there are no analyzers
+      }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      LOG_TOPIC("e07d4", TRACE, arangodb::iresearch::TOPIC)
+          << "OneShard optimization found " << shards->size() << " shards "
+          << " for server " << arangodb::ServerState::instance()->getId();
+      for (auto const& shard : *shards) {
+        LOG_TOPIC("31300", TRACE, arangodb::iresearch::TOPIC)
+            << "Shard '" << shard.first << "' on servers:";
+        for (auto const& server : shard.second) {
+          LOG_TOPIC("ead22", TRACE, arangodb::iresearch::TOPIC)
+              << "Shard server '" << server << "'";
+        }
+      }
+#endif
+
       if (shards->empty()) {
         return {}; // treat missing collection as if there are no analyzers
       }
@@ -1026,8 +1045,7 @@ void AnalyzerPool::toVelocyPack(
   addStringRef(builder, StaticStrings::AnalyzerNameField, name);
   addStringRef(builder, StaticStrings::AnalyzerTypeField, type());
   builder.add(StaticStrings::AnalyzerPropertiesField, properties());
-  builder.add(arangodb::StaticStrings::AnalyzersRevision, VPackValue(static_cast<uint64_t>(_revision)));
-
+  
   // add features
   VPackArrayBuilder featuresScope(&builder, StaticStrings::AnalyzerFeaturesField);
   for (auto& feature : features()) {
@@ -1065,6 +1083,12 @@ void AnalyzerPool::toVelocyPack(VPackBuilder& builder,
 
     // ensure names are unique
     addStringRef(builder, arangodb::StaticStrings::KeyString, name);
+
+    // only persistence needs revision to be stored
+    // link definitions live always without revisions
+    // analyzer definitions are stored in link itself
+    builder.add(arangodb::StaticStrings::AnalyzersRevision, 
+                VPackValue(static_cast<uint64_t>(_revision)));
   }
 
   toVelocyPack(builder, name);
@@ -1711,7 +1735,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     irs::string_ref const& name,
     TRI_vocbase_t const& activeVocbase,
     TRI_vocbase_t const& systemVocbase,
-    arangodb::AnalyzersRevision::Revision const revision,
+    arangodb::QueryAnalyzerRevisions const& revision,
     bool onlyCached /*= false*/) const {
   auto const normalizedName = normalize(name, activeVocbase, systemVocbase, true);
 
@@ -1723,8 +1747,13 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     // accessing local analyzer from within another database
     return nullptr;
   }
-
-  return get(normalizedName, split, revision, onlyCached);
+  // getVocbaseRevision expects vocbase name and this is ensured by
+  // normalize with expandVocbasePrefx = true
+  TRI_ASSERT(split.first.null() || !split.first.empty()); 
+  return get(normalizedName, split,
+             split.first.null() ? AnalyzersRevision::MIN // built-in analyzers always has MIN revision
+               : revision.getVocbaseRevision(split.first),
+             onlyCached);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

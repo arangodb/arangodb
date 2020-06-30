@@ -25,8 +25,8 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Basics/Common.h"
-#include "Basics/overload.h"
 #include "Basics/ResultT.h"
+#include "Basics/overload.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -51,6 +51,31 @@ struct AqlCall {
   //      but it's probably not worth implementing that in terms of data structures.
   class Infinity {};
   using Limit = std::variant<std::size_t, Infinity>;
+
+  /**
+   * @brief We need to implement this wrappter class only for a MSVC compiler insufficency:
+   * For some reason (see bug-report here: https://developercommunity.visualstudio.com/content/problem/1031281/improper-c4244-warning-in-variant-code.html)
+   * the MSVC compiler decides on every operator<< usage if this implementation could be used.
+   * This causes every operator<<(numberType) to test this implementation (and discard it afterwards), however if the
+   * Number type is too large, this will result in a valid compilation unit, emitting this warning (possible dataloss e.g. double -> size_t), which is neither used
+   * nor compiled, but the error is reported.
+   * As we disallow any warnings in the build this will stop compilation here.
+   *
+   * Remove this as soon as the MSVC compiler is fixed.
+   * 
+   * So this wrapper class will be wrapped arround every limit to print now.
+   */
+
+  struct LimitPrinter {
+    explicit LimitPrinter (Limit const& limit) : _limit(limit) {}
+    ~LimitPrinter() = default;
+
+    // Never allow any kind of copying
+    LimitPrinter(LimitPrinter const& other) = delete;
+    LimitPrinter(LimitPrinter&& other) = delete;
+
+    Limit _limit;
+  };
 
   AqlCall() = default;
   // Replacements for struct initialization
@@ -182,6 +207,8 @@ struct AqlCall {
     std::visit(minus, hardLimit);
   }
 
+  void resetSkipCount() noexcept;
+
   bool hasLimit() const { return hasHardLimit() || hasSoftLimit(); }
 
   bool hasHardLimit() const {
@@ -265,7 +292,7 @@ constexpr bool operator==(AqlCall const& left, AqlCall const& right) {
          left.skippedRows == right.skippedRows;
 }
 
-auto operator<<(std::ostream& out, const arangodb::aql::AqlCall::Limit& limit)
+auto operator<<(std::ostream& out, const arangodb::aql::AqlCall::LimitPrinter& limit)
     -> std::ostream&;
 
 auto operator<<(std::ostream& out, const arangodb::aql::AqlCall& call) -> std::ostream&;

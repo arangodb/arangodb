@@ -48,7 +48,7 @@ DependencyProxy<blockPassthrough>::execute(AqlCallStack& stack) {
       }
     }
   } while (state != ExecutionState::WAITING && skipped.nothingSkipped() && block == nullptr);
-  return {state, skipped, block};
+  return {state, skipped, std::move(block)};
 }
 
 template <BlockPassthrough blockPassthrough>
@@ -85,7 +85,7 @@ DependencyProxy<blockPassthrough>::executeForDependency(size_t dependency,
     // We're either waiting or Done
     TRI_ASSERT(state == ExecutionState::DONE || state == ExecutionState::WAITING);
   }
-  return {state, skipped, block};
+  return {state, skipped, std::move(block)};
 }
 
 template <BlockPassthrough blockPassthrough>
@@ -141,7 +141,7 @@ ExecutionState DependencyProxy<blockPassthrough>::prefetchBlock(size_t atMost) {
       state = ExecutionState::HASMORE;
     }
   }
-  if /* constexpr */ (blockPassthrough == BlockPassthrough::Enable) {
+  if constexpr (blockPassthrough == BlockPassthrough::Enable) {
     // Reposit block for pass-through executors.
     _blockPassThroughQueue.push_back({state, block});
   }
@@ -166,9 +166,7 @@ DependencyProxy<blockPassthrough>::fetchBlock(size_t atMost) {
 
   TRI_ASSERT(!_blockQueue.empty());
 
-  ExecutionState state;
-  SharedAqlItemBlockPtr block;
-  std::tie(state, block) = _blockQueue.front();
+  auto [state, block] = std::move(_blockQueue.front());
   _blockQueue.pop_front();
 
   return {state, std::move(block)};
@@ -218,7 +216,7 @@ DependencyProxy<blockPassthrough>::fetchBlockForDependency(size_t dependency, si
   // Now we definitely have a block.
   TRI_ASSERT(block != nullptr);
 
-  return {state, block};
+  return {state, std::move(block)};
 }
 
 template <BlockPassthrough blockPassthrough>

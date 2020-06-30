@@ -250,6 +250,9 @@ class fst_builder : util::noncopyable {
     bool final{ false };
   }; // state
 
+  static_assert(std::is_nothrow_move_constructible<state>::value,
+                "default move constructor expected");
+
   struct state_equal {
     bool operator()(const state& lhs, stateid_t rhs, const fst_t& fst) const {
       if (lhs.arcs.size() != fst.NumArcs(rhs)) {

@@ -1,8 +1,117 @@
 devel
 -----
 
+<<<<<<< HEAD
 * Privatised load plan / current in cluster info and cleanup following agency
   cache implementation.
+=======
+* Fix undistribute-remove-after-enum-coll which would allow calculations
+  to be pushed to a DBServer which are not allowed to run there.
+
+* Fixed issue ES-609: "Transaction already in use" error when running
+  transaction.
+  Added option `--transaction.streaming-lock-timeout` to control the timeout in
+  seconds in case of parallel access to a streaming transaction.
+
+* Returned `AQL_WARNING()` to emit warnings from UDFs.
+
+* Fixed internal issue BTS-107, offset over the mainquery passed through a
+  subquery which has modification access to shards could yield incorrect
+  results, if shards are large enough and skipping was large enough, both to
+  overflow the batch-size in AQL for each shard individually.
+
+  The Following Query would be effected:
+
+  FOR x IN 1..100
+  LET sub = (
+    FOR y IN Collection
+    UPDATE y WITH {updated: true} IN Collection
+    RETURN new
+  )
+  LIMIT 5, 10
+  REUTRN {x,sub}
+
+  If a shard in Collection, has enough entries to fill a batch, the second shard
+  could run into the issue that it actually does not skip the first 5 main
+  queries, but reports their results in addition. This has the negative side
+  effect that merging the Subqueries back together was off.
+
+* Allow removal of existing schemas by saving a schema of either `null` or `{}`
+  (empty object). Using an empty string as schema will produce  an error in the
+  web interface and will not remove the schema.
+
+  The change also adjusts the behavior for the SCHEMA_VALIDATE AQL function in
+  case the first parameter was no document/object. In this case, the function
+  will now return nulland register a warning in the query, so the user can
+  handle it.
+
+* Internal issue BTS-71: Added a precondition to prevent creating a collection
+  with an invalid `distributeShardsLike` property.
+
+* Internal issue BTS-71: In a cluster, for collections in creation, suspend
+  supervision jobs concerning replication factor until creation is completed.
+  Previously, it could cause collection creation to fail (e.g. when a server
+  failed during creation), even when it didn't have to.
+
+* Internal issue BTS-71: Fixed error handling regarding communication with the
+  agency. This could in a specific case cause collection creation in a cluster
+  report success when it failed.
+
+* Fixed internal issue #725: Added analyzers revision for _system database in
+  queries.
+
+* Allow restoring collections from v3.3.0 with their all-numeric collection
+  GUID values, by creating a new, unambiguous collection GUID for them. 
+  v3.3.0 had a bug because it created all-numeric GUID values, which can be
+  confused with numeric collection ids in lookups. v3.3.1 already changed the
+  GUID routine to produce something non-numeric already, but collections
+  created with v3.3.0 can still have an ambiguous GUID. This fix adjusts
+  the restore routine to drop such GUID values, so it only changes something
+  if v3.3.0 collections are dumped, dropped on the server and then restored
+  with the flawed GUIDs.
+
+* Fixed bug in IResearchViewExecutor that lead to only up to 1000 rows being
+  produced.
+
+* Changing the current users profile icon in the Web UI now renders the new
+  icon directly without the need of a full UI browser reload.
+
+* The Web UI's replication view is now checking the replication state
+  automatically without the need of a manual reload.
+
+* Fixed an error scenario where a call could miss count skip.
+  It was triggered in the case of Gather in Cluster, if we skipped over a full
+  shard, and the shard did actually skip, but there are more documents to skip
+  on another shard.
+
+* Fixed hotbackup agency lock cleanup procedure.
+
+* Only advance shard version after follower is reported in sync in agency.
+
+* Fixed cluster behavior with HotBackup and non-existing backups on DB-Servers.
+
+* Fixed that, when performing a graph AQL query while a (graceful) failover for
+  the leader of the system collections is in progress, ArangoDB would report a
+  "Graph not found error".
+  The real error, namely that an agency transaction failed, was swallowed in
+  the graph lookup code due to a wrong error code being used from Fuerte.
+  We now generate a more appropriate 503 - Service Unavailable error.
+
+* added option `--log.use-json-format` to switch log output to JSON format.
+  Each log message then produces a seperate line with JSON-encoded log data,
+  which can be consumed by applications.
+
+* added option `--log.process` to toggle the logging of the process id
+  (pid) in log messages. Logging the process id is useless when running
+  arangod in Docker containers, as the pid will always be 1. So one may
+  as well turn it off in these contexts.
+
+* added option `--log.in-memory` to toggle storing log messages in memory,
+  from which they can be consumed via the `/_admin/log` and by the web UI. By
+  default, this option is turned on, so log messages are consumable via API 
+  and the web UI. Turning this option off will disable that functionality and
+  save a tiny bit of memory for the in-memory log buffers.
+>>>>>>> 343c3e9477c8a444f98ec9527077a97bd53d69fa
 
 * Allow for faster cluster shutdown. This should reduce the number of shutdown
   hangers in case the agents are stopped already and then coordinators or
@@ -20,9 +129,9 @@ devel
 
 * Fixed bad behavior that led to unnecessary additional revision tree rebuilding
   on server restart.
-  
+
 * Allow AQL queries on DB-Servers again. This is not an official supported
-  feature, but is sometimes used for debugging. Previous changes made it 
+  feature, but is sometimes used for debugging. Previous changes made it
   impossible to run a query on a local shard.
 
 * Fix restoring old arangodumps from ArangoDB 3.3 and before, which had index
@@ -39,7 +148,7 @@ devel
 
 * Use smarter default value preset in web UI for replication factor in case
   there are constraints established for the replication factor by the
-  startup options `--cluster.min-replication-factor` and 
+  startup options `--cluster.min-replication-factor` and
   `--cluster.max-replication-factor`.
 
 * Modified the exception handling in the RestHandler. Asynchronous communication
@@ -60,7 +169,7 @@ devel
 
 * Display "geoJson" value for geo indexes in index overview in web UI.
 
-* Allow specifiying arbitrary vertex attributes when creating a vertex via the 
+* Allow specifiying arbitrary vertex attributes when creating a vertex via the
   graph viewer in the web UI. This is necessary for collections that have a
   schema and that require new vertices to have certain attributes/values.
 
@@ -72,7 +181,7 @@ devel
 * Fixed "Create Debug Package" in web UI in cluster mode.
 
 * Pick up selected "write concern" value entered in web UI when creating a
-  collection in the cluster. Previously, the "write concern" value was not 
+  collection in the cluster. Previously, the "write concern" value was not
   picked up correctly and collections were created with the default write
   concern.
 
