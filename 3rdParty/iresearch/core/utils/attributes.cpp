@@ -34,6 +34,9 @@ class attribute_register
                                           irs::string_ref, attribute_register> {
 };
 
+
+static const irs::flags EMPTY_INSTANCE;
+
 NS_END
 
 NS_ROOT
@@ -65,9 +68,8 @@ NS_ROOT
 // --SECTION--                                                             flags 
 // -----------------------------------------------------------------------------
 
-const flags& flags::empty_instance() {
-  static const flags instance;
-  return instance;
+const flags& flags::empty_instance() noexcept {
+  return EMPTY_INSTANCE;
 }
 
 flags::flags(std::initializer_list<type_info> flags) {
