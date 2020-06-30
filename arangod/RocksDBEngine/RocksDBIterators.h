@@ -57,12 +57,15 @@ class RocksDBAllIndexIterator final : public IndexIterator {
 
  private:
   bool outOfRange() const;
+  void seekIfRequired();
 
  private:
   RocksDBKeyBounds const _bounds;
   rocksdb::Slice _upperBound;  // used for iterate_upper_bound
   std::unique_ptr<rocksdb::Iterator> _iterator;
   rocksdb::Comparator const* _cmp;
+  // we use _mustSeek to save repeated seeks for the same start key
+  bool _mustSeek;
 };
 
 class RocksDBAnyIndexIterator final : public IndexIterator {

@@ -30,7 +30,7 @@
 NS_BEGIN(tests)
 
 struct test_slow_sobject {
-  DECLARE_SHARED_PTR(test_slow_sobject);
+  using ptr = std::shared_ptr<test_slow_sobject>;
   int id;
   test_slow_sobject (int i): id(i) {
     ++TOTAL_COUNT;
@@ -45,14 +45,14 @@ struct test_slow_sobject {
 std::atomic<size_t> test_slow_sobject::TOTAL_COUNT{};
 
 struct test_sobject {
-  DECLARE_SHARED_PTR(test_sobject);
+  using ptr = std::shared_ptr<test_sobject>;
   int id;
   test_sobject(int i): id(i) { }
   static ptr make(int i) { return ptr(new test_sobject(i)); }
 };
 
 struct test_sobject_nullptr {
-  DECLARE_SHARED_PTR(test_sobject_nullptr);
+  using ptr = std::shared_ptr<test_sobject_nullptr>;
   static size_t make_count;
   static ptr make() { ++make_count; return nullptr; }
 };
@@ -60,14 +60,14 @@ struct test_sobject_nullptr {
 /*static*/ size_t test_sobject_nullptr::make_count = 0;
 
 struct test_uobject {
-  DECLARE_UNIQUE_PTR(test_uobject);
+  using ptr = std::unique_ptr<test_uobject>;
   int id;
   test_uobject(int i): id(i) {}
   static ptr make(int i) { return ptr(new test_uobject(i)); }
 };
 
 struct test_uobject_nullptr {
-  DECLARE_UNIQUE_PTR(test_uobject_nullptr);
+  using ptr = std::unique_ptr<test_uobject_nullptr>;
   static size_t make_count;
   static ptr make() { ++make_count; return nullptr; }
 };

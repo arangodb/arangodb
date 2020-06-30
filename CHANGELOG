@@ -1,15 +1,26 @@
 devel
 -----
 
-* Fix undistribute-remove-after-enum-coll which would allow calculations
-  to be pushed to a DBServer which are not allowed to run there.
-
 * Adjust arangodump integration test to desired behavior, and make sure
   arangodump behaves as specified when invoking it with non-existing
   collections.
 
-* Added option `--transaction.streaming-lock-timeout` to control the timeout
-  in seconds in case of parallel access to a streaming transaction.
+* Fixed BTS-110: Fulltext index with minLength <= 0 not allowed.
+
+* Disallow using V8 dependent functions in SEARCH statement.
+
+* Remove superflous `%>` output in the UI modal dialog in case the JSON editor
+  was embedded.
+
+* Fixed a misleading error message in AQL.
+
+* Fix undistribute-remove-after-enum-coll which would allow calculations
+  to be pushed to a DBServer which are not allowed to run there.
+
+* Fixed issue ES-609: "Transaction already in use" error when running
+  transaction.
+  Added option `--transaction.streaming-lock-timeout` to control the timeout in
+  seconds in case of parallel access to a streaming transaction.
 
 * Returned `AQL_WARNING()` to emit warnings from UDFs.
 

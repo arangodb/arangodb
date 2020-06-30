@@ -143,18 +143,6 @@ void SingleRowFetcher<blockPassthrough>::setDistributeId(std::string const& id) 
   _dependencyProxy->setDistributeId(id);
 }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-template <BlockPassthrough blockPassthrough>
-bool SingleRowFetcher<blockPassthrough>::hasRowsLeftInBlock() const {
-  return indexIsValid();
-}
-
-template <BlockPassthrough blockPassthrough>
-bool SingleRowFetcher<blockPassthrough>::isAtShadowRow() const {
-  return indexIsValid() && _currentBlock->isShadowRow(_rowIndex);
-}
-#endif
-
 //@deprecated
 template <BlockPassthrough blockPassthrough>
 auto SingleRowFetcher<blockPassthrough>::useStack(AqlCallStack const& stack) -> void {
