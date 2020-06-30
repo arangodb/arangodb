@@ -206,11 +206,6 @@ auto ConstFetcher::indexIsValid() const noexcept -> bool {
   return _currentBlock != nullptr && _rowIndex + 1 <= _currentBlock->size();
 }
 
-auto ConstFetcher::isLastRowInBlock() const noexcept -> bool {
-  TRI_ASSERT(indexIsValid());
-  return _rowIndex + 1 == _currentBlock->size();
-}
-
 auto ConstFetcher::numRowsLeft() const noexcept -> size_t {
   if (!indexIsValid()) {
     return 0;
