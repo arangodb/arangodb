@@ -38,16 +38,16 @@
 NS_BEGIN(tests)
 
 struct incompatible_attribute : irs::attribute {
-  DECLARE_ATTRIBUTE_TYPE();
+  static constexpr irs::string_ref type_name() noexcept {
+    return "tests::incompatible_attribute";
+  }
 
   incompatible_attribute() noexcept;
 };
 
 REGISTER_ATTRIBUTE(incompatible_attribute);
-DEFINE_ATTRIBUTE_TYPE(incompatible_attribute)
 
-incompatible_attribute::incompatible_attribute() noexcept {
-}
+incompatible_attribute::incompatible_attribute() noexcept { }
 
 NS_BEGIN(templates)
 
@@ -58,15 +58,21 @@ NS_BEGIN(templates)
 token_stream_payload::token_stream_payload(irs::token_stream* impl)
   : impl_(impl) {
     assert(impl_);
-    auto& attrs = const_cast<irs::attribute_view&>(impl_->attributes());
-    term_ = const_cast<const irs::attribute_view&>(attrs).get<irs::term_attribute>().get();
+    term_ = irs::get<irs::term_attribute>(*impl_);
     assert(term_);
-    attrs.emplace(pay_);
+}
+
+irs::attribute* token_stream_payload::get_mutable(irs::type_info::type_id type) {
+  if (irs::type<irs::payload>::id() == type) {
+    return &pay_;
+  }
+
+  return impl_->get_mutable(type);
 }
 
 bool token_stream_payload::next() {
   if (impl_->next()) {
-    pay_.value = term_->value();
+    pay_.value = term_->value;
     return true;
   }
   pay_.value = irs::bytes_ref::NIL;
@@ -80,7 +86,7 @@ bool token_stream_payload::next() {
 string_field::string_field(
     const irs::string_ref& name,
     const irs::flags& extra_features /*= irs::flags::empty_instance()*/
-): features_({ irs::frequency::type(), irs::position::type() }) {
+): features_({ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }) {
   features_ |= extra_features;
   this->name(name);
 }
@@ -89,7 +95,7 @@ string_field::string_field(
     const irs::string_ref& name,
     const irs::string_ref& value,
     const irs::flags& extra_features /*= irs::flags::empty_instance()*/
-  ): features_({ irs::frequency::type(), irs::position::type() }),
+  ): features_({ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }),
      value_(value) {
   features_ |= extra_features;
   this->name(name);
@@ -127,7 +133,7 @@ irs::token_stream& string_field::get_tokens() const {
 string_ref_field::string_ref_field(
     const irs::string_ref& name,
     const irs::flags& extra_features /*= irs::flags::empty_instance()*/
-): features_({ irs::frequency::type(), irs::position::type() }) {
+): features_({ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }) {
   features_ |= extra_features;
   this->name(name);
 }
@@ -136,7 +142,7 @@ string_ref_field::string_ref_field(
     const irs::string_ref& name,
     const irs::string_ref& value,
     const irs::flags& extra_features /*= irs::flags::empty_instance()*/
-  ): features_({ irs::frequency::type(), irs::position::type() }),
+  ): features_({ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }),
      value_(value) {
   features_ |= extra_features;
   this->name(name);
@@ -246,17 +252,17 @@ void generic_json_field_factory(
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
-    field.value(irs::null_token_stream::value_null());
+    field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && data.b) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
-    field.value(irs::boolean_token_stream::value_true());
+    field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && !data.b) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
-    field.value(irs::boolean_token_stream::value_true());
+    field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
   } else if (data.is_number()) {
     // 'value' can be interpreted as a double
     doc.insert(std::make_shared<tests::double_field>());
@@ -295,17 +301,17 @@ void payloaded_json_field_factory(
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
-    field.value(irs::null_token_stream::value_null());
+    field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && data.b) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
-    field.value(irs::boolean_token_stream::value_true());
+    field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && !data.b) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
-    field.value(irs::boolean_token_stream::value_false());
+    field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false()));
   } else if (data.is_number()) {
     // 'value' can be interpreted as a double
     doc.insert(std::make_shared<tests::double_field>());
@@ -319,7 +325,7 @@ void normalized_string_json_field_factory(
   tests::document& doc,
   const std::string& name,
   const json_doc_generator::json_value& data) {
-  static irs::flags norm{ irs::norm::type() };
+  static irs::flags norm{ irs::type<irs::norm>::get() };
   if (json_doc_generator::ValueType::STRING == data.vt) {
     doc.insert(std::make_shared<templates::string_field>(
       irs::string_ref(name),
@@ -365,12 +371,12 @@ class index_test_case : public tests::index_test_base {
  public:
   void assert_index(size_t skip = 0, irs::automaton_table_matcher* matcher = nullptr) const {
     index_test_base::assert_index(irs::flags(), skip, matcher);
-    index_test_base::assert_index(irs::flags{ irs::document::type() }, skip, matcher);
-    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type() }, skip, matcher);
-    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type() }, skip, matcher);
-    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::offset::type() }, skip, matcher);
-    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type() }, skip, matcher);
-    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() }, skip, matcher);
+    index_test_base::assert_index(irs::flags{ irs::type<irs::document>::get() }, skip, matcher);
+    index_test_base::assert_index(irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get() }, skip, matcher);
+    index_test_base::assert_index(irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }, skip, matcher);
+    index_test_base::assert_index(irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::offset>::get() }, skip, matcher);
+    index_test_base::assert_index(irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get() }, skip, matcher);
+    index_test_base::assert_index(irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get(), irs::type<irs::offset>::get() }, skip, matcher);
   }
 
   void clear_writer() {
@@ -643,7 +649,7 @@ class index_test_case : public tests::index_test_base {
             auto& exp_term_itr = expected_term_itrs[i];
 
             pool.run([&mutex, &act_term_itr, &exp_term_itr]()->void {
-              const irs::flags features({ irs::frequency::type(), irs::offset::type(), irs::position::type(), irs::payload::type() });
+              const irs::flags features({ irs::type<irs::frequency>::get(), irs::type<irs::offset>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get() });
               irs::doc_iterator::ptr act_docs_itr;
               irs::doc_iterator::ptr exp_docs_itr;
 
@@ -656,17 +662,19 @@ class index_test_case : public tests::index_test_base {
                 exp_docs_itr = exp_term_itr->postings(features); // this step creates 3 internal iterators
               }
 
-              auto& actual_attrs = act_docs_itr->attributes();
-              auto& expected_attrs = exp_docs_itr->attributes();
-              ASSERT_EQ(expected_attrs.features(), actual_attrs.features());
+//FIXME
+//              auto& actual_attrs = act_docs_itr->attributes();
+//              auto& expected_attrs = exp_docs_itr->attributes();
+//              ASSERT_EQ(expected_attrs.features(), actual_attrs.features());
 
-              auto& actual_freq = actual_attrs.get<irs::frequency>();
-              auto& expected_freq = expected_attrs.get<irs::frequency>();
+              auto* actual_freq = irs::get<irs::frequency>(*act_docs_itr);
+              auto* expected_freq = irs::get<irs::frequency>(*exp_docs_itr);
               ASSERT_FALSE(!actual_freq);
               ASSERT_FALSE(!expected_freq);
 
-              auto& actual_pos = actual_attrs.get<irs::position>();
-              auto& expected_pos = expected_attrs.get<irs::position>();
+              //FIXME const_cast
+              auto* actual_pos = const_cast<irs::position*>(irs::get<irs::position>(*act_docs_itr));
+              auto* expected_pos = const_cast<irs::position*>(irs::get<irs::position>(*exp_docs_itr));
               ASSERT_FALSE(!actual_pos);
               ASSERT_FALSE(!expected_pos);
 
@@ -675,13 +683,13 @@ class index_test_case : public tests::index_test_base {
                 ASSERT_EQ(exp_docs_itr->value(), act_docs_itr->value());
                 ASSERT_EQ(expected_freq->value, actual_freq->value);
 
-                auto& actual_offs = actual_pos->attributes().get<irs::offset>();
-                auto& expected_offs = expected_pos->attributes().get<irs::offset>();
+                auto* actual_offs = irs::get<irs::offset>(*actual_pos);
+                auto* expected_offs = irs::get<irs::offset>(*expected_pos);
                 ASSERT_FALSE(!actual_offs);
                 ASSERT_FALSE(!expected_offs);
 
-                auto& actual_pay = actual_pos->attributes().get<irs::payload>();
-                auto& expected_pay = expected_pos->attributes().get<irs::payload>();
+                auto* actual_pay = irs::get<irs::payload>(*actual_pos);
+                auto* expected_pay = irs::get<irs::payload>(*expected_pos);
                 ASSERT_FALSE(!actual_pay);
                 ASSERT_FALSE(!expected_pay);
 
@@ -1351,7 +1359,7 @@ class index_test_case : public tests::index_test_base {
           return false;
         }
 
-        auto& payload = it->attributes().get<irs::payload>();
+        auto* payload = irs::get<irs::payload>(*it);
 
         if (!payload) {
           return false;
@@ -1874,8 +1882,9 @@ class index_test_case : public tests::index_test_base {
     class field {
       public:
       field(std::string&& name, const irs::string_ref& value)
-        : name_(std::move(name)),
-        value_(value) {}
+        : stream_(std::make_unique<irs::string_token_stream>()),
+          name_(std::move(name)),
+          value_(value) {}
       field(field&& other) noexcept
         : stream_(std::move(other.stream_)),
           name_(std::move(other.name_)),
@@ -1884,15 +1893,15 @@ class index_test_case : public tests::index_test_base {
       irs::string_ref name() const { return name_; }
       float_t boost() const { return 1.f; }
       irs::token_stream& get_tokens() const {
-        stream_.reset(value_);
-        return stream_;
+        stream_->reset(value_);
+        return *stream_;
       }
       const irs::flags& features() const {
         return irs::flags::empty_instance();
       }
 
       private:
-      mutable irs::string_token_stream stream_;
+      mutable std::unique_ptr<irs::string_token_stream> stream_;
       std::string name_;
       irs::string_ref value_;
     }; // field
@@ -1961,7 +1970,10 @@ class index_test_case : public tests::index_test_base {
     class indexed_and_stored_field {
      public:
       indexed_and_stored_field(std::string&& name, const irs::string_ref& value, bool stored_valid = true, bool indexed_valid = true)
-        : name_(std::move(name)), value_(value), stored_valid_(stored_valid) {
+        : stream_(std::make_unique<irs::string_token_stream>()),
+          name_(std::move(name)),
+          value_(value),
+          stored_valid_(stored_valid) {
         if (!indexed_valid) {
           features_.add<tests::incompatible_attribute>();
         }
@@ -1976,8 +1988,8 @@ class index_test_case : public tests::index_test_base {
       irs::string_ref name() const { return name_; }
       float_t boost() const { return 1.f; }
       irs::token_stream& get_tokens() const {
-        stream_.reset(value_);
-        return stream_;
+        stream_->reset(value_);
+        return *stream_;
       }
       const irs::flags& features() const {
         return features_;
@@ -1989,7 +2001,7 @@ class index_test_case : public tests::index_test_base {
 
      private:
       irs::flags features_;
-      mutable irs::string_token_stream stream_;
+      mutable std::unique_ptr<irs::string_token_stream> stream_;
       std::string name_;
       irs::string_ref value_;
       bool stored_valid_;
@@ -1998,7 +2010,8 @@ class index_test_case : public tests::index_test_base {
     class indexed_field {
      public:
       indexed_field(std::string&& name, const irs::string_ref& value, bool valid = true)
-        : name_(std::move(name)), value_(value) {
+        : stream_(std::make_unique<irs::string_token_stream>()),
+          name_(std::move(name)), value_(value) {
         if (!valid) {
           features_.add<tests::incompatible_attribute>();
         }
@@ -2012,8 +2025,8 @@ class index_test_case : public tests::index_test_base {
       irs::string_ref name() const { return name_; }
       float_t boost() const { return 1.f; }
       irs::token_stream& get_tokens() const {
-        stream_.reset(value_);
-        return stream_;
+        stream_->reset(value_);
+        return *stream_;
       }
       const irs::flags& features() const {
         return features_;
@@ -2021,7 +2034,7 @@ class index_test_case : public tests::index_test_base {
 
      private:
       irs::flags features_;
-      mutable irs::string_token_stream stream_;
+      mutable std::unique_ptr<irs::string_token_stream> stream_;
       std::string name_;
       irs::string_ref value_;
     }; // indexed_field
@@ -6263,7 +6276,7 @@ TEST_P(index_test_case, segment_column_user_system) {
     doc0.insert(std::make_shared<tests::templates::string_field>(
       irs::string_ref("test-field"),
       "test-value",
-      irs::flags({ irs::norm::type() }) // trigger addition of a system column
+      irs::flags({ irs::type<irs::norm>::get() }) // trigger addition of a system column
     ), true, false);
   }
 
@@ -7070,7 +7083,7 @@ TEST_P(index_test_case, consolidate_single_segment) {
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
 
-  auto all_features = irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() };
+  auto all_features = irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get(), irs::type<irs::offset>::get() };
   irs::bytes_ref actual_value;
 
   std::vector<size_t> expected_consolidating_segments;
@@ -7189,7 +7202,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
   tests::document const* doc4 = gen.next();
 
   irs::bytes_ref actual_value;
-  auto all_features = irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() };
+  auto all_features = irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get(), irs::type<irs::offset>::get() };
 
   size_t count = 0;
   auto get_number_of_files_in_segments = [&count](const std::string& name) noexcept {
@@ -7815,11 +7828,11 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
 
   irs::bytes_ref actual_value;
   auto const all_features = irs::flags{
-    irs::document::type(),
-    irs::frequency::type(),
-    irs::position::type(),
-    irs::payload::type(),
-    irs::offset::type()
+    irs::type<irs::document>::get(),
+    irs::type<irs::frequency>::get(),
+    irs::type<irs::position>::get(),
+    irs::type<irs::payload>::get(),
+    irs::type<irs::offset>::get()
   };
 
   size_t count = 0;
@@ -7995,7 +8008,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
   tests::document const* doc6 = gen.next();
 
   irs::bytes_ref actual_value;
-  auto all_features = irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() };
+  auto all_features = irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get(), irs::type<irs::offset>::get() };
 
   size_t count = 0;
   auto get_number_of_files_in_segments = [&count](const std::string& name) noexcept {
@@ -8364,7 +8377,7 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
     };
 
     ASSERT_TRUE(writer->consolidate(merge_adjacent));
-  };
+  }
 
   // check all segments registered
   {
@@ -8398,11 +8411,11 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
   // validate structure
   irs::bytes_ref actual_value;
   const auto all_features = irs::flags{
-    irs::document::type(),
-    irs::frequency::type(),
-    irs::position::type(),
-    irs::payload::type(),
-    irs::offset::type()
+    irs::type<irs::document>::get(),
+    irs::type<irs::frequency>::get(),
+    irs::type<irs::position>::get(),
+    irs::type<irs::payload>::get(),
+    irs::type<irs::offset>::get()
   };
   gen.reset();
   tests::index_t expected;
@@ -8476,7 +8489,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   tests::document const* doc6 = gen.next();
 
   irs::bytes_ref actual_value;
-  auto all_features = irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() };
+  auto all_features = irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get(), irs::type<irs::offset>::get() };
 
   size_t count = 0;
   auto get_number_of_files_in_segments = [&count](const std::string& name) noexcept {
@@ -9181,8 +9194,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       sub_policy(candidates, meta, consolidating_segments);
       writer->commit();
     };
-    
-    ASSERT_TRUE(writer->consolidate(do_commit_and_consolidate_count)); 
+
+    ASSERT_TRUE(writer->consolidate(do_commit_and_consolidate_count));
 
     // check consolidating segments
     expected_consolidating_segments = { 0, 1 };
@@ -9190,11 +9203,11 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // can't consolidate segments that are already marked for consolidation
     ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
-    
+
     writer->documents().remove(*query_doc4.filter);
- 
+
     writer->commit(); // commit pending merge + delete
-    ASSERT_EQ(count+8, irs::directory_cleaner::clean(dir())); 
+    ASSERT_EQ(count+8, irs::directory_cleaner::clean(dir()));
 
     // check consolidating segments
     expected_consolidating_segments = { };
@@ -9258,7 +9271,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       }
     }
 
-    // check for dangling old segment versions in writers cache 
+    // check for dangling old segment versions in writers cache
     // first create new segment
     // segment 5
     ASSERT_TRUE(insert(*writer,
@@ -9282,7 +9295,233 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     writer->commit();
 
     // check all old segments are deleted (no old version of segments is left in cache and blocking )
-    ASSERT_EQ(23, irs::directory_cleaner::clean(dir())); 
+    ASSERT_EQ(23, irs::directory_cleaner::clean(dir()));
+  }
+
+  // repeatable consolidation of already consolidated segment
+  {
+    SetUp();
+    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+    auto writer = open_writer();
+    ASSERT_NE(nullptr, writer);
+
+    // segment 1
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()));
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()));
+    writer->commit();
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    // count number of files in segments
+    count = 0;
+    ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
+
+    // segment 2
+    ASSERT_TRUE(insert(*writer,
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()));
+    ASSERT_TRUE(insert(*writer,
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()));
+    writer->commit();
+    ASSERT_EQ(1, irs::directory_cleaner::clean(dir())); // segments_1
+
+    // check consolidating segments
+    expected_consolidating_segments = { };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    writer->documents().remove(*query_doc1.filter);
+    ASSERT_TRUE(writer->begin()); // begin transaction
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    // this consolidation will be postponed
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
+    // check consolidating segments are pending
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
+    // can't consolidate segments that are already marked for consolidation
+    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
+
+    auto do_commit_and_consolidate_count = [&writer](
+      std::set<const irs::segment_meta*>& candidates,
+      const irs::index_meta& meta,
+      const irs::index_writer::consolidating_segments_t& consolidating_segments
+      ) {
+        writer->commit();
+        writer->begin(); // another commit to process pending consolidating_segments
+        writer->commit();
+        auto sub_policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
+        sub_policy(candidates, meta, consolidating_segments);
+    };
+
+    // this should fail as segments 1 and 0 are actually consolidated on previous  commit
+    // inside our test policy
+    ASSERT_FALSE(writer->consolidate(do_commit_and_consolidate_count));
+    ASSERT_NE(0, irs::directory_cleaner::clean(dir()));
+    // check all data is deleted
+    const auto one_segment_count = count;
+    count = 0;
+    ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
+    // files count should be the same as with one segment (only +1 for doc_mask)
+    ASSERT_EQ(one_segment_count, count - 1); // -1 for doc-mask from removal
+  }
+
+  // repeatable consolidation of already consolidated segment during two phase commit
+  {
+    SetUp();
+    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc4 = iresearch::iql::query_builder().build("name==D", std::locale::classic());
+    auto writer = open_writer();
+    ASSERT_NE(nullptr, writer);
+
+    // segment 1
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()));
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()));
+    writer->commit();
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    // count number of files in segments
+    count = 0;
+    ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
+
+    // segment 2
+    ASSERT_TRUE(insert(*writer,
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()));
+    ASSERT_TRUE(insert(*writer,
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()));
+    writer->commit();
+    ASSERT_EQ(1, irs::directory_cleaner::clean(dir())); // segments_1
+
+    // check consolidating segments
+    expected_consolidating_segments = { };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    writer->documents().remove(*query_doc1.filter);
+    ASSERT_TRUE(writer->begin()); // begin transaction
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    // this consolidation will be postponed
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
+    // check consolidating segments are pending
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
+    // can't consolidate segments that are already marked for consolidation
+    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
+
+    auto do_commit_and_consolidate_count = [&writer, &query_doc4](
+      std::set<const irs::segment_meta*>& candidates,
+      const irs::index_meta& meta,
+      const irs::index_writer::consolidating_segments_t& consolidating_segments
+      ) {
+        writer->commit();
+        writer->begin(); // another commit to process pending consolidating_segments
+        writer->commit();
+        // new transaction with passed 1st phase
+        writer->documents().remove(*query_doc4.filter);
+        writer->begin();
+        auto sub_policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
+        sub_policy(candidates, meta, consolidating_segments);
+    };
+
+    // this should fail as segments 1 and 0 are actually consolidated on previous  commit
+    // inside our test policy
+    ASSERT_FALSE(writer->consolidate(do_commit_and_consolidate_count));
+    writer->commit();
+    ASSERT_NE(0, irs::directory_cleaner::clean(dir()));
+    // check all data is deleted
+    const auto one_segment_count = count;
+    count = 0;
+    ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
+    // files count should be the same as with one segment (only +1 for doc_mask)
+    ASSERT_EQ(one_segment_count, count - 1); // -1 for doc-mask from removal
+  }
+
+  // check commit rollback and consolidation
+  {
+    SetUp();
+    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+    auto writer = open_writer();
+    ASSERT_NE(nullptr, writer);
+
+    // segment 1
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()));
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()));
+    writer->commit();
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    // segment 2
+    ASSERT_TRUE(insert(*writer,
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()));
+    ASSERT_TRUE(insert(*writer,
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()));
+    writer->commit();
+
+    ASSERT_EQ(1, irs::directory_cleaner::clean(dir()));
+
+
+    writer->documents().remove(*query_doc1.filter);
+    ASSERT_TRUE(writer->begin()); // begin transaction
+    // this consolidation will be postponed
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
+    // check consolidating segments are pending
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
+    writer->rollback();
+
+    // leftovers cleanup
+    ASSERT_EQ(3, irs::directory_cleaner::clean(dir()));
+
+    // still pending
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
+    writer->documents().remove(*query_doc1.filter);
+    // make next commit
+    writer->commit();
+
+    // now no consolidating should be present
+    expected_consolidating_segments = {};
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
+    // could consolidate successfully
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
+
+    // cleanup should remove old files
+    ASSERT_NE(0, irs::directory_cleaner::clean(dir()));
+
+    tests::index_t expected;
+    expected.emplace_back();
+    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
+    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    tests::assert_index(dir(), codec(), expected, all_features);
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_TRUE(reader);
+    ASSERT_EQ(1, reader.size()); // should be one consolidated segment
+    ASSERT_EQ(3, reader.live_docs_count());
   }
 
   // consolidate with deletes + inserts
@@ -11551,7 +11790,7 @@ TEST_P(index_test_case, segment_consolidate) {
   tests::document const* doc6 = gen.next();
 
   auto always_merge = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
-  auto all_features = irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() };
+  auto all_features = irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get(), irs::type<irs::offset>::get() };
 
   // remove empty new segment
   {
@@ -11782,7 +12021,7 @@ TEST_P(index_test_case, segment_consolidate) {
       const irs::index_meta& meta,
       const irs::index_writer::consolidating_segments_t&
   )->void {
-    for (auto& segment: meta) {
+    for (auto& segment : meta) {
       if (segment.meta.live_docs_count != segment.meta.docs_count) {
         candidates.insert(&segment.meta);
       }
@@ -12263,7 +12502,7 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
 
-    // validate merged segment 
+    // validate merged segment
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
@@ -12354,7 +12593,7 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
 
-    // validate merged segment 
+    // validate merged segment
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
@@ -13006,7 +13245,7 @@ TEST_P(index_test_case, segment_options) {
     auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread blocks in 1000ms
 
     // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
-    while(!stop && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000));
+    while (!stop && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000));
 
     ASSERT_EQ(std::cv_status::timeout, result);
     // ^^^ expecting timeout because pool should block indefinitely
@@ -13184,7 +13423,7 @@ TEST_P(index_test_case, segment_options) {
 
 TEST_P(index_test_case, writer_close) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"), 
+    resource("simple_sequential.json"),
     &tests::generic_json_field_factory
   );
   auto& directory = dir();
@@ -13208,7 +13447,7 @@ TEST_P(index_test_case, writer_close) {
   ASSERT_TRUE(directory.visit(list_files));
 
   // file removal should pass for all files (especially valid for Microsoft Windows)
-  for (auto& file: files) {
+  for (auto& file : files) {
     ASSERT_TRUE(directory.remove(file));
   }
 

@@ -27,7 +27,6 @@
 #include "RestHandler/RestBaseHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Rest/HttpResponse.h"
 
 namespace arangodb {
 class RestShutdownHandler : public RestBaseHandler {

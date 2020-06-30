@@ -65,7 +65,10 @@ struct IRESEARCH_API by_same_position_options {
 class IRESEARCH_API by_same_position
     : public filter_with_options<by_same_position_options> {
  public:
-  DECLARE_FILTER_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::by_same_position";
+  }
+
   DECLARE_FACTORY();
 
   //////////////////////////////////////////////////////////////////////////////
@@ -79,8 +82,7 @@ class IRESEARCH_API by_same_position
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx
-  ) const override;
+    const attribute_provider* ctx) const override;
 }; // by_same_position
 
 NS_END // ROOT

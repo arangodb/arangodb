@@ -25,6 +25,4 @@
 
 NS_ROOT
 
-DEFINE_ATTRIBUTE_TYPE(iresearch::cost)
-
 NS_END // ROOT

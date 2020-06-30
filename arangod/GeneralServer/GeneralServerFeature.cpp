@@ -47,6 +47,7 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Rest/HttpResponse.h"
 #include "RestHandler/RestAdminClusterHandler.h"
 #include "RestHandler/RestAdminDatabaseHandler.h"
 #include "RestHandler/RestAdminExecuteHandler.h"

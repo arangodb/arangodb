@@ -64,8 +64,12 @@ class SmartContext : public Context {
   /// @brief locally persisted transaction ID
   TRI_voc_tid_t generateId() const override final;
   
-  bool isStateSet() const {
+  bool isStateSet() const noexcept {
     return _state != nullptr;
+  }
+  
+  void setState(std::shared_ptr<arangodb::TransactionState> const& state) noexcept {
+    _state = state;
   }
   
  protected:

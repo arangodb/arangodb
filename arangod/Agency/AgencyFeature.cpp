@@ -261,7 +261,6 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // turn off the following features, as they are not needed in an agency:
   // - ArangoSearch: not needed by agency 
   // - IResearchAnalyzer: analyzers are not needed by agency
-  // - Statistics: turn off statistics gathering for agency
   // - Action/Script/FoxxQueues/Frontend: Foxx and JavaScript APIs
 
   std::vector<std::type_index> disabledFeatures(

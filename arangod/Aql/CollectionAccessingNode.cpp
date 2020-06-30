@@ -55,7 +55,7 @@ CollectionAccessingNode::CollectionAccessingNode(ExecutionPlan* plan,
   if (typeId == ExecutionNode::DISTRIBUTE) {
     // This is a special case, the distribute node can inject a collection
     // that is NOT yet known to the plan
-    query.collections().add(colName, AccessMode::Type::NONE);
+    query.collections().add(colName, AccessMode::Type::NONE, aql::Collection::Hint::Collection);
   }
   // After we optionally added the collection for distribute we can create
   // the CollectionAccess:

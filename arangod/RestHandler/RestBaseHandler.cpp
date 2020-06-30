@@ -51,9 +51,7 @@ RestBaseHandler::RestBaseHandler(application_features::ApplicationServer& server
 arangodb::velocypack::Slice RestBaseHandler::parseVPackBody(bool& success) {
   try {
     success = true;
-    VPackOptions optionsWithUniquenessCheck = VPackOptions::Defaults;
-    optionsWithUniquenessCheck.checkAttributeUniqueness = true;
-    return _request->payload(&optionsWithUniquenessCheck);
+    return _request->payload(true);
   } catch (VPackException const& e) {
     // simon: do not mess with the error message format, tests break
     std::string errmsg("VPackError error: ");

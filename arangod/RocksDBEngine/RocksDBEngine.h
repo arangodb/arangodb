@@ -286,6 +286,7 @@ class RocksDBEngine final : public StorageEngine {
   void pruneWalFiles();
 
   double pruneWaitTimeInitial() const { return _pruneWaitTimeInitial; }
+  bool useEdgeCache() const { return _useEdgeCache; }
 
   // management methods for synchronizing with external persistent stores
   virtual TRI_voc_tick_t currentTick() const override;
@@ -314,12 +315,11 @@ class RocksDBEngine final : public StorageEngine {
   void configureEnterpriseRocksDBOptions(rocksdb::Options& options, bool createdEngineDir);
   void validateJournalFiles() const;
   
-  Result readUserEncryptionKeys(std::map<std::string, std::string>& outlist) const;
+  Result readUserEncryptionSecrets(std::vector<enterprise::EncryptionSecret>& outlist) const;
 
   enterprise::RocksDBEngineEEData _eeData;
 
-public:
-  
+ public:
   bool isEncryptionEnabled() const;
   
   std::string const& getEncryptionKey();
@@ -328,24 +328,23 @@ public:
   
   std::string getKeyStoreFolder() const;
   
-  std::vector<std::string> userEncryptionKeys() const;
+  std::vector<enterprise::EncryptionSecret> userEncryptionSecrets() const;
   
   /// rotate user-provided keys, writes out the internal key files
   Result rotateUserEncryptionKeys();
   
-private:
-  
+ private:
   /// load encryption at rest key from keystore
   Result decryptInternalKeystore();
   /// encrypt the internal keystore with all user keys
   Result encryptInternalKeystore();
   
 #endif
-private:
+ private:
   // activate generation of SHA256 files to parallel .sst files
   bool _createShaFiles;
 
-public:
+ public:
   // returns whether sha files are created or not
   bool getCreateShaFiles() { return _createShaFiles; }
   // enabled or disable sha file creation. Requires feature not be started.
@@ -455,8 +454,11 @@ public:
   /// @brief whether or not to use _releasedTick when determining the WAL files to prune
   bool _useReleasedTick;
 
-  // activate rocksdb's debug logging
+  /// @brief activate rocksdb's debug logging
   bool _debugLogging;
+
+  /// @brief whether or not the in-memory cache for edges is used
+  bool _useEdgeCache;
 
   // code to pace ingest rate of writes to reduce chances of compactions getting
   // too far behind and blocking incoming writes

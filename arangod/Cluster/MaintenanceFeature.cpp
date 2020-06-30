@@ -37,6 +37,7 @@
 #include "Basics/system-functions.h"
 #include "Cluster/Action.h"
 #include "Cluster/ActionDescription.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/CreateDatabase.h"
@@ -67,8 +68,7 @@ MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& 
     : ApplicationFeature(server, "Maintenance"),
       _forceActivation(false),
       _maintenanceThreadsMax(2),
-      _resignLeadershipOnShutdown(false),
-      _currentCounter(0) {
+      _resignLeadershipOnShutdown(false) {
   // the number of threads will be adjusted later. it's just that we want to
   // initialize all members properly
 
@@ -302,26 +302,29 @@ void MaintenanceFeature::beginShutdown() {
 
     auto endtime = startTime + timeout;
 
-    auto checkAgencyPathExists = [&am](std::string const& path, uint64_t jobId) -> bool {
-      try {
-        AgencyCommResult result =
-            am.getValues("Target/" + path + "/" + std::to_string(jobId));
-        if (result.successful()) {
-          VPackSlice value = result.slice()[0].get(
-              std::vector<std::string>{AgencyCommManager::path(), "Target",
-                                       path, std::to_string(jobId)});
-          if (value.isObject() && value.hasKey("jobId") &&
-              value.get("jobId").isEqualString(std::to_string(jobId))) {
-            return true;
+    auto checkAgencyPathExists =
+      [cf = &server().getFeature<ClusterFeature>()](
+        std::string const& path, uint64_t jobId) -> bool {
+        try {
+          auto [acb, idx] =
+            cf->agencyCache().read(std::vector<std::string>{
+                AgencyCommHelper::path("Target/" + path + "/" + std::to_string(jobId))});
+          auto result = acb->slice();
+          if (!result.isNone()) {
+            VPackSlice value = result[0].get(
+              std::vector<std::string>{
+                AgencyCommHelper::path(), "Target", path, std::to_string(jobId)});
+            if (value.isObject() && value.hasKey("jobId") &&
+                value.get("jobId").isEqualString(std::to_string(jobId))) {
+              return true;
+            }
           }
-        }
-      } catch (...) {
-        LOG_TOPIC("deaf6", ERR, arangodb::Logger::CLUSTER)
+        } catch (...) {
+          LOG_TOPIC("deaf6", ERR, arangodb::Logger::CLUSTER)
             << "Exception when checking for job completion";
-      }
-
-      return false;
-    };
+        }
+        return false;
+      };
 
     // we can not test for application_features::ApplicationServer::isRetryOK() because it is never okay in shutdown
     while (clock::now() < endtime) {
@@ -350,16 +353,6 @@ void MaintenanceFeature::beginShutdown() {
 }  // MaintenanceFeature
 
 void MaintenanceFeature::stop() {
-  // There should be no new workers.
-  // Current workers could be stuck on the condition variable.
-  // Let's wake them up now.
-  {
-    // Only if we have flagged shutdown this operation is save, all other threads potentially
-    // trying to get this mutex get into the shutdown case now, instead of getting into wait state.
-    TRI_ASSERT(_isShuttingDown);
-    std::unique_lock<std::mutex> guard(_currentCounterLock);
-    _currentCounterCondition.notify_all();
-  }
   for (auto const& itWorker : _activeWorkers) {
     CONDITION_LOCKER(cLock, _workerCompletion);
 
@@ -552,7 +545,7 @@ std::shared_ptr<Action> MaintenanceFeature::createAction(std::shared_ptr<ActionD
   // if a new action constructed successfully
   if (!newAction->ok()) {
     LOG_TOPIC("ef5cb", ERR, Logger::MAINTENANCE)
-        << "createAction:  unknown action name given, \"" << name.c_str()
+        << "createAction:  unknown action name given, \"" << name
         << "\", or other construction failure.";
   }
 
@@ -955,44 +948,3 @@ void MaintenanceFeature::proceed() {
   _pauseUntil = std::chrono::steady_clock::duration::zero();
 }
 
-uint64_t MaintenanceFeature::getCurrentCounter() const {
-  // It is guaranteed that getCurrentCounter is not executed
-  // concurrent to increase / wait.
-  // This guarantee is created by the following:
-  // 1) There is one inifinite loop that will call
-  //    PhaseOne and PhaseTwo in exactly this ordering.
-  //    It is guaranteed that only one thread at a time is
-  //    in this loop.
-  //    Between PhaseOne and PhaseTwo the increaseCurrentCounter is called
-  //    Within PhaseOne this getCurrentCounter is called, but never after.
-  //    so getCurrentCounter and increaseCurrentCounter are strictily serialized.
-  // 2) waitForLargerCurrentCounter can be called in concurrent threads at any time.
-  //    It is read-only, so it is save to have it concurrent to getCurrentCounter
-  //    without any locking.
-  //    However we need locking for increase and waitFor in order to guarantee
-  //    it's functionallity.
-  // For now we actually do not need this guard, but as this is NOT performance
-  // critical we can simply get it, just to be save for later use.
-  std::unique_lock<std::mutex> guard(_currentCounterLock);
-  return _currentCounter;
-}
-
-void MaintenanceFeature::increaseCurrentCounter() {
-  std::unique_lock<std::mutex> guard(_currentCounterLock);
-  _currentCounter++;
-  _currentCounterCondition.notify_all();
-}
-
-void MaintenanceFeature::waitForLargerCurrentCounter(uint64_t old) {
-  std::unique_lock<std::mutex> guard(_currentCounterLock);
-  // Just to be sure we get not woken up for other reasons.
-  while (_currentCounter <= old) {
-    // We might miss a shutdown check here.
-    // This is ok, as we will not be able to do much anyways.
-    if (_isShuttingDown) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-    }
-    _currentCounterCondition.wait(guard);
-  }
-  TRI_ASSERT(_currentCounter > old);
-}

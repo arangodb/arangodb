@@ -25,12 +25,13 @@
 #define ARANGOD_HTTP_SERVER_REST_HANDLER_H 1
 
 #include "Basics/Common.h"
-
+#include "Basics/ResultT.h"
 #include "GeneralServer/RequestLane.h"
 #include "Rest/GeneralResponse.h"
+#include "Statistics/RequestStatistics.h"
 
-#include <Cluster/ResultT.h>
 #include <atomic>
+#include <string_view>
 #include <thread>
 
 namespace arangodb {
@@ -81,9 +82,9 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   application_features::ApplicationServer& server() { return _server; };
 
-  RequestStatistics* statistics() const { return _statistics; }
-  RequestStatistics* stealStatistics();
-  void setStatistics(RequestStatistics* stat);
+  RequestStatistics::Item const& statistics() { return _statistics; }
+  RequestStatistics::Item&& stealStatistics();
+  void setStatistics(RequestStatistics::Item&& stat);
 
   /// Execute the rest handler state machine
   void runHandler(std::function<void(rest::RestHandler*)> cb) {
@@ -146,7 +147,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   void resetResponse(rest::ResponseCode);
 
-  void generateError(rest::ResponseCode, int, std::string const&);
+  void generateError(rest::ResponseCode, int, std::string_view);
 
   // generates an error
   void generateError(rest::ResponseCode, int);
@@ -161,8 +162,11 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
       return RestStatus::DONE;
     }
     bool done = false;
-    std::move(f).thenFinal([self = shared_from_this(), &done](futures::Try<T>) -> void {
+    std::move(f).thenFinal([self = shared_from_this(), &done](futures::Try<T>&& t) -> void {
       auto thisPtr = self.get();
+      if (t.hasException()) {
+        thisPtr->handleExceptionPtr(std::move(t).exception());
+      }
       if (std::this_thread::get_id() == thisPtr->_executionMutexOwner.load()) {
         done = true;
       } else {
@@ -200,7 +204,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   std::unique_ptr<GeneralRequest> _request;
   std::unique_ptr<GeneralResponse> _response;
   application_features::ApplicationServer& _server;
-  RequestStatistics* _statistics;
+  RequestStatistics::Item _statistics;
 
  private:
   mutable Mutex _executionMutex;

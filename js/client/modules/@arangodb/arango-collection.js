@@ -357,6 +357,7 @@ ArangoCollection.prototype.properties = function (properties) {
   var attributes = {
     'doCompact': true,
     'journalSize': true,
+    'globallyUniqueId': false,
     'isSmart': false,
     'isSystem': false,
     'isVolatile': false,
@@ -374,7 +375,7 @@ ArangoCollection.prototype.properties = function (properties) {
     'shardingStrategy': false,
     'cacheEnabled': true,
     'syncByRevision': true,
-    'schema' : null
+    'schema' : true,
   };
   var a;
 
@@ -388,6 +389,7 @@ ArangoCollection.prototype.properties = function (properties) {
 
     for (a in attributes) {
       if (attributes.hasOwnProperty(a) &&
+        attributes[a] &&
         properties.hasOwnProperty(a)) {
         body[a] = properties[a];
       }

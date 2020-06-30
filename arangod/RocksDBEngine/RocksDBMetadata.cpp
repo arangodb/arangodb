@@ -20,24 +20,27 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <rocksdb/db.h>
+#include <rocksdb/utilities/transaction.h>
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "RocksDBMetadata.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-compiler.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
-
-#include <rocksdb/db.h>
-#include <rocksdb/utilities/transaction.h>
-
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 
@@ -231,6 +234,7 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
                                       LogicalCollection& coll, bool force,
                                       VPackBuilder& tmp, rocksdb::SequenceNumber& appliedSeq,
                                       std::string& output) {
+  TRI_ASSERT(!coll.isAStub());
   TRI_ASSERT(appliedSeq != UINT64_MAX);
   TRI_ASSERT(appliedSeq > 0);
 
@@ -324,9 +328,10 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
 
   // Step 4. store the revision tree
   if (rcoll->needToPersistRevisionTree(maxCommitSeq)) {
-    if (coll.syncByRevision()) {
+    if (coll.useSyncByRevision()) {
       output.clear();
-      rocksdb::SequenceNumber seq = rcoll->serializeRevisionTree(output, maxCommitSeq);
+      rocksdb::SequenceNumber seq =
+          rcoll->serializeRevisionTree(output, maxCommitSeq, force);
       appliedSeq = std::min(appliedSeq, seq);
       if (!output.empty()) {
         rocksutils::uint64ToPersistent(output, seq);
@@ -343,7 +348,8 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
       }
     } else {
       output.clear();
-      rocksdb::SequenceNumber seq = rcoll->serializeRevisionTree(output, maxCommitSeq);
+      rocksdb::SequenceNumber seq =
+          rcoll->serializeRevisionTree(output, maxCommitSeq, force);
       appliedSeq = std::min(appliedSeq, seq);
       TRI_ASSERT(output.empty());
       key.constructRevisionTreeValue(rcoll->objectId());
@@ -364,7 +370,13 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
 
 /// @brief deserialize collection metadata, only called on startup
 Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll) {
+  TRI_ASSERT(!coll.isAStub());
+
   RocksDBCollection* rcoll = static_cast<RocksDBCollection*>(coll.getPhysical());
+
+  auto& selector = coll.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  rocksdb::SequenceNumber globalSeq = engine.settingsManager()->earliestSeqNeeded();
 
   // Step 1. load the counter
   auto cf = RocksDBColumnFamily::definitions();
@@ -449,7 +461,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
   }
 
   // Step 4. load the revision tree
-  if (coll.syncByRevision()) {
+  if (coll.useSyncByRevision()) {
     key.constructRevisionTreeValue(rcoll->objectId());
     s = db->Get(ro, cf, key.string(), &value);
     if (!s.ok() && !s.IsNotFound()) {
@@ -469,7 +481,11 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
       if (tree) {
         uint64_t seq = rocksutils::uint64FromPersistent(
             value.data() + value.size() - sizeof(uint64_t));
-        rcoll->setRevisionTree(std::move(tree), seq);
+        // we may have skipped writing out the tree because it hadn't changed,
+        // but we had already applied everything through the global released
+        // seq anyway, so take the max
+        rocksdb::SequenceNumber useSeq = std::max(globalSeq, seq);
+        rcoll->setRevisionTree(std::move(tree), useSeq);
       } else {
         LOG_TOPIC("dcd99", ERR, Logger::ENGINES)
             << "unsupported revision tree format in collection "

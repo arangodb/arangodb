@@ -1,7 +1,11 @@
 3rd Party components and what to do on update
 =============================================
 
-** EDIT ../LICENSES-OTHER-COMPONENTS.md **
+---
+
+**Do not forget to update `../LICENSES-OTHER-COMPONENTS.md`!**
+
+---
 
 ## boost
 
@@ -41,6 +45,11 @@ This contains statically generated files for the IResearch folder, and replaces 
 ## jemalloc
 
 Only used on Linux/Mac, still uses autofoo.
+
+## libunwind
+
+Only used on Linux, still uses autofoo. The "aux" directory has been removed from the
+libtool source because there must not be directories named "aux" on Windows.
 
 ## linenoise-ng
 
@@ -111,8 +120,8 @@ To upgrade to a newer version:
    `#region ArangoDB-specific changes` and `#endregion`
 8. Verify the changes were applied correctly and discard the old copy of `index.html`
 
-To verify the changes were applied correctly, start ArangoDB and
-open the ArangoDB Rest API documentation in the ArangoDB web interface.
+To verify the changes were applied correctly, start the ArangoDB server and
+open the _Rest API_ documentation (_Support_ tab) in the ArangoDB web interface.
 Routes can be executed by clicking on them to expand their documentation,
 clicking the _Try it out_ button, filling out any required fields and clicking
 the _Execute_ button.
@@ -125,10 +134,10 @@ the _Execute_ button.
 
   This confirms that the change inferring the URL was applied correctly.
 
-* All sections of the API documentation should be expanded to show all
-  routes but NOT fully expanded to reveal descriptions and examples.
+* The sections should be collapsed, NOT showing the individual routes.
 
-  This confirms the change to `docExpansion` was applied correctly.
+  This confirms the `docExpansion` changes work correctly for the
+  server API documentation.
 
 * When using the `POST /_api/cursor` route with a query the authenticated
   user is authorized to execute, the response should not indicate an
@@ -141,9 +150,23 @@ the _Execute_ button.
 
   This indicates the stylistic CSS changes were applied correctly.
 
+* Scroll to the very end of the page and check the bottom right corner.
+  There should be NO badge reading _INVALID_.
+
+  This confirms that validation is disabled correctly (`validatorUrl`).
+
 Note that to account for changes introduced by new versions of swagger-ui,
 the stylistic CSS changes may need to be adjusted manually even when
 applied correctly.
+
+To verify the `docExpansion` changes work correctly in Foxx, navigate to the
+_Services_ tab, reveal system services via the menu in the gear icon, open the
+service `/_api/foxx` and navigate to the _API_ tab within that service.
+
+* All sections of the API documentation should be expanded to show all
+  routes but NOT fully expanded to reveal descriptions and examples.
+
+  This confirms the `docExpansion` changes work correctly for Foxx services.
 
 ## taocpp::json
 

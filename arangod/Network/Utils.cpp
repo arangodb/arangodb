@@ -34,6 +34,7 @@
 #include "Network/NetworkFeature.h"
 #include "VocBase/ticks.h"
 
+#include <fuerte/types.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
@@ -41,7 +42,6 @@ namespace network {
 
 int resolveDestination(NetworkFeature const& feature, DestinationId const& dest,
                        network::EndpointSpec& spec) {
-
   // Now look up the actual endpoint:
   if (!feature.server().hasFeature<ClusterFeature>()) {
     return TRI_ERROR_SHUTTING_DOWN;
@@ -59,7 +59,8 @@ int resolveDestination(ClusterInfo& ci, DestinationId const& dest,
     return TRI_ERROR_NO_ERROR;  // all good
   }
 
-  if (dest.compare(0, 11, "http+tcp://", 11) == 0) {
+  if (dest.compare(0, 11, "http+tcp://", 11) == 0 ||
+      dest.compare(0, 11, "http+ssl://", 11) == 0) {
     spec.endpoint = dest.substr(5);
     return TRI_ERROR_NO_ERROR;
   }
@@ -197,16 +198,14 @@ int toArangoErrorCodeInternal(fuerte::Error err) {
     case fuerte::Error::CouldNotConnect:
       return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
 
-    case fuerte::Error::CloseRequested:
     case fuerte::Error::ConnectionClosed:
+    case fuerte::Error::CloseRequested:
       return TRI_ERROR_CLUSTER_CONNECTION_LOST;
 
     case fuerte::Error::Timeout:  // No reply, we give up:
       return TRI_ERROR_CLUSTER_TIMEOUT;
 
     case fuerte::Error::Canceled:
-      return TRI_ERROR_REQUEST_CANCELED;
-
     case fuerte::Error::QueueCapacityExceeded:  // there is no result
     case fuerte::Error::ReadError:
     case fuerte::Error::WriteError:
@@ -281,11 +280,35 @@ int fuerteToArangoErrorCode(fuerte::Error err) {
 }
 
 std::string fuerteToArangoErrorMessage(network::Response const& res) {
+  if (res.response) {
+    // check "errorMessage" attribute first
+    velocypack::Slice s = res.response->slice();
+    if (s.isObject()) {
+      s = s.get(StaticStrings::ErrorMessage);
+      if (s.isString() && s.getStringLength() > 0) {
+        return s.copyString();
+      }
+    }
+  }
   return TRI_errno_string(fuerteToArangoErrorCode(res));
 }
 
 std::string fuerteToArangoErrorMessage(fuerte::Error err) {
   return TRI_errno_string(fuerteToArangoErrorCode(err));
+}
+
+int fuerteStatusToArangoErrorCode(fuerte::Response const& res) {
+  if (fuerte::statusIsSuccess(res.statusCode())) {
+    return TRI_ERROR_NO_ERROR;
+  } else if (res.statusCode() > 0) {
+    return static_cast<int>(res.statusCode());
+  } else {
+    return TRI_ERROR_INTERNAL;
+  }
+}
+
+std::string fuerteStatusToArangoErrorMessage(fuerte::Response const& res) {
+  return fuerte::status_code_to_string(res.statusCode());
 }
 
 }  // namespace network

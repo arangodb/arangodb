@@ -34,7 +34,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
 #include "Basics/voc-errors.h"
-#include "Logger/Logger.h"
 
 namespace {
 
@@ -180,21 +179,32 @@ inline TRI_read_return_t rawRead(int fd, char* buffer, size_t length, arangodb::
   return bytesRead;
 }
 
-void readEncryptionFile(std::string const& directory, std::string& type,
-                        arangodb::EncryptionFeature* encryptionFeature) {
+arangodb::Result readEncryptionFile(std::string const& directory, std::string& type,
+                                    arangodb::EncryptionFeature* encryptionFeature) {
   using arangodb::basics::FileUtils::slurp;
   using arangodb::basics::StringUtils::trim;
+    
+  std::string newType = ::EncryptionTypeNone;
+#ifdef USE_ENTERPRISE
+  if (nullptr != encryptionFeature) {
+    newType = encryptionFeature->encryptionType();
+  }
+#endif
+
   type = ::EncryptionTypeNone;
   auto filename = ::filePath(directory, ::EncryptionFilename);
   if (TRI_ExistsFile(filename.c_str())) {
     type = trim(slurp(filename));
   } else {
-#ifdef USE_ENTERPRISE
-    if (nullptr != encryptionFeature) {
-      type = encryptionFeature->encryptionType();
-    }
-#endif
+    type = newType;
   }
+    
+  if (type != newType) {
+    return {TRI_ERROR_BAD_PARAMETER, 
+            std::string("encryption type in existing ENCRYPTION file '") + filename + "' (" + type + 
+              ") does not match requested encryption type (" + newType + ")"}; 
+  }
+  return {};
 }
 
 #ifdef USE_ENTERPRISE
@@ -254,7 +264,11 @@ ManagedDirectory::ManagedDirectory(application_features::ApplicationServer& serv
                       "path specified is a non-empty directory");
         return;
       }
-      ::readEncryptionFile(_path, _encryptionType, _encryptionFeature);
+
+      _status.reset(::readEncryptionFile(_path, _encryptionType, _encryptionFeature));
+      if (::EncryptionTypeNone != _encryptionType) {
+        _writeGzip = false;
+      }  
       return;
     }
     // fall through to write encryption file
@@ -279,16 +293,16 @@ ManagedDirectory::ManagedDirectory(application_features::ApplicationServer& serv
     }
   }
 
-  // currently gzip and encryption are mutually exclusive, encryption wins
-  if (::EncryptionTypeNone != _encryptionType) {
-    _writeGzip = false;
-  } // if
-
 #ifdef USE_ENTERPRISE
   ::writeEncryptionFile(_path, _encryptionType, _encryptionFeature);
 #else
   ::writeEncryptionFile(_path, _encryptionType);
 #endif
+
+  // currently gzip and encryption are mutually exclusive, encryption wins
+  if (::EncryptionTypeNone != _encryptionType) {
+    _writeGzip = false;
+  }  
 }
 
 ManagedDirectory::~ManagedDirectory() = default;
@@ -439,19 +453,15 @@ ManagedDirectory::File::File(ManagedDirectory const& directory,
       _gzFile(nullptr),
 #ifdef USE_ENTERPRISE
       _context{::getContext(_directory, _fd, _flags)},
-      _status {
-  ::initialStatus(_fd, _path, _flags, _context.get())
-}
+      _status {::initialStatus(_fd, _path, _flags, _context.get())}
 #else
-      _status {
-  ::initialStatus(_fd, _path, _flags)
-}
+      _status {::initialStatus(_fd, _path, _flags)}
 #endif
 {
   TRI_ASSERT(::flagNotSet(_flags, O_RDWR));  // disallow read/write (encryption)
 
   if (isGzip) {
-    const char * gzFlags(nullptr);
+    char const* gzFlags = nullptr;
 
     // gzip is going to perform a redundant close,
     //  simpler code to give it redundant handle
@@ -477,19 +487,15 @@ ManagedDirectory::File::File(ManagedDirectory const& directory,
       _gzFile(nullptr),
 #ifdef USE_ENTERPRISE
       _context{::getContext(_directory, _fd, _flags)},
-      _status {
-  ::initialStatus(_fd, _path, _flags, _context.get())
-      }
+      _status {::initialStatus(_fd, _path, _flags, _context.get())}
 #else
-      _status {
-  ::initialStatus(_fd, _path, _flags)
-      }
+      _status {::initialStatus(_fd, _path, _flags)}
 #endif
 {
   TRI_ASSERT(::flagNotSet(_flags, O_RDWR));  // disallow read/write (encryption)
 
   if (isGzip) {
-    const char * gzFlags(nullptr);
+    char const* gzFlags = nullptr;
 
     // gzip is going to perform a redundant close,
     //  simpler code to give it redundant handle
@@ -506,7 +512,7 @@ ManagedDirectory::File::File(ManagedDirectory const& directory,
 
 ManagedDirectory::File::~File() {
   try {
-    if (_gzfd >=0) {
+    if (_gzfd >= 0) {
       gzclose(_gzFile);
       _gzfd = -1;
       _gzFile = nullptr;
@@ -606,7 +612,7 @@ void ManagedDirectory::File::spit(std::string const& content) {
 }
 
 Result const& ManagedDirectory::File::close() {
-  if (_gzfd >=0) {
+  if (_gzfd >= 0) {
     gzclose(_gzFile);
     _gzfd = -1;
     _gzFile = nullptr;

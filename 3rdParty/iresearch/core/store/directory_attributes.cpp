@@ -36,8 +36,6 @@ NS_ROOT
 // --SECTION--                                                  memory_allocator
 // -----------------------------------------------------------------------------
 
-DEFINE_ATTRIBUTE_TYPE(memory_allocator)
-
 /*static*/ memory_allocator::buffer::ptr memory_allocator::buffer::make(
     size_t size
 ) {
@@ -60,7 +58,6 @@ memory_allocator::memory_allocator(size_t pool_size)
 // --SECTION--                                                      fd_pool_size
 // -----------------------------------------------------------------------------
 
-DEFINE_ATTRIBUTE_TYPE(fd_pool_size)
 DEFINE_FACTORY_DEFAULT(fd_pool_size)
 
 const size_t FD_POOL_DEFAULT_SIZE = 8;
@@ -77,7 +74,6 @@ void fd_pool_size::clear() noexcept {
 // --SECTION--                                                   index_file_refs
 // -----------------------------------------------------------------------------
 
-DEFINE_ATTRIBUTE_TYPE(index_file_refs)
 DEFINE_FACTORY_DEFAULT(index_file_refs)
 
 index_file_refs::ref_t index_file_refs::add(const std::string& key) {

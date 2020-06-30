@@ -96,6 +96,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
 
   minDepth = VPackHelper::getNumericValue<uint64_t>(obj, "minDepth", 1);
   maxDepth = VPackHelper::getNumericValue<uint64_t>(obj, "maxDepth", 1);
+  _parallelism = VPackHelper::getNumericValue<size_t>(obj, "parallelism", 1);
   TRI_ASSERT(minDepth <= maxDepth);
   useBreadthFirst = VPackHelper::getBooleanValue(obj, "bfs", false);
   useNeighbors = VPackHelper::getBooleanValue(obj, "neighbors", false);
@@ -205,7 +206,7 @@ arangodb::traverser::TraverserOptions::TraverserOptions(arangodb::aql::QueryCont
                                    "The options require a maxDepth");
   }
   maxDepth = read.getNumber<uint64_t>();
-
+ 
   read = info.get("bfs");
   if (!read.isBoolean()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -389,18 +390,14 @@ arangodb::traverser::TraverserOptions::TraverserOptions(TraverserOptions const& 
   TRI_ASSERT(uniqueVertices != TraverserOptions::UniquenessLevel::GLOBAL || useBreadthFirst);
 }
 
-TraverserOptions::~TraverserOptions() {
-//  for (auto& pair : _vertexExpressions) {
-//    delete pair.second;
-//  }
-//  delete _baseVertexExpression;
-}
+TraverserOptions::~TraverserOptions() = default;
 
 void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder guard(&builder);
 
   builder.add("minDepth", VPackValue(minDepth));
   builder.add("maxDepth", VPackValue(maxDepth));
+  builder.add("parallelism", VPackValue(_parallelism));
   builder.add("bfs", VPackValue(useBreadthFirst));
   builder.add("neighbors", VPackValue(useNeighbors));
 
@@ -481,6 +478,7 @@ void TraverserOptions::buildEngineInfo(VPackBuilder& result) const {
   result.add("type", VPackValue("traversal"));
   result.add("minDepth", VPackValue(minDepth));
   result.add("maxDepth", VPackValue(maxDepth));
+  result.add("parallelism", VPackValue(_parallelism));
   result.add("bfs", VPackValue(useBreadthFirst));
   result.add("neighbors", VPackValue(useNeighbors));
 
@@ -730,15 +728,15 @@ double TraverserOptions::estimateCost(size_t& nrItems) const {
   return cost;
 }
 
-void TraverserOptions::activatePrune(std::vector<aql::Variable const*> const&& vars,
-                                     std::vector<aql::RegisterId> const&& regs,
+void TraverserOptions::activatePrune(std::vector<aql::Variable const*> vars,
+                                     std::vector<aql::RegisterId> regs,
                                      size_t vertexVarIdx, size_t edgeVarIdx,
                                      size_t pathVarIdx, aql::Expression* expr) {
-  
   _pruneExpression =
-  std::make_unique<aql::PruneExpressionEvaluator>(_trx, _query, _regexCache, std::move(vars),
-                                                  std::move(regs), vertexVarIdx,
-                                                  edgeVarIdx, pathVarIdx, expr);
+      std::make_unique<aql::PruneExpressionEvaluator>(_trx, _query, _aqlFunctionsInternalCache,
+                                                      std::move(vars),
+                                                      std::move(regs), vertexVarIdx,
+                                                      edgeVarIdx, pathVarIdx, expr);
 }
 
 auto TraverserOptions::estimateDepth() const noexcept -> uint64_t {

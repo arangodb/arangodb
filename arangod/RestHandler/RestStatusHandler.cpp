@@ -33,6 +33,7 @@
 #include "Agency/AgencyComm.h"
 #include "Agency/AgencyFeature.h"
 #include "Agency/Agent.h"
+#include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringBuffer.h"
 #include "Cluster/ClusterInfo.h"
@@ -151,7 +152,7 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
       result.close();
     }
 
-    auto manager = AgencyCommManager::MANAGER.get();
+    auto manager = AsyncAgencyCommManager::INSTANCE.get();
 
     if (manager != nullptr) {
       result.add("agency", VPackValue(VPackValueType::Object));
@@ -160,7 +161,7 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
         result.add("agencyComm", VPackValue(VPackValueType::Object));
         result.add("endpoints", VPackValue(VPackValueType::Array));
 
-        for (auto ep : manager->endpoints()) {
+        for (auto const& ep : manager->endpoints()) {
           result.add(VPackValue(ep));
         }
 

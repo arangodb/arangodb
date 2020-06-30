@@ -55,8 +55,8 @@ bool ShadowAqlItemRow::isInitialized() const {
 }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-bool ShadowAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other) const {
-  return _block == other;
+bool ShadowAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other, size_t index) const {
+  return _block == other && _baseIndex == index;
 }
 #endif
 
@@ -99,6 +99,7 @@ bool ShadowAqlItemRow::isSameBlockAndIndex(ShadowAqlItemRow const& other) const 
     return this->_block == other._block && this->_baseIndex == other._baseIndex;
 }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 bool ShadowAqlItemRow::equates(ShadowAqlItemRow const& other,
                                velocypack::Options const* options) const noexcept {
   if (!isInitialized() || !other.isInitialized()) {
@@ -122,3 +123,4 @@ bool ShadowAqlItemRow::equates(ShadowAqlItemRow const& other,
 
   return true;
 }
+#endif

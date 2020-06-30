@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_CONDITION_H 1
 
 #include "Aql/AstNode.h"
+#include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
 #include "Containers/HashSet.h"
 #include "Transaction/Methods.h"
@@ -172,7 +173,7 @@ class Condition {
   AstNode* removeTraversalCondition(ExecutionPlan const*, Variable const*, AstNode*);
 
   /// @brief remove (now) invalid variables from the condition
-  bool removeInvalidVariables(::arangodb::containers::HashSet<Variable const*> const&);
+  bool removeInvalidVariables(VarSet const&);
 
   /// @brief locate indexes which can be used for conditions
   /// return value is a pair indicating whether the index can be used for

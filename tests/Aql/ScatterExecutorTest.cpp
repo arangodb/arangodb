@@ -102,9 +102,7 @@ class SharedScatterExecutionBlockTest {
   }
 
   auto generateRegisterInfos() const -> RegisterInfos {
-    auto inputRegs = make_shared_unordered_set({0});
-    auto outputRegs = make_shared_unordered_set({});
-    return RegisterInfos{inputRegs, outputRegs, 1, 1, {}, {0}};
+    return RegisterInfos{RegIdSet{0}, {}, 1, 1, {}, {RegIdSet{0}}};
   }
 
   auto generateExecutorInfos() const -> ScatterExecutorInfos {
@@ -238,7 +236,7 @@ TEST_P(RandomOrderTest, all_clients_can_fullcount_the_block) {
   for (auto const& client : getCallOrder()) {
     SCOPED_TRACE("Testing client " + client);
     AqlCall call{};
-    call.hardLimit = 1;
+    call.hardLimit = 1u;
     call.fullCount = true;
     auto stack = buildStack(call);
     auto const [state, skipped, block] = testee.executeForClient(stack, client);
@@ -272,7 +270,7 @@ TEST_P(RandomOrderTest, all_clients_can_have_different_calls) {
     } else if (client == "b") {
       AqlCall call{};
       call.offset = 2;
-      call.hardLimit = 2;
+      call.hardLimit = 2u;
       auto stack = buildStack(call);
       auto const [state, skipped, block] = testee.executeForClient(stack, client);
       EXPECT_EQ(state, ExecutionState::DONE);
@@ -282,7 +280,7 @@ TEST_P(RandomOrderTest, all_clients_can_have_different_calls) {
     } else if (client == "c") {
       {
         AqlCall call{};
-        call.softLimit = 2;
+        call.softLimit = 2u;
         auto stack = buildStack(call);
         auto const [state, skipped, block] = testee.executeForClient(stack, client);
         EXPECT_EQ(state, ExecutionState::HASMORE);
@@ -294,7 +292,7 @@ TEST_P(RandomOrderTest, all_clients_can_have_different_calls) {
         // As we have softLimit we can simply call again
         AqlCall call{};
         call.offset = 1;
-        call.softLimit = 2;
+        call.softLimit = 2u;
         auto stack = buildStack(call);
         auto const [state, skipped, block] = testee.executeForClient(stack, client);
         EXPECT_EQ(state, ExecutionState::HASMORE);
@@ -501,7 +499,7 @@ TEST_P(RandomOrderTest, shadowrows_with_different_call_types) {
     } else if (client == "b") {
       AqlCall call{};
       call.offset = 2;
-      call.hardLimit = 2;
+      call.hardLimit = 2u;
       auto stack = buildStack(call, subqueryDepth);
       auto const [state, skipped, block] = testee.executeForClient(stack, client);
       EXPECT_EQ(state, ExecutionState::HASMORE);
@@ -511,7 +509,7 @@ TEST_P(RandomOrderTest, shadowrows_with_different_call_types) {
     } else if (client == "c") {
       {
         AqlCall call{};
-        call.softLimit = 2;
+        call.softLimit = 2u;
         auto stack = buildStack(call, subqueryDepth);
         auto const [state, skipped, block] = testee.executeForClient(stack, client);
         EXPECT_EQ(state, ExecutionState::HASMORE);
@@ -523,7 +521,7 @@ TEST_P(RandomOrderTest, shadowrows_with_different_call_types) {
         // As we have softLimit we can simply call again
         AqlCall call{};
         call.offset = 1;
-        call.softLimit = 2;
+        call.softLimit = 2u;
         auto stack = buildStack(call, subqueryDepth);
         auto const [state, skipped, block] = testee.executeForClient(stack, client);
         EXPECT_EQ(state, ExecutionState::HASMORE);
@@ -540,7 +538,7 @@ TEST_P(RandomOrderTest, shadowrows_with_different_call_types) {
     if (client == "a") {
       // Just produce all
       AqlCall call{};
-      call.hardLimit = 1;
+      call.hardLimit = 1u;
       auto stack = buildStack(call, subqueryDepth);
       auto const [state, skipped, block] = testee.executeForClient(stack, client);
       EXPECT_EQ(state, ExecutionState::DONE);
@@ -549,7 +547,7 @@ TEST_P(RandomOrderTest, shadowrows_with_different_call_types) {
       ValidateBlocksAreEqual(block, expectedBlock);
     } else if (client == "b") {
       AqlCall call{};
-      call.softLimit = 1;
+      call.softLimit = 1u;
       auto stack = buildStack(call, subqueryDepth);
       auto const [state, skipped, block] = testee.executeForClient(stack, client);
       EXPECT_EQ(state, ExecutionState::DONE);

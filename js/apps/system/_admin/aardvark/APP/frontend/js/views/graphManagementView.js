@@ -65,7 +65,8 @@
       'row_new-smartGraphAttribute',
       'row_new-numberOfShards',
       'row_new-replicationFactor',
-      'row_new-writeConcern'
+      'row_new-writeConcern',
+      'row_new-isDisjoint'
     ],
 
     // rows that needs to be hidden while creating satellites
@@ -194,9 +195,9 @@
         } else {
           this.createEditGraphModal();
           // hide tab entries
-          // no smart graphs in single server mode
+          // no SmartGraphs in single server mode
           $('#tab-smartGraph').parent().remove();
-          // no satellite graphs in single server mode
+          // no SatelliteGraphs in single server mode
           $('#tab-satelliteGraph').parent().remove();
         }
       }
@@ -303,7 +304,7 @@
     forgetCachedCollectionsState: function () {
       // Note: re-enable cached collections for general graph
       // General graph collections are allowed to use existing collections
-      // Satellite Graphs and Smart Graphs are not allowed to use them, so we need to "forget" them here
+      // SatelliteGraphs and SmartGraphs are not allowed to use them, so we need to "forget" them here
       var collList = [];
       var self = this;
       var collections = this.options.collectionCollection.models;
@@ -731,10 +732,10 @@
         orphanCollections: vertexCollections
       };
 
-      // if smart graph
+      // if SmartGraph
       if ($('#tab-smartGraph').parent().hasClass('active')) {
         if ($('#new-numberOfShards').val() === '' || $('#new-smartGraphAttribute').val() === '') {
-          arangoHelper.arangoError('Smart Graph creation', 'numberOfShards and/or smartGraphAttribute not set!');
+          arangoHelper.arangoError('SmartGraph creation', 'numberOfShards and/or smartGraphAttribute not set!');
           return;
         } else {
           newCollectionObject.isSmart = true;
@@ -743,6 +744,7 @@
             smartGraphAttribute: $('#new-smartGraphAttribute').val(),
             replicationFactor: parseInt($('#new-replicationFactor').val()),
             minReplicationFactor: parseInt($('#new-writeConcern').val()),
+            isDisjoint: $('#new-isDisjoint').is(':checked')
           };
         }
       } else if ($('#tab-satelliteGraph').parent().hasClass('active')) {
@@ -833,9 +835,9 @@
       // edit graph section
       if (graph) {
         if (isSmart) {
-          title = 'Edit Smart Graph';
+          title = 'Edit SmartGraph';
         } else if (isSatellite) {
-          title = 'Edit Satellite Graph';
+          title = 'Edit SatelliteGraph';
         } else {
           title = 'Edit Graph';
         }
@@ -860,7 +862,7 @@
           tableContent.push(
             window.modalView.createReadOnlyEntry(
               'smartGraphAttribute',
-              'Smart Graph Attribute',
+              'SmartGraph Attribute',
               graph.get('smartGraphAttribute'),
               'The attribute name that is used to smartly shard the vertices of a graph. \n' +
               'Every vertex in this Graph has to have this attribute. \n'
@@ -901,6 +903,21 @@
           );
         }
 
+        if (isSmart) {
+          let isDisjoint = 'No';
+          if (graph.get('isDisjoint')) {
+            isDisjoint = 'Yes';
+          }
+          tableContent.push(
+            window.modalView.createReadOnlyEntry(
+              'isDisjoint',
+              'Disjoint SmartGraph',
+              isDisjoint,
+              'Disjoint SmartGraph: Creating edges between different SmartGraph components is not allowed.',
+            )
+          );
+        }
+
         buttons.push(
           window.modalView.createDeleteButton('Delete', this.deleteGraph.bind(this))
         );
@@ -936,7 +953,7 @@
             'new-numberOfShards',
             'Shards*',
             '',
-            'Number of shards the smart graph is using.',
+            'Number of shards the SmartGraph is using.',
             '',
             false,
             [
@@ -983,9 +1000,18 @@
         );
 
         tableContent.push(
+          window.modalView.createCheckboxEntry(
+            'new-isDisjoint',
+            'Create disjoint graph',
+            false,
+            'Creates a Disjoint SmartGraph. Creating edges between different SmartGraph components is not allowed.',
+          )
+        );
+
+        tableContent.push(
           window.modalView.createTextEntry(
             'new-smartGraphAttribute',
-            'Smart Graph Attribute*',
+            'SmartGraph Attribute*',
             '',
             'The attribute name that is used to smartly shard the vertices of a graph. \n' +
             'Every vertex in this Graph has to have this attribute. \n' +
@@ -1185,7 +1211,8 @@
     },
 
     addRemoveDefinition: function (e) {
-      var collList = []; var collections = this.options.collectionCollection.models;
+      var collList = [];
+      var collections = this.options.collectionCollection.models;
 
       collections.forEach(function (c) {
         if (!c.get('isSystem')) {
@@ -1195,7 +1222,8 @@
         }
       });
       e.stopPropagation();
-      var id = $(e.currentTarget).attr('id'); var number;
+      var id = $(e.currentTarget).attr('id');
+      var number;
       if (id.indexOf('addAfter_newEdgeDefinitions') !== -1) {
         this.counter++;
         $('#row_newVertexCollections').before(

@@ -25,7 +25,7 @@
 #define ARANGOD_GRAPH_BASE_OPTIONS_H 1
 
 #include "Aql/FixedVarExpressionContext.h"
-#include "Aql/RegexCache.h"
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -158,9 +158,15 @@ struct BaseOptions {
 
   std::map<std::string, std::string> const& collectionToShard() const { return _collectionToShard; }
   
-  aql::RegexCache& regexCache() { return _regexCache; }
+  aql::AqlFunctionsInternalCache& aqlFunctionsInternalCache() { return _aqlFunctionsInternalCache; }
 
   virtual auto estimateDepth() const noexcept -> uint64_t = 0;
+  
+  void setParallelism(size_t p) noexcept {
+    _parallelism = p;
+  }
+
+  size_t parallelism() const { return _parallelism; }
 
  protected:
   double costForLookupInfoList(std::vector<LookupInfo> const& list, size_t& createItems) const;
@@ -183,7 +189,7 @@ struct BaseOptions {
  protected:
   
   mutable arangodb::transaction::Methods _trx;
-  arangodb::aql::RegexCache _regexCache; // needed for expression evaluation
+  arangodb::aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache; // needed for expression evaluation
   arangodb::aql::FixedVarExpressionContext _expressionCtx;
 
   /// @brief Lookup info to find all edges fulfilling the base conditions
@@ -198,6 +204,9 @@ struct BaseOptions {
 
   // @brief - translations for one-shard-databases
   std::map<std::string, std::string> _collectionToShard;
+  
+  /// @brief a value of 1 (which is the default) means "no parallelism"
+  size_t _parallelism;
   
   /// @brief whether or not the traversal will produce vertices
   bool _produceVertices;

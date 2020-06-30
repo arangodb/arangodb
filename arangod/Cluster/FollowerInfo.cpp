@@ -54,7 +54,7 @@ static std::string CurrentShardPath(arangodb::LogicalCollection const& col) {
 
 static VPackSlice CurrentShardEntry(arangodb::LogicalCollection const& col, VPackSlice current) {
   return current.get(std::vector<std::string>(
-      {AgencyCommManager::path(), "Current", "Collections",
+      {AgencyCommHelper::path(), "Current", "Collections",
        col.vocbase().name(), std::to_string(col.planId()), col.name()}));
 }
 
@@ -65,7 +65,7 @@ static std::string PlanShardPath(arangodb::LogicalCollection const& col) {
 
 static VPackSlice PlanShardEntry(arangodb::LogicalCollection const& col, VPackSlice plan) {
   return plan.get(std::vector<std::string>(
-      {AgencyCommManager::path(), "Plan", "Collections", col.vocbase().name(),
+      {AgencyCommHelper::path(), "Plan", "Collections", col.vocbase().name(),
        std::to_string(col.planId()), "shards", col.name()}));
 }
 
@@ -106,11 +106,6 @@ Result FollowerInfo::add(ServerID const& sid) {
         _failoverCandidates = nextCandidates;  // will cast to std::vector<ServerID> const
       }
     }
-#ifdef DEBUG_SYNC_REPLICATION
-    if (!AgencyCommManager::MANAGER) {
-      return {TRI_ERROR_NO_ERROR};
-    }
-#endif
   }
 
   // Now tell the agency
@@ -189,11 +184,7 @@ Result FollowerInfo::remove(ServerID const& sid) {
                      std::back_inserter(*v.get()), sid);
     _failoverCandidates = v;  // will cast to std::vector<ServerID> const
   }
-#ifdef DEBUG_SYNC_REPLICATION
-  if (!AgencyCommManager::MANAGER) {
-    return {TRI_ERROR_NO_ERROR};
-  }
-#endif
+
   Result agencyRes = persistInAgency(true);
   if (agencyRes.ok()) {
     // +1 for the leader (me)
@@ -203,7 +194,7 @@ Result FollowerInfo::remove(ServerID const& sid) {
     // we are finished
     _docColl->vocbase().server().getFeature<arangodb::ClusterFeature>().getDroppedFollowerCounter()++;
     LOG_TOPIC("be0cb", DEBUG, Logger::CLUSTER)
-        << "Removing follower " << sid << " from " << _docColl->name() << "succeeded";
+        << "Removing follower " << sid << " from " << _docColl->name() << " succeeded";
     return agencyRes;
   }
   if (agencyRes.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
@@ -346,13 +337,15 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
   std::string planPath = PlanShardPath(*_docColl);
   AgencyComm ac(_docColl->vocbase().server());
   int badCurrentCount = 0;
+  using namespace std::chrono_literals;
+  auto wait(50ms), waitMore(wait);
   do {
     if (_docColl->deleted() || _docColl->vocbase().isDropped()) {
       LOG_TOPIC("8972a", INFO, Logger::CLUSTER) << "giving up persisting follower info for dropped collection";
       return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
     }
     AgencyReadTransaction trx(std::vector<std::string>(
-        {AgencyCommManager::path(planPath), AgencyCommManager::path(curPath)}));
+        {AgencyCommHelper::path(planPath), AgencyCommHelper::path(curPath)}));
     AgencyCommResult res = ac.sendTransactionWithFailover(trx);
     if (res.successful()) {
       TRI_ASSERT(res.slice().isArray() && res.slice().length() == 1);
@@ -410,8 +403,11 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
           << reportName(isRemove) << ", could not read " << planPath << " and "
           << curPath << " in agency.";
     }
-    using namespace std::chrono_literals;
-    std::this_thread::sleep_for(500ms);
+
+    std::this_thread::sleep_for(wait);
+    if(wait < 500ms) {
+      wait += waitMore;
+    }
   } while (!_docColl->vocbase().server().isStopping());
   return TRI_ERROR_SHUTTING_DOWN;
 }

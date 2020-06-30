@@ -29,16 +29,16 @@ namespace aql {
 /// @brief node finder for one node type
 template <>
 NodeFinder<ExecutionNode::NodeType>::NodeFinder(
-    ExecutionNode::NodeType lookingFor,
+    ExecutionNode::NodeType const& lookingFor,
     ::arangodb::containers::SmallVector<ExecutionNode*>& out, bool enterSubqueries)
-    : _lookingFor(lookingFor), _out(out), _enterSubqueries(enterSubqueries) {}
+    : _out(out), _lookingFor(lookingFor), _enterSubqueries(enterSubqueries) {}
 
 /// @brief node finder for multiple types
 template <>
 NodeFinder<std::vector<ExecutionNode::NodeType>>::NodeFinder(
-    std::vector<ExecutionNode::NodeType> lookingFor,
+    std::vector<ExecutionNode::NodeType> const& lookingFor,
     ::arangodb::containers::SmallVector<ExecutionNode*>& out, bool enterSubqueries)
-    : _lookingFor(lookingFor), _out(out), _enterSubqueries(enterSubqueries) {}
+    : _out(out), _lookingFor(lookingFor), _enterSubqueries(enterSubqueries) {}
 
 /// @brief before method for one node type
 template <>
@@ -53,6 +53,27 @@ bool NodeFinder<ExecutionNode::NodeType>::before(ExecutionNode* en) {
 /// @brief before method for multiple node types
 template <>
 bool NodeFinder<std::vector<ExecutionNode::NodeType>>::before(ExecutionNode* en) {
+  auto const nodeType = en->getType();
+
+  for (auto& type : _lookingFor) {
+    if (type == nodeType) {
+      _out.emplace_back(en);
+      break;
+    }
+  }
+  return false;
+}
+
+/// @brief unique node finder for multiple types
+template <>
+UniqueNodeFinder<std::vector<ExecutionNode::NodeType>>::UniqueNodeFinder(
+    std::vector<ExecutionNode::NodeType> const& lookingFor,
+    ::arangodb::containers::SmallVector<ExecutionNode*>& out, bool enterSubqueries)
+    : _out(out), _lookingFor(lookingFor), _enterSubqueries(enterSubqueries) {}
+
+/// @brief before method for multiple node types
+template <>
+bool UniqueNodeFinder<std::vector<ExecutionNode::NodeType>>::before(ExecutionNode* en) {
   auto const nodeType = en->getType();
 
   for (auto& type : _lookingFor) {

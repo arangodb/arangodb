@@ -45,7 +45,7 @@ void analyzed_json_field_factory(
     }
 
     const irs::flags& features() const {
-      static irs::flags features{ irs::frequency::type() };
+      static irs::flags features{ irs::type<irs::frequency>::get() };
       return features;
     }
   }; // string_field
@@ -89,9 +89,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_TRUE(irs::doc_limits::eof(docs->value()));
@@ -106,9 +106,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_TRUE(irs::doc_limits::eof(docs->value()));
@@ -129,9 +129,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -230,9 +230,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -380,9 +380,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
+    auto* doc = irs::get<irs::document>(*docs);
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -530,9 +530,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
+    auto* doc = irs::get<irs::document>(*docs);
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -632,9 +632,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -734,9 +734,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -836,9 +836,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -938,9 +938,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -1040,9 +1040,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -1144,9 +1144,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -1248,9 +1248,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -1351,9 +1351,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -1455,9 +1455,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -1577,9 +1577,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -1624,9 +1624,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_TRUE(irs::doc_limits::eof(docs->value()));
@@ -1655,9 +1655,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_TRUE(irs::doc_limits::eof(docs->value()));
@@ -1686,9 +1686,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_TRUE(irs::doc_limits::eof(docs->value()));
@@ -1719,9 +1719,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -1800,9 +1800,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -1873,9 +1873,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -1938,9 +1938,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -1995,9 +1995,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -2037,9 +2037,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -2095,9 +2095,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -2153,9 +2153,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -2213,9 +2213,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -2259,9 +2259,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -2309,9 +2309,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -2409,9 +2409,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -2555,9 +2555,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -2701,9 +2701,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -2802,9 +2802,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -2905,9 +2905,9 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -2981,9 +2981,11 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* score = irs::get<irs::score>(*docs);
+    ASSERT_NE(nullptr, score);
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -3034,9 +3036,9 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -3094,9 +3096,9 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -3154,7 +3156,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -3206,9 +3208,9 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -3260,7 +3262,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -3314,9 +3316,9 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -3354,7 +3356,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -3412,9 +3414,9 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -3472,7 +3474,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -3524,9 +3526,9 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -3580,9 +3582,9 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -3620,9 +3622,9 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -3680,9 +3682,9 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -3740,7 +3742,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -3793,9 +3795,9 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -3849,9 +3851,9 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -3890,7 +3892,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -3963,9 +3965,9 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -4038,7 +4040,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -4099,9 +4101,9 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -4166,7 +4168,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -4205,9 +4207,9 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -4280,9 +4282,9 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -4355,7 +4357,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -4420,9 +4422,9 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -4464,7 +4466,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -4516,7 +4518,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -4589,7 +4591,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -4662,7 +4664,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -4741,7 +4743,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -4781,7 +4783,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -4882,13 +4884,21 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     irs::order ord;
     auto& sort = ord.add<tests::sort::custom_sort>(false);
 
-    sort.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
+    sort.collector_collect_field = [&collect_field_count](
+        const irs::sub_reader&, const irs::term_reader&)->void{
       ++collect_field_count;
     };
-    sort.collector_collect_term = [&collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+    sort.collector_collect_term = [&collect_term_count](
+        const irs::sub_reader&,
+        const irs::term_reader&,
+        const irs::attribute_provider&)->void{
       ++collect_term_count;
     };
-    sort.collectors_collect_ = [&finish_count](irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
+    sort.collectors_collect_ = [&finish_count](
+        irs::byte_type*,
+        const irs::index_reader&,
+        const irs::sort::field_collector*,
+        const irs::sort::term_collector*)->void {
       ++finish_count;
     };
     sort.prepare_field_collector_ = [&sort]()->irs::sort::field_collector::ptr {
@@ -4919,15 +4929,15 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     // no order passed - no frequency
     {
       auto docs = prepared->execute(*sub);
-      ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-      ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
+      ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+      ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     }
 
     auto docs = prepared->execute(*sub, pord);
-    auto& freq = docs->attributes().get<irs::frequency>();
+    auto* freq = irs::get<irs::frequency>(*docs);
     ASSERT_TRUE(freq);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -4939,7 +4949,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -4948,7 +4958,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -4957,7 +4967,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -4966,7 +4976,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("S", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("S", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -4975,7 +4985,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("T", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("T", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -4984,7 +4994,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("U", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("U", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -4993,7 +5003,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("V", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("V", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -5002,7 +5012,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("W", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("W", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -5011,7 +5021,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("X", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("X", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -5020,7 +5030,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("Y", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("Y", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -5050,7 +5060,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -5105,7 +5115,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -5188,7 +5198,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -5224,13 +5234,21 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     irs::order ord;
     auto& sort = ord.add<tests::sort::custom_sort>(false);
 
-    sort.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
+    sort.collector_collect_field = [&collect_field_count](
+        const irs::sub_reader&, const irs::term_reader&)->void{
       ++collect_field_count;
     };
-    sort.collector_collect_term = [&collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+    sort.collector_collect_term = [&collect_term_count](
+        const irs::sub_reader&,
+        const irs::term_reader&,
+        const irs::attribute_provider&)->void{
       ++collect_term_count;
     };
-    sort.collectors_collect_ = [&finish_count](irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
+    sort.collectors_collect_ = [&finish_count](
+        irs::byte_type*,
+        const irs::index_reader&,
+        const irs::sort::field_collector*,
+        const irs::sort::term_collector*)->void {
       ++finish_count;
     };
     sort.prepare_field_collector_ = [&sort]()->irs::sort::field_collector::ptr {
@@ -5257,24 +5275,24 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     // no order passed - no frequency
     {
       auto docs = prepared->execute(*sub);
-      ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-      ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
+      ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+      ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     }
 
     auto column = sub->column_reader("name");
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub, pord);
-    auto& freq = docs->attributes().get<irs::frequency>();
+    auto* freq = irs::get<irs::frequency>(*docs);
     ASSERT_TRUE(freq);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
     auto docs_seek = prepared->execute(*sub, pord);
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_FALSE(!score);
 
     ASSERT_TRUE(docs->next());
@@ -5282,7 +5300,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -5291,7 +5309,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -5300,7 +5318,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -5338,7 +5356,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -5381,7 +5399,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -5424,7 +5442,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -5468,7 +5486,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -5511,7 +5529,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -5554,7 +5572,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -5598,7 +5616,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -5642,7 +5660,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -5688,9 +5706,9 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub);
-    ASSERT_FALSE(docs->attributes().get<irs::frequency>());
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::frequency>(*docs));
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -5730,7 +5748,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     lt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("quik"));
 
     irs::order order;
-    order.add(true, irs::scorers::get("bm25", irs::text_format::json, "{ \"b\" : 0 }"));
+    order.add(true, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }"));
     auto prepared_order = order.prepare();
 
     auto prepared = q.prepare(rdr, prepared_order);
@@ -5740,11 +5758,11 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub, prepared_order);
-    auto& freq = docs->attributes().get<irs::frequency>();
+    auto* freq = irs::get<irs::frequency>(*docs);
     ASSERT_TRUE(freq);
-    auto& boost = docs->attributes().get<irs::filter_boost>();
+    auto* boost = irs::get<irs::filter_boost>(*docs);
     ASSERT_TRUE(boost);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -5757,8 +5775,8 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("L", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
-    ASSERT_FLOAT_EQ(boost->value, docs_seek->attributes().get<irs::filter_boost>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
+    ASSERT_FLOAT_EQ(boost->value, irs::get<irs::filter_boost>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("L", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -5768,8 +5786,8 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("N", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
-    ASSERT_FLOAT_EQ(boost->value, docs_seek->attributes().get<irs::filter_boost>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
+    ASSERT_FLOAT_EQ(boost->value, irs::get<irs::filter_boost>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("N", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -5791,7 +5809,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     pt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui"));
 
     irs::order order;
-    order.add(true, irs::scorers::get("bm25", irs::text_format::json, "{ \"b\" : 0 }"));
+    order.add(true, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }"));
     auto prepared_order = order.prepare();
 
     auto prepared = q.prepare(rdr, prepared_order);
@@ -5801,10 +5819,10 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub, prepared_order);
-    auto& freq = docs->attributes().get<irs::frequency>();
+    auto* freq = irs::get<irs::frequency>(*docs);
     ASSERT_TRUE(freq);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -5816,7 +5834,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("L", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("L", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -5825,7 +5843,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("N", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("N", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -5849,7 +5867,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     pos1.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("the")), 0.75f);
 
     irs::order order;
-    order.add(true, irs::scorers::get("bm25", irs::text_format::json, "{ \"b\" : 0 }"));
+    order.add(true, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }"));
     auto prepared_order = order.prepare();
 
     auto prepared = q.prepare(rdr, prepared_order);
@@ -5859,11 +5877,11 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub, prepared_order);
-    auto& freq = docs->attributes().get<irs::frequency>();
+    auto* freq = irs::get<irs::frequency>(*docs);
     ASSERT_TRUE(freq);
-    auto& boost = docs->attributes().get<irs::filter_boost>();
+    auto* boost = irs::get<irs::filter_boost>(*docs);
     ASSERT_TRUE(boost);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -5876,8 +5894,8 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
-    ASSERT_EQ(boost->value, docs_seek->attributes().get<irs::filter_boost>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
+    ASSERT_EQ(boost->value, irs::get<irs::filter_boost>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -5887,8 +5905,8 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("O", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
-    ASSERT_EQ(boost->value, docs_seek->attributes().get<irs::filter_boost>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
+    ASSERT_EQ(boost->value, irs::get<irs::filter_boost>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("O", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -5898,8 +5916,8 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("P", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
-    ASSERT_EQ(boost->value, docs_seek->attributes().get<irs::filter_boost>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
+    ASSERT_EQ(boost->value, irs::get<irs::filter_boost>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("P", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -5909,8 +5927,8 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("Q", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
-    ASSERT_EQ(boost->value, docs_seek->attributes().get<irs::filter_boost>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
+    ASSERT_EQ(boost->value, irs::get<irs::filter_boost>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("Q", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -5920,8 +5938,8 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("R", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
-    ASSERT_EQ(boost->value, docs_seek->attributes().get<irs::filter_boost>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
+    ASSERT_EQ(boost->value, irs::get<irs::filter_boost>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("R", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -5941,7 +5959,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     st.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("that")));
 
     irs::order order;
-    order.add(true, irs::scorers::get("bm25", irs::text_format::json, "{ \"b\" : 0 }"));
+    order.add(true, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }"));
     auto prepared_order = order.prepare();
 
     auto prepared = q.prepare(rdr, prepared_order);
@@ -5951,10 +5969,10 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub, prepared_order);
-    auto& freq = docs->attributes().get<irs::frequency>();
+    auto* freq = irs::get<irs::frequency>(*docs);
     ASSERT_TRUE(freq);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -5967,7 +5985,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -5977,7 +5995,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -5987,7 +6005,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -5997,7 +6015,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -6008,7 +6026,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -6018,7 +6036,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("K", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("K", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -6028,7 +6046,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("L", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("L", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -6038,7 +6056,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("N", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("N", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -6048,7 +6066,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("S", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("S", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -6058,7 +6076,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("T", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("T", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -6068,7 +6086,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("V", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("V", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -6088,7 +6106,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     st.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("that")));
 
     irs::order order;
-    order.add(true, irs::scorers::get("bm25", irs::text_format::json, "{ \"b\" : 0 }"));
+    order.add(true, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }"));
     auto prepared_order = order.prepare();
 
     auto prepared = q.prepare(rdr, prepared_order);
@@ -6098,11 +6116,11 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub, prepared_order);
-    auto& freq = docs->attributes().get<irs::frequency>();
+    auto* freq = irs::get<irs::frequency>(*docs);
     ASSERT_TRUE(freq);
-    auto& boost = docs->attributes().get<irs::filter_boost>();
+    auto* boost = irs::get<irs::filter_boost>(*docs);
     ASSERT_TRUE(boost);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -6116,8 +6134,8 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
-    ASSERT_EQ(boost->value, docs_seek->attributes().get<irs::filter_boost>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
+    ASSERT_EQ(boost->value, irs::get<irs::filter_boost>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -6127,8 +6145,8 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
-    ASSERT_EQ(boost->value, docs_seek->attributes().get<irs::filter_boost>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
+    ASSERT_EQ(boost->value, irs::get<irs::filter_boost>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -6139,8 +6157,8 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
-    ASSERT_EQ(boost->value, docs_seek->attributes().get<irs::filter_boost>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
+    ASSERT_EQ(boost->value, irs::get<irs::filter_boost>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -6151,8 +6169,8 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
-    ASSERT_EQ(boost->value, docs_seek->attributes().get<irs::filter_boost>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
+    ASSERT_EQ(boost->value, irs::get<irs::filter_boost>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -6164,8 +6182,8 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
-    ASSERT_EQ(boost->value, docs_seek->attributes().get<irs::filter_boost>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
+    ASSERT_EQ(boost->value, irs::get<irs::filter_boost>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -6176,8 +6194,8 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("K", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
-    ASSERT_EQ(boost->value, docs_seek->attributes().get<irs::filter_boost>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
+    ASSERT_EQ(boost->value, irs::get<irs::filter_boost>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("K", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -6187,8 +6205,8 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("L", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
-    ASSERT_EQ(boost->value, docs_seek->attributes().get<irs::filter_boost>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
+    ASSERT_EQ(boost->value, irs::get<irs::filter_boost>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("L", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -6199,8 +6217,8 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("N", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
-    ASSERT_EQ(boost->value, docs_seek->attributes().get<irs::filter_boost>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
+    ASSERT_EQ(boost->value, irs::get<irs::filter_boost>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("N", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -6211,8 +6229,8 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("S", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
-    ASSERT_EQ(boost->value, docs_seek->attributes().get<irs::filter_boost>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
+    ASSERT_EQ(boost->value, irs::get<irs::filter_boost>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("S", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -6223,8 +6241,8 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("T", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
-    ASSERT_EQ(boost->value, docs_seek->attributes().get<irs::filter_boost>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
+    ASSERT_EQ(boost->value, irs::get<irs::filter_boost>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("T", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -6235,8 +6253,8 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("V", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
-    ASSERT_EQ(boost->value, docs_seek->attributes().get<irs::filter_boost>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
+    ASSERT_EQ(boost->value, irs::get<irs::filter_boost>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("V", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -6261,7 +6279,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     pt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("like"));
 
     irs::order order;
-    order.add(true, irs::scorers::get("bm25", irs::text_format::json, "{ \"b\" : 0 }"));
+    order.add(true, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }"));
     auto prepared_order = order.prepare();
 
     auto prepared = q.prepare(rdr, prepared_order);
@@ -6271,10 +6289,10 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub, prepared_order);
-    auto& freq = docs->attributes().get<irs::frequency>();
+    auto* freq = irs::get<irs::frequency>(*docs);
     ASSERT_TRUE(freq);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -6287,7 +6305,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("Z", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("Z", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -6315,7 +6333,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid( docs->value()));
@@ -6358,7 +6376,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid( docs->value()));
@@ -6397,7 +6415,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid( docs->value()));
@@ -6435,7 +6453,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid( docs->value()));
@@ -6479,7 +6497,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid( docs->value()));
@@ -6523,7 +6541,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid( docs->value()));
@@ -6567,7 +6585,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid( docs->value()));
@@ -6612,7 +6630,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid( docs->value()));
@@ -6657,7 +6675,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid( docs->value()));
@@ -6703,7 +6721,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid( docs->value()));
@@ -6740,7 +6758,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
     auto sub = rdr.begin();
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -6760,7 +6778,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
     auto sub = rdr.begin();
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -6780,7 +6798,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
     auto sub = rdr.begin();
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -6801,7 +6819,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
     auto sub = rdr.begin();
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -6825,7 +6843,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -6865,7 +6883,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -6912,7 +6930,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -6963,26 +6981,25 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub, pord);
-    auto& freq = docs->attributes().get<irs::frequency>();
+    auto* freq = irs::get<irs::frequency>(*docs);
     ASSERT_TRUE(freq);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
     auto docs_seek = prepared->execute(*sub, pord);
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_FALSE(!score);
 
     ASSERT_TRUE(docs->next());
-    score->evaluate();
-    ASSERT_EQ(docs->value(),pord.get<irs::doc_id_t>(score->c_str(), 0));
+    ASSERT_EQ(docs->value(),pord.get<irs::doc_id_t>(score->evaluate(), 0));
     ASSERT_EQ(1, freq->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("H", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("H", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -7025,26 +7042,25 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub, pord);
-    auto& freq = docs->attributes().get<irs::frequency>();
+    auto* freq = irs::get<irs::frequency>(*docs);
     ASSERT_TRUE(freq);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
     auto docs_seek = prepared->execute(*sub, pord);
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_FALSE(!score);
 
     ASSERT_TRUE(docs->next());
-    score->evaluate();
-    ASSERT_EQ(docs->value(),pord.get<irs::doc_id_t>(score->c_str(), 0));
+    ASSERT_EQ(docs->value(),pord.get<irs::doc_id_t>(score->evaluate(), 0));
     ASSERT_EQ(1, freq->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("H", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("H", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -7069,7 +7085,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -7120,10 +7136,10 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, column);
     auto values = column->values();
     auto docs = prepared->execute(*sub, pord);
-    auto& freq = docs->attributes().get<irs::frequency>();
+    auto* freq = irs::get<irs::frequency>(*docs);
     ASSERT_TRUE(freq);
-    ASSERT_FALSE(docs->attributes().get<irs::filter_boost>());
-    auto& doc = docs->attributes().get<irs::document>();
+    ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -7135,7 +7151,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("N", irs::to_string<irs::string_ref>(actual_value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
-    ASSERT_EQ(freq->value, docs_seek->attributes().get<irs::frequency>()->value);
+    ASSERT_EQ(freq->value, irs::get<irs::frequency>(*docs_seek)->value);
     ASSERT_TRUE(values(docs->value(), actual_value));
     ASSERT_EQ("N", irs::to_string<irs::string_ref>(actual_value.c_str()));
 
@@ -7160,7 +7176,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -7196,7 +7212,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -7232,7 +7248,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -7269,7 +7285,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -7306,7 +7322,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -7343,7 +7359,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto values = column->values();
 
     auto docs = prepared->execute(*sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
@@ -7397,7 +7413,7 @@ TEST(by_phrase_test, options_clear) {
 
 TEST(by_phrase_test, ctor) {
   irs::by_phrase q;
-  ASSERT_EQ(irs::by_phrase::type(), q.type());
+  ASSERT_EQ(irs::type<irs::by_phrase>::id(), q.type());
   ASSERT_EQ("", q.field());
   ASSERT_EQ(irs::by_phrase_options{}, q.options());
   ASSERT_EQ(irs::no_boost(), q.boost());

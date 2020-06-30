@@ -26,13 +26,12 @@
 #include "InputAqlItemRow.h"
 
 #include "Aql/AqlItemBlockManager.h"
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Range.h"
-#include "Basics/StaticStrings.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
+#include <boost/container/flat_set.hpp>
 
 #include <utility>
 
@@ -40,13 +39,13 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-bool InputAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other) const {
-  return _block == other;
+bool InputAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other, size_t index) const {
+  return _block == other && _baseIndex == index;
 }
 #endif
 
 SharedAqlItemBlockPtr InputAqlItemRow::cloneToBlock(AqlItemBlockManager& manager,
-                                                    std::unordered_set<RegisterId> const& registers,
+                                                    RegIdFlatSet const& registers,
                                                     size_t newNrRegs) const {
   SharedAqlItemBlockPtr block =
       manager.requestBlock(1, static_cast<RegisterId>(newNrRegs));
@@ -132,7 +131,7 @@ void InputAqlItemRow::toSimpleVelocyPack(velocypack::Options const* trxOpts,
   _block->rowToSimpleVPack(_baseIndex, trxOpts, result);
 }
 
-InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr const& block, size_t baseIndex)
+InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr const& block, size_t baseIndex) noexcept
     : _block(block), _baseIndex(baseIndex) {
   TRI_ASSERT(_block != nullptr);
   TRI_ASSERT(_baseIndex < _block->size());
@@ -169,10 +168,10 @@ RegisterCount InputAqlItemRow::getNrRegisters() const noexcept {
 }
 
 bool InputAqlItemRow::isSameBlockAndIndex(InputAqlItemRow const& other) const noexcept {
-    return this->_block == other._block && this->_baseIndex == other._baseIndex;
+  return this->_block == other._block && this->_baseIndex == other._baseIndex;
 }
 
-
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 bool InputAqlItemRow::equates(InputAqlItemRow const& other,
                               velocypack::Options const* const options) const noexcept {
   if (!isInitialized() || !other.isInitialized()) {
@@ -193,6 +192,7 @@ bool InputAqlItemRow::equates(InputAqlItemRow const& other,
 
   return true;
 }
+#endif
 
 bool InputAqlItemRow::isInitialized() const noexcept {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -229,12 +229,6 @@ bool InputAqlItemRow::isFirstDataRowInBlock() const noexcept {
   TRI_ASSERT(numShadowRowsBeforeCurrentRow <= shadowRowIndexes.size());
 
   return numShadowRowsBeforeCurrentRow == _baseIndex;
-}
-
-bool InputAqlItemRow::isLastRowInBlock() const noexcept {
-  TRI_ASSERT(isInitialized());
-  TRI_ASSERT(_baseIndex < block().size());
-  return _baseIndex + 1 == block().size();
 }
 
 bool InputAqlItemRow::blockHasMoreDataRowsAfterThis() const noexcept {

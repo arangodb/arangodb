@@ -65,15 +65,18 @@
 namespace {
 
 struct TestAttributeZ : public irs::attribute {
-  DECLARE_ATTRIBUTE_TYPE();
+  static constexpr irs::string_ref type_name() noexcept {
+    return "TestAttributeZ";
+  }
 };
 
-DEFINE_ATTRIBUTE_TYPE(TestAttributeZ);
 REGISTER_ATTRIBUTE(TestAttributeZ);
 
 class EmptyAnalyzer : public irs::analysis::analyzer {
  public:
-  DECLARE_ANALYZER_TYPE();
+  static constexpr irs::string_ref type_name() noexcept {
+    return "empty";
+  }
 
   static ptr make(irs::string_ref const&) {
     PTR_NAMED(EmptyAnalyzer, ptr);
@@ -99,21 +102,20 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
     return true;
   }
 
-  EmptyAnalyzer() : irs::analysis::analyzer(EmptyAnalyzer::type()) {
-    _attrs.emplace(_attr);
-  }
-  virtual irs::attribute_view const& attributes() const noexcept override {
-    return _attrs;
+  EmptyAnalyzer() : irs::analysis::analyzer(irs::type<EmptyAnalyzer>::get()) { }
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    if (type == irs::type<TestAttributeZ>::id()) {
+      return &_attr;
+    }
+    return nullptr;
   }
   virtual bool next() override { return false; }
   virtual bool reset(irs::string_ref const& data) override { return true; }
 
  private:
-  irs::attribute_view _attrs;
   TestAttributeZ _attr;
 };
 
-DEFINE_ANALYZER_TYPE_NAMED(EmptyAnalyzer, "empty");
 REGISTER_ANALYZER_VPACK(EmptyAnalyzer, EmptyAnalyzer::make, EmptyAnalyzer::normalize);
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
@@ -153,7 +155,7 @@ class IResearchLinkMetaTest
 
     analyzers.emplace(result, "testVocbase::empty", "empty",
                       VPackParser::fromJson("{ \"args\": \"de\" }")->slice(),
-                      irs::flags{irs::frequency::type()});  // cache the 'empty' analyzer for 'testVocbase'
+                      irs::flags{irs::type<irs::frequency>::get()});  // cache the 'empty' analyzer for 'testVocbase'
   }
 };
 
@@ -167,7 +169,7 @@ TEST_F(IResearchLinkMetaTest, test_defaults) {
   {
     ASSERT_EQ(1, meta._analyzerDefinitions.size());
     EXPECT_TRUE("identity" == (*meta._analyzerDefinitions.begin())->name());
-    EXPECT_TRUE(irs::flags({irs::norm::type(), irs::frequency::type()}) ==
+    EXPECT_TRUE(irs::flags({irs::type<irs::norm>::get(), irs::type<irs::frequency>::get()}) ==
                  (*meta._analyzerDefinitions.begin())->features());
     EXPECT_NE(nullptr, meta._analyzerDefinitions.begin()->get());
   }
@@ -181,7 +183,7 @@ TEST_F(IResearchLinkMetaTest, test_defaults) {
   EXPECT_TRUE(*(meta._analyzers.begin()));
   EXPECT_TRUE("identity" == meta._analyzers.begin()->_pool->name());
   EXPECT_TRUE("identity" == meta._analyzers.begin()->_shortName);
-  EXPECT_TRUE(irs::flags({irs::norm::type(), irs::frequency::type()}) ==
+  EXPECT_TRUE(irs::flags({irs::type<irs::norm>::get(), irs::type<irs::frequency>::get()}) ==
                meta._analyzers.begin()->_pool->features());
   EXPECT_FALSE(!meta._analyzers.begin()->_pool->get());
 }
@@ -202,7 +204,7 @@ TEST_F(IResearchLinkMetaTest, test_inheritDefaults) {
   defaults._storeValues = arangodb::iresearch::ValueStorage::VALUE;
   defaults._analyzers.clear();
   defaults._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(
-      analyzers.get("testVocbase::empty"), "empty"));
+      analyzers.get("testVocbase::empty", arangodb::QueryAnalyzerRevisions::QUERY_LATEST), "empty"));
   defaults._fields["abc"]->_fields["xyz"] = arangodb::iresearch::IResearchLinkMeta();
   defaults._sort.emplace_back(std::vector<arangodb::basics::AttributeName>{{"foo",false}}, true);
 
@@ -227,7 +229,7 @@ TEST_F(IResearchLinkMetaTest, test_inheritDefaults) {
         EXPECT_TRUE(*(actual._analyzers.begin()));
         EXPECT_EQ("identity", actual._analyzers.begin()->_pool->name());
         EXPECT_EQ("identity", actual._analyzers.begin()->_shortName);
-        EXPECT_TRUE((irs::flags({irs::norm::type(), irs::frequency::type()}) ==
+        EXPECT_TRUE((irs::flags({irs::type<irs::norm>::get(), irs::type<irs::frequency>::get()}) ==
                      actual._analyzers.begin()->_pool->features()));
         EXPECT_FALSE(!actual._analyzers.begin()->_pool->get());
       }
@@ -244,7 +246,7 @@ TEST_F(IResearchLinkMetaTest, test_inheritDefaults) {
   EXPECT_TRUE(*(meta._analyzers.begin()));
   EXPECT_EQ("testVocbase::empty", meta._analyzers.begin()->_pool->name());
   EXPECT_EQ("empty", meta._analyzers.begin()->_shortName);
-  EXPECT_TRUE((irs::flags({irs::frequency::type()}) ==
+  EXPECT_TRUE((irs::flags({irs::type<irs::frequency>::get()}) ==
                meta._analyzers.begin()->_pool->features()));
   EXPECT_FALSE(!meta._analyzers.begin()->_pool->get());
 
@@ -267,7 +269,7 @@ TEST_F(IResearchLinkMetaTest, test_readDefaults) {
     EXPECT_TRUE(*(meta._analyzers.begin()));
     EXPECT_EQ("identity", meta._analyzers.begin()->_pool->name());
     EXPECT_EQ("identity", meta._analyzers.begin()->_shortName);
-    EXPECT_TRUE((irs::flags({irs::norm::type(), irs::frequency::type()}) ==
+    EXPECT_TRUE((irs::flags({irs::type<irs::norm>::get(), irs::type<irs::frequency>::get()}) ==
                  meta._analyzers.begin()->_pool->features()));
     EXPECT_FALSE(!meta._analyzers.begin()->_pool->get());
   }
@@ -286,7 +288,7 @@ TEST_F(IResearchLinkMetaTest, test_readDefaults) {
     EXPECT_TRUE(*(meta._analyzers.begin()));
     EXPECT_EQ("identity", meta._analyzers.begin()->_pool->name());
     EXPECT_EQ("identity", meta._analyzers.begin()->_shortName);
-    EXPECT_TRUE((irs::flags({irs::norm::type(), irs::frequency::type()}) ==
+    EXPECT_TRUE((irs::flags({irs::type<irs::norm>::get(), irs::type<irs::frequency>::get()}) ==
                  meta._analyzers.begin()->_pool->features()));
     EXPECT_FALSE(!meta._analyzers.begin()->_pool->get());
   }
@@ -349,7 +351,7 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
           EXPECT_TRUE(*(actual._analyzers.begin()));
           EXPECT_EQ("identity", actual._analyzers.begin()->_pool->name());
           EXPECT_EQ("identity", actual._analyzers.begin()->_shortName);
-          EXPECT_TRUE((irs::flags({irs::norm::type(), irs::frequency::type()}) ==
+          EXPECT_TRUE((irs::flags({irs::type<irs::norm>::get(), irs::type<irs::frequency>::get()}) ==
                        actual._analyzers.begin()->_pool->features()));
           EXPECT_FALSE(!actual._analyzers.begin()->_pool->get());
         } else if ("all" == fieldOverride.key()) {
@@ -363,7 +365,7 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
           EXPECT_TRUE(*(actual._analyzers.begin()));
           EXPECT_EQ("testVocbase::empty", actual._analyzers.begin()->_pool->name());
           EXPECT_EQ("empty", actual._analyzers.begin()->_shortName);
-          EXPECT_TRUE((irs::flags({irs::frequency::type()}) ==
+          EXPECT_TRUE((irs::flags({irs::type<irs::frequency>::get()}) ==
                        actual._analyzers.begin()->_pool->features()));
           EXPECT_FALSE(!actual._analyzers.begin()->_pool->get());
         } else if ("some" == fieldOverride.key()) {
@@ -376,13 +378,13 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
           EXPECT_TRUE(*itr);
           EXPECT_EQ("testVocbase::empty", itr->_pool->name());
           EXPECT_EQ("empty", itr->_shortName);
-          EXPECT_EQ(irs::flags({irs::frequency::type()}), itr->_pool->features());
+          EXPECT_EQ(irs::flags({irs::type<irs::frequency>::get()}), itr->_pool->features());
           EXPECT_FALSE(!itr->_pool->get());
           ++itr;
           EXPECT_TRUE(*itr);
           EXPECT_EQ("identity", itr->_pool->name());
           EXPECT_EQ("identity", itr->_shortName);
-          EXPECT_TRUE((irs::flags({irs::norm::type(), irs::frequency::type()}) ==
+          EXPECT_TRUE((irs::flags({irs::type<irs::norm>::get(), irs::type<irs::frequency>::get()}) ==
                        itr->_pool->features()));
           EXPECT_FALSE(!itr->_pool->get());
         } else if ("none" == fieldOverride.key()) {
@@ -394,13 +396,13 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
           EXPECT_TRUE(*itr);
           EXPECT_EQ("testVocbase::empty", itr->_pool->name());
           EXPECT_EQ("empty", itr->_shortName);
-          EXPECT_EQ(irs::flags({irs::frequency::type()}), itr->_pool->features());
+          EXPECT_EQ(irs::flags({irs::type<irs::frequency>::get()}), itr->_pool->features());
           EXPECT_FALSE(!itr->_pool->get());
           ++itr;
           EXPECT_TRUE(*itr);
           EXPECT_EQ("identity", itr->_pool->name());
           EXPECT_EQ("identity", itr->_shortName);
-          EXPECT_TRUE((irs::flags({irs::norm::type(), irs::frequency::type()}) ==
+          EXPECT_TRUE((irs::flags({irs::type<irs::norm>::get(), irs::type<irs::frequency>::get()}) ==
                        itr->_pool->features()));
           EXPECT_FALSE(!itr->_pool->get());
         }
@@ -416,13 +418,13 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
     EXPECT_TRUE(*itr);
     EXPECT_EQ("testVocbase::empty", itr->_pool->name());
     EXPECT_EQ("empty", itr->_shortName);
-    EXPECT_EQ(irs::flags({irs::frequency::type()}), itr->_pool->features());
+    EXPECT_EQ(irs::flags({irs::type<irs::frequency>::get()}), itr->_pool->features());
     EXPECT_FALSE(!itr->_pool->get());
     ++itr;
     EXPECT_TRUE(*itr);
     EXPECT_EQ("identity", itr->_pool->name());
     EXPECT_EQ("identity", itr->_shortName);
-    EXPECT_TRUE((irs::flags({irs::norm::type(), irs::frequency::type()}) ==
+    EXPECT_TRUE((irs::flags({irs::type<irs::norm>::get(), irs::type<irs::frequency>::get()}) ==
                  itr->_pool->features()));
     EXPECT_FALSE(!itr->_pool->get());
   }
@@ -581,19 +583,20 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
   analyzers.emplace(emplaceResult,
                     arangodb::StaticStrings::SystemDatabase + "::empty", "empty",
                     VPackParser::fromJson("{ \"args\": \"en\" }")->slice(),
-                    {irs::frequency::type()});
+                    {irs::type<irs::frequency>::get()});
 
   meta._includeAllFields = true;
   meta._trackListPositions = true;
   meta._storeValues = arangodb::iresearch::ValueStorage::VALUE;
   meta._analyzerDefinitions.clear();
-  meta._analyzerDefinitions.emplace(analyzers.get("identity"));
-  meta._analyzerDefinitions.emplace(analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty"));
+  meta._analyzerDefinitions.emplace(analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+  meta._analyzerDefinitions.emplace(analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty", 
+                                                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
   meta._analyzers.clear();
   meta._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(
-      analyzers.get("identity"), "identity"));
+      analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST), "identity"));
   meta._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(
-      analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty"),
+      analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty", arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
       "empty"));
   meta._fields["a"] = meta;            // copy from meta
   meta._fields["a"]->_fields.clear();  // do not inherit fields to match jSon inheritance
@@ -621,7 +624,7 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
   overrideAll._storeValues = arangodb::iresearch::ValueStorage::NONE;
   overrideAll._analyzers.clear();
   overrideAll._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(
-      analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty"),
+      analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty", arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
       "empty"));
   overrideSome._fields.clear();  // do not inherit fields to match jSon inheritance
   overrideSome._trackListPositions = false;
@@ -1364,7 +1367,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                                       meta._analyzers[0]._pool->properties());
     EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::frequency::type()));
+    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
     EXPECT_EQ("missing0", meta._analyzers[0]._shortName);
   }
 
@@ -1396,7 +1399,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                           analyzer._pool->properties());
       EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
       EXPECT_EQ("empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -1407,7 +1410,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                           analyzer._pool->properties());
       EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
       EXPECT_EQ("::empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -1441,7 +1444,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
                           analyzer._pool->properties());
       EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
       EXPECT_EQ("empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -1452,7 +1455,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                           analyzer._pool->properties());
       EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
       EXPECT_EQ("::empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -1516,7 +1519,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                                       meta._analyzers[0]._pool->properties());
     EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::frequency::type()));
+    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
     EXPECT_EQ("missing1", meta._analyzers[0]._shortName);
   }
 
@@ -1574,7 +1577,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                           analyzer._pool->properties());
       EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
       EXPECT_EQ("empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -1585,7 +1588,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                           analyzer._pool->properties());
       EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
       EXPECT_EQ("::empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -1626,7 +1629,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
                           analyzer._pool->properties());
       EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
       EXPECT_EQ("empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -1637,7 +1640,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                           analyzer._pool->properties());
       EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
       EXPECT_EQ("::empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -1666,7 +1669,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                                       meta._analyzers[0]._pool->properties());
     EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::frequency::type()));
+    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
     EXPECT_EQ("missing2", meta._analyzers[0]._shortName);
   }
 
@@ -1742,7 +1745,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                           analyzer._pool->properties());
       EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
       EXPECT_EQ("empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -1753,7 +1756,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                           analyzer._pool->properties());
       EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
       EXPECT_EQ("::empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -1794,7 +1797,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
                           analyzer._pool->properties());
       EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
       EXPECT_EQ("empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -1805,7 +1808,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                           analyzer._pool->properties());
       EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
       EXPECT_EQ("::empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -1831,7 +1834,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                                       meta._analyzers[0]._pool->properties());
     EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::frequency::type()));
+    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
     EXPECT_EQ("missing3", meta._analyzers[0]._shortName);
   }
 
@@ -1884,7 +1887,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
         VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
         meta._analyzers[0]._pool->properties());
     EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::frequency::type()));
+    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
     EXPECT_EQ(std::string("empty"), meta._analyzers[0]._shortName);
   }
 
@@ -1908,7 +1911,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
         VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
         meta._analyzers[0]._pool->properties());
     EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::frequency::type()));
+    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
     EXPECT_EQ(std::string("empty"), meta._analyzers[0]._shortName);
   }
 
@@ -1946,7 +1949,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                           analyzer._pool->properties());
       EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
       EXPECT_EQ("empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -1957,7 +1960,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                           analyzer._pool->properties());
       EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
       EXPECT_EQ("::empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -1997,7 +2000,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
                           analyzer._pool->properties());
       EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
       EXPECT_EQ("empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -2008,7 +2011,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                           analyzer._pool->properties());
       EXPECT_EQ(1, analyzer._pool->features().size());
-      EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
+      EXPECT_TRUE(analyzer._pool->features().check(irs::type<irs::frequency>::id()));
       EXPECT_EQ("::empty", analyzer._shortName);
       EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
@@ -2031,7 +2034,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
         VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
         meta._analyzers[0]._pool->properties());
     EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::frequency::type()));
+    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
     EXPECT_EQ(std::string("empty"), meta._analyzers[0]._shortName);
   }
 
@@ -2065,7 +2068,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
         VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
         meta._analyzers[0]._pool->properties());
     EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::frequency::type()));
+    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
     EXPECT_EQ(std::string("empty"), meta._analyzers[0]._shortName);
   }
 
@@ -2090,7 +2093,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
         VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
         meta._analyzers[0]._pool->properties());
     EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::frequency::type()));
+    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
     EXPECT_EQ("empty", meta._analyzers[0]._shortName);
   }
 
@@ -2111,7 +2114,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
         VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
         meta._analyzers[0]._pool->properties());
     EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::frequency::type()));
+    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
     EXPECT_EQ("empty", meta._analyzers[0]._shortName);
   }
 
@@ -2133,7 +2136,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
         VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
         meta._analyzers[0]._pool->properties());
     EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::frequency::type()));
+    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
     EXPECT_EQ("empty", meta._analyzers[0]._shortName);
   }
 
@@ -2159,7 +2162,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
         VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
         meta._analyzers[0]._pool->properties());
     EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::frequency::type()));
+    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
     EXPECT_EQ("empty", meta._analyzers[0]._shortName);
   }
 
@@ -2185,7 +2188,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
         VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
         meta._analyzers[0]._pool->properties());
     EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
-    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::frequency::type()));
+    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::type<irs::frequency>::id()));
     EXPECT_EQ("empty", meta._analyzers[0]._shortName);
   }
 }
@@ -2213,14 +2216,14 @@ TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
     // we need custom analyzer in _SYSTEM database and other will be in testVocbase with same name (it is ok to add both!).
     analyzers.emplace(emplaceResult, analyzerCustomInSystem, "identity",
                       VPackParser::fromJson("{ \"args\": \"en\" }")->slice(),
-                      {irs::frequency::type()});
+                      {irs::type<irs::frequency>::get()});
   }
 
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult emplaceResult;
     analyzers.emplace(emplaceResult, analyzerCustomInTestVocbase, "identity",
                       VPackParser::fromJson("{ \"args\": \"en\" }")->slice(),
-                      {irs::frequency::type()});
+                      {irs::type<irs::frequency>::get()});
   }
 
   {
@@ -2241,9 +2244,9 @@ TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
     arangodb::iresearch::IResearchLinkMeta meta;
 
     std::unordered_set<std::string> expectedAnalyzers;
-    expectedAnalyzers.insert(analyzers.get("identity")->name());
-    expectedAnalyzers.insert(analyzers.get(analyzerCustomInTestVocbase)->name());
-    expectedAnalyzers.insert(analyzers.get(analyzerCustomInSystem)->name());
+    expectedAnalyzers.insert(analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->name());
+    expectedAnalyzers.insert(analyzers.get(analyzerCustomInTestVocbase, arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->name());
+    expectedAnalyzers.insert(analyzers.get(analyzerCustomInSystem, arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->name());
 
     arangodb::iresearch::IResearchLinkMeta::Mask mask(false);
     auto json = VPackParser::fromJson(testJson);

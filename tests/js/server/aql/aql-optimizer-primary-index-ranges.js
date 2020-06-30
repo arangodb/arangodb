@@ -43,9 +43,11 @@ function optimizerIndexesRangesTestSuite () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
+      let docs = [];
       for (let i = 0; i < 2000; ++i) {
-        c.save({ _key: "test" + String(i).padStart(4, '0') });
+        docs.push({ _key: "test" + String(i).padStart(4, '0') });
       }
+      c.insert(docs);
     },
 
     tearDownAll : function () {
@@ -409,7 +411,7 @@ function optimizerIndexesRangesTestSuite () {
 
 function optimizerIndexesRangesCollectionsTestSuite () {
   return {
-    setUp : function () {
+    setUpAll : function () {
       db._drop("UnitTestsCollection1");
       db._drop("UnitTestsCollection2");
       db._drop("UnitTestsCollection3");
@@ -417,13 +419,15 @@ function optimizerIndexesRangesCollectionsTestSuite () {
       for (let i = 1; i <= 3; ++i) {
         let c = db._create("UnitTestsCollection" + i);
 
+        let docs = [];
         for (let j = 0; j < 2000; ++j) {
-          c.save({ _key: "test" + String(j).padStart(4, '0') });
+          docs.push({ _key: "test" + String(j).padStart(4, '0') });
         }
+        c.insert(docs);
       }
     },
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop("UnitTestsCollection1");
       db._drop("UnitTestsCollection2");
       db._drop("UnitTestsCollection3");
@@ -496,17 +500,298 @@ function optimizerIndexesRangesCollectionsTestSuite () {
 
         let results = AQL_EXECUTE(query[0]);
 
-        assertEqual(query[1].length , results.json.length, query);
         assertEqual(query[1], results.json, query);
         assertEqual(0, results.stats.scannedFull);
       });
     },
 
   };
+}
 
+function optimizerIndexesRangesSimpleCasesTestSuite () {
+  const cn = "UnitTestsCollection";
+  const keys = ["jak", "jal", "jam", "jan", "jan-1", "jan-2", "jaz"];
+
+  const candidates = ["", "\u0000", "\u0000\u0000", "\u0000", "\u0001", "\u0001", "\u0001\u0001", "a", "a\u0000", "a\u0001", "a\u0000\u0000", "a\u0000\u00001", "j", "ja", "ja\u0000", "ja\u0001", "ja\uffff", "jaa", "jak", "jal", "jall", "jam", "jan", "jan\u0000", "jan\u0001", "jan\uffff", "jan-", "jan-\u0000", "jan-\u0001", "jan-\uffff", "jan-0", "jan-1", "jan-2", "jan-3", "jaz", "jb", "z", "z\uffff", "z\uffff\uffff"];
+
+  let runTest = function(query, candidate, expected) {
+    let plan = AQL_EXPLAIN(query, { candidate }).plan;
+    let nodeTypes = plan.nodes.map(function(node) {
+      return node.type;
+    });
+
+    // ensure an index is used
+    assertTrue(nodeTypes.indexOf("IndexNode") !== -1 || 
+               nodeTypes.indexOf("SingleRemoteOperationNode") !== -1, query);
+    
+    // must never have a SortNode, as we use the index for sorting
+    assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+
+    let results = AQL_EXECUTE(query, { candidate });
+
+    assertEqual(expected, results.json, { query, candidate, expected });
+    assertEqual(0, results.stats.scannedFull);
+  };
+
+  return {
+    setUpAll : function () {
+      db._drop(cn);
+
+      let c = db._create(cn);
+      keys.forEach(function(key) {
+        c.insert({ _key: key });
+      });
+    },
+
+    tearDownAll : function () {
+      db._drop(cn);
+    },
+
+    testSingleSidedKeyGe : function () {
+      candidates.forEach(function(candidate) {
+        let expected = [];
+        keys.forEach(function(key) {
+          if (key >= candidate) {
+            expected.push(key);
+          }
+        });
+
+        let query = `FOR doc IN ${cn} FILTER doc._key >= @candidate RETURN doc._key`;
+        runTest(query, candidate, expected);
+      });
+    },
+    
+    testSingleSidedKeyGt : function () {
+      candidates.forEach(function(candidate) {
+        let expected = [];
+        keys.forEach(function(key) {
+          if (key > candidate) {
+            expected.push(key);
+          }
+        });
+        
+        let query = `FOR doc IN ${cn} FILTER doc._key > @candidate RETURN doc._key`;
+        runTest(query, candidate, expected);
+      });
+    },
+    
+    testSingleSidedKeyLt : function () {
+      candidates.forEach(function(candidate) {
+        let expected = [];
+        keys.forEach(function(key) {
+          if (key < candidate) {
+            expected.push(key);
+          }
+        });
+        
+        let query = `FOR doc IN ${cn} FILTER doc._key < @candidate RETURN doc._key`;
+        runTest(query, candidate, expected);
+      });
+    },
+    
+    testSingleSidedKeyLe : function () {
+      candidates.forEach(function(candidate) {
+        let expected = [];
+        keys.forEach(function(key) {
+          if (key <= candidate) {
+            expected.push(key);
+          }
+        });
+        
+        let query = `FOR doc IN ${cn} FILTER doc._key <= @candidate RETURN doc._key`;
+        runTest(query, candidate, expected);
+      });
+    },
+
+    testSingleSidedIdGe : function () {
+      candidates.forEach(function(candidate) {
+        let expected = [];
+        keys.forEach(function(key) {
+          if (key >= candidate) {
+            expected.push(key);
+          }
+        });
+        candidate = cn + '/' + candidate;
+
+        let query = `FOR doc IN ${cn} FILTER doc._id >= @candidate RETURN doc._key`;
+        runTest(query, candidate, expected);
+      });
+    },
+    
+    testSingleSidedIdGt : function () {
+      candidates.forEach(function(candidate) {
+        let expected = [];
+        keys.forEach(function(key) {
+          if (key > candidate) {
+            expected.push(key);
+          }
+        });
+        candidate = cn + '/' + candidate;
+        
+        let query = `FOR doc IN ${cn} FILTER doc._id > @candidate RETURN doc._key`;
+        runTest(query, candidate, expected);
+      });
+    },
+    
+    testSingleSidedIdLt : function () {
+      candidates.forEach(function(candidate) {
+        let expected = [];
+        keys.forEach(function(key) {
+          if (key < candidate) {
+            expected.push(key);
+          }
+        });
+        candidate = cn + '/' + candidate;
+        
+        let query = `FOR doc IN ${cn} FILTER doc._id < @candidate RETURN doc._key`;
+        runTest(query, candidate, expected);
+      });
+    },
+    
+    testSingleSidedIdLe : function () {
+      candidates.forEach(function(candidate) {
+        let expected = [];
+        keys.forEach(function(key) {
+          if (key <= candidate) {
+            expected.push(key);
+          }
+        });
+        candidate = cn + '/' + candidate;
+        
+        let query = `FOR doc IN ${cn} FILTER doc._id <= @candidate RETURN doc._key`;
+        runTest(query, candidate, expected);
+      });
+    },
+
+    testSingleSidedKeyReverseGe : function () {
+      candidates.forEach(function(candidate) {
+        let expected = [];
+        keys.forEach(function(key) {
+          if (key >= candidate) {
+            expected.push(key);
+          }
+        });
+        expected.reverse();
+
+        let query = `FOR doc IN ${cn} FILTER doc._key >= @candidate SORT doc._key DESC RETURN doc._key`;
+        runTest(query, candidate, expected);
+      });
+    },
+    
+    testSingleSidedKeyReverseGt : function () {
+      candidates.forEach(function(candidate) {
+        let expected = [];
+        keys.forEach(function(key) {
+          if (key > candidate) {
+            expected.push(key);
+          }
+        });
+        expected.reverse();
+        
+        let query = `FOR doc IN ${cn} FILTER doc._key > @candidate SORT doc._key DESC RETURN doc._key`;
+        runTest(query, candidate, expected);
+      });
+    },
+    
+    testSingleSidedKeyReverseLt : function () {
+      candidates.forEach(function(candidate) {
+        let expected = [];
+        keys.forEach(function(key) {
+          if (key < candidate) {
+            expected.push(key);
+          }
+        });
+        expected.reverse();
+        
+        let query = `FOR doc IN ${cn} FILTER doc._key < @candidate SORT doc._key DESC RETURN doc._key`;
+        runTest(query, candidate, expected);
+      });
+    },
+    
+    testSingleSidedKeyReverseLe : function () {
+      candidates.forEach(function(candidate) {
+        let expected = [];
+        keys.forEach(function(key) {
+          if (key <= candidate) {
+            expected.push(key);
+          }
+        });
+        expected.reverse();
+        
+        let query = `FOR doc IN ${cn} FILTER doc._key <= @candidate SORT doc._key DESC RETURN doc._key`;
+        runTest(query, candidate, expected);
+      });
+    },
+    
+    testSingleSidedIdReverseGe : function () {
+      candidates.forEach(function(candidate) {
+        let expected = [];
+        keys.forEach(function(key) {
+          if (key >= candidate) {
+            expected.push(key);
+          }
+        });
+        expected.reverse();
+        candidate = cn + '/' + candidate;
+
+        let query = `FOR doc IN ${cn} FILTER doc._id >= @candidate SORT doc._key DESC RETURN doc._key`;
+        runTest(query, candidate, expected);
+      });
+    },
+    
+    testSingleSidedIdReverseGt : function () {
+      candidates.forEach(function(candidate) {
+        let expected = [];
+        keys.forEach(function(key) {
+          if (key > candidate) {
+            expected.push(key);
+          }
+        });
+        expected.reverse();
+        candidate = cn + '/' + candidate;
+        
+        let query = `FOR doc IN ${cn} FILTER doc._id > @candidate SORT doc._key DESC RETURN doc._key`;
+        runTest(query, candidate, expected);
+      });
+    },
+    
+    testSingleSidedIdReverseLt : function () {
+      candidates.forEach(function(candidate) {
+        let expected = [];
+        keys.forEach(function(key) {
+          if (key < candidate) {
+            expected.push(key);
+          }
+        });
+        expected.reverse();
+        candidate = cn + '/' + candidate;
+        
+        let query = `FOR doc IN ${cn} FILTER doc._id < @candidate SORT doc._key DESC RETURN doc._key`;
+        runTest(query, candidate, expected);
+      });
+    },
+    
+    testSingleSidedIdReverseLe : function () {
+      candidates.forEach(function(candidate) {
+        let expected = [];
+        keys.forEach(function(key) {
+          if (key <= candidate) {
+            expected.push(key);
+          }
+        });
+        expected.reverse();
+        candidate = cn + '/' + candidate;
+        
+        let query = `FOR doc IN ${cn} FILTER doc._id <= @candidate SORT doc._key DESC RETURN doc._key`;
+        runTest(query, candidate, expected);
+      });
+    },
+  
+  };
 }
 
 jsunity.run(optimizerIndexesRangesTestSuite);
 jsunity.run(optimizerIndexesRangesCollectionsTestSuite);
+jsunity.run(optimizerIndexesRangesSimpleCasesTestSuite);
 
 return jsunity.done();

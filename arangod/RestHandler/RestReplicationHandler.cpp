@@ -27,6 +27,7 @@
 #include "Aql/Query.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/HybridLogicalClock.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/RocksDBUtils.h"
@@ -53,7 +54,6 @@
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
-#include "Rest/HttpResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "Sharding/ShardingInfo.h"
@@ -70,6 +70,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 
+#include <Containers/HashSet.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
@@ -139,7 +140,7 @@ static Result checkPlanLeaderDirect(std::shared_ptr<LogicalCollection> const& co
     // This is bullshit. Why does the *fancy* AgencyComm Manager
     // prepend the agency url with `arango` but in the end returns an object
     // that is prepended by `arango`! WTF!?
-    VPackSlice plan = res.slice().at(0).get(AgencyCommManager::path()).get(agencyPath);
+    VPackSlice plan = res.slice().at(0).get(AgencyCommHelper::path()).get(agencyPath);
     TRI_ASSERT(plan.isArray() && plan.length() > 0);
 
     VPackSlice leaderSlice = plan.at(0);
@@ -716,9 +717,11 @@ Result RestReplicationHandler::testPermissions() {
 
 /// @brief returns the short id of the server which should handle this request
 ResultT<std::pair<std::string, bool>> RestReplicationHandler::forwardingTarget() {
-  if (!ServerState::instance()->isCoordinator()) {
-    return {std::make_pair("", false)};
+  auto base = RestVocbaseBaseHandler::forwardingTarget();
+  if (base.ok() && !std::get<0>(base.get()).empty()) {
+    return base;
   }
+
   auto res = testPermissions();
   if (!res.ok()) {
     return res;
@@ -892,21 +895,12 @@ void RestReplicationHandler::handleCommandClusterInventory() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandRestoreCollection() {
-  std::shared_ptr<VPackBuilder> parsedRequest;
-
-  try {
-    parsedRequest = _request->toVelocyPackBuilderPtr();
-  } catch (arangodb::velocypack::Exception const& e) {
-    std::string errorMsg = "invalid JSON: ";
-    errorMsg += e.what();
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, errorMsg);
-    return;
-  } catch (...) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid JSON");
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess) {  // error message generated in parseVPackBody
     return;
   }
-  auto pair = rocksutils::stripObjectIds(parsedRequest->slice());
+  auto pair = rocksutils::stripObjectIds(body);
   VPackSlice const slice = pair.first;
 
   bool overwrite = _request->parsedValue<bool>("overwrite", false);
@@ -950,24 +944,19 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandRestoreIndexes() {
-  std::shared_ptr<VPackBuilder> parsedRequest;
-
-  try {
-    parsedRequest = _request->toVelocyPackBuilderPtr();
-  } catch (...) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid JSON");
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess) {  // error message generated in parseVPackBody
     return;
   }
-  VPackSlice const slice = parsedRequest->slice();
 
   bool force = _request->parsedValue("force", false);
 
   Result res;
   if (ServerState::instance()->isCoordinator()) {
-    res = processRestoreIndexesCoordinator(slice, force);
+    res = processRestoreIndexesCoordinator(body, force);
   } else {
-    res = processRestoreIndexes(slice, force);
+    res = processRestoreIndexes(body, force);
   }
 
   if (res.fail()) {
@@ -1220,7 +1209,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   toMerge.add("id", VPackValue(newId));
 
   if (_vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
-      _vocbase.sharding() == "single") {
+      _vocbase.isShardingSingle()) {
     auto const isSatellite =
         VelocyPackHelper::getStringRef(parameters, StaticStrings::ReplicationFactor,
                                        velocypack::StringRef{""}) == StaticStrings::Satellite;
@@ -1230,7 +1219,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     if (!_vocbase.IsSystemName(name) && !isSatellite) {
       // system-collections will be sharded normally. only user collections will
       // get the forced sharding.
-      // satellite collections must not be sharded like a non-satellite
+      // SatelliteCollections must not be sharded like a non-satellite
       // collection.
       toMerge.add(StaticStrings::DistributeShardsLike,
                   VPackValue(_vocbase.shardingPrototypeName()));
@@ -1249,6 +1238,19 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
       toMerge.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards));
     } else {
       numberOfShards = numberOfShardsSlice.getUInt();
+    }
+  }
+
+  if (parameters.get(StaticStrings::DataSourceGuid).isString()) {
+    std::string const uuid = parameters.get(StaticStrings::DataSourceGuid).copyString();
+    bool valid = false;
+    NumberUtils::atoi_positive<uint64_t>(uuid.data(), uuid.data() + uuid.size(), valid);
+    if (valid) {
+      // globallyUniqueId is only numeric. This causes ambiguities later
+      // and can only happen for collections created with v3.3.0 (the GUID
+      // generation process was changed in v3.3.1 already to fix this issue).
+      // remove the globallyUniqueId so a new one will be generated server.side
+      toMerge.add(StaticStrings::DataSourceGuid, VPackSlice::nullSlice());
     }
   }
 
@@ -1295,7 +1297,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   // always use current version number when restoring a collection,
   // because the collection is effectively NEW
-  toMerge.add("version", VPackValue(static_cast<int>(LogicalCollection::Version::v33)));
+  toMerge.add(StaticStrings::Version, VPackSlice::nullSlice());
   if (!name.empty() && name[0] == '_' && !parameters.hasKey(StaticStrings::DataSourceSystem)) {
     // system collection?
     toMerge.add(StaticStrings::DataSourceSystem, VPackValue(true));
@@ -1304,13 +1306,13 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 #ifndef USE_ENTERPRISE
   std::vector<std::string> changes;
 
-  // when in the community version, we need to turn off specific attributes
-  // because they are only supported in enterprise mode
+  // when in the Community Edition, we need to turn off specific attributes
+  // because they are only supported in Enterprise Edition
 
-  // watch out for "isSmart" -> we need to set this to false in the community version
+  // watch out for "isSmart" -> we need to set this to false in the Community Edition
   VPackSlice s = parameters.get(StaticStrings::GraphIsSmart);
   if (s.isBoolean() && s.getBoolean()) {
-    // isSmart needs to be turned off in the community version
+    // isSmart needs to be turned off in the Community Edition
     toMerge.add(StaticStrings::GraphIsSmart, VPackValue(false));
     changes.push_back("changed 'isSmart' attribute value to false");
   }
@@ -1331,7 +1333,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     changes.push_back("removed 'smartJoinAttribute' attribute value");
   }
 
-  // finally rewrite all enterprise sharding strategies to a simple hash-based strategy
+  // finally rewrite all Enterprise Edition sharding strategies to a simple hash-based strategy
   s = parameters.get("shardingStrategy");
   if (s.isString() && s.copyString().find("enterprise") != std::string::npos) {
     // downgrade sharding strategy to just hash
@@ -1354,7 +1356,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   if (!changes.empty()) {
     LOG_TOPIC("fc359", INFO, Logger::CLUSTER)
         << "rewrote info for collection '"
-        << name << "' on restore for usage with the community version. the following changes were applied: "
+        << name << "' on restore for usage with the Community Edition. the following changes were applied: "
         << basics::StringUtils::join(changes, ". ");
   }
 #endif
@@ -1372,7 +1374,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   VPackSlice const sliceToMerge = toMerge.slice();
   VPackBuilder mergedBuilder =
-      VPackCollection::merge(parameters, sliceToMerge, false, true);
+      VPackCollection::merge(parameters, sliceToMerge, false, /*nullMeansRemove*/ true);
   VPackBuilder arrayWrapper;
   arrayWrapper.openArray();
   arrayWrapper.add(mergedBuilder.slice());
@@ -1459,7 +1461,7 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
 Result RestReplicationHandler::parseBatch(std::string const& collectionName,
                                           std::unordered_map<std::string, VPackValueLength>& latest,
                                           VPackBuilder& allMarkers) {
-  VPackBuilder builder(&basics::VelocyPackHelper::requestValidationOptions);
+  VPackBuilder builder(&basics::VelocyPackHelper::strictRequestValidationOptions);
 
   allMarkers.clear();
 
@@ -1898,12 +1900,15 @@ Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collectio
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
+  // may be used for rebuilding index infos
+  VPackBuilder rebuilder;
+
   Result fres;
 
   ExecContextSuperuserScope escope(
       ExecContext::current().isSuperuser() ||
       (ExecContext::current().isAdminUser() && !ServerState::readOnly()));
-
+  
   READ_LOCKER(readLocker, _vocbase._inventoryLock);
 
   // look up the collection
@@ -1911,16 +1916,31 @@ Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collectio
     auto physical = coll->getPhysical();
     TRI_ASSERT(physical != nullptr);
 
-    for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
+    for (VPackSlice idxDef : VPackArrayIterator(indexes)) {
       // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
-      arangodb::velocypack::Slice value = idxDef.get(StaticStrings::IndexType);
-      if (value.isString()) {
-        if (value.isEqualString("primary") || value.isEqualString("edge")) {
-          LOG_TOPIC("0d352", DEBUG, Logger::REPLICATION)
-              << "processRestoreIndexes silently ignoring primary or edge "
-              << "index: " << idxDef.toJson();
-          continue;
+      VPackSlice type = idxDef.get(StaticStrings::IndexType);
+
+      if (!type.isString()) {
+        continue;
+      }
+
+      if (type.isEqualString(StaticStrings::IndexNamePrimary) || type.isEqualString(StaticStrings::IndexNameEdge)) {
+        continue;
+      }
+    
+      if (type.isEqualString("geo1") || type.isEqualString("geo2")) {
+        // transform type "geo1" or "geo2" into "geo".
+        rebuilder.clear();
+        rebuilder.openObject();
+        rebuilder.add(StaticStrings::IndexType, VPackValue("geo"));
+        for (auto const& it : VPackObjectIterator(idxDef)) {
+          if (!it.key.isEqualString(StaticStrings::IndexType)) {
+            rebuilder.add(it.key);
+            rebuilder.add(it.value);
+          }
         }
+        rebuilder.close();
+        idxDef = rebuilder.slice();
       }
 
       std::shared_ptr<arangodb::Index> idx;
@@ -2013,14 +2033,37 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(VPackSlice const
 
   auto& cluster = _vocbase.server().getFeature<ClusterFeature>();
 
+  // may be used for rebuilding index infos
+  VPackBuilder rebuilder;
+
   Result res;
 
-  for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
+  for (VPackSlice idxDef : VPackArrayIterator(indexes)) {
     VPackSlice type = idxDef.get(StaticStrings::IndexType);
 
-    if (type.isString() && (type.copyString() == "primary" || type.copyString() == "edge")) {
+    if (!type.isString()) {
+      // invalid type, cannot handle it
+      continue;
+    }
+
+    if (type.isEqualString(StaticStrings::IndexNamePrimary) || type.isEqualString(StaticStrings::IndexNameEdge)) {
       // must ignore these types of indexes during restore
       continue;
+    }
+
+    if (type.isEqualString("geo1") || type.isEqualString("geo2")) {
+      // transform type "geo1" or "geo2" into "geo".
+      rebuilder.clear();
+      rebuilder.openObject();
+      rebuilder.add(StaticStrings::IndexType, VPackValue("geo"));
+      for (auto const& it : VPackObjectIterator(idxDef)) {
+        if (!it.key.isEqualString(StaticStrings::IndexType)) {
+          rebuilder.add(it.key);
+          rebuilder.add(it.value);
+        }
+      }
+      rebuilder.close();
+      idxDef = rebuilder.slice();
     }
 
     VPackBuilder tmp;
@@ -2869,7 +2912,7 @@ void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
 void RestReplicationHandler::handleCommandGetIdForReadLockCollection() {
   TRI_ASSERT(ServerState::instance()->isDBServer());
 
-  std::string id = std::to_string(TRI_NewTickServer());
+  std::string id = std::to_string(transaction::Context::makeTransactionId());
   VPackBuilder b;
   {
     VPackObjectBuilder bb(&b);
@@ -3287,7 +3330,7 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
 
   std::string const uuid =
       arangodb::basics::VelocyPackHelper::getStringValue(slice,
-                                                         "globallyUniqueId", "");
+                                                         StaticStrings::DataSourceGuid, "");
 
   TRI_col_type_e const type = static_cast<TRI_col_type_e>(
       arangodb::basics::VelocyPackHelper::getNumericValue<int>(slice, "type",
@@ -3312,11 +3355,22 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   // because the collection is effectively NEW
   VPackBuilder patch;
   patch.openObject();
-  patch.add("version", VPackValue(static_cast<int>(LogicalCollection::currentVersion())));
+  patch.add(StaticStrings::Version, VPackSlice::nullSlice());
   patch.add(StaticStrings::DataSourceSystem, VPackValue(TRI_vocbase_t::IsSystemName(name)));
-  patch.add("objectId", VPackSlice::nullSlice());
+  if (!uuid.empty()) {
+    bool valid = false;
+    NumberUtils::atoi_positive<uint64_t>(uuid.data(), uuid.data() + uuid.size(), valid);
+    if (valid) {
+      // globallyUniqueId is only numeric. This causes ambiguities later
+      // and can only happen for collections created with v3.3.0 (the GUID
+      // generation process was changed in v3.3.1 already to fix this issue).
+      // remove the globallyUniqueId so a new one will be generated server.side
+      patch.add(StaticStrings::DataSourceGuid, VPackSlice::nullSlice());
+    }
+  }
+  patch.add(StaticStrings::ObjectId, VPackSlice::nullSlice());
   patch.add("cid", VPackSlice::nullSlice());
-  patch.add("id", VPackSlice::nullSlice());
+  patch.add(StaticStrings::DataSourceId, VPackSlice::nullSlice());
   patch.close();
 
   VPackBuilder builder =

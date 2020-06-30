@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/ClusterTypes.h"
 #include "Containers/HashSet.h"
 #include "Containers/SmallVector.h"
 #include "Transaction/Hints.h"
@@ -207,6 +208,14 @@ class TransactionState {
   TRI_voc_tick_t lastOperationTick() const noexcept {
     return _lastWrittenOperationTick;
   }
+
+
+  void acceptAnalyzersRevision(
+      QueryAnalyzerRevisions const& analyzersRevsion) noexcept;
+
+  const QueryAnalyzerRevisions& analyzersRevision() const noexcept {
+    return _analyzersRevision;
+  }
   
   #ifdef USE_ENTERPRISE
     void addInaccessibleCollection(TRI_voc_cid_t cid, std::string const& cname);
@@ -256,6 +265,7 @@ class TransactionState {
   /// @brief servers we already talked to for this transactions
   ::arangodb::containers::HashSet<std::string> _knownServers;
 
+  QueryAnalyzerRevisions _analyzersRevision;
   bool _registeredTransaction;
 };
 

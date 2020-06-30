@@ -58,6 +58,8 @@ class V8Context final : public Context {
 
   /// @brief unregister the transaction from the context
   void unregisterTransaction() noexcept override;
+  
+  std::shared_ptr<Context> clone() const override;
 
   /// @brief whether or not the transaction is embeddable
   bool isEmbeddable() const override;

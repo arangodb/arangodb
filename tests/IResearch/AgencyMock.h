@@ -24,47 +24,30 @@
 #ifndef ARANGODB_IRESEARCH__IRESEARCH_AGENCY_MOCK_H
 #define ARANGODB_IRESEARCH__IRESEARCH_AGENCY_MOCK_H 1
 
-#include "AgencyCommManagerMock.h"
-
 #include "Basics/debugging.h"
+#include "Network/ConnectionPool.h"
 
-namespace arangodb {
-namespace consensus {
+namespace arangodb::fuerte {
+inline namespace v1 {
+  class ConnectionBuilder;
+}
+}
 
+namespace arangodb::consensus {
 class Store;
+}  // namespace arangodb::consensus
 
-} // consensus
-} // arangod
+struct AsyncAgencyStorePoolMock final : public arangodb::network::ConnectionPool {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief specialization of GeneralClientConnectionMock returning results from
-///        underlying agency store
-////////////////////////////////////////////////////////////////////////////////
-class GeneralClientConnectionAgencyMock: public GeneralClientConnectionMock {
- public:
-  explicit GeneralClientConnectionAgencyMock(arangodb::application_features::ApplicationServer& server,
-                                             arangodb::consensus::Store& store,
-                                             bool trace = false) noexcept
-      : GeneralClientConnectionMock(server), _store(&store), _trace(trace) {}
+  explicit AsyncAgencyStorePoolMock(arangodb::consensus::Store* store, ConnectionPool::Config const& config)
+      : ConnectionPool(config), _store(store) {}
+      explicit AsyncAgencyStorePoolMock(arangodb::consensus::Store* store)
+      : ConnectionPool({}), _store(store) {}
 
- protected:
-  virtual void response(arangodb::basics::StringBuffer& buffer) override;
-  virtual void request(char const* data, size_t length) override;
+      std::shared_ptr<arangodb::fuerte::Connection> createConnection(
+          arangodb::fuerte::ConnectionBuilder&) override;
 
- private:
-  std::string const& action() {
-    TRI_ASSERT(_path.size() == 4);
-    return _path[3];
-  }
-
-  void handleRead(arangodb::basics::StringBuffer& buffer);
-  void handleWrite(arangodb::basics::StringBuffer& buffer);
-
-  arangodb::consensus::Store* _store;
-  std::vector<std::string> _path;
-  std::string _url;
-  std::string _body;
-  bool _trace;
-}; // GeneralClientConnectionAgencyMock
+      arangodb::consensus::Store* _store;
+};
 
 #endif

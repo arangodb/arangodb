@@ -28,6 +28,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -80,7 +81,7 @@ std::vector<std::string> Databases::list(application_features::ApplicationServer
   if (user.empty()) {
     if (ServerState::instance()->isCoordinator()) {
       ClusterInfo& ci = server.getFeature<ClusterFeature>().clusterInfo();
-      return ci.databases(true);
+      return ci.databases(false);
     } else {
       // list of all databases
       return databaseFeature.getDatabaseNames();
@@ -93,17 +94,21 @@ std::vector<std::string> Databases::list(application_features::ApplicationServer
 
 arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
   if (ServerState::instance()->isCoordinator()) {
-    AgencyComm agency(vocbase->server());
-    AgencyCommResult commRes = agency.getValues("Plan/Databases/" + vocbase->name());
-    if (!commRes.successful()) {
+
+    auto& cache = vocbase->server().getFeature<ClusterFeature>().agencyCache();
+    auto [acb,idx] = cache.read(std::vector<std::string>{
+        AgencyCommHelper::path("Plan/Databases/" + vocbase->name())});
+    auto res = acb->slice();
+
+    if (!res.isArray()) {
       // Error in communication, note that value not found is not an error
       LOG_TOPIC("87642", TRACE, Logger::COMMUNICATION)
-          << "rest database handler: no agency communication";
-      return Result(commRes.errorCode(), commRes.errorMessage());
+        << "rest database handler: no agency communication";
+      return Result(TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "agency cache empty");
     }
 
-    VPackSlice value = commRes.slice()[0].get<std::string>(
-        {AgencyCommManager::path(), "Plan", "Databases", vocbase->name()});
+    VPackSlice value = res[0].get<std::string>(
+        {AgencyCommHelper::path(), "Plan", "Databases", vocbase->name()});
     if (value.isObject() && value.hasKey(StaticStrings::DataSourceName)) {
       std::string name = value.get(StaticStrings::DataSourceName).copyString();
 

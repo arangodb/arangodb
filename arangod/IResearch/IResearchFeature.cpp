@@ -484,10 +484,10 @@ void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
                                       // <scorer-specific properties>...]);
 
   irs::scorers::visit([&functions, &args](irs::string_ref const& name,
-                                          irs::text_format::type_id const& args_format) -> bool {
+                                          irs::type_info const& args_format) -> bool {
     // ArangoDB, for API consistency, only supports scorers configurable via
     // jSON
-    if (irs::text_format::json != args_format) {
+    if (irs::type<irs::text_format::json>::id() != args_format.id()) {
       return true;
     }
 
@@ -615,7 +615,7 @@ void IResearchLogTopic::log_appender(void* context, const char* function, const 
   auto const arangoLevel = static_cast<arangodb::LogLevel>(level + 1);
   std::string msg = LIBIRESEARCH.displayName();
   msg.append(message, message_len); 
-  arangodb::Logger::log(function, file, line, arangoLevel, LIBIRESEARCH.id(), msg);
+  arangodb::Logger::log("9afd3", function, file, line, arangoLevel, LIBIRESEARCH.id(), msg);
 }
 
 }  // namespace

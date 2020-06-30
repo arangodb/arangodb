@@ -72,42 +72,42 @@ class SplicedSubqueryIntegrationTest
     : public AqlExecutorTestCaseWithParam<SubqueryExecutorParamType, false> {
  protected:
   auto makeSubqueryStartRegisterInfos() -> RegisterInfos {
-    auto inputRegisterSet = make_shared_unordered_set({0});
-    auto outputRegisterSet = make_shared_unordered_set({});
+    auto inputRegisterSet = RegIdSet{0};
+    auto outputRegisterSet = RegIdSet{};
 
-    auto toKeepRegisterSet = std::unordered_set<RegisterId>{0};
+    auto toKeepRegisterSet = RegIdSetStack{RegIdSet{0},RegIdSet{0},RegIdSet{0}};
 
-    auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet->size());
+    auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet.size());
     auto nrOutputRegisters =
-        static_cast<RegisterCount>(inputRegisterSet->size() + outputRegisterSet->size());
+        static_cast<RegisterCount>(inputRegisterSet.size() + outputRegisterSet.size());
     return RegisterInfos(inputRegisterSet, outputRegisterSet, nrInputRegisters,
                          nrOutputRegisters, {}, toKeepRegisterSet);
   }
   auto makeSubqueryStartExecutorInfos() -> SubqueryStartExecutor::Infos {
-    auto inputRegisterSet = make_shared_unordered_set({0});
-    auto outputRegisterSet = make_shared_unordered_set({});
+    auto inputRegisterSet = RegIdSet{0};
+    auto outputRegisterSet = RegIdSet{};
 
-    auto toKeepRegisterSet = std::unordered_set<RegisterId>{0};
+    auto toKeepRegisterSet = RegIdSetStack{RegIdSet{0}, RegIdSet{0}, RegIdSet{0}};
 
-    auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet->size());
+    auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet.size());
     auto nrOutputRegisters =
-        static_cast<RegisterCount>(inputRegisterSet->size() + outputRegisterSet->size());
+        static_cast<RegisterCount>(inputRegisterSet.size() + outputRegisterSet.size());
     return SubqueryStartExecutor::Infos(inputRegisterSet, outputRegisterSet, nrInputRegisters,
                                         nrOutputRegisters, {}, toKeepRegisterSet);
   }
 
   auto makeSubqueryEndRegisterInfos(RegisterId inputRegister) -> RegisterInfos {
-    auto inputRegisterSet = make_shared_unordered_set({inputRegister});
+    auto inputRegisterSet = RegIdSet{inputRegister};
     auto const outputRegister = RegisterId{inputRegister + 1};
     for (RegisterId r = 0; r <= inputRegister; ++r) {
-      inputRegisterSet->emplace(r);
+      inputRegisterSet.emplace(r);
     }
-    auto outputRegisterSet = make_shared_unordered_set({outputRegister});
-    auto toKeepRegisterSet = std::unordered_set<RegisterId>{0};
+    auto outputRegisterSet = RegIdSet{outputRegister};
+    auto toKeepRegisterSet = RegIdSetStack{RegIdSet{inputRegisterSet}, RegIdSet{inputRegisterSet}, RegIdSet{inputRegisterSet}};
 
-    auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet->size());
+    auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet.size());
     auto nrOutputRegisters =
-        static_cast<RegisterCount>(inputRegisterSet->size() + outputRegisterSet->size());
+        static_cast<RegisterCount>(inputRegisterSet.size() + outputRegisterSet.size());
 
     return RegisterInfos(inputRegisterSet, outputRegisterSet, nrInputRegisters,
                          nrOutputRegisters, {}, toKeepRegisterSet);
@@ -116,64 +116,32 @@ class SplicedSubqueryIntegrationTest
   auto makeSubqueryEndExecutorInfos(RegisterId inputRegister) -> SubqueryEndExecutor::Infos {
     auto const outputRegister = RegisterId{inputRegister + 1};
 
-    return SubqueryEndExecutor::Infos(nullptr, inputRegister, outputRegister, false);
+    return SubqueryEndExecutor::Infos(nullptr, inputRegister, outputRegister);
   }
 
   auto makeDoNothingRegisterInfos() -> RegisterInfos {
     auto numRegs = size_t{1};
-    auto emptyRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
 
-    auto inRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{0});
-    auto outRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{1});
-
-    std::unordered_set<RegisterId> toKeep;
-
+    RegIdSet prototype{};
     for (RegisterId r = 0; r < numRegs; ++r) {
-      toKeep.emplace(r);
+      prototype.emplace(r);
     }
 
-    return RegisterInfos(inRegisterList, outRegisterList, 1, 2, {}, toKeep);
+    return RegisterInfos(RegIdSet{0}, RegIdSet{1}, 1, 2, {}, {prototype, prototype, prototype});
   }
 
   auto makeDoNothingExecutorInfos() -> LambdaExe::Infos {
-    auto numRegs = size_t{1};
-    auto emptyRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
-
-    auto inRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{0});
-    auto outRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{1});
-
-    std::unordered_set<RegisterId> toKeep;
-
-    for (RegisterId r = 0; r < numRegs; ++r) {
-      toKeep.emplace(r);
-    }
-
     return LambdaExe::Infos(createProduceCall(), createSkipCall());
   }
 
   auto makeAssertRegisterInfos() -> RegisterInfos {
     auto numRegs = size_t{1};
-    auto emptyRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
-
-    auto inRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{0});
-    auto outRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{1});
-
-    std::unordered_set<RegisterId> toKeep;
-
+    RegIdSet  prototype{};
     for (RegisterId r = 0; r < numRegs; ++r) {
-      toKeep.emplace(r);
+      prototype.emplace(r);
     }
 
-    return RegisterInfos(inRegisterList, outRegisterList, 1, 2, {}, toKeep);
+    return RegisterInfos(RegIdSet{0}, RegIdSet{1}, 1, 2, {}, {{prototype}, {prototype}});
   }
 
   auto makeAssertExecutorInfos() -> LambdaExe::Infos {

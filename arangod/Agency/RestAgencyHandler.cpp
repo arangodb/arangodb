@@ -169,9 +169,9 @@ RestStatus RestAgencyHandler::pollIndex(
           generateError(
             rest::ResponseCode::SERVICE_UNAVAILABLE,
             TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
+          return;
         }
 
-        resetResponse(rest::ResponseCode::OK);
         VPackSlice slice = res.get("result");
 
         if (slice.hasKey("log")) {
@@ -182,19 +182,32 @@ RestStatus RestAgencyHandler::pollIndex(
             builder.add("code", VPackValue(int(ResponseCode::OK)));
             builder.add(VPackValue("result"));
             VPackObjectBuilder r(&builder);
-            auto const firstIndex = slice.get("firstIndex");
+            if (!slice.get("firstIndex").isNumber()) {
+              generateError(
+                rest::ResponseCode::SERVER_ERROR,
+                TRI_ERROR_HTTP_SERVER_ERROR, "invalid first log index.");
+              return;
+            } else if (slice.get("firstIndex").getNumber<uint64_t>() > start) {
+              generateError(
+                rest::ResponseCode::SERVER_ERROR,
+                TRI_ERROR_HTTP_SERVER_ERROR, "first log index is greater than requested.");
+              return;
+            }
+            uint64_t i = start - slice.get("firstIndex").getNumber<uint64_t>();
             builder.add("commitIndex", slice.get("commitIndex"));
-            builder.add("firstIndex", firstIndex);
             VPackSlice logs = slice.get("log");
+            builder.add("firstIndex", logs[i].get("index"));
             builder.add(VPackValue("log"));
             VPackArrayBuilder a(&builder);
-            for (size_t i = start - firstIndex.getNumber<uint64_t>(); i < logs.length(); i++) {
+            for (; i < logs.length(); ++i) {
               builder.add(logs[i]);
             }
           }
-          response()->setPayload(std::move(*builder.steal()));
+          generateResult(rest::ResponseCode::OK, std::move(*builder.steal()));
+          return;
         } else {
-          response()->setPayload(std::move(*rb->steal()));
+          generateResult(rest::ResponseCode::OK, std::move(*rb->steal()));
+          return;
         }
       } else {
         generateError(

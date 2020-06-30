@@ -25,9 +25,11 @@
 #define ARANGOD_AQL_DOCUMENT_PRODUCING_HELPER_H 1
 
 #include "Aql/types.h"
-#include "Aql/RegexCache.h"
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/voc-types.h"
+
+#include <velocypack/Builder.h>
 
 #include <functional>
 #include <string>
@@ -117,10 +119,12 @@ struct DocumentProducingFunctionContext {
   
   bool hasFilter() const noexcept;
   
-  aql::RegexCache& regexCache() { return _regexCache; }
+  aql::AqlFunctionsInternalCache& aqlFunctionsInternalCache() { return _aqlFunctionsInternalCache; }
+
+  arangodb::velocypack::Builder& getBuilder() noexcept;
 
  private:
-  aql::RegexCache _regexCache;
+  aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
 
   bool checkFilter(ExpressionContext& ctx);
 
@@ -134,6 +138,9 @@ struct DocumentProducingFunctionContext {
   std::vector<size_t> const& _coveringIndexAttributePositions;
   size_t _numScanned;
   size_t _numFiltered;
+
+  /// @brief Builder that is reused to generate projections 
+  arangodb::velocypack::Builder _objectBuilder;
 
   /// @brief set of already returned documents. Used to make the result distinct
   std::unordered_set<TRI_voc_rid_t> _alreadyReturned;

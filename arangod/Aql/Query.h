@@ -36,6 +36,7 @@
 #include "Aql/SharedQueryState.h"
 #include "Basics/Common.h"
 #include "V8Server/V8Context.h"
+#include "Cluster/ClusterTypes.h"
 
 #include <velocypack/Builder.h>
 
@@ -76,8 +77,15 @@ class Query : public QueryContext {
   Query(Query const&) = delete;
   Query& operator=(Query const&) = delete;
 
+ protected:
+  /// @brief internal constructor, Used to construct a full query or a ClusterQuery
+  Query(std::shared_ptr<transaction::Context> const& ctx, QueryString const& queryString,
+        std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
+        std::shared_ptr<arangodb::velocypack::Builder> const& options,
+        std::shared_ptr<SharedQueryState> sharedState);
+
  public:
-  /// Used to construct a full query
+  /// @brief public constructor, Used to construct a full query
   Query(std::shared_ptr<transaction::Context> const& ctx, QueryString const& queryString,
         std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
         std::shared_ptr<arangodb::velocypack::Builder> const& options);
@@ -86,11 +94,6 @@ class Query : public QueryContext {
 
   /// @brief note that the query uses the DataSource
   void addDataSource(std::shared_ptr<arangodb::LogicalDataSource> const& ds);
-
-  /// @brief clone a query
-  /// note: as a side-effect, this will also create and start a transaction for
-  /// the query
-//  TEST_VIRTUAL Query* clone(QueryPart, bool withPlan);
 
   constexpr static uint64_t DontCache = 0;
 
@@ -143,12 +146,9 @@ class Query : public QueryContext {
   QueryResult explain();
 
   /// @brief whether or not a query is a modification query
-  bool isModificationQuery() const;
+  virtual bool isModificationQuery() const noexcept override;
 
-  /// @brief mark a query as modification query
-  void setIsModificationQuery();
-  
-  void setIsAsyncQuery() { _isAsyncQuery = true; }
+  virtual bool isAsyncQuery() const noexcept override;
 
   /// @brief enter a V8 context
   virtual void enterV8Context() override;
@@ -233,7 +233,8 @@ class Query : public QueryContext {
 
   /// @brief cleanup plan and engine for current query can issue WAITING
   ExecutionState cleanupPlanAndEngine(int errorCode, bool sync,
-                                      velocypack::Builder* statsBuilder = nullptr);
+                                      velocypack::Builder* statsBuilder = nullptr,
+                                      bool includePlan = false);
 
  protected:
   
@@ -302,9 +303,6 @@ class Query : public QueryContext {
   
   bool _killed;
   
-  /// @brief does this query contain async execution nodes
-  bool _isAsyncQuery;
-
   /// @brief whether or not the hash was already calculated
   bool _queryHashCalculated;
 };
@@ -323,11 +321,13 @@ class ClusterQuery final : public Query {
   }
   
   void prepareClusterQuery(SerializationFormat format,
+                           arangodb::velocypack::Slice querySlice,
                            arangodb::velocypack::Slice collections,
                            arangodb::velocypack::Slice variables,
                            arangodb::velocypack::Slice snippets,
                            arangodb::velocypack::Slice traversals,
-                           arangodb::velocypack::Builder& answer);
+                           arangodb::velocypack::Builder& answer,
+                           arangodb::QueryAnalyzerRevisions const& analyzersRevision);
   
   Result finalizeClusterQuery(ExecutionStats& stats, int errorCode);
 

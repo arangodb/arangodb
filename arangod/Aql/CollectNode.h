@@ -96,21 +96,21 @@ class CollectNode : public ExecutionNode {
 
   /// @brief calculate the expression register
   void calcExpressionRegister(RegisterId& expressionRegister,
-                              std::unordered_set<RegisterId>& writeableOutputRegisters) const;
+                              RegIdSet& writeableOutputRegisters) const;
 
   /// @brief calculate the collect register
   void calcCollectRegister(RegisterId& collectRegister,
-                           std::unordered_set<RegisterId>& writeableOutputRegisters) const;
+                           RegIdSet& writeableOutputRegisters) const;
 
   /// @brief calculate the group registers
   void calcGroupRegisters(std::vector<std::pair<RegisterId, RegisterId>>& groupRegisters,
-                          std::unordered_set<RegisterId>& readableInputRegisters,
-                          std::unordered_set<RegisterId>& writeableOutputRegisters) const;
+                          RegIdSet& readableInputRegisters,
+                          RegIdSet& writeableOutputRegisters) const;
 
   /// @brief calculate the aggregate registers
   void calcAggregateRegisters(std::vector<std::pair<RegisterId, RegisterId>>& aggregateRegisters,
-                              std::unordered_set<RegisterId>& readableInputRegisters,
-                              std::unordered_set<RegisterId>& writeableOutputRegisters) const;
+                              RegIdSet& readableInputRegisters,
+                              RegIdSet& writeableOutputRegisters) const;
 
   void calcAggregateTypes(std::vector<std::unique_ptr<Aggregator>>& aggregateTypes) const;
 
@@ -187,12 +187,10 @@ class CollectNode : public ExecutionNode {
   std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>>& aggregateVariables();
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const final;
+  void getVariablesUsedHere(VarSet& vars) const final;
 
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const final;
-
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 
   static void calculateAccessibleUserVariables(ExecutionNode const& node,
                                                std::vector<Variable const*>& userVariables);

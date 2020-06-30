@@ -28,9 +28,14 @@
 #include <memory>
 #include <mutex>
 
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Agency/AgencyComm.h"
-#include "Cluster/PathComponent.h"
-#include "Cluster/ResultT.h"
+
+#include "Agency/PathComponent.h"
+#include "Basics/ResultT.h"
 #include "Futures/Future.h"
 #include "Network/Methods.h"
 
@@ -46,13 +51,26 @@ struct AsyncAgencyCommResult {
 
   [[nodiscard]] bool fail() const { return !ok(); }
 
-  VPackSlice slice() { return response->slice(); }
+  VPackSlice slice() const { return response->slice(); }
 
-  arangodb::fuerte::StatusCode statusCode() { return response->statusCode(); }
+  std::shared_ptr<velocypack::Buffer<uint8_t>> copyPayload() const {
+    return response->copyPayload();
+  }
+  std::shared_ptr<velocypack::Buffer<uint8_t>> stealPayload() const {
+    return response->stealPayload();
+  }
+  std::string payloadAsString() const {
+    return response->payloadAsString();
+  }
+  std::size_t payloadSize() const { return response->payloadSize(); }
+
+  arangodb::fuerte::StatusCode statusCode() const {
+    return response->statusCode();
+  }
 
   Result asResult() {
     if (!ok()) {
-      return Result{int(error), arangodb::fuerte::to_string(error)};
+      return Result{int(error), to_string(error)};
     } else if (200 <= statusCode() && statusCode() <= 299) {
       return Result{};
     } else {
@@ -60,6 +78,15 @@ struct AsyncAgencyCommResult {
     }
   }
 };
+
+// Work around a spurious compiler warning in GCC 9.3 with our maintainer mode
+// switched off. And since warnings are considered to be errors, we must
+// switch the warning off:
+
+#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
 
 struct AgencyReadResult : public AsyncAgencyCommResult {
   AgencyReadResult(AsyncAgencyCommResult&& result,
@@ -79,6 +106,10 @@ struct AgencyReadResult : public AsyncAgencyCommResult {
   std::shared_ptr<arangodb::cluster::paths::Path const> _valuePath;
 };
 
+#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
+#pragma GCC diagnostic pop
+#endif
+
 class AsyncAgencyComm;
 
 class AsyncAgencyCommManager final {
@@ -86,9 +117,11 @@ class AsyncAgencyCommManager final {
   static std::unique_ptr<AsyncAgencyCommManager> INSTANCE;
 
   static void initialize(application_features::ApplicationServer& server) {
-    INSTANCE.reset(new AsyncAgencyCommManager(server));
+    INSTANCE = std::make_unique<AsyncAgencyCommManager>(server);
   }
 
+
+  static bool isEnabled() { return INSTANCE != nullptr; }
   static AsyncAgencyCommManager& getInstance();
 
   explicit AsyncAgencyCommManager(application_features::ApplicationServer&);
@@ -101,6 +134,10 @@ class AsyncAgencyCommManager final {
     return _endpoints;
   }
 
+  std::string endpointsString() const;
+  auto getSkipScheduler() const -> bool { return _skipScheduler; };
+  void setSkipScheduler(bool v) { _skipScheduler = v; };
+
   std::string getCurrentEndpoint();
   void reportError(std::string const& endpoint);
   void reportRedirect(std::string const& endpoint, std::string const& redirectTo);
@@ -110,11 +147,22 @@ class AsyncAgencyCommManager final {
 
   application_features::ApplicationServer& server();
 
+  uint64_t nextRequestId() {
+    return _nextRequestId.fetch_add(1, std::memory_order_relaxed);
+  }
+
+  bool isStopping() const { return _isStopping; }
+  void setStopping(bool stopping) { _isStopping = stopping; }
+
  private:
+  bool _isStopping = false;
+  bool _skipScheduler = true;
   application_features::ApplicationServer& _server;
   mutable std::mutex _lock;
   std::deque<std::string> _endpoints;
   network::ConnectionPool* _pool = nullptr;
+
+  std::atomic<uint64_t> _nextRequestId = 0;
 };
 
 class AsyncAgencyComm final {
@@ -125,6 +173,7 @@ class AsyncAgencyComm final {
   [[nodiscard]] FutureResult getValues(std::string const& path) const;
   [[nodiscard]] FutureReadResult getValues(
       std::shared_ptr<arangodb::cluster::paths::Path const> const& path) const;
+  [[nodiscard]] FutureResult poll(network::Timeout timeout, uint64_t index) const;
 
   template <typename T>
   [[nodiscard]] FutureResult setValue(network::Timeout timeout,
@@ -168,17 +217,17 @@ class AsyncAgencyComm final {
                                                   velocypack::Buffer<uint8_t>&& body) const;
   [[nodiscard]] FutureResult sendReadTransaction(network::Timeout timeout,
                                                  velocypack::Buffer<uint8_t>&& body) const;
+  [[nodiscard]] FutureResult sendPollTransaction(network::Timeout timeout, uint64_t index) const;
 
   [[nodiscard]] FutureResult sendTransaction(network::Timeout timeout,
                                              AgencyReadTransaction const&) const;
   [[nodiscard]] FutureResult sendTransaction(network::Timeout timeout,
                                              AgencyWriteTransaction const&) const;
 
- public:
   enum class RequestType {
     READ,   // send the transaction again in the case of no response
     WRITE,  // does not send the transaction again but instead tries to do inquiry with the given ids
-    CUSTOM,  // talk to the leader and return always the result, even on timeout or redirect
+    CUSTOM,  // talk to the leader and always return the result, even on timeout or redirect
   };
 
   using ClientId = std::string;
@@ -200,12 +249,21 @@ class AsyncAgencyComm final {
                                               network::Timeout timeout, RequestType type,
                                               velocypack::Buffer<uint8_t>&& body) const;
 
- public:
+  [[nodiscard]] FutureResult sendWithFailover(
+    arangodb::fuerte::RestVerb method, std::string const& url,
+    network::Timeout timeout, RequestType type, uint64_t index) const;
+
   AsyncAgencyComm() : _manager(AsyncAgencyCommManager::getInstance()) {}
   explicit AsyncAgencyComm(AsyncAgencyCommManager& manager)
       : _manager(manager) {}
 
+  auto withSkipScheduler(bool v) -> AsyncAgencyComm& {
+    _skipScheduler = v;
+    return *this;
+  }
+
  private:
+  bool _skipScheduler = false;
   AsyncAgencyCommManager& _manager;
 };
 

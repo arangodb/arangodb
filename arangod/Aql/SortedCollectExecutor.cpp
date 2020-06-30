@@ -375,7 +375,7 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       }
     }
 
-    inputRange.nextDataRow();
+    inputRange.advanceDataRow();
 
     bool produceMore = !output.isFull();
     if (!produceMore) {
@@ -408,62 +408,59 @@ auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aq
     INTERNAL_LOG_SC << "clientCall.getSkipCount() == " << clientCall.getSkipCount();
     INTERNAL_LOG_SC << "clientCall.needSkipMore() == " << clientCall.needSkipMore();
 
-    {
-      auto [state, input] = inputRange.peekDataRow();
+    auto [state, input] = inputRange.peekDataRow();
 
-      INTERNAL_LOG_SC << "SortedCollectExecutor::skipRowsRange " << state << " "
-                   << std::boolalpha << input.isInitialized();
+    INTERNAL_LOG_SC << "SortedCollectExecutor::skipRowsRange " << state << " "
+                 << std::boolalpha << input.isInitialized();
 
-      if (input.isInitialized()) {
-        // we received data
-        _haveSeenData = true;
+    if (input.isInitialized()) {
+      // we received data
+      _haveSeenData = true;
 
-        // if we are in the same group, we can skip this line
-        if (_currentGroup.isSameGroup(input)) {
-          INTERNAL_LOG_SC << "input is same group";
-          std::ignore = inputRange.nextDataRow();
-          /* do nothing */
-        } else {
-          if (_currentGroup.isValid()) {
-            INTERNAL_LOG_SC << "input is new group, skipping current group";
-            // The current group is completed, skip it and create a new one
-            clientCall.didSkip(1);
-            _currentGroup.reset(InputAqlItemRow{CreateInvalidInputRowHint{}});
-            continue;
-          }
+      // if we are in the same group, we can skip this line
+      if (_currentGroup.isSameGroup(input)) {
+        INTERNAL_LOG_SC << "input is same group";
+        /* do nothing */
+      } else {
+        if (_currentGroup.isValid()) {
+          INTERNAL_LOG_SC << "input is new group, skipping current group";
+          // The current group is completed, skip it and create a new one
+          clientCall.didSkip(1);
+          _currentGroup.reset(InputAqlItemRow{CreateInvalidInputRowHint{}});
+          continue;
+        }
 
-          INTERNAL_LOG_SC << "group is invalid, creating new group";
-          _currentGroup.reset(input);
-          std::ignore = inputRange.nextDataRow();
+        INTERNAL_LOG_SC << "group is invalid, creating new group";
+        _currentGroup.reset(input);
+      }
+      inputRange.advanceDataRow();
+    }
+
+    if (!clientCall.needSkipMore()) {
+      INTERNAL_LOG_SC << "stop skipping early, there could be a pending group";
+      break;
+    }
+
+    if (state == ExecutorState::DONE) {
+      if (!_haveSeenData) {
+        // we have never been called with data
+        INTERNAL_LOG_SC << "never called with data";
+        if (_infos.getGroupRegisters().empty()) {
+          // by definition we need to emit one collect row
+          clientCall.didSkip(1);
+        }
+      } else {
+        if (_currentGroup.isValid()) {
+          INTERNAL_LOG_SC << "skipping final group";
+          clientCall.didSkip(1);
+          _currentGroup.reset(InputAqlItemRow{CreateInvalidInputRowHint{}});
         }
       }
-
-      if (!clientCall.needSkipMore()) {
-        INTERNAL_LOG_SC << "stop skipping early, there could be a pending group";
-        break;
-      }
-
-      if (state == ExecutorState::DONE) {
-        if (!_haveSeenData) {
-          // we have never been called with data
-          INTERNAL_LOG_SC << "never called with data";
-          if (_infos.getGroupRegisters().empty()) {
-            // by definition we need to emit one collect row
-            clientCall.didSkip(1);
-          }
-        } else {
-          if (_currentGroup.isValid()) {
-            INTERNAL_LOG_SC << "skipping final group";
-            clientCall.didSkip(1);
-            _currentGroup.reset(InputAqlItemRow{CreateInvalidInputRowHint{}});
-          }
-        }
-        break;
-      } else if (!input.isInitialized()) {
-        TRI_ASSERT(state == ExecutorState::HASMORE);
-        INTERNAL_LOG_SC << "waiting for more data to skip";
-        break;
-      }
+      break;
+    } else if (!input.isInitialized()) {
+      TRI_ASSERT(state == ExecutorState::HASMORE);
+      INTERNAL_LOG_SC << "waiting for more data to skip";
+      break;
     }
   }
 

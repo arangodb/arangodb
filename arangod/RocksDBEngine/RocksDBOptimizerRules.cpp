@@ -80,7 +80,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
   plan->findNodesOfType(nodes, ::reduceExtractionToProjectionTypes, true);
 
   bool modified = false;
-  ::arangodb::containers::HashSet<Variable const*> vars;
+  VarSet vars;
   std::unordered_set<std::string> attributes;
 
   for (auto& n : nodes) {

@@ -27,6 +27,7 @@
 #include "Agency/TimeString.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/HeartbeatThread.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -76,10 +77,10 @@ ActionBase::~ActionBase() = default;
 
 void ActionBase::notify() {
   LOG_TOPIC("df020", DEBUG, Logger::MAINTENANCE)
-      << "Job " << _description << " calling syncDBServerStatusQuo";
+      << "Job " << _description << " notifing maintenance";
   auto& server = _feature.server();
   if (server.hasFeature<ClusterFeature>()) {
-    server.getFeature<ClusterFeature>().syncDBServerStatusQuo();
+    server.getFeature<ClusterFeature>().notify();
   }
 }
 

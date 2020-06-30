@@ -42,20 +42,20 @@ class LoggerStream {
       : _topicId(LogTopic::MAX_LOG_TOPICS),
         _level(LogLevel::DEFAULT),
         _line(0),
+        _logid(nullptr),
         _file(nullptr),
         _function(nullptr) {}
 
   ~LoggerStream();
 
  public:
-  LoggerStream& operator<<(LogLevel const& level) {
+  LoggerStream& operator<<(LogLevel const& level) noexcept {
     _level = level;
     return *this;
   }
 
-  LoggerStream& operator<<(LogTopic const& topic) {
+  LoggerStream& operator<<(LogTopic const& topic) noexcept {
     _topicId = topic.id();
-    _out << topic.displayName();
     return *this;
   }
 
@@ -67,18 +67,23 @@ class LoggerStream {
 
   LoggerStream& operator<<(Logger::FIXED const& duration);
 
-  LoggerStream& operator<<(Logger::LINE const& line) {
+  LoggerStream& operator<<(Logger::LINE const& line) noexcept {
     _line = line._line;
     return *this;
   }
 
-  LoggerStream& operator<<(Logger::FILE const& file) {
+  LoggerStream& operator<<(Logger::FILE const& file) noexcept {
     _file = file._file;
     return *this;
   }
 
-  LoggerStream& operator<<(Logger::FUNCTION const& function) {
+  LoggerStream& operator<<(Logger::FUNCTION const& function) noexcept {
     _function = function._function;
+    return *this;
+  }
+
+  LoggerStream& operator<<(Logger::LOGID const& logid) noexcept {
+    _logid = logid._logid;
     return *this;
   }
 
@@ -97,6 +102,7 @@ class LoggerStream {
   size_t _topicId;
   LogLevel _level;
   int _line;
+  char const* _logid;
   char const* _file;
   char const* _function;
 };

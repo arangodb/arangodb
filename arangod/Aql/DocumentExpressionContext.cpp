@@ -27,9 +27,9 @@
 
 using namespace arangodb::aql;
 
-DocumentExpressionContext::DocumentExpressionContext(transaction::Methods& trx,
+DocumentExpressionContext::DocumentExpressionContext(arangodb::transaction::Methods& trx,
                                                      QueryContext& query,
-                                                     RegexCache& cache,
+                                                     AqlFunctionsInternalCache& cache,
                                                      arangodb::velocypack::Slice document)
     : QueryExpressionContext(trx, query, cache), _document(document) {}
 

@@ -83,14 +83,14 @@ const std::string n_timesecnum = "timesecnum";
 const std::string n_body = "body";
 
 const irs::flags text_features{
-  irs::frequency::type(),
-  irs::position::type(),
-  irs::offset::type(),
-  irs::norm::type()
+  irs::type<irs::frequency>::get(),
+  irs::type<irs::position>::get(),
+  irs::type<irs::offset>::get(),
+  irs::type<irs::norm>::get()
 };
 
 const irs::flags numeric_features{
-  irs::granularity_prefix::type()
+  irs::type<irs::granularity_prefix>::get()
 };
 
 NS_END
@@ -185,7 +185,7 @@ struct Doc {
     mutable irs::analysis::analyzer::ptr stream;
     static const std::string& aname;
     static const std::string& aignore;
-    static const irs::text_format::type_id& aignore_format;
+    static constexpr auto aignore_format = irs::type<irs::text_format::json>::get();
 
     TextField(const std::string& n, const irs::flags& flags)
       : Field(n, flags) {
@@ -252,7 +252,7 @@ struct Doc {
     snprintf(str2, sizeof (str2), "%6s", str);
     std::string s(str2);
     std::replace(s.begin(), s.end(), ' ', '0');
-    elements.emplace_back(std::make_shared<StringField>(n_id, irs::flags{irs::granularity_prefix::type()}, s));
+    elements.emplace_back(std::make_shared<StringField>(n_id, irs::flags{irs::type<irs::granularity_prefix>::get()}, s));
     store.emplace_back(elements.back());
 
     // title: string
@@ -267,21 +267,21 @@ struct Doc {
     // +date: uint64_t
     uint64_t t = 0; //boost::posix_time::microsec_clock::local_time().total_milliseconds();
     elements.emplace_back(
-      std::make_shared<NumericField>(n_timesecnum, irs::flags{irs::granularity_prefix::type()}, t)
+      std::make_shared<NumericField>(n_timesecnum, irs::flags{irs::type<irs::granularity_prefix>::get()}, t)
     );
 
     // body: text
     std::getline(lineStream, cell, '\t');
     elements.emplace_back(
-      std::make_shared<TextField>(n_body, irs::flags{irs::frequency::type(), irs::position::type(), irs::offset::type(), irs::norm::type()}, cell)
+      std::make_shared<TextField>(n_body, irs::flags{irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::offset>::get(), irs::type<irs::norm>::get()}, cell)
     );
   }
 };
 
 std::atomic<uint64_t> Doc::next_id(0);
 const std::string& Doc::TextField::aname = std::string("text");
-const std::string& Doc::TextField::aignore = std::string("{\"locale\":\"en\", \"stopwords\":[\"abc\", \"def\", \"ghi\"]}");
-const irs::text_format::type_id& Doc::TextField::aignore_format = irs::text_format::json;
+const std::string& Doc::TextField::aignore = std::string("{\"locale\":\"en\", \"stopwords\":[\"abc\", \"def\", \"ghi\"] }");
+
 
 struct WikiDoc : Doc {
   WikiDoc() {

@@ -54,6 +54,8 @@ class QuickHistogram : public arangodb::Thread {
       : Thread(server, "QuickHistogram"),
         _writingLatencies(nullptr),
         _readingLatencies(nullptr),
+        _objectsWriting(0),
+        _objectsReading(0),
         _threadRunning(false) {}
 
   ~QuickHistogram() { shutdown(); }
@@ -67,7 +69,7 @@ class QuickHistogram : public arangodb::Thread {
     guard.broadcast();
   }
 
-  void postLatency(std::chrono::microseconds latency) {
+  void postLatency(std::chrono::microseconds latency, uint64_t objects = 1) {
     if (_threadRunning.load()) {
       CONDITION_LOCKER(guard, _condvar);
 
@@ -79,6 +81,7 @@ class QuickHistogram : public arangodb::Thread {
             << "QuickHistogram::postLatency() had exception doing a push_back "
                "(out of ram)";
       }
+      _objectsWriting += objects;
     }
   }
 
@@ -87,7 +90,7 @@ class QuickHistogram : public arangodb::Thread {
     _intervalStart = std::chrono::steady_clock::now();
     _measuringStart = _intervalStart;
     LOG_TOPIC("f206c", INFO, arangodb::Logger::FIXME)
-        << R"("elapsed","window","n","min","mean","median","95th","99th","99.9th","max","unused1","clock")";
+        << R"("elapsed","window","n","min","mean","median","95th","99th","99.9th","max","objects","clock")";
 
     _writingLatencies = &_vectors[0];
     _readingLatencies = &_vectors[1];
@@ -103,6 +106,8 @@ class QuickHistogram : public arangodb::Thread {
       temp = _writingLatencies;
       _writingLatencies = _readingLatencies;
       _readingLatencies = temp;
+      _objectsReading = _objectsWriting.load();
+      _objectsWriting = 0;
 
       printInterval(!_threadRunning.load());
     }
@@ -117,6 +122,7 @@ class QuickHistogram : public arangodb::Thread {
   typedef std::vector<std::chrono::microseconds> LatencyVec_t;
   LatencyVec_t _vectors[2];
   LatencyVec_t *_writingLatencies, *_readingLatencies;
+  std::atomic<uint64_t> _objectsWriting, _objectsReading;
 
   basics::ConditionVariable _condvar;
   std::atomic<bool> _threadRunning;
@@ -180,20 +186,16 @@ class QuickHistogram : public arangodb::Thread {
         // new age string buffering & formatting
         std::ostringstream oss;
         oss << std::put_time(&tm, "%m-%d-%Y %H:%M:%S");
-        auto str = oss.str();
 
-        // old age string buffering & formatting
-        char buffer[133];
-        snprintf(buffer, sizeof(buffer),
-                 "%.3f,%.3f,%llu,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%d,%s",
-                 fp_measuring, fp_interval, static_cast<unsigned long long>(num),
-                 (0 != num) ? static_cast<long>(_readingLatencies->at(0).count()) : 0,
-                 static_cast<long>(mean.count()), static_cast<long>(median.count()),
-                 static_cast<long>(per95.count()), static_cast<long>(per99.count()),
-                 static_cast<long>(per99_9.count()),
-                 (0 != num) ? static_cast<long>(_readingLatencies->at(num - 1).count()) : 0,
-                 0, str.c_str());
-        LOG_TOPIC("8a76c", INFO, arangodb::Logger::FIXME) << buffer;
+        LOG_TOPIC("8a76c",INFO, arangodb::Logger::FIXME) << Logger::FIXED(fp_measuring,3) << ","
+                                                 << Logger::FIXED(fp_interval,3) << ","
+                                                 << num << ","
+                                                 << ((0 != num) ? _readingLatencies->at(0).count() : 0) << ","
+                                                 << mean.count() << "," << median.count() << ","
+                                                 << per95.count() << "," << per99.count() << ","
+                                                 << per99_9.count() << ","
+                                                 << ((0 != num) ? _readingLatencies->at(num - 1).count() : 0) << ","
+                                                 << _objectsReading.load() << "," << oss.str();
 
         _readingLatencies->clear();
         _intervalStart = intervalEnd;
@@ -252,18 +254,24 @@ class QuickHistogram : public arangodb::Thread {
 class QuickHistogramTimer {
  public:
   explicit QuickHistogramTimer(QuickHistogram& histo)
-      : _intervalStart(std::chrono::steady_clock::now()), _histogram(histo) {}
+    : _intervalStart(std::chrono::steady_clock::now()), _histogram(histo),
+    _objects(1) {}
+
+  explicit QuickHistogramTimer(QuickHistogram& histo, uint64_t objects)
+    : _intervalStart(std::chrono::steady_clock::now()), _histogram(histo),
+    _objects(objects) {}
 
   ~QuickHistogramTimer() {
     std::chrono::microseconds latency;
 
     latency = std::chrono::duration_cast<std::chrono::microseconds>(
         std::chrono::steady_clock::now() - _intervalStart);
-    _histogram.postLatency(latency);
+    _histogram.postLatency(latency, _objects);
   }
 
   std::chrono::steady_clock::time_point _intervalStart;
   QuickHistogram& _histogram;
+  uint64_t _objects;
 };  // QuickHistogramTimer
 }  // namespace import
 }  // namespace arangodb

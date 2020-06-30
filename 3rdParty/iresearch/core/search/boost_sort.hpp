@@ -28,7 +28,10 @@
 NS_ROOT
 
 struct IRESEARCH_API boost_sort final : public sort {
-  DECLARE_SORT_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "boostscore";
+  }
+
   DECLARE_FACTORY(); // for use with irs::order::add<T>() and default args
 
   static void init();

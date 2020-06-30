@@ -980,7 +980,7 @@ AstNode* Condition::removeTraversalCondition(ExecutionPlan const* plan,
 }
 
 /// @brief remove (now) invalid variables from the condition
-bool Condition::removeInvalidVariables(::arangodb::containers::HashSet<Variable const*> const& validVars) {
+bool Condition::removeInvalidVariables(VarSet const& validVars) {
   if (_root == nullptr) {
     return false;
   }
@@ -996,7 +996,7 @@ bool Condition::removeInvalidVariables(::arangodb::containers::HashSet<Variable 
 
   // handle sub nodes of top-level OR node
   size_t const n = _root->numMembers();
-  ::arangodb::containers::HashSet<Variable const*> varsUsed;
+  VarSet varsUsed;
 
   for (size_t i = 0; i < n; ++i) {
     auto oldAndNode = _root->getMemberUnchecked(i);
@@ -1092,13 +1092,13 @@ void Condition::deduplicateJunctionNode(AstNode* unlockedNode) {
 
         if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
           if (lhs->isConstant()) {
-            lhs = Ast::resolveConstAttributeAccess(lhs);
+            lhs = _ast->resolveConstAttributeAccess(lhs);
           }
           storeAttributeAccess(varAccess, variableUsage, lhs, j, ATTRIBUTE_LEFT);
         }
         if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS || rhs->type == NODE_TYPE_EXPANSION) {
           if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && rhs->isConstant()) {
-            rhs = Ast::resolveConstAttributeAccess(rhs);
+            rhs = _ast->resolveConstAttributeAccess(rhs);
           }
           storeAttributeAccess(varAccess, variableUsage, rhs, j, ATTRIBUTE_RIGHT);
         }
@@ -1279,13 +1279,13 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
 
         if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
           if (lhs->isConstant()) {
-            lhs = Ast::resolveConstAttributeAccess(lhs);
+            lhs = _ast->resolveConstAttributeAccess(lhs);
           }
           storeAttributeAccess(varAccess, variableUsage, lhs, j, ATTRIBUTE_LEFT);
         }
         if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS || rhs->type == NODE_TYPE_EXPANSION) {
           if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && rhs->isConstant()) {
-            rhs = Ast::resolveConstAttributeAccess(rhs);
+            rhs = _ast->resolveConstAttributeAccess(rhs);
           }
           storeAttributeAccess(varAccess, variableUsage, rhs, j, ATTRIBUTE_RIGHT);
         }

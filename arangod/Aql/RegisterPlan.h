@@ -31,6 +31,7 @@
 #include "Basics/Common.h"
 
 #include <memory>
+#include <stack>
 #include <unordered_map>
 #include <vector>
 
@@ -59,10 +60,33 @@ struct VarInfo {
 template <typename T>
 struct RegisterPlanT;
 
+
+using RegVarMap = std::unordered_map<RegisterId, Variable const*>;
+using RegVarMapStack = std::vector<RegVarMap>;
+
+/// There are still some improvements that can be done to the RegisterPlanWalker
+/// to produce better plans.
+/// The most important point is that registersToClear are currently used to find
+/// unused registers that can be reused. That is correct, but does not include
+/// all cases that can be reused. For example:
+///  - A register that is written in one node and never used later will not be
+///    found.
+///  - When a spliced subquery starts (at a SubqueryStartNode), two things are
+///    missed:
+///    1) registers that are used after the subquery, but not inside, will not
+///       be marked as unused registers inside the subquery.
+///    2) registers that are used inside the subquery, but not after it, are not
+///       marked as unused registers outside the subquery (i.e. on the stack
+///       level below it). It would of course suffice when this would be done
+///       at the SubqueryEndNode.
 template <typename T>
 struct RegisterPlanWalkerT final : public WalkerWorker<T> {
-  explicit RegisterPlanWalkerT(std::shared_ptr<RegisterPlanT<T>> plan)
-      : plan(std::move(plan)) {}
+  using RegisterPlan = RegisterPlanT<T>;
+
+  explicit RegisterPlanWalkerT(std::shared_ptr<RegisterPlan> plan,
+                               ExplainRegisterPlan explainRegisterPlan = ExplainRegisterPlan::No)
+      : plan(std::move(plan)),
+        explain(explainRegisterPlan == ExplainRegisterPlan::Yes) {}
   virtual ~RegisterPlanWalkerT() noexcept = default;
 
   void after(T* eb) final;
@@ -70,8 +94,15 @@ struct RegisterPlanWalkerT final : public WalkerWorker<T> {
     return false;  // do not walk into subquery
   }
 
-  std::set<RegisterId> unusedRegisters;
-  std::shared_ptr<RegisterPlanT<T>> plan;
+  using RegCountStack = std::stack<RegisterCount>;
+
+  RegIdOrderedSetStack unusedRegisters{{}};
+  RegIdSetStack regsToKeepStack{{}};
+  std::shared_ptr<RegisterPlan> plan;
+  bool explain = false;
+  RegCountStack previousSubqueryNrRegs{};
+
+  RegVarMapStack regVarMappingStack{{}};
 };
 
 template <typename T>
@@ -87,14 +118,19 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
   // the entry with index i here is always the sum of all values
   // in nrRegsHere from index 0 to i (inclusively) and the two
   // have the same length:
-  std::vector<RegisterId> nrRegs;
+  std::vector<RegisterCount> nrRegs;
 
   // We collect the subquery nodes to deal with them at the end:
   std::vector<T*> subQueryNodes;
 
   /// @brief maximum register id that can be assigned, plus one.
   /// this is used for assertions
-  static constexpr RegisterId MaxRegisterId = 1000;
+  static constexpr RegisterId MaxRegisterId = RegisterId{1000};
+
+  /// @brief Only used when the register plan is being explained
+  std::map<ExecutionNodeId, RegIdOrderedSetStack> unusedRegsByNode;
+  /// @brief Only used when the reister plan is being explained
+  std::map<ExecutionNodeId, RegVarMapStack> regVarMapStackByNode;
 
  public:
   RegisterPlanT();
@@ -105,19 +141,22 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
 
   std::shared_ptr<RegisterPlanT> clone();
 
-  void registerVariable(VariableId v, std::set<RegisterId>& unusedRegisters);
-  void registerVariable(VariableId v);
+  RegisterId registerVariable(Variable const* v, std::set<RegisterId>& unusedRegisters);
   void increaseDepth();
   auto addRegister() -> RegisterId;
   void addSubqueryNode(T* subquery);
-  auto getTotalNrRegs() -> unsigned int;
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   static void toVelocyPackEmpty(arangodb::velocypack::Builder& builder);
 
+  auto variableToRegisterId(Variable const* variable) const -> RegisterId;
+
+  // compatibility function for 3.6. can be removed in 3.8
+  auto calcRegsToKeep(VarSetStack const& varsUsedLaterStack, VarSetStack const& varsValidStack,
+                      std::vector<Variable const*> const& varsSetHere) const -> RegIdSetStack;
+
  private:
   unsigned int depth;
-  unsigned int totalNrRegs;
 };
 
 template <typename T>

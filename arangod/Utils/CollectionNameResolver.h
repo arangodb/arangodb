@@ -49,6 +49,14 @@ class CollectionNameResolver {
       : _vocbase(vocbase),
         _serverRole(ServerState::instance()->getRole()) {}
 
+  // copy an existing resolver
+  CollectionNameResolver(CollectionNameResolver const& other);
+
+  // every other copy/move operation is disallowed
+  CollectionNameResolver& operator=(CollectionNameResolver const& other) = delete;
+  CollectionNameResolver(CollectionNameResolver&& other) = delete;
+  CollectionNameResolver& operator=(CollectionNameResolver&& other) = delete;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroy the resolver
   //////////////////////////////////////////////////////////////////////////////

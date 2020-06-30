@@ -27,6 +27,8 @@
 
 #include "Auth/TokenCache.h"
 #include "Endpoint/ConnectionInfo.h"
+#include "Statistics/ConnectionStatistics.h"
+#include "Statistics/RequestStatistics.h"
 
 #include <mutex>
 
@@ -95,7 +97,7 @@ protected:
 
   /// @brief send the response to the client.
   virtual void sendResponse(std::unique_ptr<GeneralResponse>,
-                            RequestStatistics*) = 0;
+                            RequestStatistics::Item) = 0;
 
  protected:
   
@@ -113,9 +115,9 @@ protected:
   void executeRequest(std::unique_ptr<GeneralRequest>,
                       std::unique_ptr<GeneralResponse>);
 
-  RequestStatistics* acquireStatistics(uint64_t);
-  RequestStatistics* statistics(uint64_t);
-  RequestStatistics* stealStatistics(uint64_t);
+  RequestStatistics::Item const& acquireStatistics(uint64_t);
+  RequestStatistics::Item const& statistics(uint64_t);
+  RequestStatistics::Item stealStatistics(uint64_t);
   
   /// @brief send simple response including response body
   void addSimpleResponse(rest::ResponseCode, rest::ContentType, uint64_t messageId,
@@ -154,12 +156,12 @@ protected:
   GeneralServer& _server;
   ConnectionInfo _connectionInfo;
   
-  ConnectionStatistics* _connectionStatistics;
+  ConnectionStatistics::Item _connectionStatistics;
   std::chrono::milliseconds _keepAliveTimeout;
   AuthenticationFeature* _auth;
 
   std::mutex _statisticsMutex;
-  std::unordered_map<uint64_t, RequestStatistics*> _statisticsMap;
+  std::unordered_map<uint64_t, RequestStatistics::Item> _statisticsMap;
 };
 }  // namespace rest
 }  // namespace arangodb

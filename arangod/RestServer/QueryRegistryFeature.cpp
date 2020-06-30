@@ -49,6 +49,7 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _failOnWarning(false),
       _queryCacheIncludeSystem(false),
       _smartJoins(true),
+      _parallelizeTraversals(true),
       _queryMemoryLimit(0),
       _maxQueryPlans(128),
       _queryCacheMaxResultsCount(0),
@@ -136,10 +137,16 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
   
   options->addOption("--query.smart-joins",
-                     "enable smart joins query optimization",
+                     "enable SmartJoins query optimization",
                      new BooleanParameter(&_smartJoins),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Enterprise))
                      .setIntroducedIn(30405).setIntroducedIn(30500);
+  
+  options->addOption("--query.parallelize-traversals",
+                     "enable traversal parallelization",
+                     new BooleanParameter(&_parallelizeTraversals),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Enterprise))
+                     .setIntroducedIn(30701);
 }
 
 void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {

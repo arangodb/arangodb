@@ -55,7 +55,10 @@ struct IRESEARCH_API by_term_options {
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API by_term : public filter_base<by_term_options> {
  public:
-  DECLARE_FILTER_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::by_term";
+  }
+
   DECLARE_FACTORY();
 
   static prepared::ptr prepare(
@@ -77,7 +80,7 @@ class IRESEARCH_API by_term : public filter_base<by_term_options> {
       const index_reader& rdr,
       const order::prepared& ord,
       boost_t boost,
-      const attribute_view& /*ctx*/) const {
+      const attribute_provider* /*ctx*/) const {
     return prepare(rdr, ord, boost*this->boost(),
                    field(), options().term);
   }

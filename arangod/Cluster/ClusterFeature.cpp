@@ -30,6 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Endpoint/Endpoint.h"
@@ -48,7 +49,7 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Cluster") {
+  : ApplicationFeature(server, "Cluster") {
   setOptional(true);
   startsAfter<CommunicationFeaturePhase>();
   startsAfter<DatabaseFeaturePhase>();
@@ -56,7 +57,7 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
 
 ClusterFeature::~ClusterFeature() {
   if (_enableCluster) {
-    AgencyCommManager::shutdown();
+    AgencyCommHelper::shutdown();
   }
 }
 
@@ -91,6 +92,9 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                              "this server's local info", false);
   options->addObsoleteOption("--cluster.my-id", "this server's id", false);
 
+  options->addObsoleteOption("--cluster.agency-prefix", "agency prefix", false);
+
+
   options->addOption(
       "--cluster.require-persisted-id",
       "if set to true, then the instance will only start if a UUID file is "
@@ -108,11 +112,6 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                                                   arangodb::options::Flags::OnCoordinator,
                                                   arangodb::options::Flags::OnDBServer));
 
-  options->addOption("--cluster.agency-prefix", "agency prefix",
-                     new StringParameter(&_agencyPrefix),
-                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
-                                                  arangodb::options::Flags::OnCoordinator,
-                                                  arangodb::options::Flags::OnDBServer));
 
   options->addOption("--cluster.my-role", "this server's role",
                      new StringParameter(&_myRole));
@@ -140,6 +139,7 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                   arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
                                                arangodb::options::Flags::OnCoordinator))
       .setIntroducedIn(30600);
+
 
   options->addOption("--cluster.system-replication-factor",
                      "default replication factor for system collections",
@@ -302,8 +302,8 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
            "be higher than `--cluster.max-replication-factor`";
     FATAL_ERROR_EXIT();
   }
-
-  if (_systemReplicationFactor > 0 && _systemReplicationFactor < _minReplicationFactor) {
+  if (_systemReplicationFactor > 0 &&
+      _systemReplicationFactor < _minReplicationFactor) {
     LOG_TOPIC("dfc38", FATAL, arangodb::Logger::CLUSTER)
         << "Invalid value for `--cluster.system-replication-factor`. Must not "
            "be lower than `--cluster.min-replication-factor`";
@@ -350,20 +350,8 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
-  // validate
-  if (_agencyPrefix.empty()) {
-    _agencyPrefix = "arango";
-  }
-
-  // validate --cluster.agency-prefix
-  size_t found = _agencyPrefix.find_first_not_of(
-      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/");
-
-  if (found != std::string::npos || _agencyPrefix.empty()) {
-    LOG_TOPIC("7259b", FATAL, arangodb::Logger::CLUSTER)
-        << "invalid value specified for --cluster.agency-prefix";
-    FATAL_ERROR_EXIT();
-  }
+  // changing agency namespace no longer needed
+  _agencyPrefix = "arango";
 
   // validate system-replication-factor
   if (_systemReplicationFactor == 0) {
@@ -411,6 +399,8 @@ void ClusterFeature::reportRole(arangodb::ServerState::RoleEnum role) {
       << "Starting up with role " << roleString;
 }
 
+// IMPORTANT: Please make sure that you understand that the agency is not
+// available before ::start and this should not be accessed in this section.
 void ClusterFeature::prepare() {
   if (_enableCluster && _requirePersistedId && !ServerState::instance()->hasPersistedId()) {
     LOG_TOPIC("d2194", FATAL, arangodb::Logger::CLUSTER)
@@ -421,15 +411,9 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
-  server().getFeature<arangodb::MetricsFeature>().histogram(
-      StaticStrings::AgencyCommRequestTimeMs, log_scale_t<uint64_t>(2, 58, 120000, 10),
-      "Request time for Agency requests");
-
-  // create callback registery
-  _agencyCallbackRegistry.reset(new AgencyCallbackRegistry(server(), agencyCallbacksPath()));
-
-  // Initialize ClusterInfo library:
-  _clusterInfo = std::make_unique<ClusterInfo>(server(), _agencyCallbackRegistry.get());
+  if (!_allocated) {
+    allocateMembers();
+  }
 
   if (ServerState::instance()->isAgent() || _enableCluster) {
     AuthenticationFeature* af = AuthenticationFeature::instance();
@@ -459,33 +443,38 @@ void ClusterFeature::prepare() {
   config.clusterInfo = &clusterInfo();
   config.name = "AgencyComm";
 
-  _pool = std::make_unique<network::ConnectionPool>(config);
+  _asyncAgencyCommPool = std::make_unique<network::ConnectionPool>(config);
+
 
   // register the prefix with the communicator
-  AgencyCommManager::initialize(server(), _agencyPrefix);
-  TRI_ASSERT(AgencyCommManager::MANAGER != nullptr);
+  AgencyCommHelper::initialize(_agencyPrefix);
   AsyncAgencyCommManager::initialize(server());
-  AsyncAgencyCommManager::INSTANCE->pool(_pool.get());
+  TRI_ASSERT(AsyncAgencyCommManager::INSTANCE != nullptr);
+  AsyncAgencyCommManager::INSTANCE->setSkipScheduler(true);
+  AsyncAgencyCommManager::INSTANCE->pool(_asyncAgencyCommPool.get());
 
-  for (size_t i = 0; i < _agencyEndpoints.size(); ++i) {
-    std::string const unified = Endpoint::unifiedForm(_agencyEndpoints[i]);
+  for (const auto& _agencyEndpoint : _agencyEndpoints) {
+    std::string const unified = Endpoint::unifiedForm(_agencyEndpoint);
 
     if (unified.empty()) {
       LOG_TOPIC("1b759", FATAL, arangodb::Logger::CLUSTER)
-          << "invalid endpoint '" << _agencyEndpoints[i]
+          << "invalid endpoint '" << _agencyEndpoint
           << "' specified for --cluster.agency-endpoint";
       FATAL_ERROR_EXIT();
     }
 
-    AgencyCommManager::MANAGER->addEndpoint(unified);
     AsyncAgencyCommManager::INSTANCE->addEndpoint(unified);
   }
 
-  // perform an initial connect to the agency
-  if (!AgencyCommManager::MANAGER->start()) {
+  bool ok = AgencyComm(server()).ensureStructureInitialized();
+  LOG_TOPIC("d8ce6", DEBUG, Logger::AGENCYCOMM)
+      << "structures " << (ok ? "are" : "failed to") << " initialize";
+
+  if (!ok) {
+
     LOG_TOPIC("54560", FATAL, arangodb::Logger::CLUSTER)
         << "Could not connect to any agency endpoints ("
-        << AgencyCommManager::MANAGER->endpointsString() << ")";
+        << AsyncAgencyCommManager::INSTANCE->endpointsString() << ")";
     FATAL_ERROR_EXIT();
   }
 
@@ -497,7 +486,7 @@ void ClusterFeature::prepare() {
   }
 
   auto role = ServerState::instance()->getRole();
-  auto endpoints = AgencyCommManager::MANAGER->endpointsString();
+  auto endpoints = AsyncAgencyCommManager::INSTANCE->endpoints();
 
   if (role == ServerState::ROLE_UNDEFINED) {
     // no role found
@@ -508,14 +497,43 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
-  // if nonempty, it has already been set above
+  // This must remain here for proper function after hot restores
+  if (role != ServerState::ROLE_AGENT && role != ServerState::ROLE_UNDEFINED) {
+    _agencyCache->start();
+    LOG_TOPIC("bae31", DEBUG, Logger::CLUSTER) << "Waiting for agency cache to become ready.";
+  }
 
+}
+
+// IMPORTANT: Please read the first comment block a couple of lines down, before
+// Adding code to this section.
+void ClusterFeature::start() {
+
+  // return if cluster is disabled
+  if (!_enableCluster) {
+    startHeartbeatThread(nullptr, 5000, 5, std::string());
+    return;
+  }
+
+  auto role = ServerState::instance()->getRole();
+
+  // We need to wait for any cluster operation, which needs access to the
+  // agency cache for it to become ready. The essentials in the cluster, namely
+  // ClusterInfo etc, need to start after first poll result from the agency.
+  // This is of great importance to not accidentally delete data facing an
+  // empty agency. There are also other measures that guard against such a
+  // outcome. But there is also no point continuing with a first agency poll.  
+  if (role != ServerState::ROLE_AGENT && role != ServerState::ROLE_UNDEFINED) {
+    _agencyCache->waitFor(1).get();
+    LOG_TOPIC("13eab", DEBUG, Logger::CLUSTER)
+      << "Agency cache is ready. Starting cluster cache syncers";
+  }
+  
   // If we are a coordinator, we wait until at least one DBServer is there,
   // otherwise we can do very little, in particular, we cannot create
   // any collection:
   if (role == ServerState::ROLE_COORDINATOR) {
     double start = TRI_microtime();
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // in maintainer mode, a developer does not want to spend that much time
     // waiting for extra nodes to start up
@@ -523,43 +541,34 @@ void ClusterFeature::prepare() {
 #else
     constexpr double waitTime = 15.0;
 #endif
-
     while (true) {
       LOG_TOPIC("d4db4", INFO, arangodb::Logger::CLUSTER)
-          << "Waiting for DBservers to show up...";
+        << "Waiting for DBservers to show up...";
+
       _clusterInfo->loadCurrentDBServers();
       std::vector<ServerID> DBServers = _clusterInfo->getCurrentDBServers();
       if (DBServers.size() >= 1 &&
           (DBServers.size() > 1 || TRI_microtime() - start > waitTime)) {
         LOG_TOPIC("22f55", INFO, arangodb::Logger::CLUSTER)
-            << "Found " << DBServers.size() << " DBservers.";
+          << "Found " << DBServers.size() << " DBservers.";
         break;
       }
       std::this_thread::sleep_for(std::chrono::seconds(1));
     }
   }
-}
-
-void ClusterFeature::start() {
-  // return if cluster is disabled
-  if (!_enableCluster) {
-    startHeartbeatThread(nullptr, 5000, 5, std::string());
-    return;
-  }
 
   ServerState::instance()->setState(ServerState::STATE_STARTUP);
 
-  // the agency about our state
+  // tell the agency about our state
   AgencyComm comm(server());
-  comm.sendServerState();
+  comm.sendServerState(120.0);
 
-  std::string const version = comm.version();
+  auto const version = comm.version();
 
   ServerState::instance()->setInitialized();
 
-  std::string const endpoints = AgencyCommManager::MANAGER->endpointsString();
+  std::string const endpoints = AsyncAgencyCommManager::INSTANCE->getCurrentEndpoint();
 
-  ServerState::RoleEnum role = ServerState::instance()->getRole();
   std::string myId = ServerState::instance()->getId();
 
   if (role == ServerState::RoleEnum::ROLE_DBSERVER) {
@@ -575,11 +584,13 @@ void ClusterFeature::start() {
       << ", server id: '" << myId << "', internal endpoint / address: " << _myEndpoint
       << "', advertised endpoint: " << _myAdvertisedEndpoint << ", role: " << role;
 
-  AgencyCommResult result = comm.getValues("Sync/HeartbeatIntervalMs");
+  auto [acb,idx] = _agencyCache->read(
+    std::vector<std::string>{AgencyCommHelper::path("Sync/HeartbeatIntervalMs")});
+  auto result = acb->slice();
 
-  if (result.successful()) {
-    velocypack::Slice HeartbeatIntervalMs = result.slice()[0].get(std::vector<std::string>(
-        {AgencyCommManager::path(), "Sync", "HeartbeatIntervalMs"}));
+  if (result.isArray()) {
+    velocypack::Slice HeartbeatIntervalMs = result[0].get(
+      std::vector<std::string>({AgencyCommHelper::path(), "Sync", "HeartbeatIntervalMs"}));
 
     if (HeartbeatIntervalMs.isInteger()) {
       try {
@@ -602,17 +613,29 @@ void ClusterFeature::start() {
   }
 
   startHeartbeatThread(_agencyCallbackRegistry.get(), _heartbeatInterval, 5, endpoints);
+  _clusterInfo->startSyncers();
 
   comm.increment("Current/Version");
 
+  AsyncAgencyCommManager::INSTANCE->setSkipScheduler(false);
   ServerState::instance()->setState(ServerState::STATE_SERVING);
 }
 
-void ClusterFeature::beginShutdown() {}
-
-void ClusterFeature::stop() { shutdownHeartbeatThread(); }
+void ClusterFeature::beginShutdown() {
+  if (_enableCluster) {
+    _clusterInfo->shutdownSyncers();
+  }
+  _agencyCache->beginShutdown();
+}
 
 void ClusterFeature::unprepare() {
+  if (!_enableCluster) {
+    return;
+  }
+  _clusterInfo->cleanup();
+}
+
+void ClusterFeature::stop() {
   if (!_enableCluster) {
     return;
   }
@@ -622,84 +645,27 @@ void ClusterFeature::unprepare() {
   // change into shutdown state
   ServerState::instance()->setState(ServerState::STATE_SHUTDOWN);
 
+  // wait only a few seconds to broadcast our "shut down" state.
+  // if we wait much longer, and the agency has already been shut
+  // down, we may cause our instance to hopelessly hang and try
+  // to write something into a non-existing agency.
   AgencyComm comm(server());
-  comm.sendServerState();
+  // this will be stored in transient only
+  comm.sendServerState(4.0); 
 
-  if (_heartbeatThread != nullptr) {
-    int counter = 0;
-    while (_heartbeatThread->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      // emit warning after 5 seconds
-      if (++counter == 10 * 5) {
-        LOG_TOPIC("26835", WARN, arangodb::Logger::CLUSTER)
-            << "waiting for heartbeat thread to finish";
-      }
-    }
-  }
-
+  // the following ops will be stored in Plan/Current (for unregister) or
+  // Current (for logoff)
   if (_unregisterOnShutdown) {
-    ServerState::instance()->unregister();
-  }
+    // also use a relatively short timeout here, for the same reason as above.
+    ServerState::instance()->unregister(30.0);
+  } else {
+    // log off the server from the agency, without permanently removing it from
+    // the cluster setup.
+    ServerState::instance()->logoff(10.0);
+  } 
 
-  comm.sendServerState();
-
-  // Try only once to unregister because maybe the agencycomm
-  // is shutting down as well...
-
-  // Remove from role list
-  ServerState::RoleEnum role = ServerState::instance()->getRole();
-  // nice variable name :S
-  std::string alk = ServerState::roleToAgencyListKey(role);
-  std::string me = ServerState::instance()->getId();
-
-  AgencyWriteTransaction unreg;
-  unreg.operations.push_back(AgencyOperation("Current/" + alk + "/" + me,
-                                             AgencySimpleOperationType::DELETE_OP));
-  // Unregister
-  unreg.operations.push_back(AgencyOperation("Current/ServersRegistered/" + me,
-                                             AgencySimpleOperationType::DELETE_OP));
-  unreg.operations.push_back(
-      AgencyOperation("Current/Version", AgencySimpleOperationType::INCREMENT_OP));
-
-  constexpr int maxTries = 10;
-  int tries = 0;
-  while (true) {
-    AgencyCommResult res = comm.sendTransactionWithFailover(unreg, 120.0);
-    if (res.successful()) {
-      break;
-    }
-
-    if (res.httpCode() == TRI_ERROR_HTTP_SERVICE_UNAVAILABLE || !res.connected()) {
-      LOG_TOPIC("1776b", INFO, Logger::CLUSTER)
-          << "unable to unregister server from agency, because agency is in "
-             "shutdown";
-      break;
-    }
-
-    if (++tries < maxTries) {
-      // try again
-      LOG_TOPIC("c7af5", ERR, Logger::CLUSTER)
-          << "unable to unregister server from agency "
-          << "(attempt " << tries << " of " << maxTries << "): " << res.errorMessage();
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    } else {
-      // give up
-      LOG_TOPIC("c8fc4", ERR, Logger::CLUSTER)
-          << "giving up unregistering server from agency: " << res.errorMessage();
-      break;
-    }
-  }
-
-  TRI_ASSERT(tries <= maxTries);
-
-  while (_heartbeatThread != nullptr && _heartbeatThread->isRunning()) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-  }
-
-  _pool.reset();
-  AgencyCommManager::MANAGER->stop();
-
-  _clusterInfo->cleanup();
+  AsyncAgencyCommManager::INSTANCE->setStopping(true);
+  shutdownAgencyCache();
 }
 
 void ClusterFeature::setUnregisterOnShutdown(bool unregisterOnShutdown) {
@@ -710,6 +676,7 @@ void ClusterFeature::setUnregisterOnShutdown(bool unregisterOnShutdown) {
 void ClusterFeature::startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
                                           uint64_t interval_ms, uint64_t maxFailsBeforeWarning,
                                           std::string const& endpoints) {
+
   _heartbeatThread =
       std::make_shared<HeartbeatThread>(server(), agencyCallbackRegistry,
                                         std::chrono::microseconds(interval_ms * 1000),
@@ -732,9 +699,7 @@ void ClusterFeature::shutdownHeartbeatThread() {
   if (_heartbeatThread == nullptr) {
     return;
   }
-
   _heartbeatThread->beginShutdown();
-
   int counter = 0;
   while (_heartbeatThread->isRunning()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -746,9 +711,25 @@ void ClusterFeature::shutdownHeartbeatThread() {
   }
 }
 
-void ClusterFeature::syncDBServerStatusQuo() {
+void ClusterFeature::shutdownAgencyCache() {
+  if (_agencyCache == nullptr) {
+    return;
+  }
+  _agencyCache->beginShutdown();
+  int counter = 0;
+  while (_agencyCache != nullptr && _agencyCache->isRunning()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    // emit warning after 5 seconds
+    if (++counter == 10 * 5) {
+      LOG_TOPIC("acab0", WARN, arangodb::Logger::CLUSTER)
+          << "waiting for agency cache thread to finish";
+    }
+  }
+}
+
+void ClusterFeature::notify() {
   if (_heartbeatThread != nullptr) {
-    _heartbeatThread->syncDBServerStatusQuo(true);
+    _heartbeatThread->notify();
   }
 }
 
@@ -761,4 +742,24 @@ ClusterInfo& ClusterFeature::clusterInfo() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
   return *_clusterInfo;
+}
+
+AgencyCache& ClusterFeature::agencyCache() {
+  if (_agencyCache == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
+  return *_agencyCache;
+}
+
+void ClusterFeature::allocateMembers() {
+  try {
+    server().getFeature<arangodb::MetricsFeature>().histogram(
+      StaticStrings::AgencyCommRequestTimeMs, log_scale_t<uint64_t>(2, 58, 120000, 10),
+      "Request time for Agency requests");
+  } catch (...) {}
+  _agencyCallbackRegistry.reset(new AgencyCallbackRegistry(server(), agencyCallbacksPath()));
+  _clusterInfo = std::make_unique<ClusterInfo>(server(), _agencyCallbackRegistry.get());
+  _agencyCache =
+    std::make_unique<AgencyCache>(server(), *_agencyCallbackRegistry);
+  _allocated = true;
 }

@@ -214,8 +214,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
     const irs::string_ref value_ref(bValueNil ? irs::string_ref::NIL : irs::ref_cast<char>(value));
     auto tokens = irs::analysis::analyzers::get(
-      "text", irs::text_format::text, irs::locale_utils::name(locale)
-    );
+      "text", irs::type<irs::text_format::text>::get(), irs::locale_utils::name(locale));
 
     if (!tokens || !tokens->reset(value_ref)) {
       return false;
@@ -224,9 +223,9 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
     auto& node = root.proxy<irs::by_phrase>();
     *node.mutable_field() = field;
 
-    for (auto& term = tokens->attributes().get<irs::term_attribute>(); tokens->next();) {
+    for (auto* term = irs::get<irs::term_attribute>(*tokens); tokens->next();) {
       auto& part = node.mutable_options()->push_back(irs::by_term_options{});
-      part.term = term->value();
+      part.term = term->value;
     }
 
     return true;
@@ -240,33 +239,39 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
   class ErrorNode: public irs::filter {
    public:
-    ErrorNode(): filter(ErrorNode::type()) {}
+    static constexpr irs::string_ref type_name() noexcept {
+      return "iresearch::iql::ErrorNode";
+    }
+
+    ErrorNode(): filter(irs::type<ErrorNode>::get()) {}
     irs::filter::prepared::ptr prepare(
         const irs::index_reader&,
         const irs::order::prepared&,
         irs::boost_t,
-        const irs::attribute_view&) const override {
+        const irs::attribute_provider*) const override {
       irs::filter::prepared::ptr result; // null-ptr result
       return result;
     }
+
    private:
     friend class parse_context;
     std::string sError;
-    DECLARE_FILTER_TYPE();
   };
-
-  DEFINE_FILTER_TYPE(ErrorNode)
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief proxy_filter specialized for irs::filter::ptr
   ////////////////////////////////////////////////////////////////////////////////
   class LinkNode: public irs::iql::proxy_filter_t<std::shared_ptr<irs::filter>> {
    public:
-    LinkNode(irs::filter* link): proxy_filter_t(LinkNode::type()) {
+    static constexpr irs::string_ref type_name() noexcept {
+      return "iresearch::iql::LinkNode";
+    }
+
+    LinkNode(irs::filter* link): proxy_filter_t(irs::type<LinkNode>::get()) {
       filter_ = ptr(link);
     }
 
-    LinkNode(const LinkNode& other): proxy_filter_t(LinkNode::type()) {
+    LinkNode(const LinkNode& other): proxy_filter_t(irs::type<LinkNode>::get()) {
       filter_ = other.filter_;
     }
 
@@ -274,12 +279,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
     static ptr make(Args&&... args) {
       return irs::memory::make_unique<LinkNode>(std::forward<Args>(args)...);
     }
-
-   private:
-    DECLARE_FILTER_TYPE();
   };
-
-  DEFINE_FILTER_TYPE(LinkNode)
 
   class RootNode: public irs::Or {
    public:
@@ -519,7 +519,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
       error << "filter conversion error, node: @" << errorNodeId << std::endl;
       print(error, *state.pnFilter, false, true);
-      result.filter = ErrorNode::make<ErrorNode>();
+      result.filter = irs::memory::make_unique<ErrorNode>();
       result.error = &(static_cast<ErrorNode*>(result.filter.get())->sError);
       *(result.error) = error.str();
 
@@ -544,7 +544,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
           sDelim = ", ";
         }
 
-        result.filter = ErrorNode::make<ErrorNode>();
+        result.filter = irs::memory::make_unique<ErrorNode>();
         result.error = &(static_cast<ErrorNode*>(result.filter.get())->sError);
         *(result.error) = error.str();
 
@@ -582,7 +582,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
     irs::iql::query result;
 
-    result.filter = ErrorNode::make<ErrorNode>();
+    result.filter = irs::memory::make_unique<ErrorNode>();
     result.error = &(static_cast<ErrorNode*>(result.filter.get())->sError);
     *(result.error) = error.str();
 
@@ -962,7 +962,6 @@ query query_builder::build(
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
-DEFINE_FILTER_TYPE(proxy_filter)
 DEFINE_FACTORY_DEFAULT(proxy_filter)
 
 NS_END // iql

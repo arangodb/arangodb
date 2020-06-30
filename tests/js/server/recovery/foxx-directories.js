@@ -37,7 +37,7 @@ function runSetup () {
   'use strict';
   internal.debugClearFailAt();
 
-  var appPath = fs.join(FoxxService._appPath, '..');
+  let appPath = fs.join(FoxxService._appPath, '..');
 
   try {
     db._dropDatabase('UnitTestsRecovery1');
@@ -56,8 +56,20 @@ function runSetup () {
   fs.write(fs.join(appPath, 'UnitTestsRecovery2', 'bar.json'), 'test');
 
   db._dropDatabase('UnitTestsRecovery2');
+  // garbage-collect once
+  require("internal").wait(0.5, true);
 
-  internal.wait(1);
+  // we need to wait long enough for the DatabaseManagerThread to 
+  // physically carry out the deletion
+  let path = fs.join(appPath, 'UnitTestsRecovery2');
+  let tries = 0;
+  while (++tries < 30) {
+    if (!fs.isDirectory(path)) {
+      require("console").log("database directory for UnitTestsRecovery2 is gone");
+      break;
+    }
+    internal.wait(1, false);
+  }
   internal.debugTerminate('crashing server');
 }
 
@@ -74,7 +86,7 @@ function recoverySuite () {
     tearDown: function () {},
 
     // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test whether we the data are correct after restart
+    // / @brief test whether the data are correct after restart
     // //////////////////////////////////////////////////////////////////////////////
 
     testFoxxDirectories: function () {

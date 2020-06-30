@@ -67,7 +67,7 @@ class EnumerateCollectionExecutorInfos {
                                    bool produceResult, Expression* filter,
                                    std::vector<std::string> const& projections,
                                    std::vector<size_t> const& coveringIndexAttributePositions,
-                                   bool random);
+                                   bool random, bool count);
 
   EnumerateCollectionExecutorInfos() = delete;
   EnumerateCollectionExecutorInfos(EnumerateCollectionExecutorInfos&&) = default;
@@ -77,11 +77,12 @@ class EnumerateCollectionExecutorInfos {
   Collection const* getCollection() const;
   Variable const* getOutVariable() const;
   QueryContext& getQuery() const;
-  Expression* getFilter() const;
+  Expression* getFilter() const noexcept;
   std::vector<std::string> const& getProjections() const noexcept;
   std::vector<size_t> const& getCoveringIndexAttributePositions() const noexcept;
-  bool getProduceResult() const;
-  bool getRandom() const;
+  bool getProduceResult() const noexcept;
+  bool getRandom() const noexcept;
+  bool getCount() const noexcept;
   RegisterId getOutputRegisterId() const;
 
  private:
@@ -94,6 +95,7 @@ class EnumerateCollectionExecutorInfos {
   RegisterId _outputRegisterId;
   bool _produceResult;
   bool _random;
+  bool _count;
 };
 
 /**
@@ -124,6 +126,12 @@ class EnumerateCollectionExecutor {
    * @return bool done in case we do not have any input and upstreamState is done
    */
   void initializeNewRow(AqlItemBlockInputRange& inputRange);
+  
+  /**
+   * @brief This Executor in some cases knows how many rows it will produce and most by itself
+   */
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
 
   /**
    * @brief produce the next Rows of Aql Values.

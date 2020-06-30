@@ -31,14 +31,14 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Agency/AgencyPaths.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/TimeString.h"
 #include "Agency/TransactionBuilder.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Cluster/AgencyPaths.h"
+#include "Basics/ResultT.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FollowerInfo.h"
-#include "Cluster/ResultT.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -333,7 +333,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::retryTryDeleteServe
           return tryDeleteServer(std::move(ctx));
         });
   } else {
-    generateError(rest::ResponseCode::REQUEST_TIMEOUT, TRI_ERROR_HTTP_PRECONDITION_FAILED,
+    generateError(rest::ResponseCode::PRECONDITION_FAILED, TRI_ERROR_HTTP_PRECONDITION_FAILED,
                   "server may not be deleted");
     return futures::makeFuture();
   }
@@ -465,14 +465,15 @@ RestStatus RestAdminClusterHandler::handleRemoveServer() {
     return RestStatus::DONE;
   }
 
-  if (body.isObject()) {
-    VPackSlice server = body.get("server");
-    if (server.isString()) {
-      std::string serverId = resolveServerNameID(server.copyString());
-      return handlePostRemoveServer(serverId);
-    }
-  } else if (body.isString()) {
-    std::string serverId = resolveServerNameID(body.copyString());
+  VPackSlice server = VPackSlice::noneSlice();
+  if (body.isString()) {
+    server = body;
+  } else if (body.isObject()) {
+    server = body.get("server");
+  }
+
+  if (server.isString()) {
+    std::string serverId = resolveServerNameID(server.copyString());
     return handlePostRemoveServer(serverId);
   }
 

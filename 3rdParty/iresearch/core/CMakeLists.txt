@@ -134,6 +134,7 @@ set(IResearch_core_sources
   ./store/store_utils_simd.cpp
   ./utils/async_utils.cpp
   ./utils/attributes.cpp
+  ./utils/attribute_store.cpp
   ./utils/automaton_utils.cpp
   ./utils/bit_packing.cpp
   ./utils/encryption.cpp
@@ -151,7 +152,6 @@ set(IResearch_core_sources
   ./utils/wildcard_utils.cpp
   ./utils/levenshtein_default_pdp.cpp
   ./utils/memory.cpp
-  ./utils/text_format.cpp
   ./utils/timer_utils.cpp
   ./utils/version_utils.cpp
   ./utils/utf8_path.cpp
@@ -198,7 +198,6 @@ set(IResearch_core_headers
   ./search/sort.hpp
   ./search/cost.hpp
   ./search/filter.hpp
-  ./search/score_doc_iterators.hpp
   ./search/term_filter.hpp
   ./search/phrase_filter.hpp
   ./search/same_position_filter.hpp
@@ -276,6 +275,7 @@ include_directories( $<$<BOOL:${SUPPRESS_EXTERNAL_WARNINGS}>:SYSTEM>
   ${BFD_INCLUDE_DIR}
   ${Lz4_INCLUDE_DIR}
   ${Unwind_INCLUDE_DIR}
+  ${FROZEN_INCLUDE_DIR}
 )
 
 
@@ -416,7 +416,6 @@ if(MSVC)
  )
 endif()
 
-
 target_include_directories(${IResearch_TARGET_NAME}-shared
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
   PRIVATE ${ICU_INCLUDE_DIR}
@@ -488,6 +487,10 @@ set_target_properties(${IResearch_TARGET_NAME}-static
   COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
 )
 
+if (USE_IWYU)
+  set_property(TARGET ${IResearch_TARGET_NAME}-static PROPERTY CXX_INCLUDE_WHAT_YOU_USE ${IWYU_PATH})
+endif()
+
 # setup CRT
 if(MSVC)
   set_target_properties(${IResearch_TARGET_NAME}-shared-scrt
@@ -522,7 +525,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${BFD_SHARED_LIBS}
   ${Boost_SHARED_sharedRT_LIBRARIES}
   ${Lz4_SHARED_LIB}
-  ${ICU_SHAREDLIBS}
+  ${ICU_SHARED_LIBS}
   ${Unwind_SHARED_LIBS}
   ${DL_LIBRARY}
   ${MSVC_ONLY_LIBRARIES}
@@ -687,7 +690,7 @@ if (MSVC)
 
   set_target_properties(${IResearch_TARGET_NAME}-static-scrt-allinone
     PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "$<TARGET_PROPERTY:${IResearch_TARGET_NAME}-static-srct,INTERFACE_INCLUDE_DIRECTORIES>"
+    INTERFACE_INCLUDE_DIRECTORIES "$<TARGET_PROPERTY:${IResearch_TARGET_NAME}-static-scrt,INTERFACE_INCLUDE_DIRECTORIES>"
     IMPORTED_LOCATION "${IResearch_STATIC_SCRT_LIBRARIES_OUT}"
   )
 

@@ -27,7 +27,7 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/RegexCache.h"
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/RegisterInfos.h"
 #include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchExpressionContext.h"
@@ -153,6 +153,25 @@ class IResearchViewStats {
 
 ExecutionStats& operator+=(ExecutionStats& executionStats,
                            IResearchViewStats const& iResearchViewStats) noexcept;
+
+struct ColumnIterator {
+  irs::doc_iterator::ptr itr;
+  const irs::payload* value{};
+}; // ColumnIterator
+
+struct FilterCtx final : irs::attribute_provider {
+  explicit FilterCtx(iresearch::ViewExpressionContext& ctx) noexcept
+    : _execCtx(ctx) {
+  }
+
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    return irs::type<iresearch::ExpressionExecutionContext>::id() == type
+      ? &_execCtx
+      : nullptr;
+  }
+
+  iresearch::ExpressionExecutionContext _execCtx;  // expression execution context
+}; // FilterCtx
 
 template <typename Impl>
 struct IResearchViewExecutorTraits;
@@ -363,18 +382,16 @@ class IResearchViewExecutorBase {
 
  protected:
   transaction::Methods _trx;
-  RegexCache _regexCache;
+  AqlFunctionsInternalCache _aqlFunctionsInternalCache;
   Infos& _infos;
   InputAqlItemRow _inputRow;
   IndexReadBuffer<typename Traits::IndexBufferValueType> _indexReadBuffer;
-  irs::bytes_ref _pk;  // temporary store for pk buffer before decoding it
-  irs::attribute_view _filterCtx;  // filter context
   iresearch::ViewExpressionContext _ctx;
+  FilterCtx _filterCtx;  // filter context
   std::shared_ptr<iresearch::IResearchView::Snapshot const> _reader;
   irs::filter::prepared::ptr _filter;
   irs::order::prepared _order;
-  iresearch::ExpressionExecutionContext _execCtx;  // expression execution context
-  std::vector<irs::columnstore_reader::values_reader_f> _storedValuesReaders;  // current stored values readers
+  std::vector<ColumnIterator> _storedValuesReaders;  // current stored values readers
   bool _isInitialized;
 };  // IResearchViewExecutorBase
 
@@ -416,7 +433,7 @@ class IResearchViewExecutor
   // unset if readPK returns true.
   bool readPK(LocalDocumentId& documentId);
 
-  irs::columnstore_reader::values_reader_f _pkReader;  // current primary key reader
+  ColumnIterator _pkReader;  // current primary key reader
   irs::doc_iterator::ptr _itr;
   irs::document const* _doc{};
   size_t _readerOffset;
@@ -424,7 +441,7 @@ class IResearchViewExecutor
 
   // case ordered only:
   irs::score const* _scr;
-  irs::bytes_ref _scrVal;
+  size_t _numScores;
 };  // IResearchViewExecutor
 
 template <bool ordered, iresearch::MaterializeType materializeType>
@@ -455,10 +472,13 @@ class IResearchViewMergeExecutor
 
   struct Segment {
     Segment(irs::doc_iterator::ptr&& docs, irs::document const& doc,
-            irs::score const& score, LogicalCollection const& collection,
-            irs::columnstore_reader::values_reader_f&& pkReader,
-            irs::columnstore_reader::values_reader_f&& sortReader,
-            size_t storedValuesIndex) noexcept;
+            irs::score const& score, size_t numScores,
+            LogicalCollection const& collection,
+            irs::doc_iterator::ptr&& pkReader,
+            size_t storedValuesIndex,
+            irs::doc_iterator* sortReaderRef,
+            irs::payload const* sortReaderValue,
+            irs::doc_iterator::ptr&& sortReader) noexcept;
     Segment(Segment const&) = delete;
     Segment(Segment&&) = default;
     Segment& operator=(Segment const&) = delete;
@@ -467,11 +487,13 @@ class IResearchViewMergeExecutor
     irs::doc_iterator::ptr docs;
     irs::document const* doc{};
     irs::score const* score{};
+    size_t numScores{};
     arangodb::LogicalCollection const* collection{};  // collecton associated with a segment
-    irs::bytes_ref sortValue{irs::bytes_ref::NIL};        // sort column value
-    irs::columnstore_reader::values_reader_f pkReader;    // primary key reader
-    irs::columnstore_reader::values_reader_f sortReader;  // sort column reader
+    ColumnIterator pkReader;    // primary key reader
     size_t storedValuesIndex;  // first stored values index
+    irs::doc_iterator* sortReaderRef; // pointer to sort column reader
+    irs::payload const* sortValue;    // sort column value
+    irs::doc_iterator::ptr sortReader; // sort column reader
   };
 
   class MinHeapContext {
@@ -492,7 +514,7 @@ class IResearchViewMergeExecutor
   // reads local document id from a specified segment
   LocalDocumentId readPK(Segment const& segment);
 
-  void evaluateScores(ReadContext const& ctx, irs::score const& score);
+  void evaluateScores(ReadContext const& ctx, irs::score const& score, size_t numScores);
 
   void fillBuffer(ReadContext& ctx);
 

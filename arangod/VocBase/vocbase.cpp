@@ -59,8 +59,6 @@
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/ReplicationClients.h"
 #include "RestServer/DatabaseFeature.h"
@@ -68,6 +66,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/ClusterUtils.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
@@ -1173,6 +1172,13 @@ arangodb::Result TRI_vocbase_t::dropCollection(TRI_voc_cid_t cid,
     events::DropCollection(dbName, collection->name(), TRI_ERROR_FORBIDDEN);
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
   }
+  
+  if (ServerState::instance()->isDBServer()) {  // maybe unconditionally ?
+    // hack to avoid busy looping on DBServers
+    try {
+      transaction::cluster::abortTransactions(*collection);
+    } catch (...) { /* ignore */ }
+  }
 
   while (true) {
     DropState state = DROP_EXIT;
@@ -1652,9 +1658,12 @@ TRI_vocbase_t::~TRI_vocbase_t() {
   }
 
   // do a final cleanup of collections
-  for (auto& it : _collections) {
-    WRITE_LOCKER_EVENTUAL(locker, it->statusLock());
-    it->close();  // required to release indexes
+  for (std::shared_ptr<arangodb::LogicalCollection>& coll : _collections) {
+    try {  // simon: this status lock is terrible software design
+      transaction::cluster::abortTransactions(*coll);
+    } catch (...) { /* ignore */ }
+    WRITE_LOCKER_EVENTUAL(locker, coll->statusLock());
+    coll->close();  // required to release indexes
   }
 
   _collections.clear();  // clear vector before deallocating TRI_vocbase_t members
@@ -1671,6 +1680,10 @@ std::string TRI_vocbase_t::path() const {
 
 std::string const& TRI_vocbase_t::sharding() const {
   return _info.sharding();
+}
+
+bool TRI_vocbase_t::isShardingSingle() const {
+  return _info.sharding() == StaticStrings::ShardingSingle;
 }
 
 std::uint32_t TRI_vocbase_t::replicationFactor() const {

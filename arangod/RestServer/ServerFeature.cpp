@@ -109,8 +109,7 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--server.session-timeout",
       "timeout of web interface server sessions (in seconds)", true);
 
-
-  // add obsolete MMFiles WAL options
+  // add obsolete MMFiles WAL options (obsoleted in 3.7)
   options->addSection("wal", "Configure the WAL of the MMFiles engine");
   options->addObsoleteOption("--wal.allow-oversize-entries",
                              "allow entries that are bigger than '--wal.logfile-size'", false);
@@ -207,7 +206,7 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
 void ServerFeature::prepare() {
   // adjust global settings for UTF-8 string validation
-  basics::VelocyPackHelper::requestValidationOptions.validateUtf8Strings = _validateUtf8Strings;
+  basics::VelocyPackHelper::strictRequestValidationOptions.validateUtf8Strings = _validateUtf8Strings;
 }
 
 void ServerFeature::start() {

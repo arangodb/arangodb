@@ -278,10 +278,6 @@ DatabaseFeature::~DatabaseFeature() {
 void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("database", "Configure the database");
 
-  options->addObsoleteOption("--database.maximal-journal-size",
-                             "default maximal journal size, can be overwritten when "
-                             "creating a collection", true);
-
   options->addOption("--database.wait-for-sync",
                      "default wait-for-sync behavior, can be overwritten "
                      "when creating a collection",
@@ -306,10 +302,14 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new AtomicBooleanParameter(&_throwCollectionNotLoadedError),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
       .setDeprecatedIn(30700);
+  
+  // the following option was removed in 3.7
+  options->addObsoleteOption("--database.maximal-journal-size",
+                             "default maximal journal size, can be overwritten when "
+                             "creating a collection", true);
+
 
   // the following option was removed in 3.2
-  // index-creation is now automatically parallelized via the Boost ASIO thread
-  // pool
   options->addObsoleteOption(
       "--database.index-threads",
       "threads to start for parallel background index creation", true);
@@ -497,7 +497,7 @@ void DatabaseFeature::unprepare() {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // This is to avoid heap use after free errors in the iresearch tests, because
   // the destruction a callback uses a database.
-  // I don't know if this is save to do, thus I enclosed it in ARANGODB_USE_GOOGLE_TESTS
+  // I don't know if this is safe to do, thus I enclosed it in ARANGODB_USE_GOOGLE_TESTS
   // to prevent accidentally breaking anything. However,
   // TODO Find out if this is okay and may be merged (maybe without the #ifdef),
   // or if this has to be done differently in the tests instead. The errors may

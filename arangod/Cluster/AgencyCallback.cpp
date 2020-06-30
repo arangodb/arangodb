@@ -32,6 +32,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/AgencyCache.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -42,14 +43,23 @@ using namespace arangodb::application_features;
 AgencyCallback::AgencyCallback(application_features::ApplicationServer& server, std::string const& key,
                                std::function<bool(VPackSlice const&)> const& cb,
                                bool needsValue, bool needsInitialValue)
-    : key(key), 
-      _agency(server), 
-      _cb(cb), 
+    : key(key),
+      _agency(server),
+      _cb(cb),
       _needsValue(needsValue),
-      _wasSignaled(false) {
+      _wasSignaled(false),
+      _local(true) {
   if (_needsValue && needsInitialValue) {
     refetchAndUpdate(true, false);
   }
+}
+
+void AgencyCallback::local(bool b) {
+  _local = b;
+}
+
+bool AgencyCallback::local() const {
+  return _local;
 }
 
 void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) {
@@ -64,25 +74,48 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
     return;
   }
 
-  AgencyCommResult result = _agency.getValues(key);
-
-  if (!result.successful()) {
-    if (!_agency.server().isStopping()) {
-      // only log errors if we are not already shutting down...
-      // in case of shutdown this error is somewhat expected
-      LOG_TOPIC("fb402", ERR, arangodb::Logger::CLUSTER)
-          << "Callback getValues to agency was not successful: " << result.errorCode()
-          << " " << result.errorMessage();
+  VPackSlice result;
+  std::shared_ptr<VPackBuilder> builder;
+  consensus::index_t idx = 0;
+  AgencyCommResult tmp;
+  
+  LOG_TOPIC("a6344", TRACE, Logger::CLUSTER) <<
+    "Refetching and update for " << AgencyCommHelper::path(key);
+  
+  if (_local) {
+    auto& _cache = _agency.server().getFeature<ClusterFeature>().agencyCache();
+    std::tie(builder, idx) = _cache.read(std::vector<std::string>{AgencyCommHelper::path(key)});
+    result = builder->slice();
+    if (!result.isArray()) {
+      if (!_agency.server().isStopping()) {
+        // only log errors if we are not already shutting down...
+        // in case of shutdown this error is somewhat expected
+        LOG_TOPIC("ec320", ERR, arangodb::Logger::CLUSTER)
+          << "Callback to get agency cache was not successful: " << result.toJson();
+      }
+      return;
     }
-    return;
+  } else {
+    tmp = _agency.getValues(key);
+    if (!tmp.successful()) {
+      if (!_agency.server().isStopping()) {
+        // only log errors if we are not already shutting down...
+        // in case of shutdown this error is somewhat expected
+        LOG_TOPIC("fb402", ERR, arangodb::Logger::CLUSTER)
+          << "Callback getValues to agency was not successful: " << tmp.errorCode()
+          << " " << tmp.errorMessage();
+      }
+      return;
+    }
+    result = tmp.slice();
   }
 
   std::vector<std::string> kv =
-      basics::StringUtils::split(AgencyCommManager::path(key), '/');
+      basics::StringUtils::split(AgencyCommHelper::path(key), '/');
   kv.erase(std::remove(kv.begin(), kv.end(), ""), kv.end());
 
   auto newData = std::make_shared<VPackBuilder>();
-  newData->add(result.slice()[0].get(kv));
+  newData->add(result[0].get(kv));
 
   if (needToAcquireMutex) {
     CONDITION_LOCKER(locker, _cv);

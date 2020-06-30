@@ -22,6 +22,7 @@
 
 #include <algorithm>
 
+#include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -32,6 +33,7 @@
 #include "Aql/Query.h"
 #include "Basics/files.h"
 #include "Cluster/ActionDescription.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/CreateDatabase.h"
 #include "Cluster/DropDatabase.h"
@@ -72,6 +74,7 @@
 #include "utils/log.hpp"
 
 #include "Servers.h"
+#include "TemplateSpecializer.h"
 
 #include "IResearch/AgencyMock.h"
 #include "IResearch/common.h"
@@ -90,133 +93,6 @@
 using namespace arangodb;
 using namespace arangodb::tests;
 using namespace arangodb::tests::mocks;
-
-namespace {
-
-char const* plan_dbs_string =
-#include "plan_dbs_db.h"
-    ;
-
-char const* plan_colls_string =
-#include "plan_colls_db.h"
-    ;
-
-char const* current_dbs_string =
-#include "current_dbs_db.h"
-    ;
-
-char const* current_colls_string =
-#include "current_colls_db.h"
-    ;
-
-class TemplateSpecializer {
-  std::unordered_map<std::string, std::string> _replacements;
-  int _nextServerNumber;
-  std::string _dbName;
-
-  enum ReplacementCase { Not, Number, Shard, DBServer, DBName };
-
- public:
-  TemplateSpecializer(std::string const& dbName)
-      : _nextServerNumber(1), _dbName(dbName) {}
-
-  std::string specialize(char const* templ) {
-    size_t len = strlen(templ);
-
-    size_t pos = 0;
-    std::string result;
-    result.reserve(len);
-
-    while (pos < len) {
-      if (templ[pos] != '"') {
-        result.push_back(templ[pos++]);
-      } else {
-        std::string st;
-        pos = parseString(templ, pos, len, st);
-        ReplacementCase c = whichCase(st);
-        if (c != ReplacementCase::Not) {
-          auto it = _replacements.find(st);
-          if (it != _replacements.end()) {
-            st = it->second;
-          } else {
-            std::string newSt;
-            switch (c) {
-              case ReplacementCase::Number:
-                newSt = std::to_string(TRI_NewTickServer());
-                break;
-              case ReplacementCase::Shard:
-                newSt = std::string("s") + std::to_string(TRI_NewTickServer());
-                break;
-              case ReplacementCase::DBServer:
-                newSt = std::string("PRMR_000") + std::to_string(_nextServerNumber++);
-                break;
-              case ReplacementCase::DBName:
-                newSt = _dbName;
-                break;
-              case ReplacementCase::Not:
-                newSt = st;
-                // never happens, just to please compilers
-            }
-            _replacements[st] = newSt;
-            st = newSt;
-          }
-        }
-        result.push_back('"');
-        result.append(st);
-        result.push_back('"');
-      }
-    }
-    return result;
-  }
-
- private:
-  size_t parseString(char const* templ, size_t pos, size_t const len, std::string& st) {
-    // This must be called when templ[pos] == '"'. It parses the string
-    // and // puts it into st (not including the quotes around it).
-    // The return value is pos advanced to behind the closing quote of
-    // the string.
-    ++pos;  // skip quotes
-    size_t startPos = pos;
-    while (pos < len && templ[pos] != '"') {
-      ++pos;
-    }
-    // Now the string in question is between startPos and pos.
-    // Extract string as it is:
-    st = std::string(templ + startPos, pos - startPos);
-    // Skip final quotes if they are there:
-    if (pos < len && templ[pos] == '"') {
-      ++pos;
-    }
-    return pos;
-  }
-
-  ReplacementCase whichCase(std::string& st) {
-    bool onlyNumbers = true;
-    size_t pos = 0;
-    if (st == "db") {
-      return ReplacementCase::DBName;
-    }
-    ReplacementCase c = ReplacementCase::Number;
-    if (pos < st.size() && st[pos] == 's') {
-      c = ReplacementCase::Shard;
-      ++pos;
-    } else if (pos + 5 <= st.size() && st.substr(0, 5) == "PRMR-") {
-      return ReplacementCase::DBServer;
-    }
-    for (; pos < st.size(); ++pos) {
-      if (st[pos] < '0' || st[pos] > '9') {
-        onlyNumbers = false;
-        break;
-      }
-    }
-    if (!onlyNumbers) {
-      return ReplacementCase::Not;
-    }
-    return c;
-  }
-};
-
-}  // namespace
 
 static void SetupGreetingsPhase(MockServer& server) {
   server.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false, false);
@@ -294,7 +170,6 @@ MockServer::MockServer()
 MockServer::~MockServer() {
   stopFeatures();
   _server.setStateUnsafe(_oldApplicationServerState);
-  arangodb::AgencyCommManager::MANAGER.reset();
 }
 
 application_features::ApplicationServer& MockServer::server() {
@@ -485,18 +360,23 @@ MockRestServer::MockRestServer(bool start) : MockServer() {
   }
 }
 
-MockClusterServer::MockClusterServer()
-    : MockServer(), _agencyStore(_server, nullptr, "arango") {
-  auto* agencyCommManager = new AgencyCommManagerMock(_server, "arango");
-  std::ignore =
-      agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_server, _agencyStore);
-  std::ignore =
-      agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_server, _agencyStore);  // need 2 connections or Agency callbacks will fail
-  arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
+consensus::check_ret_t AgencyCache::set(VPackSlice const trx) {
+  ++_commitIndex;
+  return _readDB.applyTransaction(trx);
+}
+
+consensus::Store& AgencyCache::store() {
+  return _readDB;
+}
+
+MockClusterServer::MockClusterServer() : MockServer() {
   _oldRole = arangodb::ServerState::instance()->getRole();
 
   // Add features
   SetupAqlPhase(*this);
+
+  _server.getFeature<ClusterFeature>().allocateMembers();
+  _agencyStore = &_server.getFeature<ClusterFeature>().agencyCache().store();
 
   addFeature<arangodb::UpgradeFeature>(false, &_dummy, std::vector<std::type_index>{});
   addFeature<arangodb::ServerSecurityFeature>(false);
@@ -515,7 +395,24 @@ MockClusterServer::~MockClusterServer() {
 
 void MockClusterServer::startFeatures() {
   MockServer::startFeatures();
-  arangodb::AgencyCommManager::MANAGER->start();  // initialize agency
+
+  arangodb::network::ConnectionPool::Config poolConfig;
+  poolConfig.clusterInfo = &getFeature<arangodb::ClusterFeature>().clusterInfo();
+  poolConfig.numIOThreads = 1;
+  poolConfig.minOpenConnections = 1;
+  poolConfig.maxOpenConnections = 3;
+  poolConfig.verifyHosts = false;
+
+  _pool = std::make_unique<AsyncAgencyStorePoolMock>(_agencyStore, poolConfig);
+
+  arangodb::AgencyCommHelper::initialize("arango");
+  AsyncAgencyCommManager::initialize(server());
+  AsyncAgencyCommManager::INSTANCE->pool(_pool.get());
+  AsyncAgencyCommManager::INSTANCE->updateEndpoints({"tcp://localhost:4000/"});
+  arangodb::AgencyComm(server()).ensureStructureInitialized();
+
+  std::string st = "{\"" + arangodb::ServerState::instance()->getId() + "\":{\"rebootId\":1}}";
+  agencyTrx("/arango/Current/ServersKnown", st);
   arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1});
 
   // register factories & normalizers
@@ -536,7 +433,7 @@ void MockClusterServer::agencyTrx(std::string const& key, std::string const& val
       b.add(key, b2->slice());
     }
   }
-  _agencyStore.applyTransaction(b.slice());
+  _server.getFeature<ClusterFeature>().agencyCache().set(b.slice());
 }
 
 void MockClusterServer::agencyCreateDatabase(std::string const& name) {
@@ -544,6 +441,7 @@ void MockClusterServer::agencyCreateDatabase(std::string const& name) {
 
   std::string st = ts.specialize(plan_dbs_string);
   agencyTrx("/arango/Plan/Databases/" + name, st);
+
   st = ts.specialize(plan_colls_string);
   agencyTrx("/arango/Plan/Collections/" + name, st);
   st = ts.specialize(current_dbs_string);

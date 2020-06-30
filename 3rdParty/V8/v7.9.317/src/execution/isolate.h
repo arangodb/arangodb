@@ -543,7 +543,8 @@ class Isolate final : private HiddenFactory {
   // Returns the isolate inside which the current thread is running.
   V8_INLINE static Isolate* Current() {
     Isolate* isolate = TryGetCurrent();
-    DCHECK_NOT_NULL(isolate);
+    // this contradics other assumptions that expect that GetCurrent returns null like in V8DealerFeature::enterContext
+    //DCHECK_NOT_NULL(isolate);
     return isolate;
   }
 

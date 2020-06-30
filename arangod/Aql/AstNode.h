@@ -78,6 +78,8 @@ enum AstNodeFlagType : AstNodeFlagsType {
   FLAG_FINALIZED = 0x0040000,  // node has been finalized and should not be modified; only
                                // set and checked in maintainer mode
   FLAG_SUBQUERY_REFERENCE = 0x0080000,  // node references a subquery
+  
+  FLAG_INTERNAL_CONST = 0x0100000,  // internal, constant node
 };
 
 /// @brief enumeration of AST node value types
@@ -207,8 +209,6 @@ enum AstNodeType : uint32_t {
   NODE_TYPE_VIEW = 77,
   NODE_TYPE_PARAMETER_DATASOURCE = 78,
   NODE_TYPE_FOR_VIEW = 79,
-  NODE_TYPE_PARALLEL_START = 80,
-  NODE_TYPE_PARALLEL_END = 81,
 };
 
 static_assert(NODE_TYPE_VALUE < NODE_TYPE_ARRAY, "incorrect node types order");
@@ -565,6 +565,9 @@ struct AstNode {
   /// and recurse on its subtree.
   static void markFinalized(AstNode* subtreeRoot);
 
+  /// @brief sets the computed value pointer.
+  void setComputedValue(uint8_t* data);
+
  public:
   /// @brief the node type
   AstNodeType type;
@@ -591,7 +594,7 @@ struct AstNode {
   uint8_t mutable* _computedValue;
 
   /// @brief the node's sub nodes
-  std::vector<AstNode*> members;
+  std::vector<AstNode*> members{};
 };
 
 int CompareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8);

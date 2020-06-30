@@ -99,14 +99,14 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
     TransactionStateMock::commitTransactionCount = 0;
-    }
+  }
 
   void createTestDatabase(TRI_vocbase_t*& vocbase) {
     vocbase = server.createDatabase("testDatabase");
     ASSERT_NE(nullptr, vocbase);
     ASSERT_EQ("testDatabase", vocbase->name());
     ASSERT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, vocbase->type());
-    }
+  }
 
   ~IResearchViewCoordinatorTest() = default;
 };
@@ -165,9 +165,11 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\" "
       "}");
-  ASSERT_TRUE((ci.createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1, 1, false,
-                                              collectionJson0->slice(), 0.0, false, nullptr)
-                   .ok()));
+
+  ci.loadPlan();
+
+  ASSERT_TRUE(ci.createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1, 1, false,
+                                            collectionJson0->slice(), 0.0, false, nullptr).ok());
   auto logicalCollection0 = ci.getCollection(vocbase->name(), collectionId0);
   ASSERT_TRUE((false == !logicalCollection0));
   ASSERT_TRUE((ci.createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1, 1, false,
@@ -774,7 +776,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    
+
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -1399,7 +1401,7 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
       EXPECT_TRUE(25 == meta._writebufferActive);
       EXPECT_TRUE(12 == meta._writebufferIdle);
       EXPECT_TRUE(42 * (size_t(1) << 20) == meta._writebufferSizeMax);
-      EXPECT_EQ(&irs::compression::none::type(), meta._primarySortCompression);
+      EXPECT_EQ(irs::type<irs::compression::none>::id(), meta._primarySortCompression);
       EXPECT_TRUE(2 == meta._primarySort.size());
       {
         auto& field = meta._primarySort.field(0);
@@ -2144,8 +2146,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
 
   // get current plan version
   auto planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
-
-  ci.loadCurrent();
 
   // create view
   auto viewJson = arangodb::velocypack::Parser::fromJson(
@@ -4609,7 +4609,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    
+
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -5775,6 +5775,10 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     node.addDependency(&singleton);
 
     std::unordered_map<arangodb::aql::ExecutionNode*, arangodb::aql::ExecutionBlock*> cache;
+    singleton.setVarsUsedLater({arangodb::aql::VarSet{&outVariable}});
+    singleton.setVarsValid({{}});
+    node.setVarsUsedLater({{}});
+    node.setVarsValid({arangodb::aql::VarSet{&outVariable}});
     singleton.setVarUsageValid();
     node.setVarUsageValid();
     singleton.planRegisters(nullptr);

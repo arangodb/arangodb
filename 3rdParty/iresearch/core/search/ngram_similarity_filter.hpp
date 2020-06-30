@@ -59,7 +59,10 @@ struct IRESEARCH_API by_ngram_similarity_options {
 class IRESEARCH_API by_ngram_similarity
     : public filter_base<by_ngram_similarity_options> {
  public:
-  DECLARE_FILTER_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::by_ngram_similarity";
+  }
+
   DECLARE_FACTORY();
 
   // returns set of features required for filter 
@@ -71,7 +74,7 @@ class IRESEARCH_API by_ngram_similarity
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx) const override;
+    const attribute_provider* ctx) const override;
 }; // by_ngram_similarity
 
 NS_END // ROOT

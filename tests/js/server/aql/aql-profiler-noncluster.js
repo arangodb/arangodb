@@ -47,15 +47,15 @@ function ahuacatlProfilerTestSuite () {
   const viewName = profHelper.viewName;
   const defaultBatchSize = profHelper.defaultBatchSize;
 
-  const { CalculationNode, CollectNode, DistributeNode, EnumerateCollectionNode,
+  const { AsyncNode, CalculationNode, CollectNode, DistributeNode, EnumerateCollectionNode,
     EnumerateListNode, EnumerateViewNode, FilterNode, GatherNode, IndexNode,
-    InsertNode, LimitNode, NoResultsNode, RemoteNode, RemoveNode, ReplaceNode,
+    InsertNode, LimitNode, MutexNode, NoResultsNode, RemoteNode, RemoveNode, ReplaceNode,
     ReturnNode, ScatterNode, ShortestPathNode, SingletonNode, SortNode,
     SubqueryNode, TraversalNode, UpdateNode, UpsertNode } = profHelper;
 
-  const { CalculationBlock, CountCollectBlock, DistinctCollectBlock,
+  const { AsyncBlock, CalculationBlock, CountCollectBlock, DistinctCollectBlock,
     EnumerateCollectionBlock, EnumerateListBlock, FilterBlock,
-    HashedCollectBlock, IndexBlock, LimitBlock, NoResultsBlock, RemoteBlock,
+    HashedCollectBlock, IndexBlock, LimitBlock, MutexBlock, NoResultsBlock, RemoteBlock,
     ReturnBlock, ShortestPathBlock, SingletonBlock, SortBlock,
     SortedCollectBlock, SortingGatherBlock, SubqueryBlock, TraversalBlock,
     UnsortingGatherBlock, RemoveBlock, InsertBlock, UpdateBlock, ReplaceBlock,
@@ -300,6 +300,51 @@ function ahuacatlProfilerTestSuite () {
         {query, genNodeList, prepare, bind}
       );
     },
+
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test TraversalBlock: traverse ~half a tree
+    ////////////////////////////////////////////////////////////////////////////////
+
+    /* TODO: enable this test once we have parallelism ready 
+    testTraversalBlockParallel: function () {
+      const col = db._createDocumentCollection(colName);
+      const edgeCol = db._createEdgeCollection(edgeColName);
+      const prepare = (rows) => {
+        profHelper.createBinaryTree(col, edgeCol, rows);
+      };
+      const query = `FOR v IN 0..@depth OUTBOUND @root @@edgeCol OPTIONS {parallelism:2} RETURN v`;
+      const rootNodeId = `${colName}/1`;
+      // actual tree depth:
+      // const treeDepth = rows => Math.ceil(Math.log2(rows));
+      // tree is perfect up to this depth:
+      const maxFullDepth = rows => Math.floor(Math.log2(rows));
+      // substract one to get rid of ~half the nodes, but never go below 0
+      const depth = rows => Math.max(0, maxFullDepth(rows) - 1);
+      const bind = rows => ({
+        depth: depth(rows),
+        root: rootNodeId,
+        '@edgeCol': edgeColName,
+      });
+      const visitedNodes = rows => Math.pow(2, depth(rows)+1)-1;
+
+      const genNodeList = (rows, batches) => {
+        rows = visitedNodes(rows);
+        batches = Math.ceil(rows / defaultBatchSize);
+        return [
+          {type: SingletonBlock, calls: 1, items: 1},
+          {type: MutexBlock, calls: batches, items: rows},
+          {type: TraversalBlock, calls: batches, items: rows},
+          {type: AsyncBlock, calls: batches, items: rows},
+          {type: UnsortingGatherBlock, calls: batches, items: rows},
+          {type: ReturnBlock, calls: batches, items: rows}
+        ];
+      };
+      profHelper.runDefaultChecks(
+        {query, genNodeList, prepare, bind}
+      );
+    },
+    */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test EnumerateViewBlock1

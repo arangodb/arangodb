@@ -107,7 +107,7 @@ auto DistinctCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       break;
     }
 
-    std::tie(state, input) = inputRange.nextDataRow();
+    std::tie(state, input) = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     INTERNAL_LOG_DC << "inputRange.nextDataRow() = " << state;
     TRI_ASSERT(input.isInitialized());
 
@@ -150,7 +150,7 @@ auto DistinctCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, 
       return {ExecutorState::HASMORE, {}, skipped, {}};
     }
 
-    std::tie(state, input) = inputRange.nextDataRow();
+    std::tie(state, input) = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     INTERNAL_LOG_DC << "inputRange.nextDataRow() = " << state;
     TRI_ASSERT(input.isInitialized());
 

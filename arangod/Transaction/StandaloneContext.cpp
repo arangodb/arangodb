@@ -53,7 +53,7 @@ void StandaloneContext::unregisterTransaction() noexcept {
 
 std::shared_ptr<Context> StandaloneContext::clone() const {
   auto clone = std::make_shared<transaction::StandaloneContext>(_vocbase);
-  clone->_state = _state;
+  clone->setState(_state);
   return clone;
 }
 

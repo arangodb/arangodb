@@ -31,8 +31,8 @@ class AqlCallListTest : public ::testing::Test {};
 
 TEST_F(AqlCallListTest, only_single_call) {
   AqlCall myCall{};
-  myCall.offset = 3;
-  myCall.softLimit = 9;
+  myCall.offset = 3u;
+  myCall.softLimit = 9u;
 
   AqlCallList testee(myCall);
   EXPECT_TRUE(testee.hasMoreCalls());
@@ -48,7 +48,7 @@ TEST_F(AqlCallListTest, only_single_call) {
 TEST_F(AqlCallListTest, only_single_call_peek) {
   AqlCall myCall{};
   myCall.offset = 3;
-  myCall.softLimit = 9;
+  myCall.softLimit = 9u;
 
   AqlCallList testee(myCall);
   EXPECT_TRUE(testee.hasMoreCalls());
@@ -68,10 +68,10 @@ TEST_F(AqlCallListTest, only_single_call_peek) {
 TEST_F(AqlCallListTest, multiple_calls) {
   AqlCall myFirstCall{};
   myFirstCall.offset = 3;
-  myFirstCall.softLimit = 9;
+  myFirstCall.softLimit = 9u;
 
   AqlCall defaultCall{};
-  defaultCall.hardLimit = 2;
+  defaultCall.hardLimit = 2u;
   defaultCall.fullCount = true;
   EXPECT_FALSE(myFirstCall == defaultCall);
 
@@ -103,10 +103,10 @@ TEST_F(AqlCallListTest, multiple_calls) {
 TEST_F(AqlCallListTest, multiple_calls_peek) {
   AqlCall myFirstCall{};
   myFirstCall.offset = 3;
-  myFirstCall.softLimit = 9;
+  myFirstCall.softLimit = 9u;
 
   AqlCall defaultCall{};
-  defaultCall.hardLimit = 2;
+  defaultCall.hardLimit = 2u;
   defaultCall.fullCount = true;
   EXPECT_FALSE(myFirstCall == defaultCall);
 

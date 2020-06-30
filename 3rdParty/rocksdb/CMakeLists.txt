@@ -34,6 +34,8 @@ endif ()
 set(PORTABLE On CACHE BOOL "enable portable rocksdb build (disabling might yield better performance but break portability)")
 
 set(ROCKSDB_BUILD_SHARED OFF CACHE BOOL "build shared libraries")
+set(WITH_TOOLS OFF CACHE BOOL "disable tools")
+set(WITH_CORE_TOOLS OFF CACHE BOOL "disable core tools")
 set(WITH_TESTS OFF CACHE BOOL "disable tests")
 set(WITH_SNAPPY ON CACHE BOOL "force enable snappy")
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")

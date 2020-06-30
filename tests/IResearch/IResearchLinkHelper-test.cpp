@@ -246,7 +246,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::normalize(
                   builder, json->slice(), true, sysVocbase).ok());
     builder.close();
-    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0"));
+    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0",
+                                     arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
     "{ \
@@ -258,7 +259,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
       \"trackListPositions\": false, \
       \"storeValues\": \"none\", \
       \"analyzerDefinitions\": [ \
-        { \"name\": \"testAnalyzer0\", \"type\": \"identity\", \"properties\":{}, \"features\":[] } \
+        { \"name\": \"testAnalyzer0\", \"type\": \"identity\", \"properties\":{}, \"features\":[]} \
       ], \
       \"analyzers\": [\"testAnalyzer0\" ], \
       \"storedValues\":[{\"fields\":[\"test.t\"], \"compression\":\"lz4\"}, {\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"lz4\"}] \
@@ -278,7 +279,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::normalize(
                   builder, json->slice(), false, sysVocbase).ok());
     builder.close();
-    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0"));
+    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0",
+                                     arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
     "{ \
@@ -303,7 +305,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_FALSE(arangodb::iresearch::IResearchLinkHelper::normalize(
                   builder, json->slice(), false, sysVocbase).ok());
     builder.close();
-    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0"));
+    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0",
+                                     arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
   }
 
   // analyzer single-server, for creation, missing "testAanalyzer0"
@@ -317,7 +320,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_FALSE(arangodb::iresearch::IResearchLinkHelper::normalize(
                   builder, json->slice(), false, sysVocbase).ok());
     builder.close();
-    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0"));
+    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0", 
+                                     arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
   }
 
   // analyzer single-server (inRecovery), for creation
@@ -337,7 +341,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::normalize(
                   builder, json->slice(), true, sysVocbase).ok());
     builder.close();
-    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1"));
+    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                                     arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
     "{ \
@@ -373,7 +378,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::normalize(
                   builder, json->slice(), false, sysVocbase).ok());
     builder.close();
-    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1"));
+    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                                     arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
     "{ \
@@ -404,7 +410,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::normalize(
       builder, json->slice(), true, sysVocbase).ok());
     builder.close();
-    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1"));
+    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1", 
+                                     arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
       "{ \
@@ -416,7 +423,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
       \"trackListPositions\": false, \
       \"storeValues\": \"none\", \
       \"analyzerDefinitions\": [ \
-        { \"name\": \"testAnalyzer1\", \"type\": \"identity\", \"properties\":{}, \"features\":[] } \
+        { \"name\": \"testAnalyzer1\", \"type\": \"identity\", \"properties\":{}, \"features\":[]} \
       ], \
       \"analyzers\": [\"testAnalyzer1\" ], \
       \"storedValues\":[{\"fields\":[\"test.t\"], \"compression\":\"lz4\"}, {\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}] \

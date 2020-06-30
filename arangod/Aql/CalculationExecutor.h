@@ -25,9 +25,8 @@
 
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/RegexCache.h"
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/RegisterInfos.h"
-#include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/Stats.h"
 #include "Aql/types.h"
 #include "Transaction/Methods.h"
@@ -66,7 +65,6 @@ struct CalculationExecutorInfos {
   QueryContext& getQuery() const noexcept;
   transaction::Methods* getTrx() const noexcept;
 
-
   Expression& getExpression() const noexcept;
 
   std::vector<Variable const*> const& getExpInVars() const noexcept;
@@ -78,7 +76,7 @@ struct CalculationExecutorInfos {
 
   QueryContext& _query;
   Expression& _expression;
-  std::vector<Variable const*> _expInVars;  // input variables for expresseion
+  std::vector<Variable const*> _expInVars;  // input variables for expression
   std::vector<RegisterId> _expInRegs;       // input registers for expression
 };
 
@@ -124,7 +122,7 @@ class CalculationExecutor {
 
  private:
   transaction::Methods _trx;
-  aql::RegexCache _regexCache;
+  aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
   CalculationExecutorInfos& _infos;
 
   Fetcher& _fetcher;

@@ -222,11 +222,10 @@ auto TraversalExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItem
       if (output.isFull()) {
         if (_traverser.hasMore()) {
           state = ExecutorState::HASMORE;
-          break;
         } else {
           state = input.upstreamState();
-          break;
         }
+        break;
       }
     } else {
       if (!initTraverser(input)) {
@@ -284,8 +283,12 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
   //       to provide output for every input row
   while (input.hasDataRow()) {
     // Try to acquire a starting vertex
-    std::tie(std::ignore, _inputRow) = input.nextDataRow();
+    std::tie(std::ignore, _inputRow) = input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(_inputRow.isInitialized());
+
+    for (auto const& pair : _infos.filterConditionVariables()) {
+      opts->setVariableValue(pair.first, _inputRow.getValue(pair.second));
+    }
 
     if (opts->usesPrune()) {
       auto* evaluator = opts->getPruneEvaluator();
@@ -294,7 +297,7 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
       TRI_ASSERT(_inputRow.isInitialized());
     }
 
-    auto sourceString = std::string{};
+    std::string sourceString;
     TRI_ASSERT(_inputRow.isInitialized());
 
     if (_infos.usesFixedSource()) {

@@ -438,7 +438,8 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
       TRI_ASSERT(edgeSlice.isString());
       
       VPackStringRef toValue(edgeSlice);
-      allocateSpace(toValue.size());
+      size_t space = toValue.size();
+      allocateSpace(space);
       Edge<E>* edge = edgeBuff->appendElement();
       buildEdge(edge, toValue);
       return true;
@@ -584,7 +585,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
       try {
         RangeIterator<Vertex<V, E>> it = vertexIterator(startI, endI);
         _storeVertices(_config->globalShardIDs(), it);
-        // TODO can't just write edges with smart graphs
+        // TODO can't just write edges with SmartGraphs
       } catch (std::exception const& e) {
         LOG_TOPIC("e22c8", ERR, Logger::PREGEL) << "Storing vertex data failed: '" << e.what() << "'";
       } catch (...) {
@@ -606,6 +607,8 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
 }
 
 template class arangodb::pregel::GraphStore<int64_t, int64_t>;
+template class arangodb::pregel::GraphStore<uint64_t, uint64_t>;
+template class arangodb::pregel::GraphStore<uint64_t, uint8_t>;
 template class arangodb::pregel::GraphStore<float, float>;
 template class arangodb::pregel::GraphStore<double, float>;
 template class arangodb::pregel::GraphStore<double, double>;

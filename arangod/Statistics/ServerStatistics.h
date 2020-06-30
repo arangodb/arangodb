@@ -55,7 +55,6 @@ struct ServerStatistics {
   ServerStatistics& operator=(ServerStatistics &&) = delete;
 
   ServerStatistics& statistics();
-//  void initialize(double);
 
   TransactionStatistics _transactionsStatistics;
   const double _startTime;

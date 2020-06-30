@@ -140,7 +140,8 @@ H1Connection<ST>::H1Connection(EventLoopService& loop,
       _writeStart(),
       _lastHeaderWasValue(false),
       _shouldKeepAlive(false),
-      _messageComplete(false) {
+      _messageComplete(false),
+      _timeoutOnReadWrite(false) {
   // initialize http parsing code
   http_parser_settings_init(&_parserSettings);
   _parserSettings.on_message_begin = &on_message_begin;
@@ -236,7 +237,6 @@ size_t H1Connection<ST>::requestsLeft() const {
 
 template <SocketType ST>
 void H1Connection<ST>::activate() {
-  FUERTE_ASSERT(_active.load());
   Connection::State state = this->_state.load();
   FUERTE_ASSERT(state != Connection::State::Connecting);
   if (state == Connection::State::Connected) {
@@ -425,6 +425,7 @@ void H1Connection<ST>::asyncWriteNextRequest() {
   _item.reset(ptr);
 
   setTimeout(_item->request->timeout(), TimeoutType::WRITE);
+  _timeoutOnReadWrite = false;
   _writeStart = std::chrono::steady_clock::now();
   _writing = true;
 
@@ -472,6 +473,9 @@ void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
 
     // keepalive timeout may have expired
     auto err = translateError(ec, Error::WriteError);
+    if (this->_timeoutOnReadWrite && err == fuerte::Error::Canceled) {
+      err = fuerte::Error::Timeout;
+    }
     if (item) { // may be null if connection was canceled
       if (ec == asio_ns::error::broken_pipe && nwrite == 0) {  // re-queue
         // Note that this has the potential to change the order in which requests
@@ -508,6 +512,7 @@ void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
   // Continue with a read, use the remaining part of the timeout as
   // timeout:
   setTimeout(_item->request->timeout() - timePassed, TimeoutType::READ);    // extend timeout
+  _timeoutOnReadWrite = false;
 
   _reading = true;
   this->asyncReadSome();  // listen for the response
@@ -522,7 +527,7 @@ template <SocketType ST>
 void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
   this->_reading = false;
   // Do not cancel timeout now, because we might be going on to read!
-  if (ec) {
+  if (ec || _item == nullptr) {
     this->_proto.timer.cancel();
 
     FUERTE_LOG_DEBUG << "asyncReadCallback: Error while reading from socket: '"
@@ -531,7 +536,11 @@ void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
     auto state = this->_state.load();
     if (state != Connection::State::Failed) {
       // Restart connection, will invoke _item cb
-      this->restartConnection(translateError(ec, Error::ReadError));
+      auto err = translateError(ec, Error::ReadError);
+      if (_timeoutOnReadWrite && err == fuerte::Error::Canceled) {
+        err = fuerte::Error::Timeout;
+      }
+      this->restartConnection(err);
     } else {
       drainQueue(Error::Canceled);
       abortOngoingRequests(Error::Canceled);
@@ -612,11 +621,12 @@ void H1Connection<ST>::setTimeout(std::chrono::milliseconds millis, TimeoutType 
             (type == TimeoutType::READ && me->_reading)) {
           FUERTE_LOG_DEBUG << "HTTP-Request timeout\n";
           me->_proto.cancel();
+          me->_timeoutOnReadWrite = true;
           // We simply cancel all ongoing asynchronous operations, the completion
           // handlers will do the rest.
           return;
         } else if (type == TimeoutType::IDLE) {
-          if (me->_state == Connection::State::Connected) {
+          if (!me->_active && me->_state == Connection::State::Connected) {
             me->shutdownConnection(Error::CloseRequested);
           }
         }

@@ -81,7 +81,7 @@ bool addView(arangodb::LogicalView const& view, arangodb::aql::QueryContext& que
   // linked collections
   auto visitor = [&collections](TRI_voc_cid_t cid) {
     collections.add(arangodb::basics::StringUtils::itoa(cid),
-                    arangodb::AccessMode::Type::READ);
+                    arangodb::AccessMode::Type::READ, arangodb::aql::Collection::Hint::Collection);
     return true;
   };
 
@@ -403,7 +403,7 @@ void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNod
 bool noDocumentMaterialization(arangodb::containers::SmallVector<ExecutionNode*> const& viewNodes,
                                arangodb::containers::HashSet<ExecutionNode*>& toUnlink) {
   auto modified = false;
-  ::arangodb::containers::HashSet<Variable const*> currentUsedVars;
+  VarSet currentUsedVars;
   for (auto* node : viewNodes) {
     TRI_ASSERT(node && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node->getType());
     auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(node);
@@ -527,7 +527,7 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
             break;
         }
         if (!stopSearch) {
-          ::arangodb::containers::HashSet<Variable const*> currentUsedVars;
+          VarSet currentUsedVars;
           current->getVariablesUsedHere(currentUsedVars);
           if (currentUsedVars.find(&var) != currentUsedVars.end()) {
             // currently only calculation nodes expected to use a loop variable with attributes

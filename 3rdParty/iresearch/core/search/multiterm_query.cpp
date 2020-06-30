@@ -31,8 +31,9 @@ NS_ROOT
 doc_iterator::ptr multiterm_query::execute(
     const sub_reader& segment,
     const order::prepared& ord,
-    const attribute_view& /*ctx*/) const {
-  typedef disjunction<doc_iterator::ptr> disjunction_t;
+    const attribute_provider* /*ctx*/) const {
+  using scored_disjunction_t = scored_disjunction_iterator<doc_iterator::ptr>;
+  using disjunction_t = disjunction_iterator<doc_iterator::ptr>;
 
   // get term state for the specified reader
   auto state = states_.find(segment);
@@ -59,14 +60,17 @@ doc_iterator::ptr multiterm_query::execute(
 
   // add an iterator for the unscored docs
   if (has_bit_set) {
-    itrs.emplace_back(doc_iterator::make<bitset_doc_iterator>(
-      state->unscored_docs
-    ));
+    // ensure first bit isn't set,
+    // since we don't want to emit doc_limits::invalid()
+    assert(state->unscored_docs.any() && !state->unscored_docs.test(0));
+
+    itrs.emplace_back(memory::make_managed<bitset_doc_iterator>(state->unscored_docs));
   }
 
   auto& stats = this->stats();
 
   // add an iterator for each of the scored states
+  const bool no_score = ord.empty();
   for (auto& entry : state->scored_states) {
     assert(entry.cookie);
     if (!terms->seek(bytes_ref::NIL, *entry.cookie)) {
@@ -74,15 +78,20 @@ doc_iterator::ptr multiterm_query::execute(
     }
 
     auto docs = terms->postings(features);
-    auto& attrs = docs->attributes();
 
-    // set score
-    auto& score = attrs.get<irs::score>();
-    if (score) {
-      assert(entry.stat_offset < stats.size());
-      auto* stat = stats[entry.stat_offset].c_str();
+    if (!no_score) {
+      auto* score = irs::get_mutable<irs::score>(docs.get());
 
-      score->prepare(ord, ord.prepare_scorers(segment, *state->reader, stat, attrs, entry.boost*boost()));
+      if (score) {
+        assert(entry.stat_offset < stats.size());
+        auto* stat = stats[entry.stat_offset].c_str();
+
+        order::prepared::scorers scorers(
+          ord, segment, *state->reader, stat,
+          score->realloc(ord), *docs, entry.boost*boost());
+
+        irs::reset(*score, std::move(scorers));
+      }
     }
 
     itrs.emplace_back(std::move(docs));
@@ -93,9 +102,13 @@ doc_iterator::ptr multiterm_query::execute(
     }
   }
 
-  return make_disjunction<disjunction_t>(
-    std::move(itrs), ord,
-    merge_type_, state->estimation());
+  if (ord.empty()) {
+    return make_disjunction<disjunction_t>(
+      std::move(itrs), ord, merge_type_, state->estimation());
+  }
+
+  return make_disjunction<scored_disjunction_t>(
+    std::move(itrs), ord, merge_type_, state->estimation());
 }
 
 NS_END // ROOT

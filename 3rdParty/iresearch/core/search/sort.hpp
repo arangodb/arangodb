@@ -27,7 +27,7 @@
 #include <vector>
 
 #include "utils/attributes.hpp"
-#include "utils/attributes_provider.hpp"
+#include "utils/attribute_provider.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/iterator.hpp"
 
@@ -50,38 +50,111 @@ constexpr boost_t no_boost() noexcept { return 1.f; }
 /// @brief represents an addition to score from filter specific to a particular
 ///        document. May vary from document to document.
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API filter_boost : public basic_attribute<boost_t> {
-  DECLARE_ATTRIBUTE_TYPE();
+struct IRESEARCH_API filter_boost final : attribute {
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::filter_boost";
+  }
 
-  filter_boost() noexcept;
-};
+  boost_t value{no_boost()};
+}; // filter_boost
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stateful object used for computing the document score based on the
 ///        stored state
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API score_ctx {
+  score_ctx() = default;
+  score_ctx(score_ctx&&) = default;
+  score_ctx& operator=(score_ctx&&) = default;
   virtual ~score_ctx() = default;
 }; // score_ctx
 
-typedef std::unique_ptr<score_ctx> score_ctx_ptr;
-typedef bool(*score_less_f)(const byte_type* lhs, const byte_type* rhs);
-typedef void(*score_f)(const score_ctx* ctx, byte_type*);
+using score_less_f = bool(*)(const byte_type* lhs, const byte_type* rhs);
+using score_f = const byte_type*(*)(score_ctx* ctx);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief combine range of scores denoted by 'src_start' and 'size' to 'dst',
+/// @brief combine range of scores denoted by 'src' and 'size' to 'dst',
 ///        i.e. using +=
 ////////////////////////////////////////////////////////////////////////////////
-typedef void(*merge_f)(const order_bucket* ctx, byte_type* dst,
-                       const byte_type** src, size_t count);
+using bulk_merge_f = void(*)(const order_bucket* ctx, byte_type* dst,
+                             const byte_type** src, size_t count);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief combine score denoted by 'src' to 'dst',
+///        i.e. using +=
+////////////////////////////////////////////////////////////////////////////////
+using merge_f = void(*)(const order_bucket* ctx,
+                        byte_type* dst,
+                        const byte_type* src);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class score_function
+/// @brief a convenient wrapper around score_f and score_ctx
+////////////////////////////////////////////////////////////////////////////////
+class score_function : util::noncopyable {
+ public:
+  score_function() noexcept;
+  score_function(memory::managed_ptr<score_ctx>&& ctx, const score_f func) noexcept
+    : ctx_(std::move(ctx)), func_(func) {
+  }
+  score_function(std::unique_ptr<score_ctx>&& ctx, const score_f func) noexcept
+    : score_function(memory::to_managed<score_ctx>(std::move(ctx)), func) {
+  }
+  score_function(score_ctx* ctx, const score_f func) noexcept
+    : score_function(memory::to_managed<score_ctx, false>(std::move(ctx)), func) {
+  }
+  score_function(score_function&& rhs) noexcept;
+  score_function& operator=(score_function&& rhs) noexcept;
+
+  const byte_type* operator()() const {
+    assert(func_);
+    return func_(ctx_.get());
+  }
+
+  bool operator==(const score_function& rhs) const noexcept {
+    return ctx_ == rhs.ctx_ && func_ == rhs.func_;
+  }
+
+  bool operator!=(const score_function& rhs) const noexcept {
+    return !(*this == rhs);
+  }
+
+  const score_ctx* ctx() const noexcept { return ctx_.get(); }
+  score_f func() const noexcept { return func_; }
+
+  void reset(memory::managed_ptr<score_ctx>&& ctx, const score_f func) noexcept {
+    ctx_ = std::move(ctx);
+    func_ = func;
+  }
+
+  void reset(std::unique_ptr<score_ctx>&& ctx, const score_f func) noexcept {
+    ctx_ = memory::to_managed<score_ctx>(std::move(ctx));
+    func_ = func;
+  }
+
+  void reset(score_ctx* ctx, const score_f func) noexcept {
+    ctx_ = memory::to_managed<score_ctx, false>(ctx);
+    func_ = func;
+  }
+
+  explicit operator bool() const noexcept {
+    return nullptr != func_;
+  }
+
+ private:
+  memory::managed_ptr<score_ctx> ctx_;
+  score_f func_;
+}; // score_function
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class sort
 /// @brief base class for all user-side sort entries
+/// @note score and stats are meant to be trivially constructible and will be
+///       zero initialized before usage
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API sort {
  public:
-  DECLARE_SHARED_PTR(sort);
+  using ptr = std::unique_ptr<sort>;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief object used for collecting index statistics, for a specific matched
@@ -90,7 +163,7 @@ class IRESEARCH_API sort {
   //////////////////////////////////////////////////////////////////////////////
   class IRESEARCH_API field_collector {
     public:
-     DECLARE_UNIQUE_PTR(field_collector);
+     using ptr = std::unique_ptr<field_collector>;
 
      virtual ~field_collector() = default;
 
@@ -141,7 +214,7 @@ class IRESEARCH_API sort {
   //////////////////////////////////////////////////////////////////////////////
   class IRESEARCH_API term_collector {
    public:
-    DECLARE_UNIQUE_PTR(term_collector);
+    using ptr = std::unique_ptr<term_collector>;
 
     virtual ~term_collector() = default;
 
@@ -157,7 +230,7 @@ class IRESEARCH_API sort {
     virtual void collect(
       const sub_reader& segment,
       const term_reader& field,
-      const attribute_view& term_attrs) = 0;
+      const attribute_provider& term_attrs) = 0;
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief clear collected stats
@@ -198,15 +271,41 @@ class IRESEARCH_API sort {
   ////////////////////////////////////////////////////////////////////////////////
   class IRESEARCH_API prepared {
    public:
-    DECLARE_UNIQUE_PTR(prepared);
+    using ptr = std::unique_ptr<prepared>;
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief default noop bulk merge function
+    ////////////////////////////////////////////////////////////////////////////////
+    static void noop_bulk_merge(
+        const order_bucket*, byte_type*,
+        const byte_type**, size_t) noexcept {
+      // NOOP
+    }
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief default noop merge function
     ////////////////////////////////////////////////////////////////////////////////
     static void noop_merge(
-        const order_bucket*, byte_type*,
-        const byte_type**, size_t) noexcept {
+        const order_bucket*,
+        byte_type*,
+        const byte_type*) noexcept {
       // NOOP
+    }
+
+    //////////////////////////////////////////////////////////////////////////////
+    /// @brief helper function retuns bulk merge function by a specified type
+    //////////////////////////////////////////////////////////////////////////////
+    template<MergeType type>
+    constexpr static bulk_merge_f bulk_merge_func(const prepared& bucket) noexcept {
+      switch (type) {
+        case MergeType::AGGREGATE:
+          return bucket.bulk_aggregate_func();
+        case MergeType::MAX:
+          return bucket.bulk_max_func();
+        default:
+          assert(false);
+          return noop_bulk_merge;
+      }
     }
 
     //////////////////////////////////////////////////////////////////////////////
@@ -226,9 +325,13 @@ class IRESEARCH_API sort {
     }
 
     explicit prepared(
+        bulk_merge_f bulk_aggregate_func = &noop_bulk_merge,
         merge_f aggregate_func = &noop_merge,
+        bulk_merge_f bulk_max_func = &noop_bulk_merge,
         merge_f max_func = &noop_merge) noexcept
-      : aggregate_func_(aggregate_func),
+      : bulk_aggregate_func_(bulk_aggregate_func),
+        aggregate_func_(aggregate_func),
+        bulk_max_func_(bulk_max_func),
         max_func_(max_func) {
     }
 
@@ -256,8 +359,7 @@ class IRESEARCH_API sort {
       byte_type* stats,
       const index_reader& index,
       const field_collector* field,
-      const term_collector* term
-    ) const = 0;
+      const term_collector* term) const = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief the features required for proper operation of this sort::prepared
@@ -274,11 +376,12 @@ class IRESEARCH_API sort {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief create a stateful scorer used for computation of document scores
     ////////////////////////////////////////////////////////////////////////////////
-    virtual std::pair<score_ctx_ptr, score_f> prepare_scorer(
+    virtual score_function prepare_scorer(
       const sub_reader& segment,
       const term_reader& field,
       const byte_type* stats,
-      const attribute_view& doc_attrs,
+      byte_type* score,
+      const attribute_provider& doc_attrs,
       boost_t boost) const = 0;
 
     ////////////////////////////////////////////////////////////////////////////
@@ -287,16 +390,6 @@ class IRESEARCH_API sort {
     /// @return nullptr == no statistics collection required
     ////////////////////////////////////////////////////////////////////////////
     virtual term_collector::ptr prepare_term_collector() const = 0;
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief initialize the score buffer
-    ////////////////////////////////////////////////////////////////////////////////
-    virtual void prepare_score(byte_type* score) const = 0;
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief initialize the stats buffer
-    ////////////////////////////////////////////////////////////////////////////////
-    virtual void prepare_stats(byte_type* stats) const = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief compare two score containers and determine if 'lhs' < 'rhs', i.e. <
@@ -321,81 +414,60 @@ class IRESEARCH_API sort {
     virtual std::pair<size_t, size_t> stats_size() const = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief aggregate range of scores denoted by 'src_start' and 'size' to 'dst',
-    ///        i.e. using +=
+    /// @brief aggregate a range of values, i.e. using +=
+    ////////////////////////////////////////////////////////////////////////////////
+    bulk_merge_f bulk_aggregate_func() const noexcept { return bulk_aggregate_func_; }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief aggregate 2 values, i.e.  i.e. using +=
     ////////////////////////////////////////////////////////////////////////////////
     merge_f aggregate_func() const noexcept { return aggregate_func_; }
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief find max score within range of scores denoted by 'src_start' and
-    ///        'size' to 'dst', i.e. using std::max(...)
+    /// @brief find max value within range of values, i.e. using std::max(...)
+    ////////////////////////////////////////////////////////////////////////////////
+    bulk_merge_f bulk_max_func() const noexcept { return bulk_max_func_; }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief find max value of 2 values, , i.e. using std::max(...)
     ////////////////////////////////////////////////////////////////////////////////
     merge_f max_func() const noexcept { return max_func_; }
 
    protected:
+    bulk_merge_f bulk_aggregate_func_;
     merge_f aggregate_func_;
+    bulk_merge_f bulk_max_func_;
     merge_f max_func_;
   }; // prepared
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @class type_id
-  //////////////////////////////////////////////////////////////////////////////
-  class type_id: public iresearch::type_id, util::noncopyable {
-   public:
-    type_id(const string_ref& name): name_(name) {}
-    operator const type_id*() const { return this; }
-    const string_ref& name() const { return name_; }
-
-   private:
-    string_ref name_;
-  }; // type_id
-
-  explicit sort(const type_id& id) noexcept;
+  explicit sort(const type_info& type) noexcept;
   virtual ~sort() = default;
 
-  const type_id& type() const { return *type_; }
+  constexpr type_info::type_id type() const noexcept { return type_; }
 
   virtual prepared::ptr prepare() const = 0;
 
  private:
-  const type_id* type_;
+  type_info::type_id type_;
 }; // sort
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct order_bucket
 ////////////////////////////////////////////////////////////////////////////////
-struct order_bucket : private util::noncopyable {
+struct order_bucket : util::noncopyable {
   explicit order_bucket(
       sort::prepared::ptr&& bucket,
       size_t score_offset,
       size_t stats_offset,
-      bool reverse)
+      bool reverse) noexcept
     : bucket(std::move(bucket)),
       score_offset(score_offset),
       stats_offset(stats_offset),
       reverse(reverse) {
   }
 
-  order_bucket(order_bucket&& rhs) noexcept
-    : bucket(std::move(rhs.bucket)),
-      score_offset(rhs.score_offset),
-      stats_offset(rhs.stats_offset),
-      reverse(rhs.reverse) {
-    rhs.score_offset = 0;
-    rhs.stats_offset = 0;
-  }
-
-  order_bucket& operator=(order_bucket&& rhs) noexcept {
-    if (this != &rhs) {
-      bucket = std::move(rhs.bucket);
-      score_offset = rhs.score_offset;
-      rhs.score_offset = 0;
-      stats_offset = rhs.stats_offset;
-      rhs.stats_offset = 0;
-      reverse = rhs.reverse;
-    }
-    return *this;
-  }
+  order_bucket(order_bucket&&) = default;
+  order_bucket& operator=(order_bucket&&) = default;
 
   sort::prepared::ptr bucket; // prepared score
   size_t score_offset; // offset in score buffer
@@ -403,12 +475,18 @@ struct order_bucket : private util::noncopyable {
   bool reverse;
 }; // order_bucket
 
+static_assert(std::is_nothrow_move_constructible_v<order_bucket>);
+static_assert(std::is_nothrow_move_assignable_v<order_bucket>);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct score_traits
 ////////////////////////////////////////////////////////////////////////////////
 template<typename ScoreType>
 struct score_traits {
-  typedef ScoreType score_type;
+  using score_type = ScoreType;
+
+  static_assert(std::is_trivially_constructible_v<score_type>,
+                "ScoreType must be trivially constructible");
 
   FORCE_INLINE static const score_type& score_cast(const byte_type* buf) noexcept {
     assert(buf);
@@ -419,8 +497,8 @@ struct score_traits {
     return const_cast<score_type&>(score_cast(const_cast<const byte_type*>(buf)));
   }
 
-  static void aggregate(const order_bucket* ctx, byte_type* dst,
-                        const byte_type** src_begin, size_t size) {
+  static void bulk_aggregate(const order_bucket* ctx, byte_type* dst,
+                             const byte_type** src_begin, size_t size) noexcept {
     const auto offset = ctx->score_offset;
     auto& casted_dst = score_cast(dst + offset);
     casted_dst = ScoreType();
@@ -452,8 +530,17 @@ struct score_traits {
     }
   }
 
-  static void max(const order_bucket* ctx, byte_type* dst,
-                  const byte_type** src_begin, size_t size) {
+  static void aggregate(
+      const order_bucket* ctx,
+      byte_type* RESTRICT dst,
+      const byte_type* RESTRICT src) noexcept {
+    const auto offset = ctx->score_offset;
+    auto& casted_dst = score_cast(dst + offset);
+    casted_dst += score_cast(src + offset);
+  }
+
+  static void bulk_max(const order_bucket* ctx, byte_type* dst,
+                       const byte_type** src_begin, size_t size) noexcept {
     const auto offset = ctx->score_offset;
     auto& casted_dst = score_cast(dst + offset);
 
@@ -477,6 +564,18 @@ struct score_traits {
         break;
     }
   }
+
+  static void max(const order_bucket* ctx,
+                  byte_type* RESTRICT dst,
+                  const byte_type* RESTRICT src) noexcept {
+    const auto offset = ctx->score_offset;
+    auto& casted_dst = score_cast(dst + offset);
+    auto& casted_src = score_cast(src + offset);
+
+    if (casted_dst < casted_src) {
+      casted_dst = casted_src;
+    }
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -488,9 +587,15 @@ template<typename ScoreType,
          typename TraitsType = score_traits<ScoreType>
 > class prepared_sort_base : public sort::prepared {
  public:
-  typedef TraitsType traits_t;
-  typedef typename traits_t::score_type score_t;
-  typedef StatsType stats_t;
+  static_assert(std::is_trivially_constructible_v<ScoreType>,
+                "ScoreType must be trivially constructible");
+
+  static_assert(std::is_trivially_constructible_v<StatsType>,
+                "StatsTypemust be trivially constructible");
+
+  using traits_t = TraitsType;
+  using score_t = typename traits_t::score_type;
+  using stats_t = StatsType;
 
   FORCE_INLINE static const stats_t& stats_cast(const byte_type* buf) noexcept {
     assert(buf);
@@ -502,7 +607,11 @@ template<typename ScoreType,
   }
 
   prepared_sort_base() noexcept
-    : sort::prepared(&traits_t::aggregate, &traits_t::max) {
+    : sort::prepared(
+        &traits_t::bulk_aggregate,
+        &traits_t::aggregate,
+        &traits_t::bulk_max,
+        &traits_t::max) {
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -538,13 +647,6 @@ template<typename ScoreType,
 
     return std::make_pair(sizeof(stats_t), alignof(stats_t));
   }
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief initialize the stats buffer
-  ////////////////////////////////////////////////////////////////////////////////
-  virtual void prepare_stats(byte_type* stats) const override final {
-    stats_cast(stats) = StatsType();
-  }
 }; // prepared_sort_base
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -553,12 +655,16 @@ template<typename ScoreType,
 template <typename ScoreType, typename TraitsType>
 class prepared_sort_base<ScoreType, void, TraitsType> : public sort::prepared {
  public:
-  typedef TraitsType traits_t;
-  typedef typename traits_t::score_type score_t;
-  typedef void stats_t;
+  using traits_t = TraitsType;
+  using score_t = typename traits_t::score_type;
+  using stats_t = void;
 
   prepared_sort_base() noexcept
-    : sort::prepared(&traits_t::aggregate, &traits_t::max) {
+    : sort::prepared(
+        &traits_t::bulk_aggregate,
+        &traits_t::aggregate,
+        &traits_t::bulk_max,
+        &traits_t::max) {
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -577,13 +683,6 @@ class prepared_sort_base<ScoreType, void, TraitsType> : public sort::prepared {
   ////////////////////////////////////////////////////////////////////////////
   virtual sort::term_collector::ptr prepare_term_collector() const override {
     return nullptr;
-  }
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief initialize the stats buffer
-  ////////////////////////////////////////////////////////////////////////////////
-  virtual void prepare_stats(byte_type* /*stats*/) const override {
-    // NOOP
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -635,15 +734,8 @@ template<typename ScoreType,
          typename StatsType = void,
          typename TraitsType = score_traits<ScoreType>
 > class prepared_sort_basic : public prepared_sort_base<ScoreType, StatsType> {
-  typedef TraitsType traits_t;
-  typedef prepared_sort_base<ScoreType, StatsType> base_t;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief initialize the score buffer
-  ////////////////////////////////////////////////////////////////////////////////
-  virtual inline void prepare_score(byte_type* score) const override final {
-    traits_t::score_cast(score) = ScoreType();
-  }
+  using traits_t = TraitsType;
+  using base_t = prepared_sort_base<ScoreType, StatsType>;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief compare two score containers and determine if 'lhs' < 'rhs', i.e. <
@@ -662,27 +754,13 @@ class IRESEARCH_API order final {
  public:
   class entry : private util::noncopyable {
    public:
-    entry(const irs::sort::ptr& sort, bool reverse) noexcept
-      : sort_(sort), reverse_(reverse) {
-      assert(sort_);
-    }
-
     entry(irs::sort::ptr&& sort, bool reverse) noexcept
       : sort_(std::move(sort)), reverse_(reverse) {
       assert(sort_);
     }
 
-    entry(entry&& rhs) noexcept
-      : sort_(std::move(rhs.sort_)), reverse_(rhs.reverse_) {
-    }
-
-    entry& operator=(entry&& rhs) noexcept {
-      if (this != &rhs) {
-        sort_ = std::move(rhs.sort_);
-        reverse_ = rhs.reverse_;
-      }
-      return *this;
-    }
+    entry(entry&&) = default;
+    entry& operator=(entry&&) = default;
 
     const irs::sort& sort() const noexcept {
       assert(sort_);
@@ -691,9 +769,9 @@ class IRESEARCH_API order final {
 
     template<typename T>
     const T& sort_cast() const noexcept {
-      typedef typename std::enable_if<
+      using type = typename std::enable_if<
         std::is_base_of<irs::sort, T>::value, T
-      >::type type;
+      >::type ;
 
 #ifdef IRESEARCH_DEBUG
       return dynamic_cast<const type&>(sort());
@@ -704,9 +782,9 @@ class IRESEARCH_API order final {
 
     template<typename T>
     const T* sort_safe_cast() const noexcept {
-      typedef typename std::enable_if<
+      using type = typename std::enable_if<
         std::is_base_of<irs::sort, T>::value, T
-      >::type type;
+      >::type;
 
       return type::type() == sort().type()
         ? static_cast<const type*>(&sort())
@@ -729,9 +807,12 @@ class IRESEARCH_API order final {
     bool reverse_;
   }; // entry
 
-  typedef std::vector<entry> order_t;
-  typedef order_t::const_iterator const_iterator;
-  typedef order_t::iterator iterator;
+  static_assert(std::is_nothrow_move_constructible_v<entry>);
+  static_assert(std::is_nothrow_move_assignable_v<entry>);
+
+  using order_t = std::vector<entry>;
+  using const_iterator = order_t::const_iterator;
+  using iterator = order_t::iterator;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @class sort
@@ -739,47 +820,70 @@ class IRESEARCH_API order final {
   ////////////////////////////////////////////////////////////////////////////////
   class IRESEARCH_API prepared final : private util::noncopyable {
    public:
-    typedef std::vector<order_bucket> prepared_order_t;
+    using prepared_order_t = std::vector<order_bucket>;
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief a convinience class for doc_iterators to invoke scorer functions
     ///        on scorers in each order bucket
     ////////////////////////////////////////////////////////////////////////////
-    class IRESEARCH_API scorers: private util::noncopyable { // noncopyable required by MSVC
+    class IRESEARCH_API scorers : private util::noncopyable { // noncopyable required by MSVC
      public:
-      struct entry {
-        entry(score_ctx_ptr&& ctx, score_f func, size_t offset)
-          : ctx(std::move(ctx)),
-            func(func),
-            offset(offset) {
+      struct scorer {
+        scorer(score_function&& func, const order_bucket* bucket) noexcept
+          : func(std::move(func)),
+            bucket(bucket) {
+          assert(this->func);
+          assert(this->bucket);
         }
 
-        score_ctx_ptr ctx;
-        score_f func;
-        size_t offset;
-      };
+        score_function func;
+        const order_bucket* bucket;
+      }; // scorer
 
       scorers() = default;
       scorers(
-        const prepared_order_t& buckets,
+        const order::prepared& buckets,
         const sub_reader& segment,
         const term_reader& field,
         const byte_type* stats,
-        const attribute_view& doc,
-        boost_t boost
-      );
-      scorers(scorers&& other) noexcept; // function definition explicitly required by MSVC
+        byte_type* score,
+        const attribute_provider& doc,
+        boost_t boost);
+      scorers(scorers&&) = default;
+      scorers& operator=(scorers&&) = default;
 
-      scorers& operator=(scorers&& other) noexcept; // function definition explicitly required by MSVC
+      const byte_type* evaluate() const;
 
-      void score(byte_type* score) const;
+      const byte_type* score_buf() const noexcept {
+        return score_buf_;
+      }
 
-      const entry& operator[](size_t i) const noexcept {
+      const scorer& operator[](size_t i) const noexcept {
         assert(i < scorers_.size());
         return scorers_[i];
       }
 
-      entry& operator[](size_t i) noexcept {
+      const scorer& front() const noexcept {
+        assert(!scorers_.empty());
+        return scorers_.front();
+      }
+
+      const scorer& back() const noexcept {
+        assert(!scorers_.empty());
+        return scorers_.back();
+      }
+
+      scorer& front() noexcept {
+        assert(!scorers_.empty());
+        return scorers_.front();
+      }
+
+      scorer& back() noexcept {
+        assert(!scorers_.empty());
+        return scorers_.back();
+      }
+
+      scorer& operator[](size_t i) noexcept {
         assert(i < scorers_.size());
         return scorers_[i];
       }
@@ -790,9 +894,13 @@ class IRESEARCH_API order final {
 
      private:
       IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-      std::vector<entry> scorers_; // scorer + offset
+      std::vector<scorer> scorers_; // scorer + offset
+      const byte_type* score_buf_;
       IRESEARCH_API_PRIVATE_VARIABLES_END
     }; // scorers
+
+    static_assert(std::is_nothrow_move_constructible_v<scorers>);
+    static_assert(std::is_nothrow_move_assignable_v<scorers>);
 
     ////////////////////////////////////////////////////////////////////////////
     /// @class merger
@@ -808,8 +916,26 @@ class IRESEARCH_API order final {
           byte_type* score,
           const byte_type** rhs_start,
           const size_t count) const {
+        assert(bulk_merge_func_);
+        (*bulk_merge_func_)(bucket_, score, rhs_start, count);
+      }
+
+      //////////////////////////////////////////////////////////////////////////
+      /// @brief merge score denoted by 'src' to 'dst',
+      //////////////////////////////////////////////////////////////////////////
+      FORCE_INLINE void operator()(
+          byte_type* dst,
+          const byte_type* src) const {
         assert(merge_func_);
-        (*merge_func_)(bucket_, score, rhs_start, count);
+        (*merge_func_)(bucket_, dst, src);
+      }
+
+      FORCE_INLINE bool operator==(bulk_merge_f merge_func) const noexcept {
+        return merge_func == bulk_merge_func_;
+      }
+
+      FORCE_INLINE bool operator!=(bulk_merge_f merge_func) const noexcept {
+        return merge_func != bulk_merge_func_;
       }
 
       FORCE_INLINE bool operator==(merge_f merge_func) const noexcept {
@@ -825,21 +951,26 @@ class IRESEARCH_API order final {
 
       merger() = default;
 
-      merger(const order_bucket* bucket, merge_f merge_func) noexcept
-        : bucket_(bucket), merge_func_(merge_func) {
+      merger(const order_bucket* bucket,
+             bulk_merge_f bulk_merge_func,
+             merge_f merge_func) noexcept
+        : bucket_(bucket),
+          bulk_merge_func_(bulk_merge_func),
+          merge_func_(merge_func) {
+        assert(bulk_merge_func_);
         assert(merge_func_);
       }
 
       const order_bucket* bucket_{nullptr};
+      bulk_merge_f bulk_merge_func_{&sort::prepared::noop_bulk_merge};
       merge_f merge_func_{&sort::prepared::noop_merge};
     }; // merger
 
-    static const prepared& unordered();
+    static const prepared& unordered() noexcept;
 
     prepared() = default;
-    prepared(prepared&& rhs) noexcept;
-
-    prepared& operator=(prepared&& rhs) noexcept;
+    prepared(prepared&&) = default;
+    prepared& operator=(prepared&&) = default;
 
     const flags& features() const noexcept { return features_; }
 
@@ -907,22 +1038,8 @@ class IRESEARCH_API order final {
       }
     }
 
-    ////////////////////////////////////////////////////////////////////////////
-    /// @return set of prepared scorer objects
-    ////////////////////////////////////////////////////////////////////////////
-    prepared::scorers prepare_scorers(
-        const sub_reader& segment,
-        const term_reader& field,
-        const byte_type* stats_buf,
-        const attribute_view& doc,
-        irs::boost_t boost) const {
-      return scorers(order_, segment, field, stats_buf, doc, boost);
-    }
-
     bool less(const byte_type* lhs, const byte_type* rhs) const;
     void add(byte_type* lhs, const byte_type* rhs) const;
-    void prepare_score(byte_type* score) const;
-    void prepare_stats(byte_type* stats) const;
 
     template<typename T>
     constexpr const T& get(const byte_type* score, size_t i) const noexcept {
@@ -938,7 +1055,7 @@ class IRESEARCH_API order final {
       typename StringType,
       typename TraitsType = typename StringType::traits_type
     > constexpr StringType to_string(const byte_type* score, size_t i) const {
-      typedef typename TraitsType::char_type char_type;
+      using char_type = typename TraitsType::char_type;
 
       return StringType(
         reinterpret_cast<const char_type*>(score + order_[i].score_offset),
@@ -959,16 +1076,22 @@ class IRESEARCH_API order final {
       switch (order_.size()) {
         case 0: return { };
         case 1: return {
-            &order_[0],
-            sort::prepared::merge_func<Type>(*order_[0].bucket)
+            &order_.front(),
+            sort::prepared::bulk_merge_func<Type>(*order_.front().bucket),
+            sort::prepared::merge_func<Type>(*order_.front().bucket)
           };
         case 2: return {
-            &order_[0],
+            order_.data(),
             [](const order_bucket* ctx, byte_type* dst,
                const byte_type** src_start, const size_t size) {
-                sort::prepared::merge_func<Type>(*ctx[0].bucket)(ctx,     dst, &(*src_start), size);
-                sort::prepared::merge_func<Type>(*ctx[1].bucket)(ctx + 1, dst, &(*src_start), size);
-          }};
+                sort::prepared::bulk_merge_func<Type>(*ctx[0].bucket)(ctx,     dst, &(*src_start), size);
+                sort::prepared::bulk_merge_func<Type>(*ctx[1].bucket)(ctx + 1, dst, &(*src_start), size);
+            },
+            [](const order_bucket* ctx, byte_type* dst, const byte_type* src) {
+                sort::prepared::merge_func<Type>(*ctx[0].bucket)(ctx,     dst, src);
+                sort::prepared::merge_func<Type>(*ctx[1].bucket)(ctx + 1, dst, src);
+            }
+          };
         default: return {
             reinterpret_cast<const order_bucket*>(&order_),
             [](const order_bucket* ctx, byte_type* dst,
@@ -976,9 +1099,17 @@ class IRESEARCH_API order final {
                 auto& order = *reinterpret_cast<const order::prepared*>(ctx);
                 order.for_each([dst, src_start, size](const order_bucket& sort) {
                   assert(sort.bucket);
-                  sort::prepared::merge_func<Type>(*sort.bucket)(&sort, dst, src_start, size);
-                });
-          }};
+                  sort::prepared::bulk_merge_func<Type>(*sort.bucket)(&sort, dst, src_start, size);
+              });
+            },
+            [](const order_bucket* ctx, byte_type* dst, const byte_type* src_start) {
+                auto& order = *reinterpret_cast<const order::prepared*>(ctx);
+                order.for_each([dst, src_start](const order_bucket& sort) {
+                  assert(sort.bucket);
+                  sort::prepared::merge_func<Type>(*sort.bucket)(&sort, dst, src_start);
+              });
+            },
+          };
       }
     }
 
@@ -991,20 +1122,16 @@ class IRESEARCH_API order final {
     IRESEARCH_API_PRIVATE_VARIABLES_END
   }; // prepared
 
-  static const order& unordered();
+  // std::is_nothrow_move_constructible_v<flags> == false
+  static_assert(std::is_move_constructible_v<prepared>);
+  // std::is_nothrow_move_assignable_v<flags> == false
+  static_assert(std::is_move_assignable_v<prepared>);
+
+  static const order& unordered() noexcept;
 
   order() = default;
-  order(order&& rhs) noexcept
-    : order_(std::move(rhs.order_)) {
-  }
-
-  order& operator=(order&& rhs) noexcept {
-    if (this != &rhs) {
-      order_ = std::move(rhs.order_);
-    }
-
-    return *this;
-  }
+  order(order&&) = default;
+  order& operator=(order&&) = default;
 
   bool operator==(const order& other) const;
 
@@ -1014,13 +1141,13 @@ class IRESEARCH_API order final {
 
   prepared prepare() const;
 
-  order& add(bool reverse, sort::ptr const& sort);
+  order& add(bool reverse, sort::ptr&& sort);
 
   template<typename T, typename... Args>
   T& add(bool reverse, Args&&... args) {
-    typedef typename std::enable_if<
+    using type = typename std::enable_if<
       std::is_base_of<sort, T>::value, T
-    >::type type;
+    >::type;
 
     add(reverse, type::make(std::forward<Args>(args)...));
     return static_cast<type&>(order_.back().sort());
@@ -1028,14 +1155,14 @@ class IRESEARCH_API order final {
 
   template<typename T>
   void remove() {
-    typedef typename std::enable_if<
+    using type = typename std::enable_if<
       std::is_base_of<sort, T>::value, T
-    >::type type;
+    >::type;
 
     remove(type::type());
   }
 
-  void remove(const type_id& id);
+  void remove(type_info::type_id type);
   void clear() noexcept { order_.clear(); }
 
   size_t size() const noexcept { return order_.size(); }
@@ -1052,6 +1179,9 @@ class IRESEARCH_API order final {
   order_t order_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // order
+
+static_assert(std::is_nothrow_move_constructible_v<order>);
+static_assert(std::is_nothrow_move_constructible_v<order>);
 
 NS_END
 

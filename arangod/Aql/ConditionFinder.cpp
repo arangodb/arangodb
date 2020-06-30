@@ -37,8 +37,6 @@ using EN = arangodb::aql::ExecutionNode;
 
 bool ConditionFinder::before(ExecutionNode* en) {
   switch (en->getType()) {
-    case EN::PARALLEL_START:
-    case EN::PARALLEL_END:
     case EN::ENUMERATE_LIST:
     case EN::COLLECT:
     case EN::SCATTER:
@@ -158,13 +156,15 @@ bool ConditionFinder::before(ExecutionNode* en) {
         _changes->try_emplace(
             node->id(),
             arangodb::lazyConstruct([&]{
-              return new IndexNode(_plan, _plan->nextId(), node->collection(),
-                          node->outVariable(), usedIndexes, std::move(condition), opts);
+              IndexNode* idx = new IndexNode(_plan, _plan->nextId(), node->collection(),
+                                             node->outVariable(), usedIndexes, std::move(condition), opts);
+              // if the enumerate collection node had the counting flag
+              // set, we can copy it over to the index node as well
+              idx->copyCountFlag(node);
+              return idx;
             })
         );
-
       }
-
       break;
     }
 

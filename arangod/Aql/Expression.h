@@ -104,7 +104,7 @@ class Expression {
   std::unique_ptr<Expression> clone(Ast* ast);
 
   /// @brief return all variables used in the expression
-  void variables(::arangodb::containers::HashSet<Variable const*>&) const;
+  void variables(VarSet&) const;
 
   /// @brief return a VelocyPack representation of the expression
   void toVelocyPack(arangodb::velocypack::Builder& builder, bool verbose) const;

@@ -302,6 +302,16 @@ static inline v8::Local<v8::String> v8Utf8StringFactory(v8::Isolate* isolate,
                                 .FromMaybe(v8::Local<v8::String>()));                          \
   return
 
+/// @brief return a std::string_view
+///   implicitly requires 'args and 'isolate' to be available
+/// @param WHAT the name of the std::string_view variable
+#define TRI_V8_RETURN_STD_STRING_VIEW(WHAT)                                     \
+  args.GetReturnValue().Set(v8::String::NewFromUtf8(isolate, WHAT.data(),       \
+                                                    v8::NewStringType::kNormal, \
+                                                    (int)WHAT.length())         \
+                                .FromMaybe(v8::Local<v8::String>()));           \
+  return
+
 /// @brief return a std::string
 ///   implicitly requires 'args and 'isolate' to be available
 /// @param WHAT the name of the std::string variable
@@ -490,9 +500,9 @@ struct TRI_v8_global_t {
   v8::Persistent<v8::ObjectTemplate> GeneralGraphTempl;
 
 #ifdef USE_ENTERPRISE
-  /// @brief smart graph class template
+  /// @brief SmartGraph class template
   v8::Persistent<v8::ObjectTemplate> SmartGraphTempl;
-  // there is no smart graph module becuase they are
+  // there is no SmartGraph module because they are
   // identical, just return different graph instances.
 #endif
 
@@ -736,6 +746,9 @@ struct TRI_v8_global_t {
 
   /// @brief information about the currently running transaction
   void* _transactionContext;
+
+  /// @brief current AQL expressionContext
+  void* _expressionContext;
 
   /// @brief pointer to the vocbase (TRI_vocbase_t*)
   TRI_vocbase_t* _vocbase;

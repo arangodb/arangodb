@@ -213,8 +213,9 @@ class MultiDependencySingleRowFetcherTest
   std::vector<std::unique_ptr<ExecutionBlock>> _blocks;
   // The dependencies, they are referenced by _proxy, modifing this will modify the proxy
   std::vector<ExecutionBlock*> _dependencies{};
+  RegIdSet inputRegister = RegIdSet{0};
   DependencyProxy<BlockPassthrough::Disable> _proxy{_dependencies, itemBlockManager,
-                                                    make_shared_unordered_set({0}),
+                                                    inputRegister,
                                                     1, nullptr};
 };
 
@@ -278,7 +279,11 @@ TEST_P(MultiDependencySingleRowFetcherTest, one_block_upstream_all_deps_differ) 
   for (size_t i = 0; i < numberDependencies(); ++i) {
     std::deque<SharedAqlItemBlockPtr> blockDeque{};
     blockDeque.emplace_back(
-        buildBlock<1>(itemBlockManager, {{1 * (i + 1)}, {2 * (i + 1)}, {3 * (i + 1)}}));
+        buildBlock<1>(itemBlockManager, {
+                                            {static_cast<int>(1 * (i + 1))},
+                                            {static_cast<int>(2 * (i + 1))},
+                                            {static_cast<int>(3 * (i + 1))},
+                                        }));
     data.emplace_back(std::move(blockDeque));
   }
 
@@ -361,7 +366,7 @@ TEST_P(MultiDependencySingleRowFetcherTest, many_blocks_upstream_all_deps_equal)
 
 TEST_P(MultiDependencySingleRowFetcherTest, many_blocks_upstream_all_deps_differ) {
   std::vector<std::deque<SharedAqlItemBlockPtr>> data;
-  for (size_t i = 0; i < numberDependencies(); ++i) {
+  for (int i = 0; i < static_cast<int>(numberDependencies()); ++i) {
     std::deque<SharedAqlItemBlockPtr> blockDeque{};
     blockDeque.emplace_back(
         buildBlock<1>(itemBlockManager, {{1 * (i + 1)}, {2 * (i + 1)}, {3 * (i + 1)}}));
@@ -424,7 +429,7 @@ TEST_P(MultiDependencySingleRowFetcherTest, many_blocks_upstream_all_deps_differ
 TEST_P(MultiDependencySingleRowFetcherTest, many_blocks_upstream_all_deps_differ_sequentially) {
   // Difference to the test above is that we first fetch all from Dep1, then Dep2 then Dep3
   std::vector<std::deque<SharedAqlItemBlockPtr>> data;
-  for (size_t i = 0; i < numberDependencies(); ++i) {
+  for (int i = 0; i < static_cast<int>(numberDependencies()); ++i) {
     std::deque<SharedAqlItemBlockPtr> blockDeque{};
     blockDeque.emplace_back(
         buildBlock<1>(itemBlockManager, {{1 * (i + 1)}, {2 * (i + 1)}, {3 * (i + 1)}}));
@@ -499,7 +504,7 @@ TEST_P(MultiDependencySingleRowFetcherTest,
   // This has to be done by the InputRange hold externally.
   // It has seperate tests
   std::vector<std::deque<SharedAqlItemBlockPtr>> data;
-  for (size_t i = 0; i < numberDependencies(); ++i) {
+  for (int i = 0; i < static_cast<int>(numberDependencies()); ++i) {
     std::deque<SharedAqlItemBlockPtr> blockDeque{};
     blockDeque.emplace_back(
         buildBlock<1>(itemBlockManager,
@@ -603,7 +608,7 @@ TEST_P(MultiDependencySingleRowFetcherTest,
   // This has to be done by the InputRange hold externally.
   // It has seperate tests
   std::vector<std::deque<SharedAqlItemBlockPtr>> data;
-  for (size_t i = 0; i < numberDependencies(); ++i) {
+  for (int i = 0; i < static_cast<int>(numberDependencies()); ++i) {
     std::deque<SharedAqlItemBlockPtr> blockDeque{};
     blockDeque.emplace_back(
         buildBlock<1>(itemBlockManager,
@@ -709,7 +714,7 @@ TEST_P(MultiDependencySingleRowFetcherTest,
   // This has to be done by the InputRange hold externally.
   // It has seperate tests
   std::vector<std::deque<SharedAqlItemBlockPtr>> data;
-  for (size_t i = 0; i < numberDependencies(); ++i) {
+  for (int i = 0; i < static_cast<int>(numberDependencies()); ++i) {
     std::deque<SharedAqlItemBlockPtr> blockDeque{};
     blockDeque.emplace_back(
         buildBlock<1>(itemBlockManager,

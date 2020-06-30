@@ -32,8 +32,8 @@
 #include "Aql/ResourceUsage.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Basics/ResultT.h"
 #include "VocBase/voc-types.h"
-
 #include <velocypack/Builder.h>
 
 struct TRI_vocbase_t;
@@ -87,7 +87,7 @@ class QueryContext {
   QueryWarnings& warnings() { return _warnings; }
 
   /// @brief look up a graph in the _graphs collection
-  graph::Graph const* lookupGraphByName(std::string const& name);
+  ResultT<graph::Graph const*> lookupGraphByName(std::string const& name);
   
   /// @brief note that the query uses the DataSource
   void addDataSource(std::shared_ptr<arangodb::LogicalDataSource> const& ds);
@@ -97,7 +97,7 @@ class QueryContext {
   TRI_voc_tick_t id() const { return _queryId; }
   
   aql::Ast* ast();
- 
+
   void incHttpRequests(unsigned i) {
     _numRequests.fetch_add(i, std::memory_order_relaxed);
   }
@@ -119,6 +119,10 @@ class QueryContext {
   virtual bool killed() const = 0;
 
   virtual void setKilled() = 0;
+  
+  /// @brief whether or not a query is a modification query
+  virtual bool isModificationQuery() const noexcept = 0;
+  virtual bool isAsyncQuery() const noexcept = 0;
   
 public:
   

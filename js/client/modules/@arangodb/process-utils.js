@@ -125,6 +125,16 @@ class ConfigBuilder {
     this.config['maskings'] = fs.join(TOP_DIR, "tests/js/common/test-data/maskings", dir);
   }
   activateEncryption() { this.config['encryption.keyfile'] = fs.join(this.rootDir, 'secret-key'); }
+  activateCompression() {
+    if (this.type === 'dump') {
+      this.config['--compress-output'] = true;
+    }
+  }
+  deactivateCompression() {
+    if (this.type === 'dump') {
+      this.config['--compress-output'] = false;
+    }
+  }
   setRootDir(dir) { this.rootDir = dir; }
   restrictToCollection(collection) {
     if (this.type !== 'restore' && this.type !== 'dump') {
@@ -433,11 +443,10 @@ function getCleanupDBDirectories () {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief adds authorization headers
+// / @brief loads the JWT secret from the various ways possible
 // //////////////////////////////////////////////////////////////////////////////
 
-function makeAuthorizationHeaders (options) {
-
+function getJwtSecret(options) {
   let jwtSecret;
   if (options['server.jwt-secret-folder']) {
     let files = fs.list(options['server.jwt-secret-folder']);
@@ -448,6 +457,15 @@ function makeAuthorizationHeaders (options) {
   } else {
     jwtSecret = options['server.jwt-secret'];
   }
+  return jwtSecret;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief adds authorization headers
+// //////////////////////////////////////////////////////////////////////////////
+
+function makeAuthorizationHeaders (options) {
+  const jwtSecret = getJwtSecret(options);
 
   if (jwtSecret) {
     let jwt = crypto.jwtEncode(jwtSecret,
@@ -2155,6 +2173,7 @@ exports.arangod = {
 
 exports.findFreePort = findFreePort;
 exports.coverageEnvironment = coverageEnvironment;
+exports.getJwtSecret = getJwtSecret;
 
 exports.executeArangod = executeArangod;
 exports.executeAndWait = executeAndWait;

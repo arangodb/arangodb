@@ -76,8 +76,7 @@ Other features of ArangoDB include:
   durability or more performance
 - **Schema-free schemata** let you combine the space efficiency of MySQL with the
   performance power of NoSQL
-- Free **index choice**: use the correct index for your problem, be it a skiplist 
-  or a fulltext search
+- **index support**: exploit the perfect index types for your different use cases, including document queries, graph queries, geo location queries, and fulltext searches
 - ArangoDB is **multi-threaded** - exploit the power of all your cores
 - Easy to use **web interface** and **command-line client tools** for interaction
   with the server

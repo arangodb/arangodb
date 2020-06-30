@@ -45,21 +45,17 @@ struct read_trx {
   template<typename K>
   read_trx key(K&& k) && {
     _buffer.setValue(std::forward<K>(k));
-    return std::move(_buffer);
+    return read_trx(std::move(_buffer));
   }
 
   T done() && {
     _buffer.closeArray();
-    return std::move(_buffer);
+    return T(std::move(_buffer));
   }
  private:
   friend T;
-  read_trx(buffer &&b) : _buffer(std::move(b)) {}
-  read_trx(buffer &&b, std::tuple<Vs...> v) 
-    : _buffer(std::move(b)), _v(std::forward_as_tuple(v)) {}
-
+  explicit read_trx(buffer &&b) : _buffer(std::move(b)) {}
   buffer _buffer;
-  std::tuple<Vs...> _v;
 };
 
 template<typename B, typename T>
@@ -75,7 +71,7 @@ struct precs_trx {
     _buffer.openObject();
     _buffer.setKey("old", std::forward<V>(v));
     _buffer.closeObject();
-    return std::move(_buffer);
+    return precs_trx(std::move(_buffer));
   }
 
   template<typename K>
@@ -84,14 +80,14 @@ struct precs_trx {
     _buffer.openObject();
     _buffer.setKey("oldEmpty", true);
     _buffer.closeObject();
-    return std::move(_buffer);
+    return precs_trx(std::move(_buffer));
   }
 
   T done() && {
     _buffer.closeObject();
     _buffer.setValue(VPackValue(AgencyWriteTransaction::randomClientId()));
     _buffer.closeArray();
-    return std::move(_buffer);
+    return T(std::move(_buffer));
   }
 
  private:
@@ -113,7 +109,7 @@ struct write_trx {
     _buffer.setKey("op", "set");
     _buffer.setKey("new", std::forward<V>(v));
     _buffer.closeObject();
-    return std::move(_buffer);
+    return write_trx(std::move(_buffer));
   }
 
   template<typename K, typename F>
@@ -122,7 +118,7 @@ struct write_trx {
     _buffer.openObject();
     f(_buffer.userObject());
     _buffer.closeObject();
-    return std::move(_buffer);
+    return write_trx(std::move(_buffer));
   }
 
   template<typename K>
@@ -131,7 +127,7 @@ struct write_trx {
     _buffer.openObject();
     _buffer.setKey("op", "delete");
     _buffer.closeObject();
-    return std::move(_buffer);
+    return write_trx(std::move(_buffer));
   }
 
   template<typename K>
@@ -141,14 +137,14 @@ struct write_trx {
     _buffer.setKey("op", "increment");
     _buffer.setKey("delta", delta);
     _buffer.closeObject();
-    return std::move(_buffer);
+    return write_trx(std::move(_buffer));
   }
 
   T done() && { _buffer.closeObject();
     _buffer.setValue(VPackSlice::emptyObjectSlice());
     _buffer.setValue(VPackValue(AgencyWriteTransaction::randomClientId()));
     _buffer.closeArray();
-    return std::move(_buffer);
+    return T(std::move(_buffer));
   }
 
   precs_trx<B, T> precs() && {
@@ -161,7 +157,7 @@ struct write_trx {
  private:
   friend T;
 
-  write_trx(buffer &&b) : _buffer(std::move(b)) {}
+  explicit write_trx(buffer &&b) : _buffer(std::move(b)) {}
   buffer _buffer;
 };
 
@@ -172,13 +168,13 @@ struct envelope {
 
   read_trx<B, envelope> read() && {
     _buffer.openArray();
-    return std::move(_buffer);
+    return read_trx<B, envelope>(std::move(_buffer));
   }
 
   write_trx<B, envelope> write() && {
     _buffer.openArray();
     _buffer.openObject();
-    return std::move(_buffer);
+    return write_trx<B, envelope>(std::move(_buffer));
   }
 
   void done() && {
@@ -187,7 +183,7 @@ struct envelope {
 
   static envelope create(VPackBuilder &b) {
     buffer buff(b);
-    envelope env(b);
+    envelope env(buffer{b});
     env._buffer.openArray();
     return env;
   }
@@ -196,8 +192,8 @@ struct envelope {
   friend write_trx<B, envelope>;
   friend read_trx<B, envelope>;
   friend precs_trx<B, envelope>;
-  envelope(buffer&& b) : _buffer(std::move(b)) {}
-  envelope() {}
+  explicit envelope(buffer&& b) : _buffer(std::move(b)) {}
+  envelope() = default;
   buffer _buffer;
 };
 
@@ -209,7 +205,7 @@ void add_to_builder(VPackBuilder* b, V const& v) {
 }
 
 template<>
-void add_to_builder(VPackBuilder* b, VPackSlice const& v) {
+inline void add_to_builder(VPackBuilder* b, VPackSlice const& v) {
   b->add(v);
 }
 
@@ -219,7 +215,7 @@ void add_to_builder(VPackBuilder* b, VPackSlice const& v) {
 template<>
 struct buffer_mapper<VPackBuilder> {
 
-  buffer_mapper(VPackBuilder& builder) : _builder(&builder) {};
+  explicit buffer_mapper(VPackBuilder& builder) : _builder(&builder) {};
 
   template<typename K, typename V>
   void setKey(K&& k, V&& v) {

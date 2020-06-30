@@ -216,16 +216,22 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   VPackSlice opts = _options->slice();
 
   bool stream = VelocyPackHelper::getBooleanValue(opts, "stream", false);
+  if (ServerState::instance()->isDBServer()) {
+    stream = false;
+  }
   size_t batchSize = VelocyPackHelper::getNumericValue<size_t>(opts, "batchSize", 1000);
   double ttl = VelocyPackHelper::getNumericValue<double>(opts, "ttl",
                                                          _queryRegistry->defaultTTL());
   bool count = VelocyPackHelper::getBooleanValue(opts, "count", false);
   
-  auto query = std::make_unique<aql::Query>(createTransactionContext(),
+  // simon: access mode can always be write on the coordinator
+  const AccessMode::Type mode = AccessMode::Type::WRITE;
+  auto query = std::make_unique<aql::Query>(createTransactionContext(mode),
       arangodb::aql::QueryString(querySlice.copyString()),
       bindVarsBuilder, _options);
 
   if (stream) {
+    TRI_ASSERT(!ServerState::instance()->isDBServer());
     if (count) {
       generateError(Result(TRI_ERROR_BAD_PARAMETER,
                            "cannot use 'count' option for a streaming query"));
@@ -241,10 +247,19 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   }
 
   // non-stream case. Execute query, then build a cursor
-  //  with the entire result set.
-  query->sharedState()->setWakeupHandler([self = shared_from_this()] {
-    return self->wakeupHandler();
-  });
+  // with the entire result set.
+  if (!ServerState::instance()->isDBServer()) {
+    auto ss = query->sharedState();
+    TRI_ASSERT(ss != nullptr);
+    if (ss == nullptr) {
+      generateError(Result(TRI_ERROR_INTERNAL, "invalid query state"));
+      return RestStatus::DONE;
+    }
+
+    ss->setWakeupHandler([self = shared_from_this()] {
+      return self->wakeupHandler();
+    });
+  }
 
   registerQuery(std::move(query));
   return processQuery(/*continuation*/false);
@@ -280,6 +295,7 @@ RestStatus RestCursorHandler::processQuery(bool continuation) {
   return handleQueryResult();
 }
 
+// non stream case, result is complete
 RestStatus RestCursorHandler::handleQueryResult() {
   if (_queryResult.result.fail()) {
     if (_queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
@@ -355,8 +371,6 @@ RestStatus RestCursorHandler::handleQueryResult() {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
     generateResult(rest::ResponseCode::CREATED, std::move(buffer), _queryResult.context);
-    generateResult(rest::ResponseCode::CREATED, std::move(buffer),
-                   _queryResult.context->getVPackOptionsForDump());
     // directly after returning from here, we will free the query's context and free the
     // resources it uses (e.g. leases for a managed transaction). this way the server
     // can send back the query result to the client and the client can make follow-up
@@ -376,6 +390,11 @@ RestStatus RestCursorHandler::handleQueryResult() {
 
 /// @brief returns the short id of the server which should handle this request
 ResultT<std::pair<std::string, bool>> RestCursorHandler::forwardingTarget() {
+  auto base = RestVocbaseBaseHandler::forwardingTarget();
+  if (base.ok() && !std::get<0>(base.get()).empty()) {
+    return base;
+  }
+
   rest::RequestType const type = _request->requestType();
   if (type != rest::RequestType::PUT && type != rest::RequestType::DELETE_REQ) {
     return {std::make_pair(StaticStrings::Empty, false)};
@@ -444,7 +463,9 @@ void RestCursorHandler::cancelQuery() {
       return;
     }
 
-    ss->invalidate();
+    if (ss != nullptr) {
+      ss->invalidate();
+    }
   } else if (!_hasStarted) {
     _queryKilled = true;
   }
@@ -492,6 +513,12 @@ void RestCursorHandler::buildOptions(VPackSlice const& slice) {
       }
       _options->add(keyName, it.value);
     }
+  }
+
+  if (ServerState::instance()->isDBServer()) {
+    // we do not support creating streaming cursors on DB-Servers, at all.
+    // always turn such cursors into non-streaming cursors.
+    isStream = false;
   }
     
   _options->add("stream", VPackValue(isStream));

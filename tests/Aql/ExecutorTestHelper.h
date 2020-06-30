@@ -108,7 +108,8 @@ struct ExecutorTestHelper {
         _query(query),
         _itemBlockManager(itemBlockManager),
         _dummyNode{std::make_unique<SingletonNode>(
-            const_cast<ExecutionPlan*>(_query.rootEngine()->root()->getPlanNode()->plan()),
+            const_cast<ExecutionPlan*>(
+                _query.rootEngine()->root()->getPlanNode()->plan()),
             ExecutionNodeId{42})} {}
 
   auto setCallStack(AqlCallStack stack) -> ExecutorTestHelper& {
@@ -310,6 +311,7 @@ struct ExecutorTestHelper {
           call.didProduce(result->size());
           allResults.add(result);
         }
+        call.resetSkipCount();
       } while (finalState != ExecutionState::DONE &&
                (!_callStack.peek().hasSoftLimit() ||
                 (_callStack.peek().getLimit() + _callStack.peek().getOffset()) > 0));
@@ -363,8 +365,8 @@ struct ExecutorTestHelper {
     auto& testeeNode = _execNodes.emplace_back(
         std::make_unique<MockTypedNode>(_query.plan(),
                                         ExecutionNodeId{_execNodes.size()}, nodeType));
-    return std::make_unique<ExecutionBlockImpl<E>>(_query.rootEngine(), testeeNode.get(),
-                                                   std::move(registerInfos),
+    return std::make_unique<ExecutionBlockImpl<E>>(_query.rootEngine(),
+                                                   testeeNode.get(), std::move(registerInfos),
                                                    std::move(executorInfos));
   }
 

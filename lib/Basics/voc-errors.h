@@ -148,8 +148,8 @@ constexpr int TRI_ERROR_SHUTTING_DOWN                                           
 
 /// 31: ERROR_ONLY_ENTERPRISE
 /// "only enterprise version"
-/// Will be raised when an enterprise-feature is requested from the community
-/// edition.
+/// Will be raised when an Enterprise Edition feature is requested from the
+/// Community Edition.
 constexpr int TRI_ERROR_ONLY_ENTERPRISE                                         = 31;
 
 /// 32: ERROR_RESOURCE_LIMIT
@@ -366,8 +366,8 @@ constexpr int TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND                               
 
 /// 1203: ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
 /// "collection or view not found"
-/// Will be raised when a collection with the given identifier or name is
-/// unknown.
+/// Will be raised when a collection or View with the given identifier or name
+/// is unknown.
 constexpr int TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND                            = 1203;
 
 /// 1204: ERROR_ARANGO_COLLECTION_PARAMETER_MISSING
@@ -658,10 +658,15 @@ constexpr int TRI_ERROR_REPLICATION_WRONG_CHECKSUM                              
 /// Will be raised when a shard is not empty and the follower tries a shortcut
 constexpr int TRI_ERROR_REPLICATION_SHARD_NONEMPTY                              = 1417;
 
+/// 1448: ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED
+/// "creating collection failed due to precondition"
+/// Will be raised when updating the plan on collection creatio failed.
+constexpr int TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED           = 1448;
+
 /// 1449: ERROR_CLUSTER_SERVER_UNKNOWN
 /// "got a request from an unkown server"
 /// Will be raised on some occasions when one server gets a request from
-/// another, which has not (yet?) been made known via the agency.
+/// another, which has not (yet?) been made known via the Agency.
 constexpr int TRI_ERROR_CLUSTER_SERVER_UNKNOWN                                  = 1449;
 
 /// 1450: ERROR_CLUSTER_TOO_MANY_SHARDS
@@ -672,92 +677,92 @@ constexpr int TRI_ERROR_CLUSTER_TOO_MANY_SHARDS                                 
 
 /// 1453: ERROR_CLUSTER_COLLECTION_ID_EXISTS
 /// "collection ID already exists"
-/// Will be raised when a coordinator in a cluster tries to create a collection
+/// Will be raised when a Coordinator in a cluster tries to create a collection
 /// and the collection ID already exists.
 constexpr int TRI_ERROR_CLUSTER_COLLECTION_ID_EXISTS                            = 1453;
 
 /// 1454: ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN
 /// "could not create collection in plan"
-/// Will be raised when a coordinator in a cluster cannot create an entry for a
-/// new collection in the Plan hierarchy in the agency.
+/// Will be raised when a Coordinator in a cluster cannot create an entry for a
+/// new collection in the Plan hierarchy in the Agency.
 constexpr int TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN             = 1454;
 
 /// 1456: ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION
 /// "could not create collection"
-/// Will be raised when a coordinator in a cluster notices that some DBServers
+/// Will be raised when a Coordinator in a cluster notices that some DB-Servers
 /// report problems when creating shards for a new collection.
 constexpr int TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION                     = 1456;
 
 /// 1457: ERROR_CLUSTER_TIMEOUT
 /// "timeout in cluster operation"
-/// Will be raised when a coordinator in a cluster runs into a timeout for some
+/// Will be raised when a Coordinator in a cluster runs into a timeout for some
 /// cluster wide operation.
 constexpr int TRI_ERROR_CLUSTER_TIMEOUT                                         = 1457;
 
 /// 1458: ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN
 /// "could not remove collection from plan"
-/// Will be raised when a coordinator in a cluster cannot remove an entry for a
-/// collection in the Plan hierarchy in the agency.
+/// Will be raised when a Coordinator in a cluster cannot remove an entry for a
+/// collection in the Plan hierarchy in the Agency.
 constexpr int TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN             = 1458;
 
 /// 1459: ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT
 /// "could not remove collection from current"
-/// Will be raised when a coordinator in a cluster cannot remove an entry for a
-/// collection in the Current hierarchy in the agency.
+/// Will be raised when a Coordinator in a cluster cannot remove an entry for a
+/// collection in the Current hierarchy in the Agency.
 constexpr int TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT          = 1459;
 
 /// 1460: ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN
 /// "could not create database in plan"
-/// Will be raised when a coordinator in a cluster cannot create an entry for a
-/// new database in the Plan hierarchy in the agency.
+/// Will be raised when a Coordinator in a cluster cannot create an entry for a
+/// new database in the Plan hierarchy in the Agency.
 constexpr int TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN               = 1460;
 
 /// 1461: ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE
 /// "could not create database"
-/// Will be raised when a coordinator in a cluster notices that some DBServers
+/// Will be raised when a Coordinator in a cluster notices that some DB-Servers
 /// report problems when creating databases for a new cluster wide database.
 constexpr int TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE                       = 1461;
 
 /// 1462: ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN
 /// "could not remove database from plan"
-/// Will be raised when a coordinator in a cluster cannot remove an entry for a
-/// database in the Plan hierarchy in the agency.
+/// Will be raised when a Coordinator in a cluster cannot remove an entry for a
+/// database in the Plan hierarchy in the Agency.
 constexpr int TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN               = 1462;
 
 /// 1463: ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT
 /// "could not remove database from current"
-/// Will be raised when a coordinator in a cluster cannot remove an entry for a
-/// database in the Current hierarchy in the agency.
+/// Will be raised when a Coordinator in a cluster cannot remove an entry for a
+/// database in the Current hierarchy in the Agency.
 constexpr int TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT            = 1463;
 
 /// 1464: ERROR_CLUSTER_SHARD_GONE
 /// "no responsible shard found"
-/// Will be raised when a coordinator in a cluster cannot determine the shard
+/// Will be raised when a Coordinator in a cluster cannot determine the shard
 /// that is responsible for a given document.
 constexpr int TRI_ERROR_CLUSTER_SHARD_GONE                                      = 1464;
 
 /// 1465: ERROR_CLUSTER_CONNECTION_LOST
 /// "cluster internal HTTP connection broken"
-/// Will be raised when a coordinator in a cluster loses an HTTP connection to
-/// a DBserver in the cluster whilst transferring data.
+/// Will be raised when a Coordinator in a cluster loses an HTTP connection to
+/// a DB-Server in the cluster whilst transferring data.
 constexpr int TRI_ERROR_CLUSTER_CONNECTION_LOST                                 = 1465;
 
 /// 1466: ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY
 /// "must not specify _key for this collection"
-/// Will be raised when a coordinator in a cluster finds that the _key
+/// Will be raised when a Coordinator in a cluster finds that the _key
 /// attribute was specified in a sharded collection the uses not only _key as
 /// sharding attribute.
 constexpr int TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY                            = 1466;
 
 /// 1467: ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS
 /// "got contradicting answers from different shards"
-/// Will be raised if a coordinator in a cluster gets conflicting results from
+/// Will be raised if a Coordinator in a cluster gets conflicting results from
 /// different shards, which should never happen.
 constexpr int TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS                       = 1467;
 
 /// 1468: ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN
 /// "not all sharding attributes given"
-/// Will be raised if a coordinator tries to find out which shard is
+/// Will be raised if a Coordinator tries to find out which shard is
 /// responsible for a partial document, but cannot do this because not all
 /// sharding attributes are specified.
 constexpr int TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN               = 1468;
@@ -776,19 +781,19 @@ constexpr int TRI_ERROR_CLUSTER_UNSUPPORTED                                     
 
 /// 1471: ERROR_CLUSTER_ONLY_ON_COORDINATOR
 /// "this operation is only valid on a coordinator in a cluster"
-/// Will be raised if there is an attempt to run a coordinator-only operation
+/// Will be raised if there is an attempt to run a Coordinator-only operation
 /// on a different type of node.
 constexpr int TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR                             = 1471;
 
 /// 1472: ERROR_CLUSTER_READING_PLAN_AGENCY
 /// "error reading Plan in agency"
-/// Will be raised if a coordinator or DBserver cannot read the Plan in the
-/// agency.
+/// Will be raised if a Coordinator or DB-Server cannot read the Plan in the
+/// Agency.
 constexpr int TRI_ERROR_CLUSTER_READING_PLAN_AGENCY                             = 1472;
 
 /// 1473: ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION
 /// "could not truncate collection"
-/// Will be raised if a coordinator cannot truncate all shards of a cluster
+/// Will be raised if a Coordinator cannot truncate all shards of a cluster
 /// collection.
 constexpr int TRI_ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION                   = 1473;
 
@@ -800,31 +805,31 @@ constexpr int TRI_ERROR_CLUSTER_AQL_COMMUNICATION                               
 
 /// 1477: ERROR_CLUSTER_ONLY_ON_DBSERVER
 /// "this operation is only valid on a DBserver in a cluster"
-/// Will be raised if there is an attempt to run a DBserver-only operation on a
-/// different type of node.
+/// Will be raised if there is an attempt to run a DB-Server-only operation on
+/// a different type of node.
 constexpr int TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER                                = 1477;
 
 /// 1478: ERROR_CLUSTER_BACKEND_UNAVAILABLE
 /// "A cluster backend which was required for the operation could not be reached"
-/// Will be raised if a required db server can't be reached.
+/// Will be raised if a required DB-Server can't be reached.
 constexpr int TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE                             = 1478;
 
 /// 1481: ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC
 /// "collection is out of sync"
 /// Will be raised if a collection needed during query execution is out of
-/// sync. This currently can only happen when using satellite collections
+/// sync. This currently can only happen when using SatelliteCollections
 constexpr int TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC                      = 1481;
 
 /// 1482: ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN
 /// "could not create index in plan"
-/// Will be raised when a coordinator in a cluster cannot create an entry for a
-/// new index in the Plan hierarchy in the agency.
+/// Will be raised when a Coordinator in a cluster cannot create an entry for a
+/// new index in the Plan hierarchy in the Agency.
 constexpr int TRI_ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN                  = 1482;
 
 /// 1483: ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN
 /// "could not drop index in plan"
-/// Will be raised when a coordinator in a cluster cannot remove an index from
-/// the Plan hierarchy in the agency.
+/// Will be raised when a Coordinator in a cluster cannot remove an index from
+/// the Plan hierarchy in the Agency.
 constexpr int TRI_ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN                    = 1483;
 
 /// 1484: ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE
@@ -852,13 +857,13 @@ constexpr int TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE                    
 /// "the number of current dbservers is lower than the requested
 /// "replicationFactor"
 /// Will be raised if one tries to create a collection with a replicationFactor
-/// greater than the available number of DBServers.
+/// greater than the available number of DB-Servers.
 constexpr int TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS                          = 1487;
 
 /// 1488: ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER
 /// "a follower could not be dropped in agency"
 /// Will be raised if a follower that ought to be dropped could not be dropped
-/// in the agency (under Current).
+/// in the Agency (under Current).
 constexpr int TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER                         = 1488;
 
 /// 1489: ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION
@@ -881,7 +886,7 @@ constexpr int TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED                           
 
 /// 1492: ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED
 /// "some agency operation failed"
-/// Will be raised if after various retries an agency operation could not be
+/// Will be raised if after various retries an Agency operation could not be
 /// performed successfully.
 constexpr int TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED                     = 1492;
 
@@ -898,20 +903,20 @@ constexpr int TRI_ERROR_CLUSTER_NOT_LEADER                                      
 
 /// 1497: ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN
 /// "could not create view in plan"
-/// Will be raised when a coordinator in a cluster cannot create an entry for a
-/// new view in the Plan hierarchy in the agency.
+/// Will be raised when a Coordinator in a cluster cannot create an entry for a
+/// new View in the Plan hierarchy in the Agency.
 constexpr int TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN                   = 1497;
 
 /// 1498: ERROR_CLUSTER_VIEW_ID_EXISTS
 /// "view ID already exists"
-/// Will be raised when a coordinator in a cluster tries to create a view and
-/// the view ID already exists.
+/// Will be raised when a Coordinator in a cluster tries to create a View and
+/// the View ID already exists.
 constexpr int TRI_ERROR_CLUSTER_VIEW_ID_EXISTS                                  = 1498;
 
 /// 1499: ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION
 /// "could not drop collection in plan"
-/// Will be raised when a coordinator in a cluster cannot drop a collection
-/// entry in the Plan hierarchy in the agency.
+/// Will be raised when a Coordinator in a cluster cannot drop a collection
+/// entry in the Plan hierarchy in the Agency.
 constexpr int TRI_ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION                       = 1499;
 
 /// 1500: ERROR_QUERY_KILLED
@@ -1139,12 +1144,12 @@ constexpr int TRI_ERROR_QUERY_NOT_FOUND                                         
 
 /// 1593: ERROR_QUERY_USER_ASSERT
 /// "%s"
-/// Will be raised if and user provided expression fails to evalutate to true
+/// Will be raised if and user provided expression fails to evaluate to true
 constexpr int TRI_ERROR_QUERY_USER_ASSERT                                       = 1593;
 
 /// 1594: ERROR_QUERY_USER_WARN
 /// "%s"
-/// Will be raised if and user provided expression fails to evalutate to true
+/// Will be raised if and user provided expression fails to evaluate to true
 constexpr int TRI_ERROR_QUERY_USER_WARN                                         = 1594;
 
 /// 1600: ERROR_CURSOR_NOT_FOUND
@@ -1160,13 +1165,13 @@ constexpr int TRI_ERROR_CURSOR_NOT_FOUND                                        
 constexpr int TRI_ERROR_CURSOR_BUSY                                             = 1601;
 
 /// 1620: ERROR_VALIDATION_FAILED
-/// "validation failed"
-/// Will be raised when a document does not pass validation.
+/// "schema validation failed"
+/// Will be raised when a document does not pass schema validation.
 constexpr int TRI_ERROR_VALIDATION_FAILED                                       = 1620;
 
 /// 1621: ERROR_VALIDATION_BAD_PARAMETER
-/// "invalid validation parameter"
-/// Will be raised when the validator description is invalid.
+/// "invalid schema validation parameter"
+/// Will be raised when the schema description is invalid.
 constexpr int TRI_ERROR_VALIDATION_BAD_PARAMETER                                = 1621;
 
 /// 1650: ERROR_TRANSACTION_INTERNAL
@@ -1218,7 +1223,7 @@ constexpr int TRI_ERROR_USER_NOT_FOUND                                          
 
 /// 1705: ERROR_USER_EXTERNAL
 /// "user is external"
-/// Will be raised when the user is authenicated by an external server.
+/// Will be raised when the user is authenticated by an external server.
 constexpr int TRI_ERROR_USER_EXTERNAL                                           = 1705;
 
 /// 1752: ERROR_SERVICE_DOWNLOAD_FAILED
@@ -1279,7 +1284,7 @@ constexpr int TRI_ERROR_LDAP_USER_NOT_IDENTIFIED                                
 
 /// 1820: ERROR_LDAP_INVALID_MODE
 /// "invalid ldap mode"
-/// cant distinguish a valid mode for provided ldap configuration
+/// cant distinguish a valid mode for provided LDAP configuration
 constexpr int TRI_ERROR_LDAP_INVALID_MODE                                       = 1820;
 
 /// 1850: ERROR_TASK_INVALID_ID
@@ -1645,7 +1650,7 @@ constexpr int TRI_ERROR_NO_SMART_COLLECTION                                     
 
 /// 4001: ERROR_NO_SMART_GRAPH_ATTRIBUTE
 /// "smart graph attribute not given"
-/// The given document does not have the smart graph attribute set.
+/// The given document does not have the SmartGraph attribute set.
 constexpr int TRI_ERROR_NO_SMART_GRAPH_ATTRIBUTE                                = 4001;
 
 /// 4002: ERROR_CANNOT_DROP_SMART_COLLECTION
@@ -1657,19 +1662,19 @@ constexpr int TRI_ERROR_CANNOT_DROP_SMART_COLLECTION                            
 /// "in smart vertex collections _key must be prefixed with the value of the
 /// "smart graph attribute"
 /// In a smart vertex collection _key must be prefixed with the value of the
-/// smart graph attribute.
+/// SmartGraph attribute.
 constexpr int TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE         = 4003;
 
 /// 4004: ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE
 /// "attribute cannot be used as smart graph attribute"
-/// The given smartGraph attribute is illegal and connot be used for sharding.
+/// The given smartGraph attribute is illegal and cannot be used for sharding.
 /// All system attributes are forbidden.
 constexpr int TRI_ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE                           = 4004;
 
 /// 4005: ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH
 /// "smart graph attribute mismatch"
-/// The smart graph attribute of the given collection does not match the smart
-/// graph attribute of the graph.
+/// The SmartGraph attribute of the given collection does not match the
+/// SmartGraph attribute of the graph.
 constexpr int TRI_ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH                          = 4005;
 
 /// 4006: ERROR_INVALID_SMART_JOIN_ATTRIBUTE
@@ -1680,13 +1685,13 @@ constexpr int TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE                            
 /// 4007: ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE
 /// "shard key value must be prefixed with the value of the smart join attribute"
 /// when using smartJoinAttribute for a collection, the shard key value must be
-/// prefixed with the value of the smart join attribute.
+/// prefixed with the value of the SmartJoin attribute.
 constexpr int TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE          = 4007;
 
 /// 4008: ERROR_NO_SMART_JOIN_ATTRIBUTE
 /// "smart join attribute not given or invalid"
-/// The given document does not have the required smart join attribute set or
-/// it has an invalid value.
+/// The given document does not have the required SmartJoin attribute set or it
+/// has an invalid value.
 constexpr int TRI_ERROR_NO_SMART_JOIN_ATTRIBUTE                                 = 4008;
 
 /// 4009: ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE
@@ -1694,6 +1699,12 @@ constexpr int TRI_ERROR_NO_SMART_JOIN_ATTRIBUTE                                 
 /// Will be raised if there is an attempt to update the value of the
 /// smartJoinAttribute.
 constexpr int TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE            = 4009;
+
+/// 4010: ERROR_INVALID_DISJOINT_SMART_EDGE
+/// "non disjoint edge found"
+/// Will be raised if there is an attempt to create an edge between separated
+/// graph components.
+constexpr int TRI_ERROR_INVALID_DISJOINT_SMART_EDGE                             = 4010;
 
 /// 5000: ERROR_CLUSTER_REPAIRS_FAILED
 /// "error during cluster repairs"
@@ -1703,7 +1714,7 @@ constexpr int TRI_ERROR_CLUSTER_REPAIRS_FAILED                                  
 /// 5001: ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY
 /// "not enough (healthy) db servers"
 /// Will be raised when, during repairDistributeShardsLike, there must be a
-/// free db server to move a shard, but there is no candidate or none is
+/// free DB-Server to move a shard, but there is no candidate or none is
 /// healthy.
 constexpr int TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY                      = 5001;
 
@@ -1714,8 +1725,8 @@ constexpr int TRI_ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED             
 
 /// 5003: ERROR_CLUSTER_REPAIRS_NO_DBSERVERS
 /// "no dbservers during cluster repairs"
-/// Will be raised if a collection that is fixed has some shard without DB
-/// Servers
+/// Will be raised if a collection that is fixed has some shard without
+/// DB-Servers
 constexpr int TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS                            = 5003;
 
 /// 5004: ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS
@@ -1742,18 +1753,18 @@ constexpr int TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES                 
 /// 5007: ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS
 /// "mismatching shards during cluster repairs"
 /// Will be raised if in a collection and its distributeShardsLike prototype
-/// collection some shard and its prototype have an unequal number of DB Servers
+/// collection some shard and its prototype have an unequal number of DB-Servers
 constexpr int TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS                      = 5007;
 
 /// 5008: ERROR_CLUSTER_REPAIRS_JOB_FAILED
 /// "move shard job failed during cluster repairs"
-/// Will be raised if a move shard job in the agency failed during cluster
+/// Will be raised if a move shard job in the Agency failed during cluster
 /// repairs
 constexpr int TRI_ERROR_CLUSTER_REPAIRS_JOB_FAILED                              = 5008;
 
 /// 5009: ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED
 /// "move shard job disappeared during cluster repairs"
-/// Will be raised if a move shard job in the agency cannot be found anymore
+/// Will be raised if a move shard job in the Agency cannot be found anymore
 /// before it finished
 constexpr int TRI_ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED                         = 5009;
 
@@ -1765,42 +1776,42 @@ constexpr int TRI_ERROR_CLUSTER_REPAIRS_OPERATION_FAILED                        
 
 /// 20011: ERROR_AGENCY_INFORM_MUST_BE_OBJECT
 /// "Inform message must be an object."
-/// The inform message in the agency must be an object.
+/// The inform message in the Agency must be an object.
 constexpr int TRI_ERROR_AGENCY_INFORM_MUST_BE_OBJECT                            = 20011;
 
 /// 20012: ERROR_AGENCY_INFORM_MUST_CONTAIN_TERM
 /// "Inform message must contain uint parameter 'term'"
-/// The inform message in the agency must contain a uint parameter 'term'.
+/// The inform message in the Agency must contain a uint parameter 'term'.
 constexpr int TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_TERM                         = 20012;
 
 /// 20013: ERROR_AGENCY_INFORM_MUST_CONTAIN_ID
 /// "Inform message must contain string parameter 'id'"
-/// The inform message in the agency must contain a string parameter 'id'.
+/// The inform message in the Agency must contain a string parameter 'id'.
 constexpr int TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_ID                           = 20013;
 
 /// 20014: ERROR_AGENCY_INFORM_MUST_CONTAIN_ACTIVE
 /// "Inform message must contain array 'active'"
-/// The inform message in the agency must contain an array 'active'.
+/// The inform message in the Agency must contain an array 'active'.
 constexpr int TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_ACTIVE                       = 20014;
 
 /// 20015: ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL
 /// "Inform message must contain object 'pool'"
-/// The inform message in the agency must contain an object 'pool'.
+/// The inform message in the Agency must contain an object 'pool'.
 constexpr int TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL                         = 20015;
 
 /// 20016: ERROR_AGENCY_INFORM_MUST_CONTAIN_MIN_PING
 /// "Inform message must contain object 'min ping'"
-/// The inform message in the agency must contain an object 'min ping'.
+/// The inform message in the Agency must contain an object 'min ping'.
 constexpr int TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_MIN_PING                     = 20016;
 
 /// 20017: ERROR_AGENCY_INFORM_MUST_CONTAIN_MAX_PING
 /// "Inform message must contain object 'max ping'"
-/// The inform message in the agency must contain an object 'max ping'.
+/// The inform message in the Agency must contain an object 'max ping'.
 constexpr int TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_MAX_PING                     = 20017;
 
 /// 20018: ERROR_AGENCY_INFORM_MUST_CONTAIN_TIMEOUT_MULT
 /// "Inform message must contain object 'timeoutMult'"
-/// The inform message in the agency must contain an object 'timeoutMult'.
+/// The inform message in the Agency must contain an object 'timeoutMult'.
 constexpr int TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_TIMEOUT_MULT                 = 20018;
 
 /// 20021: ERROR_AGENCY_CANNOT_REBUILD_DBS
@@ -1834,66 +1845,71 @@ constexpr int TRI_ERROR_ACTION_UNFINISHED                                       
 /// No such maintenance action exists
 constexpr int TRI_ERROR_NO_SUCH_ACTION                                          = 6004;
 
-///  7001: ERROR_HOT_BACKUP_INTERNAL
-/// " "internal hot backup error""
-///  "Failed to create hot backup set"
-constexpr int TRI_ERROR_HOT_BACKUP_INTERNAL                                     =  7001;
+/// 7001: ERROR_HOT_BACKUP_INTERNAL
+/// "internal hot backup error"
+/// Failed to create hot backup set
+constexpr int TRI_ERROR_HOT_BACKUP_INTERNAL                                     = 7001;
 
-///  7002: ERROR_HOT_RESTORE_INTERNAL
-/// " "internal hot restore error""
-///  "Failed to restore to hot backup set"
-constexpr int TRI_ERROR_HOT_RESTORE_INTERNAL                                    =  7002;
+/// 7002: ERROR_HOT_RESTORE_INTERNAL
+/// "internal hot restore error"
+/// Failed to restore to hot backup set
+constexpr int TRI_ERROR_HOT_RESTORE_INTERNAL                                    = 7002;
 
-///  7003: ERROR_BACKUP_TOPOLOGY
-/// " "backup does not match this topology""
-///  "The hot backup set cannot be restored on non matching cluster topology"
-constexpr int TRI_ERROR_BACKUP_TOPOLOGY                                         =  7003;
+/// 7003: ERROR_BACKUP_TOPOLOGY
+/// "backup does not match this topology"
+/// The hot backup set cannot be restored on non matching cluster topology
+constexpr int TRI_ERROR_BACKUP_TOPOLOGY                                         = 7003;
 
-///  7004: ERROR_NO_SPACE_LEFT_ON_DEVICE
-/// " "no space left on device""
-///  "No space left on device"
-constexpr int TRI_ERROR_NO_SPACE_LEFT_ON_DEVICE                                 =  7004;
+/// 7004: ERROR_NO_SPACE_LEFT_ON_DEVICE
+/// "no space left on device"
+/// No space left on device
+constexpr int TRI_ERROR_NO_SPACE_LEFT_ON_DEVICE                                 = 7004;
 
-///  7005: ERROR_FAILED_TO_UPLOAD_BACKUP
-/// " "failed to upload hot backup set to remote target""
-///  "Failed to upload hot backup set to remote target"
-constexpr int TRI_ERROR_FAILED_TO_UPLOAD_BACKUP                                 =  7005;
+/// 7005: ERROR_FAILED_TO_UPLOAD_BACKUP
+/// "failed to upload hot backup set to remote target"
+/// Failed to upload hot backup set to remote target
+constexpr int TRI_ERROR_FAILED_TO_UPLOAD_BACKUP                                 = 7005;
 
-///  7006: ERROR_FAILED_TO_DOWNLOAD_BACKUP
-/// " "failed to download hot backup set from remote source""
-///  "Failed to downloadload hot backup set from remote source"
-constexpr int TRI_ERROR_FAILED_TO_DOWNLOAD_BACKUP                               =  7006;
+/// 7006: ERROR_FAILED_TO_DOWNLOAD_BACKUP
+/// "failed to download hot backup set from remote source"
+/// Failed to download hot backup set from remote source
+constexpr int TRI_ERROR_FAILED_TO_DOWNLOAD_BACKUP                               = 7006;
 
-///  7007: ERROR_NO_SUCH_HOT_BACKUP
-/// " "no such hot backup set can be found"
-///  "Cannot find a hot backup set with this Id"
-constexpr int TRI_ERROR_NO_SUCH_HOT_BACKUP                                      =  7007;
+/// 7007: ERROR_NO_SUCH_HOT_BACKUP
+/// "no such hot backup set can be found"
+/// Cannot find a hot backup set with this Id
+constexpr int TRI_ERROR_NO_SUCH_HOT_BACKUP                                      = 7007;
 
-///  7008: ERROR_REMOTE_REPOSITORY_CONFIG_BAD
-/// " "remote hotback repository configuration error""
-///  "The configuration given for upload or download operation to/from remote
-/// hotback repositories is wrong."
-constexpr int TRI_ERROR_REMOTE_REPOSITORY_CONFIG_BAD                            =  7008;
+/// 7008: ERROR_REMOTE_REPOSITORY_CONFIG_BAD
+/// "remote hotback repository configuration error"
+/// The configuration given for upload or download operation to/from remote hot
+/// backup repositories is wrong.
+constexpr int TRI_ERROR_REMOTE_REPOSITORY_CONFIG_BAD                            = 7008;
 
-///  7009: ERROR_LOCAL_LOCK_FAILED
-/// " "some db servers cannot be reached for transaction locks""
-///  "Some of the db servers cannot be reached for transaction locks."
-constexpr int TRI_ERROR_LOCAL_LOCK_FAILED                                       =  7009;
+/// 7009: ERROR_LOCAL_LOCK_FAILED
+/// "some db servers cannot be reached for transaction locks"
+/// Some of the DB-Servers cannot be reached for transaction locks.
+constexpr int TRI_ERROR_LOCAL_LOCK_FAILED                                       = 7009;
 
-///  7010: ERROR_LOCAL_LOCK_RETRY
-/// " "some db servers cannot be reached for transaction locks""
-///  "Some of the db servers cannot be reached for transaction locks."
-constexpr int TRI_ERROR_LOCAL_LOCK_RETRY                                        =  7010;
+/// 7010: ERROR_LOCAL_LOCK_RETRY
+/// "some db servers cannot be reached for transaction locks"
+/// Some of the DB-Servers cannot be reached for transaction locks.
+constexpr int TRI_ERROR_LOCAL_LOCK_RETRY                                        = 7010;
 
-///  7011: ERROR_HOT_BACKUP_CONFLICT
-/// " "hot backup conflict""
-///  "Conflict of multiple hot backup processes."
-constexpr int TRI_ERROR_HOT_BACKUP_CONFLICT                                     =  7011;
+/// 7011: ERROR_HOT_BACKUP_CONFLICT
+/// "hot backup conflict"
+/// Conflict of multiple hot backup processes.
+constexpr int TRI_ERROR_HOT_BACKUP_CONFLICT                                     = 7011;
 
-///  7012: ERROR_HOT_BACKUP_DBSERVERS_AWOL
-/// " "hot backup not all db servers reachable""
-///  "One or more db servers could not be reached for hot backup inquiry"
-constexpr int TRI_ERROR_HOT_BACKUP_DBSERVERS_AWOL                               =  7012;
+/// 7012: ERROR_HOT_BACKUP_DBSERVERS_AWOL
+/// "hot backup not all db servers reachable"
+/// One or more DB-Servers could not be reached for hot backup inquiry
+constexpr int TRI_ERROR_HOT_BACKUP_DBSERVERS_AWOL                               = 7012;
+
+/// 7021: ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN
+/// "analyzers in plan could not be modified"
+/// Plan could not be modified while creating or deleting Analyzers revision
+constexpr int TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN              = 7021;
 
 
 /// register all errors for ArangoDB

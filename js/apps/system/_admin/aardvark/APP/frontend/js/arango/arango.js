@@ -933,7 +933,9 @@
         pad(dt.getUTCDate()) + ' ' +
         pad(dt.getUTCHours()) + ':' +
         pad(dt.getUTCMinutes()) + ':' +
-        pad(dt.getUTCSeconds());
+        pad(dt.getUTCSeconds()) + 'Z';
+      // note: we need to append 'Z' so users from a different
+      // timezone can see that it is UTC time
     },
 
     escapeHtml: function (val) {

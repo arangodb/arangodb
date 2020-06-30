@@ -63,6 +63,7 @@ AqlValue evaluate(AqlValue const& lhs,
 
   SmallVector<AqlValue>::allocator_type::arena_type arena;
   SmallVector<AqlValue> params{arena};
+  params.reserve(3 + (transpositions ? 2 : 0));
   params.emplace_back(lhs);
   params.emplace_back(rhs);
   params.emplace_back(distance);
@@ -71,7 +72,14 @@ AqlValue evaluate(AqlValue const& lhs,
     params.emplace_back(VPackSlice::nullSlice()); // redundant argument
   }
 
-  return Functions::LevenshteinMatch(&expressionContext, &trx, params);
+  AqlValue result = Functions::LevenshteinMatch(&expressionContext, &trx, params);
+
+  // explicitly call cleanup on the mocked transaction context because
+  // for whatever reason the context's dtor does not fire and thus we
+  // risk leaking memory (only during tests)
+  trxCtx.cleanup();
+
+  return result;
 }
 
 void assertLevenshteinMatchFail(AqlValue const& lhs,

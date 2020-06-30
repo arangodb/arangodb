@@ -68,7 +68,6 @@ NS_END
 
 NS_ROOT
 
-DEFINE_FILTER_TYPE(by_prefix)
 DEFINE_FACTORY_DEFAULT(by_prefix)
 
 /*static*/ filter::prepared::ptr by_prefix::prepare(
@@ -97,7 +96,7 @@ DEFINE_FACTORY_DEFAULT(by_prefix)
   std::vector<bstring> stats;
   collector.score(index, ord, stats);
 
-  return memory::make_shared<multiterm_query>(
+  return memory::make_managed<multiterm_query>(
     std::move(states), std::move(stats),
     boost, sort::MergeType::AGGREGATE);
 }

@@ -31,6 +31,8 @@
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
 
+#include <Containers/HashSet.h>
+
 #include <memory>
 
 namespace arangodb::aql {
@@ -51,12 +53,10 @@ class OutputAqlItemRow {
   // TODO Implement this behavior via a template parameter instead?
   enum class CopyRowBehavior { CopyInputRows, DoNotCopyInputRows };
 
-  explicit OutputAqlItemRow(SharedAqlItemBlockPtr block,
-                            std::shared_ptr<std::unordered_set<RegisterId> const> outputRegisters,
-                            std::shared_ptr<std::unordered_set<RegisterId> const> registersToKeep,
-                            std::shared_ptr<std::unordered_set<RegisterId> const> registersToClear,
-                            AqlCall clientCall = AqlCall{},
-                            CopyRowBehavior = CopyRowBehavior::CopyInputRows);
+  OutputAqlItemRow(SharedAqlItemBlockPtr block, RegIdSet const& outputRegisters,
+                   RegIdFlatSetStack const& registersToKeep,
+                   RegIdFlatSet const& registersToClear, AqlCall clientCall = AqlCall{},
+                   CopyRowBehavior = CopyRowBehavior::CopyInputRows);
 
   ~OutputAqlItemRow() = default;
   OutputAqlItemRow(OutputAqlItemRow const&) = delete;
@@ -76,9 +76,8 @@ class OutputAqlItemRow {
   // Note that there is no real move happening here, just a trivial copy of
   // the passed AqlValue. However, that means the output block will take
   // responsibility of possibly referenced external memory.
-  template <class ItemRowType>
-  void moveValueInto(RegisterId registerId, ItemRowType const& sourceRow,
-                     AqlValueGuard& guard);
+  template <class ItemRowType, class ValueType>
+  void moveValueInto(RegisterId registerId, ItemRowType const& sourceRow, ValueType& value);
 
   // Consume the given shadow row and transform it into a InputAqlItemRow
   // for the next consumer of this block.
@@ -86,6 +85,20 @@ class OutputAqlItemRow {
   // Also requires that we still have the next row "free" to write to.
   void consumeShadowRow(RegisterId registerId, ShadowAqlItemRow& sourceRow,
                         AqlValueGuard& guard);
+
+  // Transform the given input AqlItemRow into a relevant ShadowRow.
+  // The data of this row will be copied.
+  void createShadowRow(InputAqlItemRow const& sourceRow);
+
+  // Increase the depth of the given shadowRow. This needs to be called
+  // whenever you start a nested subquery on every outer subquery shadowrow
+  // The data of this row will be copied.
+  void increaseShadowRowDepth(ShadowAqlItemRow& sourceRow);
+
+  // Decrease the depth of the given shadowRow. This needs to be called
+  // whenever you finish a nested subquery on every outer subquery shadowrow
+  // The data of this row will be copied.
+  void decreaseShadowRowDepth(ShadowAqlItemRow& sourceRow);
 
   // Reuses the value of the given register that has been inserted in the output
   // row before. This call cannot be used on the first row of this output block.
@@ -114,9 +127,7 @@ class OutputAqlItemRow {
    */
   auto fastForwardAllRows(InputAqlItemRow const& sourceRow, size_t rows) -> void;
 
-  [[nodiscard]] std::size_t getNrRegisters() const {
-    return block().getNrRegs();
-  }
+  [[nodiscard]] RegisterCount getNrRegisters() const;
 
   /**
    * @brief May only be called after all output values in the current row have
@@ -187,20 +198,6 @@ class OutputAqlItemRow {
   // the number of written rows, that could potentially be more.
   void setMaxBaseIndex(std::size_t index);
 
-  // Transform the given input AqlItemRow into a relevant ShadowRow.
-  // The data of this row will be copied.
-  void createShadowRow(InputAqlItemRow const& sourceRow);
-
-  // Increase the depth of the given shadowRow. This needs to be called
-  // whenever you start a nested subquery on every outer subquery shadowrow
-  // The data of this row will be moved.
-  void increaseShadowRowDepth(ShadowAqlItemRow& sourceRow);
-
-  // Decrease the depth of the given shadowRow. This needs to be called
-  // whenever you finish a nested subquery on every outer subquery shadowrow
-  // The data of this row will be moved.
-  void decreaseShadowRowDepth(ShadowAqlItemRow& sourceRow);
-
   void toVelocyPack(velocypack::Options const* options, velocypack::Builder& builder);
 
   AqlCall::Limit softLimit() const;
@@ -213,39 +210,81 @@ class OutputAqlItemRow {
 
   AqlCall&& stealClientCall();
 
-  void setCall(AqlCall&& call);
-
-  void didSkip(size_t n);
+  void setCall(AqlCall call);
 
  private:
-  [[nodiscard]] std::unordered_set<RegisterId> const& outputRegisters() const {
-    TRI_ASSERT(_outputRegisters != nullptr);
-    return *_outputRegisters;
+  [[nodiscard]] RegIdSet const& outputRegisters() const {
+    return _outputRegisters;
   }
 
-  [[nodiscard]] std::unordered_set<RegisterId> const& registersToKeep() const {
-    TRI_ASSERT(_registersToKeep != nullptr);
-    return *_registersToKeep;
+  [[nodiscard]] RegIdFlatSetStack const& registersToKeep() const {
+    return _registersToKeep;
   }
 
-  [[nodiscard]] std::unordered_set<RegisterId> const& registersToClear() const {
-    TRI_ASSERT(_registersToClear != nullptr);
-    return *_registersToClear;
+  [[nodiscard]] RegIdFlatSet const& registersToClear() const {
+    return _registersToClear;
   }
 
   [[nodiscard]] bool isOutputRegister(RegisterId registerId) const {
     return outputRegisters().find(registerId) != outputRegisters().end();
   }
 
+  [[nodiscard]] size_t nextUnwrittenIndex() const noexcept {
+    return numRowsWritten();
+  }
+
+  [[nodiscard]] size_t numRegistersToWrite() const {
+    return outputRegisters().size();
+  }
+
+  [[nodiscard]] bool allValuesWritten() const {
+    // If we have a shadowRow in the output, it counts as written
+    // if not it only counts is written, if we have all registers filled.
+    return block().isShadowRow(_baseIndex) || _numValuesWritten == numRegistersToWrite();
+  }
+
+  [[nodiscard]] inline AqlItemBlock const& block() const {
+    TRI_ASSERT(_block != nullptr);
+    return *_block;
+  }
+
+  inline AqlItemBlock& block() {
+    TRI_ASSERT(_block != nullptr);
+    return *_block;
+  }
+
   enum class CopyOrMove { COPY, MOVE };
 
-  template <class ItemRowType, CopyOrMove copyOrMove>
+  enum class AdaptRowDepth : signed int {
+    DecreaseDepth = -1,
+    Unchanged = 0,
+    IncreaseDepth = 1
+  };
+
+  static auto constexpr depthDelta(AdaptRowDepth) -> std::underlying_type_t<AdaptRowDepth>;
+
+  template <class ItemRowType, CopyOrMove, AdaptRowDepth = AdaptRowDepth::Unchanged>
   void copyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissing);
+
+  template <class ItemRowType, CopyOrMove, AdaptRowDepth = AdaptRowDepth::Unchanged>
+  void doCopyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissing);
+
+  template <class ItemRowType, CopyOrMove>
+  void doCopyOrMoveValue(ItemRowType& sourceRow, RegisterId);
 
   /// @brief move the value into the given output registers and count the value
   /// as written in _numValuesWritten.
+  template <class ItemRowType, class ValueType>
+  void moveValueWithoutRowCopy(RegisterId registerId, ValueType& value);
+
   template <class ItemRowType>
-  void moveValueWithoutRowCopy(RegisterId registerId, AqlValueGuard& guard);
+  void memorizeRow(ItemRowType const& sourceRow);
+
+  template <class ItemRowType>
+  bool testIfWeMustClone(ItemRowType const& sourceRow) const;
+
+  template <class ItemRowType>
+  void adjustShadowRowDepth(ItemRowType const& sourceRow);
 
  private:
   /**
@@ -290,55 +329,15 @@ class OutputAqlItemRow {
   size_t _numValuesWritten;
 
   /**
-   * @brief Call recieved by the client to produce this outputblock
+   * @brief Call received by the client to produce this outputblock
    *        It is used for accounting of produced rows and number
    *        of rows requested by client.
    */
   AqlCall _call;
 
-  std::shared_ptr<std::unordered_set<RegisterId> const> _outputRegisters;
-  std::shared_ptr<std::unordered_set<RegisterId> const> _registersToKeep;
-  std::shared_ptr<std::unordered_set<RegisterId> const> _registersToClear;
-
- private:
-  [[nodiscard]] size_t nextUnwrittenIndex() const noexcept {
-    return numRowsWritten();
-  }
-
-  [[nodiscard]] size_t numRegistersToWrite() const {
-    return outputRegisters().size();
-  }
-
-  [[nodiscard]] bool allValuesWritten() const {
-    // If we have a shadowRow in the output, it counts as written
-    // if not it only counts is written, if we have all registers filled.
-    return block().isShadowRow(_baseIndex) || _numValuesWritten == numRegistersToWrite();
-  }
-
-  [[nodiscard]] inline AqlItemBlock const& block() const {
-    TRI_ASSERT(_block != nullptr);
-    return *_block;
-  }
-
-  inline AqlItemBlock& block() {
-    TRI_ASSERT(_block != nullptr);
-    return *_block;
-  }
-
-  template <class ItemRowType, CopyOrMove>
-  void doCopyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissing);
-
-  template <class ItemRowType, CopyOrMove>
-  void doCopyOrMoveValue(ItemRowType& sourceRow, RegisterId);
-
-  template <class ItemRowType>
-  void memorizeRow(ItemRowType const& sourceRow);
-
-  template <class ItemRowType>
-  bool testIfWeMustClone(ItemRowType const& sourceRow) const;
-
-  template <class ItemRowType>
-  void adjustShadowRowDepth(ItemRowType const& sourceRow);
+  RegIdSet const& _outputRegisters;
+  RegIdFlatSetStack const& _registersToKeep;
+  RegIdFlatSet const& _registersToClear;
 };
 }  // namespace arangodb::aql
 

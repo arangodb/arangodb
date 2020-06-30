@@ -214,16 +214,18 @@ auto SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOutpu
   if (result.buffer) {
     outDocument = result.slice().resolveExternal();
   }
-
+  
+  const bool isIndex = std::is_same<Modifier, IndexTag>::value;
+    
   VPackSlice oldDocument = VPackSlice::nullSlice();
   VPackSlice newDocument = VPackSlice::nullSlice();
-  if (outDocument.isObject()) {
+  if (!isIndex && outDocument.isObject()) {
     if (_info._outputNewRegisterId != RegisterPlan::MaxRegisterId &&
-        outDocument.hasKey("new")) {
-      newDocument = outDocument.get("new");
+        outDocument.hasKey(StaticStrings::New)) {
+      newDocument = outDocument.get(StaticStrings::New);
     }
-    if (outDocument.hasKey("old")) {
-      outDocument = outDocument.get("old");
+    if (outDocument.hasKey(StaticStrings::Old)) {
+      outDocument = outDocument.get(StaticStrings::Old);
       if (_info._outputOldRegisterId != RegisterPlan::MaxRegisterId) {
         oldDocument = outDocument;
       }

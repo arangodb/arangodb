@@ -205,7 +205,8 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
 #endif
       _useThrottle(true),
       _useReleasedTick(false),
-      _debugLogging(false) {
+      _debugLogging(false),
+      _useEdgeCache(true) {
 
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
@@ -319,6 +320,12 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      new BooleanParameter(&_debugLogging),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
+  options->addOption("--rocksdb.edge-cache",
+                     "use in-memory cache for edges",
+                     new BooleanParameter(&_useEdgeCache),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30604);
+
   options->addOption(
       "--rocksdb.wal-archive-size-limit",
       "maximum total size (in bytes) of archived WAL files (0 = unlimited)",
@@ -379,6 +386,7 @@ void RocksDBEngine::prepare() {
 void RocksDBEngine::start() {
   // it is already decided that rocksdb is used
   TRI_ASSERT(isEnabled());
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   if (ServerState::instance()->isAgent() &&
       !server().options()->processingResult().touched(
@@ -544,6 +552,11 @@ void RocksDBEngine::start() {
   } else {
     tableOptions.no_block_cache = true;
   }
+  tableOptions.cache_index_and_filter_blocks = opts._cacheIndexAndFilterBlocks;
+  tableOptions.cache_index_and_filter_blocks_with_high_priority = opts._cacheIndexAndFilterBlocksWithHighPriority;
+  tableOptions.pin_l0_filter_and_index_blocks_in_cache = opts._pinl0FilterAndIndexBlocksInCache;
+  tableOptions.pin_top_level_index_and_filter = opts._pinTopLevelIndexAndFilter;
+
   tableOptions.block_size = opts._tableBlockSize;
   tableOptions.filter_policy.reset(rocksdb::NewBloomFilterPolicy(10, true));
   // use slightly space-optimized format version 3
@@ -808,6 +821,10 @@ void RocksDBEngine::start() {
 
   if (!systemDatabaseExists()) {
     addSystemDatabase();
+  }
+
+  if (!useEdgeCache()) {
+    LOG_TOPIC("46557", INFO, Logger::ENGINES) << "in-memory cache for edges is disabled";
   }
 }
 
@@ -2130,7 +2147,7 @@ void RocksDBEngine::getStatistics(std::string& result) const {
       std::replace(name.begin(), name.end(), '.', '_');
       std::replace(name.begin(), name.end(), '-', '_');
       if (name.front() != 'r') {
-        name = EngineName + "_" + name ; 
+        name = EngineName + "_" + name; 
       }
       result += "#TYPE " + name +
         " counter\n" + "#HELP " + name + " " + name + "\n" +
@@ -2252,7 +2269,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     compactionWrite = _options.statistics->getTickerCount(rocksdb::COMPACT_WRITE_BYTES);
     userWrite = _options.statistics->getTickerCount(rocksdb::BYTES_WRITTEN);
     builder.add("rocksdbengine.write.amplification.x100",
-                VPackValue( (0 != userWrite) ? ((walWrite+flushWrite+compactionWrite)*100)/userWrite : 100));
+                VPackValue( (0 != userWrite) ? ((walWrite + flushWrite + compactionWrite) * 100) / userWrite : 100));
   }
 
   cache::Manager* manager = CacheManagerFeature::MANAGER;

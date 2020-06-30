@@ -20,7 +20,6 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RowFetcherHelper.h"
 #include "gtest/gtest.h"
 
 #include "Aql/AqlItemBlock.h"
@@ -142,7 +141,7 @@ class GraphEnumerator : public PathEnumerator {
 
   void setStartVertex(arangodb::velocypack::StringRef startVertex) override {
     PathEnumerator::setStartVertex(startVertex);
-  
+
     _idx = 0;
     _depth = 0;
     _currentDepth.clear();
@@ -275,8 +274,6 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
   RegisterId inReg;
   RegisterId outReg;
   TraverserHelper* traverser;
-  std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters;
-  std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters;
   std::unordered_map<TraversalExecutorInfos::OutputName, RegisterId, TraversalExecutorInfos::OutputNameHash> registerMapping;
 
   std::string const noFixed;
@@ -293,13 +290,9 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
         inReg(0),
         outReg(1),
         traverser(traverserPtr.get()),
-        inputRegisters(std::make_shared<std::unordered_set<RegisterId>>(
-            std::initializer_list<RegisterId>{inReg})),
-        outputRegisters(std::make_shared<std::unordered_set<RegisterId>>(
-            std::initializer_list<RegisterId>{outReg})),
         registerMapping{{TraversalExecutorInfos::OutputName::VERTEX, outReg}},
         noFixed(""),
-        registerInfos(inputRegisters, outputRegisters, 1, 2, {}, {0}),
+        registerInfos(RegIdSet{inReg}, RegIdSet{outReg}, 1, 2, {}, {RegIdSet{0}}),
         executorInfos(std::move(traverserPtr), registerMapping, noFixed, inReg, filterConditionVariables)
 
   {}
@@ -475,13 +468,9 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
         traverserPtr(std::make_unique<TraverserHelper>(&traversalOptions, myGraph)),
         outReg(1),
         traverser(traverserPtr.get()),
-        inputRegisters(std::make_shared<std::unordered_set<RegisterId>>(
-            std::initializer_list<RegisterId>{})),
-        outputRegisters(std::make_shared<std::unordered_set<RegisterId>>(
-            std::initializer_list<RegisterId>{1})),
         registerMapping{{TraversalExecutorInfos::OutputName::VERTEX, outReg}},
         fixed("v/1"),
-        registerInfos(inputRegisters, outputRegisters, 1, 2, {}, {0}),
+        registerInfos({}, RegIdSet{1}, 1, 2, {}, {RegIdSet{0}}),
         executorInfos(std::move(traverserPtr), registerMapping, fixed,
                       RegisterPlan::MaxRegisterId, filterConditionVariables) {}
 };

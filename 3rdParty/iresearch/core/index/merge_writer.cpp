@@ -34,6 +34,7 @@
 #include "utils/directory_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/lz4compression.hpp"
+#include "utils/memory.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/version_utils.hpp"
 #include "store/store_utils.hpp"
@@ -45,7 +46,7 @@
 NS_LOCAL
 
 const irs::column_info NORM_COLUMN{
-  irs::compression::lz4::type(),
+  irs::type<irs::compression::lz4>::get(),
   irs::compression::options(),
   false
 };
@@ -168,45 +169,6 @@ class progress_tracker {
 }; // progress_tracker
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class compound_attributes
-/// @brief compound view of multiple attributes as a single object
-//////////////////////////////////////////////////////////////////////////////
-class compound_attributes: public irs::attribute_view {
- public:
-  void add(const irs::attribute_view& attributes) {
-    auto visitor = [this](
-        const irs::attribute::type_id& type_id,
-        const irs::attribute_view::ref<irs::attribute>::type&) ->bool {
-      bool inserted;
-      attribute_map::emplace(inserted, type_id);
-      return true;
-    };
-
-    attributes.visit(visitor); // add
-  }
-
-  void set(const irs::attribute_view& attributes) {
-    auto visitor_unset = [](
-        const irs::attribute::type_id&,
-        irs::attribute_view::ref<irs::attribute>::type& value)->bool {
-      value = nullptr;
-      return true;
-    };
-
-    auto visitor_update = [this](
-        const irs::attribute::type_id& type_id,
-        const irs::attribute_view::ref<irs::attribute>::type& value)->bool {
-      bool inserted;
-      attribute_map::emplace(inserted, type_id) = value;
-      return true;
-    };
-
-    visit(visitor_unset); // unset
-    attributes.visit(visitor_update); // set
-  }
-}; // compound_attributes
-
-//////////////////////////////////////////////////////////////////////////////
 /// @struct compound_doc_iterator
 /// @brief iterator over doc_ids for a term over all readers
 //////////////////////////////////////////////////////////////////////////////
@@ -217,8 +179,7 @@ struct compound_doc_iterator : public irs::doc_iterator {
   static constexpr const size_t PROGRESS_STEP_DOCS = size_t(1) << 14;
 
   explicit compound_doc_iterator(
-      const irs::merge_writer::flush_progress_t& progress
-  ) noexcept
+      const irs::merge_writer::flush_progress_t& progress) noexcept
     : progress(progress, PROGRESS_STEP_DOCS) {
   }
 
@@ -226,18 +187,6 @@ struct compound_doc_iterator : public irs::doc_iterator {
   bool reset(Func func) {
     if (!func(iterators)) {
       return false;
-    }
-
-    auto begin = iterators.begin();
-    auto end = iterators.end();
-
-    if (begin != end) {
-      attrs.set(begin->first->attributes()); // add keys and set values
-      ++begin;
-    }
-
-    for (; begin != end; ++begin) {
-      attrs.add(begin->first->attributes()); // only add missing keys
     }
 
     current_id = irs::doc_limits::invalid();
@@ -250,8 +199,10 @@ struct compound_doc_iterator : public irs::doc_iterator {
     return !static_cast<bool>(progress);
   }
 
-  virtual const irs::attribute_view& attributes() const noexcept override {
-    return attrs;
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    return irs::type<irs::attribute_provider_change>::id() == type
+      ? &attribute_change
+      : nullptr;
   }
 
   virtual bool next() override;
@@ -265,7 +216,7 @@ struct compound_doc_iterator : public irs::doc_iterator {
     return current_id;
   }
 
-  compound_attributes attrs;
+  irs::attribute_provider_change attribute_change;
   std::vector<doc_iterator_t> iterators;
   irs::doc_id_t current_id{ irs::doc_limits::invalid() };
   size_t current_itr{ 0 };
@@ -281,11 +232,9 @@ bool compound_doc_iterator::next() {
     return false;
   }
 
-  for (
-    bool update_attributes = false;
-    current_itr < iterators.size();
-    update_attributes = true, ++current_itr
-  ) {
+  for (bool notify = !irs::doc_limits::valid(current_id);
+       current_itr < iterators.size();
+       notify = true, ++current_itr) {
     auto& itr_entry = iterators[current_itr];
     auto& itr = itr_entry.first;
     auto& id_map = itr_entry.second;
@@ -294,8 +243,8 @@ bool compound_doc_iterator::next() {
       continue;
     }
 
-    if (update_attributes) {
-      attrs.set(itr->attributes());
+    if (notify) {
+      attribute_change(*itr);
     }
 
     while (itr->next()) {
@@ -312,7 +261,6 @@ bool compound_doc_iterator::next() {
   }
 
   current_id = irs::doc_limits::eof();
-  attrs.set(irs::attribute_view::empty_instance());
 
   return false;
 }
@@ -342,8 +290,8 @@ class sorting_compound_doc_iterator : public irs::doc_iterator {
     return true;
   }
 
-  virtual const irs::attribute_view& attributes() const noexcept override {
-    return doc_it_->attrs;
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    return doc_it_->get_mutable(type);
   }
 
   virtual bool next() override;
@@ -400,7 +348,6 @@ class sorting_compound_doc_iterator : public irs::doc_iterator {
 bool sorting_compound_doc_iterator::next() {
   auto& iterators = doc_it_->iterators;
   auto& current_id = doc_it_->current_id;
-  auto& attrs = doc_it_->attrs;
 
   doc_it_->progress();
 
@@ -417,7 +364,7 @@ bool sorting_compound_doc_iterator::next() {
 
     if (&new_lead != lead_) {
       // update attributes
-      attrs.set(it->attributes());
+      doc_it_->attribute_change(*it);
       lead_ = &new_lead;
     }
 
@@ -431,7 +378,6 @@ bool sorting_compound_doc_iterator::next() {
   }
 
   current_id = irs::doc_limits::eof();
-  attrs.set(irs::attribute_view::empty_instance());
 
   return false;
 }
@@ -514,7 +460,7 @@ class compound_iterator {
   }
 
  private:
-  struct iterator_t {
+  struct iterator_t : irs::util::noncopyable {
     iterator_t(
         Iterator&& it,
         const irs::sub_reader& reader,
@@ -524,16 +470,15 @@ class compound_iterator {
         doc_map(&doc_map) {
       }
 
-    iterator_t(iterator_t&& other) noexcept
-      : it(std::move(other.it)),
-        reader(other.reader),
-        doc_map(other.doc_map) {
-    }
+    iterator_t(iterator_t&&) = default;
+    iterator_t& operator=(iterator_t&&) = delete;
 
     Iterator it;
     const irs::sub_reader* reader;
     const doc_map_f* doc_map;
   };
+
+  static_assert(std::is_nothrow_move_constructible_v<iterator_t>);
 
   const value_type* current_value_{};
   irs::string_ref current_key_;
@@ -570,11 +515,11 @@ class compound_term_iterator : public irs::term_iterator {
 
   const irs::field_meta& meta() const noexcept { return *meta_; }
   void add(const irs::term_reader& reader, const doc_map_f& doc_map);
-  virtual const irs::attribute_view& attributes() const noexcept override {
+  virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept override {
     // no way to merge attributes for the same term spread over multiple iterators
     // would require API change for attributes
     assert(false);
-    return irs::attribute_view::empty_instance();
+    return nullptr;
   }
   virtual bool next() override;
   virtual irs::doc_iterator::ptr postings(const irs::flags& features) const override;
@@ -594,9 +539,9 @@ class compound_term_iterator : public irs::term_iterator {
     const doc_map_f* second;
 
     term_iterator_t(
-      irs::seek_term_iterator::ptr&& term_itr,
-      const doc_map_f* doc_map
-    ): first(std::move(term_itr)), second(doc_map) {
+        irs::seek_term_iterator::ptr&& term_itr,
+        const doc_map_f* doc_map)
+      : first(std::move(term_itr)), second(doc_map) {
     }
 
     // GCC 8.1.0/8.2.0 optimized code requires an *explicit* noexcept non-inlined
@@ -698,8 +643,7 @@ irs::doc_iterator::ptr compound_term_iterator::postings(const irs::flags& /*feat
     doc_itr_.reset(add_iterators);
   }
 
-  // aliasing constructor
-  return irs::doc_iterator::ptr(irs::doc_iterator::ptr(), doc_itr);
+  return irs::memory::to_managed<irs::doc_iterator, false>(doc_itr);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -746,8 +690,8 @@ class compound_field_iterator : public irs::basic_term_reader {
     return *max_;
   }
 
-  virtual const irs::attribute_view& attributes() const noexcept override {
-    return irs::attribute_view::empty_instance();
+  virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept override {
+    return nullptr;
   }
 
   virtual irs::term_iterator::ptr iterator() const override;
@@ -757,7 +701,7 @@ class compound_field_iterator : public irs::basic_term_reader {
   }
 
  private:
-  struct field_iterator_t {
+  struct field_iterator_t : irs::util::noncopyable {
     field_iterator_t(
         irs::field_iterator::ptr&& itr,
         const irs::sub_reader& reader,
@@ -766,16 +710,17 @@ class compound_field_iterator : public irs::basic_term_reader {
         reader(&reader),
         doc_map(&doc_map) {
     }
-    field_iterator_t(field_iterator_t&& other) noexcept
-      : itr(std::move(other.itr)),
-        reader(other.reader),
-        doc_map(other.doc_map) {
-    }
+
+    field_iterator_t(field_iterator_t&&) = default;
+    field_iterator_t& operator=(field_iterator_t&&) = delete;
 
     irs::field_iterator::ptr itr;
     const irs::sub_reader* reader;
     const doc_map_f* doc_map;
   };
+
+  static_assert(std::is_nothrow_move_constructible_v<field_iterator_t>);
+
   struct term_iterator_t {
     size_t itr_id;
     const irs::field_meta* meta;
@@ -880,7 +825,7 @@ irs::term_iterator::ptr compound_field_iterator::iterator() const {
     term_itr_.add(*(segment.reader), *(field_iterators_[segment.itr_id].doc_map));
   }
 
-  return irs::memory::make_managed<irs::term_iterator, false>(&term_itr_);
+  return irs::memory::to_managed<irs::term_iterator, false>(&term_itr_);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -974,7 +919,17 @@ class columnstore {
 
   // inserts live values from the specified 'iterator' into column
   bool insert(irs::doc_iterator& it) {
-    auto& payload = it.attributes().get<irs::payload>();
+    const irs::payload* payload = nullptr;
+
+    auto* callback = irs::get<irs::attribute_provider_change>(it);
+
+    if (callback) {
+      callback->subscribe([&payload](const irs::attribute_provider& attrs) {
+        payload = irs::get<irs::payload>(attrs);
+      });
+    } else {
+      payload = irs::get<irs::payload>(it);
+    }
 
     while (it.next()) {
       if (!progress_()) {
@@ -1043,7 +998,7 @@ class sorting_compound_column_iterator : irs::util::noncopyable {
       return false;
     }
 
-    irs::payload* payload = it->attributes().get<irs::payload>().get();
+    const irs::payload* payload = irs::get<irs::payload>(*it);
 
     if (!payload) {
       return false;

@@ -277,7 +277,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
   v8::Handle<v8::Function> action;
   auto maybeAction = object->Get(context, TRI_V8_ASCII_STRING(isolate, "action"));
   if (!maybeAction.IsEmpty()) {
-    if(maybeAction.FromMaybe(v8::Local<v8::Value>())->IsFunction()) {
+    if (maybeAction.FromMaybe(v8::Local<v8::Value>())->IsFunction()) {
       action = v8::Handle<v8::Function>::Cast(maybeAction.FromMaybe(v8::Local<v8::Value>()));
       v8::Local<v8::Value> v8_fnname = action->GetName();
       std::string fnname = TRI_ObjectToString(isolate, v8_fnname);

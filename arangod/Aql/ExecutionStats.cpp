@@ -85,7 +85,7 @@ void ExecutionStats::add(ExecutionStats const& summand) {
     auto const& alias = _nodeAliases.find(nid);
     if (alias != _nodeAliases.end()) {
       nid = alias->second;
-      if (nid.id() == std::numeric_limits<decltype(nid)::BaseType>::max()) {
+      if (nid.id() == ExecutionNodeId::InternalNode) {
         // ignore this value, it is an internal node that we do not want to expose
         continue;
       }
@@ -101,12 +101,21 @@ void ExecutionStats::add(ExecutionStats const& summand) {
   }
 }
 
-void ExecutionStats::addNode(aql::ExecutionNodeId id, ExecutionNodeStats const& stats) {
-  auto it = _nodes.find(id);
+void ExecutionStats::addNode(arangodb::aql::ExecutionNodeId nid, ExecutionNodeStats const& stats) {
+  auto const alias = _nodeAliases.find(nid);
+  if (alias != _nodeAliases.end()) {
+    nid = alias->second;
+    if (nid.id() == ExecutionNodeId::InternalNode) {
+      // ignore this value, it is an internal node that we do not want to expose
+      return;
+    }
+  }
+  
+  auto it = _nodes.find(nid);
   if (it != _nodes.end()) {
     it->second += stats;
   } else {
-    _nodes.emplace(id, stats);
+    _nodes.emplace(nid, stats);
   }
 }
 
@@ -181,4 +190,3 @@ void ExecutionStats::clear() {
   peakMemoryUsage = 0;
   _nodes.clear();
 }
-

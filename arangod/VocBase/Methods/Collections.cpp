@@ -28,6 +28,7 @@
 #include "Basics/fasthash.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -39,8 +40,6 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Graph/GraphManager.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -63,6 +62,8 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include <unordered_set>
 
 using namespace arangodb;
 using namespace arangodb::methods;
@@ -313,15 +314,15 @@ Result Collections::create(TRI_vocbase_t& vocbase,
         // system-collections will be sharded normally. only user collections will get
         // the forced sharding
         if (vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
-            vocbase.sharding() == "single") {
+            vocbase.isShardingSingle()) {
           auto const isSatellite =
               Helper::getStringRef(info.properties, StaticStrings::ReplicationFactor,
                                    velocypack::StringRef{""}) == StaticStrings::Satellite;
           // force one shard, and force distributeShardsLike to be "_graphs"
           helper.add(StaticStrings::NumberOfShards, VPackValue(1));
           if (!isSatellite) {
-            // satellite collections must not be sharded like a non-satellite
-            // collection.
+            // SatelliteCollections must not be sharded like a
+            // non-SatelliteCollection.
             helper.add(StaticStrings::DistributeShardsLike,
                        VPackValue(vocbase.shardingPrototypeName()));
           }
@@ -799,7 +800,8 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
   Result res;
 
   // If we are a coordinator in a cluster, we have to behave differently:
-  if (ServerState::instance()->isCoordinator()) {
+  auto const role = ServerState::instance()->getRole();
+  if (ServerState::isCoordinator(role)) {
 #ifdef USE_ENTERPRISE
     res = DropColCoordinatorEnterprise(&coll, allowDropSystem);
 #else
@@ -1012,4 +1014,31 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
   }, 1000);
 
   return trx.finish(res);
+}
+
+arangodb::velocypack::Builder Collections::filterInput(arangodb::velocypack::Slice properties) {
+  return velocypack::Collection::keep(properties,
+      std::unordered_set<std::string>{StaticStrings::DoCompact,
+                                      StaticStrings::DataSourceSystem,
+                                      StaticStrings::DataSourceId,
+                                      "isVolatile",
+                                      StaticStrings::JournalSize,
+                                      StaticStrings::IndexBuckets,
+                                      "keyOptions",
+                                      StaticStrings::WaitForSyncString,
+                                      StaticStrings::CacheEnabled,
+                                      StaticStrings::ShardKeys,
+                                      StaticStrings::NumberOfShards,
+                                      StaticStrings::DistributeShardsLike,
+                                      "avoidServers",
+                                      StaticStrings::IsSmart,
+                                      StaticStrings::ShardingStrategy,
+                                      StaticStrings::GraphSmartGraphAttribute,
+                                      StaticStrings::Schema,
+                                      StaticStrings::SmartJoinAttribute,
+                                      StaticStrings::ReplicationFactor,
+                                      StaticStrings::MinReplicationFactor, // deprecated
+                                      StaticStrings::WriteConcern,
+                                      "servers"
+                                    });
 }

@@ -68,7 +68,7 @@
 #include "utils/fst.hpp"
 #include "utils/bit_utils.hpp"
 #include "utils/bitset.hpp"
-#include "utils/attributes.hpp"
+#include "utils/frozen_attributes.hpp"
 #include "utils/string.hpp"
 #include "utils/log.hpp"
 #include "utils/fst_matcher.hpp"
@@ -123,7 +123,7 @@ void read_segment_features(
 
   for (size_t count = feature_map.capacity(); count; --count) {
     const auto name = read_string<std::string>(in); // read feature name
-    const attribute::type_id* feature = attribute::type_id::get(name);
+    const irs::type_info feature = attributes::get(name);
 
     if (!feature) {
       throw irs::index_error(irs::string_utils::to_string(
@@ -132,8 +132,8 @@ void read_segment_features(
       ));
     }
 
-    feature_map.emplace_back(feature);
-    features.add(*feature);
+    feature_map.emplace_back(feature.id());
+    features.add(feature.id());
   }
 }
 
@@ -145,7 +145,7 @@ void read_field_features(
     const size_t id = in.read_vlong(); // feature id
 
     if (id < feature_map.size()) {
-      features.add(*feature_map[id]);
+      features.add(feature_map[id]);
     } else {
       throw irs::index_error(irs::string_utils::to_string(
         "unknown feature id '" IR_SIZE_T_SPECIFIER "'", id
@@ -460,22 +460,17 @@ class block_iterator : util::noncopyable {
   uint64_t sub_count() const noexcept { return sub_count_; }
   uint64_t start() const noexcept { return start_; }
   bool end() const noexcept { return cur_ent_ == ent_count_; }
+  uint64_t size() const noexcept { return ent_count_; }
 
   template<typename Reader>
   SeekResult scan_to_term(const bytes_ref& term, Reader& reader) {
     assert(!dirty_);
 
-    if (cur_ent_ == ent_count_) {
-      // have reached the end of the block
-      return SeekResult::END;
-    }
-
-    uint64_t suffix, start;
     const SeekResult res = leaf_
-      ? scan_to_term_leaf(term, suffix, start)
-      : scan_to_term_nonleaf(term, suffix, start);
+      ? scan_to_term_leaf(term)
+      : scan_to_term_nonleaf(term);
 
-    reader(suffix_block_.c_str() + start, suffix);
+    reader(suffix_, suffix_length_);
 
     return res;
   }
@@ -487,7 +482,7 @@ class block_iterator : util::noncopyable {
   void scan_to_block(uint64_t ptr);
 
   // read attributes
-  void load_data(const field_meta& meta, const attribute_view& attrs,
+  void load_data(const field_meta& meta, attribute_provider& attrs,
                  version10::term_meta& state, irs::postings_reader& pr);
 
  private:
@@ -496,17 +491,18 @@ class block_iterator : util::noncopyable {
     assert(leaf_ && cur_ent_ < ent_count_);
     cur_type_ = ET_TERM; // always term
     ++term_count_;
-    const auto suffix = vread<uint64_t>(suffix_begin_);
-    reader(suffix_begin_, suffix);
-    suffix_begin_ += suffix;
+    suffix_length_ = vread<uint64_t>(suffix_begin_);
+    suffix_ = suffix_begin_;
+    reader(suffix_, suffix_length_);
+    suffix_begin_ += suffix_length_;
     assert(suffix_begin_ <= suffix_end_);
   }
 
   template<typename Reader>
   void read_entry_nonleaf(Reader& reader);
 
-  SeekResult scan_to_term_nonleaf(const bytes_ref& term, uint64_t& suffix, uint64_t& start);
-  SeekResult scan_to_term_leaf(const bytes_ref& term, uint64_t& suffix, uint64_t& start);
+  SeekResult scan_to_term_nonleaf(const bytes_ref& term);
+  SeekResult scan_to_term_leaf(const bytes_ref& term);
 
   byte_weight header_; // block header
   bstring suffix_block_; // suffix data block
@@ -519,6 +515,8 @@ class block_iterator : util::noncopyable {
   const byte_type* suffix_end_{suffix_begin_ + suffix_block_.size()}; // end of valid suffix input stream
   const byte_type* stats_end_{stats_begin_ + stats_block_.size()}; // end of valid stats input stream
 #endif
+  const byte_type* suffix_{}; // current suffix
+  uint64_t suffix_length_{}; // current suffix length
   version10::term_meta state_;
   uint64_t cur_ent_{}; // current entry in a block
   uint64_t ent_count_{}; // number of entries in a current block
@@ -542,30 +540,27 @@ class block_iterator : util::noncopyable {
 /// @class term_iterator_base
 /// @brief base class for term_iterator and automaton_term_iterator
 ///////////////////////////////////////////////////////////////////////////////
-class term_iterator_base : public seek_term_iterator {
+class term_iterator_base
+    : public frozen_attributes<3, seek_term_iterator> {
  public:
-  explicit term_iterator_base(const term_reader& owner)
-    : owner_(&owner),
-      attrs_(2) { // version10::term_meta + frequency
+  explicit term_iterator_base(const term_reader& owner, payload* pay = nullptr)
+    : attributes{{
+        { type<version10::term_meta>::id(), &state_ },
+        { type<frequency>::id(), owner.field_.features.check<frequency>() ? &freq_ : nullptr },
+        { type<payload>::id(), pay }
+      }},
+      owner_(&owner),
+      terms_cipher_(owner.owner_->terms_in_cipher_.get()) {
     assert(owner_);
-    attrs_.emplace(state_);
-
-    if (owner_->field_.features.check<frequency>()) {
-      attrs_.emplace(freq_);
-    }
   }
 
   // read attributes
   void read(block_iterator& it) {
-    it.load_data(owner_->field_, attrs_, state_, *owner_->owner_->pr_);
+    it.load_data(owner_->field_, *this, state_, *owner_->owner_->pr_);
   }
 
   virtual seek_term_iterator::seek_cookie::ptr cookie() const final {
     return ::cookie::make(state_, freq_.value);
-  }
-
-  virtual const irs::attribute_view& attributes() const noexcept final {
-    return attrs_;
   }
 
   virtual const bytes_ref& value() const noexcept final { return term_; }
@@ -594,15 +589,15 @@ class term_iterator_base : public seek_term_iterator {
     const field_meta& field = owner_->field_;
     postings_reader& pr = *owner_->owner_->pr_;
     if (it) {
-      it->load_data(field, attrs_, state_, pr); // read attributes
+      it->load_data(field, const_cast<term_iterator_base&>(*this), state_, pr); // read attributes
     }
-    return pr.iterator(field.features, attrs_, features);
+    return pr.iterator(field.features, *this, features);
   }
 
   index_input& terms_input() const;
 
   irs::encryption::stream* terms_cipher() const noexcept {
-    return owner_->owner_->terms_in_cipher_.get();
+    return terms_cipher_;
   }
 
  protected:
@@ -626,7 +621,7 @@ class term_iterator_base : public seek_term_iterator {
   }
 
   const term_reader* owner_;
-  irs::attribute_view attrs_;
+  irs::encryption::stream* terms_cipher_;
   mutable version10::term_meta state_;
   frequency freq_;
   mutable index_input::ptr terms_in_;
@@ -655,14 +650,9 @@ index_input& term_iterator_base::terms_input() const {
 class term_iterator final : public term_iterator_base {
  public:
   explicit term_iterator(const term_reader& owner)
-    : term_iterator_base(owner),
+    : term_iterator_base(owner, nullptr),
       matcher_(&fst(), fst::MATCH_INPUT) { // pass pointer to avoid copying FST
     assert(owner_);
-    attrs_.emplace(state_);
-
-    if (field().features.check<frequency>()) {
-      attrs_.emplace(freq_);
-    }
   }
 
   virtual bool next() override;
@@ -703,12 +693,8 @@ class term_iterator final : public term_iterator_base {
 
     arc() = default;
 
-    arc(arc&& rhs) noexcept
-      : state(rhs.state), 
-        weight(std::move(rhs.weight)),
-        block(rhs.block) {
-      rhs.block = nullptr;
-    }
+    arc(arc&&) = default;
+    arc& operator=(arc&&) = delete;
 
     arc(stateid_t state, const byte_weight& weight, block_iterator* block)
       : state(state), weight(weight), block(block) {
@@ -719,13 +705,14 @@ class term_iterator final : public term_iterator_base {
     block_iterator* block{};
   }; // arc
 
+  static_assert(std::is_nothrow_move_constructible_v<arc>);
+
   typedef std::vector<arc> seek_state_t;
   typedef std::deque<block_iterator> block_stack_t;
 
   ptrdiff_t seek_cached(
     size_t& prefix, arc::stateid_t& state,
-    byte_weight& weight, const bytes_ref& term
-  );
+    byte_weight& weight, const bytes_ref& term);
 
   /// @brief Seek to the closest block which contain a specified term
   /// @param prefix size of the common term/block prefix
@@ -776,10 +763,11 @@ class automaton_term_iterator final : public term_iterator_base {
  public:
   explicit automaton_term_iterator(const term_reader& owner,
                                    automaton_table_matcher& matcher)
-    : term_iterator_base(owner),
+    : term_iterator_base(owner, &payload_),
       acceptor_(&matcher.GetFst()),
       matcher_(&matcher) {
-    attrs_.emplace(payload_);
+    // init payload value
+    payload_.value = {&payload_value_, sizeof(payload_value_)};
   }
 
   virtual bool next() override;
@@ -887,14 +875,6 @@ class automaton_term_iterator final : public term_iterator_base {
     automaton::StateId state_;  // state to which current block belongs
   }; // block_iterator
 
-  struct payload : irs::payload {
-    payload() noexcept {
-      irs::payload::value = bytes_ref(&value, sizeof(value));
-    }
-
-    automaton::Weight::PayloadType value;
-  }; // payload
-
   typedef std::deque<block_iterator> block_stack_t;
 
   block_iterator* pop_block() noexcept {
@@ -926,7 +906,8 @@ class automaton_term_iterator final : public term_iterator_base {
   automaton_table_matcher* matcher_;
   block_stack_t block_stack_;
   block_iterator* cur_block_{};
-  payload payload_{}; // payload of the matched automaton state
+  automaton::Weight::PayloadType payload_value_;
+  payload payload_; // payload of the matched automaton state
 }; // automaton_term_iterator
 
 bool automaton_term_iterator::next() {
@@ -1004,7 +985,7 @@ bool automaton_term_iterator::next() {
       case ET_TERM: {
         const auto weight = acceptor_->Final(state);
         if (weight) {
-          payload_.value = weight.Payload();
+          payload_value_ = weight.Payload();
           copy(suffix, cur_block_->prefix(), suffix_size);
           match = MATCH;
         }
@@ -1121,34 +1102,46 @@ void block_iterator::load(index_input& in, irs::encryption::stream* cipher) {
   // read suffix block
   uint64_t block_size;
   leaf_ = shift_unpack_64(in.read_vlong(), block_size);
-  string_utils::oversize(suffix_block_, block_size);
+
+  // for non-encrypted index try direct buffer access first
+  suffix_begin_ = cipher ? nullptr : in.read_buffer(block_size, BufferHint::PERSISTENT);
+
+  if (!suffix_begin_) {
+    string_utils::oversize(suffix_block_, block_size);
 #ifdef IRESEARCH_DEBUG
-  auto read = in.read_bytes(&(suffix_block_[0]), block_size);
-  assert(read == block_size);
-  UNUSED(read);
+    const auto read = in.read_bytes(&(suffix_block_[0]), block_size);
+    assert(read == block_size);
+    UNUSED(read);
 #else
-  in.read_bytes(&(suffix_block_[0]), block_size);
+    in.read_bytes(&(suffix_block_[0]), block_size);
 #endif // IRESEARCH_DEBUG
-  suffix_begin_ = suffix_block_.c_str();
+    suffix_begin_ = suffix_block_.c_str();
+
+    if (cipher) {
+      cipher->decrypt(cur_start_, &(suffix_block_[0]), block_size);
+    }
+  }
 #ifdef IRESEARCH_DEBUG
   suffix_end_ = suffix_begin_ + block_size;
 #endif // IRESEARCH_DEBUG
 
-  if (cipher) {
-    cipher->decrypt(cur_start_, &(suffix_block_[0]), block_size);
-  }
-
   // read stats block
   block_size = in.read_vlong();
-  string_utils::oversize(stats_block_, block_size);
+
+  // try direct buffer access first
+  stats_begin_ = in.read_buffer(block_size, BufferHint::PERSISTENT);
+
+  if (!stats_begin_) {
+    string_utils::oversize(stats_block_, block_size);
 #ifdef IRESEARCH_DEBUG
-  read = in.read_bytes(&(stats_block_[0]), block_size);
-  assert(read == block_size);
-  UNUSED(read);
+    const auto read = in.read_bytes(&(stats_block_[0]), block_size);
+    assert(read == block_size);
+    UNUSED(read);
 #else
-  in.read_bytes(&(stats_block_[0]), block_size);
+    in.read_bytes(&(stats_block_[0]), block_size);
 #endif // IRESEARCH_DEBUG
-  stats_begin_ = stats_block_.c_str();
+    stats_begin_ = stats_block_.c_str();
+  }
 #ifdef IRESEARCH_DEBUG
   stats_end_ = stats_begin_ + block_size;
 #endif // IRESEARCH_DEBUG
@@ -1165,13 +1158,12 @@ template<typename Reader>
 void block_iterator::read_entry_nonleaf(Reader& reader) {
   assert(!leaf_ && cur_ent_ < ent_count_);
 
-  uint64_t suffix;
-  cur_type_ = shift_unpack_64(vread<uint64_t>(suffix_begin_), suffix)
+  cur_type_ = shift_unpack_64(vread<uint64_t>(suffix_begin_), suffix_length_)
     ? ET_BLOCK 
     : ET_TERM;
 
-  const byte_type* begin = suffix_begin_;
-  suffix_begin_ += suffix;
+  suffix_ = suffix_begin_;
+  suffix_begin_ += suffix_length_;
   assert(suffix_begin_ <= suffix_end_);
 
   switch (cur_type_) {
@@ -1181,42 +1173,39 @@ void block_iterator::read_entry_nonleaf(Reader& reader) {
   }
 
   // read after state is updated
-  reader(begin, suffix);
+  reader(suffix_, suffix_length_);
 
   assert(suffix_begin_ <= suffix_end_);
 }
 
-SeekResult block_iterator::scan_to_term_leaf(
-    const bytes_ref& term, 
-    uint64_t& suffix, 
-    uint64_t& start) {
+SeekResult block_iterator::scan_to_term_leaf(const bytes_ref& term) {
   assert(leaf_);
   assert(!dirty_);
 
-  for (; cur_ent_ < ent_count_;) {
+  while (cur_ent_ < ent_count_) {
     ++cur_ent_;
     ++term_count_;
     cur_type_ = ET_TERM;
-    suffix = vread<uint64_t>(suffix_begin_);
+    suffix_length_ = vread<uint64_t>(suffix_begin_);
     assert(suffix_begin_ <= suffix_end_);
-    assert(suffix_begin_ >= suffix_block_.c_str());
-    start = uint64_t(suffix_begin_ - suffix_block_.c_str()); // start of the current suffix
-    suffix_begin_ += suffix; // skip to the next term
+    suffix_ = suffix_begin_; // start of the current suffix
+    suffix_begin_ += suffix_length_; // skip to the next term
     assert(suffix_begin_ <= suffix_end_);
 
-    const size_t term_len = prefix_ + suffix;
-    const size_t max = std::min(term.size(), term_len); // max limit of comparison
+    const byte_type* suffix = suffix_;
+    const byte_type* target = term.c_str() + prefix_;
+    const size_t target_len = prefix_ + suffix_length_;
+    const byte_type* target_end = term.c_str() + std::min(term.size(), target_len);
 
     ptrdiff_t cmp;
-    bool stop = false;
-    for (size_t tpos = prefix_, spos = start;;) {
-      if (tpos < max) {
-        cmp = suffix_block_[spos] - term[tpos];
-        ++tpos;
-        ++spos;
+    for (bool stop = false;;) {
+      if (target < target_end) {
+        cmp = *suffix - *target;
+        ++target;
+        ++suffix;
       } else {
-        assert(tpos == max);
-        cmp = term_len - term.size();
+        assert(target == target_end);
+        cmp = target_len - term.size();
         stop = true;
       }
 
@@ -1237,24 +1226,18 @@ SeekResult block_iterator::scan_to_term_leaf(
   return SeekResult::END;
 }
 
-SeekResult block_iterator::scan_to_term_nonleaf(
-    const bytes_ref& term, 
-    uint64_t& suffix, 
-    uint64_t& start) {
+SeekResult block_iterator::scan_to_term_nonleaf(const bytes_ref& term) {
   assert(!leaf_);
   assert(!dirty_);
 
-  for (; cur_ent_ < ent_count_;) {
+  while (cur_ent_ < ent_count_) {
     ++cur_ent_;
-    cur_type_ = shift_unpack_64(vread<uint64_t>(suffix_begin_), suffix) ? ET_BLOCK : ET_TERM;
+    cur_type_ = shift_unpack_64(vread<uint64_t>(suffix_begin_), suffix_length_)
+        ? ET_BLOCK : ET_TERM;
     assert(suffix_begin_ <= suffix_end_);
-    assert(suffix_begin_ >= suffix_block_.c_str());
-    start = uint64_t(suffix_begin_ - suffix_block_.c_str());
-    suffix_begin_ += suffix; // skip to the next entry
+    suffix_ = suffix_begin_;
+    suffix_begin_ += suffix_length_; // skip to the next entry
     assert(suffix_begin_ <= suffix_end_);
-
-    const size_t term_len = prefix_ + suffix;
-    const size_t max = std::min(term.size(), term_len); // max limit of comparison
 
     switch (cur_type_) {
       case ET_TERM: ++term_count_; break;
@@ -1262,16 +1245,20 @@ SeekResult block_iterator::scan_to_term_nonleaf(
       default: assert(false); break;
     }
 
+    const byte_type* suffix = suffix_;
+    const size_t target_len = prefix_ + suffix_length_;
+    const byte_type* target = term.c_str() + prefix_;
+    const byte_type* target_end = term.c_str() + std::min(term.size(), target_len);
+
     ptrdiff_t cmp;
-    for (size_t tpos = prefix_, spos = start;;) {
-      bool stop = false;
-      if (tpos < max) {
-        cmp = suffix_block_[spos] - term[tpos];
-        ++tpos;
-        ++spos;
+    for (bool stop = false;;) {
+      if (target < target_end) {
+        cmp = *suffix - *target;
+        ++target;
+        ++suffix;
       } else {
-        assert(tpos == max);
-        cmp = term_len - term.size();
+        assert(target == target_end);
+        cmp = target_len - term.size();
         stop = true;
       }
 
@@ -1347,10 +1334,11 @@ void block_iterator::scan_to_block(uint64_t start) {
   const uint64_t target = cur_start_ - start; // delta
   for (; cur_ent_ < ent_count_;) {
     ++cur_ent_;
-    uint64_t suffix;
-    const EntryType type = shift_unpack_64(vread<uint64_t>(suffix_begin_), suffix) ? ET_BLOCK : ET_TERM;
+    const EntryType type = shift_unpack_64(vread<uint64_t>(suffix_begin_), suffix_length_)
+        ? ET_BLOCK : ET_TERM;
     assert(suffix_begin_ <= suffix_end_);
-    suffix_begin_ += suffix;
+    suffix_ = suffix_begin_;
+    suffix_begin_ += suffix_length_;
     assert(suffix_begin_ <= suffix_end_);
 
     switch (type) {
@@ -1374,7 +1362,7 @@ void block_iterator::scan_to_block(uint64_t start) {
 }
 
 void block_iterator::load_data(const field_meta& meta,
-                               const attribute_view& attrs,
+                               attribute_provider& attrs,
                                version10::term_meta& state,
                                irs::postings_reader& pr) {
   assert(ET_TERM == cur_type_);
@@ -1709,7 +1697,7 @@ term_reader::term_reader(term_reader&& rhs) noexcept
     doc_freq_(rhs.doc_freq_),
     term_freq_(rhs.term_freq_),
     field_(std::move(rhs.field_)),
-    fst_(rhs.fst_),
+    fst_(std::move(rhs.fst_)),
     owner_(rhs.owner_) {
   min_term_ref_ = min_term_;
   max_term_ref_ = max_term_;
@@ -1723,27 +1711,18 @@ term_reader::term_reader(term_reader&& rhs) noexcept
   rhs.owner_ = nullptr;
 }
 
-term_reader::~term_reader() {
-  delete fst_;
-}
-
 seek_term_iterator::ptr term_reader::iterator() const {
-  return memory::make_managed<seek_term_iterator>(
-    memory::make_unique<detail::term_iterator>(*this)
-  );
+  return memory::make_managed<detail::term_iterator>(*this);
 }
 
 seek_term_iterator::ptr term_reader::iterator(automaton_table_matcher& matcher) const {
-  return memory::make_managed<seek_term_iterator>(
-    memory::make_unique<detail::automaton_term_iterator>(*this, matcher)
-  );
+  return memory::make_managed<detail::automaton_term_iterator>(*this, matcher);
 }
 
 void term_reader::prepare(
     std::istream& in, 
     const feature_map_t& feature_map,
-    field_reader& owner
-) {
+    field_reader& owner) {
   // read field metadata
   index_input& meta_in = *static_cast<input_buf*>(in.rdbuf());
   field_.name = read_string<std::string>(meta_in);
@@ -1761,14 +1740,173 @@ void term_reader::prepare(
 
   if (field_.features.check<frequency>()) {
     freq_.value = meta_in.read_vlong();
-    attrs_.emplace(freq_);
+    pfreq_ = &freq_;
   }
 
   // read FST
   fst_ = fst_t::Read(in, fst_read_options());
-  assert(fst_);
+
+  if (!fst_) {
+    throw irs::index_error(string_utils::to_string(
+      "failed to read term index for field '%s'",
+      field_.name.c_str()));
+  }
 
   owner_ = &owner;
+}
+
+term_reader::~term_reader() {
+  delete fst_;
+}
+
+attribute* term_reader::get_mutable(type_info::type_id type) noexcept {
+  return irs::type<irs::frequency>::id() == type ? pfreq_ : nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class term_reader_visitor
+/// @brief implements generalized visitation logic for term dictionary
+////////////////////////////////////////////////////////////////////////////////
+class term_reader_visitor {
+ public:
+  explicit term_reader_visitor(const term_reader& field)
+    : fst_(field.fst_),
+      terms_in_(field.owner_->terms_in_->reopen()),
+      terms_in_cipher_(field.owner_->terms_in_cipher_.get()) {
+  }
+
+  template<typename Visitor>
+  void operator()(Visitor& visitor) {
+    block_iterator* cur_block = push_block(fst_->Final(fst_->Start()), 0);
+    cur_block->load(*terms_in_, terms_in_cipher_);
+    visitor.push_block(term_, *cur_block);
+
+    auto copy_suffix = [&cur_block, this](const byte_type* suffix, size_t suffix_size) {
+      copy(suffix, cur_block->prefix(), suffix_size);
+    };
+
+    while (true) {
+      while (cur_block->end()) {
+        if (cur_block->next_sub_block()) {
+          cur_block->load(*terms_in_, terms_in_cipher_);
+          visitor.sub_block(*cur_block);
+        } else if (&block_stack_.front() == cur_block) { // root
+          cur_block->reset();
+          return;
+        } else {
+          visitor.pop_block(*cur_block);
+          cur_block = pop_block();
+        }
+      }
+
+      while (!cur_block->end()) {
+        cur_block->next(copy_suffix);
+        switch (cur_block->type()) {
+          case ET_TERM:
+            visitor.push_term(term_);
+            break;
+          case ET_BLOCK:
+            cur_block = push_block(cur_block->block_start(), term_.size());
+            cur_block->load(*terms_in_, terms_in_cipher_);
+            visitor.push_block(term_, *cur_block);
+            break;
+          default:
+            assert(false);
+            break;
+        }
+      }
+    }
+  }
+
+ private:
+  void copy(const byte_type* suffix, size_t prefix_size, size_t suffix_size) {
+    const auto size = prefix_size + suffix_size;
+    term_.oversize(size);
+    term_.reset(size);
+    std::memcpy(term_.data() + prefix_size, suffix, suffix_size);
+  }
+
+  block_iterator* pop_block() noexcept {
+    block_stack_.pop_back();
+    assert(!block_stack_.empty());
+    return &block_stack_.back();
+  }
+
+  block_iterator* push_block(byte_weight&& out, size_t prefix) {
+    // ensure final weight correctess
+    assert(out.Size() >= MIN_WEIGHT_SIZE);
+
+    block_stack_.emplace_back(std::move(out), prefix);
+    return &block_stack_.back();
+  }
+
+  block_iterator* push_block(uint64_t start, size_t prefix) {
+    block_stack_.emplace_back(start, prefix);
+    return &block_stack_.back();
+  }
+
+  const term_reader::fst_t* fst_;
+  std::deque<block_iterator> block_stack_;
+  bytes_builder term_;
+  index_input::ptr terms_in_;
+  encryption::stream* terms_in_cipher_;
+}; // term_reader_visitor
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump term dictionary of a specified field to a provided stream in
+///        a human readable format
+////////////////////////////////////////////////////////////////////////////////
+void dump(const term_reader& field, std::ostream& out) {
+  class dumper : util::noncopyable {
+   public:
+    explicit dumper(std::ostream& out)
+      : out_(out) {
+    }
+
+    void push_term(const bytes_ref& term) {
+      indent();
+      out_ << "TERM|" << suffix(term) << "\n";
+    }
+
+    void push_block(const bytes_ref& term, const block_iterator& block) {
+      indent();
+      out_ << "BLOCK|" << block.size() << "|" << suffix(term) << "\n";
+      indent_ += 2;
+      prefix_ = block.prefix();
+    }
+
+    void sub_block(const block_iterator& /*block*/){
+      indent();
+      out_ << "|\n";
+      indent();
+      out_ << "V\n";
+    };
+
+    void pop_block(const block_iterator& block) {
+      indent_ -= 2;
+      prefix_ -= block.prefix();
+    }
+
+   private:
+    void indent() {
+      for (size_t i = 0; i < indent_; ++i) {
+        out_ << " ";
+      }
+    }
+
+    string_ref suffix(const bytes_ref& term) {
+      return ref_cast<char>(bytes_ref(term.c_str() + prefix_, term.size() - prefix_));
+    }
+
+    std::ostream& out_;
+    size_t indent_ = 0;
+    size_t prefix_ = 0;
+  };
+
+
+  dumper dump(out);
+  term_reader_visitor visitor(field);
+  visitor(dump);
 }
 
 NS_END // detail
@@ -2013,7 +2151,7 @@ field_writer::field_writer(
   : suffix_(memory_allocator::global()),
     stats_(memory_allocator::global()),
     pw_(std::move(pw)),
-    fst_buf_(memory::make_unique<detail::fst_buffer>()),
+    fst_buf_(new detail::fst_buffer()),
     prefixes_(DEFAULT_SIZE, 0),
     term_count_(0),
     version_(version),
@@ -2027,6 +2165,10 @@ field_writer::field_writer(
   assert(version_ >= FORMAT_MIN && version_ <= FORMAT_MAX);
 
   min_term_.first = false;
+}
+
+field_writer::~field_writer() {
+  delete fst_buf_;
 }
 
 void field_writer::prepare(const irs::flush_state& state) {
@@ -2074,8 +2216,7 @@ void field_writer::prepare(const irs::flush_state& state) {
       index_out_ = index_output::make<encrypted_output>(
         std::move(index_out_),
         *index_out_cipher_,
-        blocks_in_buffer
-      );
+        blocks_in_buffer);
     }
   }
 
@@ -2102,7 +2243,7 @@ void field_writer::write(
   uint64_t sum_tfreq = 0;
 
   const bool freq_exists = features.check<frequency>();
-  auto& docs = pw_->attributes().get<version10::documents>();
+  auto* docs = irs::get<version10::documents>(*pw_);
   assert(docs);
 
   for (; terms.next();) {
@@ -2158,8 +2299,8 @@ void field_writer::write_segment_features(data_output& out, const flags& feature
   out.write_vlong(features.size());
   feature_map_.clear();
   feature_map_.reserve(features.size());
-  for (const attribute::type_id* feature : features) {
-    write_string(out, feature->name());
+  for (const type_info::type_id feature : features) {
+    write_string(out, feature().name());
     feature_map_.emplace(feature, feature_map_.size());
   }
 }
@@ -2167,15 +2308,14 @@ void field_writer::write_segment_features(data_output& out, const flags& feature
 void field_writer::write_field_features(data_output& out, const flags& features) const {
   out.write_vlong(features.size());
   for (auto feature : features) {
-    const auto it = feature_map_.find(*feature);
+    const auto it = feature_map_.find(feature);
     assert(it != feature_map_.end());
 
     if (feature_map_.end() == it) {
       // should not happen in reality
       throw irs::index_error(string_utils::to_string(
         "feature '%s' is not listed in segment features",
-        feature->name().c_str()
-      ));
+        feature().name().c_str()));
     }
 
     out.write_vlong(it->second);
@@ -2265,8 +2405,7 @@ field_reader::field_reader(irs::postings_reader::ptr&& pr)
 void field_reader::prepare(
     const directory& dir,
     const segment_meta& meta,
-    const document_mask& /*mask*/
-) {
+    const document_mask& /*mask*/) {
   std::string filename;
 
   //-----------------------------------------------------------------
@@ -2292,8 +2431,7 @@ void field_reader::prepare(
     field_writer::FORMAT_TERMS_INDEX,
     field_writer::FORMAT_MIN,
     field_writer::FORMAT_MAX,
-    &checksum
-  );
+    &checksum);
 
   constexpr const size_t FOOTER_LEN =
       sizeof(uint64_t) // fields count
@@ -2323,15 +2461,13 @@ void field_reader::prepare(
 
       const auto blocks_in_buffer = math::div_ceil64(
         buffered_index_input::DEFAULT_BUFFER_SIZE,
-        index_in_cipher->block_size()
-      );
+        index_in_cipher->block_size());
 
-      index_in = index_input::make<encrypted_input>(
+      index_in = memory::make_unique<encrypted_input>(
         std::move(index_in),
         *index_in_cipher,
         blocks_in_buffer,
-        FOOTER_LEN
-      );
+        FOOTER_LEN);
     }
   }
 
@@ -2358,8 +2494,7 @@ void field_reader::prepare(
       throw irs::index_error(string_utils::to_string(
         "duplicated field: '%s' found in segment: '%s'",
         name.c_str(),
-        meta.name.c_str()
-      ));
+        meta.name.c_str()));
     }
 
     --fields_count;
@@ -2373,8 +2508,7 @@ void field_reader::prepare(
   if (!std::is_sorted(fields_.begin(), fields_.end(), less)) {
     throw index_error(string_utils::to_string(
       "invalid field order in segment '%s'",
-      meta.name.c_str()
-    ));
+      meta.name.c_str()));
   }
 
   //-----------------------------------------------------------------
@@ -2387,16 +2521,14 @@ void field_reader::prepare(
     field_writer::TERMS_EXT,
     field_writer::FORMAT_TERMS,
     field_writer::FORMAT_MIN,
-    field_writer::FORMAT_MAX
-  );
+    field_writer::FORMAT_MAX);
 
   if (term_index_version != term_dict_version) {
     throw index_error(string_utils::to_string(
       "term index version '%d' mismatches term dictionary version '%d' in segment '%s'",
       term_index_version,
       meta.name.c_str(),
-      term_dict_version
-    ));
+      term_dict_version));
   }
 
   if (term_dict_version > field_writer::FORMAT_MIN) {
@@ -2434,11 +2566,8 @@ irs::field_iterator::ptr field_reader::iterator() const {
     string_ref, detail::term_reader, irs::field_iterator, less
   > iterator_t;
 
-  auto it = memory::make_unique<iterator_t>(
-    fields_.data(), fields_.data() + fields_.size()
-  );
-
-  return memory::make_managed<irs::field_iterator, true>(it.release());
+  return memory::make_managed<iterator_t>(
+    fields_.data(), fields_.data() + fields_.size());
 }
 
 size_t field_reader::size() const noexcept {

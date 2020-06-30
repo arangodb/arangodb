@@ -55,7 +55,7 @@ class ClientsExecutorInfos {
  public:
   explicit ClientsExecutorInfos(std::vector<std::string> clientIds);
 
-  ClientsExecutorInfos(ClientsExecutorInfos&&) noexcept = default;
+  ClientsExecutorInfos(ClientsExecutorInfos&&) = default;
   ClientsExecutorInfos(ClientsExecutorInfos const&) = delete;
   ~ClientsExecutorInfos() = default;
 
@@ -68,7 +68,7 @@ class ClientsExecutorInfos {
 
 class BlocksWithClients {
  public:
-  virtual ~BlocksWithClients() {}
+  virtual ~BlocksWithClients() = default;
 
   /// @brief getSomeForShard
   /// @deprecated
