@@ -21,6 +21,16 @@
 * License Name: Boost Software License 1.0
 * License Id: BSL-1.0
 
+### cmdline
+
+* Name: cmdline
+* Version: 2009
+* Date: 2009
+* Project Home: https://github.com/tanakh/cmdline
+* License: https://github.com/tanakh/cmdline/blob/master/LICENSE
+* License Name: BSD 3-clause "New" or "Revised" License
+* License Id: BSD-3-Clause
+
 ### CreditCardGenerator
 
 _Enterprise Edition only_
@@ -57,7 +67,7 @@ _Enterprise Edition only_
 
 * Name: fakeit
 * Version: 2.0.3
-* Date: 2017-02-28 13:11:35Z
+* Date: 2017-02-28 13:11:35Z & 2018-08-17 00:22:33Z
 * Project Home: https://github.com/eranpeer/FakeIt
 * License: https://raw.githubusercontent.com/eranpeer/FakeIt/master/LICENSE
 * License Name: MIT License
@@ -72,6 +82,16 @@ _Enterprise Edition only_
 * License: https://raw.githubusercontent.com/night-shift/fpconv/master/license
 * License Name: MIT License
 * License Id: MIT
+
+### frozen
+
+* Name: frozen
+* Version: 1.1.0
+* Date: 2020
+* Project Home: https://github.com/serge-sans-paille/frozen
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/iresearch/external/frozen/LICENSE
+* License Name: Apache License 2.0
+* License Id: Apache-2.0
 
 ### function2
 
@@ -103,6 +123,16 @@ _Enterprise Edition only_
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
+#### binutils
+
+* Name: binutils
+* Version: (see V8)
+* Date: (see V8)
+* Project Home: (bundled with V8)
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/third_party/binutils/download.py
+* License Name: BSD 3-clause "New" or "Revised" License
+* License Id: BSD-3-Clause
+
 #### colorama
 
 * Name: colorama
@@ -121,6 +151,16 @@ _Enterprise Edition only_
 * Project Home: (bundled with V8)
 * License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/LICENSE.fdlibm
 * License Comment: free as-is license (like ISC without liability clauses)
+
+#### googletest
+
+* Name: googlestest
+* Version: (see V8)
+* Date: (see V8)
+* Project Home: (bundled with V8)
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/third_party/googletest/README.chromium
+* License Name: BSD 3-clause "New" or "Revised" License
+* License Id: BSD-3-Clause
 
 #### gtest
 
@@ -202,6 +242,26 @@ _Enterprise Edition only_
 * License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/test/mjsunit/third_party/regexp-pcre/LICENSE
 * License Name: PCRE LICENCE
 * License Id: PCRE
+
+#### rapid json
+
+* Name: RapidJson
+* Version: 2015
+* Date: 2015
+* Project Home: https://rapidjson.org/
+* License: https://github.com/arangodb/arangodb/blob/devel/3rdParty/iresearch/external/rapidjson/rapidjson/encodings.h
+* License Name: MIT license
+* License Id: MIT
+
+### simdcomp
+
+* Name: simdcomp
+* Version: 2019
+* Date: 2019
+* Project Home: https://github.com/lemire/simdcomp
+* License: https://github.com/lemire/simdcomp/LICENSE
+* License Name: BSD 3-clause "New" or "Revised" License
+* License Id: BSD-3-Clause
 
 #### SipHash
 
@@ -352,6 +412,16 @@ _Enterprise Edition only_
 * License Name: MIT License
 * License Id: MIT
 
+### lz4 (lib)
+
+* Name: lz4
+* Version: 1.9.1
+* Date: 2017-12-18 15:04:59Z
+* Project Home: https://github.com/lz4/lz4
+* License: https://raw.githubusercontent.com/lz4/lz4/dev/LICENSE
+* License Name: BSD 2-clause "Simplified" License
+* License Id: BSD-2-Clause
+
 ### nghttp2
 
 * Name: nghttp2
@@ -372,6 +442,16 @@ _Enterprise Edition only_
 * License Name: Apache License 2.0
 * License Id: Apache-2.0
 
+### S2 Geometry Library
+
+* Name: s2geometry
+* Version: dfefe0c
+* Date: 2018-11-29 15:49:17Z
+* Project Home: https://s2geometry.io/
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/s2geometry/dfefe0c/LICENSE
+* License Name: Apache License 2.0
+* License Id: Apache-2.0
+
 ### short_alloc
 
 * Name: short_alloc
@@ -389,6 +469,16 @@ _Enterprise Edition only_
 * Date: 2017-08-25 00:37:10Z
 * Project Home: https://github.com/google/snappy
 * License: https://raw.githubusercontent.com/google/snappy/master/COPYING
+* License Name: BSD 3-clause "New" or "Revised" License
+* License Id: BSD-3-Clause
+
+### snowball
+
+* Name: snowball
+* Version: 
+* Date: 2018-11-29 15:49:17Z
+* Project Home: https://snowballstem.org/
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/snowball/COPYING
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
