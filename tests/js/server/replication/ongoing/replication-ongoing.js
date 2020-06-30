@@ -1302,6 +1302,87 @@ function BaseTestConfig () {
           res = db._query('FOR doc IN ' + view.name() + ' SEARCH PHRASE(doc.text, "foxx jumps over", "text_en") OPTIONS { waitForSync: true } RETURN doc').toArray();
           assertEqual(1, res.length);
         });
+    },
+    testViewDataCustomAnalyzer: function () {
+      connectToMaster();
+      compare(
+        function (state) { // masterFunc1
+          try {
+            analyzers.save('custom', 'identity', {});
+            let c = db._create(cn);
+            let links = {};
+            links[cn] = {
+              includeAllFields: true,
+              fields: {
+                text: { analyzers: ['custom'] }
+              }
+            };
+            let view = db._createView(cn + 'View', 'arangosearch', { links: links });
+            assertEqual(Object.keys(view.properties().links).length, 1);
+
+            let docs = [];
+            for (let i = 0; i < 5000; ++i) {
+              docs.push({
+                _key: 'test' + i,
+                'value': i
+              });
+            }
+            c.insert(docs);
+
+            state.arangoSearchEnabled = true;
+          } catch (err) {
+            analyzers.remove("custom", true);
+            db._drop(cn);
+          } 
+        },
+        function (state) { // masterFunc2
+          if (!state.arangoSearchEnabled) {
+            return;
+          }
+          const txt = 'foxx';
+          db._collection(cn).save({
+            _key: 'testxxx',
+            'value': -1,
+            'text': txt
+          });
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(5001, state.count);
+        },
+        function (state) { // slaveFuncOngoing
+          if (!state.arangoSearchEnabled) {
+            return;
+          }
+          let view = db._view(cn + 'View');
+          assertTrue(view !== null);
+          let props = view.properties();
+          assertTrue(props.hasOwnProperty('links'));
+          assertEqual(Object.keys(props.links).length, 1);
+          assertTrue(props.links.hasOwnProperty(cn));
+        }, // slaveFuncOngoing
+        function (state) { // slaveFuncFinal
+          if (!state.arangoSearchEnabled) {
+            return;
+          }
+
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+          var idx = db._collection(cn).getIndexes();
+          assertEqual(1, idx.length); // primary
+
+          let view = db._view(cn + 'View');
+          assertTrue(view !== null);
+          let props = view.properties();
+          assertTrue(props.hasOwnProperty('links'));
+          assertEqual(Object.keys(props.links).length, 1);
+          assertTrue(props.links.hasOwnProperty(cn));
+
+          let res = db._query('FOR doc IN ' + view.name() + ' SEARCH doc.value >= 2500 OPTIONS { waitForSync: true } RETURN doc').toArray();
+          assertEqual(2500, res.length);
+
+          res = db._query('FOR doc IN ' + view.name() + ' SEARCH PHRASE(doc.text, "foxx", "custom") OPTIONS { waitForSync: true } RETURN doc').toArray();
+          assertEqual(1, res.length);
+        });
     }
   };
 }
