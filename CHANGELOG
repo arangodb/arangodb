@@ -1,6 +1,13 @@
 devel
 -----
 
+* Fixed BTS-110: Fulltext index with minLength <= 0 not allowed.
+
+* Disallow using V8 dependent functions in SEARCH statement.
+
+* Remove superflous `%>` output in the UI modal dialog in case the JSON editor
+  was embedded.
+
 * Fixed a misleading error message in AQL.
 
 * Fix undistribute-remove-after-enum-coll which would allow calculations
