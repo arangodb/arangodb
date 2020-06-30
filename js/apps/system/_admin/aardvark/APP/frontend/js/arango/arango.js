@@ -665,6 +665,8 @@
 
       // remove header
       $('.arangoFrame .headerBar').remove();
+      // remove edge edit feature
+      $('.edge-edit-container').remove();
       // append close button
       $('.arangoFrame .outerDiv').prepend('<i class="fa fa-times"></i>');
       // add close events
