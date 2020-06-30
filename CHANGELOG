@@ -1,6 +1,8 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
+* Web UI: Removed unnecessary menubar entry in case of database node inspection.
+
 * Changing the current users profile icon in the Web UI now renders the new
   icon directly without the need of a full UI browser reload.
 
