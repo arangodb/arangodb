@@ -302,7 +302,7 @@ void OutputAqlItemRow::setCall(AqlCall call) {
   // We cannot create an output row if we still have unreported skipCount
   // in the call.
   TRI_ASSERT(_call.getSkipCount() == 0);
-  _call = call;
+  _call = std::move(call);
 }
 
 SharedAqlItemBlockPtr OutputAqlItemRow::stealBlock() {
