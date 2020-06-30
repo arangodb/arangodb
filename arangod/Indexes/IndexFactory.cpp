@@ -556,6 +556,10 @@ Result IndexFactory::enhanceJsonIndexFulltext(VPackSlice definition,
       return Result(TRI_ERROR_BAD_PARAMETER);
     }
 
+    if (minWordLength <= 0) {
+      minWordLength = 1;
+    }
+
     builder.add("minLength", VPackValue(minWordLength));
 
     bool bck = basics::VelocyPackHelper::getBooleanValue(definition, StaticStrings::IndexInBackground,
