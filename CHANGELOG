@@ -4,6 +4,9 @@ v3.5.6 (XXXX-XX-XX)
 * The `_from` and `_to` attributes of an edge document can now be edited from
   within the UI.
 
+* Changing the current users profile icon in the Web UI now renders the new
+  icon directly without the need of a full UI browser reload.
+
 * Fixed issue ES-598. Web UI now shows correct permissions in case wildcard
   database level and wildcard collection level permissions are both set.
 
