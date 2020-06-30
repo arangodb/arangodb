@@ -1,6 +1,8 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Web UI: Removed unnecessary menubar entry in case of database node inspection.
+
 * The `_from` and `_to` attributes of an edge document can now be edited from
   within the UI.
 
