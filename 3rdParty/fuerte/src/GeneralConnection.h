@@ -177,7 +177,6 @@ class GeneralConnection : public fuerte::Connection {
       me.abortExpiredRequests();
       
       if (!isIdle && (me._writing ||  me._reading)) {
-            FUERTE_LOG_DEBUG << "HTTP-Request timeout\n";
         me._timeoutOnReadWrite = true;
         me._proto.cancel();
         // We simply cancel all ongoing asynchronous operations,

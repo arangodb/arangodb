@@ -426,25 +426,6 @@ void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
                        << std::chrono::duration_cast<std::chrono::milliseconds>(_item->expires - now).count()
                        << " milliseconds\n";
     }
-//    auto item = std::move(_item);
-//
-//    // keepalive timeout may have expired
-//    auto err = translateError(ec, Error::WriteError);
-//    if (this->_timeoutOnReadWrite && err == fuerte::Error::Canceled) {
-//      err = fuerte::Error::Timeout;
-//    }
-//    if (item) { // may be null if connection was canceled
-//      if (ec == asio_ns::error::broken_pipe && nwrite == 0) {  // re-queue
-//        // Note that this has the potential to change the order in which requests
-//        // are sent off from the client call order to something else!
-//        sendRequest(std::move(item->request), item->callback);
-//      } else {
-//        // let user know that this request caused the error
-//        item->callback(err, std::move(item->request), nullptr);
-//      }
-//    } else {
-//      err = Error::Canceled;
-//    }
     
     this->shutdownConnection(translateError(ec, Error::WriteError));
     return;
@@ -480,11 +461,7 @@ void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
                      << ec.message() << "' , this=" << this << "\n";
     
     // Restart connection, will invoke _item cb
-    auto err = translateError(ec, Error::ReadError);
-    if (this->_timeoutOnReadWrite && err == fuerte::Error::Canceled) {
-      err = fuerte::Error::Timeout;
-    }
-    this->shutdownConnection(err);
+    this->shutdownConnection(translateError(ec, Error::ReadError));
     return;
   }
   FUERTE_ASSERT(_item != nullptr);
@@ -537,43 +514,6 @@ void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
   this->asyncReadSome();  // keep reading from socket
   // leave read timeout in place!
 }
-
-///// Set timeout accordingly
-//template <SocketType ST>
-//void H1Connection<ST>::setTimeout(std::chrono::milliseconds millis, TimeoutType type) {
-//  if (millis.count() == 0) {
-//    this->_proto.timer.cancel();
-//    return;
-//  }
-//
-//  _timeoutOnReadWrite = false;
-//
-//  // expires_after cancels pending ops
-//  this->_proto.timer.expires_after(millis);
-//  this->_proto.timer.async_wait(
-//      [type, self = Connection::weak_from_this()](auto const& ec) {
-//        std::shared_ptr<Connection> s;
-//        if (ec || !(s = self.lock())) {  // was canceled / deallocated
-//          return;
-//        }
-//        auto* me = static_cast<H1Connection<ST>*>(s.get());
-//        if ((type == TimeoutType::Write && me->_writing) ||
-//            (type == TimeoutType::Read && me->_reading)) {
-//          FUERTE_LOG_DEBUG << "HTTP-Request timeout\n";
-//          me->_timeoutOnReadWrite = true;
-//          me->_proto.cancel();
-//          // We simply cancel all ongoing asynchronous operations, the completion
-//          // handlers will do the rest.
-//          return;
-//        } else if (type == TimeoutType::Idle) {
-//          if (!me->_active && me->_state == Connection::State::Connected) {
-//            me->shutdownConnection(Error::CloseRequested);
-//          }
-//        }
-//        // In all other cases we do nothing, since we have been posted to the
-//        // iocontext but the thing we should be timing out has already completed.
-//      });
-//}
 
 /// abort ongoing / unfinished requests
 template <SocketType ST>

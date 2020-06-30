@@ -855,15 +855,14 @@ void H2Connection<ST>::abortExpiredRequests() {
 template <SocketType ST>
 std::chrono::steady_clock::time_point H2Connection<ST>::getTimeout(bool& isIdle) {
   // set to smallest point in time
-  auto expires = std::chrono::steady_clock::time_point::max();
   if (_streams.empty()) {  // use default connection timeout
-    expires = std::chrono::steady_clock::now() + this->_config._idleTimeout;
     isIdle = true;
-  } else {
-    for (auto const& pair : _streams) {
-      expires = std::min(expires, pair.second->expires);
-    }
-    isIdle = false;
+    return std::chrono::steady_clock::now() + this->_config._idleTimeout;
+  }
+  isIdle = false;
+  auto expires = std::chrono::steady_clock::time_point::max();
+  for (auto const& pair : _streams) {
+    expires = std::min(expires, pair.second->expires);
   }
   return expires;
 }
