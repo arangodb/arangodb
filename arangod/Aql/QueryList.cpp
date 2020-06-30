@@ -162,14 +162,6 @@ void QueryList::remove(Query* query) {
       }
 
       std::string q = extractQueryString(query, _maxQueryStringLength);
-
-      QueryProfile* profile = query->profile();
-      double loadTime = 0.0;
-
-      if (profile != nullptr) {
-        loadTime = profile->timer(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
-      }
-
       std::string bindParameters;
       if (_trackBindVars) {
         // also log bind variables
@@ -184,20 +176,13 @@ void QueryList::remove(Query* query) {
         }
       }
 
-      if (loadTime >= 0.1) {
-        LOG_TOPIC("d728e", WARN, Logger::QUERIES)
-            << "slow " << (isStreaming ? "streaming " : "") << "query: '" << q
-            << "'" << bindParameters << ", took: " << Logger::FIXED(now - started)
-            << " s, loading took: " << Logger::FIXED(loadTime) << " s";
-      } else {
-        LOG_TOPIC("8bcee", WARN, Logger::QUERIES)
-            << "slow " << (isStreaming ? "streaming " : "") << "query: '" << q << "'"
-            << bindParameters << ", took: " << Logger::FIXED(now - started) << " s";
-      }
+      LOG_TOPIC("8bcee", WARN, Logger::QUERIES)
+          << "slow " << (isStreaming ? "streaming " : "") << "query: '" << q << "'"
+          << bindParameters << ", took: " << Logger::FIXED(now - started) << " s";
 
       _slow.emplace_back(query->id(), std::move(q),
                          _trackBindVars ? query->bindParameters() : nullptr,
-                         started, now - started,
+                         query->startTimeStamp(), now - started,
                          query->killed() ? QueryExecutionState::ValueType::KILLED
                                          : QueryExecutionState::ValueType::FINISHED,
                          isStreaming);
@@ -287,7 +272,7 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
 
       result.emplace_back(query->id(), extractQueryString(query, maxLength),
                           _trackBindVars ? query->bindParameters() : nullptr,
-                          started, now - started,
+                          query->startTimeStamp(), now - started,
                           query->killed() ? QueryExecutionState::ValueType::KILLED
                                           : query->state(),
                           query->queryOptions().stream);
