@@ -1259,9 +1259,9 @@ function IResearchFeatureDDLTestSuite () {
       assertNotEqual(null, db._collection("_analyzers"));
       try { db._dropDatabase(dbName); } catch (e) {}
       try { analyzers.remove(analyzerName); } catch (e) {}
-      assertEqual(0, db._analyzers.count());
       db._createDatabase(dbName);
       db._useDatabase(dbName);
+      assertEqual(0, db._analyzers.count());
       analyzers.save(analyzerName, "identity");
       // recreating database
       db._useDatabase("_system");
@@ -1271,6 +1271,7 @@ function IResearchFeatureDDLTestSuite () {
 
       assertNull(analyzers.analyzer(analyzerName));
       // this should be no name conflict
+      assertEqual(0, db._analyzers.count());
       analyzers.save(analyzerName, "text", {"stopwords" : [], "locale":"en"});
       assertEqual(1, db._analyzers.count());
 
