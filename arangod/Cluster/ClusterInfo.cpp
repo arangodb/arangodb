@@ -315,6 +315,7 @@ void ClusterInfo::cleanup() {
     _currentCollections.clear();
     _shardIds.clear();
   }
+
 }
 
 void ClusterInfo::triggerBackgroundGetIds() {
@@ -1571,7 +1572,7 @@ std::shared_ptr<LogicalView> ClusterInfo::getView(DatabaseID const& databaseID,
   }
 
   if (!_planProt.isValid) {
-    waitForPlan(1).wait();
+    return nullptr;
   }
 
   READ_LOCKER(readLocker, _planProt.lock);
@@ -1660,7 +1661,7 @@ QueryAnalyzerRevisions ClusterInfo::getQueryAnalyzersRevision(
             systemDbRevision = sysIt->second->getRevision();
           }
         } else {
-          // micro-optimization. If we are querying system database 
+          // micro-optimization. If we are querying system database
           // than current always equal system. And all requests for revision
           // will be resolved only with systemDbRevision member. So we copy
           // current to system and set current to MIN. As MIN value is default
@@ -3193,8 +3194,6 @@ std::pair<Result, AnalyzersRevision::Revision> ClusterInfo::startModifyingAnalyz
       auto results = res.slice().get("results");
       if (results.isArray() && results.length() > 0) {
         waitForPlan(results[0].getNumber<uint64_t>()).get();
-      } else {
-        TRI_ASSERT(false);
       }
     }
     break;
@@ -3297,8 +3296,6 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(DatabaseID const& databas
       auto results = res.slice().get("results");
       if (results.isArray() && results.length() > 0) {
         waitForPlan(results[0].getNumber<uint64_t>()).get();
-      } else {
-        TRI_ASSERT(false);
       }
     }
     break;
@@ -3389,8 +3386,6 @@ Result ClusterInfo::setCollectionStatusCoordinator(std::string const& databaseNa
   if (res.successful()) {
     if (res.slice().get("results").length()) {
       waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
-    } else {
-      TRI_ASSERT(false);
     }
     return Result();
   }
@@ -3749,8 +3744,6 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
         } else {
           if (result.slice().get("results").length()) {
             waitForPlan(result.slice().get("results")[0].getNumber<uint64_t>()).get();
-          } else {
-            TRI_ASSERT(false);
           }
         }
 
@@ -4013,8 +4006,6 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   }
   if (result.slice().get("results").length()) {
     waitForPlan(result.slice().get("results")[0].getNumber<uint64_t>()).get();
-  } else {
-    TRI_ASSERT(false);
   }
 
   if (numberOfShards == 0) {  // smart "dummy" collection has no shards
@@ -4941,8 +4932,6 @@ arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
   }
   if (r.slice().get("results").length()) {
     waitForPlan(r.slice().get("results")[0].getNumber<uint64_t>()).get();
-  } else {
-    TRI_ASSERT(false);
   }
 
   return arangodb::Result();
@@ -5301,6 +5290,20 @@ void ClusterInfo::shutdownSyncers() {
   _planSyncer->beginShutdown();
   _curSyncer->beginShutdown();
 }
+
+
+void ClusterInfo::waitForSyncersToStop() {
+  auto start = std::chrono::steady_clock::now();
+  while(_planSyncer->isRunning() || _curSyncer->isRunning()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    if (std::chrono::steady_clock::now() - start > std::chrono::seconds(30)) {
+      LOG_TOPIC("b8a5d", FATAL, Logger::CLUSTER)
+        << "exiting prematurely as we failed to end syncer threads in ClusterInfo";
+      FATAL_ERROR_EXIT();
+    }
+  }
+}
+
 
 VPackSlice PlanCollectionReader::indexes() {
   VPackSlice res = _collection.get("indexes");

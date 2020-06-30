@@ -662,7 +662,10 @@ void ClusterFeature::stop() {
     // log off the server from the agency, without permanently removing it from
     // the cluster setup.
     ServerState::instance()->logoff(10.0);
-  } 
+  }
+
+  // Make sure ClusterInfo's syncer threads have stopped.
+  _clusterInfo->waitForSyncersToStop();
 
   AsyncAgencyCommManager::INSTANCE->setStopping(true);
   shutdownAgencyCache();
