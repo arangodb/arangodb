@@ -92,6 +92,7 @@ class InputAqlItemRow {
   // the _same_ index.
   [[nodiscard]] bool isSameBlockAndIndex(InputAqlItemRow const& other) const noexcept;
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   // This checks whether the rows are equivalent, in the sense that they hold
   // the same number of registers and their entry-AqlValues compare equal.
   // In maintainer mode, it also asserts that the number of registers of the
@@ -100,14 +101,13 @@ class InputAqlItemRow {
   // Invalid rows are considered equivalent.
   [[nodiscard]] bool equates(InputAqlItemRow const& other,
                              velocypack::Options const* options) const noexcept;
+#endif
 
   bool isInitialized() const noexcept;
 
   explicit operator bool() const noexcept;
 
   bool isFirstDataRowInBlock() const noexcept;
-
-  bool isLastRowInBlock() const noexcept;
 
   bool blockHasMoreDataRowsAfterThis() const noexcept;
 
