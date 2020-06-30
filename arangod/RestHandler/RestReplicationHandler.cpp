@@ -2916,7 +2916,7 @@ void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
 void RestReplicationHandler::handleCommandGetIdForReadLockCollection() {
   TRI_ASSERT(ServerState::instance()->isDBServer());
 
-  std::string id = std::to_string(TRI_NewTickServer());
+  std::string id = std::to_string(transaction::Context::makeTransactionId());
   VPackBuilder b;
   {
     VPackObjectBuilder bb(&b);

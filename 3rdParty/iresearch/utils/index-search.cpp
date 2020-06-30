@@ -511,7 +511,7 @@ int search(
     SCOPED_TIMER("Order build time");
     irs::order sort;
 
-    sort.add(true, scr);
+    sort.add(true, std::move(scr));
     order = sort.prepare();
   }
 
@@ -611,20 +611,16 @@ int search(
         {
           irs::timer_utils::scoped_timer timer(*(execution_timers.stat[size_t(task->category)]));
 
-          const float EMPTY_SCORE = 0.f;
-
           for (auto& segment: reader) {
             auto docs = filter->execute(segment, order); // query segment
-            const irs::score& score = irs::score::get(*docs);
+            const irs::score* score = irs::get<irs::score>(*docs);
+            assert(score);
             const irs::document* doc = irs::get<irs::document>(*docs);
+            assert(doc);
 
-            const auto& score_value = &score != &irs::score::no_score()
-              ? order.get<float>(score.c_str(), 0)
-              : EMPTY_SCORE;
-            
             while (docs->next()) {
               ++doc_count;
-              score.evaluate();
+              const float_t score_value = *reinterpret_cast<const float_t*>(score->evaluate());
 
               if (sorted.size() < limit) {
                 sorted.emplace_back(score_value, doc->value);

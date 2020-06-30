@@ -27,26 +27,22 @@ NS_LOCAL
 using namespace irs;
 
 sort::ptr make_json(const string_ref& /*args*/) {
-  return memory::make_shared<boost_sort>();
+  return memory::make_unique<boost_sort>();
 }
 
-struct boost_score_ctx : score_ctx {
-  explicit boost_score_ctx(boost_t boost)
-    : boost(boost) {
-  }
-
-  boost_t boost;
-};
-
-struct volatile_boost_score_ctx : boost_score_ctx {
-  explicit volatile_boost_score_ctx(
+struct volatile_boost_score_ctx : score_ctx {
+  volatile_boost_score_ctx(
+      byte_type* score_buf,
       const filter_boost* volatile_boost,
       boost_t boost) noexcept
-    : boost_score_ctx(boost),
+    : score_buf(score_buf),
+      boost(boost),
       volatile_boost(volatile_boost) {
     assert(volatile_boost);
   }
 
+  byte_type* score_buf;
+  boost_t boost;
   const filter_boost* volatile_boost;
 };
 
@@ -55,30 +51,33 @@ struct prepared final : prepared_sort_basic<boost_t> {
     return irs::flags::empty_instance();
   }
 
-  std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
-      const irs::sub_reader&,
-      const irs::term_reader&,
-      const irs::byte_type*,
+  score_function prepare_scorer(
+      const sub_reader&,
+      const term_reader&,
+      const byte_type*,
+      byte_type* score_buf,
       const irs::attribute_provider& attrs,
       irs::boost_t boost) const override {
-
     auto* volatile_boost = irs::get<irs::filter_boost>(attrs);
 
     if (!volatile_boost) {
+      sort::score_cast<boost_t>(score_buf) = boost;
+
       return {
-        irs::score_ctx_ptr(new boost_score_ctx(boost)), // FIXME can avoid allocation
-        [](const irs::score_ctx* ctx, irs::byte_type* score) noexcept {
-          auto& state = *reinterpret_cast<const boost_score_ctx*>(ctx);
-          sort::score_cast<boost_t>(score) = state.boost;
+        reinterpret_cast<score_ctx*>(score_buf),
+        [](irs::score_ctx* ctx) noexcept -> const byte_type* {
+          return reinterpret_cast<byte_type*>(ctx);
         }
       };
     }
 
     return {
-      irs::score_ctx_ptr(new volatile_boost_score_ctx(volatile_boost, boost)), // FIXME can avoid allocation
-      [](const irs::score_ctx* ctx, irs::byte_type* score) noexcept {
-        auto& state = *reinterpret_cast<const volatile_boost_score_ctx*>(ctx);
-        sort::score_cast<boost_t>(score) = state.volatile_boost->value*state.boost;
+      memory::make_unique<volatile_boost_score_ctx>(score_buf, volatile_boost, boost),
+      [](irs::score_ctx* ctx) noexcept -> const byte_type* {
+        auto& state = *reinterpret_cast<volatile_boost_score_ctx*>(ctx);
+        sort::score_cast<boost_t>(state.score_buf) = state.volatile_boost->value*state.boost;
+
+        return state.score_buf;
       }
     };
   }

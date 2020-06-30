@@ -196,13 +196,12 @@ auto AqlCallStack::shadowRowDepthToSkip() const -> size_t {
   TRI_ASSERT(needToCountSubquery());
   for (size_t i = 0; i < _operations.size(); ++i) {
     auto& call = _operations.at(i);
-    if (call.peekNextCall().needSkipMore() || call.peekNextCall().hasLimit()) {
+    auto const& nextCall = call.peekNextCall();
+     if (nextCall.needSkipMore() || nextCall.getLimit() == 0) {
       return _operations.size() - i - 1;
     }
   }
-  // unreachable
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+  return 0;
 }
 
 auto AqlCallStack::modifyCallAtDepth(size_t depth) -> AqlCall& {
@@ -216,6 +215,14 @@ auto AqlCallStack::modifyCallAtDepth(size_t depth) -> AqlCall& {
 auto AqlCallStack::modifyCallListAtDepth(size_t depth) -> AqlCallList& {
   TRI_ASSERT(_operations.size() > depth);
   return _operations.at(_operations.size() - 1 - depth);
+}
+
+auto AqlCallStack::getCallAtDepth(size_t depth) const -> AqlCall const& {
+  // depth 0 is back of vector
+  TRI_ASSERT(_operations.size() > depth);
+  // Take the depth-most from top of the vector.
+  auto& callList = _operations.at(_operations.size() - 1 - depth);
+  return callList.peekNextCall();
 }
 
 auto AqlCallStack::modifyTopCall() -> AqlCall& {
