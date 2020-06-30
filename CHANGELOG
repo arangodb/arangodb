@@ -1,13 +1,19 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Allow changing collection properties for smart edge collections as well. 
+  Previously, collection property changes for smart edge collections were not
+  propagated.
+
 * Disallow using V8 dependent functions in SEARCH statement.
 
 * Remove superflous `%>` output in the UI modal dialog in case the JSON editor
   was embedded.
 
 * The Web UI now displays an error message inside the node information view in
-  case the user has no access to retreive the neccessary information.
+  case the user has no access to retrieve the neccessary information.
+
+* Fixed a misleading error message in AQL.
 
 * The `_from` and `_to` attributes of an edge document can now be edited from
   within the UI.

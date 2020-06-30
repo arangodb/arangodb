@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTypeOf, assertNotEqual, assertTrue, assertFalse, assertUndefined, fail */
+/*global assertEqual, assertTypeOf, assertNotEqual, assertTrue, assertFalse, assertUndefined, assertNotUndefined, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the collection interface
@@ -81,7 +81,7 @@ function ValidationBasicsSuite () {
         },
         message : "Json-Schema validation failed",
       };
-      testCollection = db._create(testCollectionName, { "schema" :  validatorJson });
+      testCollection = db._create(testCollectionName, { schema :  validatorJson, numberOfShards: 3 });
     },
 
     tearDown : () => {
@@ -94,12 +94,12 @@ function ValidationBasicsSuite () {
     testProperties : () => {
       const v = validatorJson;
       var props = testCollection.properties();
-      assertTrue(props !== undefined);
-      assertTrue(props.schema !== undefined);
+      assertNotUndefined(props);
+      assertNotUndefined(props.schema);
       assertEqual(props.schema.rule, v.rule);
       assertEqual(props.schema.message, v.message);
       assertEqual(props.schema.level, v.level);
-  },
+    },
 
     testPropertiesUpdate : () => {
       let v =  validatorJson;
@@ -111,7 +111,7 @@ function ValidationBasicsSuite () {
       assertEqual(props.schema.rule, v.rule);
       assertEqual(props.schema.message, v.message);
       assertEqual(props.schema.level, v.level);
-      assertTrue(props !== undefined);
+      assertNotUndefined(props);
     },
 
     testPropertiesUpdateNoObject : () => {
