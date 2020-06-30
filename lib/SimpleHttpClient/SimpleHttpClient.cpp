@@ -566,13 +566,19 @@ void SimpleHttpClient::setRequest(rest::RequestType method, std::string const& l
   }
 
   // do basic authorization
+  size_t posBeforeCredentials = 0;
+  size_t posBehindCredentials = 0;
   if (!_params._jwt.empty()) {
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Authorization: bearer "));
+    posBeforeCredentials = _writeBuffer.size();
     _writeBuffer.appendText(_params._jwt);
+    posBehindCredentials = _writeBuffer.size();
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
   } else if (!_params._basicAuth.empty()) {
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Authorization: Basic "));
+    posBeforeCredentials = _writeBuffer.size();
     _writeBuffer.appendText(_params._basicAuth);
+    posBehindCredentials = _writeBuffer.size();
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
   }
 
@@ -597,7 +603,16 @@ void SimpleHttpClient::setRequest(rest::RequestType method, std::string const& l
 
   _writeBuffer.ensureNullTerminated();
 
-  LOG_TOPIC("12c4b", TRACE, arangodb::Logger::HTTPCLIENT) << "request: " << _writeBuffer;
+  if (posBeforeCredentials == 0 && posBehindCredentials == 0) {
+    LOG_TOPIC("12c4c", TRACE, arangodb::Logger::HTTPCLIENT)
+        << "request: " << _writeBuffer;
+  } else {
+    LOG_TOPIC("12c4b", TRACE, arangodb::Logger::HTTPCLIENT)
+        << "request: " << std::string_view(_writeBuffer.data(), posBeforeCredentials)
+        << "SENSITIVE_DETAILS_HIDDEN"
+        << std::string_view(_writeBuffer.data() + posBehindCredentials,
+                            _writeBuffer.size() - posBehindCredentials);
+  }
 
   if (_state == DEAD) {
     _connection->resetNumConnectRetries();
