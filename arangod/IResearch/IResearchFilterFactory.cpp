@@ -2080,6 +2080,13 @@ namespace iresearch {
 
 /*static*/ arangodb::Result FilterFactory::filter(irs::boolean_filter* filter, QueryContext const& ctx,
                                       arangodb::aql::AstNode const& node) {
+  if (node.willUseV8()) {
+    return {
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "using V8 dependent function is not allowed in SEARCH statement"
+    };
+  }
+
   // The analyzer is referenced in the FilterContext and used during the
   // following ::filter() call, so may not be a temporary.
   FieldMeta::Analyzer analyzer = FieldMeta::Analyzer();
