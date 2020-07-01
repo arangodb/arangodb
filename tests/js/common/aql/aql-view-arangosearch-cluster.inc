@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse*/
+/*global assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse, fail*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for iresearch usage
@@ -32,6 +32,7 @@
   var db = require("@arangodb").db;
   const analyzers = require("@arangodb/analyzers");
   const ERRORS = require("@arangodb").errors;
+  const aqlfunctions = require("@arangodb/aql/functions");
 
   // this file is loaded into the various shard / rf test files
   return function (args) {
@@ -47,6 +48,9 @@
 
     return {
       setUpAll : function () {
+        aqlfunctions.unregisterGroup("UnitTests::");
+        aqlfunctions.register("UnitTests::tryme::foo", function (what) { return what * 2; }, true);
+
         analyzers.save("text_en", "text", "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] }", [ "frequency", "norm", "position" ]);
         db._drop("UnitTestsCollection");
         c = db._create("UnitTestsCollection", args);
@@ -133,6 +137,7 @@
       },
 
       tearDownAll : function () {
+        aqlfunctions.unregisterGroup("UnitTests::");
         meta = { links : { "UnitTestsCollection": null } };
         v.properties(meta);
         v.drop();
@@ -153,6 +158,15 @@
       testViewInFunctionCall : function () {
         try {
           db._query("FOR doc IN 1..1 RETURN COUNT(UnitTestsView)");
+        } catch (e) {
+          assertEqual(ERRORS.ERROR_NOT_IMPLEMENTED.code, e.errorNum);
+        }
+      },
+
+      testV8FunctionInSearch: function () {
+        try {
+          db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' && UnitTests::tryme::foo(2) == 4 OPTIONS { waitForSync: true } RETURN doc");
+          fail();
         } catch (e) {
           assertEqual(ERRORS.ERROR_NOT_IMPLEMENTED.code, e.errorNum);
         }

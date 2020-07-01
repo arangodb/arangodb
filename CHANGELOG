@@ -3,6 +3,24 @@ v3.5.6 (XXXX-XX-XX)
 
 * Returned `AQL_WARNING()` to emit warnings from UDFs.
 
+* Allows restoring collections from v3.3.0 with their all-numeric collection
+  GUID values, by creating a new, unambiguous collection GUID for them.
+  v3.3.0 had a bug because it created all-numeric GUID values, which can be
+  confused with numeric collection ids in lookups. v3.3.1 already changed the
+  GUID routine to produce something non-numeric already, but collections created
+  with v3.3.0 can still have an ambiguous GUID. This fix adjusts the restore
+  routine to drop such GUID values, so it only changes something if v3.3.0
+  collections are dumped, dropped on the server and then restored with the
+  flawed GUIDs.
+
+* The Web UI's replication view is now checking the replication state
+  automatically without the need of a manual reload.
+
+* Disallow using V8 dependent functions in SEARCH statement.
+  
+* Changing the current users profile icon in the Web UI now renders the new
+  icon directly without the need of a full UI browser reload.
+
 * Fixed issue ES-598. Web UI now shows correct permissions in case wildcard
   database level and wildcard collection level permissions are both set.
 
