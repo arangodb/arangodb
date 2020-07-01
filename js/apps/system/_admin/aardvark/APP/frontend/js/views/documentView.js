@@ -267,7 +267,7 @@
       // hide text & insert input
       $('#document-' + type).hide();
       $('#document-' + type).after(
-        '<input type="text" id="input-edit-' + type + '" value=' + arangoHelper.escapeHtml(edgeId) + 'placeholder="' + arangoHelper.escapeHtml(edgeId) +'">'
+        '<input type="text" id="input-edit-' + type + '" value="' + arangoHelper.escapeHtml(edgeId) + '" placeholder="' + arangoHelper.escapeHtml(edgeId) +'">'
       );
     },
 
