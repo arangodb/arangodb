@@ -135,9 +135,8 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
     arangodb::network::EndpointSpec spec;
     int res = resolveDestination(*pool->config().clusterInfo, dest, spec);
     if (res != TRI_ERROR_NO_ERROR) {
-      auto errorPromise = futures::Promise<network::Response>::makeEmpty();
-      errorPromise.setException(arangodb::basics::Exception(res, __FILE__, __LINE__));
-      return errorPromise.getFuture();
+      return futures::makeFuture<network::Response>(
+          arangodb::basics::Exception(res, __FILE__, __LINE__));
     }
     TRI_ASSERT(!spec.endpoint.empty());
 
