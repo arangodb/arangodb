@@ -75,8 +75,8 @@ actions.defineHttp({
       return;
     }
 
-    let isCoordinator = serverId.substr(0, 4) == 'CRDN';
-    let isDBServer = serverId.substr(0, 4) == 'PRMR';
+    let isCoordinator = serverId.substr(0, 4) === 'CRDN';
+    let isDBServer = serverId.substr(0, 4) === 'PRMR';
     if (!isCoordinator && !isDBServer) {
       actions.resultError(
         req, res, actions.HTTP_BAD, 'couldn\'t determine role for server id ' + serverId);
@@ -90,18 +90,19 @@ actions.defineHttp({
       // need to make sure it is not responsible for anything
       used = [];
       let curVersion = amongCurrentShardsOrVersion(serverId);
-      if (curVersion == 0) {
+      if (curVersion === 0) {
         wait(1.0);
         continue;
       }
       let planVersion = amongPlanShardsOrVersion(serverId);
-      if (planVersion == 0) {
+      if (planVersion === 0) {
         wait(1.0);
         continue;
       }
 
       let delOp = {'op': 'delete'};
 
+      var preconditions = {};
       preconditions['/arango/Plan/Version'] = {'old': planVersion};
       preconditions['/arango/Current/Version'] = {'old': curVersion};
       preconditions['/arango/Supervision/Health/' + serverId + '/Status'] = {'old': 'FAILED'};
@@ -148,7 +149,7 @@ actions.defineHttp({
       wait(1.0);
     }  // while count
     actions.resultError(req, res, actions.HTTP_PRECONDITION_FAILED,
-      'the server is either not failed or is locked or is still in use.';
+                        'the server is either not failed or is locked or is still in use.');
   }
 });
 
