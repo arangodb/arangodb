@@ -24,8 +24,8 @@
 ### cmdline
 
 * Name: cmdline
-* Version: 2009
-* Date: 2009
+* Version: a68095a
+* Date: 2012-10-22 10:23:16Z
 * Project Home: https://github.com/tanakh/cmdline
 * License: https://github.com/tanakh/cmdline/blob/master/LICENSE
 * License Name: BSD 3-clause "New" or "Revised" License
@@ -86,8 +86,8 @@ _Enterprise Edition only_
 ### frozen
 
 * Name: frozen
-* Version: 1.1.0
-* Date: 2020
+* Version: c5bfada
+* Date: 2020-04-09 12:05:27Z
 * Project Home: https://github.com/serge-sans-paille/frozen
 * License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/iresearch/external/frozen/LICENSE
 * License Name: Apache License 2.0
@@ -162,16 +162,6 @@ _Enterprise Edition only_
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
-#### gtest
-
-* Name: Google Test (gtest)
-* Version: (see V8)
-* Date: (see V8)
-* Project Home: (bundled with V8)
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v5.7.492.77/testing/gtest/include/gtest/gtest_prod.h
-* License Name: BSD 3-clause "New" or "Revised" License
-* License Id: BSD-3-Clause
-
 #### gyp
 
 * Name: gyp
@@ -243,11 +233,11 @@ _Enterprise Edition only_
 * License Name: PCRE LICENCE
 * License Id: PCRE
 
-#### rapid json
+#### rapidjson
 
-* Name: RapidJson
-* Version: 2015
-* Date: 2015
+* Name: RapidJSON
+* Version: 68c96e9
+* Date: 2017-05-27 08:26:35Z
 * Project Home: https://rapidjson.org/
 * License: https://github.com/arangodb/arangodb/blob/devel/3rdParty/iresearch/external/rapidjson/rapidjson/encodings.h
 * License Name: MIT license
@@ -256,8 +246,8 @@ _Enterprise Edition only_
 ### simdcomp
 
 * Name: simdcomp
-* Version: 2019
-* Date: 2019
+* Version: 4e8f8b6
+* Date: 2018-03-25 14:38:21Z
 * Project Home: https://github.com/lemire/simdcomp
 * License: https://github.com/lemire/simdcomp/LICENSE
 * License Name: BSD 3-clause "New" or "Revised" License
@@ -475,8 +465,8 @@ _Enterprise Edition only_
 ### snowball
 
 * Name: snowball
-* Version: 
-* Date: 2018-11-29 15:49:17Z
+* Version: 293ff61
+* Date: 2019-12-14 12:22:30Z
 * Project Home: https://snowballstem.org/
 * License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/snowball/COPYING
 * License Name: BSD 3-clause "New" or "Revised" License
