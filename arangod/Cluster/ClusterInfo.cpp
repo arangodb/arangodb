@@ -5300,6 +5300,20 @@ void ClusterInfo::shutdownSyncers() {
   _curSyncer->beginShutdown();
 }
 
+
+void ClusterInfo::waitForSyncersToStop() {
+  auto start = std::chrono::steady_clock::now();
+  while(_planSyncer->isRunning() || _curSyncer->isRunning()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    if (std::chrono::steady_clock::now() - start > std::chrono::seconds(30)) {
+      LOG_TOPIC("b8a5d", FATAL, Logger::CLUSTER)
+        << "exiting prematurely as we failed to end syncer threads in ClusterInfo";
+      FATAL_ERROR_EXIT();
+    }
+  }
+}
+
+
 VPackSlice PlanCollectionReader::indexes() {
   VPackSlice res = _collection.get("indexes");
   if (res.isNone()) {

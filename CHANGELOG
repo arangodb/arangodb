@@ -1,6 +1,8 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* ClusterInfo will wait for syncer threads to shutdown.
+
 * Correct some log entries.
 
 * Allow changing collection properties for smart edge collections as well. 
