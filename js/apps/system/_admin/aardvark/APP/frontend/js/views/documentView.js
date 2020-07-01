@@ -276,7 +276,7 @@
       this.setEditMode(type, false);
 
 
-      var newValue = $('#input-edit' + type).val();
+      var newValue = $('#input-edit-' + type).val();
       var changed = false;
       if (type === 'from') {
         // if value got changed
