@@ -635,7 +635,7 @@ void SimpleHttpClient::setRequest(rest::RequestType method, std::string const& l
     for (size_t i = 0; i < exclusions.size(); ++i) {
       LOG_TOPIC("12c4b", TRACE, arangodb::Logger::HTTPCLIENT)
           << "request: "
-          << std::string_view(_writeBuffer.data() + pos, exclusions[i].first)
+          << std::string_view(_writeBuffer.data() + pos, exclusions[i].first - pos)
           << "SENSITIVE_DETAILS_HIDDEN";
       pos = exclusions[i].second;
     }
