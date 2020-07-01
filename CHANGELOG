@@ -3,6 +3,10 @@ v3.7.1-rc.1 (XXXX-XX-XX)
 
 * Correct some log entries.
 
+* Allow changing collection properties for smart edge collections as well. 
+  Previously, collection property changes for smart edge collections were not
+  propagated.
+
 * Fixed BTS-110: Fulltext index with minLength <= 0 not allowed.
 
 * Web UI: Removed unnecessary menubar entry in case of database node inspection.
@@ -17,7 +21,7 @@ v3.7.1-rc.1 (XXXX-XX-XX)
   was embedded.
 
 * The Web UI now displays an error message inside the node information view in
-  case the user has no access to retreive the neccessary information.
+  case the user has no access to retrieve the neccessary information.
 
 * The `_from` and `_to` attributes of an edge document can now be edited from
   within the UI.
@@ -84,7 +88,7 @@ v3.7.1-rc.1 (XXXX-XX-XX)
 * In case of a graph deletion failure, the Web UI displays now the correct
   error message.
 
-* Privatised load plan / current in cluster info and cleanup following agency
+* Privatized load plan / current in cluster info and cleanup following agency
   cache implementation.
 
 * Allow removal of existing schemas by saving a schema of either `null` or `{}`
