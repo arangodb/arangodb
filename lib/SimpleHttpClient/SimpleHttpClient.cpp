@@ -35,6 +35,8 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <boost/algorithm/string/predicate.hpp>
+
 #include <chrono>
 #include <thread>
 
