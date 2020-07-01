@@ -245,11 +245,12 @@ void VstConnection<ST>::asyncWriteNextRequest() {
     bool success = this->_queue.pop(ptr);
     FUERTE_ASSERT(success);
   }
-  uint32_t q = this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
-  FUERTE_ASSERT(q > 0);
+  std::shared_ptr<RequestItem> item(ptr);
   FUERTE_ASSERT(ptr != nullptr);
   
-  std::shared_ptr<RequestItem> item(ptr);
+  uint32_t q = this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
+  FUERTE_ASSERT(q > 0);
+
   _messages.emplace(item->_messageID, item);  // add message to store
   _numMessages.fetch_add(1, std::memory_order_relaxed);
 
@@ -259,7 +260,7 @@ void VstConnection<ST>::asyncWriteNextRequest() {
   auto buffers = item->prepareForNetwork(_vstVersion);
   asio_ns::async_write(
       this->_proto.socket, std::move(buffers),
-      [self = Connection::shared_from_this(), req(std::move(item))](
+      [self(Connection::shared_from_this()), req(std::move(item))](
           auto const& ec, std::size_t nwrite) mutable {
         auto& me = static_cast<VstConnection<ST>&>(*self);
         me._writing = false;
