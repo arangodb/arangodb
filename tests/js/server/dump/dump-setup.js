@@ -284,6 +284,11 @@
   ));
   const FoxxManager = require('@arangodb/foxx/manager');
   FoxxManager.install(SERVICE_PATH, '/test');
+  print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+  db._useDatabase('UnitTestsDumpDst');
+  // trigger analyzers cache population in dst database
+  analyzers.save("custom_dst", "delimiter", { delimiter : " " }, [ "frequency" ]);
+  
 })();
 
 return {

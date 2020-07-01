@@ -45,6 +45,7 @@
 #include "Containers/MerkleTree.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Replication/DatabaseInitialSyncer.h"
@@ -1455,6 +1456,14 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
   res = processRestoreDataBatch(trx, colName, generateNewRevisionIds);
   res = trx.finish(res);
 
+  // for single-server we just trigger analyzers cache reload
+  // once replication updated _analyzers collection. This
+  // will make all newly imported analyzers available
+  if (res.ok() && colName == StaticStrings::AnalyzersCollection &&
+      ServerState::instance()->isSingleServer() &&
+      _vocbase.server().hasFeature<iresearch::IResearchAnalyzerFeature>()) {
+    _vocbase.server().getFeature<iresearch::IResearchAnalyzerFeature>().invalidate(_vocbase);
+  }
   return res;
 }
 
