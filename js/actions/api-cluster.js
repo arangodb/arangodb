@@ -100,8 +100,6 @@ actions.defineHttp({
         continue;
       }
 
-      let delOp = {'op': 'delete'};
-
       var preconditions = {};
       preconditions['/arango/Plan/Version'] = {'old': planVersion};
       preconditions['/arango/Current/Version'] = {'old': curVersion};
@@ -113,16 +111,16 @@ actions.defineHttp({
       if (!checkServerLocked(serverId)) {
         let operations = {};
         if (isCoordinator) {
-          operations['/arango/Plan/Coordinators/' + serverId] = delOp;
-          operations['/arango/Current/Coordinators/' + serverId] = delOp;
+          operations['/arango/Plan/Coordinators/' + serverId] = {'op': 'delete'};
+          operations['/arango/Current/Coordinators/' + serverId] = {'op': 'delete'};
         } else {
-          operations['/arango/Plan/DBServers/' + serverId] = delOp;
-          operations['/arango/Current/DBServers/' + serverId] = delOp;
+          operations['/arango/Plan/DBServers/' + serverId] = {'op': 'delete'};
+          operations['/arango/Current/DBServers/' + serverId] = {'op': 'delete'};
         }
-        operations['/arango/Current/ServersRegistered/' + serverId] = delOp;
-        operations['/arango/Supervision/Health/' + serverId] = delOp;
-        operations['/arango/Target/MapUniqueToShortID/' + serverId] = delOp;
-        operations['/arango/Current/ServersKnown/' + serverId] = delOp;
+        operations['/arango/Current/ServersRegistered/' + serverId] = {'op': 'delete'};
+        operations['/arango/Supervision/Health/' + serverId] = {'op': 'delete'};
+        operations['/arango/Target/MapUniqueToShortID/' + serverId] = {'op': 'delete'};
+        operations['/arango/Current/ServersKnown/' + serverId] = {'op': 'delete'};
         operations['/arango/Target/RemovedServers/' + serverId] = {'op': 'set', 'new': (new Date()).toISOString()};
 
         console.info ([[operations, preconditions]]);
