@@ -72,7 +72,7 @@
 #endif
 
 /*
- * Sanity check.
+ * Validity check.
  *
  * XXH3 only requires these features to be efficient:
  *
