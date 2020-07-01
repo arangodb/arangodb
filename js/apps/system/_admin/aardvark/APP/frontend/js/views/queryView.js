@@ -165,7 +165,11 @@
 
     initQueryImport: function () {
       var self = this;
-      self.allowUpload = false;
+
+      if (self.allowUpload) {
+        $('#confirmQueryImport').removeClass('disabled');
+      }
+
       $('#importQueries').change(function (e) {
         self.files = e.target.files || e.dataTransfer.files;
         self.file = self.files[0];
@@ -184,8 +188,6 @@
               self.updateLocalQueries();
               self.updateQueryTable();
               self.resize();
-              self.allowUpload = false;
-              $('#confirmQueryImport').addClass('disabled');
               $('#queryImportDialog').modal('hide');
             },
             error: function (data) {

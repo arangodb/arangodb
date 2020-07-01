@@ -5014,6 +5014,13 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
           break;  // abort . . .
         }
         _lastNode = en;
+        auto expr = cn->expression();
+
+        // If we find an expression that is not allowed to run on a DBServer,
+        // we cannot undistribute (as then the expression *would* run on a dbserver)
+        if (!expr->canRunOnDBServer()) {
+          break;
+        }
         return false;  // continue . . .
       }
       case EN::ENUMERATE_COLLECTION:
