@@ -219,7 +219,7 @@
       this.abortEdge('to');
     },
 
-    setEditMode(type, active) {
+    setEditMode: function(type, active) {
       if (type === 'from') {
         this.editFromActive = active;
       } else {
@@ -228,7 +228,7 @@
     },
 
     toggleEditIcons: function (type, showEdit) {
-      let id = '#edit-' + type;
+      var id = '#edit-' + type;
       if (showEdit) {
         $(id + ' .fa-edit').show();
         $(id + ' .fa-check').hide();
@@ -251,7 +251,7 @@
 
     addEdgeEditInputBox: function (type) {
       var model = this.collection.first();
-      let edgeId;
+      var edgeId;
 
       if (type === 'from') {
         edgeId = model.get('_from');
@@ -262,7 +262,7 @@
       // hide text & insert input
       $('#document-' + type).hide();
       $('#document-' + type).after(
-        `<input type="text" id="input-edit-${type}" value=${arangoHelper.escapeHtml(edgeId)} placeholder="${arangoHelper.escapeHtml(edgeId)}">`
+        '<input type="text" id="input-edit-' + type + '" value=' + arangoHelper.escapeHtml(edgeId) + 'placeholder="' + arangoHelper.escapeHtml(edgeId) +'">'
       );
     },
 
@@ -271,8 +271,8 @@
       this.setEditMode(type, false);
 
 
-      let newValue = $(`#input-edit-${type}`).val();
-      let changed = false;
+      var newValue = $('#input-edit' + type).val();
+      var changed = false;
       if (type === 'from') {
         // if value got changed
         if (newValue !== model.get('_from')) {
@@ -293,7 +293,7 @@
       this.toggleEditIcons(type, true);
 
       // remove input
-      $(`#input-edit-${type}`).remove();
+      $('#input-edit-' + type).remove();
       $('#document-' + type).show();
     },
 
@@ -302,7 +302,7 @@
       this.toggleEditIcons(type, true);
 
       // hide input and ignore prev. value
-      $(`#input-edit-${type}`).remove();
+      $('#input-edit-' + type).remove();
       $('#document-' + type).show();
     },
 
@@ -483,8 +483,8 @@
           }
         }.bind(this);
 
-        let from = $('#document-from').html();
-        let to = $('#document-to').html();
+        var from = $('#document-from').html();
+        var to = $('#document-to').html();
         this.collection.saveEdge(this.colid, this.docid, from, to, model, callbackE);
       } else {
         var callback = function (error, data) {
