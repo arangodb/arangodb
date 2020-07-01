@@ -581,19 +581,19 @@ void SimpleHttpClient::setRequest(rest::RequestType method, std::string const& l
   }
 
   // do basic authorization
-  size_t posBeforeCredentials = 0;
-  size_t posBehindCredentials = 0;
+  std::vector<std::pair<size_t, size_t>> exclusions;
+  size_t pos = 0;
   if (!_params._jwt.empty()) {
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Authorization: bearer "));
-    posBeforeCredentials = _writeBuffer.size();
+    pos = _writeBuffer.size();
     _writeBuffer.appendText(_params._jwt);
-    posBehindCredentials = _writeBuffer.size();
+    exclusions.emplace_back(pos, _writeBuffer.size());
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
   } else if (!_params._basicAuth.empty()) {
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Authorization: Basic "));
-    posBeforeCredentials = _writeBuffer.size();
+    pos = _writeBuffer.size();
     _writeBuffer.appendText(_params._basicAuth);
-    posBehindCredentials = _writeBuffer.size();
+    exclusions.emplace_back(pos, _writeBuffer.size());
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
   }
 
@@ -601,10 +601,15 @@ void SimpleHttpClient::setRequest(rest::RequestType method, std::string const& l
     if (boost::iequals(StaticStrings::ContentLength, header.first)) {
       continue; // skip content-length header
     }
-    
     _writeBuffer.appendText(header.first);
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR(": "));
-    _writeBuffer.appendText(header.second);
+    if (boost::iequals(StaticStrings::Authorization, header.first)) {
+      pos = _writeBuffer.size();
+      _writeBuffer.appendText(header.second);
+      exclusions.emplace_back(pos, _writeBuffer.size());
+    } else {
+      _writeBuffer.appendText(header.second);
+    }
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
   }
 
@@ -622,15 +627,20 @@ void SimpleHttpClient::setRequest(rest::RequestType method, std::string const& l
 
   _writeBuffer.ensureNullTerminated();
 
-  if (posBeforeCredentials == 0 && posBehindCredentials == 0) {
+  if (exclusions.empty()) {
     LOG_TOPIC("12c4c", TRACE, arangodb::Logger::HTTPCLIENT)
         << "request: " << _writeBuffer;
   } else {
-    LOG_TOPIC("12c4b", TRACE, arangodb::Logger::HTTPCLIENT)
-        << "request: " << std::string_view(_writeBuffer.data(), posBeforeCredentials)
-        << "SENSITIVE_DETAILS_HIDDEN"
-        << std::string_view(_writeBuffer.data() + posBehindCredentials,
-                            _writeBuffer.size() - posBehindCredentials);
+    pos = 0;
+    for (size_t i = 0; i < exclusions.size(); ++i) {
+      LOG_TOPIC("12c4b", TRACE, arangodb::Logger::HTTPCLIENT)
+          << "request: "
+          << std::string_view(_writeBuffer.data() + pos, exclusions[i].first)
+          << "SENSITIVE_DETAILS_HIDDEN";
+      pos = exclusions[i].second;
+    }
+    LOG_TOPIC("12c4e", TRACE, arangodb::Logger::HTTPCLIENT)
+        << "request: " << std::string_view(_writeBuffer.data() + pos, _writeBuffer.size() - pos);
   }
 
   if (_state == DEAD) {
