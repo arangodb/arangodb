@@ -1,6 +1,9 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
+* The Web UI's replication view is now checking the replication state
+  automatically without the need of a manual reload.
+
 * Disallow using V8 dependent functions in SEARCH statement.
   
 * Changing the current users profile icon in the Web UI now renders the new
