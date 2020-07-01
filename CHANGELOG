@@ -1,6 +1,10 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
+* In case a document got requested via the UI of a collection which does not
+  exist, the UI now properly displays an error view instead of having a bad
+  display state.
+
 * The Web UI is now reporting errors properly in case of editing ArangoSearch
   Views with invalid properties.
 
