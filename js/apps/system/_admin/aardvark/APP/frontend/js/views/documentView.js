@@ -99,8 +99,8 @@
     },
 
     renderNotFound: function (id, isCollection) {
-      let message = 'Document not found';
-      let message2 = 'ID';
+      var message = 'Document not found';
+      var message2 = 'ID';
       if (isCollection) {
         message = 'Collection not found';
         message2 = 'name';
