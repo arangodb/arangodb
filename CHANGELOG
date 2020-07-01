@@ -1,6 +1,10 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
+* Removed the edge id's hover styling in case of embedded document editor in 
+  the Web UI as this functionality is disabled. This was misleading because
+  the elements are not clickable.
+
 * The Web UI is not disabling the query import button after file upload takes
   place.
 
