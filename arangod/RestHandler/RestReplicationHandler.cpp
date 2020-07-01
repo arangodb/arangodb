@@ -1863,6 +1863,8 @@ Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collectio
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
+  VPackBuilder rebuilder;
+
   Result fres;
 
   ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
@@ -1873,16 +1875,51 @@ Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collectio
     auto physical = coll->getPhysical();
     TRI_ASSERT(physical != nullptr);
 
-    for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
-      // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
-      arangodb::velocypack::Slice value = idxDef.get(StaticStrings::IndexType);
-      if (value.isString()) {
-        std::string const typeString = value.copyString();
-        if ((typeString == "primary") || (typeString == "edge")) {
-          LOG_TOPIC("0d352", DEBUG, Logger::REPLICATION)
-              << "processRestoreIndexes silently ignoring primary or edge "
-              << "index: " << idxDef.toJson();
-          continue;
+    for (VPackSlice idxDef : VPackArrayIterator(indexes)) {
+      VPackSlice type = idxDef.get(StaticStrings::IndexType);
+
+      if (!type.isString()) {
+        // invalid type, cannot handle it
+        continue;
+      }
+
+      if (type.isString() && (type.copyString() == "primary" || type.copyString() == "edge")) {
+        // must ignore these types of indexes during restore
+        continue;
+      }
+
+      if (type.isEqualString("geo1") || type.isEqualString("geo2")) {
+        // transform type "geo1" or "geo2" into "geo".
+        rebuilder.clear();
+        rebuilder.openObject();
+        rebuilder.add(StaticStrings::IndexType, VPackValue("geo"));
+        for (auto const& it : VPackObjectIterator(idxDef)) {
+          if (!it.key.isEqualString(StaticStrings::IndexType)) {
+            rebuilder.add(it.key);
+            rebuilder.add(it.value);
+          }
+        }
+        rebuilder.close();
+        idxDef = rebuilder.slice();
+      }
+
+      if (type.isEqualString("fulltext")) {
+        VPackSlice minLength = idxDef.get("minLength");
+        if (minLength.isNumber()) {
+          int length = minLength.getNumericValue<int>();
+          if (length <= 0) {
+            rebuilder.clear();
+            rebuilder.openObject();
+            rebuilder.add("minLength", VPackValue(1));
+            for (auto const& it : VPackObjectIterator(idxDef)) {
+              if (!it.key.isEqualString("minLength")) {
+                rebuilder.add(it.key);
+                rebuilder.add(it.value);
+              }
+            }
+            rebuilder.close();
+            idxDef = rebuilder.slice();
+          }
         }
       }
 
@@ -1976,14 +2013,56 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(VPackSlice const
 
   auto& cluster = _vocbase.server().getFeature<ClusterFeature>();
 
+  VPackBuilder rebuilder;
+
   Result res;
 
-  for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
+  for (VPackSlice idxDef : VPackArrayIterator(indexes)) {
     VPackSlice type = idxDef.get(StaticStrings::IndexType);
+
+    if (!type.isString()) {
+      // invalid type, cannot handle it
+      continue;
+    }
 
     if (type.isString() && (type.copyString() == "primary" || type.copyString() == "edge")) {
       // must ignore these types of indexes during restore
       continue;
+    }
+
+    if (type.isEqualString("geo1") || type.isEqualString("geo2")) {
+      // transform type "geo1" or "geo2" into "geo".
+      rebuilder.clear();
+      rebuilder.openObject();
+      rebuilder.add(StaticStrings::IndexType, VPackValue("geo"));
+      for (auto const& it : VPackObjectIterator(idxDef)) {
+        if (!it.key.isEqualString(StaticStrings::IndexType)) {
+          rebuilder.add(it.key);
+          rebuilder.add(it.value);
+        }
+      }
+      rebuilder.close();
+      idxDef = rebuilder.slice();
+    }
+
+    if (type.isEqualString("fulltext")) {
+      VPackSlice minLength = idxDef.get("minLength");
+      if (minLength.isNumber()) {
+        int length = minLength.getNumericValue<int>();
+        if (length <= 0) {
+          rebuilder.clear();
+          rebuilder.openObject();
+          rebuilder.add("minLength", VPackValue(1));
+          for (auto const& it : VPackObjectIterator(idxDef)) {
+            if (!it.key.isEqualString("minLength")) {
+              rebuilder.add(it.key);
+              rebuilder.add(it.value);
+            }
+          }
+          rebuilder.close();
+          idxDef = rebuilder.slice();
+        }
+      }
     }
 
     VPackBuilder tmp;
