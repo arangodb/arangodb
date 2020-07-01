@@ -1071,11 +1071,14 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstR
                                    .getFeature<iresearch::IResearchAnalyzerFeature>();
       for (auto* vocbase : _analyzersModified) {
         TRI_ASSERT(vocbase);
+        // we need to trigger cache invalidation
+        // because single server has no revisions
+        // and never reloads cache from db by itself
+        // so new analyzers will be not usable on slave
         analyzersFeature.invalidate(*vocbase);
       }
       _analyzersModified.clear();
     }
-    
   };
   TRI_DEFER(reloader());
 
