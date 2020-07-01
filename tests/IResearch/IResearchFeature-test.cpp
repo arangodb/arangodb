@@ -764,6 +764,11 @@ class IResearchFeatureTestCoordinator
     arangodb::AsyncAgencyCommManager::INSTANCE->pool(_pool.get());
     arangodb::AsyncAgencyCommManager::INSTANCE->addEndpoint("tcp://localhost:4001");
     arangodb::AgencyComm(server.server()).ensureStructureInitialized();  // initialize agency
+
+    std::string st = "{\"" + arangodb::ServerState::instance()->getId() + "\":{\"rebootId\":1}}";
+    agencyTrx("/arango/Current/ServersKnown", st);
+    arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1});
+
     poolConfig.clusterInfo->startSyncers();
   }
 
@@ -833,7 +838,7 @@ class IResearchFeatureTestCoordinator
           b.add("id", VPackValue(id));
           b.add("inBackground", VPackValue(false));
           b.add("name", VPackValue(name));
-          b.add("sparse", VPackValue(sparse)); 
+          b.add("sparse", VPackValue(sparse));
           b.add("type", VPackValue(type));
           b.add("unique", VPackValue(unique)); }
       }
@@ -900,7 +905,7 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
     ASSERT_TRUE(logicalView0);
     auto const viewId = std::to_string(logicalView0->planId());
     EXPECT_TRUE("42" == viewId);
-    
+
     // simulate heartbeat thread (create index in current)
     {
       auto const value = arangodb::velocypack::Parser::fromJson(
@@ -910,7 +915,7 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
                   .successful());
     }
   }
-  
+
   auto [t,i] = server.getFeature<arangodb::ClusterFeature>().
     agencyCache().read(
       std::vector<std::string>{"/arango"});
@@ -950,7 +955,7 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
         { VPackObjectBuilder op(b.get());
           b->add(path, value->slice()); }}}
     server.getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(b);
-      
+
   }
   EXPECT_TRUE(arangodb::methods::Upgrade::clusterBootstrap(*vocbase).ok());  // run upgrade
   auto logicalCollection2 = ci.getCollection(vocbase->name(), collectionId);
