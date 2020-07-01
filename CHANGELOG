@@ -1,7 +1,6 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
-
 * ClusterInfo will wait for syncer threads to shutdown.
 
 * Fixed BTS-110: Fulltext index with minLength <= 0 not allowed.
