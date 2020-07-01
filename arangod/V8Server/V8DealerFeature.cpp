@@ -926,6 +926,7 @@ void V8DealerFeature::prepareLockedContext(TRI_vocbase_t* vocbase, V8Context* co
       TRI_GET_GLOBALS();
 
       // initialize the context data
+      v8g->_expressionContext = nullptr;
       v8g->_vocbase = vocbase;
       v8g->_securityContext = securityContext;
 
@@ -1150,6 +1151,7 @@ void V8DealerFeature::cleanupLockedContext(V8Context* context) {
     TRI_GET_GLOBALS();
 
     // reset the context data; gc should be able to run without it
+    v8g->_expressionContext = nullptr;
     v8g->_vocbase = nullptr;
     v8g->_securityContext.reset();
 

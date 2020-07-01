@@ -1124,8 +1124,13 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, transaction::Met
   // JavaScript function (this includes user-defined functions)
   {
     ISOLATE;
-    v8::HandleScope scope(isolate);
+    TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
     auto context = TRI_IGETC;
+
+
+    auto old = v8g->_expressionContext;
+    v8g->_expressionContext = expressionContext;
+    TRI_DEFER(v8g->_expressionContext = old);
 
     VPackOptions const* options = trx->transactionContext()->getVPackOptions();
     std::string jsName;

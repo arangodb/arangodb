@@ -67,9 +67,19 @@ struct IRESEARCH_API attribute { };
 ///          via DECLARE_FACTORY()/DECLARE_FACTORY()
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API stored_attribute : attribute {
-  DECLARE_UNIQUE_PTR(stored_attribute);
+  using ptr = std::unique_ptr<stored_attribute>;
+
+  stored_attribute() = default;
+  stored_attribute(const stored_attribute&) = default;
+  stored_attribute(stored_attribute&&) = default;
+  stored_attribute& operator=(const stored_attribute&) = default;
+  stored_attribute& operator=(stored_attribute&&) = default;
+
   virtual ~stored_attribute() = default;
 };
+
+static_assert(std::is_nothrow_move_constructible_v<stored_attribute>);
+static_assert(std::is_nothrow_move_assignable_v<stored_attribute>);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            Attribute registration
@@ -100,7 +110,7 @@ class IRESEARCH_API flags {
   // std::set<...> is 25% faster than std::unordered_set<...> as per profile_bulk_index test
   typedef std::set<type_info::type_id> type_map;
 
-  static const flags& empty_instance();
+  static const flags& empty_instance() noexcept;
 
   flags() = default;
   flags(const flags&) = default;
@@ -226,6 +236,9 @@ class IRESEARCH_API flags {
   type_map map_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 };
+
+static_assert(std::is_move_constructible_v<flags>);
+static_assert(std::is_move_assignable_v<flags>);
 
 NS_END
 

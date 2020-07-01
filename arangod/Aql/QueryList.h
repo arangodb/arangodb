@@ -32,8 +32,6 @@
 #include "Basics/ReadWriteLock.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 namespace velocypack {
 class Builder;
@@ -66,7 +64,7 @@ struct QueryEntryCopy {
 class QueryList {
  public:
   /// @brief create a query list
-  explicit QueryList(QueryRegistryFeature&, TRI_vocbase_t*);
+  explicit QueryList(QueryRegistryFeature&);
 
   /// @brief destroy a query list
   ~QueryList() = default;
@@ -220,10 +218,10 @@ class QueryList {
   /// @brief r/w lock for the list
   arangodb::basics::ReadWriteLock _lock;
 
-  /// @brief list of current queries
+  /// @brief list of current queries, protected by _lock
   std::unordered_map<TRI_voc_tick_t, Query*> _current;
 
-  /// @brief list of slow queries
+  /// @brief list of slow queries, protected by _lock
   std::list<QueryEntryCopy> _slow;
 
   /// @brief whether or not queries are tracked
