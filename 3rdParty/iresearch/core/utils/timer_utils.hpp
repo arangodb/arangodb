@@ -39,16 +39,20 @@ struct timer_stat_t {
   std::atomic<size_t> time;
 };
 
-class IRESEARCH_API scoped_timer: private iresearch::util::noncopyable {
+class IRESEARCH_API scoped_timer : util::noncopyable {
  public:
   scoped_timer(timer_stat_t& stat);
-  scoped_timer(scoped_timer&& other) noexcept;
+  scoped_timer(scoped_timer&&) = default;
   ~scoped_timer();
 
  private:
+  scoped_timer& operator=(scoped_timer&&) = delete;
+
   size_t start_;
   timer_stat_t& stat_;
 };
+
+static_assert(std::is_nothrow_move_constructible_v<scoped_timer>);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                timer registration

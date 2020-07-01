@@ -13,7 +13,7 @@ const TableRow = styled(Grid)`
   margin-bottom: 1px;
 `;
 
-const Row = styled(TableRow)`
+const Row = styled(TableRow as any)`
 color: rgb(138, 150, 159);
 font-weight: normal;
 `;
