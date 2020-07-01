@@ -733,6 +733,10 @@
       fromY: false
     },
 
+    removeOldContextMenu: function () {
+      $('#nodeContextMenu').remove();
+    },
+
     clearOldContextMenu: function (states) {
       var self = this;
 
@@ -1039,7 +1043,7 @@
             collections
           )
         );
-        
+
         tableContent.push(window.modalView.createJsonEditor());
 
         buttons.push(
@@ -1312,11 +1316,14 @@
         wheel.navItems[0].navigateFunction = function (e) {
           self.clearOldContextMenu();
           self.addNodeModal();
+          self.removeOldContextMenu();
+          self.removeHelp();
         };
 
         // function 1: exit
         wheel.navItems[1].navigateFunction = function (e) {
           self.clearOldContextMenu();
+          self.removeOldContextMenu();
         };
 
         var descriptions = [
@@ -2207,6 +2214,7 @@
                 // cleanup
                 self.clearOldContextMenu(true);
                 self.clearMouseCanvas();
+                self.removeOldContextMenu();
               }
 
               // remember halo

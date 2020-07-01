@@ -67,6 +67,7 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer& server, bo
     : ApplicationFeature(server, "Logger"),
       _timeFormatString(LogTimeFormats::defaultFormatName()),
       _threaded(threaded) {
+
   setOptional(false);
 
   startsAfter<ShellColorsFeature>();
@@ -137,6 +138,13 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       .setIntroducedIn(30500);
 
   options->addOption("--log.role", "log server role", new BooleanParameter(&_showRole));
+
+  options->addOption("--log.api-enabled",
+                     "whether the log api is enabled (true) or not (false), or only enabled for superuser JWT (jwt)",
+                     new StringParameter(&_apiSwitch))
+      .setIntroducedIn(30411)
+      .setIntroducedIn(30506)
+      .setIntroducedIn(30605);
 
   options
       ->addOption("--log.file-mode",
@@ -257,6 +265,18 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     // if not valid, the following call will throw an exception and
     // abort the startup
     LogTimeFormats::formatFromName(_timeFormatString);
+  }
+
+  if (_apiSwitch == "true" || _apiSwitch == "on" ||
+      _apiSwitch == "On") {
+    _apiEnabled = true;
+    _apiSwitch = "true";
+  } else if (_apiSwitch == "jwt" || _apiSwitch == "JWT") {
+    _apiEnabled = true;
+    _apiSwitch = "jwt";
+  } else {
+    _apiEnabled = false;
+    _apiSwitch = "false";
   }
 
   if (!_fileMode.empty()) {
