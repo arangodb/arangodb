@@ -1,6 +1,10 @@
 devel
 -----
 
+* Network layer now reports connection setup issues in more cases
+  this replaces some INTERNAL_ERROR reports by more precise errors,
+  those are only reached during failover scenarios.
+
 * Fixed a misleading error message in AQL.
 
 * Fix undistribute-remove-after-enum-coll which would allow calculations

@@ -134,8 +134,10 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
 
     arangodb::network::EndpointSpec spec;
     int res = resolveDestination(*pool->config().clusterInfo, dest, spec);
-    if (res != TRI_ERROR_NO_ERROR) {  // FIXME return an error  ?!
-      return futures::makeFuture(Response{std::move(dest), Error::Canceled, nullptr, std::move(req)});
+    if (res != TRI_ERROR_NO_ERROR) {
+      auto errorPromise = futures::Promise<network::Response>::makeEmpty();
+      errorPromise.setException(arangodb::basics::Exception(res, __FILE__, __LINE__));
+      return errorPromise.getFuture();
     }
     TRI_ASSERT(!spec.endpoint.empty());
 
@@ -242,7 +244,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
     arangodb::network::EndpointSpec spec;
     int res = resolveDestination(*_pool->config().clusterInfo, _destination, spec);
     if (res != TRI_ERROR_NO_ERROR) {  // ClusterInfo did not work
-      callResponse(Error::Canceled, nullptr, std::move(_request));
+      errorResponse(Result{res});
       return;
     }
 
@@ -260,7 +262,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
 
     auto conn = _pool->leaseConnection(spec.endpoint);
     auto req = prepareRequest(_type, _path, _payload, localOptions, _headers);
-    conn->sendRequest(std::move(req),
+    conn->sendRequest(std::move(req)
                       [self = shared_from_this()](fuerte::Error err,
                                                   std::unique_ptr<fuerte::Request> req,
                                                   std::unique_ptr<fuerte::Response> res) {
@@ -348,6 +350,25 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
       default:  // a "proper error" which has to be returned to the client
         callResponse(err, std::move(res), std::move(req));
         return true; // done
+    }
+  }
+
+  void errorResponse(arangodb::Result&& result) {
+    TRI_ASSERT(result.fail());
+    Scheduler* sch = SchedulerFeature::SCHEDULER;
+    if (_options.skipScheduler || sch == nullptr) {
+      _promise.setException(arangodb::basics::Exception(std::move(result), __FILE__, __LINE__));
+      return;
+    }
+
+    bool queued =
+        sch->queue(RequestLane::CLUSTER_INTERNAL, [self = shared_from_this(), result]() {
+          self->_promise.setException(
+              arangodb::basics::Exception(std::move(result), __FILE__, __LINE__));
+        });
+    if (ADB_UNLIKELY(!queued)) {
+      // Unable to queue the error, so handle it here, do not drop it over to the queue error.
+      _promise.setException(arangodb::basics::Exception(std::move(result), __FILE__, __LINE__));
     }
   }
 
