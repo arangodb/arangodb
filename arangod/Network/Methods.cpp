@@ -244,7 +244,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
     arangodb::network::EndpointSpec spec;
     int res = resolveDestination(*_pool->config().clusterInfo, _destination, spec);
     if (res != TRI_ERROR_NO_ERROR) {  // ClusterInfo did not work
-      errorResponse(Result{res});
+      errorResponse(Result{res}, __FILE__, __LINE__);
       return;
     }
 
@@ -353,11 +353,11 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
     }
   }
 
-  void errorResponse(arangodb::Result&& result) {
+  void errorResponse(arangodb::Result&& result, char const* file, int line) {
     TRI_ASSERT(result.fail());
     Scheduler* sch = SchedulerFeature::SCHEDULER;
     if (_options.skipScheduler || sch == nullptr) {
-      _promise.setException(arangodb::basics::Exception(std::move(result), __FILE__, __LINE__));
+      _promise.setException(arangodb::basics::Exception(std::move(result), file, line));
       return;
     }
 
