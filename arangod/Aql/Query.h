@@ -35,6 +35,7 @@
 #include "Aql/ResourceUsage.h"
 #include "Aql/SharedQueryState.h"
 #include "Basics/Common.h"
+#include "Basics/system-functions.h"
 #include "V8Server/V8Context.h"
 #include "Cluster/ClusterTypes.h"
 
@@ -109,17 +110,14 @@ class Query : public QueryContext {
 
   QueryString const& queryString() const { return _queryString; }
   
-  /// @brief Inject a transaction from outside. Use with care!
-  void injectTransaction(std::unique_ptr<transaction::Methods> trx);
-
   QueryProfile* profile() const { return _profile.get(); }
 
   velocypack::Slice optionsSlice() const { return _options->slice(); }
   
   TEST_VIRTUAL QueryOptions& queryOptions() { return _queryOptions; }
 
-  /// @brief return the start timestamp of the query
-  double startTime() const { return _startTime; }
+  /// @brief return the start time of the query (steady clock value)
+  double startTime() const noexcept;
 
   void prepareQuery(SerializationFormat format);
   
@@ -208,7 +206,7 @@ class Query : public QueryContext {
 
  protected:
   /// @brief initializes the query
-  void init();
+  void init(bool createProfile);
 
   /// @brief calculate a hash for the query, once
   uint64_t hash();
@@ -287,9 +285,9 @@ class Query : public QueryContext {
   /// only populated when the query has generated its result(s) and before
   /// storing the cache entry in the query cache
   std::unique_ptr<QueryCacheResultEntry> _cacheEntry;
-
-  /// @brief query start time
-  double _startTime;
+  
+  /// @brief query start time (steady clock value)
+  double const _startTime;
 
   /// @brief hash for this query. will be calculated only once when needed
   mutable uint64_t _queryHash = DontCache;
@@ -300,7 +298,7 @@ class Query : public QueryContext {
   
   /// @brief whether or not someone else has acquired a V8 context for us
   bool const _contextOwnedByExterior;
-  
+
   bool _killed;
   
   /// @brief whether or not the hash was already calculated
