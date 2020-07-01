@@ -1,8 +1,7 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
-
-* Fix untenable ultra precondition for removeServer
+* Fix untenable ultra precondition for removeServer.
 
 * Fixed BTS-110: Fulltext index with minLength <= 0 not allowed.
 
