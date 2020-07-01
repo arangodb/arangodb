@@ -161,7 +161,7 @@ describe('AQL query analyzer', function () {
     });
     
     it('should have proper running query descriptions', function () {
-      let now = (new Date).toISOString();
+      let now = (new Date()).toISOString();
       sendQuery(1, true);
       let q;
       let counter = 0;
@@ -187,7 +187,7 @@ describe('AQL query analyzer', function () {
     });
     
     it('should have proper running query descriptions, without bind vars', function () {
-      let now = (new Date).toISOString();
+      let now = (new Date()).toISOString();
       testee.properties({
         trackBindVars: false
       });
@@ -244,7 +244,7 @@ describe('AQL query analyzer', function () {
     });
 
     it('should track slow queries by threshold', function () {
-      let now = (new Date).toISOString();
+      let now = (new Date()).toISOString();
       sendQuery(1, false);
       expect(testee.current().filter(filterQueries).length).to.equal(0);
       expect(testee.slow().filter(filterQueries).length).to.equal(0);
