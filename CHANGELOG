@@ -5,6 +5,10 @@ devel
   Previously, collection property changes for smart edge collections were not
   propagated.
 
+* Adjust arangodump integration test to desired behavior, and make sure
+  arangodump behaves as specified when invoking it with non-existing
+  collections.
+
 * Fixed BTS-110: Fulltext index with minLength <= 0 not allowed.
 
 * Disallow using V8 dependent functions in SEARCH statement.
