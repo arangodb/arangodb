@@ -398,7 +398,7 @@ _Enterprise Edition only_
 * Version: 1.0.1
 * Date: 2017-03-06 16:01:33Z
 * GitHub: https://github.com/arangodb/linenoise-ng
-* License: https://raw.githubusercontent.com/antirez/linenoise/master/LICENSE
+* License: https://raw.githubusercontent.com/arangodb/linenoise-ng/master/LICENSE
 * License Name: BSD 2-clause "Simplified" License
 * License Id: BSD-2-Clause
 
