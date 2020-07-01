@@ -116,9 +116,6 @@ class Query : public QueryContext {
   
   TEST_VIRTUAL QueryOptions& queryOptions() { return _queryOptions; }
 
-  /// @brief return the start timestamp of the query (system clock value)
-  double startTimeStamp() const noexcept;
-  
   /// @brief return the start time of the query (steady clock value)
   double startTime() const noexcept;
 
@@ -289,9 +286,6 @@ class Query : public QueryContext {
   /// storing the cache entry in the query cache
   std::unique_ptr<QueryCacheResultEntry> _cacheEntry;
   
-  /// @brief query start timestamp (system clock value)
-  double const _startTimeStamp;
-
   /// @brief query start time (steady clock value)
   double const _startTime;
 

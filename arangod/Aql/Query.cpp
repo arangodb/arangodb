@@ -36,7 +36,6 @@
 #include "Aql/Parser.h"
 #include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
-#include "Aql/QueryList.h"
 #include "Aql/QueryProfile.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/Timing.h"
@@ -44,7 +43,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
-#include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
 #include "Graph/Graph.h"
@@ -94,7 +92,6 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
       _options(options),
       _queryOptions(_vocbase.server().getFeature<QueryRegistryFeature>()),
       _trx(nullptr),
-      _startTimeStamp(TRI_microtime()),
       _startTime(currentSteadyClockValue()),
       _queryHash(DontCache),
       _executionPhase(ExecutionPhase::INITIALIZE),
@@ -210,9 +207,6 @@ void Query::kill() {
     }
   }
 }
-  
-/// @brief return the start timestamp of the query (system clock value)
-double Query::startTimeStamp() const noexcept { return _startTimeStamp; }
   
 /// @brief return the start time of the query (steady clock value)
 double Query::startTime() const noexcept { return _startTime; }
