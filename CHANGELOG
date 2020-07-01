@@ -1,6 +1,9 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
+* In case of a graph deletion failure, the Web UI displays now the correct
+  error message.
+
 * Returned `AQL_WARNING()` to emit warnings from UDFs.
 
 * Allows restoring collections from v3.3.0 with their all-numeric collection
