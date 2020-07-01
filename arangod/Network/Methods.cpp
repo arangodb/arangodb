@@ -262,7 +262,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
 
     auto conn = _pool->leaseConnection(spec.endpoint);
     auto req = prepareRequest(_type, _path, _payload, localOptions, _headers);
-    conn->sendRequest(std::move(req)
+    conn->sendRequest(std::move(req),
                       [self = shared_from_this()](fuerte::Error err,
                                                   std::unique_ptr<fuerte::Request> req,
                                                   std::unique_ptr<fuerte::Response> res) {
