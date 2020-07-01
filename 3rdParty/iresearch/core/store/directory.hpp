@@ -42,7 +42,7 @@ class attribute_store;
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API index_lock : private util::noncopyable {
   DECLARE_IO_PTR(index_lock, unlock);
-  DEFINE_FACTORY_INLINE(index_lock)
+  DEFINE_FACTORY_INLINE(index_lock);
 
   static const size_t LOCK_WAIT_FOREVER = integer_traits<size_t>::const_max;
 
@@ -129,9 +129,7 @@ ENABLE_BITMASK_ENUM(IOAdvice); // enable bitmap operations on the enum
 struct IRESEARCH_API directory : private util::noncopyable {
  public:
   using visitor_f = std::function<bool(std::string&)>;
-
-  DECLARE_UNIQUE_PTR(directory);
-  DEFINE_FACTORY_INLINE(directory)
+  using ptr = std::unique_ptr<directory>;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief destructor 

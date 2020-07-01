@@ -23,12 +23,152 @@
 
 #include "tests_shared.hpp"
 #include "store/store_utils.hpp"
+#ifdef IRESEARCH_SSE2
+#include "store/store_utils_simd.hpp"
+#endif
 #include "utils/bytes_utils.hpp"
 
 using namespace irs;
 
 namespace tests {
 namespace detail {
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class bytes_input
+//////////////////////////////////////////////////////////////////////////////
+class bytes_input final: public data_input, public bytes_ref {
+ public:
+  bytes_input() = default;
+  explicit bytes_input(const bytes_ref& data);
+  bytes_input(bytes_input&& rhs) noexcept;
+  bytes_input& operator=(bytes_input&& rhs) noexcept;
+  bytes_input& operator=(const bytes_ref& data);
+
+  void skip(size_t size) {
+    assert(pos_ + size <= this->end());
+    pos_ += size;
+  }
+
+  void seek(size_t pos) {
+    assert(this->begin() + pos <= this->end());
+    pos_ = this->begin() + pos;
+  }
+
+  virtual size_t file_pointer() const override {
+    return std::distance(this->begin(), pos_);
+  }
+
+  virtual size_t length() const override {
+    return this->size();
+  }
+
+  virtual bool eof() const override {
+    return pos_ >= this->end();
+  }
+
+  virtual const byte_type* read_buffer(size_t /*count*/, BufferHint /*hint*/) override {
+    return nullptr;
+  }
+
+  virtual byte_type read_byte() override final {
+    assert(pos_ < this->end());
+    return *pos_++;
+  }
+
+  virtual size_t read_bytes(byte_type* b, size_t size) override final;
+
+  // append to buf
+  void read_bytes(bstring& buf, size_t size);
+
+  virtual int32_t read_int() override final {
+    return irs::read<uint32_t>(pos_);
+  }
+
+  virtual int64_t read_long() override final {
+    return irs::read<uint64_t>(pos_);
+  }
+
+  virtual uint32_t read_vint() override final {
+    return irs::vread<uint32_t>(pos_);
+  }
+
+  virtual uint64_t read_vlong() override final {
+    return irs::vread<uint64_t>(pos_);
+  }
+
+ private:
+  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  bstring buf_;
+  const byte_type* pos_{ buf_.c_str() };
+  IRESEARCH_API_PRIVATE_VARIABLES_END
+}; // bytes_input
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                       bytes_input implementation
+// ----------------------------------------------------------------------------
+
+bytes_input::bytes_input(const bytes_ref& data)
+  : buf_(data.c_str(), data.size()),
+    pos_(this->buf_.c_str()) {
+  this->data_ = buf_.data();
+  this->size_ = data.size();
+}
+
+bytes_input::bytes_input(bytes_input&& other) noexcept
+  : buf_(std::move(other.buf_)),
+    pos_(other.pos_) {
+  this->data_ = buf_.data();
+  this->size_ = other.size();
+  other.pos_ = other.buf_.c_str();
+  other.size_ = 0;
+}
+
+bytes_input& bytes_input::operator=(const bytes_ref& data) {
+  if (this != &data) {
+    buf_.assign(data.c_str(), data.size());
+    pos_ = this->buf_.c_str();
+    this->data_ = buf_.data();
+    this->size_ = data.size();
+  }
+
+  return *this;
+}
+
+bytes_input& bytes_input::operator=(bytes_input&& other) noexcept {
+  if (this != &other) {
+    buf_ = std::move(other.buf_);
+    pos_ = buf_.c_str();
+    this->data_ = buf_.data();
+    this->size_ = other.size();
+    other.pos_ = other.buf_.c_str();
+    other.size_ = 0;
+  }
+
+  return *this;
+}
+
+void bytes_input::read_bytes(bstring& buf, size_t size) {
+  auto used = buf.size();
+
+  buf.resize(used + size);
+
+  #ifdef IRESEARCH_DEBUG
+    const auto read = read_bytes(&(buf[0]) + used, size);
+    assert(read == size);
+    UNUSED(read);
+  #else
+    read_bytes(&(buf[0]) + used, size);
+  #endif // IRESEARCH_DEBUG
+}
+
+size_t bytes_input::read_bytes(byte_type* b, size_t size) {
+  assert(pos_ + size <= this->end());
+  size = std::min(size, size_t(std::distance(pos_, this->end())));
+  std::memcpy(b, pos_, sizeof(byte_type) * size);
+  pos_ += size;
+  return size;
+}
+
 
 void avg_encode_decode_core(size_t step, size_t count) {
   std::vector<uint64_t> values;
@@ -114,6 +254,23 @@ void packed_read_write_core(const std::vector<uint32_t> &src) {
   ASSERT_EQ(src, read);
 }
 
+void packed_read_write_block_core(const std::vector<uint32_t> &src) {
+  const size_t BLOCK_SIZE = 128;
+  uint32_t encoded[BLOCK_SIZE];
+
+  // compress data to stream
+  irs::bstring buf;
+  irs::bytes_output out(buf);
+  irs::encode::bitpack::write_block(out, src.data(), encoded);
+
+  // decompress data from stream
+  std::vector<uint32_t> read(src.size());
+  irs::bytes_ref_input in(buf);
+  irs::encode::bitpack::read_block(in, encoded, read.data());
+
+  ASSERT_EQ(src, read);
+}
+
 using irs::data_input;
 using irs::data_output;
 
@@ -129,7 +286,7 @@ void read_write_core(
     [&out,&writer](const T& v){ writer(out, v); }
   );
 
-  irs::bytes_input in(buf);
+  bytes_input in(buf);
   std::for_each(
     src.begin(), src.end(), 
     [&in,&reader](const T& v){ ASSERT_EQ(v, reader(in)); }
@@ -146,7 +303,7 @@ void read_write_core_nan(
   writer(out, std::numeric_limits<T>::quiet_NaN());
   writer(out, std::numeric_limits<T>::signaling_NaN());
 
-  irs::bytes_input in(buf);
+  bytes_input in(buf);
   ASSERT_TRUE(std::isnan(reader(in)));
   ASSERT_TRUE(std::isnan(reader(in)));
 }
@@ -160,7 +317,7 @@ void read_write_core_container(
   irs::bytes_output out(buf);
   writer(out, src);
 
-  irs::bytes_input in(buf);
+  bytes_input in(buf);
   const Cont read = reader( in);
   ASSERT_EQ(src, read);
 }
@@ -172,7 +329,7 @@ void read_write_block(const std::vector<uint32_t>& source, std::vector<uint32_t>
   irs::encode::bitpack::write_block(out, &source[0], source.size(), &enc_dec_buf[0]);
 
   // read block
-  irs::bytes_input in(buf);
+  bytes_input in(buf);
   std::vector<uint32_t> read(source.size());
   irs::encode::bitpack::read_block(in, source.size(), &enc_dec_buf[0], read.data());
 
@@ -218,6 +375,52 @@ void vencode_from_array(T expected_value, size_t expected_length) {
     ASSERT_EQ(expected_length, std::distance((const irs::byte_type*)(buf), ptr));
   }
 }
+
+#ifdef IRESEARCH_SSE2
+
+void read_write_optimized(const std::vector<uint32_t>& source, std::vector<uint32_t>& enc_dec_buf) {
+  // write block
+  irs::bstring buf;
+  irs::bytes_output out(buf);
+  irs::encode::bitpack::write_block_simd(out, &source[0], source.size(), &enc_dec_buf[0]);
+
+  // read block
+  bytes_input in(buf);
+  std::vector<uint32_t> read(source.size());
+  irs::encode::bitpack::read_block_simd(in, source.size(), &enc_dec_buf[0], read.data());
+
+  ASSERT_EQ(source, read);
+}
+
+void read_write_block_optimized(const std::vector<uint32_t>& source, std::vector<uint32_t>& enc_dec_buf) {
+  // write block
+  ASSERT_EQ(128, source.size());
+  irs::bstring buf;
+  irs::bytes_output out(buf);
+  irs::encode::bitpack::write_block_simd(out, &source[0], &enc_dec_buf[0]);
+
+  // read block
+  bytes_input in(buf);
+  std::vector<uint32_t> read(source.size());
+  irs::encode::bitpack::read_block_simd(in, &enc_dec_buf[0], read.data());
+
+  ASSERT_EQ(source, read);
+}
+
+void read_write_optimized(const std::vector<uint32_t>& source) {
+  // intermediate buffer for encoding/decoding
+  std::vector<uint32_t> enc_dec_buf(source.size());
+  read_write_optimized(source, enc_dec_buf);
+}
+
+void read_write_block_optimized(const std::vector<uint32_t>& source) {
+  // intermediate buffer for encoding/decoding
+  ASSERT_EQ(128, source.size());
+  std::vector<uint32_t> enc_dec_buf(source.size());
+  read_write_block_optimized(source, enc_dec_buf);
+}
+
+#endif
 
 } // detail
 } // tests
@@ -401,7 +604,7 @@ TEST( store_utils_tests, string_vector_read_write) {
   irs::bytes_output out(buf);
   write_strings(out, src);
 
-  irs::bytes_input in(buf);
+  tests::detail::bytes_input in(buf);
   const container_t readed = read_strings<container_t>(in);
 
   ASSERT_EQ(src, readed);
@@ -560,10 +763,12 @@ TEST(store_utils_tests, packed_read_write_32) {
       87688623, 87966702, 88468890, 90825729, 91356618, 91543691, 91586402, 92745195, 93131606, 93437291, 95193854, 95829037, 96644312, 98075750, 99014452
     };
     tests::detail::packed_read_write_core(src);
-  
+    tests::detail::packed_read_write_block_core(src);
+
     // all equals case
     std::vector<uint32_t> all_eq_src(src.size(), 5);
     tests::detail::packed_read_write_core(all_eq_src);
+    tests::detail::packed_read_write_block_core(all_eq_src);
   }
 }
 
@@ -692,7 +897,7 @@ TEST(store_utils_tests, avg_encode_block_read_write) {
     );
 
     {
-      irs::bytes_input in(out_buf);
+      tests::detail::bytes_input in(out_buf);
       const uint64_t base = in.read_vlong();
       const uint64_t avg= in.read_vlong();
       const uint64_t bits = in.read_vint();
@@ -702,20 +907,20 @@ TEST(store_utils_tests, avg_encode_block_read_write) {
     }
 
     {
-      irs::bytes_input in(out_buf);
+      tests::detail::bytes_input in(out_buf);
       ASSERT_TRUE(irs::encode::avg::check_block_rl64(in, step));
     }
 
     {
       uint64_t base, avg;
-      irs::bytes_input in(out_buf);
+      tests::detail::bytes_input in(out_buf);
       ASSERT_TRUE(irs::encode::avg::read_block_rl64(in, base, avg));
       ASSERT_EQ(step, base);
       ASSERT_EQ(step, avg);
     }
 
     {
-      irs::bytes_input in(out_buf);
+      tests::detail::bytes_input in(out_buf);
 
       const uint64_t base = in.read_vlong();
       const uint64_t avg = in.read_vlong();
@@ -735,4 +940,54 @@ TEST(store_utils_tests, avg_encode_block_read_write) {
     }
   }
 }
+
+#ifdef IRESEARCH_SSE2
+
+TEST(store_utils_tests, read_write_block32_optimized) {
+  // block_size = 128
+  const size_t block_size = 128;
+  // distinct values
+  std::vector<uint32_t> data = {
+    867377632,	904649657,	354461109,	576026921,	406163632,
+    168409093,	33485512 , 611136354 , 140275004 , 654422173,
+    405770063,	390577167,	780047069,	438362754,	469076575,
+    916930378,	291775422,	169687154,	834852341,	811869909,
+    250897257,	852383167,	478986610,	257699679,	112290896,
+    648885334,	897578972,	235499871,	368212067,	20494714,
+    321165319,	993744046,	334855956,	339418651,	23411270,
+    486634346,	258313717,	319757878,	608722518,	331995880,
+    116102182,	801348392,	256163092,	332114117,	304988840,
+    917258980,	686173811,	948343613,	786828070,	319530963,
+    578518934,	881904875,	144381596,	948206742,	876042799,
+    636018099,	941670974,	795607349,	487169927,	365985618,
+    883623659,	853001164,	723334064,	582408314,	570539073,
+    863140586,	99184400 , 621307734 , 404880591 , 544074242,
+    395871575,	383432524,	469395010,	462667762,	721641738,
+    306107286,	379618512,	17517346 , 735771377 , 147846584,
+    858436879,	499675853,	539719264,	842602895,	870115838,
+    236179208,	927978513,	657234182,	205163278,	100358377,
+    970958186,	277229354,	952603794,	234804978,	489958521,
+    378864765,	482550401,	587171069,	368374855,	835303649,
+    113016087,	220060336,	205821727,	794302091,	393689790,
+    18366964 , 835940475 , 988552545 , 976790514 , 736784554,
+    332759224,	951688629,	413866856,	245001983,	839481147,
+    575871539,	536021091,	313731186,	553136314,	291903625,
+    916491807,	629745928,	217677834,	787133498,	167330024,
+    793647012,	474689745,	228759450
+  };
+  tests::detail::read_write_optimized(data);
+  tests::detail::read_write_block_optimized(data);
+  // all equals
+  tests::detail::read_write_optimized(std::vector<uint32_t>(block_size, 5));
+  tests::detail::read_write_block_optimized(std::vector<uint32_t>(block_size, 5));
+  // all except first are equal, dirty buffer
+  {
+    std::vector<uint32_t> end_dec_buf(block_size, std::numeric_limits<uint32_t>::max());
+    std::vector<uint32_t> src(block_size, 1); src[0] = 0;
+    tests::detail::read_write_optimized(src, end_dec_buf);
+    tests::detail::read_write_block_optimized(src);
+  }
+}
+
+#endif
 
