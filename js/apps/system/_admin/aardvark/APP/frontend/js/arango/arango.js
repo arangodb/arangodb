@@ -738,7 +738,7 @@
         success: function (data) {
           if (data && data.error) {
             if (data.errorNum && data.errorMessage) {
-              arangoHelper.arangoError(`Error ${data.errorNum}`, data.errorMessage);
+              arangoHelper.arangoError('Error ' + data.errorNum, data.errorMessage);
             } else {
               arangoHelper.arangoError('Failure', 'Got unexpected server response: ' + JSON.stringify(data));
             }
@@ -768,7 +768,7 @@
             _.each(data.result, function (resp) {
               if (resp.error) {
                 if (resp.errorNum && resp.errorMessage) {
-                  arangoHelper.arangoError(`Error ${resp.errorNum}`, resp.errorMessage);
+                  arangoHelper.arangoError('Error ' + resp.errorNum, resp.errorMessage);
                 } else {
                   arangoHelper.arangoError('Failure', 'Got unexpected server response: ' + JSON.stringify(resp));
                 }
