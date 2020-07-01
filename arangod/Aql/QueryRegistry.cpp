@@ -105,24 +105,6 @@ void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl)
   }
 }
 
-///// @brief kill a query
-//bool QueryRegistry::kill(TRI_vocbase_t* vocbase, QueryId id) {
-//  READ_LOCKER(writeLocker, _lock);
-//
-//  auto m = _queries.find(vocbase->name());
-//  if (m == _queries.end()) {
-//    return false;
-//  }
-//  auto q = m->second.find(id);
-//  if (q == m->second.end()) {
-//    return false;
-//  }
-//
-//  std::unique_ptr<QueryInfo>& qi = q->second;
-//  qi->_query->setKilled();
-//  return true;
-//}
-
 /// @brief open
 void* QueryRegistry::openEngine(EngineId id, EngineType type) {
   LOG_TOPIC("8c204", DEBUG, arangodb::Logger::AQL) << "Opening engine with id " << id;

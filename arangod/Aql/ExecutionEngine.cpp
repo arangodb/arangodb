@@ -498,6 +498,10 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
 };
 
 void ExecutionEngine::kill() {
+  if (!ServerState::instance()->isCoordinator()) {
+    TRI_ASSERT(_dbServerMapping.empty());
+    return;
+  }
   
   // kill DB server parts
   // RemoteNodeId -> DBServerId -> [snippetId]

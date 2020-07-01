@@ -96,7 +96,7 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
       _queryHash(DontCache),
       _executionPhase(ExecutionPhase::INITIALIZE),
       _contextOwnedByExterior(ctx->isV8Context() && v8::Isolate::GetCurrent() != nullptr),
-      _killed(false),
+      _killState(KillState::None),
       _queryHashCalculated(false) {
 
   if (!_transactionContext) {
@@ -192,12 +192,16 @@ bool Query::killed() const {
       elapsedSince(_startTime) > _queryOptions.maxRuntime) {
     return true;
   }
-  return _killed;
+  return _killState.load(std::memory_order_relaxed) == KillState::Killed;
 }
 
 /// @brief set the query to killed
 void Query::kill() {
-  _killed = true;
+  KillState exp = KillState::None;
+  if (!_killState.compare_exchange_strong(exp, KillState::Killed, std::memory_order_release)) {
+    return;
+  }
+  
   for (auto& pair : _snippets) {
     ExecutionEngine* engine = pair.second.get();
     if (engine != nullptr) {
@@ -1088,6 +1092,18 @@ void Query::enterState(QueryExecutionState::ValueType state) {
 ExecutionState Query::cleanupPlanAndEngine(int errorCode, bool sync,
                                            VPackBuilder* statsBuilder,
                                            bool includePlan) {
+  KillState exp = _killState.load(std::memory_order_acquire);
+  if (exp == KillState::Killed) {
+    return ExecutionState::DONE;
+  } else if (exp == KillState::None) {
+    if (!_killState.compare_exchange_strong(exp, KillState::Shutdown, std::memory_order_release)) {
+      TRI_ASSERT(exp == KillState::Killed);
+      return ExecutionState::DONE;
+    }
+  } else {
+    TRI_ASSERT(exp == KillState::Shutdown);
+  }
+  
   auto* engine = rootEngine();
   if (engine) {
     std::shared_ptr<SharedQueryState> ss;
