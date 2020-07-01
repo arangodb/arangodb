@@ -1,6 +1,8 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
+* Returned `AQL_WARNING()` to emit warnings from UDFs.
+
 * Allows restoring collections from v3.3.0 with their all-numeric collection
   GUID values, by creating a new, unambiguous collection GUID for them.
   v3.3.0 had a bug because it created all-numeric GUID values, which can be
