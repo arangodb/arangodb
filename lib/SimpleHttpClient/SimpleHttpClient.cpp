@@ -602,11 +602,13 @@ void SimpleHttpClient::setRequest(rest::RequestType method, std::string const& l
     LOG_TOPIC(TRACE, arangodb::Logger::HTTPCLIENT)
         << "request: " << _writeBuffer;
   } else {
+    // I know this is copying stuff, but in 3.4 we do not yet have C++17
+    // and std::stringview.
     LOG_TOPIC(TRACE, arangodb::Logger::HTTPCLIENT)
-        << "request: " << std::string_view(_writeBuffer.data(), posBeforeCredentials)
+        << "request: " << std::string(_writeBuffer.data(), posBeforeCredentials)
         << "SENSITIVE_DETAILS_HIDDEN"
-        << std::string_view(_writeBuffer.data() + posBehindCredentials,
-                            _writeBuffer.size() - posBehindCredentials);
+        << std::string(_writeBuffer.data() + posBehindCredentials,
+                       _writeBuffer.size() - posBehindCredentials);
   }
 
   if (_state == DEAD) {
