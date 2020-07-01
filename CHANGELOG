@@ -1,6 +1,9 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
+* The Web UI is now reporting errors properly in case of editing ArangoSearch
+  Views with invalid properties.
+
 * Web UI: Removed unnecessary menubar entry in case of database node inspection.
 
 * Fix undistribute-remove-after-enum-coll which would allow calculations to be
