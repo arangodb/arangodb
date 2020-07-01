@@ -43,8 +43,11 @@ class Context;
 namespace aql {
 
 struct QueryResult {
+  // no copying, but moving is allowed
+  QueryResult(QueryResult const& other) = delete;
   QueryResult& operator=(QueryResult const& other) = delete;
   QueryResult(QueryResult&& other) = default;
+  QueryResult& operator=(QueryResult&& other) = default;
 
   QueryResult()
       : result(),
