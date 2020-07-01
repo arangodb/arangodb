@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse*/
+/*global assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse, fail*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for iresearch usage
@@ -31,6 +31,7 @@
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
 var analyzers = require("@arangodb/analyzers");
+var aqlfunctions = require("@arangodb/aql/functions");
 var ERRORS = require("@arangodb").errors;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,6 +46,9 @@ function iResearchAqlTestSuite () {
 
   return {
     setUp : function () {
+      aqlfunctions.unregisterGroup("UnitTests::");
+      aqlfunctions.register("UnitTests::tryme::foo", function (what) { return what * 2; }, true);
+
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
@@ -103,6 +107,8 @@ function iResearchAqlTestSuite () {
     },
 
     tearDown : function () {
+      aqlfunctions.unregisterGroup("UnitTests::");
+
       var meta = { links : { "UnitTestsCollection": null } };
       v.properties(meta);
       v.drop();
@@ -115,6 +121,15 @@ function iResearchAqlTestSuite () {
     testViewInFunctionCall : function () {
       try {
         db._query("FOR doc IN 1..1 RETURN COUNT(UnitTestsView)");
+      } catch (e) {
+        assertEqual(ERRORS.ERROR_NOT_IMPLEMENTED.code, e.errorNum);
+      }
+    },
+
+    testV8FunctionInSearch: function () {
+      try {
+        db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' && UnitTests::tryme::foo(2) == 4 OPTIONS { waitForSync: true } RETURN doc");
+        fail();
       } catch (e) {
         assertEqual(ERRORS.ERROR_NOT_IMPLEMENTED.code, e.errorNum);
       }
