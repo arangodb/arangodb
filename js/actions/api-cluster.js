@@ -75,9 +75,11 @@ actions.defineHttp({
       return;
     }
 
-    if (serverId.substr(0, 4) !== 'CRDN' && serverId.substr(0, 4) !== 'PRMR') {
-      actions.resultError(req, res, actions.HTTP_BAD,
-        'couldn\'t determine role for server id ' + serverId);
+    let isCoordinator = serverId.substr(0, 4) == 'CRDN';
+    let isDBServer = serverId.substr(0, 4) == 'PRMR';
+    if (!isCoordinator && !isDBServer) {
+      actions.resultError(
+        req, res, actions.HTTP_BAD, 'couldn\'t determine role for server id ' + serverId);
       return;
     }
 
@@ -87,37 +89,42 @@ actions.defineHttp({
     while (++count <= 60) {
       // need to make sure it is not responsible for anything
       used = [];
-      let preconditions = reducePlanServers(function (data, agencyKey, servers) {
-        data[agencyKey] = {'old': servers};
-        if (servers.indexOf(serverId) !== -1) {
-          used.push(agencyKey);
-        }
-        return data;
-      }, {});
-      preconditions = reduceCurrentServers(function (data, agencyKey, servers) {
-        data[agencyKey] = {'old': servers};
-        if (servers.indexOf(serverId) !== -1) {
-          used.push(agencyKey);
-        }
-        return data;
-      }, preconditions);
+      let curVersion = amongCurrentShardsOrVersion(serverId);
+      if (curVersion == 0) {
+        wait(1.0);
+        continue;
+      }
+      let planVersion = amongPlanShardsOrVersion(serverId);
+      if (planVersion == 0) {
+        wait(1.0);
+        continue;
+      }
 
+      let delOp = {'op': 'delete'};
+
+      preconditions['/arango/Plan/Version'] = {'old': planVersion};
+      preconditions['/arango/Current/Version'] = {'old': curVersion};
       preconditions['/arango/Supervision/Health/' + serverId + '/Status'] = {'old': 'FAILED'};
-      preconditions["/arango/Supervision/DBServers/" + serverId]
-        = { "oldEmpty": true };
+      if (isDBServer) {
+        preconditions["/arango/Supervision/DBServers/" + serverId] = { "oldEmpty": true };
+      }
 
-      if (!checkServerLocked(serverId) && used.length === 0) {
+      if (!checkServerLocked(serverId)) {
         let operations = {};
-        operations['/arango/Plan/Coordinators/' + serverId] = {'op': 'delete'};
-        operations['/arango/Plan/DBServers/' + serverId] = {'op': 'delete'};
-        operations['/arango/Current/ServersRegistered/' + serverId] = {'op': 'delete'};
-        operations['/arango/Current/DBServers/' + serverId] = {'op': 'delete'};
-        operations['/arango/Current/Coordinators/' + serverId] = {'op': 'delete'};
-        operations['/arango/Supervision/Health/' + serverId] = {'op': 'delete'};
-        operations['/arango/Target/MapUniqueToShortID/' + serverId] = {'op': 'delete'};
-        operations['/arango/Current/ServersKnown/' + serverId] = {'op': 'delete'};
+        if (isCoordinator) {
+          operations['/arango/Plan/Coordinators/' + serverId] = delOp;
+          operations['/arango/Current/Coordinators/' + serverId] = delOp;
+        } else {
+          operations['/arango/Plan/DBServers/' + serverId] = delOp;
+          operations['/arango/Current/DBServers/' + serverId] = delOp;
+        }
+        operations['/arango/Current/ServersRegistered/' + serverId] = delOp;
+        operations['/arango/Supervision/Health/' + serverId] = delOp;
+        operations['/arango/Target/MapUniqueToShortID/' + serverId] = delOp;
+        operations['/arango/Current/ServersKnown/' + serverId] = delOp;
         operations['/arango/Target/RemovedServers/' + serverId] = {'op': 'set', 'new': (new Date()).toISOString()};
 
+        console.info ([[operations, preconditions]]);
         try {
           global.ArangoAgency.write([[operations, preconditions]]);
           actions.resultOk(req, res, actions.HTTP_OK, true);
@@ -141,8 +148,7 @@ actions.defineHttp({
       wait(1.0);
     }  // while count
     actions.resultError(req, res, actions.HTTP_PRECONDITION_FAILED,
-      'the server not failed, locked or is still in use at the following '
-      + 'locations: ' + JSON.stringify(used));
+      'the server is either not failed or is locked or is still in use.';
   }
 });
 
@@ -636,6 +642,36 @@ function reducePlanServers (reducer, data) {
       }, data);
     }, data);
   }, data);
+}
+
+function amongCurrentShardsOrVersion (myId) {
+  var current = ArangoAgency.get('Current').arango.Current;
+  for (const [name,database] of Object.entries(current.Collections)) {
+    for (const [name,collection] of Object.entries(database)) {
+      for (const [name,shard] of Object.entries(collection)) {
+        if (shard.servers.indexOf(myId) > -1) {
+          // i hit a shard with my id listed
+          return 0;
+        }
+      }
+    }
+  }
+  return current.Version;
+}
+
+function amongPlanShardsOrVersion (myId) {
+  var plan = ArangoAgency.get('Plan').arango.Plan;
+  for (const [name,database] of Object.entries(plan.Collections)) {
+    for (const [name,collection] of Object.entries(database)) {
+      for (const [name,shard] of Object.entries(collection.shards)) {
+        if (shard.indexOf(myId) > -1) {
+          // i hit a shard with my id listed
+          return 0;
+        }
+      }
+    }
+  }
+  return plan.Version;
 }
 
 function reduceCurrentServers (reducer, data) {
