@@ -49,6 +49,7 @@ using namespace arangodb::basics;
 std::vector<std::tuple<int, std::string, LogAppenderFile*>> LogAppenderFile::_fds = {};
 int LogAppenderFile::_fileMode = S_IRUSR | S_IWUSR | S_IRGRP;
 int LogAppenderFile::_fileGroup = 0;
+std::mutex LogAppenderFile::_clearMutex;
 
 LogAppenderStream::LogAppenderStream(std::string const& filename,
                                      std::string const& filter, int fd)
@@ -170,6 +171,8 @@ LogAppenderFile::LogAppenderFile(std::string const& filename, std::string const&
   _useColors = ((isatty(_fd) == 1) && Logger::getUseColor());
 }
 
+LogAppenderFile::~LogAppenderFile() { clear(); }
+
 void LogAppenderFile::writeLogMessage(LogLevel level, size_t /*topicId*/, char const* buffer, size_t len) {
   bool giveUp = false;
 
@@ -282,6 +285,7 @@ void LogAppenderFile::closeAll() {
 }
 
 void LogAppenderFile::clear() {
+  std::unique_lock<std::mutex> guard(_clearMutex);
   closeAll();
   _fds.clear();
 }

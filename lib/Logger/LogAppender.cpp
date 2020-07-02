@@ -235,7 +235,7 @@ void LogAppender::shutdown() {
   MUTEX_LOCKER(guard, _appendersLock);
 
   LogAppenderSyslog::close();
-  LogAppenderFile::closeAll();
+  LogAppenderFile::clear();
 
   _globalAppenders.clear();
   _topics2appenders.clear();

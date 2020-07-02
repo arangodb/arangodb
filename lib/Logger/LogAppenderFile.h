@@ -26,6 +26,7 @@
 
 #include <stddef.h>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -39,7 +40,7 @@ struct LogMessage;
 class LogAppenderStream : public LogAppender {
  public:
   LogAppenderStream(std::string const& filename, std::string const& filter, int fd);
-  ~LogAppenderStream() = default;
+  virtual ~LogAppenderStream() = default;
 
   void logMessage(LogMessage const& message) override final;
 
@@ -84,6 +85,7 @@ class LogAppenderStream : public LogAppender {
 class LogAppenderFile : public LogAppenderStream {
  public:
   LogAppenderFile(std::string const& filename, std::string const& filter);
+  ~LogAppenderFile();
 
   void writeLogMessage(LogLevel level, size_t topicId, char const* buffer, size_t len) override final;
 
@@ -91,7 +93,6 @@ class LogAppenderFile : public LogAppenderStream {
 
  public:
   static void reopenAll();
-  static void closeAll();
   static std::vector<std::tuple<int, std::string, LogAppenderFile*>> getFds() {
     return _fds;
   }
@@ -104,9 +105,13 @@ class LogAppenderFile : public LogAppenderStream {
   static void setFileGroup(int group) { _fileGroup = group; }
 
  private:
+  static void closeAll();
+
+ private:
   static std::vector<std::tuple<int, std::string, LogAppenderFile*>> _fds;
   static int _fileMode;
   static int _fileGroup;
+  static std::mutex _clearMutex;
 
   std::string _filename;
 };
