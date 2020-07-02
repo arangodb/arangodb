@@ -87,7 +87,10 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
     auto cols = vocbase.collections(false);
 
     for (auto const& collection : cols) {
-      if (!collection->system()) {
+      // note: system collections are ignored here, but the local parts of 
+      // smart edge collections are system collections, too. these are
+      // included.
+      if (!collection->system() || collection->isSmartChild()) {
         std::string const colname = collection->name();
 
         collections.add(VPackValue(colname));

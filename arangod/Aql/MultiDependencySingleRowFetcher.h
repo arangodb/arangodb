@@ -167,16 +167,6 @@ class MultiDependencySingleRowFetcher {
 
   bool isDone(DependencyInfo const& info) const;
 
-  bool isLastRowInBlock(DependencyInfo const& info) const;
-
-  /**
-   * @brief If it returns true, there are no more data row in the current
-   * subquery level. If it returns false, there may or may not be more.
-   */
-  bool noMoreDataRows(DependencyInfo const& info) const;
-
-  bool isAtShadowRow(DependencyInfo const& info) const;
-
   bool fetchBlockIfNecessary(const size_t dependency, const size_t atMost);
 
   AqlCallStack adjustStackWithSkipReport(AqlCallStack const& stack, const size_t dependency);
