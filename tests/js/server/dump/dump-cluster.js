@@ -35,7 +35,7 @@ var analyzers = require("@arangodb/analyzers");
 const isEnterprise = internal.isEnterprise();
 const db = internal.db;
 const _ = require('lodash');
-const {assertEqual, assertNotEqual, assertTrue, assertFalse, assertUndefined, assertTypeOf} = jsunity.jsUnity.assertions;
+const {assertEqual, assertNotEqual, assertTrue, assertFalse, assertUndefined, assertTypeOf, assertNull} = jsunity.jsUnity.assertions;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
