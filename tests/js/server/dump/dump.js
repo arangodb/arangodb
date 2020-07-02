@@ -455,6 +455,8 @@ function dumpTestSuite () {
       assertEqual(" ", analyzer.properties().delimiter);
       assertEqual(1, analyzer.features().length);
       assertEqual("frequency", analyzer.features()[0]);
+      
+      assertNull(analyzers.analyzer("custom_dst"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
