@@ -269,12 +269,12 @@ void LogAppenderFile::reopenAll() {
 void LogAppenderFile::closeAll() {
   for (auto& it : _fds) {
     int fd = std::get<0>(it);
-    // set the fd to "disabled"
-    std::get<0>(it) = -1;
-    // and also tell the appender of the file descriptor change
-    std::get<2>(it)->updateFd(-1);
-
     if (fd > STDERR_FILENO) {
+      // set the fd to "disabled"
+      std::get<0>(it) = -1;
+      // and also tell the appender of the file descriptor change
+      std::get<2>(it)->updateFd(-1);
+
       fsync(fd);
       TRI_CLOSE(fd);
     }
