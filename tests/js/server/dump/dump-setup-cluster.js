@@ -451,7 +451,10 @@ function setupSmartGraphRegressionTest() {
   FoxxManager.install(SERVICE_PATH, '/test');
   db._useDatabase('UnitTestsDumpDst');
   // trigger analyzers cache population in dst database
-  analyzers.save("custom_dst", "delimiter", { delimiter : " " }, [ "frequency" ]);
+  // this one should be removed
+  analyzers.save("custom_dst", "delimiter", { delimiter : "," }, [ "frequency" ]);
+  // this one should be replaced
+  analyzers.save("custom", "delimiter", { delimiter : "," }, [ "frequency" ]);
 })();
 
 return {

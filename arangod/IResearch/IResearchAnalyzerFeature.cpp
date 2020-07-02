@@ -1644,6 +1644,280 @@ Result IResearchAnalyzerFeature::emplace(
   return {};
 }
 
+Result IResearchAnalyzerFeature::removeAllAnalyzers(TRI_vocbase_t& vocbase) {
+  auto analyzerModificationTrx = createAnalyzerModificationTransaction(server(), vocbase.name());
+  if (analyzerModificationTrx) {
+    auto startRes = analyzerModificationTrx->start();
+    if (startRes.fail()) {
+      return startRes;
+    }
+    auto cleanupResult = cleanupAnalyzersCollection(vocbase.name(),
+                                                    analyzerModificationTrx->buildingRevision());
+    if (cleanupResult.fail()) {
+      return cleanupResult;
+    }
+  }
+  auto* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine && !engine->inRecovery());
+  if (!analyzerModificationTrx)
+  {
+    // no modification transaction. Just truncate
+    auto ctx = transaction::StandaloneContext::Create(vocbase);
+    SingleCollectionTransaction trx(ctx, arangodb::StaticStrings::AnalyzersCollection,
+                                    AccessMode::Type::EXCLUSIVE);
+
+    auto res = trx.begin();
+    if (res.fail()) {
+      return res;
+    }
+
+    OperationOptions options;
+    trx.truncateAsync(arangodb::StaticStrings::AnalyzersCollection, options).get();
+    res = trx.commitAsync().get();
+    if (res.ok()) {
+      invalidate(vocbase);
+    }
+    return res;
+  } else {
+    // as in single analyzer case. First mark for deletion (but all at once)
+    auto stringRev = std::to_string(analyzerModificationTrx->buildingRevision());
+    std::string aql("FOR u IN ");
+    aql.append(arangodb::StaticStrings::AnalyzersCollection).append(" UPDATE u.")
+       .append(arangodb::StaticStrings::KeyString).append(" WITH { ")
+       .append(arangodb::StaticStrings::AnalyzersDeletedRevision)
+       .append(": ").append(stringRev).append("} IN ")
+       .append(arangodb::StaticStrings::AnalyzersCollection);
+
+    auto ctx = transaction::StandaloneContext::Create(vocbase);
+    SingleCollectionTransaction trx(ctx, arangodb::StaticStrings::AnalyzersCollection,
+                                    AccessMode::Type::EXCLUSIVE);
+
+    auto res = trx.begin();
+    if (res.fail()) {
+      return res;
+    }
+    arangodb::aql::Query query(ctx, arangodb::aql::QueryString(aql), nullptr, nullptr);
+    aql::QueryResult queryResult = query.executeSync();
+    if (queryResult.fail()) {
+      return queryResult.result;
+    }
+    res = trx.commitAsync().get();
+    if (!res.ok()) {
+      return res;
+    }
+    res = analyzerModificationTrx->commit();
+    if (res.fail()) {
+      return res;
+    }
+    // now let`s do cleanup 
+    SingleCollectionTransaction truncateTrx(ctx, arangodb::StaticStrings::AnalyzersCollection,
+                                    AccessMode::Type::EXCLUSIVE);
+
+    res = truncateTrx.begin();
+
+    if (res.ok()) {
+      OperationOptions options;
+      truncateTrx.truncateAsync(arangodb::StaticStrings::AnalyzersCollection, options).get();
+      res = truncateTrx.commitAsync().get();
+    }
+    if (res.fail()) {
+      // failed cleanup is not critical problem. just log it
+      LOG_TOPIC("70a8c", WARN, iresearch::TOPIC) << " Failed to finalize analyzer truncation"
+        << " Error Code:" << res.errorNumber() << " Error:" << res.errorMessage();
+    }
+    invalidate(vocbase);
+    return {};
+  }
+
+}
+
+Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
+                                             VPackSlice const dumpedAnalzyzers) {
+  TRI_ASSERT(dumpedAnalzyzers.isArray());
+  auto transaction = createAnalyzerModificationTransaction(server(), vocbase.name());
+  if (transaction) {
+    auto startRes = transaction->start();
+    if (startRes.fail()) {
+      return startRes;
+    }
+  } 
+  try {
+    WriteMutex mutex(_mutex);
+    SCOPED_LOCK(mutex);
+
+    if (transaction) {
+      auto cleanupResult = cleanupAnalyzersCollection(vocbase.name(),
+                                                      transaction->buildingRevision());
+      if (cleanupResult.fail()) {
+        return cleanupResult;
+      }
+    }
+    auto res = loadAnalyzers(vocbase.name());
+    if (!res.ok()) {
+      return res;
+    }
+
+    auto* engine = EngineSelectorFeature::ENGINE;
+    bool erase = true;
+    std::vector<irs::hashed_string_ref> inserted;
+    auto cleanup = irs::make_finally([&erase, &inserted, this]()->void {
+      if (erase) {
+        for (auto const& s : inserted) {
+          auto itr = _analyzers.find(s);
+          if (itr == _analyzers.end()) {
+            _analyzers.erase(itr); // ensure no broken analyzers are left behind
+          }
+        }
+      }
+      });
+    for (auto const& slice : VPackArrayIterator(dumpedAnalzyzers)) {
+      // validate and emplace an analyzer
+      if (!slice.hasKey("name") // no such field (required)
+        || !(slice.get("name").isString() || slice.get("name").isNull())) {
+        LOG_TOPIC("83638", ERR, iresearch::TOPIC)
+          << "failed to find a string value for analyzer 'name' while loading analyzer from dump"
+          << ", skipping it: " << slice.toString();
+
+        continue; // skip analyzer
+      }
+
+      auto name = getStringRef(slice.get("name"));
+
+      if (!slice.hasKey("type") // no such field (required)
+        || !(slice.get("type").isString() || slice.get("name").isNull())) {
+        LOG_TOPIC("861cc", ERR, iresearch::TOPIC)
+          << "failed to find a string value for analyzer 'type' while loading analyzer from dump"
+          << ", skipping it: " << slice.toString();
+
+        continue;
+      }
+
+      auto type = getStringRef(slice.get("type"));
+      VPackSlice properties;
+      if (slice.hasKey("properties")) {
+        auto subSlice = slice.get("properties");
+
+        if (subSlice.isArray() || subSlice.isObject()) {
+          properties = subSlice; // format as a jSON encoded string
+        } else {
+          LOG_TOPIC("f2ecf", ERR, arangodb::iresearch::TOPIC)
+            << "failed to find a string value for analyzer 'properties' while loading analyzer from dump"
+            << ", skipping it: " << slice.toString();
+          continue; // skip analyzer
+        }
+      }
+      irs::flags features;
+      if (slice.hasKey("features")) {
+        auto subSlice = slice.get("features");
+
+        if (!subSlice.isArray()) {
+          LOG_TOPIC("6cb58", ERR, arangodb::iresearch::TOPIC)
+            << "failed to find an array value for analyzer 'features' while loading analyzer from dump"
+            << ", skipping it: " << slice.toString();
+
+         continue; // skip analyzer
+        }
+
+        bool skipAnalyzer = false;
+        for (velocypack::ArrayIterator subItr(subSlice);
+          subItr.valid();
+          ++subItr
+          ) {
+          auto subEntry = *subItr;
+
+          if (!subEntry.isString() && !subSlice.isNull()) {
+            LOG_TOPIC("eaa75", ERR, iresearch::TOPIC)
+              << "failed to find a string value for an entry in analyzer 'features' while loading analyzer from dump"
+              << ", skipping it: " << slice.toString();
+            skipAnalyzer = true;
+            break; // skip analyzer
+          }
+
+          const auto featureName = getStringRef(subEntry);
+          const auto feature = irs::attributes::get(featureName);
+
+          if (!feature) {
+            LOG_TOPIC("32e1f", ERR, iresearch::TOPIC)
+              << "failed to find feature '" << featureName << "' while loading analyzer from dump'"
+              << ", skipping it: " << slice.toString();
+
+            skipAnalyzer = true;
+            break; // skip analyzer
+          }
+
+          features.add(feature.id());
+        }
+
+        if (ADB_UNLIKELY(skipAnalyzer)) {
+          continue;
+        }
+      }
+
+      EmplaceAnalyzerResult itr;
+      auto normalizedName = normalizedAnalyzerName(vocbase.name(), name);
+      auto res = emplaceAnalyzer(itr, _analyzers, normalizedName, type, properties, features,
+        transaction ? transaction->buildingRevision() : AnalyzersRevision::MIN);
+
+      if (!res.ok()) {
+        return res;
+      }
+
+      auto* engine = EngineSelectorFeature::ENGINE;
+      auto pool = itr.first->second;
+      // new pool creation
+      if (itr.second) {
+        inserted.push_back(itr.first->first);
+        if (!pool) {
+          return {
+            TRI_ERROR_INTERNAL,
+            "failure creating an arangosearch analyzer instance for name '" + std::string(name) +
+            "' type '" + std::string(type) +
+            "' properties '" + properties.toString() + "'" };
+        }
+        TRI_ASSERT(engine && !engine->inRecovery());
+        // persist only on coordinator and single-server while not in recovery
+        if (ServerState::instance()->isCoordinator() // coordinator
+          || ServerState::instance()->isSingleServer()) {// single-server
+          res = storeAnalyzer(*pool);
+        }
+
+        if (res.fail()) {
+          return res;
+        }
+      }
+    }
+
+    // cppcheck-suppress unreadVariable
+    if (transaction) {
+      res = transaction->commit();
+      if (res.fail()) {
+        return res;
+      }
+      auto cached = _lastLoad.find(vocbase.name());
+      TRI_ASSERT(cached != _lastLoad.end());
+      if (ADB_LIKELY(cached != _lastLoad.end())) {
+        cached->second = transaction->buildingRevision(); // as we already "updated cache" to this revision
+      }
+    }
+    erase = false;
+  } catch (basics::Exception const& e) {
+    return {
+      e.code(),
+      "caught exception while registering an arangosearch analyzers"
+      ": " + std::to_string(e.code()) + " " + e.what() };
+  } catch (std::exception const& e) {
+    return {
+      TRI_ERROR_INTERNAL,
+      "caught exception while registering an arangosearch analyzers: "s + e.what() };
+  } catch (...) {
+    return {
+      TRI_ERROR_INTERNAL, // code
+      "caught exception while registering an arangosearch analyzers" };
+  }
+
+  return {};
+}
+
 AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     irs::string_ref const& normalizedName,
     AnalyzerName const& name,

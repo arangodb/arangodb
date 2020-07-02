@@ -1157,6 +1157,13 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
     // drop an existing collection if it exists
     if (dropExisting) {
+      if (name == StaticStrings::AnalyzersCollection &&
+          server().hasFeature<iresearch::IResearchAnalyzerFeature>()) {
+        // We have ArangoSearch here. So process analyzers accordingly.
+        // We can`t just recreate/truncate collection. Agency should be properly
+        // notified analyzers are gone
+        return server().getFeature<iresearch::IResearchAnalyzerFeature>().removeAllAnalyzers(_vocbase);
+      }
       auto result = ci.dropCollectionCoordinator(dbName, std::to_string(col->id()), 0.0);
 
       if (TRI_ERROR_FORBIDDEN == result.errorNumber()  // forbidden
@@ -1438,6 +1445,11 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
   if (colName == TRI_COL_NAME_USERS) {
     // We need to handle the _users in a special way
     return processRestoreUsersBatch(colName);
+  } else if (colName == StaticStrings::AnalyzersCollection &&
+             ServerState::instance()->isCoordinator() &&
+             _vocbase.server().hasFeature<iresearch::IResearchAnalyzerFeature>()){
+    // _analyzers should be inserted via analyzers API
+    return processRestoreCoordinatorAnalyzersBatch(colName);
   }
 
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
@@ -1533,6 +1545,41 @@ Result RestReplicationHandler::parseBatch(std::string const& collectionName,
   }
 
   return Result{TRI_ERROR_NO_ERROR};
+}
+
+Result RestReplicationHandler::processRestoreCoordinatorAnalyzersBatch(
+    std::string const& collectionName) {
+  auto& analyzersFeature = _vocbase.server().getFeature<iresearch::IResearchAnalyzerFeature>();
+  std::unordered_map<std::string, VPackValueLength> latest;
+  VPackBuilder allMarkers;
+
+  Result res = parseBatch(collectionName, latest, allMarkers);
+  if (res.fail()) {
+    return res;
+  }
+  VPackSlice allMarkersSlice = allMarkers.slice();
+
+  auto importedArray = std::make_shared<VPackBuilder>();
+  importedArray->openArray();
+  for (auto const& p : latest) {
+    VPackSlice const marker = allMarkersSlice.at(p.second);
+    VPackSlice const typeSlice = marker.get(::typeString);
+    TRI_replication_operation_e type = REPLICATION_INVALID;
+    if (typeSlice.isNumber()) {
+      type = static_cast<TRI_replication_operation_e>(typeSlice.getNumber<int>());
+    }
+    if (type == REPLICATION_MARKER_DOCUMENT) {
+      VPackSlice const doc = marker.get(::dataString);
+      TRI_ASSERT(doc.isObject());
+      importedArray->add(doc);
+    }
+  }
+  importedArray->close();
+  if (!importedArray->slice().isEmptyArray()) {
+    return analyzersFeature.bulkEmplace(_vocbase, importedArray->slice());
+  } else {
+    return {};
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1690,7 +1737,6 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
         << "Could not delete documents for restore exception.";
     return Result(TRI_ERROR_INTERNAL);
   }
-
   bool const isUsersOnCoordinator = (ServerState::instance()->isCoordinator() &&
                                      collectionName == TRI_COL_NAME_USERS);
 

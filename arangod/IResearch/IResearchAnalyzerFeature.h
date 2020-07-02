@@ -273,6 +273,25 @@ class IResearchAnalyzerFeature final
                  irs::flags const& features = irs::flags::empty_instance());
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Emplaces batch of analyzers within single analyzers revision. Indended for use
+  ///        with restore/replication
+  /// @param vocbase target vocbase
+  /// @param dumpedAnalzyzer VPack array of dumped data
+  /// @return OK or first failure 
+  /// @note should not be used while inRecovery()
+  //////////////////////////////////////////////////////////////////////////////
+  Result bulkEmplace(TRI_vocbase_t& vocbase,
+                     VPackSlice const dumpedAnalzyzers);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief removes all analyzers from database in single revision
+  /// @param vocbase target vocbase
+  /// @return operation result
+  /// @note should not be used while inRecovery()
+  //////////////////////////////////////////////////////////////////////////////
+  Result removeAllAnalyzers(TRI_vocbase_t& vocbase);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief find analyzer
   /// @param name analyzer name (already normalized)
   /// @param onlyCached check only locally cached analyzers
