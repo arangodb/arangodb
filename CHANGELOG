@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed a potential agency crash if trace logging is on.
+
 * Allow changing collection properties for smart edge collections as well. 
   Previously, collection property changes for smart edge collections were not
   propagated.
