@@ -374,8 +374,8 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     testAnalyzers: function() {
       assertNotEqual(null, db._collection("_analyzers"));
-      assertEqual(2, db._analyzers.count()); // only 2 stored custom analyzers
-
+      assertEqual(isEnterprise ? 2 : 1, db._analyzers.count()); // only 1 stored custom analyzers
+                                                                // plus 1 for smartgraph in enerprise
       let analyzer = analyzers.analyzer("custom");
       assertEqual(db._name() + "::custom", analyzer.name());
       assertEqual("delimiter", analyzer.type());
