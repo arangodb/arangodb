@@ -734,7 +734,7 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req) {
 
   LOG_TOPIC_IF("c4536", DEBUG, arangodb::Logger::REQUESTS,
                Logger::logRequestParameters())
-      << "\"authorization-header\",\"" << (void*)this << "\",\"" << authStr << "\"";
+      << "\"authorization-header\",\"" << (void*)this << "\",SENSITIVE_DETAILS_HIDDEN";
 
   try {
     AuthenticationMethod authMethod = AuthenticationMethod::NONE;
