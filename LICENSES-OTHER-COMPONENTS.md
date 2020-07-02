@@ -799,7 +799,7 @@ _Enterprise Edition only_
 * Version: 3.25.1
 * Project Home: http://swagger.io
 * GitHub: https://github.com/swagger-api/swagger-ui
-* License: https://raw.githubusercontent.com/swagger-api/swagger-ui/master/README.md
+* License: https://raw.githubusercontent.com/swagger-api/swagger-ui/master/LICENSE
 * License Name: Apache License 2.0
 * License Id: Apache-2.0
 
