@@ -661,9 +661,7 @@ void H2CommTask<T>::queueHttp2Responses() {
       prd_ptr = &prd;
     }
     
-    if (res.statistics) {
-      res.statistics.ADD_SENT_BYTES(res.bodySize());
-    }
+    res.statistics.ADD_SENT_BYTES(res.bodySize());
     
     int rv = nghttp2_submit_response(this->_session, streamId, nva.data(),
                                      nva.size(), prd_ptr);
