@@ -172,7 +172,7 @@
             grant: value
           }),
           success: function () {
-            self.rollbackInputButton(null, e);
+            self.rollbackInputButton(null);
           },
           error: function (e) {
             self.rollbackInputButton(null, e);
@@ -211,7 +211,7 @@
             grant: value
           }),
           success: function () {
-            self.rollbackInputButton(null, e);
+            self.rollbackInputButton(null);
           },
           error: function (e) {
             self.rollbackInputButton(null, e);
