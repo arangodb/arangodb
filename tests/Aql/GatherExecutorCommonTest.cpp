@@ -553,7 +553,7 @@ class CommonGatherExecutorTest
   auto sortedExecutor(RegisterInfos&& regInfos, GatherNode::SortMode sortMode)
       -> std::unique_ptr<ExecutionBlock> {
     std::vector<SortRegister> sortRegister;
-    sortRegister.emplace_back(SortRegister{0, SortElement{nullptr, true}});
+    sortRegister.emplace_back(SortRegister{0, _sortElement});
 
     auto executorInfos =
         SortingGatherExecutorInfos(std::move(sortRegister), *fakedQuery.get(),
@@ -662,6 +662,10 @@ class CommonGatherExecutorTest
   std::vector<std::unique_ptr<ExecutionBlock>> _blockLake;
   // Activate result logging
   bool _useLogging{false};
+
+  // We need to retain the memory of this SortElement. Otherwise we have invalid memory access,
+  // for sorting nodes.
+  SortElement _sortElement{nullptr, true};
 
 };  // namespace arangodb::tests::aql
 
