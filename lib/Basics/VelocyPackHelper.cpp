@@ -849,8 +849,8 @@ void VelocyPackHelper::patchDouble(VPackSlice slice, double value) {
   // get pointer to the start of the value
   uint8_t* p = const_cast<uint8_t*>(slice.begin());
   // skip one byte for the header and overwrite
-#ifndef TRI_UNALIGNED_ACCESS
-  // some architectures do not support unaligned writes, then copy bytewise
+  // some architectures do not support unaligned writes, so copy bytewise
+  static_assert(sizeof(uint64_t) == sizeof(double), "invalid type sizes");
   uint64_t dv;
   memcpy(&dv, &value, sizeof(double));
   VPackValueLength vSize = sizeof(double);
@@ -858,11 +858,6 @@ void VelocyPackHelper::patchDouble(VPackSlice slice, double value) {
     *(++p) = x & 0xff;
     x >>= 8;
   }
-#else
-  // other platforms support unaligned writes
-  // cppcheck-suppress *
-  *reinterpret_cast<double*>(p + 1) = value;
-#endif
 }
 
 bool VelocyPackHelper::hasNonClientTypes(VPackSlice input, bool checkExternals, bool checkCustom) {
