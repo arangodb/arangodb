@@ -67,51 +67,8 @@ struct siginfo_t;
 
 #else
 
-/// @brief helper struct that is used to create an alternative stack for the
-/// signal handler on construction and to tear it down on destruction
-struct CrashHandlerStackInitializer {
-  CrashHandlerStackInitializer() 
-      : stackAdjusted(false) {
-    // reserve 512KB space for signal handler stack - should be more than enough
-    try {
-      memory = std::make_unique<char[]>(512 * 1024);
-    } catch (...) {
-      // could not allocate memory for alternative stack.
-      // in this case we must not modify the stack for the signal handler
-      // as we have no way of signaling failure here, all we can do is drop out
-      // of the constructor
-      return;
-    }
-
-    stack_t altstack;
-    altstack.ss_sp = static_cast<void*>(memory.get());
-    altstack.ss_size = MINSIGSTKSZ;
-    altstack.ss_flags = 0;
-    if (sigaltstack(&altstack, nullptr) == 0) {
-      stackAdjusted = true;
-    }
-  }
-
-  ~CrashHandlerStackInitializer() {
-    // reset to default stack
-    if (stackAdjusted) {
-      stack_t altstack;
-      altstack.ss_sp = nullptr;
-      altstack.ss_size = 0;
-      altstack.ss_flags = SS_DISABLE;
-      // intentionally ignore return value here as this will be called on shutdown only
-      sigaltstack(&altstack, nullptr);
-    }
-  }
-
-  // memory reserved for the signal handler stack
-  std::unique_ptr<char[]> memory;
-  bool stackAdjusted;
-};
-
-/// @brief this instance will make sure that we have an extra stack for
-/// our signal handler
-CrashHandlerStackInitializer stackInitializer;
+// memory reserved for the signal handler stack
+std::unique_ptr<char[]> alternativeStackMemory;
 
 /// @brief an atomic that makes sure there are no races inside the signal
 /// handler callback
@@ -145,7 +102,7 @@ std::atomic<bool> killHard(false);
     // restore default signal action, so that we can write a core dump and crash "properly"
     struct sigaction act;
     sigemptyset(&act.sa_mask);
-    act.sa_flags = SA_NODEFER | SA_ONSTACK | SA_RESETHAND;
+    act.sa_flags = SA_NODEFER | SA_RESETHAND | (alternativeStackMemory != nullptr ? SA_ONSTACK : 0);
     act.sa_handler = SIG_DFL;
     sigaction(signal, &act, nullptr);
 
@@ -403,7 +360,7 @@ void CrashHandler::assertionFailure(char const* file, int line, char const* cont
   
   char* p = &buffer[0];
   appendNullTerminatedString("assertion failed in ", p);
-  appendNullTerminatedString(file, 128, p);
+  appendNullTerminatedString((file == nullptr ? "unknown file" : file), 128, p);
   appendNullTerminatedString(":", p);
   p += arangodb::basics::StringUtils::itoa(uint64_t(line), p);
   appendNullTerminatedString(": ", p);
@@ -445,10 +402,35 @@ void CrashHandler::installCrashHandler() {
   }
 
 #ifndef _WIN32
+  try {
+    constexpr size_t stackSize = std::max<size_t>(
+        128 * 1024, 
+        std::max<size_t>(
+          MINSIGSTKSZ, 
+          SIGSTKSZ
+        )
+      );
+
+    ::alternativeStackMemory = std::make_unique<char[]>(stackSize);
+    
+    stack_t altstack;
+    altstack.ss_sp = static_cast<void*>(::alternativeStackMemory.get());
+    altstack.ss_size = stackSize;
+    altstack.ss_flags = 0;
+    if (sigaltstack(&altstack, nullptr) != 0) {
+      ::alternativeStackMemory.release();
+    }
+  } catch (...) {
+    // could not allocate memory for alternative stack.
+    // in this case we must not modify the stack for the signal handler
+    // as we have no way of signaling failure here.
+    ::alternativeStackMemory.release();
+  }
+
   // install signal handlers for the following signals
   struct sigaction act;
   sigemptyset(&act.sa_mask);
-  act.sa_flags = SA_NODEFER | SA_RESETHAND | SA_SIGINFO;
+  act.sa_flags = SA_NODEFER | SA_RESETHAND | SA_SIGINFO | (::alternativeStackMemory != nullptr ? SA_ONSTACK : 0);
   act.sa_sigaction = crashHandlerSignalHandler;
   sigaction(SIGSEGV, &act,nullptr);
   sigaction(SIGBUS, &act, nullptr);
@@ -472,12 +454,14 @@ void CrashHandler::installCrashHandler() {
         char const* msg = "handler for std::terminate() invoked with an std::exception: ";
         appendNullTerminatedString(msg, p);
         char const* e = ex.what();
-        if (strlen(e) > 100) {
-          memcpy(p, e, 100);
-          p += 100;
-          appendNullTerminatedString(" (truncated)", p);
-        } else {
-          appendNullTerminatedString(e, p);
+        if (e != nullptr) {
+          if (strlen(e) > 100) {
+            memcpy(p, e, 100);
+            p += 100;
+            appendNullTerminatedString(" (truncated)", p);
+          } else {
+            appendNullTerminatedString(e, p);
+          }
         }
       } catch (...) {
         char const* msg = "handler for std::terminate() invoked with an unknown exception";
