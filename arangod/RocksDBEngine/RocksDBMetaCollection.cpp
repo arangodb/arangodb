@@ -537,7 +537,7 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
 
     std::vector<std::size_t> revisions;
     auto* db = rocksutils::globalRocksDB();
-    auto iter = db->NewIterator(ro, documentBounds.columnFamily());
+    std::unique_ptr<rocksdb::Iterator> iter(db->NewIterator(ro, documentBounds.columnFamily()));
     for (iter->Seek(documentBounds.start());
          iter->Valid() && cmp->Compare(iter->key(), end) < 0; iter->Next()) {
       LocalDocumentId const docId = RocksDBKey::documentId(iter->key());
