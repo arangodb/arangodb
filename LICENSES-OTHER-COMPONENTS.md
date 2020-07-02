@@ -27,7 +27,7 @@
 * Version: a68095a
 * Date: 2012-10-22 10:23:16Z
 * Project Home: https://github.com/tanakh/cmdline
-* License: https://github.com/tanakh/cmdline/blob/master/LICENSE
+* License: https://raw.githubusercontent.com/tanakh/cmdline/master/LICENSE
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
@@ -239,7 +239,7 @@ _Enterprise Edition only_
 * Version: 68c96e9
 * Date: 2017-05-27 08:26:35Z
 * Project Home: https://rapidjson.org/
-* License: https://github.com/arangodb/arangodb/blob/devel/3rdParty/iresearch/external/rapidjson/rapidjson/encodings.h
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/iresearch/external/rapidjson/rapidjson/encodings.h
 * License Name: MIT license
 * License Id: MIT
 
@@ -379,7 +379,7 @@ _Enterprise Edition only_
 * Version: 1.4
 * Date: 2020-03-31 16:12:36Z
 * Project Home: https://github.com/libunwind/libunwind
-* License: https://github.com/libunwind/libunwind/blob/master/LICENSE
+* License: https://raw.githubusercontent.com/libunwind/libunwind/master/LICENSE
 * License Name: MIT License
 * License Id: MIT
 
@@ -419,7 +419,7 @@ _Enterprise Edition only_
 * Version: 1.40.0
 * Date: 2019-11-15 14:34:03Z
 * GitHub: https://github.com/nghttp2/nghttp2
-* License: https://github.com/nghttp2/nghttp2/blob/master/COPYING
+* License: https://raw.githubusercontent.com/nghttp2/nghttp2/master/COPYING
 * License Name: MIT License
 * License Id: MIT
 
@@ -479,7 +479,7 @@ _Enterprise Edition only_
 * Version: (none)
 * Date: 2020-03-14 19:09:08Z
 * Project Home: https://github.com/taocpp/json
-* License: https://github.com/taocpp/json/blob/master/LICENSE
+* License: https://raw.githubusercontent.com/taocpp/json/master/LICENSE
 * License Name: MIT License
 * License Id: MIT
 
@@ -799,7 +799,7 @@ _Enterprise Edition only_
 * Version: 3.25.1
 * Project Home: http://swagger.io
 * GitHub: https://github.com/swagger-api/swagger-ui
-* License: https://github.com/swagger-api/swagger-ui/blob/master/README.md
+* License: https://raw.githubusercontent.com/swagger-api/swagger-ui/master/LICENSE
 * License Name: Apache License 2.0
 * License Id: Apache-2.0
 
