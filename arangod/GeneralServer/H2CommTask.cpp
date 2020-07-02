@@ -162,7 +162,7 @@ template <SocketType T>
   auto it = me->_streams.find(stream_id);
   if (it != me->_streams.end()) {
     Stream& strm = *it->second;
-    if (strm.response && strm.response->statistics) {
+    if (strm.response) {
       strm.response->statistics.SET_WRITE_END();
     }
     me->_streams.erase(it);
