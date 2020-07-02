@@ -150,7 +150,7 @@
         }
         this.setCachedQuery(this.aqlEditor.getValue(), JSON.stringify(this.bindParamTableObj));
       } else {
-        arangoHelper.arangoError('Bind parameter', 'Could not parse bind parameter');
+        arangoHelper.arangoError('Bind parameters', 'Could not parse bind parameters');
       }
       this.resize();
     },
