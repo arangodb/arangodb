@@ -28,9 +28,12 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/StringUtils.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Logger/LogBuffer.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerFeature.h"
 #include "Rest/HttpRequest.h"
+#include "Utils/ExecContext.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -39,7 +42,34 @@ using namespace arangodb::rest;
 RestAdminLogHandler::RestAdminLogHandler(GeneralRequest* request, GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
+arangodb::Result RestAdminLogHandler::verifyPermitted() {
+  auto* loggerFeature = application_features::ApplicationServer::getFeature<arangodb::LoggerFeature>("Logger");
+
+  // do we have admin rights (if rights are active)
+  ExecContext const* exec = ExecContext::CURRENT;
+  if (loggerFeature->onlySuperUser()) {
+    if (exec == nullptr || !exec->isAdminUser() || !exec->user().empty()) {
+      return arangodb::Result(
+          TRI_ERROR_HTTP_FORBIDDEN, "you need super user rights for log operations");
+    }
+  } else {
+    if (exec == nullptr || !exec->isAdminUser()) {
+      return arangodb::Result(
+          TRI_ERROR_HTTP_FORBIDDEN, "you need admin rights for log operations");
+    } // if
+  }
+ 
+  return arangodb::Result();
+}
+
 RestStatus RestAdminLogHandler::execute() {
+  auto result = verifyPermitted();
+  if (!result.ok()) {
+    generateError(
+        rest::ResponseCode::FORBIDDEN, result.errorNumber(), result.errorMessage());
+    return RestStatus::DONE;
+  }
+
   size_t const len = _request->suffixes().size();
 
   if (len == 0) {
