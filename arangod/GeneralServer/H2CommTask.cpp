@@ -38,11 +38,18 @@
 #include <velocypack/velocypack-aliases.h>
 #include <cstring>
 
-using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::rest;
-
 using arangodb::velocypack::StringRef;
+
+namespace arangodb {
+namespace rest {
+
+struct H2Response : public HttpResponse {
+  H2Response(ResponseCode code, uint64_t mid)
+    : HttpResponse(code, mid, nullptr) {}
+  
+  RequestStatistics::Item statistics;
+};
 
 template <SocketType T>
 /*static*/ int H2CommTask<T>::on_begin_headers(nghttp2_session* session,
@@ -119,7 +126,7 @@ template <SocketType T>
       if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
         const int32_t sid = frame->hd.stream_id;
         LOG_TOPIC("c75b1", TRACE, Logger::REQUESTS)
-            << "<http2> finalized request on stream " << sid;
+            << "<http2> finalized request on stream " << sid << " with ptr " << me;
         
         Stream* strm = me->findStream(sid);
         if (strm) {
@@ -154,7 +161,10 @@ template <SocketType T>
   H2CommTask<T>* me = static_cast<H2CommTask<T>*>(user_data);
   auto it = me->_streams.find(stream_id);
   if (it != me->_streams.end()) {
-    it->second->statistics.SET_WRITE_END();
+    Stream& strm = *it->second;
+    if (strm.response && strm.response->statistics) {
+      strm.response->statistics.SET_WRITE_END();
+    }
     me->_streams.erase(it);
   }
   
@@ -208,7 +218,7 @@ H2CommTask<T>::~H2CommTask() noexcept {
     LOG_TOPIC("924cf", DEBUG, Logger::REQUESTS)
         << "<http2> got " << _streams.size() << " remaining streams";
   }
-  HttpResponse* res = nullptr;
+  H2Response* res = nullptr;
   while (_responses.pop(res)) {
     delete res;
   }
@@ -324,7 +334,7 @@ void H2CommTask<T>::upgradeHttp1(std::unique_ptr<HttpRequest> req) {
       return;
     }
     
-    ::submitConnectionPreface(me._session);
+    submitConnectionPreface(me._session);
     
     // The HTTP/1.1 request that is sent prior to upgrade is assigned
     // a stream identifier of 1 (see Section 5.1.1).
@@ -468,14 +478,13 @@ void H2CommTask<T>::processStream(H2CommTask<T>::Stream* stream) {
 
   // unzip / deflate
   if (!this->handleContentEncoding(*req)) {
-    this->addErrorResponse(rest::ResponseCode::BAD, req->contentTypeResponse(),
-                           1, TRI_ERROR_BAD_PARAMETER, "decoding error");
+    this->sendErrorResponse(rest::ResponseCode::BAD, req->contentTypeResponse(),
+                            1, TRI_ERROR_BAD_PARAMETER, "decoding error");
     return;
   }
 
   // create a handler and execute
-  auto resp = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR,
-                                             messageId, nullptr);
+  auto resp = std::make_unique<H2Response>(rest::ResponseCode::SERVER_ERROR, messageId);
   resp->setContentType(req->contentTypeResponse());
   this->executeRequest(std::move(req), std::move(resp));
 }
@@ -517,11 +526,9 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
        << "\",\"" << static_cast<int>(res->responseCode()) << "\","
        << Logger::FIXED(totalTime, 6);
   
-  auto* tmp = static_cast<HttpResponse*>(res.get());
-  auto stream = findStream(static_cast<int32_t>(res->messageId()));
-  TRI_ASSERT(stream);
-  stream->statistics = std::move(stat);
-
+  auto* tmp = static_cast<H2Response*>(res.get());
+  tmp->statistics = std::move(stat);
+  
   // this uses fixed capacity queue, push might fail (it shouldn't though)
   int retries = 1024;
   while (ADB_UNLIKELY(!_responses.push(tmp))) {
@@ -547,9 +554,9 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
 // queue the response onto the session, call only on IO thread
 template <SocketType T>
 void H2CommTask<T>::queueHttp2Responses() {
-  HttpResponse* response = nullptr;
+  H2Response* response = nullptr;
   while (_responses.pop(response)) {
-    std::unique_ptr<HttpResponse> guard(response);
+    std::unique_ptr<H2Response> guard(response);
     
     const int32_t streamId = static_cast<int32_t>(response->messageId());
     Stream* strm = findStream(streamId);
@@ -559,11 +566,11 @@ void H2CommTask<T>::queueHttp2Responses() {
       return;
     }
     strm->response = std::move(guard);
+    auto& res = *response;
 
     // will add CORS headers if necessary
-    this->finishExecution(*strm->response, strm->origin);
+    this->finishExecution(res, strm->origin);
 
-    auto& res = *response;
     // we need a continuous block of memory for headers
     std::vector<nghttp2_nv> nva;
     nva.reserve(4 + res.headers().size());
@@ -613,19 +620,16 @@ void H2CommTask<T>::queueHttp2Responses() {
     std::string len;
     nghttp2_data_provider *prd_ptr = nullptr, prd;
     if (!res.generateBody() ||
-        ::expectResponseBody(static_cast<int>(res.responseCode()))
+        expectResponseBody(static_cast<int>(res.responseCode()))
       ) {
       len = std::to_string(res.bodySize());
       nva.push_back({(uint8_t*)"content-length", (uint8_t*)len.c_str(), 14,
                      len.size(), NGHTTP2_NV_FLAG_NO_COPY_NAME});
     }
     
-    RequestStatistics::Item const& stat = strm->statistics;
-    
-    
     if ((res.bodySize() > 0) &&
         res.generateBody() &&
-        ::expectResponseBody(static_cast<int>(res.responseCode()))
+        expectResponseBody(static_cast<int>(res.responseCode()))
       ) {
       prd.source.ptr = strm;
       prd.read_callback = [](nghttp2_session* session, int32_t stream_id,
@@ -656,7 +660,10 @@ void H2CommTask<T>::queueHttp2Responses() {
       };
       prd_ptr = &prd;
     }
-    stat.ADD_SENT_BYTES(res.bodySize());
+    
+    if (res.statistics) {
+      res.statistics.ADD_SENT_BYTES(res.bodySize());
+    }
     
     int rv = nghttp2_submit_response(this->_session, streamId, nva.data(),
                                      nva.size(), prd_ptr);
@@ -759,7 +766,7 @@ void H2CommTask<T>::doWrite() {
 template <SocketType T>
 std::unique_ptr<GeneralResponse> H2CommTask<T>::createResponse(rest::ResponseCode responseCode,
                                                                uint64_t mid) {
-  return std::make_unique<HttpResponse>(responseCode, mid);
+  return std::make_unique<H2Response>(responseCode, mid);
 }
 
 template <SocketType T>
@@ -806,3 +813,6 @@ template class arangodb::rest::H2CommTask<SocketType::Ssl>;
 #ifndef _WIN32
 template class arangodb::rest::H2CommTask<SocketType::Unix>;
 #endif
+
+} // namespace rest
+} // namespace arangodb
