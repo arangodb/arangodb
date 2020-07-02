@@ -9,6 +9,11 @@ v3.7.1-rc.1 (XXXX-XX-XX)
   users, too. This can be used to lock down this API for non-admin users
   entirely.
 
+* Fixed crash in HTTP2 implementation.
+
+* Improve readability of running and slow queries in web UI by properly left-
+  aligning the query strings.
+
 * ClusterInfo will wait for syncer threads to shutdown.
 
 * Correct some log entries.

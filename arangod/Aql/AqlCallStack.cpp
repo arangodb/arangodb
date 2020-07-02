@@ -71,7 +71,7 @@ auto AqlCallStack::popCall() -> AqlCallList {
   TRI_ASSERT(_compatibilityMode3_6 || !_operations.empty());
   if (_compatibilityMode3_6 && _operations.empty()) {
     // This is only for compatibility with 3.6
-    // there we do not have the stack beeing passed-through
+    // there we do not have the stack being passed-through
     // in AQL, we only have a single call.
     // We can only get into this state in the abscence of
     // LIMIT => we always do an unlimted softLimit call
@@ -89,7 +89,7 @@ auto AqlCallStack::peek() const -> AqlCall const& {
   TRI_ASSERT(_compatibilityMode3_6 || !_operations.empty());
   if (is36Compatible() && _operations.empty()) {
     // This is only for compatibility with 3.6
-    // there we do not have the stack beeing passed-through
+    // there we do not have the stack being passed-through
     // in AQL, we only have a single call.
     // We can only get into this state in the abscence of
     // LIMIT => we always do an unlimted softLimit call

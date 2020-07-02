@@ -394,6 +394,7 @@ TEST_F(TransactionManagerTest, aql_standalone_transaction) {
   auto qq = "FOR doc IN testCollection RETURN doc";
   arangodb::aql::QueryResult qres = executeQuery(vocbase, qq, ctx);
   ASSERT_TRUE(qres.ok());
+  ASSERT_NE(nullptr, qres.data);
   VPackSlice data = qres.data->slice();
   ASSERT_TRUE(data.isArray());
   ASSERT_EQ(data.length(), 1);

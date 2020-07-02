@@ -169,7 +169,7 @@ TEST_P(SubqueryStartExecutorTest, adds_a_shadowrow_after_every_input_line) {
 }
 
 TEST_P(SubqueryStartExecutorTest, shadow_row_does_not_fit_in_current_block) {
-  // NOTE: This test relies on batchSizes beeing handled correctly and we do not over-allocate memory
+  // NOTE: This test relies on batchSizes being handled correctly and we do not over-allocate memory
   // Also it tests, that ShadowRows go into place accounting of the output block (count as 1 line)
 
   // NOTE: Reduce batch size to 1, to enforce a too small output block
@@ -298,7 +298,7 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_many_request
 }
 
 TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_not_enough_space) {
-  // NOTE: This test relies on batchSizes beeing handled correctly and we do not over-allocate memory
+  // NOTE: This test relies on batchSizes being handled correctly and we do not over-allocate memory
   // Also it tests, that ShadowRows go into place accounting of the output block (count as 1 line)
 
   // NOTE: Reduce batch size to 2, to enforce a too small output block, in between the shadow Rows
