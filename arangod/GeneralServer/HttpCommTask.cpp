@@ -95,8 +95,8 @@ int HttpCommTask<T>::on_url(llhttp_t* p, const char* at, size_t len) {
   me->_request->parseUrl(at, len);
   me->_request->setRequestType(llhttpToRequestType(p));
   if (me->_request->requestType() == RequestType::ILLEGAL) {
-    me->addSimpleResponse(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                          rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
+    me->sendSimpleResponse(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                           rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
     return HPE_USER;
   }
 
@@ -147,12 +147,12 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
 
   if ((p->http_major != 1 && p->http_minor != 0) &&
       (p->http_major != 1 && p->http_minor != 1)) {
-    me->addSimpleResponse(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED,
-                          rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
+    me->sendSimpleResponse(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED,
+                           rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
     return HPE_USER;
   }
   if (p->content_length > GeneralCommTask<T>::MaximalBodySize) {
-    me->addSimpleResponse(rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE,
+    me->sendSimpleResponse(rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE,
                           rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
     return HPE_USER;
   }
@@ -415,8 +415,8 @@ void HttpCommTask<T>::processRequest() {
 
   // unzip / deflate
   if (!this->handleContentEncoding(*_request)) {
-    this->addErrorResponse(rest::ResponseCode::BAD, _request->contentTypeResponse(),
-                           1, TRI_ERROR_BAD_PARAMETER, "decoding error");
+    this->sendErrorResponse(rest::ResponseCode::BAD, _request->contentTypeResponse(),
+                            1, TRI_ERROR_BAD_PARAMETER, "decoding error");
     return;
   }
 
