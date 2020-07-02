@@ -1,6 +1,8 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Hot backup agency locks with clientId
+
 * Correct some log entries.
 
 * Fixed BTS-110: Fulltext index with minLength <= 0 not allowed.
@@ -17,7 +19,7 @@ v3.6.5 (XXXX-XX-XX)
   Added option `--transaction.streaming-lock-timeout` to control the timeout in
   seconds in case of parallel access to a streaming transaction.
 
-* Removed the edge id's hover styling in case of embedded document editor in 
+* Removed the edge id's hover styling in case of embedded document editor in
   the Web UI as this functionality is disabled. This was misleading because
   the elements are not clickable.
 

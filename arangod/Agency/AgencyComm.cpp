@@ -1410,17 +1410,57 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
 
   std::vector<std::string> clientIds;
   VPackSlice body = inBody.resolveExternals();
+  bool writeQuery = false;
 
   if (body.isArray()) {
     // In the writing case we want to find all transactions with client IDs
     // and remember these IDs:
     for (auto const& query : VPackArrayIterator(body)) {
-      if (query.isArray() && query.length() == 3 && query[0].isObject() &&
-          query[2].isString()) {
-        clientIds.push_back(query[2].copyString());
+      if (query.isArray()) {
+        if (query[0].isObject()) {
+          writeQuery = true;
+          if (query.length() == 3 && query[2].isString()) {
+            clientIds.push_back(query[2].copyString());
+          }
+        }
       }
     }
   }
+
+  // It is good practice to query with client ids, but if not
+  VPackBuilder tmp;
+  if (writeQuery && clientIds.empty()) {
+    LOG_TOPIC("a2759", DEBUG, Logger::AGENCYCOMM)
+      << "no client ids in write transaction " << body.toJson() << ". rewriting.";
+    { VPackArrayBuilder trxs(&tmp);
+      for (auto const& query : VPackArrayIterator(body)) {
+        VPackArrayBuilder trx(&tmp);
+        if (query.length() > 0) {
+          if (query[0].isObject()) { // write
+            size_t pos = 0;
+            for (auto const& i : VPackArrayIterator(query)) {
+              tmp.add(i);
+              ++pos;
+            }
+            if (pos < 3) { // no client id
+              if (pos == 1) { // no precondition
+                tmp.add(arangodb::velocypack::Slice::emptyObjectSlice());
+              }
+              clientIds.emplace_back(to_string(boost::uuids::random_generator()()));
+              tmp.add(VPackValue(clientIds.back()));
+            }
+          } else {                   // read
+            for (auto const& i : VPackArrayIterator(query)) {
+              tmp.add(i);
+            }
+          }
+        }
+      }
+    }
+    body = tmp.slice();
+  }
+
+
   std::string url;
 
   std::chrono::duration<double> waitInterval(.0);  // seconds
