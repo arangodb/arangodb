@@ -850,7 +850,6 @@ void VelocyPackHelper::patchDouble(VPackSlice slice, double value) {
   uint8_t* p = const_cast<uint8_t*>(slice.begin());
   // skip one byte for the header and overwrite
   // some architectures do not support unaligned writes, so copy bytewise
-  static_assert(sizeof(uint64_t) == sizeof(double), "invalid type sizes");
   memcpy(p + 1, &value, sizeof(double));
 }
 
