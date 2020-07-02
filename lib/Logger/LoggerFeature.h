@@ -44,6 +44,9 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   void disableThreaded() { _threaded = false; }
   void setSupervisor(bool supervisor) { _supervisor = supervisor; }
 
+  bool isAPIEnabled() const { return _apiEnabled; }
+  bool onlySuperUser() const { return _apiSwitch == "jwt"; }
+
  private:
   std::vector<std::string> _output;
   std::vector<std::string> _levels;
@@ -70,6 +73,8 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   bool _supervisor = false;
   bool _backgrounded = false;
   bool _threaded = false;
+  std::string _apiSwitch = "true";
+  bool _apiEnabled = true;
 };
 
 }  // namespace arangodb

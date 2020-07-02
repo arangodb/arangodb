@@ -36,6 +36,8 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <boost/algorithm/string/predicate.hpp>
+
 #include <chrono>
 #include <thread>
 
@@ -566,20 +568,32 @@ void SimpleHttpClient::setRequest(rest::RequestType method, std::string const& l
   }
 
   // do basic authorization
+  std::vector<std::pair<size_t, size_t>> exclusions;
+  size_t pos = 0;
   if (!_params._jwt.empty()) {
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Authorization: bearer "));
+    pos = _writeBuffer.size();
     _writeBuffer.appendText(_params._jwt);
+    exclusions.emplace_back(pos, _writeBuffer.size());
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
   } else if (!_params._basicAuth.empty()) {
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Authorization: Basic "));
+    pos = _writeBuffer.size();
     _writeBuffer.appendText(_params._basicAuth);
+    exclusions.emplace_back(pos, _writeBuffer.size());
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
   }
 
   for (auto const& header : headers) {
     _writeBuffer.appendText(header.first);
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR(": "));
-    _writeBuffer.appendText(header.second);
+    if (boost::iequals(StaticStrings::Authorization, header.first)) {
+      pos = _writeBuffer.size();
+      _writeBuffer.appendText(header.second);
+      exclusions.emplace_back(pos, _writeBuffer.size());
+    } else {
+      _writeBuffer.appendText(header.second);
+    }
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
   }
 
@@ -597,7 +611,21 @@ void SimpleHttpClient::setRequest(rest::RequestType method, std::string const& l
 
   _writeBuffer.ensureNullTerminated();
 
-  LOG_TOPIC("12c4b", TRACE, arangodb::Logger::HTTPCLIENT) << "request: " << _writeBuffer;
+  if (exclusions.empty()) {
+    LOG_TOPIC("12c4c", TRACE, arangodb::Logger::HTTPCLIENT)
+        << "request: " << _writeBuffer;
+  } else {
+    pos = 0;
+    for (size_t i = 0; i < exclusions.size(); ++i) {
+      LOG_TOPIC("12c4b", TRACE, arangodb::Logger::HTTPCLIENT)
+          << "request: "
+          << std::string(_writeBuffer.data() + pos, exclusions[i].first - pos)
+          << "SENSITIVE_DETAILS_HIDDEN";
+      pos = exclusions[i].second;
+    }
+    LOG_TOPIC("12c4e", TRACE, arangodb::Logger::HTTPCLIENT)
+        << "request: " << std::string(_writeBuffer.data() + pos, _writeBuffer.size() - pos);
+  }
 
   if (_state == DEAD) {
     _connection->resetNumConnectRetries();
