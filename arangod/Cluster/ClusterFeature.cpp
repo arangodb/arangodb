@@ -563,7 +563,7 @@ void ClusterFeature::start() {
   AgencyComm comm(server());
   comm.sendServerState(120.0);
 
-  std::string const version = comm.version();
+  auto const version = comm.version();
 
   ServerState::instance()->setInitialized();
 
@@ -651,7 +651,7 @@ void ClusterFeature::stop() {
   // to write something into a non-existing agency.
   AgencyComm comm(server());
   // this will be stored in transient only
-  comm.sendServerState(4.0); 
+  comm.sendServerState(4.0);
 
   // the following ops will be stored in Plan/Current (for unregister) or
   // Current (for logoff)
@@ -662,7 +662,10 @@ void ClusterFeature::stop() {
     // log off the server from the agency, without permanently removing it from
     // the cluster setup.
     ServerState::instance()->logoff(10.0);
-  } 
+  }
+
+  // Make sure ClusterInfo's syncer threads have stopped.
+  _clusterInfo->waitForSyncersToStop();
 
   AsyncAgencyCommManager::INSTANCE->setStopping(true);
   shutdownAgencyCache();
@@ -695,37 +698,50 @@ void ClusterFeature::startHeartbeatThread(AgencyCallbackRegistry* agencyCallback
   }
 }
 
+
 void ClusterFeature::shutdownHeartbeatThread() {
   if (_heartbeatThread == nullptr) {
     return;
   }
   _heartbeatThread->beginShutdown();
-  int counter = 0;
-  while (_heartbeatThread->isRunning()) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    // emit warning after 5 seconds
-    if (++counter == 10 * 5) {
-      LOG_TOPIC("acaa9", WARN, arangodb::Logger::CLUSTER)
-          << "waiting for heartbeat thread to finish";
+  auto start = std::chrono::steady_clock::now();
+  size_t counter = 0;
+  while(_heartbeatThread->isRunning()) {
+    if (std::chrono::steady_clock::now() - start > std::chrono::seconds(65)) {
+      LOG_TOPIC("d8a5b", FATAL, Logger::CLUSTER)
+        << "exiting prematurely as we failed terminating the heartbeat thread";
+      FATAL_ERROR_EXIT();
     }
+    if(++counter % 50 == 0) {
+      LOG_TOPIC("acaa9", WARN, arangodb::Logger::CLUSTER)
+        << "waiting for heartbeat thread to finish";
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
 }
+
 
 void ClusterFeature::shutdownAgencyCache() {
   if (_agencyCache == nullptr) {
     return;
   }
   _agencyCache->beginShutdown();
-  int counter = 0;
-  while (_agencyCache != nullptr && _agencyCache->isRunning()) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    // emit warning after 5 seconds
-    if (++counter == 10 * 5) {
-      LOG_TOPIC("acab0", WARN, arangodb::Logger::CLUSTER)
-          << "waiting for agency cache thread to finish";
+  auto start = std::chrono::steady_clock::now();
+  size_t counter = 0;
+  while(_agencyCache != nullptr && _agencyCache->isRunning()) {
+    if (std::chrono::steady_clock::now() - start > std::chrono::seconds(65)) {
+      LOG_TOPIC("b5a8d", FATAL, Logger::CLUSTER)
+        << "exiting prematurely as we failed terminating the agency cache";
+      FATAL_ERROR_EXIT();
     }
+    if(counter % 50 == 0) {
+      LOG_TOPIC("acab0", WARN, arangodb::Logger::CLUSTER)
+        << "waiting for agency cache thread to finish";
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
 }
+
 
 void ClusterFeature::notify() {
   if (_heartbeatThread != nullptr) {
@@ -733,9 +749,11 @@ void ClusterFeature::notify() {
   }
 }
 
+
 std::shared_ptr<HeartbeatThread> ClusterFeature::heartbeatThread() {
   return _heartbeatThread;
 }
+
 
 ClusterInfo& ClusterFeature::clusterInfo() {
   if (!_clusterInfo) {
@@ -744,12 +762,14 @@ ClusterInfo& ClusterFeature::clusterInfo() {
   return *_clusterInfo;
 }
 
+
 AgencyCache& ClusterFeature::agencyCache() {
   if (_agencyCache == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
   return *_agencyCache;
 }
+
 
 void ClusterFeature::allocateMembers() {
   try {

@@ -1049,7 +1049,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
   }
 
   std::string const baseUrl = replutils::ReplicationUrl + "/keys";
-  std::string url = baseUrl + "/keys" + "?collection=" + urlEncode(leaderColl) +
+  std::string url = baseUrl + "?collection=" + urlEncode(leaderColl) +
                     "&to=" + std::to_string(maxTick) +
                     "&serverId=" + _state.localServerIdString +
                     "&batchId=" + std::to_string(_config.batch.id);

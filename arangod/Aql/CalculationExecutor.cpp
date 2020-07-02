@@ -217,8 +217,6 @@ void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(InputAqlIte
 
   if (input.blockHasMoreDataRowsAfterThis()) {
     // We will be called again before the fetcher needs to get a new block.
-    // Thus we won't wait for upstream, nor will get a WAITING on the next
-    // fetchRow().
     // So we keep the context open.
     // This works because this block allows pass through, i.e. produces exactly
     // one output row per input row.

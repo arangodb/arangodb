@@ -443,11 +443,11 @@ auto ExecutionBlockImpl<RemoteExecutor>::executeViaOldApi(AqlCallStack stack)
       // However we can do a short-cut here to report DONE on hardLimit if we are on the top-level query.
       myCall.didProduce(block->size());
       if (myCall.getLimit() == 0) {
-        return {ExecutionState::DONE, SkipResult{}, block};
+        return {ExecutionState::DONE, SkipResult{}, std::move(block)};
       }
     }
 
-    return {state, SkipResult{}, block};
+    return {state, SkipResult{}, std::move(block)};
   } else if (AqlCall::IsFullCountCall(myCall)) {
     auto const [state, skipped] = skipSomeWithoutTrace(ExecutionBlock::SkipAllSize());
     if (state != ExecutionState::WAITING) {
@@ -469,7 +469,13 @@ auto ExecutionBlockImpl<RemoteExecutor>::execute(AqlCallStack stack)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   traceExecuteBegin(stack);
   auto res = executeWithoutTrace(stack);
-  traceExecuteEnd(res);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto const& [state, skipped, block] = res;
+  if (block != nullptr) {
+    block->validateShadowRowConsistency();
+  }
+#endif
+  traceExecuteEnd(res, server() + ":" + distributeId());
   return res;
 }
 

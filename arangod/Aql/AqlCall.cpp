@@ -231,6 +231,8 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
   return call;
 }
 
+void AqlCall::resetSkipCount() noexcept { skippedRows = 0; }
+
 void AqlCall::toVelocyPack(velocypack::Builder& builder) const {
   using namespace velocypack;
 
@@ -292,18 +294,21 @@ auto AqlCall::requestLessDataThan(AqlCall const& other) const noexcept -> bool {
   return needsFullCount() == other.needsFullCount();
 }
 
-auto aql::operator<<(std::ostream& out, AqlCall::Limit const& limit) -> std::ostream& {
+auto aql::operator<<(std::ostream& out, AqlCall::LimitPrinter const& printer)
+    -> std::ostream& {
   return std::visit(overload{[&out](size_t const& i) -> std::ostream& {
                                return out << i;
                              },
                              [&out](AqlCall::Infinity const&) -> std::ostream& {
                                return out << "unlimited";
                              }},
-                    limit);
+                    printer._limit);
 }
 
 auto aql::operator<<(std::ostream& out, AqlCall const& call) -> std::ostream& {
-  return out << "{ skip: " << call.getOffset() << ", softLimit: " << call.softLimit
-             << ", hardLimit: " << call.hardLimit
-             << ", fullCount: " << std::boolalpha << call.fullCount << " }";
+  return out << "{ skip: " << call.getOffset()
+             << ", softLimit: " << AqlCall::LimitPrinter(call.softLimit)
+             << ", hardLimit: " << AqlCall::LimitPrinter(call.hardLimit)
+             << ", fullCount: " << std::boolalpha << call.fullCount
+             << ", skipCount: " << call.getSkipCount() << " }";
 }

@@ -1816,7 +1816,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
         using BaseType::StaticComponent;
       };
 
-      std::shared_ptr<LatestId const> latestID() const {
+      std::shared_ptr<LatestId const> latestId() const {
         return LatestId::make_shared(shared_from_this());
       }
     };

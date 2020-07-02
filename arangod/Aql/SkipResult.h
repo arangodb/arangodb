@@ -43,12 +43,12 @@ class SkipResult {
  public:
   static auto fromVelocyPack(velocypack::Slice) -> arangodb::ResultT<SkipResult>;
 
-  SkipResult();
+  SkipResult() = default;
 
-  ~SkipResult() = default;
-
-  SkipResult(SkipResult const& other);
+  SkipResult(SkipResult const& other) = default;
   SkipResult& operator=(const SkipResult&) = default;
+  SkipResult(SkipResult&& other) = default;
+  SkipResult& operator=(SkipResult&&) = default;
 
   auto getSkipCount() const noexcept -> size_t;
 
@@ -56,7 +56,7 @@ class SkipResult {
 
   auto didSkipSubquery(size_t skipped, size_t depth) -> void;
 
-  auto getSkipOnSubqueryLevel(size_t depth) -> size_t;
+  auto getSkipOnSubqueryLevel(size_t depth) const -> size_t;
 
   auto nothingSkipped() const noexcept -> bool;
 

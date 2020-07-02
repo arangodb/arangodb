@@ -175,6 +175,7 @@ class StaticStrings {
   static std::string const ContentTypeHeader;
   static std::string const CorsMethods;
   static std::string const Error;
+  static std::string const ErrorCode;
   static std::string const ErrorMessage;
   static std::string const ErrorNum;
   static std::string const Errors;
@@ -318,6 +319,8 @@ class StaticStrings {
   static std::string const AqlCallListSpecific;
   static std::string const AqlCallListDefault;
   static std::string const ArangoSearchAnalyzersRevision;
+  static std::string const ArangoSearchCurrentAnalyzersRevision;
+  static std::string const ArangoSearchSystemAnalyzersRevision;
 
   // validation
   static std::string const ValidationLevelNone;

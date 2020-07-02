@@ -1234,12 +1234,11 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
       ASSERT_EQ(1, tmpSlice2.length());
       tmpSlice2 = tmpSlice2.at(0);
       ASSERT_TRUE(tmpSlice2.isObject());
-      EXPECT_EQ(5, tmpSlice2.length());
+      EXPECT_EQ(4, tmpSlice2.length());
       EXPECT_TRUE(tmpSlice2.get("name").isString() && "inPlace" == tmpSlice2.get("name").copyString());
       EXPECT_TRUE(tmpSlice2.get("type").isString() && "identity" == tmpSlice2.get("type").copyString());
       EXPECT_TRUE(tmpSlice2.get("properties").isObject() && 0 == tmpSlice2.get("properties").length());
       EXPECT_TRUE(tmpSlice2.get("features").isArray() && 0 == tmpSlice2.get("features").length());
-      EXPECT_TRUE(tmpSlice2.get("revision").isNumber() && 0 == tmpSlice2.get("revision").getNumber<uint64_t>());
     }
   }
 }

@@ -440,6 +440,11 @@ public:
    */
   void startSyncers();
 
+  /**
+   * @brief wait for syncers' full stop
+   */
+  void waitForSyncersToStop();
+
   /// @brief produces an agency dump and logs it
   void logAgencyDump() const;
 
@@ -585,6 +590,15 @@ public:
   //////////////////////////////////////////////////////////////////////////////
   AnalyzersRevision::Ptr getAnalyzersRevision(DatabaseID const& databaseID,
                                                           bool forceLoadPlan = false);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Reads analyzers revisions needed for querying specified database.
+  ///        Could trigger plan load if database is not found in plan.
+  /// @param databaseID database to query
+  /// @return extracted revisions
+  //////////////////////////////////////////////////////////////////////////////
+  QueryAnalyzerRevisions getQueryAnalyzersRevision(
+      DatabaseID const& databaseID);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection in current. This returns information about

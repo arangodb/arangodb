@@ -457,6 +457,116 @@ TEST_P(format_test_case, fields_seek_ge) {
 }
 
 TEST_P(format_test_case, fields_read_write) {
+  /*
+    Term dictionary structure:
+      BLOCK|7|
+        TERM|aaLorem
+        TERM|abaLorem
+        BLOCK|36|abab
+          TERM|Integer
+          TERM|Lorem
+          TERM|Praesent
+          TERM|adipiscing
+          TERM|amet
+          TERM|cInteger
+          TERM|cLorem
+          TERM|cPraesent
+          TERM|cadipiscing
+          TERM|camet
+          TERM|cdInteger
+          TERM|cdLorem
+          TERM|cdPraesent
+          TERM|cdamet
+          TERM|cddolor
+          TERM|cdelit
+          TERM|cdenecaodio
+          TERM|cdesitaamet
+          TERM|cdipsum
+          TERM|cdnec
+          TERM|cdodio
+          TERM|cdolor
+          TERM|cdsit
+          TERM|celit
+          TERM|cipsum
+          TERM|cnec
+          TERM|codio
+          TERM|consectetur
+          TERM|csit
+          TERM|dolor
+          TERM|elit
+          TERM|ipsum
+          TERM|libero
+          TERM|nec
+          TERM|odio
+          TERM|sit
+        TERM|abcaLorem
+        BLOCK|32|abcab
+          TERM|Integer
+          TERM|Lorem
+          TERM|Praesent
+          TERM|adipiscing
+          TERM|amet
+          TERM|cInteger
+          TERM|cLorem
+          TERM|cPraesent
+          TERM|camet
+          TERM|cdInteger
+          TERM|cdLorem
+          TERM|cdPraesent
+          TERM|cdamet
+          TERM|cddolor
+          TERM|cdelit
+          TERM|cdipsum
+          TERM|cdnec
+          TERM|cdodio
+          TERM|cdolor
+          TERM|cdsit
+          TERM|celit
+          TERM|cipsum
+          TERM|cnec
+          TERM|codio
+          TERM|csit
+          TERM|dolor
+          TERM|elit
+          TERM|ipsum
+          TERM|libero
+          TERM|nec
+          TERM|odio
+          TERM|sit
+        TERM|abcdaLorem
+        BLOCK|30|abcdab
+          TERM|Integer
+          TERM|Lorem
+          TERM|Praesent
+          TERM|amet
+          TERM|cInteger
+          TERM|cLorem
+          TERM|cPraesent
+          TERM|camet
+          TERM|cdInteger
+          TERM|cdLorem
+          TERM|cdamet
+          TERM|cddolor
+          TERM|cdelit
+          TERM|cdipsum
+          TERM|cdnec
+          TERM|cdodio
+          TERM|cdolor
+          TERM|cdsit
+          TERM|celit
+          TERM|cipsum
+          TERM|cnec
+          TERM|codio
+          TERM|csit
+          TERM|dolor
+          TERM|elit
+          TERM|ipsum
+          TERM|libero
+          TERM|nec
+          TERM|odio
+          TERM|sit
+   */
+
   // create sorted && unsorted terms
   typedef std::set<irs::bytes_ref> sorted_terms_t;
   typedef std::vector<irs::bytes_ref> unsorted_terms_t;
@@ -611,7 +721,7 @@ TEST_P(format_test_case, fields_read_write) {
        }
      }
 
-     /* check sorted terms in reverse order using multiple "seek"s on single iterator */
+     // check sorted terms in reverse order using multiple "seek"s on single iterator
      {
        auto expected_term = sorted_terms.rbegin();
        auto term = term_reader->iterator();
@@ -624,7 +734,7 @@ TEST_P(format_test_case, fields_read_write) {
        }
      }
 
-     /* check unsorted terms using multiple "seek"s on single iterator */
+     // check unsorted terms using multiple "seek"s on single iterator
      {
        auto expected_term = unsorted_terms.begin();
        auto term = term_reader->iterator();
@@ -636,6 +746,23 @@ TEST_P(format_test_case, fields_read_write) {
          ASSERT_EQ(*expected_term, term->value());
        }
      }
+
+    // ensure term is not invalidated during consequent unsuccessful seeks
+    {
+        constexpr std::pair<irs::string_ref, irs::string_ref> TERMS[] {
+          { "abcabamet", "abcabamet" },
+          { "abcabrit", "abcabsit" },
+          { "abcabzit", "abcabsit" },
+          { "abcabelit", "abcabelit" }
+        };
+
+       auto term = term_reader->iterator();
+       for (const auto& [seek_term, expected_term] : TERMS) {
+         ASSERT_EQ(seek_term == expected_term,
+                   term->seek(irs::ref_cast<irs::byte_type>(seek_term)));
+         ASSERT_EQ(irs::ref_cast<irs::byte_type>(expected_term), term->value());
+       }
+    }
 
      // seek to nil (the smallest possible term)
      {

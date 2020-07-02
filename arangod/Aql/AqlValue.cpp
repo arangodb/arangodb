@@ -1707,20 +1707,12 @@ AqlValue& AqlValueGuard::value() noexcept { return _value; }
 
 size_t std::hash<arangodb::aql::AqlValue>::operator()(arangodb::aql::AqlValue const& x) const
     noexcept {
-  arangodb::aql::AqlValue::AqlValueType type = x.type();
-  size_t res = std::hash<uint8_t>()(type);
-  if (type == arangodb::aql::AqlValue::VPACK_INLINE) {
-    try {
-      return res ^ static_cast<size_t>(
-                       arangodb::velocypack::Slice(&x._data.internal[0]).hash());
-    } catch (...) {
-      TRI_ASSERT(false);
-    }
-    // fallthrough to default hashing
+  if (x.type() == arangodb::aql::AqlValue::VPACK_INLINE) {
+      return static_cast<size_t>(arangodb::velocypack::Slice(&x._data.internal[0]).hash());
   }
   // treat all other pointer types the same, because they will
   // have the same bit representations
-  return res ^ std::hash<void const*>()(x._data.pointer);
+  return std::hash<void const*>()(x._data.pointer);
 }
 
 bool std::equal_to<arangodb::aql::AqlValue>::operator()(arangodb::aql::AqlValue const& a,
@@ -1731,13 +1723,8 @@ bool std::equal_to<arangodb::aql::AqlValue>::operator()(arangodb::aql::AqlValue 
     return false;
   }
   if (type == arangodb::aql::AqlValue::VPACK_INLINE) {
-    try {
-      return arangodb::velocypack::Slice(&a._data.internal[0])
-          .binaryEquals(arangodb::velocypack::Slice(&b._data.internal[0]));
-    } catch (...) {
-      TRI_ASSERT(false);
-    }
-    // fallthrough to default comparison
+    return arangodb::velocypack::Slice(&a._data.internal[0])
+           .binaryEquals(arangodb::velocypack::Slice(&b._data.internal[0]));
   }
   // treat all other pointer types the same, because they will
   // have the same bit representations
