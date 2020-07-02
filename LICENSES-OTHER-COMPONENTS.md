@@ -377,6 +377,7 @@ _Enterprise Edition only_
 
 * Name: libunwind
 * Version: 1.4
+* Date: 2020-03-31 16:12:36Z
 * Project Home: https://github.com/libunwind/libunwind
 * License: https://github.com/libunwind/libunwind/blob/master/LICENSE
 * License Name: MIT License
