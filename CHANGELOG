@@ -1,6 +1,14 @@
 devel
 -----
 
+* Re-enable access to GET `/_admin/cluster/numberOfServers` for all users by
+  default. Requests to PUT `/_admin/cluster/numberOfServers` require admin
+  user privileges. This restores the pre-3.7 behavior. 
+  In contrast to pre-3.7 behavior, the `--server.harden` option now can be
+  used to restrict access to GET `/_admin/cluster/numberOfServers` to admin
+  users, too. This can be used to lock down this API for non-admin users
+  entirely.
+
 * Improve readability of running and slow queries in web UI by properly left-  
   aligning the query strings.
 
