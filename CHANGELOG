@@ -1,6 +1,9 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Add more context error messages in certain agency failure situations in 
+  debug/trace mode.
+
 * Correct some log entries.
 
 * Fixed BTS-110: Fulltext index with minLength <= 0 not allowed.

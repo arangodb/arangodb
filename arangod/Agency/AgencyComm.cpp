@@ -668,22 +668,26 @@ void AgencyCommManager::releaseNonLocking(std::unique_ptr<httpclient::GeneralCli
 }
 
 void AgencyCommManager::failed(std::unique_ptr<httpclient::GeneralClientConnection> connection,
-                               std::string const& endpoint) {
+                               std::string const& endpoint, char const* message) {
+  TRI_ASSERT(message != nullptr);
+
   MUTEX_LOCKER(locker, _lock);
-  failedNonLocking(std::move(connection), endpoint);
+  failedNonLocking(std::move(connection), endpoint, message);
 }
 
 void AgencyCommManager::failedNonLocking(std::unique_ptr<httpclient::GeneralClientConnection> connection,
-                                         std::string const& endpoint) {
+                                         std::string const& endpoint, char const* message) {
+  TRI_ASSERT(message != nullptr);
+
   if (_endpoints.front() == endpoint) {
     LOG_TOPIC("1a7b9", TRACE, Logger::AGENCYCOMM)
         << "failed agency connection '" << connection.get()
-        << "', active endpoint " << endpoint << "'";
+        << "', active endpoint " << endpoint << "': " << message;
 
   } else {
     LOG_TOPIC("90592", TRACE, Logger::AGENCYCOMM)
         << "failed agency connection '" << connection.get()
-        << "', inactive endpoint " << endpoint << "'";
+        << "', inactive endpoint " << endpoint << "': " << message;
   }
 
   switchCurrentEndpoint();
@@ -710,7 +714,7 @@ std::string AgencyCommManager::redirect(std::unique_ptr<httpclient::GeneralClien
 
   // invalid location header
   if (delim == std::string::npos) {
-    failedNonLocking(std::move(connection), endpoint);
+    failedNonLocking(std::move(connection), endpoint, "invalid location header");
     return "";
   }
 
@@ -724,7 +728,7 @@ std::string AgencyCommManager::redirect(std::unique_ptr<httpclient::GeneralClien
   if (endpoint == specification) {
     LOG_TOPIC("14be3", DEBUG, Logger::AGENCYCOMM)
         << "got an agency redirect back to the old agency '" << endpoint << "'";
-    failedNonLocking(std::move(connection), endpoint);
+    failedNonLocking(std::move(connection), endpoint, "cyclic redirect");
     return "";
   }
 
@@ -1532,9 +1536,15 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
           }
         }
 #endif
+      } catch (std::exception const& ex) {
+        // Rotate to new agent endpoint:
+        AgencyCommManager::MANAGER->failed(std::move(connection), endpoint, ex.what());
+        endpoint.clear();
+        connection = AgencyCommManager::MANAGER->acquire(endpoint);
+        continue;
       } catch (...) {
         // Rotate to new agent endpoint:
-        AgencyCommManager::MANAGER->failed(std::move(connection), endpoint);
+        AgencyCommManager::MANAGER->failed(std::move(connection), endpoint, "unknown exception");
         endpoint.clear();
         connection = AgencyCommManager::MANAGER->acquire(endpoint);
         continue;
@@ -1644,7 +1654,9 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
 
     if (result._statusCode == 0 || result._statusCode == static_cast<int>(rest::ResponseCode::SERVICE_UNAVAILABLE)) {
       // Rotate to new agent endpoint:
-      AgencyCommManager::MANAGER->failed(std::move(connection), endpoint);
+      char const* errorMessage = 
+          (result._statusCode == 0 ? "status code 0" : "status code 503");
+      AgencyCommManager::MANAGER->failed(std::move(connection), endpoint, errorMessage);
       endpoint.clear();
       connection = AgencyCommManager::MANAGER->acquire(endpoint);
     }
