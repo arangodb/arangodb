@@ -191,6 +191,13 @@ MessageID HttpConnection<ST>::sendRequest(std::unique_ptr<Request> req,
   item->callback = std::move(cb);
   item->request = std::move(req);
 
+  // Don't send once in Failed state:
+  if (this->_state.load(std::memory_order_relaxed) == Connection::State::Failed) {
+    FUERTE_LOG_ERROR << "connection already failed\n";
+    item->invokeOnError(Error::Canceled);
+    return 0;
+  }
+
   // Prepare a new request
   if (!_queue.push(item.get())) {
     FUERTE_LOG_ERROR << "connection queue capacity exceeded\n";
@@ -202,18 +209,40 @@ MessageID HttpConnection<ST>::sendRequest(std::unique_ptr<Request> req,
   this->_numQueued.fetch_add(1, std::memory_order_relaxed);
   FUERTE_LOG_HTTPTRACE << "queued item: this=" << this << "\n";
 
-  // _state.load() after queuing request, to prevent race with connect
+  // Note that we have first posted on the queue with std::memory_order_seq_cst
+  // and now we check _active std::memory_order_seq_cst. This prevents a sleeping
+  // barber with the check-set-check combination in `asyncWriteNextRequest`.
+  // If we are the ones to exchange the value to `true`, then we post
+  // on the `_io_context` to activate the connection. Note that the
+  // connection can be in the `Disconnected` or `Connected` or `Failed`
+  // state, but not in the `Connecting` state in this case.
+  if (!this->_active.exchange(true)) {
+    this->_io_context->post([self(Connection::shared_from_this())] {
+        auto& me = static_cast<HttpConnection<ST>&>(*self);
+        me.activate();
+      });
+  }
+
+  return mid;
+}
+
+template <SocketType ST>
+void HttpConnection<ST>::activate() {
   Connection::State state = this->_state.load();
   if (state == Connection::State::Connected) {
-    startWriting();
+    FUERTE_LOG_HTTPTRACE << "activate: connected\n";
+    this->asyncWriteNextRequest();
   } else if (state == Connection::State::Disconnected) {
-    FUERTE_LOG_HTTPTRACE << "sendRequest: not connected\n";
+    FUERTE_LOG_HTTPTRACE << "activate: not connected\n";
     this->startConnection();
   } else if (state == Connection::State::Failed) {
-    FUERTE_LOG_ERROR << "queued request on failed connection\n";
+    FUERTE_LOG_ERROR << "activate: queued request on failed connection\n";
     drainQueue(fuerte::Error::ConnectionClosed);
+    _active.store(false);    // No more activity from our side
   }
-  return mid;
+  // If the state is `Connecting`, we do not need to do anything, this can
+  // happen if this `activate` was posted when the connection was still
+  // `Disconnected`, but in the meantime the connect has started.
 }
 
 template <SocketType ST>
