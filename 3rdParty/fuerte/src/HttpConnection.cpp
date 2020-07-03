@@ -257,7 +257,7 @@ size_t HttpConnection<ST>::requestsLeft() const {
 template <SocketType ST>
 void HttpConnection<ST>::finishConnect() {
   this->_state.store(Connection::State::Connected);
-  startWriting();  // starts writing queue if non-empty
+  this->asyncWriteNextRequest();  // starts writing queue if non-empty
 }
 
 // Thread-Safe: activate the combined write-read loop
