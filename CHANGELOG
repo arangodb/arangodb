@@ -1,6 +1,10 @@
 devel
 -----
 
+* In case a document got requested via the UI of a collection which does not
+  exist, the UI now properly displays an error view instead of having a bad
+  display state.
+
 * Removed the edge id's hover styling in case of embedded document editor in 
   the Web UI as this functionality is disabled. This was misleading because
   the elements are not clickable.
