@@ -1,6 +1,8 @@
 devel
 -----
 
+* Web UI: Removed unnecessary menubar entry in case of database node inspection.
+
 * Fixed a potential agency crash if trace logging is on.
 
 * Re-enable access to GET `/_admin/cluster/numberOfServers` for all users by
