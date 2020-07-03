@@ -44,6 +44,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
+#include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -701,6 +702,8 @@ std::pair<ExecutionState, Result> ExecutionEngine::shutdown(int errorCode) {
   if (state == ExecutionState::WAITING) {
     return {state, res};
   }
+  
+  LOG_TOPIC("47b85", INFO, Logger::QUERIES) << "executing legacy query shutdown";
 
   // prevent a duplicate shutdown
   _wasShutdown.store(true, std::memory_order_relaxed);
@@ -922,8 +925,10 @@ std::pair<ExecutionState, Result> ExecutionEngine::shutdownDBServerQueries(int e
           _shutdownResult.reset(res.slice().get("code").getNumericValue<int>());
         }
       });
-    }).thenError<std::exception>([](std::exception ptr) {
-      // simon: we should maybe store this error
+    }).thenError<std::exception>([ss, this](std::exception ptr) {
+      ss->executeLocked([&] {
+        _shutdownResult.reset(TRI_ERROR_INTERNAL, "unhandled query shutdown exception");
+      });
     });
 
     futures.emplace_back(std::move(f));

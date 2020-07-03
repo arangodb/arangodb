@@ -168,13 +168,6 @@ Query::~Query() {
   }
 
   _profile.reset(); // unregister from QueryList
-  
-  if (!_snippets.empty() && _trx && _trx->state()->isCoordinator()) {
-    auto* registry = QueryRegistryFeature::registry();
-    if (registry) {
-      registry->unregisterEngines(_snippets);
-    }
-  }
 
   // this will reset _trx, so _trx is invalid after here
   try {
@@ -184,6 +177,13 @@ Query::~Query() {
     // unfortunately we cannot do anything here, as we are in 
     // a destructor
     _trx.reset();
+  }
+  
+  if (!_snippets.empty() && _trx && _trx->state()->isCoordinator()) {
+    auto* registry = QueryRegistryFeature::registry();
+    if (registry) {
+      registry->unregisterEngines(_snippets);
+    }
   }
 
   exitV8Context();
