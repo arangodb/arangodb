@@ -1,7 +1,8 @@
 #!/usr/bin/python
 import csv, sys, os.path, re, urllib2
 
-filepath = 'LICENSES-OTHER-COMPONENTS.md'  
+# TODO: Fix and update this script so that it can process the input file again
+filepath = 'LICENSES-OTHER-COMPONENTS.md'
 
 name = ''
 version = ''

@@ -95,7 +95,7 @@ arangodb::basics::ReadWriteLock failurePointsLock;
 std::set<std::string, ::Comparer> failurePoints(comparer);
 }  // namespace
 
-/// @brief cause a segmentation violation
+/// @brief intentionally cause a segmentation violation or other failures
 /// this is used for crash and recovery tests
 void TRI_TerminateDebugging(char const* message) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -111,11 +111,15 @@ void TRI_TerminateDebugging(char const* message) {
     // intentionally crashes the program!
     std::terminate();
   } else if (s == "CRASH-HANDLER-TEST-TERMINATE-ACTIVE") {
+    // intentionally crashes the program!
+    // note: when using ASan/UBSan, this actually does not crash
+    // the program but continues.
     auto f = []() noexcept {
       // intentionally crashes the program!
       return std::string(nullptr);
     };
     f();
+    // we will get here at least with ASan/UBSan.
     std::terminate();
   } else if (s == "CRASH-HANDLER-TEST-SEGFAULT") {
     std::unique_ptr<int> x;

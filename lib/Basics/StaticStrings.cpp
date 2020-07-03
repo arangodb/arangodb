@@ -345,6 +345,8 @@ std::string const StaticStrings::AqlRemoteStateHasmore("hasmore");
 std::string const StaticStrings::AqlCallListSpecific("specifics");
 std::string const StaticStrings::AqlCallListDefault("default");
 std::string const StaticStrings::ArangoSearchAnalyzersRevision("analyzersRevision");
+std::string const StaticStrings::ArangoSearchCurrentAnalyzersRevision("current");
+std::string const StaticStrings::ArangoSearchSystemAnalyzersRevision("system");
 
 // validation
 std::string const StaticStrings::ValidationLevelNone("none");

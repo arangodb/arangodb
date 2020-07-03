@@ -15,9 +15,7 @@
             <% _.each(k, function(x) { %>
               <% if (type && type[counter] === 'pre') { %>
                 <td class="arango-table-td table-cell<%=counter%>">
-                  <pre class="tablePre"> 
-                    <%=(content.unescaped && content.unescaped[counter] ? x : _.escape(x))%>
-                  </pre>
+                  <pre class="tablePre"><%=(content.unescaped && content.unescaped[counter] ? x : _.escape(x))%></pre>
                 </td>
               <% } else { %>
                 <td class="arango-table-td table-cell<%=counter%>"><%=(content.unescaped && content.unescaped[counter] ? x : _.escape(x))%></td>

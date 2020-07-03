@@ -115,6 +115,7 @@ class H2Connection final : public fuerte::GeneralConnection<T> {
 
   void initNgHttp2Session();
 
+  void sendHttp1UpgradeRequest();
   void readSwitchingProtocolsResponse();
 
   // adjust the timeouts (only call from IO-Thread)
