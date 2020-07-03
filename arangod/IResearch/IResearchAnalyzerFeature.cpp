@@ -1761,41 +1761,45 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(TRI_vocbase_t& vocbase) {
        .append(arangodb::StaticStrings::AnalyzersCollection);
 
     auto ctx = transaction::StandaloneContext::Create(vocbase);
-    SingleCollectionTransaction trx(ctx, arangodb::StaticStrings::AnalyzersCollection,
-                                    AccessMode::Type::EXCLUSIVE);
+    { // SingleCollectionTransaction scope
+      SingleCollectionTransaction trx(ctx, arangodb::StaticStrings::AnalyzersCollection,
+                                      AccessMode::Type::EXCLUSIVE);
 
-    auto res = trx.begin();
-    if (res.fail()) {
-      return res;
+      auto res = trx.begin();
+      if (res.fail()) {
+        return res;
+      }
+      arangodb::aql::Query query(ctx, arangodb::aql::QueryString(aql), nullptr, nullptr);
+      aql::QueryResult queryResult = query.executeSync();
+      if (queryResult.fail()) {
+        return queryResult.result;
+      }
+      res = trx.commitAsync().get();
+      if (!res.ok()) {
+        return res;
+      }
+      res = analyzerModificationTrx->commit();
+      if (res.fail()) {
+        return res;
+      }
     }
-    arangodb::aql::Query query(ctx, arangodb::aql::QueryString(aql), nullptr, nullptr);
-    aql::QueryResult queryResult = query.executeSync();
-    if (queryResult.fail()) {
-      return queryResult.result;
-    }
-    res = trx.commitAsync().get();
-    if (!res.ok()) {
-      return res;
-    }
-    res = analyzerModificationTrx->commit();
-    if (res.fail()) {
-      return res;
-    }
-    // now let`s do cleanup
-    SingleCollectionTransaction truncateTrx(ctx, arangodb::StaticStrings::AnalyzersCollection,
-                                            AccessMode::Type::EXCLUSIVE);
+    { // SingleCollectionTransaction scope
+      // now let`s do cleanup
+      SingleCollectionTransaction truncateTrx(ctx, arangodb::StaticStrings::AnalyzersCollection,
+                                              AccessMode::Type::EXCLUSIVE);
 
-    res = truncateTrx.begin();
+      auto res = truncateTrx.begin();
 
-    if (res.ok()) {
-      OperationOptions options;
-      truncateTrx.truncateAsync(arangodb::StaticStrings::AnalyzersCollection, options).get();
-      res = truncateTrx.commitAsync().get();
-    }
-    if (res.fail()) {
-      // failed cleanup is not critical problem. just log it
-      LOG_TOPIC("70a8c", WARN, iresearch::TOPIC) << " Failed to finalize analyzer truncation"
-        << " Error Code:" << res.errorNumber() << " Error:" << res.errorMessage();
+      if (res.ok()) {
+        OperationOptions options;
+        truncateTrx.truncateAsync(arangodb::StaticStrings::AnalyzersCollection, options).get();
+        res = truncateTrx.commitAsync().get();
+      }
+      if (res.fail()) {
+        // failed cleanup is not critical problem. just log it
+        LOG_TOPIC("70a8c", WARN, iresearch::TOPIC) << " Failed to finalize analyzer truncation"
+          << " Error Code:" << res.errorNumber() << " Error:" << res.errorMessage();
+      }
     }
     invalidate(vocbase);
     return {};
