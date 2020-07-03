@@ -8377,7 +8377,7 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
     };
 
     ASSERT_TRUE(writer->consolidate(merge_adjacent));
-  };
+  }
 
   // check all segments registered
   {
@@ -9194,8 +9194,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       sub_policy(candidates, meta, consolidating_segments);
       writer->commit();
     };
-    
-    ASSERT_TRUE(writer->consolidate(do_commit_and_consolidate_count)); 
+
+    ASSERT_TRUE(writer->consolidate(do_commit_and_consolidate_count));
 
     // check consolidating segments
     expected_consolidating_segments = { 0, 1 };
@@ -9203,11 +9203,11 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // can't consolidate segments that are already marked for consolidation
     ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
-    
+
     writer->documents().remove(*query_doc4.filter);
- 
+
     writer->commit(); // commit pending merge + delete
-    ASSERT_EQ(count+8, irs::directory_cleaner::clean(dir())); 
+    ASSERT_EQ(count+8, irs::directory_cleaner::clean(dir()));
 
     // check consolidating segments
     expected_consolidating_segments = { };
@@ -9271,7 +9271,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       }
     }
 
-    // check for dangling old segment versions in writers cache 
+    // check for dangling old segment versions in writers cache
     // first create new segment
     // segment 5
     ASSERT_TRUE(insert(*writer,
@@ -9295,7 +9295,233 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     writer->commit();
 
     // check all old segments are deleted (no old version of segments is left in cache and blocking )
-    ASSERT_EQ(23, irs::directory_cleaner::clean(dir())); 
+    ASSERT_EQ(23, irs::directory_cleaner::clean(dir()));
+  }
+
+  // repeatable consolidation of already consolidated segment
+  {
+    SetUp();
+    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+    auto writer = open_writer();
+    ASSERT_NE(nullptr, writer);
+
+    // segment 1
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()));
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()));
+    writer->commit();
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    // count number of files in segments
+    count = 0;
+    ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
+
+    // segment 2
+    ASSERT_TRUE(insert(*writer,
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()));
+    ASSERT_TRUE(insert(*writer,
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()));
+    writer->commit();
+    ASSERT_EQ(1, irs::directory_cleaner::clean(dir())); // segments_1
+
+    // check consolidating segments
+    expected_consolidating_segments = { };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    writer->documents().remove(*query_doc1.filter);
+    ASSERT_TRUE(writer->begin()); // begin transaction
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    // this consolidation will be postponed
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
+    // check consolidating segments are pending
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
+    // can't consolidate segments that are already marked for consolidation
+    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
+
+    auto do_commit_and_consolidate_count = [&writer](
+      std::set<const irs::segment_meta*>& candidates,
+      const irs::index_meta& meta,
+      const irs::index_writer::consolidating_segments_t& consolidating_segments
+      ) {
+        writer->commit();
+        writer->begin(); // another commit to process pending consolidating_segments
+        writer->commit();
+        auto sub_policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
+        sub_policy(candidates, meta, consolidating_segments);
+    };
+
+    // this should fail as segments 1 and 0 are actually consolidated on previous  commit
+    // inside our test policy
+    ASSERT_FALSE(writer->consolidate(do_commit_and_consolidate_count));
+    ASSERT_NE(0, irs::directory_cleaner::clean(dir()));
+    // check all data is deleted
+    const auto one_segment_count = count;
+    count = 0;
+    ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
+    // files count should be the same as with one segment (only +1 for doc_mask)
+    ASSERT_EQ(one_segment_count, count - 1); // -1 for doc-mask from removal
+  }
+
+  // repeatable consolidation of already consolidated segment during two phase commit
+  {
+    SetUp();
+    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+    auto query_doc4 = iresearch::iql::query_builder().build("name==D", std::locale::classic());
+    auto writer = open_writer();
+    ASSERT_NE(nullptr, writer);
+
+    // segment 1
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()));
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()));
+    writer->commit();
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    // count number of files in segments
+    count = 0;
+    ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
+
+    // segment 2
+    ASSERT_TRUE(insert(*writer,
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()));
+    ASSERT_TRUE(insert(*writer,
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()));
+    writer->commit();
+    ASSERT_EQ(1, irs::directory_cleaner::clean(dir())); // segments_1
+
+    // check consolidating segments
+    expected_consolidating_segments = { };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    writer->documents().remove(*query_doc1.filter);
+    ASSERT_TRUE(writer->begin()); // begin transaction
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    // this consolidation will be postponed
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
+    // check consolidating segments are pending
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
+    // can't consolidate segments that are already marked for consolidation
+    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
+
+    auto do_commit_and_consolidate_count = [&writer, &query_doc4](
+      std::set<const irs::segment_meta*>& candidates,
+      const irs::index_meta& meta,
+      const irs::index_writer::consolidating_segments_t& consolidating_segments
+      ) {
+        writer->commit();
+        writer->begin(); // another commit to process pending consolidating_segments
+        writer->commit();
+        // new transaction with passed 1st phase
+        writer->documents().remove(*query_doc4.filter);
+        writer->begin();
+        auto sub_policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
+        sub_policy(candidates, meta, consolidating_segments);
+    };
+
+    // this should fail as segments 1 and 0 are actually consolidated on previous  commit
+    // inside our test policy
+    ASSERT_FALSE(writer->consolidate(do_commit_and_consolidate_count));
+    writer->commit();
+    ASSERT_NE(0, irs::directory_cleaner::clean(dir()));
+    // check all data is deleted
+    const auto one_segment_count = count;
+    count = 0;
+    ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
+    // files count should be the same as with one segment (only +1 for doc_mask)
+    ASSERT_EQ(one_segment_count, count - 1); // -1 for doc-mask from removal
+  }
+
+  // check commit rollback and consolidation
+  {
+    SetUp();
+    auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
+    auto writer = open_writer();
+    ASSERT_NE(nullptr, writer);
+
+    // segment 1
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()));
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()));
+    writer->commit();
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
+
+    // segment 2
+    ASSERT_TRUE(insert(*writer,
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()));
+    ASSERT_TRUE(insert(*writer,
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()));
+    writer->commit();
+
+    ASSERT_EQ(1, irs::directory_cleaner::clean(dir()));
+
+
+    writer->documents().remove(*query_doc1.filter);
+    ASSERT_TRUE(writer->begin()); // begin transaction
+    // this consolidation will be postponed
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
+    // check consolidating segments are pending
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
+    writer->rollback();
+
+    // leftovers cleanup
+    ASSERT_EQ(3, irs::directory_cleaner::clean(dir()));
+
+    // still pending
+    expected_consolidating_segments = { 0, 1 };
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
+    writer->documents().remove(*query_doc1.filter);
+    // make next commit
+    writer->commit();
+
+    // now no consolidating should be present
+    expected_consolidating_segments = {};
+    ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
+
+    // could consolidate successfully
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
+
+    // cleanup should remove old files
+    ASSERT_NE(0, irs::directory_cleaner::clean(dir()));
+
+    tests::index_t expected;
+    expected.emplace_back();
+    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
+    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    tests::assert_index(dir(), codec(), expected, all_features);
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_TRUE(reader);
+    ASSERT_EQ(1, reader.size()); // should be one consolidated segment
+    ASSERT_EQ(3, reader.live_docs_count());
   }
 
   // consolidate with deletes + inserts
@@ -11795,7 +12021,7 @@ TEST_P(index_test_case, segment_consolidate) {
       const irs::index_meta& meta,
       const irs::index_writer::consolidating_segments_t&
   )->void {
-    for (auto& segment: meta) {
+    for (auto& segment : meta) {
       if (segment.meta.live_docs_count != segment.meta.docs_count) {
         candidates.insert(&segment.meta);
       }
@@ -12276,7 +12502,7 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
 
-    // validate merged segment 
+    // validate merged segment
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
@@ -12367,7 +12593,7 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
 
-    // validate merged segment 
+    // validate merged segment
     auto reader = iresearch::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
@@ -13019,7 +13245,7 @@ TEST_P(index_test_case, segment_options) {
     auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread blocks in 1000ms
 
     // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
-    while(!stop && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000));
+    while (!stop && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000));
 
     ASSERT_EQ(std::cv_status::timeout, result);
     // ^^^ expecting timeout because pool should block indefinitely
@@ -13197,7 +13423,7 @@ TEST_P(index_test_case, segment_options) {
 
 TEST_P(index_test_case, writer_close) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"), 
+    resource("simple_sequential.json"),
     &tests::generic_json_field_factory
   );
   auto& directory = dir();
@@ -13221,7 +13447,7 @@ TEST_P(index_test_case, writer_close) {
   ASSERT_TRUE(directory.visit(list_files));
 
   // file removal should pass for all files (especially valid for Microsoft Windows)
-  for (auto& file: files) {
+  for (auto& file : files) {
     ASSERT_TRUE(directory.remove(file));
   }
 

@@ -113,9 +113,6 @@ FORCE_INLINE bool subsumes(const position& lhs, const position& rhs) noexcept {
 ////////////////////////////////////////////////////////////////////////////////
 class parametric_state {
  public:
-  parametric_state() = default;
-  parametric_state(parametric_state&& rhs) = default;
-
   bool emplace(uint32_t offset, byte_type distance, bool transpose) {
     return emplace(position(offset, distance, transpose));
   }
@@ -131,9 +128,9 @@ class parametric_state {
     if (!positions_.empty()) {
       for (auto begin = positions_.data(), end = positions_.data() + positions_.size(); begin != end; ) {
         if (subsumes(new_pos, *begin)) {
-          std::swap(*begin, positions_.back());
-          positions_.pop_back(); // removed positions subsumed by new_pos
-          end = positions_.data() + positions_.size();
+          // removed positions subsumed by new_pos
+          irstd::swap_remove(positions_, begin);
+          --end;
         } else {
           ++begin;
         }
@@ -173,12 +170,11 @@ class parametric_state {
   }
 
  private:
-  parametric_state(const parametric_state& rhs) = delete;
-  parametric_state& operator=(parametric_state&&) = delete;
-  parametric_state& operator=(const parametric_state&) = delete;
-
   std::vector<position> positions_;
 }; // parametric_state
+
+static_assert(std::is_nothrow_move_constructible_v<parametric_state>);
+static_assert(std::is_nothrow_move_assignable_v<parametric_state>);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class parametric_states

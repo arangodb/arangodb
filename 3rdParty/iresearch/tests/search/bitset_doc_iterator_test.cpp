@@ -53,7 +53,7 @@ TEST(bitset_iterator_test, next) {
     auto* score  = irs::get_mutable<irs::score>(&it);
     ASSERT_EQ(score, &irs::score::get(it));
     ASSERT_TRUE(score);
-    ASSERT_TRUE(score->empty());
+    ASSERT_TRUE(score->is_default());
 
     ASSERT_FALSE(it.next());
     ASSERT_TRUE(irs::doc_limits::eof(it.value()));
@@ -128,7 +128,9 @@ TEST(bitset_iterator_test, next) {
     ASSERT_TRUE(irs::get<irs::score>(it));
 
     ASSERT_EQ(it.value(), doc->value);
-    for (auto i = 1; i < size; ++i) {
+    // note that bitset iterator doesn't care about
+    // emitting doc_limits::invalid() if first bit is set
+    for (auto i = 0; i < size; ++i) {
       ASSERT_TRUE(it.next());
       ASSERT_EQ(it.value(), doc->value);
       ASSERT_EQ(i, it.value());

@@ -61,36 +61,18 @@ REGISTER_ATTRIBUTE(iresearch::granularity_prefix);
 
 REGISTER_ATTRIBUTE(norm);
 
-norm::norm() noexcept {
-  reset();
+norm::norm() noexcept
+  : payload_(nullptr),
+    doc_(&INVALID_DOCUMENT) {
 }
 
-norm::norm(norm&& rhs) noexcept
-  : column_it_(std::move(rhs.column_it_)),
-    payload_(rhs.payload_),
-    doc_(rhs.doc_) {
-  rhs.doc_ = nullptr;
-  rhs.payload_ = nullptr;
-}
-
-norm& norm::operator=(norm&& rhs) noexcept {
-  if (this != &rhs) {
-    column_it_ = std::move(rhs.column_it_);
-    payload_ = rhs.payload_;
-    doc_ = rhs.doc_;
-    rhs.doc_ = nullptr;
-    rhs.payload_ = nullptr;
-  }
-  return *this;
-}
-
-void norm::reset() {
+void norm::clear() noexcept {
   column_it_.reset();
   payload_ = nullptr;
   doc_ = &INVALID_DOCUMENT;
 }
 
-bool norm::empty() const {
+bool norm::empty() const noexcept {
   return doc_ == &INVALID_DOCUMENT;
 }
 
