@@ -701,12 +701,14 @@ std::pair<ExecutionState, Result> ExecutionEngine::shutdown(int errorCode) {
 }
 
 // @brief create an execution engine from a plan
-Result ExecutionEngine::instantiateFromPlan(Query& query,
-                                            ExecutionPlan& plan,
-                                            bool planRegisters,
-                                            SerializationFormat format,
-                                            SnippetList& snippets) {
-  auto role = arangodb::ServerState::instance()->getRole();
+void ExecutionEngine::instantiateFromPlan(Query& query,
+                                          ExecutionPlan& plan,
+                                          bool planRegisters,
+                                          SerializationFormat format,
+                                          SnippetList& snippets) {
+  auto const role = arangodb::ServerState::instance()->getRole();
+  
+  TRI_ASSERT(snippets.empty() || ServerState::instance()->isClusterRole(role));
 
   plan.findVarUsage();
   if (planRegisters) {
@@ -793,8 +795,8 @@ Result ExecutionEngine::instantiateFromPlan(Query& query,
   }
 
   engine->_root = root; // simon: otherwise it breaks
-
-  return {};
+      
+  TRI_ASSERT(snippets.size() == 1 || ServerState::instance()->isClusterRole(role));
 }
 
 /// @brief add a block to the engine
@@ -921,7 +923,6 @@ std::pair<ExecutionState, Result> ExecutionEngine::shutdownDBServerQueries(int e
   
   
   futures::collectAll(std::move(futures)).thenFinal([ss, this](auto&& vals) {
-    TRI_ASSERT(ss->isValid());
     ss->executeAndWakeup([&] {
       _wasShutdown.store(true, std::memory_order_relaxed); // prevent duplicates
       return true;

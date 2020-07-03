@@ -156,7 +156,8 @@ ConstFetcherHelper::ConstFetcherHelper(AqlItemBlockManager& itemBlockManager,
       }
       SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, nrItems, nrRegs)};
       VPackToAqlItemBlock(_data, nrRegs, *block);
-      this->injectBlock(block);
+      SkipResult skipRes{};
+      this->injectBlock(block, skipRes);
     }
   }
 };

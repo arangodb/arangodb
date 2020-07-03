@@ -210,6 +210,12 @@ class ConnectionBuilder {
     _conf._vstVersion = c;
     return *this;
   }
+  
+  /// upgrade http1.1 to http2 connection (not necessary)
+  ConnectionBuilder& upgradeHttp1ToHttp2(bool c) {
+    _conf._upgradeH1ToH2 = c;
+    return *this;
+  }
 
   /// @brief should we verify the SSL host
   inline bool verifyHost() const { return _conf._verifyHost; }

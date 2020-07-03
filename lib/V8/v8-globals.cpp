@@ -130,6 +130,7 @@ TRI_v8_global_t::TRI_v8_global_t(arangodb::application_features::ApplicationServ
       _currentRequest(),
       _currentResponse(),
       _transactionContext(nullptr),
+      _expressionContext(nullptr),
       _vocbase(nullptr),
       _activeExternals(0),
       _canceled(false),

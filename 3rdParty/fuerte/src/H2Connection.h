@@ -116,6 +116,7 @@ class H2Connection final : public fuerte::GeneralConnection<T, Stream> {
   
   void initNgHttp2Session();
 
+  void sendHttp1UpgradeRequest();
   void readSwitchingProtocolsResponse();
 
   // queue the response onto the session, call only on IO thread
