@@ -31,11 +31,12 @@ const fs = require('fs');
 const internal = require("internal");
 const jsunity = require("jsunity");
 const arangosh = require('@arangodb/arangosh');
-var analyzers = require("@arangodb/analyzers");
+let analyzers = require("@arangodb/analyzers");
 const isEnterprise = internal.isEnterprise();
 const db = internal.db;
 const _ = require('lodash');
-const {assertEqual, assertNotEqual, assertTrue, assertFalse, assertUndefined, assertTypeOf, assertNull} = jsunity.jsUnity.assertions;
+const {assertEqual, assertNotEqual, assertTrue, assertFalse, 
+       assertUndefined, assertTypeOf, assertNull, assertNotNull} = jsunity.jsUnity.assertions;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -373,7 +374,7 @@ function dumpTestSuite () {
 /// @brief test custom analyzers restoring
 ////////////////////////////////////////////////////////////////////////////////
     testAnalyzers: function() {
-      assertNotEqual(null, db._collection("_analyzers"));
+      assertNotNull(db._collection("_analyzers"));
       assertEqual(isEnterprise ? 2 : 1, db._analyzers.count()); // only 1 stored custom analyzers
                                                                 // plus 1 for smartgraph in enerprise
       let analyzer = analyzers.analyzer("custom");

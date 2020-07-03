@@ -1355,7 +1355,7 @@ function BaseTestConfig () {
             return;
           }
           let view = db._view(cn + 'View');
-          assertTrue(view !== null);
+          assertNotNull(view);
           let props = view.properties();
           assertTrue(props.hasOwnProperty('links'));
           assertEqual(Object.keys(props.links).length, 1);
@@ -1375,7 +1375,7 @@ function BaseTestConfig () {
           assertEqual(1, idx.length); // primary
 
           let view = db._view(cn + 'View');
-          assertTrue(view !== null);
+          assertNotNull(view);
           let props = view.properties();
           assertTrue(props.hasOwnProperty('links'));
           assertEqual(Object.keys(props.links).length, 1);
