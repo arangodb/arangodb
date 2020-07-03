@@ -1734,6 +1734,7 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(TRI_vocbase_t& vocbase) {
 Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
                                              VPackSlice const dumpedAnalzyzers) {
   TRI_ASSERT(dumpedAnalzyzers.isArray());
+  TRI_ASSERT(!dumpedAnalzyzers.isEmptyArray());
   auto transaction = createAnalyzerModificationTransaction(server(), vocbase.name());
   if (transaction) {
     auto startRes = transaction->start();
@@ -1758,6 +1759,7 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
     }
 
     auto* engine = EngineSelectorFeature::ENGINE;
+    TRI_ASSERT(engine && !engine->inRecovery());
     bool erase = true;
     std::vector<irs::hashed_string_ref> inserted;
     auto cleanup = irs::make_finally([&erase, &inserted, this]()->void {
@@ -1818,7 +1820,7 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
          continue; // skip analyzer
         }
 
-        bool skipAnalyzer = false;
+        bool skipAnalyzer{ false };
         for (velocypack::ArrayIterator subItr(subSlice);
           subItr.valid();
           ++subItr
@@ -1838,7 +1840,7 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
 
           if (!feature) {
             LOG_TOPIC("32e1f", ERR, iresearch::TOPIC)
-              << "failed to find feature '" << featureName << "' while loading analyzer from dump'"
+              << "failed to find feature '" << featureName << "' while loading analyzer from dump"
               << ", skipping it: " << slice.toString();
 
             skipAnalyzer = true;
@@ -1859,15 +1861,23 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
         transaction ? transaction->buildingRevision() : AnalyzersRevision::MIN);
 
       if (!res.ok()) {
-        return res;
+        LOG_TOPIC("9b095", ERR, arangodb::iresearch::TOPIC)
+          << "failed to emplace analyzer from dump"
+          << " because of: " << res.errorMessage()
+          << ", skipping it: " << slice.toString();
+        // here we differs from loadAnalyzers.
+        // we allow to import as many analyzers as possible and not break at first emplace failure
+        // maybe there is old dump and properties not supported anymore and so on.
+        continue; // skip analyzer
       }
 
-      auto* engine = EngineSelectorFeature::ENGINE;
       auto pool = itr.first->second;
       // new pool creation
       if (itr.second) {
         inserted.push_back(itr.first->first);
         if (!pool) {
+          // no pool means something heavily broken
+          // better to abort
           return {
             TRI_ERROR_INTERNAL,
             "failure creating an arangosearch analyzer instance for name '" + std::string(name) +
@@ -1882,6 +1892,9 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
         }
 
         if (res.fail()) {
+          // storage errors are considered critical
+          // as that means database is broken or we have write conflict
+          // better to totally abort emplacing
           return res;
         }
       }
