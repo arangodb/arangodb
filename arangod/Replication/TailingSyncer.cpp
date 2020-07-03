@@ -472,7 +472,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
       if (isUsers) {
         _usersModified = true;
       } else if (isAnalyzers) {
-        _analyzersModified.push_back(vocbase);
+        _analyzersModified.insert(vocbase);
       }
     }
 
@@ -545,7 +545,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
         if (isUsers) {
           _usersModified = true;
         } else if (isAnalyzers) {
-          _analyzersModified.push_back(vocbase);
+          _analyzersModified.insert(vocbase);
         }
       }
     }
