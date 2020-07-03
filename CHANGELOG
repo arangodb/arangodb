@@ -5,6 +5,16 @@ v3.6.5 (XXXX-XX-XX)
   document list view in case a document had an attribute called `length`.
   The result was an incorrect representation of the document preview.
 
+* The Web UI now displays an error message inside the node information view in
+  case the user has no access to retreive the neccessary information.
+
+* Fixed a potential agency crash if trace logging is on.
+
+* Add more context error messages in certain agency failure situations in
+  debug/trace mode.
+
+* Fixed issue OASIS-252: Hotbackup agency locks without clientId.
+
 * Correct some log entries.
 
 * Fixed BTS-110: Fulltext index with minLength <= 0 not allowed.
@@ -21,7 +31,7 @@ v3.6.5 (XXXX-XX-XX)
   Added option `--transaction.streaming-lock-timeout` to control the timeout in
   seconds in case of parallel access to a streaming transaction.
 
-* Removed the edge id's hover styling in case of embedded document editor in 
+* Removed the edge id's hover styling in case of embedded document editor in
   the Web UI as this functionality is disabled. This was misleading because
   the elements are not clickable.
 
