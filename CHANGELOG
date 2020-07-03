@@ -1,6 +1,9 @@
 devel
 -----
 
+* The Web UI is now reporting errors properly in case of editing ArangoSearch
+  Views with invalid properties.
+
 * In case of a graph deletion failure, the Web UI displays now the correct
   error message.
 
