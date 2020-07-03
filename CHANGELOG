@@ -5,6 +5,18 @@ v3.7.1-rc.1 (XXXX-XX-XX)
   some INTERNAL_ERROR reports by more precise errors, those are only reached
   during failover scenarios.
 
+* Fixed a document parsing bug in the Web UI. This issue occured in the
+  document list view in case a document had an attribute called `length`.
+  The result was an incorrect representation of the document preview.
+
+* Re-enable access to GET `/_admin/cluster/numberOfServers` for all users by
+  default. Requests to PUT `/_admin/cluster/numberOfServers` require admin
+  user privileges. This restores the pre-3.7 behavior.
+  In contrast to pre-3.7 behavior, the `--server.harden` option now can be
+  used to restrict access to GET `/_admin/cluster/numberOfServers` to admin
+  users, too. This can be used to lock down this API for non-admin users
+  entirely.
+
 * Fixed crash in HTTP2 implementation.
 
 * Improve readability of running and slow queries in web UI by properly left-
