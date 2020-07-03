@@ -1,6 +1,9 @@
 devel
 -----
 
+* The Web UI is not disabling the query import button after file upload takes
+  place.
+
 * The Web UI is now reporting errors properly in case of editing ArangoSearch
   Views with invalid properties.
 
