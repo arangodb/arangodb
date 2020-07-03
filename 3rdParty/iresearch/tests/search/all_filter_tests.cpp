@@ -60,7 +60,7 @@ TEST_P(all_filter_test_case, all_sequential) {
   ASSERT_TRUE(it_cost);
   ASSERT_EQ(docs.size(), it_cost->estimate());
   auto& score = irs::score::get(*it);
-  ASSERT_TRUE(score.empty());
+  ASSERT_TRUE(score.is_default());
   ASSERT_EQ(&score, irs::get_mutable<irs::score>(it.get()));
 }
 
@@ -145,9 +145,11 @@ TEST_P(all_filter_test_case, all_order) {
 
     sort.prepare_field_collector_ = []()->irs::sort::field_collector::ptr { return nullptr; };
     sort.prepare_scorer = [](
-        const irs::sub_reader&, const irs::term_reader&,
+        const irs::sub_reader&,
+        const irs::term_reader&,
         const irs::byte_type*,
-        const irs::attribute_provider&)->std::pair<irs::score_ctx_ptr, irs::score_f> {
+        irs::byte_type*,
+        const irs::attribute_provider&) -> irs::score_function {
       return { nullptr, nullptr };
     };
     sort.prepare_term_collector_ = []()->irs::sort::term_collector::ptr { return nullptr; };

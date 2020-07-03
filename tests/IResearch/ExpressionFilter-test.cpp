@@ -134,15 +134,17 @@ struct custom_sort : public irs::sort {
     struct scorer : public irs::score_ctx {
       scorer(const custom_sort& sort, const irs::sub_reader& segment_reader,
              const irs::term_reader& term_reader, const irs::byte_type* stats,
-             const irs::attribute_provider& document_attrs)
+             irs::byte_type* score_buf, const irs::attribute_provider& document_attrs)
           : document_attrs_(document_attrs),
             stats_(stats),
+            score_buf_(score_buf),
             segment_reader_(segment_reader),
             sort_(sort),
             term_reader_(term_reader) {}
 
       const irs::attribute_provider& document_attrs_;
       const irs::byte_type* stats_;
+      irs::byte_type* score_buf_;
       const irs::sub_reader& segment_reader_;
       const custom_sort& sort_;
       const irs::term_reader& term_reader_;
@@ -172,29 +174,32 @@ struct custom_sort : public irs::sort {
       return irs::memory::make_unique<custom_sort::prepared::field_collector>(sort_);
     }
 
-    virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
+    virtual irs::score_function prepare_scorer(
         irs::sub_reader const& segment_reader, irs::term_reader const& term_reader,
-        irs::byte_type const* filter_node_attrs,
+        irs::byte_type const* filter_node_attrs, irs::byte_type* score_buf,
         irs::attribute_provider const& document_attrs, irs::boost_t boost) const override {
       if (sort_.prepare_scorer) {
         return sort_.prepare_scorer(segment_reader, term_reader,
-                                    filter_node_attrs, document_attrs, boost);
+                                    filter_node_attrs, score_buf, document_attrs, boost);
       }
 
-      return {std::make_unique<custom_sort::prepared::scorer>(sort_, segment_reader, term_reader,
-                                                              filter_node_attrs, document_attrs),
-              [](const irs::score_ctx* ctx, irs::byte_type* score_buf) {
+      return {
+        std::make_unique<custom_sort::prepared::scorer>(sort_, segment_reader, term_reader,
+                                                        filter_node_attrs, score_buf, document_attrs),
+              [](irs::score_ctx* ctx) -> const irs::byte_type* {
                 auto& ctxImpl =
                     *reinterpret_cast<const custom_sort::prepared::scorer*>(ctx);
 
-                EXPECT_TRUE(score_buf);
-                auto& doc_id = *reinterpret_cast<irs::doc_id_t*>(score_buf);
+                EXPECT_TRUE(ctxImpl.score_buf_);
+                auto& doc_id = *reinterpret_cast<irs::doc_id_t*>(ctxImpl.score_buf_);
 
                 doc_id = irs::get<irs::document>(ctxImpl.document_attrs_)->value;
 
                 if (ctxImpl.sort_.scorer_score) {
                   ctxImpl.sort_.scorer_score(doc_id);
                 }
+
+                return ctxImpl.score_buf_;
               }};
     }
 
@@ -204,10 +209,6 @@ struct custom_sort : public irs::sort {
       }
 
       return irs::memory::make_unique<custom_sort::prepared::term_collector>(sort_);
-    }
-
-    virtual void prepare_score(irs::byte_type* score) const override {
-      traits_t::score_cast(score) = irs::doc_limits::invalid();
     }
 
     virtual bool less(irs::byte_type const* lhs, const irs::byte_type* rhs) const override {
@@ -222,8 +223,9 @@ struct custom_sort : public irs::sort {
   std::function<void(const irs::sub_reader&, const irs::term_reader&, const irs::attribute_provider&)> term_collector_collect;
   std::function<void(irs::byte_type*, const irs::index_reader&)> collector_finish;
   std::function<irs::sort::field_collector::ptr()> prepare_field_collector;
-  std::function<std::pair<irs::score_ctx_ptr, irs::score_f>(
-      const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*,
+  std::function<irs::score_function(
+      const irs::sub_reader&, const irs::term_reader&,
+      const irs::byte_type*, irs::byte_type*,
       const irs::attribute_provider&, irs::boost_t)> prepare_scorer;
   std::function<irs::sort::term_collector::ptr()> prepare_term_collector;
   std::function<void(irs::doc_id_t&, const irs::doc_id_t&)> scorer_add;
@@ -1066,7 +1068,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
     auto* score = irs::get<irs::score>(*docs);
     EXPECT_TRUE(score);
-    EXPECT_TRUE(score->empty());
+    EXPECT_TRUE(score->is_default());
 
     // set reachable filter condition
     {
@@ -1210,7 +1212,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
     auto* score = irs::get<irs::score>(*docs);
     EXPECT_TRUE(score);
-    EXPECT_FALSE(score->empty());
+    EXPECT_FALSE(score->is_default());
     auto* cost = irs::get<irs::cost>(*docs);
     ASSERT_TRUE(cost);
     EXPECT_EQ(arangodb::velocypack::ArrayIterator(testDataRoot).size(), cost->estimate());
@@ -1229,7 +1231,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
       ASSERT_TRUE(it.valid());
       auto doc = *it;
       EXPECT_TRUE(docs->next());
-      score->evaluate();
+      [[maybe_unused]] auto* scoreValue = score->evaluate();
       EXPECT_TRUE(columnValues(docs->value(), keyValue));
       EXPECT_TRUE(arangodb::iresearch::getStringRef(doc.get("name")) ==
                   irs::to_string<irs::string_ref>(keyValue.c_str()));
@@ -1327,7 +1329,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
     auto* score = irs::get<irs::score>(*docs);
     EXPECT_TRUE(score);
-    EXPECT_TRUE(score->empty());
+    EXPECT_TRUE(score->is_default());
     auto* cost = irs::get<irs::cost>(*docs);
     ASSERT_TRUE(cost);
     EXPECT_EQ(arangodb::velocypack::ArrayIterator(testDataRoot).size(), cost->estimate());

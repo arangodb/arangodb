@@ -75,11 +75,6 @@ class SingleRowFetcher {
 
   void setDistributeId(std::string const& id);
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  [[nodiscard]] bool hasRowsLeftInBlock() const;
-  [[nodiscard]] bool isAtShadowRow() const;
-#endif
-
   //@deprecated
   auto useStack(AqlCallStack const& stack) -> void;
 

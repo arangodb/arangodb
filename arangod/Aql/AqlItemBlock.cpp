@@ -859,6 +859,38 @@ void AqlItemBlock::copySubQueryDepthFromOtherBlock(size_t const targetRow,
   }
 }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+// MaintainerMode method to validate if ShadowRows organization are consistent.
+// e.g. If a block always follows this pattern:
+// ((Data* Shadow(0))* Shadow(1))* ...
+void AqlItemBlock::validateShadowRowConsistency() const {
+  for (auto const& r : getShadowRowIndexes()) {
+    TRI_ASSERT(r < size());
+    // The block can start with any ShadowRow
+    // of any depth, we do not know the history.
+    if (r > 0) {
+      AqlValue const& d = getShadowRowDepth(r);
+      TRI_ASSERT(d.isShadowRowDepthValue());
+      uint64_t depth = static_cast<uint64_t>(d.toInt64());
+      // depth 0 is always allowed, we can start a new subquery with
+      // no data.
+      if (depth > 0) {
+        // Row before needs to be a ShadowRow
+        TRI_ASSERT(isShadowRow(r - 1));
+
+        AqlValue const& comp = getShadowRowDepth(r);
+        TRI_ASSERT(comp.isShadowRowDepthValue());
+        uint64_t compDepth = static_cast<uint64_t>(comp.toInt64());
+        // The row before can only be one less then d (result of subquery)
+        // Or greater or equal to d. (The subquery either has no result or is skipped)
+        TRI_ASSERT(depth - 1 <= compDepth);
+      }
+    }
+  }
+}
+#endif
+
+
 AqlItemBlock::~AqlItemBlock() {
   TRI_ASSERT(_refCount == 0);
   destroy();

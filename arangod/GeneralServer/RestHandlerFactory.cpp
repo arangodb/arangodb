@@ -41,9 +41,9 @@ static std::string const ROOT_PATH = "/";
 /// @brief creates a new handler
 ////////////////////////////////////////////////////////////////////////////////
 
-RestHandler* RestHandlerFactory::createHandler(application_features::ApplicationServer& server,
-                                               std::unique_ptr<GeneralRequest> req,
-                                               std::unique_ptr<GeneralResponse> res) const {
+std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(application_features::ApplicationServer& server,
+                                                               std::unique_ptr<GeneralRequest> req,
+                                                               std::unique_ptr<GeneralResponse> res) const {
   std::string const& path = req->requestPath();
 
   auto it = _constructors.find(path);
