@@ -167,6 +167,15 @@ Query::~Query() {
                                               << " this: " << (uintptr_t)this;
   }
 
+  _profile.reset(); // unregister from QueryList
+  
+  if (!_snippets.empty() && _trx && _trx->state()->isCoordinator()) {
+    auto* registry = QueryRegistryFeature::registry();
+    if (registry) {
+      registry->unregisterEngines(_snippets);
+    }
+  }
+
   // this will reset _trx, so _trx is invalid after here
   try {
     ExecutionState state = cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/true);
@@ -1100,6 +1109,12 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, bool sync,
       TRI_ASSERT(exp == KillState::Killed);
       return ExecutionState::DONE;
     }
+    // the following call removes the query from the list of currently
+    // running queries. so whoever fetches that list will not see a Query that
+    // is about to shut down/be destroyed
+    if (_profile != nullptr) {
+      _profile->unregisterFromQueryList();
+    }
   } else {
     TRI_ASSERT(exp == KillState::Shutdown);
   }
@@ -1211,13 +1226,6 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, bool sync,
 
   _snippets.clear();
   _plans.clear();
-
-  // the following call removes the query from the list of currently
-  // running queries. so whoever fetches that list will not see a Query that
-  // is about to shut down/be destroyed
-  if (_profile != nullptr) {
-    _profile->unregisterFromQueryList();
-  }
 
   // If the transaction was not committed, it is automatically aborted
   _trx.reset();
