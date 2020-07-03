@@ -329,7 +329,7 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  // basics checks...
+  // check the misuse of startup options
   if (_checkVersion && _upgrade) {
     LOG_TOPIC("a25b0", FATAL, arangodb::Logger::FIXME)
         << "cannot specify both '--database.check-version' and "

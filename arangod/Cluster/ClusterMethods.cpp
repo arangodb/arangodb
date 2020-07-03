@@ -2317,7 +2317,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::createCollection
     bool waitForSyncReplication, bool enforceReplicationFactor,
     bool isNewDatabase, std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike) {
   TRI_ASSERT(parameters.isArray());
-  // Collections are temporary collections object that undergoes quick checks
+  // Collections are temporary collections object that undergoes integrity checks
   // etc. It is not used anywhere and will be cleaned up after this call.
   std::vector<std::shared_ptr<LogicalCollection>> cols;
   for (VPackSlice p : VPackArrayIterator(parameters)) {

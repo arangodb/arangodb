@@ -118,7 +118,7 @@ class QueryList {
   /// modifications of this variable are possible but are considered unharmful
   inline void slowQueryThreshold(double value) {
     if (value < 0.0 || value == HUGE_VAL || value != value) {
-      // basic checks
+      // only let useful values pass
       value = 0.0;
     }
     _slowQueryThreshold.store(value);

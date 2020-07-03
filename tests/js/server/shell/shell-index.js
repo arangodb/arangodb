@@ -108,7 +108,6 @@ function backgroundIndexSuite() {
       // wait for insertion tasks to complete
       waitForTasks();
       
-      // basic checks
       assertEqual(c.count(), 100000);
       for (let i = 0; i < 1000; i++) { // 100 entries of each value [0,999]
         let cursor = db._query("FOR doc IN @@coll FILTER doc.value == @val RETURN 1", 
