@@ -146,7 +146,7 @@ auto SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
     if (options.returnOld && !options.isOverwriteModeUpdateReplace()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN,
-          "OLD is only available when using INSERT with the overwrite option");
+          "OLD is only available when using INSERT with overwriteModes 'update' or 'replace'");
     }
     result = _trx.insert(_info._aqlCollection->name(), inSlice, _info._options);
     possibleWrites = 1;

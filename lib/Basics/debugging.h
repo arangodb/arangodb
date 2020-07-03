@@ -53,7 +53,7 @@
 
 #endif
 
-/// @brief cause a segmentation violation
+/// @brief intentionally cause a segmentation violation or other failures
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 void TRI_TerminateDebugging(char const* value);
 #else

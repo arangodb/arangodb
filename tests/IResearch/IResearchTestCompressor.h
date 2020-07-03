@@ -32,7 +32,7 @@ namespace {
 // we create here a header-only static by using this holder
 struct function_holder {
   std::function<irs::bytes_ref(irs::byte_type* src, size_t size, irs::bstring& out)> compress_mock;
-  std::function<irs::bytes_ref(irs::byte_type* src, size_t src_size,
+  std::function<irs::bytes_ref(const irs::byte_type* src, size_t src_size,
     irs::byte_type* dst, size_t dst_size)> decompress_mock;
 };
 }
@@ -41,7 +41,7 @@ namespace iresearch {
 namespace compression {
 namespace mock {
 struct test_compressor {
-  class  test_compressor_compressor final : public compressor{
+  class test_compressor_compressor final : public compressor {
    public:
     virtual bytes_ref compress(byte_type* src, size_t size, bstring& out) override {
       return test_compressor::functions().compress_mock ?
@@ -49,9 +49,9 @@ struct test_compressor {
     }
   };
 
-  class test_compressor_decompressor final : public decompressor{
+  class test_compressor_decompressor final : public decompressor {
    public:
-    virtual bytes_ref decompress(byte_type* src, size_t src_size,
+    virtual bytes_ref decompress(const byte_type* src, size_t src_size,
                                  byte_type* dst, size_t dst_size) override {
       return test_compressor::functions().decompress_mock ?
                               test_compressor::functions().decompress_mock(src, src_size, dst, dst_size) :

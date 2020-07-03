@@ -799,7 +799,7 @@ struct BaseCallAsserter {
  *        Assumes that we are always called once with an empty input.
  *        And once with a given input.
  *        Will expect to be called for skip and fullCount (4 counts)
- *        Does expect to not be called if skip and/or fullCount are ommited.
+ *        Does expect to not be called if skip and/or fullCount are omitted.
  */
 struct SkipCallAsserter : public BaseCallAsserter {
   explicit SkipCallAsserter(AqlCall const& expectedCall)

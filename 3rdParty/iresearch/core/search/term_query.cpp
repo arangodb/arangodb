@@ -72,10 +72,12 @@ doc_iterator::ptr term_query::execute(
     auto* score = irs::get_mutable<irs::score>(docs.get());
 
     if (score) {
-      score->prepare(
-        ord,
-        ord.prepare_scorers(rdr, *state->reader,
-                            stats_.c_str(), *docs, boost()));
+      order::prepared::scorers scorers(
+        ord, rdr, *state->reader,
+        stats_.c_str(), score->realloc(ord),
+        *docs, boost());
+
+      irs::reset(*score, std::move(scorers));
     }
   }
 

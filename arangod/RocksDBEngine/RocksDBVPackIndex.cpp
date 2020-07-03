@@ -180,7 +180,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       : IndexIterator(collection, trx),
         _index(index),
         _cmp(static_cast<RocksDBVPackComparator const*>(index->comparator())),
-        _bounds(std::move(bounds)) {
+        _bounds(std::move(bounds)),
+        _mustSeek(true) {
     TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::vpack());
 
     RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
@@ -197,11 +198,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
     TRI_ASSERT(options.prefix_same_as_start);
     _iterator = mthds->NewIterator(options, index->columnFamily());
-    if constexpr (reverse) {
-      _iterator->SeekForPrev(_bounds.end());
-    } else {
-      _iterator->Seek(_bounds.start());
-    }
   }
 
  public:
@@ -210,6 +206,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   /// @brief Get the next limit many elements in the index
   bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
     TRI_ASSERT(_trx->state()->isRunning());
+    seekIfRequired();
 
     if (limit == 0 || !_iterator->Valid() || outOfRange()) {
       // No limit no data, or we are actually done. The last call should have
@@ -226,19 +223,21 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       cb(_index->_unique ? RocksDBValue::documentId(_iterator->value())
                          : RocksDBKey::indexDocumentId(_iterator->key()));
 
-      --limit;
       if (!advance()) {
         // validate that Iterator is in a good shape and hasn't failed
         arangodb::rocksutils::checkIteratorStatus(_iterator.get());
         return false;
       }
-    }
+      
+      --limit;
+    } 
 
     return true;
   }
 
   bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
     TRI_ASSERT(_trx->state()->isRunning());
+    seekIfRequired();
 
     if (limit == 0 || !_iterator->Valid() || outOfRange()) {
       // No limit no data, or we are actually done. The last call should have
@@ -258,12 +257,13 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
                           : RocksDBKey::indexDocumentId(key));
       cb(documentId, RocksDBKey::indexedVPack(key));
 
-      --limit;
       if (!advance()) {
         // validate that Iterator is in a good shape and hasn't failed
         arangodb::rocksutils::checkIteratorStatus(_iterator.get());
         return false;
       }
+      
+      --limit;
     }
 
     return true;
@@ -271,6 +271,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
   void skipImpl(uint64_t count, uint64_t& skipped) override {
     TRI_ASSERT(_trx->state()->isRunning());
+    seekIfRequired();
 
     if (!_iterator->Valid() || outOfRange()) {
       // validate that Iterator is in a good shape and hasn't failed
@@ -294,15 +295,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   /// @brief Reset the cursor
   void resetImpl() override {
     TRI_ASSERT(_trx->state()->isRunning());
-
-    if constexpr (reverse) {
-      _iterator->SeekForPrev(_bounds.end());
-    } else {
-      _iterator->Seek(_bounds.start());
-    }
-
-    // validate that Iterator is in a good shape and hasn't failed
-    arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+    _mustSeek = true;
   }
 
   /// @brief we provide a method to provide the index attribute values
@@ -324,6 +317,20 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     }
   }
 
+  void seekIfRequired() {
+    if (_mustSeek) {
+      if constexpr (reverse) {
+        _iterator->SeekForPrev(_bounds.end());
+      } else {
+        _iterator->Seek(_bounds.start());
+      }
+      _mustSeek = false;
+    
+      // validate that Iterator is in a good shape and hasn't failed
+      arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+    }
+  }
+
   inline bool advance() {
     if constexpr (reverse) {
       _iterator->Prev();
@@ -340,6 +347,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   RocksDBKeyBounds _bounds;
   // used for iterate_upper_bound iterate_lower_bound
   rocksdb::Slice _rangeBound;
+  bool _mustSeek;
 };
 
 } // namespace

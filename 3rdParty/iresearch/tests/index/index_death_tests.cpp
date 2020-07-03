@@ -54,10 +54,13 @@ class failing_directory : public tests::directory_mock {
     explicit failing_index_input(
         index_input::ptr&& impl,
         const std::string name,
-        const failing_directory& dir
-    ) : impl_(std::move(impl)),
+        const failing_directory& dir)
+      : impl_(std::move(impl)),
         dir_(&dir),
         name_(name) {
+    }
+    virtual const irs::byte_type* read_buffer(size_t size, irs::BufferHint hint) override {
+      return impl_->read_buffer(size, hint);
     }
     virtual irs::byte_type read_byte() override {
       return impl_->read_byte();
@@ -181,9 +184,8 @@ class failing_directory : public tests::directory_mock {
       return nullptr;
     }
 
-    return irs::index_input::make<failing_index_input>(
-      tests::directory_mock::open(name, advice), name, *this
-    );
+    return irs::memory::make_unique<failing_index_input>(
+      tests::directory_mock::open(name, advice), name, *this);
   }
   virtual bool remove(const std::string& name) noexcept override {
     if (should_fail(Failure::REMOVE, name)) {

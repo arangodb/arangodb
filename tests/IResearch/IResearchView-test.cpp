@@ -110,29 +110,33 @@ struct DocIdScorer: public irs::sort {
     virtual irs::flags const& features() const override { return irs::flags::empty_instance(); }
     virtual bool less(const irs::byte_type* lhs, const irs::byte_type* rhs) const override { return traits_t::score_cast(lhs) < traits_t::score_cast(rhs); }
     virtual irs::sort::field_collector::ptr prepare_field_collector() const override { return nullptr; }
-    virtual void prepare_score(irs::byte_type* score) const override { }
     virtual irs::sort::term_collector::ptr prepare_term_collector() const override { return nullptr; }
-    virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
-      irs::sub_reader const& segment,
-      irs::term_reader const& field,
-      irs::byte_type const*,
-      irs::attribute_provider const& doc_attrs,
-      irs::boost_t
-    ) const override {
+    virtual irs::score_function prepare_scorer(
+        irs::sub_reader const& segment,
+        irs::term_reader const& field,
+        irs::byte_type const*,
+        irs::byte_type* score_buf,
+        irs::attribute_provider const& doc_attrs,
+        irs::boost_t) const override {
+      auto* doc = irs::get<irs::document>(doc_attrs);
+      EXPECT_NE(nullptr, doc);
+
       return {
-        std::make_unique<ScoreCtx>(irs::get<irs::document>(doc_attrs)),
-        [](const irs::score_ctx* ctx, irs::byte_type* score_buf) {
-          auto* doc = reinterpret_cast<const ScoreCtx*>(ctx)->_doc;
-          ASSERT_TRUE(doc);
-          reinterpret_cast<uint64_t&>(*score_buf) = doc->value;
+        std::make_unique<ScoreCtx>(doc, score_buf),
+        [](irs::score_ctx* ctx) -> irs::byte_type const* {
+          auto* state = static_cast<ScoreCtx*>(ctx);
+          reinterpret_cast<uint64_t&>(*state->_score_buf) = state->_doc->value;
+          return state->_score_buf;
         }
       };
     }
   };
 
   struct ScoreCtx: public irs::score_ctx {
-    ScoreCtx(irs::document const* doc): _doc(doc) { }
+    ScoreCtx(irs::document const* doc, irs::byte_type* score_buf) noexcept
+      : _doc(doc), _score_buf(score_buf) { }
     irs::document const* _doc;
+    irs::byte_type* _score_buf;
   };
 };
 
@@ -671,12 +675,11 @@ TEST_F(IResearchViewTest, test_properties) {
       ASSERT_EQ(1, tmpSlice2.length());
       tmpSlice2 = tmpSlice2.at(0);
       ASSERT_TRUE(tmpSlice2.isObject());
-      EXPECT_EQ(5, tmpSlice2.length());
+      EXPECT_EQ(4, tmpSlice2.length());
       EXPECT_TRUE(tmpSlice2.get("name").isString() && "inPlace" == tmpSlice2.get("name").copyString());
       EXPECT_TRUE(tmpSlice2.get("type").isString() && "identity" == tmpSlice2.get("type").copyString());
       EXPECT_TRUE(tmpSlice2.get("properties").isObject() && 0 == tmpSlice2.get("properties").length());
       EXPECT_TRUE(tmpSlice2.get("features").isArray() && 0 == tmpSlice2.get("features").length());
-      EXPECT_TRUE(tmpSlice2.get("revision").isNumber() && 0 == tmpSlice2.get("revision").getNumber<uint64_t>());
     }
   }
 }
@@ -7224,7 +7227,7 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
       ASSERT_TRUE(analyzers.emplace(result, vocbase->name() + "::test_analyzer3",
                                     "TestAnalyzer", VPackParser::fromJson("\"abc\"")->slice()).ok());
-      ASSERT_NE(nullptr, analyzers.get(vocbase->name() + "::test_analyzer3", arangodb::AnalyzersRevision::LATEST));
+      ASSERT_NE(nullptr, analyzers.get(vocbase->name() + "::test_analyzer3", arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
     }
 
     // create collection
@@ -7247,9 +7250,9 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
     }
 
     EXPECT_FALSE(analyzers.remove(vocbase->name() + "::test_analyzer3", false).ok()); // used by link
-    EXPECT_NE(nullptr, analyzers.get(vocbase->name() + "::test_analyzer3", arangodb::AnalyzersRevision::LATEST));
+    EXPECT_NE(nullptr, analyzers.get(vocbase->name() + "::test_analyzer3", arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
     EXPECT_TRUE(analyzers.remove(vocbase->name() + "::test_analyzer3", true).ok());
-    EXPECT_EQ(nullptr, analyzers.get(vocbase->name() + "::test_analyzer3", arangodb::AnalyzersRevision::LATEST));
+    EXPECT_EQ(nullptr, analyzers.get(vocbase->name() + "::test_analyzer3", arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
 
     auto cleanup = arangodb::scopeGuard([vocbase, &view, &collection]() {
       if (view) {
@@ -7271,7 +7274,7 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
       ASSERT_TRUE(analyzers.emplace(result, vocbase->name() + "::test_analyzer3",
                                     "TestAnalyzer", VPackParser::fromJson("\"abc\"")->slice()).ok());
-      ASSERT_NE(nullptr, analyzers.get(vocbase->name() + "::test_analyzer3", arangodb::AnalyzersRevision::LATEST));
+      ASSERT_NE(nullptr, analyzers.get(vocbase->name() + "::test_analyzer3", arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
     }
 
     // create collection
@@ -7299,9 +7302,9 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
     }
 
     EXPECT_FALSE(analyzers.remove(vocbase->name() + "::test_analyzer3", false).ok()); // used by link
-    EXPECT_NE(nullptr, analyzers.get(vocbase->name() + "::test_analyzer3", arangodb::AnalyzersRevision::LATEST));
+    EXPECT_NE(nullptr, analyzers.get(vocbase->name() + "::test_analyzer3", arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
     EXPECT_TRUE(analyzers.remove(vocbase->name() + "::test_analyzer3", true).ok());
-    EXPECT_EQ(nullptr, analyzers.get(vocbase->name() + "::test_analyzer3", arangodb::AnalyzersRevision::LATEST));
+    EXPECT_EQ(nullptr, analyzers.get(vocbase->name() + "::test_analyzer3", arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
 
     auto cleanup = arangodb::scopeGuard([vocbase, &view, &collection]() {
       if (view) {
@@ -7324,7 +7327,7 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
       ASSERT_TRUE(analyzers.emplace(result, vocbase->name() + "::test_analyzer3",
                                     "TestAnalyzer", VPackParser::fromJson("\"abcd\"")->slice()).ok());
       ASSERT_NE(nullptr, analyzers.get(vocbase->name() + "::test_analyzer3",
-                                       arangodb::AnalyzersRevision::LATEST));
+                                       arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
     }
 
     // create collection
@@ -7352,9 +7355,9 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
     }
 
     EXPECT_FALSE(analyzers.remove(vocbase->name() + "::test_analyzer3", false).ok()); // used by link (we ignore analyzerDefinitions on single-server)
-    EXPECT_NE(nullptr, analyzers.get(vocbase->name() + "::test_analyzer3", arangodb::AnalyzersRevision::LATEST));
+    EXPECT_NE(nullptr, analyzers.get(vocbase->name() + "::test_analyzer3", arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
     EXPECT_TRUE(analyzers.remove(vocbase->name() + "::test_analyzer3", true).ok());
-    EXPECT_EQ(nullptr, analyzers.get(vocbase->name() + "::test_analyzer3", arangodb::AnalyzersRevision::LATEST));
+    EXPECT_EQ(nullptr, analyzers.get(vocbase->name() + "::test_analyzer3", arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
 
     auto cleanup = arangodb::scopeGuard([vocbase, &view, &collection]() {
       if (view) {

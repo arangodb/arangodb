@@ -705,17 +705,14 @@
         }
       }
 
-      $.ajax(
-        url + urlParams,
-        {
-          async: true,
-          xhrFields: {
-            withCredentials: true
-          },
-          crossDomain: true
-        }
-      ).done(
-        function (d) {
+      $.ajax({
+        url: url + urlParams,
+        xhrFields: {
+          withCredentials: true
+        },
+        crossDomain: true,
+        async: true,
+        success: function (d) {
           if (d.times.length > 0) {
             self.isUpdating = true;
             self.mergeHistory(d);
@@ -727,10 +724,11 @@
             callback(d.enabled, modalView);
           }
           self.updateCharts();
-        })
-        .error(function (e) {
+        },
+        error: function (e) {
           arangoHelper.arangoError('Statistics', 'stat fetch req error:' + JSON.stringify(e));
-        });
+        }
+      });
     },
 
     getHistoryStatistics: function (figure) {
@@ -751,20 +749,18 @@
       var origin = window.location.href.split('/');
       var preUrl = origin[0] + '//' + origin[2] + '/' + origin[3] + '/_system/' + origin[5] + '/' + origin[6] + '/';
 
-      $.ajax(
-        preUrl + url + urlParams,
-        {async: true}
-      ).done(
-        function (d) {
+      $.ajax({
+        url: preUrl + url + urlParams,
+        async: true,
+        success: function (d) {
           var i;
-
           self.history[self.server][figure] = [];
 
           for (i = 0; i < d.times.length; ++i) {
             self.mergeDygraphHistory(d, i);
           }
         }
-      );
+      });
     },
 
     addEmptyDataLabels: function () {
@@ -813,6 +809,18 @@
       }
 
       if (self.reRender && self.isVisible) {
+        var margin = {
+          top: ($('#residentSizeChartContainer').outerHeight() - $('#residentSizeChartContainer').height()) / 2,
+          right: 1,
+          bottom: ($('#residentSizeChartContainer').outerHeight() - $('#residentSizeChartContainer').height()) / 2,
+          left: 1
+        };
+        if (Number.isNaN(margin.top)) {
+          margin.top = 1;
+        }
+        if (Number.isNaN(margin.bottom)) {
+          margin.bottom = 1;
+        }
         nv.addGraph(function () {
           self.residentChart = nv.models.multiBarHorizontalChart()
             .x(function (d) {
@@ -823,17 +831,10 @@
             })
             .width(dimensions.width)
             .height(dimensions.height)
-            .margin({
-              top: ($('residentSizeChartContainer').outerHeight() - $('residentSizeChartContainer').height()) / 2,
-              right: 1,
-              bottom: ($('residentSizeChartContainer').outerHeight() - $('residentSizeChartContainer').height()) / 2,
-              left: 1
-            })
+            .margin(margin)
             .showValues(false)
             .showYAxis(false)
             .showXAxis(false)
-            // .transitionDuration(100)
-            // .tooltip(false)
             .showLegend(false)
             .showControls(false)
             .stacked(true);
@@ -1194,6 +1195,10 @@
         // hide menu entries
         if (!frontendConfig.isCluster) {
           $('#subNavigationBar .breadcrumb').html('');
+        } else {
+          // in cluster mode and db node got found, remove menu entries, as we do not have them here
+          $('#requests-statistics').remove();
+          $('#system-statistics').remove();
         }
         this.getNodeInfo();
       }

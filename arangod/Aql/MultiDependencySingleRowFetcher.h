@@ -47,6 +47,29 @@ class SkipResult;
  */
 class MultiDependencySingleRowFetcher {
  private:
+  class UpstreamSkipReport {
+   public:
+    UpstreamSkipReport();
+    ~UpstreamSkipReport() = default;
+
+    auto isInitialized() const -> bool;
+
+    auto initialize(size_t depth) -> void;
+
+    auto getSkipped(size_t subqueryDepth) const -> size_t;
+
+    auto getFullCount(size_t subqueryDepth) const-> size_t;
+
+    auto clearCounts(size_t subqueryDepth) -> void;
+
+    auto setSkipped(size_t subqueryDepth, size_t skipped) -> void;
+    auto setFullCount(size_t subqueryDepth, size_t skipped) -> void;
+
+   private:
+    bool _isInitialized{false};
+    std::vector<std::pair<size_t, size_t>> _report;
+  };
+
   /**
    * @brief helper struct to contain all information about dependency-states
    */
@@ -104,6 +127,8 @@ class MultiDependencySingleRowFetcher {
 
   [[nodiscard]] auto upstreamState() const -> ExecutionState;
 
+  auto resetDidReturnSubquerySkips(size_t shadowRowDepth) -> void;
+
  private:
   DependencyProxy<BlockPassthrough::Disable>* _dependencyProxy;
 
@@ -112,6 +137,9 @@ class MultiDependencySingleRowFetcher {
    */
   std::vector<DependencyInfo> _dependencyInfos;
   std::vector<ExecutionState> _dependencyStates;
+  std::vector<UpstreamSkipReport> _dependencySkipReports;
+
+  UpstreamSkipReport _maximumSkipReport;
 
   /// @brief Only needed for parallel executors; could be omitted otherwise
   ///        It's size is >0 after init() is called, and this is currently used
@@ -139,17 +167,12 @@ class MultiDependencySingleRowFetcher {
 
   bool isDone(DependencyInfo const& info) const;
 
-  bool isLastRowInBlock(DependencyInfo const& info) const;
-
-  /**
-   * @brief If it returns true, there are no more data row in the current
-   * subquery level. If it returns false, there may or may not be more.
-   */
-  bool noMoreDataRows(DependencyInfo const& info) const;
-
-  bool isAtShadowRow(DependencyInfo const& info) const;
-
   bool fetchBlockIfNecessary(const size_t dependency, const size_t atMost);
+
+  AqlCallStack adjustStackWithSkipReport(AqlCallStack const& stack, const size_t dependency);
+
+  void reportSkipForDependency(AqlCallStack const& originalStack,
+                               SkipResult const& skipped, const size_t dependency);
 };
 
 }  // namespace arangodb::aql

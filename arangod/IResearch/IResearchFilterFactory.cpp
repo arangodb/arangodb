@@ -317,7 +317,8 @@ arangodb::Result getAnalyzerByName(
     : nullptr;
 
   if (sysVocbase) {
-    analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase, ctx.trx->state()->analyzersRevision());
+    analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase, 
+                                   ctx.trx->state()->analyzersRevision());
 
     shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
       analyzerId, ctx.trx->vocbase(), *sysVocbase, false);  // args
@@ -3460,6 +3461,13 @@ namespace iresearch {
     irs::boolean_filter* filter,
     QueryContext const& ctx,
     arangodb::aql::AstNode const& node) {
+  if (node.willUseV8()) {
+    return {
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "using V8 dependent function is not allowed in SEARCH statement"
+    };
+  }
+
   // The analyzer is referenced in the FilterContext and used during the
   // following ::filter() call, so may not be a temporary.
   FieldMeta::Analyzer analyzer = FieldMeta::Analyzer();
