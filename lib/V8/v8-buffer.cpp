@@ -1538,7 +1538,6 @@ static void MapSetIndexedBuffer(uint32_t idx, v8::Local<v8::Value> value,
 void TRI_InitV8Buffer(v8::Isolate* isolate) {
   v8::HandleScope scope(isolate);
 
-  // basic checks
   TRI_ASSERT(unbase64('/') == 63);
   TRI_ASSERT(unbase64('+') == 62);
   TRI_ASSERT(unbase64('T') == 19);

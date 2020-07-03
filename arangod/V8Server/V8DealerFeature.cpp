@@ -522,7 +522,7 @@ void V8DealerFeature::copyInstallationFiles() {
   }
 
   if (overwriteCopy) {
-    // basic checks before removing an existing directory:
+    // basics security checks before removing an existing directory:
     // check if for some reason we will be trying to remove the entire database
     // directory...
     if (FileUtils::exists(FileUtils::buildFilename(copyJSPath, "ENGINE"))) {

@@ -181,7 +181,6 @@ struct V8Cursor final {
         _cursorId(cursorId),
         _resolver(vocbase),
         _cte(transaction::Context::createCustomTypeHandler(vocbase, _resolver)) {
-    // basic checks
     TRI_ASSERT(_handle.IsEmpty());
     TRI_ASSERT(holder->InternalFieldCount() > 0);
 
