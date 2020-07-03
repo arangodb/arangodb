@@ -1410,7 +1410,8 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
 
   std::vector<std::string> clientIds;
   VPackSlice body = inBody.resolveExternals();
-  bool writeQuery = false;
+  static std::string const writeURL{"/_api/agency/write"};
+  bool isWriteTrans = (initialUrl == writeURL);
 
   if (body.isArray()) {
     // In the writing case we want to find all transactions with client IDs
@@ -1418,7 +1419,6 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
     for (auto const& query : VPackArrayIterator(body)) {
       if (query.isArray()) {
         if (query[0].isObject()) {
-          writeQuery = true;
           if (query.length() == 3 && query[2].isString()) {
             clientIds.push_back(query[2].copyString());
           }
@@ -1429,7 +1429,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
 
   // It is good practice to query with client ids, but if not
   VPackBuilder tmp;
-  if (writeQuery && clientIds.empty()) {
+  if (isWriteTrans && clientIds.empty()) {
     LOG_TOPIC("a2759", DEBUG, Logger::AGENCYCOMM)
       << "no client ids in write transaction " << body.toJson() << ". rewriting.";
     { VPackArrayBuilder trxs(&tmp);
@@ -1507,8 +1507,6 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
 
   bool isInquiry = false;  // Set to true whilst we investigate a potentially
                            // failed transaction.
-  static std::string const writeURL{"/_api/agency/write"};
-  bool isWriteTrans = (initialUrl == writeURL);
 
   while (true) {  // will be left by timeout eventually
     // If for some reason we did not find an agency endpoint, we bail out:
