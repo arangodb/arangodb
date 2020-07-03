@@ -4,6 +4,20 @@ v3.5.6 (XXXX-XX-XX)
 * The Web UI now displays an error message inside the node information view in
   case the user has no access to retreive the neccessary information.
 
+* Correct some log entries.
+
+* The `_from` and `_to` attributes of an edge document can now be edited from
+  within the UI.
+
+* In case a document got requested via the UI of a collection which does not
+  exist, the UI now properly displays an error view instead of having a bad
+  display state.
+
+* The Web UI is now reporting errors properly in case of editing ArangoSearch
+  Views with invalid properties.
+
+* Web UI: Removed unnecessary menubar entry in case of database node inspection.
+
 * Fix undistribute-remove-after-enum-coll which would allow calculations to be
   pushed to a DBServer which are not allowed to run there.
 
