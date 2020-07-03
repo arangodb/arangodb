@@ -378,7 +378,7 @@
     },
 
     // object: {"name": "Menu 1", func: function(), active: true/false }
-    buildSubNavBar: function (menuItems) {
+    buildSubNavBar: function (menuItems, disabled) {
       $('#subNavigationBar .bottom').html('');
       var cssClass;
 
@@ -388,14 +388,14 @@
         if (menu.active) {
           cssClass += ' active';
         }
-        if (menu.disabled) {
+        if (menu.disabled || disabled) {
           cssClass += ' disabled';
         }
 
         $('#subNavigationBar .bottom').append(
           '<li class="subMenuEntry ' + cssClass + '"><a>' + name + '</a></li>'
         );
-        if (!menu.disabled) {
+        if (!menu.disabled && !disabled) {
           $('#subNavigationBar .bottom').children().last().bind('click', function () {
             window.App.navigate(menu.route, {trigger: true});
           });
@@ -461,9 +461,9 @@
 
       menus[activeKey].active = true;
       if (disabled) {
-        menus[disabled].disabled = true;
+        menus[activeKey].disabled = true;
       }
-      this.buildSubNavBar(menus);
+      this.buildSubNavBar(menus, disabled);
     },
 
     buildServicesSubNav: function (activeKey, disabled) {
@@ -1060,25 +1060,29 @@
     },
 
     download: function (url, callback) {
-      $.ajax(url).success(function (result, dummy, request) {
-        if (callback) {
-          callback(result);
-          return;
+      $.ajax({
+        type: 'GET',
+        url: url,
+        success: function (result, dummy, request) {
+          if (callback) {
+            callback(result);
+            return;
+          }
+
+          var blob = new Blob([JSON.stringify(result)], {type: request.getResponseHeader('Content-Type') || 'application/octet-stream'});
+          var blobUrl = window.URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          document.body.appendChild(a);
+          a.style = 'display: none';
+          a.href = blobUrl;
+          a.download = request.getResponseHeader('Content-Disposition').replace(/.* filename="([^")]*)"/, '$1');
+          a.click();
+
+          window.setTimeout(function () {
+            window.URL.revokeObjectURL(blobUrl);
+            document.body.removeChild(a);
+          }, 500);
         }
-
-        var blob = new Blob([JSON.stringify(result)], {type: request.getResponseHeader('Content-Type') || 'application/octet-stream'});
-        var blobUrl = window.URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        document.body.appendChild(a);
-        a.style = 'display: none';
-        a.href = blobUrl;
-        a.download = request.getResponseHeader('Content-Disposition').replace(/.* filename="([^")]*)"/, '$1');
-        a.click();
-
-        window.setTimeout(function () {
-          window.URL.revokeObjectURL(blobUrl);
-          document.body.removeChild(a);
-        }, 500);
       });
     },
 

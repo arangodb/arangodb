@@ -134,6 +134,7 @@ TEST_F(TransactionContextTest, StandaloneSmartContext) {
 
     auto qres = query.executeSync();
     ASSERT_TRUE(qres.ok());
+    ASSERT_NE(nullptr, qres.data);
     VPackSlice aqlSlice = qres.data->slice();
     ASSERT_TRUE(aqlSlice.isArray());
     ASSERT_EQ(aqlSlice.length(), 2);
@@ -149,6 +150,7 @@ TEST_F(TransactionContextTest, StandaloneSmartContext) {
 
     auto qres = query.executeSync();
     ASSERT_TRUE(qres.ok());
+    ASSERT_NE(nullptr, qres.data);
     VPackSlice aqlSlice = qres.data->slice();
     ASSERT_TRUE(aqlSlice.isArray());
     ASSERT_EQ(aqlSlice.length(), 1);

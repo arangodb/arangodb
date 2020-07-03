@@ -98,7 +98,7 @@ bytes_ref lz4::lz4compressor::compress(byte_type* src, size_t size, bstring& out
 }
 
 bytes_ref lz4::lz4decompressor::decompress(
-    byte_type* src,  size_t src_size,
+    const byte_type* src,  size_t src_size,
     byte_type* dst,  size_t dst_size) {
   assert(src_size <= integer_traits<int>::const_max); // LZ4 API uses int
 

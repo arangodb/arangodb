@@ -264,9 +264,7 @@ class segment_reader_impl : public sub_reader {
       return std::move(it);
     }
 
-    return doc_iterator::make<mask_doc_iterator>(
-      std::move(it), docs_mask_
-    );
+    return memory::make_managed<mask_doc_iterator>(std::move(it), docs_mask_);
   }
 
   virtual const term_reader* field(const string_ref& name) const override {
@@ -409,24 +407,20 @@ column_iterator::ptr segment_reader_impl::columns() const {
     string_ref, column_meta, column_iterator, less
   > iterator_t;
 
-  auto it = memory::make_unique<iterator_t>(
-    columns_.data(), columns_.data() + columns_.size()
-  );
-
-  return memory::make_managed<column_iterator>(std::move(it));
+  return memory::make_managed<iterator_t>(
+    columns_.data(), columns_.data() + columns_.size());
 }
 
 doc_iterator::ptr segment_reader_impl::docs_iterator() const {
   if (docs_mask_.empty()) {
-    return memory::make_shared<::all_iterator>(docs_count_);
+    return memory::make_managed<::all_iterator>(docs_count_);
   }
 
   // the implementation generates doc_ids sequentially
-  return memory::make_shared<masked_docs_iterator>(
+  return memory::make_managed<masked_docs_iterator>(
     doc_limits::min(),
     doc_id_t(doc_limits::min() + docs_count_),
-    docs_mask_
-  );
+    docs_mask_);
 }
 
 /*static*/ sub_reader::ptr segment_reader_impl::open(

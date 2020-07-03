@@ -57,7 +57,7 @@
 
     tableDescription: {
       id: 'arangoQueryManagementTable',
-      titles: ['ID', 'Query String', 'Bind parameter', 'Runtime', 'Started', ''],
+      titles: ['ID', 'Query String', 'Bind parameters', 'Runtime', 'Started', ''],
       rows: [],
       unescaped: [false, false, false, false, false, true]
     },

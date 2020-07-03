@@ -93,7 +93,7 @@ class mmap_index_input : public irs::bytes_ref_input {
     handle->dontneed(bool(advice & irs::IOAdvice::READONCE));
 
     try {
-      return mmap_index_input::make<mmap_index_input>(std::move(handle));
+      return ptr(new mmap_index_input(std::move(handle)));
     } catch (...) {
       IR_LOG_EXCEPTION();
       return nullptr;
@@ -101,7 +101,7 @@ class mmap_index_input : public irs::bytes_ref_input {
   }
 
   virtual ptr dup() const override {
-    return mmap_index_input::make<mmap_index_input>(*this);
+    return ptr(new mmap_index_input(*this));
   }
 
   virtual ptr reopen() const override {
@@ -109,8 +109,6 @@ class mmap_index_input : public irs::bytes_ref_input {
   }
 
  private:
-  DEFINE_FACTORY_INLINE(index_input)
-
   mmap_index_input(mmap_handle_ptr&& handle) noexcept
     : handle_(std::move(handle)) {
     if (handle_) {
