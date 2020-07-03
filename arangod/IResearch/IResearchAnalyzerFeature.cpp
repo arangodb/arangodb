@@ -1806,9 +1806,9 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(TRI_vocbase_t& vocbase) {
 }
 
 Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
-                                             VPackSlice const dumpedAnalzyzers) {
-  TRI_ASSERT(dumpedAnalzyzers.isArray());
-  TRI_ASSERT(!dumpedAnalzyzers.isEmptyArray());
+                                             VPackSlice const dumpedAnalyzers) {
+  TRI_ASSERT(dumpedAnalyzers.isArray());
+  TRI_ASSERT(!dumpedAnalyzers.isEmptyArray());
   auto transaction = createAnalyzerModificationTransaction(server(), vocbase.name());
   if (transaction) {
     auto startRes = transaction->start();
@@ -1846,7 +1846,7 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
         }
       }
       });
-    for (auto const& slice : VPackArrayIterator(dumpedAnalzyzers)) {
+    for (auto const& slice : VPackArrayIterator(dumpedAnalyzers)) {
       if (!slice.isObject()) {
         continue;
       }
