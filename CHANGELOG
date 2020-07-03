@@ -1,6 +1,9 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* The Web UI now displays an error message inside the node information view in
+  case the user has no access to retreive the neccessary information.
+
 * Fixed a potential agency crash if trace logging is on.
 
 * Add more context error messages in certain agency failure situations in
