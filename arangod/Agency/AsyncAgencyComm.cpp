@@ -559,8 +559,42 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWriteTransaction(
       }
     }
   }
-  return sendWithFailover(fuerte::RestVerb::Post, AGENCY_URL_WRITE, timeout,
-                          RequestType::WRITE, std::move(clientIds), std::move(body));
+
+  velocypack::Buffer<uint8_t> buf;
+  if (clientIds.empty()) {
+    VPackBuilder tmp(buf);
+    LOG_TOPIC("a2759", DEBUG, Logger::AGENCYCOMM)
+      << "no client ids in write transaction " << body.toJson() << ". rewriting.";
+    { VPackArrayBuilder trxs(&tmp);
+      for (auto const& query : VPackArrayIterator(body)) {
+        VPackArrayBuilder trx(&tmp);
+        if (query.length() > 0) {
+          if (query[0].isObject()) { // write
+            size_t pos = 0;
+            for (auto const& i : VPackArrayIterator(query)) {
+              tmp.add(i);
+              ++pos;
+            }
+            if (pos < 3) { // no client id
+              if (pos == 1) { // no precondition
+                tmp.add(arangodb::velocypack::Slice::emptyObjectSlice());
+              }
+              clientIds.emplace_back(to_string(boost::uuids::random_generator()()));
+              tmp.add(VPackValue(clientIds.back()));
+            }
+          } else {                   // read
+            for (auto const& i : VPackArrayIterator(query)) {
+              tmp.add(i);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return sendWithFailover(
+    fuerte::RestVerb::Post, AGENCY_URL_WRITE, timeout,
+    RequestType::WRITE, std::move(clientIds), std::move(buf.empty() ? body : buf));
 }
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendReadTransaction(
