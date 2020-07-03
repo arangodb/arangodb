@@ -36,6 +36,10 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
+
 namespace {
 using namespace arangodb::fuerte;
 using namespace arangodb;
@@ -564,9 +568,9 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWriteTransaction(
   if (clientIds.empty()) {
     VPackBuilder tmp(buf);
     LOG_TOPIC("a2759", DEBUG, Logger::AGENCYCOMM)
-      << "no client ids in write transaction " << body.toJson() << ". rewriting.";
+      << "no client ids in write transaction " << bodySlice.toJson() << ". rewriting.";
     { VPackArrayBuilder trxs(&tmp);
-      for (auto const& query : VPackArrayIterator(body)) {
+      for (auto const& query : VPackArrayIterator(bodySlice)) {
         VPackArrayBuilder trx(&tmp);
         if (query.length() > 0) {
           if (query[0].isObject()) { // write
