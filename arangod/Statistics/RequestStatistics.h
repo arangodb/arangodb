@@ -174,8 +174,6 @@ class RequestStatistics {
       }
     }
 
-    double requestStart() const { return _stat->_requestStart; }
-
     std::string timingsCsv();
 
    private:
