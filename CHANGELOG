@@ -1,6 +1,9 @@
 devel
 -----
 
+* The Web UI now displays an error message inside the node information view in
+  case the user has no access to retreive the neccessary information.
+
 * Web UI: Removed unnecessary menubar entry in case of database node inspection.
 
 * Fixed a potential agency crash if trace logging is on.
