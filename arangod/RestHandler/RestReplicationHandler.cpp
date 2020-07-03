@@ -26,6 +26,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/ConditionLocker.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/RocksDBUtils.h"
@@ -1223,6 +1224,19 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     }
   }
 
+  if (parameters.get(StaticStrings::DataSourceGuid).isString()) {
+    std::string const uuid = parameters.get(StaticStrings::DataSourceGuid).copyString();
+    bool valid = false;
+    NumberUtils::atoi_positive<uint64_t>(uuid.data(), uuid.data() + uuid.size(), valid);
+    if (valid) {
+      // globallyUniqueId is only numeric. This causes ambiguities later
+      // and can only happen for collections created with v3.3.0 (the GUID
+      // generation process was changed in v3.3.1 already to fix this issue).
+      // remove the globallyUniqueId so a new one will be generated server.side
+      toMerge.add(StaticStrings::DataSourceGuid, VPackSlice::nullSlice());
+    }
+  }
+
   // Replication Factor. Will be overwritten if not existent
   VPackSlice const replicationFactorSlice = parameters.get(StaticStrings::ReplicationFactor);
   // not an error: for historical reasons the write concern is read from the
@@ -1849,6 +1863,8 @@ Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collectio
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
+  VPackBuilder rebuilder;
+
   Result fres;
 
   ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
@@ -1859,16 +1875,51 @@ Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collectio
     auto physical = coll->getPhysical();
     TRI_ASSERT(physical != nullptr);
 
-    for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
-      // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
-      arangodb::velocypack::Slice value = idxDef.get(StaticStrings::IndexType);
-      if (value.isString()) {
-        std::string const typeString = value.copyString();
-        if ((typeString == "primary") || (typeString == "edge")) {
-          LOG_TOPIC("0d352", DEBUG, Logger::REPLICATION)
-              << "processRestoreIndexes silently ignoring primary or edge "
-              << "index: " << idxDef.toJson();
-          continue;
+    for (VPackSlice idxDef : VPackArrayIterator(indexes)) {
+      VPackSlice type = idxDef.get(StaticStrings::IndexType);
+
+      if (!type.isString()) {
+        // invalid type, cannot handle it
+        continue;
+      }
+
+      if (type.isString() && (type.copyString() == "primary" || type.copyString() == "edge")) {
+        // must ignore these types of indexes during restore
+        continue;
+      }
+
+      if (type.isEqualString("geo1") || type.isEqualString("geo2")) {
+        // transform type "geo1" or "geo2" into "geo".
+        rebuilder.clear();
+        rebuilder.openObject();
+        rebuilder.add(StaticStrings::IndexType, VPackValue("geo"));
+        for (auto const& it : VPackObjectIterator(idxDef)) {
+          if (!it.key.isEqualString(StaticStrings::IndexType)) {
+            rebuilder.add(it.key);
+            rebuilder.add(it.value);
+          }
+        }
+        rebuilder.close();
+        idxDef = rebuilder.slice();
+      }
+
+      if (type.isEqualString("fulltext")) {
+        VPackSlice minLength = idxDef.get("minLength");
+        if (minLength.isNumber()) {
+          int length = minLength.getNumericValue<int>();
+          if (length <= 0) {
+            rebuilder.clear();
+            rebuilder.openObject();
+            rebuilder.add("minLength", VPackValue(1));
+            for (auto const& it : VPackObjectIterator(idxDef)) {
+              if (!it.key.isEqualString("minLength")) {
+                rebuilder.add(it.key);
+                rebuilder.add(it.value);
+              }
+            }
+            rebuilder.close();
+            idxDef = rebuilder.slice();
+          }
         }
       }
 
@@ -1962,14 +2013,56 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(VPackSlice const
 
   auto& cluster = _vocbase.server().getFeature<ClusterFeature>();
 
+  VPackBuilder rebuilder;
+
   Result res;
 
-  for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
+  for (VPackSlice idxDef : VPackArrayIterator(indexes)) {
     VPackSlice type = idxDef.get(StaticStrings::IndexType);
+
+    if (!type.isString()) {
+      // invalid type, cannot handle it
+      continue;
+    }
 
     if (type.isString() && (type.copyString() == "primary" || type.copyString() == "edge")) {
       // must ignore these types of indexes during restore
       continue;
+    }
+
+    if (type.isEqualString("geo1") || type.isEqualString("geo2")) {
+      // transform type "geo1" or "geo2" into "geo".
+      rebuilder.clear();
+      rebuilder.openObject();
+      rebuilder.add(StaticStrings::IndexType, VPackValue("geo"));
+      for (auto const& it : VPackObjectIterator(idxDef)) {
+        if (!it.key.isEqualString(StaticStrings::IndexType)) {
+          rebuilder.add(it.key);
+          rebuilder.add(it.value);
+        }
+      }
+      rebuilder.close();
+      idxDef = rebuilder.slice();
+    }
+
+    if (type.isEqualString("fulltext")) {
+      VPackSlice minLength = idxDef.get("minLength");
+      if (minLength.isNumber()) {
+        int length = minLength.getNumericValue<int>();
+        if (length <= 0) {
+          rebuilder.clear();
+          rebuilder.openObject();
+          rebuilder.add("minLength", VPackValue(1));
+          for (auto const& it : VPackObjectIterator(idxDef)) {
+            if (!it.key.isEqualString("minLength")) {
+              rebuilder.add(it.key);
+              rebuilder.add(it.value);
+            }
+          }
+          rebuilder.close();
+          idxDef = rebuilder.slice();
+        }
+      }
     }
 
     VPackBuilder tmp;
@@ -2939,8 +3032,19 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   // because the collection is effectively NEW
   VPackBuilder patch;
   patch.openObject();
-  patch.add("version", VPackValue(static_cast<int>(LogicalCollection::Version::v31)));
+  patch.add("version", VPackValue(static_cast<int>(LogicalCollection::currentVersion())));
   patch.add(StaticStrings::DataSourceSystem, VPackValue(TRI_vocbase_t::IsSystemName(name)));
+  if (!uuid.empty()) {
+    bool valid = false;
+    NumberUtils::atoi_positive<uint64_t>(uuid.data(), uuid.data() + uuid.size(), valid);
+    if (valid) {
+      // globallyUniqueId is only numeric. This causes ambiguities later
+      // and can only happen for collections created with v3.3.0 (the GUID
+      // generation process was changed in v3.3.1 already to fix this issue).
+      // remove the globallyUniqueId so a new one will be generated server.side
+      patch.add(StaticStrings::DataSourceGuid, VPackSlice::nullSlice());
+    }
+  }
   patch.add("objectId", VPackSlice::nullSlice());
   patch.add("cid", VPackSlice::nullSlice());
   patch.add("id", VPackSlice::nullSlice());

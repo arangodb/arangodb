@@ -5,6 +5,62 @@ v3.6.5 (XXXX-XX-XX)
   agency. This could in a specific case cause collection creation in a cluster
   report success when it failed.
 
+* Add more context error messages in certain agency failure situations in
+  debug/trace mode.
+
+* Fixed issue OASIS-252: Hotbackup agency locks without clientId.
+
+* Correct some log entries.
+
+* Fixed BTS-110: Fulltext index with minLength <= 0 not allowed.
+
+* Web UI: Removed unnecessary menubar entry in case of database node inspection.
+
+* The `_from` and `_to` attributes of an edge document can now be edited from
+  within the UI.
+
+* Disallow using V8 dependent functions in SEARCH statement.
+
+* Fixed issue ES-609: "Transaction already in use" error when running
+  transaction.
+  Added option `--transaction.streaming-lock-timeout` to control the timeout in
+  seconds in case of parallel access to a streaming transaction.
+
+* Removed the edge id's hover styling in case of embedded document editor in
+  the Web UI as this functionality is disabled. This was misleading because
+  the elements are not clickable.
+
+* In case a document got requested via the UI of a collection which does not
+  exist, the UI now properly displays an error view instead of having a bad
+  display state.
+
+* The Web UI is not disabling the query import button after file upload takes
+  place.
+
+* In case of a graph deletion failure, the Web UI displays now the correct
+  error message.
+
+* Fix undistribute-remove-after-enum-coll which would allow calculations to be
+  pushed to a DBServer which are not allowed to run there.
+
+* Returned `AQL_WARNING()` to emit warnings from UDFs.
+
+* The Web UI is now reporting errors properly in case of editing ArangoSearch
+  Views with invalid properties.
+
+* Allow restoring collections from v3.3.0 with their all-numeric collection GUID
+  values, by creating a new, unambiguous collection GUID for them.
+  v3.3.0 had a bug because it created all-numeric GUID values, which can be
+  confused with numeric collection ids in lookups. v3.3.1 already changed the
+  GUID routine to produce something non-numeric already, but collections created
+  with v3.3.0 can still have an ambiguous GUID. This fix adjusts the restore
+  routine to drop such GUID values, so it only changes something if v3.3.0
+  collections are dumped, dropped on the server and then restored with the
+  flawed GUIDs.
+
+* The Web UI's replication view is now checking the replication state
+  automatically without the need of a manual reload.
+
 * Fixed that, when performing a graph AQL query while a (graceful) failover for
   the leader of the system collections is in progress, ArangoDB would report a 
   "Graph not found error".
@@ -24,7 +80,7 @@ v3.6.5 (XXXX-XX-XX)
 
 * Fixed internal issue #701: Dangling readers in ArangoSearch index_writer
   cache.
-    
+
 * Fix internal test helper function `removeCost` to really remove costs.
 
 * Pass through AQL query errors to UI graph viewer without turning them into
@@ -112,9 +168,6 @@ v3.6.5 (XXXX-XX-XX)
     this check is enforced and arangorestore will bail out with an error if the
     requested encryption mode for restore is not the same as for the stored dump
     files.
-
-* Fixed issue ES-609: "Transaction already in use" error when running
-  transaction.
 
 * Fixed bad behaviour when dropping followers. A follower should be dropped
   immediately when it is officially FAILED, not only after a longish timeout.
