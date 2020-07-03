@@ -916,6 +916,82 @@ arangodb::Result visitAnalyzers(
   return resultVisitor(visitor, vocbase, slice);
 }
 
+//////////////////////////////////////////////////////////////////
+/// @brief parses common part of stored analyzers slice. This could be
+///        loaded from collection or received via replication api
+/// @param slice analyzer definition
+/// @param name parsed name
+/// @param type parsed type
+/// @param features parsed features
+/// @param properties slice for properties or null slice if absent
+/// @return parse result
+//////////////////////////////////////////////////////////////////
+::arangodb::Result parseAnalyzerSlice(VPackSlice const& slice, 
+                          irs::string_ref& name,
+                          irs::string_ref& type,
+                          irs::flags& features,
+                          VPackSlice& properties) {
+  TRI_ASSERT(slice.isObject());
+  if (!slice.hasKey("name") // no such field (required)
+    || !(slice.get("name").isString() || slice.get("name").isNull())) {
+    return { TRI_ERROR_BAD_PARAMETER,
+             "failed to find a string value for analyzer 'name' " };
+  }
+
+  name = ::arangodb::iresearch::getStringRef(slice.get("name"));
+
+  if (!slice.hasKey("type") // no such field (required)
+    || !(slice.get("type").isString() || slice.get("name").isNull())) {
+    return { TRI_ERROR_BAD_PARAMETER,
+             "failed to find a string value for analyzer 'type'" };
+  }
+
+  type = ::arangodb::iresearch::getStringRef(slice.get("type"));
+
+  if (slice.hasKey("properties")) {
+    auto subSlice = slice.get("properties");
+
+    if (subSlice.isArray() || subSlice.isObject()) {
+      properties = subSlice; // format as a jSON encoded string
+    } else {
+      return { TRI_ERROR_BAD_PARAMETER,
+               "failed to find a string value for analyzer 'properties'" };
+    }
+  }
+
+  if (slice.hasKey("features")) {
+    auto subSlice = slice.get("features");
+
+    if (!subSlice.isArray()) {
+      return { TRI_ERROR_BAD_PARAMETER,
+               "failed to find an array value for analyzer 'features'" };
+    }
+
+    for (VPackArrayIterator subItr(subSlice);
+      subItr.valid();
+      ++subItr
+      ) {
+      auto subEntry = *subItr;
+
+      if (!subEntry.isString() && !subSlice.isNull()) {
+        return { TRI_ERROR_BAD_PARAMETER,
+                 "failed to find a string value for an entry in analyzer 'features'" };
+      }
+
+      const auto featureName = ::arangodb::iresearch::getStringRef(subEntry);
+      const auto feature = irs::attributes::get(featureName);
+
+      if (!feature) {
+        return { TRI_ERROR_BAD_PARAMETER,
+                 "failed to find feature '"s.append(std::string(featureName)).append("'")};
+      }
+
+      features.add(feature.id());
+    }
+  }
+  return {};
+}
+
 inline std::string normalizedAnalyzerName(
     std::string database,
     irs::string_ref const& analyzer) {
@@ -1773,88 +1849,21 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
       }
       });
     for (auto const& slice : VPackArrayIterator(dumpedAnalzyzers)) {
-      // validate and emplace an analyzer
-      if (!slice.hasKey("name") // no such field (required)
-        || !(slice.get("name").isString() || slice.get("name").isNull())) {
-        LOG_TOPIC("83638", ERR, iresearch::TOPIC)
-          << "failed to find a string value for analyzer 'name' while loading analyzer from dump"
-          << ", skipping it: " << slice.toString();
-
-        continue; // skip analyzer
-      }
-
-      auto name = getStringRef(slice.get("name"));
-
-      if (!slice.hasKey("type") // no such field (required)
-        || !(slice.get("type").isString() || slice.get("name").isNull())) {
-        LOG_TOPIC("861cc", ERR, iresearch::TOPIC)
-          << "failed to find a string value for analyzer 'type' while loading analyzer from dump"
-          << ", skipping it: " << slice.toString();
-
+      if (!slice.isObject()) {
         continue;
       }
-
-      auto type = getStringRef(slice.get("type"));
-      VPackSlice properties;
-      if (slice.hasKey("properties")) {
-        auto subSlice = slice.get("properties");
-
-        if (subSlice.isArray() || subSlice.isObject()) {
-          properties = subSlice; // format as a jSON encoded string
-        } else {
-          LOG_TOPIC("f2ecf", ERR, arangodb::iresearch::TOPIC)
-            << "failed to find a string value for analyzer 'properties' while loading analyzer from dump"
-            << ", skipping it: " << slice.toString();
-          continue; // skip analyzer
-        }
-      }
       irs::flags features;
-      if (slice.hasKey("features")) {
-        auto subSlice = slice.get("features");
-
-        if (!subSlice.isArray()) {
-          LOG_TOPIC("6cb58", ERR, arangodb::iresearch::TOPIC)
-            << "failed to find an array value for analyzer 'features' while loading analyzer from dump"
-            << ", skipping it: " << slice.toString();
-
-         continue; // skip analyzer
-        }
-
-        bool skipAnalyzer{ false };
-        for (velocypack::ArrayIterator subItr(subSlice);
-          subItr.valid();
-          ++subItr
-          ) {
-          auto subEntry = *subItr;
-
-          if (!subEntry.isString() && !subSlice.isNull()) {
-            LOG_TOPIC("eaa75", ERR, iresearch::TOPIC)
-              << "failed to find a string value for an entry in analyzer 'features' while loading analyzer from dump"
-              << ", skipping it: " << slice.toString();
-            skipAnalyzer = true;
-            break; // skip analyzer
-          }
-
-          const auto featureName = getStringRef(subEntry);
-          const auto feature = irs::attributes::get(featureName);
-
-          if (!feature) {
-            LOG_TOPIC("32e1f", ERR, iresearch::TOPIC)
-              << "failed to find feature '" << featureName << "' while loading analyzer from dump"
-              << ", skipping it: " << slice.toString();
-
-            skipAnalyzer = true;
-            break; // skip analyzer
-          }
-
-          features.add(feature.id());
-        }
-
-        if (ADB_UNLIKELY(skipAnalyzer)) {
-          continue;
-        }
+      irs::string_ref name;
+      irs::string_ref type;
+      VPackSlice properties;
+      auto parseRes = parseAnalyzerSlice(slice, name, type, features, properties);
+      if (parseRes.fail()) {
+        LOG_TOPIC("83638", ERR, iresearch::TOPIC)
+          << parseRes.errorMessage() << " while loading analyzer from dump"
+          << ", skipping it: " << slice.toString();
+        continue;
       }
-
+      
       EmplaceAnalyzerResult itr;
       auto normalizedName = normalizedAnalyzerName(vocbase.name(), name);
       auto res = emplaceAnalyzer(itr, _analyzers, normalizedName, type, properties, features,
@@ -1899,7 +1908,10 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
         }
       }
     }
-
+    if (ADB_UNLIKELY(inserted.empty())) {
+      // nothing changed. So nothing to commit;
+      return {};
+    }
     // cppcheck-suppress unreadVariable
     if (transaction) {
       res = transaction->commit();
@@ -2389,8 +2401,6 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
       irs::string_ref name;
       irs::string_ref type;
       VPackSlice properties;
-      std::string propertiesBuf;
-
       if (!slice.hasKey(arangodb::StaticStrings::KeyString) // no such field (required)
           || !slice.get(arangodb::StaticStrings::KeyString).isString()) {
         LOG_TOPIC("1dc56", ERR, iresearch::TOPIC)
@@ -2403,10 +2413,11 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
 
       key = getStringRef(slice.get(arangodb::StaticStrings::KeyString));
 
-      if (!slice.hasKey("name") // no such field (required)
-          || !(slice.get("name").isString() || slice.get("name").isNull())) {
+      auto parseRes = parseAnalyzerSlice(slice, name, type, features, properties);
+
+      if (parseRes.fail()) {
         LOG_TOPIC("f5920", ERR, iresearch::TOPIC)
-          << "failed to find a string value for analyzer 'name' while loading analyzer form collection '"
+          << parseRes.errorMessage() << " while loading analyzer form collection '"
           << arangodb::StaticStrings::AnalyzersCollection
           << "' in database '" << vocbase->name()
           << "', skipping it: " << slice.toString();
@@ -2414,36 +2425,6 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
         return {}; // skip analyzer
       }
 
-      name = getStringRef(slice.get("name"));
-
-      if (!slice.hasKey("type") // no such field (required)
-          || !(slice.get("type").isString() || slice.get("name").isNull())) {
-        LOG_TOPIC("9f5c8", ERR, iresearch::TOPIC)
-          << "failed to find a string value for analyzer 'type' while loading analyzer form collection '"
-          << arangodb::StaticStrings::AnalyzersCollection
-          << "' in database '" << vocbase->name()
-          << "', skipping it: " << slice.toString();
-
-        return {}; // skip analyzer
-      }
-
-      type = getStringRef(slice.get("type"));
-
-      if (slice.hasKey("properties")) {
-        auto subSlice = slice.get("properties");
-
-        if (subSlice.isArray() || subSlice.isObject()) {
-          properties = subSlice; // format as a jSON encoded string
-        } else {
-          LOG_TOPIC("a297e", ERR, arangodb::iresearch::TOPIC)
-            << "failed to find a string value for analyzer 'properties' while loading analyzer form collection '"
-            << arangodb::StaticStrings::AnalyzersCollection
-            << "' in database '" << vocbase->name()
-            << "', skipping it: " << slice.toString();
-
-          return {}; // skip analyzer
-        }
-      }
       AnalyzersRevision::Revision revision{ AnalyzersRevision::MIN };
       if (slice.hasKey(arangodb::StaticStrings::AnalyzersRevision)) {
         revision = slice.get(arangodb::StaticStrings::AnalyzersRevision).getNumber<AnalyzersRevision::Revision>();
@@ -2464,51 +2445,6 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
         }
       }
 
-      if (slice.hasKey("features")) {
-        auto subSlice = slice.get("features");
-
-        if (!subSlice.isArray()) {
-          LOG_TOPIC("7ec8a", ERR, arangodb::iresearch::TOPIC)
-            << "failed to find an array value for analyzer 'features' while loading analyzer form collection '"
-            << arangodb::StaticStrings::AnalyzersCollection
-            << "' in database '" << vocbase->name()
-            << "', skipping it: " << slice.toString();
-
-          return {}; // skip analyzer
-        }
-
-        for (velocypack::ArrayIterator subItr(subSlice);
-             subItr.valid();
-             ++subItr
-            ) {
-          auto subEntry = *subItr;
-
-          if (!subEntry.isString() && !subSlice.isNull()) {
-            LOG_TOPIC("7620d", ERR, iresearch::TOPIC)
-              << "failed to find a string value for an entry in analyzer 'features' while loading analyzer form collection '"
-              << arangodb::StaticStrings::AnalyzersCollection
-              << "' in database '" << vocbase->name()
-              << "', skipping it: " << slice.toString();
-
-            return {}; // skip analyzer
-          }
-
-          const auto featureName = getStringRef(subEntry);
-          const auto feature = irs::attributes::get(featureName);
-
-          if (!feature) {
-            LOG_TOPIC("4fedc", ERR, iresearch::TOPIC)
-              << "failed to find feature '" << featureName << "' while loading analyzer form collection '"
-              << arangodb::StaticStrings::AnalyzersCollection
-              << "' in database '" << vocbase->name()
-              << "', skipping it: " << slice.toString();
-
-            return {}; // skip analyzer
-          }
-
-          features.add(feature.id());
-        }
-      }
       auto normalizedName = normalizedAnalyzerName(vocbase->name(), name);
       EmplaceAnalyzerResult result;
       auto res = emplaceAnalyzer(result, analyzers, normalizedName, type, properties, features, revision);
