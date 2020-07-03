@@ -54,6 +54,7 @@ var jsunity = require('jsunity');
 function testSuite() {
   let endpoint = arango.getEndpoint();
   let db = require("@arangodb").db;
+  const isCluster = require("internal").isCluster();
 
   return {
     setUp: function() {},
@@ -179,6 +180,68 @@ function testSuite() {
       let result = arango.GET("/_admin/log/level");
       assertTrue(result.error);
       assertEqual(403, result.code);
+    },
+    
+    testCanAccessGetNumberOfServersRw : function() {
+      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      if (isCluster) {
+        let result = arango.GET("/_admin/cluster/numberOfServers");
+        assertFalse(result.error);
+        assertTrue(result.hasOwnProperty("numberOfDBServers"));
+        assertTrue(result.hasOwnProperty("numberOfCoordinators"));
+        assertTrue(result.hasOwnProperty("cleanedServers"));
+      } else {
+        let result = arango.GET("/_admin/cluster/numberOfServers");
+        assertTrue(result.error);
+        assertEqual(403, result.code);
+        assertEqual("only allowed on coordinators", result.errorMessage);
+      }
+    },
+
+    testCanAccessGetNumberOfServersRo : function() {
+      arango.reconnect(endpoint, db._name(), "test_ro", "testi");
+      if (isCluster) {
+        let result = arango.GET("/_admin/cluster/numberOfServers");
+        assertTrue(result.error);
+        assertEqual(403, result.code);
+        assertEqual("forbidden", result.errorMessage);
+      } else {
+        let result = arango.GET("/_admin/cluster/numberOfServers");
+        assertTrue(result.error);
+        assertEqual(403, result.code);
+        assertEqual("only allowed on coordinators", result.errorMessage);
+      }
+    },
+
+    testCanAccessPutNumberOfServersRw : function() {
+      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      const data = {};
+      if (isCluster) {
+        let result = arango.PUT("/_admin/cluster/numberOfServers", data);
+        assertFalse(result.error);
+        assertEqual(200, result.code);
+      } else {
+        let result = arango.PUT("/_admin/cluster/numberOfServers", data);
+        assertTrue(result.error);
+        assertEqual(403, result.code);
+        assertEqual("only allowed on coordinators", result.errorMessage);
+      }
+    },
+
+    testCanAccessPutNumberOfServersRo : function() {
+      arango.reconnect(endpoint, db._name(), "test_ro", "testi");
+      const data = {};
+      if (isCluster) {
+        let result = arango.PUT("/_admin/cluster/numberOfServers", data);
+        assertTrue(result.error);
+        assertEqual(403, result.code);
+        assertEqual("forbidden", result.errorMessage);
+      } else {
+        let result = arango.PUT("/_admin/cluster/numberOfServers", data);
+        assertTrue(result.error);
+        assertEqual(403, result.code);
+        assertEqual("only allowed on coordinators", result.errorMessage);
+      }
     },
 
   };

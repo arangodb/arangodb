@@ -825,7 +825,7 @@ TEST_F(IResearchIndexTest, test_async_index) {
   }
 }
 
-// test indexing selected fields will ommit non-indexed fields during query
+// test indexing selected fields will omit non-indexed fields during query
 TEST_F(IResearchIndexTest, test_fields) {
   auto createCollection0 = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testCollection0\" }");
