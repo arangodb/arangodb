@@ -1,11 +1,11 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
-* Fixed crash in HTTP2 implementation.
+* Network layer now reports connection setup issues in more cases this replaces
+  some INTERNAL_ERROR reports by more precise errors, those are only reached
+  during failover scenarios.
 
-* Network layer now reports connection setup issues in more cases
-  this replaces some INTERNAL_ERROR reports by more precise errors,
-  those are only reached during failover scenarios.
+* Fixed crash in HTTP2 implementation.
 
 * Improve readability of running and slow queries in web UI by properly left-
   aligning the query strings.
