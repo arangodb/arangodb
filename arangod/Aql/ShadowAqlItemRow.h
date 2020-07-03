@@ -108,6 +108,7 @@ class ShadowAqlItemRow {
   // the same row in the same block.
   [[nodiscard]] bool isSameBlockAndIndex(ShadowAqlItemRow const& other) const noexcept;
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   // This checks whether the rows are equivalent, in the sense that they hold
   // the same number of registers and their entry-AqlValues compare equal,
   // plus their shadow-depth is the same.
@@ -117,6 +118,7 @@ class ShadowAqlItemRow {
   // Invalid rows are considered equivalent.
   [[nodiscard]] bool equates(ShadowAqlItemRow const& other,
                              velocypack::Options const* option) const noexcept;
+#endif
 
  private:
   [[nodiscard]] AqlItemBlock& block() noexcept;

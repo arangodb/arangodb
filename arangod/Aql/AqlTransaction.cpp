@@ -65,9 +65,8 @@ AqlTransaction::AqlTransaction(
     : transaction::Methods(transactionContext, options) { 
   addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
 
-  Result res;
-  collections.visit([this, &res](std::string const&, aql::Collection* collection) {
-    res = processCollection(collection);
+  collections.visit([this](std::string const&, aql::Collection* collection) {
+    Result res = processCollection(collection);
 
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);

@@ -209,8 +209,9 @@ std::tuple<ExecutorState, EnumerateCollectionStats, size_t, AqlCall> EnumerateCo
 
 void EnumerateCollectionExecutor::initializeNewRow(AqlItemBlockInputRange& inputRange) {
   if (_currentRow) {
-    std::ignore = inputRange.nextDataRow();
-  }
+    // moves one row forward
+    inputRange.advanceDataRow();
+  } 
   std::tie(_currentRowState, _currentRow) = inputRange.peekDataRow();
   if (!_currentRow) {
     return;
