@@ -1,7 +1,7 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
-* Hot backup agency locks with clientId
+* Fixed issue OASIS-252: Hotbackup agency locks without clientId.
 
 * Correct some log entries.
 
