@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed a potential agency crash if trace logging is on.
+
 * Re-enable access to GET `/_admin/cluster/numberOfServers` for all users by
   default. Requests to PUT `/_admin/cluster/numberOfServers` require admin
   user privileges. This restores the pre-3.7 behavior. 
