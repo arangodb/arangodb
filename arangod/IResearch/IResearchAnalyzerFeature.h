@@ -274,10 +274,11 @@ class IResearchAnalyzerFeature final
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Emplaces batch of analyzers within single analyzers revision. Indended for use
-  ///        with restore/replication
+  ///        with restore/replication. Tries to load as many as possible analyzers
+  ///        skipping unparsable ones.
   /// @param vocbase target vocbase
   /// @param dumpedAnalzyzer VPack array of dumped data
-  /// @return OK or first failure 
+  /// @return OK or first failure
   /// @note should not be used while inRecovery()
   //////////////////////////////////////////////////////////////////////////////
   Result bulkEmplace(TRI_vocbase_t& vocbase,

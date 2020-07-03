@@ -1871,9 +1871,9 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
     if (masterName == TRI_COL_NAME_USERS) {
       reloadUsers();
-    } else if(masterName == StaticStrings::AnalyzersCollection &&
-              ServerState::instance()->isSingleServer() &&
-              vocbase().server().hasFeature<iresearch::IResearchAnalyzerFeature>()) {
+    } else if (masterName == StaticStrings::AnalyzersCollection &&
+               ServerState::instance()->isSingleServer() &&
+               vocbase().server().hasFeature<iresearch::IResearchAnalyzerFeature>()) {
         vocbase().server().getFeature<iresearch::IResearchAnalyzerFeature>().invalidate(vocbase());
     }
 

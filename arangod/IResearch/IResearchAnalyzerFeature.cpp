@@ -926,7 +926,7 @@ arangodb::Result visitAnalyzers(
 /// @param properties slice for properties or null slice if absent
 /// @return parse result
 //////////////////////////////////////////////////////////////////
-::arangodb::Result parseAnalyzerSlice(VPackSlice const& slice, 
+::arangodb::Result parseAnalyzerSlice(VPackSlice const& slice,
                           irs::string_ref& name,
                           irs::string_ref& type,
                           irs::flags& features,
@@ -967,10 +967,7 @@ arangodb::Result visitAnalyzers(
                "failed to find an array value for analyzer 'features'" };
     }
 
-    for (VPackArrayIterator subItr(subSlice);
-      subItr.valid();
-      ++subItr
-      ) {
+    for (VPackArrayIterator subItr(subSlice); subItr.valid(); ++subItr) {
       auto subEntry = *subItr;
 
       if (!subEntry.isString() && !subSlice.isNull()) {
@@ -1121,7 +1118,7 @@ void AnalyzerPool::toVelocyPack(
   addStringRef(builder, StaticStrings::AnalyzerNameField, name);
   addStringRef(builder, StaticStrings::AnalyzerTypeField, type());
   builder.add(StaticStrings::AnalyzerPropertiesField, properties());
-  
+
   // add features
   VPackArrayBuilder featuresScope(&builder, StaticStrings::AnalyzerFeaturesField);
   for (auto& feature : features()) {
@@ -1163,7 +1160,7 @@ void AnalyzerPool::toVelocyPack(VPackBuilder& builder,
     // only persistence needs revision to be stored
     // link definitions live always without revisions
     // analyzer definitions are stored in link itself
-    builder.add(arangodb::StaticStrings::AnalyzersRevision, 
+    builder.add(arangodb::StaticStrings::AnalyzersRevision,
                 VPackValue(static_cast<uint64_t>(_revision)));
   }
 
@@ -1735,8 +1732,7 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(TRI_vocbase_t& vocbase) {
   }
   auto* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine && !engine->inRecovery());
-  if (!analyzerModificationTrx)
-  {
+  if (!analyzerModificationTrx) {
     // no modification transaction. Just truncate
     auto ctx = transaction::StandaloneContext::Create(vocbase);
     SingleCollectionTransaction trx(ctx, arangodb::StaticStrings::AnalyzersCollection,
@@ -1785,9 +1781,9 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(TRI_vocbase_t& vocbase) {
     if (res.fail()) {
       return res;
     }
-    // now let`s do cleanup 
+    // now let`s do cleanup
     SingleCollectionTransaction truncateTrx(ctx, arangodb::StaticStrings::AnalyzersCollection,
-                                    AccessMode::Type::EXCLUSIVE);
+                                            AccessMode::Type::EXCLUSIVE);
 
     res = truncateTrx.begin();
 
@@ -1804,7 +1800,6 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(TRI_vocbase_t& vocbase) {
     invalidate(vocbase);
     return {};
   }
-
 }
 
 Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
@@ -1817,7 +1812,7 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
     if (startRes.fail()) {
       return startRes;
     }
-  } 
+  }
   try {
     WriteMutex mutex(_mutex);
     SCOPED_LOCK(mutex);
@@ -1863,7 +1858,7 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
           << ", skipping it: " << slice.toString();
         continue;
       }
-      
+
       EmplaceAnalyzerResult itr;
       auto normalizedName = normalizedAnalyzerName(vocbase.name(), name);
       auto res = emplaceAnalyzer(itr, _analyzers, normalizedName, type, properties, features,
@@ -2048,7 +2043,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
   }
   // getVocbaseRevision expects vocbase name and this is ensured by
   // normalize with expandVocbasePrefx = true
-  TRI_ASSERT(split.first.null() || !split.first.empty()); 
+  TRI_ASSERT(split.first.null() || !split.first.empty());
   return get(normalizedName, split,
              split.first.null() ? AnalyzersRevision::MIN // built-in analyzers always has MIN revision
                : revision.getVocbaseRevision(split.first),

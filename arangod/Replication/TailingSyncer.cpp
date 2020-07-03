@@ -1062,13 +1062,13 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstR
       reloadUsers();
       _usersModified = false;
     }
-    if(!_analyzersModified.empty() && 
-        _analyzersModified.front()
+    if (!_analyzersModified.empty() && 
+         (*_analyzersModified.begin())
                              ->server()
-                               .hasFeature<iresearch::IResearchAnalyzerFeature>()) {
-      auto& analyzersFeature = _analyzersModified.front()
-                                 ->server()
-                                   .getFeature<iresearch::IResearchAnalyzerFeature>();
+                             .hasFeature<iresearch::IResearchAnalyzerFeature>()) {
+      auto& analyzersFeature = (*_analyzersModified.begin())
+                                                   ->server()
+                                                   .getFeature<iresearch::IResearchAnalyzerFeature>();
       for (auto* vocbase : _analyzersModified) {
         TRI_ASSERT(vocbase);
         // we need to trigger cache invalidation
