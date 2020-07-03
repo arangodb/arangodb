@@ -70,7 +70,6 @@ class Utils {
   static std::string const globalShardListKey;
   static std::string const userParametersKey;
   static std::string const asyncModeKey;
-  static std::string const lazyLoadingKey;
   static std::string const useMemoryMaps;
   static std::string const parallelismKey;
 

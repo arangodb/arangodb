@@ -360,29 +360,48 @@ void H2Connection<T>::finishConnect() {
   if (this->state() != Connection::State::Connecting) {
     return;
   }
+  
+  // lets do the HTTP2 session upgrade right away
+  initNgHttp2Session();
+  
+  if (this->_config._upgradeH1ToH2) {
+    sendHttp1UpgradeRequest();
+    return;
+  }
+  
+  this->_state.store(Connection::State::Connected);
 
+  // send mandatory client connection preface
+  submitConnectionPreface(_session);
+
+  // submit a ping so the connection is not closed right away
+  startPing();
+  
+  this->asyncReadSome(); // start reading
+  doWrite(); // start writing
+}
+
+template <SocketType T>
+void H2Connection<T>::sendHttp1UpgradeRequest() {
+  // client connection preface via Upgrade header
   std::array<nghttp2_settings_entry, 4> iv;
   populateSettings(iv);
 
   std::string packed(iv.size() * 6, ' ');
   ssize_t nwrite = nghttp2_pack_settings_payload(
-      (uint8_t*)packed.data(), packed.size(), iv.data(), iv.size());
+     (uint8_t*)packed.data(), packed.size(), iv.data(), iv.size());
   FUERTE_ASSERT(nwrite >= 0);
   packed.resize(static_cast<size_t>(nwrite));
-  std::string encoded = fu::encodeBase64(packed, true);
-
-  // lets do the HTTP2 session upgrade right away
-  initNgHttp2Session();
 
   // this will submit the settings field for us
   ssize_t rv = nghttp2_session_upgrade2(_session, (uint8_t const*)packed.data(),
-                                        packed.size(), /*head*/ 0, nullptr);
+                                       packed.size(), /*head*/ 0, nullptr);
   if (rv < 0) {
-    FUERTE_ASSERT(false);
-    this->shutdownConnection(Error::ProtocolError, "error during upgrade");
-    return;
+   FUERTE_ASSERT(false);
+   this->shutdownConnection(Error::ProtocolError, "error during upgrade");
+   return;
   }
-  
+
   // simon: important otherwise big responses fail
   // increase connection window size up to window_size
   rv = nghttp2_session_set_local_window_size(_session, NGHTTP2_FLAG_NONE, 0, window_size);
@@ -391,20 +410,20 @@ void H2Connection<T>::finishConnect() {
   auto req = std::make_shared<std::string>();
   req->append("GET / HTTP/1.1\r\nConnection: Upgrade, HTTP2-Settings\r\n");
   req->append("Upgrade: h2c\r\nHTTP2-Settings: ");
-  req->append(encoded);
+  req->append(fu::encodeBase64(packed, true));
   req->append("\r\n\r\n");
-
+  
   asio_ns::async_write(
-      this->_proto.socket, asio_ns::buffer(req->data(), req->size()),
-      [self(Connection::shared_from_this())](auto const& ec,
-                                             std::size_t nsend) {
-        auto& me = static_cast<H2Connection<T>&>(*self);
-        if (ec) {
-          me.shutdownConnection(Error::WriteError, ec.message());
-        } else {
-          me.readSwitchingProtocolsResponse();
-        }
-      });
+     this->_proto.socket, asio_ns::buffer(req->data(), req->size()),
+     [self(Connection::shared_from_this())](auto const& ec,
+                                            std::size_t nsend) {
+       auto& me = static_cast<H2Connection<T>&>(*self);
+       if (ec) {
+         me.shutdownConnection(Error::WriteError, ec.message());
+       } else {
+         me.readSwitchingProtocolsResponse();
+       }
+     });
 }
 
 template <SocketType T>
@@ -418,6 +437,7 @@ void H2Connection<T>::readSwitchingProtocolsResponse() {
       self->cancel();
     }
   });
+  // read until we find end of http header
   asio_ns::async_read_until(
       this->_proto.socket, this->_receiveBuffer, "\r\n\r\n",
       [self](asio_ns::error_code const& ec, size_t nread) {
@@ -472,7 +492,7 @@ void H2Connection<SocketType::Ssl>::finishConnect() {
 
   initNgHttp2Session();
 
-  // send client connection preface
+  // send mandatory client connection preface
   submitConnectionPreface(_session);
 
   // submit a ping so the connection is not closed right away

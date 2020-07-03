@@ -152,30 +152,17 @@ void Worker<V, E, M>::setupWorker() {
     _callConductor(Utils::finishedStartupPath, package);
   };
 
-  if (_config.lazyLoading()) {
-    // TODO maybe lazy loading needs to be performed on another thread too
-    std::set<std::string> activeSet = _algorithm->initialActiveSet();
-    if (activeSet.size() == 0) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "There needs to be one active vertice");
-    }
-    for (std::string const& documentID : activeSet) {
-      _graphStore->loadDocument(&_config, documentID);
-    }
-    cb();
-  } else {
-    // initialization of the graphstore might take an undefined amount
-    // of time. Therefore this is performed asynchronous
-    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-    Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    auto self = shared_from_this();
-    bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [self, this, cb] {
-      _graphStore->loadShards(&_config, cb);
-    });
-    if (!queued) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
-                                     "No available thread to load shards");
-    }
+  // initialization of the graphstore might take an undefined amount
+  // of time. Therefore this is performed asynchronous
+  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  auto self = shared_from_this();
+  bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [self, this, cb] {
+                                                              _graphStore->loadShards(&_config, cb);
+                                                            });
+  if (!queued) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
+                                   "No available thread to load shards");
   }
 }
 
@@ -475,40 +462,6 @@ void Worker<V, E, M>::_finishedProcessing() {
     // count all received messages
     _messageStats.receivedCount = _readCache->containedMessageCount();
 
-    // lazy loading and async mode are a little tricky
-    // the correct halting requires us to accurately track the number
-    // of messages send or received, and to report them to the coordinator
-    if (_config.lazyLoading()) {  // TODO how to improve this?
-      // hack to determine newly added vertices
-      size_t currentAVCount = _graphStore->localVertexCount();
-      auto it = _graphStore->vertexIterator();
-      for (; it.hasMore(); ++it) {
-        Vertex<V,E>* vertexEntry = *it;
-        // reduces the containedMessageCount
-        _readCache->erase(vertexEntry->shard(), vertexEntry->key());
-      }
-
-      _readCache->forEach([this](PregelShard shard, VPackStringRef const& key, M const&) {
-        _graphStore->loadDocument(&_config, shard, key);
-      });
-
-      // only do this expensive merge operation if there are new vertices
-      size_t total = _graphStore->localVertexCount();
-      if (total > currentAVCount) {
-        if (_config.asynchronousMode()) {
-          // just process these vertices in the next superstep
-          MY_READ_LOCKER(guard, _cacheRWLock);
-          _writeCache->mergeCache(_config,
-                                  _readCache);  // compute in next superstep
-          _messageStats.sendCount += _readCache->containedMessageCount();
-        } else {
-          // TODO call _startProcessing ???
-          _runningThreads = 1;
-          auto addedVertices = _graphStore->vertexIterator(currentAVCount, total);
-          _processVertices(0, addedVertices);
-        }
-      }
-    }
     _readCache->clear();  // no need to keep old messages around
     _expectedGSS = _config._globalSuperstep + 1;
     _config._localSuperstep++;
