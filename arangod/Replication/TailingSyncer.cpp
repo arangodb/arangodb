@@ -1062,20 +1062,20 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstR
       reloadUsers();
       _usersModified = false;
     }
-    if (!_analyzersModified.empty() && 
-         (*_analyzersModified.begin())
-                             ->server()
-                             .hasFeature<iresearch::IResearchAnalyzerFeature>()) {
-      auto& analyzersFeature = (*_analyzersModified.begin())
-                                                   ->server()
-                                                   .getFeature<iresearch::IResearchAnalyzerFeature>();
-      for (auto* vocbase : _analyzersModified) {
-        TRI_ASSERT(vocbase);
-        // we need to trigger cache invalidation
-        // because single server has no revisions
-        // and never reloads cache from db by itself
-        // so new analyzers will be not usable on slave
-        analyzersFeature.invalidate(*vocbase);
+    if (!_analyzersModified.empty()) {
+      TRI_ASSERT(*_analyzersModified.begin());
+      auto& begin = *_analyzersModified.begin();
+      auto& server = begin->server();
+      if (server.hasFeature<iresearch::IResearchAnalyzerFeature>()) {
+        auto& analyzersFeature = server.getFeature<iresearch::IResearchAnalyzerFeature>();
+        for (auto* vocbase : _analyzersModified) {
+          TRI_ASSERT(vocbase);
+          // we need to trigger cache invalidation
+          // because single server has no revisions
+          // and never reloads cache from db by itself
+          // so new analyzers will be not usable on slave
+          analyzersFeature.invalidate(*vocbase);
+        }
       }
       _analyzersModified.clear();
     }
