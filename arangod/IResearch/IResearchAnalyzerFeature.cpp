@@ -1619,9 +1619,6 @@ Result IResearchAnalyzerFeature::emplace(
   }
 
   try {
-    WriteMutex mutex(_mutex);
-    SCOPED_LOCK(mutex);
-
     if (!split.first.null()) { // do not trigger load for static-analyzer requests
       if (transaction) {
         auto cleanupResult = cleanupAnalyzersCollection(split.first,
@@ -1638,6 +1635,8 @@ Result IResearchAnalyzerFeature::emplace(
       }
     }
 
+    WriteMutex mutex(_mutex);
+    SCOPED_LOCK(mutex);
 
     // validate and emplace an analyzer
     EmplaceAnalyzerResult itr;
@@ -1818,9 +1817,6 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
     }
   }
   try {
-    WriteMutex mutex(_mutex);
-    SCOPED_LOCK(mutex);
-
     if (transaction) {
       auto cleanupResult = cleanupAnalyzersCollection(vocbase.name(),
                                                       transaction->buildingRevision());
@@ -1832,6 +1828,9 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
     if (!res.ok()) {
       return res;
     }
+    
+    WriteMutex mutex(_mutex);
+    SCOPED_LOCK(mutex);
 
     auto* engine = EngineSelectorFeature::ENGINE;
     TRI_ASSERT(engine && !engine->inRecovery());
@@ -2725,9 +2724,6 @@ Result IResearchAnalyzerFeature::remove(
       return { TRI_ERROR_FORBIDDEN, "built-in analyzers cannot be removed" };
     }
 
-    WriteMutex mutex(_mutex);
-    SCOPED_LOCK(mutex);
-
     // FIXME: really strange  we don`t have this load in remove
     //        This means if we just start server and call remove - we will fail
     //        Even test IResearchAnalyzerFeatureTest.test_persistence_remove_existing_records  checks this behaviour
@@ -2739,6 +2735,9 @@ Result IResearchAnalyzerFeature::remove(
     //    return res;
     //  }
     //}
+
+    WriteMutex mutex(_mutex);
+    SCOPED_LOCK(mutex);
 
     auto itr = _analyzers.find(irs::make_hashed_ref(name, std::hash<irs::string_ref>()));
 
