@@ -364,7 +364,7 @@ void H2CommTask<T>::start() {
     submitConnectionPreface(me._session);
 
     me.doWrite();  // write out preface
-    me.asyncReadSome();
+    me.asyncReadSome(); // start reading
   });
 }
 
