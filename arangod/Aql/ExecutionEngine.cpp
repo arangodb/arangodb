@@ -209,6 +209,10 @@ ExecutionEngine::~ExecutionEngine() {
   } catch (...) {
     // shutdown can throw - ignore it in the destructor
   }
+  
+  if (_sharedState) {  // ensure no async task is working anymore
+    _sharedState->invalidate();
+  }
 
   for (auto& it : _blocks) {
     delete it;
