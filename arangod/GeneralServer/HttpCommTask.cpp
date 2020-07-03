@@ -297,10 +297,9 @@ namespace {
 static constexpr const char* vst10 = "VST/1.0\r\n\r\n";
 static constexpr const char* vst11 = "VST/1.1\r\n\r\n";
 static constexpr const char* h2Preface = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n";
-static size_t vstLen = 11;       // length of vst connection preface
-static size_t h2PrefaceLen = 24; // length of h2 connection preface
-static size_t minHttpRequestLen = 18; // min length of an http 1.0 request
-// simon: Technically http 1.1 requires 'Host' header i.e. 24 bytes minimum
+static constexpr size_t vstLen = 11;          // length of vst connection preface
+static constexpr size_t h2PrefaceLen = 24;    // length of h2 connection preface
+static constexpr size_t minHttpRequestLen = 18; // min length of http 1.0 request
 }  // namespace
 
 template <SocketType T>
