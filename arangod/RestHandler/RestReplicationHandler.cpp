@@ -1449,7 +1449,7 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
              ServerState::instance()->isCoordinator() &&
              _vocbase.server().hasFeature<iresearch::IResearchAnalyzerFeature>()){
     // _analyzers should be inserted via analyzers API
-    return processRestoreCoordinatorAnalyzersBatch(colName);
+    return processRestoreCoordinatorAnalyzersBatch();
   }
 
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
@@ -1547,13 +1547,12 @@ Result RestReplicationHandler::parseBatch(std::string const& collectionName,
   return Result{TRI_ERROR_NO_ERROR};
 }
 
-Result RestReplicationHandler::processRestoreCoordinatorAnalyzersBatch(
-    std::string const& collectionName) {
+Result RestReplicationHandler::processRestoreCoordinatorAnalyzersBatch() {
   auto& analyzersFeature = _vocbase.server().getFeature<iresearch::IResearchAnalyzerFeature>();
   std::unordered_map<std::string, VPackValueLength> latest;
   VPackBuilder allMarkers;
 
-  Result res = parseBatch(collectionName, latest, allMarkers);
+  Result res = parseBatch(StaticStrings::AnalyzersCollection, latest, allMarkers);
   if (res.fail()) {
     return res;
   }

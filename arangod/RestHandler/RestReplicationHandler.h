@@ -367,7 +367,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief restores the data of the _analyzers collection in cluster
   //////////////////////////////////////////////////////////////////////////////
 
-  Result processRestoreCoordinatorAnalyzersBatch(std::string const& collectionName);
+  Result processRestoreCoordinatorAnalyzersBatch();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the data of the _users collection
