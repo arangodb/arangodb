@@ -1,11 +1,13 @@
 devel
 -----
 
+* Fixed issue OASIS-252: Hotbackup agency locks without clientId.
+
 * Fixed a potential agency crash if trace logging is on.
 
 * Re-enable access to GET `/_admin/cluster/numberOfServers` for all users by
   default. Requests to PUT `/_admin/cluster/numberOfServers` require admin
-  user privileges. This restores the pre-3.7 behavior. 
+  user privileges. This restores the pre-3.7 behavior.
   In contrast to pre-3.7 behavior, the `--server.harden` option now can be
   used to restrict access to GET `/_admin/cluster/numberOfServers` to admin
   users, too. This can be used to lock down this API for non-admin users
