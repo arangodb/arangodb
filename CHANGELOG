@@ -1,6 +1,10 @@
 devel
 -----
 
+* Removed the edge id's hover styling in case of embedded document editor in 
+  the Web UI as this functionality is disabled. This was misleading because
+  the elements are not clickable.
+
 * The Web UI now displays an error message inside the node information view in
   case the user has no access to retreive the neccessary information.
 
