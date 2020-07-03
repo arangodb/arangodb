@@ -95,8 +95,8 @@ int HttpCommTask<T>::on_url(llhttp_t* p, const char* at, size_t len) {
   me->_request->parseUrl(at, len);
   me->_request->setRequestType(llhttpToRequestType(p));
   if (me->_request->requestType() == RequestType::ILLEGAL) {
-    me->addSimpleResponse(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                          rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
+    me->sendSimpleResponse(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                           rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
     return HPE_USER;
   }
 
@@ -147,12 +147,12 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
 
   if ((p->http_major != 1 && p->http_minor != 0) &&
       (p->http_major != 1 && p->http_minor != 1)) {
-    me->addSimpleResponse(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED,
-                          rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
+    me->sendSimpleResponse(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED,
+                           rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
     return HPE_USER;
   }
   if (p->content_length > GeneralCommTask<T>::MaximalBodySize) {
-    me->addSimpleResponse(rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE,
+    me->sendSimpleResponse(rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE,
                           rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
     return HPE_USER;
   }
@@ -296,43 +296,56 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
 namespace {
 static constexpr const char* vst10 = "VST/1.0\r\n\r\n";
 static constexpr const char* vst11 = "VST/1.1\r\n\r\n";
+static constexpr const char* h2Preface = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n";
+static constexpr size_t vstLen = 11;          // length of vst connection preface
+static constexpr size_t h2PrefaceLen = 24;    // length of h2 connection preface
+static constexpr size_t minHttpRequestLen = 18; // min length of http 1.0 request
 }  // namespace
 
 template <SocketType T>
 void HttpCommTask<T>::checkVSTPrefix() {
   auto cb = [self = this->shared_from_this()](asio_ns::error_code const& ec, size_t nread) {
-    auto* me = static_cast<HttpCommTask<T>*>(self.get());
-    if (ec || nread < 11) {
-      me->close(ec);
+    auto& me = static_cast<HttpCommTask<T>&>(*self);
+    if (ec || nread < vstLen) {
+      me.close(ec);
       return;
     }
-    me->_protocol->buffer.commit(nread);
+    me._protocol->buffer.commit(nread);
 
-    auto bg = asio_ns::buffers_begin(me->_protocol->buffer.data());
-    if (std::equal(::vst10, ::vst10 + 11, bg, bg + 11)) {
-      me->_protocol->buffer.consume(11);  // remove VST/1.0 prefix
-      auto commTask = std::make_unique<VstCommTask<T>>(me->_server, me->_connectionInfo,
-                                                       std::move(me->_protocol),
+    auto bg = asio_ns::buffers_begin(me._protocol->buffer.data());
+    if (std::equal(::vst10, ::vst10 + vstLen, bg, bg + ptrdiff_t(vstLen))) {
+      me._protocol->buffer.consume(vstLen);  // remove VST/1.0 prefix
+      auto commTask = std::make_unique<VstCommTask<T>>(me._server, me._connectionInfo,
+                                                       std::move(me._protocol),
                                                        fuerte::vst::VST1_0);
-      me->_server.registerTask(std::move(commTask));
-      me->close(ec);
+      me._server.registerTask(std::move(commTask));
+      me.close(ec);
       return;  // vst 1.0
 
-    } else if (std::equal(::vst11, ::vst11 + 11, bg, bg + 11)) {
-      me->_protocol->buffer.consume(11);  // remove VST/1.1 prefix
-      auto commTask = std::make_unique<VstCommTask<T>>(me->_server, me->_connectionInfo,
-                                                       std::move(me->_protocol),
+    } else if (std::equal(::vst11, ::vst11 + vstLen, bg, bg + ptrdiff_t(vstLen))) {
+      me._protocol->buffer.consume(vstLen);  // remove VST/1.1 prefix
+      auto commTask = std::make_unique<VstCommTask<T>>(me._server, me._connectionInfo,
+                                                       std::move(me._protocol),
                                                        fuerte::vst::VST1_1);
-      me->_server.registerTask(std::move(commTask));
-      me->close(ec);
+      me._server.registerTask(std::move(commTask));
+      me.close(ec);
       return;  // vst 1.1
+    } else if (nread >= h2PrefaceLen &&
+               std::equal(::h2Preface, ::h2Preface + h2PrefaceLen,
+                          bg, bg + ptrdiff_t(h2PrefaceLen))) {
+      // do not remove the preface here
+      auto commTask = std::make_unique<H2CommTask<T>>(me._server, me._connectionInfo,
+                                                      std::move(me._protocol));
+      me._server.registerTask(std::move(commTask));
+      me.close(ec);
+      return;  // http2 upgrade
     }
 
-    me->asyncReadSome();  // continue reading
+    me.asyncReadSome();  // continue reading
   };
   auto buffs = this->_protocol->buffer.prepare(GeneralCommTask<T>::ReadBlockSize);
   asio_ns::async_read(this->_protocol->socket, buffs,
-                      asio_ns::transfer_at_least(11), std::move(cb));
+                      asio_ns::transfer_at_least(minHttpRequestLen), std::move(cb));
 }
 
 #ifdef USE_DTRACE
@@ -415,8 +428,8 @@ void HttpCommTask<T>::processRequest() {
 
   // unzip / deflate
   if (!this->handleContentEncoding(*_request)) {
-    this->addErrorResponse(rest::ResponseCode::BAD, _request->contentTypeResponse(),
-                           1, TRI_ERROR_BAD_PARAMETER, "decoding error");
+    this->sendErrorResponse(rest::ResponseCode::BAD, _request->contentTypeResponse(),
+                            1, TRI_ERROR_BAD_PARAMETER, "decoding error");
     return;
   }
 

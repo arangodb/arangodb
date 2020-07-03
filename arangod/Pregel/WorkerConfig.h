@@ -58,8 +58,6 @@ class WorkerConfig {
 
   inline bool asynchronousMode() const { return _asynchronousMode; }
 
-  inline bool lazyLoading() const { return _lazyLoading; }
-
   inline bool useMemoryMaps() const { return _useMemoryMaps; }
 
   inline uint64_t parallelism() const { return _parallelism; }
@@ -134,8 +132,6 @@ class WorkerConfig {
 
   /// Let async
   bool _asynchronousMode = false;
-  /// load vertices on a lazy basis
-  bool _lazyLoading = false;
   bool _useMemoryMaps = false; /// always use mmaps
 
   size_t _parallelism = 1;

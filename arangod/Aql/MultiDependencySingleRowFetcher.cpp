@@ -146,23 +146,6 @@ bool MultiDependencySingleRowFetcher::isDone(
   return info._upstreamState == ExecutionState::DONE;
 }
 
-bool MultiDependencySingleRowFetcher::isLastRowInBlock(
-    const MultiDependencySingleRowFetcher::DependencyInfo& info) const {
-  TRI_ASSERT(indexIsValid(info));
-  return info._rowIndex + 1 == info._currentBlock->size();
-}
-
-bool MultiDependencySingleRowFetcher::noMoreDataRows(
-    const MultiDependencySingleRowFetcher::DependencyInfo& info) const {
-  return (isDone(info) && !indexIsValid(info)) ||
-         (indexIsValid(info) && isAtShadowRow(info));
-}
-
-bool MultiDependencySingleRowFetcher::isAtShadowRow(DependencyInfo const& depInfo) const {
-  TRI_ASSERT(indexIsValid(depInfo));
-  return depInfo._currentBlock->isShadowRow(depInfo._rowIndex);
-}
-
 bool MultiDependencySingleRowFetcher::fetchBlockIfNecessary(size_t const dependency,
                                                             size_t const atMost) {
   MultiDependencySingleRowFetcher::DependencyInfo& depInfo = _dependencyInfos[dependency];
