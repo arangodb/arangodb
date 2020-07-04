@@ -1759,8 +1759,8 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(TRI_vocbase_t& vocbase) {
        .append(": ").append(stringRev).append("} IN ")
        .append(arangodb::StaticStrings::AnalyzersCollection);
 
-    auto ctx = transaction::StandaloneContext::Create(vocbase);
     { // SingleCollectionTransaction scope
+      auto ctx = transaction::StandaloneContext::Create(vocbase);
       SingleCollectionTransaction trx(ctx, arangodb::StaticStrings::AnalyzersCollection,
                                       AccessMode::Type::EXCLUSIVE);
 
@@ -1784,6 +1784,7 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(TRI_vocbase_t& vocbase) {
     }
     { // SingleCollectionTransaction scope
       // now let`s do cleanup
+      auto ctx = transaction::StandaloneContext::Create(vocbase);
       SingleCollectionTransaction truncateTrx(ctx, arangodb::StaticStrings::AnalyzersCollection,
                                               AccessMode::Type::EXCLUSIVE);
 
