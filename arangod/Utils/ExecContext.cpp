@@ -135,11 +135,11 @@ auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
     // handle fixed permissions here outside auth module.
     // TODO: move this block above, such that it takes effect
     //       when authentication is disabled
-    if (dbname == StaticStrings::SystemDatabase && coll == TRI_COL_NAME_USERS) {
+    if (dbname == StaticStrings::SystemDatabase && coll == StaticStrings::UsersCollection) {
       return auth::Level::NONE;
-    } else if (coll == "_queues") {
+    } else if (coll == StaticStrings::QueuesCollection) {
       return auth::Level::RO;
-    } else if (coll == "_frontend") {
+    } else if (coll == StaticStrings::FrontendCollection) {
       return auth::Level::RW;
     }  // intentional fall through
   }

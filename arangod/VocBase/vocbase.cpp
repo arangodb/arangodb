@@ -1725,7 +1725,7 @@ bool TRI_vocbase_t::IsAllowedName(bool allowSystem,
     }
   }
 
-  return (length > 0 && length <= TRI_COL_NAME_LENGTH);
+  return (length > 0 && length <= LogicalCollection::maxNameLength);
 }
 
 /// @brief determine whether a collection name is a system collection name

@@ -393,7 +393,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
   }
 
   bool const isSystem = coll->system();
-  bool const isUsers = coll->name() == TRI_COL_NAME_USERS; 
+  bool const isUsers = coll->name() == StaticStrings::UsersCollection;
 
   // extract "data"
   VPackSlice const data = slice.get(::dataRef);
