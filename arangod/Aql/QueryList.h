@@ -118,7 +118,7 @@ class QueryList {
   /// modifications of this variable are possible but are considered unharmful
   inline void slowQueryThreshold(double value) {
     if (value < 0.0 || value == HUGE_VAL || value != value) {
-      // sanity checks
+      // only let useful values pass
       value = 0.0;
     }
     _slowQueryThreshold.store(value);
@@ -136,7 +136,7 @@ class QueryList {
   /// modifications of this variable are possible but are considered unharmful
   inline void slowStreamingQueryThreshold(double value) {
     if (value < 0.0 || value == HUGE_VAL || value != value) {
-      // sanity checks
+      // basic checks
       value = 0.0;
     }
     _slowStreamingQueryThreshold.store(value);
@@ -154,7 +154,7 @@ class QueryList {
   /// modifications of this variable are possible but are considered unharmful
   inline void maxSlowQueries(size_t value) {
     if (value > 16384) {
-      // sanity checks
+      // basic checks
       value = 16384;
     }
     _maxSlowQueries.store(value);
@@ -171,7 +171,7 @@ class QueryList {
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
   inline void maxQueryStringLength(size_t value) {
-    // sanity checks
+    // basic checks
     if (value < 64) {
       value = 64;
     } else if (value >= 8 * 1024 * 1024) {

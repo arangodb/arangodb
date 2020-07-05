@@ -2910,7 +2910,7 @@ void IResearchAnalyzerFeature::start() {
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // sanity check: we rely on this condition is true internally
+  // we rely on having a system database
   if (server().hasFeature<SystemDatabaseFeature>()) {
     auto vocbase = server().getFeature<SystemDatabaseFeature>()
                            .use();

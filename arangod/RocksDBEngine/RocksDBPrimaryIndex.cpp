@@ -613,8 +613,8 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
   }
 
   if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    // blacklist new index entry to avoid caching without committing first
-    blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
+    // invalidate new index cache entry to avoid caching without committing first
+    invalidateCacheEntry(key->string().data(), static_cast<uint32_t>(key->string().size()));
   }
 
   TRI_ASSERT(revision != 0);
@@ -643,8 +643,8 @@ Result RocksDBPrimaryIndex::update(transaction::Methods& trx, RocksDBMethods* mt
   TRI_voc_rid_t revision = transaction::helpers::extractRevFromDocument(newDoc);
   auto value = RocksDBValue::PrimaryIndexValue(newDocumentId, revision);
 
-  // blacklist new index entry to avoid caching without committing first
-  blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
+  // invalidate new index cache entry to avoid caching without committing first
+  invalidateCacheEntry(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
   rocksdb::Status s = mthd->Put(_cf, key.ref(), value.string(), /*assume_tracked*/ false);
   if (!s.ok()) {
@@ -666,7 +666,7 @@ Result RocksDBPrimaryIndex::remove(transaction::Methods& trx, RocksDBMethods* mt
   RocksDBKeyLeaser key(&trx);
   key->constructPrimaryIndexValue(objectId(), arangodb::velocypack::StringRef(keySlice));
 
-  blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
+  invalidateCacheEntry(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
   // acquire rocksdb transaction
   auto* mthds = RocksDBTransactionState::toMethods(&trx);
