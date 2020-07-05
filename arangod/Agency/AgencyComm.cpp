@@ -1406,7 +1406,6 @@ bool AgencyComm::shouldInitializeStructure() {
       continue;
 
     } else {
-      // Sanity
       if (result.slice().isArray() && result.slice().length() == 1) {
         // No plan entry? Should initialize
         if (result.slice()[0].isObject() && result.slice()[0].length() == 0) {

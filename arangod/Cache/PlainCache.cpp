@@ -174,7 +174,7 @@ Result PlainCache::remove(void const* key, std::uint32_t keySize) {
   return status;
 }
 
-Result PlainCache::blacklist(void const* key, std::uint32_t keySize) {
+Result PlainCache::banish(void const* key, std::uint32_t keySize) {
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 

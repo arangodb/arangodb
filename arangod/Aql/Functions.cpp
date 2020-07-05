@@ -265,7 +265,7 @@ AqlValue timeAqlValue(ExpressionContext* expressionContext, char const* AFN,
   auto day_time = make_time(tp - sys_days(ymd));
 
   auto y = static_cast<int>(ymd.year());
-  // quick sanity check here for dates outside the allowed range
+  // quick basic check here for dates outside the allowed range
   if (y < 0 || y > 9999) {
     arangodb::aql::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
     return AqlValue(AqlValueHintNull());

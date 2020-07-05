@@ -89,7 +89,7 @@ class Supervision : public arangodb::CriticalThread {
     std::string jobId;
   };
 
-  /// @brief Construct sanity checking
+  /// @brief Construct cluster consistency checking
   explicit Supervision(application_features::ApplicationServer& server);
 
   /// @brief Default dtor
@@ -203,7 +203,7 @@ class Supervision : public arangodb::CriticalThread {
   /// @brief Get unique ids from agency
   void getUniqueIds();
 
-  /// @brief Perform sanity checking
+  /// @brief Perform consistency checking
   bool doChecks();
 
   /// @brief update my local agency snapshot

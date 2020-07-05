@@ -34,6 +34,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/Logger.h"
 #include "Replication/InitialSyncer.h"
 #include "Replication/ReplicationApplier.h"
@@ -391,10 +392,10 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
   if (coll == nullptr) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
-
   bool const isSystem = coll->system();
   bool const isUsers = coll->name() == StaticStrings::UsersCollection;
-
+  bool const isAnalyzers = coll->name() == StaticStrings::AnalyzersCollection;
+  
   // extract "data"
   VPackSlice const data = slice.get(::dataRef);
 
@@ -468,8 +469,12 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
       // ignore unique constraint violations for system collections
       r.reset();
     }
-    if (r.ok() && isUsers) {
-      _usersModified = true;
+    if (r.ok()) {
+      if (isUsers) {
+        _usersModified = true;
+      } else if (isAnalyzers) {
+        _analyzersModified.insert(vocbase);
+      }
     }
 
     return r;  // done
@@ -537,9 +542,12 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
     // fix error handling here when function returns result
     if (res.ok()) {
       res = trx.commit();
-
-      if (res.ok() && isUsers) {
-        _usersModified = true;
+      if (res.ok()) {
+        if (isUsers) {
+          _usersModified = true;
+        } else if (isAnalyzers) {
+          _analyzersModified.insert(vocbase);
+        }
       }
     }
 
@@ -1048,11 +1056,29 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstR
                                ApplyStats& applyStats, uint64_t& ignoreCount) {
   // reload users if they were modified
   _usersModified = false;
+  _analyzersModified.clear();
   auto reloader = [this]() {
     if (_usersModified) {
       // reload users after initial dump
       reloadUsers();
       _usersModified = false;
+    }
+    if (!_analyzersModified.empty()) {
+      TRI_ASSERT(*_analyzersModified.begin());
+      auto& begin = *_analyzersModified.begin();
+      auto& server = begin->server();
+      if (server.hasFeature<iresearch::IResearchAnalyzerFeature>()) {
+        auto& analyzersFeature = server.getFeature<iresearch::IResearchAnalyzerFeature>();
+        for (auto* vocbase : _analyzersModified) {
+          TRI_ASSERT(vocbase);
+          // we need to trigger cache invalidation
+          // because single server has no revisions
+          // and never reloads cache from db by itself
+          // so new analyzers will be not usable on slave
+          analyzersFeature.invalidate(*vocbase);
+        }
+      }
+      _analyzersModified.clear();
     }
   };
   TRI_DEFER(reloader());
