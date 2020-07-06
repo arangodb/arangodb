@@ -445,9 +445,11 @@ std::optional<std::pair<int, std::string_view>> AgencyCommResult::parseBodyError
         // Now try to extract the message, too; but it's fine if that fails, we
         // already have the default one.
         if (auto const errMsg = body.get(StaticStrings::ErrorMessage); errMsg.isString()) {
-          result->second = errMsg.stringView();
+          auto const strRef = errMsg.stringRef();
+          result->second = {strRef.begin(), strRef.size()};
         } else if (auto const errMsg = body.get("message"); errMsg.isString()) {
-          result->second = errMsg.stringView();
+          auto const strRef = errMsg.stringRef();
+          result->second = {strRef.begin(), strRef.size()};
         }
       }
     }
