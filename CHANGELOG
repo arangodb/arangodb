@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated arangosync to 0.7.7.
+
 * Fixed a document parsing bug in the Web UI. This issue occured in the
   document list view in case a document had an attribute called `length`.
   The result was an incorrect representation of the document preview.
