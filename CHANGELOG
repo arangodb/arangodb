@@ -1,6 +1,7 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
-* Fixed internal-issue #726: added restore handling for custom analyzers
+
+* Fixed internal-issue #726: added restore handling for custom analyzers.
 
 * Fixed a potential agency crash if trace logging is on.
 
