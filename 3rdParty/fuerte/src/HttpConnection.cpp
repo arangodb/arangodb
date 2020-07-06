@@ -138,9 +138,12 @@ HttpConnection<ST>::HttpConnection(EventLoopService& loop,
     : GeneralConnection<ST>(loop, config),
       _queue(),
       _active(false),
+      _reading(false),
+      _writing(false),
       _lastHeaderWasValue(false),
       _shouldKeepAlive(false),
-      _messageComplete(false) {
+      _messageComplete(false),
+      _timeoutOnReadWrite(false) {
   // initialize http parsing code
   http_parser_settings_init(&_parserSettings);
   _parserSettings.on_message_begin = &on_message_begin;
@@ -151,9 +154,10 @@ HttpConnection<ST>::HttpConnection(EventLoopService& loop,
   _parserSettings.on_body = &on_body;
   _parserSettings.on_message_complete = &on_message_complete;
   http_parser_init(&_parser, HTTP_RESPONSE);
+
   _parser.data = static_cast<void*>(this);
 
-  // preemtively cache
+  // preemptively cache
   if (this->_config._authenticationType == AuthenticationType::Basic) {
     _authHeader.append("Authorization: Basic ");
     _authHeader.append(
@@ -386,6 +390,9 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
   if (_active == false) {
     std::abort();
   }
+  if (_item != nullptr) {
+    std::abort();
+  }
 
   http::RequestItem* ptr = nullptr;
   if (!_queue.pop(ptr)) {
@@ -396,7 +403,7 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
       if (_shouldKeepAlive && this->_config._idleTimeout.count() > 0) {
         FUERTE_LOG_HTTPTRACE << "setting idle keep alive timer, this=" << this
                              << "\n";
-        setTimeout(this->_config._idleTimeout);
+        setTimeout(this->_config._idleTimeout, TimeoutType::IDLE);
       } else {
         this->shutdownConnection(Error::CloseRequested);
       }
@@ -410,7 +417,9 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
   this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
 
   std::unique_ptr<http::RequestItem> item(ptr);
-  setTimeout(item->request->timeout());
+  setTimeout(item->request->timeout(), TimeoutType::WRITE);
+  _timeoutOnReadWrite = false;
+  _writing = true;
 
   std::array<asio_ns::const_buffer, 2> buffers;
   buffers[0] =
@@ -436,6 +445,8 @@ template <SocketType ST>
 void HttpConnection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
                                             std::unique_ptr<RequestItem> item,
                                             size_t nwrite) {
+  this->_writing = false;       // indicate that no async write is ongoing any more
+  this->_timeout.cancel();  // cancel alarm for timeout
   if (ec) {
     // Send failed
     FUERTE_LOG_DEBUG << "asyncWriteCallback (http): error '" << ec.message()
@@ -469,9 +480,11 @@ void HttpConnection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
   }
   _item = std::move(item);
 
-  setTimeout(_item->request->timeout());      // extend timeout
   http_parser_init(&_parser, HTTP_RESPONSE);  // reset parser
 
+  setTimeout(_item->request->timeout(), TimeoutType::READ);      // extend timeout
+  _timeoutOnReadWrite = false;
+  _reading = true;
   this->asyncReadSome();  // listen for the response
 }
 
@@ -482,6 +495,8 @@ void HttpConnection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
 // called by the async_read handler (called from IO thread)
 template <SocketType ST>
 void HttpConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
+  this->_reading = false;
+  // Do not cancel timeout now, because we might be going on to read!
   if (ec) {
     FUERTE_LOG_DEBUG << "asyncReadCallback: Error while reading from socket: '"
     << ec.message() << "' , this=" << this << "\n";
@@ -549,14 +564,16 @@ void HttpConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
 
   // Remove consumed data from receive buffer.
   this->_receiveBuffer.consume(parsedBytes);
-
+  
+  _reading = true;
   FUERTE_LOG_HTTPTRACE << "asyncReadCallback: response not complete yet\n";
   this->asyncReadSome();  // keep reading from socket
+  // leave read timeout in place!
 }
 
 /// Set timeout accordingly
 template <SocketType ST>
-void HttpConnection<ST>::setTimeout(std::chrono::milliseconds millis) {
+void HttpConnection<ST>::setTimeout(std::chrono::milliseconds millis, TimeoutType type) {
   if (millis.count() == 0) {
     this->_timeout.cancel();
     return;
@@ -564,20 +581,28 @@ void HttpConnection<ST>::setTimeout(std::chrono::milliseconds millis) {
 
   // expires_after cancels pending ops
   this->_timeout.expires_after(millis);
-  this->_timeout.async_wait([self = Connection::weak_from_this()](auto const& ec) {
+  this->_timeout.async_wait([self = Connection::weak_from_this(), type](auto const& ec) {
     std::shared_ptr<Connection> s;
     if (ec || !(s = self.lock())) {  // was canceled / deallocated
       return;
     }
     auto* thisPtr = static_cast<HttpConnection<ST>*>(s.get());
-
-    FUERTE_LOG_DEBUG << "HTTP-Request timeout\n";
-    if (thisPtr->_active) {
-      thisPtr->restartConnection(Error::Timeout);
-    } else {  // close an idle connection
-      thisPtr->shutdownConnection(Error::CloseRequested);
-    }
-  });
+    if ((type == TimeoutType::WRITE && thisPtr->_writing) ||
+        (type == TimeoutType::READ && thisPtr->_reading)) {
+          FUERTE_LOG_DEBUG << "HTTP-Request timeout\n";
+          thisPtr->_proto.shutdown();
+          thisPtr->_timeoutOnReadWrite = true;
+          // We simply cancel all ongoing asynchronous operations, the completion
+          // handlers will do the rest.
+          return;
+        } else if (type == TimeoutType::IDLE) {
+          if (!thisPtr->_active && thisPtr->_state == Connection::State::Connected) {
+            thisPtr->shutdownConnection(Error::CloseRequested);
+          }
+        }
+        // In all other cases we do nothing, since we have been posted to the
+        // iocontext but the thing we should be timing out has already completed.
+      });
 }
 
 /// abort ongoing / unfinished requests

@@ -47,6 +47,7 @@ class HttpConnection final : public fuerte::GeneralConnection<ST> {
                           detail::ConnectionConfiguration const&);
   ~HttpConnection();
 
+  /// The following public methods can be called from any thread.
  public:
   /// Start an asynchronous request.
   MessageID sendRequest(std::unique_ptr<Request>, RequestCallback) override;
@@ -54,6 +55,7 @@ class HttpConnection final : public fuerte::GeneralConnection<ST> {
   /// @brief Return the number of requests that have not yet finished.
   size_t requestsLeft() const override;
 
+  /// All methods below here must only be called from the IO thread.
  protected:
   /// This is posted by `sendRequest` to the _io_context thread, the `_active`
   /// flag is already set to `true` by an exchange operation
@@ -74,11 +76,18 @@ class HttpConnection final : public fuerte::GeneralConnection<ST> {
   void drainQueue(const fuerte::Error) override;
 
  private:
+  // Reason for timeout:
+  enum class TimeoutType: int {
+    IDLE = 0,
+    READ = 1,
+    WRITE = 2
+  };
+
   // build request body for given request
   std::string buildRequestBody(Request const& req);
 
   /// set the timer accordingly
-  void setTimeout(std::chrono::milliseconds);
+  void setTimeout(std::chrono::milliseconds, TimeoutType type);
 
   ///  Call on IO-Thread: writes out one queued request
   void asyncWriteNextRequest();
@@ -111,7 +120,14 @@ class HttpConnection final : public fuerte::GeneralConnection<ST> {
   http_parser_settings _parserSettings;
 
   std::atomic<bool> _active; /// is loop active
-
+  bool _reading;    // set between starting an asyncRead operation and executing
+                    // the completion handler
+  bool _writing;    // set between starting an asyncWrite operation and executing
+                    // the completion handler
+  // both are used in the timeout handlers to decide if the timeout still
+  // has to have an effect or if it is merely still on the iocontext and is now
+  // obsolete.
+  
   // parser state
   std::string _lastHeaderField;
   std::string _lastHeaderValue;
@@ -127,6 +143,7 @@ class HttpConnection final : public fuerte::GeneralConnection<ST> {
   bool _lastHeaderWasValue = false;
   bool _shouldKeepAlive = false;
   bool _messageComplete = false;
+  bool _timeoutOnReadWrite = false;   // indicates that a timeout has happened
 };
 }}}}  // namespace arangodb::fuerte::v1::http
 
