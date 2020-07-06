@@ -1693,12 +1693,12 @@ void Supervision::enforceReplication() {
       }
 
       bool const clone = col.has(StaticStrings::DistributeShardsLike);
-      bool const isBuilding = std::invoke([&col] {
-        auto pair = col.hasAsBool(StaticStrings::AttrIsBuilding);
+      bool const isBuilding = [&col]() {
+        auto pair = col.hasAsBool(StaticStrings::IsBuilding);
         // Return true if the attribute exists, is a bool, and that bool is
         // true. Return false otherwise.
         return pair.first && pair.second;
-      });
+      }();
 
       if (!clone && !isBuilding) {
         for (auto const& shard_ : col.hasAsChildren("shards").first) {  // Pl shards
