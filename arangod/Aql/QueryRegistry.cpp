@@ -61,6 +61,7 @@ void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl)
   QueryId qId = query->id();
   // create the query info object outside of the lock
   auto p = std::make_unique<QueryInfo>(std::move(query), ttl);
+  TRI_ASSERT(p->_expires != 0);
 
   // now insert into table of running queries
   {
@@ -175,7 +176,7 @@ void QueryRegistry::closeEngine(EngineId engineId) {
   if (ei._queryInfo) {
     TRI_ASSERT(ei._queryInfo->_numOpen > 0);
     ei._queryInfo->_numOpen--;
-    if (!ei._queryInfo->_query->killed()) {
+    if (!ei._queryInfo->_query->killed() && ei._queryInfo->_expires != 0) {
       ei._queryInfo->_expires = TRI_microtime() + ei._queryInfo->_timeToLive;
     }
     LOG_TOPIC("5ecdc", TRACE, arangodb::Logger::AQL) << "closing engine " << engineId << ", query id: " << ei._queryInfo->_query->id() << ", numOpen: " << ei._queryInfo->_numOpen;
@@ -210,7 +211,9 @@ std::unique_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& voc
 
     if (q->second->_numOpen > 0) {
       // query in use by another thread/request
-      q->second->_query->kill();
+      if (errorCode == TRI_ERROR_QUERY_KILLED) {
+        q->second->_query->kill();
+      }
       q->second->_expires = 0.0;
       return nullptr;
     }

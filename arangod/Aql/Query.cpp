@@ -188,6 +188,7 @@ Query::~Query() {
 
   exitV8Context();
 
+  _snippets.clear(); // simon: must be before plan
   _plans.clear(); // simon: must be before AST
   _ast.reset();
 
@@ -1151,7 +1152,7 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, bool sync,
     stats.setExecutionTime(elapsedSince(_startTime));
     for (auto& [eId, engine] : _snippets) {
       engine->collectExecutionStats(stats);
-      engine->setShutdown();
+      engine->setShutdown(ExecutionEngine::ShutdownState::Done);
     }
 
     statsBuilder->add(VPackValue("stats"));
@@ -1224,11 +1225,11 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, bool sync,
     }
   }
 
-  _snippets.clear();
-  _plans.clear();
-
-  // If the transaction was not committed, it is automatically aborted
-  _trx.reset();
+//  _snippets.clear();
+//  _plans.clear();
+//
+//  // If the transaction was not committed, it is automatically aborted
+//  _trx.reset();
 
   return ExecutionState::DONE;
 }
@@ -1417,8 +1418,8 @@ Result ClusterQuery::finalizeClusterQuery(ExecutionStats& stats, int errorCode) 
        << " Query::finalizeSnippets: before _trx->commit, errorCode: "
        << errorCode << ", this: " << (uintptr_t)this;
   
-  for (auto& [eId, engine] : _snippets) {
-    engine->setShutdown(); // no need to pass through shutdown
+  for (auto& [eId, engine] : _snippets) { // simon: no need to pass through shutdown
+    engine->setShutdown(ExecutionEngine::ShutdownState::Done);
 
     engine->sharedState()->invalidate();
     engine->collectExecutionStats(stats);
