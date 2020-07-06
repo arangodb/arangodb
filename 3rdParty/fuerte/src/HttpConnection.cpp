@@ -231,7 +231,7 @@ void HttpConnection<ST>::activate() {
   Connection::State state = this->_state.load();
   if (state == Connection::State::Connected) {
     FUERTE_LOG_HTTPTRACE << "activate: connected\n";
-    this->asyncWriteNextRequest();
+    this->startWriting();
   } else if (state == Connection::State::Disconnected) {
     FUERTE_LOG_HTTPTRACE << "activate: not connected\n";
     this->startConnection();
@@ -257,7 +257,7 @@ size_t HttpConnection<ST>::requestsLeft() const {
 template <SocketType ST>
 void HttpConnection<ST>::finishConnect() {
   this->_state.store(Connection::State::Connected);
-  this->asyncWriteNextRequest();  // starts writing queue if non-empty
+  this->startWriting();  // starts writing queue if non-empty
 }
 
 // Thread-Safe: activate the combined write-read loop
@@ -379,11 +379,14 @@ template <SocketType ST>
 void HttpConnection<ST>::asyncWriteNextRequest() {
   FUERTE_LOG_HTTPTRACE << "asyncWriteNextRequest: this=" << this << "\n";
   assert(_active.load());
+  if (_active == false) {
+    std::abort();
+  }
 
   http::RequestItem* ptr = nullptr;
   if (!_queue.pop(ptr)) {
     _active.store(false);
-    if (!_queue.pop(ptr)) {
+    if (_queue.empty()) {
       FUERTE_LOG_HTTPTRACE << "asyncWriteNextRequest: stopped writing, this="
                            << this << "\n";
       if (_shouldKeepAlive && this->_config._idleTimeout.count() > 0) {
@@ -395,7 +398,10 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
       }
       return;
     }
-    _active.store(true);
+    if (_active.exchange(true)) {
+      return;   // somebody else did this for us
+    };
+    _queue.pop(ptr);
   }
   this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
 
@@ -454,6 +460,9 @@ void HttpConnection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
 
   // thead-safe we are on the single IO-Thread
   assert(_item == nullptr);
+  if (_item != nullptr) {
+    std::abort();
+  }
   _item = std::move(item);
 
   setTimeout(_item->request->timeout());      // extend timeout
