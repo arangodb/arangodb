@@ -118,7 +118,7 @@ class QueryRegistry {
   
   /// use on coordinator to register snippets
   void registerEngines(SnippetList const&);
-  void unregisterEngines(SnippetList const&);
+  void unregisterEngines(SnippetList const&) noexcept;
 
   /// @brief return the default TTL value
   TEST_VIRTUAL double defaultTTL() const { return _defaultTTL; }

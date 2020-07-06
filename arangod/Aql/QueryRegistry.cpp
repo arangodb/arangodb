@@ -428,16 +428,17 @@ void QueryRegistry::registerEngines(SnippetList const& snippets) {
   }
 }
 
-void QueryRegistry::unregisterEngines(SnippetList const& snippets) {
+void QueryRegistry::unregisterEngines(SnippetList const& snippets) noexcept {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   WRITE_LOCKER(guard, _lock);
   for (auto& pair : snippets) {
     auto it = _engines.find(pair.first);
     if (it != _engines.end()) {
       if (it->second._isOpen) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "this snippet is still in use");
+        LOG_TOPIC("33cfb", WARN, arangodb::Logger::AQL)
+          << "engine snippet '" << pair.first << "' is still in use";
       }
+      // always unregister, should not break anything
       _engines.erase(it);
     }
   }
