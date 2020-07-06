@@ -36,11 +36,13 @@
 #include <unordered_map>
 #include <utility>
 
+#include <boost/optional.hpp>
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
 
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -404,7 +406,7 @@ class AgencyCommResult {
 
   [[nodiscard]] VPackBuilder toVelocyPack() const;
 
-  [[nodiscard]] std::optional<std::pair<int, std::string_view>> parseBodyError() const;
+  [[nodiscard]] boost::optional<std::pair<int, velocypack::StringRef>> parseBodyError() const;
 
  public:
   std::string _location = "";

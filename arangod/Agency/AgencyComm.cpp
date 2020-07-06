@@ -429,8 +429,8 @@ std::string AgencyCommResult::errorMessage() const {
   return asResult().errorMessage();
 }
 
-std::optional<std::pair<int, std::string_view>> AgencyCommResult::parseBodyError() const {
-  auto result = std::optional<std::pair<int, std::string_view>>{};
+boost::optional<std::pair<int, velocypack::StringRef>> AgencyCommResult::parseBodyError() const {
+  auto result = boost::optional<std::pair<int, velocypack::StringRef>>{};
   try {
     if (!_body.empty()) {
       std::shared_ptr<VPackBuilder> bodyBuilder = VPackParser::fromJson(_body);
@@ -439,13 +439,17 @@ std::optional<std::pair<int, std::string_view>> AgencyCommResult::parseBodyError
         // get "errorCode" attribute
         auto const errorCode = body.get(StaticStrings::ErrorCode).getNumber<int>();
         // Save error code if possible, set default error message first
-        result = std::make_pair(errorCode, std::string_view(TRI_errno_string(errorCode)));
+        result = std::make_pair(errorCode, velocypack::StringRef(TRI_errno_string(errorCode)));
         // Now try to extract the message, too; but it's fine if that fails, we
         // already have the default one.
-        if (auto const errMsg = body.get(StaticStrings::ErrorMessage); errMsg.isString()) {
-          result->second = errMsg.stringView();
-        } else if (auto const errMsg = body.get("message"); errMsg.isString()) {
-          result->second = errMsg.stringView();
+        auto errMsg = body.get(StaticStrings::ErrorMessage);
+        if (errMsg.isString()) {
+          result->second = errMsg.stringRef();
+        } else {
+          errMsg = body.get("message");
+          if (errMsg.isString()) {
+            result->second = errMsg.stringRef();
+          }
         }
       }
     }
@@ -515,18 +519,21 @@ VPackBuilder AgencyCommResult::toVelocyPack() const {
 Result AgencyCommResult::asResult() const {
   if (successful()) {
     return Result{};
-  } else if (auto const err = parseBodyError(); err.has_value()) {
-    return Result{err->first, std::string{err->second}};
-  } else if (_statusCode > 0) {
-    if (!_message.empty()) {
-      return Result{_statusCode, _message};
-    } else if (!_connected) {
-      return Result{_statusCode, "unable to connect to agency"};
-    } else {
-      return Result{_statusCode};
-    }
   } else {
-    return Result{TRI_ERROR_INTERNAL};
+    auto const err = parseBodyError();
+    if (err.has_value()) {
+      return Result{err->first, err->second.toString()};
+    } else if (_statusCode > 0) {
+      if (!_message.empty()) {
+        return Result{_statusCode, _message};
+      } else if (!_connected) {
+        return Result{_statusCode, "unable to connect to agency"};
+      } else {
+        return Result{_statusCode};
+      }
+    } else {
+      return Result{TRI_ERROR_INTERNAL};
+    }
   }
 }
 
