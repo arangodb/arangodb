@@ -1,6 +1,13 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Fixed potential garbled output in syslog log output for the program name.
+
+* Fixed infinite recursion when printing error messages about invalid logger
+  configuration on startup.
+
+* Fixed sporadic use-after-free ASan issue in logger shutdown.
+
 * Fixed internal-issue #726: added restore handling for custom analyzers.
 
 * Updated arangosync to 0.7.7.
