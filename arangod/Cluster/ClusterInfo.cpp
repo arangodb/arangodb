@@ -2117,7 +2117,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         otherCidShardMap = getCollection(databaseName, otherCidString)->shardIds();
       }
 
-      using std::string_literals;
+      using namespace std::string_literals;
       auto const dslProtoColPath = "Plan/Collections/"s + databaseName + "/"s + otherCidString;
       // The distributeShardsLike prototype collection should exist in the plan...
       precs.emplace_back(AgencyPrecondition(dslProtoColPath,
