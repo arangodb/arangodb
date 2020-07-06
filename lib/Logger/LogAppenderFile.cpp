@@ -46,13 +46,14 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-std::vector<std::tuple<int, std::string, LogAppenderFile*>> LogAppenderFile::_fds = {};
+std::mutex LogAppenderFile::_openAppendersMutex;
+std::vector<LogAppenderFile*> LogAppenderFile::_openAppenders;
+
 int LogAppenderFile::_fileMode = S_IRUSR | S_IWUSR | S_IRGRP;
 int LogAppenderFile::_fileGroup = 0;
 
-LogAppenderStream::LogAppenderStream(std::string const& filename,
-                                     std::string const& filter, int fd)
-    : LogAppender(filter),
+LogAppenderStream::LogAppenderStream(std::string const& filename, int fd)
+    : LogAppender(),
       _bufferSize(0),
       _fd(fd),
       _useColors(false),
@@ -123,18 +124,19 @@ void LogAppenderStream::logMessage(LogMessage const& message) {
   }
 }
 
-LogAppenderFile::LogAppenderFile(std::string const& filename, std::string const& filter)
-    : LogAppenderStream(filename, filter, -1), _filename(filename) {
+LogAppenderFile::LogAppenderFile(std::string const& filename) 
+    : LogAppenderStream(filename, -1), _filename(filename) {
+  std::cout << "THE FILENAME: " << _filename << std::endl;
   if (_filename != "+" && _filename != "-") {
     // logging to an actual file
-    size_t pos = 0;
-    for (auto& it : _fds) {
-      if (std::get<1>(it) == _filename) {
+    std::unique_lock<std::mutex> guard(_openAppendersMutex);
+
+    for (auto const& it : _openAppenders) {
+      if (it->filename() == _filename) {
         // already have an appender for the same file
-        _fd = std::get<0>(it);
+        _fd = it->fd();
         break;
       }
-      ++pos;
     }
 
     if (_fd == -1) {
@@ -162,12 +164,32 @@ LogAppenderFile::LogAppenderFile(std::string const& filename, std::string const&
       }
 #endif
 
-      _fds.emplace_back(std::make_tuple(fd, _filename, this));
       _fd = fd;
+      try {
+        _openAppenders.emplace_back(this);
+      } catch (...) {
+        TRI_CLOSE(_fd);
+        throw;
+      }
     }
   }
+  std::cout << "THE FILENAME: " << _filename << ", FD: " << _fd << std::endl ;
 
   _useColors = ((isatty(_fd) == 1) && Logger::getUseColor());
+}
+
+LogAppenderFile::~LogAppenderFile() {
+  if (_filename != "+" && _filename != "-") {
+    // remove ourselves from the list of open appenders
+    std::unique_lock<std::mutex> guard(_openAppendersMutex);
+    for (auto it = _openAppenders.begin(); it != _openAppenders.end(); /* no hoisting */) {
+      if ((*it)->filename() == _filename) {
+        it = _openAppenders.erase(it);
+      } else {
+        ++it;
+      }
+    }
+  }
 }
 
 void LogAppenderFile::writeLogMessage(LogLevel level, size_t /*topicId*/, char const* buffer, size_t len) {
@@ -212,9 +234,11 @@ std::string LogAppenderFile::details() const {
 }
 
 void LogAppenderFile::reopenAll() {
-  for (auto& it : _fds) {
-    int old = std::get<0>(it);
-    std::string const& filename = std::get<1>(it);
+  std::unique_lock<std::mutex> guard(_openAppendersMutex);
+
+  for (auto& it : _openAppenders) {
+    int old = it->fd();
+    std::string const& filename = it->filename();
 
     if (filename.empty()) {
       continue;
@@ -255,10 +279,8 @@ void LogAppenderFile::reopenAll() {
       FileUtils::remove(backup);
     }
 
-    // update the file descriptor in the map
-    std::get<0>(it) = fd;
     // and also tell the appender of the file descriptor change
-    std::get<2>(it)->updateFd(fd);
+    it->updateFd(fd);
 
     if (old > STDERR_FILENO) {
       TRI_CLOSE(old);
@@ -267,12 +289,13 @@ void LogAppenderFile::reopenAll() {
 }
 
 void LogAppenderFile::closeAll() {
-  for (auto& it : _fds) {
-    int fd = std::get<0>(it);
+  std::unique_lock<std::mutex> guard(_openAppendersMutex);
+
+  for (auto& it : _openAppenders) {
+    int fd = it->fd();
     // set the fd to "disabled"
-    std::get<0>(it) = -1;
     // and also tell the appender of the file descriptor change
-    std::get<2>(it)->updateFd(-1);
+    it->updateFd(-1);
 
     if (fd > STDERR_FILENO) {
       fsync(fd);
@@ -281,14 +304,39 @@ void LogAppenderFile::closeAll() {
   }
 }
 
-void LogAppenderFile::clear() {
-  closeAll();
-  _fds.clear();
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+std::vector<std::tuple<int, std::string, LogAppenderFile*>> LogAppenderFile::getAppenders() {
+  std::vector<std::tuple<int, std::string, LogAppenderFile*>> result;
+
+  std::unique_lock<std::mutex> guard(_openAppendersMutex);
+  for (auto const& it : _openAppenders) {
+    result.emplace_back(it->fd(), it->filename(), it);
+  }
+
+  return result;
 }
 
-LogAppenderStdStream::LogAppenderStdStream(std::string const& filename,
-                                           std::string const& filter, int fd)
-    : LogAppenderStream(filename, filter, fd) {
+void LogAppenderFile::setAppenders(std::vector<std::tuple<int, std::string, LogAppenderFile*>> const& appenders) {
+  std::unique_lock<std::mutex> guard(_openAppendersMutex);
+
+  _openAppenders.clear();
+  for (auto const& it : appenders) {
+    _openAppenders.emplace_back(std::get<2>(it));
+  }
+}
+
+void LogAppenderFile::clear() {
+  closeAll();
+  
+  {
+    std::unique_lock<std::mutex> guard(_openAppendersMutex);
+    _openAppenders.clear();
+  }
+}
+#endif
+
+LogAppenderStdStream::LogAppenderStdStream(std::string const& filename, int fd)
+    : LogAppenderStream(filename, fd) {
   _useColors = ((isatty(_fd) == 1) && Logger::getUseColor());
 }
 
@@ -348,8 +396,8 @@ void LogAppenderStdStream::writeLogMessage(int fd, bool useColors,
 }
 
 
-LogAppenderStderr::LogAppenderStderr(std::string const& filter)
-      : LogAppenderStdStream("+", filter, STDERR_FILENO) {}
+LogAppenderStderr::LogAppenderStderr()
+      : LogAppenderStdStream("+", STDERR_FILENO) {}
 
-LogAppenderStdout::LogAppenderStdout(std::string const& filter)
-      : LogAppenderStdStream("-", filter, STDOUT_FILENO) {}
+LogAppenderStdout::LogAppenderStdout()
+      : LogAppenderStdStream("-", STDOUT_FILENO) {}
