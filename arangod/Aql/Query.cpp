@@ -788,8 +788,12 @@ ExecutionState Query::finalize(QueryResult& result) {
   // we do this because "executionTime" should include the whole span of the
   // execution and we have to set it at the very end
   double const rt = now - _startTime;
-  basics::VelocyPackHelper::patchDouble(result.extra->slice().get("stats").get("executionTime"),
-                                        rt);
+  try {
+    basics::VelocyPackHelper::patchDouble(result.extra->slice().get("stats").get("executionTime"), rt);
+  } catch (...) {
+    // if the query has failed, the slice may not
+    // contain a proper "stats" object once we get here.
+  }
 
   LOG_TOPIC("95996", DEBUG, Logger::QUERIES) << rt 
                                              << " Query::finalize:returning"
