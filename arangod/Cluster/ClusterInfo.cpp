@@ -2123,7 +2123,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       precs.emplace_back(AgencyPrecondition(dslProtoColPath,
                                             AgencyPrecondition::Type::EMPTY, false));
       // ...and should not still be in creation.
-      precs.emplace_back(AgencyPrecondition(dslProtoColPath->isBuilding(),
+      precs.emplace_back(AgencyPrecondition(dslProtoColPath + "/isBuilding"s,
                                             AgencyPrecondition::Type::EMPTY, true));
 
       // Any of the shards locked?
