@@ -79,6 +79,11 @@ constexpr int TRI_EXIT_RECOVERY                                                 
 /// database
 constexpr int TRI_EXIT_DB_NOT_EMPTY                                             = 24;
 
+/// 25: EXIT_UNSUPPORTED_STORAGE_ENGINE
+/// unsupported storage egnine
+/// Will be returned when trying to start with an unsupported storage engine
+constexpr int TRI_EXIT_UNSUPPORTED_STORAGE_ENGINE                               = 25;
+
 
 /// register all exit codes for ArangoDB
 void TRI_InitializeExitMessages();
