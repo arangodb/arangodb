@@ -92,7 +92,10 @@ class GeneralConnection : public fuerte::Connection {
 
   /// @brief is the connection established
   std::atomic<Connection::State> _state;
-  
+
+  bool _connecting = false; // set between starting an async_connect operation and executing
+  // the completion handler
+
   std::atomic<uint32_t> _numQueued; /// queued items
 };
 

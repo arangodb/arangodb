@@ -260,8 +260,16 @@ size_t HttpConnection<ST>::requestsLeft() const {
 
 template <SocketType ST>
 void HttpConnection<ST>::finishConnect() {
-  this->_state.store(Connection::State::Connected);
+  auto exp = Connection::State::Connecting;
+  if (this->_state.compare_exchange_strong(exp, Connection::State::Connected)) {
+    this->asyncWriteNextRequest();  // starts writing queue if non-empty
+  } else {
+    std::abort();
+  }
+#if 0
+  this->_state = Connection::State::Connected;
   this->asyncWriteNextRequest();  // starts writing queue if non-empty
+#endif
 }
 
 // Thread-Safe: activate the combined write-read loop
@@ -589,20 +597,22 @@ void HttpConnection<ST>::setTimeout(std::chrono::milliseconds millis, TimeoutTyp
     auto* thisPtr = static_cast<HttpConnection<ST>*>(s.get());
     if ((type == TimeoutType::WRITE && thisPtr->_writing) ||
         (type == TimeoutType::READ && thisPtr->_reading)) {
-          FUERTE_LOG_DEBUG << "HTTP-Request timeout\n";
-          thisPtr->_proto.shutdown();
-          thisPtr->_timeoutOnReadWrite = true;
-          // We simply cancel all ongoing asynchronous operations, the completion
-          // handlers will do the rest.
-          return;
-        } else if (type == TimeoutType::IDLE) {
-          if (!thisPtr->_active && thisPtr->_state == Connection::State::Connected) {
-            thisPtr->shutdownConnection(Error::CloseRequested);
-          }
-        }
-        // In all other cases we do nothing, since we have been posted to the
-        // iocontext but the thing we should be timing out has already completed.
-      });
+      FUERTE_LOG_DEBUG << "HTTP-Request timeout\n";
+      thisPtr->_proto.shutdown();
+      thisPtr->_timeoutOnReadWrite = true;
+      // We simply cancel all ongoing asynchronous operations, the completion
+      // handlers will do the rest.
+      return;
+    } else if (type == TimeoutType::IDLE && !thisPtr->_writing & !thisPtr->_reading && !thisPtr->_connecting) {
+      if (!thisPtr->_active &&
+          thisPtr->_state == Connection::State::Connected) {
+      FUERTE_LOG_DEBUG << "HTTP-Request idle timeout\n";
+        thisPtr->shutdownConnection(Error::CloseRequested);
+      }
+    }
+    // In all other cases we do nothing, since we have been posted to the
+    // iocontext but the thing we should be timing out has already completed.
+  });
 }
 
 /// abort ongoing / unfinished requests
