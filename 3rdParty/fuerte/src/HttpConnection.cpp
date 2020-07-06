@@ -231,7 +231,7 @@ void HttpConnection<ST>::activate() {
   Connection::State state = this->_state.load();
   if (state == Connection::State::Connected) {
     FUERTE_LOG_HTTPTRACE << "activate: connected\n";
-    this->startWriting();
+    this->asyncWriteNextRequest();
   } else if (state == Connection::State::Disconnected) {
     FUERTE_LOG_HTTPTRACE << "activate: not connected\n";
     this->startConnection();
@@ -257,12 +257,15 @@ size_t HttpConnection<ST>::requestsLeft() const {
 template <SocketType ST>
 void HttpConnection<ST>::finishConnect() {
   this->_state.store(Connection::State::Connected);
-  this->startWriting();  // starts writing queue if non-empty
+  this->asyncWriteNextRequest();  // starts writing queue if non-empty
 }
 
 // Thread-Safe: activate the combined write-read loop
 template <SocketType ST>
 void HttpConnection<ST>::startWriting() {
+  // This is no longer used in this version
+  std::abort();
+#if 0
   FUERTE_LOG_HTTPTRACE << "startWriting: this=" << this << "\n";
   if (!_active) {
     FUERTE_LOG_HTTPTRACE << "startWriting: active=true, this=" << this << "\n";
@@ -281,6 +284,7 @@ void HttpConnection<ST>::startWriting() {
       
     }
   }
+#endif
 }
 
 // -----------------------------------------------------------------------------
@@ -586,7 +590,6 @@ void HttpConnection<ST>::abortOngoingRequests(const fuerte::Error ec) {
     _item->invokeOnError(ec);
     _item.reset();
   }
-  _active.store(false);  // no IO operations running
 }
 
 /// abort all requests lingering in the queue
