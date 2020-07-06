@@ -1317,7 +1317,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
           "/Current/Collections/_system/" + std::to_string(logicalCollection->id());
       auto const colValue =
           VPackParser::fromJson(
-              "{ \"same-as-dummy-shard-id\": { \"indexes\": [ { \"id\": \"1\" "
+              "{ \"same-as-dummy-shard-id\": { \"indexes\": [ { \"id\": \"43\" "
               "} ], \"servers\": [ \"same-as-dummy-shard-server\" ] } }");  // '1' must match 'idString' in ClusterInfo::ensureIndexCoordinatorInner(...)
       EXPECT_TRUE(arangodb::AgencyComm(server.server())
                       .setValue(colPath, colValue->slice(), 0.0)
@@ -1346,6 +1346,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
     builder.add(arangodb::StaticStrings::IndexType, arangodb::velocypack::Value("testType"));
     builder.add(arangodb::StaticStrings::IndexFields,
                 arangodb::velocypack::Slice::emptyArraySlice());
+    builder.add("id", VPackValue("43"));
     builder.close();
     res = arangodb::methods::Indexes::ensureIndex(logicalCollection.get(),
                                                   builder.slice(), true, tmp);
