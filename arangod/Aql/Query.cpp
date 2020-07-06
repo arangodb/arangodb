@@ -1233,12 +1233,6 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, bool sync,
     }
   }
 
-//  _snippets.clear();
-//  _plans.clear();
-//
-//  // If the transaction was not committed, it is automatically aborted
-//  _trx.reset();
-
   return ExecutionState::DONE;
 }
 
