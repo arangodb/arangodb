@@ -1,7 +1,7 @@
 devel
 -----
 
-* Privatised load plan / current in cluster info and cleanup following agency
+* Privatized load plan / current in cluster info and cleanup following agency
   cache implementation.
 
 * Re-enable access to GET `/_admin/cluster/numberOfServers` for all users by
