@@ -363,11 +363,29 @@ authRouter.post('/job', function (req, res) {
 `);
 
 authRouter.delete('/job', function (req, res) {
+  let arr = [];
   let frontend = db._collection('_frontend');
+
   if (frontend) {
+    // get all job results and return before deletion
+    _.each(frontend.all().toArray(), function (job) {
+      let resp = request.put({
+        url: '/_api/job/' + encodeURIComponent(job.id),
+        json: true,
+        headers: {
+          'Authorization': req.headers.authorization
+        }
+      }).body;
+      try {
+        arr.push(JSON.parse(resp));
+      } catch (ignore) {
+      }
+    });
+
+    // actual deletion
     frontend.removeByExample({model: 'job'}, false);
   }
-  res.json(true);
+  res.json({result: arr});
 })
 .summary('Delete all jobs')
 .description(dd`
@@ -376,10 +394,25 @@ authRouter.delete('/job', function (req, res) {
 
 authRouter.delete('/job/:id', function (req, res) {
   let frontend = db._collection('_frontend');
+  let toReturn = {};
   if (frontend) {
+    // get the job result and return before deletion
+    let resp = request.put({
+      url: '/_api/job/' + encodeURIComponent(req.pathParams.id),
+      json: true,
+      headers: {
+        'Authorization': req.headers.authorization
+      }
+    }).body;
+    try {
+      toReturn = JSON.parse(resp);
+    } catch (ignore) {
+    }
+
+    // actual deletion
     frontend.removeByExample({id: req.pathParams.id}, false);
   }
-  res.json(true);
+  res.json(toReturn);
 })
 .summary('Delete a job id')
 .description(dd`

@@ -1,12 +1,42 @@
 devel
 -----
 
-* Privatized load plan / current in cluster info and cleanup following agency
-  cache implementation.
+* Privatized load plan / current in cluster info and cleanup following
+  agency cache implementation.
+
+* Fixed a document parsing bug in the Web UI. This issue occured in the
+  document list view in case a document had an attribute called `length`.
+  The result was an incorrect representation of the document preview.
+
+* Improve readability of running and slow queries in web UI by properly left-
+
+* The Web UI is not disabling the query import button after file upload takes
+  place.
+
+* The Web UI is now reporting errors properly in case of editing ArangoSearch
+  Views with invalid properties.
+
+* In case of a graph deletion failure, the Web UI displays now the correct
+  error message.
+
+* In case a document got requested via the UI of a collection which does not
+  exist, the UI now properly displays an error view instead of having a bad
+  display state.
+
+* Removed the edge id's hover styling in case of embedded document editor in
+  the Web UI as this functionality is disabled. This was misleading because
+  the elements are not clickable.
+
+* The Web UI now displays an error message inside the node information view in
+  case the user has no access to retreive the neccessary information.
+
+* Web UI: Removed unnecessary menubar entry in case of database node inspection.
+
+* Fixed a potential agency crash if trace logging is on.
 
 * Re-enable access to GET `/_admin/cluster/numberOfServers` for all users by
   default. Requests to PUT `/_admin/cluster/numberOfServers` require admin
-  user privileges. This restores the pre-3.7 behavior.
+  user privileges. This restores the pre-3.7 behavior. 
   In contrast to pre-3.7 behavior, the `--server.harden` option now can be
   used to restrict access to GET `/_admin/cluster/numberOfServers` to admin
   users, too. This can be used to lock down this API for non-admin users
@@ -144,7 +174,6 @@ devel
   default, this option is turned on, so log messages are consumable via API 
   and the web UI. Turning this option off will disable that functionality and
   save a tiny bit of memory for the in-memory log buffers.
->>>>>>> 343c3e9477c8a444f98ec9527077a97bd53d69fa
 
 * Allow for faster cluster shutdown. This should reduce the number of shutdown
   hangers in case the agents are stopped already and then coordinators or
