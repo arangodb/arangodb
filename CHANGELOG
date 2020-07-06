@@ -1,6 +1,8 @@
 v3.4.11 (XXXX-XX-XX)
 --------------------
 
+* Updated arangosync to 0.7.7.
+
 * Correct some log entries.
 
 * Allows restoring collections from v3.3.0 with their all-numeric collection
@@ -23,8 +25,6 @@ v3.4.11 (XXXX-XX-XX)
 
 * Fixed the creation of edges in the web UI, which did not work due to a
   JavaScript error.
-
-* Updated arangosync to 0.7.6.
 
 * Updated ArangoDB Starter to 0.14.15.
 
