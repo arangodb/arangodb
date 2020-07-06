@@ -563,7 +563,7 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
         keyValue = lastValue + _increment - ((lastValue - _offset) % _increment);
       }
 
-      // bounds and sanity checks
+      // bounds and validity checks
       if (keyValue == UINT64_MAX || keyValue < lastValue) {
         return "";
       }

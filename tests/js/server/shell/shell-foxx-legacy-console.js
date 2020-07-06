@@ -118,7 +118,7 @@ function ConsoleTestSuite () {
       const max = Date.now();
       console.timeEnd('hi');
       const end = Date.now();
-      expect(max).to.be.greaterThan(min); // sanity checking
+      expect(max).to.be.greaterThan(min); 
       const logs = console.logs.list();
       const match = logs[0].message.match(/^([^:]+):\s+(\d+)ms$/);
       expect(match).to.be.ok;

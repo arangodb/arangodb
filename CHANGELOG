@@ -6,9 +6,47 @@ devel
   The result was an incorrect representation of the document preview.
 
 * Improve readability of running and slow queries in web UI by properly left-  
+
+* The Web UI is not disabling the query import button after file upload takes
+  place.
+
+* The Web UI is now reporting errors properly in case of editing ArangoSearch
+  Views with invalid properties.
+
+* In case of a graph deletion failure, the Web UI displays now the correct
+  error message.
+
+* In case a document got requested via the UI of a collection which does not
+  exist, the UI now properly displays an error view instead of having a bad
+  display state.
+
+* Removed the edge id's hover styling in case of embedded document editor in 
+  the Web UI as this functionality is disabled. This was misleading because
+  the elements are not clickable.
+
+* The Web UI now displays an error message inside the node information view in
+  case the user has no access to retreive the neccessary information.
+
+* Web UI: Removed unnecessary menubar entry in case of database node inspection.
+
+* Fixed a potential agency crash if trace logging is on.
+
+* Re-enable access to GET `/_admin/cluster/numberOfServers` for all users by
+  default. Requests to PUT `/_admin/cluster/numberOfServers` require admin
+  user privileges. This restores the pre-3.7 behavior. 
+  In contrast to pre-3.7 behavior, the `--server.harden` option now can be
+  used to restrict access to GET `/_admin/cluster/numberOfServers` to admin
+  users, too. This can be used to lock down this API for non-admin users
+  entirely.
+
+* Network layer now reports connection setup issues in more cases
+  this replaces some INTERNAL_ERROR reports by more precise errors,
+  those are only reached during failover scenarios.
+
+* Improve readability of running and slow queries in web UI by properly left-
   aligning the query strings.
 
-* Allow changing collection properties for smart edge collections as well. 
+* Allow changing collection properties for smart edge collections as well.
   Previously, collection property changes for smart edge collections were not
   propagated.
 
