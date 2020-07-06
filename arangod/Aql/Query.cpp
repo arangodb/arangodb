@@ -253,6 +253,10 @@ void Query::prepareQuery(SerializationFormat format) {
     }
     registry->registerEngines(_snippets);
   }
+  
+  if (_profile) {
+    _profile->registerInQueryList();
+  }
 
   enterState(QueryExecutionState::ValueType::EXECUTION);
 }
@@ -1263,7 +1267,7 @@ transaction::Methods& Query::trxForOptimization() {
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 void Query::initForTests() {
-  this->init(/*createProfile*/ true);
+  this->init(/*createProfile*/ false);
   _trx = AqlTransaction::create(_transactionContext, _collections,
                                 _queryOptions.transactionOptions,
                                 std::unordered_set<std::string>{});
@@ -1406,6 +1410,10 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
     answerBuilder.close();  // traverserEngines
   }
   TRI_ASSERT(_trx != nullptr);
+  
+  if (_profile) {
+    _profile->registerInQueryList();
+  }
   enterState(QueryExecutionState::ValueType::EXECUTION);
 }
 
