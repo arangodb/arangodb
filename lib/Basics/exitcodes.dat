@@ -22,6 +22,7 @@ EXIT_COULD_NOT_BIND_PORT,21,"port blocked","Will be returned when the configured
 EXIT_COULD_NOT_LOCK,22,"could not lock - another process could be running","Will be returned if another ArangoDB process is running, or the state can not be cleared"
 EXIT_RECOVERY,23,"recovery failed","Will be returned if the automatic database startup recovery fails"
 EXIT_DB_NOT_EMPTY,24,"database not empty","Will be returned when commanding to initialize a non empty directory as database"
+EXIT_UNSUPPORTED_STORAGE_ENGINE,25,"unsupported storage egnine","Will be returned when trying to start with an unsupported storage engine"
 
 # network
 #EXIT_NO_COORDINATOR
