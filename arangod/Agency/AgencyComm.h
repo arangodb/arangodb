@@ -374,39 +374,39 @@ class AgencyCommResult {
  public:
   void set(int code, std::string message);
 
-  [[nodiscard]] bool successful() const { return (_statusCode >= 200 && _statusCode <= 299); }
+  bool successful() const { return (_statusCode >= 200 && _statusCode <= 299); }
 
-  [[nodiscard]] bool connected() const;
+  bool connected() const;
 
-  [[nodiscard]] int httpCode() const;
+  int httpCode() const;
 
-  [[nodiscard]] int errorCode() const;
+  int errorCode() const;
 
-  [[nodiscard]] std::string errorMessage() const;
+  std::string errorMessage() const;
 
-  [[nodiscard]] std::string errorDetails() const;
+  std::string errorDetails() const;
 
-  [[nodiscard]] std::string const& location() const { return _location; }
+  std::string const& location() const { return _location; }
 
-  [[nodiscard]] std::string const& body() const { return _body; }
+  std::string const& body() const { return _body; }
 
-  [[nodiscard]] bool sent() const;
+  bool sent() const;
 
   void clear();
 
-  [[nodiscard]] velocypack::Slice slice() const;
+  velocypack::Slice slice() const;
 
   void setVPack(std::shared_ptr<velocypack::Builder> const& vpack) {
     _vpack = vpack;
   }
 
-  [[nodiscard]] Result asResult() const;
+  Result asResult() const;
 
   void toVelocyPack(VPackBuilder& builder) const;
 
-  [[nodiscard]] VPackBuilder toVelocyPack() const;
+  VPackBuilder toVelocyPack() const;
 
-  [[nodiscard]] boost::optional<std::pair<int, velocypack::StringRef>> parseBodyError() const;
+  boost::optional<std::pair<int, velocypack::StringRef>> parseBodyError() const;
 
  public:
   std::string _location = "";
