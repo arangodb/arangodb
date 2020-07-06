@@ -571,7 +571,7 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
     if (!application_features::ApplicationServer::isStopping()) {
       LOG_TOPIC("539fc", WARN, Logger::HEARTBEAT)
           << "Heartbeat: Could not read from agency! status code: " << result._statusCode
-          << ", incriminating body: " << result.bodyRef() << ", timeout: " << timeout;
+          << ", incriminating body: " << result.body() << ", timeout: " << timeout;
     }
   } else {
     VPackSlice agentPool = result.slice()[0].get(".agency");
@@ -801,7 +801,7 @@ void HeartbeatThread::runSingleServer() {
         if (!application_features::ApplicationServer::isStopping()) {
           LOG_TOPIC("229fd", WARN, Logger::HEARTBEAT)
               << "Heartbeat: Could not read from agency! status code: "
-              << result._statusCode << ", incriminating body: " << result.bodyRef()
+              << result._statusCode << ", incriminating body: " << result.body()
               << ", timeout: " << timeout;
         }
 
