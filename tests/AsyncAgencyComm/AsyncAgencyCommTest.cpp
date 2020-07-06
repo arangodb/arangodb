@@ -204,7 +204,7 @@ struct AsyncAgencyCommTest
 
 static void compareEndpoints(std::deque<std::string> const& first,
                              std::deque<std::string> const& second) {
-  //ASSERT_EQ(first, second);
+  ASSERT_EQ(first, second);
 }
 
 TEST_F(AsyncAgencyCommTest, send_with_failover) {
