@@ -3,6 +3,8 @@ v3.7.1-rc.1 (XXXX-XX-XX)
 
 * Fixed internal-issue #726: added restore handling for custom analyzers.
 
+* Updated arangosync to 0.7.7.
+
 * Fixed a potential agency crash if trace logging is on.
 
 * Network layer now reports connection setup issues in more cases this replaces
@@ -221,8 +223,6 @@ v3.7.1-rc.1 (XXXX-XX-XX)
   collection.
   If these permissions are not there, no load is performed (user can not use
   analyzers from database anyway).
-
-* Updated arangosync to 0.7.6.
 
 * Make the reboot tracker catch a failed server and permanently removed servers.
   This allows other servers in the cluster to move on more quickly, when a
