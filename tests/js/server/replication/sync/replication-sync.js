@@ -918,6 +918,8 @@ function BaseTestConfig () {
       assertEqual(0, db._analyzers.count());
       let analyzer = analyzers.save('custom', 'delimiter', { delimiter: ' ' }, ['frequency']);
       assertEqual(1, db._analyzers.count());
+      // check analyzer is usable on master
+      assertEqual(3, db._query("RETURN TOKENS('1 2 3', 'custom')").toArray()[0].length);
 
       //  create view & collection on master
       db._flushCache();
@@ -939,6 +941,9 @@ function BaseTestConfig () {
       assertEqual(1, db._analyzers.count());
       assertEqual(1, res.length);
       assertEqual(db._analyzers.toArray()[0], res[0]);
+      
+      // check analyzer is usable on slave
+      assertEqual(3, db._query("RETURN TOKENS('1 2 3', 'custom')").toArray()[0].length);
 
       {
         //  check state is the same
