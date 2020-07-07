@@ -5,6 +5,17 @@ v3.6.5 (XXXX-XX-XX)
   agency. This could in a specific case cause collection creation in a cluster
   report success when it failed.
 
+* Updated arangosync to 0.7.7.
+
+* Fixed a document parsing bug in the Web UI. This issue occured in the
+  document list view in case a document had an attribute called `length`.
+  The result was an incorrect representation of the document preview.
+
+* The Web UI now displays an error message inside the node information view in
+  case the user has no access to retreive the neccessary information.
+
+* Fixed a potential agency crash if trace logging is on.
+
 * Add more context error messages in certain agency failure situations in
   debug/trace mode.
 
@@ -116,8 +127,6 @@ v3.6.5 (XXXX-XX-XX)
   maintenance threads if a shard cannot be dropped immediately due to some lock.
 
 * Added missing mutex to ConnectionPool::cancelConnections().
-
-* Updated arangosync to 0.7.6.
 
 * Updated ArangoDB Starter to 0.14.15.
 
