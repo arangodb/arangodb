@@ -246,20 +246,23 @@
     },
 
     exportCustomQueries: function () {
-      var name;
       var self = this;
 
-      $.ajax('whoAmI?_=' + Date.now()).success(function (data) {
-        name = data.user;
+      $.ajax({
+        type: 'GET',
+        url: 'whoAmI?_=' + Date.now(),
+        success: function (data) {
+          var name = data.user;
 
-        if (name === null || name === false) {
-          name = 'root';
-        }
-        if (frontendConfig.ldapEnabled) {
-          self.collection.downloadLocalQueries();
-        } else {
-          var url = 'query/download/' + encodeURIComponent(name);
-          arangoHelper.download(url);
+          if (name === null || name === false) {
+            name = 'root';
+          }
+          if (frontendConfig.ldapEnabled) {
+            self.collection.downloadLocalQueries();
+          } else {
+            var url = 'query/download/' + encodeURIComponent(name);
+            arangoHelper.download(url);
+          }
         }
       });
     },

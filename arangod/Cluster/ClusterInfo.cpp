@@ -25,6 +25,7 @@
 
 #include "ClusterInfo.h"
 
+#include "Agency/AgencyPaths.h"
 #include "Agency/TimeString.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
@@ -34,9 +35,9 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/application-exit.h"
 #include "Basics/hashes.h"
 #include "Basics/system-functions.h"
-#include "Cluster/AgencyPaths.h"
 #include "Cluster/ClusterCollectionCreationInfo.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/RebootTracker.h"
@@ -298,6 +299,8 @@ uint64_t ClusterInfo::uniqid(uint64_t count) {
   if (_uniqid._currentValue + count - 1 <= _uniqid._upperValue) {
     uint64_t result = _uniqid._currentValue;
     _uniqid._currentValue += count;
+
+    TRI_ASSERT(result != 0);
     return result;
   }
 
@@ -308,6 +311,7 @@ uint64_t ClusterInfo::uniqid(uint64_t count) {
     _uniqid._upperValue = _uniqid._nextUpperValue;
     triggerBackgroundGetIds();
 
+    TRI_ASSERT(result != 0);
     return result;
   }
 
@@ -327,6 +331,7 @@ uint64_t ClusterInfo::uniqid(uint64_t count) {
   _uniqid._nextBatchStart = _uniqid._upperValue + 1;
   _uniqid._nextUpperValue = _uniqid._upperValue + fetch - 1;
 
+  TRI_ASSERT(result != 0);
   return result;
 }
 
@@ -2133,6 +2138,16 @@ Result ClusterInfo::createCollectionsCoordinator(
       } else {
         otherCidShardMap = getCollection(databaseName, otherCidString)->shardIds();
       }
+
+      auto const dslProtoColPath =
+          paths::root()->arango()->plan()->collections()->database(databaseName)->collection(otherCidString);
+      // The distributeShardsLike prototype collection should exist in the plan...
+      precs.emplace_back(AgencyPrecondition(dslProtoColPath,
+                                            AgencyPrecondition::Type::EMPTY, false));
+      // ...and should not still be in creation.
+      precs.emplace_back(AgencyPrecondition(dslProtoColPath->isBuilding(),
+                                            AgencyPrecondition::Type::EMPTY, true));
+
       // Any of the shards locked?
       for (auto const& shard : *otherCidShardMap) {
         precs.emplace_back(AgencyPrecondition("Supervision/Shards/" + shard.first,
@@ -2343,7 +2358,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         events::CreateCollection(databaseName, info.name, res.errorCode());
       }
       loadCurrent();
-      return res.errorCode();
+      return res.asResult();
     }
     if (tmpRes > TRI_ERROR_NO_ERROR) {
       // We do not need to lock all condition variables
@@ -4512,6 +4527,9 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
           builder.add("old", VPackValue("Normal"));
         }
       }
+
+      builder.add(VPackValue(to_string(boost::uuids::random_generator()())));
+
     }
 
     {
@@ -4532,7 +4550,7 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
               std::chrono::system_clock::now() + std::chrono::seconds(timeouti))));
       }
 
-      // Prevonditions
+      // Preconditions
       {
         VPackObjectBuilder precs(&builder);
         builder.add(VPackValue(backupKey));  // Backup key empty
@@ -4556,6 +4574,9 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
           builder.add("old", VPackValue("Maintenance"));
         }
       }
+
+      builder.add(VPackValue(to_string(boost::uuids::random_generator()())));
+
     }
   }
 
@@ -4575,7 +4596,7 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
                             "failed to acquire backup lock in agency");
   }
 
-  auto rv = VPackParser::fromJson(result.bodyRef());
+  auto rv = VPackParser::fromJson(result.body());
 
   LOG_TOPIC("a94d5", DEBUG, Logger::BACKUP)
       << "agency lock response for backup id " << backupId << ": " << rv->toJson();
@@ -4682,11 +4703,15 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId,
                                          timeout, writeURL, builder.slice());
   if (!result.successful() &&
       result.httpCode() != (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+    LOG_TOPIC("6ae43", WARN, Logger::BACKUP)
+        << "Error when unlocking backup lock for backup " << backupId
+        << " in agency, errorCode: " << result.httpCode()
+        << ", errorMessage: " << result.errorMessage();
     return arangodb::Result(TRI_ERROR_HOT_BACKUP_INTERNAL,
                             "failed to release backup lock in agency");
   }
 
-  auto rv = VPackParser::fromJson(result.bodyRef());
+  auto rv = VPackParser::fromJson(result.body());
 
   if (!rv->slice().isObject() || !rv->slice().hasKey("results") ||
       !rv->slice().get("results").isArray()) {
@@ -4697,6 +4722,9 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId,
 
   auto ar = rv->slice().get("results");
   if (!ar[0].isNumber()) {
+    LOG_TOPIC("6ae45", WARN, Logger::BACKUP)
+        << "Invalid agency result when unlocking backup lock for backup "
+        << backupId << " in agency: " << result.slice().toJson();
     return arangodb::Result(
         TRI_ERROR_HOT_BACKUP_INTERNAL,
         "invalid agency result while releasing backup lock");
@@ -4721,6 +4749,8 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId,
       if (result.slice()[0].get(modepv).isEqualString("Normal")) {
         return arangodb::Result();
       }
+      LOG_TOPIC("edf54", DEBUG, Logger::BACKUP)
+          << "agency hot backup unlock waiting: " << result.slice().toJson();
     }
 
     if (wait < 2.0) {
@@ -4729,6 +4759,9 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId,
 
     std::this_thread::sleep_for(std::chrono::duration<double>(wait));
   }
+
+  LOG_TOPIC("6ae47", WARN, Logger::BACKUP)
+      << "Timeout when deactivating supervision mode for backup " << backupId;
 
   return arangodb::Result(
       TRI_ERROR_HOT_BACKUP_INTERNAL,

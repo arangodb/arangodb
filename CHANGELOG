@@ -3,6 +3,42 @@ v3.6.5 (XXXX-XX-XX)
 
 * Fix untenable ultra precondition for removeServer.
 
+* Fixed that the hotbackup agency lock is released under all circumstances using
+  scope guards. This addresses a rare case in which the lock was left behind.
+
+* Internal issue BTS-71: Added a precondition to prevent creating a collection
+  with an invalid `distributeShardsLike` property.
+
+* Reinstate longer retention period for agency history (step size back to 1000,
+  keep size back to 50000).
+
+* Internal issue BTS-71: In a cluster, for collections in creation, suspend
+  supervision jobs concerning replication factor until creation is completed.
+  Previously, it could cause collection creation to fail (e.g. when a server
+  failed during creation), even when it didn't have to.
+
+* Internal issue BTS-71: Fixed error handling regarding communication with the
+  agency. This could in a specific case cause collection creation in a cluster
+  report success when it failed.
+
+* Updated arangosync to 0.7.7.
+
+* Fixed a document parsing bug in the Web UI. This issue occured in the
+  document list view in case a document had an attribute called `length`.
+  The result was an incorrect representation of the document preview.
+
+* The Web UI now displays an error message inside the node information view in
+  case the user has no access to retreive the neccessary information.
+
+* Fixed a potential agency crash if trace logging is on.
+
+* Add more context error messages in certain agency failure situations in
+  debug/trace mode.
+
+* Fixed issue OASIS-252: Hotbackup agency locks without clientId.
+
+* Correct some log entries.
+
 * Fixed BTS-110: Fulltext index with minLength <= 0 not allowed.
 
 * Web UI: Removed unnecessary menubar entry in case of database node inspection.
@@ -107,8 +143,6 @@ v3.6.5 (XXXX-XX-XX)
   maintenance threads if a shard cannot be dropped immediately due to some lock.
 
 * Added missing mutex to ConnectionPool::cancelConnections().
-
-* Updated arangosync to 0.7.6.
 
 * Updated ArangoDB Starter to 0.14.15.
 
