@@ -279,26 +279,6 @@ template <SocketType ST>
 void HttpConnection<ST>::startWriting() {
   // This is no longer used in this version
   std::abort();
-#if 0
-  FUERTE_LOG_HTTPTRACE << "startWriting: this=" << this << "\n";
-  if (!_active) {
-    FUERTE_LOG_HTTPTRACE << "startWriting: active=true, this=" << this << "\n";
-    if (!_active.exchange(true)) {  // we are the only ones here now
-
-      // we might get in a race with shutdownConnection()
-      Connection::State state = this->_state.load();
-      if (state != Connection::State::Connected) {
-        this->_active.store(false);
-        if (state == Connection::State::Disconnected) {
-          this->startConnection();
-        }
-      } else {
-        this->asyncWriteNextRequest();
-      }
-
-    }
-  }
-#endif
 }
 
 // -----------------------------------------------------------------------------
@@ -397,12 +377,7 @@ template <SocketType ST>
 void HttpConnection<ST>::asyncWriteNextRequest() {
   FUERTE_LOG_HTTPTRACE << "asyncWriteNextRequest: this=" << this << "\n";
   assert(_active.load());
-  if (_active == false) {
-    std::abort();
-  }
-  if (_item != nullptr) {
-    std::abort();
-  }
+  assert(_item == nullptr);
 
   http::RequestItem* ptr = nullptr;
   if (!_queue.pop(ptr)) {
@@ -488,9 +463,6 @@ void HttpConnection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
 
   // thead-safe we are on the single IO-Thread
   assert(_item == nullptr);
-  if (_item != nullptr) {
-    std::abort();
-  }
   _item = std::move(item);
 
   http_parser_init(&_parser, HTTP_RESPONSE);  // reset parser
