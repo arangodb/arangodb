@@ -1,6 +1,8 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Added vertex validation in case of a SmartGraph edge definition update.
+
 * Fix untenable ultra precondition for removeServer.
 
 * Fixed that the hotbackup agency lock is released under all circumstances using
