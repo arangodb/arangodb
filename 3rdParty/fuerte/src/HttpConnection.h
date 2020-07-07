@@ -132,10 +132,37 @@ class HttpConnection final : public fuerte::GeneralConnection<ST> {
   // both are used in the timeout handlers to decide if the timeout still
   // has to have an effect or if it is merely still on the iocontext and is now
   // obsolete.
-  std::atomic<int>
-      _leased;  // set to 1 by the `lease` method, prevents idle alarm if
-                // non-zero, set to 2 by `sendRequest` method, set back to 0
-                // when the idle alarm is set, provided it was 2
+  std::atomic<int> _leased;
+    // This member is used to allow to lease a connection from the connection
+    // pool without the idle alarm going off when we believe to have
+    // leased the connection successfully. Here is the workflow:
+    // Normally, the value is 0. If the idle alarm goes off, it first
+    // compare-exchanges this value from 0 to -1, then shuts down the
+    // connection (setting the _state to Failed in the TLS case). After
+    // that, the value is set back to 0.
+    // The lease operation tries to compare-exchange the value from 0 to 1,
+    // and if this has worked, it checks again that the _state is not Failed.
+    // This means, that if a lease has happened successfully, the idle alarm
+    // does no longer shut down the connection.
+    // If `sendRequest` is called on the connection (typically after a lease),
+    // a compare-exchange operation from 1 to 2 is tried. The value 2 indicates
+    // that the next time the idle alarm is set (after write/read activity
+    // finishes), a compare-exchange to 0 happens, such that the idle alarm
+    // can happen again.
+    // All this has the net effect that from the moment of a successful lease
+    // until the next call to `sendRequest`, we are sure that the idle alarm
+    // does not go off.
+    // Note that if one does not lease the connection, the idle alarm can
+    // go off at any time and the next `sendRequest` might fail because of
+    // this.
+    // Furthermore, note that if one leases the connection and does not call
+    // `sendRequest`, then the idle alarm does no longer go off and the
+    // connection stays open indefinitely. This is misusage.
+    // Finally, note that if the idle alarm goes off between a lease and
+    // the following call to `sendRequest`, the connection might stay open
+    // indefinitely, until activity on the connection has ceased again
+    // and a new idle alarm is set. However, this will automatically happen
+    // if that `sendRequest` and the corresponding request finishes.
 
   // parser state
   std::string _lastHeaderField;
