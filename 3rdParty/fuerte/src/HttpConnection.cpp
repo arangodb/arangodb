@@ -393,6 +393,13 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
       if (_shouldKeepAlive && this->_config._idleTimeout.count() > 0) {
         FUERTE_LOG_HTTPTRACE << "setting idle keep alive timer, this=" << this
                              << "\n";
+        // We want to enable the idle timeout alarm here. However, if the
+        // connection object has been leased, but no `sendRequest` has been
+        // called on it yet, then the alarm must not go off. Therefore,
+        // if _leased is 2 (`sendRequest` has been called), we reset it to
+        // 0, if _leased is still 1 (`lease` has happened, but `sendRequest`
+        // has not yet been called), then we leave it untouched. Therefore,
+        // no need to check the result of the compare_exchange_strong.
         int exp = 2;
         _leased.compare_exchange_strong(exp, 0);
         setTimeout(this->_config._idleTimeout, TimeoutType::IDLE);
