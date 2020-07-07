@@ -1,7 +1,6 @@
 devel
 -----
 
-
 * Fixed issue OASIS-252: Hotbackup agency locks without clientId.
 
 * Added support `db._engineStats()` API in coordinator. Previously calling this
