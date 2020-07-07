@@ -61,7 +61,11 @@ struct DummyConnection final : public fuerte::Connection {
   State state() const override {
     return _state;
   }
-  
+
+  bool lease() override {
+    return true;
+  }
+
   void cancel() override {}
   void startConnection() override {}
   

@@ -212,6 +212,10 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
       continue;
     }
 
+    if (!c->fuerte->lease()) {
+      continue;
+    }
+
     // first check against number of active users
     std::size_t num = c->leases.load();
     while (num <= limit) {
