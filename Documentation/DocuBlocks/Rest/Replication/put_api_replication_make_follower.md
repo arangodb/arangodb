@@ -1,21 +1,21 @@
 
-@startDocuBlock put_api_replication_makeSlave
-@brief Changes role to slave
+@startDocuBlock put_api_replication_make_follower
+@brief Changes role to Follower
 
-@RESTHEADER{PUT /_api/replication/make-slave, Turn the server into a slave of another, handleCommandMakeSlave}
+@RESTHEADER{PUT /_api/replication/make-slave, Turn the server into a Follower of another, handleCommandMakeFollower}
 
 @RESTBODYPARAM{endpoint,string,required,string}
-the master endpoint to connect to (e.g. "tcp://192.168.173.13:8529").
+the Leader endpoint to connect to (e.g. "tcp://192.168.173.13:8529").
 
 @RESTBODYPARAM{database,string,required,string}
-the database name on the master (if not specified, defaults to the
+the database name on the Leader (if not specified, defaults to the
 name of the local current database).
 
 @RESTBODYPARAM{username,string,optional,string}
-an optional ArangoDB username to use when connecting to the master.
+an optional ArangoDB username to use when connecting to the Leader.
 
 @RESTBODYPARAM{password,string,required,string}
-the password to use when connecting to the master.
+the password to use when connecting to the Leader.
 
 @RESTBODYPARAM{includeSystem,boolean,required,}
 whether or not system collection operations will be applied
@@ -27,7 +27,7 @@ specified, the allowed values are *include* or *exclude*.
 @RESTBODYPARAM{restrictCollections,array,optional,string}
 an optional array of collections for use with *restrictType*.
 If *restrictType* is *include*, only the specified collections
-will be sychronised. If *restrictType* is *exclude*, all but the specified
+will be synchronized. If *restrictType* is *exclude*, all but the specified
 collections will be synchronized.
 
 @RESTBODYPARAM{maxConnectRetries,integer,optional,int64}
@@ -50,8 +50,8 @@ is used when the endpoint is contacted.
 whether or not the replication applier will use adaptive polling.
 
 @RESTBODYPARAM{autoResync,boolean,optional,}
-whether or not the slave should perform an automatic resynchronization with
-the master in case the master cannot serve log data requested by the slave,
+whether or not the Follower should perform an automatic resynchronization with
+the Leader in case the Leader cannot serve log data requested by the Follower,
 or when the replication is started and no tick value can be found.
 
 @RESTBODYPARAM{autoResyncRetries,integer,optional,int64}
@@ -63,34 +63,34 @@ in case resynchronizations always fail.
 
 @RESTBODYPARAM{initialSyncMaxWaitTime,integer,optional,int64}
 the maximum wait time (in seconds) that the initial synchronization will
-wait for a response from the master when fetching initial collection data.
+wait for a response from the Leader when fetching initial collection data.
 This wait time can be used to control after what time the initial synchronization
 will give up waiting for a response and fail. This value is relevant even
 for continuous replication when *autoResync* is set to *true* because this
-may re-start the initial synchronization when the master cannot provide
-log data the slave requires.
+may re-start the initial synchronization when the Leader cannot provide
+log data the Follower requires.
 This value will be ignored if set to *0*.
 
 @RESTBODYPARAM{connectionRetryWaitTime,integer,optional,int64}
 the time (in seconds) that the applier will intentionally idle before
-it retries connecting to the master in case of connection problems.
+it retries connecting to the Leader in case of connection problems.
 This value will be ignored if set to *0*.
 
 @RESTBODYPARAM{idleMinWaitTime,integer,optional,int64}
 the minimum wait time (in seconds) that the applier will intentionally idle
-before fetching more log data from the master in case the master has
+before fetching more log data from the Leader in case the Leader has
 already sent all its log data. This wait time can be used to control the
 frequency with which the replication applier sends HTTP log fetch requests
-to the master in case there is no write activity on the master.
+to the Leader in case there is no write activity on the Leader.
 This value will be ignored if set to *0*.
 
 @RESTBODYPARAM{idleMaxWaitTime,integer,optional,int64}
 the maximum wait time (in seconds) that the applier will intentionally idle
-before fetching more log data from the master in case the master has
+before fetching more log data from the Leader in case the Leader has
 already sent all its log data and there have been previous log fetch attempts
 that resulted in no more log data. This wait time can be used to control the
 maximum frequency with which the replication applier sends HTTP log fetch
-requests to the master in case there is no write activity on the master for
+requests to the Leader in case there is no write activity on the Leader for
 longer periods. This configuration value will only be used if the option
 *adaptivePolling* is set to *true*.
 This value will be ignored if set to *0*.
@@ -98,7 +98,7 @@ This value will be ignored if set to *0*.
 @RESTBODYPARAM{requireFromPresent,boolean,optional,}
 if set to *true*, then the replication applier will check
 at start of its continuous replication if the start tick from the dump phase
-is still present on the master. If not, then there would be data loss. If
+is still present on the Leader. If not, then there would be data loss. If
 *requireFromPresent* is *true*, the replication applier will abort with an
 appropriate error message. If set to *false*, then the replication applier will
 still start, and ignore the data loss.
@@ -209,15 +209,15 @@ Please note that all "tick" values returned do not have a specific unit. Tick
 values are only meaningful when compared to each other. Higher tick values mean
 "later in time" than lower tick values.
 
-WARNING: calling this method will sychronize data from the collections found
-on the remote master to the local ArangoDB database. All data in the local
-collections will be purged and replaced with data from the master.
+WARNING: calling this method will synchronize data from the collections found
+on the remote Leader to the local ArangoDB database. All data in the local
+collections will be purged and replaced with data from the Leader.
 
 Use with caution!
 
 Please also keep in mind that this command may take a long time to complete
 and return. This is because it will first do a full data synchronization with
-the master, which will take time roughly proportional to the amount of data.
+the Leader, which will take time roughly proportional to the amount of data.
 
 **Note**: this method is not supported on a Coordinator in a cluster.
 
