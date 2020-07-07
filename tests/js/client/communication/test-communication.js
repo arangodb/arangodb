@@ -154,7 +154,7 @@ function CommunicationSuite () {
             let status = internal.statusExternal(client.pid).status;
             if (status === 'RUNNING') {
               debug("forcefully killing test client with pid " + client.pid);
-              internal.killExternal(client.pid, 15 /*SIGTERM*/);
+              internal.killExternal(client.pid, 9 /*SIGKILL*/);
             }
           } catch (err) {}
         }
