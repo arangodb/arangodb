@@ -216,7 +216,11 @@ MessageID HttpConnection<ST>::sendRequest(std::unique_ptr<Request> req,
 
   // If the connection was leased explicitly, we set the _leased indicator
   // to 2 here, such that it can be reset to 0 once the idle alarm is
-  // enabled explicitly later
+  // enabled explicitly later. We do not have to check if this has worked
+  // for the following reason: The value is only ever set to 0, 1 or 2.
+  // If it is already 2, no action is needed. If it is still 0, then the
+  // connection was not leased and we do not have to mark it here to indicate
+  // that a `sendRequest` has happened.
   int exp = 1;
   _leased.compare_exchange_strong(exp, 2);
 
