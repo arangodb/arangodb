@@ -34,7 +34,7 @@
 #include "Agency/JobContext.h"
 #include "Agency/RemoveFollower.h"
 #include "Agency/Store.h"
-#include "AgencyPaths.h"
+#include "Agency/AgencyPaths.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
