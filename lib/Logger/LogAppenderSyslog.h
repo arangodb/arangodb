@@ -42,6 +42,8 @@ class LogAppenderSyslog final : public LogAppender {
   std::string details() override final;
 
  private:
+  std::string const _sysname;
+
   static bool _opened;
 };
 
