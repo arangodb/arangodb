@@ -266,7 +266,6 @@ start() {
         --log.force-direct false \
         --log.thread true \
         --log.level $LOG_LEVEL_CLUSTER \
-        --log.time-format=timestamp-micros \
         --javascript.allow-admin-execute true \
         $SYSTEM_REPLICATION_FACTOR \
         $STORAGE_ENGINE \
