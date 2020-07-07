@@ -548,7 +548,7 @@ ResponseCode HttpCommTask<T>::handleAuthHeader(HttpRequest& req) {
 
     if (Logger::logRequestParameters()) {
       LOG_TOPIC("c4536", DEBUG, arangodb::Logger::REQUESTS)
-          << "\"authorization-header\",\"" << (void*)this << "\",\"" << authStr << "\"";
+          << "\"authorization-header\",\"" << (void*)this << "\",SENSITIVE_DETAILS_HIDDEN";
     }
 
     try {

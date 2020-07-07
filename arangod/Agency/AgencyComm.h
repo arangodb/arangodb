@@ -217,7 +217,7 @@ class AgencyCommManager {
   // using the connection and an error occurred. The connection object will
   // be destroyed and the current endpoint will be rotated.
   void failed(std::unique_ptr<httpclient::GeneralClientConnection>,
-              std::string const& endpoint);
+              std::string const& endpoint, char const* message);
 
   // If a request receives a redirect HTTP 307, one should call the following
   // method to make the new location the current one. The method returns the
@@ -238,7 +238,7 @@ class AgencyCommManager {
  private:
   // caller must hold _lock
   void failedNonLocking(std::unique_ptr<httpclient::GeneralClientConnection>,
-                        std::string const& endpoint);
+                        std::string const& endpoint, char const* message);
 
   // caller must hold lock
   void releaseNonLocking(std::unique_ptr<httpclient::GeneralClientConnection>,
