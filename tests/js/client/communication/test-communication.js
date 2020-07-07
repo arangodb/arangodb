@@ -198,8 +198,8 @@ function CommunicationSuite () {
         tests.push([ 'cluster-health', 'if (arango.GET("/_admin/cluster/health").code !== 200) { throw "nono cluster"; }' ]);
       };
 
-      // run the suite for 10 minutes
-      runTests(tests, 600);
+      // run the suite for 5 minutes
+      runTests(tests, 5 * 60);
     },
     
   };
