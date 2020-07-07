@@ -177,7 +177,8 @@ ConnectionPool::Context::Context(std::shared_ptr<fuerte::Connection> c,
     : fuerte(std::move(c)), lastLeased(t), leases(l) {}
 
 std::shared_ptr<fuerte::Connection> ConnectionPool::createConnection(fuerte::ConnectionBuilder& builder) {
-  auto idle = std::chrono::milliseconds(_config.idleConnectionMilli);
+  //auto idle = std::chrono::milliseconds(_config.idleConnectionMilli);
+  auto idle = std::chrono::milliseconds(2);
   builder.idleTimeout(idle);
   builder.verifyHost(_config.verifyHosts);
   builder.protocolType(_config.protocol); // always overwrite protocol
@@ -206,7 +207,11 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
     if (state == fuerte::Connection::State::Failed) {
       continue;
     }
-    
+
+    if (!c->fuerte->lease()) {
+      continue;
+    }
+
     TRI_ASSERT(_config.protocol != fuerte::ProtocolType::Undefined);
 
     std::size_t limit = 0;

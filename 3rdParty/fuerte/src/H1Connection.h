@@ -53,6 +53,11 @@ class H1Connection final : public fuerte::GeneralConnection<ST> {
   /// @brief Return the number of requests that have not yet finished.
   size_t requestsLeft() const override;
 
+  // Switch off potential idle alarm (used by connection pool). Returns
+  // true if lease was successful and connection can be used afterwards.
+  // If false is retured the connection is broken beyond repair.
+  bool lease() override;
+
   /// All methods below here must only be called from the IO thread.
  protected:
   /// This is posted by `sendRequest` to the _io_context thread, the `_active`
@@ -145,6 +150,11 @@ class H1Connection final : public fuerte::GeneralConnection<ST> {
   // This is the time when the latest write operation started.
   // We use this to compute the timeout of the corresponding read if the
   // write was done.
+
+  std::atomic<int>
+      _leased;  // set to 1 by the `lease` method, prevents idle alarm if
+                // non-zero, set to 2 by `sendRequest` method, set back to 0
+                // when the idle alarm is set, provided it was 2
 
   // parser state
   std::string _lastHeaderField;

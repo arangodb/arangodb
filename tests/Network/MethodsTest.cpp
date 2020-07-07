@@ -63,7 +63,10 @@ struct DummyConnection final : public fuerte::Connection {
   
   void cancel() override {}
   void start() override {}
-  
+  bool lease() override {
+    return true;
+  }
+
   fuerte::Connection::State _state = fuerte::Connection::State::Connected;
   
   fuerte::Error _err = fuerte::Error::NoError;
