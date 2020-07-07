@@ -2,7 +2,7 @@
 @startDocuBlock put_api_replication_make_follower
 @brief Changes role to Follower
 
-@RESTHEADER{PUT /_api/replication/make-slave, Turn the server into a Follower of another, handleCommandMakeFollower}
+@RESTHEADER{PUT /_api/replication/make-follower, Turn the server into a Follower of another, handleCommandMakeFollower}
 
 @RESTBODYPARAM{endpoint,string,required,string}
 the Leader endpoint to connect to (e.g. "tcp://192.168.173.13:8529").
