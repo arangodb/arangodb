@@ -1,7 +1,7 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
-* Added vertex validation in case of a SmartGraph edge definition update.
+* Added vertex collection validation in case of a SmartGraph edge definition update.
 
 * Fixed internal-issue #726: added restore handling for custom analyzers.
 
