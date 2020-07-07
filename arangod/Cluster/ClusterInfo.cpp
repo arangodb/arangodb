@@ -4734,10 +4734,9 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId,
       if (result.slice()[0].get(modepv).isEqualString("Normal")) {
         return arangodb::Result();
       }
+      LOG_TOPIC("edf54", DEBUG, Logger::BACKUP)
+          << "agency hot backup unlock waiting: " << result.slice().toJson();
     }
-
-    LOG_TOPIC("edf54", DEBUG, Logger::BACKUP)
-      << "agency hot backup unlock waiting: " << res->slice().toJson();
 
     if (wait < 2.0) {
       wait *= 1.1;
