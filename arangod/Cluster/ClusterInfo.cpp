@@ -4703,6 +4703,10 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId,
                                          timeout, writeURL, builder.slice());
   if (!result.successful() &&
       result.httpCode() != (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+    LOG_TOPIC("6ae43", WARN, Logger::BACKUP)
+        << "Error when unlocking backup lock for backup " << backupId
+        << " in agency, errorCode: " << result.httpCode()
+        << ", errorMessage: " << result.errorMessage();
     return arangodb::Result(TRI_ERROR_HOT_BACKUP_INTERNAL,
                             "failed to release backup lock in agency");
   }
@@ -4718,6 +4722,9 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId,
 
   auto ar = rv->slice().get("results");
   if (!ar[0].isNumber()) {
+    LOG_TOPIC("6ae45", WARN, Logger::BACKUP)
+        << "Invalid agency result when unlocking backup lock for backup "
+        << backupId << " in agency: " << result.slice().toJson();
     return arangodb::Result(
         TRI_ERROR_HOT_BACKUP_INTERNAL,
         "invalid agency result while releasing backup lock");
@@ -4742,6 +4749,8 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId,
       if (result.slice()[0].get(modepv).isEqualString("Normal")) {
         return arangodb::Result();
       }
+      LOG_TOPIC("edf54", DEBUG, Logger::BACKUP)
+          << "agency hot backup unlock waiting: " << result.slice().toJson();
     }
 
     if (wait < 2.0) {
@@ -4750,6 +4759,9 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId,
 
     std::this_thread::sleep_for(std::chrono::duration<double>(wait));
   }
+
+  LOG_TOPIC("6ae47", WARN, Logger::BACKUP)
+      << "Timeout when deactivating supervision mode for backup " << backupId;
 
   return arangodb::Result(
       TRI_ERROR_HOT_BACKUP_INTERNAL,

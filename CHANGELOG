@@ -1,6 +1,9 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Fixed that the hotbackup agency lock is released under all circumstances using
+  scope guards. This addresses a rare case in which the lock was left behind.
+
 * Internal issue BTS-71: Added a precondition to prevent creating a collection
   with an invalid `distributeShardsLike` property.
 
