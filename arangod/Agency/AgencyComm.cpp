@@ -373,18 +373,8 @@ bool AgencyReadTransaction::validate(AgencyCommResult const& result) const {
 // --SECTION--                                                  AgencyCommResult
 // -----------------------------------------------------------------------------
 
-AgencyCommResult::AgencyCommResult()
-    : _location(), _message(), _body(), _values(), _statusCode(0), _connected(false), _sent(false) {}
-
-AgencyCommResult::AgencyCommResult(int code, std::string const& message,
-                                   std::string const& clientId)
-    : _location(),
-      _message(message),
-      _body(),
-      _values(),
-      _statusCode(code),
-      _connected(false),
-      _sent(false) {}
+AgencyCommResult::AgencyCommResult(int code, std::string message)
+    : _message(std::move(message)), _statusCode(code) {}
 
 AgencyCommResult::AgencyCommResult(AgencyCommResult&& other) noexcept
     : _location(std::move(other._location)),
@@ -418,8 +408,8 @@ AgencyCommResult& AgencyCommResult::operator=(AgencyCommResult&& other) noexcept
   return *this;
 }
 
-void AgencyCommResult::set(int code, std::string const& message) {
-  _message = message;
+void AgencyCommResult::set(int code, std::string message) {
+  _message = std::move(message);
   _statusCode = code;
   _location.clear();
   _body.clear();
@@ -434,45 +424,39 @@ int AgencyCommResult::httpCode() const { return _statusCode; }
 bool AgencyCommResult::sent() const { return _sent; }
 
 int AgencyCommResult::errorCode() const {
+  return asResult().errorNumber();
+}
+
+std::string AgencyCommResult::errorMessage() const {
+  return asResult().errorMessage();
+}
+
+std::optional<std::pair<int, std::string_view>> AgencyCommResult::parseBodyError() const {
+  auto result = std::optional<std::pair<int, std::string_view>>{};
   try {
     if (!_body.empty()) {
       std::shared_ptr<VPackBuilder> bodyBuilder = VPackParser::fromJson(_body);
       VPackSlice body = bodyBuilder->slice();
-      if (!body.isObject()) {
-        return 0;
+      if (body.isObject()) {
+        // get "errorCode" attribute
+        auto const errorCode = body.get(StaticStrings::ErrorCode).getNumber<int>();
+        // Save error code if possible, set default error message first
+        result = std::make_pair(errorCode, std::string_view(TRI_errno_string(errorCode)));
+        // Now try to extract the message, too; but it's fine if that fails, we
+        // already have the default one.
+        if (auto const errMsg = body.get(StaticStrings::ErrorMessage); errMsg.isString()) {
+          auto const strRef = errMsg.stringRef();
+          result->second = {strRef.begin(), strRef.size()};
+        } else if (auto const errMsg = body.get("message"); errMsg.isString()) {
+          auto const strRef = errMsg.stringRef();
+          result->second = {strRef.begin(), strRef.size()};
+        }
       }
-      // get "errorCode" attribute (0 if not exist)
-      return basics::VelocyPackHelper::getNumericValue<int>(body, "errorCode", 0);
     }
   } catch (VPackException const&) {
   }
-  return 0;
-}
 
-std::string AgencyCommResult::errorMessage() const {
-  if (!_message.empty()) {
-    // return stored message first if set
-    return _message;
-  }
-
-  if (!_connected) {
-    return std::string("unable to connect to agency");
-  }
-
-  try {
-    std::shared_ptr<VPackBuilder> bodyBuilder = VPackParser::fromJson(_body);
-
-    VPackSlice body = bodyBuilder->slice();
-    if (!body.isObject()) {
-      return "";
-    }
-    // get "message" attribute ("" if not exist)
-    return arangodb::basics::VelocyPackHelper::getStringValue(body, "message",
-                                                              "");
-  } catch (VPackException const& e) {
-    std::string message("VPackException parsing body (" + _body + "): " + e.what());
-    return std::string(message);
-  }
+  return result;
 }
 
 std::string AgencyCommResult::errorDetails() const {
@@ -530,6 +514,24 @@ VPackBuilder AgencyCommResult::toVelocyPack() const {
   VPackBuilder builder;
   toVelocyPack(builder);
   return builder;
+}
+
+Result AgencyCommResult::asResult() const {
+  if (successful()) {
+    return Result{};
+  } else if (auto const err = parseBodyError(); err.has_value()) {
+    return Result{err->first, std::string{err->second}};
+  } else if (_statusCode > 0) {
+    if (!_message.empty()) {
+      return Result{_statusCode, _message};
+    } else if (!_connected) {
+      return Result{_statusCode, "unable to connect to agency"};
+    } else {
+      return Result{_statusCode};
+    }
+  } else {
+    return Result{TRI_ERROR_INTERNAL};
+  }
 }
 
 namespace std {
@@ -978,7 +980,7 @@ AgencyCommResult AgencyComm::getValues(std::string const& key) {
   }
 
   try {
-    result.setVPack(VPackParser::fromJson(result.bodyRef()));
+    result.setVPack(VPackParser::fromJson(result.body()));
 
     if (!result.slice().isArray()) {
       result.set(500, "got invalid result structure for getValues response");
@@ -1020,8 +1022,7 @@ AgencyCommResult AgencyComm::dump() {
   }
 
   try {
-
-    result.setVPack(VPackParser::fromJson(result.bodyRef()));
+    result.setVPack(VPackParser::fromJson(result.body()));
     result._body.clear();
     result._statusCode = 200;
 
@@ -1154,6 +1155,7 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
     // The cas did not work, simply try again!
   }
 
+  TRI_ASSERT(oldValue != 0);
   return oldValue;
 }
 
@@ -1252,14 +1254,14 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(AgencyTransaction const
   }
 
   try {
-    result.setVPack(VPackParser::fromJson(result.bodyRef()));
+    result.setVPack(VPackParser::fromJson(result.body()));
 
     if (!transaction.validate(result)) {
       result.set(500, std::string("validation failed for response to URL " + url));
       LOG_TOPIC("f2083", DEBUG, Logger::AGENCYCOMM)
           << "validation failed for url: " << url
           << ", type: " << transaction.typeName()
-          << ", sent: " << builder.toJson() << ", received: " << result.bodyRef();
+          << ", sent: " << builder.toJson() << ", received: " << result.body();
       return result;
     }
 
@@ -1269,7 +1271,7 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(AgencyTransaction const
     LOG_TOPIC("e13a5", ERR, Logger::AGENCYCOMM)
         << "Error transforming result: " << e.what()
         << ", status code: " << result._statusCode
-        << ", incriminating body: " << result.bodyRef() << ", url: " << url
+        << ", incriminating body: " << result.body() << ", url: " << url
         << ", timeout: " << timeout << ", data sent: " << builder.toJson();
     result.clear();
   } catch (...) {
