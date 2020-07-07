@@ -1,7 +1,8 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
-* Added vertex collection validation in case of a SmartGraph edge definition update.
+* Added vertex collection validation in case of a SmartGraph edge definition
+  update.
 
 * Fix cluster-internal request forwarding for VST requests that do not have any
   Content-Type header set. Such requests could have been caused by the Java
