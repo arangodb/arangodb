@@ -1,13 +1,13 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Fix cluster-internal request forwarding for VST requests that do not have any
+  Content-Type header set. Such requests could have been caused by the Java
+  driver (ES-635).
+
 * Fixed issue OASIS-252: Hotbackup agency locks without clientId.
 
 * Fixed internal-issue #726: added restore handling for custom analyzers.
-
-* Fix cluster-internal request forwarding for VST requests that do not have
-  any Content-Type header set. Such requests could have been caused by the Java
-  driver. 
 
 * Updated arangosync to 0.7.7.
 
