@@ -5,6 +5,8 @@ v3.6.5 (XXXX-XX-XX)
   sendRequest calls were started but never completed due to the fact that
   the idle connection close triggered at exactly the same time.
 
+* Updated arangosync to 0.7.7.
+
 * Fixed a document parsing bug in the Web UI. This issue occured in the
   document list view in case a document had an attribute called `length`.
   The result was an incorrect representation of the document preview.
@@ -125,8 +127,6 @@ v3.6.5 (XXXX-XX-XX)
   maintenance threads if a shard cannot be dropped immediately due to some lock.
 
 * Added missing mutex to ConnectionPool::cancelConnections().
-
-* Updated arangosync to 0.7.6.
 
 * Updated ArangoDB Starter to 0.14.15.
 
