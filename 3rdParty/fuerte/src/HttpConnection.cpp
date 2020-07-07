@@ -213,6 +213,12 @@ MessageID HttpConnection<ST>::sendRequest(std::unique_ptr<Request> req,
   this->_numQueued.fetch_add(1, std::memory_order_relaxed);
   FUERTE_LOG_HTTPTRACE << "queued item: this=" << this << "\n";
 
+  // If the connection was leased explicitly, we set the _leased indicator
+  // to 2 here, such that it can be reset to 0 once the idle alarm is
+  // enabled explicitly later
+  int exp = 1;
+  _leased.compare_exchange_strong(exp, 2);
+
   // Note that we have first posted on the queue with std::memory_order_seq_cst
   // and now we check _active std::memory_order_seq_cst. This prevents a sleeping
   // barber with the check-set-check combination in `asyncWriteNextRequest`.
@@ -411,6 +417,8 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
       if (_shouldKeepAlive && this->_config._idleTimeout.count() > 0) {
         FUERTE_LOG_HTTPTRACE << "setting idle keep alive timer, this=" << this
                              << "\n";
+        int exp = 2;
+        _leased.compare_exchange_strong(exp, 0);
         setTimeout(this->_config._idleTimeout, TimeoutType::IDLE);
       } else {
         this->shutdownConnection(Error::CloseRequested);
@@ -583,9 +591,12 @@ void HttpConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
 template <SocketType ST>
 void HttpConnection<ST>::setTimeout(std::chrono::milliseconds millis, TimeoutType type) {
   if (millis.count() == 0) {
+    FUERTE_LOG_TRACE << "deleting timeout of type " << (int) type << " this=" << this << "\n";
     this->_timeout.cancel();
     return;
   }
+
+  FUERTE_LOG_TRACE << "setting timeout of type " << (int) type << " this=" << this << "\n";
 
   // expires_after cancels pending ops
   this->_timeout.expires_after(millis);
@@ -597,17 +608,22 @@ void HttpConnection<ST>::setTimeout(std::chrono::milliseconds millis, TimeoutTyp
     auto* thisPtr = static_cast<HttpConnection<ST>*>(s.get());
     if ((type == TimeoutType::WRITE && thisPtr->_writing) ||
         (type == TimeoutType::READ && thisPtr->_reading)) {
-      FUERTE_LOG_DEBUG << "HTTP-Request timeout\n";
+      FUERTE_LOG_DEBUG << "HTTP-Request timeout" << " this=" << thisPtr << "\n";
       thisPtr->_proto.shutdown();
       thisPtr->_timeoutOnReadWrite = true;
       // We simply cancel all ongoing asynchronous operations, the completion
       // handlers will do the rest.
       return;
-    } else if (type == TimeoutType::IDLE && !thisPtr->_writing & !thisPtr->_reading && !thisPtr->_connecting) {
+    } else if (type == TimeoutType::IDLE && !thisPtr->_writing & !thisPtr->_reading && !thisPtr->_connecting && thisPtr->_leased == 0) {
       if (!thisPtr->_active &&
           thisPtr->_state == Connection::State::Connected) {
-      FUERTE_LOG_DEBUG << "HTTP-Request idle timeout\n";
-        thisPtr->shutdownConnection(Error::CloseRequested);
+        int exp = 0;
+        if (thisPtr->_leased.compare_exchange_strong(exp, -1)) {
+          FUERTE_LOG_DEBUG << "HTTP-Request idle timeout"
+                           << " this=" << thisPtr << "\n";
+          thisPtr->shutdownConnection(Error::CloseRequested);
+          thisPtr->_leased = 0;
+        }
       }
     }
     // In all other cases we do nothing, since we have been posted to the
@@ -636,6 +652,18 @@ void HttpConnection<ST>::drainQueue(const fuerte::Error ec) {
     this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
     guard->invokeOnError(ec);
   }
+}
+
+// Lease this connection (cancel idle alarm)
+template <SocketType ST>
+bool HttpConnection<ST>::lease() {
+  int exp = 0;
+  if (!this->_leased.compare_exchange_strong(exp, 1) ||
+      this->_state == Connection::State::Failed) {
+    return false;
+  }
+  FUERTE_LOG_TRACE << "Connection leased: this=" << this;
+  return true;   // this is a noop, derived classes can override
 }
 
 template class arangodb::fuerte::v1::http::HttpConnection<SocketType::Tcp>;

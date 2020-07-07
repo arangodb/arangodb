@@ -51,6 +51,11 @@ class GeneralConnection : public fuerte::Connection {
   // Activate this connection
   void startConnection() override;
 
+  // Switch off potential idle alarm (used by connection pool). Returns
+  // true if lease was successful and connection can be used afterwards.
+  // If false is retured the connection is broken beyond repair.
+  virtual bool lease() override;
+
  protected:
   // shutdown connection, cancel async operations
   void shutdownConnection(const fuerte::Error, std::string const& msg = "");

@@ -50,6 +50,12 @@ void GeneralConnection<ST>::cancel() {
   });
 }
 
+// Lease this connection (cancel idle alarm)
+template <SocketType ST>
+bool GeneralConnection<ST>::lease() {
+  return true;   // this is a noop, derived classes can override
+}
+
 // Activate this connection.
 template <SocketType ST>
 void GeneralConnection<ST>::startConnection() {
