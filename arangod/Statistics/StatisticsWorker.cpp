@@ -31,7 +31,7 @@
 #include "Aql/QueryString.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/PhysicalMemory.h"
-#include "Basics/VelocyPackHelper.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/process-utils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -57,10 +57,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace {
-static std::string const statisticsCollection("_statistics");
-static std::string const statistics15Collection("_statistics15");
-static std::string const statisticsRawCollection("_statisticsRaw");
-
 static std::string const garbageCollectionQuery(
     "FOR s in @@collection FILTER s.time < @start RETURN s._key");
 
@@ -130,13 +126,13 @@ void StatisticsWorker::collectGarbage() {
 
   try {
     if (_gcTask == GC_STATS) {
-      collectGarbage(statisticsCollection, time - 3600.0);  // 1 hour
+      collectGarbage(StaticStrings::StatisticsCollection, time - 3600.0);  // 1 hour
       _gcTask = GC_STATS_RAW;
     } else if (_gcTask == GC_STATS_RAW) {
-      collectGarbage(statisticsRawCollection, time - 3600.0);  // 1 hour
+      collectGarbage(StaticStrings::StatisticsRawCollection, time - 3600.0);  // 1 hour
       _gcTask = GC_STATS_15;
     } else if (_gcTask == GC_STATS_15) {
-      collectGarbage(statistics15Collection, time - 30.0 * 86400.0);  // 30 days
+      collectGarbage(StaticStrings::Statistics15Collection, time - 30.0 * 86400.0);  // 30 days
       _gcTask = GC_STATS;
     }
   } catch (basics::Exception const& ex) {
@@ -198,13 +194,13 @@ void StatisticsWorker::historian() {
   try {
     double now = TRI_microtime();
     std::shared_ptr<arangodb::velocypack::Builder> prevRawBuilder =
-        lastEntry(statisticsRawCollection, now - 2.0 * INTERVAL);
+        lastEntry(StaticStrings::StatisticsRawCollection, now - 2.0 * INTERVAL);
     VPackSlice prevRaw = prevRawBuilder->slice();
 
     _rawBuilder.clear();
     generateRawStatistics(_rawBuilder, now);
 
-    saveSlice(_rawBuilder.slice(), statisticsRawCollection);
+    saveSlice(_rawBuilder.slice(), StaticStrings::StatisticsRawCollection);
 
     // create the per-seconds statistics
     if (prevRaw.isArray() && prevRaw.length()) {
@@ -214,7 +210,7 @@ void StatisticsWorker::historian() {
       VPackSlice perSecs = _tempBuilder.slice();
 
       if (perSecs.length()) {
-        saveSlice(perSecs, statisticsCollection);
+        saveSlice(perSecs, StaticStrings::StatisticsCollection);
       }
     }
   } catch (...) {
@@ -233,7 +229,7 @@ void StatisticsWorker::historianAverage() {
     double now = TRI_microtime();
 
     std::shared_ptr<arangodb::velocypack::Builder> prev15Builder =
-        lastEntry(statistics15Collection, now - 2.0 * HISTORY_INTERVAL);
+        lastEntry(StaticStrings::Statistics15Collection, now - 2.0 * HISTORY_INTERVAL);
     VPackSlice prev15 = prev15Builder->slice();
 
     double start;
@@ -249,7 +245,7 @@ void StatisticsWorker::historianAverage() {
     VPackSlice stat15 = _tempBuilder.slice();
 
     if (stat15.length()) {
-      saveSlice(stat15, statistics15Collection);
+      saveSlice(stat15, StaticStrings::Statistics15Collection);
     }
   } catch (velocypack::Exception const& ex) {
     LOG_TOPIC("1c429", DEBUG, Logger::STATISTICS)
