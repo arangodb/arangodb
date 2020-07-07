@@ -245,7 +245,7 @@ TEST(CacheRebalancerTest, test_rebalancing_with_transactionalcache_LongRunning) 
     // initialize valid range for keys that *might* be in cache
     std::uint64_t validLower = lower;
     std::uint64_t validUpper = lower + initialInserts - 1;
-    std::uint64_t blacklistUpper = validUpper;
+    std::uint64_t banishUpper = validUpper;
 
     // commence mixed workload
     for (std::uint64_t i = 0; i < operationCount; i++) {
@@ -266,8 +266,8 @@ TEST(CacheRebalancerTest, test_rebalancing_with_transactionalcache_LongRunning) 
         }
 
         std::uint64_t item = ++validUpper;
-        if (validUpper > blacklistUpper) {
-          blacklistUpper = validUpper;
+        if (validUpper > banishUpper) {
+          banishUpper = validUpper;
         }
         std::size_t cacheIndex = item % cacheCount;
         CachedValue* value = CachedValue::construct(&item, sizeof(std::uint64_t),
@@ -277,14 +277,14 @@ TEST(CacheRebalancerTest, test_rebalancing_with_transactionalcache_LongRunning) 
         if (status.fail()) {
           delete value;
         }
-      } else if (r >= 80) {  // blacklist something
-        if (blacklistUpper == upper) {
+      } else if (r >= 80) {  // banish something
+        if (banishUpper == upper) {
           continue;  // already maxed out range
         }
 
-        std::uint64_t item = ++blacklistUpper;
+        std::uint64_t item = ++banishUpper;
         std::size_t cacheIndex = item % cacheCount;
-        caches[cacheIndex]->blacklist(&item, sizeof(std::uint64_t));
+        caches[cacheIndex]->banish(&item, sizeof(std::uint64_t));
       } else {  // lookup something
         std::uint64_t item =
             RandomGenerator::interval(static_cast<int64_t>(validLower),

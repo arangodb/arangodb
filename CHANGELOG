@@ -5,6 +5,15 @@ devel
   API always produced an empty result. Now it will return the engine statistics
   as an object, with an entry for each individual DB-Server.
 
+* Updated arangosync to 0.7.7.
+
+* Fixed a document parsing bug in the Web UI. This issue occured in the
+  document list view in case a document had an attribute called `length`.
+  The result was an incorrect representation of the document preview.
+
+* Improve readability of running and slow queries in web UI by properly left-  
+  aligning the query strings.
+  
 * The Web UI is not disabling the query import button after file upload takes
   place.
 

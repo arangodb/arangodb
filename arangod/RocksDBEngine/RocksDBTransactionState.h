@@ -197,7 +197,7 @@ class RocksDBTransactionState final : public TransactionState {
   /// For intermediate commits iterators MUST use the _readSnapshot
   rocksdb::ReadOptions _rocksReadOptions;
 
-  /// @brief cache transaction to unblock blacklisted keys
+  /// @brief cache transaction to unblock banished keys
   cache::Transaction* _cacheTx;
   /// @brief wrapper to use outside this class to access rocksdb
   std::unique_ptr<RocksDBMethods> _rocksMethods;
