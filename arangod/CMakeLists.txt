@@ -477,6 +477,7 @@ set(LIB_ARANGO_AGENCY_SOURCES
   Agency/AddFollower.cpp
   Agency/AgencyComm.cpp
   Agency/AgencyFeature.cpp
+  Agency/AgencyPaths.cpp
   Agency/Agent.cpp
   Agency/AgentCallback.cpp
   Agency/CleanOutServer.cpp
@@ -490,6 +491,7 @@ set(LIB_ARANGO_AGENCY_SOURCES
   Agency/JobContext.cpp
   Agency/MoveShard.cpp
   Agency/Node.cpp
+  Agency/PathComponent.cpp
   Agency/RemoveFollower.cpp
   Agency/RestAgencyHandler.cpp
   Agency/RestAgencyPrivHandler.cpp
@@ -497,7 +499,6 @@ set(LIB_ARANGO_AGENCY_SOURCES
   Agency/Store.cpp
   Agency/Supervision.cpp
   Agency/v8-agency.cpp
-  Cluster/AgencyPaths.cpp
 )
 
 set(LIB_ARANGO_V8SERVER_SOURCES
@@ -571,7 +572,6 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/MaintenanceRestHandler.cpp
   Cluster/MaintenanceWorker.cpp
   Cluster/NonAction.cpp
-  Cluster/PathComponent.cpp
   Cluster/RebootTracker.cpp
   Cluster/ReplicationTimeoutFeature.cpp
   Cluster/ResignShardLeadership.cpp

@@ -5,6 +5,19 @@ v3.6.5 (XXXX-XX-XX)
   sendRequest calls were started but never completed due to the fact that
   the idle connection close triggered at exactly the same time.
 
+* Added vertex validation in case of a SmartGraph edge definition update.
+
+* Fix untenable ultra precondition for removeServer.
+
+* Fixed that the hotbackup agency lock is released under all circumstances using
+  scope guards. This addresses a rare case in which the lock was left behind.
+
+* Internal issue BTS-71: Added a precondition to prevent creating a collection
+  with an invalid `distributeShardsLike` property.
+
+* Reinstate longer retention period for agency history (step size back to 1000,
+  keep size back to 50000).
+
 * Internal issue BTS-71: In a cluster, for collections in creation, suspend
   supervision jobs concerning replication factor until creation is completed.
   Previously, it could cause collection creation to fail (e.g. when a server
