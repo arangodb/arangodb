@@ -3,6 +3,20 @@ v3.7.1-rc.1 (XXXX-XX-XX)
 
 * Added vertex validation in case of a SmartGraph edge definition update.
 
+* Fixed internal-issue #726: added restore handling for custom analyzers.
+
+* Updated arangosync to 0.7.7.
+
+* Fixed a potential agency crash if trace logging is on.
+
+* Network layer now reports connection setup issues in more cases this replaces
+  some INTERNAL_ERROR reports by more precise errors, those are only reached
+  during failover scenarios.
+
+* Fixed a document parsing bug in the Web UI. This issue occured in the
+  document list view in case a document had an attribute called `length`.
+  The result was an incorrect representation of the document preview.
+
 * Re-enable access to GET `/_admin/cluster/numberOfServers` for all users by
   default. Requests to PUT `/_admin/cluster/numberOfServers` require admin
   user privileges. This restores the pre-3.7 behavior.
@@ -211,8 +225,6 @@ v3.7.1-rc.1 (XXXX-XX-XX)
   collection.
   If these permissions are not there, no load is performed (user can not use
   analyzers from database anyway).
-
-* Updated arangosync to 0.7.6.
 
 * Make the reboot tracker catch a failed server and permanently removed servers.
   This allows other servers in the cluster to move on more quickly, when a
