@@ -1,6 +1,9 @@
 devel
 -----
 
+* The `_from` and `_to` attributes of an edge document can now be edited from
+  within the UI.
+
 * Added vertex collection validation in case of a SmartGraph edge definition update. 
 
 * Added support `db._engineStats()` API in coordinator. Previously calling this
