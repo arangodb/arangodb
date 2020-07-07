@@ -201,7 +201,7 @@ Result FollowerInfo::remove(ServerID const& sid) {
     }
     // we are finished
     LOG_TOPIC("be0cb", DEBUG, Logger::CLUSTER)
-        << "Removing follower " << sid << " from " << _docColl->name() << "succeeded";
+        << "Removing follower " << sid << " from " << _docColl->name() << " succeeded";
     return agencyRes;
   }
   if (agencyRes.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
