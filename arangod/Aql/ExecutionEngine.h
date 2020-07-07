@@ -66,11 +66,11 @@ class ExecutionEngine {
  public:
   
   // @brief create an execution engine from a plan
-  static Result instantiateFromPlan(Query& query,
-                                    ExecutionPlan& plan,
-                                    bool planRegisters,
-                                    SerializationFormat format,
-                                    SnippetList& list);
+  static void instantiateFromPlan(Query& query,
+                                  ExecutionPlan& plan,
+                                  bool planRegisters,
+                                  SerializationFormat format,
+                                  SnippetList& list);
   
   TEST_VIRTUAL Result createBlocks(std::vector<ExecutionNode*> const& nodes,
                                    MapRemoteToSnippet const& queryIds);

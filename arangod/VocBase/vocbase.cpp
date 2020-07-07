@@ -1640,7 +1640,7 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
   TRI_ASSERT(_info.valid());
 
   QueryRegistryFeature& feature = _info.server().getFeature<QueryRegistryFeature>();
-  _queries.reset(new arangodb::aql::QueryList(feature, this));
+  _queries.reset(new arangodb::aql::QueryList(feature));
   _cursorRepository.reset(new arangodb::CursorRepository(*this));
   _replicationClients.reset(new arangodb::ReplicationClientsProgressTracker());
 
@@ -1725,7 +1725,7 @@ bool TRI_vocbase_t::IsAllowedName(bool allowSystem,
     }
   }
 
-  return (length > 0 && length <= TRI_COL_NAME_LENGTH);
+  return (length > 0 && length <= LogicalCollection::maxNameLength);
 }
 
 /// @brief determine whether a collection name is a system collection name

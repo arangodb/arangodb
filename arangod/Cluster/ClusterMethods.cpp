@@ -2317,7 +2317,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::createCollection
     bool waitForSyncReplication, bool enforceReplicationFactor,
     bool isNewDatabase, std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike) {
   TRI_ASSERT(parameters.isArray());
-  // Collections are temporary collections object that undergoes sanity checks
+  // Collections are temporary collections object that undergoes integrity checks
   // etc. It is not used anywhere and will be cleaned up after this call.
   std::vector<std::shared_ptr<LogicalCollection>> cols;
   for (VPackSlice p : VPackArrayIterator(parameters)) {
@@ -4096,6 +4096,43 @@ arangodb::Result deleteHotBackupsOnCoordinator(ClusterFeature& feature,
   result.reset();
   events::DeleteHotbackup(id, TRI_ERROR_NO_ERROR);
   return result;
+}
+
+arangodb::Result getEngineStatsFromDBServers(ClusterFeature& feature,
+                                             VPackBuilder& report) {
+  ClusterInfo& ci = feature.clusterInfo();
+
+  std::vector<ServerID> DBservers = ci.getCurrentDBServers();
+
+  auto* pool = feature.server().getFeature<NetworkFeature>().pool();
+
+  network::RequestOptions reqOpts;
+  reqOpts.skipScheduler = false; 
+  std::vector<Future<network::Response>> futures;
+  futures.reserve(DBservers.size());
+
+  for (std::string const& server : DBservers) {
+    futures.emplace_back(
+        network::sendRequestRetry(pool, "server:" + server, fuerte::RestVerb::Get,
+                                  "/_api/engine/stats", VPackBuffer<uint8_t>(), reqOpts));
+  }
+  
+  auto responses = futures::collectAll(std::move(futures)).get();
+
+  report.openObject();
+  for (auto const& tryRes : responses) {
+    network::Response const& r = tryRes.get();
+      
+    if (r.fail()) {
+      return {network::fuerteToArangoErrorCode(r), network::fuerteToArangoErrorMessage(r)};
+    }
+
+    // cut off "server:" from the destination
+    report.add(r.destination.substr(7), r.slice());
+  }
+  report.close();
+
+  return Result();
 }
 
 }  // namespace arangodb

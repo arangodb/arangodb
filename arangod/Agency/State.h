@@ -238,7 +238,7 @@ class State {
   /// @brief Check collections
   bool checkCollections();
 
-  /// @brief Check collection sanity
+  /// @brief Check collection existence
   bool checkCollection(std::string const& name);
 
   /// @brief Create collections

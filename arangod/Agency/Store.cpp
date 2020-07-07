@@ -357,22 +357,31 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
       std::string endpoint, path;
       if (endpointPathFromUrl(url, endpoint, path)) {
 
+        LOG_TOPIC("9dbfc", TRACE, Logger::AGENCY) << "Sending callback to " << url;
         Agent* agent = _agent;
         try {
           network::sendRequest(cp, endpoint, fuerte::RestVerb::Post, path, *buffer, reqOpts).thenValue(
             [=](network::Response r) {
-              if (r.fail() || r.response->statusCode() >= 400) {
-                LOG_TOPIC("9dbf0", TRACE, Logger::AGENCY)
-                  << url << "(" << r.response->statusCode() << ", " << fuerte::to_string(r.error)
-                  << "): " << r.slice().toJson();
+                if (r.fail()) {
+                  LOG_TOPIC("9dbf1", TRACE, Logger::AGENCY)
+                      << url << "(no response, " << fuerte::to_string(r.error)
+                      << "): " << r.slice().toJson();
+                } else {
+                  if (r.response->statusCode() >= 400) {
+                    LOG_TOPIC("9dbf0", TRACE, Logger::AGENCY)
+                        << url << "(" << r.response->statusCode() << ", "
+                        << fuerte::to_string(r.error) << "): " << r.slice().toJson();
 
-                if (r.ok() && r.response->statusCode() == 404 && _agent != nullptr) {
-                  LOG_TOPIC("9dbfa", DEBUG, Logger::AGENCY) << "dropping dead callback at " << url;
-                  agent->trashStoreCallback(url, VPackSlice(buffer->data()));
+                    if (r.response->statusCode() == 404 && _agent != nullptr) {
+                      LOG_TOPIC("9dbfa", DEBUG, Logger::AGENCY)
+                          << "dropping dead callback at " << url;
+                      agent->trashStoreCallback(url, VPackSlice(buffer->data()));
+                    }
+                  } else {
+                    LOG_TOPIC("9dbfb", TRACE, Logger::AGENCY) << "Successfully sent callback to " << url;
+                  }
                 }
-              }
-
-            });
+              });
         } catch (std::exception const& ex) {
           LOG_TOPIC("c4612", DEBUG, Logger::AGENCY)
             << "Failed to deliver callback to endpoint " << endpoint << ": " << ex.what();
