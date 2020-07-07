@@ -378,7 +378,7 @@
     },
 
     // object: {"name": "Menu 1", func: function(), active: true/false }
-    buildSubNavBar: function (menuItems) {
+    buildSubNavBar: function (menuItems, disabled) {
       $('#subNavigationBar .bottom').html('');
       var cssClass;
 
@@ -388,14 +388,14 @@
         if (menu.active) {
           cssClass += ' active';
         }
-        if (menu.disabled) {
+        if (menu.disabled || disabled) {
           cssClass += ' disabled';
         }
 
         $('#subNavigationBar .bottom').append(
           '<li class="subMenuEntry ' + cssClass + '"><a>' + name + '</a></li>'
         );
-        if (!menu.disabled) {
+        if (!menu.disabled && !disabled) {
           $('#subNavigationBar .bottom').children().last().bind('click', function () {
             window.App.navigate(menu.route, {trigger: true});
           });
@@ -461,9 +461,9 @@
 
       menus[activeKey].active = true;
       if (disabled) {
-        menus[disabled].disabled = true;
+        menus[activeKey].disabled = true;
       }
-      this.buildSubNavBar(menus);
+      this.buildSubNavBar(menus, disabled);
     },
 
     buildServicesSubNav: function (activeKey, disabled) {
@@ -662,13 +662,6 @@
       docFrameView.render();
       docFrameView.setType(type);
 
-      /*
-      if (docFrameView.collection.toJSON().length === 0) {
-        this.closeDocEditor();
-        return;
-      }
-      */
-
       // remove header
       $('.arangoFrame .headerBar').remove();
       // remove edge edit feature
@@ -707,7 +700,13 @@
       $('.arangoFrame #saveDocumentButton').click(function () {
         docFrameView.saveDocument();
       });
+
+      // custom css (embedded view)
       $('.arangoFrame #deleteDocumentButton').css('display', 'none');
+      $('.document-link').hover(function() {
+        $(this).css('cursor','default');
+        $(this).css('text-decoration','none');
+      });
     },
 
     closeDocEditor: function () {
@@ -744,6 +743,14 @@
         contentType: 'application/json',
         processData: false,
         success: function (data) {
+          if (data && data.error) {
+            if (data.errorNum && data.errorMessage) {
+              arangoHelper.arangoError(`Error ${data.errorNum}`, data.errorMessage);
+            } else {
+              arangoHelper.arangoError('Failure', 'Got unexpected server response: ' + JSON.stringify(data));
+            }
+            return;
+          }
           if (callback) {
             callback(false, data);
           }
@@ -764,6 +771,18 @@
         contentType: 'application/json',
         processData: false,
         success: function (data) {
+          if (data.result && data.result.length > 0) {
+            _.each(data.result, function (resp) {
+              if (resp.error) {
+                if (resp.errorNum && resp.errorMessage) {
+                  arangoHelper.arangoError(`Error ${resp.errorNum}`, resp.errorMessage);
+                } else {
+                  arangoHelper.arangoError('Failure', 'Got unexpected server response: ' + JSON.stringify(resp));
+                }
+                return;
+              }
+            });
+          }
           if (callback) {
             callback(false, data);
           }
@@ -882,7 +901,6 @@
       if (refresh || this.CollectionTypes[identifier] === undefined) {
         var callback = function (error, data, toRun) {
           if (error) {
-            arangoHelper.arangoError('Error', 'Could not detect collection type');
             if (toRun) {
               toRun(error);
             }

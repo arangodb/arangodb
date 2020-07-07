@@ -332,7 +332,8 @@ void RestCollectionHandler::handleCommandPost() {
   }
 
 
-  // for some "security" a whitelist of allowed parameters
+  // for some "security" a list of allowed parameters (i.e. all
+  // others are disallowed!)
   VPackBuilder filtered = methods::Collections::filterInput(body);
   VPackSlice const parameters = filtered.slice();
 

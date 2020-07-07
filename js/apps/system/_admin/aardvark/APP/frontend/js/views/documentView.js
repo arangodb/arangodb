@@ -93,7 +93,6 @@
       var self = this;
       var callback = function (error, data, type) {
         if (error) {
-          arangoHelper.arangoError('Error', 'Document not found.');
           self.renderNotFound(type);
         } else {
           this.type = type;
@@ -107,13 +106,19 @@
       this.collection.getDocument(this.colid, this.docid, callback);
     },
 
-    renderNotFound: function (id) {
+    renderNotFound: function (id, isCollection) {
+      let message = 'Document not found';
+      let message2 = 'ID';
+      if (isCollection) {
+        message = 'Collection not found';
+        message2 = 'name';
+      }
       $('.document-info-div').remove();
       $('.headerButton').remove();
       $('.document-content-div').html(
         '<div class="infoBox errorBox">' +
         '<h4>Error</h4>' +
-        '<p>Document not found. Requested ID was: "' + id + '".</p>' +
+        '<p>' + message + '. Requested ' + message2 + ' was: "' + arangoHelper.escapeHtml(id) + '".</p>' +
         '</div>'
       );
     },

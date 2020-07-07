@@ -34,6 +34,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/system-functions.h"
 #include "Indexes/Index.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/Logger.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/utilities.h"
@@ -1750,7 +1751,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
         if (col != nullptr) {
           bool truncate = false;
 
-          if (col->name() == TRI_COL_NAME_USERS) {
+          if (col->name() == StaticStrings::UsersCollection) {
             // better not throw away the _users collection. otherwise it is gone
             // and this may be a problem if the
             // server crashes in-between.
@@ -1868,8 +1869,12 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
       return res.reset(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
 
-    if (masterName == TRI_COL_NAME_USERS) {
+    if (masterName == StaticStrings::UsersCollection) {
       reloadUsers();
+    } else if (masterName == StaticStrings::AnalyzersCollection &&
+               ServerState::instance()->isSingleServer() &&
+               vocbase().server().hasFeature<iresearch::IResearchAnalyzerFeature>()) {
+        vocbase().server().getFeature<iresearch::IResearchAnalyzerFeature>().invalidate(vocbase());
     }
 
     // schmutz++ creates indexes on DBServers

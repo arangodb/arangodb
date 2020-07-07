@@ -86,10 +86,6 @@ LoggerFeature::~LoggerFeature() {
 
 void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("log.tty", "log.foreground-tty");
-  options->addOldOption("log.content-filter", "");
-  options->addOldOption("log.source-filter", "");
-  options->addOldOption("log.application", "");
-  options->addOldOption("log.facility", "");
 
   options
       ->addOption("--log", "the global or topic-specific log level",
@@ -227,6 +223,11 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "include full URLs and HTTP request parameters in trace logs",
       new BooleanParameter(&_logRequestParameters),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  
+  options->addObsoleteOption("log.content-filter", "", true);
+  options->addObsoleteOption("log.source-filter", "", true);
+  options->addObsoleteOption("log.application", "", true);
+  options->addObsoleteOption("log.facility", "", true);
 }
 
 void LoggerFeature::loadOptions(std::shared_ptr<options::ProgramOptions>,
