@@ -2114,9 +2114,11 @@ function debug(query, bindVars, options) {
     views: {}
   };
 
-  if (!isCoordinator()) {
-    // engine stats not available in cluster?
+  try {
+    // engine stats may be not available in cluster, at least in older versions
     result.engineStats = db._engineStats();
+  } catch (err) {
+    // we need to ignore any errors here
   }
 
   result.fancy = require('@arangodb/aql/explainer').explain(input, { colors: false }, false);

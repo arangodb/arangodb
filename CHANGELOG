@@ -1,7 +1,43 @@
 devel
 -----
 
+
 * Fixed issue OASIS-252: Hotbackup agency locks without clientId.
+
+* Added support `db._engineStats()` API in coordinator. Previously calling this
+  API always produced an empty result. Now it will return the engine statistics
+  as an object, with an entry for each individual DB-Server.
+
+* Updated arangosync to 0.7.7.
+
+* Fixed a document parsing bug in the Web UI. This issue occured in the
+  document list view in case a document had an attribute called `length`.
+  The result was an incorrect representation of the document preview.
+
+* Improve readability of running and slow queries in web UI by properly left-
+  aligning the query strings.
+
+* The Web UI is not disabling the query import button after file upload takes
+  place.
+
+* The Web UI is now reporting errors properly in case of editing ArangoSearch
+  Views with invalid properties.
+
+* In case of a graph deletion failure, the Web UI displays now the correct
+  error message.
+
+* In case a document got requested via the UI of a collection which does not
+  exist, the UI now properly displays an error view instead of having a bad
+  display state.
+
+* Removed the edge id's hover styling in case of embedded document editor in
+  the Web UI as this functionality is disabled. This was misleading because
+  the elements are not clickable.
+
+* The Web UI now displays an error message inside the node information view in
+  case the user has no access to retreive the neccessary information.
+
+* Web UI: Removed unnecessary menubar entry in case of database node inspection.
 
 * Fixed a potential agency crash if trace logging is on.
 
