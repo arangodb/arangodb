@@ -302,6 +302,9 @@ arangodb::Result applyDBServerMatchesToPlan(VPackSlice const plan,
                                             std::map<ServerID, ServerID> const& matches,
                                             VPackBuilder& newPlan);
 
+/// @brief get the engine stats from all DB servers
+arangodb::Result getEngineStatsFromDBServers(ClusterFeature&, VPackBuilder& report);
+
 class ClusterMethods {
  public:
   // wrapper Class for static functions.
