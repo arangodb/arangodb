@@ -1,6 +1,10 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Fix cluster-internal request forwarding for VST requests that do not have
+  any Content-Type header set. Such requests could have been caused by the Java
+  driver. 
+
 * Updated arangosync to 0.7.7.
 
 * Fixed a document parsing bug in the Web UI. This issue occured in the

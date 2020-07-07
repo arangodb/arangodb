@@ -180,7 +180,15 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   network::RequestOptions options;
   options.database = dbname;
   options.timeout = network::Timeout(300);
-  options.contentType = rest::contentTypeToString(_request->contentType());
+  if (useVst && _request->contentType() == rest::ContentType::UNSET) {
+    // request is using VST, but doesn't have a Content-Type header set.
+    // it is likely VelocyPack content, so let's assume that here.
+    // should fix issue BTS-133.
+    options.contentType = rest::contentTypeToString(rest::ContentType::VPACK);
+  } else {
+    options.contentType = rest::contentTypeToString(_request->contentType());
+  }
+
   options.acceptType = rest::contentTypeToString(_request->contentTypeResponse());
   for (auto const& i : _request->values()) {
     options.param(i.first, i.second);
@@ -192,7 +200,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   VPackStringRef resPayload = _request->rawPayload();
   VPackBuffer<uint8_t> payload(resPayload.size());
   payload.append(resPayload.data(), resPayload.size());
-
+ 
   auto future = network::sendRequest(pool, "server:" + serverId, requestType,
                                      _request->requestPath(),
                                      std::move(payload), options, std::move(headers));
