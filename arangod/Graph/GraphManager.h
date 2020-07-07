@@ -99,7 +99,7 @@ class GraphManager {
   OperationResult findOrCreateCollectionsByEdgeDefinition(Graph const& graph,
                                                           EdgeDefinition const& edgeDefinition,
                                                           bool waitForSync,
-                                                          VPackSlice const options);
+                                                          VPackSlice options);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create a vertex collection
