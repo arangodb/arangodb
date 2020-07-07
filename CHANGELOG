@@ -5,6 +5,13 @@ v3.6.5 (XXXX-XX-XX)
   sendRequest calls were started but never completed due to the fact that
   the idle connection close triggered at exactly the same time.
 
+* Fixed potentially undefined behavior in syslog logger, with ident string going
+  out of scope after `openlog` was called.
+
+* Fix cluster-internal request forwarding for VST requests that do not have any
+  Content-Type header set. Such requests could have been caused by the Java
+  driver (ES-635).
+
 * Added vertex validation in case of a SmartGraph edge definition update.
 
 * Fix untenable ultra precondition for removeServer.

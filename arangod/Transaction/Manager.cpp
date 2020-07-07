@@ -422,7 +422,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
         // not found
         res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   std::string(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) +
-                      ":" + cname);
+                      ": " + cname);
       } else {
 #ifdef USE_ENTERPRISE
         if (state->isCoordinator()) {
