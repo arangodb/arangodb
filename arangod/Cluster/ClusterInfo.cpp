@@ -5003,6 +5003,9 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
           builder.add("old", VPackValue("Normal"));
         }
       }
+
+      builder.add(VPackValue(to_string(boost::uuids::random_generator()())));
+
     }
 
     {
@@ -5047,6 +5050,9 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
           builder.add("old", VPackValue("Maintenance"));
         }
       }
+
+      builder.add(VPackValue(to_string(boost::uuids::random_generator()())));
+
     }
   }
 

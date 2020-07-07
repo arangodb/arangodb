@@ -26,6 +26,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
+#include "Basics/exitcodes.h"
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
@@ -138,7 +139,7 @@ void EngineSelectorFeature::prepare() {
       LOG_TOPIC("3e975", FATAL, Logger::STARTUP)
           << "unable to determine storage engine '" << _engine << "'";
     }
-    FATAL_ERROR_EXIT();
+    FATAL_ERROR_EXIT_CODE(TRI_EXIT_UNSUPPORTED_STORAGE_ENGINE);
   }
 
   if (selected->second.deprecated) {
