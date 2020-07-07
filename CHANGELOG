@@ -1,6 +1,9 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Reinstate longer retention period for agency history (step size back to 1000,
+  keep size back to 50000).
+
 * Updated arangosync to 0.7.7.
 
 * Fixed a document parsing bug in the Web UI. This issue occured in the
