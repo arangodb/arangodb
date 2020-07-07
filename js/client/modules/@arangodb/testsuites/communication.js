@@ -27,6 +27,7 @@
 
 const functionsDocumentation = {
   'communication': 'communication tests',
+  'communication_ssl': 'communication tests with SSL'
 };
 const optionsDocumentation = [];
 
