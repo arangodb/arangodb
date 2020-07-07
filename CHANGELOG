@@ -1,6 +1,8 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Fix untenable ultra precondition for removeServer.
+
 * Fixed that the hotbackup agency lock is released under all circumstances using
   scope guards. This addresses a rare case in which the lock was left behind.
 
