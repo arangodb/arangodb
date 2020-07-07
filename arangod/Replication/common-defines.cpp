@@ -23,6 +23,7 @@
 
 #include <time.h>
 
+#include "Basics/StaticStrings.h"
 #include "Basics/system-functions.h"
 #include "Replication/common-defines.h"
 
@@ -69,7 +70,8 @@ bool TRI_ExcludeCollectionReplication(std::string const& name, bool includeSyste
     return true;
   } 
   
-  if (!includeFoxxQueues && (name == "_jobs" || name == "_queues")) {
+  if (!includeFoxxQueues && 
+      (name == StaticStrings::JobsCollection || name == StaticStrings::QueuesCollection)) {
     return true;
   }
 

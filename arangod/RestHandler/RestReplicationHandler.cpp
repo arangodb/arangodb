@@ -1442,7 +1442,7 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
       ExecContext::current().isSuperuser() ||
       (ExecContext::current().isAdminUser() && !ServerState::readOnly()));
 
-  if (colName == TRI_COL_NAME_USERS) {
+  if (colName == StaticStrings::UsersCollection) {
     // We need to handle the _users in a special way
     return processRestoreUsersBatch(colName);
   } else if (colName == StaticStrings::AnalyzersCollection &&
@@ -1458,10 +1458,7 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
   Result res = trx.begin();
 
   if (!res.ok()) {
-    res.reset(res.errorNumber(), std::string("unable to start transaction (") +
-                                     std::string(__FILE__) + std::string(":") +
-                                     std::to_string(__LINE__) +
-                                     std::string("): ") + res.errorMessage());
+    res.reset(res.errorNumber(), std::string("unable to start transaction: ") + res.errorMessage());
     return res;
   }
 
@@ -1737,7 +1734,7 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
     return Result(TRI_ERROR_INTERNAL);
   }
   bool const isUsersOnCoordinator = (ServerState::instance()->isCoordinator() &&
-                                     collectionName == TRI_COL_NAME_USERS);
+                                     collectionName == StaticStrings::UsersCollection);
 
   LogicalCollection* collection = trx.documentCollection(collectionName);
   if (generateNewRevisionIds && !collection) {

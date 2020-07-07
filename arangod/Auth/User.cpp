@@ -559,11 +559,11 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
   bool isSystem = cname[0] == '_';
   if (isSystem) {
     // disallow access to _system/_users for everyone
-    if (dbname == StaticStrings::SystemDatabase && cname == TRI_COL_NAME_USERS) {
+    if (dbname == StaticStrings::SystemDatabase && cname == StaticStrings::UsersCollection) {
       return auth::Level::NONE;
-    } else if (cname == "_queues") {
+    } else if (cname == StaticStrings::QueuesCollection) {
       return auth::Level::RO;
-    } else if (cname == "_frontend") {
+    } else if (cname == StaticStrings::FrontendCollection) {
       return auth::Level::RW;
     }
     return databaseAuthLevel(dbname);
