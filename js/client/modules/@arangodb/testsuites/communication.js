@@ -38,17 +38,28 @@ const testPaths = {
 };
 
 function communication (options) {
-  let name = 'communication';
-
   let testCases = tu.scanTestPaths(testPaths.communication, options);
   testCases = tu.splitBuckets(options, testCases);
 
-  return tu.performTests(options, testCases, name, tu.runInLocalArangosh);
+  return tu.performTests(options, testCases, 'communication', tu.runInLocalArangosh);
+}
+
+function communicationSsl (options) {
+  let opts = {
+    'httpTrustedOrigin': 'http://was-erlauben-strunz.it',
+    'protocol': 'ssl'
+  };
+  _.defaults(opts, options);
+  let testCases = tu.scanTestPaths(testPaths.communication, options);
+  testCases = tu.splitBuckets(options, testCases);
+
+  return tu.performTests(opts, testCases, 'communication-ssl', tu.runInLocalArangosh);
 }
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['communication'] = communication;
+  testFns['communication_ssl'] = communicationSsl;
   
   // intentionally not turned on by default, as the suite may take a lot of time
   // defaultFns.push('communication');
