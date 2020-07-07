@@ -126,7 +126,6 @@ void LogAppenderStream::logMessage(LogMessage const& message) {
 
 LogAppenderFile::LogAppenderFile(std::string const& filename) 
     : LogAppenderStream(filename, -1), _filename(filename) {
-  std::cout << "THE FILENAME: " << _filename << std::endl;
   if (_filename != "+" && _filename != "-") {
     // logging to an actual file
     std::unique_lock<std::mutex> guard(_openAppendersMutex);
@@ -173,7 +172,6 @@ LogAppenderFile::LogAppenderFile(std::string const& filename)
       }
     }
   }
-  std::cout << "THE FILENAME: " << _filename << ", FD: " << _fd << std::endl ;
 
   _useColors = ((isatty(_fd) == 1) && Logger::getUseColor());
 }
@@ -183,7 +181,7 @@ LogAppenderFile::~LogAppenderFile() {
     // remove ourselves from the list of open appenders
     std::unique_lock<std::mutex> guard(_openAppendersMutex);
     for (auto it = _openAppenders.begin(); it != _openAppenders.end(); /* no hoisting */) {
-      if ((*it)->filename() == _filename) {
+      if ((*it) == this) {
         it = _openAppenders.erase(it);
       } else {
         ++it;
@@ -302,6 +300,7 @@ void LogAppenderFile::closeAll() {
       TRI_CLOSE(fd);
     }
   }
+  _openAppenders.clear();
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -322,15 +321,6 @@ void LogAppenderFile::setAppenders(std::vector<std::tuple<int, std::string, LogA
   _openAppenders.clear();
   for (auto const& it : appenders) {
     _openAppenders.emplace_back(std::get<2>(it));
-  }
-}
-
-void LogAppenderFile::clear() {
-  closeAll();
-  
-  {
-    std::unique_lock<std::mutex> guard(_openAppendersMutex);
-    _openAppenders.clear();
   }
 }
 #endif

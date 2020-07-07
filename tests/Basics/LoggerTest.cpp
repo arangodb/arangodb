@@ -61,7 +61,7 @@ class LoggerTest : public ::testing::Test {
     FileUtils::remove(logfile1);
     FileUtils::remove(logfile2);
     // remove any previous loggers
-    LogAppenderFile::clear();
+    LogAppenderFile::closeAll();
   }
 
   ~LoggerTest() {
@@ -95,7 +95,7 @@ TEST_F(LoggerTest, test_fds) {
   EXPECT_EQ(content.find("some error message"), std::string::npos);
   EXPECT_NE(content.find("some warning message"), std::string::npos);
 
-  LogAppenderFile::clear();
+  LogAppenderFile::closeAll();
 }
 
 TEST_F(LoggerTest, test_fds_after_reopen) {
@@ -142,5 +142,5 @@ TEST_F(LoggerTest, test_fds_after_reopen) {
   EXPECT_EQ(content.find("some warning message"), std::string::npos);
   EXPECT_NE(content.find("some other warning message"), std::string::npos);
 
-  LogAppenderFile::clear();
+  LogAppenderFile::closeAll();
 }

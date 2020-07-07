@@ -101,8 +101,6 @@ class LogAppenderFile : public LogAppenderStream {
   static std::vector<std::tuple<int, std::string, LogAppenderFile*>> getAppenders();
 
   static void setAppenders(std::vector<std::tuple<int, std::string, LogAppenderFile*>> const& fds);
-  
-  static void clear();
 #endif
 
   static void setFileMode(int mode) { _fileMode = mode; }
