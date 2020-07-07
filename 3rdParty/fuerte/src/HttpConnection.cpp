@@ -295,7 +295,7 @@ void HttpConnection<ST>::startWriting() {
       } else {
         this->asyncWriteNextRequest();
       }
-      
+
     }
   }
 #endif
@@ -428,6 +428,7 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
   }
   this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
 
+  assert(ptr != nullptr);
   std::unique_ptr<http::RequestItem> item(ptr);
   setTimeout(item->request->timeout(), TimeoutType::WRITE);
   _timeoutOnReadWrite = false;
