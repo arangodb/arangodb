@@ -1,6 +1,10 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Fixed a sleeping barber in Fuerte HTTPConnection. It was possible that
+  sendRequest calls were started but never completed due to the fact that
+  the idle connection close triggered at exactly the same time.
+
 * Fixed a document parsing bug in the Web UI. This issue occured in the
   document list view in case a document had an attribute called `length`.
   The result was an incorrect representation of the document preview.
