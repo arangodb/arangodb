@@ -21,5 +21,5 @@ void TRI_InitializeExitMessages() {
   REG_EXIT(EXIT_COULD_NOT_LOCK, "could not lock - another process could be running");
   REG_EXIT(EXIT_RECOVERY, "recovery failed");
   REG_EXIT(EXIT_DB_NOT_EMPTY, "database not empty");
-  REG_EXIT(EXIT_UNSUPPORTED_STORAGE_ENGINE, "unsupported storage egnine");
+  REG_EXIT(EXIT_UNSUPPORTED_STORAGE_ENGINE, "unsupported storage engine");
 }

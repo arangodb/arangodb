@@ -86,7 +86,7 @@ ${Switch} $1
   ${Break}
 
   ${Case} 25 # EXIT_UNSUPPORTED_STORAGE_ENGINE
-    MessageBox MB_ICONEXCLAMATION '$2:$\r$\n>> unsupported storage egnine <<$\r$\n"Will be returned when trying to start with an unsupported storage engine"$\r$\n$3'
+    MessageBox MB_ICONEXCLAMATION '$2:$\r$\n>> unsupported storage engine <<$\r$\n"Will be returned when trying to start with an unsupported storage engine"$\r$\n$3'
   ${Break}
 
   ${Default}
