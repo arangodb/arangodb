@@ -809,6 +809,184 @@ TEST_F(IResearchAnalyzerFeatureTest, test_renormalize_for_equal) {
   }
 }
 
+TEST_F(IResearchAnalyzerFeatureTest, test_bulk_emplace_valid) {
+  arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
+  auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
+  auto vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
+  EXPECT_TRUE(feature
+                .bulkEmplace(*vocbase, VPackParser::fromJson("[{\"name\":\"b_abcd\", \"type\":\"identity\"}]")->slice())
+                .ok());
+  auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::b_abcd", 
+                          arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+  ASSERT_NE(pool, nullptr);
+  EXPECT_EQ(irs::flags(), pool->features());
+  EXPECT_EQ("identity", pool->type());
+}
+
+TEST_F(IResearchAnalyzerFeatureTest, test_bulk_emplace_multiple_valid) {
+  arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
+  auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
+  auto vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
+  EXPECT_TRUE(feature
+                .bulkEmplace(*vocbase, VPackParser::fromJson(
+                                        "[{\"name\":\"b_abcd\", \"type\":\"identity\"},"
+                                           "{\"name\":\"b_abcd2\", \"type\":\"TestAnalyzer\"," 
+                                            "\"properties\":{\"args\":\"abc\"}," 
+                                            "\"features\":[\"frequency\", \"position\", \"norm\"]}"
+                                        "]")->slice())
+                .ok());
+  {
+    auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::b_abcd",
+      arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+    ASSERT_NE(pool, nullptr);
+    EXPECT_EQ(irs::flags(), pool->features());
+    EXPECT_EQ("identity", pool->type());
+  }
+  {
+    auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::b_abcd2",
+      arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+    ASSERT_NE(pool, nullptr);
+    EXPECT_EQ(irs::flags({irs::type<irs::norm>::get(),
+                          irs::type<irs::frequency>::get(),
+                          irs::type<irs::position>::get()}), pool->features());
+    EXPECT_EQ("TestAnalyzer", pool->type());
+    EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\":\"abc\"}")->slice(), pool->properties());
+  }
+}
+
+TEST_F(IResearchAnalyzerFeatureTest, test_bulk_emplace_multiple_skip_invalid_features) {
+  arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
+  auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
+  auto vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
+  EXPECT_TRUE(feature
+                .bulkEmplace(*vocbase, VPackParser::fromJson(
+                                        "[{\"name\":\"b_abcd\", \"type\":\"identity\"},"
+                                         "{\"name\":\"b_abcd2\", \"type\":\"TestAnalyzer\"," 
+                                          "\"properties\":{\"args\":\"abc\"}," 
+                                          "\"features\":[\"frequency\", \"posAAAAition\", \"norm\"]},"
+                                         "{\"name\":\"b_abcd3\", \"type\":\"identity\"}"
+                                        "]")->slice())
+                .ok());
+  {
+    auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::b_abcd",
+      arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+    ASSERT_NE(pool, nullptr);
+    EXPECT_EQ(irs::flags(), pool->features());
+    EXPECT_EQ("identity", pool->type());
+  }
+  {
+    auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::b_abcd2",
+      arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+    ASSERT_EQ(pool, nullptr);
+  }
+  {
+    auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::b_abcd3",
+      arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+    ASSERT_NE(pool, nullptr);
+    EXPECT_EQ(irs::flags(), pool->features());
+    EXPECT_EQ("identity", pool->type());
+  }
+}
+
+TEST_F(IResearchAnalyzerFeatureTest, test_bulk_emplace_multiple_skip_invalid_name) {
+  arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
+  auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
+  auto vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
+  EXPECT_TRUE(feature
+                .bulkEmplace(*vocbase, VPackParser::fromJson(
+                                         "[{\"name\":\"b_abcd\", \"type\":\"identity\"},"
+                                          "{\"no_name\":\"b_abcd2\", \"type\":\"identity\"}," 
+                                          "{\"name\":\"b_abcd3\", \"type\":\"identity\"}"
+                                         "]")->slice())
+                .ok());
+  {
+    auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::b_abcd",
+      arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+    ASSERT_NE(pool, nullptr);
+    EXPECT_EQ(irs::flags(), pool->features());
+    EXPECT_EQ("identity", pool->type());
+  }
+  {
+    auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::b_abcd2",
+      arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+    ASSERT_EQ(pool, nullptr);
+  }
+  {
+    auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::b_abcd3",
+      arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+    ASSERT_NE(pool, nullptr);
+    EXPECT_EQ(irs::flags(), pool->features());
+    EXPECT_EQ("identity", pool->type());
+  }
+}
+
+TEST_F(IResearchAnalyzerFeatureTest, test_bulk_emplace_multiple_skip_invalid_type) {
+  arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
+  auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
+  auto vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
+  EXPECT_TRUE(feature
+                .bulkEmplace(*vocbase, VPackParser::fromJson(
+                                         "[{\"name\":\"b_abcd\", \"type\":\"identity\"},"
+                                          "{\"name\":\"b_abcd2\", \"no_type\":\"identity\"}," 
+                                          "{\"name\":\"b_abcd3\", \"type\":\"identity\"}"
+                                         "]")->slice())
+                .ok());
+  {
+    auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::b_abcd",
+      arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+    ASSERT_NE(pool, nullptr);
+    EXPECT_EQ(irs::flags(), pool->features());
+    EXPECT_EQ("identity", pool->type());
+  }
+  {
+    auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::b_abcd2",
+      arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+    ASSERT_EQ(pool, nullptr);
+  }
+  {
+    auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::b_abcd3",
+      arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+    ASSERT_NE(pool, nullptr);
+    EXPECT_EQ(irs::flags(), pool->features());
+    EXPECT_EQ("identity", pool->type());
+  }
+}
+
+TEST_F(IResearchAnalyzerFeatureTest, test_bulk_emplace_multiple_skip_invalid_properties) {
+  arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
+  auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
+  auto vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
+  EXPECT_TRUE(feature
+                .bulkEmplace(*vocbase, VPackParser::fromJson(
+                                        "[{\"name\":\"b_abcd\", \"type\":\"identity\"},"
+                                         "{\"name\":\"b_abcd2\", \"type\":\"TestAnalyzer\"," 
+                                          "\"properties\":{\"invalid_args\":\"abc\"}," 
+                                          "\"features\":[\"frequency\", \"position\", \"norm\"]},"
+                                         "{\"name\":\"b_abcd3\", \"type\":\"identity\"}"
+                                        "]")->slice())
+                .ok());
+  {
+    auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::b_abcd",
+      arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+    ASSERT_NE(pool, nullptr);
+    EXPECT_EQ(irs::flags(), pool->features());
+    EXPECT_EQ("identity", pool->type());
+  }
+  {
+    auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::b_abcd2",
+      arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+    ASSERT_EQ(pool, nullptr);
+  }
+  {
+    auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::b_abcd3",
+      arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+    ASSERT_NE(pool, nullptr);
+    EXPECT_EQ(irs::flags(), pool->features());
+    EXPECT_EQ("identity", pool->type());
+  }
+}
+
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    get test suite
 // -----------------------------------------------------------------------------
