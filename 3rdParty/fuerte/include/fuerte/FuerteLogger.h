@@ -23,7 +23,7 @@
 
 // Please leave the following debug code in for the next time we have to
 // debug fuerte.
-#ifdef 0
+#if 0
 #include <sstream>
 #include <iostream>
 
