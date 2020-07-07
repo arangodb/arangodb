@@ -393,8 +393,9 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
   bool const isSystem = coll->system();
-  bool const isUsers = coll->name() == TRI_COL_NAME_USERS; 
+  bool const isUsers = coll->name() == StaticStrings::UsersCollection;
   bool const isAnalyzers = coll->name() == StaticStrings::AnalyzersCollection;
+  
   // extract "data"
   VPackSlice const data = slice.get(::dataRef);
 
