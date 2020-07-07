@@ -1,9 +1,9 @@
 devel
 -----
 
-* Fix cluster-internal request forwarding for VST requests that do not have
-  any Content-Type header set. Such requests could have been caused by the Java
-  driver. 
+* Fix cluster-internal request forwarding for VST requests that do not have any
+  Content-Type header set. Such requests could have been caused by the Java
+  driver (ES-635).
 
 * Fixed issue OASIS-252: Hotbackup agency locks without clientId.
 
