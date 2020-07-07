@@ -4,7 +4,7 @@ import csv, json, sys, os.path, re, io
 os.system("cd js/node && npx license-checker --relativeLicensePath --json > OUT")
 
 nv_re = re.compile(r'(@?[^@]*)@([^@]*)')
-git = "https://raw.githubusercontent.com/arangodb/arangodb/devel"
+git = "https://raw.githubusercontent.com/arangodb/arangodb/3.7"
 
 with io.open('js/node/OUT') as f:
     licenses = json.load(f)
