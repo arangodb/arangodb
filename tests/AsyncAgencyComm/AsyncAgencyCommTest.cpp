@@ -130,7 +130,6 @@ struct AsyncAgencyCommPoolMock final : public network::ConnectionPool {
 
     void validateRequest(std::unique_ptr<fuerte::Request> const& req) {
       // check request
-
       ASSERT_GT(_mock->_requests.size(), 0);
       auto& expectReq = _mock->_requests.front();
 
@@ -138,13 +137,8 @@ struct AsyncAgencyCommPoolMock final : public network::ConnectionPool {
       ASSERT_EQ(expectReq.method, req->header.restVerb);
       ASSERT_EQ(expectReq.url, req->header.path);
 
-      VPackSlice expReqBd = VPackSlice(expectReq.body.data());
-      for (size_t i = 0; i < expReqBd.length(); ++i) {
-        for (size_t j = 0; j < expReqBd[i].length(); ++j) {
-          ASSERT_EQ(expReqBd[i][j].toJson(), req->slice()[i][j].toJson());
-        }
-      }
-
+      // LOG_DEVEL << VPackSlice(expectReq.body.data()).toJson() << " " << req->slice().toJson();
+      ASSERT_EQ(VPackSlice(expectReq.body.data()).toJson(), req->slice().toJson());
     }
 
     void sendRequest(std::unique_ptr<fuerte::Request> req,
@@ -550,6 +544,30 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_read_only_timeout_not_found) {
   compareEndpoints(manager.endpoints(),
                    {"http+tcp://10.0.0.3:8529", "http+tcp://10.0.0.1:8529",
                     "http+tcp://10.0.0.2:8529"});
+}
+
+TEST_F(AsyncAgencyCommTest, send_with_failover_write_no_cids_timeout) {
+  AsyncAgencyCommPoolMock pool(config());
+  pool.expectRequest("http+tcp://10.0.0.1:8529", fuerte::RestVerb::Post,
+                     "/_api/agency/write", R"=([[{"a":12}, {}]])="_vpack)
+      .returnError(fuerte::Error::Timeout);
+
+  AsyncAgencyCommManager manager(server.server());
+  manager.pool(&pool);
+  manager.updateEndpoints({
+      "http+tcp://10.0.0.1:8529",
+      "http+tcp://10.0.0.2:8529",
+      "http+tcp://10.0.0.3:8529",
+  });
+
+  auto result = AsyncAgencyComm(manager)
+                    .sendWriteTransaction(10s, R"=([[{"a":12}, {}]])="_vpack)
+                    .get();
+  ASSERT_EQ(result.error, fuerte::Error::Timeout);
+
+  compareEndpoints(manager.endpoints(),
+                   {"http+tcp://10.0.0.2:8529", "http+tcp://10.0.0.3:8529",
+                    "http+tcp://10.0.0.1:8529"});
 }
 
 TEST_F(AsyncAgencyCommTest, get_values) {
