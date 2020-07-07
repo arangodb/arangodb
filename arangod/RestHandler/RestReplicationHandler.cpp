@@ -1062,7 +1062,7 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
     TRI_ASSERT(col);
     if (dropExisting) {
       try {
-        auto dropResult = methods::Collections::drop(*col, true, 0.0);
+        auto dropResult = methods::Collections::drop(*col, true, 0.0, true);
         if (dropResult.fail()) {
           if (dropResult.is(TRI_ERROR_FORBIDDEN) || dropResult.is(TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE)) {
             // If we are not allowed to drop the collection.

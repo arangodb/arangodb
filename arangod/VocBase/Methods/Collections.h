@@ -117,7 +117,8 @@ struct Collections {
   static arangodb::Result drop(           // drop collection
       arangodb::LogicalCollection& coll,  // collection to drop
       bool allowDropSystem,               // allow dropping system collection
-      double timeout                      // single-server drop timeout
+      double timeout,                     // single-server drop timeout
+      bool keepUserRights = false         // flag if we want to keep access rights in-place
   );
 
   static futures::Future<Result> warmup(TRI_vocbase_t& vocbase,
