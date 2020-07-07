@@ -270,12 +270,8 @@ void HttpConnection<ST>::finishConnect() {
   if (this->_state.compare_exchange_strong(exp, Connection::State::Connected)) {
     this->asyncWriteNextRequest();  // starts writing queue if non-empty
   } else {
-    std::abort();
+    FUERTE_LOG_DEBUG << "Fuerte: finishConnect found state other than Connecting, ignoring for now";
   }
-#if 0
-  this->_state = Connection::State::Connected;
-  this->asyncWriteNextRequest();  // starts writing queue if non-empty
-#endif
 }
 
 // Thread-Safe: activate the combined write-read loop
