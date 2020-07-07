@@ -3778,7 +3778,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
     }
 
     auto releaseAgencyLock = scopeGuard([&]{
-      LOG_TOPIC("52416", INFO, Logger::BACKUP)
+      LOG_TOPIC("52416", DEBUG, Logger::BACKUP)
           << "Releasing agency lock with scope guard! backupId: " << backupId;
       ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
     });
@@ -3786,8 +3786,8 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
     if (end < steady_clock::now()) {
       LOG_TOPIC("352d6", INFO, Logger::BACKUP)
           << "hot backup didn't get to locking phase within " << timeout << "s.";
-      auto hlRes = ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
-      releaseAgencyLock.cancel();
+      // release the lock
+      releaseAgencyLock.fire();
 
       events::CreateHotbackup(timeStamp + "_" + backupId, TRI_ERROR_CLUSTER_TIMEOUT);
       return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT,
@@ -3797,9 +3797,10 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
     // acquire agency dump
     auto agency = std::make_shared<VPackBuilder>();
     result = ci.agencyPlan(agency);
+
     if (!result.ok()) {
-      ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
-      releaseAgencyLock.cancel();
+      // release the lock
+      releaseAgencyLock.fire();
       result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
                    std::string("failed to acquire agency dump: ") + result.errorMessage());
       LOG_TOPIC("c014d", ERR, Logger::BACKUP) << result.errorMessage();
@@ -3823,8 +3824,8 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
         unlockDBServerTransactions(backupId, lockedServers);
         lockedServers.clear();
         if (result.is(TRI_ERROR_LOCAL_LOCK_FAILED)) {  // Unrecoverable
-          ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
-          releaseAgencyLock.cancel();
+          // release the lock
+          releaseAgencyLock.fire();
           events::CreateHotbackup(timeStamp + "_" + backupId, TRI_ERROR_LOCAL_LOCK_FAILED);
           return result;
         }
@@ -3901,8 +3902,8 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
     // and we are in the case of a force backup we want to continue here
     if (!gotLocks && !allowInconsistent) {
       unlockDBServerTransactions(backupId, dbServers);
-      ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
-      releaseAgencyLock.cancel();
+      // release the lock
+      releaseAgencyLock.fire();
       result.reset(
           TRI_ERROR_HOT_BACKUP_INTERNAL,
           std::string(
@@ -3919,8 +3920,8 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
                                 /* force */ !gotLocks, meta);
     if (!result.ok()) {
       unlockDBServerTransactions(backupId, dbServers);
-      ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
-      releaseAgencyLock.cancel();
+      // release the lock
+      releaseAgencyLock.fire();
       result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
                    std::string("failed to hot backup on all db servers: ") +
                        result.errorMessage());
@@ -3931,9 +3932,9 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
     }
 
     unlockDBServerTransactions(backupId, dbServers);
-    ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
-    releaseAgencyLock.cancel();
-
+    // release the lock
+    releaseAgencyLock.fire();
+    
     auto agencyCheck = std::make_shared<VPackBuilder>();
     result = ci.agencyPlan(agencyCheck);
     if (!result.ok()) {
