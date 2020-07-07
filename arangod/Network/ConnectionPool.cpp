@@ -180,12 +180,6 @@ ConnectionPool::Context::Context(std::shared_ptr<fuerte::Connection> c,
 std::shared_ptr<fuerte::Connection> ConnectionPool::createConnection(fuerte::ConnectionBuilder& builder) {
   //auto idle = std::chrono::milliseconds(_config.idleConnectionMilli);
   auto idle = std::chrono::milliseconds(2);
-  //static int lastIdle = 2;
-  //LOG_TOPIC("asdwe", ERR, Logger::CLUSTER) << "Reset lastIdle";
-  //auto idle = std::chrono::milliseconds(lastIdle++);
-  //if (lastIdle >= 15) {
-  //  lastIdle = 2;
-  //}
   builder.idleTimeout(idle);
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af != nullptr && af->isActive()) {
