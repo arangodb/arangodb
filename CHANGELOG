@@ -1,18 +1,21 @@
 devel
 -----
 
+* Fix cluster-internal request forwarding for VST requests that do not have
+  any Content-Type header set. Such requests could have been caused by the Java
+  driver. 
+
 * Fixed issue OASIS-252: Hotbackup agency locks without clientId.
 
 * The `_from` and `_to` attributes of an edge document can now be edited from
   within the UI.
 
 * Added vertex collection validation in case of a SmartGraph edge definition update. 
+* Updated arangosync to 0.7.7.
 
 * Added support `db._engineStats()` API in coordinator. Previously calling this
   API always produced an empty result. Now it will return the engine statistics
   as an object, with an entry for each individual DB-Server.
-
-* Updated arangosync to 0.7.7.
 
 * Fixed a document parsing bug in the Web UI. This issue occured in the
   document list view in case a document had an attribute called `length`.
