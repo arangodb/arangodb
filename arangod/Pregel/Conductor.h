@@ -81,7 +81,6 @@ class Conductor {
   uint64_t _maxSuperstep = 500;
   /// determines whether we support async execution
   bool _asyncMode = false;
-  bool _lazyLoading = false;
   bool _useMemoryMaps = false;
   bool _storeResults = false;
 

@@ -1877,8 +1877,8 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
 
   RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
   if (state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    // blacklist new document to avoid caching without committing first
-    blackListKey(key.ref());
+    // banish new document to avoid caching without committing first
+    invalidateCacheEntry(key.ref());
   }
 
   RocksDBMethods* mthds = state->rocksdbMethods();
@@ -1932,7 +1932,7 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
   RocksDBKeyLeaser key(trx);
   key->constructDocument(objectId(), documentId);
 
-  blackListKey(key.ref());
+  invalidateCacheEntry(key.ref());
 
   RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
 
@@ -1995,7 +1995,7 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   RocksDBKeyLeaser key(trx);
   key->constructDocument(objectId(), oldDocumentId);
   TRI_ASSERT(key->containsLocalDocumentId(oldDocumentId));
-  blackListKey(key.ref());
+  invalidateCacheEntry(key.ref());
 
   rocksdb::Status s = mthds->SingleDelete(RocksDBColumnFamily::documents(), key.ref());
   if (!s.ok()) {
@@ -2012,8 +2012,8 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   }
 
   if (state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    // blacklist new document to avoid caching without committing first
-    blackListKey(key.ref());
+    // banish new document to avoid caching without committing first
+    invalidateCacheEntry(key.ref());
   }
 
   READ_LOCKER(guard, _indexesLock);
@@ -2197,16 +2197,16 @@ void RocksDBCollection::destroyCache() const {
   _cache.reset();
 }
 
-// blacklist given key from transactional cache
-void RocksDBCollection::blackListKey(RocksDBKey const& k) const {
+// banish given key from transactional cache
+void RocksDBCollection::invalidateCacheEntry(RocksDBKey const& k) const {
   if (useCache()) {
     TRI_ASSERT(_cache != nullptr);
-    bool blacklisted = false;
-    while (!blacklisted) {
-      auto status = _cache->blacklist(k.buffer()->data(),
-                                      static_cast<uint32_t>(k.buffer()->size()));
+    bool banished = false;
+    while (!banished) {
+      auto status = _cache->banish(k.buffer()->data(),
+                                   static_cast<uint32_t>(k.buffer()->size()));
       if (status.ok()) {
-        blacklisted = true;
+        banished = true;
       } else if (status.errorNumber() == TRI_ERROR_SHUTTING_DOWN) {
         destroyCache();
         break;

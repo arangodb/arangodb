@@ -795,7 +795,7 @@
         if (!error) {
           this.documentView.setType();
         } else {
-          console.log('Error', 'Could not fetch collection type');
+          this.documentView.renderNotFound(colid, true);
         }
       }.bind(this);
 
