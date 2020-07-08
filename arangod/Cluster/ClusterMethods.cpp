@@ -3750,10 +3750,17 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       return result;
     }
 
+    auto releaseAgencyLock = scopeGuard([&]{
+      LOG_TOPIC("52416", DEBUG, Logger::BACKUP)
+          << "Releasing agency lock with scope guard! backupId: " << backupId;
+      ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+    });
+
     if (end < steady_clock::now()) {
       LOG_TOPIC("352d6", INFO, Logger::BACKUP)
           << "hot backup didn't get to locking phase within " << timeout << "s.";
-      auto hlRes = ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+      // release the lock
+      releaseAgencyLock.fire();
 
       events::CreateHotbackup(timeStamp + "_" + backupId, TRI_ERROR_CLUSTER_TIMEOUT);
       return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT,
@@ -3765,7 +3772,8 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
     result = ci.agencyPlan(agency);
 
     if (!result.ok()) {
-      ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+      // release the lock
+      releaseAgencyLock.fire();
       result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
                    std::string("failed to acquire agency dump: ") + result.errorMessage());
       LOG_TOPIC("c014d", ERR, Logger::BACKUP) << result.errorMessage();
@@ -3784,7 +3792,8 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
         unlockDBServerTransactions(pool, backupId, lockedServers);
         lockedServers.clear();
         if (result.is(TRI_ERROR_LOCAL_LOCK_FAILED)) {  // Unrecoverable
-          ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+          // release the lock
+          releaseAgencyLock.fire();
           events::CreateHotbackup(timeStamp + "_" + backupId, TRI_ERROR_LOCAL_LOCK_FAILED);
           return result;
         }
@@ -3815,7 +3824,6 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       auto releaseLocks = scopeGuard([&]{
         hotbackupCancelAsyncLocks(pool, lockJobIds, lockedServers);
         unlockDBServerTransactions(pool, backupId, lockedServers);
-        ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
       });
 
       // we have to reset the timeout, otherwise the code below will exit too soon
@@ -3862,7 +3870,8 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
     // and we are in the case of a force backup we want to continue here
     if (!gotLocks && !allowInconsistent) {
       unlockDBServerTransactions(pool, backupId, dbServers);
-      ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+      // release the lock
+      releaseAgencyLock.fire();
       result.reset(
           TRI_ERROR_HOT_BACKUP_INTERNAL,
           std::string(
@@ -3880,7 +3889,8 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
                                 /* force */ !gotLocks, meta);
     if (!result.ok()) {
       unlockDBServerTransactions(pool, backupId, dbServers);
-      ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+      // release the lock
+      releaseAgencyLock.fire();
       result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
                    std::string("failed to hot backup on all db servers: ") +
                        result.errorMessage());
@@ -3891,7 +3901,8 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
     }
 
     unlockDBServerTransactions(pool, backupId, dbServers);
-    ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+    // release the lock
+    releaseAgencyLock.fire();
 
     auto agencyCheck = std::make_shared<VPackBuilder>();
     result = ci.agencyPlan(agencyCheck);
@@ -3899,10 +3910,9 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       if (!allowInconsistent) {
         removeLocalBackups(pool, backupId, dbServers, dummy);
       }
-      ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
       result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
                    std::string("failed to acquire agency dump post backup: ") +
-                       result.errorMessage() + " backup's intergrity is not guaranteed");
+                       result.errorMessage() + " backup's integrity is not guaranteed");
       LOG_TOPIC("d4229", ERR, Logger::BACKUP) << result.errorMessage();
       events::CreateHotbackup(timeStamp + "_" + backupId, result.errorNumber());
       return result;
