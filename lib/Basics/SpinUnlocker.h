@@ -24,7 +24,6 @@
 #ifndef ARANGO_SPIN_UNLOCKER_H
 #define ARANGO_SPIN_UNLOCKER_H 1
 
-#include <atomic>
 #include <cstdint>
 
 #include "Basics/ReadWriteSpinLock.h"
