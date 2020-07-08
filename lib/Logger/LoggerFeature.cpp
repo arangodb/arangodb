@@ -29,7 +29,6 @@
 #endif
 
 #ifdef TRI_HAVE_UNISTD_H
-#include <fuerte/FuerteLogger.h>
 #include <unistd.h>
 #endif
 
