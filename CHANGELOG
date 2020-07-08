@@ -1,6 +1,9 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Added missing state rollback for failed attempt-based write locking of spin
+  locks.
+
 * Disable internal network protocol switch for cluster-internal communication,
   and hard-code the internal communication protocol to HTTP.
 
