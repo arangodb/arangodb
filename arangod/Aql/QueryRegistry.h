@@ -46,9 +46,9 @@ class QueryRegistry {
 
  public:
   
-  enum class EngineType {
-    Execution,
-    Graph
+  enum class EngineType : uint8_t {
+    Execution = 1,
+    Graph = 2
   };
   
   /// @brief insert, this inserts the query <query> for the vocbase <vocbase>
@@ -117,8 +117,8 @@ class QueryRegistry {
   void disallowInserts();
   
   /// use on coordinator to register snippets
-  void registerEngines(SnippetList const&);
-  void unregisterEngines(SnippetList const&);
+  void registerSnippets(SnippetList const&);
+  void unregisterSnippets(SnippetList const&) noexcept;
 
   /// @brief return the default TTL value
   TEST_VIRTUAL double defaultTTL() const { return _defaultTTL; }
@@ -139,7 +139,7 @@ class QueryRegistry {
     size_t _numOpen;
   };
 
-  struct EngineInfo {
+  struct EngineInfo final {
     EngineInfo(EngineInfo const&) = delete;
     EngineInfo& operator=(EngineInfo const&) = delete;
     

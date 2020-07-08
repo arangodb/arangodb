@@ -39,9 +39,6 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   ~SharedQueryState() = default;
 
   void invalidate();
-  bool isValid() const {
-    return _valid.load(std::memory_order_relaxed);
-  }
 
   /// @brief executeAndWakeup is to be called on the query object to
   /// continue execution in this query part, if the query got paused
@@ -72,8 +69,10 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   
   template <typename F>
   void executeLocked(F&& cb) {
-    std::lock_guard<std::mutex> guard(_mutex);
+    std::unique_lock<std::mutex> guard(_mutex);
     if (!_valid) {
+      guard.unlock();
+      _cv.notify_all();
       return;
     }
     std::forward<F>(cb)();
@@ -100,7 +99,7 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
       return false;
     }
     bool queued = queueAsyncTask([cb(std::forward<F>(cb)), self(shared_from_this())] {
-      if (self->_valid.load()) {
+      if (self->_valid) {
         try {
           cb(true);
         } catch(...) {}
