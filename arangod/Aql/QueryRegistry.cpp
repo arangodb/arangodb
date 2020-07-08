@@ -227,12 +227,17 @@ std::unique_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& voc
     
     // remove engines
     for (auto const& pair : queryInfo->_query->snippets()) {
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+      _engines.erase(pair.first);
+#else
+      
       auto it = _engines.find(pair.first);
       if (it != _engines.end()) {
         TRI_ASSERT(it->second._queryInfo != nullptr);
         TRI_ASSERT(!it->second._isOpen);
         _engines.erase(it);
       }
+#endif
     }
     for (auto& pair : queryInfo->_query->traversers()) {
       _engines.erase(pair.first);
@@ -414,7 +419,7 @@ void QueryRegistry::disallowInserts() {
 }
 
 /// use on coordinator to register snippets
-void QueryRegistry::registerEngines(SnippetList const& snippets) {
+void QueryRegistry::registerSnippets(SnippetList const& snippets) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   WRITE_LOCKER(guard, _lock);
   if (_disallowInserts) {
@@ -428,7 +433,7 @@ void QueryRegistry::registerEngines(SnippetList const& snippets) {
   }
 }
 
-void QueryRegistry::unregisterEngines(SnippetList const& snippets) noexcept {
+void QueryRegistry::unregisterSnippets(SnippetList const& snippets) noexcept {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
   size_t remain = snippets.size();

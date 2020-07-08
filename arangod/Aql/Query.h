@@ -229,6 +229,8 @@ class Query : public QueryContext {
   ExecutionState cleanupPlanAndEngine(int errorCode, bool sync,
                                       velocypack::Builder* statsBuilder = nullptr,
                                       bool includePlan = false);
+  
+  void unregisterSnippets();
 
  protected:
   

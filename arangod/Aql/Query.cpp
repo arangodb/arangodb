@@ -179,12 +179,7 @@ Query::~Query() {
     _trx.reset();
   }
   
-  if (!_snippets.empty() && _trx && _trx->state()->isCoordinator()) {
-    auto* registry = QueryRegistryFeature::registry();
-    if (registry) {
-      registry->unregisterEngines(_snippets);
-    }
-  }
+  unregisterSnippets();
 
   exitV8Context();
 
@@ -251,7 +246,7 @@ void Query::prepareQuery(SerializationFormat format) {
     if (!registry) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN, "query registry not available");
     }
-    registry->registerEngines(_snippets);
+    registry->registerSnippets(_snippets);
   }
   
   if (_profile) {
@@ -1130,6 +1125,10 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, bool sync,
   
   auto* engine = rootEngine();
   if (engine) {
+    if (engine->shutdownState() == ExecutionEngine::ShutdownState::NotShutdown) {
+      unregisterSnippets();
+    }
+    
     std::shared_ptr<SharedQueryState> ss;
     if (sync) {
       ss = engine->sharedState();
@@ -1226,14 +1225,16 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, bool sync,
     }
   }
 
-  if (!_snippets.empty() && _trx && _trx->state()->isCoordinator()) {
+  return ExecutionState::DONE;
+}
+
+void Query::unregisterSnippets() {
+    if (!_snippets.empty() && ServerState::instance()->isCoordinator()) {
     auto* registry = QueryRegistryFeature::registry();
     if (registry) {
-      registry->unregisterEngines(_snippets);
+      registry->unregisterSnippets(_snippets);
     }
   }
-
-  return ExecutionState::DONE;
 }
 
 /// @brief pass-thru a resolver object from the transaction context
@@ -1389,7 +1390,7 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
     // simon: for AQL_EXECUTEJSON
     if (_trx->state()->isCoordinator()) {  // register coordinator snippets
       TRI_ASSERT(_trx->state()->isCoordinator());
-      QueryRegistryFeature::registry()->registerEngines(_snippets);
+      QueryRegistryFeature::registry()->registerSnippets(_snippets);
     }
   }
 
