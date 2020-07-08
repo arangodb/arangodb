@@ -9,6 +9,13 @@ devel
   The workaround for this is to either drop the graph, (or the database) before the
   restore call, yielding identical result.
   
+* Keep the list of last-acknowledged entires in Agency more consistent.
+  During leadership take-over it was possible to get into a situation that
+  the new leader does not successfully report the agency config, which
+  was eventually fixed by the Agent itself. Now this situation is impossible.
+
+* Allow changing collection properties for smart edge collections as well. 
+
 * Fixed that the hotbackup agency lock is released under all circumstances
   using scope guards. This addresses a rare case in which the lock was left
   behind.
