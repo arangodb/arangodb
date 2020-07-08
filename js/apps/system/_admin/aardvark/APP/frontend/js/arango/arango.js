@@ -374,7 +374,7 @@
     },
 
     // object: {"name": "Menu 1", func: function(), active: true/false }
-    buildSubNavBar: function (menuItems) {
+    buildSubNavBar: function (menuItems, disabled) {
       $('#subNavigationBar .bottom').html('');
       var cssClass;
 
@@ -384,14 +384,14 @@
         if (menu.active) {
           cssClass += ' active';
         }
-        if (menu.disabled) {
+        if (menu.disabled || disabled) {
           cssClass += ' disabled';
         }
 
         $('#subNavigationBar .bottom').append(
           '<li class="subMenuEntry ' + cssClass + '"><a>' + name + '</a></li>'
         );
-        if (!menu.disabled) {
+        if (!menu.disabled && !disabled) {
           $('#subNavigationBar .bottom').children().last().bind('click', function () {
             window.App.navigate(menu.route, {trigger: true});
           });
@@ -457,9 +457,9 @@
 
       menus[activeKey].active = true;
       if (disabled) {
-        menus[disabled].disabled = true;
+        menus[activeKey].disabled = true;
       }
-      this.buildSubNavBar(menus);
+      this.buildSubNavBar(menus, disabled);
     },
 
     buildServicesSubNav: function (activeKey, disabled) {
@@ -658,6 +658,8 @@
 
       // remove header
       $('.arangoFrame .headerBar').remove();
+      // remove edge edit feature
+      $('.edge-edit-container').remove();
       // append close button
       $('.arangoFrame .outerDiv').prepend('<i class="fa fa-times"></i>');
       // add close events
