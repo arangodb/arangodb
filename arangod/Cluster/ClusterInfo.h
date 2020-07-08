@@ -440,6 +440,11 @@ public:
    */
   void startSyncers();
 
+  /**
+   * @brief wait for syncers' full stop
+   */
+  void waitForSyncersToStop();
+
   /// @brief produces an agency dump and logs it
   void logAgencyDump() const;
 
@@ -970,6 +975,7 @@ public:
 
   application_features::ApplicationServer& server() const;
 
+ private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about our plan
   /// Usually one does not have to call this directly.
@@ -984,8 +990,6 @@ public:
 
   void loadCurrent();
 
-
- private:
   void buildIsBuildingSlice(CreateDatabaseInfo const& database,
                               VPackBuilder& builder);
 
