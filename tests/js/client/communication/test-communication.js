@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertTrue, assertEqual, assertNotEqual, arango */
+/* global fail, assertTrue, assertFalse, assertEqual, assertNotEqual, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -32,7 +32,8 @@ let db = arangodb.db;
 
 function CommunicationSuite () {
   'use strict';
-  const cn = 'UnitTestsCommunication';
+  // generate a random collection name
+  const cn = "UnitTests" + require("@arangodb/crypto").md5(internal.genRandomAlphaNumbers(32));
   
   // detect the path of arangosh. quite hacky, but works
   const arangosh = fs.join(global.ARANGOSH_PATH, 'arangosh' + pu.executableExt);
@@ -43,8 +44,8 @@ function CommunicationSuite () {
     console.warn(text);
   };
   
-  let runShell = function(args) {
-    let options = require("internal").options();
+  let runShell = function(args, prefix) {
+    let options = internal.options();
     args.push('--javascript.startup-directory');
     args.push(options['javascript.startup-directory']);
     for (let o in options['javascript.module-directory']) {
@@ -59,6 +60,12 @@ function CommunicationSuite () {
     args.push(arango.getDatabaseName());
     args.push('--server.username');
     args.push(arango.connectedUser());
+    args.push('--server.password');
+    args.push('');
+    args.push('--log.foreground-tty');
+    args.push('false');
+    args.push('--log.output');
+    args.push('file://' + prefix + '.log');
 
     let result = internal.executeExternal(arangosh, args, false /*usePipes*/);
     assertTrue(result.hasOwnProperty('pid'));
@@ -68,7 +75,7 @@ function CommunicationSuite () {
   };
 
   let buildCode = function (key, command) {
-    let file = fs.getTempFile();
+    let file = fs.getTempFile() + "-" + key;
     fs.write(file, `
 (function() {
   let tries = 0;
@@ -85,18 +92,23 @@ function CommunicationSuite () {
     `);
 
     let args = ['--javascript.execute', file];
-    return { key, file, pid: runShell(args), done: false }; 
+    let pid = runShell(args, file);
+    debug("started client with key '" + key + "', pid " + pid + ", args: " + JSON.stringify(args));
+    return { key, file, pid }; 
   };
 
   let runTests = function (tests, duration) {
+    assertFalse(db[cn].exists("stop"));
     let clients = [];
-
     debug("starting " + tests.length + " test clients");
     try {
       tests.forEach(function(test) {
         let key = test[0];
         let code = test[1];
-        clients.push(buildCode(key, code));
+        let client = buildCode(key, code);
+        client.done = false;
+        client.failed = true; // assume the worst
+        clients.push(client);
       });
 
       debug("running test for " + duration + " s...");
@@ -106,15 +118,19 @@ function CommunicationSuite () {
       debug("stopping all test clients");
 
       // broad cast stop signal
+      assertFalse(db[cn].exists("stop"));
       db[cn].insert({ _key: "stop" });
       let tries = 0;
       let done = 0;
       while (++tries < 60) {
         clients.forEach(function(client) {
           if (!client.done) { 
-            let status = internal.statusExternal(client.pid).status;
-            if (status === 'NOT-FOUND' || status === 'TERMINATED') {
+            let status = internal.statusExternal(client.pid);
+            if (status.status === 'NOT-FOUND' || status.status === 'TERMINATED') {
               client.done = true;
+            }
+            if (status.status === 'TERMINATED' && status.exit === 0) {
+              client.failed = false;
             }
           }
         });
@@ -146,6 +162,18 @@ function CommunicationSuite () {
       clients.forEach(function(client) {
         try {
           fs.remove(client.file);
+        } catch (err) {}
+      
+        const logfile = client.file + '.log';
+        if (client.failed) {
+          if (fs.exists(logfile)) {
+            debug("test client with pid " + client.pid + " has failed and wrote logfile: " + fs.readFileSync(logfile).toString());
+          } else {
+            debug("test client with pid " + client.pid + " has failed and did not write a logfile");
+          }
+        }
+        try {
+          fs.remove(logfile);
         } catch (err) {}
 
         if (!client.done) {
