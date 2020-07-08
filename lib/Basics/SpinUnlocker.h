@@ -33,7 +33,6 @@ namespace arangodb::basics {
 class SpinUnlocker {
  public:
   enum class Mode : std::uint8_t { Read, Write };
-  enum class Effort { Try, Succeed };
 
  public:
   SpinUnlocker(Mode mode, ReadWriteSpinLock& lock)

@@ -35,11 +35,10 @@ void ReadWriteLock::lockWrite() {
 
   // the lock is either hold by another writer or we have active readers
   // -> announce that we want to write
-  _state.fetch_add(QUEUED_WRITER_INC, std::memory_order_relaxed);
+  auto state = _state.fetch_add(QUEUED_WRITER_INC, std::memory_order_relaxed);
 
   std::unique_lock<std::mutex> guard(_writer_mutex);
   while (true) {
-    auto state = _state.load(std::memory_order_relaxed);
     // try to acquire write lock as long as no readers or writers are active,
     while ((state & ~QUEUED_WRITER_MASK) == 0) {
       // try to acquire lock and perform queued writer decrement in one step
@@ -49,11 +48,12 @@ void ReadWriteLock::lockWrite() {
       }
     }
     _writers_bell.wait(guard);
+    state = _state.load(std::memory_order_relaxed);
   }
 }
 
 /// @brief lock for writes with microsecond timeout
-bool ReadWriteLock::writeLock(std::chrono::microseconds timeout) {
+bool ReadWriteLock::lockWrite(std::chrono::microseconds timeout) {
   if (tryLockWrite()) {
     return true;
   }

@@ -79,10 +79,6 @@ bool ReadWriteSpinLock::tryLockWrite() noexcept {
 }
 
 void ReadWriteSpinLock::lockWrite() noexcept {
-  if (tryLockWrite()) {
-    return;
-  }
-
   // the lock is either hold by another writer or we have active readers
   // -> announce that we want to write
   auto state = _state.fetch_add(::QueuedWriterIncrement, std::memory_order_relaxed);
@@ -100,34 +96,15 @@ void ReadWriteSpinLock::lockWrite() noexcept {
 }
 
 bool ReadWriteSpinLock::lockWrite(std::size_t maxAttempts) noexcept {
-  if (tryLockWrite()) {
-    return true;
-  }
-
-  uint64_t attempts = 0;
-
   // the lock is either hold by another writer or we have active readers
   // -> announce that we want to write
-  auto state = _state.fetch_add(::QueuedWriterIncrement, std::memory_order_relaxed);
-  while (++attempts < maxAttempts) {
-    while ((state & ~::QueuedWriterMask) == 0) {
-      // try to acquire lock and perform queued writer decrement in one step
-      if (_state.compare_exchange_weak(state, (state - ::QueuedWriterIncrement) | ::WriteLock,
-                                       std::memory_order_acquire)) {
-        return true;
-      }
-      if (++attempts > maxAttempts) {
-        // Undo the counting of us as queued writer:
-        _state.fetch_sub(::QueuedWriterIncrement, std::memory_order_release);
-        return false;
-      }
+  uint64_t attempts = 0;
+  while (++attempts <= maxAttempts) {
+    if (tryLockWrite()) {
+      return true;
     }
     cpu_relax();
-    state = _state.load(std::memory_order_relaxed);
   }
-        
-  // Undo the counting of us as queued writer:
-  _state.fetch_sub(::QueuedWriterIncrement, std::memory_order_release);
   return false;
 }
 
@@ -154,7 +131,7 @@ void ReadWriteSpinLock::lockRead() noexcept {
 
 bool ReadWriteSpinLock::lockRead(std::size_t maxAttempts) noexcept {
   uint64_t attempts = 0;
-  while (attempts++ < maxAttempts) {
+  while (++attempts <= maxAttempts) {
     if (tryLockRead()) {
       return true;
     }
