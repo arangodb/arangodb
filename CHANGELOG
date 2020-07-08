@@ -4,6 +4,26 @@ v3.5.6 (XXXX-XX-XX)
 * Internal issue BTS-71: Added a precondition to prevent creating a collection
   with an invalid `distributeShardsLike` property.
 
+* Internal issue BTS-71: In a cluster, for collections in creation, suspend
+  supervision jobs concerning replication factor until creation is completed.
+  Previously, it could cause collection creation to fail (e.g. when a server
+  failed during creation), even when it didn't have to.
+
+* Internal issue BTS-71: Fixed error handling regarding communication with the
+  agency. This could in a specific case cause collection creation in a cluster
+  report success when it failed.
+
+* Fix unreasonable precondition on removeServer.
+
+* Updated arangosync to 0.7.7.
+
+* Fixed a document parsing bug in the Web UI. This issue occured in the
+  document list view in case a document had an attribute called `length`.
+  The result was an incorrect representation of the document preview.
+
+* The Web UI now displays an error message inside the node information view in
+  case the user has no access to retreive the neccessary information.
+
 * Correct some log entries.
 
 * The `_from` and `_to` attributes of an edge document can now be edited from
@@ -68,8 +88,6 @@ v3.5.6 (XXXX-XX-XX)
 
 * Fixed the creation of edges in the web UI, which did not work due to a
   JavaScript error.
-
-* Updated arangosync to 0.7.6.
 
 * Updated ArangoDB Starter to 0.14.15.
 
