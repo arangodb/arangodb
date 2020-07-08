@@ -1,0 +1,9 @@
+null:arangodb::ExecContext
+
+# fix issues with S2 library
+vptr:region_coverer.cc
+vptr:s2cell.h
+vptr:s2cell.cc
+
+# fix some V8 false positive
+vptr:v8::Platform
