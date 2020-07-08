@@ -176,7 +176,6 @@ Query::~Query() {
   } catch (...) {
     // unfortunately we cannot do anything here, as we are in 
     // a destructor
-    _trx.reset();
   }
   
   unregisterSnippets();
@@ -1125,10 +1124,6 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, bool sync,
   
   auto* engine = rootEngine();
   if (engine) {
-    if (engine->shutdownState() == ExecutionEngine::ShutdownState::NotShutdown) {
-      unregisterSnippets();
-    }
-    
     std::shared_ptr<SharedQueryState> ss;
     if (sync) {
       ss = engine->sharedState();
