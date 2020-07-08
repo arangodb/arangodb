@@ -44,7 +44,7 @@ actions.defineHttp({
   callback: function (req, res) {
     if (req.requestType !== actions.POST || !cluster.isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only DELETE requests are allowed and only to coordinators');
+        'only POST requests are allowed and only to coordinators');
       return;
     }
 
@@ -60,9 +60,9 @@ actions.defineHttp({
     } catch (e) {
     }
 
-    if (typeof serverId !== 'string') {
+    if (typeof serverId !== 'string' || serverId.length === 0) {
       actions.resultError(req, res, actions.HTTP_BAD,
-        'required parameter ServerID was not given');
+        'body must be a string with the server id');
       return;
     }
 
@@ -75,9 +75,11 @@ actions.defineHttp({
       return;
     }
 
-    if (serverId.substr(0, 4) !== 'CRDN' && serverId.substr(0, 4) !== 'PRMR') {
-      actions.resultError(req, res, actions.HTTP_BAD,
-        'couldn\'t determine role for serverid ' + serverId);
+    let isCoordinator = serverId.substr(0, 4) === 'CRDN';
+    let isDBServer = serverId.substr(0, 4) === 'PRMR';
+    if (!isCoordinator && !isDBServer) {
+      actions.resultError(
+        req, res, actions.HTTP_BAD, 'couldn\'t determine role for server id ' + serverId);
       return;
     }
 
@@ -87,37 +89,41 @@ actions.defineHttp({
     while (++count <= 60) {
       // need to make sure it is not responsible for anything
       used = [];
-      let preconditions = reducePlanServers(function (data, agencyKey, servers) {
-        data[agencyKey] = {'old': servers};
-        if (servers.indexOf(serverId) !== -1) {
-          used.push(agencyKey);
-        }
-        return data;
-      }, {});
-      preconditions = reduceCurrentServers(function (data, agencyKey, servers) {
-        data[agencyKey] = {'old': servers};
-        if (servers.indexOf(serverId) !== -1) {
-          used.push(agencyKey);
-        }
-        return data;
-      }, preconditions);
+      let curVersion = amongCurrentShardsOrVersion(serverId);
+      if (curVersion === 0) {
+        wait(1.0);
+        continue;
+      }
+      let planVersion = amongPlanShardsOrVersion(serverId);
+      if (planVersion === 0) {
+        wait(1.0);
+        continue;
+      }
 
+      var preconditions = {};
+      preconditions['/arango/Plan/Version'] = {'old': planVersion};
+      preconditions['/arango/Current/Version'] = {'old': curVersion};
       preconditions['/arango/Supervision/Health/' + serverId + '/Status'] = {'old': 'FAILED'};
-      preconditions["/arango/Supervision/DBServers/" + serverId]
-        = { "oldEmpty": true };
+      if (isDBServer) {
+        preconditions["/arango/Supervision/DBServers/" + serverId] = { "oldEmpty": true };
+      }
 
-      if (!checkServerLocked(serverId) && used.length === 0) {
+      if (!checkServerLocked(serverId)) {
         let operations = {};
-        operations['/arango/Plan/Coordinators/' + serverId] = {'op': 'delete'};
-        operations['/arango/Plan/DBServers/' + serverId] = {'op': 'delete'};
+        if (isCoordinator) {
+          operations['/arango/Plan/Coordinators/' + serverId] = {'op': 'delete'};
+          operations['/arango/Current/Coordinators/' + serverId] = {'op': 'delete'};
+        } else {
+          operations['/arango/Plan/DBServers/' + serverId] = {'op': 'delete'};
+          operations['/arango/Current/DBServers/' + serverId] = {'op': 'delete'};
+        }
         operations['/arango/Current/ServersRegistered/' + serverId] = {'op': 'delete'};
-        operations['/arango/Current/DBServers/' + serverId] = {'op': 'delete'};
-        operations['/arango/Current/Coordinators/' + serverId] = {'op': 'delete'};
         operations['/arango/Supervision/Health/' + serverId] = {'op': 'delete'};
         operations['/arango/Target/MapUniqueToShortID/' + serverId] = {'op': 'delete'};
         operations['/arango/Current/ServersKnown/' + serverId] = {'op': 'delete'};
         operations['/arango/Target/RemovedServers/' + serverId] = {'op': 'set', 'new': (new Date()).toISOString()};
 
+        console.info ([[operations, preconditions]]);
         try {
           global.ArangoAgency.write([[operations, preconditions]]);
           actions.resultOk(req, res, actions.HTTP_OK, true);
@@ -141,8 +147,7 @@ actions.defineHttp({
       wait(1.0);
     }  // while count
     actions.resultError(req, res, actions.HTTP_PRECONDITION_FAILED,
-      'the server not failed, locked or is still in use at the following '
-      + 'locations: ' + JSON.stringify(used));
+                        'the server is either not failed or is locked or is still in use.');
   }
 });
 
@@ -161,7 +166,7 @@ actions.defineHttp({
     if (req.requestType !== actions.PUT ||
         (role !== 'COORDINATOR' && role !== 'SINGLE')) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only GET and PUT requests are allowed and only to coordinators or singles');
+        'only PUT requests are allowed and only to coordinators or single servers');
       return;
     }
 
@@ -254,7 +259,7 @@ actions.defineHttp({
     if (req.requestType !== actions.GET ||
       !cluster.isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only GET requests are allowed and only on coordinator');
+        'only GET requests are allowed and only on coordinators');
       return;
     }
 
@@ -268,7 +273,7 @@ actions.defineHttp({
 
     if (typeof serverId !== 'string' || serverId.length === 0) {
       actions.resultError(req, res, actions.HTTP_BAD,
-        'required parameter ServerID was not given');
+        'required parameter ServerID was not given or invalid');
       return;
     }
 
@@ -294,7 +299,7 @@ actions.defineHttp({
       } catch (err) {}
       res.body = JSON.stringify({
         'error': true,
-        'errorMessage': 'error from Server, possibly Server unknown',
+        'errorMessage': 'error from server, possibly server unknown',
         'body': bodyobj
       });
     }
@@ -314,7 +319,7 @@ actions.defineHttp({
     if (req.requestType !== actions.GET ||
       !cluster.isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only GET requests are allowed and only on coordinator');
+        'only GET requests are allowed and only on coordinators');
       return;
     }
 
@@ -328,7 +333,7 @@ actions.defineHttp({
 
     if (typeof serverId !== 'string') {
       actions.resultError(req, res, actions.HTTP_BAD,
-        'required parameter ServerID was not given');
+        'required parameter ServerID was not given or invalid');
       return;
     }
 
@@ -354,7 +359,7 @@ actions.defineHttp({
       } catch (err) {}
       res.body = JSON.stringify({
         'error': true,
-        'errorMessage': 'error from Server, possibly Server unknown',
+        'errorMessage': 'error from server, possibly server unknown',
         'body': bodyobj
       });
     }
@@ -374,7 +379,7 @@ actions.defineHttp({
     if (req.requestType !== actions.GET ||
       !cluster.isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only GET requests are allowed and only on coordinator');
+        'only GET requests are allowed and only on coordinators');
       return;
     }
 
@@ -414,7 +419,7 @@ actions.defineHttp({
       } catch (err) {}
       res.body = JSON.stringify({
         'error': true,
-        'errorMessage': 'error from Server, possibly Server unknown',
+        'errorMessage': 'error from server, possibly server unknown',
         'body': bodyobj
       });
     }
@@ -491,7 +496,7 @@ actions.defineHttp({
     if (req.requestType !== actions.GET ||
         (role !== 'COORDINATOR' && role !== 'SINGLE')) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only GET requests are allowed and only to coordinators or singles');
+        'only GET requests are allowed and only on coordinators or single servers');
       return;
     }
 
@@ -638,6 +643,36 @@ function reducePlanServers (reducer, data) {
   }, data);
 }
 
+function amongCurrentShardsOrVersion (myId) {
+  var current = ArangoAgency.get('Current').arango.Current;
+  for (const [name,database] of Object.entries(current.Collections)) {
+    for (const [name,collection] of Object.entries(database)) {
+      for (const [name,shard] of Object.entries(collection)) {
+        if (shard.servers.indexOf(myId) > -1) {
+          // i hit a shard with my id listed
+          return 0;
+        }
+      }
+    }
+  }
+  return current.Version;
+}
+
+function amongPlanShardsOrVersion (myId) {
+  var plan = ArangoAgency.get('Plan').arango.Plan;
+  for (const [name,database] of Object.entries(plan.Collections)) {
+    for (const [name,collection] of Object.entries(database)) {
+      for (const [name,shard] of Object.entries(collection.shards)) {
+        if (shard.indexOf(myId) > -1) {
+          // i hit a shard with my id listed
+          return 0;
+        }
+      }
+    }
+  }
+  return plan.Version;
+}
+
 function reduceCurrentServers (reducer, data) {
   var databases = ArangoAgency.get('Current/Collections');
   databases = databases.arango.Current.Collections;
@@ -744,7 +779,7 @@ actions.defineHttp({
     if (req.requestType !== actions.GET &&
         req.requestType !== actions.PUT) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only GET and PUT methods are allowed');
+        'only GET and PUT requests are allowed');
       return;
     }
 
@@ -774,7 +809,7 @@ actions.defineHttp({
 
       if (!req.isAdminUser) {
         actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-          'only allowed for admins users');
+          'only allowed for admin users');
         return;
       }
 
@@ -828,6 +863,7 @@ actions.defineHttp({
   }
 });
 
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @start Docu Block JSF_postCleanOutServer
 // / (intentionally not in manual)
@@ -869,13 +905,13 @@ actions.defineHttp({
     }
     if (req.requestType !== actions.POST) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only the POST method is allowed');
+        'only POST requests are allowed');
       return;
     }
 
     if (!req.isAdminUser) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only allowed for admins on the _system database');
+        'only allowed for admin users');
       return;
     }
 
@@ -927,6 +963,7 @@ actions.defineHttp({
     actions.resultOk(req, res, actions.HTTP_ACCEPTED, {error: false, id: id});
   }
 });
+
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @start Docu Block JSF_postResignLeadership
@@ -1038,7 +1075,7 @@ actions.defineHttp({
 // / job being queried.
 // /
 // / @ RESTDESCRIPTION Returns information (if known) about the job with ID
-// / `id`. This can either be a cleanOurServer or a moveShard job at this
+// / `id`. This can either be a cleanOutServer or a moveShard job at this
 // / stage.
 // /
 // / @ RESTRETURNCODES
@@ -1070,7 +1107,7 @@ actions.defineHttp({
     }
     if (req.requestType !== actions.GET) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only the GET method is allowed');
+        'only GET requests are allowed');
       return;
     }
 
@@ -1159,7 +1196,7 @@ actions.defineHttp({
     }
     if (req.requestType !== actions.POST) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only the POST method is allowed');
+        'only POST requests are allowed');
       return;
     }
 
@@ -1188,7 +1225,7 @@ actions.defineHttp({
     if (!req.isAdminUser &&
         users.permission(req.user, body.database) !== 'rw') {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'insufficent permissions on database to move shard');
+        'insufficient permissions on database to move shard');
       return;
     }
 
@@ -1250,24 +1287,24 @@ actions.defineHttp({
     }
     if (req.requestType !== actions.PUT) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only the PUT method is allowed');
+        'only PUT requests are allowed');
       return;
     }
 
     var body = actions.getJsonBody(req, res);
     if (typeof body !== 'object') {
       actions.resultError(req, res, actions.HTTP_BAD,
-        'body must be an object.');
+        'body must be an object');
       return;
     }
     if (!body.collection) {
       actions.resultError(req, res, actions.HTTP_BAD,
-        'body missing. expected collection name.');
+        'body missing, expected collection name');
       return;
     }
     if (typeof body.collection !== 'string') {
       actions.resultError(req, res, actions.HTTP_BAD,
-        'collection name must be a string.');
+        'collection name must be a string');
       return;
     }
 
@@ -1319,7 +1356,7 @@ actions.defineHttp({
     }
     if (req.requestType !== actions.GET) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only the GET method is allowed');
+        'only GET requests are allowed');
       return;
     }
 
@@ -1365,7 +1402,7 @@ actions.defineHttp({
     }
     if (req.requestType !== actions.POST) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only the POST method is allowed');
+        'only POST requests are allowed');
       return;
     }
 
@@ -1373,7 +1410,7 @@ actions.defineHttp({
     if (!req.isAdminUser &&
         users.permission(req.user, req.database) !== 'rw') {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only allowed for admins on the database');
+          'only allowed for admins on the database');
       return;
     }
 
@@ -1384,13 +1421,13 @@ actions.defineHttp({
     }
     if (typeof body !== 'object') {
       actions.resultError(req, res, actions.HTTP_BAD,
-        'body must be an object.');
+        'body must be an object');
       return;
     }
     var ok = cluster.rebalanceShards();
     if (!ok) {
       actions.resultError(req, res, actions.HTTP_SERVICE_UNAVAILABLE,
-        'Cannot write to agency.');
+        'Cannot write to agency');
       return;
     }
     actions.resultOk(req, res, actions.HTTP_ACCEPTED, true);
@@ -1433,7 +1470,7 @@ actions.defineHttp({
     }
     if (req.requestType !== actions.GET) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only the GET method is allowed');
+        'only GET requests are allowed');
       return;
     }
 
