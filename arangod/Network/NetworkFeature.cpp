@@ -88,25 +88,53 @@ void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
   options->addSection("network", "Configure cluster-internal networking");
 
   options->addOption("--network.io-threads", "number of network IO threads",
-                     new UInt32Parameter(&_numIOThreads))
+                     new UInt32Parameter(&_numIOThreads),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                                  arangodb::options::Flags::OnCoordinator,
+                                                  arangodb::options::Flags::OnDBServer,
+                                                  arangodb::options::Flags::OnAgent,
+                                                  arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30600);
+
   options->addOption("--network.max-open-connections",
                      "max open network connections",
-                     new UInt64Parameter(&_maxOpenConnections))
+                     new UInt64Parameter(&_maxOpenConnections),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                                  arangodb::options::Flags::OnCoordinator,
+                                                  arangodb::options::Flags::OnDBServer,
+                                                  arangodb::options::Flags::OnAgent,
+                                                  arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30600);
+
   options->addOption("--network.idle-connection-ttl",
                      "default time-to-live of idle connections (in milliseconds)",
-                     new UInt64Parameter(&_idleTtlMilli))
+                     new UInt64Parameter(&_idleTtlMilli),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                                  arangodb::options::Flags::OnCoordinator,
+                                                  arangodb::options::Flags::OnDBServer,
+                                                  arangodb::options::Flags::OnAgent,
+                                                  arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30600);
+
   options->addOption("--network.verify-hosts", "verify hosts when using TLS",
-                     new BooleanParameter(&_verifyHosts))
+                     new BooleanParameter(&_verifyHosts),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                                  arangodb::options::Flags::OnCoordinator,
+                                                  arangodb::options::Flags::OnDBServer,
+                                                  arangodb::options::Flags::OnAgent,
+                                                  arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30600);
 
   std::unordered_set<std::string> protos = {
       "", "http", "http2", "h2", "vst"};
 
   options->addOption("--network.protocol", "network protocol to use",
-                     new DiscreteValuesParameter<StringParameter>(&_protocol, protos))
+                     new DiscreteValuesParameter<StringParameter>(&_protocol, protos),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                                  arangodb::options::Flags::OnCoordinator,
+                                                  arangodb::options::Flags::OnDBServer,
+                                                  arangodb::options::Flags::OnAgent,
+                                                  arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30700);
 }
 
@@ -117,6 +145,14 @@ void NetworkFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
   }
   if (_idleTtlMilli < 10000) {
     _idleTtlMilli = 10000;
+  }
+
+  // force internal protocol to HTTP.
+  // this restriction can be lifted later once we are
+  // done with investigating potential issues in fuerte VST and H2.
+  if (_protocol != "http" && _protocol != "") {
+    _protocol = "http";
+    LOG_TOPIC("bea9e", WARN, Logger::COMMUNICATION) << "value for '--network.protocol' forced to 'http'";
   }
 }
 
@@ -143,6 +179,11 @@ void NetworkFeature::prepare() {
   } else {
     config.protocol = fuerte::ProtocolType::Http;
   }
+  
+  // currently the protocol is restricted to HTTP for internal
+  // messages. this restriction can be lifted later once we are
+  // done with investigating potential issues in fuerte VST and H2.
+  TRI_ASSERT(config.protocol == fuerte::ProtocolType::Http);
 
   _pool = std::make_unique<network::ConnectionPool>(config);
   _poolPtr.store(_pool.get(), std::memory_order_relaxed);
