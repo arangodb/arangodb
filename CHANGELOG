@@ -1,14 +1,14 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Keep the list of last-acknowledged entires in Agency more consistent.
+  During leadership take-over it was possible to get into a situation that the
+  new leader does not successfully report the agency config, which was
+  eventually fixed by the Agent itself. Now this situation is impossible.
+
 * Fixed a sleeping barber in Fuerte HTTPConnection. It was possible that
   sendRequest calls were started but never completed due to the fact that
   the idle connection close triggered at exactly the same time.
-
-* Keep the list of last-acknowledged entires in Agency more consistent.
-  During leadership take-over it was possible to get into a situation that
-  the new leader does not successfully report the agency config, which
-  was eventually fixed by the Agent itself. Now this situation is impossible.
 
 * Fixed potentially undefined behavior in syslog logger, with ident string going
   out of scope after `openlog` was called.
