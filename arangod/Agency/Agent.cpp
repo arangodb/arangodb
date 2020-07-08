@@ -2158,12 +2158,6 @@ void Agent::updateSomeConfigValues(VPackSlice data) {
   }
 }
 
-<<<<<<< HEAD
-=======
-std::vector<log_t> Agent::logs(index_t begin, index_t end) const {
-  return _state.get(begin, end);
-}
-
 void Agent::syncActiveAndAcknowledged() {
   // We reset the list of last Acknowledged indexes, to contain
   // at least every peer. If there is a new peer it will be inserted
@@ -2180,6 +2174,5 @@ void Agent::syncActiveAndAcknowledged() {
   }
 }
 
->>>>>>> a1cb66ecc6... Bug fix/agency assert consistency of acked time and index (#12083)
 }  // namespace consensus
 }  // namespace arangodb
