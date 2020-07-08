@@ -45,7 +45,7 @@ class EngineInfoContainerCoordinator {
  private:
   struct EngineInfo {
    public:
-    EngineInfo(QueryId id, ExecutionNodeId idOfRemoteNode);
+    EngineInfo(EngineId id, ExecutionNodeId idOfRemoteNode);
 
     // This container is not responsible for nodes, they are managed by the AST
     // somewhere else.
@@ -63,12 +63,12 @@ class EngineInfoContainerCoordinator {
     Result buildEngine(Query& query, MapRemoteToSnippet const& dbServerQueryIds,
                        bool isfirst, std::unique_ptr<ExecutionEngine>& engine) const;
 
-    QueryId queryId() const;
+    EngineId engineId() const;
 
    private:
     // The generated id how we can find this query part
     // in the coordinators registry.
-    QueryId const _id;
+    EngineId const _id;
 
     // The nodes belonging to this plan.
     std::vector<ExecutionNode*> _nodes;
