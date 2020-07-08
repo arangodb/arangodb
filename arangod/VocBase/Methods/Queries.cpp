@@ -82,9 +82,7 @@ void getQueries(TRI_vocbase_t& vocbase, std::vector<aql::QueryEntryCopy> const& 
     network::RequestOptions options;
     options.timeout = network::Timeout(30.0);
     options.database = vocbase.name();
-
-    VPackBuffer<uint8_t> body;
-    std::string const url = std::string("/_api/query/") + action + "?local=true";
+    options.param("local", "true");
 
     auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
     for (auto const& coordinator : ci.getCurrentCoordinators()) {
@@ -94,7 +92,7 @@ void getQueries(TRI_vocbase_t& vocbase, std::vector<aql::QueryEntryCopy> const& 
       }
 
       auto f = network::sendRequest(pool, "server:" + coordinator, fuerte::RestVerb::Get,
-                                    url, body, options, buildHeaders());
+                                    "/_api/query/", VPackBuffer<uint8_t>{}, options, buildHeaders());
       futures.emplace_back(std::move(f));
     }
 
@@ -152,6 +150,7 @@ void Queries::clearSlow(TRI_vocbase_t& vocbase, bool fanout) {
     network::RequestOptions options;
     options.timeout = network::Timeout(30.0);
     options.database = vocbase.name();
+    options.param("local", "true");
 
     VPackBuffer<uint8_t> body;
 
@@ -163,7 +162,7 @@ void Queries::clearSlow(TRI_vocbase_t& vocbase, bool fanout) {
       }
 
       auto f = network::sendRequest(pool, "server:" + coordinator, fuerte::RestVerb::Delete,
-                                    "/_api/query/slow?local=true", body, options, buildHeaders());
+                                    "/_api/query/slow", body, options, buildHeaders());
       futures.emplace_back(std::move(f));
     }
 
