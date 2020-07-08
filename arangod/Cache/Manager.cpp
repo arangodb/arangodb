@@ -309,7 +309,7 @@ std::tuple<bool, Metadata, std::shared_ptr<Table>> Manager::registerCache(std::u
   }
 
   if (!ok && (table != nullptr)) {
-    reclaimTable(table);
+    reclaimTable(table, true);
     table.reset();
   }
 
@@ -476,7 +476,6 @@ void Manager::unprepareTask(Manager::TaskEnvironment environment) {
     case TaskEnvironment::rebalancing: {
       if ((--_rebalancingTasks) == 0) {
         SpinLocker guard(SpinLocker::Mode::Write, _lock);
-        TRI_ASSERT(_rebalancing);
         _rebalancing = false;
         _rebalanceCompleted = std::chrono::steady_clock::now();
       };
@@ -484,7 +483,6 @@ void Manager::unprepareTask(Manager::TaskEnvironment environment) {
     }
     case TaskEnvironment::resizing: {
       if ((--_resizingTasks) == 0) {
-        TRI_ASSERT(_resizing);
         SpinLocker guard(SpinLocker::Mode::Write, _lock);
         _resizing = false;
       };
@@ -498,7 +496,6 @@ void Manager::unprepareTask(Manager::TaskEnvironment environment) {
 }
 
 int Manager::rebalance(bool onlyCalculate) {
-  TRI_ASSERT(!onlyCalculate || _lock.isLockedWrite());
   SpinLocker guard(SpinLocker::Mode::Write, _lock, !onlyCalculate);
 
   if (!onlyCalculate) {
@@ -653,7 +650,7 @@ void Manager::migrateCache(Manager::TaskEnvironment environment, SpinLocker&& me
   if (!dispatched) {
     // TODO: decide what to do if we don't have an io_service
     SpinLocker altMetaGuard(SpinLocker::Mode::Write, metadata.lock());
-    reclaimTable(table);
+    reclaimTable(table, true);
     metadata.toggleMigrating();
   }
 }
@@ -681,9 +678,9 @@ std::shared_ptr<Table> Manager::leaseTable(std::uint32_t logSize) {
   return table;
 }
 
-void Manager::reclaimTable(std::shared_ptr<Table> table) {
-  TRI_ASSERT(_lock.isLockedWrite());
-  TRI_ASSERT(table != nullptr);
+void Manager::reclaimTable(std::shared_ptr<Table> table, bool internal) {
+  TRI_ASSERT(table.get() != nullptr);
+  SpinLocker guard(SpinLocker::Mode::Write, _lock, !internal);
 
   std::uint32_t logSize = table->logSize();
   std::size_t maxTables =
