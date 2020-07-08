@@ -138,6 +138,7 @@ H1Connection<ST>::H1Connection(EventLoopService& loop,
       _reading(false),
       _writing(false),
       _writeStart(),
+      _leased(0),
       _lastHeaderWasValue(false),
       _shouldKeepAlive(false),
       _messageComplete(false),
@@ -662,7 +663,7 @@ void H1Connection<ST>::setTimeout(std::chrono::milliseconds millis, TimeoutType 
               // **before** we call `shutdownConnection` and actually kill the
               // connection. This is important, see below!
               FUERTE_LOG_DEBUG << "HTTP-Request idle timeout"
-                               << " this=" << me << "\n";
+                    << " this=" << me << "\n";
               me->shutdownConnection(Error::CloseRequested);
               me->_leased.store(0, std::memory_order_seq_cst);
             }
