@@ -46,9 +46,9 @@ class QueryRegistry {
 
  public:
   
-  enum class EngineType {
-    Execution,
-    Graph
+  enum class EngineType : uint8_t {
+    Execution = 1,
+    Graph = 2
   };
   
   /// @brief insert, this inserts the query <query> for the vocbase <vocbase>
@@ -139,7 +139,7 @@ class QueryRegistry {
     size_t _numOpen;
   };
 
-  struct EngineInfo {
+  struct EngineInfo final {
     EngineInfo(EngineInfo const&) = delete;
     EngineInfo& operator=(EngineInfo const&) = delete;
     

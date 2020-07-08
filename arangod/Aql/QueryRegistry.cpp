@@ -430,17 +430,29 @@ void QueryRegistry::registerEngines(SnippetList const& snippets) {
 
 void QueryRegistry::unregisterEngines(SnippetList const& snippets) noexcept {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
-  WRITE_LOCKER(guard, _lock);
-  for (auto& pair : snippets) {
-    auto it = _engines.find(pair.first);
-    if (it != _engines.end()) {
-      if (it->second._isOpen) {
+
+  size_t remain = snippets.size();
+  while(true) {
+    WRITE_LOCKER(guard, _lock);
+    for (auto& pair : snippets) {
+      auto it = _engines.find(pair.first);
+      if (it == _engines.end()) {
+        remain--;
+        continue;
+      }
+      if (it->second._isOpen) { // engine still in use
         LOG_TOPIC("33cfb", WARN, arangodb::Logger::AQL)
           << "engine snippet '" << pair.first << "' is still in use";
+        continue;
       }
-      // always unregister, should not break anything
       _engines.erase(it);
+      remain--;
     }
+    guard.unlock();
+    if (remain == 0) {
+      break;
+    }
+    std::this_thread::yield();
   }
 }
 
