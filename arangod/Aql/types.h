@@ -77,7 +77,7 @@ enum class BlockPassthrough { Disable, Enable };
 
 class ExecutionEngine;
 // list of snippets on coordinators
-using SnippetList = std::vector<std::pair<QueryId, std::unique_ptr<ExecutionEngine>>>;
+using SnippetList = std::vector<std::pair<EngineId, std::unique_ptr<ExecutionEngine>>>;
 
 using AqlCollectionMap = std::map<std::string, aql::Collection*, std::less<>>;
 

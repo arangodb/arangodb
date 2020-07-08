@@ -47,6 +47,9 @@ struct QueryProfile {
   ~QueryProfile();
 
  public:
+  
+  void registerInQueryList();
+  
   /// @brief unregister the query from the list of queries, if entered
   void unregisterFromQueryList() noexcept;
 
@@ -64,7 +67,6 @@ struct QueryProfile {
   void toVelocyPack(arangodb::velocypack::Builder&) const;
   
  private:
-  void registerInQueryList(Query* query);
 
  private:
   Query* _query;
