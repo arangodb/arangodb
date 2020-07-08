@@ -664,7 +664,7 @@ void H1Connection<ST>::setTimeout(std::chrono::milliseconds millis, TimeoutType 
               FUERTE_LOG_DEBUG << "HTTP-Request idle timeout"
                                << " this=" << me << "\n";
               me->shutdownConnection(Error::CloseRequested);
-              me->_leased = 0;
+              me->_leased.store(0, std::memory_order_seq_cst);
             }
           }
         }
