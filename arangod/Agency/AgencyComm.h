@@ -27,17 +27,24 @@
 
 #include "Basics/Common.h"
 
-#include <list>
 #include <deque>
+#include <list>
+#include <memory>
+#include <optional>
+#include <string>
+#include <type_traits>
+#include <unordered_map>
+#include <utility>
 
+#include <boost/optional.hpp>
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
 
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
-#include <type_traits>
 
 #include "Basics/Mutex.h"
 #include "Rest/HttpRequest.h"
@@ -356,9 +363,8 @@ class AgencyOperation {
 
 class AgencyCommResult {
  public:
-  AgencyCommResult();
-  AgencyCommResult(int code, std::string const& message,
-                   std::string const& transactionId = std::string());
+  AgencyCommResult() = default;
+  AgencyCommResult(int code, std::string message);
 
   ~AgencyCommResult() = default;
 
@@ -366,7 +372,7 @@ class AgencyCommResult {
   AgencyCommResult& operator=(AgencyCommResult&& other) noexcept;
 
  public:
-  void set(int code, std::string const& message);
+  void set(int code, std::string message);
 
   bool successful() const { return (_statusCode >= 200 && _statusCode <= 299); }
 
@@ -380,40 +386,37 @@ class AgencyCommResult {
 
   std::string errorDetails() const;
 
-  std::string const location() const { return _location; }
+  std::string const& location() const { return _location; }
 
-  std::string const body() const { return _body; }
-  std::string const& bodyRef() const { return _body; }
+  std::string const& body() const { return _body; }
 
   bool sent() const;
 
   void clear();
 
-  VPackSlice slice() const;
+  velocypack::Slice slice() const;
+
   void setVPack(std::shared_ptr<velocypack::Builder> const& vpack) {
     _vpack = vpack;
   }
 
-  Result asResult() {
-    if (successful()) {
-      return Result{};
-    }
-    return Result{errorCode(), errorMessage()};
-  }
-  
+  Result asResult() const;
+
   void toVelocyPack(VPackBuilder& builder) const;
 
   VPackBuilder toVelocyPack() const;
 
- public:
-  std::string _location;
-  std::string _message;
-  std::string _body;
+  boost::optional<std::pair<int, velocypack::StringRef>> parseBodyError() const;
 
-  std::unordered_map<std::string, AgencyCommResultEntry> _values;
-  int _statusCode;
-  bool _connected;
-  bool _sent;
+ public:
+  std::string _location = "";
+  std::string _message = "";
+  std::string _body = "";
+
+  std::unordered_map<std::string, AgencyCommResultEntry> _values = {};
+  int _statusCode = 0;
+  bool _connected = false;
+  bool _sent = false;
 
  private:
   std::shared_ptr<velocypack::Builder> _vpack;
