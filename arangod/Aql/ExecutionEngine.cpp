@@ -44,6 +44,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
+#include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -196,8 +197,7 @@ ExecutionEngine::ExecutionEngine(QueryContext& query,
       _root(nullptr),
       _resultRegister(0),
       _initializeCursorCalled(false),
-      _wasShutdown(false),
-      _sentShutdownResponse(false) {
+      _shutdownState(ShutdownState::NotShutdown) {
   TRI_ASSERT(_sharedState != nullptr);
   _blocks.reserve(8);
 }
@@ -208,6 +208,10 @@ ExecutionEngine::~ExecutionEngine() {
     shutdownSync(TRI_ERROR_INTERNAL);
   } catch (...) {
     // shutdown can throw - ignore it in the destructor
+  }
+  
+  if (_sharedState) {  // ensure no async task is working anymore
+    _sharedState->invalidate();
   }
 
   for (auto& it : _blocks) {
@@ -485,19 +489,52 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
     // The coordinator engines cannot decide on lock issues later on,
     // however every engine gets injected the list of locked shards.
     res = _coordinatorParts.buildEngines(_query, mgr, snippetIds, snippets);
-
-    if (res.ok()) {
-      TRI_ASSERT(snippets.size() > 0);
-      TRI_ASSERT(snippets[0].first == 0);
-      snippets[0].second->snippetMapping(std::move(snippetIds), std::move(serverToQueryId));
-      snippets[0].second->globalStats().setAliases(std::move(nodeAliases));
+    if (res.fail()) {
+      return res;
     }
+    
+    TRI_ASSERT(snippets.size() > 0);
+    TRI_ASSERT(snippets[0].first == 0);
+    
+    bool knowsAllQueryIds = snippetIds.empty() || !serverToQueryId.empty();
+    // simon: pre 3.7 servers do not have queryIds, might not have all IDs
+    for (auto const& [serverDst, queryId] : serverToQueryId) {
+      if (queryId == 0) {
+        knowsAllQueryIds = false;
+        break;
+      }
+    }
+    
+    for (auto& [engineId, engine] : snippets) {
+      if (knowsAllQueryIds) {
+        if (engineId != 0) { // only the root snippet executes a shutdown on the Coordinator
+          engine->setShutdown(ExecutionEngine::ShutdownState::Done);
+        }
+      } else {
+        engine->setShutdown(ExecutionEngine::ShutdownState::Legacy);
+      }
+    }
+    
+    TRI_ASSERT(snippets[0].first == 0);
+    snippets[0].second->snippetMapping(std::move(snippetIds), std::move(serverToQueryId));
+    snippets[0].second->globalStats().setAliases(std::move(nodeAliases));
+    TRI_ASSERT(snippets[0].second->shutdownState() != ExecutionEngine::ShutdownState::Done);
     
     return res;
   }
 };
 
 void ExecutionEngine::kill() {
+  if (!ServerState::instance()->isCoordinator()) {
+    TRI_ASSERT(_dbServerMapping.empty());
+    return;
+  }
+
+  // just use the global query shutdown instead of killing
+  if (shutdownState() != ShutdownState::Legacy) {
+    shutdown(TRI_ERROR_QUERY_KILLED);
+    return;
+  }
   
   // kill DB server parts
   // RemoteNodeId -> DBServerId -> [snippetId]
@@ -630,7 +667,7 @@ std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
 }
 
 Result ExecutionEngine::shutdownSync(int errorCode) noexcept try {
-  if (_root == nullptr || _wasShutdown) {
+  if (_root == nullptr || shutdownState() == ShutdownState::Done) {
     return Result();
   }
   
@@ -667,37 +704,41 @@ Result ExecutionEngine::shutdownSync(int errorCode) noexcept try {
 
 /// @brief shutdown, will be called exactly once for the whole query
 std::pair<ExecutionState, Result> ExecutionEngine::shutdown(int errorCode) {
-  if (_root == nullptr || _wasShutdown.load(std::memory_order_relaxed)) {
+  auto st = _shutdownState.load(std::memory_order_relaxed);
+  if (_root == nullptr || st == ShutdownState::Done) {
     return {ExecutionState::DONE, _shutdownResult};
   }
   
-  // enter shutdown phase, forget previous wakeups
   TRI_ASSERT(_sharedState != nullptr);
-  _sharedState->resetNumWakeups();
   
-  if (ServerState::instance()->isCoordinator()) {
-    bool knowsAllQueryIds = !_serverToQueryId.empty();
-    for (auto const& [serverDst, queryId] : _serverToQueryId) {
-      if (queryId == 0) {
-        knowsAllQueryIds = false;
-        break;
-      }
-    }
-    
-    if (knowsAllQueryIds) {
+  if (ShutdownState::NotShutdown == st) {
+    if (_shutdownState.compare_exchange_strong(st, ShutdownState::ShutdownSent, std::memory_order_relaxed)) {
+      // enter shutdown phase, forget previous wakeups
+      _sharedState->resetNumWakeups();
       return shutdownDBServerQueries(errorCode);
     }
+    TRI_ASSERT(st == ShutdownState::ShutdownSent);
   }
   
-  auto [state, res] = _root->shutdown(errorCode);
-  if (state == ExecutionState::WAITING) {
+  if (st == ShutdownState::ShutdownSent) {
+    return {ExecutionState::WAITING, {}};
+  } else if (ShutdownState::Legacy == st) {
+    // enter shutdown phase, forget previous wakeups
+    _sharedState->resetNumWakeups();
+    
+    auto [state, res] = _root->shutdown(errorCode);
+    if (state == ExecutionState::WAITING) {
+      return {state, res};
+    }
+    
+    LOG_TOPIC("47b85", INFO, Logger::QUERIES) << "executing legacy query shutdown";
+    
+    _shutdownState.store(ShutdownState::Done, std::memory_order_relaxed);
+    
     return {state, res};
   }
-
-  // prevent a duplicate shutdown
-  _wasShutdown.store(true, std::memory_order_relaxed);
-
-  return {state, res};
+  
+  return {ExecutionState::DONE, _shutdownResult};
 }
 
 // @brief create an execution engine from a plan
@@ -738,12 +779,9 @@ void ExecutionEngine::instantiateFromPlan(Query& query,
     }
     
     TRI_ASSERT(snippets.size() > 0);
-    for (auto const& pair : snippets) {
-      if (pair.first == 0) {
-        engine = pair.second.get();
-        root = pair.second->root();
-      }
-    }
+    TRI_ASSERT(snippets[0].first == 0);
+    engine = snippets[0].second.get();
+    root = snippets[0].second->root();
     
   } else {
     
@@ -844,12 +882,9 @@ void ExecutionEngine::collectExecutionStats(ExecutionStats& stats) {
 }
 
 std::pair<ExecutionState, Result> ExecutionEngine::shutdownDBServerQueries(int errorCode) {
-  if (_sentShutdownResponse.exchange(true)) {
-    return {ExecutionState::WAITING, Result()};
-  }
-  TRI_ASSERT(!_wasShutdown.load(std::memory_order_relaxed));
-  
+  TRI_ASSERT(shutdownState() == ShutdownState::ShutdownSent);
   if (_serverToQueryId.empty()) { // happens during tests
+    _shutdownState.store(ShutdownState::Done);
     return {ExecutionState::DONE, Result()};
   }
   
@@ -914,8 +949,10 @@ std::pair<ExecutionState, Result> ExecutionEngine::shutdownDBServerQueries(int e
           _shutdownResult.reset(res.slice().get("code").getNumericValue<int>());
         }
       });
-    }).thenError<std::exception>([](std::exception ptr) {
-      // simon: we should maybe store this error
+    }).thenError<std::exception>([ss, this](std::exception ptr) {
+      ss->executeLocked([&] {
+        _shutdownResult.reset(TRI_ERROR_INTERNAL, "unhandled query shutdown exception");
+      });
     });
 
     futures.emplace_back(std::move(f));
@@ -924,7 +961,8 @@ std::pair<ExecutionState, Result> ExecutionEngine::shutdownDBServerQueries(int e
   
   futures::collectAll(std::move(futures)).thenFinal([ss, this](auto&& vals) {
     ss->executeAndWakeup([&] {
-      _wasShutdown.store(true, std::memory_order_relaxed); // prevent duplicates
+      TRI_ASSERT(shutdownState() == ShutdownState::ShutdownSent);
+      _shutdownState.store(ShutdownState::Done, std::memory_order_relaxed);
       return true;
     });
   });
