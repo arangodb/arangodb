@@ -63,9 +63,8 @@
 class IResearchViewDBServerTest : public ::testing::Test {
  protected:
   arangodb::tests::mocks::MockDBServer server;
-  arangodb::consensus::Store& _agencyStore;
 
-  IResearchViewDBServerTest() : server(), _agencyStore(server.getAgencyStore()) {
+  IResearchViewDBServerTest() : server() {
     }
 
   void createTestDatabase(TRI_vocbase_t*& vocbase, std::string const name = "testDatabase") {

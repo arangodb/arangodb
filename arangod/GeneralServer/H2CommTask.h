@@ -33,9 +33,10 @@
 
 namespace arangodb {
 class HttpRequest;
-class HttpResponse;
 
 namespace rest {
+
+struct H2Response;
 
 template <SocketType T>
 class H2CommTask final : public GeneralCommTask<T> {
@@ -83,12 +84,10 @@ class H2CommTask final : public GeneralCommTask<T> {
     std::string origin;
 
     std::unique_ptr<HttpRequest> request;
-    std::unique_ptr<HttpResponse> response;
+    std::unique_ptr<H2Response> response;
 
     size_t headerBuffSize = 0; // total header size
     size_t responseOffset = 0; // current offset in response body
-
-    RequestStatistics::Item statistics;
   };
 
   /// init h2 session
@@ -112,10 +111,11 @@ class H2CommTask final : public GeneralCommTask<T> {
   void signalWrite();
 
  private:
+  
   velocypack::Buffer<uint8_t> _outbuffer;
 
   // no more than 64 streams allowed
-  boost::lockfree::queue<HttpResponse*, boost::lockfree::capacity<64>> _responses;
+  boost::lockfree::queue<H2Response*, boost::lockfree::capacity<64>> _responses;
 
   std::map<int32_t, std::unique_ptr<Stream>> _streams;
 

@@ -147,8 +147,8 @@ bool TransactionalStore::insert(TransactionalStore::Transaction* tx,
   bool inserted = false;
   Document d = lookup(tx, document.key);
   if (d.empty()) {  // ensure document with this key does not exist
-    // blacklist in cache first
-    _cache->blacklist(&(document.key), sizeof(std::uint64_t));
+    // banish in cache first
+    _cache->banish(&(document.key), sizeof(std::uint64_t));
 
     // now write to rocksdb
     rocksdb::Slice kSlice(reinterpret_cast<char const*>(&(document.key)),
@@ -180,8 +180,8 @@ bool TransactionalStore::update(TransactionalStore::Transaction* tx,
   bool updated = false;
   Document d = lookup(tx, document.key);
   if (!d.empty()) {  // ensure document with this key exists
-    // blacklist in cache first
-    _cache->blacklist(&(document.key), sizeof(std::uint64_t));
+    // banish in cache first
+    _cache->banish(&(document.key), sizeof(std::uint64_t));
 
     // now write to rocksdb
     rocksdb::Slice kSlice(reinterpret_cast<char const*>(&(document.key)),
@@ -212,8 +212,8 @@ bool TransactionalStore::remove(TransactionalStore::Transaction* tx, std::uint64
   bool removed = false;
   Document d = lookup(tx, key);
   if (!d.empty()) {  // ensure document with this key exists
-    // blacklist in cache first
-    _cache->blacklist(&key, sizeof(std::uint64_t));
+    // banish in cache first
+    _cache->banish(&key, sizeof(std::uint64_t));
 
     // now write to rocksdb
     rocksdb::Slice kSlice(reinterpret_cast<char*>(&key), sizeof(std::uint64_t));

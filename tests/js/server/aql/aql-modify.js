@@ -1204,7 +1204,6 @@ function aqlUpsertOptionsSuite() {
     testUpsertSingleWithInvalidRevInMatch : function () {
       const invalid = genInvalidValue();
       let q = `UPSERT {_key: @key, _rev: "invalid"} INSERT {} UPDATE {val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
-      db._explain(q, {key: "1"});
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
         try {

@@ -1015,7 +1015,7 @@ void Agent::load() {
   persistConfiguration(term());
 
   if (_config.supervision()) {
-    LOG_TOPIC("7658f", DEBUG, Logger::AGENCY) << "Starting cluster sanity facilities";
+    LOG_TOPIC("7658f", DEBUG, Logger::AGENCY) << "Starting cluster supervision facilities";
     _supervision.start(this);
   }
 

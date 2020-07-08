@@ -66,7 +66,7 @@ void QueryEntryCopy::toVelocyPack(velocypack::Builder& out) const {
   out.add(VPackValue(VPackValueType::Object));
   out.add("id", VPackValue(basics::StringUtils::itoa(id)));
   out.add("query", VPackValue(queryString));
-  if (bindParameters != nullptr) {
+  if (bindParameters != nullptr && !bindParameters->slice().isNone()) {
     out.add("bindVars", bindParameters->slice());
   } else {
     out.add("bindVars", arangodb::velocypack::Slice::emptyObjectSlice());
@@ -142,7 +142,7 @@ void QueryList::remove(Query* query) {
   query->vocbase().server().getFeature<arangodb::MetricsFeature>().counter(
       StaticStrings::AqlQueryRuntimeMs) += static_cast<uint64_t>(1000 * elapsed);
 
-  if (!_trackSlowQueries || query->killed()) {
+  if (!_trackSlowQueries.load(std::memory_order_relaxed) || query->killed()) {
     return;
   }
   
@@ -168,7 +168,7 @@ void QueryList::remove(Query* query) {
       if (_trackBindVars) {
         // also log bind variables
         auto bp = query->bindParameters();
-        if (bp != nullptr) {
+        if (bp != nullptr && !bp->slice().isNone()) {
           bindParameters.append(", bind vars: ");
           bindParameters.append(bp->slice().toJson());
           if (bindParameters.size() > _maxQueryStringLength) {
