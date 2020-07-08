@@ -1,8 +1,8 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
-* Added missing state rollback for failed attempt-based write locking of
-  spin locks.
+* Added missing state rollback for failed attempt-based write locking of spin
+  locks.
 
 * Added vertex validation in case of a SmartGraph edge definition update.
 
