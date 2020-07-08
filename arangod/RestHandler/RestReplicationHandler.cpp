@@ -1062,6 +1062,15 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
     TRI_ASSERT(col);
     if (dropExisting) {
       try {
+        if (ServerState::instance()->isCoordinator() && name == StaticStrings::AnalyzersCollection &&
+            server().hasFeature<iresearch::IResearchAnalyzerFeature>()) {
+          // We have ArangoSearch here. So process analyzers accordingly.
+          // We can`t just recreate/truncate collection. Agency should be
+          // properly notified analyzers are gone.
+          // The single server and DBServer case is handled after restore of data.
+          return server().getFeature<iresearch::IResearchAnalyzerFeature>().removeAllAnalyzers(_vocbase);
+        }
+
         auto dropResult = methods::Collections::drop(*col, true, 0.0, true);
         if (dropResult.fail()) {
           if (dropResult.is(TRI_ERROR_FORBIDDEN) || dropResult.is(TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE)) {
