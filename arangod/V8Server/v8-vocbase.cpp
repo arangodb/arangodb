@@ -1453,10 +1453,6 @@ static void JS_EngineStats(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (ServerState::instance()->isCoordinator()) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
   // return engine data
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   VPackBuilder builder;

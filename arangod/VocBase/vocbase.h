@@ -65,12 +65,6 @@ class ReplicationClientsProgressTracker;
 class StorageEngine;
 }  // namespace arangodb
 
-/// @brief predefined collection name for users
-constexpr auto TRI_COL_NAME_USERS = "_users";
-
-/// @brief maximal name length
-constexpr size_t TRI_COL_NAME_LENGTH = 256;
-
 /// @brief document handle separator as character
 constexpr char TRI_DOCUMENT_HANDLE_SEPARATOR_CHR = '/';
 
