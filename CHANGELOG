@@ -1,6 +1,11 @@
 devel
 -----
 
+* Harmonize /_admin/server/* API permissions:
+    GET always allowed
+    POST allowed when superuser and authentication on
+    POST allowed when authentication off
+
 * Keep the list of last-acknowledged entires in Agency more consistent.
   During leadership take-over it was possible to get into a situation that
   the new leader does not successfully report the agency config, which
