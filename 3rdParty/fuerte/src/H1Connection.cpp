@@ -213,7 +213,13 @@ void H1Connection<ST>::sendRequest(std::unique_ptr<Request> req,
 
   // If the connection was leased explicitly, we set the _leased indicator
   // to 2 here, such that it can be reset to 0 once the idle alarm is
-  // enabled explicitly later
+  // enabled explicitly later. We do not have to check if this has worked
+  // for the following reason: The value is only ever set to -1, 0, 1 or 2.
+  // If it is already 2, no action is needed. If it is still 0, then the
+  // connection was not leased and we do not have to mark it here to indicate
+  // that a `sendRequest` has happened. If it is currently -1, then the
+  // connection will be shut down anyway. In the TLS case, this will set
+  // the _state to Failed and the current operation will fail anyway.
   int exp = 1;
   _leased.compare_exchange_strong(exp, 2);
 
@@ -411,8 +417,20 @@ void H1Connection<ST>::asyncWriteNextRequest() {
       if (_shouldKeepAlive && this->_config._idleTimeout.count() > 0) {
         FUERTE_LOG_HTTPTRACE << "setting idle keep alive timer, this=" << this
                              << "\n";
+        // We want to enable the idle timeout alarm here. However, if the
+        // connection object has been leased, but no `sendRequest` has been
+        // called on it yet, then the alarm must not go off. Therefore,
+        // if _leased is 2 (`sendRequest` has been called), we reset it to
+        // 0, if _leased is still 1 (`lease` has happened, but `sendRequest`
+        // has not yet been called), then we leave it untouched. Since
+        // this method here is only ever executed on the iothread and
+        // the value -1 only happens for a brief period in the iothread,
+        // it will never be observed here. Therefore, no actual need to check
+        // the result of the compare_exchange_strong.
         int exp = 2;
-        _leased.compare_exchange_strong(exp, 0);
+        if (!_leased.compare_exchange_strong(exp, 0)) {
+          FUERTE_ASSERT(exp != -1);
+        };
         setTimeout(this->_config._idleTimeout, TimeoutType::IDLE);
       } else {
         this->shutdownConnection(Error::CloseRequested);
@@ -640,6 +658,9 @@ void H1Connection<ST>::setTimeout(std::chrono::milliseconds millis, TimeoutType 
           if (!me->_active && me->_state == Connection::State::Connected) {
             int exp = 0;
             if (me->_leased.compare_exchange_strong(exp, -1)) {
+              // Note that we check _leased here with std::memory_order_seq_cst
+              // **before** we call `shutdownConnection` and actually kill the
+              // connection. This is important, see below!
               FUERTE_LOG_DEBUG << "HTTP-Request idle timeout"
                                << " this=" << me << "\n";
               me->shutdownConnection(Error::CloseRequested);
@@ -681,6 +702,18 @@ void H1Connection<ST>::drainQueue(const fuerte::Error ec) {
 template <SocketType ST>
 bool H1Connection<ST>::lease() {
   int exp = 0;
+  // We have to guard against data races here. Some other thread might call
+  // cancel() on the connection, but then it is OK that the next request
+  // runs into an error. Somebody was asking for trouble and gets it.
+  // The iothread itself can only set the state to Failed if a real
+  // error occurs (in which case it is again OK to run into an error with
+  // the next request), or if the idle timeout alarm goes off. This code
+  // guards against the idle alarm going off despite the fact that the
+  // connection was already leased, since we first compare exchange from
+  // 0 to 1 and then check again that the connection is not Failed. Both
+  // accesses happen with std::memory_order_seq_cst and the check for
+  // _leased in the idle alarm handler happens before shutdownConnection
+  // is called.
   if (!this->_leased.compare_exchange_strong(exp, 1) ||
       this->_state == Connection::State::Failed) {
     return false;
