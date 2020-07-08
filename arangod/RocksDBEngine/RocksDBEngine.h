@@ -472,6 +472,9 @@ class RocksDBEngine final : public StorageEngine {
   arangodb::basics::ReadWriteLock _purgeLock;
 };
 
+static constexpr const char* kEncryptionTypeFile = "ENCRYPTION";
+static constexpr const char* kEncryptionKeystoreFolder = "ENCRYPTION-KEYS";
+
 }  // namespace arangodb
 
 #endif

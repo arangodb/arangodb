@@ -238,7 +238,7 @@ void RestAdminServerHandler::handleTLS() {
   } else if (requestType == rest::RequestType::POST) {
 
     // Only the superuser may reload TLS data:
-    if (!_request->authenticated() || !_request->user().empty()) {
+    if (!ExecContext::current().isSuperuser()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
                     "only superusers may reload TLS data");
       return;
