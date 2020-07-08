@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixed that the hotbackup agency lock is released under all circumstances
+  using scope guards. This addresses a rare case in which the lock was left
+  behind.
+
 * Privatized load plan / current in cluster info and cleanup following
   agency cache implementation.
 
@@ -95,12 +99,12 @@ devel
 
 * Returned `AQL_WARNING()` to emit warnings from UDFs.
 
-* Fixed internal issue BTS-107, offset over the mainquery passed through a
+* Fixed internal issue BTS-107, offset over the main query passed through a
   subquery which has modification access to shards could yield incorrect
   results, if shards are large enough and skipping was large enough, both to
   overflow the batch-size in AQL for each shard individually.
 
-  The Following Query would be effected:
+  The following query would be affected:
 
   FOR x IN 1..100
   LET sub = (
@@ -114,7 +118,7 @@ devel
   If a shard in Collection, has enough entries to fill a batch, the second shard
   could run into the issue that it actually does not skip the first 5 main
   queries, but reports their results in addition. This has the negative side
-  effect that merging the Subqueries back together was off.
+  effect that merging the subqueries back together was off.
 
 * Correct some log entries.
 
