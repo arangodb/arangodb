@@ -1,6 +1,8 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
+* Fix unreasonable precondition on removeServer.
+
 * Updated arangosync to 0.7.7.
 
 * Fixed a document parsing bug in the Web UI. This issue occured in the
