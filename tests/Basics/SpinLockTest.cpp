@@ -388,10 +388,10 @@ TEST(SpinLockTest, testLockWriteAttemptsZero) {
   ASSERT_FALSE(lock.isLockedWrite());
   
   // lock write
-  ASSERT_FALSE(lock.lockWrite(0));
-  ASSERT_FALSE(lock.isLocked());
+  ASSERT_TRUE(lock.lockWrite(0));
+  ASSERT_TRUE(lock.isLocked());
   ASSERT_FALSE(lock.isLockedRead());
-  ASSERT_FALSE(lock.isLockedWrite());
+  ASSERT_TRUE(lock.isLockedWrite());
 }
 
 TEST(SpinLockTest, testLockWriteAttemptsOne) {
@@ -416,9 +416,9 @@ TEST(SpinLockTest, testLockReadAttemptsZero) {
   ASSERT_FALSE(lock.isLockedWrite());
   
   // lock read
-  ASSERT_FALSE(lock.lockRead(0));
-  ASSERT_FALSE(lock.isLocked());
-  ASSERT_FALSE(lock.isLockedRead());
+  ASSERT_TRUE(lock.lockRead(0));
+  ASSERT_TRUE(lock.isLocked());
+  ASSERT_TRUE(lock.isLockedRead());
   ASSERT_FALSE(lock.isLockedWrite());
 }
 
@@ -489,11 +489,16 @@ TEST(SpinLockTest, testLockReadAttempted) {
   ASSERT_FALSE(lock.isLockedWrite());
   
   ASSERT_TRUE(lock.lockRead(5));
-  ASSERT_FALSE(lock.lockRead(0));
+  ASSERT_TRUE(lock.lockRead(0));
   ASSERT_TRUE(lock.isLocked());
   ASSERT_TRUE(lock.isLockedRead());
   ASSERT_FALSE(lock.isLockedWrite());
 
+  lock.unlock();
+  ASSERT_TRUE(lock.isLocked());
+  ASSERT_TRUE(lock.isLockedRead());
+  ASSERT_FALSE(lock.isLockedWrite());
+  
   lock.unlock();
   ASSERT_TRUE(lock.isLocked());
   ASSERT_TRUE(lock.isLockedRead());

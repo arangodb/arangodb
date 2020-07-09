@@ -155,7 +155,7 @@ void ReadWriteSpinLock::lockRead() noexcept {
 
 bool ReadWriteSpinLock::lockRead(std::size_t maxAttempts) noexcept {
   uint64_t attempts = 0;
-  while (++attempts <= maxAttempts) {
+  while (attempts++ <= maxAttempts) {
     if (tryLockRead()) {
       return true;
     }
