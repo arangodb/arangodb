@@ -128,7 +128,7 @@ class SupervisedSchedulerManagerThread final : public SupervisedSchedulerThread 
                                             SupervisedScheduler& scheduler)
       : Thread(server, "SchedMan"), SupervisedSchedulerThread(server, scheduler) {}
   ~SupervisedSchedulerManagerThread() { shutdown(); }
-  void run() override { _scheduler.runSupervisor(); };
+  void run() override { _scheduler.runSupervisor(); }
 };
 
 class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {

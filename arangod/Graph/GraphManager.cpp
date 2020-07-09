@@ -190,7 +190,7 @@ bool GraphManager::renameGraphCollection(std::string const& oldName,
       }
     } catch (...) {
     }
-  };
+  }
 
   res = trx.finish(checkDoc.result);
   if (res.fail()) {
