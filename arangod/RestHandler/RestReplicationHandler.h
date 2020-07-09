@@ -353,15 +353,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief restores the structure of a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  Result processRestoreCollection(VPackSlice const&, bool overwrite, bool force);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief restores the structure of a collection, coordinator case
-  //////////////////////////////////////////////////////////////////////////////
-
-  Result processRestoreCollectionCoordinator(VPackSlice const& collection,
-                                             bool dropExisting, bool force,
-                                             bool ignoreDistributeShardsLikeErrors);
+  Result processRestoreCollection(VPackSlice const&, bool overwrite, bool force,
+                                  bool ignoreDistributeShardsLikeErrors);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the data of the _analyzers collection in cluster
