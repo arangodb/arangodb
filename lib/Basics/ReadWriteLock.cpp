@@ -35,10 +35,16 @@ void ReadWriteLock::lockWrite() {
 
   // the lock is either hold by another writer or we have active readers
   // -> announce that we want to write
-  auto state = _state.fetch_add(QUEUED_WRITER_INC, std::memory_order_relaxed);
+  _state.fetch_add(QUEUED_WRITER_INC, std::memory_order_relaxed);
 
   std::unique_lock<std::mutex> guard(_writer_mutex);
   while (true) {
+    // it is intentional to reload _state after acquiring the mutex,
+    // because in case we were blocked (because someone else was holding
+    // the mutex), _state most likely has changed, causing the subsequent
+    // CAS to fail. If we were not blocked, then the additional load will
+    // most certainly hit the L1 cache and should therefore be very cheap.
+    auto state = _state.load(std::memory_order_relaxed);
     // try to acquire write lock as long as no readers or writers are active,
     while ((state & ~QUEUED_WRITER_MASK) == 0) {
       // try to acquire lock and perform queued writer decrement in one step
@@ -48,7 +54,6 @@ void ReadWriteLock::lockWrite() {
       }
     }
     _writers_bell.wait(guard);
-    state = _state.load(std::memory_order_relaxed);
   }
 }
 
