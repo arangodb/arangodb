@@ -1,6 +1,14 @@
 devel
 -----
 
+* Fixed restoring a SmartGraph into a database that already contains that same graph.
+  The use case is restoring a SmartGraph from backup, apply some modifications, which are
+  undesired, and then resetting it to the restored state, without dropping the database.
+  One way to achieve this is to use arangorestore with the `overwrite` option on the same dataset, 
+  effectively resetting the SmartGraph to the original state.
+  Without this fix, the workaround for is to either drop the graph (or the database) before the
+  restore call, yielding an identical result.
+  
 * Keep the list of last-acknowledged entires in Agency more consistent.
   During leadership take-over it was possible to get into a situation that
   the new leader does not successfully report the agency config, which

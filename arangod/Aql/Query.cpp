@@ -1224,7 +1224,7 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, bool sync,
 }
 
 void Query::unregisterSnippets() {
-    if (!_snippets.empty() && ServerState::instance()->isCoordinator()) {
+  if (!_snippets.empty() && ServerState::instance()->isCoordinator()) {
     auto* registry = QueryRegistryFeature::registry();
     if (registry) {
       registry->unregisterSnippets(_snippets);
