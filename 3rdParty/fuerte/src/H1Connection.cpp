@@ -431,7 +431,7 @@ void H1Connection<ST>::asyncWriteNextRequest() {
         int exp = 2;
         if (!_leased.compare_exchange_strong(exp, 0)) {
           FUERTE_ASSERT(exp != -1);
-        };
+        }
         setTimeout(this->_config._idleTimeout, TimeoutType::IDLE);
       } else {
         this->shutdownConnection(Error::CloseRequested);
