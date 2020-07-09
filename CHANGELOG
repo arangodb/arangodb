@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixed a race in the ConnectionPool which could lease out a connection
+  that got its idle timeout after the lease was completed. This could lead
+  to sporadic network failures in TLS and to inefficiencies with TCP.
+
 * Keep the list of last-acknowledged entires in Agency more consistent.
   During leadership take-over it was possible to get into a situation that
   the new leader does not successfully report the agency config, which
