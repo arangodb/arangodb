@@ -54,12 +54,12 @@ class ReadWriteLock {
   void lockWrite();
 
   /// @brief locks for writing within microsecond timeout
-  [[nodiscard]] bool writeLock(uint64_t timeout) {
+  [[nodiscard]] bool lockWrite(uint64_t timeout) {
     std::chrono::microseconds ms(timeout);
-    return writeLock(ms);
+    return lockWrite(ms);
   }
 
-  [[nodiscard]] bool writeLock(std::chrono::microseconds timeout);
+  [[nodiscard]] bool lockWrite(std::chrono::microseconds timeout);
 
   /// @brief locks for writing, but only tries
   [[nodiscard]] bool tryLockWrite();

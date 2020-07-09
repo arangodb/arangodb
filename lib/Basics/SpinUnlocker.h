@@ -24,7 +24,6 @@
 #ifndef ARANGO_SPIN_UNLOCKER_H
 #define ARANGO_SPIN_UNLOCKER_H 1
 
-#include <atomic>
 #include <cstdint>
 
 #include "Basics/ReadWriteSpinLock.h"
@@ -34,7 +33,6 @@ namespace arangodb::basics {
 class SpinUnlocker {
  public:
   enum class Mode : std::uint8_t { Read, Write };
-  enum class Effort { Try, Succeed };
 
  public:
   SpinUnlocker(Mode mode, ReadWriteSpinLock& lock)
