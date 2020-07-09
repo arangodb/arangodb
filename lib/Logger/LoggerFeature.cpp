@@ -29,7 +29,6 @@
 #endif
 
 #ifdef TRI_HAVE_UNISTD_H
-#include <fuerte/FuerteLogger.h>
 #include <unistd.h>
 #endif
 
@@ -60,6 +59,13 @@
 
 using namespace arangodb::basics;
 using namespace arangodb::options;
+
+// Please leave this code in for the next time we have to debug fuerte.
+#if 0
+void LogHackWriter(char const* p) {
+  LOG_DEVEL << p;
+}
+#endif
 
 namespace arangodb {
 
