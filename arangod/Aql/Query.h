@@ -100,10 +100,6 @@ class Query : public QueryContext {
 
   /// @brief whether or not the query is killed
   bool killed() const override;
-  
-  void setKilled() override {
-    _killed = true;
-  }
 
   /// @brief set the query to killed
   void kill();
@@ -233,6 +229,8 @@ class Query : public QueryContext {
   ExecutionState cleanupPlanAndEngine(int errorCode, bool sync,
                                       velocypack::Builder* statsBuilder = nullptr,
                                       bool includePlan = false);
+  
+  void unregisterSnippets();
 
  protected:
   
@@ -298,8 +296,13 @@ class Query : public QueryContext {
   
   /// @brief whether or not someone else has acquired a V8 context for us
   bool const _contextOwnedByExterior;
-
-  bool _killed;
+  
+  /// avoid killing a query in normal shutdown / cleanup
+  enum class KillState : uint8_t {
+    None, Shutdown, Killed
+  };
+  
+  std::atomic<KillState> _killState;
   
   /// @brief whether or not the hash was already calculated
   bool _queryHashCalculated;
