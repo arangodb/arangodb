@@ -39,6 +39,11 @@ void ReadWriteLock::lockWrite() {
 
   std::unique_lock<std::mutex> guard(_writer_mutex);
   while (true) {
+    // it is intentional to reload _state after acquiring the mutex,
+    // because in case we were blocked (because someone else was holding
+    // the mutex), _state most likely has changed, causing the subsequent
+    // CAS to fail. If we were not blocked, then the additional load will
+    // most certainly hit the L1 cache and should therefore be very cheap.
     auto state = _state.load(std::memory_order_relaxed);
     // try to acquire write lock as long as no readers or writers are active,
     while ((state & ~QUEUED_WRITER_MASK) == 0) {
@@ -53,7 +58,7 @@ void ReadWriteLock::lockWrite() {
 }
 
 /// @brief lock for writes with microsecond timeout
-bool ReadWriteLock::writeLock(std::chrono::microseconds timeout) {
+bool ReadWriteLock::lockWrite(std::chrono::microseconds timeout) {
   if (tryLockWrite()) {
     return true;
   }

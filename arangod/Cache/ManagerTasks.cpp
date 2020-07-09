@@ -84,7 +84,7 @@ void MigrateTask::run() {
       SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
       metadata.toggleMigrating();
     }
-    _manager.reclaimTable(_table);
+    _manager.reclaimTable(_table, false);
   }
 
   _manager.unprepareTask(_environment);
