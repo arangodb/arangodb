@@ -53,6 +53,11 @@ class GeneralConnection : public fuerte::Connection {
   // Activate this connection
   void start() override;
 
+  // Switch off potential idle alarm (used by connection pool). Returns
+  // true if lease was successful and connection can be used afterwards.
+  // If false is retured the connection is broken beyond repair.
+  virtual bool lease() override;
+
   /// All protected or private methods below here must only be called on the
   /// IO thread.
  protected:
@@ -102,7 +107,7 @@ class GeneralConnection : public fuerte::Connection {
 
   /// @brief is the connection established
   std::atomic<Connection::State> _state;
-  
+
   std::atomic<uint32_t> _numQueued; /// queued items
 };
 
