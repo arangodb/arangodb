@@ -119,7 +119,7 @@ function CommunicationSuite () {
 
       // broad cast stop signal
       assertFalse(db[cn].exists("stop"));
-      db[cn].insert({ _key: "stop" });
+      db[cn].insert({ _key: "stop" }, { overwrite: true });
       let tries = 0;
       let done = 0;
       while (++tries < 60) {
