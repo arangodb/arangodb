@@ -1,9 +1,16 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
-* Fixed a race in the ConnectionPool which could lease out a connection
-  that got its idle timeout after the lease was completed. This could lead
-  to sporadic network failures in TLS and to inefficiencies with TCP.
+* Fixed a race in the ConnectionPool which could lease out a connection that got
+  its idle timeout after the lease was completed. This could lead to sporadic
+  network failures in TLS and to inefficiencies with TCP.
+
+* Fixed potential garbled output in syslog log output for the program name.
+
+* Fixed infinite recursion when printing error messages about invalid logger
+  configuration on startup.
+
+* Fixed sporadic use-after-free ASan issue in logger shutdown.
 
 * Added missing state rollback for failed attempt-based write locking of spin
   locks.
