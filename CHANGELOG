@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed hotbackup upload and download with encryption at rest key indirection.
+
 * Fixed restoring a SmartGraph into a database that already contains that same graph.
   The use case is restoring a SmartGraph from backup, apply some modifications, which are
   undesired, and then resetting it to the restored state, without dropping the database.
