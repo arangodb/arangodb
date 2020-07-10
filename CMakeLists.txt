@@ -52,6 +52,8 @@ option(USE_FAIL_ON_WARNINGS "treat warnings as errors (MSVC and MacOS only)" ON)
 # use strictly required OpenSSL version (from ./VERSIONS file)
 option(USE_STRICT_OPENSSL_VERSION "use strictly required OpenSSL version (from ./VERSIONS file)" OFF)
 
+option(USE_MINIMAL_DEBUGINFO "use minimal debug symbols for builds containing debug information" OFF)
+
 # don't use standalone boost asio
 # use this when asio is included outside of Boost
 # add_definitions("-DARANGODB_STANDALONE_ASIO=0")
@@ -891,87 +893,67 @@ endif ()
 
 
 # compiler options
-if (CMAKE_COMPILER_IS_GNUCC)
-  if (VERBOSE)
+if (NOT MSVC) 
+  if (CMAKE_COMPILER_IS_GNUCC)
     message(STATUS "Compiler type GNU: ${CMAKE_CXX_COMPILER}")
-  endif ()
-
-  set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
-
-  set(CMAKE_C_FLAGS                "-g"                             CACHE INTERNAL "default C compiler flags")
-  set(CMAKE_C_FLAGS_DEBUG          "-O0 -g -D_DEBUG=1"              CACHE INTERNAL "C debug flags")
-  set(CMAKE_C_FLAGS_MINSIZEREL     "-Os"                            CACHE INTERNAL "C minimal size flags")
-  set(CMAKE_C_FLAGS_RELEASE        "-O3 -fomit-frame-pointer"       CACHE INTERNAL "C release flags")
-  set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer" CACHE INTERNAL "C release with debug info flags")
-
-  set(CMAKE_CXX_FLAGS                "-g -Wnon-virtual-dtor"          CACHE INTERNAL "default C++ compiler flags")
-  set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g -D_DEBUG=1"              CACHE INTERNAL "C++ debug flags")
-  set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os"                            CACHE INTERNAL "C++ minimal size flags")
-  set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -fomit-frame-pointer"       CACHE INTERNAL "C++ release flags")
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer" CACHE INTERNAL "C++ release with debug info flags")
-
-elseif (CMAKE_COMPILER_IS_CLANG)
-  if (VERBOSE)
+    set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
+  elseif (CMAKE_COMPILER_IS_CLANG)
     message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")
+    set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
+  else ()  
+    message(STATUS "Compiler type UNKNOWN: ${CMAKE_CXX_COMPILER}")
+    set(BASE_FLAGS "-Wall ${BASE_FLAGS}")
   endif ()
 
-  set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
+  # no debug symbols
+  set(NODEBUGINFO_FLAGS "-g0")
 
-  set(CMAKE_C_FLAGS                "-g"                             CACHE INTERNAL "default C compiler flags")
-  set(CMAKE_C_FLAGS_DEBUG          "-O0 -g -D_DEBUG=1"              CACHE INTERNAL "C debug flags")
-  set(CMAKE_C_FLAGS_MINSIZEREL     "-Os"                            CACHE INTERNAL "C minimal size flags")
-  set(CMAKE_C_FLAGS_RELEASE        "-O3 -fomit-frame-pointer"       CACHE INTERNAL "C release flags")
-  set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer" CACHE INTERNAL "C release with debug info flags")
+  # debug symbols
+  set(DEBUGINFO_FLAGS "-g")
+  if (USE_MINIMAL_DEBUGINFO)
+    # minimal debug symbils
+    set(DEBUGINFO_FLAGS "-g1 -feliminate-unused-debug-symbols")
+  endif ()
 
-  set(CMAKE_CXX_FLAGS                "-g -Wnon-virtual-dtor"          CACHE INTERNAL "default C++ compiler flags")
-  set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g -D_DEBUG=1"              CACHE INTERNAL "C++ debug flags")
-  set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os"                            CACHE INTERNAL "C++ minimal size flags")
-  set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -fomit-frame-pointer"       CACHE INTERNAL "C++ release flags")
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer" CACHE INTERNAL "C++ release with debug info flags")
+  set(CMAKE_C_FLAGS                  "${DEBUGINFO_FLAGS}"                              CACHE INTERNAL "default C compiler flags")
+  set(CMAKE_C_FLAGS_DEBUG            "${DEBUGINFO_FLAGS} -O0 -D_DEBUG=1"               CACHE INTERNAL "C debug flags")
+  set(CMAKE_C_FLAGS_MINSIZEREL       "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C minimal size flags")
+  set(CMAKE_C_FLAGS_RELEASE          "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C release flags")
+  set(CMAKE_C_FLAGS_RELWITHDEBINFO   "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C release with debug info flags")
 
-elseif (MSVC)
-  if (VERBOSE)
-    message(STATUS "Compiler type MSVC: ${CMAKE_CXX_COMPILER}")
+  set(CMAKE_CXX_FLAGS                "${DEBUGINFO_FLAGS} -Wnon-virtual-dtor"           CACHE INTERNAL "default C++ compiler flags")
+  set(CMAKE_CXX_FLAGS_DEBUG          "${DEBUGINFO_FLAGS} -O0 -D_DEBUG=1"               CACHE INTERNAL "C++ debug flags")
+  set(CMAKE_CXX_FLAGS_MINSIZEREL     "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C++ minimal size flags")
+  set(CMAKE_CXX_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C++ release flags")
+  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C++ release with debug info flags")
+
+else () # MSVC
+  message(STATUS "Compiler type MSVC: ${CMAKE_CXX_COMPILER}")
+  
+  if (USE_MINIMAL_DEBUGINFO)
+    message(FATAL_ERROR "USE_MINIMAL_DEBUGINFO is not supported for this compiler")
   endif ()
 
   set(BASE_FLAGS "/wd4996 ${BASE_FLAGS}")
 
-  set(CMAKE_C_FLAGS                "/MTd"                              CACHE INTERNAL "default C++ compiler flags")
-  set(CMAKE_C_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1 /bigobj" CACHE INTERNAL "C++ debug flags")
-  set(CMAKE_C_FLAGS_MINSIZEREL     "/MT /O1 /Ob1"                      CACHE INTERNAL "C++ minimal size flags")
-  set(CMAKE_C_FLAGS_RELEASE        "/MT /O2 /Ob2"                      CACHE INTERNAL "C++ release flags")
-  set(CMAKE_C_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1"                  CACHE INTERNAL "C++ release with debug info flags")
+  set(CMAKE_C_FLAGS                "/MTd"                                              CACHE INTERNAL "default C++ compiler flags")
+  set(CMAKE_C_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1 /bigobj"         CACHE INTERNAL "C++ debug flags")
+  set(CMAKE_C_FLAGS_MINSIZEREL     "/MT /O1 /Ob1"                                      CACHE INTERNAL "C++ minimal size flags")
+  set(CMAKE_C_FLAGS_RELEASE        "/MT /O2 /Ob2"                                      CACHE INTERNAL "C++ release flags")
+  set(CMAKE_C_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1"                                  CACHE INTERNAL "C++ release with debug info flags")
 
-  set(CMAKE_CXX_FLAGS                "/MTd"                              CACHE INTERNAL "default C++ compiler flags")
-  set(CMAKE_CXX_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1 /bigobj" CACHE INTERNAL "C++ debug flags")
-  set(CMAKE_CXX_FLAGS_MINSIZEREL     "/MT /O1 /Ob1"                      CACHE INTERNAL "C++ minimal size flags")
-  set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2 /Ob2"                      CACHE INTERNAL "C++ release flags")
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1"                  CACHE INTERNAL "C++ release with debug info flags")
+  set(CMAKE_CXX_FLAGS                "/MTd"                                            CACHE INTERNAL "default C++ compiler flags")
+  set(CMAKE_CXX_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1 /bigobj"       CACHE INTERNAL "C++ debug flags")
+  set(CMAKE_CXX_FLAGS_MINSIZEREL     "/MT /O1 /Ob1"                                    CACHE INTERNAL "C++ minimal size flags")
+  set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2 /Ob2"                                    CACHE INTERNAL "C++ release flags")
+  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1"                                CACHE INTERNAL "C++ release with debug info flags")
 
   if (USE_CLCACHE_MODE)
     set(CMAKE_VS_GLOBALS "TrackFileAccess=false")
     add_definitions(/Z7)
   endif ()
-
-else ()
-  # unknown compiler
-  message(STATUS "Compiler type UNKNOWN: ${CMAKE_CXX_COMPILER}")
-
-  set(BASE_FLAGS "-Wall ${BASE_FLAGS}")
-
-  set(CMAKE_C_FLAGS                "-g"                             CACHE INTERNAL "default C compiler flags")
-  set(CMAKE_C_FLAGS_DEBUG          "-O0 -g"                         CACHE INTERNAL "C debug flags")
-  set(CMAKE_C_FLAGS_MINSIZEREL     "-Os"                            CACHE INTERNAL "C minimal size flags")
-  set(CMAKE_C_FLAGS_RELEASE        "-O3 -fomit-frame-pointer"       CACHE INTERNAL "C release flags")
-  set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer" CACHE INTERNAL "C release with debug info flags")
-
-  set(CMAKE_CXX_FLAGS                "-g"                             CACHE INTERNAL "default C++ compiler flags")
-  set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g"                         CACHE INTERNAL "C++ debug flags")
-  set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os"                            CACHE INTERNAL "C++ minimal size flags")
-  set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -fomit-frame-pointer"       CACHE INTERNAL "C++ release flags")
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer" CACHE INTERNAL "C++ release with debug info flags")
 endif ()
-
+  
 set(CMAKE_C_FLAGS                "${CMAKE_C_FLAGS}                    ${BASE_FLAGS} ${BASE_C_FLAGS}")
 set(CMAKE_C_FLAGS_DEBUG          "${CMAKE_C_FLAGS_DEBUG}              ${BASE_FLAGS} ${BASE_C_FLAGS}")
 set(CMAKE_C_FLAGS_RELEASE        "${CMAKE_C_FLAGS_RELEASE}            ${BASE_FLAGS} ${BASE_C_FLAGS}")
