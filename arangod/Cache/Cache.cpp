@@ -342,12 +342,12 @@ void Cache::shutdown() {
       std::shared_ptr<Table> extra = table->setAuxiliary(std::shared_ptr<Table>(nullptr));
       if (extra) {
         extra->clear();
-        _manager->reclaimTable(extra);
+        _manager->reclaimTable(extra, false);
       }
       table->clear();
     }
 
-    _manager->reclaimTable(std::atomic_load(&_tableShrdPtr));
+    _manager->reclaimTable(std::atomic_load(&_tableShrdPtr), false);
     {
       SpinLocker metaGuard(SpinLocker::Mode::Write, _metadata.lock());
       _metadata.changeTable(0);
@@ -435,7 +435,7 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
 
   // clear out old table and release it
   oldTable->clear();
-  _manager->reclaimTable(oldTable);
+  _manager->reclaimTable(oldTable, false);
 
   // unmarking migrating flag
   {

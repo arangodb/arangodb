@@ -68,11 +68,12 @@ using StringBuffer = arangodb::basics::StringBuffer;
 ClientsExecutorInfos::ClientsExecutorInfos(std::vector<std::string> clientIds)
     : _clientIds(std::move(clientIds)) {
   TRI_ASSERT(!_clientIds.empty());
-};
+}
 
 auto ClientsExecutorInfos::nrClients() const noexcept -> size_t {
   return _clientIds.size();
 }
+
 auto ClientsExecutorInfos::clientIds() const noexcept -> std::vector<std::string> const& {
   return _clientIds;
 }
@@ -240,7 +241,7 @@ auto BlocksWithClientsImpl<Executor>::executeWithoutTraceForClient(AqlCallStack 
       auto [state, skipped, result] = dataContainer.execute(stack, _upstreamState);
       if (state == ExecutionState::DONE || !skipped.nothingSkipped() || result != nullptr) {
         // We have a valid result.
-        return {state, skipped, result};
+        return {state, skipped, std::move(result)};
       }
       stack.popCall();
     }
@@ -289,7 +290,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> BlocksWithClientsImpl<Executor>
   AqlCallStack stack(AqlCallList{AqlCall::SimulateGetSome(atMost)}, true);
   auto [state, skipped, block] = executeForClient(stack, shardId);
   TRI_ASSERT(skipped.nothingSkipped());
-  return {state, block};
+  return {state, std::move(block)};
 }
 
 /// @brief skipSomeForShard

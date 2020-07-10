@@ -271,7 +271,7 @@ class Manager {
   void migrateCache(TaskEnvironment environment, basics::SpinLocker&& metaGuard,
                     Cache* cache, std::shared_ptr<Table>& table);
   std::shared_ptr<Table> leaseTable(std::uint32_t logSize);
-  void reclaimTable(std::shared_ptr<Table> table, bool internal = false);
+  void reclaimTable(std::shared_ptr<Table> table, bool internal);
 
   // helpers for individual allocations
   [[nodiscard]] bool increaseAllowed(uint64_t increase, bool privileged = false) const;

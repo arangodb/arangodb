@@ -125,7 +125,7 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
   if (value.isBool()) {
     profile = value.getBool() ? PROFILE_LEVEL_BASIC : PROFILE_LEVEL_NONE;
   } else if (value.isNumber()) {
-    profile = static_cast<ProfileLevel>(value.getNumber<uint32_t>());
+    profile = static_cast<ProfileLevel>(value.getNumber<uint16_t>());
   }
 
   value = slice.get("stream");
