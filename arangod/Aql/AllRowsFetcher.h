@@ -116,8 +116,6 @@ class AllRowsFetcher {
   ExecutionState _upstreamState;
   std::size_t _blockToReturnNext;
 
-  std::vector<AqlItemMatrix::RowIndex> _rowIndexes;
-
  private:
   /**
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()

@@ -5179,6 +5179,10 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId,
                                          timeout, writeURL, builder.slice());
   if (!result.successful() &&
       result.httpCode() != (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+    LOG_TOPIC("6ae43", WARN, Logger::BACKUP)
+        << "Error when unlocking backup lock for backup " << backupId
+        << " in agency, errorCode: " << result.httpCode()
+        << ", errorMessage: " << result.errorMessage();
     return arangodb::Result(TRI_ERROR_HOT_BACKUP_INTERNAL,
                             "failed to release backup lock in agency");
   }
@@ -5194,6 +5198,9 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId,
 
   auto ar = rv->slice().get("results");
   if (!ar[0].isNumber()) {
+    LOG_TOPIC("6ae45", WARN, Logger::BACKUP)
+        << "Invalid agency result when unlocking backup lock for backup "
+        << backupId << " in agency: " << result.slice().toJson();
     return arangodb::Result(
         TRI_ERROR_HOT_BACKUP_INTERNAL,
         "invalid agency result while releasing backup lock");
@@ -5210,6 +5217,10 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId,
     auto [res, index] = agencyCache.get("Supervision/State/Mode");
 
     if(!res->slice().isString()) {
+      LOG_TOPIC("6ae46", WARN, Logger::BACKUP)
+          << "Invalid JSON from agency when deactivating supervision mode for "
+             "backup "
+          << backupId;
       return arangodb::Result(
         TRI_ERROR_HOT_BACKUP_INTERNAL,
         std::string("invalid JSON from agency, when deactivating supervision mode:") +
@@ -5229,6 +5240,9 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId,
 
     std::this_thread::sleep_for(std::chrono::duration<double>(wait));
   }
+
+  LOG_TOPIC("6ae47", WARN, Logger::BACKUP)
+      << "Timeout when deactivating supervision mode for backup " << backupId;
 
   return arangodb::Result(
       TRI_ERROR_HOT_BACKUP_INTERNAL,

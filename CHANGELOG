@@ -6,6 +6,33 @@ v3.7.1-rc.1 (XXXX-XX-XX)
   the new leader does not successfully report the agency config, which
   was eventually fixed by the Agent itself. Now this situation is impossible.
 
+* Fixed a race in the ConnectionPool which could lease out a connection that got
+  its idle timeout after the lease was completed. This could lead to sporadic
+  network failures in TLS and to inefficiencies with TCP.
+
+* Fixed restoring a SmartGraph into a database that already contains that same
+  graph.
+  The use case is restoring a SmartGraph from backup, apply some modifications,
+  which are undesired, and then resetting it to the restored state, without
+  dropping the database. One way to achieve this is to use arangorestore with
+  the `overwrite` option on the same dataset, effectively resetting the
+  SmartGraph to the original state. Without this fix, the workaround for is to
+  either drop the graph (or the database) before the restore call, yielding an
+  identical result.
+
+* Fixed potential garbled output in syslog log output for the program name.
+
+* Fixed infinite recursion when printing error messages about invalid logger
+  configuration on startup.
+
+* Fixed sporadic use-after-free ASan issue in logger shutdown.
+
+* Added missing state rollback for failed attempt-based write locking of spin
+  locks.
+
+* Disable internal network protocol switch for cluster-internal communication,
+  and hard-code the internal communication protocol to HTTP.
+
 * Added vertex collection validation in case of a SmartGraph edge definition
   update.
 

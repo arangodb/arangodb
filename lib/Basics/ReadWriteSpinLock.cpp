@@ -117,12 +117,17 @@ bool ReadWriteSpinLock::lockWrite(std::size_t maxAttempts) noexcept {
         return true;
       }
       if (++attempts > maxAttempts) {
+        // Undo the counting of us as queued writer:
+        _state.fetch_sub(::QueuedWriterIncrement, std::memory_order_release);
         return false;
       }
     }
     cpu_relax();
     state = _state.load(std::memory_order_relaxed);
   }
+        
+  // Undo the counting of us as queued writer:
+  _state.fetch_sub(::QueuedWriterIncrement, std::memory_order_release);
   return false;
 }
 
