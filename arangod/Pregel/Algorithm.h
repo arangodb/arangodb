@@ -54,8 +54,6 @@ class MasterContext;
 struct IAlgorithm {
   virtual ~IAlgorithm() = default;
 
-  // virtual bool isFixpointAlgorithm() const {return false;}
-
   virtual bool supportsAsyncMode() const { return false; }
 
   virtual bool supportsCompensation() const { return false; }
@@ -82,15 +80,27 @@ struct IAlgorithm {
 // specify serialization, whatever
 template <typename V, typename E, typename M>
 struct Algorithm : IAlgorithm {
+  // Data used by the algorithm at every vertex
+  using vertex_type = V;
+  // Data used by the algorithm for every edge
+  using edge_type = E;
+  // Data sent along edges in steps
+  using message_type = M;
+
+  using graph_format = GraphFormat<vertex_type, edge_type>;
+  using message_format = MessageFormat<message_type>;
+  using message_combiner = MessageCombiner<message_type>;
+  using vertex_computation = VertexComputation<vertex_type, edge_type, message_type>;
+  using vertex_compensation = VertexCompensation<vertex_type, edge_type, message_type>;
  public:
   virtual WorkerContext* workerContext(velocypack::Slice userParams) const {
     return new WorkerContext();
   }
-  virtual GraphFormat<V, E>* inputFormat() const = 0;
-  virtual MessageFormat<M>* messageFormat() const = 0;
-  virtual MessageCombiner<M>* messageCombiner() const { return nullptr; };
-  virtual VertexComputation<V, E, M>* createComputation(WorkerConfig const*) const = 0;
-  virtual VertexCompensation<V, E, M>* createCompensation(WorkerConfig const*) const {
+  virtual graph_format* inputFormat() const = 0;
+  virtual message_format* messageFormat() const = 0;
+  virtual message_combiner* messageCombiner() const { return nullptr; };
+  virtual vertex_computation* createComputation(WorkerConfig const*) const = 0;
+  virtual vertex_compensation* createCompensation(WorkerConfig const*) const {
     return nullptr;
   }
   virtual std::set<std::string> initialActiveSet() {
