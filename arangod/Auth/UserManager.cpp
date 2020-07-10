@@ -414,7 +414,8 @@ void auth::UserManager::triggerGlobalReload() {
   while (maxTries-- > 0) {
     AgencyCommResult result = agency.sendTransactionWithFailover(incrementVersion);
     if (result.successful()) {
-      _globalVersion.fetch_add(1, std::memory_order_release);
+      uint64_t aha = _globalVersion.fetch_add(1, std::memory_order_release);
+      LOG_DEVEL << "INCREMENTED GLOBAL VERSION TO " << (aha + 1);
       _internalVersion.fetch_add(1, std::memory_order_release);
       return;
     }
@@ -797,6 +798,7 @@ auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
   return level;
 }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 /// Only used for testing
 void auth::UserManager::setAuthInfo(auth::UserMap const& newMap) {
   MUTEX_LOCKER(guard, _loadFromDBLock);      // must be first
@@ -804,3 +806,4 @@ void auth::UserManager::setAuthInfo(auth::UserMap const& newMap) {
   _userCache = newMap;
   _internalVersion.store(_globalVersion.load());
 }
+#endif
