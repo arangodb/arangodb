@@ -40,8 +40,8 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
-#include "Network/NetworkFeature.h"
 #include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -55,8 +55,10 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::basics;
 
-const char* arangodb::pregel::ExecutionStateNames[7] = {
-    "none", "running", "storing", "done", "canceled", "in error", "recovering"};
+const char* arangodb::pregel::ExecutionStateNames[7] = {"none",      "running",
+                                                        "storing",   "done",
+                                                        "canceled",  "in error",
+                                                        "recovering"};
 
 Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
                      std::vector<CollectionID> const& vertexCollections,
@@ -95,7 +97,7 @@ Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
     LOG_TOPIC("464dd", DEBUG, Logger::PREGEL) << "Enabled lazy loading";
   }
   _useMemoryMaps = VelocyPackHelper::getBooleanValue(_userParams.slice(),
-                                                      Utils::useMemoryMaps, _useMemoryMaps);
+                                                     Utils::useMemoryMaps, _useMemoryMaps);
   VPackSlice storeSlice = config.get("store");
   _storeResults = !storeSlice.isBool() || storeSlice.getBool();
   if (!_storeResults) {
@@ -247,8 +249,8 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
   }
 
   LOG_TOPIC("76631", INFO, Logger::PREGEL)
-      << "Running pregel with " << _totalVerticesCount << " vertices, "
-      << _totalEdgesCount << " edges";
+      << "Running Pregel " << _algorithm->name() << " with "
+      << _totalVerticesCount << " vertices, " << _totalEdgesCount << " edges";
   if (_masterContext) {
     _masterContext->_globalSuperstep = 0;
     _masterContext->_vertexCount = _totalVerticesCount;
@@ -639,31 +641,34 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
 
       return TRI_ERROR_NO_ERROR;
     } else {
-      
       network::RequestOptions reqOpts;
       reqOpts.timeout = network::Timeout(5.0 * 60.0);
       reqOpts.database = _vocbaseGuard.database().name();
-      
-      responses.emplace_back(network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Post,
-                                                  path, std::move(buffer), reqOpts));
-      
+
+      responses.emplace_back(network::sendRequest(pool, "server:" + server,
+                                                  fuerte::RestVerb::Post, path,
+                                                  std::move(buffer), reqOpts));
+
       LOG_TOPIC("6ae66", DEBUG, Logger::PREGEL) << "Initializing Server " << server;
     }
   }
-  
+
   size_t nrGood = 0;
-  futures::collectAll(responses).thenValue([&nrGood](auto const& results) {
-    for (auto const& tryRes : results) {
-      network::Response const& r = tryRes.get();  // throws exceptions upwards
-      if (r.ok() && r.response->statusCode() < 400) {
-        nrGood++;
-      } else {
-        LOG_TOPIC("6ae67", ERR, Logger::PREGEL) << "received error from worker: '"
-          << (r.ok() ? r.slice().toJson() : fuerte::to_string(r.error)) << "'";
-      }
-    }
-  }).wait();
-  
+  futures::collectAll(responses)
+      .thenValue([&nrGood](auto const& results) {
+        for (auto const& tryRes : results) {
+          network::Response const& r = tryRes.get();  // throws exceptions upwards
+          if (r.ok() && r.response->statusCode() < 400) {
+            nrGood++;
+          } else {
+            LOG_TOPIC("6ae67", ERR, Logger::PREGEL)
+                << "received error from worker: '"
+                << (r.ok() ? r.slice().toJson() : fuerte::to_string(r.error)) << "'";
+          }
+        }
+      })
+      .wait();
+
   return nrGood == responses.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
 }
 
@@ -727,7 +732,8 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
   LOG_TOPIC("3cfa8", INFO, Logger::PREGEL)
       << "Startup Time: " << _computationStartTimeSecs - _startTimeSecs << "s";
   LOG_TOPIC("d43cb", INFO, Logger::PREGEL) << "Computation Time: " << compTime << "s";
-  LOG_TOPIC_IF("74e05", INFO, Logger::PREGEL, didStore) << "Storage Time: " << storeTime << "s";
+  LOG_TOPIC_IF("74e05", INFO, Logger::PREGEL, didStore)
+      << "Storage Time: " << storeTime << "s";
   LOG_TOPIC("06f03", INFO, Logger::PREGEL) << "Overall: " << totalRuntimeSecs() << "s";
   LOG_TOPIC("03f2e", DEBUG, Logger::PREGEL) << "Stats: " << debugOut.toString();
 
@@ -834,14 +840,14 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
     }
     return TRI_ERROR_NO_ERROR;
   }
-  
+
   if (_dbServers.size() == 0) {
     LOG_TOPIC("a14fa", WARN, Logger::PREGEL) << "No servers registered";
     return TRI_ERROR_FAILED;
   }
 
   std::string base = Utils::baseUrl(Utils::workerPrefix);
-  
+
   VPackBuffer<uint8_t> buffer;
   buffer.append(message.slice().begin(), message.slice().byteSize());
 
@@ -849,29 +855,31 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
   reqOpts.database = _vocbaseGuard.database().name();
   reqOpts.timeout = network::Timeout(5.0 * 60.0);
   reqOpts.skipScheduler = true;
-  
+
   auto const& nf = _vocbaseGuard.database().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   std::vector<futures::Future<network::Response>> responses;
-  
+
   for (auto const& server : _dbServers) {
     responses.emplace_back(network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Post,
                                                 base + path, buffer, reqOpts));
   }
-  
+
   size_t nrGood = 0;
-  futures::collectAll(responses).thenValue([&](auto results) {
-    for (auto const& tryRes : results) {
-       network::Response const& res = tryRes.get();  // throws exceptions upwards
-      if (res.ok() && res.response->statusCode() < 400) {
-        nrGood++;
-        if (handle) {
-          handle(res.response->slice());
+  futures::collectAll(responses)
+      .thenValue([&](auto results) {
+        for (auto const& tryRes : results) {
+          network::Response const& res = tryRes.get();  // throws exceptions upwards
+          if (res.ok() && res.response->statusCode() < 400) {
+            nrGood++;
+            if (handle) {
+              handle(res.response->slice());
+            }
+          }
         }
-      }
-    }
-  }).wait();
-  
+      })
+      .wait();
+
   return nrGood == responses.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
 }
 

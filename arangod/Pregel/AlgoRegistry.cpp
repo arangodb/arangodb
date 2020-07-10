@@ -38,6 +38,8 @@
 #include "Pregel/Algos/VertexAccumulators/VertexAccumulators.h"
 #include "Pregel/Utils.h"
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 using namespace arangodb::pregel;
 
