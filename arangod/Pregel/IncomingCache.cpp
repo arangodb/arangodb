@@ -22,6 +22,7 @@
 
 #include "IncomingCache.h"
 #include "Pregel/CommonFormats.h"
+#include "Pregel/Algos/VertexAccumulators/VertexAccumulators.h"
 #include "Pregel/Utils.h"
 #include "Pregel/WorkerConfig.h"
 
@@ -345,12 +346,21 @@ template class arangodb::pregel::CombiningInCache<double>;
 template class arangodb::pregel::InCache<SenderMessage<uint64_t>>;
 template class arangodb::pregel::ArrayInCache<SenderMessage<uint64_t>>;
 template class arangodb::pregel::CombiningInCache<SenderMessage<uint64_t>>;
+
 template class arangodb::pregel::InCache<SenderMessage<double>>;
 template class arangodb::pregel::ArrayInCache<SenderMessage<double>>;
 template class arangodb::pregel::CombiningInCache<SenderMessage<double>>;
+
 template class arangodb::pregel::InCache<DMIDMessage>;
 template class arangodb::pregel::ArrayInCache<DMIDMessage>;
 template class arangodb::pregel::CombiningInCache<DMIDMessage>;
+
 template class arangodb::pregel::InCache<HLLCounter>;
 template class arangodb::pregel::ArrayInCache<HLLCounter>;
 template class arangodb::pregel::CombiningInCache<HLLCounter>;
+
+using namespace arangodb::pregel::algos;
+template class arangodb::pregel::InCache<MessageData>;
+template class arangodb::pregel::ArrayInCache<MessageData>;
+template class arangodb::pregel::CombiningInCache<MessageData>;
+

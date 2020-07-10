@@ -35,6 +35,7 @@
 #include "Pregel/Algos/SSSP.h"
 #include "Pregel/Algos/ShortestPath.h"
 #include "Pregel/Algos/WCC.h"
+#include "Pregel/Algos/VertexAccumulators/VertexAccumulators.h"
 #include "Pregel/Utils.h"
 
 using namespace arangodb;
@@ -43,6 +44,9 @@ using namespace arangodb::pregel;
 IAlgorithm* AlgoRegistry::createAlgorithm(application_features::ApplicationServer& server,
                                           std::string const& algorithm,
                                           VPackSlice userParams) {
+
+  LOG_DEVEL << " algorithm: " << algorithm;
+
   if (algorithm == "sssp") {
     return new algos::SSSPAlgorithm(server, userParams);
   } else if (algorithm == "pagerank") {
@@ -71,6 +75,8 @@ IAlgorithm* AlgoRegistry::createAlgorithm(application_features::ApplicationServe
     return new algos::DMID(server, userParams);
   } else if (algorithm == "wcc") {
     return new algos::WCC(server, userParams);
+  } else if (algorithm == "vertexaccumulators") {
+    return new algos::VertexAccumulators(server, userParams);
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Unsupported Algorithm");
@@ -99,6 +105,7 @@ template <typename V, typename E, typename M>
   std::transform(algorithm.begin(), algorithm.end(), algorithm.begin(), ::tolower);
 
   auto& server = vocbase.server();
+  LOG_DEVEL << " algorithm: " << algorithm;
   if (algorithm == "sssp") {
     return createWorker(vocbase, new algos::SSSPAlgorithm(server, userParams), body);
   } else if (algorithm == "pagerank") {
@@ -127,6 +134,8 @@ template <typename V, typename E, typename M>
     return createWorker(vocbase, new algos::DMID(server, userParams), body);
   } else if (algorithm == "wcc") {
     return createWorker(vocbase, new algos::WCC(server, userParams), body);
+  } else if (algorithm == "vertexaccumulators") {
+    return createWorker(vocbase, new algos::VertexAccumulators(server, userParams), body);
   }
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,

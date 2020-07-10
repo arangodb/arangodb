@@ -200,6 +200,11 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/Algos/SLPA.cpp
   Pregel/Algos/SSSP.cpp
   Pregel/Algos/ShortestPath.cpp
+  Pregel/Algos/VertexAccumulators/VertexAccumulators.cpp
+  Pregel/Algos/VertexAccumulators/VertexAccumulatorsData.cpp
+  Pregel/Algos/VertexAccumulators/VertexAccumulatorsGraphFormat.cpp
+  Pregel/Algos/VertexAccumulators/VertexAccumulatorsMessageFormat.cpp
+  Pregel/Algos/VertexAccumulators/VertexAccumulatorsVertexComputation.cpp
   Pregel/Algos/WCC.cpp
   Pregel/Conductor.cpp
   Pregel/GraphStore.cpp
