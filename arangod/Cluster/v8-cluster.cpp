@@ -1468,18 +1468,22 @@ static void Return_PrepareClusterCommResultForJS(v8::FunctionCallbackInfo<v8::Va
     network::Response const& response = res.response;
 
     if (response.ok()) {
-      // The headers:
-      v8::Handle<v8::Object> h = v8::Object::New(isolate);
-      TRI_GET_GLOBAL_STRING(StatusKey);
-      r->Set(context, StatusKey, TRI_V8_ASCII_STRING(isolate, "RECEIVED")).FromMaybe(false);
+      {
+        // The headers:
+        v8::Handle<v8::Object> h = v8::Object::New(isolate);
+        TRI_GET_GLOBAL_STRING(StatusKey);
+        r->Set(context, StatusKey, TRI_V8_ASCII_STRING(isolate, "RECEIVED")).FromMaybe(false);
 
-      auto headers = response.response->header.meta();
-      headers[StaticStrings::ContentLength] = StringUtils::itoa(response.response->payloadSize());
-      for (auto& it : headers) {
-        h->Set(context, TRI_V8_STD_STRING(isolate, it.first), TRI_V8_STD_STRING(isolate, it.second)).FromMaybe(false);
+        auto headers = response.response->header.meta();
+        headers[StaticStrings::ContentLength] = StringUtils::itoa(response.response->payloadSize());
+        for (auto& it : headers) {
+          h->Set(context, TRI_V8_STD_STRING(isolate, it.first), TRI_V8_STD_STRING(isolate, it.second)).FromMaybe(false);
+        }
+        r->Set(context, TRI_V8_ASCII_STRING(isolate, "headers"), h).FromMaybe(false);
       }
-      r->Set(context, TRI_V8_ASCII_STRING(isolate, "headers"), h).FromMaybe(false);
-
+      TRI_GET_GLOBAL_STRING(CodeKey);
+      r->Set(context, CodeKey, v8::Number::New(isolate, response.statusCode())).FromMaybe(false);
+    
       std::string json;
       if (response.response->isContentTypeVPack()) {
         json = response.response->slice().toJson();
