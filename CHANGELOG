@@ -1,6 +1,8 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Fixed hotbackup upload and download with encryption at rest key indirection.
+
 * Fixed a race in the ConnectionPool which could lease out a connection that got
   its idle timeout after the lease was completed. This could lead to sporadic
   network failures in TLS and to inefficiencies with TCP.
