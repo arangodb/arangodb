@@ -32,6 +32,7 @@ const jsunity = require("jsunity");
 const { asyncRequest, getId, wait, drop } = global.ArangoClusterComm;
 const { id } = global.ArangoServerState;
 const { db } = require("@arangodb");
+const { assertEqual } = jsunity.jsUnity.assertions;
 
 function clusterCommAsyncRequestSuite() {
     // We use this URL as it accepts a POST, but does
@@ -92,7 +93,7 @@ function clusterCommAsyncRequestSuite() {
         const ident = sendRequest(JSON.stringify(body));
         const result = awaitResponse(ident);
         assertEqual(result.code, 204);
-      }
+      };
     }
 
 
