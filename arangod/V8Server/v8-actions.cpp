@@ -1481,7 +1481,7 @@ static int clusterSendToAllServers(v8::Isolate* isolate, std::string const& dbna
 
   reqOpts.database = dbname;
   reqOpts.timeout = network::Timeout(3600);
-  reqOpts.contentType = "application/json";
+  reqOpts.contentType = StaticStrings::MimeTypeJsonNoEncoding;
 
   std::vector<futures::Future<network::Response>> futures;
   futures.reserve(DBServers.size());
