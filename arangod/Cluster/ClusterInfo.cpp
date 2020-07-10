@@ -269,9 +269,13 @@ ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
     _lpTimer(_server.getFeature<MetricsFeature>().histogram(
                "arangodb_load_plan_runtime", log_scale_t(std::exp(1.f), 0.f, 2500.f, 10),
                "Plan loading runtimes [ms]")),
+    _lpTotal(_server.getFeature<MetricsFeature>().counter(
+               "arangodb_load_plan_accum_runtime_msec", 0, "Accumulated runtime of Plan loading [ms]")),
     _lcTimer(_server.getFeature<MetricsFeature>().histogram(
                "arangodb_load_current_runtime", log_scale_t(std::exp(1.f), 0.f, 2500.f, 10),
-               "Current loading runtimes [ms]")) {
+               "Current loading runtimes [ms]")),
+    _lcTotal(_server.getFeature<MetricsFeature>().counter(
+               "arangodb_load_current_accum_runtime_msec", 0, "Accumulated runtime of Current loading [ms]")) {
   _uniqid._currentValue = 1ULL;
   _uniqid._upperValue = 0ULL;
   _uniqid._nextBatchStart = 1ULL;
@@ -279,6 +283,7 @@ ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
   _uniqid._backgroundJobIsRunning = false;
   // Actual loading into caches is postponed until necessary
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a cluster info object
 ////////////////////////////////////////////////////////////////////////////////
@@ -560,7 +565,6 @@ void ClusterInfo::loadClusterId() {
 static std::string const prefixPlan = "Plan";
 
 void ClusterInfo::loadPlan() {
-
   using namespace std::chrono;
   using clock = std::chrono::high_resolution_clock;
 
@@ -1195,9 +1199,9 @@ void ClusterInfo::loadPlan() {
     triggerWaiting(_waitPlanVersion, _planVersion);
   }
 
-  _lpTimer.count(duration<float,std::milli>(clock::now()-start).count());
-
-
+  auto diff = duration<float, std::milli>(clock::now() - start).count();
+  _lpTotal += diff;
+  _lpTimer.count(diff);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1379,8 +1383,9 @@ void ClusterInfo::loadCurrent() {
     triggerWaiting(_waitCurrentVersion, _currentVersion);
   }
 
-  _lcTimer.count(duration<float,std::milli>(clock::now()-start).count());
-
+  auto diff = duration<float, std::milli>(clock::now() - start).count();
+  _lcTotal += diff;
+  _lcTimer.count(diff);
 }
 
 /// @brief ask about a collection
