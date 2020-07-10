@@ -1562,6 +1562,7 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   reqOpts.retryNotFound = false;
   reqOpts.timeout = network::Timeout(timeout);
   reqOpts.skipScheduler = true;
+  reqOpts.contentType = "application/json";
   
   OperationID opId = TRI_NewTickServer();
   auto ar = std::make_shared<::AsyncRequest>();
