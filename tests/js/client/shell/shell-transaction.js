@@ -728,12 +728,12 @@ function transactionInvocationSuite () {
         // wait until job has started...
         let tries = 0;
         while (++tries < 60) {
+          require("internal").wait(0.5, false);
           result = arango.PUT_RAW("/_api/job/" + jobId, {});
 
           if (result.code === 204) {
             break;
           }
-          require("internal").wait(0.5, false);
         }
         
         let trx = db._transactions();
@@ -751,6 +751,10 @@ function transactionInvocationSuite () {
             break;
           }
           require("internal").wait(0.5, false);
+
+          // timing issues may occur when canceling transactions
+          result = arango.DELETE("/_api/transaction/write");
+          assertEqual(result.code, 200);
         }
         assertTrue(result.code === 410 || result.code === 404);
       } finally {

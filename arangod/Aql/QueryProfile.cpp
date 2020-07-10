@@ -27,6 +27,7 @@
 #include "Aql/QueryList.h"
 #include "Aql/Timing.h"
 #include "Basics/EnumIterator.h"
+#include "Basics/debugging.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -43,8 +44,6 @@ QueryProfile::QueryProfile(Query* query)
   for (auto& it : _timers) {
     it = 0.0;  // reset timers
   }
-
-  registerInQueryList(query);
 }
 
 /// @brief destroy a profile
@@ -52,9 +51,10 @@ QueryProfile::~QueryProfile() {
   unregisterFromQueryList();
 }
 
-void QueryProfile::registerInQueryList(Query* query) {
-  auto queryList = query->vocbase().queryList();
-  _tracked = queryList->insert(query);
+void QueryProfile::registerInQueryList() {
+  TRI_ASSERT(!_tracked);
+  auto queryList = _query->vocbase().queryList();
+  _tracked = queryList->insert(_query);
 }
 
 void QueryProfile::unregisterFromQueryList() noexcept {

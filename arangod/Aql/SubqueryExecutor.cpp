@@ -245,17 +245,12 @@ template <>
 template <>
 auto SubqueryExecutor<true>::skipRowsRange<>(AqlItemBlockInputRange& inputRange, AqlCall& call)
     -> std::tuple<ExecutionState, Stats, size_t, AqlCall> {
-  auto getUpstreamCall = [&]() {
-    auto upstreamCall = AqlCall{};
-    return upstreamCall;
-  };
-
   INTERNAL_LOG_SQ << uint64_t(this) << "skipRowsRange " << call;
 
   if (_state == ExecutorState::DONE && !_input.isInitialized()) {
     // We have seen DONE upstream, and we have discarded our local reference
     // to the last input, we will not be able to produce results anymore.
-    return {translatedReturnType(), NoStats{}, 0, getUpstreamCall()};
+    return {translatedReturnType(), NoStats{}, 0, AqlCall{}};
   }
   TRI_ASSERT(call.needSkipMore());
   // We cannot have a modifying subquery considered const
@@ -273,7 +268,7 @@ auto SubqueryExecutor<true>::skipRowsRange<>(AqlItemBlockInputRange& inputRange,
           _subquery.execute(AqlCallStack(AqlCallList{subqueryCall}));
       TRI_ASSERT(skipRes.nothingSkipped());
       if (state == ExecutionState::WAITING) {
-        return {state, NoStats{}, 0, getUpstreamCall()};
+        return {state, NoStats{}, 0, AqlCall{}};
       }
       // We get a result, but we asked for no rows.
       // so please give us no rows.
@@ -302,7 +297,7 @@ auto SubqueryExecutor<true>::skipRowsRange<>(AqlItemBlockInputRange& inputRange,
           // We are done, we will not get any more input.
           break;
         }
-        return {state, NoStats{}, 0, getUpstreamCall()};
+        return {state, NoStats{}, 0, AqlCall{}};
       }
       TRI_ASSERT(_subqueryInitialized);
     }
@@ -313,7 +308,7 @@ auto SubqueryExecutor<true>::skipRowsRange<>(AqlItemBlockInputRange& inputRange,
   // or both if limit == 0.
   call.didSkip(_skipped);
   _skipped = 0;
-  return {translatedReturnType(), NoStats{}, call.getSkipCount(), getUpstreamCall()};
+  return {translatedReturnType(), NoStats{}, call.getSkipCount(), AqlCall{}};
 }
 
 template <bool isModificationSubquery>

@@ -1179,14 +1179,14 @@ void SynchronizeShard::setState(ActionState state) {
           [&shard] (std::exception const& e) {
             LOG_TOPIC("3ae99", ERR, Logger::CLUSTER)
               << "Failed to acquire current version from agency while increasing shard version: "
-              << " for shard "  << shard << e.what();
+              << "for shard " << shard << ": " << e.what();
           })
         .wait();
       if (v > 0) {
         break;
       }
       std::this_thread::sleep_for(snooze);
-      if(snooze < seconds(2)) {
+      if (snooze < seconds(2)) {
         snooze += milliseconds(100);
       }
     }

@@ -33,6 +33,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/directories.h"
+#include "Basics/exitcodes.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
@@ -109,7 +110,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
   if (!_file.empty()) {
     if (!FileUtils::exists(_file)) {
       LOG_TOPIC("f21f9", FATAL, Logger::CONFIG) << "cannot read config file '" << _file << "'";
-      FATAL_ERROR_EXIT();
+      FATAL_ERROR_EXIT_CODE(TRI_EXIT_CONFIG_NOT_FOUND);
     }
 
     auto local = _file + ".local";
