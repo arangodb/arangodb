@@ -35,8 +35,6 @@
 #include "Basics/Exceptions.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Transaction/Context.h"
-#include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
@@ -78,14 +76,13 @@ size_t ExecutionBlock::DefaultBatchSize = ExecutionBlock::ProductionDefaultBatch
 
 ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
     : _engine(engine),
-      _shutdownResult(TRI_ERROR_NO_ERROR),
+      _upstreamState(ExecutionState::HASMORE),
       _profile(engine->getQuery().queryOptions().getProfileLevel()),
       _done(false),
       _isInSplicedSubquery(ep != nullptr ? ep->isInSplicedSubquery() : false),
       _exeNode(ep),
       _dependencies(),
-      _dependencyPos(_dependencies.end()),
-      _upstreamState(ExecutionState::HASMORE) {}
+      _dependencyPos(_dependencies.end()) {}
 
 ExecutionBlock::~ExecutionBlock() = default;
 
