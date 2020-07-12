@@ -414,8 +414,7 @@ void auth::UserManager::triggerGlobalReload() {
   while (maxTries-- > 0) {
     AgencyCommResult result = agency.sendTransactionWithFailover(incrementVersion);
     if (result.successful()) {
-      uint64_t aha = _globalVersion.fetch_add(1, std::memory_order_release);
-      LOG_DEVEL << "INCREMENTED GLOBAL VERSION TO " << (aha + 1);
+      _globalVersion.fetch_add(1, std::memory_order_release);
       _internalVersion.fetch_add(1, std::memory_order_release);
       return;
     }
