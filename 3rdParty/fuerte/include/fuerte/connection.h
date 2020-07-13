@@ -150,6 +150,12 @@ class ConnectionBuilder {
     return *this;
   }
   
+  /// @brief use an idle timeout
+  ConnectionBuilder& useIdleTimeout(bool t) {
+    _conf._useIdleTimeout = t;
+    return *this;
+  }
+  
   /// @brief connect retry pause (1s default)
   inline std::chrono::milliseconds connectRetryPause() const {
     return _conf._connectRetryPause;

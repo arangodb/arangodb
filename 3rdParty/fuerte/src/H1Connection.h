@@ -38,6 +38,9 @@ namespace arangodb { namespace fuerte { inline namespace v1 { namespace http {
 
 // in-flight request data
 struct RequestItem {
+  RequestItem(std::unique_ptr<Request>&& req,
+              RequestCallback&& cb, std::string&& h);
+  
   /// the request header
   std::string requestHeader;
 
@@ -65,9 +68,7 @@ class H1Connection final : public fuerte::GeneralConnection<ST, RequestItem> {
 
   /// The following public methods can be called from any thread.
  public:
-  /// Start an asynchronous request.
-  void sendRequest(std::unique_ptr<Request>, RequestCallback) override;
-
+  
   /// @brief Return the number of requests that have not yet finished.
   size_t requestsLeft() const override;
 
@@ -87,16 +88,18 @@ class H1Connection final : public fuerte::GeneralConnection<ST, RequestItem> {
   /// abort ongoing / unfinished requests
   void abortOngoingRequests(const fuerte::Error) override;
   
-  // abort all expired requests
-  void abortExpiredRequests() override;
+  void setIOTimeout() override;
   
-  // calculate smallest timeout
-  std::chrono::steady_clock::time_point getTimeout(bool& isIdle) override;
-
+  std::unique_ptr<RequestItem> createRequest(std::unique_ptr<Request>&& req,
+                                    RequestCallback&& cb) override {
+    auto h = buildRequestHeader(*req);
+    return std::make_unique<RequestItem>(std::move(req), std::move(cb), std::move(h));
+  }
+  
  private:
 
   // build request body for given request
-  std::string buildRequestBody(Request const& req);
+  std::string buildRequestHeader(Request const& req);
 
   ///  Call on IO-Thread: writes out one queued request
   void asyncWriteNextRequest();

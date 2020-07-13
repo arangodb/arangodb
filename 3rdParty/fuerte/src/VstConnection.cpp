@@ -49,67 +49,66 @@ VstConnection<ST>::~VstConnection() try {
 } catch (...) {
 }
 
-static std::atomic<MessageID> vstMessageId(1);
 // sendRequest prepares a RequestItem for the given parameters
 // and adds it to the send queue.
-template <SocketType ST>
-void VstConnection<ST>::sendRequest(std::unique_ptr<Request> req,
-                                    RequestCallback cb) {
-  FUERTE_ASSERT(req != nullptr);
-  if (req->header.path.find("/_db/") != std::string::npos) {
-    FUERTE_LOG_ERROR << "path: " << req->header.path << " \n";
-  }
-  FUERTE_ASSERT(req->header.path.find("/_db/") == std::string::npos);
-  FUERTE_ASSERT(req->header.path.find('?') == std::string::npos);
-  
-  // it does not matter if IDs are reused on different connections
-  uint64_t mid = vstMessageId.fetch_add(1, std::memory_order_relaxed);
-  // Create RequestItem from parameters
-  auto item = std::make_unique<RequestItem>();
-  item->_messageID = mid;
-  item->_request = std::move(req);
-  item->_callback = cb;
-  // set the point-in-time when this request expires
-  if (item->_request->timeout().count() > 0) {
-    item->_expires =
-        std::chrono::steady_clock::now() + item->_request->timeout();
-  } else {
-    item->_expires = std::chrono::steady_clock::time_point::max();
-  }
-  
-  // Don't send once in Closed state:
-  if (this->_state.load(std::memory_order_relaxed) == Connection::State::Closed) {
-    FUERTE_LOG_ERROR << "connection already failed\n";
-    item->invokeOnError(Error::Canceled);
-    return;
-  }
-
-  // Add item to send queue
-  this->_numQueued.fetch_add(1, std::memory_order_relaxed);
-  if (!this->_queue.push(item.get())) {
-    FUERTE_LOG_ERROR << "connection queue capacity exceeded\n";
-    uint32_t q = this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
-    FUERTE_ASSERT(q > 0);
-    item->invokeOnError(Error::QueueCapacityExceeded);
-    return;
-  }
-  item.release();  // queue owns this now
-
-  FUERTE_LOG_VSTTRACE << "queued item: this=" << this << "\n";
-  
-   // Note that we have first posted on the queue with std::memory_order_seq_cst
-   // and now we check _active std::memory_order_seq_cst. This prevents a sleeping
-   // barber with the check-set-check combination in `asyncWriteNextRequest`.
-   // If we are the ones to exchange the value to `true`, then we post
-   // on the `_io_context` to activate the connection. Note that the
-   // connection can be in the `Disconnected` or `Connected` or `Failed`
-   // state, but not in the `Connecting` state in this case.
-   if (!this->_active.exchange(true)) {
-     this->_io_context->post([self(Connection::shared_from_this())] {
-         static_cast<VstConnection<ST>&>(*self).activate();
-       });
-   }
-}
+//template <SocketType ST>
+//void VstConnection<ST>::sendRequest(std::unique_ptr<Request> req,
+//                                    RequestCallback cb) {
+//  FUERTE_ASSERT(req != nullptr);
+//  if (req->header.path.find("/_db/") != std::string::npos) {
+//    FUERTE_LOG_ERROR << "path: " << req->header.path << " \n";
+//  }
+//  FUERTE_ASSERT(req->header.path.find("/_db/") == std::string::npos);
+//  FUERTE_ASSERT(req->header.path.find('?') == std::string::npos);
+//
+//  // it does not matter if IDs are reused on different connections
+//  uint64_t mid = vstMessageId.fetch_add(1, std::memory_order_relaxed);
+//  // Create RequestItem from parameters
+//  auto item = std::make_unique<RequestItem>();
+//  item->_messageID = mid;
+//  item->_request = std::move(req);
+//  item->_callback = cb;
+//  // set the point-in-time when this request expires
+//  if (item->_request->timeout().count() > 0) {
+//    item->_expires =
+//        std::chrono::steady_clock::now() + item->_request->timeout();
+//  } else {
+//    item->_expires = std::chrono::steady_clock::time_point::max();
+//  }
+//
+//  // Don't send once in Closed state:
+//  if (this->_state.load(std::memory_order_relaxed) == Connection::State::Closed) {
+//    FUERTE_LOG_ERROR << "connection already failed\n";
+//    item->invokeOnError(Error::Canceled);
+//    return;
+//  }
+//
+//  // Add item to send queue
+//  this->_numQueued.fetch_add(1, std::memory_order_relaxed);
+//  if (!this->_queue.push(item.get())) {
+//    FUERTE_LOG_ERROR << "connection queue capacity exceeded\n";
+//    uint32_t q = this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
+//    FUERTE_ASSERT(q > 0);
+//    item->invokeOnError(Error::QueueCapacityExceeded);
+//    return;
+//  }
+//  item.release();  // queue owns this now
+//
+//  FUERTE_LOG_VSTTRACE << "queued item: this=" << this << "\n";
+//
+//   // Note that we have first posted on the queue with std::memory_order_seq_cst
+//   // and now we check _active std::memory_order_seq_cst. This prevents a sleeping
+//   // barber with the check-set-check combination in `asyncWriteNextRequest`.
+//   // If we are the ones to exchange the value to `true`, then we post
+//   // on the `_io_context` to activate the connection. Note that the
+//   // connection can be in the `Disconnected` or `Connected` or `Failed`
+//   // state, but not in the `Connecting` state in this case.
+//   if (!this->_active.exchange(true)) {
+//     this->_io_context->post([self(Connection::shared_from_this())] {
+//         static_cast<VstConnection<ST>&>(*self).activate();
+//       });
+//   }
+//}
 
 template <SocketType ST>
 std::size_t VstConnection<ST>::requestsLeft() const {
@@ -172,12 +171,10 @@ void VstConnection<ST>::sendAuthenticationRequest() {
   FUERTE_ASSERT(this->_config._authenticationType != AuthenticationType::None);
 
   // Part 1: Build ArangoDB VST auth message (1000)
-  auto item = std::make_shared<RequestItem>();
-  item->_messageID = vstMessageId.fetch_add(1, std::memory_order_relaxed);
-  item->_expires = std::chrono::steady_clock::now() + Request::defaultTimeout;
   auto self = Connection::shared_from_this();
-  item->_callback = [self](Error error, std::unique_ptr<Request>,
-                           std::unique_ptr<Response> resp) {
+  auto item = std::make_shared<RequestItem>(nullptr,
+                                            [self](Error error, std::unique_ptr<Request>,
+                                                   std::unique_ptr<Response> resp) {
     auto* me = static_cast<VstConnection<ST>*>(self.get());
     if (error != Error::NoError || resp->statusCode() != StatusOK) {
       me->shutdownConnection(Error::VstUnauthorized, "could not authenticate");
@@ -186,7 +183,8 @@ void VstConnection<ST>::sendAuthenticationRequest() {
       me->_active.store(true);
       me->asyncWriteNextRequest();
     }
-  };
+  });
+  item->expires = std::chrono::steady_clock::now() + Request::defaultTimeout;
 
   _messages.emplace(item->_messageID, item);  // add message to store
   _numMessages.fetch_add(1, std::memory_order_relaxed);
@@ -200,7 +198,13 @@ void VstConnection<ST>::sendAuthenticationRequest() {
   FUERTE_ASSERT(item->_buffer.size() < defaultMaxChunkSize);
 
   // actually send auth request
-  auto cb = [this, self, item](asio_ns::error_code const& ec,
+  std::vector<asio_ns::const_buffer> buffers;
+  vst::message::prepareForNetwork(_vstVersion, item->_messageID, item->_buffer,
+                                  /*payload*/ asio_ns::const_buffer(), buffers);
+  
+  this->_writing = true;
+  this->setIOTimeout(); // has to be after setting _writing
+  asio_ns::async_write(this->_proto.socket, buffers, [this, self, item](asio_ns::error_code const& ec,
                                std::size_t nsend) {
     if (ec) {
       this->shutdownConnection(Error::CouldNotConnect,
@@ -209,13 +213,7 @@ void VstConnection<ST>::sendAuthenticationRequest() {
       this->_active.store(true);
       asyncWriteCallback(ec, item, nsend);
     }
-  };
-  std::vector<asio_ns::const_buffer> buffers;
-  vst::message::prepareForNetwork(_vstVersion, item->_messageID, item->_buffer,
-                                  /*payload*/ asio_ns::const_buffer(), buffers);
-  asio_ns::async_write(this->_proto.socket, buffers, std::move(cb));
-
-  this->setTimeout();
+  });
 }
 
 // ------------------------------------
@@ -254,10 +252,10 @@ void VstConnection<ST>::asyncWriteNextRequest() {
   _messages.emplace(item->_messageID, item);  // add message to store
   _numMessages.fetch_add(1, std::memory_order_relaxed);
 
-  this->setTimeout();  // prepare request / connection timeouts
+  auto buffers = item->prepareForNetwork(_vstVersion);
 
   this->_writing = true;
-  auto buffers = item->prepareForNetwork(_vstVersion);
+  this->setIOTimeout();  // prepare request / connection timeouts
   asio_ns::async_write(
       this->_proto.socket, std::move(buffers),
       [self(Connection::shared_from_this()), req(std::move(item))](
@@ -290,7 +288,7 @@ void VstConnection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
     auto err = translateError(ec, Error::WriteError);
     try {
       // let user know that this request caused the error
-      item->_callback(err, std::move(item->_request), nullptr);
+      item->_callback(err, std::move(item->request), nullptr);
     } catch (...) {
     }
     
@@ -406,12 +404,12 @@ void VstConnection<ST>::processChunk(Chunk const& chunk) {
       // Create response
       auto resp = createResponse(*item, completeBuffer);
       auto err = resp != nullptr ? Error::NoError : Error::ProtocolError;
-      item->_callback(err, std::move(item->_request), std::move(resp));
+      item->_callback(err, std::move(item->request), std::move(resp));
     } catch (...) {
       FUERTE_LOG_ERROR << "unhandled exception in fuerte callback\n";
     }
 
-    this->setTimeout();  // readjust timeout
+    this->setIOTimeout();  // readjust timeout
   }
 }
 
@@ -466,13 +464,71 @@ void VstConnection<ST>::abortOngoingRequests(const fuerte::Error err) {
   }
 }
 
+/// Set timeout accordingly
+template <SocketType ST>
+void VstConnection<ST>::setIOTimeout() {
+  const bool isIdle = _messages.empty();
+  if (isIdle && !this->_config._useIdleTimeout){
+    return;
+  }
+  
+  auto tp = std::chrono::steady_clock::time_point::max();
+  if (isIdle) {  // use default connection timeout
+    tp = std::chrono::steady_clock::now() + this->_config._idleTimeout;
+  } else {
+    for (auto const& pair : _messages) {
+      tp = std::min(tp, pair.second->expires);
+    }
+  }
+
+  const bool wasReading = this->_reading;
+  const bool wasWriting = this->_writing;
+  this->_timeoutOnReadWrite = false;
+
+  // expires_after cancels pending ops
+  this->_proto.timer.expires_at(tp);
+  this->_proto.timer.async_wait(
+      [=, self = Connection::weak_from_this()](auto const& ec) {
+    std::shared_ptr<Connection> s;
+    if (ec || !(s = self.lock())) {  // was canceled / deallocated
+      return;
+    }
+    
+    auto& me = static_cast<VstConnection<ST>&>(*s);
+    if ((wasWriting && me._writing) ||
+        (wasReading && me._reading)) {
+      FUERTE_LOG_DEBUG << "VST-Request timeout" << " this=" << &me << "\n";
+      FUERTE_ASSERT(!_messages.empty());
+      
+      me.abortExpiredRequests();
+      
+      if (_messages.empty()) { // we still have messages left
+        setIOTimeout();
+      } else {
+        me._proto.cancel();
+        me._timeoutOnReadWrite = true;
+        // We simply cancel all ongoing asynchronous operations, the completion
+        // handlers will do the rest.
+      }
+    } else if (isIdle && !me._writing & !me._reading) {
+      if (!me._active && me._state == Connection::State::Connected) {
+        FUERTE_LOG_DEBUG << "HTTP-Request idle timeout"
+              << " this=" << &me << "\n";
+        me.shutdownConnection(Error::CloseRequested);
+      }
+    }
+    // In all other cases we do nothing, since we have been posted to the
+    // iocontext but the thing we should be timing out has already completed.
+  });
+}
+
 // abort all expired requests
 template <SocketType ST>
 void VstConnection<ST>::abortExpiredRequests() {
   auto now = std::chrono::steady_clock::now();
   auto it = _messages.begin();
   while (it != _messages.end()) {
-    if (it->second->_expires < now) {
+    if (it->second->expires < now) {
       FUERTE_LOG_DEBUG << "VST-Request timeout\n";
       it->second->invokeOnError(Error::Timeout);
       it = _messages.erase(it);
@@ -482,21 +538,6 @@ void VstConnection<ST>::abortExpiredRequests() {
       it++;
     }
   }
-}
-
-// calculate smallest timeout
-template <SocketType ST>
-std::chrono::steady_clock::time_point VstConnection<ST>::getTimeout(bool& isIdle) {
-  if (_messages.empty()) {  // use default connection timeout
-    isIdle = true;
-    return std::chrono::steady_clock::now() + this->_config._idleTimeout;
-  }
-  auto expires = std::chrono::steady_clock::time_point::max();
-  for (auto const& pair : _messages) {
-    expires = std::min(expires, pair.second->_expires);
-  }
-  isIdle = false;
-  return expires;
 }
 
 template class arangodb::fuerte::v1::vst::VstConnection<SocketType::Tcp>;

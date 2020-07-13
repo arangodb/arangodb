@@ -62,6 +62,52 @@ class GeneralConnection : public fuerte::Connection {
   }
 
   /// The following public methods can be called from any thread:
+  
+  // Start an asynchronous request.
+  void sendRequest(std::unique_ptr<Request> req,
+                   RequestCallback cb) override {
+    // construct RequestItem
+    auto item = this->createRequest(std::move(req), std::move(cb));
+    // set the point-in-time when this request expires
+    if (item->request->timeout().count() > 0) {
+      item->expires = std::chrono::steady_clock::now() + item->request->timeout();
+    } else {
+      item->expires = std::chrono::steady_clock::time_point::max();
+    }
+
+    // Don't send once in Closed state:
+    if (this->_state.load(std::memory_order_relaxed) == Connection::State::Closed) {
+      FUERTE_LOG_ERROR << "connection already failed\n";
+      item->invokeOnError(Error::Canceled);
+      return;
+    }
+
+    // Prepare a new request
+    this->_numQueued.fetch_add(1, std::memory_order_relaxed);
+    if (!this->_queue.push(item.get())) {
+      FUERTE_LOG_ERROR << "connection queue capacity exceeded\n";
+      uint32_t q = this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
+      FUERTE_ASSERT(q > 0);
+      item->invokeOnError(Error::QueueCapacityExceeded);
+      return;
+    }
+    item.release();  // queue owns this now
+
+    FUERTE_LOG_HTTPTRACE << "queued item: this=" << this << "\n";
+
+    // Note that we have first posted on the queue with std::memory_order_seq_cst
+    // and now we check _active std::memory_order_seq_cst. This prevents a sleeping
+    // barber with the check-set-check combination in `asyncWriteNextRequest`.
+    // If we are the ones to exchange the value to `true`, then we post
+    // on the `_io_context` to activate the connection. Note that the
+    // connection can be in the `Disconnected` or `Connected` or `Failed`
+    // state, but not in the `Connecting` state in this case.
+    if (!this->_active.exchange(true)) {
+      this->_io_context->post([self(Connection::shared_from_this())] {
+          static_cast<GeneralConnection<ST, RT>&>(*self).activate();
+        });
+    }
+  }
 
   /// @brief cancel the connection, unusable afterwards
   void cancel() override {
@@ -106,8 +152,12 @@ class GeneralConnection : public fuerte::Connection {
       FUERTE_LOG_DEBUG << ", msg = '" << msg<< "' ";
     }
     FUERTE_LOG_DEBUG<< "this=" << this << "\n";
-
-    _state.store(Connection::State::Closed);
+    
+    auto exp = _state.load();
+    if (exp == Connection::State::Closed ||
+        !_state.compare_exchange_strong(exp, Connection::State::Closed)) {
+      return;
+    }
     
     abortOngoingRequests(err);
     drainQueue(err);
@@ -130,6 +180,7 @@ class GeneralConnection : public fuerte::Connection {
     auto mutableBuff = _receiveBuffer.prepare(READ_BLOCK_SIZE);
     
     _reading = true;
+    setIOTimeout();  // must be after setting _reading
     _proto.socket.async_read_some(mutableBuff, [self = shared_from_this()]
                                    (auto const& ec, size_t nread) {
       FUERTE_LOG_TRACE << "received " << nread << " bytes\n";
@@ -152,42 +203,6 @@ class GeneralConnection : public fuerte::Connection {
       FUERTE_ASSERT(q > 0);
       guard->invokeOnError(ec);
     }
-  }
-  
-  /// Set timeout accordingly
-  void setTimeout() {
-    bool isIdle = false;
-    auto const timepoint = getTimeout(isIdle);
-    if (timepoint.time_since_epoch().count() == 0) {
-      this->_proto.timer.cancel();
-      return; // danger zone
-    }
-
-    _timeoutOnReadWrite = false;
-
-    // expires_after cancels pending ops
-    this->_proto.timer.expires_at(timepoint);
-    this->_proto.timer.async_wait(
-        [isIdle, self = Connection::weak_from_this()](auto const& ec) {
-      std::shared_ptr<Connection> s;
-      if (ec || !(s = self.lock())) {  // was canceled / deallocated
-        return;
-      }
-      auto& me = static_cast<GeneralConnection<ST, RT>&>(*s);
-      me.abortExpiredRequests();
-      
-      if (!isIdle && (me._writing ||  me._reading)) {
-        me._timeoutOnReadWrite = true;
-        me._proto.cancel();
-        // We simply cancel all ongoing asynchronous operations,
-        // completion handlers will do the rest.
-        return;
-      } else if (isIdle) {
-        me.handleIdleTimeout();
-      }
-      // In all other cases we do nothing, since we have been posted to the
-      // iocontext but the thing we should be timing out has already completed.
-    });
   }
   
   void activate() {
@@ -243,17 +258,11 @@ protected:
 
   /// abort ongoing / unfinished requests (locally)
   virtual void abortOngoingRequests(const fuerte::Error) = 0;
-  // abort all expired requests
-  virtual void abortExpiredRequests() = 0;
-  // calculate smallest timeout
-  virtual std::chrono::steady_clock::time_point getTimeout(bool& isIdle) = 0;
-  // subclasses may override this for a gracefuly shutdown
+
+  virtual void setIOTimeout() = 0;
   
-  virtual void handleIdleTimeout() {
-    if (!_active.load() && _state.load() == Connection::State::Connected) {
-      shutdownConnection(Error::CloseRequested);
-    }
-  }
+  virtual std::unique_ptr<RT> createRequest(std::unique_ptr<Request>&& req,
+                                            RequestCallback&& cb) = 0;
   
  private:
   

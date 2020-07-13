@@ -120,5 +120,7 @@ void toLowerInPlace(std::string& str);
 /// checks if connection was closed and returns
 fuerte::Error translateError(asio_ns::error_code e,
                              fuerte::Error def);
+
+std::string extractPathParameters(std::string const& path, StringMap& params);
 }}}  // namespace arangodb::fuerte::v1
 #endif

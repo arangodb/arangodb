@@ -47,15 +47,6 @@ class VstConnection final : public fuerte::GeneralConnection<ST, vst::RequestIte
   ~VstConnection();
 
  public:
-  // this function prepares the request for sending
-  // by creating a RequestItem and setting:
-  //  - a messageid
-  //  - the buffer to be send
-  // this item is then moved to the request queue
-  // and a write action is triggerd when there is
-  // no other write in progress
-  void sendRequest(std::unique_ptr<Request>, RequestCallback) override;
-
   // Return the number of unfinished requests.
   std::size_t requestsLeft() const override;
 
@@ -73,11 +64,12 @@ class VstConnection final : public fuerte::GeneralConnection<ST, vst::RequestIte
   /// abort ongoing / unfinished requests
   void abortOngoingRequests(const fuerte::Error) override;
   
-  // abort all expired requests
-  void abortExpiredRequests() override;
+  void setIOTimeout() override;
   
-  // calculate smallest timeout
-  std::chrono::steady_clock::time_point getTimeout(bool& isIdle) override;
+  std::unique_ptr<vst::RequestItem> createRequest(std::unique_ptr<Request>&& req,
+                                    RequestCallback&& cb) override {
+    return std::make_unique<vst::RequestItem>(std::move(req), std::move(cb));
+  }
 
  private:
   ///  Call on IO-Thread: writes out one queued request
@@ -95,6 +87,8 @@ class VstConnection final : public fuerte::GeneralConnection<ST, vst::RequestIte
   // Create a response object for given RequestItem & received response buffer.
   std::unique_ptr<Response> createResponse(
       RequestItem& item, std::unique_ptr<velocypack::Buffer<uint8_t>>&);
+  
+  void abortExpiredRequests();
 
  private:
   /// stores in-flight messages

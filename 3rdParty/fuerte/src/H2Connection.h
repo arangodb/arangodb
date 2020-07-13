@@ -36,6 +36,9 @@ namespace arangodb { namespace fuerte { inline namespace v1 { namespace http {
 
 // ongoing Http2 stream
 struct Stream {
+  Stream(std::unique_ptr<Request>&& req,
+         RequestCallback&& cb) : callback(std::move(cb)), request(std::move(req)) {}
+  
   velocypack::Buffer<uint8_t> data;
 
   RequestCallback callback;
@@ -61,15 +64,6 @@ class H2Connection final : public fuerte::GeneralConnection<T, Stream> {
   ~H2Connection();
 
  public:
-  // this function prepares the request for sending
-  // by creating a RequestItem and setting:
-  //  - a messageid
-  //  - the buffer to be send
-  // this item is then moved to the request queue
-  // and a write action is triggerd when there is
-  // no other write in progress
-  void sendRequest(std::unique_ptr<Request>, RequestCallback) override;
-
   // Return the number of unfinished requests.
   std::size_t requestsLeft() const override;
 
@@ -85,14 +79,12 @@ class H2Connection final : public fuerte::GeneralConnection<T, Stream> {
   /// abort ongoing / unfinished requests (locally)
   void abortOngoingRequests(const fuerte::Error) override;
   
-  // abort all expired requests
-  void abortExpiredRequests() override;
+  void setIOTimeout() override;
   
-  // calculate smallest timeout
-  std::chrono::steady_clock::time_point getTimeout(bool& isIdle) override;
-  
-  // subclasses may override this for a gracefuly shutdown
-  void handleIdleTimeout() override;
+  std::unique_ptr<Stream> createRequest(std::unique_ptr<Request>&& req,
+                                        RequestCallback&& cb) override {
+    return std::make_unique<Stream>(std::move(req), std::move(cb));
+  }
   
  private:
   static int on_begin_headers(nghttp2_session* session,
@@ -131,6 +123,8 @@ class H2Connection final : public fuerte::GeneralConnection<T, Stream> {
   
   // ping ensures server does not close the connection
   void startPing();
+  
+  void abortExpiredStreams();
 
  private:
   velocypack::Buffer<uint8_t> _outbuffer;

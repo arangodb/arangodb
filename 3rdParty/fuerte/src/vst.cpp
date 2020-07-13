@@ -326,17 +326,17 @@ void message::prepareForNetwork(VSTVersion vstVersion, MessageID messageId,
 std::vector<asio_ns::const_buffer> RequestItem::prepareForNetwork(
     VSTVersion vstVersion) {
   // setting defaults
-  _request->header.setVersion(1);  // always set to 1
-  if (_request->header.database.empty()) {
-    _request->header.database = "_system";
+  request->header.setVersion(1);  // always set to 1
+  if (request->header.database.empty()) {
+    request->header.database = "_system";
   }
 
   // Create the message header and store it in the metadata buffer
   _buffer.clear();
-  message::requestHeader(_request->header, _buffer);
+  message::requestHeader(request->header, _buffer);
   assert(_buffer.size() > 0);
   // message header has to go into the first chunk
-  asio_ns::const_buffer payload = _request->payload();
+  asio_ns::const_buffer payload = request->payload();
 
   // _buffer content will be used as message header
   std::vector<asio_ns::const_buffer> result;

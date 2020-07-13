@@ -83,6 +83,8 @@ void getQueries(TRI_vocbase_t& vocbase, std::vector<aql::QueryEntryCopy> const& 
     options.timeout = network::Timeout(30.0);
     options.database = vocbase.name();
     options.param("local", "true");
+    
+    std::string const url = std::string("/_api/query/") + action;
 
     auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
     for (auto const& coordinator : ci.getCurrentCoordinators()) {
@@ -92,7 +94,7 @@ void getQueries(TRI_vocbase_t& vocbase, std::vector<aql::QueryEntryCopy> const& 
       }
 
       auto f = network::sendRequest(pool, "server:" + coordinator, fuerte::RestVerb::Get,
-                                    "/_api/query/", VPackBuffer<uint8_t>{}, options, buildHeaders());
+                                    url, VPackBuffer<uint8_t>{}, options, buildHeaders());
       futures.emplace_back(std::move(f));
     }
 

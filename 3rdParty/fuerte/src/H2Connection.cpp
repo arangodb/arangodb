@@ -297,49 +297,49 @@ void H2Connection<T>::initNgHttp2Session() {
 
 // sendRequest prepares a RequestItem for the given parameters
 // and adds it to the send queue.
-template <SocketType T>
-void H2Connection<T>::sendRequest(std::unique_ptr<Request> req,
-                                  RequestCallback cb) {
-  
-  FUERTE_LOG_HTTPTRACE << "queuing request " << req->header.path << "\n";
-  
-  // Create RequestItem from parameters
-  auto item = std::make_unique<Stream>();
-  item->callback = cb;
-  item->request = std::move(req);
-  // set the point-in-time when this request expires
-  if (item->request->timeout().count() > 0) {
-    item->expires = std::chrono::steady_clock::now() + item->request->timeout();
-  } else {
-    item->expires = std::chrono::steady_clock::time_point::max();
-  }
-
-  // Add item to send queue
-  this->_numQueued.fetch_add(1, std::memory_order_relaxed);
-  if (!this->_queue.push(item.get())) {
-    FUERTE_LOG_ERROR << "connection queue capacity exceeded\n";
-    uint32_t q = this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
-    FUERTE_ASSERT(q > 0);
-    item->invokeOnError(Error::QueueCapacityExceeded);
-    return;
-  }
-  item.release();  // queue owns this now
-
-  FUERTE_LOG_HTTPTRACE << "queued item: this=" << this << "\n";
-  
-  // Note that we have first posted on the queue with std::memory_order_seq_cst
-  // and now we check _active std::memory_order_seq_cst. This prevents a sleeping
-  // barber with the check-set-check combination in `asyncWriteNextRequest`.
-  // If we are the ones to exchange the value to `true`, then we post
-  // on the `_io_context` to activate the connection. Note that the
-  // connection can be in the `Disconnected` or `Connected` or `Failed`
-  // state, but not in the `Connecting` state in this case.
-  if (!this->_active.exchange(true)) {
-    this->_io_context->post([self(Connection::shared_from_this())] {
-        static_cast<H2Connection<T>&>(*self).activate();
-      });
-  }
-}
+//template <SocketType T>
+//void H2Connection<T>::sendRequest(std::unique_ptr<Request> req,
+//                                  RequestCallback cb) {
+//  
+//  FUERTE_LOG_HTTPTRACE << "queuing request " << req->header.path << "\n";
+//  
+//  // Create RequestItem from parameters
+//  auto item = std::make_unique<Stream>();
+//  item->callback = cb;
+//  item->request = std::move(req);
+//  // set the point-in-time when this request expires
+//  if (item->request->timeout().count() > 0) {
+//    item->expires = std::chrono::steady_clock::now() + item->request->timeout();
+//  } else {
+//    item->expires = std::chrono::steady_clock::time_point::max();
+//  }
+//
+//  // Add item to send queue
+//  this->_numQueued.fetch_add(1, std::memory_order_relaxed);
+//  if (!this->_queue.push(item.get())) {
+//    FUERTE_LOG_ERROR << "connection queue capacity exceeded\n";
+//    uint32_t q = this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
+//    FUERTE_ASSERT(q > 0);
+//    item->invokeOnError(Error::QueueCapacityExceeded);
+//    return;
+//  }
+//  item.release();  // queue owns this now
+//
+//  FUERTE_LOG_HTTPTRACE << "queued item: this=" << this << "\n";
+//  
+//  // Note that we have first posted on the queue with std::memory_order_seq_cst
+//  // and now we check _active std::memory_order_seq_cst. This prevents a sleeping
+//  // barber with the check-set-check combination in `asyncWriteNextRequest`.
+//  // If we are the ones to exchange the value to `true`, then we post
+//  // on the `_io_context` to activate the connection. Note that the
+//  // connection can be in the `Disconnected` or `Connected` or `Failed`
+//  // state, but not in the `Connecting` state in this case.
+//  if (!this->_active.exchange(true)) {
+//    this->_io_context->post([self(Connection::shared_from_this())] {
+//        static_cast<H2Connection<T>&>(*self).activate();
+//      });
+//  }
+//}
 
 template <SocketType T>
 std::size_t H2Connection<T>::requestsLeft() const {
@@ -722,7 +722,7 @@ void H2Connection<T>::doWrite() {
 
   // Reset read timer here, because normally client is sending
   // something, it does not expect timeout while doing it.
-  this->setTimeout();
+  this->setIOTimeout();
 
   asio_ns::async_write(this->_proto.socket, outBuffers,
                        [self = this->shared_from_this()](
@@ -782,8 +782,6 @@ void H2Connection<T>::asyncReadCallback(asio_ns::error_code const& ec) {
                              "nothing more to read or write on connection");
     return;  // stop read loop
   }
-
-  this->setTimeout();
 
   this->asyncReadSome();  // Continue read loop
 }
@@ -852,9 +850,69 @@ void H2Connection<T>::abortOngoingRequests(const fuerte::Error err) {
   _streamCount.store(0);
 }
 
+/// Set timeout accordingly
+template <SocketType T>
+void H2Connection<T>::setIOTimeout() {
+  const bool isIdle = _streams.empty();
+  if (isIdle && !this->_config._useIdleTimeout){
+    return;
+  }
+  
+  auto tp = std::chrono::steady_clock::time_point::max();
+  if (isIdle) {  // use default connection timeout
+    FUERTE_LOG_HTTPTRACE << "setting idle keep alive timer, this=" << this
+                         << "\n";
+    tp = std::chrono::steady_clock::now() + this->_config._idleTimeout;
+  } else {
+    for (auto const& pair : _streams) {
+      tp = std::min(tp, pair.second->expires);
+    }
+  }
+
+  const bool wasReading = this->_reading;
+  const bool wasWriting = this->_writing;
+  this->_timeoutOnReadWrite = false;
+
+  // expires_after cancels pending ops
+  this->_proto.timer.expires_at(tp);
+  this->_proto.timer.async_wait(
+      [=, self = Connection::weak_from_this()](auto const& ec) {
+    std::shared_ptr<Connection> s;
+    if (ec || !(s = self.lock())) {  // was canceled / deallocated
+      return;
+    }
+    
+    auto& me = static_cast<H2Connection<T>&>(*s);
+    if ((wasWriting && me._writing) ||
+        (wasReading && me._reading)) {
+      FUERTE_LOG_DEBUG << "H2-Request timeout" << " this=" << &me << "\n";
+      FUERTE_ASSERT(!_streams.empty());
+      
+      me.abortExpiredStreams();
+      
+      if (_streams.empty()) { // we still have streams left
+        setIOTimeout();
+      } else {
+        me._proto.cancel();
+        me._timeoutOnReadWrite = true;
+        // We simply cancel all ongoing asynchronous operations, the completion
+        // handlers will do the rest.
+      }
+    } else if (isIdle && !me._writing & !me._reading) {
+      if (!me._active && me._state == Connection::State::Connected) {
+        FUERTE_LOG_DEBUG << "HTTP-Request idle timeout"
+              << " this=" << &me << "\n";
+        me.shutdownConnection(Error::CloseRequested);
+      }
+    }
+    // In all other cases we do nothing, since we have been posted to the
+    // iocontext but the thing we should be timing out has already completed.
+  });
+}
+
 // abort all expired requests
 template <SocketType ST>
-void H2Connection<ST>::abortExpiredRequests() {
+void H2Connection<ST>::abortExpiredStreams() {
   // cancel expired requests
   auto now = std::chrono::steady_clock::now();
   std::vector<int32_t> expired;
@@ -869,34 +927,6 @@ void H2Connection<ST>::abortExpiredRequests() {
       strm->invokeOnError(Error::Timeout);
     }
   });
-}
-
-// calculate smallest timeout
-template <SocketType ST>
-std::chrono::steady_clock::time_point H2Connection<ST>::getTimeout(bool& isIdle) {
-  // set to smallest point in time
-  if (_streams.empty()) {  // use default connection timeout
-    isIdle = true;
-    return std::chrono::steady_clock::now() + this->_config._idleTimeout;
-  }
-  isIdle = false;
-  auto expires = std::chrono::steady_clock::time_point::max();
-  for (auto const& pair : _streams) {
-    expires = std::min(expires, pair.second->expires);
-  }
-  return expires;
-}
-
-
-// subclasses may override this for a gracefuly shutdown
-template <SocketType ST>
-void H2Connection<ST>::handleIdleTimeout() {
-  FUERTE_ASSERT(_streams.empty());
-  // no more messages to wait on
-  FUERTE_LOG_DEBUG << "HTTP2-Connection timeout\n";
-  // shouldWrite() == false after GOAWAY frame is send
-  nghttp2_session_terminate_session(_session, 0);
-  doWrite();
 }
 
 template <SocketType T>

@@ -265,5 +265,29 @@ fuerte::Error translateError(asio_ns::error_code e, fuerte::Error c) {
   
   return c;
 }
+
+std::string extractPathParameters(std::string const& p, StringMap& params) {
+  
+  size_t pos = p.rfind('?');
+  if (pos != std::string::npos) {
+    std::string result = p.substr(0, pos);
+
+    while (pos != std::string::npos && pos + 1 < p.length()) {
+      size_t pos2 = p.find('=', pos + 1);
+      if (pos2 == std::string::npos) {
+        break;
+      }
+      std::string key = p.substr(pos + 1, pos2 - pos - 1);
+      pos = p.find('&', pos2 + 1);  // points to next '&' or string::npos
+      std::string value = pos == std::string::npos
+                              ? p.substr(pos2 + 1)
+                              : p.substr(pos2 + 1, pos - pos2 - 1);
+      params.emplace(std::move(key), std::move(value));
+    }
+    
+    return result;
+  }
+  return p;
+}
   
 }}}  // namespace arangodb::fuerte::v1
