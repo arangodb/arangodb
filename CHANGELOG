@@ -3,6 +3,14 @@ devel
 
 * Fixed hotbackup upload and download with encryption at rest key indirection.
 
+* Fixed a rare race in Agents, if the leader is rebooted quickly there is a chance
+  that it is still assumed to be the leader, but delivers a state shortly in the
+  past.
+
+* Fixed a race in the ConnectionPool which could lease out a connection
+  that got its idle timeout after the lease was completed. This could lead
+  to sporadic network failures in TLS and to inefficiencies with TCP.
+
 * Fixed restoring a SmartGraph into a database that already contains that same graph.
   The use case is restoring a SmartGraph from backup, apply some modifications, which are
   undesired, and then resetting it to the restored state, without dropping the database.

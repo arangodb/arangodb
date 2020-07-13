@@ -10,6 +10,9 @@ This option is only present for the MMFiles storage engine.
 The maximal size setting for journals / datafiles
 in bytes. This option is only present for the MMFiles storage engine.
 
+@RESTSTRUCT{schema,collection_info,object,optional,}
+The collection level schema for documents.
+
 @RESTSTRUCT{keyOptions,collection_info,object,required,key_generator_type}
 A object which contains key generation options
 
