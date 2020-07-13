@@ -294,7 +294,7 @@ AqlCall::Limit OutputAqlItemRow::hardLimit() const { return _call.hardLimit; }
 
 AqlCall const& OutputAqlItemRow::getClientCall() const { return _call; }
 
-AqlCall& OutputAqlItemRow::getModifiableClientCall() { return _call; };
+AqlCall& OutputAqlItemRow::getModifiableClientCall() { return _call; }
 
 AqlCall&& OutputAqlItemRow::stealClientCall() { return std::move(_call); }
 

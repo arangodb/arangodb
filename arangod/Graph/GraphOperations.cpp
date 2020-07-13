@@ -245,7 +245,7 @@ OperationResult GraphOperations::editEdgeDefinition(VPackSlice edgeDefinitionSli
   collectionsOptions.openObject();
   _graph.createCollectionOptions(collectionsOptions, waitForSync);
   collectionsOptions.close();
-  result = gmngr.findOrCreateCollectionsByEdgeDefinition(edgeDefinition, waitForSync,
+  result = gmngr.findOrCreateCollectionsByEdgeDefinition(_graph, edgeDefinition, waitForSync,
                                                          collectionsOptions.slice());
   if (result.fail()) {
     return result;

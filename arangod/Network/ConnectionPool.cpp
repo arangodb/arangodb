@@ -205,7 +205,7 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
     if (state == fuerte::Connection::State::Closed) {
       continue;
     }
-    
+
     TRI_ASSERT(_config.protocol != fuerte::ProtocolType::Undefined);
 
     std::size_t limit = 0;

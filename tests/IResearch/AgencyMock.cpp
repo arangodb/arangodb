@@ -53,7 +53,6 @@ void Store::notifyObservers() const {
     return;
   }
   auto& clusterFeature = _server.getFeature<arangodb::ClusterFeature>();
-
   auto* callbackRegistry = clusterFeature.agencyCallbackRegistry();
 
   if (!callbackRegistry) {
@@ -113,7 +112,7 @@ struct AsyncAgencyStorePoolConnection final : public fuerte::Connection {
   std::string _endpoint;
 
   auto handleRead(VPackSlice body) -> std::unique_ptr<fuerte::Response> {
-    auto* store = _mock->_store;
+    auto& cache = _mock->_server.getFeature<ClusterFeature>().agencyCache();
 
     fuerte::ResponseHeader header;
 
@@ -121,11 +120,10 @@ struct AsyncAgencyStorePoolConnection final : public fuerte::Connection {
     VPackBuffer<uint8_t> responseBuffer;
     {
       auto result = std::make_shared<arangodb::velocypack::Builder>(responseBuffer);
-      auto const success = store->read(bodyBuilder, result);
+      auto const success = cache.store().read(bodyBuilder, result);
       auto const code =
-          std::find(success.begin(), success.end(), false) == success.end()
-              ? fuerte::StatusOK
-              : fuerte::StatusBadRequest;
+        std::find(success.begin(), success.end(), false) == success.end()
+        ? fuerte::StatusOK : fuerte::StatusBadRequest;
 
       header.contentType(fuerte::ContentType::VPack);
       header.responseCode = code;
@@ -138,23 +136,25 @@ struct AsyncAgencyStorePoolConnection final : public fuerte::Connection {
   }
 
   auto handleWrite(VPackSlice body) -> std::unique_ptr<fuerte::Response> {
-    auto* store = _mock->_store;
+    auto& cache = _mock->_server.getFeature<ClusterFeature>().agencyCache();
     auto bodyBuilder = std::make_shared<VPackBuilder>(body);
 
-    auto const success = store->applyTransactions(bodyBuilder);
+    auto [success,index] = cache.applyTestTransaction(bodyBuilder);
+
     auto const code =
-        std::find_if(success.begin(), success.end(),
-                     [&](int i) -> bool { return i != 0; }) == success.end()
-            ? fuerte::StatusOK
-            : fuerte::StatusPreconditionFailed;
+      std::find_if(success.begin(), success.end(),
+                   [&](int i) -> bool { return i != 0; }) == success.end()
+      ? fuerte::StatusOK : fuerte::StatusPreconditionFailed;
 
     VPackBuffer<uint8_t> responseBody;
+    VPackBuilder bodyObj(responseBody);
     {
-      VPackBuilder bodyObj(responseBody);
-      bodyObj.openObject();
-      bodyObj.add("results", VPackValue(VPackValueType::Array));
-      bodyObj.close();
-      bodyObj.close();
+      { VPackObjectBuilder o(&bodyObj);
+        bodyObj.add("results", VPackValue(VPackValueType::Array));
+        for (auto const& s : success) {
+          bodyObj.add(VPackValue((s == arangodb::consensus::APPLIED ? index : 0)));
+        }
+        bodyObj.close(); }
     }
 
     fuerte::ResponseHeader header;
@@ -164,7 +164,7 @@ struct AsyncAgencyStorePoolConnection final : public fuerte::Connection {
     auto response = std::make_unique<fuerte::Response>(std::move(header));
     response->setPayload(std::move(responseBody), 0);
 
-    store->notifyObservers();
+    cache.store().notifyObservers();
 
     return response;
   }

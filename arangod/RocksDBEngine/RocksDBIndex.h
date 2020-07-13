@@ -140,10 +140,10 @@ class RocksDBIndex : public Index {
                rocksdb::ColumnFamilyHandle* cf, bool useCache);
 
   inline bool useCache() const { return (_cacheEnabled && _cache); }
-  void blackListKey(char const* data, std::size_t len);
-  void blackListKey(arangodb::velocypack::StringRef& ref) {
-    blackListKey(ref.data(), ref.size());
-  };
+  void invalidateCacheEntry(char const* data, std::size_t len);
+  void invalidateCacheEntry(arangodb::velocypack::StringRef& ref) {
+    invalidateCacheEntry(ref.data(), ref.size());
+  }
 
  protected:
   rocksdb::ColumnFamilyHandle* _cf;

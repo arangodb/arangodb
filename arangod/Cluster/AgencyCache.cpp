@@ -319,7 +319,7 @@ void AgencyCache::triggerWaiting(index_t commitIndex) {
       break;
     }
     auto pp = std::make_shared<futures::Promise<Result>>(std::move(pit->second));
-    if (!this->isStopping()) {
+    if (scheduler && !this->isStopping()) {
       bool queued = scheduler->queue(
         RequestLane::CLUSTER_INTERNAL, [pp] { pp->setValue(Result()); });
       if (!queued) {
@@ -410,6 +410,7 @@ void AgencyCache::beginShutdown() {
     }
     _callbacks.clear();
   }
+
   Thread::beginShutdown();
 }
 

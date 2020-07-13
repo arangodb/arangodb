@@ -67,7 +67,7 @@ struct AqlCall {
    */
 
   struct LimitPrinter {
-    explicit LimitPrinter (Limit const& limit) : _limit(limit) {}
+    explicit LimitPrinter(Limit const& limit) : _limit(limit) {}
     ~LimitPrinter() = default;
 
     // Never allow any kind of copying
@@ -102,22 +102,12 @@ struct AqlCall {
 
   // TODO Remove me, this will not be necessary later
   static AqlCall SimulateSkipSome(std::size_t toSkip) {
-    AqlCall call;
-    call.offset = toSkip;
-    call.softLimit = 0u;
-    call.hardLimit = AqlCall::Infinity{};
-    call.fullCount = false;
-    return call;
+    return AqlCall{/*offset*/ toSkip, /*softLimit*/ 0u, /*hardLimit*/ AqlCall::Infinity{}, /*fullCount*/ false};
   }
 
   // TODO Remove me, this will not be necessary later
   static AqlCall SimulateGetSome(std::size_t atMost) {
-    AqlCall call;
-    call.offset = 0;
-    call.softLimit = atMost;
-    call.hardLimit = AqlCall::Infinity{};
-    call.fullCount = false;
-    return call;
+    return AqlCall{/*offset*/ 0, /*softLimit*/ atMost, /*hardLimit*/ AqlCall::Infinity{}, /*fullCount*/ false};
   }
 
   // TODO Remove me, this will not be necessary later
