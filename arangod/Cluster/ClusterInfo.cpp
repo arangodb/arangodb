@@ -5372,8 +5372,8 @@ void ClusterInfo::SyncerThread::beginShutdown() {
   {
     std::lock_guard<std::mutex> lck(_m);
     _news = false;
-    _cv.notify_one();
   }
+  _cv.notify_one();
 }
 
 void ClusterInfo::SyncerThread::start() {
