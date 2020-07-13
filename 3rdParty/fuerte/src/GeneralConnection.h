@@ -53,7 +53,7 @@ class GeneralConnection : public fuerte::Connection {
   
   virtual ~GeneralConnection() noexcept {
     _state.store(Connection::State::Closed);
-    terminateActivity();
+    terminateActivity(fuerte::Error::Canceled);
   }
 
   /// @brief connection state
@@ -93,7 +93,7 @@ class GeneralConnection : public fuerte::Connection {
     }
     item.release();  // queue owns this now
 
-    FUERTE_LOG_HTTPTRACE << "queued item: this=" << this << "\n";
+    FUERTE_LOG_DEBUG << "queued item: this=" << this << "\n";
 
     // Note that we have first posted on the queue with std::memory_order_seq_cst
     // and now we check _active std::memory_order_seq_cst. This prevents a sleeping
@@ -151,19 +151,19 @@ class GeneralConnection : public fuerte::Connection {
     if (!msg.empty()) {
       FUERTE_LOG_DEBUG << ", msg = '" << msg<< "' ";
     }
-    FUERTE_LOG_DEBUG<< "this=" << this << "\n";
+    FUERTE_LOG_DEBUG << "this=" << this << "\n";
     
     auto exp = _state.load();
     if (exp == Connection::State::Closed ||
         !_state.compare_exchange_strong(exp, Connection::State::Closed)) {
+      FUERTE_LOG_DEBUG << "connection is already shutdown this=" << this << "\n";
       return;
     }
     
     abortOngoingRequests(err);
-    drainQueue(err);
 
     _proto.shutdown([=, self(shared_from_this())](auto const& ec) {
-      terminateActivity();
+      terminateActivity(err);
       onFailure(err, msg);
     });  // Close socket
   }
@@ -195,6 +195,7 @@ class GeneralConnection : public fuerte::Connection {
   
   /// abort all requests lingering in the queue
   void drainQueue(const fuerte::Error ec) {
+    FUERTE_LOG_DEBUG << "drain queue this=" << this << "\n";
     RT* item = nullptr;
     while (_queue.pop(item)) {
       FUERTE_ASSERT(item);
@@ -209,10 +210,10 @@ class GeneralConnection : public fuerte::Connection {
     Connection::State state = this->_state.load();
     FUERTE_ASSERT(state != Connection::State::Connecting);
     if (state == Connection::State::Connected) {
-      FUERTE_LOG_HTTPTRACE << "activate: connected\n";
+      FUERTE_LOG_DEBUG << "activate: connected\n";
       this->doWrite();
     } else if (state == Connection::State::Created) {
-      FUERTE_LOG_HTTPTRACE << "activate: not connected\n";
+      FUERTE_LOG_DEBUG << "activate: not connected\n";
       this->startConnection();
     } else if (state == Connection::State::Closed) {
       FUERTE_LOG_ERROR << "activate: queued request on failed connection\n";
@@ -227,16 +228,16 @@ class GeneralConnection : public fuerte::Connection {
   /// The following is called when the connection is permanently failed. It is
   /// used to shut down any activity in the derived classes in a way that avoids
   /// sleeping barbers
-  void terminateActivity() {
+  void terminateActivity(const fuerte::Error err) {
     // Usually, we are `active == true` when we get here, except for the following
     // case: If we are inactive but the connection is still open and then the
     // idle timeout goes off, then we shutdownConnection and in the TLS case we
     // call this method here. In this case it is OK to simply proceed, therefore
     // no assertion on `_active`.
     FUERTE_ASSERT(this->_state.load() == Connection::State::Closed);
-    FUERTE_LOG_HTTPTRACE << "terminateActivity: active=true, this=" << this << "\n";
+    FUERTE_LOG_DEBUG << "terminateActivity: active=true, this=" << this << "\n";
     while (true) {
-      this->drainQueue(Error::Canceled);
+      this->drainQueue(err);
       this->_active.store(false);
       // Now need to check again:
       if (this->_queue.empty()) {
@@ -275,7 +276,6 @@ protected:
     }
 
     if (retries == 0) {
-      _state.store(Connection::State::Closed, std::memory_order_release);
       std::string msg("connecting failed: '");
       msg.append((ec != asio_ns::error::operation_aborted) ? ec.message() : "timeout");
       msg.push_back('\'');
