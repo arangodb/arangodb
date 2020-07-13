@@ -256,10 +256,37 @@ void test05() {
   std::cout << *slice.tape << std::endl;
 }
 
+enum class MyEnum {
+  MIN, MAX, SUM
+};
+
+constexpr const char MyEnum_min[] = "min";
+constexpr const char MyEnum_max[] = "max";
+constexpr const char MyEnum_sum[] = "sum";
+
+using MyEnum_deserializer = deserializer::enum_deserializer<
+    MyEnum, deserializer::enum_member<MyEnum::MIN, deserializer::values::string_value<MyEnum_min>>,
+    deserializer::enum_member<MyEnum::MAX, deserializer::values::string_value<MyEnum_max>>,
+    deserializer::enum_member<MyEnum::SUM, deserializer::values::string_value<MyEnum_sum>>>;
+
+void test06() {
+  auto buffer = R"=("mox")="_vpack;
+  auto slice = deserializer::test::recording_slice::from_buffer(buffer);
+
+  auto result =
+      deserializer::deserialize<MyEnum_deserializer>(slice);
+
+  if (!result) {
+    std::cerr << result.error().as_string() << std::endl;
+  }
+  std::cout << *slice.tape << std::endl;
+}
+
 int main(int argc, char* argv[]) {
   test01();
   test02();
   test03();
   test04();
   test05();
+  test06();
 }

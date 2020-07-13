@@ -125,6 +125,9 @@ struct error {
                          [](auto) {}},
                  *i);
     }
+    if (backtrace.empty()) {
+      result += "(top-level)";
+    }
 
     if (!was_terminated) {
       result += ':';
