@@ -51,10 +51,10 @@ MutexExecutor::MutexExecutor(MutexExecutorInfos const& infos)
 auto MutexExecutor::distributeBlock(SharedAqlItemBlockPtr block, SkipResult skipped,
                                     std::unordered_map<std::string, ClientBlockData>& blockMap)
     -> void {
-  std::unordered_map<std::string, std::vector<std::size_t>> choosenMap;
-  choosenMap.reserve(blockMap.size());
-
   if (block != nullptr) {
+    std::unordered_map<std::string, std::vector<std::size_t>> choosenMap;
+    choosenMap.reserve(blockMap.size());
+
     for (size_t i = 0; i < block->size(); ++i) {
       if (block->isShadowRow(i)) {
         // ShadowRows need to be added to all Clients
@@ -62,7 +62,7 @@ auto MutexExecutor::distributeBlock(SharedAqlItemBlockPtr block, SkipResult skip
           choosenMap[key].emplace_back(i);
         }
       } else {
-        auto client = getClient(block, i);
+        auto const& client = getClient(block, i);
         // We can only have clients we are prepared for
         TRI_ASSERT(blockMap.find(client) != blockMap.end());
         choosenMap[client].emplace_back(i);

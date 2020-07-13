@@ -57,19 +57,20 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace {
-static std::string const garbageCollectionQuery(
+std::string const garbageCollectionQuery(
     "FOR s in @@collection FILTER s.time < @start RETURN s._key");
 
-static std::string const lastEntryQuery(
+std::string const lastEntryQuery(
     "FOR s in @@collection FILTER s.time >= @start SORT s.time DESC LIMIT 1 "
     "RETURN s");
-static std::string const filteredLastEntryQuery(
+std::string const filteredLastEntryQuery(
     "FOR s in @@collection FILTER s.time >= @start FILTER s.clusterId == "
     "@clusterId SORT s.time DESC LIMIT 1 RETURN s");
 
-static std::string const fifteenMinuteQuery(
+std::string const fifteenMinuteQuery(
     "FOR s in _statistics FILTER s.time >= @start SORT s.time RETURN s");
-static std::string const filteredFifteenMinuteQuery(
+
+std::string const filteredFifteenMinuteQuery(
     "FOR s in _statistics FILTER s.time >= @start FILTER s.clusterId == "
     "@clusterId SORT s.time RETURN s");
 
@@ -154,7 +155,7 @@ void StatisticsWorker::collectGarbage(std::string const& name, double start) con
   bindVars->close();
 
   arangodb::aql::Query query(transaction::StandaloneContext::Create(_vocbase),
-                             arangodb::aql::QueryString(garbageCollectionQuery),
+                             arangodb::aql::QueryString(::garbageCollectionQuery),
                              _bindVars, nullptr);
 
   query.queryOptions().cache = false;
@@ -275,7 +276,7 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
   bindVars->close();
 
   arangodb::aql::Query query(transaction::StandaloneContext::Create(_vocbase),
-                             arangodb::aql::QueryString(_clusterId.empty() ? lastEntryQuery : filteredLastEntryQuery),
+                             arangodb::aql::QueryString(_clusterId.empty() ? ::lastEntryQuery : ::filteredLastEntryQuery),
                              _bindVars, nullptr);
 
   query.queryOptions().cache = false;
@@ -304,7 +305,7 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
 
   arangodb::aql::Query query(transaction::StandaloneContext::Create(_vocbase),
                              arangodb::aql::QueryString(
-                                 _clusterId.empty() ? fifteenMinuteQuery : filteredFifteenMinuteQuery),
+                                 _clusterId.empty() ? ::fifteenMinuteQuery : ::filteredFifteenMinuteQuery),
                              _bindVars, nullptr);
 
   query.queryOptions().cache = false;
@@ -361,21 +362,21 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
       // to give up in this case, but simply ignore these errors
       try {
         VPackSlice v8Contexts = server.get("v8Context");
-        serverV8available += extractNumber(v8Contexts, "availablePerSecond");
-        serverV8busy += extractNumber(v8Contexts, "busyPerSecond");
-        serverV8dirty += extractNumber(v8Contexts, "dirtyPerSecond");
-        serverV8free += extractNumber(v8Contexts, "freePerSecond");
-        serverV8max += extractNumber(v8Contexts, "maxPerSecond");
+        serverV8available += ::extractNumber(v8Contexts, "availablePerSecond");
+        serverV8busy += ::extractNumber(v8Contexts, "busyPerSecond");
+        serverV8dirty += ::extractNumber(v8Contexts, "dirtyPerSecond");
+        serverV8free += ::extractNumber(v8Contexts, "freePerSecond");
+        serverV8max += ::extractNumber(v8Contexts, "maxPerSecond");
       } catch (...) {
         // if attribute "v8Context" is not present, simply do not count
       }
 
       try {
         VPackSlice threads = server.get("threads");
-        serverThreadsRunning += extractNumber(threads, "runningPerSecond");
-        serverThreadsWorking += extractNumber(threads, "workingPerSecond");
-        serverThreadsBlocked += extractNumber(threads, "blockedPerSecond");
-        serverThreadsQueued += extractNumber(threads, "queuedPerSecond");
+        serverThreadsRunning += ::extractNumber(threads, "runningPerSecond");
+        serverThreadsWorking += ::extractNumber(threads, "workingPerSecond");
+        serverThreadsBlocked += ::extractNumber(threads, "blockedPerSecond");
+        serverThreadsQueued += ::extractNumber(threads, "queuedPerSecond");
       } catch (...) {
         // if attribute "threads" is not present, simply do not count
       }
@@ -383,15 +384,15 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
       try {
         VPackSlice system = values.get("system");
         systemMinorPageFaultsPerSecond +=
-            extractNumber(system, "minorPageFaultsPerSecond");
+            ::extractNumber(system, "minorPageFaultsPerSecond");
         systemMajorPageFaultsPerSecond +=
-            extractNumber(system, "majorPageFaultsPerSecond");
-        systemUserTimePerSecond += extractNumber(system, "userTimePerSecond");
+            ::extractNumber(system, "majorPageFaultsPerSecond");
+        systemUserTimePerSecond += ::extractNumber(system, "userTimePerSecond");
         systemSystemTimePerSecond +=
-            extractNumber(system, "systemTimePerSecond");
-        systemResidentSize += extractNumber(system, "residentSize");
-        systemVirtualSize += extractNumber(system, "virtualSize");
-        systemNumberOfThreads += extractNumber(system, "numberOfThreads");
+            ::extractNumber(system, "systemTimePerSecond");
+        systemResidentSize += ::extractNumber(system, "residentSize");
+        systemVirtualSize += ::extractNumber(system, "virtualSize");
+        systemNumberOfThreads += ::extractNumber(system, "numberOfThreads");
       } catch (...) {
         // if attribute "system" is not present, simply do not count
       }
@@ -399,37 +400,37 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
       try {
         VPackSlice http = values.get("http");
         httpRequestsTotalPerSecond +=
-            extractNumber(http, "requestsTotalPerSecond");
+            ::extractNumber(http, "requestsTotalPerSecond");
         httpRequestsAsyncPerSecond +=
-            extractNumber(http, "requestsAsyncPerSecond");
-        httpRequestsGetPerSecond += extractNumber(http, "requestsGetPerSecond");
+            ::extractNumber(http, "requestsAsyncPerSecond");
+        httpRequestsGetPerSecond += ::extractNumber(http, "requestsGetPerSecond");
         httpRequestsHeadPerSecond +=
-            extractNumber(http, "requestsHeadPerSecond");
+            ::extractNumber(http, "requestsHeadPerSecond");
         httpRequestsPostPerSecond +=
-            extractNumber(http, "requestsPostPerSecond");
-        httpRequestsPutPerSecond += extractNumber(http, "requestsPutPerSecond");
+            ::extractNumber(http, "requestsPostPerSecond");
+        httpRequestsPutPerSecond += ::extractNumber(http, "requestsPutPerSecond");
         httpRequestsPatchPerSecond +=
-            extractNumber(http, "requestsPatchPerSecond");
+            ::extractNumber(http, "requestsPatchPerSecond");
         httpRequestsDeletePerSecond +=
-            extractNumber(http, "requestsDeletePerSecond");
+            ::extractNumber(http, "requestsDeletePerSecond");
         httpRequestsOptionsPerSecond +=
-            extractNumber(http, "requestsOptionsPerSecond");
+            ::extractNumber(http, "requestsOptionsPerSecond");
         httpRequestsOtherPerSecond +=
-            extractNumber(http, "requestsOtherPerSecond");
+            ::extractNumber(http, "requestsOtherPerSecond");
       } catch (...) {
         // if attribute "http" is not present, simply do not count
       }
 
       try {
         VPackSlice client = values.get("client");
-        clientHttpConnections += extractNumber(client, "httpConnections");
-        clientBytesSentPerSecond += extractNumber(client, "bytesSentPerSecond");
+        clientHttpConnections += ::extractNumber(client, "httpConnections");
+        clientBytesSentPerSecond += ::extractNumber(client, "bytesSentPerSecond");
         clientBytesReceivedPerSecond +=
-            extractNumber(client, "bytesReceivedPerSecond");
-        clientAvgTotalTime += extractNumber(client, "avgTotalTime");
-        clientAvgRequestTime += extractNumber(client, "avgRequestTime");
-        clientAvgQueueTime += extractNumber(client, "avgQueueTime");
-        clientAvgIoTime += extractNumber(client, "avgIoTime");
+            ::extractNumber(client, "bytesReceivedPerSecond");
+        clientAvgTotalTime += ::extractNumber(client, "avgTotalTime");
+        clientAvgRequestTime += ::extractNumber(client, "avgRequestTime");
+        clientAvgQueueTime += ::extractNumber(client, "avgQueueTime");
+        clientAvgIoTime += ::extractNumber(client, "avgIoTime");
       } catch (...) {
         // if attribute "client" is not present, simply do not count
       }

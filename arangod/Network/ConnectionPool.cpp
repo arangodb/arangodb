@@ -206,7 +206,11 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
     if (state == fuerte::Connection::State::Failed) {
       continue;
     }
-    
+
+    if (!c->fuerte->lease()) {
+      continue;
+    }
+
     TRI_ASSERT(_config.protocol != fuerte::ProtocolType::Undefined);
 
     std::size_t limit = 0;
