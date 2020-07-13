@@ -5649,10 +5649,10 @@ futures::Future<ResultT<T>> fetchNumberFromAgency(std::shared_ptr<cluster::paths
   VPackBuffer<uint8_t> trx;
   {
     VPackBuilder builder(trx);
-    arangodb::agency::envelope<VPackBuilder>::create(builder)
+    arangodb::agency::envelope::into_builder(builder)
         .read()
         .key(path->str())
-        .done()
+        .end()
         .done();
   }
 

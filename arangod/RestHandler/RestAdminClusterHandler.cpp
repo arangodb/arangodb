@@ -345,12 +345,12 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::tryDeleteServer(
   VPackBuffer<uint8_t> trx;
   {
     VPackBuilder builder(trx);
-    arangodb::agency::envelope<VPackBuilder>::create(builder)
+    arangodb::agency::envelope::into_builder(builder)
         .read()
         .key(rootPath->supervision()->health()->str())
         .key(rootPath->plan()->str())
         .key(rootPath->current()->str())
-        .done()
+        .end()
         .done();
   }
 
@@ -374,7 +374,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::tryDeleteServer(
           VPackBuffer<uint8_t> trx;
           {
             VPackBuilder builder(trx);
-            arangodb::agency::envelope<VPackBuilder>::create(builder)
+            arangodb::agency::envelope::into_builder(builder)
 
                 .write()
                 .remove(rootPath->plan()->coordinators()->server(ctx->server)->str())
@@ -403,7 +403,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::tryDeleteServer(
                 .isEmpty(
                     rootPath->supervision()->dbServers()->server(ctx->server)->str())
                 .isEqual(planVersionPath->str(), agency.get(planVersionPath->vec()))
-                .done()
+                .end()
                 .done();
           }
 
@@ -620,7 +620,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::createMoveShard(
   VPackBuffer<uint8_t> trx;
   {
     VPackBuilder builder(trx);
-    arangodb::agency::envelope<VPackBuilder>::create(builder)
+    arangodb::agency::envelope::into_builder(builder)
         .write()
         .emplace(jobToDoPath->str(),
                  [&](VPackBuilder& builder) {
@@ -637,7 +637,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::createMoveShard(
                    builder.add("timeCreated", VPackValue(timepointToString(
                                                   std::chrono::system_clock::now())));
                  })
-        .done()
+        .end()
         .done();
   }
 
@@ -681,14 +681,14 @@ RestStatus RestAdminClusterHandler::handlePostMoveShard(std::unique_ptr<MoveShar
   VPackBuffer<uint8_t> trx;
   {
     VPackBuilder builder(trx);
-    arangodb::agency::envelope<VPackBuilder>::create(builder)
+    arangodb::agency::envelope::into_builder(builder)
         .read()
         .key(planPath->dBServers()->str())
         .key(planPath->collections()
                  ->database(ctx->database)
                  ->collection(ctx->collectionID)
                  ->str())
-        .done()
+        .end()
         .done();
   }
 
@@ -1241,12 +1241,12 @@ RestStatus RestAdminClusterHandler::handleGetNumberOfServers() {
   VPackBuffer<uint8_t> trx;
   {
     VPackBuilder builder(trx);
-    arangodb::agency::envelope<VPackBuilder>::create(builder)
+    arangodb::agency::envelope::into_builder(builder)
         .read()
         .key(targetPath->numberOfDBServers()->str())
         .key(targetPath->numberOfCoordinators()->str())
         .key(targetPath->cleanedServers()->str())
-        .done()
+        .end()
         .done();
   }
 
@@ -1321,7 +1321,7 @@ RestStatus RestAdminClusterHandler::handlePutNumberOfServers() {
   VPackBuffer<uint8_t> trx;
   {
     VPackBuilder builder(trx);
-    auto write = arangodb::agency::envelope<VPackBuilder>::create(builder).write();
+    auto write = arangodb::agency::envelope::into_builder(builder).write();
 
     VPackSlice numberOfCoordinators = body.get("numberOfCoordinators");
     if (numberOfCoordinators.isNumber() || numberOfCoordinators.isNull()) {
@@ -1368,7 +1368,7 @@ RestStatus RestAdminClusterHandler::handlePutNumberOfServers() {
       return RestStatus::DONE;
     }
 
-    std::move(write).done().done();
+    std::move(write).end().done();
   }
 
   if (!hasThingsToDo) {
@@ -1415,12 +1415,12 @@ RestStatus RestAdminClusterHandler::handleNumberOfServers() {
                   "only allowed on coordinators");
     return RestStatus::DONE;
   }
- 
+
   // GET requests are allowed for everyone, unless --server.harden is used.
   // in this case admin privileges are required.
   // PUT requests always require admin privileges
   ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
-  bool const needsAdminPrivileges = 
+  bool const needsAdminPrivileges =
       (request()->requestType() != rest::RequestType::GET || security.isRestApiHardened());
 
   if (needsAdminPrivileges &&
@@ -1509,13 +1509,13 @@ RestStatus RestAdminClusterHandler::handleHealth() {
   VPackBuffer<uint8_t> trx;
   {
     VPackBuilder builder(trx);
-    arangodb::agency::envelope<VPackBuilder>::create(builder)
+    arangodb::agency::envelope::into_builder(builder)
         .read()
         .key(rootPath->cluster()->str())
         .key(rootPath->supervision()->health()->str())
         .key(rootPath->plan()->str())
         .key(rootPath->current()->str())
-        .done()
+        .end()
         .done();
   }
   auto fStore = AsyncAgencyComm().sendReadTransaction(60.0s, std::move(trx));
@@ -1667,7 +1667,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::handlePostRebalance
   VPackBuffer<uint8_t> trx;
   {
     VPackBuilder builder(trx);
-    auto write = arangodb::agency::envelope<VPackBuilder>::create(builder).write();
+    auto write = arangodb::agency::envelope::into_builder(builder).write();
 
     auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
     std::string timestamp = timepointToString(std::chrono::system_clock::now());
@@ -1689,7 +1689,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::handlePostRebalance
         builder.add("timeCreated", VPackValue(timestamp));
       });
     }
-    std::move(write).done().done();
+    std::move(write).end().done();
   }
 
   return AsyncAgencyComm().sendWriteTransaction(20s, std::move(trx)).thenValue([this](AsyncAgencyCommResult&& result) {
