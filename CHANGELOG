@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixed a rare race in Agents, if the leader is rebooted quickly there is a chance
+  that it is still assumed to be the leader, but delivers a state shortly in the
+  past.
+
 * Fixed a race in the ConnectionPool which could lease out a connection
   that got its idle timeout after the lease was completed. This could lead
   to sporadic network failures in TLS and to inefficiencies with TCP.
