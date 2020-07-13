@@ -24,29 +24,25 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_ACCUMULATORS_H
-#define ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_ACCUMULATORS_H 1
+#ifndef ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATOR_OPTIONS_DESERIALIZER_H
+#define ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATOR_OPTIONS_DESERIALIZER_H 1
 
-#include <Pregel/Algos/VertexAccumulators/AbstractAccumulator.h>
+#include <string>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
-#include <inttypes.h>
+#include <VPackDeserialize/deserializer.h>
 
-namespace arangodb {
-namespace pregel {
-namespace algos {
-
-class MinIntAccumulator : Accumulator<int64_t> {
-public:
-  void update(data_type&& v) override {
-    LOG_DEVEL << " UND UPDATE! " << v;
-    if (v < _value) {
-      _value = v;
-    }
-  }
+struct AccumulatorOptions {
+  std::string type;
+/*  std::string valueType;
+  bool storeSender;
+  std::string neighborFilter;
+  std::string updateExpression; */
 };
 
-}  // namespace algos
-}  // namespace pregel
-}  // namespace arangodb
+std::ostream& operator<<(std::ostream&, AccumulatorOptions const&);
+
+result<AccumulatorOptions, error> parseAccumulatorOptions(VPackSlice slice);
 
 #endif

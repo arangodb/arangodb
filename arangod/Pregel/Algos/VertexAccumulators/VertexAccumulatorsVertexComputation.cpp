@@ -28,35 +28,37 @@ using namespace arangodb::pregel::algos;
 
 VertexAccumulators::VertexComputation::VertexComputation() {}
 
-void VertexAccumulators::VertexComputation::compute(MessageIterator<MessageData> const& messages) {
-  // auto currentComponent = vertexData();
+// todo: MessageIterator<MessageData>?
+void VertexAccumulators::VertexComputation::compute(MessageIterator<MessageData> const& incomingMessages) {
+  auto currentVertexData = vertexData();
+  if (globalSuperstep() == 0) {
+    // init accumulators
+  } else {
+    LOG_DEVEL << "vertex data: " << currentVertexData;
+    //   bool halt = true;
 
-  if (globalSuperstep() > 0) {
-    bool halt = true;
+    // receive messages and update all accumulators
+    for (const message_type* msg : incomingMessages) {
+      LOG_DEVEL << " a message " << msg;
+    }
+    // Send messages
+    // if (globalSuperstep() > 0) {
+/*
+    auto message = (pregelId(), currentComponent);
 
-    /*
-      for (const MessageData* msg : messages) {
-      if (msg->value < currentComponent) {
-      currentComponent = msg->value;
-      // TODO: optimization update the edge value if present
-      // problem: there might be loads of edges, could be expensive
-      }
-      }
-
-      auto message = (pregelId(), currentComponent);
-      for (const MessageData* msg : messages) {
+    for (const MessageData* msg : messages) {
       if (msg->value > currentComponent) {
-      TRI_ASSERT(msg->senderId != pregelId());
-          sendMessage(msg->senderId, message);
-          halt = false;
-        }
+        TRI_ASSERT(msg->senderId != pregelId());
+        sendMessage(msg->senderId, message);
+        halt = false;
       }
-      */
-    if (halt) {
+
+      if (halt) {
       voteHalt();
     } else {
       voteActive();
     }
+*/
   }
 
   /*

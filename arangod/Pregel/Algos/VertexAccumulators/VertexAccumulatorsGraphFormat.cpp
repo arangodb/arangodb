@@ -28,26 +28,41 @@ using namespace arangodb::pregel::algos;
 
 // Graph Format
 VertexAccumulators::GraphFormat::GraphFormat(application_features::ApplicationServer& server,
-                       std::string const& resultField)
-  : graph_format(server), _resultField(resultField) {};
+                                             std::string const& resultField)
+    : graph_format(server), _resultField(resultField){};
 
+size_t VertexAccumulators::GraphFormat::estimatedVertexSize() const {
+  return sizeof(vertex_type);
+}
+size_t VertexAccumulators::GraphFormat::estimatedEdgeSize() const {
+  return sizeof(edge_type);
+}
 
-size_t VertexAccumulators::GraphFormat::estimatedVertexSize() const { return sizeof(vertex_type); }
-size_t VertexAccumulators::GraphFormat::estimatedEdgeSize() const { return sizeof(edge_type); }
-void VertexAccumulators::GraphFormat::copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                      vertex_type& targetPtr)  {}
+// Extract vertex data from vertex document into target
+void VertexAccumulators::GraphFormat::copyVertexData(std::string const& documentId,
+                                                     arangodb::velocypack::Slice vertexDocument,
+                                                     vertex_type& targetPtr) {
+  LOG_DEVEL << "copyVertexData: " << vertexDocument.toJson();
+}
 
-void VertexAccumulators::GraphFormat::copyEdgeData(arangodb::velocypack::Slice document, edge_type& targetPtr) {}
+// Extract edge data from edge document into edge_type
+void VertexAccumulators::GraphFormat::copyEdgeData(arangodb::velocypack::Slice edgeDocument,
+                                                   edge_type& targetPtr) {
+  LOG_DEVEL << "copyEdgeData: " << edgeDocument.toJson();
+}
 
 bool VertexAccumulators::GraphFormat::buildVertexDocument(arangodb::velocypack::Builder& b,
-                           const vertex_type* ptr, size_t size) const {
+                                                          const vertex_type* ptr,
+                                                          size_t size) const {
   // FIXME
+  LOG_DEVEL << "buildVertexDocument: ";
   return true;
 }
 
-bool VertexAccumulators::GraphFormat::buildEdgeDocument(arangodb::velocypack::Builder& b, const edge_type* ptr,
-                         size_t size) const {
+bool VertexAccumulators::GraphFormat::buildEdgeDocument(arangodb::velocypack::Builder& b,
+                                                        const edge_type* ptr,
+                                                        size_t size) const {
   // FIXME
+  LOG_DEVEL << "buildEdgeDocument";
   return false;
 }
-

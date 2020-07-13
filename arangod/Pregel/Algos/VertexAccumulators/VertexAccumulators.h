@@ -32,39 +32,40 @@
 #include "Pregel/VertexComputation.h"
 
 #include "Pregel/Algos/VertexAccumulators/AbstractAccumulator.h"
+#include "Pregel/Algos/VertexAccumulators/AccumulatorOptionsDeserializer.h"
+#include "Pregel/Algos/VertexAccumulators/Accumulators.h"
 
 namespace arangodb {
 namespace pregel {
 namespace algos {
 
-
-/*
-  { accumulators: [ { accumulatorType: "min",
-                      valueType: "number",
-                      storeSender: true,
-                      neighbourFilter: ""
-                      updateExpression: "" } ] }
-
- */
-
 class VertexData {
-public:
+ public:
   VertexData();
 
-private:
-  std::vector<AccumulatorBase> _accumulators;
+  std::string toString() const { return "vertexAkkum"; };
+
+ private:
+  //std::vector<AccumulatorBase> _accumulators;
+
+  MinIntAccumulator _accum;
 };
+
+std::ostream& operator<<(std::ostream&, VertexData const&);
 
 struct EdgeData {
   EdgeData();
+
+  
 };
 
 struct MessageData {
   MessageData();
+
+
 };
 
 struct VertexAccumulators : public Algorithm<VertexData, EdgeData, MessageData> {
-
   struct GraphFormat final : public graph_format {
     explicit GraphFormat(application_features::ApplicationServer& server,
                          std::string const& resultField);
@@ -81,8 +82,8 @@ struct VertexAccumulators : public Algorithm<VertexData, EdgeData, MessageData> 
 
     bool buildVertexDocument(arangodb::velocypack::Builder& b,
                              const vertex_type* ptr, size_t size) const override;
-    bool buildEdgeDocument(arangodb::velocypack::Builder& b, const edge_type* ptr,
-                           size_t size) const override;
+    bool buildEdgeDocument(arangodb::velocypack::Builder& b,
+                           const edge_type* ptr, size_t size) const override;
   };
 
   struct MessageFormat : public message_format {
@@ -96,19 +97,26 @@ struct VertexAccumulators : public Algorithm<VertexData, EdgeData, MessageData> 
     VertexComputation();
     void compute(MessageIterator<message_type> const& messages) override;
   };
+
  public:
-  explicit VertexAccumulators(application_features::ApplicationServer& server, VPackSlice userParams);
+  explicit VertexAccumulators(application_features::ApplicationServer& server,
+                              VPackSlice userParams);
 
   bool supportsAsyncMode() const override;
   bool supportsCompensation() const override;
 
   graph_format* inputFormat() const override;
 
-  message_format* messageFormat() const override {
-    return new MessageFormat();
-  }
+  message_format* messageFormat() const override { return new MessageFormat(); }
   message_combiner* messageCombiner() const override { return nullptr; }
   vertex_computation* createComputation(WorkerConfig const*) const override;
+
+ private:
+  void parseUserParams(VPackSlice userParams);
+
+ private:
+  AccumulatorOptions _options;
+
 };
 }  // namespace algos
 }  // namespace pregel

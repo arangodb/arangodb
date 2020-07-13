@@ -41,8 +41,8 @@ class Accumulator : AccumulatorBase {
  public:
   using data_type = T;
 
-  Accumulator();
-  virtual ~Accumulator();
+  Accumulator() {};
+  virtual ~Accumulator() {};
 
   virtual void update(data_type&& v) = 0;
 

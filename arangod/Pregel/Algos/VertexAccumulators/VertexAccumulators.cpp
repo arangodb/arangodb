@@ -35,16 +35,27 @@
 
 #include "Logger/Logger.h"
 
+#include "Pregel/Algos/VertexAccumulators/AccumulatorOptionsDeserializer.h"
+
 #include <set>
 
 using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 
+std::ostream& arangodb::pregel::algos::operator<<(std::ostream& os, VertexData const& vertexData) {
+  os << vertexData.toString();
+  return os;
+}
+
 VertexAccumulators::VertexAccumulators(application_features::ApplicationServer& server,
                                        VPackSlice userParams)
     : Algorithm(server, "VertexAccumulators") {
-  LOG_DEVEL << "we created a pregel vertex accumulator algorithm with params: " << userParams;
+  LOG_DEVEL << "VertexAccumulators Pregel Algorithm created";
+
+  parseUserParams(userParams);
+
+  LOG_DEVEL << "done.";
 }
 
 bool VertexAccumulators::supportsAsyncMode() const { return false; }
@@ -59,5 +70,17 @@ auto VertexAccumulators::inputFormat() const -> graph_format* {
   // TODO: The resultField needs to be configurable from the user's side
   return new GraphFormat(_server, "vertexAccumulators");
 }
+
+void VertexAccumulators::parseUserParams(VPackSlice userParams) {
+  LOG_DEVEL << "parsing user params: " << userParams;
+  auto result = parseAccumulatorOptions(userParams);
+  if(result) {
+    _options = result.get();
+  } else {
+    // What do we do on error?
+    LOG_DEVEL << result.error().as_string();
+  }
+}
+
 
 template class arangodb::pregel::Worker<VertexData, EdgeData, MessageData>;
