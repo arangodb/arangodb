@@ -13,6 +13,15 @@ v3.7.1-rc.1 (XXXX-XX-XX)
 * Adjusted the scale of the `arangodb_maintenance_action_queue_time_msec` to
   cover a more useful range.
 
+* Fixed a rare race in Agents, if the leader is rebooted quickly there is a
+  chance that it is still assumed to be the leader, but delivers a state shortly
+  in the past.
+
+* Keep the list of last-acknowledged entires in Agency more consistent.
+  During leadership take-over it was possible to get into a situation that the
+  new leader does not successfully report the agency config, which was
+  eventually fixed by the Agent itself. Now this situation is impossible.
+
 * Fixed a race in the ConnectionPool which could lease out a connection that got
   its idle timeout after the lease was completed. This could lead to sporadic
   network failures in TLS and to inefficiencies with TCP.
