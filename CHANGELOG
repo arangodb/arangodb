@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed crash in cleanup of parallel traversal queries (QA-28).
+
 * Fixed a rare race in Agents, if the leader is rebooted quickly there is a chance
   that it is still assumed to be the leader, but delivers a state shortly in the
   past.
