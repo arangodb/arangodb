@@ -32,10 +32,15 @@ VertexAccumulators::VertexComputation::VertexComputation() {}
 void VertexAccumulators::VertexComputation::compute(MessageIterator<MessageData> const& incomingMessages) {
   auto currentVertexData = vertexData();
   if (globalSuperstep() == 0) {
-    // init accumulators
+//    runInitFunction();
   } else {
     LOG_DEVEL << "vertex data: " << currentVertexData;
-    //   bool halt = true;
+/*    if(runStepFunction()) {
+      voteHalt();
+    } else {
+      voteActive();
+    };
+    */
 
     // receive messages and update all accumulators
     for (const message_type* msg : incomingMessages) {
