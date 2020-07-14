@@ -333,6 +333,11 @@ class RocksDBEngine final : public StorageEngine {
   /// rotate user-provided keys, writes out the internal key files
   Result rotateUserEncryptionKeys();
   
+  /// load encryption at rest key from specified keystore
+  Result decryptInternalKeystore(std::string const& keystorePath,
+                                 std::vector<enterprise::EncryptionSecret>& userKeys,
+                                 std::string& encryptionKey) const;
+  
  private:
   /// load encryption at rest key from keystore
   Result decryptInternalKeystore();
