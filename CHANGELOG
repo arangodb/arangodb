@@ -1,6 +1,17 @@
 devel
 -----
 
+* In rare cases SmartBFS could use a wrong index for looking up edges. This is fixed now.
+
+* The internally used JS-based ClusterComm send request function can now again use JSON, and does
+  not require VelocyPack anymore. This fixes an issue with Foxx-App management (install, updated, remove)
+  got delayed in a sharded environment, all servers do get all apps eventually, now the fast-path
+  will work again.
+
+* Fixed a rare race in Agents, if the leader is rebooted quickly there is a chance
+  that it is still assumed to be the leader, but delivers a state shortly in the
+  past.
+
 * Fixed a race in the ConnectionPool which could lease out a connection
   that got its idle timeout after the lease was completed. This could lead
   to sporadic network failures in TLS and to inefficiencies with TCP.

@@ -111,7 +111,8 @@ struct BaseOptions {
   void setVariable(aql::Variable const*);
 
   void addLookupInfo(aql::ExecutionPlan* plan, std::string const& collectionName,
-                     std::string const& attributeName, aql::AstNode* condition);
+                     std::string const& attributeName, aql::AstNode* condition,
+                     bool onlyEdgeIndexes = false);
 
   void clearVariableValues();
 
@@ -181,8 +182,8 @@ struct BaseOptions {
   bool evaluateExpression(aql::Expression*, arangodb::velocypack::Slice varValue);
 
   void injectLookupInfoInList(std::vector<LookupInfo>&, aql::ExecutionPlan* plan,
-                              std::string const& collectionName,
-                              std::string const& attributeName, aql::AstNode* condition);
+                              std::string const& collectionName, std::string const& attributeName,
+                              aql::AstNode* condition, bool onlyEdgeIndexes = false);
 
   void injectTestCache(std::unique_ptr<TraverserCache>&& cache);
 
