@@ -160,7 +160,7 @@ void MaintenanceWorker::nextState(bool actionMore) {
       _curAction->endStats();
 
       bool ok = _curAction->result().ok() && FAILED != _curAction->getState();
-      recordJobStats(ok);
+      recordJobStats(/*failed*/ !ok);
 
       // if action's state not set, assume it succeeded when result ok
       if (ok) {
