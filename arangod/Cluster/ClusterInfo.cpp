@@ -1201,7 +1201,7 @@ void ClusterInfo::loadPlan() {
   }
 
   auto diff = duration<float, std::milli>(clock::now() - start).count();
-  _lpTotal += diff;
+  _lpTotal += static_cast<uint64_t>(diff);
   _lpTimer.count(diff);
 }
 
@@ -1385,7 +1385,7 @@ void ClusterInfo::loadCurrent() {
   }
 
   auto diff = duration<float, std::milli>(clock::now() - start).count();
-  _lcTotal += diff;
+  _lcTotal += static_cast<uint64_t>(diff);
   _lcTimer.count(diff);
 }
 
