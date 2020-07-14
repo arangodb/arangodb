@@ -29,6 +29,7 @@
 #include <variant>
 #include "gadgets.h"
 
+namespace deserializer {
 struct error {
   using field_name = std::string;
   using index = std::size_t;
@@ -183,20 +184,8 @@ struct error {
     return true;
   }
 };
+}  // namespace deserializer
 
-using deserialize_error = error;
-/*
-struct deserialize_error {
-  explicit deserialize_error() noexcept = default;
-  explicit deserialize_error(std::string msg) : msg(std::move(msg)) {}
-
-  [[nodiscard]] std::string const& what() const { return msg; }
-  [[nodiscard]] deserialize_error wrap(std::string const& wrap) const {
-    return deserialize_error(wrap + ": " + msg);
-  }
-
- private:
-  std::string msg;
-};*/
+using deserialize_error = deserializer::error;
 
 #endif  // VELOCYPACK_ERRORS_H

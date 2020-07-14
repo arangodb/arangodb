@@ -36,7 +36,9 @@ namespace deserializer {
  * that receives a slice and returns a `result<double, deserialize_error>`.
  */
 template <typename T>
-struct value_reader;
+struct value_reader {
+  static_assert(utilities::always_false_v<T>, "no value reader for the given type available");
+};
 
 template <>
 struct value_reader<double> {
@@ -103,28 +105,6 @@ struct value_reader<bool> {
     return result_type{deserialize_error{"value is not a bool"}};
   }
 };
-
-
-/*
- * Helper for static assertion that value_reader is present.
- */
-template <typename V>
-constexpr const bool has_value_reader_v =
-    ::deserializer::detail::gadgets::is_complete_type_v<value_reader<V>>;
-
-template <typename V>
-struct ensure_value_reader {
-  static_assert(has_value_reader_v<V>,
-                "value reader is not specialized for this type. You will "
-                "get an incomplete type error.");
-
-  using result_type = result<V, deserialize_error>;
-  static_assert(std::is_invocable_r_v<result_type, decltype(&value_reader<V>::read), ::deserializer::slice_type>,
-                "a value_reader<V> must have a static read method returning "
-                "result<V, deserialize_error> and receiving a slice");
-};
-
-
 
 }  // namespace deserializer
 

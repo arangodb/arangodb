@@ -155,6 +155,150 @@ TEST_F(VPackDeserializerBasicTest, test04) {
   ASSERT_TRUE(result.ok()) << result.error().as_string();
 }
 
+
+/* clang-format off */
+
+struct graph_options {
+  std::optional<std::string_view> smartGraphAttribute;
+  uint32_t numberOfShards; // 1
+  uint32_t replicationFactor; // 1
+  uint32_t minReplicationFactor; // default = 1
+};
+
+constexpr const char str_smart_graph_attribute[] = "smartGraphAttribute";
+constexpr const char str_number_of_shards[] = "numberOfShards";
+constexpr const char str_replication_factor[] = "replicationFactor";
+constexpr const char str_min_replication_factor[] = "minReplicationFactor";
+
+/* clang-format on */
+
+struct graph_options_validator {
+  struct context_type {
+    context_type(context_type const&) = delete;
+
+    uint32_t maxNumberOfShards;
+    uint32_t maxReplicationFactor;
+  };
+
+  context_type const& ctx;
+
+  auto operator()(graph_options const& t) -> std::optional<deserialize_error> {
+    if (t.smartGraphAttribute && t.smartGraphAttribute->empty()) {
+      return deserialize_error{"smart graph attribute must not be empty"};
+    }
+    if (ctx.maxNumberOfShards < t.numberOfShards) {
+      return deserialize_error{"maximum number of shards exceeded"};
+    }
+    if (ctx.maxReplicationFactor < t.replicationFactor) {
+      return deserialize_error{"maximum replication factor exceeded"};
+    }
+
+    return {};
+  }
+};
+
+/* clang-format off */
+
+using graph_options_deserializer = ::deserializer::utilities::constructing_deserializer<graph_options, ::deserializer::parameter_list<
+    ::deserializer::factory_optional_parameter<str_smart_graph_attribute, std::string_view>,
+    ::deserializer::factory_simple_parameter<str_number_of_shards, uint32_t, false, ::deserializer::values::numeric_value<uint32_t, 1>>,
+    ::deserializer::factory_simple_parameter<str_replication_factor, uint32_t, false, ::deserializer::values::numeric_value<uint32_t, 1>>,
+    ::deserializer::factory_simple_parameter<str_min_replication_factor, uint32_t, false, ::deserializer::values::numeric_value<uint32_t, 1>>
+>>;
+
+using graph_options_validating_deserializer = ::deserializer::validate<graph_options_deserializer, graph_options_validator>;
+
+struct graph_edge_definition {
+  std::string_view collection;
+  std::vector<std::string_view> from;
+  std::vector<std::string_view> to;
+};
+
+constexpr const char str_collection[] = "collection";
+constexpr const char str_from[] = "from";
+constexpr const char str_to[] = "to";
+
+template<typename D, template <typename> typename C>
+using non_empty_array_deserializer = ::deserializer::validate<
+    ::deserializer::array_deserializer<D, C>,
+    ::deserializer::utilities::not_empty_validator>;
+
+using non_empty_string_view_array_deserializer = non_empty_array_deserializer<
+    ::deserializer::values::value_deserializer<std::string_view>, my_vector>;
+
+template<typename S>
+using non_empty_string_container = ::deserializer::validate<
+    ::deserializer::values::value_deserializer<S>,
+    ::deserializer::utilities::not_empty_validator>;
+
+using non_empty_string_view = non_empty_string_container<std::string_view>;
+
+using graph_edge_definition_deserializer = ::deserializer::utilities::constructing_deserializer<graph_edge_definition, ::deserializer::parameter_list<
+    ::deserializer::factory_deserialized_parameter<str_collection, non_empty_string_view, true>,
+    ::deserializer::factory_deserialized_parameter<str_from, non_empty_string_view_array_deserializer, true>,
+    ::deserializer::factory_deserialized_parameter<str_to, non_empty_string_view_array_deserializer, true>
+>>;
+
+using graph_edge_definition_list = std::vector<graph_edge_definition>;
+using graph_edge_definition_list_deserializer = non_empty_array_deserializer<graph_edge_definition_deserializer, my_vector>;
+
+struct graph_definition {
+  std::string_view name;
+  bool is_smart;
+  graph_edge_definition_list edgeDefinitions;
+  std::optional<graph_options> options;
+};
+
+constexpr const char str_name[] = "name";
+constexpr const char str_is_smart[] = "isSmart";
+constexpr const char str_edge_definitions[] = "edgeDefinitions";
+constexpr const char str_options[] = "options";
+
+using graph_definition_deserializer = ::deserializer::utilities::constructing_deserializer<graph_definition, ::deserializer::parameter_list<
+    ::deserializer::factory_deserialized_parameter<str_name, non_empty_string_view, true>,
+    ::deserializer::factory_simple_parameter<str_is_smart, bool, false, ::deserializer::values::numeric_value<bool, false>>,
+    ::deserializer::factory_deserialized_parameter<str_edge_definitions, graph_edge_definition_list_deserializer, true>,
+    ::deserializer::factory_deserialized_parameter<str_options, graph_options_validating_deserializer, false>
+>>;
+
+/* clang-format on */
+
+TEST_F(VPackDeserializerBasicTest, test05)  {
+  auto buffer = R"=({"name":"myGraph","edgeDefinitions":[{"collection":"edges","from":["startVertices"],"to":["endVertices"]},{"collection":"edges","from":[],"to":["bla"]}],"options":{"replicationFactor":2,"minReplicationFactor":2}})="_vpack;
+  auto slice = recording_slice::from_buffer(buffer);
+
+  graph_options_validator::context_type ctx = {2, 3};
+
+  auto result =
+      ::deserializer::deserialize_with_context<graph_definition_deserializer>(slice.slice, ctx);
+
+  ASSERT_TRUE(result.ok()) << result.error().as_string();
+}
+
+enum class MyEnum {
+  MIN, MAX, SUM
+};
+
+constexpr const char MyEnum_min[] = "min";
+constexpr const char MyEnum_max[] = "max";
+constexpr const char MyEnum_sum[] = "sum";
+
+using MyEnum_deserializer = ::deserializer::enum_deserializer<
+    MyEnum, ::deserializer::enum_member<MyEnum::MIN, ::deserializer::values::string_value<MyEnum_min>>,
+    ::deserializer::enum_member<MyEnum::MAX, ::deserializer::values::string_value<MyEnum_max>>,
+    ::deserializer::enum_member<MyEnum::SUM, ::deserializer::values::numeric_value<int, 12>>>;
+
+TEST_F(VPackDeserializerBasicTest, test06) {
+  auto buffer = R"=("mox")="_vpack;
+  auto slice = recording_slice::from_buffer(buffer);
+
+  auto result =
+      ::deserializer::deserialize<MyEnum_deserializer>(slice.slice);
+
+  ASSERT_TRUE(result.ok()) << result.error().as_string();
+}
+
+
 }  // namespace deserializer
 }  // namespace tests
 }  // namespace arangodb

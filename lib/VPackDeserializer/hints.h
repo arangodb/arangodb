@@ -72,6 +72,8 @@ constexpr const bool hint_list_contains_v = hint_list_contains<H, Hs...>::value;
 
 template<typename H>
 constexpr const bool hint_is_object = hint_list_contains_v<is_object, H>;
+template<typename H>
+constexpr const bool hint_is_string = hint_list_contains_v<is_string, H>;
 
 template<const char N[], typename H>
 constexpr const bool hint_has_key = hint_list_contains_v<has_field<N>, H>;

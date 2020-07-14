@@ -54,6 +54,13 @@ struct string_value : detail::value_type<const char[]> {
   constexpr static auto value = V;
 };
 
+template<typename V>
+struct is_string : std::false_type {};
+template<const char V[]>
+struct is_string<string_value<V>> : std::true_type {};
+template<typename V>
+constexpr bool is_string_v = is_string<V>::value;
+
 template <typename T>
 struct default_constructed_value {
   constexpr static T value = T{};
@@ -69,8 +76,10 @@ struct default_constructed_value {
  * value_slice_comparators have a static function `compare` that returns a
  * `bool`, if the value found is equal to the value specified.
  */
-template <typename V>
-struct value_comparator;
+template <typename V, typename H = hints::hint_list_empty>
+struct value_comparator {
+  static_assert(utilities::always_false_v<V>, "value comparator not defined");
+};
 
 template <typename T, int v>
 struct value_comparator<numeric_value<T, v>> {
@@ -83,10 +92,10 @@ struct value_comparator<numeric_value<T, v>> {
   }
 };
 
-template <const char V[]>
-struct value_comparator<string_value<V>> {
+template <const char V[], typename H>
+struct value_comparator<string_value<V>, H> {
   static bool compare(::deserializer::slice_type s) {
-    if (s.isString()) {
+    if (hints::hint_is_string<H> || s.isString()) {
       return s.isEqualString(arangodb::velocypack::StringRef(V, strlen(V)));
     }
 
@@ -111,26 +120,6 @@ struct value_deserializer {
   using factory = utilities::identity_factory<T>;
 };
 
-/*
- * Assertion helper
- */
-
-template <typename V>
-constexpr const bool has_value_comparator_v =
-    ::deserializer::detail::gadgets::is_complete_type_v<value_comparator<V>>;
-
-template <typename V>
-struct ensure_value_comparator {
-  static_assert(has_value_comparator_v<V>,
-                "value reader is not specialized for this type. You will "
-                "get an incomplete type error.");
-
-  static_assert(std::is_invocable_r_v<bool, decltype(&value_comparator<V>::compare), ::deserializer::slice_type>,
-                "a value_comparator<V> must have a static read method returning "
-                "bool and receiving a slice");
-};
-
-
 }  // namespace deserializer::values
 
 template <typename T, int V>
@@ -152,7 +141,6 @@ struct deserialize_plan_executor<values::value_deserializer<T>, H> {
 
   template<typename C>
   static auto unpack(::deserializer::slice_type s, typename H::state_type hints, C&&) -> result_type {
-    ensure_value_reader<T>{};
     return value_reader<T>::read(s).map(
         [](T t) { return std::make_tuple(std::move(t)); });
   }

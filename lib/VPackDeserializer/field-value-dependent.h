@@ -86,7 +86,6 @@ struct field_value_dependent_executor<I, E, VD, VDs...> {
   static auto unpack(::deserializer::slice_type s, ::deserializer::slice_type v, C&& ctx)
       -> unpack_result {
     using namespace std::string_literals;
-    values::ensure_value_comparator<V>{};
     if (values::value_comparator<V>::compare(v)) {
       using hint = hints::hint_list<hints::has_field_with_value<E::name, V>,
                                     hints::is_object, hints::has_field<E::name>>;
