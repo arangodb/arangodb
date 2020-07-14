@@ -1,7 +1,8 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
-* The filter executor will now overfetch data again if followed by a limit, same as in 3.6 series.
+* The filter executor will now overfetch data again if followed by a limit, same
+  as in 3.6 series.
   The following queries are effected:
   ```
   something
@@ -10,14 +11,18 @@ v3.7.1-rc.1 (XXXX-XX-XX)
   ```
   something will now be asked for a full batch, instead of only 10 documents.
 
-* The internally used JS-based ClusterComm send request function can now again use JSON, and does
-  not require VelocyPack anymore. This fixes an issue with Foxx-App management (install, updated, remove)
-  got delayed in a sharded environment, all servers do get all apps eventually, now the fast-path
-  will work again.
+* In rare cases SmartBFS could use a wrong index for looking up edges. This is
+  fixed now.
 
-* Fixed a rare race in Agents, if the leader is rebooted quickly there is a chance
-  that it is still assumed to be the leader, but delivers a state shortly in the
-  past.
+* The internally used JS-based ClusterComm send request function can now again
+  use JSON, and does not require VelocyPack anymore. This fixes an issue with
+  Foxx-App management (install, updated, remove) got delayed in a sharded
+  environment, all servers do get all apps eventually, now the fast-path will
+  work again.
+
+* Fixed a rare race in Agents, if the leader is rebooted quickly there is a
+  chance that it is still assumed to be the leader, but delivers a state shortly
+  in the past.
 
 * Keep the list of last-acknowledged entires in Agency more consistent.
   During leadership take-over it was possible to get into a situation that the
