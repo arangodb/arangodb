@@ -266,8 +266,16 @@ function ahuacatlProfilerTestSuite () {
 
           const listBatches = Math.ceil(listRows / defaultBatchSize);
           const totalRows = listRows * collectionRows;
+          const calcOptBatches = () => {
+            const opt =  Math.ceil(totalRows / defaultBatchSize);
+            if (totalRows % defaultBatchSize === 0) {
+              // In this case the traversal may, or may not know that there is more data.
+              return [opt, opt + 1];
+            }
+            return opt;
+          };
 
-          const optimalBatches = Math.ceil(totalRows / defaultBatchSize);
+          const optimalBatches = calcOptBatches();
 
           const expected = [
             {type: SingletonBlock, calls: 1, items: 1},
