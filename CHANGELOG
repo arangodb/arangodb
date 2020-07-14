@@ -1,6 +1,15 @@
 devel
 -----
 
+* The filter executor will now overfetch data again if followed by a limit, same as in 3.6 series.
+  The following queries are effected:
+  ```
+  something
+  FILTER a == b
+  LIMIT 10
+  ```
+  something will now be asked for a full batch, instead of only 10 documents.
+
 * In rare cases SmartBFS could use a wrong index for looking up edges. This is fixed now.
 
 * The internally used JS-based ClusterComm send request function can now again use JSON, and does
