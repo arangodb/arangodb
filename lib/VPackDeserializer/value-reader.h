@@ -28,6 +28,8 @@
 #include "types.h"
 #include "vpack-types.h"
 
+namespace arangodb {
+namespace velocypack {
 namespace deserializer {
 
 /*
@@ -37,14 +39,15 @@ namespace deserializer {
  */
 template <typename T>
 struct value_reader {
-  static_assert(utilities::always_false_v<T>, "no value reader for the given type available");
+  static_assert(utilities::always_false_v<T>,
+                "no value reader for the given type available");
 };
 
 template <>
 struct value_reader<double> {
   using value_type = double;
   using result_type = result<double, deserialize_error>;
-  static result_type read(::deserializer::slice_type s) {
+  static result_type read(::arangodb::velocypack::deserializer::slice_type s) {
     if (s.isNumber<double>()) {
       return result_type{s.getNumber<double>()};
     }
@@ -57,7 +60,7 @@ template <>
 struct value_reader<unsigned int> {
   using value_type = unsigned int;
   using result_type = result<unsigned int, deserialize_error>;
-  static result_type read(::deserializer::slice_type s) {
+  static result_type read(::arangodb::velocypack::deserializer::slice_type s) {
     if (s.isNumber<unsigned int>()) {
       return result_type{s.getNumber<unsigned int>()};
     }
@@ -70,7 +73,7 @@ template <>
 struct value_reader<std::string> {
   using value_type = std::string;
   using result_type = result<std::string, deserialize_error>;
-  static result_type read(::deserializer::slice_type s) {
+  static result_type read(::arangodb::velocypack::deserializer::slice_type s) {
     if (s.isString()) {
       return result_type{s.copyString()};
     }
@@ -79,12 +82,11 @@ struct value_reader<std::string> {
   }
 };
 
-
 template <>
 struct value_reader<std::string_view> {
   using value_type = std::string_view;
   using result_type = result<std::string_view, deserialize_error>;
-  static result_type read(::deserializer::slice_type s) {
+  static result_type read(::arangodb::velocypack::deserializer::slice_type s) {
     if (s.isString()) {
       return result_type{s.stringView()};
     }
@@ -97,7 +99,7 @@ template <>
 struct value_reader<bool> {
   using value_type = bool;
   using result_type = result<bool, deserialize_error>;
-  static result_type read(::deserializer::slice_type s) {
+  static result_type read(::arangodb::velocypack::deserializer::slice_type s) {
     if (s.isBool()) {
       return result_type{s.getBool()};
     }
@@ -107,5 +109,6 @@ struct value_reader<bool> {
 };
 
 }  // namespace deserializer
-
+}  // namespace velocypack
+}  // namespace arangodb
 #endif  // VELOCYPACK_VALUE_READER_H

@@ -29,6 +29,9 @@
 #include <variant>
 #include "gadgets.h"
 
+namespace arangodb {
+namespace velocypack {
+
 namespace deserializer {
 struct error {
   using field_name = std::string;
@@ -185,7 +188,10 @@ struct error {
   }
 };
 }  // namespace deserializer
+}  // namespace velocypack
+}  // namespace arangodb
 
-using deserialize_error = deserializer::error;
+// TODO: ?
+using deserialize_error = arangodb::velocypack::deserializer::error;
 
 #endif  // VELOCYPACK_ERRORS_H

@@ -30,6 +30,8 @@
 #include "plan-executor.h"
 #include "types.h"
 #include "vpack-types.h"
+namespace arangodb {
+namespace velocypack {
 
 namespace deserializer {
 
@@ -111,7 +113,7 @@ template <typename D>
 constexpr bool is_deserializer_v = is_deserializer<D>::value;
 
 template <typename D, typename F, typename H = hints::hint_list_empty, typename C = unit_type>
-auto deserialize_with(F& factory, ::deserializer::slice_type slice,
+auto deserialize_with(F& factory, ::arangodb::velocypack::deserializer::slice_type slice,
                       typename H::state_type hints = {}, C&& c = {}) {
   static_assert(is_deserializer_v<D>,
                 "given deserializer is missing some fields");
@@ -138,7 +140,7 @@ auto deserialize_with(F& factory, ::deserializer::slice_type slice,
 
   static_assert(
       std::is_invocable_r_v<plan_result_type, decltype(&executor::deserialize_plan_executor<plan, H>::template unpack<C>),
-                            ::deserializer::slice_type, typename H::state_type, C>,
+                            ::arangodb::velocypack::deserializer::slice_type, typename H::state_type, C>,
       "executor::unpack does not have the correct signature");
 
   // Simply forward to the plan_executor.
@@ -158,18 +160,20 @@ auto deserialize_with(F& factory, ::deserializer::slice_type slice,
  * Deserializes the given slice using the deserializer D.
  */
 template <typename D, typename H = hints::hint_list_empty, typename C = unit_type>
-auto deserialize(::deserializer::slice_type slice,
+auto deserialize(::arangodb::velocypack::deserializer::slice_type slice,
                  typename H::state_type hints = {}, C&& c = {}) {
   using factory_type = typename D::factory;
   factory_type factory = construct_factory<factory_type>(std::forward<C>(c));
-  return deserialize_with<D, factory_type, H, C>(factory, slice, hints, std::forward<C>(c));
+  return deserialize_with<D, factory_type, H, C>(factory, slice, hints,
+                                                 std::forward<C>(c));
 }
 
 template <typename D, typename C>
-auto deserialize_with_context(::deserializer::slice_type slice, C&& c) {
+auto deserialize_with_context(::arangodb::velocypack::deserializer::slice_type slice, C&& c) {
   return deserialize<D, hints::hint_list_empty, C>(slice, {}, std::forward<C>(c));
 }
 
-
 }  // namespace deserializer
+}  // namespace velocypack
+}  // namespace arangodb
 #endif  // VELOCYPACK_DESERIALIZE_WITH_H

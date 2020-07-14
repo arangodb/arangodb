@@ -26,6 +26,8 @@
 #include <cstddef>
 #include <tuple>
 
+namespace arangodb {
+namespace velocypack {
 namespace deserializer::detail::gadgets {
 namespace detail {
 
@@ -58,7 +60,7 @@ struct visitor : Ts... {
   using Ts::operator()...;
 };
 template <class... Ts>
-visitor(Ts...)->visitor<Ts...>;
+visitor(Ts...) -> visitor<Ts...>;
 
 template <typename R, typename F, typename T>
 struct is_applicable_r;
@@ -142,23 +144,24 @@ auto tuple_map(std::tuple<Ts...> t, F&& f)
                                 std::index_sequence_for<Ts...>{});
 }
 
-template<typename>
+template <typename>
 struct tuple_to_opts;
 
-template<typename... Ts>
+template <typename... Ts>
 struct tuple_to_opts<std::tuple<Ts...>> {
   using type = std::tuple<std::optional<Ts>...>;
 };
 
-template<typename T>
+template <typename T>
 using tuple_to_opts_t = typename tuple_to_opts<T>::type;
 
-
-template<typename... Ts>
+template <typename... Ts>
 std::tuple<Ts...> unpack_opt_tuple(std::tuple<std::optional<Ts>...> t) {
-  return tuple_map(std::move(t), [](auto && x) { return std::forward<decltype(x)>(x).value(); });
+  return tuple_map(std::move(t),
+                   [](auto&& x) { return std::forward<decltype(x)>(x).value(); });
 }
 
 }  // namespace deserializer::detail::gadgets
-
+}  // namespace velocypack
+}  // namespace arangodb
 #endif  // VELOCYPACK_GADGETS_H

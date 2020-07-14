@@ -30,6 +30,8 @@
 #include "types.h"
 #include "utilities.h"
 
+namespace arangodb {
+namespace velocypack {
 namespace deserializer {
 
 /*
@@ -43,9 +45,9 @@ struct attribute_deserializer {
   using factory = utilities::identity_factory<constructed_type>;
 };
 
-template<const char N[], typename V>
+template <const char N[], typename V>
 struct attribute_value_condition {
-  static bool test(::deserializer::slice_type s) noexcept {
+  static bool test(::arangodb::velocypack::deserializer::slice_type s) noexcept {
     // TODO add hints for this
     if (s.isObject()) {
       return V::compare(s.get(N));
@@ -62,8 +64,9 @@ struct deserialize_plan_executor<attribute_deserializer<N, D>, H> {
   using tuple_type = std::tuple<value_type>;
   using result_type = result<tuple_type, deserialize_error>;
 
-  template<typename ctx>
-  auto static unpack(slice_type const& s, typename H::state_type hints, ctx && c) -> result_type {
+  template <typename ctx>
+  auto static unpack(slice_type const& s, typename H::state_type hints, ctx&& c)
+      -> result_type {
     // if there is no hint that s is actually an object, we have to check that
     if constexpr (!hints::hint_is_object<H>) {
       if (!s.isObject()) {
@@ -80,7 +83,8 @@ struct deserialize_plan_executor<attribute_deserializer<N, D>, H> {
 
     using namespace std::string_literals;
 
-    return deserialize<D, hints::hint_list_empty, ctx>(value_slice, {}, std::forward<ctx>(c))
+    return deserialize<D, hints::hint_list_empty, ctx>(value_slice, {},
+                                                       std::forward<ctx>(c))
         .map([](value_type&& v) { return std::make_tuple(v); })
         .wrap([](deserialize_error&& e) {
           return e.wrap("when reading attribute "s + N).trace(N);
@@ -90,5 +94,6 @@ struct deserialize_plan_executor<attribute_deserializer<N, D>, H> {
 
 }  // namespace executor
 }  // namespace deserializer
-
+}  // namespace velocypack
+}  // namespace arangodb
 #endif  // DESERIALIZER_ATTRIBUTE_H

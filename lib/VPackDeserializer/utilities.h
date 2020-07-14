@@ -26,6 +26,8 @@
 #include <memory>
 #include "gadgets.h"
 
+namespace arangodb {
+namespace velocypack {
 namespace deserializer::utilities {
 
 template <typename T>
@@ -64,23 +66,19 @@ struct constructing_deserializer {
   using factory = constructor_factory<T>;
 };
 
-template<auto value>
+template <auto value>
 struct member_extractor;
 
-template<typename A, typename B, A B::*ptr>
+template <typename A, typename B, A B::*ptr>
 struct member_extractor<ptr> {
-  static A& exec(B & b) {
-    return b.*ptr;
-  }
+  static A& exec(B& b) { return b.*ptr; }
 
-  static A const& exec(B const& b) {
-    return b.*ptr;
-  }
+  static A const& exec(B const& b) { return b.*ptr; }
 };
 
 struct not_empty_validator {
-  template<typename C>
-  auto operator()(C && c) -> std::optional<deserialize_error> {
+  template <typename C>
+  auto operator()(C&& c) -> std::optional<deserialize_error> {
     if (c.empty()) {
       return deserialize_error{"must not be empty"};
     }
@@ -88,11 +86,12 @@ struct not_empty_validator {
   }
 };
 
-template<typename>
+template <typename>
 using always_false = std::false_type;
-template<typename T>
+template <typename T>
 constexpr bool always_false_v = always_false<T>::value;
 
 }  // namespace deserializer::utilities
-
+}  // namespace velocypack
+}  // namespace arangodb
 #endif  // VELOCYPACK_UTILITIES_H

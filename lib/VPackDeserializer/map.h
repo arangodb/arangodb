@@ -27,6 +27,8 @@
 #include "utilities.h"
 #include "vpack-types.h"
 
+namespace arangodb {
+namespace velocypack {
 namespace deserializer {
 
 /*
@@ -64,8 +66,9 @@ struct deserialize_plan_executor<map_deserializer<D, C, K, F>, H> {
   using tuple_type = std::tuple<proxy_type>;
   using result_type = result<tuple_type, deserialize_error>;
 
-  template<typename ctx>
-  static auto unpack(::deserializer::slice_type s, typename H::state_type hints, ctx && c) -> result_type {
+  template <typename ctx>
+  static auto unpack(::arangodb::velocypack::deserializer::slice_type s,
+                     typename H::state_type hints, ctx&& c) -> result_type {
     proxy_type result;
     using namespace std::string_literals;
 
@@ -75,8 +78,10 @@ struct deserialize_plan_executor<map_deserializer<D, C, K, F>, H> {
       }
     }
 
-    for (auto const& member : ::deserializer::object_iterator(s, true)) {  // use sequential deserialization
-      auto member_result = deserialize<D, H, ctx>(member.value, {}, std::forward<ctx>(c));
+    for (auto const& member :
+         ::arangodb::velocypack::deserializer::object_iterator(s, true)) {  // use sequential deserialization
+      auto member_result =
+          deserialize<D, H, ctx>(member.value, {}, std::forward<ctx>(c));
       if (!member_result) {
         return result_type{std::move(member_result)
                                .error()
@@ -101,5 +106,6 @@ struct deserialize_plan_executor<map_deserializer<D, C, K, F>, H> {
 }  // namespace executor
 
 }  // namespace deserializer
-
+}  // namespace velocypack
+}  // namespace arangodb
 #endif  // VELOCYPACK_MAP_H

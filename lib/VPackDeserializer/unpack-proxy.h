@@ -28,6 +28,8 @@
 #ifndef VELOCYPACK_UNPACK_PROXY_H
 #define VELOCYPACK_UNPACK_PROXY_H
 
+namespace arangodb {
+namespace velocypack {
 namespace deserializer {
 template <typename D, typename P = D>
 struct unpack_proxy {
@@ -49,8 +51,9 @@ struct deserialize_plan_executor<unpack_proxy<D, P>, H> {
   using tuple_type = std::tuple<proxy_type>;
   using result_type = result<tuple_type, deserialize_error>;
 
-  template<typename C>
-  static auto unpack(::deserializer::slice_type s, typename H::state_type h, C&& ctx) -> result_type {
+  template <typename C>
+  static auto unpack(::arangodb::velocypack::deserializer::slice_type s,
+                     typename H::state_type h, C&& ctx) -> result_type {
     return deserialize<D, H, C>(s, h, std::forward<C>(ctx)).map([](typename D::constructed_type&& v) {
       return std::make_tuple(std::move(v));
     });
@@ -59,5 +62,6 @@ struct deserialize_plan_executor<unpack_proxy<D, P>, H> {
 }  // namespace executor
 
 }  // namespace deserializer
-
+}  // namespace velocypack
+}  // namespace arangodb
 #endif

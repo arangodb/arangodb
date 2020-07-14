@@ -26,6 +26,8 @@
 #include "plan-executor.h"
 #include "values.h"
 
+namespace arangodb {
+namespace velocypack {
 namespace deserializer {
 
 /*
@@ -87,7 +89,7 @@ struct conditional_deserializer {
 struct is_object_condition {
   using forward_hints = hints::hint_list<hints::is_object>;
 
-  static bool test(::deserializer::slice_type s) noexcept {
+  static bool test(::arangodb::velocypack::deserializer::slice_type s) noexcept {
     return s.isObject();
   }
 };
@@ -111,7 +113,7 @@ struct conditional_executor<I, E, conditional_default<D>, CDs...> {
   using unpack_result = result<R, deserialize_error>;
 
   template <typename ctx>
-  static auto unpack(::deserializer::slice_type s, ctx&& c)
+  static auto unpack(::arangodb::velocypack::deserializer::slice_type s, ctx&& c)
       -> unpack_result {
     static_assert(sizeof...(CDs) == 0, "conditional_default must be last");
 
@@ -126,15 +128,14 @@ struct conditional_executor<I, E, condition_deserializer_pair<C, D>, CDs...> {
   using unpack_result = result<R, deserialize_error>;
 
   template <typename ctx>
-  static auto unpack(::deserializer::slice_type s, ctx&& c)
+  static auto unpack(::arangodb::velocypack::deserializer::slice_type s, ctx&& c)
       -> unpack_result {
     if (C::test(s)) {
       if constexpr (condition_has_hints_v<C>) {
         using hint = typename C::forward_hints;
-        return deserialize<D, hint, ctx>(s, {}, std::forward<ctx>(c))
-            .map([](typename D::constructed_type&& v) {
-              return R(std::in_place_index<I>, std::move(v));
-            });
+        return deserialize<D, hint, ctx>(s, {}, std::forward<ctx>(c)).map([](typename D::constructed_type&& v) {
+          return R(std::in_place_index<I>, std::move(v));
+        });
 
       } else {
         return deserialize_with<D, hints::hint_list_empty, ctx>(s, {}, std::forward<ctx>(c))
@@ -154,7 +155,7 @@ struct conditional_executor<I, E> {
   using unpack_result = result<R, deserialize_error>;
 
   template <typename C>
-  static auto unpack(::deserializer::slice_type v, C &&)
+  static auto unpack(::arangodb::velocypack::deserializer::slice_type v, C &&)
       -> unpack_result {
     using namespace std::string_literals;
     return unpack_result{deserialize_error{"unrecognized value `"s + v.toJson() + "`"}};
@@ -178,15 +179,15 @@ struct deserialize_plan_executor<conditional<CSs...>, H> {
   using unpack_result = result<unpack_tuple_type, deserialize_error>;
 
   template <typename C>
-  static auto unpack(::deserializer::slice_type s, typename H::state_type hints, C&& ctx)
-      -> unpack_result {
+  static auto unpack(::arangodb::velocypack::deserializer::slice_type s,
+                     typename H::state_type hints, C&& ctx) -> unpack_result {
     /*
      * Select the sub deserializer depending on the value.
      * Delegate to that deserializer.
      */
     using namespace std::string_literals;
 
-    return ::deserializer::detail::conditional_executor<0, executor_type, CSs...>::unpack(
+    return ::arangodb::velocypack::deserializer::detail::conditional_executor<0, executor_type, CSs...>::unpack(
                s, std::forward<C>(ctx))
         .map([](variant_type&& v) { return std::make_tuple(std::move(v)); })
         .wrap([](deserialize_error&& e) {
@@ -197,4 +198,6 @@ struct deserialize_plan_executor<conditional<CSs...>, H> {
 
 }  // namespace executor
 }  // namespace deserializer
+}  // namespace velocypack
+}  // namespace arangodb
 #endif  // VELOCYPACK_CONDITIONAL_H

@@ -23,19 +23,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 #ifndef DESERIALIZER_CONTEXT_H
 #define DESERIALIZER_CONTEXT_H
-#include "utilities.h"
 #include "plan-executor.h"
+#include "utilities.h"
 
+namespace arangodb {
+namespace velocypack {
 namespace deserializer {
 
 namespace context {
 
-template<typename D, typename Q>
-struct context_modify_plan{
+template <typename D, typename Q>
+struct context_modify_plan {
   using constructed_type = typename D::constructed_type;
 };
 
-template<typename D, auto M>
+template <typename D, auto M>
 struct from_member;
 
 template <typename D, typename A, typename B, A B::*member>
@@ -45,24 +47,23 @@ struct from_member<D, member> {
   using constructed_type = typename D::R;
 };
 
-}
+}  // namespace context
 
 namespace executor {
 
 template <typename D, typename Q, typename H>
 struct deserialize_plan_executor<context::context_modify_plan<D, Q>, H> {
   template <typename ctx>
-  static auto unpack(::deserializer::slice_type s, typename H::state_type hints, ctx&& c) {
+  static auto unpack(::arangodb::velocypack::deserializer::slice_type s,
+                     typename H::state_type hints, ctx&& c) {
     return deserialize<D, H, Q::context_type>(s, hints, Q::exec(std::forward<ctx>(c)));
   }
 };
 
+}  // namespace executor
 
-
-}
-
-}
-
-
+}  // namespace deserializer
+}  // namespace velocypack
+}  // namespace arangodb
 
 #endif  // DESERIALIZER_CONTEXT_H

@@ -23,12 +23,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 #ifndef VELOCYPACK_VALUES_H
 #define VELOCYPACK_VALUES_H
+#include "gadgets.h"
 #include "plan-executor.h"
 #include "utilities.h"
-#include "gadgets.h"
-#include "vpack-types.h"
 #include "value-reader.h"
+#include "vpack-types.h"
 
+namespace arangodb {
+namespace velocypack {
 namespace deserializer::values {
 
 namespace detail {
@@ -54,11 +56,11 @@ struct string_value : detail::value_type<const char[]> {
   constexpr static auto value = V;
 };
 
-template<typename V>
+template <typename V>
 struct is_string : std::false_type {};
-template<const char V[]>
+template <const char V[]>
 struct is_string<string_value<V>> : std::true_type {};
-template<typename V>
+template <typename V>
 constexpr bool is_string_v = is_string<V>::value;
 
 template <typename T>
@@ -83,7 +85,7 @@ struct value_comparator {
 
 template <typename T, int v>
 struct value_comparator<numeric_value<T, v>> {
-  static bool compare(::deserializer::slice_type s) {
+  static bool compare(::arangodb::velocypack::deserializer::slice_type s) {
     if (s.isNumber<T>()) {
       return s.getNumber<T>() == numeric_value<T, v>::value;
     }
@@ -94,7 +96,7 @@ struct value_comparator<numeric_value<T, v>> {
 
 template <const char V[], typename H>
 struct value_comparator<string_value<V>, H> {
-  static bool compare(::deserializer::slice_type s) {
+  static bool compare(::arangodb::velocypack::deserializer::slice_type s) {
     if (hints::hint_is_string<H> || s.isString()) {
       return s.isEqualString(arangodb::velocypack::StringRef(V, strlen(V)));
     }
@@ -103,9 +105,9 @@ struct value_comparator<string_value<V>, H> {
   }
 };
 
-template<typename VC>
+template <typename VC>
 struct value_comparator_condition {
-  static bool test(::deserializer::slice_type s) noexcept {
+  static bool test(::arangodb::velocypack::deserializer::slice_type s) noexcept {
     return VC::compare(s);
   }
 };
@@ -139,12 +141,14 @@ struct deserialize_plan_executor<values::value_deserializer<T>, H> {
   using tuple_type = std::tuple<value_type>;
   using result_type = result<tuple_type, deserialize_error>;
 
-  template<typename C>
-  static auto unpack(::deserializer::slice_type s, typename H::state_type hints, C&&) -> result_type {
+  template <typename C>
+  static auto unpack(::arangodb::velocypack::deserializer::slice_type s, typename H::state_type hints, C &&)
+      -> result_type {
     return value_reader<T>::read(s).map(
         [](T t) { return std::make_tuple(std::move(t)); });
   }
 };
 }  // namespace deserializer::executor
-
+}  // namespace velocypack
+}  // namespace arangodb
 #endif  // VELOCYPACK_VALUES_H

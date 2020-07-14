@@ -24,13 +24,15 @@
 #ifndef VELOCYPACK_PLAN_EXECUTOR_H
 #define VELOCYPACK_PLAN_EXECUTOR_H
 
+namespace arangodb {
+namespace velocypack {
 namespace deserializer::executor {
 
 /*
  * deserialize_plan_executor is specialized for different plan types. It contains
  * the actual logic and has a static `unpack` method receiving the slice and hints.
  */
-template<typename P, typename H>
+template <typename P, typename H>
 struct deserialize_plan_executor;
 
 /*
@@ -43,6 +45,7 @@ struct plan_result_tuple {
   using type = std::tuple<typename P::constructed_type>;
 };
 
-}
-
+}  // namespace deserializer::executor
+}  // namespace velocypack
+}  // namespace arangodb
 #endif  // VELOCYPACK_PLAN_EXECUTOR_H

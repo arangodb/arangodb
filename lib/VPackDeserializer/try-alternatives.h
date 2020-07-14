@@ -25,6 +25,8 @@
 #define VELOCYPACK_TRY_ALTERNATIVES_H
 #include "utilities.h"
 
+namespace arangodb {
+namespace velocypack {
 namespace deserializer {
 namespace try_alternatives {
 
@@ -66,7 +68,8 @@ struct deserialize_plan_executor<try_alternatives::try_alternatives_deserializer
       typename try_alternatives::try_alternatives_deserializer<Ds...>::constructed_type;
   using tuple_type = std::tuple<value_type>;
   using result_type = result<tuple_type, deserialize_error>;
-  static auto unpack(::deserializer::slice_type s, typename H::state_type hints) -> result_type {
+  static auto unpack(::arangodb::velocypack::deserializer::slice_type s,
+                     typename H::state_type hints) -> result_type {
     /*
      * Try one alternative after the other. Take the first that does not fail. If all fail, fail.
      */
@@ -77,8 +80,8 @@ struct deserialize_plan_executor<try_alternatives::try_alternatives_deserializer
   constexpr auto static number_of_alternatives = sizeof...(Ds);
 
   template <std::size_t... Is>
-  static auto unpack_internal(::deserializer::slice_type s, std::index_sequence<Is...>)
-      -> result_type {
+  static auto unpack_internal(::arangodb::velocypack::deserializer::slice_type s,
+                              std::index_sequence<Is...>) -> result_type {
     std::optional<value_type> result_variant;
     std::array<deserialize_error, number_of_alternatives> errors;
 
@@ -120,5 +123,6 @@ struct deserialize_plan_executor<try_alternatives::try_alternatives_deserializer
 }  // namespace executor
 
 }  // namespace deserializer
-
+}  // namespace velocypack
+}  // namespace arangodb
 #endif  // VELOCYPACK_TRY_ALTERNATIVES_H

@@ -36,8 +36,8 @@ namespace arangodb {
 namespace tests {
 namespace deserializer {
 
-using namespace deserializer;
 using namespace arangodb::velocypack;
+using namespace arangodb::velocypack::deserializer;
 
 class VPackDeserializerBasicTest : public ::testing::Test {
  protected:
@@ -73,11 +73,10 @@ TEST_F(VPackDeserializerBasicTest, test01) {
   auto slice = recording_slice::from_buffer(buffer);
 
   using deserial =
-      ::deserializer::tuple_deserializer<::deserializer::values::value_deserializer<std::string>,
-                                         ::deserializer::values::value_deserializer<bool>,
-                                         ::deserializer::values::value_deserializer<double>>;
+      tuple_deserializer<values::value_deserializer<std::string>,
+                         values::value_deserializer<bool>, values::value_deserializer<double>>;
 
-  auto result = ::deserializer::deserialize<deserial>(slice.slice);
+  auto result = deserialize<deserial>(slice.slice);
   static_assert(
       std::is_same_v<decltype(result)::value_type, std::tuple<std::string, bool, double>>);
   ASSERT_TRUE(result.ok()) << result.error().as_string();
@@ -92,17 +91,17 @@ TEST_F(VPackDeserializerBasicTest, test02) {
   constexpr static const char foo_name[] = "foo";
 
   using op_deserial =
-      ::deserializer::attribute_deserializer<op_name, ::deserializer::values::value_deserializer<std::string>>;
+      attribute_deserializer<op_name, values::value_deserializer<std::string>>;
 
   using prec_deserial_pair =
-      ::deserializer::value_deserializer_pair<::deserializer::values::string_value<bar_name>, op_deserial>;
+      value_deserializer_pair<values::string_value<bar_name>, op_deserial>;
   using prec_deserial_pair_foo =
-      ::deserializer::value_deserializer_pair<::deserializer::values::string_value<foo_name>, op_deserial>;
+      value_deserializer_pair<values::string_value<foo_name>, op_deserial>;
 
-  using deserial = ::deserializer::array_deserializer<
-      ::deserializer::field_value_dependent_deserializer<op_name, prec_deserial_pair, prec_deserial_pair_foo>, my_vector>;
+  using deserial =
+      array_deserializer<field_value_dependent_deserializer<op_name, prec_deserial_pair, prec_deserial_pair_foo>, my_vector>;
 
-  auto result = ::deserializer::deserialize<deserial>(slice.slice);
+  auto result = deserialize<deserial>(slice.slice);
 
   static_assert(
       std::is_same_v<decltype(result)::value_type, std::vector<std::variant<std::string, std::string>>>);
@@ -115,19 +114,18 @@ TEST_F(VPackDeserializerBasicTest, test03) {
   };
 
   struct recursive_deserializer {
-    using plan = ::deserializer::map_deserializer<
-        ::deserializer::conditional_deserializer<
-            ::deserializer::condition_deserializer_pair<::deserializer::is_object_condition, ::deserializer::unpack_proxy<recursive_deserializer, deserialized_type>>,
-            ::deserializer::conditional_default<::deserializer::values::value_deserializer<std::string>>>,
-        my_map>;
-    using factory = ::deserializer::utilities::constructor_factory<deserialized_type>;
+    using plan =
+        map_deserializer<conditional_deserializer<condition_deserializer_pair<is_object_condition, unpack_proxy<recursive_deserializer, deserialized_type>>,
+                                                  conditional_default<values::value_deserializer<std::string>>>,
+                         my_map>;
+    using factory = utilities::constructor_factory<deserialized_type>;
     using constructed_type = deserialized_type;
   };
 
   auto buffer = R"=({"a":"b", "c":{"d":{"e":"false"}}})="_vpack;
   auto slice = recording_slice::from_buffer(buffer);
 
-  auto result = ::deserializer::deserialize<recursive_deserializer>(slice.slice);
+  auto result = deserialize<recursive_deserializer>(slice.slice);
 
   ASSERT_TRUE(result.ok()) << result.error().as_string();
 }
@@ -143,18 +141,17 @@ TEST_F(VPackDeserializerBasicTest, test04) {
     non_copyable_type(non_copyable_type&&) noexcept = default;
   };
 
-  using deserial = ::deserializer::tuple_deserializer<
-      ::deserializer::utilities::constructing_deserializer<non_default_constructible_type, ::deserializer::values::value_deserializer<double>>,
-      ::deserializer::utilities::constructing_deserializer<non_copyable_type, ::deserializer::values::value_deserializer<double>>>;
+  using deserial =
+      tuple_deserializer<utilities::constructing_deserializer<non_default_constructible_type, values::value_deserializer<double>>,
+                         utilities::constructing_deserializer<non_copyable_type, values::value_deserializer<double>>>;
 
   auto buffer = R"=([12, 11, 13])="_vpack;
   auto slice = recording_slice::from_buffer(buffer);
 
-  auto result = ::deserializer::deserialize<deserial>(slice.slice);
+  auto result = deserialize<deserial>(slice.slice);
 
   ASSERT_TRUE(result.ok()) << result.error().as_string();
 }
-
 
 /* clang-format off */
 
@@ -199,14 +196,14 @@ struct graph_options_validator {
 
 /* clang-format off */
 
-using graph_options_deserializer = ::deserializer::utilities::constructing_deserializer<graph_options, ::deserializer::parameter_list<
-    ::deserializer::factory_optional_parameter<str_smart_graph_attribute, std::string_view>,
-    ::deserializer::factory_simple_parameter<str_number_of_shards, uint32_t, false, ::deserializer::values::numeric_value<uint32_t, 1>>,
-    ::deserializer::factory_simple_parameter<str_replication_factor, uint32_t, false, ::deserializer::values::numeric_value<uint32_t, 1>>,
-    ::deserializer::factory_simple_parameter<str_min_replication_factor, uint32_t, false, ::deserializer::values::numeric_value<uint32_t, 1>>
+using graph_options_deserializer = utilities::constructing_deserializer<graph_options, parameter_list<
+    factory_optional_parameter<str_smart_graph_attribute, std::string_view>,
+    factory_simple_parameter<str_number_of_shards, uint32_t, false, values::numeric_value<uint32_t, 1>>,
+    factory_simple_parameter<str_replication_factor, uint32_t, false, values::numeric_value<uint32_t, 1>>,
+    factory_simple_parameter<str_min_replication_factor, uint32_t, false, values::numeric_value<uint32_t, 1>>
 >>;
 
-using graph_options_validating_deserializer = ::deserializer::validate<graph_options_deserializer, graph_options_validator>;
+using graph_options_validating_deserializer = validate<graph_options_deserializer, graph_options_validator>;
 
 struct graph_edge_definition {
   std::string_view collection;
@@ -219,24 +216,24 @@ constexpr const char str_from[] = "from";
 constexpr const char str_to[] = "to";
 
 template<typename D, template <typename> typename C>
-using non_empty_array_deserializer = ::deserializer::validate<
-    ::deserializer::array_deserializer<D, C>,
-    ::deserializer::utilities::not_empty_validator>;
+using non_empty_array_deserializer = validate<
+    array_deserializer<D, C>,
+    utilities::not_empty_validator>;
 
 using non_empty_string_view_array_deserializer = non_empty_array_deserializer<
-    ::deserializer::values::value_deserializer<std::string_view>, my_vector>;
+    values::value_deserializer<std::string_view>, my_vector>;
 
 template<typename S>
-using non_empty_string_container = ::deserializer::validate<
-    ::deserializer::values::value_deserializer<S>,
-    ::deserializer::utilities::not_empty_validator>;
+using non_empty_string_container = validate<
+    values::value_deserializer<S>,
+    utilities::not_empty_validator>;
 
 using non_empty_string_view = non_empty_string_container<std::string_view>;
 
-using graph_edge_definition_deserializer = ::deserializer::utilities::constructing_deserializer<graph_edge_definition, ::deserializer::parameter_list<
-    ::deserializer::factory_deserialized_parameter<str_collection, non_empty_string_view, true>,
-    ::deserializer::factory_deserialized_parameter<str_from, non_empty_string_view_array_deserializer, true>,
-    ::deserializer::factory_deserialized_parameter<str_to, non_empty_string_view_array_deserializer, true>
+using graph_edge_definition_deserializer = utilities::constructing_deserializer<graph_edge_definition, parameter_list<
+    factory_deserialized_parameter<str_collection, non_empty_string_view, true>,
+    factory_deserialized_parameter<str_from, non_empty_string_view_array_deserializer, true>,
+    factory_deserialized_parameter<str_to, non_empty_string_view_array_deserializer, true>
 >>;
 
 using graph_edge_definition_list = std::vector<graph_edge_definition>;
@@ -254,51 +251,46 @@ constexpr const char str_is_smart[] = "isSmart";
 constexpr const char str_edge_definitions[] = "edgeDefinitions";
 constexpr const char str_options[] = "options";
 
-using graph_definition_deserializer = ::deserializer::utilities::constructing_deserializer<graph_definition, ::deserializer::parameter_list<
-    ::deserializer::factory_deserialized_parameter<str_name, non_empty_string_view, true>,
-    ::deserializer::factory_simple_parameter<str_is_smart, bool, false, ::deserializer::values::numeric_value<bool, false>>,
-    ::deserializer::factory_deserialized_parameter<str_edge_definitions, graph_edge_definition_list_deserializer, true>,
-    ::deserializer::factory_deserialized_parameter<str_options, graph_options_validating_deserializer, false>
+using graph_definition_deserializer = utilities::constructing_deserializer<graph_definition, parameter_list<
+    factory_deserialized_parameter<str_name, non_empty_string_view, true>,
+    factory_simple_parameter<str_is_smart, bool, false, values::numeric_value<bool, false>>,
+    factory_deserialized_parameter<str_edge_definitions, graph_edge_definition_list_deserializer, true>,
+    factory_deserialized_parameter<str_options, graph_options_validating_deserializer, false>
 >>;
 
 /* clang-format on */
 
-TEST_F(VPackDeserializerBasicTest, test05)  {
+TEST_F(VPackDeserializerBasicTest, test05) {
   auto buffer = R"=({"name":"myGraph","edgeDefinitions":[{"collection":"edges","from":["startVertices"],"to":["endVertices"]},{"collection":"edges","from":[],"to":["bla"]}],"options":{"replicationFactor":2,"minReplicationFactor":2}})="_vpack;
   auto slice = recording_slice::from_buffer(buffer);
 
   graph_options_validator::context_type ctx = {2, 3};
 
-  auto result =
-      ::deserializer::deserialize_with_context<graph_definition_deserializer>(slice.slice, ctx);
+  auto result = deserialize_with_context<graph_definition_deserializer>(slice.slice, ctx);
 
   ASSERT_TRUE(result.ok()) << result.error().as_string();
 }
 
-enum class MyEnum {
-  MIN, MAX, SUM
-};
+enum class MyEnum { MIN, MAX, SUM };
 
 constexpr const char MyEnum_min[] = "min";
 constexpr const char MyEnum_max[] = "max";
 constexpr const char MyEnum_sum[] = "sum";
 
-using MyEnum_deserializer = ::deserializer::enum_deserializer<
-    MyEnum, ::deserializer::enum_member<MyEnum::MIN, ::deserializer::values::string_value<MyEnum_min>>,
-    ::deserializer::enum_member<MyEnum::MAX, ::deserializer::values::string_value<MyEnum_max>>,
-    ::deserializer::enum_member<MyEnum::MAX, ::deserializer::values::string_value<MyEnum_sum>>,
-    ::deserializer::enum_member<MyEnum::SUM, ::deserializer::values::numeric_value<int, 12>>>;
+using MyEnum_deserializer =
+    enum_deserializer<MyEnum, enum_member<MyEnum::MIN, values::string_value<MyEnum_min>>,
+                      enum_member<MyEnum::MAX, values::string_value<MyEnum_max>>,
+                      enum_member<MyEnum::MAX, values::string_value<MyEnum_sum>>,
+                      enum_member<MyEnum::SUM, values::numeric_value<int, 12>>>;
 
 TEST_F(VPackDeserializerBasicTest, test06) {
   auto buffer = R"=("mox")="_vpack;
   auto slice = recording_slice::from_buffer(buffer);
 
-  auto result =
-      ::deserializer::deserialize<MyEnum_deserializer>(slice.slice);
+  auto result = deserialize<MyEnum_deserializer>(slice.slice);
 
   ASSERT_TRUE(result.ok()) << result.error().as_string();
 }
-
 
 }  // namespace deserializer
 }  // namespace tests

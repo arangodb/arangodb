@@ -25,6 +25,8 @@
 #define VELOCYPACK_FIELD_VALUE_DEPENDENT_H
 #include "plan-executor.h"
 #include "values.h"
+namespace arangodb {
+namespace velocypack {
 
 namespace deserializer {
 
@@ -83,7 +85,8 @@ struct field_value_dependent_executor<I, E, VD, VDs...> {
   using unpack_result = result<R, deserialize_error>;
 
   template <typename C>
-  static auto unpack(::deserializer::slice_type s, ::deserializer::slice_type v, C&& ctx)
+  static auto unpack(::arangodb::velocypack::deserializer::slice_type s,
+                     ::arangodb::velocypack::deserializer::slice_type v, C&& ctx)
       -> unpack_result {
     using namespace std::string_literals;
     if (values::value_comparator<V>::compare(v)) {
@@ -92,7 +95,7 @@ struct field_value_dependent_executor<I, E, VD, VDs...> {
 
       return deserialize<D, hint, C>(s, std::make_tuple(v, unit_type{}, v),
                                      std::forward<C>(ctx))
-          .visit(::deserializer::detail::gadgets::visitor{
+          .visit(::arangodb::velocypack::deserializer::detail::gadgets::visitor{
               [](auto const& v) {
                 return unpack_result{R{std::in_place_index<I>, v}};
               },
@@ -111,8 +114,9 @@ struct field_value_dependent_executor<I, E> {
   using R = typename E::variant_type;
   using unpack_result = result<R, deserialize_error>;
 
-  template<typename C>
-  static auto unpack(::deserializer::slice_type s, ::deserializer::slice_type v, C&&)
+  template <typename C>
+  static auto unpack(::arangodb::velocypack::deserializer::slice_type s,
+                     ::arangodb::velocypack::deserializer::slice_type v, C &&)
       -> unpack_result {
     using namespace std::string_literals;
     if (s.isNone()) {
@@ -141,18 +145,18 @@ struct deserialize_plan_executor<field_value_dependent<N, VSs...>, H> {
   constexpr static auto name = N;
 
   template <typename C>
-  static auto unpack(::deserializer::slice_type s, typename H::state_type hints, C&& ctx)
-      -> unpack_result {
+  static auto unpack(::arangodb::velocypack::deserializer::slice_type s,
+                     typename H::state_type hints, C&& ctx) -> unpack_result {
     /*
      * Select the sub deserializer depending on the value.
      * Delegate to that deserializer.
      */
     using namespace std::string_literals;
 
-    ::deserializer::slice_type value_slice = s.get(N);
-    return ::deserializer::detail::field_value_dependent_executor<0, executor_type, VSs...>::unpack(
-               s, value_slice, std::forward<C>(ctx))
-        .visit(::deserializer::detail::gadgets::visitor{
+    ::arangodb::velocypack::deserializer::slice_type value_slice = s.get(N);
+    return ::arangodb::velocypack::deserializer::detail::field_value_dependent_executor<
+               0, executor_type, VSs...>::unpack(s, value_slice, std::forward<C>(ctx))
+        .visit(::arangodb::velocypack::deserializer::detail::gadgets::visitor{
             [](variant_type const& v) {
               return unpack_result{std::make_tuple(v)};
             },
@@ -166,7 +170,8 @@ struct deserialize_plan_executor<field_value_dependent<N, VSs...>, H> {
 template <const char N[], typename H>
 struct deserialize_plan_executor<field_value_dependent<N>, H> {
   template <typename C>
-  static auto unpack(::deserializer::slice_type s, typename H::state_type hints, C&&) {
+  static auto unpack(::arangodb::velocypack::deserializer::slice_type s,
+                     typename H::state_type hints, C&&) {
     /*
      * No matching type was found, we can not deserialize.
      */
@@ -178,5 +183,6 @@ struct deserialize_plan_executor<field_value_dependent<N>, H> {
 }  // namespace executor
 
 }  // namespace deserializer
-
+}  // namespace velocypack
+}  // namespace arangodb
 #endif  // VELOCYPACK_FIELD_VALUE_DEPENDENT_H

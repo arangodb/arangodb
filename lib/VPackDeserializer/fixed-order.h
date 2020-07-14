@@ -27,6 +27,8 @@
 #include "plan-executor.h"
 #include "utilities.h"
 
+namespace arangodb {
+namespace velocypack {
 namespace deserializer {
 
 /*
@@ -101,8 +103,8 @@ struct deserialize_plan_executor<fixed_order_deserializer<Ds...>, H> {
   constexpr static auto expected_array_length = sizeof...(Ds);
 
   template <typename ctx>
-  static auto unpack(::deserializer::slice_type s, typename H::state_type hints, ctx&& c)
-      -> result_type {
+  static auto unpack(::arangodb::velocypack::deserializer::slice_type s,
+                     typename H::state_type hints, ctx&& c) -> result_type {
     using namespace std::string_literals;
 
     if (!s.isArray()) {
@@ -119,24 +121,26 @@ struct deserialize_plan_executor<fixed_order_deserializer<Ds...>, H> {
 
  private:
   template <std::size_t... I, typename ctx>
-  static auto unpack_internal(::deserializer::slice_type s,
+  static auto unpack_internal(::arangodb::velocypack::deserializer::slice_type s,
                               std::index_sequence<I...>, ctx&& c) -> result_type {
-    using namespace ::deserializer::detail;
+    using namespace ::arangodb::velocypack::deserializer::detail;
     using namespace std::string_literals;
 
     gadgets::tuple_to_opts_t<value_type> values;
     deserialize_error error;
 
-    ::deserializer::array_iterator iter(s);
+    ::arangodb::velocypack::deserializer::array_iterator iter(s);
 
-    bool result = ([&error, &c](::deserializer::array_iterator const& iter, auto& value) {
+    bool result = ([&error, &c](::arangodb::velocypack::deserializer::array_iterator const& iter,
+                                auto& value) {
       if (error) {
         return false;
       }
 
       if (iter != iter.end()) {
-        return deserialize<Ds, hints::hint_list_empty, ctx>(*iter, {}, std::forward<ctx>(c)).visit(
-            detail::fixed_order_deserializer_executor_visitor<I, typename Ds::constructed_type, deserialize_error>(
+        return deserialize<Ds, hints::hint_list_empty, ctx>(*iter, {},
+                                                            std::forward<ctx>(c))
+            .visit(detail::fixed_order_deserializer_executor_visitor<I, typename Ds::constructed_type, deserialize_error>(
                 value, error));
       } else {
         error = deserialize_error{"bad array length, found: "s + std::to_string(I) +
@@ -169,5 +173,6 @@ struct deserialize_plan_executor<fixed_order_deserializer<Ds...>, H> {
 };
 }  // namespace executor
 }  // namespace deserializer
-
+}  // namespace velocypack
+}  // namespace arangodb
 #endif  // VELOCYPACK_FIXED_ORDER_H

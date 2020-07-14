@@ -26,6 +26,8 @@
 #include "deserialize-with.h"
 #include "plan-executor.h"
 
+namespace arangodb {
+namespace velocypack {
 namespace deserializer {
 
 template <typename D>
@@ -103,8 +105,10 @@ using validate = validator::validate<D, V>;
 template <typename D, typename H>
 struct executor::deserialize_plan_executor<forwarding_plan<D>, H> {
   template <typename ctx>
-  static auto unpack(::deserializer::slice_type s, typename H::state_type hints, ctx&& c) {
-    return ::deserializer::deserialize<D, H, ctx>(s, hints, std::forward<ctx>(c));
+  static auto unpack(::arangodb::velocypack::deserializer::slice_type s,
+                     typename H::state_type hints, ctx&& c) {
+    return ::arangodb::velocypack::deserializer::deserialize<D, H, ctx>(s, hints,
+                                                                        std::forward<ctx>(c));
   }
 };
 
@@ -115,8 +119,8 @@ struct executor::deserialize_plan_executor<validate<D, V>, H> {
   using result_type = result<tuple_type, deserialize_error>;
 
   template <typename ctx>
-  static auto unpack(::deserializer::slice_type s, typename H::state_type hints, ctx&& c)
-      -> result_type {
+  static auto unpack(::arangodb::velocypack::deserializer::slice_type s,
+                     typename H::state_type hints, ctx&& c) -> result_type {
     auto result = deserialize<D, H, ctx>(s, hints, std::forward<ctx>(c));
 
     if (result) {
@@ -138,5 +142,6 @@ struct executor::deserialize_plan_executor<validate<D, V>, H> {
 };
 
 }  // namespace deserializer
-
+}  // namespace velocypack
+}  // namespace arangodb
 #endif  // DESERIALIZE_VALIDATE_H
