@@ -1,6 +1,8 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Fixed crash in cleanup of parallel traversal queries (QA-28)
+
 * The internally used JS-based ClusterComm send request function can now again use JSON, and does
   not require VelocyPack anymore. This fixes an issue with Foxx-App management (install, updated, remove)
   got delayed in a sharded environment, all servers do get all apps eventually, now the fast-path
