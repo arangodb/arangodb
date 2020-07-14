@@ -125,8 +125,8 @@ struct parameter_executor<factory_simple_parameter<N, T, required, default_v>, H
 
     auto value_slice = s.get(N);
     if (!value_slice.isNone()) {
-      ensure_value_reader<T>{};
-
+      ensure_value_reader<T> guard;
+      (void)guard;
       return value_reader<T>::read(value_slice)
           .map([](T&& t) { return std::make_pair(std::move(t), true); })
           .wrap([](deserialize_error&& e) {
@@ -241,10 +241,10 @@ struct parameter_executor<expected_value<N, V>, H> {
       if (!values::value_comparator<V>::compare(value_slice)) {
         using namespace std::string_literals;
 
-        return result_type{std::move(deserialize_error{
+        return result_type{deserialize_error{
             "value at `"s + N + "` not as expected, found: `" +
             value_slice.toJson() + "`, expected: `" + to_string(V{}) + "`"}
-                                         .trace(N))};
+                                         .trace(N)};
       }
     }
 
