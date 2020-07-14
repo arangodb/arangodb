@@ -81,12 +81,6 @@ Result Response::combinedResult() const {
 auto prepareRequest(RestVerb type, std::string path, VPackBufferUInt8 payload,
                     RequestOptions const& options, Headers headers,
                     std::chrono::duration<double> timeout) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (path.find("/_db/") != std::string::npos ||
-      path.find('?') != std::string::npos) {
-    LOG_DEVEL << path;
-  }
-#endif
   TRI_ASSERT(path.find("/_db/") == std::string::npos);
   TRI_ASSERT(path.find('?') == std::string::npos);
   
@@ -272,10 +266,6 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
     }
     TRI_ASSERT(t.count() > 0);
     
-    LOG_DEVEL
-      << "request to '" << _destination
-    << "' '" << fuerte::to_string(_type) << " " << _path << "' using " << spec.endpoint;
-
     auto conn = _pool->leaseConnection(spec.endpoint);
     auto req = prepareRequest(_type, _path, _payload, _options, _headers, t);
     conn->sendRequest(std::move(req),
