@@ -145,7 +145,7 @@ TEST_F(VPackDeserializerBasicTest, test04) {
       tuple_deserializer<utilities::constructing_deserializer<non_default_constructible_type, values::value_deserializer<double>>,
                          utilities::constructing_deserializer<non_copyable_type, values::value_deserializer<double>>>;
 
-  auto buffer = R"=([12, 11, 13])="_vpack;
+  auto buffer = R"=([12, 11])="_vpack;
   auto slice = recording_slice::from_buffer(buffer);
 
   auto result = deserialize<deserial>(slice.slice);
@@ -268,7 +268,7 @@ TEST_F(VPackDeserializerBasicTest, test05) {
 
   auto result = deserialize_with_context<graph_definition_deserializer>(slice.slice, ctx);
 
-  ASSERT_TRUE(result.ok()) << result.error().as_string();
+  ASSERT_FALSE(result.ok());
 }
 
 enum class MyEnum { MIN, MAX, SUM };
@@ -289,7 +289,7 @@ TEST_F(VPackDeserializerBasicTest, test06) {
 
   auto result = deserialize<MyEnum_deserializer>(slice.slice);
 
-  ASSERT_TRUE(result.ok()) << result.error().as_string();
+  ASSERT_FALSE(result.ok());
 }
 
 }  // namespace deserializer
