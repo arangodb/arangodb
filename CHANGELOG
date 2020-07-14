@@ -1,6 +1,9 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* In rare cases SmartBFS could use a wrong index for looking up edges. This is fixed now.
+
+
 * Fixed a rare race in Agents, if the leader is rebooted quickly there is a
   chance that it is still assumed to be the leader, but delivers a state shortly
   in the past.
