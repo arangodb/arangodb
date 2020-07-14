@@ -683,11 +683,10 @@ CostEstimate ExecutionNode::getCost() const {
 
 /// @brief functionality to walk an execution plan recursively
 bool ExecutionNode::walk(WalkerWorkerBase<ExecutionNode>& worker) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (worker.done(this)) {
     return false;
   }
-#endif
+
   if (worker.before(this)) {
     return true;
   }
