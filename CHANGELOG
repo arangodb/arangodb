@@ -2,8 +2,8 @@ v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
 * Added cluster metrics `arangodb_load_plan_accum_runtime_msec` and
-  `arangodb_load_current_accum_runtime_msec` to track the total time spent
-  in `loadPlan()` and `loadCurrent()` operations.
+  `arangodb_load_current_accum_runtime_msec` to track the total time spent in
+  `loadPlan()` and `loadCurrent()` operations.
 
 * Fixed wrong reporting of failures in all maintenace failure counter metrics
   (`arangodb_maintenance_action_failure_counter`). Previously, each successful
@@ -12,6 +12,25 @@ v3.7.1-rc.1 (XXXX-XX-XX)
 
 * Adjusted the scale of the `arangodb_maintenance_action_queue_time_msec` to
   cover a more useful range.
+
+* The filter executor will now overfetch data again if followed by a limit, same
+  as in 3.6 series.
+  The following queries are effected:
+  ```
+  something
+  FILTER a == b
+  LIMIT 10
+  ```
+  something will now be asked for a full batch, instead of only 10 documents.
+
+* In rare cases SmartBFS could use a wrong index for looking up edges. This is
+  fixed now.
+
+* The internally used JS-based ClusterComm send request function can now again
+  use JSON, and does not require VelocyPack anymore. This fixes an issue with
+  Foxx-App management (install, updated, remove) got delayed in a sharded
+  environment, all servers do get all apps eventually, now the fast-path will
+  work again.
 
 * Fixed a rare race in Agents, if the leader is rebooted quickly there is a
   chance that it is still assumed to be the leader, but delivers a state shortly
