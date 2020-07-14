@@ -49,67 +49,6 @@ VstConnection<ST>::~VstConnection() try {
 } catch (...) {
 }
 
-// sendRequest prepares a RequestItem for the given parameters
-// and adds it to the send queue.
-//template <SocketType ST>
-//void VstConnection<ST>::sendRequest(std::unique_ptr<Request> req,
-//                                    RequestCallback cb) {
-//  FUERTE_ASSERT(req != nullptr);
-//  if (req->header.path.find("/_db/") != std::string::npos) {
-//    FUERTE_LOG_ERROR << "path: " << req->header.path << " \n";
-//  }
-//  FUERTE_ASSERT(req->header.path.find("/_db/") == std::string::npos);
-//  FUERTE_ASSERT(req->header.path.find('?') == std::string::npos);
-//
-//  // it does not matter if IDs are reused on different connections
-//  uint64_t mid = vstMessageId.fetch_add(1, std::memory_order_relaxed);
-//  // Create RequestItem from parameters
-//  auto item = std::make_unique<RequestItem>();
-//  item->_messageID = mid;
-//  item->_request = std::move(req);
-//  item->_callback = cb;
-//  // set the point-in-time when this request expires
-//  if (item->_request->timeout().count() > 0) {
-//    item->_expires =
-//        std::chrono::steady_clock::now() + item->_request->timeout();
-//  } else {
-//    item->_expires = std::chrono::steady_clock::time_point::max();
-//  }
-//
-//  // Don't send once in Closed state:
-//  if (this->_state.load(std::memory_order_relaxed) == Connection::State::Closed) {
-//    FUERTE_LOG_ERROR << "connection already failed\n";
-//    item->invokeOnError(Error::Canceled);
-//    return;
-//  }
-//
-//  // Add item to send queue
-//  this->_numQueued.fetch_add(1, std::memory_order_relaxed);
-//  if (!this->_queue.push(item.get())) {
-//    FUERTE_LOG_ERROR << "connection queue capacity exceeded\n";
-//    uint32_t q = this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
-//    FUERTE_ASSERT(q > 0);
-//    item->invokeOnError(Error::QueueCapacityExceeded);
-//    return;
-//  }
-//  item.release();  // queue owns this now
-//
-//  FUERTE_LOG_VSTTRACE << "queued item: this=" << this << "\n";
-//
-//   // Note that we have first posted on the queue with std::memory_order_seq_cst
-//   // and now we check _active std::memory_order_seq_cst. This prevents a sleeping
-//   // barber with the check-set-check combination in `asyncWriteNextRequest`.
-//   // If we are the ones to exchange the value to `true`, then we post
-//   // on the `_io_context` to activate the connection. Note that the
-//   // connection can be in the `Disconnected` or `Connected` or `Failed`
-//   // state, but not in the `Connecting` state in this case.
-//   if (!this->_active.exchange(true)) {
-//     this->_io_context->post([self(Connection::shared_from_this())] {
-//         static_cast<VstConnection<ST>&>(*self).activate();
-//       });
-//   }
-//}
-
 template <SocketType ST>
 std::size_t VstConnection<ST>::requestsLeft() const {
   uint32_t qd = this->_numQueued.load(std::memory_order_relaxed);

@@ -115,7 +115,6 @@ class GeneralConnection : public fuerte::Connection {
     asio_ns::post(*_io_context, [self(weak_from_this()), this] {
       auto s = self.lock();
       if (s) {
-        _state.store(State::Closed);
         shutdownConnection(Error::Canceled);
       }
     });

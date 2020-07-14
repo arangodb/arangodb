@@ -180,52 +180,6 @@ H1Connection<ST>::~H1Connection() try {
 } catch (...) {
 }
 
-//// Start an asynchronous request.
-//template <SocketType ST>
-//void H1Connection<ST>::sendRequest(std::unique_ptr<Request> req,
-//                                   RequestCallback cb) {
-//  // construct RequestItem
-//  auto item = std::make_unique<RequestItem>();
-//  // requestItem->_response later
-//  item->requestHeader = buildRequestBody(*req);
-//  item->callback = std::move(cb);
-//  item->request = std::move(req);
-//  item->expires = std::chrono::steady_clock::now() + item->request->timeout();
-//
-//  // Don't send once in Closed state:
-//  if (this->_state.load(std::memory_order_relaxed) == Connection::State::Closed) {
-//    FUERTE_LOG_ERROR << "connection already failed\n";
-//    item->invokeOnError(Error::Canceled);
-//    return;
-//  }
-//
-//  // Prepare a new request
-//  this->_numQueued.fetch_add(1, std::memory_order_relaxed);
-//  if (!this->_queue.push(item.get())) {
-//    FUERTE_LOG_ERROR << "connection queue capacity exceeded\n";
-//    uint32_t q = this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
-//    FUERTE_ASSERT(q > 0);
-//    item->invokeOnError(Error::QueueCapacityExceeded);
-//    return;
-//  }
-//  item.release();  // queue owns this now
-//
-//  FUERTE_LOG_HTTPTRACE << "queued item: this=" << this << "\n";
-//
-//  // Note that we have first posted on the queue with std::memory_order_seq_cst
-//  // and now we check _active std::memory_order_seq_cst. This prevents a sleeping
-//  // barber with the check-set-check combination in `asyncWriteNextRequest`.
-//  // If we are the ones to exchange the value to `true`, then we post
-//  // on the `_io_context` to activate the connection. Note that the
-//  // connection can be in the `Disconnected` or `Connected` or `Failed`
-//  // state, but not in the `Connecting` state in this case.
-//  if (!this->_active.exchange(true)) {
-//    this->_io_context->post([self(Connection::shared_from_this())] {
-//        static_cast<H1Connection<ST>&>(*self).activate();
-//      });
-//  }
-//}
-
 template <SocketType ST>
 size_t H1Connection<ST>::requestsLeft() const {
   size_t q = this->_numQueued.load(std::memory_order_relaxed);
@@ -350,12 +304,6 @@ void H1Connection<ST>::asyncWriteNextRequest() {
   auto state = this->_state.load();
   FUERTE_ASSERT(state == Connection::State::Connected ||
                 state == Connection::State::Closed);
-//  if (state != Connection::State::Connected &&
-//      state != Connection::State::Closed) {
-//    FUERTE_LOG_ERROR << "asyncWriteNextRequest found an unexpected state: "
-//                     << static_cast<int>(state)
-//                     << " instead of the expected 'Connected'\n";
-//  }
   FUERTE_ASSERT(_item == nullptr);
 
   RequestItem* ptr = nullptr;
@@ -567,27 +515,6 @@ void H1Connection<ST>::setIOTimeout() {
     // iocontext but the thing we should be timing out has already completed.
   });
 }
-
-// abort all expired requests
-//template <SocketType ST>
-//void H1Connection<ST>::abortExpiredRequests() {
-//  if (_item && _item->expires < std::chrono::steady_clock::now()) {
-//    // Item has failed, remove from message store
-//    _item->invokeOnError(Error::Timeout);
-//    _item.reset();
-//  }
-//}
-//
-//// calculate smallest timeout
-//template <SocketType ST>
-//std::chrono::steady_clock::time_point H1Connection<ST>::getTimeout(bool& isIdle) {
-//  if (_item) {
-//    isIdle = false;
-//    return _item->expires;
-//  }
-//  isIdle = true;
-//  return std::chrono::steady_clock::now() + this->_config._idleTimeout;
-//}
 
 template class arangodb::fuerte::v1::http::H1Connection<SocketType::Tcp>;
 template class arangodb::fuerte::v1::http::H1Connection<SocketType::Ssl>;

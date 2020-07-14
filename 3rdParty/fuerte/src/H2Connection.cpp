@@ -295,52 +295,6 @@ void H2Connection<T>::initNgHttp2Session() {
   nghttp2_session_callbacks_del(callbacks);
 }
 
-// sendRequest prepares a RequestItem for the given parameters
-// and adds it to the send queue.
-//template <SocketType T>
-//void H2Connection<T>::sendRequest(std::unique_ptr<Request> req,
-//                                  RequestCallback cb) {
-//  
-//  FUERTE_LOG_HTTPTRACE << "queuing request " << req->header.path << "\n";
-//  
-//  // Create RequestItem from parameters
-//  auto item = std::make_unique<Stream>();
-//  item->callback = cb;
-//  item->request = std::move(req);
-//  // set the point-in-time when this request expires
-//  if (item->request->timeout().count() > 0) {
-//    item->expires = std::chrono::steady_clock::now() + item->request->timeout();
-//  } else {
-//    item->expires = std::chrono::steady_clock::time_point::max();
-//  }
-//
-//  // Add item to send queue
-//  this->_numQueued.fetch_add(1, std::memory_order_relaxed);
-//  if (!this->_queue.push(item.get())) {
-//    FUERTE_LOG_ERROR << "connection queue capacity exceeded\n";
-//    uint32_t q = this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
-//    FUERTE_ASSERT(q > 0);
-//    item->invokeOnError(Error::QueueCapacityExceeded);
-//    return;
-//  }
-//  item.release();  // queue owns this now
-//
-//  FUERTE_LOG_HTTPTRACE << "queued item: this=" << this << "\n";
-//  
-//  // Note that we have first posted on the queue with std::memory_order_seq_cst
-//  // and now we check _active std::memory_order_seq_cst. This prevents a sleeping
-//  // barber with the check-set-check combination in `asyncWriteNextRequest`.
-//  // If we are the ones to exchange the value to `true`, then we post
-//  // on the `_io_context` to activate the connection. Note that the
-//  // connection can be in the `Disconnected` or `Connected` or `Failed`
-//  // state, but not in the `Connecting` state in this case.
-//  if (!this->_active.exchange(true)) {
-//    this->_io_context->post([self(Connection::shared_from_this())] {
-//        static_cast<H2Connection<T>&>(*self).activate();
-//      });
-//  }
-//}
-
 template <SocketType T>
 std::size_t H2Connection<T>::requestsLeft() const {
   uint32_t qd = this->_numQueued.load(std::memory_order_relaxed);

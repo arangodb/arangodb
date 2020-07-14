@@ -79,7 +79,8 @@ Result Response::combinedResult() const {
 }
 
 auto prepareRequest(RestVerb type, std::string path, VPackBufferUInt8 payload,
-                    RequestOptions const& options, Headers headers) {
+                    RequestOptions const& options, Headers headers,
+                    std::chrono::duration<double> timeout) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (path.find("/_db/") != std::string::npos ||
       path.find('?') != std::string::npos) {
@@ -104,8 +105,8 @@ auto prepareRequest(RestVerb type, std::string path, VPackBufferUInt8 payload,
   TRI_voc_tick_t timeStamp = TRI_HybridLogicalClock();
   req->header.addMeta(StaticStrings::HLCHeader,
                       arangodb::basics::HybridLogicalClock::encodeTimeStamp(timeStamp));
-
-  req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(options.timeout));
+  
+  req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(timeout));
 
   auto state = ServerState::instance();
   if (state->isCoordinator() || state->isDBServer()) {
@@ -133,7 +134,7 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
   try {
 
     auto req = prepareRequest(type, std::move(path), std::move(payload),
-                              options, std::move(headers));
+                              options, std::move(headers), options.timeout);
 
     if (!pool || !pool->config().clusterInfo) {
       LOG_TOPIC("59b95", ERR, Logger::COMMUNICATION)
@@ -262,14 +263,21 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
       callResponse(Error::Canceled, nullptr, std::move(_request));
       return;
     }
-
-    auto localOptions = _options;
-    localOptions.timeout =
-        std::chrono::duration_cast<std::chrono::milliseconds>(_endTime - now);
-    TRI_ASSERT(localOptions.timeout.count() > 0);
+    
+    // simon: shorten actual request timeouts to allow time for retry
+    //        otherwise resilience_failover tests likely fail
+    auto t = _endTime - now;
+    if (t >= std::chrono::duration<double>(100)) {
+      t -= std::chrono::seconds(30);
+    }
+    TRI_ASSERT(t.count() > 0);
+    
+    LOG_DEVEL
+      << "request to '" << _destination
+    << "' '" << fuerte::to_string(_type) << " " << _path << "' using " << spec.endpoint;
 
     auto conn = _pool->leaseConnection(spec.endpoint);
-    auto req = prepareRequest(_type, _path, _payload, localOptions, _headers);
+    auto req = prepareRequest(_type, _path, _payload, _options, _headers, t);
     conn->sendRequest(std::move(req),
                       [self = shared_from_this()](fuerte::Error err,
                                                   std::unique_ptr<fuerte::Request> req,
