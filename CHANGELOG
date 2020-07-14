@@ -1,12 +1,20 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
-
 * Fixed hotbackup upload and download with encryption at rest key indirection.
 
 * Fixed a rare race in Agents, if the leader is rebooted quickly there is a
   chance that it is still assumed to be the leader, but delivers a state shortly
   in the past.
+
+* The internally used JS-based ClusterComm send request function can now again use JSON, and does
+  not require VelocyPack anymore. This fixes an issue with Foxx-App management (install, updated, remove)
+  got delayed in a sharded environment, all servers do get all apps eventually, now the fast-path
+  will work again.
+
+* Fixed a rare race in Agents, if the leader is rebooted quickly there is a chance
+  that it is still assumed to be the leader, but delivers a state shortly in the
+  past.
 
 * Keep the list of last-acknowledged entires in Agency more consistent.
   During leadership take-over it was possible to get into a situation that the
