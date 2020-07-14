@@ -510,7 +510,6 @@ VPackBuilder VelocyPackHelper::velocyPackFromFile(std::string const& path) {
 
 static bool PrintVelocyPack(int fd, VPackSlice const& slice, bool appendNewline) {
   if (slice.isNone()) {
-    // sanity check
     return false;
   }
 

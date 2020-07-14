@@ -270,7 +270,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
   // will ask us again for permissions and we get a deadlock
   ExecContextSuperuserScope scope;
   auto ctx = transaction::StandaloneContext::Create(*vocbase);
-  SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS, AccessMode::Type::WRITE);
+  SingleCollectionTransaction trx(ctx, StaticStrings::UsersCollection, AccessMode::Type::WRITE);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -284,8 +284,8 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
     opts.mergeObjects = false;
 
     OperationResult opres =
-        replace ? trx.replace(TRI_COL_NAME_USERS, data.slice(), opts)
-                : trx.insert(TRI_COL_NAME_USERS, data.slice(), opts);
+        replace ? trx.replace(StaticStrings::UsersCollection, data.slice(), opts)
+                : trx.insert(StaticStrings::UsersCollection, data.slice(), opts);
 
     res = trx.finish(opres.result);
 
@@ -623,7 +623,7 @@ static Result RemoveUserInternal(application_features::ApplicationServer& server
   // will ask us again for permissions and we get a deadlock
   ExecContextSuperuserScope scope;
   auto ctx = transaction::StandaloneContext::Create(*vocbase);
-  SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS, AccessMode::Type::WRITE);
+  SingleCollectionTransaction trx(ctx, StaticStrings::UsersCollection, AccessMode::Type::WRITE);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -631,7 +631,7 @@ static Result RemoveUserInternal(application_features::ApplicationServer& server
 
   if (res.ok()) {
     OperationResult result =
-        trx.remove(TRI_COL_NAME_USERS, builder.slice(), OperationOptions());
+        trx.remove(StaticStrings::UsersCollection, builder.slice(), OperationOptions());
     res = trx.finish(result.result);
   }
 
@@ -797,6 +797,7 @@ auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
   return level;
 }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 /// Only used for testing
 void auth::UserManager::setAuthInfo(auth::UserMap const& newMap) {
   MUTEX_LOCKER(guard, _loadFromDBLock);      // must be first
@@ -804,3 +805,4 @@ void auth::UserManager::setAuthInfo(auth::UserMap const& newMap) {
   _userCache = newMap;
   _internalVersion.store(_globalVersion.load());
 }
+#endif

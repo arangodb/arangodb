@@ -3,9 +3,93 @@ devel
 
 * In rare cases SmartBFS could use a wrong index for looking up edges. This is fixed now.
 
+* The internally used JS-based ClusterComm send request function can now again use JSON, and does
+  not require VelocyPack anymore. This fixes an issue with Foxx-App management (install, updated, remove)
+  got delayed in a sharded environment, all servers do get all apps eventually, now the fast-path
+  will work again.
+
+* Fixed a rare race in Agents, if the leader is rebooted quickly there is a chance
+  that it is still assumed to be the leader, but delivers a state shortly in the
+  past.
+
+* Fixed a race in the ConnectionPool which could lease out a connection
+  that got its idle timeout after the lease was completed. This could lead
+  to sporadic network failures in TLS and to inefficiencies with TCP.
+
+* Fixed restoring a SmartGraph into a database that already contains that same graph.
+  The use case is restoring a SmartGraph from backup, apply some modifications, which are
+  undesired, and then resetting it to the restored state, without dropping the database.
+  One way to achieve this is to use arangorestore with the `overwrite` option on the same dataset, 
+  effectively resetting the SmartGraph to the original state.
+  Without this fix, the workaround for is to either drop the graph (or the database) before the
+  restore call, yielding an identical result.
+  
+* Keep the list of last-acknowledged entires in Agency more consistent.
+  During leadership take-over it was possible to get into a situation that
+  the new leader does not successfully report the agency config, which
+  was eventually fixed by the Agent itself. Now this situation is impossible.
+
+* Allow changing collection properties for smart edge collections as well. 
+
+* Fixed that the hotbackup agency lock is released under all circumstances
+  using scope guards. This addresses a rare case in which the lock was left
+  behind.
+
+* Privatized load plan / current in cluster info and cleanup following
+  agency cache implementation.
+
+* Fix cluster-internal request forwarding for VST requests that do not have any
+  Content-Type header set. Such requests could have been caused by the Java
+  driver (ES-635).
+
+* Fixed issue OASIS-252: Hotbackup agency locks without clientId.
+
+* The `_from` and `_to` attributes of an edge document can now be edited from
+  within the UI.
+
+* Added vertex collection validation in case of a SmartGraph edge definition
+  update. 
+
+* Updated arangosync to 0.7.7.
+
+* Added support `db._engineStats()` API in coordinator. Previously calling this
+  API always produced an empty result. Now it will return the engine statistics
+  as an object, with an entry for each individual DB-Server.
+
+* Fixed a document parsing bug in the Web UI. This issue occured in the
+  document list view in case a document had an attribute called `length`.
+  The result was an incorrect representation of the document preview.
+
+* Improve readability of running and slow queries in web UI by properly left-
+  aligning the query strings.
+
+* The Web UI is not disabling the query import button after file upload takes
+  place.
+
+* The Web UI is now reporting errors properly in case of editing ArangoSearch
+  Views with invalid properties.
+
+* In case of a graph deletion failure, the Web UI displays now the correct
+  error message.
+
+* In case a document got requested via the UI of a collection which does not
+  exist, the UI now properly displays an error view instead of having a bad
+  display state.
+
+* Removed the edge id's hover styling in case of embedded document editor in
+  the Web UI as this functionality is disabled. This was misleading because
+  the elements are not clickable.
+
+* The Web UI now displays an error message inside the node information view in
+  case the user has no access to retreive the neccessary information.
+
+* Web UI: Removed unnecessary menubar entry in case of database node inspection.
+
+* Fixed a potential agency crash if trace logging is on.
+
 * Re-enable access to GET `/_admin/cluster/numberOfServers` for all users by
   default. Requests to PUT `/_admin/cluster/numberOfServers` require admin
-  user privileges. This restores the pre-3.7 behavior. 
+  user privileges. This restores the pre-3.7 behavior.
   In contrast to pre-3.7 behavior, the `--server.harden` option now can be
   used to restrict access to GET `/_admin/cluster/numberOfServers` to admin
   users, too. This can be used to lock down this API for non-admin users
@@ -45,12 +129,12 @@ devel
 
 * Returned `AQL_WARNING()` to emit warnings from UDFs.
 
-* Fixed internal issue BTS-107, offset over the mainquery passed through a
+* Fixed internal issue BTS-107, offset over the main query passed through a
   subquery which has modification access to shards could yield incorrect
   results, if shards are large enough and skipping was large enough, both to
   overflow the batch-size in AQL for each shard individually.
 
-  The Following Query would be effected:
+  The following query would be affected:
 
   FOR x IN 1..100
   LET sub = (
@@ -64,7 +148,7 @@ devel
   If a shard in Collection, has enough entries to fill a batch, the second shard
   could run into the issue that it actually does not skip the first 5 main
   queries, but reports their results in addition. This has the negative side
-  effect that merging the Subqueries back together was off.
+  effect that merging the subqueries back together was off.
 
 * Correct some log entries.
 

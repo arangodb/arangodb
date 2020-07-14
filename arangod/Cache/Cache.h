@@ -85,7 +85,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
   virtual Finding find(void const* key, std::uint32_t keySize) = 0;
   virtual Result insert(CachedValue* value) = 0;
   virtual Result remove(void const* key, std::uint32_t keySize) = 0;
-  virtual Result blacklist(void const* key, std::uint32_t keySize) = 0;
+  virtual Result banish(void const* key, std::uint32_t keySize) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the ID for this cache.

@@ -287,7 +287,7 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   ctx->normalizePath(_startupDirectory, "javascript.startup-directory", true);
-  v8security.addToInternalWhitelist(_startupDirectory, FSAccessType::READ);
+  v8security.addToInternalAllowList(_startupDirectory, FSAccessType::READ);
 
   ctx->normalizePath(_moduleDirectories, "javascript.module-directory", false);
 
@@ -317,7 +317,7 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       // version-specific js path exists!
       it = versionedPath;
     }
-    v8security.addToInternalWhitelist(it, FSAccessType::READ);
+    v8security.addToInternalAllowList(it, FSAccessType::READ);
   }
 
   // check whether app-path was specified
@@ -330,8 +330,8 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // Tests if this path is either a directory (ok) or does not exist (we create
   // it in ::start) If it is something else this will throw an error.
   ctx->normalizePath(_appPath, "javascript.app-path", false);
-  v8security.addToInternalWhitelist(_appPath, FSAccessType::READ);
-  v8security.addToInternalWhitelist(_appPath, FSAccessType::WRITE);
+  v8security.addToInternalAllowList(_appPath, FSAccessType::READ);
+  v8security.addToInternalAllowList(_appPath, FSAccessType::WRITE);
   v8security.dumpAccessLists();
 
   // use a minimum of 1 second for GC
@@ -522,7 +522,7 @@ void V8DealerFeature::copyInstallationFiles() {
   }
 
   if (overwriteCopy) {
-    // sanity check before removing an existing directory:
+    // basics security checks before removing an existing directory:
     // check if for some reason we will be trying to remove the entire database
     // directory...
     if (FileUtils::exists(FileUtils::buildFilename(copyJSPath, "ENGINE"))) {
@@ -797,7 +797,7 @@ void V8DealerFeature::collectGarbage() {
           }
         }
       } else {
-        useReducedWait = true;  // sanity
+        useReducedWait = true; 
       }
     } catch (...) {
       // simply ignore errors here

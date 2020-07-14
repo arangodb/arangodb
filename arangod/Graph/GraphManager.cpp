@@ -190,7 +190,7 @@ bool GraphManager::renameGraphCollection(std::string const& oldName,
       }
     } catch (...) {
     }
-  };
+  }
 
   res = trx.finish(checkDoc.result);
   if (res.fail()) {
@@ -226,12 +226,13 @@ Result GraphManager::checkForEdgeDefinitionConflicts(std::map<std::string, EdgeD
 }
 
 OperationResult GraphManager::findOrCreateCollectionsByEdgeDefinitions(
-    std::map<std::string, EdgeDefinition> const& edgeDefinitions,
+    Graph const& graph, std::map<std::string, EdgeDefinition> const& edgeDefinitions,
     bool waitForSync, VPackSlice options) {
   for (auto const& it : edgeDefinitions) {
     EdgeDefinition const& edgeDefinition = it.second;
     OperationResult res =
-        findOrCreateCollectionsByEdgeDefinition(edgeDefinition, waitForSync, options);
+        findOrCreateCollectionsByEdgeDefinition(graph, edgeDefinition,
+                                                waitForSync, options);
 
     if (res.fail()) {
       return res;
@@ -242,7 +243,8 @@ OperationResult GraphManager::findOrCreateCollectionsByEdgeDefinitions(
 }
 
 OperationResult GraphManager::findOrCreateCollectionsByEdgeDefinition(
-    EdgeDefinition const& edgeDefinition, bool waitForSync, VPackSlice const options) {
+    Graph const& graph, EdgeDefinition const& edgeDefinition, bool waitForSync,
+    VPackSlice const options) {
   std::string const& edgeCollection = edgeDefinition.getName();
   std::shared_ptr<LogicalCollection> def =
       getCollectionByName(ctx()->vocbase(), edgeCollection);
@@ -269,6 +271,11 @@ OperationResult GraphManager::findOrCreateCollectionsByEdgeDefinition(
       OperationResult res = createVertexCollection(colName, waitForSync, options);
       if (res.fail()) {
         return res;
+      }
+    } else {
+      auto res = graph.validateCollection(*def.get());
+      if (res.fail()) {
+        return OperationResult{std::move(res)};
       }
     }
   }

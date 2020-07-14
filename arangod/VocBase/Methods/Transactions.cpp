@@ -113,7 +113,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
   TRI_GET_GLOBALS();
   TRI_GET_GLOBAL_STRING(WaitForSyncKey);
 
-  // do extra sanity checking for user facing APIs, parsing
+  // do extra validity checking for user facing APIs, parsing
   // is performed in `transaction::Options::fromVelocyPack`
   if (TRI_HasProperty(context, isolate, object, "lockTimeout")) {
     auto lockTimeout = object->Get(context, TRI_V8_ASCII_STRING(isolate, "lockTimeout"));
