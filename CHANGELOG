@@ -1,7 +1,17 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+
 * Fixed hotbackup upload and download with encryption at rest key indirection.
+
+* Fixed a rare race in Agents, if the leader is rebooted quickly there is a
+  chance that it is still assumed to be the leader, but delivers a state shortly
+  in the past.
+
+* Keep the list of last-acknowledged entires in Agency more consistent.
+  During leadership take-over it was possible to get into a situation that the
+  new leader does not successfully report the agency config, which was
+  eventually fixed by the Agent itself. Now this situation is impossible.
 
 * Fixed a race in the ConnectionPool which could lease out a connection that got
   its idle timeout after the lease was completed. This could lead to sporadic
