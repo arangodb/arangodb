@@ -104,7 +104,7 @@ if [ -z "$ENCRYPTION_SECRET" ];then
   ENCRYPTION=""
 else
   echo -n $ENCRYPTION_SECRET > cluster/encryption-secret.txt
-  ENCRYPTION="--rocksdb.encryption-keyfile $ENCRYPTION_SECRET"
+  ENCRYPTION="--rocksdb.encryption-keyfile cluster/encryption-secret.txt"
 fi
 
 if [ "$TRANSPORT" == "ssl" ]; then
