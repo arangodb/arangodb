@@ -91,7 +91,7 @@ static std::ostream& operator<<(std::ostream& os, slice_access::type type) {
 #undef enum_to_string
 }
 
-static std::ostream& operator<<(std::ostream& os, slice_access_tape const& tape) {
+static inline std::ostream& operator<<(std::ostream& os, slice_access_tape const& tape) {
   for (auto const& e : tape.tape) {
     os << e.key << ' ' << e.what << ' ' << e.parameter << std::endl;
   }
