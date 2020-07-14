@@ -1,6 +1,9 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* In rare cases SmartBFS could use a wrong index for looking up edges. This is
+  fixed now.
+
 * Updated arangosync to 0.7.8.
 
 * Added missing state rollback for failed attempt-based write locking of spin
