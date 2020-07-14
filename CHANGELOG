@@ -1,6 +1,8 @@
 devel
 -----
 
+* In rare cases SmartBFS could use a wrong index for looking up edges. This is fixed now.
+
 * Re-enable access to GET `/_admin/cluster/numberOfServers` for all users by
   default. Requests to PUT `/_admin/cluster/numberOfServers` require admin
   user privileges. This restores the pre-3.7 behavior. 
