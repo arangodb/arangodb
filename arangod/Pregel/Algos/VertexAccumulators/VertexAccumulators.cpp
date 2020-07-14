@@ -68,16 +68,16 @@ auto VertexAccumulators::createComputation(WorkerConfig const* config) const
 
 auto VertexAccumulators::inputFormat() const -> graph_format* {
   // TODO: The resultField needs to be configurable from the user's side
-  return new GraphFormat(_server, "vertexAccumulators");
+  return new GraphFormat(_server, _options.resultField);
 }
 
 void VertexAccumulators::parseUserParams(VPackSlice userParams) {
   LOG_DEVEL << "parsing user params: " << userParams;
-  auto result = parseAccumulatorOptions(userParams);
+  auto result = parseVertexAccumulatorOptions(userParams);
   if(result) {
-    _options = result.get();
+    _options = std::move(result).get();
   } else {
-    // What do we do on error?
+    // What do we do on error? std::terminate()
     LOG_DEVEL << result.error().as_string();
   }
 }

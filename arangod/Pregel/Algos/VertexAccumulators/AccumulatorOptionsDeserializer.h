@@ -31,18 +31,37 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <VPackDeserialize/deserializer.h>
+#include <VPackDeserializer/deserializer.h>
+
+enum class AccumulatorType {
+  MIN, MAX, SUM
+};
+
+std::ostream& operator<<(std::ostream&, AccumulatorType const&);
+
+enum class AccumulatorValueType {
+  DOUBLES,
+  INTS,
+  STRINGS,
+};
 
 struct AccumulatorOptions {
-  std::string type;
-/*  std::string valueType;
+  AccumulatorType type;
+  AccumulatorValueType valueType;
   bool storeSender;
   std::string neighborFilter;
-  std::string updateExpression; */
+  std::string updateExpression;
+};
+
+struct VertexAccumulatorOptions {
+  std::string resultField;
+  std::vector<AccumulatorOptions> accumulators;
 };
 
 std::ostream& operator<<(std::ostream&, AccumulatorOptions const&);
+std::ostream& operator<<(std::ostream&, AccumulatorValueType const&);
 
-result<AccumulatorOptions, error> parseAccumulatorOptions(VPackSlice slice);
+deserializer_result<AccumulatorOptions> parseAccumulatorOptions(VPackSlice slice);
+deserializer_result<VertexAccumulatorOptions> parseVertexAccumulatorOptions(VPackSlice slice);
 
 #endif

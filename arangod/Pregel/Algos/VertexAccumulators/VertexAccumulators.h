@@ -56,7 +56,7 @@ std::ostream& operator<<(std::ostream&, VertexData const&);
 struct EdgeData {
   EdgeData();
 
-  
+
 };
 
 struct MessageData {
@@ -115,7 +115,7 @@ struct VertexAccumulators : public Algorithm<VertexData, EdgeData, MessageData> 
   void parseUserParams(VPackSlice userParams);
 
  private:
-  AccumulatorOptions _options;
+  VertexAccumulatorOptions _options;
 
 };
 }  // namespace algos

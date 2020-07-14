@@ -24,34 +24,111 @@
 
 #include "AccumulatorOptionsDeserializer.h"
 
-#include <VPackDeserialize/deserializer.h>
+#include <VPackDeserializer/deserializer.h>
 
 using namespace deserializer;
 
+/* clang-format off */
+
+constexpr const char accumulatorType_max[] = "max";
+constexpr const char accumulatorType_min[] = "min";
+constexpr const char accumulatorType_sum[] = "sum";
+
+using accumulator_type_deserializer = enum_deserializer<AccumulatorType,
+    enum_member<AccumulatorType::MIN, values::string_value<accumulatorType_max>>,
+    enum_member<AccumulatorType::MAX, values::string_value<accumulatorType_min>>,
+    enum_member<AccumulatorType::SUM, values::string_value<accumulatorType_sum>>>;
+
+constexpr const char accumulatorValueType_doubles[] = "doubles";
+constexpr const char accumulatorValueType_ints[] = "ints";
+constexpr const char accumulatorValueType_strings[] = "strings";
+
+using accumulator_value_type_deserializer = enum_deserializer<AccumulatorValueType,
+    enum_member<AccumulatorValueType::DOUBLES, values::string_value<accumulatorValueType_doubles>>,
+    enum_member<AccumulatorValueType::INTS, values::string_value<accumulatorValueType_ints>>,
+    enum_member<AccumulatorValueType::STRINGS, values::string_value<accumulatorValueType_strings>>
+>;
 
 constexpr const char accumulatorType[] = "accumulatorType";
-/*
 constexpr const char valueType[] = "valueType";
 constexpr const char storeSender[] = "storeSender";
 constexpr const char neighborFilter[] = "neighborFilter";
 constexpr const char updateExpression[] = "updateExpression";
-*/
 
-using accumulator_type_parameter =
-  factory_deserialized_parameter<accumulatorType, values::value_deserializer<std::string>, true>;
-
-using accumulator_options_plan = parameter_list<accumulator_type_parameter>;
+using accumulator_options_plan = parameter_list<
+    factory_deserialized_parameter<accumulatorType, accumulator_type_deserializer, true>,
+    factory_deserialized_parameter<valueType, accumulator_value_type_deserializer, true>,
+    factory_simple_parameter<storeSender, bool, false>,
+    factory_deserialized_parameter<neighborFilter, values::value_deserializer<std::string>, true>,
+    factory_deserialized_parameter<updateExpression, values::value_deserializer<std::string>, true>
+>;
 
 using accumulator_options_deserializer =
     utilities::constructing_deserializer<AccumulatorOptions, accumulator_options_plan>;
+
+constexpr const char resultField[] = "resultField";
+constexpr const char accumulators[] = "accumulators";
+
+template<typename T>
+using my_vector = std::vector<T>;
+
+template<typename D, template <typename> typename C>
+using non_empty_array_deserializer = validate<
+    array_deserializer<D, C>, utilities::not_empty_validator>;
+
+using accumulators_list_deserializer = non_empty_array_deserializer<accumulator_options_deserializer, my_vector>;
+
+using vertex_accumulator_options_plan = parameter_list<
+    factory_deserialized_parameter<resultField, values::value_deserializer<std::string>, true>,
+    factory_deserialized_parameter<accumulators, accumulators_list_deserializer, true>
+>;
+
+using vertex_accumulator_options_deserializer =
+    utilities::constructing_deserializer<VertexAccumulatorOptions, vertex_accumulator_options_plan>;
+
+/* clang-format on */
 
 result<AccumulatorOptions, error> parseAccumulatorOptions(VPackSlice slice) {
   return deserialize<accumulator_options_deserializer>(slice);
 }
 
-std::ostream& operator<<(std::ostream& os, AccumulatorOptions const& opt) {
-  os << "VertexAccumulator:" << std::endl;
-  os << accumulatorType << ": " << opt.type;
+result<VertexAccumulatorOptions, error> parseVertexAccumulatorOptions(VPackSlice slice) {
+  return deserialize<vertex_accumulator_options_deserializer>(slice);
+}
+
+std::ostream& operator<<(std::ostream& os, AccumulatorType const& type) {
+  switch (type) {
+    case AccumulatorType::MIN:
+      os << accumulatorType_min;
+      break;
+    case AccumulatorType::MAX:
+      os << accumulatorType_max;
+      break;
+    case AccumulatorType::SUM:
+      os << accumulatorType_sum;
+      break;
+  }
   return os;
 }
 
+std::ostream& operator<<(std::ostream& os, AccumulatorValueType const& type) {
+  switch (type) {
+    case AccumulatorValueType::DOUBLES:
+      os << accumulatorValueType_doubles;
+      break;
+    case AccumulatorValueType::INTS:
+      os << accumulatorValueType_ints;
+      break;
+    case AccumulatorValueType::STRINGS:
+      os << accumulatorValueType_strings;
+      break;
+  }
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, AccumulatorOptions const& opt) {
+  os << "VertexAccumulator:" << std::endl;
+  os << accumulatorType << ": " << opt.type << ", ";
+  os << valueType << ": " << opt.valueType;
+  return os;
+}
