@@ -11,9 +11,9 @@ EVALUATOR_OBJ_FILES := $(patsubst $(EVALUATOR_SRC_DIR)/%.cpp,$(EVALUATOR_OBJ_DIR
 
 LDFLAGS := 
 CPPFLAGS :=  
-CXXFLAGS := -std=c++17 -I ../../3rdParty/velocypack/include
+CXXFLAGS := -std=c++17 -I ../../3rdParty/velocypack/include -I ../../lib -I ../../arangod
 
-eval: $(VELOCYPACK_OBJ_FILES) $(EVALUATOR_OBJ_FILES)
+eval: $(VELOCYPACK_OBJ_FILES) $(EVALUATOR_OBJ_FILES) obj/xxhash.o obj/GreenspunTest.o
 	g++ $(LDFLAGS) -o $@ $^
 
 $(VELOCYPACK_OBJ_DIR)/%.o: $(VELOCYPACK_SRC_DIR)/%.cpp
@@ -21,3 +21,10 @@ $(VELOCYPACK_OBJ_DIR)/%.o: $(VELOCYPACK_SRC_DIR)/%.cpp
 
 $(EVALUATOR_OBJ_DIR)/%.o: $(EVALUATOR_SRC_DIR)/%.cpp
 	g++ $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $<
+
+obj/xxhash.o: ../../lib/Basics/xxhash.cpp
+	g++ $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $<
+
+obj/GreenspunTest.o: GreenspunTest.cpp
+	g++ $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $<
+
