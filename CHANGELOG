@@ -1,6 +1,8 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Updated arangosync to 0.7.8.
+
 * Fixed a race between a new request and the keepAlive timeout.
 
 * Fixed hotbackup upload and download with encryption at rest key indirection.
@@ -84,8 +86,6 @@ v3.7.1-rc.1 (XXXX-XX-XX)
 * Fixed issue OASIS-252: Hotbackup agency locks without clientId.
 
 * Fixed internal-issue #726: added restore handling for custom analyzers.
-
-* Updated arangosync to 0.7.7.
 
 * Fixed a potential agency crash if trace logging is on.
 
