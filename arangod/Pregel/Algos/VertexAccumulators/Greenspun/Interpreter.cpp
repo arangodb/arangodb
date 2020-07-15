@@ -23,7 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // #include "Basics/debugging.h"
-#include "Evaluator.h"
+#include "Interpreter.h"
 #include "Primitives.h"
 
 #include <iostream>
@@ -31,8 +31,6 @@
 #include <velocypack/Iterator.h>
 
 using namespace arangodb::velocypack;
-
-std::unordered_map<std::string, std::function<void(EvalContext& ctx, VPackSlice const slice, VPackBuilder& result)>> primitives;
 
 void InitInterpreter() {
     RegisterPrimitives();

@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "Evaluator.h"
+#include "Interpreter.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"

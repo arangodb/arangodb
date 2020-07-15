@@ -24,6 +24,14 @@
 
 #include "Primitives.h"
 
+#include "Interpreter.h"
+
+#include <velocypack/Iterator.h>
+
+using namespace arangodb::velocypack;
+
+std::unordered_map<std::string, std::function<void(EvalContext& ctx, VPackSlice const slice, VPackBuilder& result)>> primitives;
+
 void Prim_Banana(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto tmp = int64_t{0};
   for (auto p : ArrayIterator(params)) {

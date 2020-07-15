@@ -25,4 +25,6 @@
 #ifndef ARANGODB_PREGEL_GREENSPUN_PRIMITIVES_H
 #define ARANGODB_PREGEL_GREENSPUN_PRIMITIVES_H 1
 
+void RegisterPrimitives();
+
 #endif
