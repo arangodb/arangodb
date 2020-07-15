@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed hotbackup upload and download with encryption at rest key indirection.
+
 * Fixed a race between a new request and the keepAlive timeout.
 
 * Fixed crash in cleanup of parallel traversal queries.
