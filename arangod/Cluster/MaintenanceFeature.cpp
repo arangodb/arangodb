@@ -168,13 +168,13 @@ void MaintenanceFeature::initializeMetrics() {
 
   _phase1_accum_runtime_msec =
       metricsFeature.counter(StaticStrings::MaintenancePhaseOneAccumRuntimeMs,
-                             0, "Accumulated runtime of phase one");
+                             0, "Accumulated runtime of phase one [ms]");
   _phase2_accum_runtime_msec =
       metricsFeature.counter(StaticStrings::MaintenancePhaseTwoAccumRuntimeMs,
-                             0, "Accumulated runtime of phase two");
+                             0, "Accumulated runtime of phase two [ms]");
   _agency_sync_total_accum_runtime_msec =
       metricsFeature.counter(StaticStrings::MaintenanceAgencySyncAccumRuntimeMs,
-                             0, "Accumulated runtime of agency sync phase");
+                             0, "Accumulated runtime of agency sync phase [ms]");
 
   _shards_out_of_sync = metricsFeature.gauge<uint64_t>(
       StaticStrings::ShardsOutOfSync, 0,
@@ -215,7 +215,7 @@ void MaintenanceFeature::initializeMetrics() {
                                  "Time spend execution the action [ms]"),
         metricsFeature.histogram(
             {StaticStrings::MaintenanceActionQueueTimeMs, action_label},
-            log_scale_t<uint64_t>(2, 82, 86400000, 12),
+            log_scale_t<uint64_t>(2, 82, 3600000, 12),
             "Time spend in the queue before execution [ms]"),
 
         metricsFeature.counter({StaticStrings::MaintenanceActionAccumRuntimeMs, action_label},
