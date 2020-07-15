@@ -1,6 +1,8 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Fixed a race between a new request and the keepAlive timeout.
+
 * Fixed hotbackup upload and download with encryption at rest key indirection.
 
 * Fixed crash in cleanup of parallel traversal queries.
