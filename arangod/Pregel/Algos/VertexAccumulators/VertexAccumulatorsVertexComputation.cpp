@@ -22,9 +22,43 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <Pregel/Algos/VertexAccumulators/Greenspun/Interpreter.h>
 #include "VertexAccumulators.h"
 
+
 using namespace arangodb::pregel::algos;
+
+struct MyEvalContext : EvalContext {
+
+
+  std::string const& getThisId() const override {
+    return thisId;
+  }
+
+  VPackSlice getDocumentById(std::string_view id) const override {
+      std::abort();
+  }
+
+  VPackSlice getAccumulatorValue(std::string_view id) const override {
+      return VPackSlice::zeroSlice();
+  }
+
+  void updateAccumulator(std::string_view accumId, std::string_view vertexId, VPackSlice value) override {
+      std::abort();
+  }
+
+  void setAccumulator(std::string_view accumId, std::string_view vertexId, VPackSlice value) override {
+     std::abort();
+  }
+
+  void enumerateEdges(std::function<void(VPackSlice edge, VPackSlice vertex)> cb) const override {
+    std::abort();
+  }
+
+  std::string thisId;
+  VertexAccumulators::VertexComputation *computation;
+};
+
 
 VertexAccumulators::VertexComputation::VertexComputation() {}
 
@@ -66,7 +100,7 @@ void VertexAccumulators::VertexComputation::compute(MessageIterator<MessageData>
 */
   }
 
-  /*
+
   MessageData message(pregelId(), currentComponent);
   RangeIterator<Edge<uint64_t>> edges = this->getEdges();
   for (; edges.hasMore(); ++edges) {
@@ -80,5 +114,5 @@ void VertexAccumulators::VertexComputation::compute(MessageIterator<MessageData>
 
     sendMessage(edge, message);
   }
-  */
+
 }

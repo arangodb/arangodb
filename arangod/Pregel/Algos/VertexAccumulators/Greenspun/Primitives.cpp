@@ -144,8 +144,10 @@ void Prim_EqHuh(EvalContext& ctx, VPackSlice const params, VPackBuilder& result)
 
 void Prim_If(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   for (auto&& pair : VPackArrayIterator(params)) {
-    auto&& [cond, slice] = unpackTuple<bool, VPackSlice>(pair);
-    if (cond) {
+    VPackBuilder condResult;
+    auto&& [cond, slice] = unpackTuple<VPackSlice, VPackSlice>(pair);
+    Evaluate(ctx, cond, condResult);
+    if (!condResult.slice().isFalse()) {
       Evaluate(ctx, slice, result);
       return;
     }
@@ -194,13 +196,36 @@ void Prim_AccumRef(EvalContext& ctx, VPackSlice const params, VPackBuilder& resu
 }
 
 void Prim_Update(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
-  auto&& [accumId, vertexId, value] = unpackTuple<std::string_view, std::string_view, VPackSlice>(params);
+  auto&& [accumId, vertexId, value] =
+      unpackTuple<std::string_view, std::string_view, VPackSlice>(params);
   ctx.updateAccumulator(accumId, vertexId, value);
 }
 
 void Prim_Set(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
-  auto&& [accumId, vertexId, value] = unpackTuple<std::string_view, std::string_view, VPackSlice>(params);
+  auto&& [accumId, vertexId, value] =
+      unpackTuple<std::string_view, std::string_view, VPackSlice>(params);
   ctx.setAccumulator(accumId, vertexId, value);
+}
+
+void Prim_For(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+  auto&& [dir, vars, body] = unpackTuple<std::string_view, VPackSlice, VPackSlice>(params);
+  auto&& [edgeVar, otherVertexVar] = unpackTuple<std::string, std::string>(vars);
+
+  TRI_ASSERT(ctx.variables.find(edgeVar) == std::end(ctx.variables));
+  TRI_ASSERT(ctx.variables.find(otherVertexVar) == std::end(ctx.variables));
+
+  // TODO translate direction and pass to enumerateEdges
+  ctx.enumerateEdges([&, edgeVar = edgeVar,
+                      otherVertexVar = otherVertexVar, body = body](VPackSlice edge, VPackSlice vertex) {
+    ctx.variables[edgeVar] = edge;
+    ctx.variables[otherVertexVar] = vertex;
+
+    VPackBuilder localResult;
+    Evaluate(ctx, body, localResult);
+  });
+
+  ctx.variables.erase(edgeVar);
+  ctx.variables.erase(otherVertexVar);
 }
 
 void RegisterPrimitives() {
@@ -219,4 +244,5 @@ void RegisterPrimitives() {
   primitives["accumref"] = Prim_AccumRef;
   primitives["update"] = Prim_Update;
   primitives["set"] = Prim_Set;
+  primitives["for"] = Prim_For;
 }

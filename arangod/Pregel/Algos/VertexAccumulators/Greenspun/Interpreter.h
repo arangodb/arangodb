@@ -31,32 +31,18 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-
 struct EvalContext {
+  virtual ~EvalContext() = default;
   // Variables go here.
   std::unordered_map<std::string, VPackSlice> variables;
 
-  std::string const& getThisId() const {
-    return thisId;
-  }
+  virtual std::string const& getThisId() const = 0;
 
-  VPackSlice getDocumentById(std::string_view id) {
-    return VPackSlice::emptyObjectSlice();  // TODO
-  }
-
-  VPackSlice getAccumulatorValue(std::string_view id) {
-    return VPackSlice::zeroSlice(); // TODO
-  }
-
-  void updateAccumulator(std::string_view accumId, std::string_view vertexId, VPackSlice value) {
-    ; // TODO
-  }
-
-  void setAccumulator(std::string_view accumId, std::string_view vertexId, VPackSlice value) {
-    ; // TODO
-  }
-
-  std::string thisId;
+  virtual VPackSlice getDocumentById(std::string_view id) const = 0;
+  virtual VPackSlice getAccumulatorValue(std::string_view id) const = 0;
+  virtual void updateAccumulator(std::string_view accumId, std::string_view vertexId, VPackSlice value) = 0;
+  virtual void setAccumulator(std::string_view accumId, std::string_view vertexId, VPackSlice value) = 0;
+  virtual void enumerateEdges(std::function<void(VPackSlice edge, VPackSlice vertex)> cb) const = 0;
 };
 
 //
