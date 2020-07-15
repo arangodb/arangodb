@@ -1,6 +1,8 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
+* Updated arangosync to 0.7.8.
+
 * Added missing state rollback for failed attempt-based write locking of spin
   locks.
 
