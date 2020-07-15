@@ -1478,8 +1478,10 @@ static int clusterSendToAllServers(v8::Isolate* isolate, std::string const& dbna
   fuerte::RestVerb verb = network::arangoRestVerbToFuerte(method);
 
   network::RequestOptions reqOpts;
+
   reqOpts.database = dbname;
   reqOpts.timeout = network::Timeout(3600);
+  reqOpts.contentType = StaticStrings::MimeTypeJsonNoEncoding;
 
   std::vector<futures::Future<network::Response>> futures;
   futures.reserve(DBServers.size());

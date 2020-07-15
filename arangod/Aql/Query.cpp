@@ -1196,16 +1196,22 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, bool sync,
         for (size_t i = 0; i < parents.size(); i++) {
           TRI_ASSERT(parents[i]->getType() == ExecutionNode::DISTRIBUTE_CONSUMER);
           ExecutionNode* graph = parents[i]->getFirstParent();
-          TRI_ASSERT(graph->getType() == ExecutionNode::TRAVERSAL);
-          plan->unlinkNode(parents[i]); // Dist-Consumer node does not like toVelocyPack
-          if (i > 0) {
-            // unlink additional ASYNC nodes, explainer does not handle cycles
-            ExecutionNode* async = graph->getFirstParent();
-            TRI_ASSERT(async->getType() == ExecutionNode::ASYNC);
-            ExecutionNode* gather = async->getFirstParent();
-            TRI_ASSERT(gather->getType() == ExecutionNode::GATHER);
-            gather->removeDependency(async);
-            plan->clearVarUsageComputed();
+          if (graph) {
+            TRI_ASSERT(graph->getType() == ExecutionNode::TRAVERSAL);
+            plan->unlinkNode(parents[i]); // Dist-Consumer node does not like toVelocyPack
+            if (i > 0) {
+              // unlink additional ASYNC nodes, explainer does not handle cycles
+              ExecutionNode* async = graph->getFirstParent();
+              if (async) {
+                TRI_ASSERT(async->getType() == ExecutionNode::ASYNC);
+                ExecutionNode* gather = async->getFirstParent();
+                if (gather) {
+                  TRI_ASSERT(gather->getType() == ExecutionNode::GATHER);
+                  gather->removeDependency(async);
+                  plan->clearVarUsageComputed();
+                }
+              }
+            }
           }
         }
       }
