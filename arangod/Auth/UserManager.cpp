@@ -797,6 +797,7 @@ auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
   return level;
 }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 /// Only used for testing
 void auth::UserManager::setAuthInfo(auth::UserMap const& newMap) {
   MUTEX_LOCKER(guard, _loadFromDBLock);      // must be first
@@ -804,3 +805,4 @@ void auth::UserManager::setAuthInfo(auth::UserMap const& newMap) {
   _userCache = newMap;
   _internalVersion.store(_globalVersion.load());
 }
+#endif
