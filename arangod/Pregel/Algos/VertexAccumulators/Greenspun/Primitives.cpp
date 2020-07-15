@@ -29,6 +29,9 @@
 #include "Interpreter.h"
 #include "Primitives.h"
 
+std::unordered_map<std::string, std::function<void(EvalContext& ctx, VPackSlice const slice, VPackBuilder& result)>> primitives;
+
+// FIXME: This needs to go into support code somehwere.
 namespace detail {
 template <class>
 inline constexpr bool always_false_v = false;
@@ -66,7 +69,7 @@ auto unpackTuple(VPackArrayIterator& iter, std::index_sequence<Is...>) {
       ...);
   return result;
 }
-}
+}  // namespace detail
 /// @brief unpacks an array as tuple. Use like this: auto&& [a, b, c] = unpack<size_t, std::string, double>(slice);
 template <typename... Ts>
 static std::tuple<Ts...> unpackTuple(VPackSlice slice) {
@@ -91,7 +94,7 @@ void Prim_Sub(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto iter = VPackArrayIterator(params);
   if (iter.valid()) {
     tmp = (*iter).getNumericValue<int64_t>();
-    for(; iter.valid(); iter++) {
+    for (; iter.valid(); iter++) {
       tmp -= (*iter).getNumericValue<int64_t>();
     }
   }
@@ -111,7 +114,7 @@ void Prim_Div(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto iter = VPackArrayIterator(params);
   if (iter.valid()) {
     tmp = (*iter).getNumericValue<int64_t>();
-    for(; iter.valid(); iter++) {
+    for (; iter.valid(); iter++) {
       tmp /= (*iter).getNumericValue<int64_t>();
     }
   }
@@ -124,13 +127,13 @@ void Prim_List(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) 
 }
 
 void Prim_EqHuh(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
-  auto iter = VPackArrayIterator (params);
+  auto iter = VPackArrayIterator(params);
   if (iter.valid()) {
     auto proto = *iter;
-    for(; iter.valid(); iter++) {
+    for (; iter.valid(); iter++) {
       if (!arangodb::basics::VelocyPackHelper::equal(proto, *iter, true)) {
         result.add(VPackValue(false));
-        return ;
+        return;
       }
     }
   }
@@ -138,7 +141,7 @@ void Prim_EqHuh(EvalContext& ctx, VPackSlice const params, VPackBuilder& result)
 }
 
 void Prim_If(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
-  for(auto&& pair : VPackArrayIterator (params)) {
+  for (auto&& pair : VPackArrayIterator(params)) {
     auto&& [cond, slice] = unpackTuple<bool, VPackSlice>(pair);
     if (cond) {
       Evaluate(ctx, slice, result);
@@ -148,7 +151,6 @@ void Prim_If(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
 
   result.add(VPackSlice::noneSlice());
 }
-
 
 void RegisterPrimitives() {
   primitives["banana"] = Prim_Banana;
@@ -160,6 +162,3 @@ void RegisterPrimitives() {
   primitives["eq?"] = Prim_EqHuh;
   primitives["if"] = Prim_If;
 }
-
-
-
