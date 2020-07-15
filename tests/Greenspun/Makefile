@@ -13,6 +13,13 @@ LDFLAGS :=
 CPPFLAGS :=  
 CXXFLAGS := -std=c++17 -I ../../3rdParty/velocypack/include -I ../../lib -I ../../arangod
 
+default: dirs eval
+
+dirs:
+	mkdir -p $(VELOCYPACK_OBJ_DIR)
+	mkdir -p $(EVALUATOR_OBJ_DIR)
+
+
 eval: $(VELOCYPACK_OBJ_FILES) $(EVALUATOR_OBJ_FILES) obj/xxhash.o obj/GreenspunTest.o
 	g++ $(LDFLAGS) -o $@ $^
 
@@ -28,3 +35,7 @@ obj/xxhash.o: ../../lib/Basics/xxhash.cpp
 obj/GreenspunTest.o: GreenspunTest.cpp
 	g++ $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $<
 
+
+clean:
+	rm -rf $(VELOCYPACK_OBJ_DIR)
+	rm -rf $(EVALUATOR_OBJ_DIR)
