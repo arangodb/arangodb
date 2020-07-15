@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated arangosync to 0.7.8.
+
 * Fixed hotbackup upload and download with encryption at rest key indirection.
 
 * Fixed a race between a new request and the keepAlive timeout.
