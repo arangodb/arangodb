@@ -35,6 +35,28 @@
 struct EvalContext {
   // Variables go here.
   std::unordered_map<std::string, VPackSlice> variables;
+
+  std::string const& getThisId() const {
+    return thisId;
+  }
+
+  VPackSlice getDocumentById(std::string_view id) {
+    return VPackSlice::emptyObjectSlice();  // TODO
+  }
+
+  VPackSlice getAccumulatorValue(std::string_view id) {
+    return VPackSlice::zeroSlice(); // TODO
+  }
+
+  void updateAccumulator(std::string_view accumId, std::string_view vertexId, VPackSlice value) {
+    ; // TODO
+  }
+
+  void setAccumulator(std::string_view accumId, std::string_view vertexId, VPackSlice value) {
+    ; // TODO
+  }
+
+  std::string thisId;
 };
 
 //

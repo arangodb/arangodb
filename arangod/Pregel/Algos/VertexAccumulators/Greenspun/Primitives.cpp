@@ -166,6 +166,43 @@ void Prim_VarRef(EvalContext& ctx, VPackSlice const params, VPackBuilder& result
   }
 }
 
+void Prim_Attrib(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+  auto&& [key, slice] = unpackTuple<VPackSlice, VPackSlice>(params);
+  if (key.isString()) {
+    result.add(slice.get(key.stringRef()));
+  } else {
+    std::vector<VPackStringRef> path;
+    for (auto&& pathStep : VPackArrayIterator(key)) {
+      path.emplace_back(pathStep.stringRef());
+    }
+    result.add(slice.get(path));
+  }
+}
+
+void Prim_This(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+  result.add(VPackValue(ctx.getThisId()));
+}
+
+void Prim_Doc(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+  auto&& [docId] = unpackTuple<std::string_view>(params);
+  result.add(ctx.getDocumentById(docId));
+}
+
+void Prim_AccumRef(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+  auto&& [accumId] = unpackTuple<std::string_view>(params);
+  result.add(ctx.getAccumulatorValue(accumId));
+}
+
+void Prim_Update(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+  auto&& [accumId, vertexId, value] = unpackTuple<std::string_view, std::string_view, VPackSlice>(params);
+  ctx.updateAccumulator(accumId, vertexId, value);
+}
+
+void Prim_Set(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+  auto&& [accumId, vertexId, value] = unpackTuple<std::string_view, std::string_view, VPackSlice>(params);
+  ctx.setAccumulator(accumId, vertexId, value);
+}
+
 void RegisterPrimitives() {
   primitives["banana"] = Prim_Banana;
   primitives["+"] = Prim_Banana;
@@ -176,4 +213,10 @@ void RegisterPrimitives() {
   primitives["eq?"] = Prim_EqHuh;
   primitives["if"] = Prim_If;
   primitives["varref"] = Prim_VarRef;
+  primitives["attrib"] = Prim_Attrib;
+  primitives["this"] = Prim_This;
+  primitives["doc"] = Prim_Doc;
+  primitives["accumref"] = Prim_AccumRef;
+  primitives["update"] = Prim_Update;
+  primitives["set"] = Prim_Set;
 }
