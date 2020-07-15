@@ -43,9 +43,9 @@ struct EvalContext {
 // assignment
 //
 
-std::unordered_map<std::string, std::function<void(EvalContext&, VPackSlice, VPackBuilder&)>> primitives;
 
 void Evaluate(EvalContext& ctx, VPackSlice const slice, VPackBuilder& result);
+void InitInterpreter();
 
 
 #endif
