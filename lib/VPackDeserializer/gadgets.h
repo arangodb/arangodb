@@ -24,6 +24,7 @@
 #ifndef VELOCYPACK_GADGETS_H
 #define VELOCYPACK_GADGETS_H
 #include <cstddef>
+#include <optional>
 #include <tuple>
 
 namespace arangodb {
