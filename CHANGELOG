@@ -1,6 +1,8 @@
 devel
 -----
 
+* Make sure cluster statistics in web UI work in case a coordinator is down.
+
 * Fixed a race between a new request and the keepAlive timeout.
 
 * Fixed crash in cleanup of parallel traversal queries.
