@@ -25,4 +25,9 @@
 #ifndef ARANGODB_PREGEL_GREENSPUN_PRIMITIVES_H
 #define ARANGODB_PREGEL_GREENSPUN_PRIMITIVES_H 1
 
+#include "Interpreter.h"
+
+extern std::unordered_map<std::string, std::function<void(EvalContext& ctx, VPackSlice const slice, VPackBuilder& result)>> primitives;
+void RegisterPrimitives();
+
 #endif
