@@ -48,7 +48,8 @@ log into the database. The default is *true*.
 
 @RESTSTRUCT{extra,get_api_database_new_USERS,object,optional,}
 A JSON object with extra user information. It is used by the web interface
-to store graph viewer settings and saved queries.
+to store graph viewer settings and saved queries. Should not be set or
+modified by end users, as custom attributes will not be preserved.
 
 @RESTDESCRIPTION
 Creates a new database
