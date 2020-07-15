@@ -46,9 +46,9 @@ class result {
   result(error_tag_t, E e) : value(std::in_place_index<1>, std::move(e)) {}
 
   result(result const&) = default;
-  result(result&&) noexcept = default;
+  result(result&&) = default;
   result& operator=(result const&) = default;
-  result& operator=(result&&) noexcept = default;
+  result& operator=(result&&) = default;
 
   operator bool() const noexcept { return ok(); }
   bool ok() const noexcept { return value.index() == 0; }
