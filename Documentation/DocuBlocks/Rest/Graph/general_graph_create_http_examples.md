@@ -45,6 +45,8 @@ Cannot be modified later.
 
 @RESTSTRUCT{replicationFactor,post_api_gharial_create_opts,integer,required,}
 The replication factor used when initially creating collections for this graph.
+Can be set to `"satellite"` to create a SatelliteGraph, which will ignore
+*numberOfShards*, *minReplicationFactor* and *writeConcern*.
 
 @RESTSTRUCT{writeConcern,post_api_gharial_create_opts,integer,optional,}
 Write concern for new collections in the graph.

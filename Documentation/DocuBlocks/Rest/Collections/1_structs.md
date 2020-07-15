@@ -41,7 +41,8 @@ determine the target shard for documents. _(cluster only)_
 
 @RESTSTRUCT{replicationFactor,collection_info,integer,optional,}
 contains how many copies of each shard are kept on different DBServers.
-_(cluster only)_
+It is an integer number in the range of 1-10 or the string `"satellite"`
+for a SatelliteCollection. _(cluster only)_
 
 @RESTSTRUCT{writeConcern,collection_info,integer,optional,}
 determines how many copies of each shard are required to be

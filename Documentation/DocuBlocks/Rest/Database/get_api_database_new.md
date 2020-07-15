@@ -14,7 +14,7 @@ Optional object which can contain the following attributes:
 The sharding method to use for new collections in this database. Valid values
 are: "", "flexible", or "single". The first two are equivalent. _(cluster only)_
 
-@RESTSTRUCT{replicationFactor,get_api_database_new_OPTIONS,string,optional,}
+@RESTSTRUCT{replicationFactor,get_api_database_new_OPTIONS,integer,optional,}
 Default replication factor for new collections created in this database.
 Special values include "satellite", which will replicate the collection to
 every DB-server, and 1, which disables replication. _(cluster only)_
