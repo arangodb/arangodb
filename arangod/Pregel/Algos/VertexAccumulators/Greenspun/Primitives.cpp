@@ -39,7 +39,10 @@ auto unpackTuple(VPackArrayIterator& iter, std::index_sequence<Is...>) {
       [&result](VPackSlice slice) {
         TRI_ASSERT(!slice.isNone());
         auto& value = std::get<Is>(result);
-        if constexpr (std::is_integral_v<Ts>) {
+        if constexpr (std::is_same_v<Ts, bool>) {
+          TRI_ASSERT(slice.isBool());
+          value = slice.getBool();
+        } else if constexpr (std::is_integral_v<Ts>) {
           TRI_ASSERT(slice.template isNumber<Ts>());
           value = slice.template getNumericValue<Ts>();
         } else if constexpr (std::is_same_v<Ts, double>) {
