@@ -1,6 +1,8 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
+* Make sure cluster statistics in web UI work in case a coordinator is down.
+
 * Added missing state rollback for failed attempt-based write locking of spin
   locks.
 
