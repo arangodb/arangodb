@@ -596,15 +596,6 @@
         }
 
         this.renderStatisticBox('Host', this.serverInfo.raw, this.serverInfo.raw, 6);
-        /*
-        if (this.serverInfo.endpoint) {
-          this.renderStatisticBox('Protocol', this.serverInfo.endpoint.substr(0, this.serverInfo.endpoint.indexOf('/') - 1));
-        } else {
-          this.renderStatisticBox('Protocol', 'Error');
-        }
-
-        this.renderStatisticBox('ID', this.serverInfo.target, this.serverInfo.target);
-        */
 
         // get node version + license
         $.ajax({
@@ -695,9 +686,8 @@
       }
 
       if (self.server !== '-local-') {
-        urlParams += '&type=short';
         if (self.serverInfo.target) {
-          urlParams += '&DBserver=' + self.serverInfo.target;
+          urlParams += '&DBserver=' + encodeURIComponent(self.serverInfo.target);
         }
 
         if (!self.history.hasOwnProperty(self.server)) {
@@ -739,7 +729,7 @@
 
       if (self.server !== '-local-') {
         url = self.server.endpoint + arangoHelper.databaseUrl('/_admin/aardvark/statistics/cluster');
-        urlParams += '&type=long&DBserver=' + self.server.target;
+        urlParams += '&type=long&DBserver=' + encodeURIComponent(self.server.target);
 
         if (!self.history.hasOwnProperty(self.server)) {
           self.history[self.server] = {};
