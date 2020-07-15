@@ -24,6 +24,8 @@
 
 // #include "Basics/debugging.h"
 #include "Evaluator.h"
+#include "Primitives.h"
+
 #include <iostream>
 
 #include <velocypack/Iterator.h>
@@ -31,18 +33,6 @@
 using namespace arangodb::velocypack;
 
 std::unordered_map<std::string, std::function<void(EvalContext& ctx, VPackSlice const slice, VPackBuilder& result)>> primitives;
-
-void Prim_Banana(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
-    auto tmp = int64_t{0};
-    for (auto p : ArrayIterator(params)) {
-        tmp += p.getNumericValue<int64_t>();
-    }
-    result.add(VPackValue(tmp));
-}
-
-void RegisterPrimitives() {
-    primitives["banana"] = Prim_Banana;
-}
 
 void InitInterpreter() {
     RegisterPrimitives();

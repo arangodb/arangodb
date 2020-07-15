@@ -201,7 +201,8 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/Algos/SSSP.cpp
   Pregel/Algos/ShortestPath.cpp
   Pregel/Algos/VertexAccumulators/AccumulatorOptionsDeserializer.cpp
-  Pregel/Algos/VertexAccumulators/Evaluator.cpp
+  Pregel/Algos/VertexAccumulators/Greenspun/Interpreter.cpp
+  Pregel/Algos/VertexAccumulators/Greenspun/Primitives.cpp
   Pregel/Algos/VertexAccumulators/VertexAccumulators.cpp
   Pregel/Algos/VertexAccumulators/VertexAccumulatorsData.cpp
   Pregel/Algos/VertexAccumulators/VertexAccumulatorsGraphFormat.cpp
