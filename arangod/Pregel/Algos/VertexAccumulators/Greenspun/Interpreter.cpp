@@ -66,7 +66,7 @@ void Evaluate(EvalContext& ctx, VPackSlice const slice, VPackBuilder& result) {
       VPackBuilder paramBuilder;
       { VPackArrayBuilder builder(&paramBuilder);
           for(; paramIterator.valid(); ++paramIterator) {
-              std::cerr << " parameter: " << (*paramIterator).toJson() << "(from: " << paramIterator << ")" << std::endl;
+              std::cerr << " parameter: " << (*paramIterator).toJson() << std::endl;
               Evaluate(ctx, *paramIterator, paramBuilder);
           }
       }

@@ -23,11 +23,17 @@ int main(int argc, char** argv) {
   EvalContext ctx;
   VPackBuilder result;
 
+  auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
+  auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
+
+  ctx.variables["v"] = v->slice();
+  ctx.variables["S"] = S->slice();
+
   auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-		["if", 
+		["if",
 			["list",
-				["eq?", 
-					["varref", "v"], 
+				["eq?",
+					["varref", "v"],
 					["varref", "S"]],
 				["list", "set", "distance", 0]
 			]

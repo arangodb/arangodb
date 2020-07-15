@@ -26,6 +26,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <iostream>
+
 #include "Interpreter.h"
 #include "Primitives.h"
 
@@ -152,6 +154,18 @@ void Prim_If(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   result.add(VPackSlice::noneSlice());
 }
 
+void Prim_VarRef(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+  auto&& [name] = unpackTuple<std::string>(params);
+
+  auto value = ctx.variables.find(name);
+  if (value != ctx.variables.end()) {
+    result.add(value->second);
+  } else {
+    std::cerr << "Variable " << name << " not found.";
+    std::abort();
+  }
+}
+
 void RegisterPrimitives() {
   primitives["banana"] = Prim_Banana;
   primitives["+"] = Prim_Banana;
@@ -161,4 +175,5 @@ void RegisterPrimitives() {
   primitives["list"] = Prim_List;
   primitives["eq?"] = Prim_EqHuh;
   primitives["if"] = Prim_If;
+  primitives["varref"] = Prim_VarRef;
 }
