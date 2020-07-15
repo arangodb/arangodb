@@ -16,11 +16,42 @@ int compare(arangodb::velocypack::Slice, arangodb::velocypack::Slice, bool, aran
 
 }
 
+struct MyEvalContext : EvalContext {
+
+
+  std::string const& getThisId() const override {
+    return thisId;
+  }
+
+  VPackSlice getDocumentById(std::string_view id) const override {
+    std::abort();
+  }
+
+  VPackSlice getAccumulatorValue(std::string_view id) const override {
+    return VPackSlice::zeroSlice();
+  }
+
+  void updateAccumulator(std::string_view accumId, std::string_view vertexId, VPackSlice value) override {
+    std::abort();
+  }
+
+  void setAccumulator(std::string_view accumId, std::string_view vertexId, VPackSlice value) override {
+    std::abort();
+  }
+
+  void enumerateEdges(std::function<void(VPackSlice edge, VPackSlice vertex)> cb) const override {
+    std::abort();
+  }
+
+  std::string thisId;
+};
+
+
 int main(int argc, char** argv) {
 
   InitInterpreter();
 
-  EvalContext ctx;
+  MyEvalContext ctx;
   VPackBuilder result;
 
   auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
@@ -35,7 +66,7 @@ int main(int argc, char** argv) {
 				["eq?",
 					["varref", "v"],
 					["varref", "S"]],
-				["list", "set", "distance", 0]
+				["list", "set", "bla", "distance", 0]
 			]
 		]
   )aql");

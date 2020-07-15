@@ -11,7 +11,7 @@ EVALUATOR_OBJ_FILES := $(patsubst $(EVALUATOR_SRC_DIR)/%.cpp,$(EVALUATOR_OBJ_DIR
 
 LDFLAGS := 
 CPPFLAGS :=  
-CXXFLAGS := -std=c++17 -I ../../3rdParty/velocypack/include -I ../../lib -I ../../arangod
+CXXFLAGS := -g -std=c++17 -I ../../3rdParty/velocypack/include -I ../../lib -I ../../arangod
 
 default: dirs eval
 

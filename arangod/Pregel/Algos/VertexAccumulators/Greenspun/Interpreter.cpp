@@ -36,44 +36,65 @@ void InitInterpreter() {
     RegisterPrimitives();
 }
 
+std::ostream& EvalDebugOut(size_t depth) {
+  for(size_t i = 0; i<depth; ++i) {
+    std::cerr << " ";
+  }
+  return std::cerr;
+}
+
 void Apply(EvalContext& ctx, VPackSlice const function, VPackSlice const params, VPackBuilder& result) {
-    if (function.isString() && params.isArray()) {
+  EvalDebugOut(ctx.depth) << "APPLY IN: " << function.toJson() << " " << params.toJson() << std::endl;
+  if (function.isString() && params.isArray()) {
         auto f = primitives.find(function.copyString());
         if (f != primitives.end()) {
             f->second(ctx, params, result);
         } else {
-            std::cerr << "primitive not found " << function.toJson() << std::endl;
+          EvalDebugOut(ctx.depth) << "primitive not found " << function.toJson() << std::endl;
             std::abort();
         }
     } else {
-        std::cerr << "either function is not a string or params is not an array";
-        std::abort();
+      EvalDebugOut(ctx.depth)
+        << "either function is not a string or params is not an array: " << std::endl;
+      EvalDebugOut(ctx.depth) << function.toJson() << std::endl;
+      EvalDebugOut(ctx.depth) << params.toJson() << std::endl;
+      std::abort();
     }
+
+  if (result.isClosed()) {
+    EvalDebugOut(ctx.depth) << "APPLY RESULT: " << result.toJson() << std::endl;
+  } else {
+    EvalDebugOut(ctx.depth) << "APPLY RESULT: (not printable because not sealed object)" << std::endl;
+  }
 }
 
-void Evaluate(EvalContext& ctx, VPackSlice const slice, VPackBuilder& result) {
-  if (slice.isArray()) {
-      std::cerr << "function application" << std::endl;
+#define EVAL(ctx,slice,result) \
+  { ++ctx.depth; Evaluate(ctx,slice,result); --ctx.depth; }
 
+void Evaluate(EvalContext& ctx, VPackSlice const slice, VPackBuilder& result) {
+  EvalDebugOut(ctx.depth) << "EVAL IN: " << slice.toJson() << std::endl;
+  if (slice.isArray()) {
       auto paramIterator = ArrayIterator(slice);
 
       VPackBuilder functionBuilder;
-      Evaluate(ctx, *paramIterator, functionBuilder);
-      ++paramIterator;
-      std::cerr << "function slice: " << functionBuilder.toJson() << std::endl;
 
-      std::cerr << "it: " << paramIterator;
+      EvalDebugOut(ctx.depth) << "FUNC: " << std::endl;
+      EVAL(ctx, *paramIterator, functionBuilder);
+
+      ++paramIterator;
+
+      EvalDebugOut(ctx.depth) << "PARM: " << std::endl;
       VPackBuilder paramBuilder;
       { VPackArrayBuilder builder(&paramBuilder);
           for(; paramIterator.valid(); ++paramIterator) {
-              std::cerr << " parameter: " << (*paramIterator).toJson() << std::endl;
-              Evaluate(ctx, *paramIterator, paramBuilder);
+              EVAL(ctx, *paramIterator, paramBuilder);
           }
       }
 
       Apply(ctx, functionBuilder.slice(), paramBuilder.slice(), result);
   } else {
-      std::cerr << "literal " << std::endl;
-      result.add(slice);
+    EvalDebugOut(ctx.depth) << "LIT: " << std::endl;
+    result.add(slice);
   }
+//   EvalDebugOut(ctx.depth) << "EVAL RESULT: " << result.toJson() << std::endl;
 }
