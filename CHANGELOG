@@ -1,6 +1,8 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Updated arangosync to 0.7.8.
+
 * Added missing state rollback for failed attempt-based write locking of spin
   locks.
 
@@ -36,8 +38,6 @@ v3.6.5 (XXXX-XX-XX)
 * Internal issue BTS-71: Fixed error handling regarding communication with the
   agency. This could in a specific case cause collection creation in a cluster
   report success when it failed.
-
-* Updated arangosync to 0.7.7.
 
 * Fixed a document parsing bug in the Web UI. This issue occured in the
   document list view in case a document had an attribute called `length`.
