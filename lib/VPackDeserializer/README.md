@@ -49,9 +49,9 @@ using write_transaction_deserializer = deserializer::utilities::constructing_des
 ```
 The write transaction is deserialized by a `constructing_deserialized` which (surprise) constructs the given type
 (`write_transaction`) by brace-initialisation using as parameters a tuple returned by the previous stage.
-This stage is a `fixed_order_deserializer` which deserializes an array in fixed order. In this case
-the first entry is deserialized as `operation_deserializer`, the second as `precondition_deserializer` and the 
-third entry is a simple `value_deserializer<std::string>`.
+This stage is a `fixed_order_deserializer` which deserializes an array in fixed order and returns it as tuple. 
+In this case the first entry is deserialized as `operation_deserializer`, the second as 
+`precondition_deserializer` and the  third entry is a simple `value_deserializer<std::string>`.
 (Please compare this with the agency format explained above)
 
 And then you define `operation_deserializer` and `precondition_deserializer`.
