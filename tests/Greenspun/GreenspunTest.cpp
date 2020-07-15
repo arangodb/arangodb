@@ -1,10 +1,20 @@
 #include <iostream>
 
-#include "Interpreter.h"
+#include "Pregel/Algos/VertexAccumulators/Greenspun/Interpreter.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
 
+
+/* YOLO */
+
+namespace arangodb::basics::VelocyPackHelper {
+
+int compare(arangodb::velocypack::Slice, arangodb::velocypack::Slice, bool, arangodb::velocypack::Options const*, arangodb::velocypack::Slice const*, arangodb::velocypack::Slice const*) {
+   return 0;
+}
+
+}
 
 int main(int argc, char** argv) {
 
@@ -14,7 +24,14 @@ int main(int argc, char** argv) {
   VPackBuilder result;
 
   auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-  [ "banana", 5, 6, ["banana", 11, 12], -8 ]
+		["if", 
+			["list",
+				["eq?", 
+					["varref", "v"], 
+					["varref", "S"]],
+				["list", "set", "distance", 0]
+			]
+		]
   )aql");
 
 	std::cout << "ArangoLISP Interpreter Executing" << std::endl;
