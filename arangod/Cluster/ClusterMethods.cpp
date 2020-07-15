@@ -2664,7 +2664,7 @@ arangodb::Result hotBackupList(network::ConnectionPool* pool,
       totalFiles += meta._nrFiles;
     }
 
-    if (valid) {
+    if (valid) {  // backup is identical on all servers
       BackupMeta& front = i.second.front();
       front._sizeInBytes = totalSize;
       front._nrFiles = totalFiles;
