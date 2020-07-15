@@ -596,15 +596,6 @@
         }
 
         this.renderStatisticBox('Host', this.serverInfo.raw, this.serverInfo.raw, 6);
-        /*
-        if (this.serverInfo.endpoint) {
-          this.renderStatisticBox('Protocol', this.serverInfo.endpoint.substr(0, this.serverInfo.endpoint.indexOf('/') - 1));
-        } else {
-          this.renderStatisticBox('Protocol', 'Error');
-        }
-
-        this.renderStatisticBox('ID', this.serverInfo.target, this.serverInfo.target);
-        */
 
         // get node version + license
         $.ajax({
