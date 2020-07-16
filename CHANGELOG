@@ -5,6 +5,14 @@ devel
 
 * Fixed crash in cleanup of parallel traversal queries (QA-28).
 
+* Updated arangosync to 0.7.8.
+
+* Fixed hotbackup upload and download with encryption at rest key indirection.
+
+* Fixed a race between a new request and the keepAlive timeout.
+
+* Fixed crash in cleanup of parallel traversal queries.
+
 * Added cluster metrics `arangodb_load_plan_accum_runtime_msec` and
   `arangodb_load_current_accum_runtime_msec` to track the total time spent
   in `loadPlan()` and `loadCurrent()` operations.
