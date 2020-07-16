@@ -152,10 +152,11 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
 }
 
 /// @brief public constructor, Used to construct a full query
-Query::Query(std::shared_ptr<transaction::Context> const& ctx,
-             QueryString const& queryString, std::shared_ptr<VPackBuilder> const& bindParameters,
+Query::Query(std::shared_ptr<transaction::Context> const& ctx, QueryString const& queryString,
+             std::shared_ptr<VPackBuilder> const& bindParameters,
              std::shared_ptr<VPackBuilder> const& options)
-    : Query(ctx, queryString, bindParameters, options, std::make_shared<SharedQueryState>()) {}
+    : Query(ctx, queryString, bindParameters, options,
+            std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
 
 /// @brief destroys a query
 Query::~Query() {
@@ -1290,8 +1291,10 @@ ExecutionEngine* Query::rootEngine() const {
 
 ClusterQuery::ClusterQuery(std::shared_ptr<transaction::Context> const& ctx,
                            std::shared_ptr<arangodb::velocypack::Builder> const& options)
-    : Query(ctx, aql::QueryString(), /*bindParams*/ nullptr, options, 
-            /*sharedState*/ ServerState::instance()->isDBServer() ? nullptr : std::make_shared<SharedQueryState>()) {}
+    : Query(ctx, aql::QueryString(), /*bindParams*/ nullptr, options,
+            /*sharedState*/ ServerState::instance()->isDBServer()
+                ? nullptr
+                : std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
 
 ClusterQuery::~ClusterQuery() {
   try {

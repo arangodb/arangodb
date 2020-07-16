@@ -28,6 +28,9 @@
 #include <function2.hpp>
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace aql {
 
 class SharedQueryState final : public std::enable_shared_from_this<SharedQueryState> {
@@ -35,7 +38,8 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   SharedQueryState(SharedQueryState const&) = delete;
   SharedQueryState& operator=(SharedQueryState const&) = delete;
 
-  SharedQueryState();
+  explicit SharedQueryState(application_features::ApplicationServer& server);
+  SharedQueryState() = delete;
   ~SharedQueryState() = default;
 
   void invalidate();
@@ -129,6 +133,7 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   bool queueAsyncTask(fu2::unique_function<void()>);
 
  private:
+  application_features::ApplicationServer& _server;
   mutable std::mutex _mutex;
   std::condition_variable _cv;
 
@@ -141,7 +146,7 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   unsigned _cbVersion; // increased once callstack is done
   
   // TODO: make configurable
-  const unsigned _maxTasks = 4;
+  const unsigned _maxTasks;
   std::atomic<unsigned> _numTasks;
   std::atomic<bool> _valid;
 };
