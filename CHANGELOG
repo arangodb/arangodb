@@ -1,6 +1,11 @@
 devel
 -----
 
+* Secured Foxx installations / updates against race conditions in cluster. There is a chance that
+  self-healing and installation of two foxx apps overlap, which could cause a Foxx App to be temporarily
+  removed after installation, however it would be reinstalled after one additional self heal round, so
+  there is only a small time-span where the App is not available right after installation.
+
 * In rare cases SmartBFS could use a wrong index for looking up edges. This is fixed now.
 
 * The internally used JS-based ClusterComm send request function can now again use JSON, and does
