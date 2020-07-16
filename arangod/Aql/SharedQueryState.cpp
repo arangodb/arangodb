@@ -39,7 +39,7 @@ SharedQueryState::SharedQueryState(application_features::ApplicationServer& serv
       _wakeupCb(nullptr),
       _numWakeups(0),
       _cbVersion(0),
-      _maxTasks(_server.getFeature<QueryRegistryFeature>().maxParallelism()),
+      _maxTasks(static_cast<unsigned>(_server.getFeature<QueryRegistryFeature>().maxParallelism())),
       _numTasks(0),
       _valid(true) {}
 
