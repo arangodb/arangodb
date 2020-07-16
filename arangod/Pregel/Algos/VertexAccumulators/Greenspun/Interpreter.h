@@ -31,14 +31,33 @@
 #include <velocypack/Slice.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
+#include <stack>
 
-
+#ifndef TRI_ASSERT
 #define TRI_ASSERT(x) if (!(x)) { std::abort(); }
+#endif
 
 struct EvalContext {
   virtual ~EvalContext() = default;
   // Variables go here.
-  std::unordered_map<std::string, VPackSlice> variables;
+  void pushStack() { variables.emplace(); }
+  void popStack() {
+    TRI_ASSERT(variables.size() > 1);
+    variables.pop();
+  }
+
+  void setVariable(std::string name, VPackSlice value) {
+    TRI_ASSERT(!variables.empty());
+    variables.top().emplace(std::move(name), value);
+  }
+  void getVariable(std::string const& name, VPackBuilder& result) {
+    TRI_ASSERT(!variables.empty());
+    if (auto iter = variables.top().find(name); iter != std::end(variables.top())) {
+      result.add(iter->second);
+    }
+    result.add(VPackSlice::noneSlice());
+  }
+
   size_t depth{0};
 
   virtual std::string const& getThisId() const = 0;
@@ -48,6 +67,9 @@ struct EvalContext {
   virtual void updateAccumulator(std::string_view accumId, std::string_view edgeId, VPackSlice value) = 0;
   virtual void setAccumulator(std::string_view accumId, VPackSlice value) = 0;
   virtual void enumerateEdges(std::function<void(VPackSlice edge, VPackSlice vertex)> cb) const = 0;
+
+ private:
+  std::stack<std::unordered_map<std::string, VPackSlice>> variables;
 };
 
 //

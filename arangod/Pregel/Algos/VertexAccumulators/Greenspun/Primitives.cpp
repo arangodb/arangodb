@@ -109,14 +109,7 @@ void Prim_If(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
 
 void Prim_VarRef(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto&& [name] = unpackTuple<std::string>(params);
-
-  auto value = ctx.variables.find(name);
-  if (value != ctx.variables.end()) {
-    result.add(value->second);
-  } else {
-    std::cerr << "Variable " << name << " not found.";
-    std::abort();
-  }
+  ctx.getVariable(name, result);
 }
 
 void Prim_Attrib(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
@@ -162,21 +155,18 @@ void Prim_For(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto&& [dir, vars, body] = unpackTuple<std::string_view, VPackSlice, VPackSlice>(params);
   auto&& [edgeVar, otherVertexVar] = unpackTuple<std::string, std::string>(vars);
 
-  TRI_ASSERT(ctx.variables.find(edgeVar) == std::end(ctx.variables));
-  TRI_ASSERT(ctx.variables.find(otherVertexVar) == std::end(ctx.variables));
 
   // TODO translate direction and pass to enumerateEdges
   ctx.enumerateEdges([&, edgeVar = edgeVar,
                       otherVertexVar = otherVertexVar, body = body](VPackSlice edge, VPackSlice vertex) {
-    ctx.variables[edgeVar] = edge;
-    ctx.variables[otherVertexVar] = vertex;
+    ctx.pushStack();
+    ctx.setVariable(edgeVar, edge);
+    ctx.setVariable(otherVertexVar, vertex);
 
     VPackBuilder localResult;
     Evaluate(ctx, body, localResult);
+    ctx.popStack();
   });
-
-  ctx.variables.erase(edgeVar);
-  ctx.variables.erase(otherVertexVar);
 }
 
 void RegisterPrimitives() {
