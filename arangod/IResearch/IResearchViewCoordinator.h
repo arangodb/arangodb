@@ -88,6 +88,10 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
     return _meta._primarySort;
   }
 
+  auto const& primarySortCompression() const noexcept {
+    return _meta._primarySortCompression;
+  }
+
   ///////////////////////////////////////////////////////////////////////////////
   /// @return stored values from links collections
   ///////////////////////////////////////////////////////////////////////////////
