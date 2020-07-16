@@ -74,7 +74,7 @@ class TestActionBasic : public ActionBase {
       if (gres.ok()) {
         pred.insert({"iterate_count", iterate_count});
       }
-      _preAction = std::make_shared<ActionDescription>(pred, arangodb::maintenance::NORMAL_PRIORITY);
+      _preAction = std::make_shared<ActionDescription>(std::move(pred), arangodb::maintenance::NORMAL_PRIORITY);
     }  // if
 
     if (description.get("postaction_result_code", value).ok()) {
@@ -84,7 +84,7 @@ class TestActionBasic : public ActionBase {
         postd.insert({"iterate_count", iterate_count});
       }
       _postAction =
-          std::make_shared<ActionDescription>(postd, arangodb::maintenance::NORMAL_PRIORITY);
+          std::make_shared<ActionDescription>(std::move(postd), arangodb::maintenance::NORMAL_PRIORITY);
     }  // if
   };
 
