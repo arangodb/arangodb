@@ -145,7 +145,6 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   unsigned _numWakeups; // number of times
   unsigned _cbVersion; // increased once callstack is done
   
-  // TODO: make configurable
   const unsigned _maxTasks;
   std::atomic<unsigned> _numTasks;
   std::atomic<bool> _valid;
