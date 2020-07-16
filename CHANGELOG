@@ -1,6 +1,35 @@
 devel
 -----
 
+* Updated arangosync to 0.7.8.
+
+* Fixed hotbackup upload and download with encryption at rest key indirection.
+
+* Fixed a race between a new request and the keepAlive timeout.
+
+* Fixed crash in cleanup of parallel traversal queries.
+
+* Added cluster metrics `arangodb_load_plan_accum_runtime_msec` and
+  `arangodb_load_current_accum_runtime_msec` to track the total time spent
+  in `loadPlan()` and `loadCurrent()` operations.
+
+* Fixed wrong reporting of failures in all maintenace failure counter metrics
+  (`arangodb_maintenance_action_failure_counter`). Previously, each successful
+  maintenance operation was reported as a failure, so the failure counters
+  actually were counters for the number of successful maintenance actions.
+
+* Adjusted the scale of the `arangodb_maintenance_action_queue_time_msec` to
+  cover a more useful range.
+
+* The filter executor will now overfetch data again if followed by a limit, same as in 3.6 series.
+  The following queries are effected:
+  ```
+  something
+  FILTER a == b
+  LIMIT 10
+  ```
+  something will now be asked for a full batch, instead of only 10 documents.
+
 * In rare cases SmartBFS could use a wrong index for looking up edges. This is fixed now.
 
 * The internally used JS-based ClusterComm send request function can now again use JSON, and does

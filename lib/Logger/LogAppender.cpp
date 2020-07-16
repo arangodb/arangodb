@@ -86,22 +86,21 @@ void LogAppender::addAppender(std::string const& definition) {
     // found an existing appender
     appender = it->second;
   } else {
-    // build a new appender from the definition. note: this may modify _definition2appenders
+    // build a new appender from the definition
     appender = buildAppender(output);
-  }
-
-  if (appender != nullptr) {
-    try {
-      _definition2appenders[key] = appender;
-    } catch (...) {
-      // cannot open file for logging?
+    if (appender == nullptr) {
+      // cannot create appender, for whatever reason
       return;
     }
+  
+    _definition2appenders[key] = appender;
+  }
 
-    size_t n = (topic == nullptr) ? LogTopic::MAX_LOG_TOPICS : topic->id();
-    if (std::find(_topics2appenders[n].begin(), _topics2appenders[n].end(), appender) == _topics2appenders[n].end()) {
-      _topics2appenders[n].emplace_back(appender);
-    }
+  TRI_ASSERT(appender != nullptr);
+
+  size_t n = (topic == nullptr) ? LogTopic::MAX_LOG_TOPICS : topic->id();
+  if (std::find(_topics2appenders[n].begin(), _topics2appenders[n].end(), appender) == _topics2appenders[n].end()) {
+    _topics2appenders[n].emplace_back(appender);
   }
 }
 

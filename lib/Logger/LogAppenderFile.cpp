@@ -176,19 +176,7 @@ LogAppenderFile::LogAppenderFile(std::string const& filename)
   _useColors = ((isatty(_fd) == 1) && Logger::getUseColor());
 }
 
-LogAppenderFile::~LogAppenderFile() {
-  if (_filename != "+" && _filename != "-") {
-    // remove ourselves from the list of open appenders
-    std::unique_lock<std::mutex> guard(_openAppendersMutex);
-    for (auto it = _openAppenders.begin(); it != _openAppenders.end(); /* no hoisting */) {
-      if ((*it) == this) {
-        it = _openAppenders.erase(it);
-      } else {
-        ++it;
-      }
-    }
-  }
-}
+LogAppenderFile::~LogAppenderFile() = default;
 
 void LogAppenderFile::writeLogMessage(LogLevel level, size_t /*topicId*/, char const* buffer, size_t len) {
   bool giveUp = false;
