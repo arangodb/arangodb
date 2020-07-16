@@ -88,14 +88,14 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
   virtual void start() = 0;
   virtual void close() = 0;
 
-    // returns the number of scheduled requests
-    std::size_t getRequestCount() const { return _requestCount; }
+  // returns the number of scheduled requests
+  std::size_t getRequestCount() const { return _requestCount; }
 
-    void setKeepAliveTimeoutReached() { _keepAliveTimeoutReached = true; }
+  void setKeepAliveTimeoutReached() { _keepAliveTimeoutReached = true; }
 
 protected:
 
-    virtual std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode,
+  virtual std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode,
                                                           uint64_t messageId) = 0;
 
   /// @brief send simple response including response body
