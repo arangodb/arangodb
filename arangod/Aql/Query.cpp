@@ -80,7 +80,7 @@ using namespace arangodb::aql;
 /// @brief internal constructor, Used to construct a full query or a ClusterQuery
 Query::Query(std::shared_ptr<transaction::Context> const& ctx,
              QueryString const& queryString, std::shared_ptr<VPackBuilder> const& bindParameters,
-             std::shared_ptr<VPackBuilder> const& options,
+             aql::QueryOptions&& options,
              std::shared_ptr<SharedQueryState> sharedState)
     : QueryContext(ctx->vocbase()),
       _itemBlockManager(&_resourceMonitor, SerializationFormat::SHADOWROWS),
@@ -89,8 +89,7 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
       _sharedState(std::move(sharedState)),
       _v8Context(nullptr),
       _bindParameters(bindParameters),
-      _options(options),
-      _queryOptions(_vocbase.server().getFeature<QueryRegistryFeature>()),
+      _queryOptions(std::move(options)),
       _trx(nullptr),
       _startTime(currentSteadyClockValue()),
       _queryHash(DontCache),
@@ -110,11 +109,6 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
     if (state != nullptr) {
       _queryOptions.transactionOptions = state->options();
     }
-  }
-
-  // populate query options
-  if (_options != nullptr) {
-    _queryOptions.fromVelocyPack(_options->slice());
   }
 
   ProfileLevel level = _queryOptions.profile;
@@ -139,14 +133,10 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
     }
   }
 
-  if (options != nullptr && !options->isEmpty() && !options->slice().isNone()) {
-    if (level >= PROFILE_LEVEL_TRACE_1) {
-      LOG_TOPIC("8979d", INFO, Logger::QUERIES)
-          << "options: " << options->slice().toJson();
-    } else {
-      LOG_TOPIC("0b7cb", DEBUG, Logger::QUERIES)
-          << "options: " << options->slice().toJson();
-    }
+  if (level >= PROFILE_LEVEL_TRACE_1) {
+    VPackBuilder b;
+    _queryOptions.toVelocyPack(b, /*disableOptimizerRules*/ false);
+    LOG_TOPIC("8979d", INFO, Logger::QUERIES) << "options: " << b.toJson();
   }
 
   _resourceMonitor.setMemoryLimit(_queryOptions.memoryLimit);
@@ -154,11 +144,18 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
 }
 
 /// @brief public constructor, Used to construct a full query
-Query::Query(std::shared_ptr<transaction::Context> const& ctx, QueryString const& queryString,
-             std::shared_ptr<VPackBuilder> const& bindParameters,
-             std::shared_ptr<VPackBuilder> const& options)
-    : Query(ctx, queryString, bindParameters, options,
+Query::Query(std::shared_ptr<transaction::Context> const& ctx,
+             QueryString const& queryString, std::shared_ptr<VPackBuilder> const& bindParameters,
+             QueryOptions&& options)
+    : Query(ctx, queryString, bindParameters, std::move(options),
             std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
+
+Query::Query(std::shared_ptr<transaction::Context> const& ctx,
+             QueryString const& queryString, std::shared_ptr<VPackBuilder> const& bindParameters,
+             std::shared_ptr<VPackBuilder> const& options)
+    : Query(ctx, queryString, bindParameters,
+            QueryOptions(options != nullptr ? options->slice() : VPackSlice()),
+                         std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
 
 /// @brief destroys a query
 Query::~Query() {
@@ -1055,14 +1052,17 @@ uint64_t Query::calculateHash() const {
     hashval = fasthash64(TRI_CHAR_LENGTH_PAIR("count:false"), hashval);
   }
 
-  // also hash "optimizer" options
-  VPackSlice options = arangodb::velocypack::Slice::emptyObjectSlice();
-
-  if (_options != nullptr && _options->slice().isObject()) {
-    options = _options->slice().get("optimizer");
+  // handle "optimizer.inspectSimplePlans" option
+  if (_queryOptions.inspectSimplePlans) {
+    hashval = fasthash64(TRI_CHAR_LENGTH_PAIR("inspect:true"), hashval);
+  } else {
+    hashval = fasthash64(TRI_CHAR_LENGTH_PAIR("inspect:false"), hashval);
   }
-  hashval ^= options.hash();
-
+  
+  // also hash "optimizer.rules" options
+  for (auto const& rule : _queryOptions.optimizerRules) {
+    hashval = VELOCYPACK_HASH(rule.data(), rule.size(), hashval);
+  }
   // blend query hash with bind parameters
   return hashval ^ _bindParameters.hash();
 }
@@ -1293,8 +1293,8 @@ ExecutionEngine* Query::rootEngine() const {
 }
 
 ClusterQuery::ClusterQuery(std::shared_ptr<transaction::Context> const& ctx,
-                           std::shared_ptr<arangodb::velocypack::Builder> const& options)
-    : Query(ctx, aql::QueryString(), /*bindParams*/ nullptr, options,
+                           QueryOptions&& options)
+    : Query(ctx, aql::QueryString(), /*bindParams*/ nullptr, std::move(options),
             /*sharedState*/ ServerState::instance()->isDBServer()
                 ? nullptr
                 : std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
