@@ -50,7 +50,9 @@ class FoxxQueuesFeature final : public application_features::ApplicationFeature 
     return _pollInterval;
   }
 
-  arangodb::basics::WriteLocker<arangodb::basics::ReadWriteLock>&& writeLockFileSystem();
+  // Caller can get this lock
+  // Caller needs to make sure to release this lock after use.
+  arangodb::basics::ReadWriteLock& fileSystemLock();
 
  private:
   double _pollInterval;

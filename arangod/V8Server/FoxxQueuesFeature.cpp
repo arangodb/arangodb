@@ -24,7 +24,6 @@
 
 #include "FeaturePhases/ServerFeaturePhase.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "Basics/WriteLocker.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::options;
@@ -69,9 +68,8 @@ void FoxxQueuesFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
   }
 }
 
-basics::WriteLocker<basics::ReadWriteLock>&& FoxxQueuesFeature::writeLockFileSystem() {
-  WRITE_LOCKER(guard, _fileSystemLock);
-  return std::move(guard);
+basics::ReadWriteLock& FoxxQueuesFeature::fileSystemLock() {
+  return _fileSystemLock;
 }
 
 }  // namespace arangodb
