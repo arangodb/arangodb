@@ -39,6 +39,7 @@ struct EvalContext {
   virtual ~EvalContext() = default;
   // Variables go here.
   std::unordered_map<std::string, VPackSlice> variables;
+  size_t depth{0};
 
   virtual std::string const& getThisId() const = 0;
 

@@ -30,7 +30,7 @@ struct MyEvalContext : EvalContext {
     return VPackSlice::zeroSlice();
   }
 
-  void updateAccumulator(std::string_view accumId, std::string_view edgeId, VPackSlice value) override {
+  void updateAccumulator(std::string_view accumId, std::string_view vertexId, VPackSlice value) override {
     std::abort();
   }
 

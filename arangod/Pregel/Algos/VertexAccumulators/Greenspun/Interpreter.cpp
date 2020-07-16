@@ -36,50 +36,73 @@ void InitInterpreter() {
     RegisterPrimitives();
 }
 
+
+#define EVAL(ctx,slice,result) \
+  { ++ctx.depth; Evaluate(ctx,slice,result); --ctx.depth; }
+
+std::ostream& EvalDebugOut(size_t depth) {
+  for(size_t i = 0; i<depth; ++i) {
+    std::cerr << " ";
+  }
+  return std::cerr;
+}
+
+
 void Apply(EvalContext& ctx, std::string const& function,
            VPackSlice const params, VPackBuilder& result) {
-  auto f = primitives.find(function);
-  if (f != primitives.end()) {
-    f->second(ctx, params, result);
+  EvalDebugOut(ctx.depth) << "APPLY IN: " << function << " " << params.toJson()
+                          << std::endl;
+  if (params.isArray()) {
+    auto f = primitives.find(function);
+    if (f != primitives.end()) {
+      f->second(ctx, params, result);
+    } else {
+      std::cerr << "primitive not found " << function << std::endl;
+      std::abort();
+    }
+
   } else {
-    std::cerr << "primitive not found " << function << std::endl;
+    EvalDebugOut(ctx.depth) << "either function params is not an array: " << std::endl;
+    EvalDebugOut(ctx.depth) << params.toJson() << std::endl;
     std::abort();
+  }
+
+  if (result.isClosed()) {
+    EvalDebugOut(ctx.depth) << "APPLY RESULT: " << result.toJson() << std::endl;
+  } else {
+    EvalDebugOut(ctx.depth)
+        << "APPLY RESULT: (not printable because not sealed object)" << std::endl;
   }
 }
 
 void PrepareParameters(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
   { VPackArrayBuilder builder(&result);
     for(; paramIterator.valid(); ++paramIterator) {
-      std::cerr << " parameter: " << (*paramIterator).toJson() << std::endl;
-      Evaluate(ctx, *paramIterator, result);
+      EvalDebugOut(ctx.depth) << "PARAM: " << (*paramIterator).toJson() << std::endl;
+      EVAL(ctx, *paramIterator, result);
     }
   }
 }
 
 void SpecialIf(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
-  std::cerr << "Special form `if`" << std::endl;
   auto conditions = *paramIterator;
-  std::cerr << "Conditions are " << conditions.toJson() << std::endl;
   if (conditions.isArray()) {
 
     for (auto&& e : ArrayIterator(conditions)) {
-      std::cerr << "pair " << e.toJson() << std::endl;
-
       auto&& [cond, body] = unpackTuple<VPackSlice, VPackSlice>(e);
 
-
       VPackBuilder condResult;
-      Evaluate(ctx, cond, condResult);
-      std::cerr << "condition evaluated to " << condResult.toJson() << " which is seen as " << !condResult.slice().isFalse() << std::endl;
+      EVAL(ctx, cond, condResult);
+      EvalDebugOut(ctx.depth) << "IF condition evaluated to `" << condResult.toJson() << "` which is interpreted as " << std::boolalpha << !condResult.slice().isFalse() << std::endl;
       if (!condResult.slice().isFalse()) {
-        Evaluate(ctx, body, result);
+        EVAL(ctx, body, result);
         return;
       }
 
       result.add(VPackSlice::noneSlice());
     }
   } else {
-    std::cerr << "expected conditions to be array, found: " << conditions.toJson();
+    EvalDebugOut(ctx.depth) << "IF expected conditions to be array, found: " << conditions.toJson();
     std::abort();
   }
 }
@@ -90,35 +113,33 @@ void SpecialList(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder& re
 }
 
 void Evaluate(EvalContext& ctx, VPackSlice const slice, VPackBuilder& result) {
+  EvalDebugOut(ctx.depth) << "EVAL IN: " << slice.toJson() << std::endl;
   if (slice.isArray()) {
-
       auto paramIterator = ArrayIterator(slice);
 
       VPackBuilder functionBuilder;
-      Evaluate(ctx, *paramIterator, functionBuilder);
+      EvalDebugOut(ctx.depth) << "FUNC: " << std::endl;
+      EVAL(ctx, *paramIterator, functionBuilder);
       ++paramIterator;
-      std::cerr << "function slice: " << functionBuilder.toJson() << std::endl;
-
       VPackSlice functionSlice = functionBuilder.slice();
       if (functionSlice.isString()) {
-
         // check for special forms
         if (functionSlice.isEqualString("if")) {
           SpecialIf(ctx, paramIterator, result);
         } else if (functionSlice.isEqualString("quote")) {
           SpecialList(ctx, paramIterator, result);
         } else {
-          std::cerr << "function application" << std::endl;
           VPackBuilder paramBuilder;
           PrepareParameters(ctx, paramIterator, paramBuilder);
           Apply(ctx, functionSlice.copyString(), paramBuilder.slice(), result);
         }
       } else {
-        std::cerr << "function is not a string, found " << functionSlice.toJson();
+        EvalDebugOut(ctx.depth) << "function is not a string, found " << functionSlice.toJson();
         std::abort();
       }
   } else {
-      std::cerr << "literal " << std::endl;
-      result.add(slice);
+    EvalDebugOut(ctx.depth) << "LIT: " << std::endl;
+    result.add(slice);
   }
+//   EvalDebugOut(ctx.depth) << "EVAL RESULT: " << result.toJson() << std::endl;
 }
