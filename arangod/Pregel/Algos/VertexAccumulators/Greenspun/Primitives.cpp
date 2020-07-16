@@ -33,55 +33,6 @@
 
 std::unordered_map<std::string, std::function<void(EvalContext& ctx, VPackSlice const slice, VPackBuilder& result)>> primitives;
 
-// FIXME: This needs to go into support code somehwere.
-namespace detail {
-template <class>
-inline constexpr bool always_false_v = false;
-template <typename... Ts, std::size_t... Is>
-auto unpackTuple(VPackArrayIterator& iter, std::index_sequence<Is...>) {
-  std::tuple<Ts...> result;
-  (
-      [&result](VPackSlice slice) {
-        TRI_ASSERT(!slice.isNone());
-        auto& value = std::get<Is>(result);
-        if constexpr (std::is_same_v<Ts, bool>) {
-          TRI_ASSERT(slice.isBool());
-          value = slice.getBool();
-        } else if constexpr (std::is_integral_v<Ts>) {
-          TRI_ASSERT(slice.template isNumber<Ts>());
-          value = slice.template getNumericValue<Ts>();
-        } else if constexpr (std::is_same_v<Ts, double>) {
-          TRI_ASSERT(slice.isDouble());
-          value = slice.getDouble();
-        } else if constexpr (std::is_same_v<Ts, std::string>) {
-          TRI_ASSERT(slice.isString());
-          value = slice.copyString();
-        } else if constexpr (std::is_same_v<Ts, std::string_view>) {
-          TRI_ASSERT(slice.isString());
-          value = slice.stringView();
-        } else if constexpr (std::is_same_v<Ts, VPackStringRef>) {
-          TRI_ASSERT(slice.isString());
-          value = slice.stringRef();
-        } else if constexpr (std::is_same_v<Ts, VPackSlice>) {
-          value = slice;
-        } else {
-          static_assert(always_false_v<Ts>, "Unhandled value type requested");
-        }
-      }(*(iter++)),
-      ...);
-  return result;
-}
-}  // namespace detail
-/// @brief unpacks an array as tuple. Use like this: auto&& [a, b, c] = unpack<size_t, std::string, double>(slice);
-template <typename... Ts>
-static std::tuple<Ts...> unpackTuple(VPackSlice slice) {
-  VPackArrayIterator iter(slice);
-  return detail::unpackTuple<Ts...>(iter, std::index_sequence_for<Ts...>{});
-}
-template <typename... Ts>
-static std::tuple<Ts...> unpackTuple(VPackArrayIterator& iter) {
-  return detail::unpackTuple<Ts...>(iter, std::index_sequence_for<Ts...>{});
-}
 
 void Prim_Banana(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto tmp = int64_t{0};
@@ -196,15 +147,15 @@ void Prim_AccumRef(EvalContext& ctx, VPackSlice const params, VPackBuilder& resu
 }
 
 void Prim_Update(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
-  auto&& [accumId, vertexId, value] =
+  auto&& [accumId, edgeId, value] =
       unpackTuple<std::string_view, std::string_view, VPackSlice>(params);
-  ctx.updateAccumulator(accumId, vertexId, value);
+  ctx.updateAccumulator(accumId, edgeId, value);
 }
 
 void Prim_Set(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
-  auto&& [accumId, vertexId, value] =
-      unpackTuple<std::string_view, std::string_view, VPackSlice>(params);
-  ctx.setAccumulator(accumId, vertexId, value);
+  auto&& [accumId, value] =
+      unpackTuple<std::string_view, VPackSlice>(params);
+  ctx.setAccumulator(accumId, value);
 }
 
 void Prim_For(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
@@ -236,7 +187,6 @@ void RegisterPrimitives() {
   primitives["/"] = Prim_Div;
   primitives["list"] = Prim_List;
   primitives["eq?"] = Prim_EqHuh;
-  primitives["if"] = Prim_If;
   primitives["varref"] = Prim_VarRef;
   primitives["attrib"] = Prim_Attrib;
   primitives["this"] = Prim_This;

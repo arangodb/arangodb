@@ -43,11 +43,11 @@ struct MyEvalContext : EvalContext {
       return VPackSlice::zeroSlice();
   }
 
-  void updateAccumulator(std::string_view accumId, std::string_view vertexId, VPackSlice value) override {
+  void updateAccumulator(std::string_view accumId, std::string_view edgeId, VPackSlice value) override {
       std::abort();
   }
 
-  void setAccumulator(std::string_view accumId, std::string_view vertexId, VPackSlice value) override {
+  void setAccumulator(std::string_view accumId, VPackSlice value) override {
      std::abort();
   }
 
@@ -100,7 +100,7 @@ void VertexAccumulators::VertexComputation::compute(MessageIterator<MessageData>
 */
   }
 
-
+/*
   MessageData message(pregelId(), currentComponent);
   RangeIterator<Edge<uint64_t>> edges = this->getEdges();
   for (; edges.hasMore(); ++edges) {
@@ -113,6 +113,6 @@ void VertexAccumulators::VertexComputation::compute(MessageIterator<MessageData>
     edge->data() = currentComponent;
 
     sendMessage(edge, message);
-  }
+  }*/
 
 }
