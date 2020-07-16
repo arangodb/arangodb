@@ -46,12 +46,12 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
     : ApplicationFeature(server, "QueryRegistry"),
       _trackSlowQueries(true),
       _trackBindVars(true),
-      _failOnWarning(false),
+      _failOnWarning(aql::QueryOptions::defaultFailOnWarning),
       _queryCacheIncludeSystem(false),
       _smartJoins(true),
       _parallelizeTraversals(true),
-      _queryMemoryLimit(0),
-      _maxQueryPlans(128),
+      _queryMemoryLimit(aql::QueryOptions::defaultMemoryLimit),
+      _maxQueryPlans(aql::QueryOptions::defaultMaxNumberOfPlans),
       _queryCacheMaxResultsCount(0),
       _queryCacheMaxResultsSize(0),
       _queryCacheMaxEntrySize(0),
@@ -159,6 +159,17 @@ void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> optio
 
   // cap the value somehow. creating this many plans really does not make sense
   _maxQueryPlans = std::min(_maxQueryPlans, decltype(_maxQueryPlans)(1024));
+  
+  if (_queryRegistryTTL <= 0) {
+    TRI_ASSERT(ServerState::instance()->getRole() != ServerState::ROLE_UNDEFINED);
+    // set to default value based on instance type
+    _queryRegistryTTL = ServerState::instance()->isSingleServer() ? 30 : 600;
+  }
+  
+  aql::QueryOptions::defaultMemoryLimit = _queryMemoryLimit;
+  aql::QueryOptions::defaultMaxNumberOfPlans = _maxQueryPlans;
+  aql::QueryOptions::defaultTtl = _queryRegistryTTL;
+  aql::QueryOptions::defaultFailOnWarning = _failOnWarning;
 }
 
 void QueryRegistryFeature::prepare() {
@@ -176,12 +187,6 @@ void QueryRegistryFeature::prepare() {
                                                  _queryCacheIncludeSystem,
                                                  _trackBindVars};
   arangodb::aql::QueryCache::instance()->properties(properties);
-
-  if (_queryRegistryTTL <= 0) {
-    // set to default value based on instance type
-    _queryRegistryTTL = ServerState::instance()->isSingleServer() ? 30 : 600;
-  }
-
   // create the query registery
   _queryRegistry.reset(new aql::QueryRegistry(_queryRegistryTTL));
   QUERY_REGISTRY.store(_queryRegistry.get(), std::memory_order_release);
