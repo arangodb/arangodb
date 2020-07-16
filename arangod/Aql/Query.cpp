@@ -133,17 +133,11 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
     }
   }
 
-        
-#warning FIx
-//  if (options != nullptr && !options->isEmpty() && !options->slice().isNone()) {
-//    if (level >= PROFILE_LEVEL_TRACE_1) {
-//      LOG_TOPIC("8979d", INFO, Logger::QUERIES)
-//          << "options: " << options->slice().toJson();
-//    } else {
-//      LOG_TOPIC("0b7cb", DEBUG, Logger::QUERIES)
-//          << "options: " << options->slice().toJson();
-//    }
-//  }
+  if (level >= PROFILE_LEVEL_TRACE_1) {
+    VPackBuilder b;
+    _queryOptions.toVelocyPack(b, /*disableOptimizerRules*/ false);
+    LOG_TOPIC("8979d", INFO, Logger::QUERIES) << "options: " << b.toJson();
+  }
 
   _resourceMonitor.setMemoryLimit(_queryOptions.memoryLimit);
   _warnings.updateOptions(_queryOptions);
