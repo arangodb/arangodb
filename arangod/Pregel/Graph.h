@@ -32,18 +32,15 @@
 namespace arangodb {
 namespace pregel {
 
-// typedef uint64_t PregelKey;
 typedef uint16_t PregelShard;
 const PregelShard InvalidPregelShard = -1;
 
 struct PregelID {
-  std::string key; // std::string 24
-  PregelShard shard; // uint16_t
+  std::string key; 
+  PregelShard shard;
 
   PregelID() : key(""), shard(InvalidPregelShard) {}
   PregelID(PregelShard s, std::string const& k) : key(k), shard(s) {}
-  // PregelID(PregelShard s, std::string const& k) : shard(s),
-  // key(std::stoull(k)) {}
 
   bool operator==(const PregelID& rhs) const {
     return shard == rhs.shard && key == rhs.key;
@@ -83,11 +80,9 @@ class Edge {
 
  public:
 
-  // size_t getSize() { return sizeof(EdgeEntry) + _vertexIDSize + _dataSize; }
   velocypack::StringRef toKey() const { return velocypack::StringRef(_toKey, _toKeyLength); }
-  // size_t getDataSize() { return _dataSize; }
   E& data() {
-    return _data;  // static_cast<E>(this + sizeof(EdgeEntry) + _vertexIDSize);
+    return _data;  
   }
   // PregelShard sourceShard() const { return _sourceShard; }
   PregelShard targetShard() const { return _targetShard; }
@@ -98,18 +93,18 @@ template <typename V, typename E>
 class Vertex {
   friend class GraphStore<V,E>;
   
-  const char* _key; // uint64_t
+  const char* _key;
   
   // these members are initialized by the GrapStore
-  Edge<E>* _edges; // uint64_t
-  size_t _edgeCount; // uint64_t
+  Edge<E>* _edges;
+  size_t _edgeCount;
   
-  uint16_t _keyLength; // uint16_t
-  PregelShard _shard; // uint16_t
+  uint16_t _keyLength;
+  PregelShard _shard;
   
   V _data; // variable byte size
   
-  bool _active = true; // bool8_t
+  bool _active = true;
 
  public:
   
@@ -125,61 +120,8 @@ class Vertex {
   V& data() & { return _data; }
   
   PregelID pregelId() const { return PregelID(_shard, std::string(_key, _keyLength)); }
-  /*std::string const& key() const {
-    return std::string(_key, _keySize);
-  };*/
 };
 
-// unused right now
-/*class LinkedListIterator {
- private:
-  intptr_t _begin, _end, _current;
-
-  VertexIterator(const VertexIterator&) = delete;
-  VertexIterator& operator=(const FileInfo&) = delete;
-
- public:
-  typedef VertexIterator iterator;
-  typedef const VertexIterator const_iterator;
-
-  VertexIterator(intptr_t beginPtr, intptr_t endPtr)
-      : _begin(beginPtr), _end(endPtr), _current(beginPtr) {}
-
-  iterator begin() { return VertexIterator(_begin, _end); }
-  const_iterator begin() const { return VertexIterator(_begin, _end); }
-  iterator end() {
-    auto it = VertexIterator(_begin, _end);
-    it._current = it._end;
-    return it;
-  }
-  const_iterator end() const {
-    auto it = VertexIterator(_begin, _end);
-    it._current = it._end;
-    return it;
-  }
-
-  // prefix ++
-  VertexIterator& operator++() {
-    VertexEntry* entry = (VertexEntry*)_current;
-    _current += entry->getSize();
-    return *this;
-  }
-
-  // postfix ++
-  VertexIterator& operator++(int) {
-    VertexEntry* entry = (VertexEntry*)_current;
-    _current += entry->getSize();
-    return *this;
-  }
-
-  VertexEntry* operator*() const {
-    return _current != _end ? (VertexEntry*)_current : nullptr;
-  }
-
-  bool operator!=(VertexIterator const& other) const {
-    return _current != other._current;
-  }
-};*/
 }  // namespace pregel
 }  // namespace arangodb
 
