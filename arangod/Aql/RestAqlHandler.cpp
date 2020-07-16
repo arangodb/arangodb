@@ -183,7 +183,8 @@ void RestAqlHandler::setupClusterQuery() {
     options.ttl = _queryRegistry->defaultTTL();
   }
 
-  // TODO: technically we could change the code in
+  // TODO: technically we could change the code in prepareClusterQuery to parse
+  //       the collection info directly
   // Build the collection information
   VPackBuilder collectionBuilder;
   collectionBuilder.openArray();

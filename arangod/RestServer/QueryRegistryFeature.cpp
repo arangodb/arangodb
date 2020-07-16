@@ -161,6 +161,7 @@ void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> optio
   _maxQueryPlans = std::min(_maxQueryPlans, decltype(_maxQueryPlans)(1024));
   
   if (_queryRegistryTTL <= 0) {
+    TRI_ASSERT(ServerState::instance()->getRole() != ServerState::ROLE_UNDEFINED);
     // set to default value based on instance type
     _queryRegistryTTL = ServerState::instance()->isSingleServer() ? 30 : 600;
   }
