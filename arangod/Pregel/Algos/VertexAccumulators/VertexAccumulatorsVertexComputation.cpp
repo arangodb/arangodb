@@ -22,97 +22,77 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <Pregel/Graph.h>
 #include <Pregel/Algos/VertexAccumulators/Greenspun/Interpreter.h>
 #include "VertexAccumulators.h"
 
-
+using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 
 struct MyEvalContext : EvalContext {
+  explicit MyEvalContext(VertexAccumulators::VertexComputation& computation) : _computation(computation) {};
 
-
-  std::string const& getThisId() const override {
-    return thisId;
-  }
+  std::string const& getThisId() const override { return thisId; }
 
   VPackSlice getDocumentById(std::string_view id) const override {
-      std::abort();
-  }
-
-  VPackSlice getAccumulatorValue(std::string_view id) const override {
-      return VPackSlice::zeroSlice();
-  }
-
-  void updateAccumulator(std::string_view accumId, std::string_view edgeId, VPackSlice value) override {
-      std::abort();
-  }
-
-  void setAccumulator(std::string_view accumId, VPackSlice value) override {
-     std::abort();
-  }
-
-  void enumerateEdges(std::function<void(VPackSlice edge, VPackSlice vertex)> cb) const override {
     std::abort();
   }
 
-  std::string thisId;
-  VertexAccumulators::VertexComputation *computation;
-};
-
-
-VertexAccumulators::VertexComputation::VertexComputation() {}
-
-// todo: MessageIterator<MessageData>?
-void VertexAccumulators::VertexComputation::compute(MessageIterator<MessageData> const& incomingMessages) {
-  auto currentVertexData = vertexData();
-  if (globalSuperstep() == 0) {
-//    runInitFunction();
-  } else {
-    LOG_DEVEL << "vertex data: " << currentVertexData;
-/*    if(runStepFunction()) {
-      voteHalt();
-    } else {
-      voteActive();
-    };
-    */
-
-    // receive messages and update all accumulators
-    for (const message_type* msg : incomingMessages) {
-      LOG_DEVEL << " a message " << msg;
-    }
-    // Send messages
-    // if (globalSuperstep() > 0) {
-/*
-    auto message = (pregelId(), currentComponent);
-
-    for (const MessageData* msg : messages) {
-      if (msg->value > currentComponent) {
-        TRI_ASSERT(msg->senderId != pregelId());
-        sendMessage(msg->senderId, message);
-        halt = false;
-      }
-
-      if (halt) {
-      voteHalt();
-    } else {
-      voteActive();
-    }
-*/
+  VPackSlice getAccumulatorValue(std::string_view id) const override {
+    return VPackSlice::zeroSlice();
   }
 
-/*
-  MessageData message(pregelId(), currentComponent);
-  RangeIterator<Edge<uint64_t>> edges = this->getEdges();
-  for (; edges.hasMore(); ++edges) {
-    Edge<uint64_t>* edge = *edges;
-    if (edge->toKey() == this->key()) {
-      continue;  // no need to send message to self
+  void setAccumulator(std::string_view accumId, VPackSlice value) override {
+    std::abort();
+  }
+
+  void updateAccumulator(std::string_view accumId, std::string_view vertexId,
+                         VPackSlice value) override {
+    //  sendMessage();
+    std::abort();
+  }
+
+  void enumerateEdges(std::function<void(VPackSlice edge, VPackSlice vertex)> cb) const override {
+    RangeIterator<Edge<EdgeData>> edgeIter = _computation.getEdges();
+    for (; edgeIter.hasMore(); ++edgeIter) {
+      // FIXME: PLEASE!
+      VPackBuilder yolo;
+      yolo.add(VPackValue((*edgeIter)->toKey().toString()));
+      cb(yolo.slice(), yolo.slice());
+//      cb((*edgeIter)->data(), yolo.slice()));
+    }
+  }
+
+  std::string thisId;
+  VertexAccumulators::VertexComputation& _computation;
+};
+
+VertexAccumulators::VertexComputation::VertexComputation(VertexAccumulators const& algorithm)
+    : _algorithm(algorithm) {}
+
+void VertexAccumulators::VertexComputation::compute(MessageIterator<MessageData> const& incomingMessages) {
+  auto evalContext = MyEvalContext(*this);
+  auto currentVertexData = vertexData();
+
+  if (globalSuperstep() == 0) {
+    VPackBuilder initResultBuilder;
+    Evaluate(evalContext, _algorithm.options().initProgram, initResultBuilder);
+    // TODO: return value relevant? Maybe for activation?
+  } else {
+    /* process incoming messages, update vertex accumulators */
+    /* MessageData will contain updates for some vertex accumulators */
+    for (const MessageData* msg : incomingMessages) {
+      LOG_DEVEL << " a message " << msg;
     }
 
-    // remember the value we send
-    edge->data() = currentComponent;
+    VPackBuilder stepResultBuilder;
+    Evaluate(evalContext, _algorithm.options().updateProgram, stepResultBuilder);
 
-    sendMessage(edge, message);
-  }*/
-
+    /*
+    if(somethingHasChanged) {
+      voteActive();
+    } else {
+      voteHalt();
+      }; */
+  }
 }

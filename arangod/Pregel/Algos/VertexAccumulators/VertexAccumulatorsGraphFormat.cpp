@@ -43,12 +43,14 @@ void VertexAccumulators::GraphFormat::copyVertexData(std::string const& document
                                                      arangodb::velocypack::Slice vertexDocument,
                                                      vertex_type& targetPtr) {
   LOG_DEVEL << "copyVertexData: " << vertexDocument.toJson();
+  targetPtr.reset(documentId, vertexDocument);
 }
 
 // Extract edge data from edge document into edge_type
 void VertexAccumulators::GraphFormat::copyEdgeData(arangodb::velocypack::Slice edgeDocument,
                                                    edge_type& targetPtr) {
   LOG_DEVEL << "copyEdgeData: " << edgeDocument.toJson();
+  targetPtr.reset(edgeDocument);
 }
 
 bool VertexAccumulators::GraphFormat::buildVertexDocument(arangodb::velocypack::Builder& b,
@@ -56,6 +58,7 @@ bool VertexAccumulators::GraphFormat::buildVertexDocument(arangodb::velocypack::
                                                           size_t size) const {
   // FIXME
   LOG_DEVEL << "buildVertexDocument: ";
+  std::abort();
   return true;
 }
 
@@ -64,5 +67,6 @@ bool VertexAccumulators::GraphFormat::buildEdgeDocument(arangodb::velocypack::Bu
                                                         size_t size) const {
   // FIXME
   LOG_DEVEL << "buildEdgeDocument";
+  std::abort();
   return false;
 }

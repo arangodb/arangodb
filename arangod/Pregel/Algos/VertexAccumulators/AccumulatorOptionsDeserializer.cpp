@@ -26,7 +26,7 @@
 
 #include <VPackDeserializer/deserializer.h>
 
-using namespace deserializer;
+using namespace arangodb::velocypack::deserializer;
 
 /* clang-format off */
 
@@ -52,36 +52,36 @@ using accumulator_value_type_deserializer = enum_deserializer<AccumulatorValueTy
 constexpr const char accumulatorType[] = "accumulatorType";
 constexpr const char valueType[] = "valueType";
 constexpr const char storeSender[] = "storeSender";
-constexpr const char neighborFilter[] = "neighborFilter";
-constexpr const char updateExpression[] = "updateExpression";
 
 using accumulator_options_plan = parameter_list<
     factory_deserialized_parameter<accumulatorType, accumulator_type_deserializer, true>,
     factory_deserialized_parameter<valueType, accumulator_value_type_deserializer, true>,
-    factory_simple_parameter<storeSender, bool, false>,
-    factory_deserialized_parameter<neighborFilter, values::value_deserializer<std::string>, true>,
-    factory_deserialized_parameter<updateExpression, values::value_deserializer<std::string>, true>
->;
+    factory_simple_parameter<storeSender, bool, false>>;
 
 using accumulator_options_deserializer =
     utilities::constructing_deserializer<AccumulatorOptions, accumulator_options_plan>;
 
+/* VertexAccumulatorOption */
+
 constexpr const char resultField[] = "resultField";
 constexpr const char accumulators[] = "accumulators";
+constexpr const char initProgram[] = "initProgram";
+constexpr const char updateProgram[] = "updateProgram";
 
-template<typename T>
-using my_vector = std::vector<T>;
+template<typename K, typename V>
+using my_map = std::map<K, V>;
 
 template<typename D, template <typename> typename C>
 using non_empty_array_deserializer = validate<
     array_deserializer<D, C>, utilities::not_empty_validator>;
 
-using accumulators_list_deserializer = non_empty_array_deserializer<accumulator_options_deserializer, my_vector>;
+using accumulators_map_deserializer = map_deserializer<accumulator_options_deserializer, my_map>;
 
 using vertex_accumulator_options_plan = parameter_list<
-    factory_deserialized_parameter<resultField, values::value_deserializer<std::string>, true>,
-    factory_deserialized_parameter<accumulators, accumulators_list_deserializer, true>
->;
+  factory_deserialized_parameter<resultField, values::value_deserializer<std::string>, true>,
+  factory_deserialized_parameter<accumulators, accumulators_map_deserializer, true>,
+  factory_slice_parameter<initProgram, true>,
+  factory_slice_parameter<updateProgram, true>>;
 
 using vertex_accumulator_options_deserializer =
     utilities::constructing_deserializer<VertexAccumulatorOptions, vertex_accumulator_options_plan>;

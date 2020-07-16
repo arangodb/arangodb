@@ -41,28 +41,40 @@ namespace algos {
 
 class VertexData {
  public:
-  VertexData();
-
   std::string toString() const { return "vertexAkkum"; };
 
+  void reset(std::string _documentId, VPackSlice const& doc);
+
  private:
-  //std::vector<AccumulatorBase> _accumulators;
+  // std::vector<AccumulatorBase> _accumulators;
 
   MinIntAccumulator _accum;
+  std::string _documentId;
+
+  // FIXME: YOLO. we copy the whole document, which is
+  //        probably super expensive.
+  VPackBuilder _document;
 };
 
 std::ostream& operator<<(std::ostream&, VertexData const&);
 
 struct EdgeData {
-  EdgeData();
-
-
+  void reset(VPackSlice const& doc);
+  // FIXME: YOLO. we copy the whole document, which is
+  //        probably super expensive.
+ private:
+  VPackBuilder _document;
 };
 
 struct MessageData {
-  MessageData();
 
+  void reset(std::string accumulatorName, VPackSlice const &value);
 
+private:
+  std::string _accumulatorName;
+
+  // We copy the value :/ is this necessary?
+  VPackBuilder _value;
 };
 
 struct VertexAccumulators : public Algorithm<VertexData, EdgeData, MessageData> {
@@ -94,8 +106,11 @@ struct VertexAccumulators : public Algorithm<VertexData, EdgeData, MessageData> 
   };
 
   struct VertexComputation : public vertex_computation {
-    VertexComputation();
+    explicit VertexComputation(VertexAccumulators const& algorithm);
     void compute(MessageIterator<message_type> const& messages) override;
+
+   private:
+    VertexAccumulators const& _algorithm;
   };
 
  public:
@@ -114,9 +129,10 @@ struct VertexAccumulators : public Algorithm<VertexData, EdgeData, MessageData> 
  private:
   void parseUserParams(VPackSlice userParams);
 
+  VertexAccumulatorOptions const& options() const;
+
  private:
   VertexAccumulatorOptions _options;
-
 };
 }  // namespace algos
 }  // namespace pregel

@@ -37,8 +37,8 @@ typedef uint16_t PregelShard;
 const PregelShard InvalidPregelShard = -1;
 
 struct PregelID {
-  std::string key; // std::string 24
-  PregelShard shard; // uint16_t
+  std::string key;    // std::string 24
+  PregelShard shard;  // uint16_t
 
   PregelID() : key(""), shard(InvalidPregelShard) {}
   PregelID(PregelShard s, std::string const& k) : key(k), shard(s) {}
@@ -48,7 +48,7 @@ struct PregelID {
   bool operator==(const PregelID& rhs) const {
     return shard == rhs.shard && key == rhs.key;
   }
-  
+
   bool operator!=(const PregelID& rhs) const {
     return shard != rhs.shard || key != rhs.key;
   }
@@ -57,9 +57,7 @@ struct PregelID {
     return shard < rhs.shard || (shard == rhs.shard && key < rhs.key);
   }
 
-  bool isValid() const {
-    return shard != InvalidPregelShard && !key.empty();
-  }
+  bool isValid() const { return shard != InvalidPregelShard && !key.empty(); }
 };
 
 template <typename V, typename E>
@@ -75,16 +73,17 @@ class Edge {
   static_assert(sizeof(std::string) > 2, "");
 
   // these members are initialized by the GrapStore
-  char* _toKey;             // uint64_t
-  uint16_t _toKeyLength;    // uint16_t
-  PregelShard _targetShard; // uint16_t
+  char* _toKey;              // uint64_t
+  uint16_t _toKeyLength;     // uint16_t
+  PregelShard _targetShard;  // uint16_t
 
   E _data;
 
  public:
-
   // size_t getSize() { return sizeof(EdgeEntry) + _vertexIDSize + _dataSize; }
-  velocypack::StringRef toKey() const { return velocypack::StringRef(_toKey, _toKeyLength); }
+  velocypack::StringRef toKey() const {
+    return velocypack::StringRef(_toKey, _toKeyLength);
+  }
   // size_t getDataSize() { return _dataSize; }
   E& data() {
     return _data;  // static_cast<E>(this + sizeof(EdgeEntry) + _vertexIDSize);
@@ -96,35 +95,38 @@ class Edge {
 template <typename V, typename E>
 // cppcheck-suppress noConstructor
 class Vertex {
-  friend class GraphStore<V,E>;
-  
-  const char* _key; // uint64_t
-  
+  friend class GraphStore<V, E>;
+
+  const char* _key;  // uint64_t
+
   // these members are initialized by the GrapStore
-  Edge<E>* _edges; // uint64_t
-  size_t _edgeCount; // uint64_t
-  
-  uint16_t _keyLength; // uint16_t
-  PregelShard _shard; // uint16_t
-  
-  V _data; // variable byte size
-  
-  bool _active = true; // bool8_t
+  Edge<E>* _edges;    // uint64_t
+  size_t _edgeCount;  // uint64_t
+
+  uint16_t _keyLength;  // uint16_t
+  PregelShard _shard;   // uint16_t
+
+  V _data;  // variable byte size
+
+  bool _active = true;  // bool8_t
 
  public:
-  
   Edge<E>* getEdges() const { return _edges; }
   size_t getEdgeCount() const { return _edgeCount; }
-  
+
   bool active() const { return _active; }
   void setActive(bool bb) { _active = bb; }
 
   PregelShard shard() const { return _shard; }
-  velocypack::StringRef key() const { return velocypack::StringRef(_key, _keyLength); };
+  velocypack::StringRef key() const {
+    return velocypack::StringRef(_key, _keyLength);
+  };
   V const& data() const& { return _data; }
   V& data() & { return _data; }
-  
-  PregelID pregelId() const { return PregelID(_shard, std::string(_key, _keyLength)); }
+
+  PregelID pregelId() const {
+    return PregelID(_shard, std::string(_key, _keyLength));
+  }
   /*std::string const& key() const {
     return std::string(_key, _keySize);
   };*/

@@ -26,8 +26,19 @@
 
 using namespace arangodb::pregel::algos;
 
-VertexData::VertexData() {}
+void VertexData::reset(std::string documentId, VPackSlice const& doc) {
+  _documentId = documentId;
+  _document.clear();
+  _document.add(doc);
+}
 
-EdgeData::EdgeData() {}
+void EdgeData::reset(VPackSlice const& doc) {
+  _document.clear();
+  _document.add(doc);
+}
 
-MessageData::MessageData() {}
+void MessageData::reset(std::string accumulatorName, VPackSlice const& value) {
+  _accumulatorName = accumulatorName;
+  _value.clear();
+  _value.add(value);
+}

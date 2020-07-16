@@ -28,6 +28,7 @@
 #define ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATOR_OPTIONS_DESERIALIZER_H 1
 
 #include <string>
+#include <map>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -45,17 +46,19 @@ enum class AccumulatorValueType {
   STRINGS,
 };
 
+/* A *single* accumulator */
 struct AccumulatorOptions {
   AccumulatorType type;
   AccumulatorValueType valueType;
   bool storeSender;
-  std::string neighborFilter;
-  std::string updateExpression;
 };
 
+/* The Pregel Algorithm */
 struct VertexAccumulatorOptions {
   std::string resultField;
-  std::vector<AccumulatorOptions> accumulators;
+  std::map<std::string, AccumulatorOptions> accumulators;
+  VPackSlice initProgram;
+  VPackSlice updateProgram;
 };
 
 std::ostream& operator<<(std::ostream&, AccumulatorOptions const&);

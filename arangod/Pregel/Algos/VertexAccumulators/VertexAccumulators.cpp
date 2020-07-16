@@ -63,7 +63,7 @@ bool VertexAccumulators::supportsCompensation() const { return false; }
 
 auto VertexAccumulators::createComputation(WorkerConfig const* config) const
     -> vertex_computation* {
-  return new VertexComputation();
+  return new VertexAccumulators::VertexComputation(*this);
 }
 
 auto VertexAccumulators::inputFormat() const -> graph_format* {
@@ -79,8 +79,12 @@ void VertexAccumulators::parseUserParams(VPackSlice userParams) {
   } else {
     // What do we do on error? std::terminate()
     LOG_DEVEL << result.error().as_string();
+    std::abort();
   }
 }
 
+VertexAccumulatorOptions const& VertexAccumulators::options() const {
+  return _options;
+}
 
 template class arangodb::pregel::Worker<VertexData, EdgeData, MessageData>;
