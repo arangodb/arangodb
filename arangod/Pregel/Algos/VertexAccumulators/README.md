@@ -9,9 +9,9 @@ TODO: Fill me
 
 { "resultField": "SCC",
   "accumulators": [
-    "type": "min",
-    "valueType": "int",
-    "storeSender": true,
-    "initExpression": [ "if" ],
-    "updateExpression": [ "update" ]
-  ]}
+    { "type": "min",
+      "valueType": "int",
+      "storeSender": true,
+      "initExpression": [ "if" ],
+      "updateExpression": [ "update" ] },
+  ] }
