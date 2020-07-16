@@ -26,10 +26,6 @@
 #include "V8/v8-utils.h"
 #include "V8Server/FoxxQueuesFeature.h"
 
-// TODO REMOVE just debug
-#include "Basics/ScopeGuard.h"
-#include "Logger/LogMacros.h"
-
 using namespace arangodb;
 using namespace arangodb::javascript;
 
@@ -49,10 +45,7 @@ static void JS_ExecuteFoxxLocked(v8::FunctionCallbackInfo<v8::Value> const& args
 
   TRI_GET_GLOBALS();
   FoxxQueuesFeature& foxxQueuesFeature = v8g->_server.getFeature<FoxxQueuesFeature>();
-  LOG_DEVEL << "Locking fs";
   auto&& lockGuard = foxxQueuesFeature.writeLockFileSystem();
-  TRI_DEFER(LOG_DEVEL << "unlocking fs";)
-  LOG_DEVEL << "GOT lock fs";
   // Make no-unused warning go away. This is a guard, it only needs to be destructed eventually
   (void) lockGuard;
   v8::Handle<v8::Object> current = isolate->GetCurrentContext()->Global();
