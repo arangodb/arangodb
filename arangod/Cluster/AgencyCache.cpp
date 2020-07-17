@@ -57,7 +57,7 @@ std::tuple <query_t, index_t> const AgencyCache::get(
   auto ret = std::make_shared<VPackBuilder>();
   std::lock_guard g(_storeLock);
   if (_commitIndex > 0) {
-    _readDB.get("arango/" + path).toBuilder(*ret);
+    _readDB.get("arango/" + path, *ret);
   }
   return std::tuple(ret, _commitIndex);
 }

@@ -1,6 +1,9 @@
 devel
 -----
 
+* Improve performance of agency cache by not copying the hierarchical Node
+  tree result for serialization, but serializing it directly.
+
 * Make sure cluster statistics in web UI work in case a coordinator is down.
 
 * Updated arangosync to 0.7.8.

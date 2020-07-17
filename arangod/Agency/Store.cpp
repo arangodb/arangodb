@@ -1010,6 +1010,12 @@ std::unordered_multimap<std::string, std::string> const& Store::observedTable() 
   return _observedTable;
 }
 
+/// Get node at path under mutex and store it in velocypack
+void Store::get(std::string const& path, arangodb::velocypack::Builder& b) const {
+  MUTEX_LOCKER(storeLocker, _storeLock);
+  _node.hasAsNode(path).first.toBuilder(b, false);
+}
+
 /// Get node at path under mutex
 Node Store::get(std::string const& path) const {
   MUTEX_LOCKER(storeLocker, _storeLock);
