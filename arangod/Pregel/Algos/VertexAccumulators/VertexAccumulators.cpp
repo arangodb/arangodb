@@ -37,6 +37,8 @@
 
 #include "Pregel/Algos/VertexAccumulators/AccumulatorOptionsDeserializer.h"
 
+#include "Pregel/Algos/VertexAccumulators/Greenspun/Interpreter.h"
+
 #include <set>
 
 #define LOG_VERTEXACC(logId, level) \
@@ -59,6 +61,10 @@ VertexAccumulators::VertexAccumulators(application_features::ApplicationServer& 
     : Algorithm(server, "VertexAccumulators") {
   LOG_VERTEXACC("", DEBUG) << "algorithm constructor entry";
 
+  LOG_VERTEXACC("", DEBUG) << "initializing Greenspun interpreter";
+  InitInterpreter();
+
+  LOG_VERTEXACC("", DEBUG) << "parsing user parameters";
   parseUserParams(userParams);
 
   LOG_VERTEXACC("", DEBUG) << "algorithm constructor done";

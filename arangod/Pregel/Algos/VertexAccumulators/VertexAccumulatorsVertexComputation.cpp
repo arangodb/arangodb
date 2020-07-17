@@ -30,7 +30,8 @@ using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 
 struct MyEvalContext : EvalContext {
-  explicit MyEvalContext(VertexAccumulators::VertexComputation& computation) : _computation(computation) {};
+  explicit MyEvalContext(VertexAccumulators::VertexComputation& computation, VertexData& vertexData)
+    : _computation(computation), _vertexData(vertexData) {};
 
   std::string const& getThisId() const override { return thisId; }
 
@@ -64,15 +65,16 @@ struct MyEvalContext : EvalContext {
   }
 
   std::string thisId;
+
   VertexAccumulators::VertexComputation& _computation;
+  VertexData& _vertexData;
 };
 
 VertexAccumulators::VertexComputation::VertexComputation(VertexAccumulators const& algorithm)
     : _algorithm(algorithm) {}
 
 void VertexAccumulators::VertexComputation::compute(MessageIterator<MessageData> const& incomingMessages) {
-  auto evalContext = MyEvalContext(*this);
-  //auto&& currentVertexData = vertexData();
+  auto evalContext = MyEvalContext(*this, vertexData());
 
   if (globalSuperstep() == 0) {
     VPackBuilder initResultBuilder;
@@ -81,6 +83,7 @@ void VertexAccumulators::VertexComputation::compute(MessageIterator<MessageData>
   } else {
     /* process incoming messages, update vertex accumulators */
     /* MessageData will contain updates for some vertex accumulators */
+
     for (const MessageData* msg : incomingMessages) {
       LOG_DEVEL << " a message " << msg;
     }
