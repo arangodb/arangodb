@@ -37,7 +37,7 @@ class AccumulatorBase {
 };
 
 template <typename T>
-class Accumulator : AccumulatorBase {
+class Accumulator : public AccumulatorBase {
  public:
   using data_type = T;
 

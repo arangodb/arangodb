@@ -39,6 +39,12 @@
 
 #include <set>
 
+#define LOG_VERTEXACC(logId, level) \
+  LOG_DEVEL << "[VertexAccumulators] "
+
+// LOG_TOPIC(logId, level, Logger::QUERIES) << "[VertexAccumulators] "
+
+
 using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
@@ -51,11 +57,11 @@ std::ostream& arangodb::pregel::algos::operator<<(std::ostream& os, VertexData c
 VertexAccumulators::VertexAccumulators(application_features::ApplicationServer& server,
                                        VPackSlice userParams)
     : Algorithm(server, "VertexAccumulators") {
-  LOG_DEVEL << "VertexAccumulators Pregel Algorithm created";
+  LOG_VERTEXACC("", DEBUG) << "algorithm constructor entry";
 
   parseUserParams(userParams);
 
-  LOG_DEVEL << "done.";
+  LOG_VERTEXACC("", DEBUG) << "algorithm constructor done";
 }
 
 bool VertexAccumulators::supportsAsyncMode() const { return false; }
@@ -68,17 +74,22 @@ auto VertexAccumulators::createComputation(WorkerConfig const* config) const
 
 auto VertexAccumulators::inputFormat() const -> graph_format* {
   // TODO: The resultField needs to be configurable from the user's side
-  return new GraphFormat(_server, _options.resultField);
+  return new GraphFormat(_server, _options.resultField, _options.accumulatorsDeclaration);
 }
 
 void VertexAccumulators::parseUserParams(VPackSlice userParams) {
-  LOG_DEVEL << "parsing user params: " << userParams;
+  LOG_VERTEXACC("", DEBUG) << "parsing user params: " << userParams;
   auto result = parseVertexAccumulatorOptions(userParams);
   if(result) {
     _options = std::move(result).get();
+
+    LOG_VERTEXACC("", DEBUG) << "declared accumulators";
+    for (auto&& acc : _options.accumulatorsDeclaration) {
+      LOG_VERTEXACC("", DEBUG) << acc.first << " " << acc.second;
+    }
   } else {
     // What do we do on error? std::terminate()
-    LOG_DEVEL << result.error().as_string();
+    LOG_VERTEXACC("", DEBUG) << result.error().as_string();
     std::abort();
   }
 }

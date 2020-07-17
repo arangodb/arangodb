@@ -64,7 +64,7 @@ using accumulator_options_deserializer =
 /* VertexAccumulatorOption */
 
 constexpr const char resultField[] = "resultField";
-constexpr const char accumulators[] = "accumulators";
+constexpr const char accumulatorsDeclaration[] = "accumulatorsDeclaration";
 constexpr const char initProgram[] = "initProgram";
 constexpr const char updateProgram[] = "updateProgram";
 
@@ -79,7 +79,7 @@ using accumulators_map_deserializer = map_deserializer<accumulator_options_deser
 
 using vertex_accumulator_options_plan = parameter_list<
   factory_deserialized_parameter<resultField, values::value_deserializer<std::string>, true>,
-  factory_deserialized_parameter<accumulators, accumulators_map_deserializer, true>,
+  factory_deserialized_parameter<accumulatorsDeclaration, accumulators_map_deserializer, true>,
   factory_slice_parameter<initProgram, true>,
   factory_slice_parameter<updateProgram, true>>;
 

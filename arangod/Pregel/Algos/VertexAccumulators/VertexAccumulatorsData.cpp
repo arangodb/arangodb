@@ -26,10 +26,15 @@
 
 using namespace arangodb::pregel::algos;
 
-void VertexData::reset(std::string documentId, VPackSlice const& doc) {
+void VertexData::reset(AccumulatorsDeclaration const& accumulatorsDeclaration,
+                       std::string documentId, VPackSlice const& doc) {
   _documentId = documentId;
   _document.clear();
   _document.add(doc);
+
+  for (auto&& acc : accumulatorsDeclaration) {
+    _accumulators.emplace(acc.first, MinIntAccumulator{});
+  }
 }
 
 void EdgeData::reset(VPackSlice const& doc) {

@@ -35,7 +35,7 @@ namespace arangodb {
 namespace pregel {
 namespace algos {
 
-class MinIntAccumulator : Accumulator<int64_t> {
+class MinIntAccumulator : public Accumulator<int64_t> {
 public:
   void update(data_type&& v) override {
     LOG_DEVEL << " UND UPDATE! " << v;

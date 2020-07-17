@@ -28,8 +28,9 @@ using namespace arangodb::pregel::algos;
 
 // Graph Format
 VertexAccumulators::GraphFormat::GraphFormat(application_features::ApplicationServer& server,
-                                             std::string const& resultField)
-    : graph_format(server), _resultField(resultField){};
+                                             std::string const& resultField,
+                                             std::map<std::string, AccumulatorOptions> const& accumulatorDeclarations)
+  : graph_format(server), _resultField(resultField), _accumulatorDeclarations(accumulatorDeclarations) {};
 
 size_t VertexAccumulators::GraphFormat::estimatedVertexSize() const {
   return sizeof(vertex_type);
@@ -42,14 +43,12 @@ size_t VertexAccumulators::GraphFormat::estimatedEdgeSize() const {
 void VertexAccumulators::GraphFormat::copyVertexData(std::string const& documentId,
                                                      arangodb::velocypack::Slice vertexDocument,
                                                      vertex_type& targetPtr) {
-  LOG_DEVEL << "copyVertexData: " << vertexDocument.toJson();
-  targetPtr.reset(documentId, vertexDocument);
+  targetPtr.reset(_accumulatorDeclarations, documentId, vertexDocument);
 }
 
 // Extract edge data from edge document into edge_type
 void VertexAccumulators::GraphFormat::copyEdgeData(arangodb::velocypack::Slice edgeDocument,
                                                    edge_type& targetPtr) {
-  LOG_DEVEL << "copyEdgeData: " << edgeDocument.toJson();
   targetPtr.reset(edgeDocument);
 }
 
@@ -57,8 +56,7 @@ bool VertexAccumulators::GraphFormat::buildVertexDocument(arangodb::velocypack::
                                                           const vertex_type* ptr,
                                                           size_t size) const {
   // FIXME
-  LOG_DEVEL << "buildVertexDocument: ";
-  std::abort();
+  b.add(_resultField, VPackValue("banana"));
   return true;
 }
 
@@ -66,7 +64,6 @@ bool VertexAccumulators::GraphFormat::buildEdgeDocument(arangodb::velocypack::Bu
                                                         const edge_type* ptr,
                                                         size_t size) const {
   // FIXME
-  LOG_DEVEL << "buildEdgeDocument";
-  std::abort();
+  // std::abort();
   return false;
 }

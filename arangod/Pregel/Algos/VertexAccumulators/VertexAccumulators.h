@@ -39,18 +39,17 @@ namespace arangodb {
 namespace pregel {
 namespace algos {
 
+// Vertex data has to be default constructible m(
 class VertexData {
  public:
   std::string toString() const { return "vertexAkkum"; };
 
-  void reset(std::string _documentId, VPackSlice const& doc);
+  void reset(AccumulatorsDeclaration const& accumulatorsDeclaration,
+             std::string documentId, VPackSlice const& doc);
 
- private:
-  // std::vector<AccumulatorBase> _accumulators;
+  std::map<std::string, AccumulatorBase> _accumulators;
 
-  MinIntAccumulator _accum;
   std::string _documentId;
-
   // FIXME: YOLO. we copy the whole document, which is
   //        probably super expensive.
   VPackBuilder _document;
@@ -67,10 +66,9 @@ struct EdgeData {
 };
 
 struct MessageData {
+  void reset(std::string accumulatorName, VPackSlice const& value);
 
-  void reset(std::string accumulatorName, VPackSlice const &value);
-
-private:
+ private:
   std::string _accumulatorName;
 
   // We copy the value :/ is this necessary?
@@ -79,10 +77,17 @@ private:
 
 struct VertexAccumulators : public Algorithm<VertexData, EdgeData, MessageData> {
   struct GraphFormat final : public graph_format {
+    // FIXME: passing of options? Maybe a struct? The complete struct that comes
+    //        out of the deserializer, or just a view of it?
     explicit GraphFormat(application_features::ApplicationServer& server,
-                         std::string const& resultField);
+                         std::string const& resultField,
+                         std::map<std::string, AccumulatorOptions> const& accumulatorDeclarations);
 
     std::string const _resultField;
+
+    // We use these accumulatorDeclarations to setup VertexData in
+    // copyVertexData
+    std::map<std::string, AccumulatorOptions> _accumulatorDeclarations;
 
     size_t estimatedVertexSize() const override;
     size_t estimatedEdgeSize() const override;
