@@ -27,10 +27,6 @@
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
-#include "Cluster/CallbackGuard.h"
-#include "Basics/ResultT.h"
-
-struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace aql {
@@ -130,7 +126,6 @@ class QueryRegistry {
     QueryInfo(std::unique_ptr<ClusterQuery> query, double ttl);
     ~QueryInfo();
 
-    TRI_vocbase_t* _vocbase;  // the vocbase
     std::unique_ptr<ClusterQuery> _query;  // the actual query pointer
     
     const double _timeToLive;  // in seconds
