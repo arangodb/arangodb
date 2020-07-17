@@ -32,12 +32,12 @@ using namespace arangodb;
 using namespace arangodb::maintenance;
 
 /// @brief ctor
-ActionDescription::ActionDescription(std::map<std::string, std::string>&& d,
+ActionDescription::ActionDescription(std::map<std::string, std::string> d,
                                      int priority,
-                                     std::shared_ptr<VPackBuilder> const& p)
-    : _description(std::move(d)), _properties(p), _priority(priority) {
+                                     std::shared_ptr<VPackBuilder> p)
+    : _description(std::move(d)), _properties(std::move(p)), _priority(priority) {
   TRI_ASSERT(_description.find(NAME) != _description.end());
-  TRI_ASSERT(p == nullptr || p->isEmpty() || p->slice().isObject());
+  TRI_ASSERT(_properties == nullptr || _properties->isEmpty() || _properties->slice().isObject());
 }
 
 /// @brief Default dtor

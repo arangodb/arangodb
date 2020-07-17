@@ -65,9 +65,9 @@ struct ActionDescription final {
    * @param  properties  Non discriminatory properties
    */
   ActionDescription(
-      std::map<std::string, std::string>&& desc,
+      std::map<std::string, std::string> description,
       int priority,
-      std::shared_ptr<VPackBuilder> const& properties = std::make_shared<VPackBuilder>());
+      std::shared_ptr<VPackBuilder> properties = std::make_shared<VPackBuilder>());
 
   /**
    * @brief Clean up

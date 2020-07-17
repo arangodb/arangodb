@@ -173,7 +173,7 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_0_times_ok) {
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
   std::unique_ptr<ActionBase> action_base_ptr;
-  action_base_ptr.reset((ActionBase*)new TestActionBasic(
+  action_base_ptr.reset(new TestActionBasic(
       tf, ActionDescription(
               std::map<std::string, std::string>{{"name", "TestActionBasic"},
                                                  {"iterate_count", "0"}},
@@ -207,7 +207,7 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_0_times_fail) {
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
   std::unique_ptr<ActionBase> action_base_ptr;
-  action_base_ptr.reset((ActionBase*)new TestActionBasic(
+  action_base_ptr.reset(new TestActionBasic(
       tf, ActionDescription(
               std::map<std::string, std::string>{{"name", "TestActionBasic"},
                                                  {"iterate_count", "0"},
@@ -242,7 +242,7 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_1_time_ok) {
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
   std::unique_ptr<ActionBase> action_base_ptr;
-  action_base_ptr.reset((ActionBase*)new TestActionBasic(
+  action_base_ptr.reset(new TestActionBasic(
       tf, ActionDescription(
               std::map<std::string, std::string>{{"name", "TestActionBasic"},
                                                  {"iterate_count", "1"}},
@@ -276,7 +276,7 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_1_time_fail) {
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
   std::unique_ptr<ActionBase> action_base_ptr;
-  action_base_ptr.reset((ActionBase*)new TestActionBasic(
+  action_base_ptr.reset(new TestActionBasic(
       tf, ActionDescription(
               std::map<std::string, std::string>{{"name", "TestActionBasic"},
                                                  {"iterate_count", "1"},
@@ -312,7 +312,7 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_2_times_ok) {
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
   std::unique_ptr<ActionBase> action_base_ptr;
-  action_base_ptr.reset((ActionBase*)new TestActionBasic(
+  action_base_ptr.reset(new TestActionBasic(
       tf, ActionDescription(
               std::map<std::string, std::string>{{"name", "TestActionBasic"},
                                                  {"iterate_count", "2"}},
@@ -347,7 +347,7 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_100_times_ok) {
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
   std::unique_ptr<ActionBase> action_base_ptr;
-  action_base_ptr.reset((ActionBase*)new TestActionBasic(
+  action_base_ptr.reset(new TestActionBasic(
       tf, ActionDescription(
               std::map<std::string, std::string>{{"name", "TestActionBasic"},
                                                  {"iterate_count", "100"}},
@@ -382,7 +382,7 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_100_times_fail) {
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
   std::unique_ptr<ActionBase> action_base_ptr;
-  action_base_ptr.reset((ActionBase*)new TestActionBasic(
+  action_base_ptr.reset(new TestActionBasic(
       tf, ActionDescription(
               std::map<std::string, std::string>{{"name", "TestActionBasic"},
                                                  {"iterate_count", "100"},
@@ -426,7 +426,7 @@ TEST(MaintenanceFeatureTestThreaded, populate_action_queue_and_validate) {
   //   a. 100 iterations then fail
 
   std::unique_ptr<ActionBase> action_base_ptr;
-  action_base_ptr.reset((ActionBase*)new TestActionBasic(
+  action_base_ptr.reset(new TestActionBasic(
       tf, ActionDescription(
               std::map<std::string, std::string>{{"name", "TestActionBasic"},
                                                  {"iterate_count", "100"},
@@ -440,7 +440,7 @@ TEST(MaintenanceFeatureTestThreaded, populate_action_queue_and_validate) {
   pre_thread.push_back({1, 0, READY, 0});
   post_thread.push_back({1, 1, FAILED, 100});
 
-  action_base_ptr.reset((ActionBase*)new TestActionBasic(
+  action_base_ptr.reset(new TestActionBasic(
       tf, ActionDescription(
               std::map<std::string, std::string>{{"name", "TestActionBasic"},
                                                  {"iterate_count", "2"}},
@@ -453,7 +453,7 @@ TEST(MaintenanceFeatureTestThreaded, populate_action_queue_and_validate) {
   post_thread.push_back({2, 0, COMPLETE, 2});
 
   //   c. duplicate of 'a', should fail to add
-  action_base_ptr.reset((ActionBase*)new TestActionBasic(
+  action_base_ptr.reset(new TestActionBasic(
       tf, ActionDescription(
               std::map<std::string, std::string>{{"name", "TestActionBasic"},
                                                  {"iterate_count", "100"},
@@ -509,7 +509,7 @@ TEST(MaintenanceFeatureTestThreaded, action_that_generates_a_preaction) {
   // 1. load up the queue without threads running
   //   a. 100 iterations then fail
   std::unique_ptr<ActionBase> action_base_ptr;
-  action_base_ptr.reset((ActionBase*)new TestActionBasic(
+  action_base_ptr.reset(new TestActionBasic(
       tf, ActionDescription(
               std::map<std::string, std::string>{{"name", "TestActionBasic"},
                                                  {"iterate_count", "100"},
@@ -568,7 +568,7 @@ TEST(MaintenanceFeatureTestThreaded, action_that_generates_a_postaction) {
   // 1. load up the queue without threads running
   //   a. 100 iterations then fail
   std::unique_ptr<ActionBase> action_base_ptr;
-  action_base_ptr.reset((ActionBase*)new TestActionBasic(
+  action_base_ptr.reset(new TestActionBasic(
       tf,
       ActionDescription(
           std::map<std::string, std::string>{{"name", "TestActionBasic"},
@@ -629,7 +629,7 @@ TEST(MaintenanceFeatureTestThreaded, priority_queue_should_be_able_to_process_fa
   // 1. load up the queue without threads running
   //   a. 100 iterations then fail
   std::unique_ptr<ActionBase> action_base_ptr;
-  action_base_ptr.reset((ActionBase*)new TestActionBasic(
+  action_base_ptr.reset(new TestActionBasic(
       tf,
       ActionDescription(
           std::map<std::string, std::string>{{"name", "TestActionBasic"},
@@ -678,7 +678,7 @@ TEST(MaintenanceFeatureTestThreaded, action_delete) {
   // 1. load up the queue without threads running
   //   a. 100 iterations then fail
   std::unique_ptr<ActionBase> action_base_ptr;
-  action_base_ptr.reset((ActionBase*)new TestActionBasic(
+  action_base_ptr.reset(new TestActionBasic(
       tf,
       ActionDescription(
           std::map<std::string, std::string>{{"name", "TestActionBasic"},
