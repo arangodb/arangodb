@@ -11,6 +11,7 @@
 namespace arangodb::basics::VelocyPackHelper {
 
 int compare(arangodb::velocypack::Slice, arangodb::velocypack::Slice, bool, arangodb::velocypack::Options const*, arangodb::velocypack::Slice const*, arangodb::velocypack::Slice const*) {
+   std::cerr << "WARNING! YOU ARE ABOUT TO SHOOT YOURSELF IN THE FOOT!" << std::endl;
    return 0;
 }
 
