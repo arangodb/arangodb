@@ -26,6 +26,7 @@
 
 #ifndef ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_ABSTRACT_ACCUMULATOR_H
 #define ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_ABSTRACT_ACCUMULATOR_H 1
+#include <numeric>
 
 #include "AccumulatorOptionsDeserializer.h"
 
@@ -39,11 +40,13 @@ template <typename T>
 class Accumulator;
 
 struct AccumulatorBase {
-
+  virtual ~AccumulatorBase() = default;
   template<typename T>
   Accumulator<T>* castAccumulatorType() {
     return dynamic_cast<Accumulator<T>*>(this);
   }
+
+  virtual void updateBySlice(VPackSlice) = 0;
 };
 
 template <typename T>
@@ -52,9 +55,15 @@ class Accumulator : public AccumulatorBase {
   using data_type = T;
 
   explicit Accumulator(AccumulatorOptions const&) {};
-  virtual ~Accumulator() = default;
+  ~Accumulator() override = default;
 
   virtual void update(data_type v) = 0;
+
+  void updateBySlice(VPackSlice s) override {
+    if constexpr (std::is_arithmetic_v<T>) {
+      this->update(s.getNumericValue<T>());
+    }
+  }
 
   data_type const& get() const { return _value; };
 
