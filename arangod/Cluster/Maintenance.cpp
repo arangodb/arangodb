@@ -67,10 +67,8 @@ static int indexOf(VPackSlice const& slice, std::string const& val) {
   if (slice.isArray()) {
     int counter = 0;
     for (VPackSlice entry : VPackArrayIterator(slice)) {
-      if (entry.isString()) {
-        if (entry.stringRef() == val) {
-          return counter;
-        }
+      if (entry.isString() && entry.isEqualString(val)) {
+        return counter;
       }
       counter++;
     }
