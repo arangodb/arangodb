@@ -58,6 +58,10 @@ void RocksDBBackgroundErrorListener::OnBackgroundError(rocksdb::BackgroundErrorR
         operation = "memtable";
         break;
       }
+      case rocksdb::BackgroundErrorReason::kManifestWrite: {
+        operation = "manifest write";
+        break;
+      }
     }
 
     LOG_TOPIC("fae2c", ERR, Logger::ROCKSDB)
