@@ -27,21 +27,37 @@
 #ifndef ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_ACCUMULATORS_H
 #define ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_ACCUMULATORS_H 1
 
-#include <Pregel/Algos/VertexAccumulators/AbstractAccumulator.h>
-
-#include <inttypes.h>
+#include "AbstractAccumulator.h"
 
 namespace arangodb {
 namespace pregel {
 namespace algos {
 
-class MinIntAccumulator : public Accumulator<int64_t> {
-public:
-  void update(data_type&& v) override {
-    LOG_DEVEL << " UND UPDATE! " << v;
-    if (v < _value) {
-      _value = v;
-    }
+template<typename T>
+class MinAccumulator : public Accumulator<T> {
+ public:
+  using Accumulator<T>::Accumulator;
+  void update(T v) override {
+    this->_value = std::min(v, this->_value);
+  }
+};
+
+template<typename T>
+class MaxAccumulator : public Accumulator<T> {
+ public:
+  using Accumulator<T>::Accumulator;
+  void update(T v) override {
+    this->_value = std::max(v, this->_value);
+  }
+};
+
+
+template<typename T>
+class SumAccumulator : public Accumulator<T> {
+ public:
+  using Accumulator<T>::Accumulator;
+  void update(T v) override {
+    this->_value += v;
   }
 };
 

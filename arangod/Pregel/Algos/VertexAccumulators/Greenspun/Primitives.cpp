@@ -93,20 +93,6 @@ void Prim_EqHuh(EvalContext& ctx, VPackSlice const params, VPackBuilder& result)
   result.add(VPackValue(true));
 }
 
-void Prim_If(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
-  for (auto&& pair : VPackArrayIterator(params)) {
-    VPackBuilder condResult;
-    auto&& [cond, slice] = unpackTuple<VPackSlice, VPackSlice>(pair);
-    Evaluate(ctx, cond, condResult);
-    if (!condResult.slice().isFalse()) {
-      Evaluate(ctx, slice, result);
-      return;
-    }
-  }
-
-  result.add(VPackSlice::noneSlice());
-}
-
 void Prim_VarRef(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto&& [name] = unpackTuple<std::string>(params);
   ctx.getVariable(name, result);

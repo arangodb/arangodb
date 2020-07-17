@@ -72,7 +72,7 @@ VertexAccumulators::VertexComputation::VertexComputation(VertexAccumulators cons
 
 void VertexAccumulators::VertexComputation::compute(MessageIterator<MessageData> const& incomingMessages) {
   auto evalContext = MyEvalContext(*this);
-  auto currentVertexData = vertexData();
+  //auto&& currentVertexData = vertexData();
 
   if (globalSuperstep() == 0) {
     VPackBuilder initResultBuilder;

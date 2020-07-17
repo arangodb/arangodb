@@ -27,13 +27,23 @@
 #ifndef ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_ABSTRACT_ACCUMULATOR_H
 #define ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_ABSTRACT_ACCUMULATOR_H 1
 
+#include "AccumulatorOptionsDeserializer.h"
+
 namespace arangodb {
 namespace pregel {
 namespace algos {
 // FIXME:
 // maybe template/parameter with update operation?
 
-class AccumulatorBase {
+template <typename T>
+class Accumulator;
+
+struct AccumulatorBase {
+
+  template<typename T>
+  Accumulator<T>* castAccumulatorType() {
+    return dynamic_cast<Accumulator<T>*>(this);
+  }
 };
 
 template <typename T>
@@ -41,16 +51,19 @@ class Accumulator : public AccumulatorBase {
  public:
   using data_type = T;
 
-  Accumulator() {};
-  virtual ~Accumulator() {};
+  explicit Accumulator(AccumulatorOptions const&) {};
+  virtual ~Accumulator() = default;
 
-  virtual void update(data_type&& v) = 0;
+  virtual void update(data_type v) = 0;
 
   data_type const& get() const { return _value; };
 
  protected:
   data_type _value;
 };
+
+std::unique_ptr<AccumulatorBase> instanciateAccumulator(::AccumulatorOptions const& options);
+
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb
