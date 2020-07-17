@@ -119,7 +119,6 @@ void AuthenticationFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
       "file containing jwt secret to use when doing jwt authentication.",
       new StringParameter(&_jwtSecretKeyfileProgramOption));
 
-#ifdef USE_ENTERPRISE
   options->addOption(
       "--server.jwt-secret-folder",
       "folder containing one or more jwt secret files to use for jwt "
@@ -129,7 +128,6 @@ void AuthenticationFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
       new StringParameter(&_jwtSecretFolderProgramOption),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Enterprise))
       .setIntroducedIn(30700);
-#endif
 }
 
 void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
