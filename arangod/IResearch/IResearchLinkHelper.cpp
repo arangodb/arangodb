@@ -283,9 +283,9 @@ arangodb::Result modifyLinks( // modify links
     //        arangodb::Index::Compare(...)
     //        hence must use 'isCreation=true' for normalize(...) to match
     auto res = arangodb::iresearch::IResearchLinkHelper::normalize( // normalize to validate analyzer definitions
-      normalized, link, true, view.vocbase(), &view.primarySort(),
-      &view.primarySortCompression(), &view.storedValues(),
-      link.get(arangodb::StaticStrings::IndexId)
+        normalized, link, true, view.vocbase(), &view.primarySort(),
+        &view.primarySortCompression(), &view.storedValues(),
+        link.get(arangodb::StaticStrings::IndexId)
     );
 
     if (!res.ok()) {
