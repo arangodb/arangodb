@@ -80,7 +80,7 @@ using RegVarMapStack = std::vector<RegVarMap>;
 ///       level below it). It would of course suffice when this would be done
 ///       at the SubqueryEndNode.
 template <typename T>
-struct RegisterPlanWalkerT final : public WalkerWorker<T> {
+struct RegisterPlanWalkerT final : public WalkerWorker<T, false> {
   using RegisterPlan = RegisterPlanT<T>;
 
   explicit RegisterPlanWalkerT(std::shared_ptr<RegisterPlan> plan,

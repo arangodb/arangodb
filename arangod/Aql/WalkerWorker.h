@@ -56,12 +56,17 @@ class WalkerWorkerBase {
 };
 
 /// @brief functionality to walk an execution plan recursively.
-/// this will fail in maintainer mode with assertion failure if the same 
-/// node is visited twice.
-template <class T>
+/// if template parameter `unique == true`, this will visit each node once, even
+/// if multiple paths lead to the same node. no assertions are raised if
+/// multiple paths lead to the same node
+template <class T, bool unique>
 class WalkerWorker : public WalkerWorkerBase<T> {
  public:
-  bool done(T* en) override {
+  virtual bool done(T* en) {
+    if constexpr (unique) {
+      return !_done.emplace(en).second;
+    }
+
     // this is a no-op in non-maintainer mode
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // make sure a node is only processed once
@@ -79,36 +84,20 @@ class WalkerWorker : public WalkerWorkerBase<T> {
   }
 
   void reset() {
-    // this is a no-op in non-failure mode
+    if constexpr (unique) {
+      _done.clear();
+      return;
+    }
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     _done.clear();
 #endif
   }
 
  private:
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  ::arangodb::containers::HashSet<T*> _done;
-#endif
-};
-
-/// @brief functionality to walk an execution plan recursively.
-/// this will visit each node once, even if multiple paths lead
-/// to the same node. no assertions are raised if multiple paths
-/// lead to the same node
-template <class T>
-class UniqueWalkerWorker : public WalkerWorkerBase<T> {
- public:
-  bool done(T* en) override {
-    return !_done.emplace(en).second;
-  }
-
-  void reset() {
-    _done.clear();
-  }
-
- private:
   ::arangodb::containers::HashSet<T*> _done;
 };
+
 
 }  // namespace aql
 }  // namespace arangodb

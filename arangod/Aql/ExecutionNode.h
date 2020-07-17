@@ -98,8 +98,6 @@ using RegisterPlanWalker = RegisterPlanWalkerT<ExecutionNode>;
 template<typename T> struct RegisterPlanT;
 using RegisterPlan = RegisterPlanT<ExecutionNode>;
 struct Variable;
-template <class T>
-class WalkerWorker;
 
 /// @brief sort element, consisting of variable, sort direction, and a possible
 /// attribute path to dig into the document
