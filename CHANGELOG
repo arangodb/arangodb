@@ -1,5 +1,6 @@
 devel
 -----
+* Fixed internal issue #733: Primary sort compression in views now used properly
 
 * Make sure cluster statistics in web UI work in case a coordinator is down.
 
