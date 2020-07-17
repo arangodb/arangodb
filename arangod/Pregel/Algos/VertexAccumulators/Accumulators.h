@@ -51,13 +51,30 @@ class MaxAccumulator : public Accumulator<T> {
   }
 };
 
-
 template<typename T>
 class SumAccumulator : public Accumulator<T> {
  public:
   using Accumulator<T>::Accumulator;
   void update(T v) override {
     this->_value += v;
+  }
+};
+
+template<typename T>
+class AndAccumulator : public Accumulator<T> {
+ public:
+  using Accumulator<T>::Accumulator;
+  void update(T v) override {
+    this->_value &= v;
+  }
+};
+
+template<typename T>
+class OrAccumulator : public Accumulator<T> {
+ public:
+  using Accumulator<T>::Accumulator;
+  void update(T v) override {
+    this->_value |= v;
   }
 };
 

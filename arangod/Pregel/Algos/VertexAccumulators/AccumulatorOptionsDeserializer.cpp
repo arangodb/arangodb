@@ -33,20 +33,27 @@ using namespace /*arangodb::velocypack::*/deserializer;
 constexpr const char accumulatorType_max[] = "max";
 constexpr const char accumulatorType_min[] = "min";
 constexpr const char accumulatorType_sum[] = "sum";
+constexpr const char accumulatorType_and[] = "and";
+constexpr const char accumulatorType_or[] = "or";
 
 using accumulator_type_deserializer = enum_deserializer<AccumulatorType,
     enum_member<AccumulatorType::MIN, values::string_value<accumulatorType_max>>,
     enum_member<AccumulatorType::MAX, values::string_value<accumulatorType_min>>,
-    enum_member<AccumulatorType::SUM, values::string_value<accumulatorType_sum>>>;
+    enum_member<AccumulatorType::SUM, values::string_value<accumulatorType_sum>>,
+    enum_member<AccumulatorType::AND, values::string_value<accumulatorType_and>>,
+    enum_member<AccumulatorType::OR, values::string_value<accumulatorType_or>>
+>;
 
 constexpr const char accumulatorValueType_doubles[] = "doubles";
 constexpr const char accumulatorValueType_ints[] = "ints";
 constexpr const char accumulatorValueType_strings[] = "strings";
+constexpr const char accumulatorValueType_bool[] = "bool";
 
 using accumulator_value_type_deserializer = enum_deserializer<AccumulatorValueType,
     enum_member<AccumulatorValueType::DOUBLES, values::string_value<accumulatorValueType_doubles>>,
     enum_member<AccumulatorValueType::INTS, values::string_value<accumulatorValueType_ints>>,
-    enum_member<AccumulatorValueType::STRINGS, values::string_value<accumulatorValueType_strings>>
+    enum_member<AccumulatorValueType::STRINGS, values::string_value<accumulatorValueType_strings>>,
+    enum_member<AccumulatorValueType::BOOL, values::string_value<accumulatorValueType_bool>>
 >;
 
 constexpr const char accumulatorType[] = "accumulatorType";
@@ -107,6 +114,12 @@ std::ostream& operator<<(std::ostream& os, AccumulatorType const& type) {
     case AccumulatorType::SUM:
       os << accumulatorType_sum;
       break;
+    case AccumulatorType::AND:
+      os << accumulatorType_and;
+      break;
+    case AccumulatorType::OR:
+      os << accumulatorType_or;
+      break;
   }
   return os;
 }
@@ -121,6 +134,9 @@ std::ostream& operator<<(std::ostream& os, AccumulatorValueType const& type) {
       break;
     case AccumulatorValueType::STRINGS:
       os << accumulatorValueType_strings;
+      break;
+    case AccumulatorValueType::BOOL:
+      os << accumulatorValueType_bool;
       break;
   }
   return os;

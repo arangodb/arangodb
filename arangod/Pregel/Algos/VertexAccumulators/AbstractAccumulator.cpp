@@ -84,15 +84,19 @@ struct value_type_mapping<value_type_pair<Value, Type>, value_type_pair<Values, 
 
 
 using integral_restriction = type_list<int, double>;
+using bool_restriction = type_list<bool>;
 
 using my_accum_mapping = accum_mapping<
     accum_value_pair<MinAccumulator, AccumulatorType::MIN, integral_restriction>,
     accum_value_pair<MaxAccumulator, AccumulatorType::MAX, integral_restriction>,
-    accum_value_pair<SumAccumulator, AccumulatorType::SUM, integral_restriction>
+    accum_value_pair<SumAccumulator, AccumulatorType::SUM, integral_restriction>,
+    accum_value_pair<OrAccumulator, AccumulatorType::AND, bool_restriction>,
+    accum_value_pair<AndAccumulator, AccumulatorType::OR, bool_restriction>
 >;
 
 using my_type_mapping = value_type_mapping<
     value_type_pair<AccumulatorValueType::INTS, int>,
+    value_type_pair<AccumulatorValueType::BOOL, bool>,
     value_type_pair<AccumulatorValueType::DOUBLES, double>
 >;
 
