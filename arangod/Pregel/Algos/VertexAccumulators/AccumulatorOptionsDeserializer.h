@@ -35,7 +35,7 @@
 #include <VPackDeserializer/deserializer.h>
 
 enum class AccumulatorType {
-  MIN, MAX, SUM, AND, OR
+  MIN, MAX, SUM, AND, OR, STORE,
 };
 
 std::ostream& operator<<(std::ostream&, AccumulatorType const&);

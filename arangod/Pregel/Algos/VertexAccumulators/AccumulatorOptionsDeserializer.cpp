@@ -35,13 +35,15 @@ constexpr const char accumulatorType_min[] = "min";
 constexpr const char accumulatorType_sum[] = "sum";
 constexpr const char accumulatorType_and[] = "and";
 constexpr const char accumulatorType_or[] = "or";
+constexpr const char accumulatorType_store[] = "store";
 
 using accumulator_type_deserializer = enum_deserializer<AccumulatorType,
     enum_member<AccumulatorType::MIN, values::string_value<accumulatorType_max>>,
     enum_member<AccumulatorType::MAX, values::string_value<accumulatorType_min>>,
     enum_member<AccumulatorType::SUM, values::string_value<accumulatorType_sum>>,
     enum_member<AccumulatorType::AND, values::string_value<accumulatorType_and>>,
-    enum_member<AccumulatorType::OR, values::string_value<accumulatorType_or>>
+    enum_member<AccumulatorType::OR, values::string_value<accumulatorType_or>>,
+    enum_member<AccumulatorType::STORE, values::string_value<accumulatorType_store>>
 >;
 
 constexpr const char accumulatorValueType_doubles[] = "doubles";
@@ -119,6 +121,9 @@ std::ostream& operator<<(std::ostream& os, AccumulatorType const& type) {
       break;
     case AccumulatorType::OR:
       os << accumulatorType_or;
+      break;
+    case AccumulatorType::STORE:
+      os << accumulatorType_store;
       break;
   }
   return os;

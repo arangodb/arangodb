@@ -78,6 +78,15 @@ class OrAccumulator : public Accumulator<T> {
   }
 };
 
+template<typename T>
+class StoreAccumulator : public Accumulator<T> {
+ public:
+  using Accumulator<T>::Accumulator;
+  void update(T v) override {
+    this->_value = std::move(v);
+  }
+};
+
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb

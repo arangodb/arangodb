@@ -21,8 +21,6 @@ struct accum_value_pair{
   template<typename... Ts>
   using instance = A<Ts...>;
   static constexpr auto value = V;
-  template<typename T>
-  static constexpr auto containts = Restriction::template containts<T>;
 };
 
 template<typename...>
@@ -40,8 +38,6 @@ struct accum_mapping<accum_value_pair<accums, values, Rs>...> {
         if constexpr (Rs::template contains<T>) {
           result = std::make_unique<accums<T>>(std::forward<Ps>(ps)...);
           return true;
-        } else {
-          return false;
         }
       }
       return false;
@@ -85,19 +81,22 @@ struct value_type_mapping<value_type_pair<Value, Type>, value_type_pair<Values, 
 
 using integral_restriction = type_list<int, double>;
 using bool_restriction = type_list<bool>;
+using no_restriction = type_any;
 
 using my_accum_mapping = accum_mapping<
     accum_value_pair<MinAccumulator, AccumulatorType::MIN, integral_restriction>,
     accum_value_pair<MaxAccumulator, AccumulatorType::MAX, integral_restriction>,
     accum_value_pair<SumAccumulator, AccumulatorType::SUM, integral_restriction>,
     accum_value_pair<OrAccumulator, AccumulatorType::AND, bool_restriction>,
-    accum_value_pair<AndAccumulator, AccumulatorType::OR, bool_restriction>
+    accum_value_pair<AndAccumulator, AccumulatorType::OR, bool_restriction>,
+    accum_value_pair<StoreAccumulator, AccumulatorType::STORE, no_restriction>
 >;
 
 using my_type_mapping = value_type_mapping<
     value_type_pair<AccumulatorValueType::INTS, int>,
     value_type_pair<AccumulatorValueType::BOOL, bool>,
-    value_type_pair<AccumulatorValueType::DOUBLES, double>
+    value_type_pair<AccumulatorValueType::DOUBLES, double>,
+    value_type_pair<AccumulatorValueType::STRINGS, std::string>
 >;
 
 
