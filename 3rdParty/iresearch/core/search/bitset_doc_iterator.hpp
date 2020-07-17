@@ -23,34 +23,47 @@
 #ifndef IRESEARCH_BITSET_DOC_ITERATOR_H
 #define IRESEARCH_BITSET_DOC_ITERATOR_H
 
-#include "cost.hpp"
-#include "search/score_doc_iterators.hpp"
+#include "analysis/token_attributes.hpp"
+#include "search/cost.hpp"
+#include "search/score.hpp"
+#include "utils/frozen_attributes.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/bitset.hpp"
 
 NS_ROOT
 
-class bitset_doc_iterator final: public doc_iterator_base<doc_iterator>, util::noncopyable {
+class bitset_doc_iterator final
+  : public frozen_attributes<3, doc_iterator>,
+    private util::noncopyable {
  public:
-  explicit bitset_doc_iterator(const bitset& set);
+  explicit bitset_doc_iterator(const bitset& set)
+    : bitset_doc_iterator(set, order::prepared::unordered()) {
+  }
 
   bitset_doc_iterator(
     const sub_reader& reader,
     const byte_type* stats,
     const bitset& set,
     const order::prepared& order,
-    boost_t boost
-  );
+    boost_t boost);
 
   virtual bool next() noexcept override;
   virtual doc_id_t seek(doc_id_t target) noexcept override;
   virtual doc_id_t value() const noexcept override { return doc_.value; }
 
  private:
+  using word_t = bitset::word_t;
+
+  bitset_doc_iterator(const bitset& set, const order::prepared& ord);
+
+  cost cost_;
   document doc_;
-  const bitset::word_t* begin_;
-  const bitset::word_t* end_;
-  size_t size_;
+  score score_;
+  const word_t* begin_;
+  const word_t* end_;
+  const word_t* next_;
+  word_t word_{};
+  doc_id_t base_{doc_limits::invalid() - bits_required<word_t>()}; // before the first word
 }; // bitset_doc_iterator
 
 NS_END // ROOT

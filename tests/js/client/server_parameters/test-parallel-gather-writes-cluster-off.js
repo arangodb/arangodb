@@ -56,7 +56,7 @@ function testSuite() {
       let nodes = plan.nodes;
       let gather = plan.nodes.filter(function(node) { return node.type === 'GatherNode'; });
       assertEqual(1, gather.length);
-      assertEqual("undefined", gather[0].parallelism);
+      assertEqual("serial", gather[0].parallelism);
 
       assertEqual(-1, plan.rules.indexOf("parallelize-gather"));
     },

@@ -55,38 +55,31 @@ using namespace arangodb::options;
 // -----------------------------------------------------------------------------
 
 namespace arangodb {
-namespace basics {
+namespace statistics {
 
-Mutex TRI_RequestsStatisticsMutex;
+std::initializer_list<double> const BytesReceivedDistributionCuts{250, 1000, 2000, 5000, 10000};
+std::initializer_list<double> const BytesSentDistributionCuts{250, 1000, 2000, 5000, 10000};
+std::initializer_list<double> const ConnectionTimeDistributionCuts{0.1, 1.0, 60.0};
+std::initializer_list<double> const RequestTimeDistributionCuts{0.01, 0.05, 0.1, 0.2, 0.5, 1.0};
 
-std::vector<double> const TRI_BytesReceivedDistributionVectorStatistics({250, 1000, 2000,
-                                                                         5000, 10000});
-std::vector<double> const TRI_BytesSentDistributionVectorStatistics({250, 1000, 2000,
-                                                                     5000, 10000});
-std::vector<double> const TRI_ConnectionTimeDistributionVectorStatistics({0.1, 1.0, 60.0});
-std::vector<double> const TRI_RequestTimeDistributionVectorStatistics({0.01, 0.05, 0.1,
-                                                                       0.2, 0.5, 1.0});
+Counter AsyncRequests;
+Counter HttpConnections;
+Counter TotalRequests;
+MethodRequestCounters MethodRequests;
+Distribution ConnectionTimeDistribution(ConnectionTimeDistributionCuts);
 
-StatisticsCounter TRI_AsyncRequestsStatistics;
-StatisticsCounter TRI_HttpConnectionsStatistics;
-StatisticsCounter TRI_TotalRequestsStatistics;
-std::array<StatisticsCounter, MethodRequestsStatisticsSize> TRI_MethodRequestsStatistics;
+RequestFigures::RequestFigures() :
+  bytesReceivedDistribution(BytesReceivedDistributionCuts),
+  bytesSentDistribution(BytesSentDistributionCuts),
+  ioTimeDistribution(RequestTimeDistributionCuts),
+  queueTimeDistribution(RequestTimeDistributionCuts),
+  requestTimeDistribution(RequestTimeDistributionCuts),
+  totalTimeDistribution(RequestTimeDistributionCuts)
+{}
 
-StatisticsDistribution TRI_BytesReceivedDistributionStatistics(TRI_BytesReceivedDistributionVectorStatistics);
-StatisticsDistribution TRI_BytesSentDistributionStatistics(TRI_BytesSentDistributionVectorStatistics);
-StatisticsDistribution TRI_ConnectionTimeDistributionStatistics(TRI_ConnectionTimeDistributionVectorStatistics);
-StatisticsDistribution TRI_IoTimeDistributionStatistics(TRI_RequestTimeDistributionVectorStatistics);
-StatisticsDistribution TRI_QueueTimeDistributionStatistics(TRI_RequestTimeDistributionVectorStatistics);
-StatisticsDistribution TRI_RequestTimeDistributionStatistics(TRI_RequestTimeDistributionVectorStatistics);
-StatisticsDistribution TRI_TotalTimeDistributionStatistics(TRI_RequestTimeDistributionVectorStatistics);
-StatisticsDistribution TRI_BytesReceivedDistributionStatisticsUser(TRI_BytesReceivedDistributionVectorStatistics);
-StatisticsDistribution TRI_BytesSentDistributionStatisticsUser(TRI_BytesSentDistributionVectorStatistics);
-StatisticsDistribution TRI_IoTimeDistributionStatisticsUser(TRI_RequestTimeDistributionVectorStatistics);
-StatisticsDistribution TRI_QueueTimeDistributionStatisticsUser(TRI_RequestTimeDistributionVectorStatistics);
-StatisticsDistribution TRI_RequestTimeDistributionStatisticsUser(TRI_RequestTimeDistributionVectorStatistics);
-StatisticsDistribution TRI_TotalTimeDistributionStatisticsUser(TRI_RequestTimeDistributionVectorStatistics);
-
-}  // namespace basics
+RequestFigures GeneralRequestFigures;
+RequestFigures UserRequestFigures;
+}  // namespace statistics
 }  // namespace arangodb
 
 // -----------------------------------------------------------------------------
@@ -157,6 +150,8 @@ StatisticsFeature::StatisticsFeature(application_features::ApplicationServer& se
   startsAfter<AqlFeaturePhase>();
 }
 
+StatisticsFeature::~StatisticsFeature() = default;
+
 void StatisticsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("server.disable-statistics", "server.statistics");
 
@@ -189,8 +184,6 @@ void StatisticsFeature::prepare() {
 
   STATISTICS = this;
 
-  server().getFeature<MetricsFeature>().serverStatistics().initialize(
-    StatisticsFeature::time());
   ConnectionStatistics::initialize();
   RequestStatistics::initialize();
 }
@@ -258,4 +251,10 @@ void StatisticsFeature::stop() {
   _statisticsWorker.reset();
 
   STATISTICS = nullptr;
+}
+
+void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
+  if (_statisticsWorker != nullptr) {
+    _statisticsWorker->generateRawStatistics(result, now);
+  }
 }

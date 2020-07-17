@@ -55,7 +55,3 @@ void MockTypedNode::toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned 
 }
 
 ExecutionNode::NodeType MockTypedNode::getType() const { return _mockedType; }
-
-auto MockTypedNode::getOutputVariables() const -> ::arangodb::aql::VariableIdSet {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}

@@ -27,7 +27,7 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Query.h"
+#include "Aql/QueryContext.h"
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
@@ -49,17 +49,17 @@ CollectionAccessingNode::CollectionAccessingNode(aql::Collection const* collecti
 
 CollectionAccessingNode::CollectionAccessingNode(ExecutionPlan* plan,
                                                  arangodb::velocypack::Slice slice) {
-  auto query = plan->getAst()->query();
+  aql::QueryContext& query = plan->getAst()->query();
   auto colName = slice.get("collection").copyString();
   auto typeId = basics::VelocyPackHelper::getNumericValue<int>(slice, "typeID", 0);
   if (typeId == ExecutionNode::DISTRIBUTE) {
     // This is a special case, the distribute node can inject a collection
     // that is NOT yet known to the plan
-    query->addCollection(colName, AccessMode::Type::NONE);
+    query.collections().add(colName, AccessMode::Type::NONE, aql::Collection::Hint::Collection);
   }
   // After we optionally added the collection for distribute we can create
   // the CollectionAccess:
-  _collectionAccess = CollectionAccess{plan->getAst()->query()->collections(), slice};
+  _collectionAccess = CollectionAccess{&plan->getAst()->query().collections(), slice};
 
   VPackSlice restrictedTo = slice.get("restrictedTo");
 

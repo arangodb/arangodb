@@ -184,37 +184,17 @@ uint64_t index_meta::next_generation() const noexcept {
  * index_meta::index_segment_t
  * ------------------------------------------------------------------*/
 
-index_meta::index_segment_t::index_segment_t(segment_meta&& v_meta)
-  : meta(std::move(v_meta)) {
-}
-
-index_meta::index_segment_t::index_segment_t(index_segment_t&& other) noexcept
-  : filename(std::move(other.filename)), 
-    meta(std::move(other.meta)) {
-}
-
-index_meta::index_segment_t& index_meta::index_segment_t::operator=(
-    index_segment_t&& other
-) noexcept {
-  if (this == &other) {
-    return *this;
-  }
-
-  filename = std::move(other.filename);
-  meta = std::move(other.meta);
-
-  return *this;
+index_meta::index_segment_t::index_segment_t(segment_meta&& meta)
+  : meta(std::move(meta)) {
 }
 
 bool index_meta::index_segment_t::operator==(
-  const index_segment_t& other
-) const noexcept {
+    const index_segment_t& other) const noexcept {
   return this == &other || false == (*this != other);
 }
 
 bool index_meta::index_segment_t::operator!=(
-  const index_segment_t& other
-) const noexcept {
+    const index_segment_t& other) const noexcept {
   if (this == &other) {
     return false;
   }
@@ -223,7 +203,3 @@ bool index_meta::index_segment_t::operator!=(
 }
 
 NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

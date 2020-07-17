@@ -42,16 +42,15 @@ class TransactionState;
 class RocksDBTransactionCollection final : public TransactionCollection {
  public:
   RocksDBTransactionCollection(TransactionState* trx, TRI_voc_cid_t cid,
-                               AccessMode::Type accessType, int nestingLevel);
+                               AccessMode::Type accessType);
   ~RocksDBTransactionCollection();
 
   /// @brief whether or not any write operations for the collection happened
   bool hasOperations() const override;
 
   bool canAccess(AccessMode::Type accessType) const override;
-  int use(int nestingLevel) override;
-  void unuse(int nestingLevel) override;
-  void release() override;
+  Result lockUsage() override;
+  void releaseUsage() override;
 
   TRI_voc_rid_t revision() const { return _revision; }
   uint64_t numberDocuments() const {
@@ -138,15 +137,12 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
   /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired
   /// and no other error occurred returns any other error code otherwise
-  int doLock(AccessMode::Type, int nestingLevel) override;
+  Result doLock(AccessMode::Type) override;
 
   /// @brief request an unlock for a collection
-  int doUnlock(AccessMode::Type, int nestingLevel) override;
+  Result doUnlock(AccessMode::Type) override;
 
  private:
-  bool _usageLocked;
-  bool _exclusiveWrites;
-
   uint64_t _initialNumberDocuments;
   TRI_voc_rid_t _revision;
   uint64_t _numInserts;
@@ -160,6 +156,9 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   /// @brief A list where all indexes with estimates can store their operations
   ///        Will be applied to the inserter on commit and not applied on abort
   IndexOperationsMap _trackedIndexOperations;
+  
+  bool _usageLocked;
+  bool _exclusiveWrites;
 };
 }  // namespace arangodb
 

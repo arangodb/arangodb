@@ -32,6 +32,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/StandaloneContext.h"
 #include "VocBase/Methods/Queries.h"
 #include "VocBase/vocbase.h"
 
@@ -287,7 +288,8 @@ bool RestQueryHandler::parseQuery() {
   std::string const queryString =
       VelocyPackHelper::checkAndGetStringValue(body, "query");
 
-  Query query(false, _vocbase, QueryString(queryString), nullptr, nullptr, PART_MAIN);
+  Query query(transaction::StandaloneContext::Create(_vocbase),
+              QueryString(queryString), nullptr, nullptr);
   auto parseResult = query.parse();
 
   if (parseResult.result.fail()) {
@@ -329,23 +331,10 @@ bool RestQueryHandler::parseQuery() {
 ResultT<std::pair<std::string, bool>> RestQueryHandler::forwardingTarget() {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
-  /* it seems we don't need this here
-  bool found = false;
-  std::string const& value = _request->header(StaticStrings::TransactionId, found);
-  if (found) {
-    uint64_t tid = basics::StringUtils::uint64(value);
-    if (!transaction::isCoordinatorTransactionId(tid)) {
-      TRI_ASSERT(transaction::isLegacyTransactionId(tid));
-      return {std::make_pair(StaticStrings::Empty, false)};
-    }
-    uint32_t sourceServer = TRI_ExtractServerIdFromTick(tid);
-    if (sourceServer == ServerState::instance()->getShortId()) {
-      return {std::make_pair(StaticStrings::Empty, false)};
-    }
-    auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-    return {std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
+  auto base = RestVocbaseBaseHandler::forwardingTarget();
+  if (base.ok() && !std::get<0>(base.get()).empty()) {
+    return base;
   }
-  */
 
   if (_request->requestType() == RequestType::DELETE_REQ) {
     // kill operation

@@ -81,13 +81,12 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
 
   Variable outVariable;
   bool varUsedLater;
-  std::unordered_set<RegisterId> const regToClear;
-  std::unordered_set<RegisterId> const regToKeep;
   ExecutionEngine* engine;
   Collection aqlCollection;
   std::vector<std::string> const projections;
   std::vector<size_t> const coveringIndexAttributePositions;
   bool random;
+  bool count;
 
   RegisterInfos registerInfos;
   EnumerateCollectionExecutorInfos executorInfos;
@@ -96,21 +95,20 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
   VPackBuilder input;
 
   EnumerateCollectionExecutorTest()
-      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
+      : AqlExecutorTestCase(),
+        itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         vocbase(_server->getSystemDatabase()),
         json(VPackParser::fromJson(R"({"name":"UnitTestCollection"})")),
-        // collection(),
-        // fakedQuery(server.createFakeQuery(false, "return 1")),
-        ast(fakedQuery.get()),
-        outVariable("name", 1),
+        ast(*fakedQuery.get()),
+        outVariable("name", 1, false),
         varUsedLater(false),
-        engine(fakedQuery->engine()),
-        aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ),
+        engine(fakedQuery->rootEngine()),
+        aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ, arangodb::aql::Collection::Hint::None),
         random(false),
-        registerInfos(make_shared_unordered_set(), make_shared_unordered_set({0}),
-                      1 /*nrIn*/, 1 /*nrOut*/, regToClear, regToKeep),
-        executorInfos(0 /*outReg*/, engine, &aqlCollection, &outVariable, varUsedLater,
-                      nullptr, projections, coveringIndexAttributePositions, random),
+        count(false),
+        registerInfos({}, RegIdSet{0}, 1 /*nrIn*/, 1 /*nrOut*/, RegIdFlatSet{}, {{}}),
+        executorInfos(0 /*outReg*/, *fakedQuery, &aqlCollection, &outVariable, varUsedLater,
+                      nullptr, projections, coveringIndexAttributePositions, random, count),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {
     try {
       collection = vocbase.createCollection(json->slice());
@@ -275,6 +273,7 @@ class EnumerateCollectionExecutorTestProduce
   std::vector<size_t> const coveringIndexAttributePositions;
   Collection aqlCollection;
   bool random;
+  bool count;
 
   RegisterInfos registerInfos;
   EnumerateCollectionExecutorInfos executorInfos;
@@ -284,37 +283,38 @@ class EnumerateCollectionExecutorTestProduce
         vocbase(_server->getSystemDatabase()),
         json(VPackParser::fromJson(R"({"name":"UnitTestCollection"})")),
         collection(vocbase.createCollection(json->slice())),
-        ast(fakedQuery.get()),
-        outVariable("name", 1),
+        ast(*fakedQuery.get()),
+        outVariable("name", 1, false),
         varUsedLater(true),
-        engine(fakedQuery->engine()),
-        aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ),
+        engine(fakedQuery.get()->rootEngine()),
+        aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ, arangodb::aql::Collection::Hint::None),
         random(false),
-        registerInfos(make_shared_unordered_set(), make_shared_unordered_set({1}),
-                      1 /*nrIn*/, 1 /*nrOut*/, {}, {}),
-        executorInfos(1, engine, &aqlCollection, &outVariable, varUsedLater, nullptr,
-                      projections, coveringIndexAttributePositions, random) {}
+        count(false),
+        registerInfos({}, RegIdSet{1}, 1 /*nrIn*/, 1 /*nrOut*/, RegIdFlatSet{},
+                      RegIdFlatSetStack{{}}),
+        executorInfos(1, *fakedQuery, &aqlCollection, &outVariable, varUsedLater, nullptr,
+                      projections, coveringIndexAttributePositions, random, count) {}
 
   auto makeRegisterInfos(RegisterId outputRegister = 0, RegisterId nrInputRegister = 1,
-                         RegisterId nrOutputRegister = 1,
-                         std::unordered_set<RegisterId> regToClear = {},
-                         std::unordered_set<RegisterId> regToKeep = {}) -> RegisterInfos {
-    auto inputRegisters = make_shared_unordered_set({});
-    auto outputRegisters = make_shared_unordered_set({outputRegister});
-    RegisterInfos registerInfos{inputRegisters,        outputRegisters,
-                                nrInputRegister,       nrOutputRegister,
-                                std::move(regToClear), std::move(regToKeep)};
+                         RegisterId nrOutputRegister = 1, RegIdFlatSet regToClear = {},
+                         RegIdFlatSetStack regToKeep = {{}}) -> RegisterInfos {
+    RegisterInfos registerInfos{{},
+                                RegIdSet{outputRegister},
+                                nrInputRegister,
+                                nrOutputRegister,
+                                std::move(regToClear),
+                                std::move(regToKeep)};
     return registerInfos;
   }
 
   auto makeExecutorInfos(RegisterId outputRegister = 0, RegisterId nrOutputRegister = 1)
       -> EnumerateCollectionExecutorInfos {
     auto infos = EnumerateCollectionExecutorInfos{
-        outputRegister, engine,
+        outputRegister, *fakedQuery,
         &aqlCollection, &outVariable,
         varUsedLater,   nullptr,
         projections,    coveringIndexAttributePositions,
-        random};
+        random, count};
     block = SharedAqlItemBlockPtr{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
     return infos;
   }
@@ -364,10 +364,11 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_all_documents) {
   uint64_t numberOfDocumentsToInsert = 10;
   std::vector<std::string> queryResults;
   std::ignore = insertDocuments(numberOfDocumentsToInsert, queryResults);
+  /* TODO: protected _trx
   EXPECT_EQ(vocbase.lookupCollection("UnitTestCollection")
-                ->numberDocuments(fakedQuery->trx(), transaction::CountType::Normal),
+            ->numberDocuments(&(*fakedQuery->_trx), transaction::CountType::Normal),
             numberOfDocumentsToInsert);  // validate that our document inserts worked
-
+  */
   makeExecutorTestHelper<1, 1>()
       .setInputValue({{RowBuilder<1>{R"("unused")"}}})
       .setInputSplitType(split)
@@ -405,7 +406,7 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_5_documents) {
       .setInputValue({{RowBuilder<1>{R"({ "cid" : "1337", "name": "UnitTestCollection" })"}}})
       // .setInputValue({{RowBuilder<1>{R"("unused")"}}})
       .setInputSplitType(split)
-      .setCall(AqlCall{0, 5, AqlCall::Infinity{}, false})
+      .setCall(AqlCall{0u, 5u, AqlCall::Infinity{}, false})
       .expectSkipped(0)
       .expectOutput({0}, {{R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}})
       .expectedState(ExecutionState::HASMORE)
@@ -425,7 +426,7 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_skip_5_documents_default
       .setInputValue({{RowBuilder<1>{R"({ "cid" : "1337", "name":
 "UnitTestCollection" })"}}})
       .setInputSplitType(split)
-      .setCall(AqlCall{5, AqlCall::Infinity{}, AqlCall::Infinity{}, false})
+      .setCall(AqlCall{5u, AqlCall::Infinity{}, AqlCall::Infinity{}, false})
       .expectSkipped(5)
       .expectOutput({0}, {{R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}})
       .expectedState(ExecutionState::DONE)

@@ -85,8 +85,8 @@ struct LinkTrxState final : public arangodb::TransactionState::Cookie {
 
     try {
       // hold references even after transaction
-      _ctx.remove(irs::filter::make<arangodb::iresearch::PrimaryKeyFilterContainer>(
-          std::move(_removals)));
+      auto filter = std::make_unique<arangodb::iresearch::PrimaryKeyFilterContainer>(std::move(_removals));
+      _ctx.remove(std::unique_ptr<irs::filter>(std::move(filter)));
     } catch (std::exception const& e) {
       LOG_TOPIC("eb463", ERR, arangodb::iresearch::TOPIC)
           << "caught exception while applying accumulated removals: " << e.what();
@@ -305,7 +305,7 @@ IResearchLink::IResearchLink(arangodb::IndexId iid, LogicalCollection& collectio
     TRI_ASSERT(state != nullptr);
 
     // check state of the top-most transaction only
-    if (!state || !state->isTopLevelTransaction()) {
+    if (!state) {
       return;  // NOOP
     }
 
@@ -819,7 +819,9 @@ Result IResearchLink::init(
   bool const sorted = !meta._sort.empty();
   auto const& storedValuesColumns = meta._storedValues.columns();
   TRI_ASSERT(meta._sortCompression);
-  auto const& primarySortCompression = meta._sortCompression? *meta._sortCompression : getDefaultCompression();
+  auto const primarySortCompression = meta._sortCompression
+      ? meta._sortCompression
+      : getDefaultCompression();
   if (ServerState::instance()->isCoordinator()) { // coordinator link
     if (!vocbase.server().hasFeature<arangodb::ClusterFeature>()) {
       return {
@@ -992,7 +994,7 @@ Result IResearchLink::init(
 Result IResearchLink::initDataStore(
     InitCallback const& initCallback, bool sorted,
     std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
-    irs::compression::type_id const& primarySortCompression) {
+    irs::type_info::type_id primarySortCompression) {
   _asyncTerminate.store(true); // mark long-running async jobs for terminatation
 
   if (_asyncFeature) {
@@ -1049,8 +1051,7 @@ Result IResearchLink::initDataStore(
                 std::to_string(_id.id()) + "'"};
   }
 
-  _dataStore._directory =
-      irs::directory::make<irs::mmap_directory>(_dataStore._path.utf8());
+  _dataStore._directory = std::make_unique<irs::mmap_directory>(_dataStore._path.utf8());
 
   if (!_dataStore._directory) {
     return {TRI_ERROR_INTERNAL,
@@ -1113,10 +1114,10 @@ Result IResearchLink::initDataStore(
   // as meta is still not filled at this moment
   // we need to store all compression mapping there
   // as values provided may be temporary
-  std::map<std::string, irs::compression::type_id const&> compressionMap;
+  std::map<std::string, irs::type_info::type_id> compressionMap;
   for (auto c : storedColumns) {
     if (ADB_LIKELY(c.compression != nullptr)) {
-      compressionMap.emplace(c.name, *c.compression);
+      compressionMap.emplace(c.name, c.compression);
     } else {
       TRI_ASSERT(false);
       compressionMap.emplace(c.name, getDefaultCompression());
@@ -1125,16 +1126,17 @@ Result IResearchLink::initDataStore(
   // setup columnstore compression/encryption if requested by storage engine
   auto const encrypt = (nullptr != irs::get_encryption(_dataStore._directory->attributes()));
   options.column_info =
-    [encrypt, comprMap = std::move(compressionMap), &primarySortCompression](const irs::string_ref& name) -> irs::column_info {
+    [encrypt, comprMap = std::move(compressionMap), primarySortCompression](
+        const irs::string_ref& name) -> irs::column_info {
       if (name.null()) {
-        return { primarySortCompression, {}, encrypt };
+        return { primarySortCompression(), {}, encrypt };
       }
       auto compress = comprMap.find(name);
       if (compress != comprMap.end()) {
         // do not waste resources to encrypt primary key column
-        return { compress->second, {}, encrypt && (DocumentPrimaryKey::PK() != name) };
+        return { compress->second(), {}, encrypt && (DocumentPrimaryKey::PK() != name) };
       } else {
-        return { getDefaultCompression(), {}, encrypt && (DocumentPrimaryKey::PK() != name) };
+        return { getDefaultCompression()(), {}, encrypt && (DocumentPrimaryKey::PK() != name) };
       }
     };
 

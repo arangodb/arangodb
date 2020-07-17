@@ -1002,7 +1002,7 @@ function GeneralGraphCreationSuite() {
           [graph._relation("edges", "verts", "verts")],
           ["other"]
         );
-        assertTrue(db["other"].name() === "other");
+        assertEqual(db["other"].name(), "other");
         gr._removeVertexCollection("other", true);
         var collections = db._collections();
         var found = false;

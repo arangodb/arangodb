@@ -33,8 +33,6 @@
 namespace arangodb {
 class RestBatchHandler;
 
-enum class ConnectionType { C_NONE, C_KEEP_ALIVE, C_CLOSE };
-
 class HttpResponse : public GeneralResponse {
   friend class RestBatchHandler;  // TODO must be removed
 
@@ -42,8 +40,8 @@ class HttpResponse : public GeneralResponse {
   static bool HIDE_PRODUCT_HEADER;
 
  public:
-  explicit HttpResponse(ResponseCode code, uint64_t mid,
-                        std::unique_ptr<basics::StringBuffer> = nullptr);
+  HttpResponse(ResponseCode code, uint64_t mid,
+               std::unique_ptr<basics::StringBuffer> = nullptr);
   ~HttpResponse() = default;
 
  public:
@@ -79,19 +77,19 @@ class HttpResponse : public GeneralResponse {
 
   void addPayload(velocypack::Slice const&,
                   velocypack::Options const* = nullptr,
-                  bool resolve_externals = true) override;
+                  bool resolve_externals = true) override final;
   void addPayload(velocypack::Buffer<uint8_t>&&,
                   velocypack::Options const* = nullptr,
-                  bool resolve_externals = true) override;
-  void addRawPayload(velocypack::StringRef payload) override;
+                  bool resolve_externals = true) override final;
+  void addRawPayload(velocypack::StringRef payload) override final;
 
-  bool isResponseEmpty() const override {
+  bool isResponseEmpty() const override final {
     return _body->empty();
   }
 
-  int reservePayload(std::size_t size) override { return _body->reserve(size); }
+  int reservePayload(std::size_t size) override final { return _body->reserve(size); }
 
-  arangodb::Endpoint::TransportType transportType() override {
+  arangodb::Endpoint::TransportType transportType() override final {
     return arangodb::Endpoint::TransportType::HTTP;
   }
 

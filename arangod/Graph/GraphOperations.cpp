@@ -38,7 +38,6 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/SmartContext.h"
 #include "Transaction/StandaloneContext.h"
@@ -55,7 +54,7 @@ using namespace arangodb::graph;
 
 std::shared_ptr<transaction::Context> GraphOperations::ctx() {
   if (!_ctx) {
-    _ctx = std::make_shared<transaction::StandaloneSmartContext>(_vocbase);
+    _ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
   }
   return _ctx;
 }
@@ -246,7 +245,7 @@ OperationResult GraphOperations::editEdgeDefinition(VPackSlice edgeDefinitionSli
   collectionsOptions.openObject();
   _graph.createCollectionOptions(collectionsOptions, waitForSync);
   collectionsOptions.close();
-  result = gmngr.findOrCreateCollectionsByEdgeDefinition(edgeDefinition, waitForSync,
+  result = gmngr.findOrCreateCollectionsByEdgeDefinition(_graph, edgeDefinition, waitForSync,
                                                          collectionsOptions.slice());
   if (result.fail()) {
     return result;
@@ -258,7 +257,7 @@ OperationResult GraphOperations::editEdgeDefinition(VPackSlice edgeDefinitionSli
 
   // change definition for ALL graphs
   VPackBuilder graphsBuilder;
-  gmngr.readGraphs(graphsBuilder, arangodb::aql::PART_DEPENDENT);
+  gmngr.readGraphs(graphsBuilder);
   VPackSlice graphs = graphsBuilder.slice();
 
   if (!graphs.get("graphs").isArray()) {
@@ -419,29 +418,35 @@ OperationResult GraphOperations::eraseOrphanCollection(bool waitForSync,
   _graph.toPersistence(builder);
   builder.close();
 
-  SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
-                                  AccessMode::Type::WRITE);
-  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+  {
+    SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
+                                    AccessMode::Type::WRITE);
+    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
-  res = trx.begin();
+    res = trx.begin();
 
-  if (!res.ok()) {
-    return OperationResult(res);
+    if (!res.ok()) {
+      return OperationResult(res);
+    }
+    OperationOptions options;
+    options.waitForSync = waitForSync;
+
+    result = trx.update(StaticStrings::GraphCollection, builder.slice(), options);
+    res = trx.finish(result.result);
   }
-  OperationOptions options;
-  options.waitForSync = waitForSync;
-
-  result = trx.update(StaticStrings::GraphCollection, builder.slice(), options);
-  res = trx.finish(result.result);
 
   if (dropCollection) {
     std::unordered_set<std::string> collectionsToBeRemoved;
     GraphManager gmngr{_vocbase};
-    gmngr.pushCollectionIfMayBeDropped(collectionName, "", collectionsToBeRemoved);
+    res = gmngr.pushCollectionIfMayBeDropped(collectionName, "", collectionsToBeRemoved).result;
+      
+    if (res.fail()) {
+      return OperationResult(res);
+    }
 
     for (auto const& cname : collectionsToBeRemoved) {
       std::shared_ptr<LogicalCollection> coll;
-      Result res = methods::Collections::lookup(_vocbase, cname, coll);
+      res = methods::Collections::lookup(_vocbase, cname, coll);
       if (res.ok()) {
         TRI_ASSERT(coll);
         res = methods::Collections::drop(*coll, false, -1.0);
@@ -925,11 +930,8 @@ OperationResult GraphOperations::removeEdgeOrVertex(const std::string& collectio
       bindVars->add("toDeleteId", VPackValue(toDeleteId));
       bindVars->close();
 
-      arangodb::aql::Query query(false, _vocbase, queryString, bindVars,
-                                 nullptr, arangodb::aql::PART_DEPENDENT);
-      query.setTransactionContext(ctx());  // hack to share the same transaction
-
-      auto queryResult = query.executeSync(QueryRegistryFeature::registry());
+      arangodb::aql::Query query(ctx(), queryString, bindVars, nullptr);
+      auto queryResult = query.executeSync();
 
       if (queryResult.result.fail()) {
         return OperationResult(std::move(queryResult.result));

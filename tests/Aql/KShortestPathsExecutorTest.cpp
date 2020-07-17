@@ -62,7 +62,7 @@ namespace tests {
 namespace aql {
 
 using Vertex = KShortestPathsExecutorInfos::InputVertex;
-using RegisterSet = std::unordered_set<RegisterId>;
+using RegisterSet = RegIdSet;
 using Path = std::vector<std::string>;
 using PathSequence = std::vector<Path>;
 
@@ -205,10 +205,9 @@ class KShortestPathsExecutorTest
         server{},
         itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         fakedQuery(server.createFakeQuery()),
-        options(fakedQuery.get()),
-        registerInfos(std::make_shared<RegisterSet>(parameters._inputRegisters),
-                      std::make_shared<RegisterSet>(parameters._outputRegisters),
-                      2, 3, {}, {}),
+        options(*fakedQuery.get()),
+        registerInfos(parameters._inputRegisters, parameters._outputRegisters,
+                      2, 3, RegIdFlatSet{}, RegIdFlatSetStack{{}}),
         executorInfos(0,
                       std::make_unique<FakeKShortestPathsFinder>(options,
                                                                  parameters._paths),
@@ -244,7 +243,8 @@ class KShortestPathsExecutorTest
       auto target = std::string{};
 
       if (executorInfos.useRegisterForSourceInput()) {
-        AqlValue value = block->getValue(blockIndex, executorInfos.getSourceInputRegister());
+        AqlValue value =
+            block->getValue(blockIndex, executorInfos.getSourceInputRegister());
         ASSERT_TRUE(value.isString());
         source = value.slice().copyString();
       } else {
@@ -252,7 +252,8 @@ class KShortestPathsExecutorTest
       }
 
       if (executorInfos.useRegisterForTargetInput()) {
-        AqlValue value = block->getValue(blockIndex, executorInfos.getTargetInputRegister());
+        AqlValue value =
+            block->getValue(blockIndex, executorInfos.getTargetInputRegister());
         ASSERT_TRUE(value.isString());
         target = value.slice().copyString();
       } else {
@@ -282,7 +283,8 @@ class KShortestPathsExecutorTest
     for (auto const& block : results) {
       if (block != nullptr) {
         for (size_t blockIndex = 0; blockIndex < block->size(); ++blockIndex, ++expectedRowsIndex) {
-          AqlValue value = block->getValue(blockIndex, executorInfos.getOutputRegister());
+          AqlValue value =
+              block->getValue(blockIndex, executorInfos.getOutputRegister());
           EXPECT_TRUE(value.isArray());
 
           // Note that the correct layout of the result path is currently the
@@ -330,13 +332,15 @@ class KShortestPathsExecutorTest
       std::tie(state, stats, skippedInitial, std::ignore) =
           testee.skipRowsRange(input, ourCall);
     }
+    ourCall.resetSkipCount();
 
     while (state == ExecutorState::HASMORE && ourCall.getLimit() > 0) {
       SharedAqlItemBlockPtr block =
           itemBlockManager.requestBlock(parameters._blockSize, 4);
 
       OutputAqlItemRow output(std::move(block), registerInfos.getOutputRegisters(),
-          registerInfos.registersToKeep(), registerInfos.registersToClear());
+                              registerInfos.registersToKeep(),
+                              registerInfos.registersToClear());
       output.setCall(std::move(ourCall));
 
       std::tie(state, std::ignore, std::ignore) = testee.produceRows(input, output);
@@ -349,13 +353,16 @@ class KShortestPathsExecutorTest
       std::tie(state, stats, skippedFullCount, std::ignore) =
           testee.skipRowsRange(input, ourCall);
     }
+    ourCall.resetSkipCount();
 
     ValidateCalledWith();
     ValidateResult(outputs, skippedInitial, skippedFullCount);
   }
 };  // namespace aql
 
-TEST_P(KShortestPathsExecutorTest, the_test) { TestExecutor(registerInfos, executorInfos, input); }
+TEST_P(KShortestPathsExecutorTest, the_test) {
+  TestExecutor(registerInfos, executorInfos, input);
+}
 
 // Conflict with the other shortest path finder
 namespace {
@@ -417,9 +424,9 @@ auto paths =
                     generateSomeBiggerCase(100), generateSomeBiggerCase(999),
                     generateSomeBiggerCase(1000), generateSomeBiggerCase(2000));
 auto calls =
-    testing::Values(AqlCall{}, AqlCall{0, 0, 0, false}, AqlCall{0, 1, 0, false},
-                    AqlCall{0, 0, 1, false}, AqlCall{0, 1, 1, false},
-                    AqlCall{1, 1, 1}, AqlCall{100, 1, 1}, AqlCall{1000},
+    testing::Values(AqlCall{}, AqlCall{0, 0u, 0u, false}, AqlCall{0, 1u, 0u, false},
+                    AqlCall{0, 0u, 1u, false}, AqlCall{0, 1u, 1u, false},
+                    AqlCall{1, 1u, 1u}, AqlCall{100, 1u, 1u}, AqlCall{1000},
                     AqlCall{0, AqlCall::Infinity{}, AqlCall::Infinity{}, true});
 auto blockSizes = testing::Values(5, 1000);
 

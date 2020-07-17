@@ -23,6 +23,7 @@
 
 #include "CursorRepository.h"
 
+#include "Aql/Query.h"
 #include "Aql/QueryCursor.h"
 #include "Basics/MutexLocker.h"
 #include "Logger/LogMacros.h"
@@ -144,18 +145,8 @@ Cursor* CursorRepository::createFromQueryResult(aql::QueryResult&& result, size_
 /// the cursor will create a query internally and retain it until deleted
 //////////////////////////////////////////////////////////////////////////////
 
-Cursor* CursorRepository::createQueryStream(std::string const& query,
-                                            std::shared_ptr<VPackBuilder> const& binds,
-                                            std::shared_ptr<VPackBuilder> const& opts,
-                                            size_t batchSize, double ttl,
-                                            bool contextOwnedByExterior,
-                                            std::shared_ptr<transaction::Context> ctx) {
-  TRI_ASSERT(!query.empty());
-
-  auto cursor = std::make_unique<aql::QueryStreamCursor>(_vocbase, query, binds,
-                                                         opts, batchSize, ttl,
-                                                         contextOwnedByExterior,
-                                                         std::move(ctx));
+Cursor* CursorRepository::createQueryStream(std::unique_ptr<arangodb::aql::Query> q, size_t batchSize, double ttl) {
+  auto cursor = std::make_unique<aql::QueryStreamCursor>(std::move(q), batchSize, ttl);
   cursor->use();
 
   return addCursor(std::move(cursor));

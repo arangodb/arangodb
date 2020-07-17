@@ -31,6 +31,10 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+bool FixedVarExpressionContext::isDataFromCollection(Variable const* variable) const {
+  return false;
+}
+
 AqlValue FixedVarExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
                                                      bool& mustDestroy) const {
   mustDestroy = false;
@@ -52,16 +56,18 @@ void FixedVarExpressionContext::setVariableValue(Variable const* var, AqlValue c
   _vars.try_emplace(var, value);
 }
 
-void FixedVarExpressionContext::serializeAllVariables(transaction::Methods* trx,
+void FixedVarExpressionContext::serializeAllVariables(velocypack::Options const& opts,
                                                       velocypack::Builder& builder) const {
   TRI_ASSERT(builder.isOpenArray());
   for (auto const& it : _vars) {
     builder.openArray();
     it.first->toVelocyPack(builder);
-    it.second.toVelocyPack(trx, builder, true);
+    it.second.toVelocyPack(&opts, builder, true);
     builder.close();
   }
 }
 
-FixedVarExpressionContext::FixedVarExpressionContext(Query* query)
-    : QueryExpressionContext(query) {}
+FixedVarExpressionContext::FixedVarExpressionContext(transaction::Methods& trx,
+                                                     QueryContext& context,
+                                                     AqlFunctionsInternalCache& cache)
+    : QueryExpressionContext(trx, context, cache) {}

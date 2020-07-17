@@ -41,10 +41,13 @@ static bool testInternalIdValid(size_t id, std::vector<RegisterId> const& regs) 
 }
 
 InAndOutRowExpressionContext::InAndOutRowExpressionContext(
-    Query* query, std::vector<Variable const*> const&& vars,
-    std::vector<RegisterId> const&& regs, size_t vertexVarIdx,
+    transaction::Methods& trx,
+    QueryContext& context,
+    AqlFunctionsInternalCache& cache,
+    std::vector<Variable const*> vars,
+    std::vector<RegisterId> regs, size_t vertexVarIdx,
     size_t edgeVarIdx, size_t pathVarIdx)
-    : QueryExpressionContext(query),
+    : QueryExpressionContext(trx, context, cache),
       _input{CreateInvalidInputRowHint()},
       _vars(std::move(vars)),
       _regs(std::move(regs)),
@@ -64,6 +67,24 @@ void InAndOutRowExpressionContext::setInputRow(InputAqlItemRow input) {
 
 void InAndOutRowExpressionContext::invalidateInputRow() {
   _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+}
+
+bool InAndOutRowExpressionContext::isDataFromCollection(Variable const* variable) const {
+  for (size_t i = 0; i < _vars.size(); ++i) {
+    auto const& v = _vars[i];
+    if (v->id == variable->id) {
+      if (variable->isDataFromCollection) {
+        return true;
+      }
+      TRI_ASSERT(i < _regs.size());
+      if (i == _vertexVarIdx ||
+          i == _edgeVarIdx ||
+          i == _pathVarIdx) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 AqlValue InAndOutRowExpressionContext::getVariableValue(Variable const* variable, bool doCopy,

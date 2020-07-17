@@ -231,21 +231,21 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
 
   std::vector<SortRegister> sortRegs;
-  auto inputRegs = make_shared_unordered_set();
+  auto inputRegs = RegIdSet{};
   for (auto const& element : _elements) {
     auto it = getRegisterPlan()->varInfo.find(element.var->id);
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
     RegisterId id = it->second.registerId;
     sortRegs.emplace_back(id, element);
-    inputRegs->emplace(id);
+    inputRegs.emplace(id);
   }
-  auto registerInfos = createRegisterInfos(inputRegs, make_shared_unordered_set());
+  auto registerInfos = createRegisterInfos(std::move(inputRegs), {});
   auto executorInfos =
       SortExecutorInfos(registerInfos.numberOfInputRegisters(),
                         registerInfos.numberOfOutputRegisters(),
                         registerInfos.registersToClear(), std::move(sortRegs),
                         _limit, engine.itemBlockManager(),
-                        engine.getQuery()->trx()->transactionContextPtr()->getVPackOptions(),
+                        &engine.getQuery().vpackOptions(),
                         _stable);
   if (sorterType() == SorterType::Standard) {
     return std::make_unique<ExecutionBlockImpl<SortExecutor>>(&engine, this,
@@ -271,8 +271,4 @@ CostEstimate SortNode::estimateCost() const {
 
 SortNode::SorterType SortNode::sorterType() const {
   return (!isStable() && _limit > 0) ? SorterType::ConstrainedHeap : SorterType::Standard;
-}
-
-auto SortNode::getOutputVariables() const -> VariableIdSet {
-  return {};
 }

@@ -98,7 +98,7 @@ bytes_ref lz4::lz4compressor::compress(byte_type* src, size_t size, bstring& out
 }
 
 bytes_ref lz4::lz4decompressor::decompress(
-    byte_type* src,  size_t src_size,
+    const byte_type* src,  size_t src_size,
     byte_type* dst,  size_t dst_size) {
   assert(src_size <= integer_traits<int>::const_max); // LZ4 API uses int
 
@@ -135,7 +135,6 @@ void lz4::init() {
   REGISTER_COMPRESSION(lz4, &lz4::compressor, &lz4::decompressor);
 }
 
-DEFINE_COMPRESSION_TYPE(iresearch::compression::lz4);
 REGISTER_COMPRESSION(lz4, &lz4::compressor, &lz4::decompressor);
 
 NS_END // compression

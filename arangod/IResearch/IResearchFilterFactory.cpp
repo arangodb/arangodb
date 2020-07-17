@@ -27,17 +27,21 @@
 #include "date/date.h"
 #endif
 
+#include "analysis/token_attributes.hpp"
+#include "analysis/token_streams.hpp"
 #include "search/all_filter.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/column_existence_filter.hpp"
+#include "search/filter_visitor.hpp"
 #include "search/granular_range_filter.hpp"
-#include "search/phrase_filter.hpp"
 #include "search/levenshtein_filter.hpp"
+#include "search/ngram_similarity_filter.hpp"
+#include "search/phrase_filter.hpp"
 #include "search/prefix_filter.hpp"
 #include "search/range_filter.hpp"
 #include "search/term_filter.hpp"
+#include "search/top_terms_collector.hpp"
 #include "search/wildcard_filter.hpp"
-#include "search/ngram_similarity_filter.hpp"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
@@ -55,6 +59,7 @@
 #include "IResearch/IResearchPDP.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 
 using namespace arangodb::iresearch;
@@ -312,7 +317,8 @@ arangodb::Result getAnalyzerByName(
     : nullptr;
 
   if (sysVocbase) {
-    analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase);
+    analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase, 
+                                   ctx.trx->state()->analyzersRevision());
 
     shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
       analyzerId, ctx.trx->vocbase(), *sysVocbase, false);  // args
@@ -325,7 +331,6 @@ arangodb::Result getAnalyzerByName(
           .append(analyzerId.c_str(), analyzerId.size()).append("'")
     };
   }
-
   return {};
 }
 
@@ -401,11 +406,15 @@ void appendTerms(irs::by_phrase& filter, irs::string_ref const& value,
   stream.reset(value);
 
   // get token attribute
-  irs::term_attribute const& token = *stream.attributes().get<irs::term_attribute>();
+  TRI_ASSERT(irs::get<irs::term_attribute>(stream));
+  irs::term_attribute const* token = irs::get<irs::term_attribute>(stream);
+  TRI_ASSERT(token);
 
   // add tokens
-  while (stream.next()) {
-    filter.push_back(irs::by_phrase::simple_term{token.value()}, firstOffset);
+  for (auto* options = filter.mutable_options(); stream.next(); ) {
+    irs::assign(options->push_back<irs::by_term_options>(firstOffset).term,
+                token->value);
+
     firstOffset = 0;
   }
 }
@@ -426,24 +435,26 @@ FORCE_INLINE void appendExpression(irs::boolean_filter& filter,
   exprFilter.boost(filterCtx.boost);
 }
 
-arangodb::Result byTerm(irs::by_term* filter, std::string name,
+arangodb::Result byTerm(irs::by_term* filter, std::string&& name,
                         ScopedAqlValue const& value, QueryContext const& /*ctx*/,
                         FilterContext const& filterCtx) {
   switch (value.type()) {
     case arangodb::iresearch::SCOPED_VALUE_TYPE_NULL:
       if (filter) {
         kludge::mangleNull(name);
-        filter->field(std::move(name));
+        *filter->mutable_field() = std::move(name);
         filter->boost(filterCtx.boost);
-        filter->term(irs::null_token_stream::value_null());
+        irs::assign(filter->mutable_options()->term,
+                    irs::null_token_stream::value_null());
       }
       return {};
     case arangodb::iresearch::SCOPED_VALUE_TYPE_BOOL:
       if (filter) {
         kludge::mangleBool(name);
-        filter->field(std::move(name));
+        *filter->mutable_field() = std::move(name);
         filter->boost(filterCtx.boost);
-        filter->term(irs::boolean_token_stream::value(value.getBoolean()));
+        irs::assign(filter->mutable_options()->term,
+                    irs::boolean_token_stream::value(value.getBoolean()));
       }
       return {};
     case arangodb::iresearch::SCOPED_VALUE_TYPE_DOUBLE:
@@ -458,15 +469,15 @@ arangodb::Result byTerm(irs::by_term* filter, std::string name,
         kludge::mangleNumeric(name);
 
         irs::numeric_token_stream stream;
-        irs::term_attribute const* term =
-            stream.attributes().get<irs::term_attribute>().get();
-        TRI_ASSERT(term);
+        irs::term_attribute const* token = irs::get<irs::term_attribute>(stream);
+        TRI_ASSERT(token);
         stream.reset(dblValue);
         stream.next();
 
-        filter->field(std::move(name));
+        *filter->mutable_field() = std::move(name);
         filter->boost(filterCtx.boost);
-        filter->term(term->value());
+        irs::assign(filter->mutable_options()->term,
+                    token->value);
       }
       return {};
     case arangodb::iresearch::SCOPED_VALUE_TYPE_STRING:
@@ -480,9 +491,10 @@ arangodb::Result byTerm(irs::by_term* filter, std::string name,
 
         TRI_ASSERT(filterCtx.analyzer._pool);
         kludge::mangleStringField(name, filterCtx.analyzer);
-        filter->field(std::move(name));
+        *filter->mutable_field() = std::move(name);
         filter->boost(filterCtx.boost);
-        filter->term(strValue);
+        irs::assign(filter->mutable_options()->term,
+                    irs::ref_cast<irs::byte_type>(strValue));
       }
       return {};
     default:
@@ -545,20 +557,22 @@ arangodb::Result byRange(irs::boolean_filter* filter, arangodb::aql::AstNode con
   auto& range = filter->add<irs::by_granular_range>();
 
   kludge::mangleNumeric(name);
-  range.field(std::move(name));
+  *range.mutable_field() = std::move(name);
   range.boost(filterCtx.boost);
 
   irs::numeric_token_stream stream;
 
   // setup min bound
   stream.reset(static_cast<double_t>(rangeData._low));
-  range.insert<irs::Bound::MIN>(stream);
-  range.include<irs::Bound::MIN>(true);
+
+  auto* opts = range.mutable_options();
+  irs::set_granular_term(opts->range.min, stream);
+  opts->range.min_type = irs::BoundType::INCLUSIVE;
 
   // setup max bound
   stream.reset(static_cast<double_t>(rangeData._high));
-  range.insert<irs::Bound::MAX>(stream);
-  range.include<irs::Bound::MAX>(true);
+  irs::set_granular_term(opts->range.max, stream);
+  opts->range.max_type = irs::BoundType::INCLUSIVE;
 
   return {};
 }
@@ -582,12 +596,13 @@ arangodb::Result byRange(irs::boolean_filter* filter, arangodb::aql::AstNode con
         kludge::mangleNull(name);
 
         auto& range = filter->add<irs::by_range>();
-        range.field(std::move(name));
+        *range.mutable_field() = std::move(name);
         range.boost(filterCtx.boost);
-        range.term<irs::Bound::MIN>(irs::null_token_stream::value_null());
-        range.include<irs::Bound::MIN>(minInclude);
-        range.term<irs::Bound::MAX>(irs::null_token_stream::value_null());
-        range.include<irs::Bound::MAX>(maxInclude);
+        auto* opts = range.mutable_options();
+        irs::assign(opts->range.min, irs::null_token_stream::value_null());
+        opts->range.min_type = minInclude ? irs::BoundType::INCLUSIVE : irs::BoundType::EXCLUSIVE;
+        irs::assign(opts->range.max, irs::null_token_stream::value_null());
+        opts->range.max_type = maxInclude ? irs::BoundType::INCLUSIVE : irs::BoundType::EXCLUSIVE;
       }
 
       return {};
@@ -597,12 +612,13 @@ arangodb::Result byRange(irs::boolean_filter* filter, arangodb::aql::AstNode con
         kludge::mangleBool(name);
 
         auto& range = filter->add<irs::by_range>();
-        range.field(std::move(name));
+        *range.mutable_field() = std::move(name);
         range.boost(filterCtx.boost);
-        range.term<irs::Bound::MIN>(irs::boolean_token_stream::value(min.getBoolean()));
-        range.include<irs::Bound::MIN>(minInclude);
-        range.term<irs::Bound::MAX>(irs::boolean_token_stream::value(max.getBoolean()));
-        range.include<irs::Bound::MAX>(maxInclude);
+        auto* opts = range.mutable_options();
+        irs::assign(opts->range.min, irs::boolean_token_stream::value(min.getBoolean()));
+        opts->range.min_type = minInclude ? irs::BoundType::INCLUSIVE : irs::BoundType::EXCLUSIVE;
+        irs::assign(opts->range.max, irs::boolean_token_stream::value(max.getBoolean()));
+        opts->range.max_type = maxInclude ? irs::BoundType::INCLUSIVE : irs::BoundType::EXCLUSIVE;
       }
 
       return {};
@@ -619,20 +635,21 @@ arangodb::Result byRange(irs::boolean_filter* filter, arangodb::aql::AstNode con
         auto& range = filter->add<irs::by_granular_range>();
 
         kludge::mangleNumeric(name);
-        range.field(std::move(name));
+        *range.mutable_field() = std::move(name);
         range.boost(filterCtx.boost);
 
         irs::numeric_token_stream stream;
+        auto* opts = range.mutable_options();
 
         // setup min bound
         stream.reset(minDblValue);
-        range.insert<irs::Bound::MIN>(stream);
-        range.include<irs::Bound::MIN>(minInclude);
+        irs::set_granular_term(opts->range.min, stream);
+        opts->range.min_type = minInclude ? irs::BoundType::INCLUSIVE : irs::BoundType::EXCLUSIVE;
 
         // setup max bound
         stream.reset(maxDblValue);
-        range.insert<irs::Bound::MAX>(stream);
-        range.include<irs::Bound::MAX>(maxInclude);
+        irs::set_granular_term(opts->range.max, stream);
+        opts->range.max_type = maxInclude ? irs::BoundType::INCLUSIVE : irs::BoundType::EXCLUSIVE;
       }
 
       return {};
@@ -650,13 +667,14 @@ arangodb::Result byRange(irs::boolean_filter* filter, arangodb::aql::AstNode con
 
         TRI_ASSERT(filterCtx.analyzer._pool);
         kludge::mangleStringField(name, filterCtx.analyzer);
-        range.field(std::move(name));
+        *range.mutable_field() = std::move(name);
         range.boost(filterCtx.boost);
 
-        range.term<irs::Bound::MIN>(minStrValue);
-        range.include<irs::Bound::MIN>(minInclude);
-        range.term<irs::Bound::MAX>(maxStrValue);
-        range.include<irs::Bound::MAX>(maxInclude);
+        auto* opts = range.mutable_options();
+        irs::assign(opts->range.min, irs::ref_cast<irs::byte_type>(minStrValue));
+        opts->range.min_type = minInclude ? irs::BoundType::INCLUSIVE : irs::BoundType::EXCLUSIVE;
+        irs::assign(opts->range.max, irs::ref_cast<irs::byte_type>(maxStrValue));
+        opts->range.max_type = maxInclude ? irs::BoundType::INCLUSIVE : irs::BoundType::EXCLUSIVE;
       }
 
       return {};
@@ -667,7 +685,7 @@ arangodb::Result byRange(irs::boolean_filter* filter, arangodb::aql::AstNode con
   }
 }
 
-template <irs::Bound Bound>
+template<bool Min>
 arangodb::Result byRange(irs::boolean_filter* filter, std::string name, const ScopedAqlValue& value,
                          bool const incl, QueryContext const& /*ctx*/, FilterContext const& filterCtx) {
   switch (value.type()) {
@@ -676,10 +694,13 @@ arangodb::Result byRange(irs::boolean_filter* filter, std::string name, const Sc
         auto& range = filter->add<irs::by_range>();
 
         kludge::mangleNull(name);
-        range.field(std::move(name));
+        *range.mutable_field() = std::move(name);
         range.boost(filterCtx.boost);
-        range.term<Bound>(irs::null_token_stream::value_null());
-        range.include<Bound>(incl);
+        auto* opts = range.mutable_options();
+        irs::assign(Min ? opts->range.min : opts->range.max,
+                    irs::null_token_stream::value_null());
+        (Min ? opts->range.min_type : opts->range.max_type) =
+            incl ? irs::BoundType::INCLUSIVE  : irs::BoundType::EXCLUSIVE;
       }
 
       return {};
@@ -689,10 +710,13 @@ arangodb::Result byRange(irs::boolean_filter* filter, std::string name, const Sc
         auto& range = filter->add<irs::by_range>();
 
         kludge::mangleBool(name);
-        range.field(std::move(name));
+        *range.mutable_field() = std::move(name);
         range.boost(filterCtx.boost);
-        range.term<Bound>(irs::boolean_token_stream::value(value.getBoolean()));
-        range.include<Bound>(incl);
+        auto* opts = range.mutable_options();
+        irs::assign(Min ? opts->range.min : opts->range.max,
+                    irs::boolean_token_stream::value(value.getBoolean()));
+        (Min ? opts->range.min_type : opts->range.max_type) =
+            incl ? irs::BoundType::INCLUSIVE  : irs::BoundType::EXCLUSIVE;
       }
 
       return {};
@@ -710,12 +734,15 @@ arangodb::Result byRange(irs::boolean_filter* filter, std::string name, const Sc
         irs::numeric_token_stream stream;
 
         kludge::mangleNumeric(name);
-        range.field(std::move(name));
+        *range.mutable_field() = std::move(name);
         range.boost(filterCtx.boost);
 
         stream.reset(dblValue);
-        range.insert<Bound>(stream);
-        range.include<Bound>(incl);
+        auto* opts = range.mutable_options();
+        irs::set_granular_term(Min ? opts->range.min : opts->range.max,
+                               stream);
+        (Min ? opts->range.min_type : opts->range.max_type) =
+            incl ? irs::BoundType::INCLUSIVE  : irs::BoundType::EXCLUSIVE;
       }
 
       return {};
@@ -733,10 +760,13 @@ arangodb::Result byRange(irs::boolean_filter* filter, std::string name, const Sc
 
         TRI_ASSERT(filterCtx.analyzer._pool);
         kludge::mangleStringField(name, filterCtx.analyzer);
-        range.field(std::move(name));
+        *range.mutable_field() = std::move(name);
         range.boost(filterCtx.boost);
-        range.term<Bound>(strValue);
-        range.include<Bound>(incl);
+        auto* opts = range.mutable_options();
+        irs::assign(Min ? opts->range.min : opts->range.max,
+                    irs::ref_cast<irs::byte_type>(strValue));
+        (Min ? opts->range.min_type : opts->range.max_type) =
+            incl ? irs::BoundType::INCLUSIVE  : irs::BoundType::EXCLUSIVE;
       }
 
       return {};
@@ -747,7 +777,7 @@ arangodb::Result byRange(irs::boolean_filter* filter, std::string name, const Sc
   }
 }
 
-template <irs::Bound Bound>
+template<bool Min>
 arangodb::Result byRange(irs::boolean_filter* filter,
              arangodb::iresearch::NormalizedCmpNode const& node, bool const incl,
              QueryContext const& ctx, FilterContext const& filterCtx) {
@@ -773,7 +803,7 @@ arangodb::Result byRange(irs::boolean_filter* filter,
       return { TRI_ERROR_BAD_PARAMETER, "can not execute expression" };
     }
   }
-  return byRange<Bound>(filter, name, value, incl, ctx, filterCtx);
+  return byRange<Min>(filter, name, value, incl, ctx, filterCtx);
 }
 
 arangodb::Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
@@ -870,8 +900,8 @@ arangodb::Result fromInterval(irs::boolean_filter* filter, QueryContext const& c
   bool const min = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT == normNode.cmp ||
                    arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE == normNode.cmp;
 
-  return min ? byRange<irs::Bound::MIN>(filter, normNode, incl, ctx, filterCtx)
-             : byRange<irs::Bound::MAX>(filter, normNode, incl, ctx, filterCtx);
+  return min ? byRange<true>(filter, normNode, incl, ctx, filterCtx)
+             : byRange<false>(filter, normNode, incl, ctx, filterCtx);
 }
 
 arangodb::Result fromBinaryEq(irs::boolean_filter* filter, QueryContext const& ctx,
@@ -1113,8 +1143,8 @@ class ByRangeSubFilterFactory {
                                           QueryContext const& ctx, FilterContext const& filterCtx) {
     bool incl, min;
     std::tie(min, incl) = calcMinInclude(node.cmp);
-    return min ? byRange<irs::Bound::MIN>(filter, node, incl, ctx, filterCtx)
-               : byRange<irs::Bound::MAX>(filter, node, incl, ctx, filterCtx);
+    return min ? byRange<true>(filter, node, incl, ctx, filterCtx)
+               : byRange<false>(filter, node, incl, ctx, filterCtx);
   }
 
   static arangodb::Result byValueSubFilter(irs::boolean_filter* filter, std::string fieldName, const ScopedAqlValue& value,
@@ -1122,8 +1152,8 @@ class ByRangeSubFilterFactory {
                                            QueryContext const& ctx, FilterContext const& filterCtx) {
     bool incl, min;
     std::tie(min, incl) = calcMinInclude(arrayExpansionNodeType);
-    return min ? byRange<irs::Bound::MIN>(filter, fieldName, value, incl, ctx, filterCtx)
-               : byRange<irs::Bound::MAX>(filter, fieldName, value, incl, ctx, filterCtx);
+    return min ? byRange<true>(filter, fieldName, value, incl, ctx, filterCtx)
+               : byRange<false>(filter, fieldName, value, incl, ctx, filterCtx);
   }
 
  private:
@@ -1715,7 +1745,8 @@ arangodb::Result fromFuncAnalyzer(
                           : nullptr;
 
     if (sysVocbase) {
-      analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase);
+      analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase,
+                                     ctx.trx->state()->analyzersRevision());
 
       shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
           analyzerId, ctx.trx->vocbase(), *sysVocbase, false);  // args
@@ -1919,9 +1950,10 @@ arangodb::Result fromFuncExists(
 
   if (filter) {
     auto& exists = filter->add<irs::by_column_existence>();
-    exists.field(std::move(fieldName));
+    *exists.mutable_field() = std::move(fieldName);
     exists.boost(filterCtx.boost);
-    exists.prefix_match(prefixMatch);
+    auto* opts = exists.mutable_options();
+    opts->prefix_match = prefixMatch;
   }
 
   return {};
@@ -2068,9 +2100,13 @@ arangodb::Result fromFuncPhraseTerm(char const* funcName,
   if (res.fail()) {
     return res;
   }
+
   if (filter) {
-    filter->push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(term)}, firstOffset);
+    auto* opts = filter->mutable_options();
+    irs::assign(opts->push_back<irs::by_term_options>(firstOffset).term,
+                irs::ref_cast<irs::byte_type>(term));
   }
+
   return {};
 }
 
@@ -2091,8 +2127,9 @@ arangodb::Result fromFuncPhraseStartsWith(char const* funcName,
     return res;
   }
   if (filter) {
-    filter->push_back(irs::by_phrase::prefix_term{FilterConstants::DefaultScoringTermsLimit,
-                                                  irs::ref_cast<irs::byte_type>(term)}, firstOffset);
+    auto& prefix = filter->mutable_options()->push_back<irs::by_prefix_options>(firstOffset);
+    irs::assign(prefix.term, irs::ref_cast<irs::byte_type>(term));
+    prefix.scored_terms_limit = FilterConstants::DefaultScoringTermsLimit;
   }
   return {};
 }
@@ -2114,8 +2151,9 @@ arangodb::Result fromFuncPhraseLike(char const* funcName,
     return res;
   }
   if (filter) {
-    filter->push_back(irs::by_phrase::wildcard_term{FilterConstants::DefaultScoringTermsLimit,
-                                                    irs::ref_cast<irs::byte_type>(term)}, firstOffset);
+    auto& wildcard = filter->mutable_options()->push_back<irs::by_wildcard_options>(firstOffset);
+    irs::assign(wildcard.term, irs::ref_cast<irs::byte_type>(term));
+    wildcard.scored_terms_limit = FilterConstants::DefaultScoringTermsLimit;
   }
   return {};
 }
@@ -2126,9 +2164,7 @@ arangodb::Result getLevenshteinArguments(char const* funcName, bool isFilter,
                                          arangodb::aql::AstNode const& args,
                                          arangodb::aql::AstNode const** field,
                                          ScopedAqlValue& targetValue,
-                                         irs::string_ref& target,
-                                         size_t& scoringLimit, int64_t& maxDistance,
-                                         bool& withTranspositions,
+                                         irs::by_edit_distance_options& opts,
                                          std::string const& errorSuffix = std::string()) {
   if (!args.isDeterministic()) {
     auto res = error::nondeterministicArgs(funcName);
@@ -2139,7 +2175,7 @@ arangodb::Result getLevenshteinArguments(char const* funcName, bool isFilter,
   }
   auto const argc = args.numMembers();
   constexpr size_t min = 3 - First;
-  constexpr size_t max = 4 - First;
+  constexpr size_t max = 5 - First;
   if (argc < min || argc > max) {
     auto res = error::invalidArgsCount<error::Range<min, max>>(funcName);
     return {
@@ -2159,6 +2195,7 @@ arangodb::Result getLevenshteinArguments(char const* funcName, bool isFilter,
   }
 
   // (1 - First) argument defines a target
+  irs::string_ref target;
   auto res = evaluateArg(target, targetValue, funcName, args, 1 - First, isFilter, ctx);
 
   if (res.fail()) {
@@ -2171,6 +2208,7 @@ arangodb::Result getLevenshteinArguments(char const* funcName, bool isFilter,
   ScopedAqlValue tmpValue; // can reuse value for int64_t and bool
 
   // (2 - First) argument defines a max distance
+  int64_t maxDistance = 0;
   res = evaluateArg(maxDistance, tmpValue, funcName, args, 2 - First, isFilter, ctx);
 
   if (res.fail()) {
@@ -2189,7 +2227,8 @@ arangodb::Result getLevenshteinArguments(char const* funcName, bool isFilter,
   }
 
   // optional (3 - First) argument defines transpositions
-  if (4 - First == argc) {
+  bool withTranspositions = false;
+  if (3 - First < argc) {
     res = evaluateArg(withTranspositions, tmpValue, funcName, args, 3 - First, isFilter, ctx);
 
     if (res.fail()) {
@@ -2218,7 +2257,24 @@ arangodb::Result getLevenshteinArguments(char const* funcName, bool isFilter,
     };
   }
 
-  scoringLimit = FilterConstants::DefaultScoringTermsLimit;
+  // optional (4 - First) argument defines terms limit
+  int64_t maxTerms = FilterConstants::DefaultLevenshteinTermsLimit;
+  if (4 - First < argc) {
+    res = evaluateArg(maxTerms, tmpValue, funcName, args, 4 - First, isFilter, ctx);
+
+    if (res.fail()) {
+      return {
+        res.errorNumber(),
+        res.errorMessage().append(errorSuffix)
+      };
+    }
+  }
+
+  irs::assign(opts.term, irs::ref_cast<irs::byte_type>(target));
+  opts.with_transpositions = withTranspositions;
+  opts.max_distance = static_cast<irs::byte_type>(maxDistance);
+  opts.max_terms = static_cast<size_t>(maxTerms);
+  opts.provider = &arangodb::iresearch::getParametricDescription;
 
   return {};
 }
@@ -2243,23 +2299,50 @@ arangodb::Result fromFuncPhraseLevenshteinMatch(char const* funcName,
   }
 
   ScopedAqlValue targetValue;
-  irs::string_ref target;
-  size_t scoringLimit = 0;
-  int64_t maxDistance = 0;
-  auto withTranspositions = false;
-  auto res = getLevenshteinArguments<1>(subFuncName, filter != nullptr, ctx, array, nullptr,
-                                        targetValue, target, scoringLimit, maxDistance,
-                                        withTranspositions,
+  irs::by_edit_distance_options opts;
+  auto res = getLevenshteinArguments<1>(subFuncName, filter != nullptr, ctx,
+                                        array, nullptr, targetValue, opts,
                                         getSubFuncErrorSuffix(funcName, funcArgumentPosition));
   if (res.fail()) {
     return res;
   }
 
   if (filter) {
-    filter->push_back(
-          irs::by_phrase::levenshtein_term{withTranspositions, static_cast<irs::byte_type>(maxDistance),
-                                           scoringLimit, &arangodb::iresearch::getParametricDescription,
-                                           irs::ref_cast<irs::byte_type>(target)}, firstOffset);
+    auto* phrase = filter->mutable_options();
+
+    if (0 != opts.max_terms) {
+      TRI_ASSERT(ctx.index);
+
+      struct top_term_visitor final : irs::filter_visitor {
+        explicit top_term_visitor(size_t size)
+          : collector(size) {
+        }
+
+        virtual void prepare(const irs::sub_reader& segment,
+                             const irs::term_reader& field,
+                             const irs::seek_term_iterator& terms) {
+          collector.prepare(segment, field, terms);
+        }
+
+        virtual void visit(irs::boost_t boost) {
+          collector.visit(boost);
+        }
+
+        irs::top_terms_collector<irs::top_term<irs::boost_t>> collector;
+      } collector(opts.max_terms);
+
+      irs::visit(*ctx.index, filter->field(),
+                 irs::by_phrase::required(),
+                 irs::by_edit_distance::visitor(opts),
+                 collector);
+
+      auto& terms = phrase->push_back<irs::by_terms_options>(firstOffset).terms;
+      collector.collector.visit([&terms](const irs::top_term<irs::boost_t>& term) {
+        terms.emplace(term.term, term.key);
+      });
+    } else {
+      phrase->push_back<irs::by_edit_distance_filter_options>(std::move(opts), firstOffset);
+    }
   }
   return {};
 }
@@ -2300,7 +2383,7 @@ arangodb::Result fromFuncPhraseTerms(char const* funcName,
     };
   }
 
-  std::set<irs::bstring> terms;
+  irs::by_terms_options::search_terms terms;
   ScopedAqlValue termValue;
   irs::string_ref term;
   for (size_t i = 0; i < argc; ++i) {
@@ -2316,19 +2399,19 @@ arangodb::Result fromFuncPhraseTerms(char const* funcName,
       // reset analyzer
       analyzer->reset(term);
       // get token attribute
-      irs::term_attribute const& token = *analyzer->attributes().get<irs::term_attribute>();
+      irs::term_attribute const* token = irs::get<irs::term_attribute>(*analyzer);
+      TRI_ASSERT(token);
       // add tokens
       while (analyzer->next()) {
-        terms.emplace(token.value());
+        terms.emplace(token->value);
       }
     } else {
       terms.emplace(irs::ref_cast<irs::byte_type>(term));
     }
   }
   if (filter) {
-    filter->push_back(irs::by_phrase::set_term{
-        std::vector<irs::bstring>(std::make_move_iterator(terms.begin()), std::make_move_iterator(terms.end()))},
-      firstOffset);
+    auto& opts = filter->mutable_options()->push_back<irs::by_terms_options>(firstOffset);
+    opts.terms = std::move(terms);
   }
   return {};
 }
@@ -2521,12 +2604,12 @@ arangodb::Result fromFuncPhraseInRange(char const* funcName,
   }
 
   if (filter) {
-    irs::by_range::range_t rng;
-    rng.min = irs::ref_cast<irs::byte_type>(minStrValue);
-    rng.max = irs::ref_cast<irs::byte_type>(maxStrValue);
-    rng.min_type = minInclude ? irs::BoundType::INCLUSIVE : irs::BoundType::EXCLUSIVE;
-    rng.max_type = maxInclude ? irs::BoundType::INCLUSIVE : irs::BoundType::EXCLUSIVE;
-    filter->push_back(irs::by_phrase::range_term{FilterConstants::DefaultScoringTermsLimit, rng}, firstOffset);
+    auto& opts = filter->mutable_options()->push_back<irs::by_range_options>(firstOffset);
+    irs::assign(opts.range.min, irs::ref_cast<irs::byte_type>(minStrValue));
+    opts.range.min_type = minInclude ? irs::BoundType::INCLUSIVE : irs::BoundType::EXCLUSIVE;
+    irs::assign(opts.range.max, irs::ref_cast<irs::byte_type>(maxStrValue));
+    opts.range.max_type = maxInclude ? irs::BoundType::INCLUSIVE : irs::BoundType::EXCLUSIVE;
+    opts.scored_terms_limit = FilterConstants::DefaultScoringTermsLimit;
   }
   return {};
 }
@@ -2578,7 +2661,7 @@ arangodb::Result processPhraseArgs(
     FilterContext const& filterCtx,
     arangodb::aql::AstNode const& valueArgs,
     size_t valueArgsBegin, size_t valueArgsEnd,
-    irs::analysis::analyzer::ptr& analyzer,
+    irs::analysis::analyzer* analyzer,
     size_t offset,
     bool allowDefaultOffset,
     bool isInArray) {
@@ -2592,7 +2675,7 @@ arangodb::Result processPhraseArgs(
     if (currentArg->isArray()) {
       // '[' <term0> [, <term1>, ...] ']'
       if (isInArray) {
-        auto res = fromFuncPhraseTerms(funcName, idx, termsFuncName, phrase, ctx, *currentArg, offset, &*analyzer);
+        auto res = fromFuncPhraseTerms(funcName, idx, termsFuncName, phrase, ctx, *currentArg, offset, analyzer);
         if (res.fail()) {
           return res;
         }
@@ -2775,12 +2858,12 @@ arangodb::Result fromFuncPhrase(
     kludge::mangleStringField(name, analyzerPool);
 
     phrase = &filter->add<irs::by_phrase>();
-    phrase->field(std::move(name));
+    *phrase->mutable_field() = std::move(name);
     phrase->boost(filterCtx.boost);
   }
   // on top level we require explicit offsets - to be backward compatible and be able to distinguish last argument as analyzer or value
   // Also we allow recursion inside array to support older syntax (one array arg) and add ability to pass several arrays as args
-  return processPhraseArgs(funcName, phrase, ctx, filterCtx, *valueArgs, valueArgsBegin, valueArgsEnd, analyzer, 0, false, false);
+  return processPhraseArgs(funcName, phrase, ctx, filterCtx, *valueArgs, valueArgsBegin, valueArgsEnd, analyzer.get(), 0, false, false);
 }
 
 // NGRAM_MATCH (attribute, target, threshold [, analyzer])
@@ -2918,12 +3001,16 @@ arangodb::Result fromFuncNgramMatch(
     kludge::mangleStringField(name, analyzerPool);
 
     auto& ngramFilter = filter->add<irs::by_ngram_similarity>();
-    ngramFilter.field(std::move(name)).threshold(static_cast<float_t>(threshold)).boost(filterCtx.boost);
+    *ngramFilter.mutable_field() = std::move(name);
+    auto* opts = ngramFilter.mutable_options();
+    opts->threshold = static_cast<float_t>(threshold);
+    ngramFilter.boost(filterCtx.boost);
 
     analyzer->reset(matchValue);
-    irs::term_attribute const& token = *analyzer->attributes().get<irs::term_attribute>();
+    irs::term_attribute const* token = irs::get<irs::term_attribute>(*analyzer);
+    TRI_ASSERT(token);
     while (analyzer->next()) {
-      ngramFilter.push_back(token.value());
+      opts->ngrams.push_back(token->value);
     }
   }
   return {};
@@ -3048,13 +3135,14 @@ arangodb::Result fromFuncStartsWith(
 
     for (size_t i = 0, size = prefixes.size(); i < size; ++i) {
       auto& prefixFilter = filter->add<irs::by_prefix>();
-      prefixFilter.scored_terms_limit(scoringLimit);
       if (i + 1 < size) {
-        prefixFilter.field(name);
+        *prefixFilter.mutable_field() = name;
       } else {
-        prefixFilter.field(std::move(name));
+        *prefixFilter.mutable_field() = std::move(name);
       }
-      prefixFilter.term(prefixes[i]);
+      auto* opts = prefixFilter.mutable_options();
+      opts->scored_terms_limit = scoringLimit;
+      irs::assign(opts->term, irs::ref_cast<irs::byte_type>(prefixes[i]));
     }
   }
 
@@ -3142,16 +3230,17 @@ arangodb::Result fromFuncLike(
     kludge::mangleStringField(name, filterCtx.analyzer);
 
     auto& wildcardFilter = filter->add<irs::by_wildcard>();
-    wildcardFilter.scored_terms_limit(scoringLimit);
-    wildcardFilter.field(std::move(name));
+    *wildcardFilter.mutable_field() = std::move(name);
     wildcardFilter.boost(filterCtx.boost);
-    wildcardFilter.term(pattern);
+    auto* opts = wildcardFilter.mutable_options();
+    opts->scored_terms_limit = scoringLimit;
+    irs::assign(opts->term, irs::ref_cast<irs::byte_type>(pattern));
   }
 
   return {};
 }
 
-// LEVENSHTEIN_MATCH(<attribute>, <target>, <max-distance> [, <include-transpositions>])
+// LEVENSHTEIN_MATCH(<attribute>, <target>, <max-distance> [, <include-transpositions>, <max-terms>])
 arangodb::Result fromFuncLevenshteinMatch(
     char const* funcName,
     irs::boolean_filter* filter,
@@ -3162,13 +3251,9 @@ arangodb::Result fromFuncLevenshteinMatch(
 
   arangodb::aql::AstNode const* field = nullptr;
   ScopedAqlValue targetValue;
-  irs::string_ref target;
-  size_t scoringLimit = 0;
-  int64_t maxDistance = 0;
-  auto withTranspositions = false;
+  irs::by_edit_distance_options opts;
   auto res = getLevenshteinArguments<0>(funcName, filter != nullptr, ctx, args, &field,
-                                        targetValue, target, scoringLimit, maxDistance,
-                                        withTranspositions);
+                                        targetValue, opts);
   if (res.fail()) {
     return res;
   }
@@ -3184,13 +3269,9 @@ arangodb::Result fromFuncLevenshteinMatch(
     kludge::mangleStringField(name, filterCtx.analyzer);
 
     auto& levenshtein_filter = filter->add<irs::by_edit_distance>();
-    levenshtein_filter.scored_terms_limit(scoringLimit);
-    levenshtein_filter.field(std::move(name));
-    levenshtein_filter.term(target);
     levenshtein_filter.boost(filterCtx.boost);
-    levenshtein_filter.max_distance(irs::byte_type(maxDistance));
-    levenshtein_filter.with_transpositions(withTranspositions);
-    levenshtein_filter.provider(&arangodb::iresearch::getParametricDescription);
+    *levenshtein_filter.mutable_field() = std::move(name);
+    *levenshtein_filter.mutable_options() = std::move(opts);
   }
 
   return {};
@@ -3380,6 +3461,13 @@ namespace iresearch {
     irs::boolean_filter* filter,
     QueryContext const& ctx,
     arangodb::aql::AstNode const& node) {
+  if (node.willUseV8()) {
+    return {
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "using V8 dependent function is not allowed in SEARCH statement"
+    };
+  }
+
   // The analyzer is referenced in the FilterContext and used during the
   // following ::filter() call, so may not be a temporary.
   FieldMeta::Analyzer analyzer = FieldMeta::Analyzer();

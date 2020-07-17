@@ -46,6 +46,7 @@ class AqlItemBlockInputMatrix {
 
   bool hasShadowRow() const noexcept;
   bool hasDataRow() const noexcept;
+  bool hasValidRow() const noexcept;
 
   arangodb::aql::SharedAqlItemBlockPtr getBlock() const noexcept;
 

@@ -27,23 +27,24 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlTransaction.h"
 #include "Aql/AqlValue.h"
-#include "Aql/BlockCollector.h"
 #include "Aql/Collection.h"
 #include "Aql/DistributeExecutor.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionStats.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/MutexExecutor.h"
+#include "Aql/MutexNode.h"
 #include "Aql/Query.h"
 #include "Aql/ScatterExecutor.h"
 #include "Aql/SkipResult.h"
 #include "Basics/Exceptions.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -67,11 +68,12 @@ using StringBuffer = arangodb::basics::StringBuffer;
 ClientsExecutorInfos::ClientsExecutorInfos(std::vector<std::string> clientIds)
     : _clientIds(std::move(clientIds)) {
   TRI_ASSERT(!_clientIds.empty());
-};
+}
 
 auto ClientsExecutorInfos::nrClients() const noexcept -> size_t {
   return _clientIds.size();
 }
+
 auto ClientsExecutorInfos::clientIds() const noexcept -> std::vector<std::string> const& {
   return _clientIds;
 }
@@ -95,15 +97,24 @@ BlocksWithClientsImpl<Executor>::BlocksWithClientsImpl(ExecutionEngine* engine,
   for (size_t i = 0; i < _nrClients; i++) {
     _shardIdMap.try_emplace(shardIds[i], i);
   }
-
-  auto scatter = ExecutionNode::castTo<ScatterNode const*>(ep);
-  TRI_ASSERT(scatter != nullptr);
-  _type = scatter->getScatterType();
-
+        
   _clientBlockData.reserve(shardIds.size());
+        
+  if constexpr (std::is_same<MutexExecutor, Executor>::value) {
+    auto* mutex = ExecutionNode::castTo<MutexNode const*>(ep);
+    TRI_ASSERT(mutex != nullptr);
 
-  for (auto const& id : shardIds) {
-    _clientBlockData.try_emplace(id, typename Executor::ClientBlockData{*engine, scatter, _registerInfos});
+    for (auto const& id : shardIds) {
+      _clientBlockData.try_emplace(id, typename Executor::ClientBlockData{*engine, mutex, _registerInfos});
+    }
+  } else {
+    auto* scatter = ExecutionNode::castTo<ScatterNode const*>(ep);
+    TRI_ASSERT(scatter != nullptr);
+    _type = scatter->getScatterType();
+
+    for (auto const& id : shardIds) {
+      _clientBlockData.try_emplace(id, typename Executor::ClientBlockData{*engine, scatter, _registerInfos});
+    }
   }
 }
 
@@ -161,6 +172,21 @@ template <class Executor>
 auto BlocksWithClientsImpl<Executor>::executeForClient(AqlCallStack stack,
                                                        std::string const& clientId)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
+ 
+  if constexpr (std::is_same<MutexExecutor, Executor>::value) {
+    _executor.acquireLock();
+  }
+  
+  auto guard = scopeGuard([this]() {
+    if constexpr (std::is_same<MutexExecutor, Executor>::value) {
+      _executor.releaseLock();
+    } else {
+      // mark "this" as unused. unfortunately we cannot use [[maybe_unsed]]
+      // in the lambda capture as it does not parse
+      (void) this;
+    }
+  });
+  
   traceExecuteBegin(stack, clientId);
   auto res = executeWithoutTraceForClient(stack, clientId);
   traceExecuteEnd(res, clientId);
@@ -215,7 +241,7 @@ auto BlocksWithClientsImpl<Executor>::executeWithoutTraceForClient(AqlCallStack 
       auto [state, skipped, result] = dataContainer.execute(stack, _upstreamState);
       if (state == ExecutionState::DONE || !skipped.nothingSkipped() || result != nullptr) {
         // We have a valid result.
-        return {state, skipped, result};
+        return {state, skipped, std::move(result)};
       }
       stack.popCall();
     }
@@ -224,7 +250,7 @@ auto BlocksWithClientsImpl<Executor>::executeWithoutTraceForClient(AqlCallStack 
 
 template <class Executor>
 auto BlocksWithClientsImpl<Executor>::fetchMore(AqlCallStack stack) -> ExecutionState {
-  if (_engine->getQuery()->killed()) {
+  if (_engine->getQuery().killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
 
@@ -247,7 +273,9 @@ auto BlocksWithClientsImpl<Executor>::fetchMore(AqlCallStack stack) -> Execution
 
   // Waiting -> no block
   TRI_ASSERT(state != ExecutionState::WAITING || block == nullptr);
-  if (block != nullptr) {
+
+  if (state != ExecutionState::WAITING) {
+    // We need to report everything that is not waiting
     _executor.distributeBlock(block, skipped, _clientBlockData);
   }
 
@@ -262,7 +290,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> BlocksWithClientsImpl<Executor>
   AqlCallStack stack(AqlCallList{AqlCall::SimulateGetSome(atMost)}, true);
   auto [state, skipped, block] = executeForClient(stack, shardId);
   TRI_ASSERT(skipped.nothingSkipped());
-  return {state, block};
+  return {state, std::move(block)};
 }
 
 /// @brief skipSomeForShard
@@ -278,3 +306,4 @@ std::pair<ExecutionState, size_t> BlocksWithClientsImpl<Executor>::skipSomeForSh
 
 template class ::arangodb::aql::BlocksWithClientsImpl<ScatterExecutor>;
 template class ::arangodb::aql::BlocksWithClientsImpl<DistributeExecutor>;
+template class ::arangodb::aql::BlocksWithClientsImpl<MutexExecutor>;

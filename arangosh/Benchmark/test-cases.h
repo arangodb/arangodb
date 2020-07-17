@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
-#include "Basics/StringUtils.h"
+
 #include "Random/RandomGenerator.h"
 
 static bool DeleteCollection(SimpleHttpClient*, std::string const&);
@@ -1549,28 +1549,13 @@ static bool CreateCollection(SimpleHttpClient* client, std::string const& name,
   std::unique_ptr<SimpleHttpResult> result(client->request(rest::RequestType::POST, "/_api/collection",
                            payload.c_str(), payload.size(), headerFields));
 
-  if (result == nullptr) {
-    LOG_TOPIC("03767", FATAL, Logger::FIXME) << "got no response from server when trying to create collection";
-    FATAL_ERROR_EXIT();
-  } 
-  int statusCode = result->getHttpReturnCode();
-  if (statusCode >= 400) {
-    std::string errorMsg = result->getHttpReturnMessage();
-    std::shared_ptr<arangodb::velocypack::Builder> bodyBuilder(result->getBodyVelocyPack());
-    arangodb::velocypack::Slice error = bodyBuilder->slice();
-    if (!error.isNone() && error.hasKey(arangodb::StaticStrings::ErrorMessage)) {
-      errorMsg = error.get(arangodb::StaticStrings::ErrorMessage).copyString();
-    }
-    LOG_TOPIC("44810", FATAL, Logger::FIXME) 
-      << "got error message when trying to create collection: " 
-      << "HTTP " << arangodb::basics::StringUtils::itoa(result->getHttpReturnCode()) << ": " 
-      << errorMsg;
-    FATAL_ERROR_EXIT();
-  }
-
   bool failed = true;
-  if (statusCode == 200 || statusCode == 201 || statusCode == 202) {
-    failed = false;
+
+  if (result != nullptr) {
+    int statusCode = result->getHttpReturnCode();
+    if (statusCode == 200 || statusCode == 201 || statusCode == 202) {
+      failed = false;
+    }
   }
 
   return !failed;

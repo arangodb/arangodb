@@ -28,6 +28,7 @@
 #include "Aql/ModificationExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
+#include "Transaction/Methods.h"
 #include "Utils/OperationResult.h"
 
 #include <velocypack/Builder.h>
@@ -74,8 +75,6 @@ class SingleRowFetcher;
 // class (defined in SimpleModifier.h) with a *completion*.
 // The four completions for SimpleModifiers are defined in InsertModifier.h,
 // RemoveModifier.h, and UpdateReplaceModifier.h
-//
-// The FetcherType has to provide the function fetchRow with the parameter atMost
 //
 // The two types of modifiers (Simple and Upsert) follow a similar design. The main
 // data is held in
@@ -180,6 +179,8 @@ class ModificationExecutor {
  protected:
   void doCollect(AqlItemBlockInputRange& input, size_t maxOutputs);
   void doOutput(OutputAqlItemRow& output, Stats& stats);
+  
+  transaction::Methods _trx;
 
   // The state that was returned on the last call to produceRows. For us
   // this is relevant because we might have collected some documents in the

@@ -160,8 +160,6 @@ NS_ROOT
 class directory_reader_impl :
   public composite_reader<segment_reader> {
  public:
-  DECLARE_SHARED_PTR(directory_reader_impl); // required for NAMED_PTR(...)
-
   const directory& dir() const noexcept {
     return dir_;
   }
@@ -364,7 +362,3 @@ directory_reader_impl::directory_reader_impl(
 }
 
 NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

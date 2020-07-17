@@ -46,8 +46,8 @@ ScatterExecutor::ClientBlockData::ClientBlockData(ExecutionEngine& engine,
                   {},
                   registerInfos.numberOfInputRegisters(),
                   registerInfos.numberOfOutputRegisters(),
-                  *registerInfos.registersToClear(),
-                  *registerInfos.registersToKeep()};
+                  registerInfos.registersToClear(),
+                  registerInfos.registersToKeep()};
   // NOTE: Do never change this type! The execute logic below requires this and only this type.
   _executor = std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(
       &engine, node, std::move(idExecutorRegisterInfos), std::move(executorInfos));
@@ -64,13 +64,17 @@ auto ScatterExecutor::ClientBlockData::addBlock(SharedAqlItemBlockPtr block,
   // The given ItemBlock will be reused in all requesting blocks.
   // However, the next following block could be passthrough.
   // If it is, it will modify that data stored in block.
-  // If now anther client requests the same block, it is not
+  // If now another client requests the same block, it is not
   // the original any more, but a modified version.
   // For Instance in calculation we assert that the place we write to
   // is empty. If another peer-calculation has written to this value
   // this assertion does not hold true anymore.
   // Hence we are required to do an indepth cloning here.
-  _queue.emplace_back(block->slice(0, block->size()), skipped);
+  if (block == nullptr) {
+    _queue.emplace_back(block, skipped);
+  } else {
+    _queue.emplace_back(block->cloneDataAndMoveShadow(), skipped);
+  }
 }
 
 auto ScatterExecutor::ClientBlockData::hasDataFor(AqlCall const& call) -> bool {
@@ -118,7 +122,7 @@ auto ScatterExecutor::ClientBlockData::execute(AqlCallStack callStack, Execution
 
 ScatterExecutor::ScatterExecutor(Infos const&) {}
 
-auto ScatterExecutor::distributeBlock(SharedAqlItemBlockPtr block, SkipResult skipped,
+auto ScatterExecutor::distributeBlock(SharedAqlItemBlockPtr const& block, SkipResult skipped,
                                       std::unordered_map<std::string, ClientBlockData>& blockMap) const
     -> void {
   // Scatter returns every block on every client as is.

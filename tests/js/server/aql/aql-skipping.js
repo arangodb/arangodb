@@ -336,7 +336,15 @@ function aqlSkippingIndexTestsuite () {
 
       const result = AQL_EXECUTE(query, bindParams, queryOptions);
       assertEqual(100, result.json.length);
-      assertEqual(137, result.stats.scannedIndex);
+
+      if (internal.isCluster()) {
+        // In cluster we cannot identify how many documents
+        // are scanned as it depends on the ranomd distribution
+        // of data, if the first shard or server can fulfill
+        // this query, the other shard will never be asked
+        return;
+      }
+      assertEqual(637, result.stats.scannedIndex);
     },
 
     testOffsetLimitFullCountTwoIndexes: function () {
@@ -408,7 +416,14 @@ function aqlSkippingIndexTestsuite () {
 
       const result = AQL_EXECUTE(query, bindParams, queryOptions);
       assertEqual(100, result.json.length);
-      assertEqual(189, result.stats.scannedIndex);
+      if (internal.isCluster()) {
+        // In cluster we cannot identify how many documents
+        // are scanned as it depends on the ranomd distribution
+        // of data, if the first shard or server can fulfill
+        // this query, the other shard will never be asked
+        return;
+      }
+      assertEqual(889, result.stats.scannedIndex);
     },
 
     testOffsetLimitFullCountThreeIndexes: function () {
@@ -477,7 +492,7 @@ function aqlSkippingIResearchTestsuite () {
       };
       v.properties(meta);
 
-      db._drop("CompoundView");
+      db._dropView("CompoundView");
       v2 = db._createView("CompoundView", "arangosearch",
         { links : {
           UnitTestsCollection: { includeAllFields: true },

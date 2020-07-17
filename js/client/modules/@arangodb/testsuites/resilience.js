@@ -34,6 +34,7 @@ const functionsDocumentation = {
   'resilience_failover_view': 'resilience "failover view" tests',
   'resilience_transactions': 'resilience "transactions" tests',
   'resilience_sharddist': 'resilience "sharddist" tests',
+  'resilience_analyzers': 'resilience analyzers tests',
   'client_resilience': 'client resilience tests',
   'active_failover': 'active failover tests'
 };
@@ -52,6 +53,7 @@ const testPaths = {
   'resilience_failover_view': [tu.pathForTesting('server/resilience/failover-view')],
   'resilience_transactions': [tu.pathForTesting('server/resilience/transactions')],
   'resilience_sharddist': [tu.pathForTesting('server/resilience/sharddist')],
+  'resilience_analyzers': [tu.pathForTesting('server/resilience/analyzers')],
   'client_resilience': [tu.pathForTesting('client/resilience')],
   'active_failover': [tu.pathForTesting('client/active-failover')]
 };
@@ -91,6 +93,7 @@ const resilienceFailoverFailure = (new _resilience('resilience_failover_failure'
 const resilienceFailoverView = (new _resilience('resilience_failover_view')).func;
 const resilienceTransactions = (new _resilience('resilience_transactions')).func;
 const resilienceSharddist = (new _resilience('resilience_sharddist')).func;
+const resilienceAnalyzers = (new _resilience('resilience_analyzers')).func;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: client resilience
@@ -147,6 +150,7 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   testFns['resilience_failover_view'] = resilienceFailoverView;
   testFns['resilience_transactions'] = resilienceTransactions;
   testFns['resilience_sharddist'] = resilienceSharddist;
+  testFns['resilience_analyzers'] = resilienceAnalyzers;
   testFns['client_resilience'] = clientResilience;
   testFns['active_failover'] = activeFailover;
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }

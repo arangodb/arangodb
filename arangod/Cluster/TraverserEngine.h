@@ -43,7 +43,8 @@ class Context;
 
 namespace aql {
 class Collections;
-class Query;
+class QueryContext;
+class VariableGenerator;
 }  // namespace aql
 
 namespace graph {
@@ -61,25 +62,16 @@ namespace traverser {
 struct TraverserOptions;
 
 class BaseEngine {
-  friend class TraverserEngineRegistry;
 
  public:
   enum EngineType { TRAVERSER, SHORTESTPATH };
 
- protected:
-  // These are private on purpose.
-  // Only the Registry (friend) is allowed
-  // to create and destroy engines.
-  // We can get into undefined state if sth.
-  // deletes an engine but the registry
-  // does not get informed properly
-
   static std::unique_ptr<BaseEngine> BuildEngine(
-      TRI_vocbase_t& vocbase, std::shared_ptr<transaction::Context> const& ctx,
-      arangodb::velocypack::Slice info, bool needToLock);
+      TRI_vocbase_t& vocbase, aql::QueryContext& query,
+      arangodb::velocypack::Slice info);
 
-  BaseEngine(TRI_vocbase_t& vocbase, std::shared_ptr<transaction::Context> const& ctx,
-             arangodb::velocypack::Slice info, bool needToLock);
+  BaseEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
+             arangodb::velocypack::Slice info);
 
  public:
   virtual ~BaseEngine();
@@ -89,20 +81,15 @@ class BaseEngine {
 
   void getVertexData(arangodb::velocypack::Slice, arangodb::velocypack::Builder&);
 
-  bool lockCollection(std::string const&);
-
-  Result lockAll();
-
   std::shared_ptr<transaction::Context> context() const;
 
   virtual EngineType getType() const = 0;
 
   virtual bool produceVertices() const { return true; }
-
+  
  protected:
-  arangodb::aql::Query* _query;
-  std::shared_ptr<transaction::Methods> _trx;
-  arangodb::aql::Collections _collections;
+  arangodb::aql::QueryContext& _query;
+  transaction::Methods* _trx;
   std::unordered_map<std::string, std::vector<std::string>> _vertexShards;
 };
 
@@ -115,8 +102,8 @@ class BaseTraverserEngine : public BaseEngine {
   // does not get informed properly
 
   BaseTraverserEngine(TRI_vocbase_t& vocbase,
-                      std::shared_ptr<transaction::Context> const& ctx,
-                      arangodb::velocypack::Slice info, bool needToLock);
+                      aql::QueryContext& query,
+                      arangodb::velocypack::Slice info);
 
   ~BaseTraverserEngine();
 
@@ -135,9 +122,15 @@ class BaseTraverserEngine : public BaseEngine {
   
   bool produceVertices() const override;
  
+  // Inject all variables from VPack information
+  void injectVariables(arangodb::velocypack::Slice variables);
+
+  aql::VariableGenerator const* variables() const;
+
  protected:
   std::unique_ptr<traverser::TraverserOptions> _opts;
   std::vector<std::unique_ptr<graph::EdgeCursor>> _cursors;
+  aql::VariableGenerator const* _variables;
 };
 
 class ShortestPathEngine : public BaseEngine {
@@ -148,9 +141,8 @@ class ShortestPathEngine : public BaseEngine {
   // deletes an engine but the registry
   // does not get informed properly
 
-  ShortestPathEngine(TRI_vocbase_t& vocbase,
-                     std::shared_ptr<transaction::Context> const& ctx,
-                     arangodb::velocypack::Slice info, bool needToLock);
+  ShortestPathEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
+                     arangodb::velocypack::Slice info);
 
   ~ShortestPathEngine();
 
@@ -176,8 +168,8 @@ class TraverserEngine : public BaseTraverserEngine {
   // deletes an engine but the registry
   // does not get informed properly
 
-  TraverserEngine(TRI_vocbase_t& vocbase, std::shared_ptr<transaction::Context> const& ctx,
-                  arangodb::velocypack::Slice info, bool needToLock);
+  TraverserEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
+                  arangodb::velocypack::Slice info);
 
   ~TraverserEngine();
 

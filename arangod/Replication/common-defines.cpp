@@ -23,8 +23,8 @@
 
 #include <time.h>
 
+#include "Basics/StaticStrings.h"
 #include "Basics/system-functions.h"
-#include "Basics/tri-strings.h"
 #include "Replication/common-defines.h"
 
 namespace arangodb {
@@ -64,13 +64,14 @@ bool TRI_ExcludeCollectionReplication(std::string const& name, bool includeSyste
     return true;
   }
 
-  if (TRI_IsPrefixString(name.c_str(), "_statistics") ||
-      name == "_configuration" || name == "_frontend" ||
-      name == "_cluster_kickstarter_plans" || name == "_routing" ||
-      name == "_fishbowl" || name == "_foxxlog" || name == "_sessions") {
+  if (name.compare(0, 11, "_statistics") == 0 ||
+      name == "_routing") {
     // these system collections will always be excluded
     return true;
-  } else if (!includeFoxxQueues && (name == "_jobs" || name == "_queues")) {
+  } 
+  
+  if (!includeFoxxQueues && 
+      (name == StaticStrings::JobsCollection || name == StaticStrings::QueuesCollection)) {
     return true;
   }
 

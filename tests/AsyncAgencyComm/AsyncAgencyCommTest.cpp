@@ -35,11 +35,13 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <utility>
+
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 
+#include "Agency/AgencyPaths.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "Cluster/AgencyPaths.h"
 #include "Cluster/ClusterFeature.h"
 #include "Network/ConnectionPool.h"
 #include "Network/Methods.h"
@@ -110,10 +112,10 @@ struct AsyncAgencyCommPoolMock final : public network::ConnectionPool {
   };
 
   struct Connection final : public fuerte::Connection {
-    Connection(AsyncAgencyCommPoolMock* mock, std::string const& endpoint)
+    Connection(AsyncAgencyCommPoolMock* mock, std::string endpoint)
         : fuerte::Connection(fuerte::detail::ConnectionConfiguration()),
           _mock(mock),
-          _endpoint(endpoint) {}
+          _endpoint(std::move(endpoint)) {}
 
     std::size_t requestsLeft() const override { return 1; }
     State state() const override {
@@ -122,6 +124,9 @@ struct AsyncAgencyCommPoolMock final : public network::ConnectionPool {
 
     void cancel() override {}
     void start() override {}
+    bool lease() override {
+      return true;
+    }
 
     AsyncAgencyCommPoolMock* _mock;
     std::string _endpoint;
@@ -144,7 +149,7 @@ struct AsyncAgencyCommPoolMock final : public network::ConnectionPool {
       validateRequest(req);
 
       // send response
-      if (_mock->_requests.size() > 0) {
+      if (!_mock->_requests.empty()) {
         auto& expectReq = _mock->_requests.front();
         cb(expectReq.error, std::move(req), std::move(expectReq.response));
         _mock->_requests.pop_front();
@@ -154,9 +159,9 @@ struct AsyncAgencyCommPoolMock final : public network::ConnectionPool {
     }
   };
 
-  AsyncAgencyCommPoolMock(network::ConnectionPool::Config const& c)
+  explicit AsyncAgencyCommPoolMock(network::ConnectionPool::Config const& c)
       : network::ConnectionPool(c) {}
-  ~AsyncAgencyCommPoolMock() { TRI_ASSERT(_requests.empty()); }
+  ~AsyncAgencyCommPoolMock() override { TRI_ASSERT(_requests.empty()); }
 
   std::shared_ptr<fuerte::Connection> createConnection(fuerte::ConnectionBuilder& cb) override {
     return std::make_shared<Connection>(this, cb.normalizedEndpoint());

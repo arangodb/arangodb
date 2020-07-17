@@ -28,83 +28,84 @@
 
 NS_ROOT
 
-template< typename T >
-constexpr uint32_t bits_required() noexcept {
+template<typename T>
+inline constexpr uint32_t bits_required() noexcept {
   return sizeof(T)*8U;
 }
 
-template< typename T >
-inline void set_bit( T& value, size_t bit ) noexcept { 
-  value |= ( T(1) << bit ); 
-}
-
-template< unsigned Bit, typename T >
-inline void set_bit( T& value ) noexcept { 
-  value |= ( T(1) << (Bit) ); 
-}
-
-template< typename T >
-inline void unset_bit( T& value, size_t bit ) noexcept { 
-  value &= ~( T(1) << bit ); 
-}
-
-template< unsigned Bit, typename T >
-inline void unset_bit( T& value ) noexcept { 
-  value &= ~( T(1) << (Bit) ); 
-}
-
-template< unsigned Bit, typename T >
-inline void set_bit( bool set, T& value ) noexcept { 
-  set ? set_bit< Bit >( value ) : unset_bit< Bit >( value ); 
-}
-
-template< typename T >
-inline void set_bit( T& value, size_t bit, bool set ) noexcept{
-  set ? set_bit( value, bit ) : unset_bit( value, bit );
+template<typename T>
+inline constexpr void set_bit(T& value, size_t bit) noexcept {
+  value |= (T(1) << bit);
 }
 
 template<unsigned Bit, typename T>
-inline void unset_bit(bool unset, T& value) noexcept {
+inline constexpr void set_bit(T& value) noexcept {
+  value |= (T(1) << (Bit));
+}
+
+template<typename T>
+inline constexpr void unset_bit(T& value, size_t bit) noexcept {
+  value &= ~(T(1) << bit);
+}
+
+template<unsigned Bit, typename T>
+inline constexpr void unset_bit(T& value) noexcept {
+  value &= ~(T(1) << (Bit));
+}
+
+template<unsigned Bit, typename T>
+inline constexpr void set_bit(bool set, T& value) noexcept {
+  set ? set_bit< Bit >(value) : unset_bit< Bit >(value);
+}
+
+template<typename T>
+inline constexpr void set_bit(T& value, size_t bit, bool set) noexcept{
+  set ? set_bit(value, bit) : unset_bit(value, bit);
+}
+
+template<unsigned Bit, typename T>
+inline constexpr void unset_bit(bool unset, T& value) noexcept {
   if (unset) {
     unset_bit<Bit>(value);
   }
 }
 
 template<typename T>
-inline void unset_bit(T& value, size_t bit, bool unset) noexcept {
+inline constexpr void unset_bit(T& value, size_t bit, bool unset) noexcept {
   if (unset) {
     unset_bit(value, bit);
   }
 }
 
-template< unsigned Bit, typename T >
-inline constexpr bool check_bit( T value ) noexcept{
-  return ( value & ( T(1) << (Bit) ) ) != 0; 
+template<unsigned Bit, typename T>
+inline constexpr bool check_bit(T value) noexcept{
+  return (value & (T(1) << (Bit))) != 0;
 }
 
-template< typename T >
-inline bool check_bit( T value, size_t bit ) noexcept {
-  return ( value & ( T(1) << bit ) ) != 0; 
+template< typename T>
+inline constexpr bool check_bit(T value, size_t bit) noexcept {
+  return (value & (T(1) << bit)) != 0;
 }
 
-template< unsigned Offset, typename T >
-inline constexpr T rol( T value ) noexcept{
-  static_assert( Offset >= 0 && Offset <= sizeof( T ) * 8,
-                 "Offset out of range" );
+template<unsigned Offset, typename T>
+inline constexpr T rol(T value) noexcept{
+  static_assert(Offset >= 0 && Offset <= sizeof(T) * 8,
+                 "Offset out of range");
 
-  return ( value << Offset ) | ( value >> ( sizeof( T ) * 8 - Offset ) );
+  return (value << Offset) | (value >> (sizeof(T) * 8 - Offset));
 }
 
-template< unsigned Offset, typename T >
-inline constexpr T ror( T value ) noexcept{
-  static_assert( Offset >= 0 && Offset <= sizeof( T ) * 8,
-                 "Offset out of range" );
+template<unsigned Offset, typename T>
+inline constexpr T ror(T value) noexcept{
+  static_assert(Offset >= 0 && Offset <= sizeof(T) * 8,
+                 "Offset out of range");
 
-  return ( value >> Offset ) | ( value << ( sizeof( T ) * 8 - Offset ) );
+  return (value >> Offset) | (value << (sizeof(T) * 8 - Offset));
 }
 
 #if defined(_MSC_VER)
-  #pragma warning( disable : 4146 )
+  #pragma warning( push )
+  #pragma warning(disable : 4146)
 #endif
 
 inline constexpr uint32_t zig_zag_encode32(int32_t v) noexcept {
@@ -124,7 +125,7 @@ inline constexpr int64_t zig_zag_decode64(uint64_t v) noexcept {
 }
 
 #if defined(_MSC_VER)
-  #pragma warning( default  : 4146 )
+  #pragma warning( pop )
 #endif
 
 template<typename T>
@@ -134,19 +135,19 @@ struct enum_bitwise_traits {
     typename std::underlying_type<T>::type
   >::type underlying_type_t;
 
-  constexpr static T Or(T lhs, T rhs) noexcept {
+  static constexpr T Or(T lhs, T rhs) noexcept {
     return static_cast<T>(static_cast<underlying_type_t>(lhs) | static_cast<underlying_type_t>(rhs));
   }
 
-  constexpr static T Xor(T lhs, T rhs) noexcept {
+  static constexpr T Xor(T lhs, T rhs) noexcept {
     return static_cast<T>(static_cast<underlying_type_t>(lhs) ^ static_cast<underlying_type_t>(rhs));
   }
 
-  constexpr static T And(T lhs, T rhs) noexcept {
+  static constexpr T And(T lhs, T rhs) noexcept {
     return static_cast<T>(static_cast<underlying_type_t>(lhs) & static_cast<underlying_type_t>(rhs));
   }
 
-  constexpr static T Not(T v) noexcept {
+  static constexpr T Not(T v) noexcept {
     return static_cast<T>(~static_cast<underlying_type_t>(v));
   }
 }; // enum_bitwise_traits
@@ -174,12 +175,12 @@ inline constexpr T enum_bitwise_not(T v) noexcept {
 NS_END
 
 #define ENABLE_BITMASK_ENUM(x) \
-inline constexpr x operator&(x lhs, x rhs) noexcept { return irs::enum_bitwise_and(lhs, rhs); } \
-inline x& operator&=(x& lhs, x rhs)        noexcept { return lhs = irs::enum_bitwise_and(lhs, rhs); }   \
-inline constexpr x operator|(x lhs, x rhs) noexcept { return irs::enum_bitwise_or(lhs, rhs); }  \
-inline x& operator|=(x& lhs, x rhs)        noexcept { return lhs = irs::enum_bitwise_or(lhs, rhs); } \
-inline constexpr x operator^(x lhs, x rhs) noexcept { return irs::enum_bitwise_xor(lhs, rhs); } \
-inline x& operator^=(x& lhs, x rhs)        noexcept { return lhs = irs::enum_bitwise_xor(lhs, rhs); }   \
-inline constexpr x operator~(x v)          noexcept { return irs::enum_bitwise_not(v); }
+[[maybe_unused]] inline constexpr x operator&(x lhs, x rhs) noexcept { return irs::enum_bitwise_and(lhs, rhs); } \
+[[maybe_unused]] inline x& operator&=(x& lhs, x rhs)        noexcept { return lhs = irs::enum_bitwise_and(lhs, rhs); }   \
+[[maybe_unused]] inline constexpr x operator|(x lhs, x rhs) noexcept { return irs::enum_bitwise_or(lhs, rhs); }  \
+[[maybe_unused]] inline x& operator|=(x& lhs, x rhs)        noexcept { return lhs = irs::enum_bitwise_or(lhs, rhs); } \
+[[maybe_unused]] inline constexpr x operator^(x lhs, x rhs) noexcept { return irs::enum_bitwise_xor(lhs, rhs); } \
+[[maybe_unused]] inline x& operator^=(x& lhs, x rhs)        noexcept { return lhs = irs::enum_bitwise_xor(lhs, rhs); }   \
+[[maybe_unused]] inline constexpr x operator~(x v)          noexcept { return irs::enum_bitwise_not(v); }
 
 #endif

@@ -23,6 +23,7 @@
 #ifndef ARANGODB_TESTS_MOCKS_SERVERS_H
 #define ARANGODB_TESTS_MOCKS_SERVERS_H 1
 
+#include "IResearch/AgencyMock.h"
 #include "StorageEngineMock.h"
 
 #include "Mocks/LogLevels.h"
@@ -149,7 +150,6 @@ class MockClusterServer : public MockServer,
  public:
   virtual TRI_vocbase_t* createDatabase(std::string const& name) = 0;
   virtual void dropDatabase(std::string const& name) = 0;
-  arangodb::consensus::Store& getAgencyStore() { return _agencyStore; };
   void startFeatures() override;
 
   // You can only create specialized types
@@ -159,13 +159,13 @@ class MockClusterServer : public MockServer,
 
  protected:
   // Implementation knows the place when all features are included
-  void agencyTrx(std::string const& key, std::string const& value);
+  consensus::index_t agencyTrx(std::string const& key, std::string const& value);
   void agencyCreateDatabase(std::string const& name);
   void agencyDropDatabase(std::string const& name);
 
  private:
-  arangodb::consensus::Store _agencyStore;
   arangodb::ServerState::RoleEnum _oldRole;
+  std::unique_ptr<AsyncAgencyStorePoolMock> _pool;
   int _dummy;
 };
 

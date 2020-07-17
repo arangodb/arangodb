@@ -30,6 +30,7 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
 #include "Indexes/IndexIterator.h"
+#include "Transaction/Methods.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -51,10 +52,10 @@ template <typename T>
 class MaterializerExecutorInfos {
  public:
   MaterializerExecutorInfos(T collectionSource, RegisterId inNmDocId,
-                            RegisterId outDocRegId, transaction::Methods* trx);
+                            RegisterId outDocRegId, aql::QueryContext& query);
 
   MaterializerExecutorInfos() = delete;
-  MaterializerExecutorInfos(MaterializerExecutorInfos&&) noexcept = default;
+  MaterializerExecutorInfos(MaterializerExecutorInfos&&) = default;
   MaterializerExecutorInfos(MaterializerExecutorInfos const&) = delete;
   ~MaterializerExecutorInfos() = default;
 
@@ -66,7 +67,7 @@ class MaterializerExecutorInfos {
     return _inNonMaterializedDocRegId;
   }
 
-  transaction::Methods* trx() const { return _trx; }
+  aql::QueryContext& query() const { return _query; }
 
   T collectionSource() const { return _collectionSource; }
 
@@ -78,7 +79,7 @@ class MaterializerExecutorInfos {
   /// @brief register to store materialized document
   RegisterId const _outMaterializedDocumentRegId;
 
-  transaction::Methods* _trx;
+  aql::QueryContext& _query;
 };
 
 template <typename T>
@@ -95,8 +96,7 @@ class MaterializeExecutor {
 
   MaterializeExecutor(MaterializeExecutor&&) = default;
   MaterializeExecutor(MaterializeExecutor const&) = delete;
-  MaterializeExecutor(Fetcher&, Infos& infos)
-      : _readDocumentContext(infos), _infos(infos) {}
+  MaterializeExecutor(Fetcher&, Infos& infos);
 
   /**
    * @brief produce the next Row of Aql Values.
@@ -133,6 +133,8 @@ class MaterializeExecutor {
    private:
     static arangodb::IndexIterator::DocumentCallback copyDocumentCallback(ReadContext& ctx);
   };
+  
+  transaction::Methods _trx;
   ReadContext _readDocumentContext;
   Infos const& _infos;
 

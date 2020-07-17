@@ -25,10 +25,11 @@
 
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/RegisterInfos.h"
-#include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/Stats.h"
 #include "Aql/types.h"
+#include "Transaction/Methods.h"
 
 #include <unordered_set>
 #include <vector>
@@ -44,13 +45,13 @@ struct AqlCall;
 class AqlItemBlockInputRange;
 class Expression;
 class OutputAqlItemRow;
-class Query;
+class QueryContext;
 template <BlockPassthrough>
 class SingleRowFetcher;
 struct Variable;
 
 struct CalculationExecutorInfos {
-  CalculationExecutorInfos(RegisterId outputRegister, Query& query, Expression& expression,
+  CalculationExecutorInfos(RegisterId outputRegister, QueryContext& query, Expression& expression,
                            std::vector<Variable const*>&& expInVars,
                            std::vector<RegisterId>&& expInRegs);
 
@@ -61,7 +62,8 @@ struct CalculationExecutorInfos {
 
   RegisterId getOutputRegisterId() const noexcept;
 
-  Query& getQuery() const noexcept;
+  QueryContext& getQuery() const noexcept;
+  transaction::Methods* getTrx() const noexcept;
 
   Expression& getExpression() const noexcept;
 
@@ -72,9 +74,9 @@ struct CalculationExecutorInfos {
  private:
   RegisterId _outputRegisterId;
 
-  Query& _query;
+  QueryContext& _query;
   Expression& _expression;
-  std::vector<Variable const*> _expInVars;  // input variables for expresseion
+  std::vector<Variable const*> _expInVars;  // input variables for expression
   std::vector<RegisterId> _expInRegs;       // input registers for expression
 };
 
@@ -119,6 +121,8 @@ class CalculationExecutor {
   [[nodiscard]] bool shouldExitContextBetweenBlocks() const;
 
  private:
+  transaction::Methods _trx;
+  aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
   CalculationExecutorInfos& _infos;
 
   Fetcher& _fetcher;

@@ -112,11 +112,11 @@ Result ValidatorBase::validate(VPackSlice newDoc, VPackSlice oldDoc, bool isInse
   // document passed validation.
 
   auto resNew = this->validateOne(newDoc, options);
-  if(resNew.ok()){
+  if (resNew.ok()) {
     return {};
   }
 
-  if(this->validateOne(oldDoc, options).fail()){
+  if (this->validateOne(oldDoc, options).fail()) {
     return {};
   }
 
@@ -136,7 +136,7 @@ ValidatorBool::ValidatorBool(VPackSlice params) : ValidatorBase(params) {
   _result = params.get(StaticStrings::ValidationParameterRule).getBool();
 }
 Result ValidatorBool::validateOne(VPackSlice slice, VPackOptions const* options) const {
-  if (_result){
+  if (_result) {
     return {};
   }
   return {TRI_ERROR_VALIDATION_FAILED, _message};
@@ -174,7 +174,7 @@ ValidatorJsonSchema::ValidatorJsonSchema(VPackSlice params) : ValidatorBase(para
 
 Result ValidatorJsonSchema::validateOne(VPackSlice slice, VPackOptions const* options) const {
   auto res = validation::validate(*_schema, _special, slice, options);
-  if (res){
+  if (res) {
     return {};
   }
   return {TRI_ERROR_VALIDATION_FAILED, _message};

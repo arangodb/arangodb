@@ -145,6 +145,9 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   }
 
  protected:
+  /// @brief returns the short id of the server which should handle this request
+  ResultT<std::pair<std::string, bool>> forwardingTarget() override;
+
   /// @brief assemble a document id from a string and a string
   /// optionally url-encodes
   std::string assembleDocumentId(std::string const& collectionName, 
@@ -234,7 +237,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
                                                           AccessMode::Type mode) const;
   
   /// @brief create proper transaction context, including the proper IDs
-  std::shared_ptr<transaction::Context> createTransactionContext() const;
+  std::shared_ptr<transaction::Context> createTransactionContext(AccessMode::Type mode) const;
 
  protected:
   /// @brief request context

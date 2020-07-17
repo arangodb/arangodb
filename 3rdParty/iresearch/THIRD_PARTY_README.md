@@ -50,7 +50,7 @@ number of components produced by third parties
     - License: [BSD 3-clauses](http://snowball.tartarus.org/license.html)
     - How it's used: Statically or dynamically linked into the library
 6.  Title: ICU 
-    - Copyright: UNICODE, INC. 
+    - Copyright: UNICODE, INC.
     - License: [UNICODE INC. LICENSE AGREEMENT](   http://www.unicode.org/copyright.html#License)
     - How it's used: Dynamically linked into the library
 7.  Title: Bison
@@ -73,6 +73,10 @@ number of components produced by third parties
     - Copyright: Daniel Lemire
     - License: [BSD 3-clause](https://github.com/lemire/simdcomp/LICENSE)
     - How it's used: compression library
+12. Title: frozen
+    - Copyright: serge-sans-paille <sguelton@quarkslab.com>
+    - License: [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
+    - How it's used: immutable compile time std-like containers
 
 ## Third Party Open Source Software licenses
 

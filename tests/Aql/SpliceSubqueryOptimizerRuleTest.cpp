@@ -28,6 +28,8 @@
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
+#include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionBlock.h"
 #include "Aql/SubqueryEndExecutionNode.h"
 #include "Aql/SubqueryStartExecutionNode.h"
 #include "Aql/WalkerWorker.h"
@@ -147,15 +149,15 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
     ASSERT_NE(queryRegistry, nullptr) << "query string: " << querystring;
     ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0) << "query string: " << querystring;
 
+    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(server.getSystemDatabase());
     auto const bindParamVpack = VPackParser::fromJson(bindParameters);
-    arangodb::aql::Query notSplicedQuery(false, server.getSystemDatabase(),
+    arangodb::aql::Query notSplicedQuery(ctx,
                                          arangodb::aql::QueryString(querystring), bindParamVpack,
-                                         disableRuleOptions(additionalOptions),
-                                         arangodb::aql::PART_MAIN);
-    notSplicedQuery.prepare(queryRegistry, SerializationFormat::SHADOWROWS);
+                                         disableRuleOptions(additionalOptions));
+    notSplicedQuery.prepareQuery(SerializationFormat::SHADOWROWS);
     ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0) << "query string: " << querystring;
 
-    auto notSplicedPlan = notSplicedQuery.plan();
+    auto notSplicedPlan = const_cast<arangodb::aql::ExecutionPlan*>(notSplicedQuery.plan());
     ASSERT_NE(notSplicedPlan, nullptr) << "query string: " << querystring;
 
     SmallVector<ExecutionNode*>::allocator_type::arena_type a;
@@ -169,14 +171,13 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
     notSplicedPlan->findNodesOfType(notSplicedSubqueryEndNodes,
                                     ExecutionNode::SUBQUERY_END, true);
 
-    arangodb::aql::Query splicedQuery(false, server.getSystemDatabase(),
-                                      arangodb::aql::QueryString(querystring), bindParamVpack,
-                                      enableRuleOptions(additionalOptions),
-                                      arangodb::aql::PART_MAIN);
-    splicedQuery.prepare(queryRegistry, SerializationFormat::SHADOWROWS);
+    auto ctx2 = std::make_shared<arangodb::transaction::StandaloneContext>(server.getSystemDatabase());
+    arangodb::aql::Query splicedQuery(ctx2, arangodb::aql::QueryString(querystring), bindParamVpack,
+                                      enableRuleOptions(additionalOptions));
+    splicedQuery.prepareQuery(SerializationFormat::SHADOWROWS);
     ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0) << "query string: " << querystring;
 
-    auto splicedPlan = splicedQuery.plan();
+    auto splicedPlan = const_cast<arangodb::aql::ExecutionPlan*>(splicedQuery.plan());
     ASSERT_NE(splicedPlan, nullptr) << "query string: " << querystring;
 
     SmallVector<ExecutionNode*> splicedSubqueryNodes{a};

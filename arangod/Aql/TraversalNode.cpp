@@ -57,6 +57,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <memory>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
@@ -73,10 +75,9 @@ TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(
 
 TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(
     TraversalNode const* tn, TraversalEdgeConditionBuilder const* other)
-    : EdgeConditionBuilder(other->_modCondition), _tn(tn) {
+   : EdgeConditionBuilder(tn->_plan->getAst(), *other), _tn(tn) {
   _fromCondition = other->_fromCondition;
   _toCondition = other->_toCondition;
-  _containsCondition = other->_containsCondition;
 }
 
 void TraversalNode::TraversalEdgeConditionBuilder::buildFromCondition() {
@@ -91,7 +92,8 @@ void TraversalNode::TraversalEdgeConditionBuilder::buildToCondition() {
 
 void TraversalNode::TraversalEdgeConditionBuilder::toVelocyPack(VPackBuilder& builder,
                                                                 bool verbose) {
-  if (_containsCondition) {
+
+  if(_containsCondition) {
     _modCondition->removeMemberUnchecked(_modCondition->numMembers() - 1);
     _containsCondition = false;
   }
@@ -265,7 +267,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
 
   list = base.get("expression");
   if (!list.isNone()) {
-    _pruneExpression = std::make_unique<aql::Expression>(plan, plan->getAst(), base);
+    _pruneExpression = std::make_unique<aql::Expression>(plan->getAst(), base);
     TRI_ASSERT(base.hasKey("pruneVariables"));
     list = base.get("pruneVariables");
     TRI_ASSERT(list.isArray());
@@ -458,24 +460,24 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-  auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+  auto inputRegisters = RegIdSet{};
   auto& varInfo = getRegisterPlan()->varInfo;
   RegisterId inputRegister = RegisterPlan::MaxRegisterId;
   if (usesInVariable()) {
     auto it = varInfo.find(inVariable()->id);
     TRI_ASSERT(it != varInfo.end());
-    inputRegisters->emplace(it->second.registerId);
+    inputRegisters.emplace(it->second.registerId);
     inputRegister = it->second.registerId;
     TRI_ASSERT(getStartVertex().empty());
   }
-  auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+  auto outputRegisters = RegIdSet{};
   std::unordered_map<TraversalExecutorInfos::OutputName, RegisterId, TraversalExecutorInfos::OutputNameHash> outputRegisterMapping;
 
   if (usesVertexOutVariable()) {
     auto it = varInfo.find(vertexOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
-    outputRegisters->emplace(it->second.registerId);
+    outputRegisters.emplace(it->second.registerId);
     outputRegisterMapping.try_emplace(TraversalExecutorInfos::OutputName::VERTEX,
                                       it->second.registerId);
   }
@@ -483,7 +485,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     auto it = varInfo.find(edgeOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
-    outputRegisters->emplace(it->second.registerId);
+    outputRegisters.emplace(it->second.registerId);
     outputRegisterMapping.try_emplace(TraversalExecutorInfos::OutputName::EDGE,
                                       it->second.registerId);
   }
@@ -491,13 +493,12 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     auto it = varInfo.find(pathOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
-    outputRegisters->emplace(it->second.registerId);
+    outputRegisters.emplace(it->second.registerId);
     outputRegisterMapping.try_emplace(TraversalExecutorInfos::OutputName::PATH,
                                       it->second.registerId);
   }
-  auto opts = static_cast<TraverserOptions*>(options());
+  TraverserOptions* opts = this->options();
   std::unique_ptr<Traverser> traverser;
-  auto trx = engine.getQuery()->trx();
 
   if (pruneExpression() != nullptr) {
     std::vector<Variable const*> pruneVars;
@@ -532,19 +533,18 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   if (arangodb::ServerState::instance()->isCoordinator()) {
 #ifdef USE_ENTERPRISE
     waitForSatelliteIfRequired(&engine);
-    if (isSmart()) {
-      traverser.reset(
-          new arangodb::traverser::SmartGraphTraverser(opts, engines(),
-                                                       trx->vocbase().name(), trx));
+    if (isSmart() && !isDisjoint()) {
+      traverser =
+          std::make_unique<arangodb::traverser::SmartGraphTraverser>(opts, engines());
     } else {
 #endif
-      traverser.reset(new arangodb::traverser::ClusterTraverser(opts, engines(),
-                                                                trx->vocbase().name(), trx));
+      traverser = std::make_unique<arangodb::traverser::ClusterTraverser>(
+          opts, engines(), engine.getQuery().vocbase().name());
 #ifdef USE_ENTERPRISE
     }
 #endif
   } else {
-    traverser.reset(new arangodb::traverser::SingleServerTraverser(opts, trx));
+    traverser = std::make_unique<arangodb::traverser::SingleServerTraverser>(opts);
   }
 
   // Optimized condition
@@ -555,11 +555,12 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
       auto idIt = varInfo.find(it->id);
       TRI_ASSERT(idIt != varInfo.end());
       filterConditionVariables.emplace_back(std::make_pair(it, idIt->second.registerId));
-      inputRegisters->emplace(idIt->second.registerId);
+      inputRegisters.emplace(idIt->second.registerId);
     }
   }
 
-  auto registerInfos = createRegisterInfos(inputRegisters, outputRegisters);
+  auto registerInfos =
+      createRegisterInfos(std::move(inputRegisters), std::move(outputRegisters));
 
   TRI_ASSERT(traverser != nullptr);
   auto executorInfos = TraversalExecutorInfos(std::move(traverser), outputRegisterMapping,
@@ -574,11 +575,11 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
 ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
                                     bool withProperties) const {
   auto* oldOpts = options();
-  std::unique_ptr<BaseOptions> tmp = std::make_unique<TraverserOptions>(*oldOpts, true);
+  std::unique_ptr<BaseOptions> tmp = std::make_unique<TraverserOptions>(*oldOpts, /*allowAlreadyBuiltCopy*/true);
   auto c = std::make_unique<TraversalNode>(plan, _id, _vocbase, _edgeColls, _vertexColls,
                                            _inVariable, _vertexId, _defaultDirection,
                                            _directions, std::move(tmp), _graphObj);
-
+  
   traversalCloneHelper(*plan, *c, withProperties);
 
   if (_optionsBuilt) {
@@ -619,7 +620,12 @@ void TraversalNode::traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
 
   c._conditionVariables.reserve(_conditionVariables.size());
   for (auto const& it : _conditionVariables) {
-    c._conditionVariables.emplace(it->clone());
+//#warning TODO: check if not cloning variables breaks anything
+    if (withProperties) {
+      c._conditionVariables.emplace(it->clone());
+    } else {
+      c._conditionVariables.emplace(it);
+    }
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -693,16 +699,22 @@ void TraversalNode::prepareOptions() {
     }
   }
 
-  auto opts = static_cast<TraverserOptions*>(options());
+
+  TraverserOptions* opts = this->TraversalNode::options();
   TRI_ASSERT(opts != nullptr);
+  /*
+   * HACK: DO NOT use other indexes for smart BFS. Otherwise this will produce
+   * wrong results.
+   */
+  bool onlyEdgeIndexes = this->isSmart() && opts->useBreadthFirst;
   for (auto& it : _edgeConditions) {
     uint64_t depth = it.first;
     // We probably have to adopt minDepth. We cannot fulfill a condition of
     // larger depth anyway
     auto& builder = it.second;
 
-    for (auto& it : _globalEdgeConditions) {
-      builder->addConditionPart(it);
+    for (auto& it2 : _globalEdgeConditions) {
+      builder->addConditionPart(it2);
     }
 
     for (size_t i = 0; i < numEdgeColls; ++i) {
@@ -712,11 +724,11 @@ void TraversalNode::prepareOptions() {
       switch (dir) {
         case TRI_EDGE_IN:
           opts->addDepthLookupInfo(_plan, _edgeColls[i]->name(), StaticStrings::ToString,
-                                   builder->getInboundCondition()->clone(ast), depth);
+                                   builder->getInboundCondition()->clone(ast), depth, onlyEdgeIndexes);
           break;
         case TRI_EDGE_OUT:
           opts->addDepthLookupInfo(_plan, _edgeColls[i]->name(), StaticStrings::FromString,
-                                   builder->getOutboundCondition()->clone(ast), depth);
+                                   builder->getOutboundCondition()->clone(ast), depth, onlyEdgeIndexes);
           break;
         case TRI_EDGE_ANY:
           TRI_ASSERT(false);
@@ -730,16 +742,19 @@ void TraversalNode::prepareOptions() {
     for (auto const& jt : _globalVertexConditions) {
       it.second->addMember(jt);
     }
-    opts->_vertexExpressions.try_emplace(it.first, arangodb::lazyConstruct([&] {
-                                           return new Expression(_plan, ast, it.second);
-                                         }));
+    opts->_vertexExpressions.try_emplace(
+      it.first,
+      arangodb::lazyConstruct([&]{
+        return new Expression(ast, it.second);
+      })
+    );
   }
   if (!_globalVertexConditions.empty()) {
     auto cond = _plan->getAst()->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
     for (auto const& it : _globalVertexConditions) {
       cond->addMember(it);
     }
-    opts->_baseVertexExpression = new Expression(_plan, ast, cond);
+    opts->_baseVertexExpression.reset(new Expression(ast, cond));
   }
   // If we use the path output the cache should activate document
   // caching otherwise it is not worth it.
@@ -753,7 +768,7 @@ void TraversalNode::prepareOptions() {
 
 /// @brief remember the condition to execute for early traversal abortion.
 void TraversalNode::setCondition(std::unique_ptr<arangodb::aql::Condition> condition) {
-  ::arangodb::containers::HashSet<Variable const*> varsUsedByCondition;
+  VarSet varsUsedByCondition;
 
   Ast::getReferencedVariables(condition->root(), varsUsedByCondition);
 

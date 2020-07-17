@@ -25,7 +25,7 @@
 
 #include "store/data_output.hpp"
 #include "store/data_input.hpp"
-#include "utils/attributes.hpp"
+#include "utils/attribute_store.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/noncopyable.hpp"
 
@@ -36,13 +36,16 @@ NS_ROOT
 /// @brief directory encryption provider
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API encryption : public stored_attribute {
-  DECLARE_ATTRIBUTE_TYPE();
+  // FIXME check if it's possible to rename to iresearch::encryption?
+  static constexpr string_ref type_name() noexcept {
+    return "encryption";
+  }
 
   ////////////////////////////////////////////////////////////////////////////
   /// @struct stream
   ////////////////////////////////////////////////////////////////////////////
   struct stream {
-    DECLARE_UNIQUE_PTR(stream);
+    using ptr = std::unique_ptr<stream>;
 
     virtual ~stream() = default;
 
@@ -63,14 +66,12 @@ struct IRESEARCH_API encryption : public stored_attribute {
   /// @brief an allocated block of header memory for a new file
   virtual bool create_header(
     const std::string& filename,
-    byte_type* header
-  ) = 0;
+    byte_type* header) = 0;
 
   /// @returns a cipher stream for a file given file name
   virtual stream::ptr create_stream(
     const std::string& filename,
-    byte_type* header
-  ) = 0;
+    byte_type* header) = 0;
 };
 
 // -----------------------------------------------------------------------------

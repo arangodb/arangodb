@@ -1,0 +1,189 @@
+
+  <ul id="graphTab" class="nav nav-tabs">
+    <li class="active"><a href="#createGraph" data-toggle="tab" id="tab-createGraph">Graph</a></li>
+    <li><a href="#smartGraph" data-toggle="tab" id="tab-smartGraph">SmartGraph</a></li>
+    <li><a href="#satelliteGraph" data-toggle="tab" id="tab-satelliteGraph">SatelliteGraph</a></li>
+    <li><a href="#exampleGraphs" data-toggle="tab" id="tab-exampleGraphs">Examples</a></li>
+  </ul>
+
+  <div class="tab-content" id="tab-content-create-graph">
+
+    <div class="tab-pane" id="exampleGraphs">
+      <table style="margin-bottom: 10px">
+        <tbody>
+          <tr>
+            <td>Knows Graph</td>
+            <td>
+              <button style="float: right; margin-bottom: 10px;" graph-id="knows_graph" class="button-success createExampleGraphs">Create</button>
+            </td>
+          </tr>
+          <tr>
+            <td>Traversal Graph</td>
+            <td>
+              <button style="float: right; margin-bottom: 10px;" graph-id="traversalGraph" class="button-success createExampleGraphs">Create</button>
+            </td>
+          </tr>
+          <tr>
+            <td>k Shortest Paths Graph</td>
+            <td>
+              <button style="float: right; margin-bottom: 10px;" graph-id="kShortestPathsGraph" class="button-success createExampleGraphs">Create</button>
+            </td>
+          </tr>
+          <tr>
+            <td>Mps Graph</td>
+            <td>
+              <button style="float: right; margin-bottom: 10px;" graph-id="mps_graph" class="button-success createExampleGraphs">Create</button>
+            </td>
+          </tr>
+          <tr>
+            <td>World Graph</td>
+            <td>
+              <button style="float: right; margin-bottom: 10px;" graph-id="worldCountry" class="button-success createExampleGraphs">Create</button>
+            </td>
+          </tr>
+          <tr>
+            <td>Social Graph</td>
+            <td>
+              <button style="float: right; margin-bottom: 10px;" graph-id="social" class="button-success createExampleGraphs">Create</button>
+            </td>
+          </tr>
+          <tr>
+            <td>City Graph</td>
+            <td>
+              <button style="float: right; margin-bottom: 10px;" graph-id="routeplanner" class="button-success createExampleGraphs">Create</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+     <p style="width: 100%; text-align: center;">Need help? Visit our <a style="font-weight: bold" href="https://www.arangodb.com/docs/stable/graphs.html#example-graphs" target="_blank">Graph Documentation</a></p>
+
+    </div>
+
+    <div class="active tab-pane" id="createGraph">
+
+    <div id="smartGraphInfo" class="infoMessage" style="display: none;">
+      <span>SmartGraph Info: Only use non-existent collection names (vertices/edges).</span>
+    </div>
+
+    <%
+    var createTR = function(row, disableSubmitOnEnter) {
+      var mandatory = '';
+      if (row.mandatory) {
+        mandatory = '*';
+      }
+
+      %>
+        <tr class="tableRow" id="<%='row_' + row.id%>">
+          <th class="collectionTh"><%=row.label%><%=mandatory%>:</th>
+          <th class="collectionTh">
+            <%
+              switch(row.type) {
+                case "text":
+            %>
+            <input type="text" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
+            <%
+                break;
+              case "password":
+            %>
+            <input type="password" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
+            <%
+                break;
+              case "readonly":
+            %>
+            <input type="text" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>" disabled></input>
+            <%
+                break;
+                case "checkbox":
+                  var checked = '',
+                    disabled = '';
+                  if (row.checked) {
+                    checked = 'checked';
+                  }
+                  if (row.disabled) {
+                    disabled = 'disabled';
+                  }
+            %>
+            <input type="checkbox" id="<%=row.id%>" value="<%=row.value%>" <%=checked%> <%=disabled%>></input>
+            <%
+                break;
+                case "select":
+            %>
+            <select id="<%=row.id%>" class="modalSelect">
+            <%
+                  _.each(row.options, function(opt) {
+            %>
+              <option value="<%=opt.value%>" <%=row.selected === opt.value?"selected":""%>><%=opt.label%></option>
+            <%
+                  });
+            %>
+            </select>
+            <%
+                break;
+                case "select2":
+            %>
+            <input type="hidden" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
+            <% if (row.addAdd) {%>
+              <button id="<%='addAfter_' + row.id%>" class="graphViewer-icon-button gv-icon-small add addAfter"></button>
+            <% } %>
+            <% if (row.addDelete) {%>
+              <button id="<%='remove_' + row.id%>" class="graphViewer-icon-button gv_internal_remove_line gv-icon-small delete addDelete"></button>
+            <% } %>
+            <%
+                break;
+              }
+
+              if (row.info) {
+            %>
+          <th>
+            <span class="modalTooltips arangoicon icon_arangodb_info" title="<%=row.info%>">
+            </span>
+          </th>
+        <%
+          }
+        %>
+        </tr>
+      <%
+    }//createTR
+    %>
+
+    <table>
+      <tbody>
+        <%
+        _.each(content, function(row) {
+          createTR(row);
+        });
+        %>
+
+      </tbody>
+    </table>
+      <%
+      if (advancedContent) {
+      %>
+      <div class="accordion" id="accordion2">
+        <div class="accordion-group">
+          <div class="accordion-heading">
+            <a class="accordion-toggle collapsed" data-toggle="collapse" data-parent="#accordion2" href="#collapseOne">
+              <span><%=advancedContent.header%></span><span><b class="caret"></b></span>
+            </a>
+          </div>
+          <div id="collapseOne" class="accordion-body collapse out">
+            <div class="accordion-inner">
+              <table>
+                <tbody>
+                  <%
+                  _.each(advancedContent.content, function(row) {
+                    createTR(row);
+                  });
+                  %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <%
+      }
+      %>
+    </div>
+
+  </div>

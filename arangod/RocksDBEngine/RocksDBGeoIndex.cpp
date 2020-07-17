@@ -84,7 +84,7 @@ class RDBNearIterator final : public IndexIterator {
     return !_near.isDone();
   }
 
-  bool nextDocument(DocumentCallback const& cb, size_t limit) override {
+  bool nextDocumentImpl(DocumentCallback const& cb, size_t limit) override {
     return nextToken(
         [this, &cb](geo_index::Document const& gdoc) -> bool {
           bool result = true;  // this is updated by the callback
@@ -114,7 +114,7 @@ class RDBNearIterator final : public IndexIterator {
         limit);
   }
 
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
+  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
     return nextToken(
         [this, &cb](geo_index::Document const& gdoc) -> bool {
           geo::FilterType const ft = _near.filterType();
@@ -147,7 +147,7 @@ class RDBNearIterator final : public IndexIterator {
         limit);
   }
 
-  void reset() override {
+  void resetImpl() override {
     _near.reset();
     estimateDensity();
   }

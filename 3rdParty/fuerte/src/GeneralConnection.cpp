@@ -39,14 +39,20 @@ GeneralConnection<ST>::GeneralConnection(
 template <SocketType ST>
 void GeneralConnection<ST>::cancel() {
   FUERTE_LOG_DEBUG << "cancel: this=" << this << "\n";
-  _state.store(State::Failed);
   asio_ns::post(*_io_context, [self(weak_from_this()), this] {
     auto s = self.lock();
     if (s) {
+      _state.store(State::Failed);
       drainQueue(Error::Canceled);
       shutdownConnection(Error::Canceled);
     }
   });
+}
+
+// Lease this connection (cancel idle alarm)
+template <SocketType ST>
+bool GeneralConnection<ST>::lease() {
+  return true;   // this is a noop, derived classes can override
 }
 
 // Activate this connection.
@@ -66,6 +72,10 @@ void GeneralConnection<ST>::startConnection() {
     FUERTE_ASSERT(_config._maxConnectRetries > 0);
     tryConnect(_config._maxConnectRetries, std::chrono::steady_clock::now(),
                asio_ns::error_code());
+  } else {
+    FUERTE_LOG_DEBUG << "startConnection: this=" << this << " found unexpected state "
+      << static_cast<int>(exp) << " not equal to 'Disconnected'";
+    FUERTE_ASSERT(false);
   }
 }
 
@@ -79,12 +89,16 @@ void GeneralConnection<ST>::shutdownConnection(const Error err, std::string cons
   }
   FUERTE_LOG_DEBUG<< "this=" << this << "\n";
 
+  bool mustShutdown = false;
+
   auto state = _state.load();
   if (state != Connection::State::Failed) {
     state = Connection::State::Disconnected;
     // hack to fix SSL streams
     if constexpr (ST == SocketType::Ssl) {
       state = Connection::State::Failed;
+      mayRestart = false;
+      mustShutdown = true;
     }
     _state.store(state);
   }
@@ -100,6 +114,9 @@ void GeneralConnection<ST>::shutdownConnection(const Error err, std::string cons
       onFailure(err, msg);
     }
   });  // Close socket
+  if (mustShutdown) {
+    terminateActivity();
+  }
 }
 
 // Connect with a given number of retries
@@ -126,7 +143,7 @@ void GeneralConnection<ST>::tryConnect(unsigned retries,
 
   _proto.timer.expires_at(start + _config._connectTimeout);
   _proto.timer.async_wait([self](asio_ns::error_code const& ec) {
-    if (!ec) {
+    if (!ec && self->state() == Connection::State::Connecting) {
       // the connect handler below gets 'operation_aborted' error
       static_cast<GeneralConnection<ST>&>(*self)._proto.cancel();
     }
@@ -135,6 +152,10 @@ void GeneralConnection<ST>::tryConnect(unsigned retries,
   _proto.connect(_config, [self, start, retries](auto const& ec) mutable {
     GeneralConnection<ST>& me = static_cast<GeneralConnection<ST>&>(*self);
     me._proto.timer.cancel();
+    // Note that is is possible that the alarm has already gone off, in which
+    // case its closure might already be queued right after ourselves! However,
+    // we now quickly set the state to `Connected` in which case the closure will
+    // no longer shut down the socket and ruin our success.
     if (!ec) {
       me.finishConnect();
       return;

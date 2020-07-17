@@ -1,17 +1,38 @@
 /* jshint strict: false, maxlen: 300 */
-/* global arango */
+/* global arango, ArangoClusterComm */
 
 var db = require('@arangodb').db,
   internal = require('internal'),
   _ = require('lodash'),
   systemColors = internal.COLORS,
   print = internal.print,
+  output = internal.output,
   colors = {};
+var console = require('console');
 
 // max elements to print from array/objects
 const maxMembersToPrint = 20;
 
 let uniqueValue = 0;
+
+const isCoordinator = function () {
+  let isCoordinator = false;
+  if (typeof ArangoClusterComm === 'object') {
+    isCoordinator = require('@arangodb/cluster').isCoordinator();
+  } else {
+    try {
+      if (arango) {
+        var result = arango.GET('/_admin/server/role');
+        if (result.role === 'COORDINATOR') {
+          isCoordinator = true;
+        }
+      }
+    } catch (err) {
+      // ignore error
+    }
+  }
+  return isCoordinator;
+};
 
 const anonymize = function (doc) {
   if (Array.isArray(doc)) {
@@ -158,8 +179,6 @@ function pad(n) {
   }
   return new Array(n).join(' ');
 }
-
-/* print functions */
 
 /* print query string */
 function printQuery(query, cacheable) {
@@ -706,22 +725,6 @@ function processQuery(query, explain, planIndex) {
   /// mode with actual runtime stats per node
   let profileMode = stats && stats.hasOwnProperty('nodes');
 
-  var isCoordinator = false;
-  if (typeof ArangoClusterComm === 'object') {
-    isCoordinator = require('@arangodb/cluster').isCoordinator();
-  } else {
-    try {
-      if (arango) {
-        var result = arango.GET('/_admin/server/role');
-        if (result.role === 'COORDINATOR') {
-          isCoordinator = true;
-        }
-      }
-    } catch (err) {
-      // ignore error
-    }
-  }
-
   var recursiveWalk = function (partNodes, level, site) {
     let n = _.clone(partNodes);
     n.reverse();
@@ -839,6 +842,10 @@ function processQuery(query, explain, planIndex) {
 
   var buildExpression = function (node) {
     var binaryOperator = function (node, name) {
+      if (name.match(/^[a-zA-Z]+$/)) {
+        // make it a keyword
+        name = keyword(name.toUpperCase());
+      }
       var lhs = buildExpression(node.subNodes[0]);
       var rhs = buildExpression(node.subNodes[1]);
       if (node.subNodes.length === 3) {
@@ -1117,7 +1124,7 @@ function processQuery(query, explain, planIndex) {
         if (node.filter) {
           filter = '   ' + keyword('FILTER') + ' ' + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
         }
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + `${restriction(node)} */`) + filter;
+        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + (node.count ? ', with count optimization' : '') + `${restriction(node)} */`) + filter;
       case 'EnumerateListNode':
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */');
       case 'EnumerateViewNode':
@@ -1180,6 +1187,9 @@ function processQuery(query, explain, planIndex) {
               return keyword(' LET ') + variableName(indexValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(indexValuesVar.field);
             }).join('');
           }
+        }
+        if (node.count) {
+          indexAnnotation += '/* with count optimization */';
         }
         node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, false); });
         return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}` + indexVariables +
@@ -1357,8 +1367,15 @@ function processQuery(query, explain, planIndex) {
           indexes.push(idx);
         });
 
-        if (node.isSatelliteNode) {
-          rc += annotation(' /* satellite node, ' + (node.isUsedAsSatellite ? '' : 'not ') + 'used as satellite */');
+        if (node.isLocalGraphNode) {
+          if (node.isUsedAsSatellite) {
+            rc += annotation(' /* local graph node, used as satellite */');
+          } else {
+            rc += annotation(' /* local graph node */');
+          }
+        }
+        if (node.options && node.options.hasOwnProperty('parallelism') && node.options.parallelism > 1) {
+          rc += annotation(' /* parallelism: ' + node.options.parallelism + ' */');
         }
 
         return rc;
@@ -1824,7 +1841,11 @@ function processQuery(query, explain, planIndex) {
         }).join(', ') + (gatherAnnotations.length ? '  ' + annotation('/* ' + gatherAnnotations.join(', ') + ' */') : '');
 
       case 'MaterializeNode':
-      	return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable);
+        return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable);
+      case 'MutexNode':
+        return keyword('MUTEX') + '   ' + annotation('/* end async execution */');
+      case 'AsyncNode':
+        return keyword('ASYNC') + '   ' + annotation('/* begin async execution */');
     }
 
     return 'unhandled node type (' + node.type + ')';
@@ -1890,13 +1911,15 @@ function processQuery(query, explain, planIndex) {
     return '';
   };
 
+  const isCoord = isCoordinator();
+
   var printNode = function (node) {
     preHandle(node);
     var line = ' ' +
       pad(1 + maxIdLen - String(node.id).length) + variable(node.id) + '   ' +
       keyword(node.type) + pad(1 + maxTypeLen - String(node.type).length) + '   ';
 
-    if (isCoordinator) {
+    if (isCoord) {
       line += variable(node.site) + pad(1 + maxSiteLen - String(node.site).length) + '  ';
     }
 
@@ -1940,7 +1963,7 @@ function processQuery(query, explain, planIndex) {
     pad(1 + maxIdLen - String('Id').length) + header('Id') + '   ' +
     header('NodeType') + pad(1 + maxTypeLen - String('NodeType').length) + '   ';
 
-  if (isCoordinator) {
+  if (isCoord) {
     line += header('Site') + pad(1 + maxSiteLen - String('Site').length) + '  ';
   }
 
@@ -2079,9 +2102,10 @@ function debug(query, bindVars, options) {
   if (!input.options) {
     input.options = {};
   }
+  input.options.explainRegisters = true;
+
   let result = {
     engine: db._engine(),
-    engineStats: db._engineStats(),
     version: db._version(true),
     database: db._name(),
     query: input,
@@ -2089,6 +2113,13 @@ function debug(query, bindVars, options) {
     collections: {},
     views: {}
   };
+
+  try {
+    // engine stats may be not available in cluster, at least in older versions
+    result.engineStats = db._engineStats();
+  } catch (err) {
+    // we need to ignore any errors here
+  }
 
   result.fancy = require('@arangodb/aql/explainer').explain(input, { colors: false }, false);
 
@@ -2355,7 +2386,426 @@ function inspectDump(filename, outfile) {
   }
 }
 
+function explainQuerysRegisters(plan) {
+
+  /**
+   * @typedef Node
+   * @type {
+   *   {
+   *     depth: number,
+   *     id: number,
+   *     nrRegsArray: number[],
+   *     regsToClear: number[],
+   *     regsToKeepStack: Array<number[]>,
+   *     type: string,
+   *     unusedRegsStack: Array<number[]>,
+   *     varInfoList: Array<{VariableId: number, RegisterId: number, depth: number}>,
+   *     varsSetHere: Array<{id: number, name: string, isDataFromCollection: boolean}>,
+   *     varsUsedHere: Array<{id: number, name: string, isDataFromCollection: boolean}>,
+   *   }
+   * }
+   */
+
+  // Currently, we need nothing but the nodes from plan.
+  const {nodes} = plan;
+  const symbols = {
+    clearRegister: '⮾',
+    keepRegister: '↓',
+    writeRegister: '→',
+    readRegister: '←',
+    unusedRegister: '-',
+    subqueryBegin: '↘',
+    subqueryEnd: '↙',
+  };
+  Object.freeze(symbols);
+
+  const getNodesById = (planNodes, result = {}) => {
+    for (let node of planNodes) {
+      result[node.id] = node;
+      if (node.type === 'SubqueryNode') {
+        getNodesById(node.subquery.nodes, result);
+      }
+    }
+
+    return result;
+  };
+  const nodesById = getNodesById(nodes);
+  //////////////////////////////////////////////////////////////////////////////
+  // First, we build up the array nodesData. This will (though not while its
+  // being built!) contain all nodes in a linearized fashion in the "canonical"
+  // order, that is, starting from the leaf (singleton) at index 0. Subqueries
+  // are inlined in that way as well. Each subquery node will occur *twice*,
+  // once before and once after the actual subquery.
+  //////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * @type {Array<{node:Node, direction:('open'|'close'|undefined)}>}
+   */
+  const nodesData = [];
+
+  // TODO Check whether its okay to assume that the root node is always the last
+  //      node.
+  const rootNode = nodes[nodes.length - 1];
+
+  const subqueryStack = [];
+  for (let node = rootNode; node !== undefined; ) {
+    const current = {node};
+    nodesData.push(current);
+    if (node.type === 'SubqueryNode') {
+      subqueryStack.push(node);
+      current.direction = 'close';
+      node = node.subquery.nodes[node.subquery.nodes.length - 1];
+    } else if (node.dependencies && node.dependencies.length > 0) {
+      node = nodesById[node.dependencies[0]];
+    } else if (subqueryStack.length > 0) {
+      node = subqueryStack.pop();
+      const current = {node};
+      current.direction = 'open';
+      nodesData.push(current);
+      node = nodesById[node.dependencies[0]];
+    } else {
+      node = undefined;
+    }
+  }
+
+  // for debugging. TODO remove it or replace it with saner exceptions
+  const assert = (bool) => {
+    if (!bool) {
+      throw new Error();
+    }
+  };
+
+  nodesData.reverse();
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Second, we build up rowsInfos. Will contain one element per row/line that
+  // shall be printed, with enough information that each field can be printed
+  // and formatted on its own.
+  //////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * @typedef RowInfo
+   * @type { { registerFields: string[], separator: string }
+   *       | { registerFields: string[], meta: {depth: number, id: number, type: string} }
+   *       | { registerFields: string[] }
+   *       }
+   */
+  /**
+   * @type {Array<RowInfo>} rowsInfos
+   */
+  const rowsInfos = nodesData.flatMap(data => {
+    /**
+     * @type {{node: Node, direction: ('open'|'close'|undefined)}} data
+     */
+    const {
+      node: {
+        depth, id, nrRegs: nrRegsArray, regsToClear, regsToKeepStack, type,
+        unusedRegsStack, varInfoList, varsSetHere, varsUsedHere, regVarMapStack
+      },
+      direction
+    } = data;
+    const nrRegs = nrRegsArray[depth];
+    const regIdByVarId = Object.fromEntries(
+      varInfoList.map(varInfo => [varInfo.VariableId, varInfo.RegisterId]));
+
+    const meta = {id, type, depth};
+    const result = [];
+
+    const varName = (variable) => {
+      if (/^[0-9_]/.test(variable.name)) {
+        return '#' + variable.name;
+      }
+      return variable.name;
+    };
+
+    const regIdToVarNameSetHere = Object.fromEntries(
+      varsSetHere.map(variable => [regIdByVarId[variable.id], varName(variable)]));
+
+    const regIdToVarNameUsedHere = Object.fromEntries(
+      varsUsedHere.map(variable => [regIdByVarId[variable.id], varName(variable)]));
+
+    const regIdToVarNameMapStack = regVarMapStack.map(rvmap =>
+        Object.fromEntries(_.toPairsIn(rvmap).map(
+            (p) => [parseInt(p[0]), varName(p[1])]
+        )
+    ));
+
+    /**
+     * @param {number} nrRegs
+     * @param { { regIdToVarNameSetHere: (undefined|!Object<number, string>),
+     *            regIdToVarNameUsedHere: (undefined|!Object<number, string>),
+     *            unusedRegs: (undefined|!number[]),
+     *            regVarMap: (undefined|!Object<number, string>)}
+     *          | { regsToClear: (undefined|!number[]), regsToKeep: (undefined|!number[]) } } regInfo
+     * @return { !Array<string> }
+     */
+    const createRegisterFields = (nrRegs, regInfo = {}) => {
+      const registerFields = [...Array(nrRegs)].map(_ => '');
+
+      const hasRegIdToVarNameSetHere = regInfo.hasOwnProperty('regIdToVarNameSetHere');
+      const hasRegIdToVarNameUsedHere = regInfo.hasOwnProperty('regIdToVarNameUsedHere');
+      const hasUnusedRegs = regInfo.hasOwnProperty('unusedRegs');
+      const hasRegsToClear = regInfo.hasOwnProperty('regsToClear');
+      const hasRegsToKeep = regInfo.hasOwnProperty('regsToKeep');
+      const hasRegVarMap = regInfo.hasOwnProperty('regVarMap');
+
+      assert(!((hasRegIdToVarNameSetHere || hasRegIdToVarNameUsedHere || hasUnusedRegs) && (hasRegsToClear || hasRegsToKeep)));
+
+      if (hasRegIdToVarNameUsedHere) {
+        for (const [regId, varName] of Object.entries(regInfo.regIdToVarNameUsedHere)) {
+          registerFields[regId] += symbols.readRegister + varName + ' ';
+        }
+      }
+      if (hasRegIdToVarNameSetHere) {
+        for (const [regId, varName] of Object.entries(regInfo.regIdToVarNameSetHere)) {
+          registerFields[regId] += symbols.writeRegister + varName + ' ';
+        }
+      }
+      if (hasUnusedRegs) {
+        for (const regId of regInfo.unusedRegs) {
+          if (registerFields[regId].length === 0) {
+            registerFields[regId] += symbols.unusedRegister;
+          }
+        }
+      }
+      if (hasRegsToClear) {
+        for (const regId of regInfo.regsToClear) {
+          registerFields[regId] += symbols.clearRegister;
+        }
+      }
+      if (hasRegsToKeep) {
+        for (const regId of regInfo.regsToKeep) {
+          registerFields[regId] += symbols.keepRegister;
+        }
+      }
+      if (hasRegVarMap) {
+        for (const [regId, name] of Object.entries(regInfo.regVarMap)) {
+          if (registerFields[regId].length === 0) {
+            registerFields[regId] = name;
+          }
+        }
+      }
+
+
+      return registerFields;
+    };
+
+    switch (type) {
+      case 'SubqueryStartNode': {
+        assert(regsToKeepStack.length >= 2);
+        let regsToKeep = regsToKeepStack[regsToKeepStack.length - 2];
+        let regVarMap = regIdToVarNameMapStack[regIdToVarNameMapStack.length - 2];
+        const unusedRegs = unusedRegsStack[unusedRegsStack.length - 1];
+        result.push({meta, registerFields: createRegisterFields(nrRegs, {regIdToVarNameUsedHere, unusedRegs, regVarMap})});
+        result.push({registerFields: createRegisterFields(nrRegs, {regsToClear, regsToKeep})});
+        result.push({separator: symbols.subqueryBegin, registerFields: createRegisterFields(nrRegs)});
+        regsToKeep = regsToKeepStack[regsToKeepStack.length - 1];
+        regVarMap = regIdToVarNameMapStack[regIdToVarNameMapStack.length - 1];
+        result.push({meta, registerFields: createRegisterFields(nrRegs, {regIdToVarNameSetHere, regVarMap, unusedRegs})});
+        result.push({registerFields: createRegisterFields(nrRegs, {regsToKeep})});
+      }
+        break;
+      case 'SubqueryEndNode': {
+        const nrRegsInner = nrRegsArray[depth-1];
+        const unusedRegs = unusedRegsStack[unusedRegsStack.length - 1];
+        result.push({meta, registerFields: createRegisterFields(nrRegsInner, {unusedRegs, regIdToVarNameUsedHere})});
+        result.push({separator: symbols.subqueryEnd, registerFields: createRegisterFields(nrRegsInner)});
+        const regsToKeep = regsToKeepStack[regsToKeepStack.length - 1];
+        const regVarMap = regIdToVarNameMapStack[regIdToVarNameMapStack.length - 1];
+        result.push({meta, registerFields: createRegisterFields(nrRegs, {regIdToVarNameSetHere, regVarMap})});
+        result.push({registerFields: createRegisterFields(nrRegs, {regsToClear, regsToKeep})});
+      }
+        break;
+      case 'SubqueryNode': {
+        const regVarMap = regIdToVarNameMapStack[regIdToVarNameMapStack.length - 1];
+        switch (direction) {
+          case 'open': {
+            // We could print regIdToVarNameUsedHere here...
+            result.push({separator: symbols.subqueryBegin, registerFields: createRegisterFields(nrRegs)});
+          }
+            break;
+          case 'close': {
+            const regsToKeep = regsToKeepStack[regsToKeepStack.length - 1];
+            const unusedRegs = unusedRegsStack[unusedRegsStack.length - 1];
+            result.push({separator: symbols.subqueryEnd, registerFields: createRegisterFields(nrRegs)});
+            result.push({meta, registerFields: createRegisterFields(nrRegs, {regIdToVarNameSetHere, unusedRegs, regVarMap})});
+            result.push({registerFields: createRegisterFields(nrRegs, {regsToClear, regsToKeep})});
+          }
+            break;
+        }
+      }
+        break;
+      default: {
+        const regsToKeep = regsToKeepStack[regsToKeepStack.length - 1];
+        const unusedRegs = unusedRegsStack[unusedRegsStack.length - 1];
+        const regVarMap = regIdToVarNameMapStack[regIdToVarNameMapStack.length - 1];
+        result.push({meta, registerFields: createRegisterFields(nrRegs, {regIdToVarNameUsedHere, regIdToVarNameSetHere, unusedRegs, regVarMap})});
+        result.push({registerFields: createRegisterFields(nrRegs, {regsToClear, regsToKeep})});
+      }
+    }
+
+    return result;
+    }
+  );
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Third, set up additional information we'll need for formatting whole lines,
+  // like the maximum width of all columns.
+  //////////////////////////////////////////////////////////////////////////////
+  const columns = [
+    {name: 'id', alignment: 'r'},
+    {name: 'type', alignment: 'l'},
+    {name: 'depth', alignment: 'r'},
+  ];
+
+  /**
+   * @type {Object<string, number>}
+   */
+  const colWidths = Object.fromEntries(columns.map(col => [col.name, col.name.length]));
+  const regColWidths = [];
+
+  for (const row of rowsInfos) {
+    if (row.hasOwnProperty('meta')) {
+      for (const col of columns) {
+        colWidths[col.name] = Math.max(("" + row.meta[col.name]).length, colWidths[col.name]);
+      }
+    }
+    if (row.hasOwnProperty('registerFields')) {
+      row.registerFields.forEach((value, i) => {
+        regColWidths[i] = regColWidths[i] || 0;
+        regColWidths[i] = Math.max(value.length, regColWidths[i]);
+      });
+    }
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Fourth, do the actual formatting of each line and print them.
+  //////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * @param {string} value
+   * @param {'l'|'r'|'c'} alignment
+   * @param {number} width - Must be at least value.length
+   * @returns {string} - Will be exactly `width` chars in length
+   */
+  const formatField = (value, alignment, width) => {
+    const str = '' + value;
+    const paddingWidth = width - str.length;
+
+    switch (alignment) {
+      case 'l':
+        return str + ' '.repeat(paddingWidth);
+      case 'r':
+        return ' '.repeat(paddingWidth) + str;
+      default:
+        const halfPadding = Math.floor(paddingWidth / 2);
+        const otherHalf = paddingWidth - halfPadding;
+        // halfPadding <= otherHalf <= halfPadding + 1
+        return ' '.repeat(halfPadding) + str + ' '.repeat(otherHalf);
+    }
+  };
+
+  print(' ' + columns.map(col =>
+    formatField(col.name, 'c', colWidths[col.name])
+  ).join('│') + ' ');
+  print('─' + Object.values(colWidths).map(w => '─'.repeat(w)).join('┼') + '─');
+
+  for (const row of rowsInfos) {
+    // print meta table
+    if (row.hasOwnProperty('meta')) {
+      output(' ');
+      output(columns.map(col =>
+        formatField(row.meta[col.name], col.alignment, colWidths[col.name])
+      ).join('│'));
+      output(' ');
+    } else if (row.hasOwnProperty('separator')) {
+      const widths = Object.values(colWidths);
+      const width = _.sum(widths) + widths.length + 1;
+      output(row.separator.repeat(width));
+    } else {
+      output(' ');
+      output(Object.values(colWidths).map(w => ' '.repeat(w)).join('│'));
+      output(' ');
+    }
+    output('  ');
+    // print register table
+    if (row.hasOwnProperty('registerFields')) {
+      output('│');
+      output(row.registerFields.map((value, r) =>
+        formatField(value, 'c', regColWidths[r])
+      ).join('│'));
+      output('│');
+    }
+    output("\n");
+  }
+
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Print a legend
+  //////////////////////////////////////////////////////////////////////////////
+  // TODO Should this be optional?
+
+  print(``);
+  print(` Legend:`);
+  print(` [ ${symbols.clearRegister} ]: Clear register`);
+  print(` [ ${symbols.keepRegister} ]: Keep register`);
+  print(` [ ${symbols.writeRegister} ]: Write register`);
+  print(` [ ${symbols.readRegister} ]: Read register`);
+  print(` [ ${symbols.unusedRegister} ]: Register is unused`);
+  print(` [ ${symbols.subqueryBegin} ]: Entering a subquery`);
+  print(` [ ${symbols.subqueryEnd} ]: Leaving a subquery`);
+}
+
+function explainRegisters(data, options, shouldPrint) {
+  'use strict';
+
+  console.warn("explainRegisters() is purposefully undocumented and may be changed or removed without notice.");
+
+  if (typeof data === 'string') {
+    data = { query: data, options: options };
+  }
+  if (!(data instanceof Object)) {
+    throw 'ArangoStatement needs initial data';
+  }
+
+  if (options === undefined) {
+    options = data.options;
+  }
+  options = options || {};
+  options.verbosePlans = true;
+  options.explainRegisters = true;
+  setColors(options.colors === undefined ? true : options.colors);
+
+  stringBuilder.clearOutput();
+  let stmt = db._createStatement(data);
+  let result = stmt.explain(options);
+  if (options.allPlans) {
+    // multiple plans
+    printQuery(data.query);
+    for (let i = 0; i < result.plans.length; ++i) {
+      if (i > 0) {
+        stringBuilder.appendLine();
+      }
+      stringBuilder.appendLine(section("Plan #" + (i + 1) + " of " + result.plans.length));
+      stringBuilder.prefix = ' ';
+      stringBuilder.appendLine();
+      explainQuerysRegisters(result.plans[i]);
+      stringBuilder.prefix = '';
+    }
+  } else {
+    // single plan
+    explainQuerysRegisters(result.plan);
+  }
+
+  if (shouldPrint === undefined || shouldPrint) {
+    print(stringBuilder.getOutput());
+  } else {
+    return stringBuilder.getOutput();
+  }
+}
+
 exports.explain = explain;
+exports.explainRegisters = explainRegisters;
 exports.profileQuery = profileQuery;
 exports.debug = debug;
 exports.debugDump = debugDump;

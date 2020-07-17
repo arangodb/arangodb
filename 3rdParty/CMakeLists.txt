@@ -41,6 +41,17 @@ set(SNAPPY_LIB "${SNAPPY_LIB}" PARENT_SCOPE)
 add_subdirectory(${SNAPPY_SOURCE_DIR} EXCLUDE_FROM_ALL)
 
 ################################################################################
+## LIBUNWIND
+################################################################################
+
+if (USE_LIBUNWIND)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libunwind)
+  include_directories(SYSTEM "${LIBUNWIND_HOME}/include")
+  set(LIBUNWIND_HOME "${LIBUNWIND_HOME}" PARENT_SCOPE)
+  set(LIBUNWIND_LIB "${LIBUNWIND_LIB}" PARENT_SCOPE)
+endif ()
+
+################################################################################
 ## JEMALLOC
 ################################################################################
 
@@ -98,12 +109,6 @@ set(BOOST_VERSION ${BOOST_VERSION} PARENT_SCOPE)
 ################################################################################
 ## IResearch
 ################################################################################
-# - fake this - we don't need it:
-ExternalProject_Add(icu-shared
-  SOURCE_DIR .
-  CONFIGURE_COMMAND cmake -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/icu-shared-fake
-  BUILD_COMMAND cmake -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/icu-shared-fake/build
-  INSTALL_COMMAND cmake -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/icu-shared-fake/install)
 
 add_library(boost-static IMPORTED STATIC)
 set_target_properties(boost-static PROPERTIES
@@ -126,6 +131,7 @@ if(NOT PERL_FOUND)
 endif()
 
 set(USE_IPO ${IPO_ENABLED})
+set(ICU_STATIC_LIBS ${ICU_LIBS})
 set(LZ4_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lz4")
 set(LZ4_INCLUDE_DIR "${LZ4_ROOT}/lib" PARENT_SCOPE)
 set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")

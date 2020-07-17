@@ -26,6 +26,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SortRegister.h"
 #include "Aql/Stats.h"
+#include "Aql/QueryContext.h"
 #include "Transaction/Methods.h"
 
 #include <utility>
@@ -38,8 +39,9 @@ namespace {
 /// @brief OurLessThan: comparison method for elements of SortingGatherBlock
 class OurLessThan {
  public:
-  OurLessThan(arangodb::transaction::Methods* trx, std::vector<SortRegister>& sortRegisters) noexcept
-      : _trx(trx), _sortRegisters(sortRegisters) {}
+  OurLessThan(arangodb::aql::QueryContext& query, std::vector<SortRegister>& sortRegisters) noexcept
+      : _resolver(query.resolver()), _vpackOptions(query.vpackOptions()),
+        _sortRegisters(sortRegisters) {}
 
   bool operator()(SortingGatherExecutor::ValueType const& a,
                   SortingGatherExecutor::ValueType const& b) const {
@@ -64,18 +66,16 @@ class OurLessThan {
       int cmp;
 
       if (attributePath.empty()) {
-        cmp = AqlValue::Compare(_trx, lhs, rhs, true);
+        cmp = AqlValue::Compare(&_vpackOptions, lhs, rhs, true);
       } else {
         // Take attributePath into consideration:
         bool mustDestroyA;
-        auto resolver = _trx->resolver();
-        TRI_ASSERT(resolver != nullptr);
-        AqlValue aa = lhs.get(*resolver, attributePath, mustDestroyA, false);
+        AqlValue aa = lhs.get(_resolver, attributePath, mustDestroyA, false);
         AqlValueGuard guardA(aa, mustDestroyA);
         bool mustDestroyB;
-        AqlValue bb = rhs.get(*resolver, attributePath, mustDestroyB, false);
+        AqlValue bb = rhs.get(_resolver, attributePath, mustDestroyB, false);
         AqlValueGuard guardB(bb, mustDestroyB);
-        cmp = AqlValue::Compare(_trx, aa, bb, true);
+        cmp = AqlValue::Compare(&_vpackOptions, aa, bb, true);
       }
 
       if (cmp < 0) {
@@ -89,7 +89,8 @@ class OurLessThan {
   }
 
  private:
-  arangodb::transaction::Methods* _trx;
+  arangodb::CollectionNameResolver const& _resolver;
+  arangodb::velocypack::Options const& _vpackOptions;
   std::vector<SortRegister>& _sortRegisters;
 };  // OurLessThan
 
@@ -99,8 +100,8 @@ class OurLessThan {
 ////////////////////////////////////////////////////////////////////////////////
 class HeapSorting final : public SortingGatherExecutor::SortingStrategy, private OurLessThan {
  public:
-  HeapSorting(arangodb::transaction::Methods* trx, std::vector<SortRegister>& sortRegisters) noexcept
-      : OurLessThan(trx, sortRegisters) {}
+  HeapSorting(arangodb::aql::QueryContext& query, std::vector<SortRegister>& sortRegisters) noexcept
+      : OurLessThan(query, sortRegisters) {}
 
   virtual SortingGatherExecutor::ValueType nextValue() override {
     TRI_ASSERT(!_heap.empty());
@@ -145,9 +146,9 @@ class HeapSorting final : public SortingGatherExecutor::SortingStrategy, private
 class MinElementSorting final : public SortingGatherExecutor::SortingStrategy,
                                 private OurLessThan {
  public:
-  MinElementSorting(arangodb::transaction::Methods* trx,
+  MinElementSorting(arangodb::aql::QueryContext& query,
                     std::vector<SortRegister>& sortRegisters) noexcept
-      : OurLessThan(trx, sortRegisters), _blockPos(nullptr) {}
+      : OurLessThan(query, sortRegisters), _blockPos(nullptr) {}
 
   virtual SortingGatherExecutor::ValueType nextValue() override {
     TRI_ASSERT(_blockPos);
@@ -174,10 +175,10 @@ SortingGatherExecutor::ValueType::ValueType(size_t index, InputAqlItemRow prow, 
     : dependencyIndex{index}, row{std::move(prow)}, state{pstate} {}
 
 SortingGatherExecutorInfos::SortingGatherExecutorInfos(
-    std::vector<SortRegister>&& sortRegister, arangodb::transaction::Methods* trx,
+    std::vector<SortRegister>&& sortRegister, arangodb::aql::QueryContext& query,
     GatherNode::SortMode sortMode, size_t limit, GatherNode::Parallelism p)
     : _sortRegister(std::move(sortRegister)),
-      _trx(trx),
+      _query(query),
       _sortMode(sortMode),
       _parallelism(p),
       _limit(limit) {}
@@ -191,11 +192,11 @@ SortingGatherExecutor::SortingGatherExecutor(Fetcher& fetcher, Infos& infos)
       _fetchParallel(infos.parallelism() == GatherNode::Parallelism::Parallel) {
   switch (infos.sortMode()) {
     case GatherNode::SortMode::MinElement:
-      _strategy = std::make_unique<MinElementSorting>(infos.trx(), infos.sortRegister());
+      _strategy = std::make_unique<MinElementSorting>(infos.query(), infos.sortRegister());
       break;
     case GatherNode::SortMode::Heap:
     case GatherNode::SortMode::Default:  // use heap by default
-      _strategy = std::make_unique<HeapSorting>(infos.trx(), infos.sortRegister());
+      _strategy = std::make_unique<HeapSorting>(infos.query(), infos.sortRegister());
       break;
     default:
       TRI_ASSERT(false);

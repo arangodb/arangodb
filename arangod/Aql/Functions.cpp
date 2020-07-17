@@ -66,6 +66,7 @@
 #include "Rest/Version.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Ssl/SslInterface.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -184,9 +185,7 @@ static_assert(DateSelectionModifier::MONTH < DateSelectionModifier::YEAR,
 
 /// @brief validates documents for duplicate attribute names
 bool isValidDocument(VPackSlice slice) {
-  if (slice.isExternal()) {
-    slice = slice.resolveExternals();
-  }
+  slice = slice.resolveExternals();
 
   if (slice.isObject()) {
     std::unordered_set<VPackStringRef> keys;
@@ -243,11 +242,6 @@ inline AqlValue const& extractFunctionParameterValue(VPackFunctionParameters con
 }
 
 /// @brief convert a number value into an AqlValue
-inline AqlValue numberValue(int value) {
-  return AqlValue(AqlValueHintInt(value));
-}
-
-/// @brief convert a number value into an AqlValue
 AqlValue numberValue(double value, bool nullify) {
   if (std::isnan(value) || !std::isfinite(value) || value == HUGE_VAL || value == -HUGE_VAL) {
     if (nullify) {
@@ -271,7 +265,7 @@ AqlValue timeAqlValue(ExpressionContext* expressionContext, char const* AFN,
   auto day_time = make_time(tp - sys_days(ymd));
 
   auto y = static_cast<int>(ymd.year());
-  // quick sanity check here for dates outside the allowed range
+  // quick basic check here for dates outside the allowed range
   if (y < 0 || y > 9999) {
     arangodb::aql::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
     return AqlValue(AqlValueHintNull());
@@ -750,7 +744,7 @@ void appendAsString(transaction::Methods* trx,
 bool listContainsElement(transaction::Methods* trx, VPackOptions const* options,
                          AqlValue const& list, AqlValue const& testee, size_t& index) {
   TRI_ASSERT(list.isArray());
-  AqlValueMaterializer materializer(trx);
+  AqlValueMaterializer materializer(options);
   VPackSlice slice = materializer.slice(list, false);
 
   AqlValueMaterializer testeeMaterializer(trx);
@@ -958,7 +952,7 @@ AqlValue mergeParameters(ExpressionContext* expressionContext, transaction::Meth
       builder = arangodb::basics::VelocyPackHelper::merge(builder.slice(), it,
                                                           false, recursive);
     }
-    return AqlValue(builder);
+    return AqlValue(builder.slice());
   }
 
   if (!initial.isObject()) {
@@ -985,7 +979,7 @@ AqlValue mergeParameters(ExpressionContext* expressionContext, transaction::Meth
     // only one parameter. now add original document
     builder.add(initialSlice);
   }
-  return AqlValue(builder);
+  return AqlValue(builder.slice());
 }
 
 /// @brief internal recursive flatten helper
@@ -1130,13 +1124,15 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, transaction::Met
   // JavaScript function (this includes user-defined functions)
   {
     ISOLATE;
-    v8::HandleScope scope(isolate);
+    TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
     auto context = TRI_IGETC;
 
-    Query* query = expressionContext->query();
-    TRI_ASSERT(query != nullptr);
-    query->prepareV8Context();
 
+    auto old = v8g->_expressionContext;
+    v8g->_expressionContext = expressionContext;
+    TRI_DEFER(v8g->_expressionContext = old);
+
+    VPackOptions const* options = trx->transactionContext()->getVPackOptions();
     std::string jsName;
     int const n = static_cast<int>(invokeParams.size());
     int const callArgs = (func == nullptr ? 3 : n);
@@ -1153,7 +1149,7 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, transaction::Met
 
       for (int i = 0; i < n; ++i) {
         params
-            ->Set(context, static_cast<uint32_t>(i), invokeParams[i].toV8(isolate, trx))
+            ->Set(context, static_cast<uint32_t>(i), invokeParams[i].toV8(isolate, options))
             .FromMaybe(true);
       }
       args[1] = params;
@@ -1162,12 +1158,12 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, transaction::Met
       // a call to a built-in V8 function
       jsName = "AQL_" + func->name;
       for (int i = 0; i < n; ++i) {
-        args[i] = invokeParams[i].toV8(isolate, trx);
+        args[i] = invokeParams[i].toV8(isolate, options);
       }
     }
 
     bool dummy;
-    return Expression::invokeV8Function(expressionContext, trx, jsName, ucInvokeFN,
+    return Expression::invokeV8Function(expressionContext, jsName, ucInvokeFN,
                                         AFN, false, callArgs, args.get(), dummy);
   }
 }
@@ -1578,6 +1574,7 @@ template <bool search_semantics>
 AqlValue NgramSimilarityHelper(char const* AFN, ExpressionContext* ctx,
                                transaction::Methods* trx,
                                VPackFunctionParameters const& args) {
+  TRI_ASSERT(ctx);
   if (args.size() < 3) {
     registerWarning(ctx, AFN,
                     arangodb::Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
@@ -1644,6 +1641,7 @@ AqlValue Functions::NgramPositionalSimilarity(ExpressionContext* ctx,
 /// Executes NGRAM_MATCH based on binary ngram similarity
 AqlValue Functions::NgramMatch(ExpressionContext* ctx, transaction::Methods* trx,
                                VPackFunctionParameters const& args) {
+  TRI_ASSERT(ctx);
   static char const* AFN = "NGRAM_MATCH";
 
   auto const argc = args.size();
@@ -1713,7 +1711,8 @@ AqlValue Functions::NgramMatch(ExpressionContext* ctx, transaction::Methods* trx
     arangodb::aql::registerWarning(ctx, AFN, TRI_ERROR_INTERNAL);
     return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
   }
-  auto analyzer = analyzerFeature.get(analyzerId, trx->vocbase(), *sysVocbase);
+  auto analyzer = analyzerFeature.get(analyzerId, trx->vocbase(), *sysVocbase,
+                                      trx->state()->analyzersRevision());
   if (!analyzer) {
     arangodb::aql::registerWarning(
         ctx, AFN,
@@ -1724,19 +1723,19 @@ AqlValue Functions::NgramMatch(ExpressionContext* ctx, transaction::Methods* trx
 
   auto analyzerImpl = analyzer->get();
   TRI_ASSERT(analyzerImpl);
-  irs::term_attribute const& token =
-      *analyzerImpl->attributes().get<irs::term_attribute>();
+  irs::term_attribute const* token = irs::get<irs::term_attribute>(*analyzerImpl);
+  TRI_ASSERT(token);
 
   std::vector<irs::bstring> attrNgrams;
   analyzerImpl->reset(attributeValue);
   while (analyzerImpl->next()) {
-    attrNgrams.push_back(token.value());
+    attrNgrams.push_back(token->value);
   }
 
   std::vector<irs::bstring> targetNgrams;
   analyzerImpl->reset(targetValue);
   while (analyzerImpl->next()) {
-    targetNgrams.push_back(token.value());
+    targetNgrams.push_back(token->value);
   }
 
   // consider only non empty ngrams sets. As no ngrams emitted - means no data in index = no match
@@ -1912,7 +1911,7 @@ AqlValue Functions::ToArray(ExpressionContext*, transaction::Methods* trx,
     }
   }
   builder->close();
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 /// @brief function LENGTH
@@ -2111,7 +2110,7 @@ AqlValue Functions::Reverse(ExpressionContext* expressionContext, transaction::M
       builder->add(it);
     }
     builder->close();
-    return AqlValue(builder.get());
+    return AqlValue(builder->slice());
   } else if (value.isString()) {
     std::string utf8;
     transaction::StringBufferLeaser buf1(trx);
@@ -2270,7 +2269,7 @@ AqlValue Functions::Contains(ExpressionContext*, transaction::Methods* trx,
 
   if (willReturnIndex) {
     // return numeric value
-    return ::numberValue(result);
+    return AqlValue(AqlValueHintInt(result));
   }
 
   // return boolean
@@ -3063,9 +3062,11 @@ AqlValue Functions::Split(ExpressionContext* expressionContext, transaction::Met
   Stringify(trx, adapter, aqlValueToSplit.slice());
   icu::UnicodeString valueToSplit(buffer->c_str(), static_cast<int32_t>(buffer->length()));
   bool isEmptyExpression = false;
+
   // the matcher is owned by the context!
   icu::RegexMatcher* matcher =
-      expressionContext->buildSplitMatcher(aqlSeparatorExpression, trx, isEmptyExpression);
+      expressionContext->buildSplitMatcher(aqlSeparatorExpression,
+                                           &trx->vpackOptions(), isEmptyExpression);
 
   if (matcher == nullptr) {
     // compiling regular expression failed
@@ -4109,7 +4110,7 @@ AqlValue Functions::Unset(ExpressionContext* expressionContext, transaction::Met
   VPackSlice slice = materializer.slice(value, false);
   transaction::BuilderLeaser builder(trx);
   ::unsetOrKeep(trx, slice, names, true, false, *builder.get());
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 /// @brief function UNSET_RECURSIVE
@@ -4132,7 +4133,7 @@ AqlValue Functions::UnsetRecursive(ExpressionContext* expressionContext,
   VPackSlice slice = materializer.slice(value, false);
   transaction::BuilderLeaser builder(trx);
   ::unsetOrKeep(trx, slice, names, true, true, *builder.get());
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 /// @brief function KEEP
@@ -4154,7 +4155,7 @@ AqlValue Functions::Keep(ExpressionContext* expressionContext, transaction::Meth
   VPackSlice slice = materializer.slice(value, false);
   transaction::BuilderLeaser builder(trx);
   ::unsetOrKeep(trx, slice, names, false, false, *builder.get());
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 /// @brief function TRANSLATE
@@ -4354,7 +4355,7 @@ AqlValue Functions::Values(ExpressionContext* expressionContext, transaction::Me
   }
   builder->close();
 
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 /// @brief function MIN
@@ -4509,7 +4510,7 @@ AqlValue Functions::Sleep(ExpressionContext* expressionContext, transaction::Met
   while (now < endTime) {
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-    if (expressionContext->query()->killed()) {
+    if (expressionContext->killed()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
     } else if (server.isStopping()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
@@ -4554,7 +4555,7 @@ AqlValue Functions::Collections(ExpressionContext* expressionContext,
 
   builder->close();
 
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 /// @brief function RANDOM_TOKEN
@@ -4685,7 +4686,7 @@ AqlValue Functions::Hash(ExpressionContext*, transaction::Methods* trx,
 
   // throw away the top bytes so the hash value can safely be used
   // without precision loss when storing in JavaScript etc.
-  uint64_t hash = value.hash(trx) & 0x0007ffffffffffffULL;
+  uint64_t hash = value.hash() & 0x0007ffffffffffffULL;
 
   return AqlValue(AqlValueHintUInt(hash));
 }
@@ -4774,7 +4775,7 @@ AqlValue Functions::Unique(ExpressionContext* expressionContext, transaction::Me
   }
 
   builder->close();
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 /// @brief function SORTED_UNIQUE
@@ -4810,7 +4811,7 @@ AqlValue Functions::SortedUnique(ExpressionContext* expressionContext,
     builder->add(it);
   }
   builder->close();
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 /// @brief function SORTED
@@ -4850,7 +4851,7 @@ AqlValue Functions::Sorted(ExpressionContext* expressionContext, transaction::Me
     }
   }
   builder->close();
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 /// @brief function UNION
@@ -4890,7 +4891,7 @@ AqlValue Functions::Union(ExpressionContext* expressionContext, transaction::Met
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 /// @brief function UNION_DISTINCT
@@ -4947,7 +4948,7 @@ AqlValue Functions::UnionDistinct(ExpressionContext* expressionContext,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 /// @brief function INTERSECTION
@@ -5017,7 +5018,7 @@ AqlValue Functions::Intersection(ExpressionContext* expressionContext,
   TRI_IF_FAILURE("AqlFunctions::OutOfMemory3") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 /// @brief function JACCARD
@@ -5124,7 +5125,7 @@ AqlValue Functions::Outersection(ExpressionContext* expressionContext,
   TRI_IF_FAILURE("AqlFunctions::OutOfMemory3") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 /// @brief function DISTANCE
@@ -5740,7 +5741,7 @@ AqlValue Functions::Flatten(ExpressionContext* expressionContext, transaction::M
   builder->openArray();
   ::flattenList(listSlice, maxDepth, 0, *builder.get());
   builder->close();
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 /// @brief function ZIP
@@ -5794,7 +5795,7 @@ AqlValue Functions::Zip(ExpressionContext* expressionContext, transaction::Metho
 
   builder->close();
 
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 /// @brief function JSON_STRINGIFY
@@ -5880,7 +5881,7 @@ AqlValue Functions::ParseIdentifier(ExpressionContext* expressionContext,
   builder->add("key", VPackValuePair(identifier.data() + pos + 1,
                                      identifier.size() - pos - 1, VPackValueType::String));
   builder->close();
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 /// @brief function Slice
@@ -5945,7 +5946,7 @@ AqlValue Functions::Slice(ExpressionContext* expressionContext, transaction::Met
   }
 
   builder->close();
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 /// @brief function Minus
@@ -6004,7 +6005,7 @@ AqlValue Functions::Minus(ExpressionContext* expressionContext, transaction::Met
     builder->add(it.first);
   }
   builder->close();
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 /// @brief function Document
@@ -6024,7 +6025,7 @@ AqlValue Functions::Document(ExpressionContext* expressionContext, transaction::
         // not found
         return AqlValue(AqlValueHintNull());
       }
-      return AqlValue(builder.get());
+      return AqlValue(builder->slice());
     }
     if (id.isArray()) {
       AqlValueMaterializer materializer(trx);
@@ -6038,7 +6039,7 @@ AqlValue Functions::Document(ExpressionContext* expressionContext, transaction::
         }
       }
       builder->close();
-      return AqlValue(builder.get());
+      return AqlValue(builder->slice());
     }
     return AqlValue(AqlValueHintNull());
   }
@@ -6058,7 +6059,7 @@ AqlValue Functions::Document(ExpressionContext* expressionContext, transaction::
     if (builder->isEmpty()) {
       return AqlValue(AqlValueHintNull());
     }
-    return AqlValue(builder.get());
+    return AqlValue(builder->slice());
   }
 
   if (id.isArray()) {
@@ -6076,7 +6077,7 @@ AqlValue Functions::Document(ExpressionContext* expressionContext, transaction::
     }
 
     builder->close();
-    return AqlValue(builder.get());
+    return AqlValue(builder->slice());
   }
 
   // Id has invalid format
@@ -6414,7 +6415,7 @@ AqlValue Functions::Push(ExpressionContext* expressionContext, transaction::Meth
     builder->openArray();
     builder->add(p);
     builder->close();
-    return AqlValue(builder.get());
+    return AqlValue(builder->slice());
   }
 
   if (!list.isArray()) {
@@ -6440,7 +6441,7 @@ AqlValue Functions::Push(ExpressionContext* expressionContext, transaction::Meth
     builder->add(p);
   }
   builder->close();
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 /// @brief function POP
@@ -6471,7 +6472,7 @@ AqlValue Functions::Pop(ExpressionContext* expressionContext, transaction::Metho
     iterator.next();
   }
   builder->close();
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 /// @brief function APPEND
@@ -6541,7 +6542,7 @@ AqlValue Functions::Append(ExpressionContext* expressionContext, transaction::Me
     }
   }
   builder->close();
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 /// @brief function UNSHIFT
@@ -6587,7 +6588,7 @@ AqlValue Functions::Unshift(ExpressionContext* expressionContext, transaction::M
     }
   }
   builder->close();
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 /// @brief function SHIFT
@@ -6623,7 +6624,7 @@ AqlValue Functions::Shift(ExpressionContext* expressionContext, transaction::Met
   }
   builder->close();
 
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 /// @brief function REMOVE_VALUE
@@ -6679,7 +6680,7 @@ AqlValue Functions::RemoveValue(ExpressionContext* expressionContext,
     builder->add(it);
   }
   builder->close();
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 /// @brief function REMOVE_VALUES
@@ -6720,7 +6721,7 @@ AqlValue Functions::RemoveValues(ExpressionContext* expressionContext,
     }
   }
   builder->close();
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 /// @brief function REMOVE_NTH
@@ -6767,7 +6768,7 @@ AqlValue Functions::RemoveNth(ExpressionContext* expressionContext,
     cur++;
   }
   builder->close();
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 /// @brief function ReplaceNth
@@ -6834,7 +6835,7 @@ AqlValue Functions::ReplaceNth(ExpressionContext* expressionContext,
     builder->add(replaceValue);
   }
   builder->close();
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 /// @brief function NOT_NULL
@@ -7182,7 +7183,7 @@ AqlValue Functions::Range(ExpressionContext* expressionContext, transaction::Met
     }
   }
   builder->close();
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 /// @brief function POSITION
@@ -7215,9 +7216,7 @@ AqlValue Functions::Position(ExpressionContext* expressionContext, transaction::
         return AqlValue(arangodb::velocypack::Slice::trueSlice());
       }
       // return position
-      transaction::BuilderLeaser builder(trx);
-      builder->add(VPackValue(index));
-      return AqlValue(builder.get());
+      return AqlValue(AqlValueHintUInt(index));
     }
   }
 
@@ -7228,9 +7227,7 @@ AqlValue Functions::Position(ExpressionContext* expressionContext, transaction::
   }
 
   // return -1
-  transaction::BuilderLeaser builder(trx);
-  builder->add(VPackValue(-1));
-  return AqlValue(builder.get());
+  return AqlValue(AqlValueHintInt(-1));
 }
 
 /// @brief function CALL
@@ -7501,19 +7498,13 @@ AqlValue Functions::DecodeRev(ExpressionContext* expressionContext,
   builder->add("count", VPackValue(count));
   builder->close();
 
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 AqlValue Functions::SchemaGet(ExpressionContext* expressionContext,
                               transaction::Methods* trx,
                               VPackFunctionParameters const& parameters) {
   // SCHEMA_GET(collectionName) -> schema object
-  static char const* AFN = "SCHEMA_GET";
-
-  if (parameters.size() != 1) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, AFN);
-  }
-
   std::string const collectionName = ::extractCollectionName(trx, parameters, 0);
 
   if (collectionName.empty()) {
@@ -7541,7 +7532,7 @@ AqlValue Functions::SchemaGet(ExpressionContext* expressionContext,
 
   if (!ruleSlice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "validation object of collection " +
+                                   "schema definition for collection " +
                                        collectionName + " has no rule object");
   }
 
@@ -7555,14 +7546,19 @@ AqlValue Functions::SchemaValidate(ExpressionContext* expressionContext,
   static char const* AFN = "SCHEMA_VALIDATE";
   auto const* vpackOptions = trx->transactionContext()->getVPackOptions();
 
-  if (parameters.size() != 2) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, AFN);
-  }
-
   AqlValue const& docValue = extractFunctionParameterValue(parameters, 0);
   AqlValue const& schemaValue = extractFunctionParameterValue(parameters, 1);
 
-  if (schemaValue.isNull(false)) {
+  if (!docValue.isObject()) {
+    registerWarning(expressionContext, AFN,
+                    Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                           "expecting document object"));
+    return AqlValue(AqlValueHintNull());
+  }
+
+  if (schemaValue.isNull(false) || 
+      (schemaValue.isObject() && schemaValue.length() == 0)) {
+    // schema is null or {}
     transaction::BuilderLeaser resultBuilder(trx);
     {
       VPackObjectBuilder guard(resultBuilder.builder());
@@ -7576,10 +7572,22 @@ AqlValue Functions::SchemaValidate(ExpressionContext* expressionContext,
         TRI_ERROR_BAD_PARAMETER, "second parameter is not a schema object: " +
                                      schemaValue.slice().toJson());
   }
+  auto* validator = expressionContext->buildValidator(schemaValue.slice());
 
-  arangodb::ValidatorJsonSchema validator(schemaValue.slice());
-  validator.setLevel(ValidationLevel::Strict); //override level so the validation will be executed no matter what
-  auto res = validator.validateOne(docValue.slice(), vpackOptions);
+  // store and restore validation level this is cheaper than modifying the VPack
+  auto storedLevel = validator->level();
+
+  // override level so the validation will be executed no matter what
+  validator->setLevel(ValidationLevel::Strict);
+
+  Result res;
+  {
+    arangodb::ScopeGuard guardi([storedLevel, &validator]{
+        validator->setLevel(storedLevel);
+    });
+
+    res = validator->validateOne(docValue.slice(), vpackOptions);
+  }
 
   transaction::BuilderLeaser resultBuilder(trx);
   {
@@ -7641,7 +7649,7 @@ AqlValue Functions::Interleave(arangodb::aql::ExpressionContext* expressionConte
   }
 
   builder->close();
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 AqlValue Functions::NotImplemented(ExpressionContext* expressionContext,

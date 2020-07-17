@@ -208,8 +208,7 @@ IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
       _writebufferSizeMax(mask),
       _primarySort(mask),
       _storedValues(mask),
-      _primarySortCompression(mask){
-}
+      _primarySortCompression(mask) {}
 
 IResearchViewMeta::IResearchViewMeta()
     : _cleanupIntervalStep(2),
@@ -220,7 +219,7 @@ IResearchViewMeta::IResearchViewMeta()
       _writebufferActive(0),
       _writebufferIdle(64),
       _writebufferSizeMax(32 * (size_t(1) << 20)),  // 32MB
-      _primarySortCompression{&getDefaultCompression()} {
+      _primarySortCompression{getDefaultCompression()} {
   std::string errorField;
 
   // cppcheck-suppress useInitializationList

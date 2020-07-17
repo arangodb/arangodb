@@ -257,8 +257,18 @@ double GeneralRequest::parsedValue(std::string const& key, double valueNotFound)
   return valueNotFound;
 }
 
-std::shared_ptr<VPackBuilder> GeneralRequest::toVelocyPackBuilderPtr() {
-  auto* opts = VelocyPackHelper::optionsWithUniquenessCheck();
-  return std::make_shared<VPackBuilder>(payload(opts), opts);
-};
+std::shared_ptr<VPackBuilder> GeneralRequest::toVelocyPackBuilderPtr(bool strictValidation) {
+  return std::make_shared<VPackBuilder>(payload(strictValidation));
+}
+
+/// @brief get VelocyPack options for validation. effectively turns off
+/// validation if strictValidation is false. This optimization can be used for
+/// internal requests
+arangodb::velocypack::Options const* GeneralRequest::validationOptions(bool strictValidation) {
+  if (strictValidation) {
+    return &basics::VelocyPackHelper::strictRequestValidationOptions;
+  }
+  return &basics::VelocyPackHelper::looseRequestValidationOptions;
+}
+
 }  // namespace arangodb

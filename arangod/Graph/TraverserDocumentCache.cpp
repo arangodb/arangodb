@@ -43,9 +43,9 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-TraverserDocumentCache::TraverserDocumentCache(aql::Query* query, 
+TraverserDocumentCache::TraverserDocumentCache(aql::QueryContext& query,
                                                std::shared_ptr<arangodb::cache::Cache> cache,
-                                               BaseOptions const* options)
+                                               BaseOptions* options)
     : TraverserCache(query, options), 
       _cache(std::move(cache)) {
   TRI_ASSERT(_cache != nullptr);

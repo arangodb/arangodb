@@ -29,6 +29,7 @@
 #include "search/sort.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
+#include "Cluster/ClusterInfo.h"
 
 #ifndef ARANGOD_IRESEARCH__AQL_HELPER_H
 #define ARANGOD_IRESEARCH__AQL_HELPER_H 1
@@ -235,6 +236,7 @@ struct QueryContext {
   aql::ExecutionPlan const* plan;
   aql::Ast* ast;
   aql::ExpressionContext* ctx;
+  irs::index_reader const* index;
   aql::Variable const* ref;
 };  // QueryContext
 

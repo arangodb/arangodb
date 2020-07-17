@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlCallStack.h"
+#include "Basics/Exceptions.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -28,7 +29,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 // TODO: This class is not yet memory efficient or optimized in any way.
-// it might be reimplement soon to have the above features, Focus now is on
+// it might be reimplemented soon to have the above features, Focus now is on
 // the API we want to use.
 
 using namespace arangodb;
@@ -38,25 +39,36 @@ AqlCallStack::AqlCallStack(AqlCallList call, bool compatibilityMode3_6)
     : _operations{{std::move(call)}}, _compatibilityMode3_6(compatibilityMode3_6) {}
 
 AqlCallStack::AqlCallStack(AqlCallStack const& other, AqlCallList call)
-    : _operations{other._operations} {
+    : _operations{other._operations}, _compatibilityMode3_6{other._compatibilityMode3_6} {
   // We can only use this constructor on relevant levels
-  // Alothers need to use passThrough constructor
+  // All others need to use passThrough constructor
   _operations.emplace_back(std::move(call));
   _compatibilityMode3_6 = other._compatibilityMode3_6;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  validateNoCallHasSkippedRows();
+#endif
 }
 
-AqlCallStack::AqlCallStack(AqlCallStack const& other)
-    : _operations{other._operations},
-      _compatibilityMode3_6(other._compatibilityMode3_6) {}
-
 AqlCallStack::AqlCallStack(std::vector<AqlCallList>&& operations)
-    : _operations(std::move(operations)) {}
+    : _operations(std::move(operations)) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  validateNoCallHasSkippedRows();
+#endif
+}
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+auto AqlCallStack::validateNoCallHasSkippedRows() -> void {
+  for (auto const& list : _operations) {
+    TRI_ASSERT(list.peekNextCall().getSkipCount() == 0);
+  }
+}
+#endif
 
 auto AqlCallStack::popCall() -> AqlCallList {
   TRI_ASSERT(_compatibilityMode3_6 || !_operations.empty());
   if (_compatibilityMode3_6 && _operations.empty()) {
     // This is only for compatibility with 3.6
-    // there we do not have the stack beeing passed-through
+    // there we do not have the stack being passed-through
     // in AQL, we only have a single call.
     // We can only get into this state in the abscence of
     // LIMIT => we always do an unlimted softLimit call
@@ -74,7 +86,7 @@ auto AqlCallStack::peek() const -> AqlCall const& {
   TRI_ASSERT(_compatibilityMode3_6 || !_operations.empty());
   if (is36Compatible() && _operations.empty()) {
     // This is only for compatibility with 3.6
-    // there we do not have the stack beeing passed-through
+    // there we do not have the stack being passed-through
     // in AQL, we only have a single call.
     // We can only get into this state in the abscence of
     // LIMIT => we always do an unlimted softLimit call
@@ -179,28 +191,36 @@ auto AqlCallStack::needToSkipSubquery() const noexcept -> bool {
 
 auto AqlCallStack::shadowRowDepthToSkip() const -> size_t {
   TRI_ASSERT(needToCountSubquery());
-  for (size_t i = 0; i < _operations.size(); ++i) {
-    auto& call = _operations.at(i);
-    if (call.peekNextCall().needSkipMore() || call.peekNextCall().hasLimit()) {
-      return _operations.size() - i - 1;
+  size_t const n = _operations.size();
+  for (size_t i = 0; i < n; ++i) {
+    auto& call = _operations[i];
+    auto const& nextCall = call.peekNextCall();
+     if (nextCall.needSkipMore() || nextCall.getLimit() == 0) {
+      return n - i - 1;
     }
   }
-  // unreachable
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+  return 0;
 }
 
 auto AqlCallStack::modifyCallAtDepth(size_t depth) -> AqlCall& {
   // depth 0 is back of vector
   TRI_ASSERT(_operations.size() > depth);
   // Take the depth-most from top of the vector.
-  auto& callList = *(_operations.rbegin() + depth);
+  auto& callList = _operations.at(_operations.size() - 1 - depth);
   return callList.modifyNextCall();
 }
 
 auto AqlCallStack::modifyCallListAtDepth(size_t depth) -> AqlCallList& {
   TRI_ASSERT(_operations.size() > depth);
-  return *(_operations.rbegin() + depth);
+  return _operations.at(_operations.size() - 1 - depth);
+}
+
+auto AqlCallStack::getCallAtDepth(size_t depth) const -> AqlCall const& {
+  // depth 0 is back of vector
+  TRI_ASSERT(_operations.size() > depth);
+  // Take the depth-most from top of the vector.
+  auto& callList = _operations.at(_operations.size() - 1 - depth);
+  return callList.peekNextCall();
 }
 
 auto AqlCallStack::modifyTopCall() -> AqlCall& {

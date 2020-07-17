@@ -59,8 +59,8 @@ class all_iterator final : public irs::doc_iterator {
     return doc_.value;
   }
 
-  virtual const irs::attribute_view& attributes() const noexcept override {
-    return irs::attribute_view::empty_instance();
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    return irs::type<irs::document>::id() == type ? &doc_ : nullptr;
   }
 
  private:
@@ -102,8 +102,8 @@ class mask_doc_iterator final : public irs::doc_iterator {
     return it_->value();
   }
 
-  virtual const irs::attribute_view& attributes() const noexcept override {
-    return it_->attributes();
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    return it_->get_mutable(type);
   }
 
  private:
@@ -118,26 +118,22 @@ class masked_docs_iterator
   masked_docs_iterator(
     irs::doc_id_t begin,
     irs::doc_id_t end,
-    const irs::document_mask& docs_mask
-  ) :
-    current_(irs::doc_limits::invalid()),
-    docs_mask_(docs_mask),
+    const irs::document_mask& docs_mask)
+  : docs_mask_(docs_mask),
     end_(end),
     next_(begin) {
   }
 
-  virtual ~masked_docs_iterator() {}
-
   virtual bool next() override {
     while (next_ < end_) {
-      current_ = next_++;
+      current_.value = next_++;
 
-      if (docs_mask_.find(current_) == docs_mask_.end()) {
+      if (docs_mask_.find(current_.value) == docs_mask_.end()) {
         return true;
       }
     }
 
-    current_ = irs::doc_limits::eof();
+    current_.value = irs::doc_limits::eof();
 
     return false;
   }
@@ -149,16 +145,16 @@ class masked_docs_iterator
     return value();
   }
 
-  virtual const irs::attribute_view& attributes() const noexcept override {
-    return irs::attribute_view::empty_instance();
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    return irs::type<irs::document>::id() == type ? &current_ : nullptr;
   }
 
   virtual irs::doc_id_t value() const override {
-    return current_;
+    return current_.value;
   }
 
  private:
-  irs::doc_id_t current_;
+  irs::document current_;
   const irs::document_mask& docs_mask_;
   const irs::doc_id_t end_; // past last valid doc_id
   irs::doc_id_t next_;
@@ -170,8 +166,7 @@ bool read_columns_meta(
     const irs::segment_meta& meta,
     std::vector<irs::column_meta>& columns,
     std::vector<irs::column_meta*>& id_to_column,
-    std::unordered_map<irs::hashed_string_ref, irs::column_meta*>& name_to_column
-) {
+    std::unordered_map<irs::hashed_string_ref, irs::column_meta*>& name_to_column) {
   size_t count = 0;
   irs::field_id max_id;
   auto reader = codec.get_column_meta_reader();
@@ -269,9 +264,7 @@ class segment_reader_impl : public sub_reader {
       return std::move(it);
     }
 
-    return doc_iterator::make<mask_doc_iterator>(
-      std::move(it), docs_mask_
-    );
+    return memory::make_managed<mask_doc_iterator>(std::move(it), docs_mask_);
   }
 
   virtual const term_reader* field(const string_ref& name) const override {
@@ -414,24 +407,20 @@ column_iterator::ptr segment_reader_impl::columns() const {
     string_ref, column_meta, column_iterator, less
   > iterator_t;
 
-  auto it = memory::make_unique<iterator_t>(
-    columns_.data(), columns_.data() + columns_.size()
-  );
-
-  return memory::make_managed<column_iterator>(std::move(it));
+  return memory::make_managed<iterator_t>(
+    columns_.data(), columns_.data() + columns_.size());
 }
 
 doc_iterator::ptr segment_reader_impl::docs_iterator() const {
   if (docs_mask_.empty()) {
-    return memory::make_shared<::all_iterator>(docs_count_);
+    return memory::make_managed<::all_iterator>(docs_count_);
   }
 
   // the implementation generates doc_ids sequentially
-  return memory::make_shared<masked_docs_iterator>(
+  return memory::make_managed<masked_docs_iterator>(
     doc_limits::min(),
     doc_id_t(doc_limits::min() + docs_count_),
-    docs_mask_
-  );
+    docs_mask_);
 }
 
 /*static*/ sub_reader::ptr segment_reader_impl::open(

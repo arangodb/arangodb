@@ -59,6 +59,7 @@ enum class SerializationFormat;
 
 class AqlItemBlock {
   friend class AqlItemBlockManager;
+  // needed for testing only
   friend class BlockCollector;
   friend class SharedAqlItemBlockPtr;
 
@@ -68,7 +69,7 @@ class AqlItemBlock {
   AqlItemBlock& operator=(AqlItemBlock const&) = delete;
 
   /// @brief create the block
-  AqlItemBlock(AqlItemBlockManager&, size_t nrItems, RegisterId nrRegs);
+  AqlItemBlock(AqlItemBlockManager&, size_t nrItems, RegisterCount nrRegs);
 
   void initFromSlice(arangodb::velocypack::Slice);
 
@@ -127,8 +128,6 @@ class AqlItemBlock {
     } catch (...) {
       // invoke dtor
       value->~AqlValue();
-      // TODO - instead of disabling it completely we could you use
-      // a constexpr if() with c++17
       _data[address].destroy();
       throw;
     }
@@ -149,8 +148,7 @@ class AqlItemBlock {
   /// elsewhere
   void eraseAll();
 
-  void copyValuesFromRow(size_t currentRow,
-                         std::unordered_set<RegisterId> const& regs, size_t fromRow);
+  void referenceValuesFromRow(size_t currentRow, RegIdFlatSet const& regs, size_t fromRow);
 
   /// @brief steal, steal an AqlValue from an AqlItemBlock, it will never free
   /// the same value again. Note that once you do this for a single AqlValue
@@ -158,8 +156,10 @@ class AqlItemBlock {
   /// might be deleted at any time!
   void steal(AqlValue const& value);
 
+  AqlValue stealAndEraseValue(size_t index, RegisterId varNr);
+
   /// @brief getter for _nrRegs
-  RegisterId getNrRegs() const noexcept;
+  RegisterCount getNrRegs() const noexcept;
 
   /// @brief getter for _nrItems
   size_t size() const noexcept;
@@ -182,11 +182,14 @@ class AqlItemBlock {
   /// @brief rescales the block to the specified dimensions
   /// note that the block should be empty before rescaling to prevent
   /// losses of still managed AqlValues
-  void rescale(size_t nrItems, RegisterId nrRegs);
+  void rescale(size_t nrItems, RegisterCount nrRegs);
 
   /// @brief clears out some columns (registers), this deletes the values if
   /// necessary, using the reference count.
-  void clearRegisters(std::unordered_set<RegisterId> const& toClear);
+  void clearRegisters(RegIdFlatSet const& toClear);
+
+  /// @brief clone all data rows, but move all shadow rows
+  SharedAqlItemBlockPtr cloneDataAndMoveShadow();
 
   /// @brief slice/clone, this does a deep copy of all entries
   SharedAqlItemBlockPtr slice(size_t from, size_t to) const;
@@ -282,11 +285,18 @@ class AqlItemBlock {
   void copySubQueryDepthFromOtherBlock(size_t targetRow, AqlItemBlock const& source,
                                        size_t sourceRow);
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+// MaintainerMode method to validate if ShadowRows organization are consistent.
+// e.g. If a block always follows this pattern:
+// ((Data* Shadow(0))* Shadow(1))* ...
+  void validateShadowRowConsistency() const;
+#endif
+
  protected:
   AqlItemBlockManager& aqlItemBlockManager() noexcept;
   size_t getRefCount() const noexcept;
   void incrRefCount() const noexcept;
-  void decrRefCount() const noexcept;
+  size_t decrRefCount() const noexcept;
 
  private:
   // This includes the amount of internal registers that are not visible to the outside.

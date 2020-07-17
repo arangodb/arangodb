@@ -40,7 +40,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 CalculationExecutorInfos::CalculationExecutorInfos(RegisterId outputRegister,
-                                                   Query& query, Expression& expression,
+                                                   QueryContext& query, Expression& expression,
                                                    std::vector<Variable const*>&& expInVars,
                                                    std::vector<RegisterId>&& expInRegs)
     : _outputRegisterId(outputRegister),
@@ -48,13 +48,14 @@ CalculationExecutorInfos::CalculationExecutorInfos(RegisterId outputRegister,
       _expression(expression),
       _expInVars(std::move(expInVars)),
       _expInRegs(std::move(expInRegs)) {
-  TRI_ASSERT(_query.trx() != nullptr);
 }
 
 template <CalculationType calculationType>
 CalculationExecutor<calculationType>::CalculationExecutor(Fetcher& fetcher,
                                                           CalculationExecutorInfos& infos)
-    : _infos(infos),
+    :
+      _trx(infos.getQuery().newTrxContext()),
+      _infos(infos),
       _fetcher(fetcher),
       _currentRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
       _rowState(ExecutionState::HASMORE),
@@ -67,7 +68,7 @@ RegisterId CalculationExecutorInfos::getOutputRegisterId() const noexcept {
   return _outputRegisterId;
 }
 
-Query& CalculationExecutorInfos::getQuery() const noexcept { return _query; }
+QueryContext& CalculationExecutorInfos::getQuery() const noexcept { return _query; }
 
 Expression& CalculationExecutorInfos::getExpression() const noexcept {
   return _expression;
@@ -89,12 +90,12 @@ CalculationExecutor<calculationType>::produceRows(AqlItemBlockInputRange& inputR
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   ExecutorState state = ExecutorState::HASMORE;
-  InputAqlItemRow input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
   while (inputRange.hasDataRow()) {
     // This executor is passthrough. it has enough place to write.
     TRI_ASSERT(!output.isFull());
-    std::tie(state, input) = inputRange.nextDataRow();
+    std::tie(state, input) = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input.isInitialized());
 
     doEvaluation(input, output);
@@ -102,7 +103,7 @@ CalculationExecutor<calculationType>::produceRows(AqlItemBlockInputRange& inputR
 
     // _hasEnteredContext implies the query has entered the context, but not
     // the other way round because it may be owned by exterior.
-    TRI_ASSERT(!_hasEnteredContext || _infos.getQuery().hasEnteredContext());
+    TRI_ASSERT(!_hasEnteredContext || _infos.getQuery().hasEnteredV8Context());
 
     // The following only affects V8Conditions. If we should exit the V8 context
     // between blocks, because we might have to wait for client or upstream, then
@@ -122,7 +123,7 @@ CalculationExecutor<calculationType>::produceRows(AqlItemBlockInputRange& inputR
 template <CalculationType calculationType>
 template <CalculationType U, typename>
 void CalculationExecutor<calculationType>::enterContext() {
-  _infos.getQuery().enterContext();
+  _infos.getQuery().enterV8Context();
   _hasEnteredContext = true;
 }
 
@@ -132,16 +133,15 @@ void CalculationExecutor<calculationType>::exitContext() {
   if (shouldExitContextBetweenBlocks()) {
     // must invalidate the expression now as we might be called from
     // different threads
-    _infos.getExpression().invalidate();
-    _infos.getQuery().exitContext();
+    _infos.getQuery().exitV8Context();
     _hasEnteredContext = false;
   }
 }
 
 template <CalculationType calculationType>
 bool CalculationExecutor<calculationType>::shouldExitContextBetweenBlocks() const {
-  static const bool isRunningInCluster = ServerState::instance()->isRunningInCluster();
-  const bool stream = _infos.getQuery().queryOptions().stream;
+  static bool const isRunningInCluster = ServerState::instance()->isRunningInCluster();
+  bool const stream = _infos.getQuery().queryOptions().stream;
 
   return isRunningInCluster || stream;
 }
@@ -169,11 +169,11 @@ template <>
 void CalculationExecutor<CalculationType::Condition>::doEvaluation(InputAqlItemRow& input,
                                                                    OutputAqlItemRow& output) {
   // execute the expression
-  ExecutorExpressionContext ctx(&_infos.getQuery(), input,
+  ExecutorExpressionContext ctx(_trx, _infos.getQuery(), _aqlFunctionsInternalCache, input,
                                 _infos.getExpInVars(), _infos.getExpInRegs());
 
   bool mustDestroy;  // will get filled by execution
-  AqlValue a = _infos.getExpression().execute(_infos.getQuery().trx(), &ctx, mustDestroy);
+  AqlValue a = _infos.getExpression().execute(&ctx, mustDestroy);
   AqlValueGuard guard(a, mustDestroy);
 
   TRI_IF_FAILURE("CalculationBlock::executeExpression") {
@@ -202,11 +202,11 @@ void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(InputAqlIte
   ISOLATE;
   v8::HandleScope scope(isolate);  // do not delete this!
   // execute the expression
-  ExecutorExpressionContext ctx(&_infos.getQuery(), input,
+  ExecutorExpressionContext ctx(_trx, _infos.getQuery(), _aqlFunctionsInternalCache, input,
                                 _infos.getExpInVars(), _infos.getExpInRegs());
 
   bool mustDestroy;  // will get filled by execution
-  AqlValue a = _infos.getExpression().execute(_infos.getQuery().trx(), &ctx, mustDestroy);
+  AqlValue a = _infos.getExpression().execute(&ctx, mustDestroy);
   AqlValueGuard guard(a, mustDestroy);
 
   TRI_IF_FAILURE("CalculationBlock::executeExpression") {
@@ -217,8 +217,6 @@ void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(InputAqlIte
 
   if (input.blockHasMoreDataRowsAfterThis()) {
     // We will be called again before the fetcher needs to get a new block.
-    // Thus we won't wait for upstream, nor will get a WAITING on the next
-    // fetchRow().
     // So we keep the context open.
     // This works because this block allows pass through, i.e. produces exactly
     // one output row per input row.

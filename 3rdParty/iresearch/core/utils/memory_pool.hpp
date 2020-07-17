@@ -635,9 +635,9 @@ template<
   }
 
   memory_pool_t& pool(const size_t size) const {
-    const auto res = irs::map_utils::try_emplace(
-      pools_, size, size, initial_size_, this->allocator(), this->grow_policy()
-    );
+    const auto res = pools_.try_emplace(
+      size, size, initial_size_,
+      this->allocator(), this->grow_policy());
 
     return res.first->second;
   }

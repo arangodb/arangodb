@@ -172,6 +172,20 @@ bool CreateCollection::first() {
     }
 
     if (_result.fail()) {
+      // If this is TRI_ERROR_ARANGO_DUPLICATE_NAME, then we assume that a previous
+      // incarnation of ourselves has already done the work. This can happen, if
+      // the timing of phaseOne runs is unfortunate with asynchronous creation of
+      // shards.
+      // In this case, we do not report an error and do not increase the version
+      // number of the shard in `setState` below.
+      if (_result.errorNumber() == TRI_ERROR_ARANGO_DUPLICATE_NAME) {
+        LOG_TOPIC("9db9c", INFO, Logger::MAINTENANCE)
+        << "local collection " << database << "/" << shard
+        << " already found, ignoring...";
+        _result.reset(TRI_ERROR_NO_ERROR);
+        _doNotIncrement = true;
+        return false;
+      }
       std::stringstream error;
       error << "creating local shard '" << database << "/" << shard << "' for central '"
             << database << "/" << collection << "' failed: " << _result;
@@ -202,7 +216,7 @@ bool CreateCollection::first() {
 }
 
 void CreateCollection::setState(ActionState state) {
-  if ((COMPLETE == state || FAILED == state) && _state != state) {
+  if ((COMPLETE == state || FAILED == state) && _state != state && !_doNotIncrement) {
     TRI_ASSERT(_description.has("shard"));
     _feature.incShardVersion(_description.get("shard"));
   }

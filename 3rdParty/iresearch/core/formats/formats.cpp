@@ -77,8 +77,6 @@ NS_END
 
 NS_ROOT
 
-DEFINE_ATTRIBUTE_TYPE(iresearch::term_meta)
-
 /* static */ const columnstore_reader::values_reader_f& columnstore_reader::empty_reader() {
   return INVALID_COLUMN;
 }
@@ -116,9 +114,10 @@ DEFINE_ATTRIBUTE_TYPE(iresearch::term_meta)
 
 /*static*/ format::ptr formats::get(
     const string_ref& name,
+    const string_ref& module /*= string_ref::NIL*/,
     bool load_library /*= true*/) noexcept {
   try {
-    auto const key = std::make_pair(name, string_ref::NIL);
+    auto const key = std::make_pair(name, module);
     auto* factory = format_register::instance().get(key, load_library);
 
     return factory ? factory() : nullptr;
@@ -157,7 +156,7 @@ DEFINE_ATTRIBUTE_TYPE(iresearch::term_meta)
 // -----------------------------------------------------------------------------
 
 format_registrar::format_registrar(
-    const format::type_id& type,
+    const type_info& type,
     const string_ref& module,
     format::ptr(*factory)(),
     const char* source /*= nullptr*/) {

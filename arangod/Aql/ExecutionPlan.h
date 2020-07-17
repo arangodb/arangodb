@@ -30,6 +30,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ModificationOptions.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Containers/HashSet.h"
@@ -45,9 +46,10 @@ class Ast;
 struct AstNode;
 class CalculationNode;
 class CollectNode;
+class Collections;
 class ExecutionNode;
 struct OptimizerRule;
-class Query;
+class QueryContext;
 
 class ExecutionPlan {
  public:
@@ -62,10 +64,10 @@ class ExecutionPlan {
   static std::unique_ptr<ExecutionPlan> instantiateFromAst(Ast*);
 
   /// @brief process the list of collections in a VelocyPack
-  static void getCollectionsFromVelocyPack(Ast* ast, arangodb::velocypack::Slice const);
+  static void getCollectionsFromVelocyPack(aql::Collections&, arangodb::velocypack::Slice const);
 
   /// @brief create an execution plan from VelocyPack
-  static ExecutionPlan* instantiateFromVelocyPack(Ast* ast, arangodb::velocypack::Slice const);
+  static std::unique_ptr<ExecutionPlan> instantiateFromVelocyPack(Ast* ast, arangodb::velocypack::Slice const);
 
   /// @brief whether or not the exclusive flag is set in the write options
   static bool hasExclusiveAccessOption(AstNode const* node);
@@ -77,12 +79,14 @@ class ExecutionPlan {
 
   /// @brief create an execution plan identical to this one
   ///   keep the memory of the plan on the query object specified.
-  ExecutionPlan* clone(Query const&);
+//  ExecutionPlan* clone(Query const&);
 
   /// @brief export to VelocyPack
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(Ast*, bool verbose) const;
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(Ast*, bool verbose,
+                                                              ExplainRegisterPlan) const;
 
-  void toVelocyPack(arangodb::velocypack::Builder&, Ast*, bool verbose) const;
+  void toVelocyPack(arangodb::velocypack::Builder&, Ast*, bool verbose,
+                    ExplainRegisterPlan) const;
 
   /// @brief check if the plan is empty
   inline bool empty() const { return (_root == nullptr); }
@@ -179,9 +183,13 @@ class ExecutionPlan {
   void findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
                        ExecutionNode::NodeType, bool enterSubqueries);
 
-  /// @brief find nodes of a certain types
+  /// @brief find nodes of certain types
   void findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
                        std::vector<ExecutionNode::NodeType> const&, bool enterSubqueries);
+  
+  /// @brief find unique nodes of certain types
+  void findUniqueNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
+                             std::vector<ExecutionNode::NodeType> const&, bool enterSubqueries);
 
   /// @brief find all end nodes in a plan
   void findEndNodes(::arangodb::containers::SmallVector<ExecutionNode*>& result,
@@ -200,7 +208,10 @@ class ExecutionPlan {
   void clearVarUsageComputed() { _varUsageComputed = false; }
 
   /// @brief static analysis
-  void planRegisters() { _root->planRegisters(); }
+  void planRegisters(ExplainRegisterPlan = ExplainRegisterPlan::No);
+
+  /// @brief find all variables that are populated with data from collections
+  void findCollectionAccessVariables();
 
   void prepareTraversalOptions();
 
@@ -315,7 +326,7 @@ class ExecutionPlan {
 
   /// @brief create an execution plan element from an AST LET node
   ExecutionNode* fromNodeLet(ExecutionNode*, AstNode const*);
-
+  
   /// @brief create an execution plan element from an AST SORT node
   ExecutionNode* fromNodeSort(ExecutionNode*, AstNode const*);
 

@@ -51,6 +51,7 @@
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Methods/Indexes.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -150,6 +151,16 @@ arangodb::Result applyCollectionDumpMarkerInternal(
       if (keySlice.isString()) {
         std::pair<arangodb::LocalDocumentId, TRI_voc_rid_t> lookupResult;
         if (coll->getPhysical()->lookupKey(&trx, keySlice.stringRef(), lookupResult).ok()) {
+          // determine if we already have this revision or need to replace the
+          // one we have
+          TRI_voc_rid_t rid = arangodb::transaction::helpers::extractRevFromDocument(slice);
+          if (rid != 0 && rid == lookupResult.second) {
+            // we already have exactly this document, don't replace, just
+            // consider it already applied and bail
+            return {};
+          }
+
+          // need to replace the one we have
           useReplace = true;
           opRes.result.reset(TRI_ERROR_NO_ERROR, keySlice.copyString());
         }
@@ -880,7 +891,7 @@ Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
     }
 
     try {
-      CollectionGuard guard(vocbase, col);
+      CollectionGuard guard(vocbase, col->id());
       bool result = guard.collection()->dropIndex(iid);
 
       if (!result) {

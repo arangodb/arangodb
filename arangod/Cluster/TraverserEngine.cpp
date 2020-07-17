@@ -43,6 +43,10 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Transaction/IgnoreNoAccessMethods.h"
+#endif
+
 using namespace arangodb;
 using namespace arangodb::graph;
 using namespace arangodb::traverser;
@@ -57,8 +61,8 @@ static const std::string VERTICES = "vertices";
 
 #ifndef USE_ENTERPRISE
 /*static*/ std::unique_ptr<BaseEngine> BaseEngine::BuildEngine(
-    TRI_vocbase_t& vocbase, std::shared_ptr<transaction::Context> const& ctx,
-    VPackSlice info, bool needToLock) {
+    TRI_vocbase_t& vocbase, aql::QueryContext& query,
+    VPackSlice info) {
   VPackSlice type = info.get(std::vector<std::string>({OPTIONS, TYPE}));
 
   if (!type.isString()) {
@@ -68,9 +72,9 @@ static const std::string VERTICES = "vertices";
   }
 
   if (type.isEqualString("traversal")) {
-    return std::make_unique<TraverserEngine>(vocbase, ctx, info, needToLock);
+    return std::make_unique<TraverserEngine>(vocbase, query, info);
   } else if (type.isEqualString("shortestPath")) {
-    return std::make_unique<ShortestPathEngine>(vocbase, ctx, info, needToLock);
+    return std::make_unique<ShortestPathEngine>(vocbase, query, info);
   }
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                  "The 'options.type' attribute either has to "
@@ -79,9 +83,9 @@ static const std::string VERTICES = "vertices";
 #endif
 
 BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
-                       std::shared_ptr<transaction::Context> const& ctx,
-                       VPackSlice info, bool needToLock)
-    : _query(nullptr), _trx(nullptr), _collections(&vocbase) {
+                       aql::QueryContext& query,
+                       VPackSlice info)
+    : _query(query), _trx(nullptr) {
   VPackSlice shardsSlice = info.get(SHARDS);
 
   if (shardsSlice.isNone() || !shardsSlice.isObject()) {
@@ -112,7 +116,7 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
     TRI_ASSERT(shardList.isArray());
     for (VPackSlice const shard : VPackArrayIterator(shardList)) {
       TRI_ASSERT(shard.isString());
-      _collections.add(shard.copyString(), AccessMode::Type::READ);
+      _query.collections().add(shard.copyString(), AccessMode::Type::READ, aql::Collection::Hint::Collection);
     }
   }
 
@@ -124,105 +128,26 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
     for (VPackSlice const shard : VPackArrayIterator(collection.value)) {
       TRI_ASSERT(shard.isString());
       std::string name = shard.copyString();
-      _collections.add(name, AccessMode::Type::READ);
+      _query.collections().add(name, AccessMode::Type::READ, aql::Collection::Hint::Shard);
       shards.emplace_back(std::move(name));
     }
     _vertexShards.try_emplace(collection.key.copyString(), std::move(shards));
   }
 
-  // FIXME: in the future this needs to be replaced with
-  // the new cluster wide transactions
-  transaction::Options trxOpts;
-
 #ifdef USE_ENTERPRISE
-  VPackSlice inaccessSlice = shardsSlice.get(INACCESSIBLE);
-  if (inaccessSlice.isArray()) {
-    trxOpts.skipInaccessibleCollections = true;
-    std::unordered_set<ShardID> inaccessible;
-    for (VPackSlice const& shard : VPackArrayIterator(inaccessSlice)) {
-      TRI_ASSERT(shard.isString());
-      inaccessible.insert(shard.copyString());
-    }
-    _trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts,
-                                       true, std::move(inaccessible));
+  if (_query.queryOptions().transactionOptions.skipInaccessibleCollections) {
+    _trx = new transaction::IgnoreNoAccessMethods(_query.newTrxContext(), _query.queryOptions().transactionOptions);
   } else {
-    _trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts, /*isMainTransaction*/true);
+    _trx = new transaction::Methods(_query.newTrxContext(), _query.queryOptions().transactionOptions);
   }
 #else
-  _trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts, /*isMainTransaction*/true);
+  _trx = new transaction::Methods(_query.newTrxContext(), _query.queryOptions().transactionOptions);
 #endif
-
-  if (!needToLock) {
-    _trx->addHint(transaction::Hints::Hint::LOCK_NEVER);
-  }
-  // true here as last argument is crucial: it leads to the fact that the
-  // created transaction is considered a "MAIN" part and will not switch
-  // off collection locking completely!
-  auto params = std::make_shared<VPackBuilder>();
-  auto opts = std::make_shared<VPackBuilder>();
-  _query = new aql::Query(false, vocbase, aql::QueryString(), params, opts, aql::PART_DEPENDENT);
-  _query->injectTransaction(_trx);
-
-  VPackSlice variablesSlice = info.get(VARIABLES);
-  if (!variablesSlice.isNone()) {
-    if (!variablesSlice.isArray()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "The optional " + VARIABLES +
-                                         " has to be an array.");
-    }
-    for (auto v : VPackArrayIterator(variablesSlice)) {
-      _query->ast()->variables()->createVariable(v);
-    }
-  }
-
-  // We begin the transaction before we lock.
-  // We also setup indexes before we lock.
-  Result res = _trx->begin();  
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
 }
 
 BaseEngine::~BaseEngine() {
-  if (_trx) {
-    try {
-      if (_trx->status() == transaction::Status::RUNNING) {
-        Result res = _trx->commit();
-        if (res.fail()) {
-          LOG_TOPIC("315cf", ERR, Logger::CLUSTER)
-            << "BaseEngine could not commit: " 
-            << res.errorMessage() 
-            << ", current status: " << transaction::statusString(_trx->status());
-        }
-      }
-    } catch (...) {
-      // If we could not abort
-      // we are in a bad state.
-    }
-  }
-  delete _query;
+  delete _trx;
 }
-
-bool BaseEngine::lockCollection(std::string const& shard) {
-  auto resolver = _trx->resolver();
-  TRI_voc_cid_t cid = resolver->getCollectionIdLocal(shard);
-  if (cid == 0) {
-    return false;
-  }
-
-  Result lockResult = _trx->lockRecursive(cid, AccessMode::Type::READ);
-
-  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
-    LOG_TOPIC("d7485", ERR, arangodb::Logger::CLUSTER)
-        << "Locking shard " << shard << " lead to exception '"
-        << lockResult.errorNumber() << "' (" << lockResult.errorMessage() << ")";
-    return false;
-  }
-
-  return true;
-}
-
-Result BaseEngine::lockAll() { return _trx->lockCollections(); }
 
 std::shared_ptr<transaction::Context> BaseEngine::context() const {
   return _trx->transactionContext();
@@ -284,9 +209,9 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
 }
 
 BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t& vocbase,
-                                         std::shared_ptr<transaction::Context> const& ctx,
-                                         VPackSlice info, bool needToLock)
-    : BaseEngine(vocbase, ctx, info, needToLock) {}
+                                         aql::QueryContext& query,
+                                         VPackSlice info)
+    : BaseEngine(vocbase, query, info), _variables(query.ast()->variables()) {}
 
 BaseTraverserEngine::~BaseTraverserEngine() = default;
 
@@ -414,10 +339,34 @@ bool BaseTraverserEngine::produceVertices() const {
   return _opts->produceVertices();
 }
 
+aql::VariableGenerator const* BaseTraverserEngine::variables() const {
+  return _variables;
+}
+
+void BaseTraverserEngine::injectVariables(VPackSlice variableSlice) {
+  if (variableSlice.isArray()) {
+    _opts->clearVariableValues();
+    for (auto const& pair : VPackArrayIterator(variableSlice)) {
+      if ((!pair.isArray()) || pair.length() != 2) {
+        // Invalid communication. Skip
+        TRI_ASSERT(false);
+        continue;
+      }
+      auto varId =
+          arangodb::basics::VelocyPackHelper::getNumericValue<aql::VariableId>(pair.at(0),
+                                                                          "id", 0);
+      aql::Variable* var = variables()->getVariable(varId);
+      TRI_ASSERT(var != nullptr);
+      aql::AqlValue val(pair.at(1).start());
+      _opts->setVariableValue(var, val);
+    }
+  }
+}
+
 ShortestPathEngine::ShortestPathEngine(TRI_vocbase_t& vocbase,
-                                       std::shared_ptr<transaction::Context> const& ctx,
-                                       arangodb::velocypack::Slice info, bool needToLock)
-    : BaseEngine(vocbase, ctx, info, needToLock) {
+                                       aql::QueryContext& query,
+                                       arangodb::velocypack::Slice info)
+    : BaseEngine(vocbase, query, info) {
 
   VPackSlice optsSlice = info.get(OPTIONS);
   if (optsSlice.isNone() || !optsSlice.isObject()) {
@@ -487,9 +436,9 @@ void ShortestPathEngine::addEdgeData(VPackBuilder& builder, bool backward, arang
 }
 
 TraverserEngine::TraverserEngine(TRI_vocbase_t& vocbase,
-                                 std::shared_ptr<transaction::Context> const& ctx,
-                                 arangodb::velocypack::Slice info, bool needToLock)
-    : BaseTraverserEngine(vocbase, ctx, info, needToLock) {
+                                 aql::QueryContext& query,
+                                 arangodb::velocypack::Slice info)
+    : BaseTraverserEngine(vocbase, query, info) {
   VPackSlice optsSlice = info.get(OPTIONS);
   if (!optsSlice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,

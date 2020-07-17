@@ -27,7 +27,6 @@
 
 #include "AqlExecutorTestCase.h"
 #include "AqlItemBlockHelper.h"
-#include "RowFetcherHelper.h"
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlock.h"
@@ -76,10 +75,10 @@ class HashedCollectExecutorTest
                           RegisterId collectRegister = RegisterPlan::MaxRegisterId,
                           std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters = {})
       -> RegisterInfos {
-    std::unordered_set<RegisterId> registersToClear{};
-    std::unordered_set<RegisterId> registersToKeep{};
-    auto readableInputRegisters = make_shared_unordered_set();
-    auto writeableOutputRegisters = make_shared_unordered_set();
+    RegIdSet registersToClear{};
+    RegIdSetStack registersToKeep{{}};
+    auto readableInputRegisters = RegIdSet{};
+    auto writeableOutputRegisters = RegIdSet{};
 
     for (RegisterId i = 0; i < nrInputRegisters; ++i) {
       // All registers need to be invalidated!
@@ -87,18 +86,18 @@ class HashedCollectExecutorTest
     }
 
     for (auto const& [out, in] : groupRegisters) {
-      readableInputRegisters->emplace(in);
-      writeableOutputRegisters->emplace(out);
+      readableInputRegisters.emplace(in);
+      writeableOutputRegisters.emplace(out);
     }
 
     if (collectRegister != RegisterPlan::MaxRegisterId) {
-      writeableOutputRegisters->emplace(collectRegister);
+      writeableOutputRegisters.emplace(collectRegister);
     }
     for (auto const& [out, in] : aggregateRegisters) {
       if (in != RegisterPlan::MaxRegisterId) {
-        readableInputRegisters->emplace(in);
+        readableInputRegisters.emplace(in);
       }
-      writeableOutputRegisters->emplace(out);
+      writeableOutputRegisters.emplace(out);
     }
 
     return RegisterInfos{std::move(readableInputRegisters),
@@ -125,7 +124,7 @@ class HashedCollectExecutorTest
                                       collectRegister,
                                       std::move(aggregateTypes),
                                       std::move(aggregateRegisters),
-                                      fakedQuery->trx(),
+                                      &VPackOptions::Defaults,
                                       count};
   };
 };
@@ -188,7 +187,7 @@ TEST_P(HashedCollectExecutorTest, fullcount_all) {
   auto registerInfos = buildRegisterInfos(1, 2, {{1, 0}});
   auto executorInfos = buildExecutorInfos(1, 2, {{1, 0}});
   AqlCall call{};
-  call.hardLimit = 0;      // HardLimit
+  call.hardLimit = 0u;     // HardLimit
   call.fullCount = true;   // count all
   ExecutionStats stats{};  // No stats here
   makeExecutorTestHelper()
@@ -210,7 +209,7 @@ TEST_P(HashedCollectExecutorTest, collect_only_soft_less) {
   auto registerInfos = buildRegisterInfos(1, 2, {{1, 0}});
   auto executorInfos = buildExecutorInfos(1, 2, {{1, 0}});
   AqlCall call{};
-  call.softLimit = 2;
+  call.softLimit = 2u;
   ExecutionStats stats{};  // No stats here
   makeExecutorTestHelper()
       .addConsumer<HashedCollectExecutor>(std::move(registerInfos), std::move(executorInfos))
@@ -241,9 +240,9 @@ TEST_P(HashedCollectExecutorTest, collect_only_soft_less_second_call) {
   }
 
   auto inputBlock = std::make_unique<WaitingExecutionBlockMock>(
-      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+      fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
       WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
-  ExecutionBlockImpl<HashedCollectExecutor> testee{fakedQuery->engine(),
+  ExecutionBlockImpl<HashedCollectExecutor> testee{fakedQuery->rootEngine(),
                                                    generateNodeDummy(),
                                                    std::move(registerInfos),
                                                    std::move(executorInfos)};
@@ -269,7 +268,7 @@ TEST_P(HashedCollectExecutorTest, collect_only_soft_less_second_call) {
   std::vector<RegisterId> registersToTest{1};
   {
     AqlCall call{};
-    call.softLimit = 2;
+    call.softLimit = 2u;
     AqlCallStack stack{AqlCallList{call}};
     auto const [state, skipped, result] = testee.execute(stack);
     EXPECT_EQ(state, ExecutionState::HASMORE);
@@ -282,7 +281,7 @@ TEST_P(HashedCollectExecutorTest, collect_only_soft_less_second_call) {
   // Second call
   {
     AqlCall call{};
-    call.softLimit = 2;
+    call.softLimit = 2u;
     AqlCallStack stack{AqlCallList{call}};
     auto const [state, skipped, result] = testee.execute(stack);
     EXPECT_EQ(state, ExecutionState::DONE);
@@ -298,7 +297,7 @@ TEST_P(HashedCollectExecutorTest, collect_only_hard_less) {
   auto registerInfos = buildRegisterInfos(1, 2, {{1, 0}});
   auto executorInfos = buildExecutorInfos(1, 2, {{1, 0}});
   AqlCall call{};
-  call.hardLimit = 2;
+  call.hardLimit = 2u;
   ExecutionStats stats{};  // No stats here
   makeExecutorTestHelper()
       .addConsumer<HashedCollectExecutor>(std::move(registerInfos), std::move(executorInfos))
@@ -320,7 +319,7 @@ TEST_P(HashedCollectExecutorTest, skip_some) {
   auto executorInfos = buildExecutorInfos(1, 2, {{1, 0}});
   AqlCall call{};
   call.offset = 2;         // skip some
-  call.softLimit = 0;      // 0 limit
+  call.softLimit = 0u;      // 0 limit
   ExecutionStats stats{};  // No stats here
   makeExecutorTestHelper()
       .addConsumer<HashedCollectExecutor>(std::move(registerInfos), std::move(executorInfos))
@@ -342,7 +341,7 @@ TEST_P(HashedCollectExecutorTest, skip_and_get) {
   auto executorInfos = buildExecutorInfos(1, 2, {{1, 0}});
   AqlCall call{};
   call.offset = 2;         // skip some
-  call.softLimit = 1000;   // high limit
+  call.softLimit = 1000u;   // high limit
   ExecutionStats stats{};  // No stats here
   makeExecutorTestHelper()
       .addConsumer<HashedCollectExecutor>(std::move(registerInfos), std::move(executorInfos))
@@ -364,7 +363,7 @@ TEST_P(HashedCollectExecutorTest, skip_and_hardLimit) {
   auto executorInfos = buildExecutorInfos(1, 2, {{1, 0}});
   AqlCall call{};
   call.offset = 2;         // skip some
-  call.hardLimit = 1;      // hard limit
+  call.hardLimit = 1u;     // hard limit
   ExecutionStats stats{};  // No stats here
   makeExecutorTestHelper()
       .addConsumer<HashedCollectExecutor>(std::move(registerInfos), std::move(executorInfos))
@@ -386,7 +385,7 @@ TEST_P(HashedCollectExecutorTest, skip_and_fullCount) {
   auto executorInfos = buildExecutorInfos(1, 2, {{1, 0}});
   AqlCall call{};
   call.offset = 1;     // skip some
-  call.hardLimit = 2;  // hard limit
+  call.hardLimit = 2u; // hard limit
   call.fullCount = true;
   ExecutionStats stats{};  // No stats here
   makeExecutorTestHelper()
@@ -568,10 +567,10 @@ class HashedCollectExecutorTestAggregate
   auto buildRegisterInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                           std::vector<std::pair<RegisterId, RegisterId>> const& groupRegisters)
       -> RegisterInfos {
-    std::unordered_set<RegisterId> registersToClear{};
-    std::unordered_set<RegisterId> registersToKeep{};
-    auto readableInputRegisters = make_shared_unordered_set();
-    auto writeableOutputRegisters = make_shared_unordered_set();
+    RegIdSet registersToClear{};
+    RegIdSetStack registersToKeep{{}};
+    auto readableInputRegisters = RegIdSet{};
+    auto writeableOutputRegisters = RegIdSet{};
 
     for (RegisterId i = 0; i < nrInputRegisters; ++i) {
       // All registers need to be invalidated!
@@ -579,17 +578,17 @@ class HashedCollectExecutorTestAggregate
     }
 
     for (auto const& [out, in] : groupRegisters) {
-      readableInputRegisters->emplace(in);
-      writeableOutputRegisters->emplace(out);
+      readableInputRegisters.emplace(in);
+      writeableOutputRegisters.emplace(out);
     }
 
     auto agg = getAggregator();
     std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters{{3, agg.inReg}};
     if (agg.inReg != RegisterPlan::MaxRegisterId) {
-      readableInputRegisters->emplace(agg.inReg);
+      readableInputRegisters.emplace(agg.inReg);
     }
 
-    writeableOutputRegisters->emplace(3);
+    writeableOutputRegisters.emplace(3);
 
     return RegisterInfos{std::move(readableInputRegisters),
                          std::move(writeableOutputRegisters),
@@ -611,7 +610,7 @@ class HashedCollectExecutorTestAggregate
     auto infos = HashedCollectExecutorInfos(std::move(groupRegisters), collectRegister,
                                             std::move(aggregateTypes),
                                             std::move(aggregateRegisters),
-                                            fakedQuery->trx(), count);
+                                            &VPackOptions::Defaults, count);
     return infos;
   };
 };

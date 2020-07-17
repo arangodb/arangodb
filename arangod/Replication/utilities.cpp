@@ -363,7 +363,7 @@ constexpr double BatchInfo::DefaultTimeout;
 /// @param patchCount try to patch count of this collection
 ///        only effective with the incremental sync (optional)
 Result BatchInfo::start(replutils::Connection const& connection,
-                        replutils::ProgressInfo& progress,
+                        replutils::ProgressInfo& progress, replutils::MasterInfo& master,
                         SyncerId const syncerId, std::string const& patchCount) {
   // TODO make sure all callers verify not child syncer
   if (!connection.valid()) {
@@ -429,8 +429,16 @@ Result BatchInfo::start(replutils::Connection const& connection,
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "start batch id is missing in response");
   }
-
   id = basics::StringUtils::uint64(batchId);
+
+  std::string const lastTick =
+      basics::VelocyPackHelper::getStringValue(slice, "lastTick", "");
+  if (lastTick.empty()) {
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                  "start batch lastTick is missing in response");
+  }
+
+  master.lastLogTick = basics::StringUtils::uint64(lastTick);
   updateTime = now;
 
   return Result();

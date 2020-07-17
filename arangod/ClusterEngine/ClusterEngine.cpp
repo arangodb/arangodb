@@ -22,15 +22,13 @@
 
 #include "ClusterEngine.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/Exceptions.h"
-#include "Basics/FileUtils.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Basics/build.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterMethods.h"
 #include "ClusterEngine/ClusterCollection.h"
 #include "ClusterEngine/ClusterIndexFactory.h"
 #include "ClusterEngine/ClusterRestHandlers.h"
@@ -39,16 +37,12 @@
 #include "ClusterEngine/ClusterV8Functions.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "StorageEngine/RocksDBOptionFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Manager.h"
 #include "Transaction/Options.h"
-#include "VocBase/LogicalView.h"
-#include "VocBase/VocbaseInfo.h"
 #include "VocBase/ticks.h"
 
 #include <velocypack/Iterator.h>
@@ -56,7 +50,6 @@
 
 using namespace arangodb;
 using namespace arangodb::application_features;
-using namespace arangodb::options;
 
 std::string const ClusterEngine::EngineName("Cluster");
 std::string const ClusterEngine::FeatureName("ClusterEngine");
@@ -118,15 +111,15 @@ std::unique_ptr<transaction::Manager> ClusterEngine::createTransactionManager(
   return std::make_unique<transaction::Manager>(feature);
 }
 
-std::unique_ptr<TransactionState> ClusterEngine::createTransactionState(
+std::shared_ptr<TransactionState> ClusterEngine::createTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid, transaction::Options const& options) {
-  return std::make_unique<ClusterTransactionState>(vocbase, tid, options);
+  return std::make_shared<ClusterTransactionState>(vocbase, tid, options);
 }
 
 std::unique_ptr<TransactionCollection> ClusterEngine::createTransactionCollection(
-    TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel) {
+    TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType) {
   return std::unique_ptr<TransactionCollection>(
-      new ClusterTransactionCollection(&state, cid, accessType, nestingLevel));
+      new ClusterTransactionCollection(&state, cid, accessType));
 }
 
 void ClusterEngine::addParametersForNewCollection(VPackBuilder& builder, VPackSlice info) {
@@ -146,8 +139,10 @@ std::unique_ptr<PhysicalCollection> ClusterEngine::createPhysicalCollection(
 }
 
 void ClusterEngine::getStatistics(velocypack::Builder& builder) const {
-  builder.openObject();
-  builder.close();
+  Result res = getEngineStatsFromDBServers(server().getFeature<ClusterFeature>(), builder);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
 }
 
 // inventory functionality

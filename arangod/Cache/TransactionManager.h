@@ -40,7 +40,7 @@ namespace cache {
 /// identifier for the current window. If the identifier is even, there are no
 /// ongoing sensitive transactions, and it is safe to store any values retrieved
 /// from the backing store to transactional caches. If the identifier is odd,
-/// then some values may be blacklisted by transactional caches (if they have
+/// then some values may be banished by transactional caches (if they have
 /// been written to the backing store in the current window).
 ////////////////////////////////////////////////////////////////////////////////
 class TransactionManager {

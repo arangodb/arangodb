@@ -24,11 +24,11 @@
 #ifndef ARANGOD_CLUSTER_CLUSTER_METHODS_H
 #define ARANGOD_CLUSTER_CLUSTER_METHODS_H 1
 
+#include "Aql/types.h"
 #include "Agency/AgencyComm.h"
 #include "Basics/Common.h"
 #include "Basics/FileUtils.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/TraverserEngineRegistry.h"
 #include "Futures/Future.h"
 #include "Network/types.h"
 #include "Rest/CommonDefines.h"
@@ -44,6 +44,14 @@
 #include <map>
 
 namespace arangodb {
+
+namespace graph {
+class ClusterTraverserCache;
+}
+
+namespace traverser {
+struct TraverserOptions;
+}
 
 struct ClusterCommResult;
 class ClusterFeature;
@@ -149,12 +157,10 @@ futures::Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& 
 ///        the lake is cleared.
 ///        TraversalVariant
 
-Result fetchEdgesFromEngines(transaction::Methods& trx,
-                             std::unordered_map<ServerID, traverser::TraverserEngineID> const*,
-                             arangodb::velocypack::Slice vertexId, size_t depth,
-                             std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice>&,
-                             std::vector<arangodb::velocypack::Slice>&,
-                             std::vector<std::shared_ptr<arangodb::velocypack::UInt8Buffer>>&, size_t&, size_t&);
+Result fetchEdgesFromEngines(transaction::Methods& trx, graph::ClusterTraverserCache& travCache,
+                             traverser::TraverserOptions const* opts,
+                             arangodb::velocypack::StringRef vertexId, size_t depth,
+                             std::vector<arangodb::velocypack::Slice>& result);
 
 /// @brief fetch edges from TraverserEngines
 ///        Contacts all TraverserEngines placed
@@ -170,7 +176,7 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
 
 Result fetchEdgesFromEngines(
             transaction::Methods& trx,
-            std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
+            std::unordered_map<ServerID, aql::EngineId> const* engines,
             arangodb::velocypack::Slice vertexId, bool backward,
             std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice>& cache,
             std::vector<arangodb::velocypack::Slice>& result,
@@ -188,7 +194,7 @@ Result fetchEdgesFromEngines(
 
 void fetchVerticesFromEngines(
     transaction::Methods& trx,
-    std::unordered_map<ServerID, traverser::TraverserEngineID> const*,
+    std::unordered_map<ServerID, aql::EngineId> const*,
     std::unordered_set<arangodb::velocypack::StringRef>&,
     std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice>&,
     std::vector<std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>& datalake,
@@ -295,6 +301,9 @@ arangodb::Result matchBackupServersSlice(VPackSlice const planServers,
 arangodb::Result applyDBServerMatchesToPlan(VPackSlice const plan,
                                             std::map<ServerID, ServerID> const& matches,
                                             VPackBuilder& newPlan);
+
+/// @brief get the engine stats from all DB servers
+arangodb::Result getEngineStatsFromDBServers(ClusterFeature&, VPackBuilder& report);
 
 class ClusterMethods {
  public:

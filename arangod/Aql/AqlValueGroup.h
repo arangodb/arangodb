@@ -28,31 +28,30 @@
 #include "Basics/Common.h"
 
 namespace arangodb {
-namespace transaction {
-class Methods;
+namespace velocypack {
+struct Options;
 }
 
 namespace aql {
 
 /// @brief hasher for a vector of AQL values
 struct AqlValueGroupHash {
-  AqlValueGroupHash(transaction::Methods* trx, size_t num);
+  explicit AqlValueGroupHash(size_t num);
 
   size_t operator()(std::vector<AqlValue> const& value) const;
   size_t operator()(AqlValue const& value) const;
 
-  transaction::Methods* _trx;
   size_t const _num;
 };
 
 /// @brief comparator for a vector of AQL values
 struct AqlValueGroupEqual {
-  explicit AqlValueGroupEqual(transaction::Methods* trx);
+  explicit AqlValueGroupEqual(velocypack::Options const*);
 
   bool operator()(std::vector<AqlValue> const& lhs, std::vector<AqlValue> const& rhs) const;
   bool operator()(AqlValue const& lhs, AqlValue const& rhs) const;
 
-  transaction::Methods* _trx;
+  velocypack::Options const* _vpackOptions;
 };
 
 

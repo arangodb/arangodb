@@ -58,8 +58,7 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
 
 void MetricsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   _serverStatistics = std::make_unique<ServerStatistics>(
-      *this, std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch())
-                 .count());
+      *this, StatisticsFeature::time());
   options->addOption("--server.export-metrics-api",
                      "turn metrics API on or off",
                      new BooleanParameter(&_export),
@@ -102,13 +101,13 @@ void MetricsFeature::toPrometheus(std::string& result) const {
   }
 }
 
-Counter& MetricsFeature::counter (
+Counter& MetricsFeature::counter(
   std::initializer_list<std::string> const& key, uint64_t const& val,
   std::string const& help) {
   return counter(metrics_key(key), val, help);
 }
 
-Counter& MetricsFeature::counter (
+Counter& MetricsFeature::counter(
   metrics_key const& mk, uint64_t const& val,
   std::string const& help) {
 
@@ -129,22 +128,21 @@ Counter& MetricsFeature::counter (
   }
   if (!success) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL, std::string("counter ") + mk.name + " alredy exists");
+      TRI_ERROR_INTERNAL, std::string("counter ") + mk.name + " already exists");
   }
   return *metric;
 }
 
-Counter& MetricsFeature::counter (
+Counter& MetricsFeature::counter(
   std::string const& name, uint64_t const& val, std::string const& help) {
   return counter(metrics_key(name), val, help);
 }
 
 ServerStatistics& MetricsFeature::serverStatistics() {
-  _serverStatistics->_uptime = StatisticsFeature::time() - _serverStatistics->_startTime;
   return *_serverStatistics;
 }
 
-Counter& MetricsFeature::counter (std::initializer_list<std::string> const& key) {
+Counter& MetricsFeature::counter(std::initializer_list<std::string> const& key) {
   metrics_key mk(key);
   std::shared_ptr<Counter> metric = nullptr;
   std::string error;
@@ -176,7 +174,7 @@ Counter& MetricsFeature::counter (std::initializer_list<std::string> const& key)
   return *metric;
 }
 
-Counter& MetricsFeature::counter (std::string const& name) {
+Counter& MetricsFeature::counter(std::string const& name) {
   return counter({name});
 }
 

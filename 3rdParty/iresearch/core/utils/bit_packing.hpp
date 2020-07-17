@@ -43,8 +43,7 @@ inline uint32_t bits_required_64(uint64_t val) noexcept {
 
 inline uint32_t bits_required_64(
     const uint64_t* begin,
-    const uint64_t* end
-) noexcept {
+    const uint64_t* end) noexcept {
   uint64_t accum = 0;
 
   while (begin != end) {
@@ -123,10 +122,20 @@ IRESEARCH_API void pack(
   uint32_t* out, 
   const uint32_t bit) noexcept;
 
+IRESEARCH_API void pack_block(
+  const uint32_t* RESTRICT first,
+  uint32_t* RESTRICT out,
+  const uint32_t bit) noexcept;
+
 IRESEARCH_API void pack(
   const uint64_t* first, 
   const uint64_t* last, 
   uint64_t* out, 
+  const uint32_t bit) noexcept;
+
+IRESEARCH_API void pack_block(
+  const uint64_t* RESTRICT first,
+  uint64_t* RESTRICT out,
   const uint32_t bit) noexcept;
 
 IRESEARCH_API void unpack(
@@ -135,18 +144,31 @@ IRESEARCH_API void unpack(
   const uint32_t* in, 
   const uint32_t bit) noexcept;
 
+IRESEARCH_API void unpack_block(
+  const uint32_t* RESTRICT in,
+  uint32_t* RESTRICT out,
+  const uint32_t bit) noexcept;
+
 IRESEARCH_API void unpack(
   uint64_t* first, 
   uint64_t* last, 
   const uint64_t* in, 
   const uint32_t bit) noexcept;
 
+IRESEARCH_API void unpack_block(
+  const uint64_t* RESTRICT in,
+  uint64_t* RESTRICT out,
+  const uint32_t bit) noexcept;
+
 template<typename T>
-class iterator : public std::iterator<std::random_access_iterator_tag, T> {
+class iterator {
  public:
-  typedef typename std::iterator_traits<iterator>::value_type value_type;
-  typedef typename std::iterator_traits<iterator>::difference_type difference_type;
-  typedef const value_type* const_pointer;
+  using iterator_category = std::random_access_iterator_tag;
+  using value_type = T;
+  using pointer = value_type*;
+  using reference = value_type&;
+  using difference_type = ptrdiff_t;
+  using const_pointer = const value_type*;
 
   iterator(const_pointer packed, uint32_t bits, size_t i = 0) noexcept
     : packed_(packed), i_(i), bits_(bits) {

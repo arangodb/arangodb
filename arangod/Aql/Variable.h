@@ -40,14 +40,14 @@ class Ast;
 
 struct Variable {
   /// @brief create the variable
-  Variable(std::string const&, VariableId);
+  Variable(std::string name, VariableId id, bool isDataFromCollection);
 
   explicit Variable(arangodb::velocypack::Slice const&);
 
-  Variable* clone() const { return new Variable(name, id); }
-
   /// @brief destroy the variable
   ~Variable();
+  
+  Variable* clone() const;
 
   /// @brief registers a constant value for the variable
   /// this constant value is used for constant propagation in optimizations
@@ -57,17 +57,10 @@ struct Variable {
   inline void* constValue() const { return value; }
 
   /// @brief whether or not the variable is user-defined
-  inline bool isUserDefined() const {
-    char const c = name[0];
-    // variables starting with a number are not user-defined
-    return (c < '0' || c > '9');
-  }
+  bool isUserDefined() const;
 
   /// @brief whether or not the variable needs a register assigned
-  inline bool needsRegister() const {
-    // variables starting with a number are not user-defined
-    return isUserDefined() || name.back() != '_';
-  }
+  bool needsRegister() const;
 
   /// @brief return a VelocyPack representation of the variable
   void toVelocyPack(arangodb::velocypack::Builder&) const;
@@ -82,16 +75,21 @@ struct Variable {
 
 
   bool isEqualTo(Variable const& other) const;
+  
+  /// @brief variable id
+  VariableId const id;
 
   /// @brief variable name
+  /// note: this cannot be const as variables can be renamed by the optimizer
   std::string name;
 
   /// @brief constant variable value (points to another AstNode)
   void* value;
 
-  /// @brief variable id
-  VariableId const id;
-
+  /// @brief whether or not the source data for this variable is from a collection 
+  /// (i.e. is a document). this is only used for optimizations
+  bool isDataFromCollection;
+ 
   /// @brief name of $OLD variable
   static char const* const NAME_OLD;
 

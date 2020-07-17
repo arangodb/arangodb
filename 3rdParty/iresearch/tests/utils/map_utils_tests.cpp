@@ -27,56 +27,6 @@
 #include "utils/hash_utils.hpp"
 #include "utils/map_utils.hpp"
 
-TEST(map_utils_tests, try_empalace) {
-  static size_t key_count;
-  struct value_t {
-    value_t() { ++key_count; }
-  };
-
-  std::map<std::string, value_t> map;
-  key_count = 0;
-
-  // new element (move constructed)
-  {
-    irs::map_utils::try_emplace(map, "abc");
-    ASSERT_EQ(1, key_count);
-    ASSERT_EQ(1, map.size());
-    irs::map_utils::try_emplace(map, "def");
-    ASSERT_EQ(2, key_count);
-    ASSERT_EQ(2, map.size());
-  }
-
-  // existing element (move constructed)
-  {
-    irs::map_utils::try_emplace(map, "abc");
-    ASSERT_EQ(2, key_count);
-    ASSERT_EQ(2, map.size());
-  }
-
-  map.clear();
-  key_count = 0;
-
-  // new element (copy constructed)
-  {
-    std::string key1 = "abc";
-    irs::map_utils::try_emplace(map, key1);
-    ASSERT_EQ(1, key_count);
-    ASSERT_EQ(1, map.size());
-    std::string key2 = "def";
-    irs::map_utils::try_emplace(map, key2);
-    ASSERT_EQ(2, key_count);
-    ASSERT_EQ(2, map.size());
-  }
-
-  // existing element (copy constructed)
-  {
-    std::string key1 = "abc";
-    irs::map_utils::try_emplace(map, key1);
-    ASSERT_EQ(2, key_count);
-    ASSERT_EQ(2, map.size());
-  }
-}
-
 TEST(map_utils_tests, try_emplace_update_key) {
   struct key_updater_t {
     irs::hashed_string_ref operator()(const irs::hashed_string_ref& key, const std::string& value) const {

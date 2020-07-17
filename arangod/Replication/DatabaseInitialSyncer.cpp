@@ -34,6 +34,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/system-functions.h"
 #include "Indexes/Index.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/Logger.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/utilities.h"
@@ -260,6 +261,12 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
       if (res.fail()) {
         if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
             res.errorMessage() > keySlice.copyString()) {
+          TRI_voc_rid_t rid =
+              arangodb::transaction::helpers::extractRevFromDocument(masterDoc);
+          if (physical->readDocument(&trx, arangodb::LocalDocumentId(rid), mdr)) {
+            // already have exactly this revision no need to insert
+            continue;
+          }
           // remove conflict and retry
           // errorMessage() is this case contains the conflicting key
           auto inner = removeConflict(res.errorMessage());
@@ -593,7 +600,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
   if (found && (cType == StaticStrings::MimeTypeVPack)) {
     LOG_TOPIC("b9f4d", DEBUG, Logger::REPLICATION) << "using vpack for chunk contents";
     
-    VPackValidator validator(&basics::VelocyPackHelper::requestValidationOptions);
+    VPackValidator validator(&basics::VelocyPackHelper::strictRequestValidationOptions);
 
     try {
       while (p < end) {
@@ -627,7 +634,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
 
 
     VPackBuilder builder;
-    VPackParser parser(builder, &basics::VelocyPackHelper::requestValidationOptions);
+    VPackParser parser(builder, &basics::VelocyPackHelper::strictRequestValidationOptions);
 
     while (p < end) {
       char const* q = strchr(p, '\n');
@@ -1020,7 +1027,7 @@ Result DatabaseInitialSyncer::fetchCollectionSync(arangodb::LogicalCollection* c
                                                   TRI_voc_tick_t maxTick) {
   if (coll->syncByRevision() &&
       (_config.master.majorVersion > 3 ||
-       (_config.master.majorVersion = 3 && _config.master.minorVersion >= 6))) {
+       (_config.master.majorVersion == 3 && _config.master.minorVersion >= 7))) {
     // local collection should support revisions, and master is at least aware
     // of the revision-based protocol, so we can query it to find out if we
     // can use the new protocol; will fall back to old one if master collection
@@ -1043,7 +1050,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
   }
 
   std::string const baseUrl = replutils::ReplicationUrl + "/keys";
-  std::string url = baseUrl + "/keys" + "?collection=" + urlEncode(leaderColl) +
+  std::string url = baseUrl + "?collection=" + urlEncode(leaderColl) +
                     "&to=" + std::to_string(maxTick) +
                     "&serverId=" + _state.localServerIdString +
                     "&batchId=" + std::to_string(_config.batch.id);
@@ -1398,7 +1405,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
     auto headers = replutils::createHeaders();
     std::unique_ptr<httpclient::SimpleHttpResult> response;
     TRI_voc_rid_t requestResume = ranges[0].first;  // start with beginning
-    TRI_ASSERT(requestResume);
+    TRI_ASSERT(requestResume >= coll->minRevision());
     TRI_voc_rid_t iterResume = static_cast<TRI_voc_rid_t>(requestResume);
     std::size_t chunk = 0;
     std::unique_ptr<ReplicationIterator> iter =
@@ -1744,7 +1751,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
         if (col != nullptr) {
           bool truncate = false;
 
-          if (col->name() == TRI_COL_NAME_USERS) {
+          if (col->name() == StaticStrings::UsersCollection) {
             // better not throw away the _users collection. otherwise it is gone
             // and this may be a problem if the
             // server crashes in-between.
@@ -1862,8 +1869,12 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
       return res.reset(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
 
-    if (masterName == TRI_COL_NAME_USERS) {
+    if (masterName == StaticStrings::UsersCollection) {
       reloadUsers();
+    } else if (masterName == StaticStrings::AnalyzersCollection &&
+               ServerState::instance()->isSingleServer() &&
+               vocbase().server().hasFeature<iresearch::IResearchAnalyzerFeature>()) {
+        vocbase().server().getFeature<iresearch::IResearchAnalyzerFeature>().invalidate(vocbase());
     }
 
     // schmutz++ creates indexes on DBServers
@@ -2124,7 +2135,8 @@ Result DatabaseInitialSyncer::handleViewCreation(VPackSlice const& views) {
 }
 
 Result DatabaseInitialSyncer::batchStart(std::string const& patchCount) {
-  return _config.batch.start(_config.connection, _config.progress, _config.state.syncerId, patchCount);
+  return _config.batch.start(_config.connection, _config.progress,
+                             _config.master, _config.state.syncerId, patchCount);
 }
 
 Result DatabaseInitialSyncer::batchExtend() {

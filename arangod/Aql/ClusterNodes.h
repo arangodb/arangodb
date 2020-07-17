@@ -181,13 +181,6 @@ class ScatterNode : public ExecutionNode {
     _clients.emplace_back(distId);
   }
 
-  // Just temporary as long as we have two versions
-  void addClient(std::string const& clientId) {
-    // We cannot add the same distributeId twice, data is delivered exactly once for each id
-    TRI_ASSERT(std::find(_clients.begin(), _clients.end(), clientId) == _clients.end());
-    _clients.emplace_back(clientId);
-  }
-
   /// @brief drop the current clients.
   void clearClients() { _clients.clear(); }
 
@@ -199,7 +192,6 @@ class ScatterNode : public ExecutionNode {
 
   void setScatterType(ScatterType targetType) { _type = targetType; }
 
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
  protected:
   void writeClientsToVelocyPack(velocypack::Builder& builder) const;
   bool readClientsFromVelocyPack(velocypack::Slice base);
@@ -225,14 +217,18 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
   DistributeNode(ExecutionPlan* plan, ExecutionNodeId id,
                  ScatterNode::ScatterType type, Collection const* collection,
                  Variable const* variable, Variable const* alternativeVariable,
-                 bool createKeys, bool allowKeyConversionToObject)
+                 bool createKeys, bool allowKeyConversionToObject, bool fixupGraphInput)
       : ScatterNode(plan, id, type),
         CollectionAccessingNode(collection),
         _variable(variable),
         _alternativeVariable(alternativeVariable),
         _createKeys(createKeys),
         _allowKeyConversionToObject(allowKeyConversionToObject),
-        _allowSpecifiedKeys(false) {}
+        _allowSpecifiedKeys(false),
+        _fixupGraphInput(fixupGraphInput) {
+    // if we fixupGraphInput, we are disallowed to create keys: _fixupGraphInput -> !_createKeys
+    TRI_ASSERT(!_fixupGraphInput || !_createKeys);
+  }
 
   DistributeNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -254,7 +250,8 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
     auto c = std::make_unique<DistributeNode>(plan, _id, getScatterType(),
                                               collection(), _variable,
                                               _alternativeVariable, _createKeys,
-                                              _allowKeyConversionToObject);
+                                              _allowKeyConversionToObject,
+                                              _fixupGraphInput);
     c->copyClients(clients());
     CollectionAccessingNode::cloneInto(*c);
 
@@ -262,7 +259,7 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const final;
+  void getVariablesUsedHere(VarSet& vars) const final;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
@@ -300,6 +297,9 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
 
   /// @brief allow specified keys in input even in the non-default sharding case
   bool _allowSpecifiedKeys;
+
+  /// @brief required to fixup graph input
+  bool _fixupGraphInput;
 };
 
 /// @brief class GatherNode
@@ -310,7 +310,11 @@ class GatherNode final : public ExecutionNode {
  public:
   enum class SortMode : uint32_t { MinElement, Heap, Default };
 
-  enum class Parallelism : uint32_t { Undefined, Parallel, Serial };
+  enum class Parallelism : uint8_t {
+    Undefined = 0,
+    Serial = 2,
+    Parallel = 4
+  };
 
   /// @brief inspect dependencies starting from a specified 'node'
   /// and return first corresponding collection within
@@ -354,7 +358,7 @@ class GatherNode final : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const final;
+  void getVariablesUsedHere(VarSet& vars) const final;
 
   /// @brief get Variables used here including ASC/DESC
   SortElementVector const& elements() const { return _elements; }
@@ -373,10 +377,10 @@ class GatherNode final : public ExecutionNode {
 
   void setParallelism(Parallelism value);
 
-  /// no modification nodes, ScatterNodes etc
-  bool isParallelizable() const;
+  Parallelism parallelism() const noexcept {
+    return _parallelism;
+  }
 
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
  private:
   /// @brief the underlying database
   TRI_vocbase_t* _vocbase;
@@ -444,7 +448,7 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const final;
+  void getVariablesUsedHere(VarSet& vars) const final;
 
   /// @brief getVariablesSetHere
   virtual std::vector<Variable const*> getVariablesSetHere() const override final;
@@ -453,8 +457,6 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
   CostEstimate estimateCost() const override final;
 
   std::string const& key() const { return _key; }
-
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 
  private:
   // whether we replaced an index node

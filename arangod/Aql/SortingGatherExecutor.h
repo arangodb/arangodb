@@ -50,16 +50,16 @@ struct SortRegister;
 class SortingGatherExecutorInfos {
  public:
   SortingGatherExecutorInfos(std::vector<SortRegister>&& sortRegister,
-                             arangodb::transaction::Methods* trx, GatherNode::SortMode sortMode,
+                             arangodb::aql::QueryContext& query, GatherNode::SortMode sortMode,
                              size_t limit, GatherNode::Parallelism p);
   SortingGatherExecutorInfos() = delete;
-  SortingGatherExecutorInfos(SortingGatherExecutorInfos&&) noexcept = default;
+  SortingGatherExecutorInfos(SortingGatherExecutorInfos&&) = default;
   SortingGatherExecutorInfos(SortingGatherExecutorInfos const&) = delete;
   ~SortingGatherExecutorInfos() = default;
 
   std::vector<SortRegister>& sortRegister() { return _sortRegister; }
 
-  arangodb::transaction::Methods* trx() { return _trx; }
+  arangodb::aql::QueryContext& query() { return _query; }
 
   GatherNode::SortMode sortMode() const noexcept { return _sortMode; }
 
@@ -69,7 +69,7 @@ class SortingGatherExecutorInfos {
 
  private:
   std::vector<SortRegister> _sortRegister;
-  arangodb::transaction::Methods* _trx;
+  arangodb::aql::QueryContext& _query;
   GatherNode::SortMode _sortMode;
   GatherNode::Parallelism _parallelism;
   size_t _limit;

@@ -1068,9 +1068,8 @@ TEST_F(IResearchQueryOptionsTest, noMaterialization) {
     EXPECT_TRUE(arangodb::tests::assertRules(
         vocbase, queryString, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString), nullptr,
-                               arangodb::velocypack::Parser::fromJson("{}"),
-                               arangodb::aql::PART_MAIN);
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr,
+                               arangodb::velocypack::Parser::fromJson("{}"));
     auto const res = query.explain();
     ASSERT_TRUE(res.data);
     auto const explanation = res.data->slice();
@@ -1104,9 +1103,8 @@ TEST_F(IResearchQueryOptionsTest, noMaterialization) {
     EXPECT_TRUE(arangodb::tests::assertRules(
         vocbase, queryString, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString), nullptr,
-                               arangodb::velocypack::Parser::fromJson("{}"),
-                               arangodb::aql::PART_MAIN);
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr,
+                               arangodb::velocypack::Parser::fromJson("{}"));
     auto const res = query.explain();
     ASSERT_TRUE(res.data);
     auto const explanation = res.data->slice();

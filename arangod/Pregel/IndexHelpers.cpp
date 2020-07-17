@@ -22,9 +22,11 @@
 
 #include "IndexHelpers.h"
 
+#include "Aql/OptimizerUtils.h"
 #include "Cluster/ClusterMethods.h"
+#include "Indexes/IndexIterator.h"
 #include "Transaction/Methods.h"
-#include "Utils/OperationCursor.h"
+#include "VocBase/AccessMode.h"
 
 using namespace arangodb;
 using namespace arangodb::traverser;
@@ -40,34 +42,34 @@ EdgeCollectionInfo::EdgeCollectionInfo(transaction::Methods* trx,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Get edges for the given direction and start vertex.
-////////////////////////////////////////////////////////////////////////////////
-
-std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getEdges(
-                                         std::string const& vertexId) {
+std::unique_ptr<arangodb::IndexIterator> EdgeCollectionInfo::getEdges(std::string const& vertexId) {
   
   /// @brief index used for iteration
   transaction::Methods::IndexHandle indexId;
+ 
+  _trx->addCollectionAtRuntime(_collectionName, AccessMode::Type::READ);
+  auto doc = _trx->documentCollection(_collectionName);
   
-  auto var = _searchBuilder.getVariable();
-  auto cond = _searchBuilder.getOutboundCondition();
-  bool worked = _trx->getBestIndexHandleForFilterCondition(_collectionName, cond,
-                                                           var, 1000, aql::IndexHint(), indexId);
-  TRI_ASSERT(worked);  // We always have an edge Index
+  for (std::shared_ptr<arangodb::Index> const& idx : doc->getIndexes()) {
+    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
+      auto fields = idx->fieldNames();
+      if (fields.size() == 1 && fields[0].size() == 1 &&
+          fields[0][0] == StaticStrings::FromString) {
+        indexId = idx;
+        break;
+      }
+    }
+  }
+  TRI_ASSERT(indexId != nullptr);  // We always have an edge Index
   
   _searchBuilder.setVertexId(vertexId);
   IndexIteratorOptions opts;
   opts.enableCache = false;
-  return std::make_unique<OperationCursor>(_trx->indexScanForCondition(indexId,
-                                                                       _searchBuilder.getOutboundCondition(),
-                                                                       _searchBuilder.getVariable(), opts));
+  return _trx->indexScanForCondition(indexId, _searchBuilder.getOutboundCondition(), _searchBuilder.getVariable(), opts);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Return name of the wrapped collection
-////////////////////////////////////////////////////////////////////////////////
-
 std::string const& EdgeCollectionInfo::getName() const {
   return _collectionName;
 }

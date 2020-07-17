@@ -48,7 +48,9 @@ class ExecutionNodeTest : public ::testing::Test {
 
  public:
   ExecutionNodeTest()
-      : fakedQuery(server.createFakeQuery()), ast(fakedQuery.get()), plan(&ast){};
+    : fakedQuery(server.createFakeQuery()),
+      ast(*fakedQuery.get()),
+      plan(&ast){};
 };
 
 TEST_F(ExecutionNodeTest, start_node_velocypack_roundtrip) {
@@ -58,6 +60,9 @@ TEST_F(ExecutionNodeTest, start_node_velocypack_roundtrip) {
   std::unordered_set<ExecutionNode const*> seen{};
 
   node = std::make_unique<SubqueryStartNode>(&plan, ExecutionNodeId{0}, nullptr);
+  node->setVarsUsedLater({{}});
+  node->setVarsValid({{}});
+  node->setRegsToKeep({{}});
 
   builder.openArray();
   node->toVelocyPackHelper(builder, ExecutionNode::SERIALIZE_DETAILS, seen);
@@ -82,12 +87,15 @@ TEST_F(ExecutionNodeTest, start_node_not_equal_different_id) {
 TEST_F(ExecutionNodeTest, end_node_velocypack_roundtrip_no_invariable) {
   VPackBuilder builder;
 
-  Variable outvar("name", 1);
+  Variable outvar("name", 1, false);
 
   std::unique_ptr<SubqueryEndNode> node, nodeFromVPack;
   std::unordered_set<ExecutionNode const*> seen{};
 
-  node = std::make_unique<SubqueryEndNode>(&plan, ExecutionNodeId{0}, nullptr, &outvar, false);
+  node = std::make_unique<SubqueryEndNode>(&plan, ExecutionNodeId{0}, nullptr, &outvar);
+  node->setVarsUsedLater({{}});
+  node->setVarsValid({{}});
+  node->setRegsToKeep({{}});
 
   builder.openArray();
   node->toVelocyPackHelper(builder, ExecutionNode::SERIALIZE_DETAILS, seen);
@@ -104,13 +112,16 @@ TEST_F(ExecutionNodeTest, end_node_velocypack_roundtrip_no_invariable) {
 TEST_F(ExecutionNodeTest, end_node_velocypack_roundtrip_invariable) {
   VPackBuilder builder;
 
-  Variable outvar("name", 1);
-  Variable invar("otherName", 2);
+  Variable outvar("name", 1, false);
+  Variable invar("otherName", 2, false);
 
   std::unique_ptr<SubqueryEndNode> node, nodeFromVPack;
   std::unordered_set<ExecutionNode const*> seen{};
 
-  node = std::make_unique<SubqueryEndNode>(&plan, ExecutionNodeId{0}, &invar, &outvar, false);
+  node = std::make_unique<SubqueryEndNode>(&plan, ExecutionNodeId{0}, &invar, &outvar);
+  node->setVarsUsedLater({{}});
+  node->setVarsValid({{}});
+  node->setRegsToKeep({{}});
 
   builder.openArray();
   node->toVelocyPackHelper(builder, ExecutionNode::SERIALIZE_DETAILS, seen);
@@ -127,10 +138,10 @@ TEST_F(ExecutionNodeTest, end_node_velocypack_roundtrip_invariable) {
 TEST_F(ExecutionNodeTest, end_node_not_equal_different_id) {
   std::unique_ptr<SubqueryEndNode> node1, node2;
 
-  Variable outvar("name", 1);
+  Variable outvar("name", 1, false);
 
-  node1 = std::make_unique<SubqueryEndNode>(&plan, ExecutionNodeId{0}, nullptr, &outvar, false);
-  node2 = std::make_unique<SubqueryEndNode>(&plan, ExecutionNodeId{1}, nullptr, &outvar, false);
+  node1 = std::make_unique<SubqueryEndNode>(&plan, ExecutionNodeId{0}, nullptr, &outvar);
+  node2 = std::make_unique<SubqueryEndNode>(&plan, ExecutionNodeId{1}, nullptr, &outvar);
 
   ASSERT_FALSE(node1->isEqualTo(*node2));
 }
@@ -138,11 +149,11 @@ TEST_F(ExecutionNodeTest, end_node_not_equal_different_id) {
 TEST_F(ExecutionNodeTest, end_node_not_equal_invariable_null_vs_non_null) {
   std::unique_ptr<SubqueryEndNode> node1, node2;
 
-  Variable outvar("name", 1);
-  Variable invar("otherName", 2);
+  Variable outvar("name", 1, false);
+  Variable invar("otherName", 2, false);
 
-  node1 = std::make_unique<SubqueryEndNode>(&plan, ExecutionNodeId{0}, &invar, &outvar, false);
-  node2 = std::make_unique<SubqueryEndNode>(&plan, ExecutionNodeId{1}, nullptr, &outvar, false);
+  node1 = std::make_unique<SubqueryEndNode>(&plan, ExecutionNodeId{0}, &invar, &outvar);
+  node2 = std::make_unique<SubqueryEndNode>(&plan, ExecutionNodeId{1}, nullptr, &outvar);
 
   ASSERT_FALSE(node1->isEqualTo(*node2));
   // Bidirectional nullptr check
@@ -152,12 +163,12 @@ TEST_F(ExecutionNodeTest, end_node_not_equal_invariable_null_vs_non_null) {
 TEST_F(ExecutionNodeTest, end_node_not_equal_invariable_differ) {
   std::unique_ptr<SubqueryEndNode> node1, node2;
 
-  Variable outvar("name", 1);
-  Variable invar("otherName", 2);
-  Variable otherInvar("invalidName", 3);
+  Variable outvar("name", 1, false);
+  Variable invar("otherName", 2, false);
+  Variable otherInvar("invalidName", 3, false);
 
-  node1 = std::make_unique<SubqueryEndNode>(&plan, ExecutionNodeId{0}, &invar, &outvar, false);
-  node2 = std::make_unique<SubqueryEndNode>(&plan, ExecutionNodeId{1}, &otherInvar, &outvar, false);
+  node1 = std::make_unique<SubqueryEndNode>(&plan, ExecutionNodeId{0}, &invar, &outvar);
+  node2 = std::make_unique<SubqueryEndNode>(&plan, ExecutionNodeId{1}, &otherInvar, &outvar);
 
   ASSERT_FALSE(node1->isEqualTo(*node2));
   // Bidirectional check
@@ -167,11 +178,11 @@ TEST_F(ExecutionNodeTest, end_node_not_equal_invariable_differ) {
 TEST_F(ExecutionNodeTest, end_node_not_equal_outvariable_differ) {
   std::unique_ptr<SubqueryEndNode> node1, node2;
 
-  Variable outvar("name", 1);
-  Variable otherOutvar("otherName", 2);
+  Variable outvar("name", 1, false);
+  Variable otherOutvar("otherName", 2, false);
 
-  node1 = std::make_unique<SubqueryEndNode>(&plan, ExecutionNodeId{0}, nullptr, &outvar, false);
-  node2 = std::make_unique<SubqueryEndNode>(&plan, ExecutionNodeId{1}, nullptr, &otherOutvar, false);
+  node1 = std::make_unique<SubqueryEndNode>(&plan, ExecutionNodeId{0}, nullptr, &outvar);
+  node2 = std::make_unique<SubqueryEndNode>(&plan, ExecutionNodeId{1}, nullptr, &otherOutvar);
 
   ASSERT_FALSE(node1->isEqualTo(*node2));
   // Bidirectional check

@@ -67,9 +67,9 @@ struct TraverserOptions : public graph::BaseOptions {
  protected:
   std::unordered_map<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
 
-  std::unordered_map<uint64_t, aql::Expression*> _vertexExpressions;
+  std::unordered_map<uint64_t, std::unique_ptr<aql::Expression>> _vertexExpressions;
 
-  aql::Expression* _baseVertexExpression;
+  std::unique_ptr<aql::Expression> _baseVertexExpression;
 
   arangodb::traverser::ClusterTraverser* _traverser;
 
@@ -96,12 +96,14 @@ struct TraverserOptions : public graph::BaseOptions {
 
   std::vector<std::string> edgeCollections;
 
-  explicit TraverserOptions(aql::Query* query);
+  explicit TraverserOptions(arangodb::aql::QueryContext& query);
 
-  TraverserOptions(aql::Query* query, arangodb::velocypack::Slice const& definition);
+  TraverserOptions(arangodb::aql::QueryContext& query,
+                   arangodb::velocypack::Slice definition);
 
-  TraverserOptions(arangodb::aql::Query*, arangodb::velocypack::Slice,
-                   arangodb::velocypack::Slice);
+  TraverserOptions(arangodb::aql::QueryContext&,
+                   arangodb::velocypack::Slice info,
+                   arangodb::velocypack::Slice collections);
 
   /// @brief This copy constructor is only working during planning phase.
   ///        After planning this node should not be copied anywhere.
@@ -128,8 +130,8 @@ struct TraverserOptions : public graph::BaseOptions {
 
   /// @brief Add a lookup info for specific depth
   void addDepthLookupInfo(aql::ExecutionPlan* plan, std::string const& collectionName,
-                          std::string const& attributeName,
-                          aql::AstNode* condition, uint64_t depth);
+                          std::string const& attributeName, aql::AstNode* condition,
+                          uint64_t depth, bool onlyEdgeIndexes = false);
 
   bool hasDepthLookupInfo() const { return !_depthLookupInfo.empty(); }
 
@@ -152,8 +154,8 @@ struct TraverserOptions : public graph::BaseOptions {
 
   double estimateCost(size_t& nrItems) const override;
 
-  void activatePrune(std::vector<aql::Variable const*> const&& vars,
-                     std::vector<aql::RegisterId> const&& regs, size_t vertexVarIdx,
+  void activatePrune(std::vector<aql::Variable const*> vars,
+                     std::vector<aql::RegisterId> regs, size_t vertexVarIdx,
                      size_t edgeVarIdx, size_t pathVarIdx, aql::Expression* expr);
 
   bool usesPrune() const { return _pruneExpression != nullptr; }

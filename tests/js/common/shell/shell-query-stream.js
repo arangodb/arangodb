@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen:1000*/
-/*global assertEqual, assertTrue, assertUndefined, fail, more */
+/*global assertEqual, assertTrue, assertUndefined, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the statement class
@@ -91,28 +91,39 @@ function StreamCursorSuite () {
 
     testQueries : function () {
       queries.forEach(q => {
-        var stmt = db._createStatement({ query: q,
+        let stmt = db._createStatement({ query: q,
           options: { stream: true },
           batchSize: 1000});
-        var cursor = stmt.execute();
+        let cursor = stmt.execute();
 
-        assertEqual(undefined, cursor.count());
-        while (cursor.hasNext()) {
-          cursor.next();
+        try {
+          assertEqual(undefined, cursor.count());
+          while (cursor.hasNext()) {
+            cursor.next();
+          }
+        } catch (err) {
+          fail("testQueries failed");
+        } finally {
+          cursor.dispose();
         }
       });      
     },
-
+    
     testInfiniteAQL : function() {
-      var stmt = db._createStatement({ query: "FOR i IN 1..100000000000 RETURN i",
+      let stmt = db._createStatement({ query: "FOR i IN 1..100000000000 RETURN i",
         options: { stream: true },
         batchSize: 1000});
-      var cursor = stmt.execute();
-
-      assertUndefined(cursor.count());
-      let i = 10;
-      while (cursor.hasNext() && i-- > 0) {
-        cursor.next();
+      let cursor = stmt.execute();
+      try {
+        assertUndefined(cursor.count());
+        let i = 10;
+        while (cursor.hasNext() && i-- > 0) {
+          cursor.next();
+        }
+      } catch (err) {
+        fail("testInfiniteAQL failed");
+      } finally {
+        cursor.dispose();
       }
     },
 
@@ -124,13 +135,19 @@ function StreamCursorSuite () {
       });
       let cursor = stmt.execute();
 
-      assertEqual(undefined, cursor.count());
-      let count = 0;
-      while (cursor.hasNext()) {
-        assertEqual(42, cursor.next());
-        ++count;
+      try {
+        assertEqual(undefined, cursor.count());
+        let count = 0;
+        while (cursor.hasNext()) {
+          assertEqual(42, cursor.next());
+          ++count;
+        }
+        assertEqual(10000, count);
+      } catch (err) {
+        fail("testUserDefinedFunction failed");
+      } finally {
+        cursor.dispose();
       }
-      assertEqual(10000, count);
     },
   };
 }

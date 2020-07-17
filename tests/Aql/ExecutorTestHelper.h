@@ -34,6 +34,7 @@
 #include "Aql/AqlCall.h"
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemMatrix.h"
+#include "Aql/BlockCollector.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
@@ -106,7 +107,10 @@ struct ExecutorTestHelper {
         _unorderedSkippedRows{0},
         _query(query),
         _itemBlockManager(itemBlockManager),
-        _dummyNode{std::make_unique<SingletonNode>(_query.plan(), ExecutionNodeId{42})} {}
+        _dummyNode{std::make_unique<SingletonNode>(
+            const_cast<ExecutionPlan*>(
+                _query.rootEngine()->root()->getPlanNode()->plan()),
+            ExecutionNodeId{42})} {}
 
   auto setCallStack(AqlCallStack stack) -> ExecutorTestHelper& {
     _callStack = stack;
@@ -307,6 +311,7 @@ struct ExecutorTestHelper {
           call.didProduce(result->size());
           allResults.add(result);
         }
+        call.resetSkipCount();
       } while (finalState != ExecutionState::DONE &&
                (!_callStack.peek().hasSoftLimit() ||
                 (_callStack.peek().getLimit() + _callStack.peek().getOffset()) > 0));
@@ -332,7 +337,12 @@ struct ExecutorTestHelper {
     }
 
     if (_testStats) {
-      auto actualStats = _query.engine()->getStats();
+      ExecutionStats actualStats;
+      _query.rootEngine()->collectExecutionStats(actualStats);
+      // simon: engine does not collect most block stats
+      for (auto const& block : _pipeline.get()) {
+        block->collectExecStats(actualStats);
+      }
       EXPECT_EQ(actualStats, _expectedStats);
     }
   };
@@ -355,8 +365,8 @@ struct ExecutorTestHelper {
     auto& testeeNode = _execNodes.emplace_back(
         std::make_unique<MockTypedNode>(_query.plan(),
                                         ExecutionNodeId{_execNodes.size()}, nodeType));
-    return std::make_unique<ExecutionBlockImpl<E>>(_query.engine(), testeeNode.get(),
-                                                   std::move(registerInfos),
+    return std::make_unique<ExecutionBlockImpl<E>>(_query.rootEngine(),
+                                                   testeeNode.get(), std::move(registerInfos),
                                                    std::move(executorInfos));
   }
 
@@ -411,7 +421,7 @@ struct ExecutorTestHelper {
       blockDeque.emplace_back(nullptr);
     }
 
-    return std::make_unique<WaitingExecutionBlockMock>(_query.engine(),
+    return std::make_unique<WaitingExecutionBlockMock>(_query.rootEngine(),
                                                        _dummyNode.get(),
                                                        std::move(blockDeque),
                                                        _waitingBehaviour);

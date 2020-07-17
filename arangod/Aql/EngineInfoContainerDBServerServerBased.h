@@ -50,7 +50,7 @@ namespace aql {
 class ExecutionNode;
 class GatherNode;
 class GraphNode;
-class Query;
+class QueryContext;
 class QuerySnippet;
 
 class EngineInfoContainerDBServerServerBased {
@@ -62,13 +62,20 @@ class EngineInfoContainerDBServerServerBased {
    public:
     TraverserEngineShardLists(GraphNode const*, ServerID const& server,
                               std::unordered_map<ShardID, ServerID> const& shardMapping,
-                              Query const& query);
+                              QueryContext& query);
 
     ~TraverserEngineShardLists() = default;
 
     void serializeIntoBuilder(arangodb::velocypack::Builder& infoBuilder) const;
 
     bool hasShard() const { return _hasShard; }
+    
+    /// inaccessible edge and verte collection names
+#ifdef USE_ENTERPRISE
+    std::set<CollectionID> inaccessibleCollNames() const {
+      return _inaccessible;
+    }
+#endif
 
    private:
     std::vector<ShardID> getAllLocalShards(std::unordered_map<ShardID, ServerID> const& shardMapping,
@@ -94,12 +101,12 @@ class EngineInfoContainerDBServerServerBased {
     std::unordered_map<std::string, std::vector<ShardID>> _vertexCollections;
 
 #ifdef USE_ENTERPRISE
-    std::set<ShardID> _inaccessibleShards;
+    std::set<CollectionID> _inaccessible;
 #endif
   };
 
  public:
-  explicit EngineInfoContainerDBServerServerBased(Query& query) noexcept;
+  explicit EngineInfoContainerDBServerServerBased(QueryContext& query) noexcept;
 
   // Insert a new node into the last engine on the stack
   // If this Node contains Collections, they will be added into the map
@@ -125,9 +132,11 @@ class EngineInfoContainerDBServerServerBased {
   //   this methods a shutdown request is send to all DBServers.
   //   In case the network is broken and this shutdown request is lost
   //   the DBServers will clean up their snippets after a TTL.
+  //   simon: in v3.7 we get a global QueryId for all snippets on a server
   Result buildEngines(std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
-                      MapRemoteToSnippet& queryIds,
-                      std::unordered_map<ExecutionNodeId, ExecutionNodeId>& nodeAliases);
+                      MapRemoteToSnippet& snippetIds,
+                      std::map<std::string, QueryId>& ServerToQueryId,
+                      std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases);
 
   /**
    * @brief Will send a shutdown to all engines registered in the list of
@@ -143,12 +152,12 @@ class EngineInfoContainerDBServerServerBased {
    * @param queryIds A map of QueryIds of the format: (remoteNodeId:shardId)
    * -> queryid.
    */
-  void cleanupEngines(network::ConnectionPool* pool, int errorCode,
-                      std::string const& dbname, MapRemoteToSnippet& queryIds) const;
+  void cleanupEngines(int errorCode, std::string const& dbname,
+                      MapRemoteToSnippet& queryIds) const;
 
   // Insert a GraphNode that needs to generate TraverserEngines on
   // the DBServers. The GraphNode itself will retain on the coordinator.
-  void addGraphNode(GraphNode* node);
+  void addGraphNode(GraphNode* node, bool pushToSingleServer);
 
  private:
   // Insert the Locking information into the message to be send to DBServers
@@ -163,7 +172,7 @@ class EngineInfoContainerDBServerServerBased {
   // Insert the Snippets information into the message to be send to DBServers
   void addSnippetPart(std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
                       arangodb::velocypack::Builder& builder, ShardLocking& shardLocking,
-                      std::unordered_map<ExecutionNodeId, ExecutionNodeId>& nodeAliases,
+                      std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases,
                       ServerID const& server) const;
 
   // Insert the TraversalEngine information into the message to be send to DBServers
@@ -174,7 +183,8 @@ class EngineInfoContainerDBServerServerBased {
   // Parse the response of a DBServer to a setup request
   Result parseResponse(VPackSlice response, MapRemoteToSnippet& queryIds,
                        ServerID const& server, std::string const& serverDest,
-                       std::vector<bool> const& didCreateEngine) const;
+                       std::vector<bool> const& didCreateEngine,
+                       QueryId& globalQueryId) const;
 
   void injectVertexCollections(GraphNode* node);
  private:
@@ -182,7 +192,7 @@ class EngineInfoContainerDBServerServerBased {
 
   std::vector<std::shared_ptr<QuerySnippet>> _closedSnippets;
 
-  Query& _query;
+  QueryContext& _query;
 
   // @brief List of all graphNodes that need to create TraverserEngines on
   // DBServers

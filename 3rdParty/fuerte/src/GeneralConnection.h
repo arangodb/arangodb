@@ -45,12 +45,21 @@ class GeneralConnection : public fuerte::Connection {
     return _state.load(std::memory_order_acquire);
   }
 
+  /// The following public methods can be called from any thread:
+
   /// @brief cancel the connection, unusable afterwards
   void cancel() override;
 
   // Activate this connection
   void start() override;
 
+  // Switch off potential idle alarm (used by connection pool). Returns
+  // true if lease was successful and connection can be used afterwards.
+  // If false is retured the connection is broken beyond repair.
+  virtual bool lease() override;
+
+  /// All protected or private methods below here must only be called on the
+  /// IO thread.
  protected:
   void startConnection();
   // shutdown connection, cancel async operations
@@ -64,7 +73,12 @@ class GeneralConnection : public fuerte::Connection {
   
   virtual void finishConnect() = 0;
 
-  /// begin writing
+  /// The following is called when the connection is permanently failed. It is
+  /// used to shut down any activity in the derived classes in a way that avoids
+  /// sleeping barbers
+  virtual void terminateActivity() = 0;
+
+  /// begin writing,
   virtual void startWriting() = 0;
 
   // called by the async_read handler (called from IO thread)
@@ -93,7 +107,7 @@ class GeneralConnection : public fuerte::Connection {
 
   /// @brief is the connection established
   std::atomic<Connection::State> _state;
-  
+
   std::atomic<uint32_t> _numQueued; /// queued items
 };
 

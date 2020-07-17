@@ -27,14 +27,23 @@
 
 namespace arangodb {
 namespace aql {
-class Query;
+class QueryContext;
 
 class DocumentIndexExpressionContext final : public QueryExpressionContext {
  public:
-  DocumentIndexExpressionContext(Query* query, AqlValue (*getValue)(void const* ctx, Variable const* var, bool doCopy),
+  DocumentIndexExpressionContext(transaction::Methods& trx,
+                                 QueryContext& query,
+                                 AqlFunctionsInternalCache& cache,
+                                 AqlValue (*getValue)(void const* ctx, Variable const* var, bool doCopy),
                                  void const* ctx);
 
   ~DocumentIndexExpressionContext() = default;
+
+  /// true if the variable we are referring to is set by
+  /// a collection enumeration/index enumeration
+  virtual bool isDataFromCollection(Variable const* variable) const override {
+    return false;
+  }
 
   virtual AqlValue getVariableValue(Variable const* variable, bool doCopy,
                                     bool& mustDestroy) const override;

@@ -22,14 +22,12 @@
 
 #include "range_filter.hpp"
 
-#include <boost/functional/hash.hpp>
-
 #include "shared.hpp"
-#include "filter_visitor.hpp"
-#include "multiterm_query.hpp"
-#include "term_query.hpp"
-#include "index/index_reader.hpp"
 #include "analysis/token_attributes.hpp"
+#include "index/index_reader.hpp"
+#include "search/filter_visitor.hpp"
+#include "search/limited_sample_collector.hpp"
+#include "search/term_filter.hpp"
 
 NS_LOCAL
 
@@ -37,6 +35,8 @@ using namespace irs;
 
 template<typename Visitor, typename Comparer>
 void collect_terms(
+    const sub_reader& segment,
+    const term_reader& field,
     seek_term_iterator& terms,
     Visitor& visitor,
     Comparer cmp) {
@@ -46,10 +46,10 @@ void collect_terms(
     // read attributes
     terms.read();
 
-    visitor.prepare(terms);
+    visitor.prepare(segment, field, terms);
 
     do {
-      visitor.visit();
+      visitor.visit(no_boost());
 
       if (!terms.next()) {
         break;
@@ -62,8 +62,9 @@ void collect_terms(
 
 template<typename Visitor>
 void visit(
+    const sub_reader& segment,
     const term_reader& reader,
-    const by_range::range_t& rng,
+    const by_range_options::range_type& rng,
     Visitor& visitor) {
   auto terms = reader.iterator();
 
@@ -97,19 +98,19 @@ void visit(
   switch (rng.max_type) {
     case BoundType::UNBOUNDED:
       ::collect_terms(
-        *terms, visitor, [](const bytes_ref&) {
+        segment, reader, *terms, visitor, [](const bytes_ref&) {
           return true;
       });
       break;
     case BoundType::INCLUSIVE:
       ::collect_terms(
-        *terms, visitor, [max](const bytes_ref& term) {
+        segment, reader, *terms, visitor, [max](const bytes_ref& term) {
           return term <= max;
       });
       break;
     case BoundType::EXCLUSIVE:
       ::collect_terms(
-        *terms, visitor, [max](const bytes_ref& term) {
+        segment, reader, *terms, visitor, [max](const bytes_ref& term) {
           return term < max;
       });
       break;
@@ -120,7 +121,6 @@ NS_END
 
 NS_ROOT
 
-DEFINE_FILTER_TYPE(by_range)
 DEFINE_FACTORY_DEFAULT(by_range)
 
 /*static*/ filter::prepared::ptr by_range::prepare(
@@ -128,7 +128,7 @@ DEFINE_FACTORY_DEFAULT(by_range)
     const order::prepared& ord,
     boost_t boost,
     const string_ref& field,
-    const range_t& rng,
+    const options_type::range_type& rng,
     size_t scored_terms_limit) {
   //TODO: optimize unordered case
   // - seek to min
@@ -142,7 +142,7 @@ DEFINE_FACTORY_DEFAULT(by_range)
 
     if (rng.min_type == rng.max_type && rng.min_type == BoundType::INCLUSIVE) {
       // degenerated case
-      return term_query::make(index, ord, boost, field, rng.min);
+      return by_term::prepare(index, ord, boost, field, rng.min);
     }
 
     // can't satisfy conditon
@@ -151,6 +151,7 @@ DEFINE_FACTORY_DEFAULT(by_range)
 
   limited_sample_collector<term_frequency> collector(ord.empty() ? 0 : scored_terms_limit); // object for collecting order stats
   multiterm_query::states_t states(index.size());
+  multiterm_visitor<multiterm_query::states_t> mtv(collector, states);
 
   // iterate over the segments
   for (const auto& segment : index) {
@@ -162,54 +163,23 @@ DEFINE_FACTORY_DEFAULT(by_range)
       continue;
     }
 
-    multiterm_visitor<multiterm_query::states_t> mtv(segment, *reader, collector, states);
-
-    ::visit(*reader, rng, mtv);
+    ::visit(segment, *reader, rng, mtv);
   }
 
   std::vector<bstring> stats;
   collector.score(index, ord, stats);
 
-  return memory::make_shared<multiterm_query>(
+  return memory::make_managed<multiterm_query>(
     std::move(states), std::move(stats),
     boost, sort::MergeType::AGGREGATE);
 }
 
 /*static*/ void by_range::visit(
+    const sub_reader& segment,
     const term_reader& reader,
-    const range_t& rng,
+    const options_type::range_type& rng,
     filter_visitor& visitor) {
-  ::visit(reader, rng, visitor);
-}
-
-by_range::by_range() noexcept
-  : filter(by_range::type()) {
-}
-
-bool by_range::equals(const filter& rhs) const noexcept {
-  const by_range& trhs = static_cast<const by_range&>(rhs);
-  return filter::equals(rhs) && fld_ == trhs.fld_ && rng_ == trhs.rng_;
-}
-
-size_t hash_value(const by_range::range_t& rng) {
-  size_t seed = 0;
-  ::boost::hash_combine(seed, rng.min);
-  ::boost::hash_combine(seed, rng.min_type);
-  ::boost::hash_combine(seed, rng.max);
-  ::boost::hash_combine(seed, rng.max_type);
-  return seed;
-}
-
-size_t by_range::hash() const noexcept {
-  size_t seed = 0;
-  ::boost::hash_combine(seed, filter::hash());
-  ::boost::hash_combine(seed, fld_);
-  ::boost::hash_combine(seed, rng_);
-  return seed;
+  ::visit(segment, reader, rng, visitor);
 }
 
 NS_END // ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

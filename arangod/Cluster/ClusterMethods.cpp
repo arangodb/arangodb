@@ -41,7 +41,9 @@
 #include "Cluster/ClusterTrxMethods.h"
 #include "Cluster/ClusterTypes.h"
 #include "Futures/Utilities.h"
+#include "Graph/ClusterTraverserCache.h"
 #include "Graph/Traverser.h"
+#include "Graph/TraverserOptions.h"
 #include "Network/ClusterUtils.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -148,14 +150,14 @@ void recursiveAdd(VPackSlice const& value, VPackBuilder& builder) {
                                                                {"cacheUsage"})));
   updated.add("documentsSize", VPackValue(addFigures<size_t>(value, builder.slice(),
                                                                {"documentsSize"})));
-  
+
   updated.add("indexes", VPackValue(VPackValueType::Object));
   updated.add("count", VPackValue(addFigures<size_t>(value, builder.slice(),
                                                      {"indexes", "count"})));
   updated.add("size", VPackValue(addFigures<size_t>(value, builder.slice(),
                                                     {"indexes", "size"})));
   updated.close();
-  
+
   updated.close();
 
   TRI_ASSERT(updated.slice().isObject());
@@ -637,7 +639,7 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
     std::shuffle(dbServers.begin(), dbServers.end(), g);
   }
 
-  // mop: distribute satellite collections on all servers
+  // mop: distribute SatelliteCollections on all servers
   if (replicationFactor == 0) {
     replicationFactor = dbServers.size();
   }
@@ -1142,7 +1144,7 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string co
     if (tid.isSet()) {
       headers.try_emplace(StaticStrings::TransactionId, std::to_string(tid.id()));
     }
-    
+
     reqOpts.param("collection", p.first);
     futures.emplace_back(
         network::sendRequestRetry(pool, "shard:" + p.first, fuerte::RestVerb::Get,
@@ -1276,7 +1278,7 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
            .param(StaticStrings::MergeObjectsString, (options.mergeObjects ? "true" : "false"))
            .param(StaticStrings::SkipDocumentValidation, (options.validate ? "false" : "true"));
     if (options.isOverwriteModeSet()) {
-      reqOpts.parameters.insert_or_assign(StaticStrings::OverwriteMode, 
+      reqOpts.parameters.insert_or_assign(StaticStrings::OverwriteMode,
                                           OperationOptions::stringifyOverwriteMode(options.overwriteMode));
     }
 
@@ -1772,22 +1774,30 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
 ///        the lake is cleared.
 
 Result fetchEdgesFromEngines(transaction::Methods& trx,
-                             std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
-                             VPackSlice const vertexId, size_t depth,
-                             std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& cache,
-                             std::vector<VPackSlice>& result,
-                             std::vector<std::shared_ptr<VPackBufferUInt8>>& datalake,
-                             size_t& filtered, size_t& read) {
+                             graph::ClusterTraverserCache& travCache,
+                             traverser::TraverserOptions const* opts,
+                             arangodb::velocypack::StringRef vertexId,
+                             size_t depth,
+                             std::vector<VPackSlice>& result) {
+  auto const* engines = travCache.engines();
+  std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& cache =
+      travCache.cache();
+  auto& datalake = travCache.datalake();
+  size_t& filtered = travCache.filteredDocuments();
+  size_t& read = travCache.insertedDocuments();
+
   // TODO map id => ServerID if possible
   // And go fast-path
-
-  // This function works for one specific vertex
-  // or for a list of vertices.
-  TRI_ASSERT(vertexId.isString() || vertexId.isArray());
   transaction::BuilderLeaser leased(&trx);
   leased->openObject();
   leased->add("depth", VPackValue(depth));
-  leased->add("keys", vertexId);
+  leased->add("keys", VPackValuePair(vertexId.data(), vertexId.length(), VPackValueType::String));
+  leased->add(VPackValue("variables"));
+  {
+    leased->openArray();
+    opts->serializeVariables(*(leased.get()));
+    leased->close();
+  }
   leased->close();
 
   std::string const url = "/_internal/traverser/edge/";
@@ -1814,21 +1824,21 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
     }
-    
+
     auto payload = r.response->stealPayload();
     VPackSlice resSlice(payload->data());
     if (!resSlice.isObject()) {
       // Response has invalid format
       return TRI_ERROR_HTTP_CORRUPTED_JSON;
     }
-    
+
     Result res = network::resultFromBody(resSlice, TRI_ERROR_NO_ERROR);
     if (res.fail()) {
       return res;
     }
     filtered += Helper::getNumericValue<size_t>(resSlice, "filtered", 0);
     read += Helper::getNumericValue<size_t>(resSlice, "readIndex", 0);
-          
+
     VPackSlice edges = resSlice.get("edges");
     bool allCached = true;
 
@@ -1869,7 +1879,7 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
 ///        the lake is cleared.
 
 Result fetchEdgesFromEngines(transaction::Methods& trx,
-                             std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
+                             std::unordered_map<ServerID, aql::EngineId> const* engines,
                              VPackSlice const vertexId, bool backward,
                              std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& cache,
                              std::vector<VPackSlice>& result,
@@ -1910,7 +1920,7 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
     }
-    
+
     auto payload = r.response->stealPayload();
     VPackSlice resSlice(payload->data());
     if (!resSlice.isObject()) {
@@ -1961,7 +1971,7 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
 
 void fetchVerticesFromEngines(
     transaction::Methods& trx,
-    std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
+    std::unordered_map<ServerID, aql::EngineId> const* engines,
     std::unordered_set<arangodb::velocypack::StringRef>& vertexIds,
     std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& result,
     std::vector<std::shared_ptr<VPackBufferUInt8>>& datalake,
@@ -2307,7 +2317,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::createCollection
     bool waitForSyncReplication, bool enforceReplicationFactor,
     bool isNewDatabase, std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike) {
   TRI_ASSERT(parameters.isArray());
-  // Collections are temporary collections object that undergoes sanity checks
+  // Collections are temporary collections object that undergoes integrity checks
   // etc. It is not used anywhere and will be cleaned up after this call.
   std::vector<std::shared_ptr<LogicalCollection>> cols;
   for (VPackSlice p : VPackArrayIterator(parameters)) {
@@ -2366,7 +2376,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
 
     for (auto& col : collections) {
       // We can only serve on Database at a time with this call.
-      // We have the vocbase context around this calls anyways, so this is save.
+      // We have the vocbase context around this calls anyways, so this is safe.
       TRI_ASSERT(col->vocbase().name() == dbName);
       std::string distributeShardsLike = col->distributeShardsLike();
       std::vector<std::string> avoid = col->avoidServers();
@@ -2472,7 +2482,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
       break;
     }
 
-    if (res.is(TRI_ERROR_REQUEST_CANCELED)) {
+    if (res.is(TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED)) {
       // special error code indicating that storing the updated plan in the
       // agency didn't succeed, and that we should try again
 
@@ -2497,7 +2507,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
     }
   }
 
-  ci.loadPlan();
+  //ci.loadPlan();
 
   // Produce list of shared_ptr wrappers
 
@@ -2525,19 +2535,26 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
 std::string const apiStr("/_admin/backup/");
 
 arangodb::Result hotBackupList(network::ConnectionPool* pool,
-                               std::vector<ServerID> const& dbServers, VPackSlice const payload,
+                               std::vector<ServerID> const& dbServers, VPackSlice const idSlice,
                                std::unordered_map<std::string, BackupMeta>& hotBackups,
                                VPackBuilder& plan) {
   TRI_ASSERT(pool);
   hotBackups.clear();
-
+  TRI_ASSERT(idSlice.isArray() || idSlice.isString() || idSlice.isNone());
+  
   std::map<std::string, std::vector<BackupMeta>> dbsBackups;
 
   VPackBufferUInt8 body;
-  body.append(payload.begin(), payload.byteSize());
+  VPackBuilder b(body);
+  b.openObject();
+  if (!idSlice.isNone()) {
+    b.add("id", idSlice);
+  }
+  b.close();
+  
   network::RequestOptions reqOpts;
   reqOpts.skipScheduler = true;
-  
+
   std::string const url = apiStr + "list";
 
   std::vector<Future<network::Response>> futures;
@@ -2546,7 +2563,7 @@ arangodb::Result hotBackupList(network::ConnectionPool* pool,
     futures.emplace_back(network::sendRequest(pool, "server:" + dbServer,
                                               fuerte::RestVerb::Post, url, body, reqOpts));
   }
-  
+
   size_t nrGood = 0;
   for (Future<network::Response>& f : futures) {
     network::Response const& r = f.get();
@@ -2561,18 +2578,18 @@ arangodb::Result hotBackupList(network::ConnectionPool* pool,
       nrGood++;
     }
   }
-  
-  
+
+
   LOG_TOPIC("410a1", DEBUG, Logger::BACKUP) << "Got " << nrGood << " of "
   << futures.size() << " lists of local backups";
 
   // Any error if no id presented
-  if (payload.isObject() && !payload.hasKey("id") && nrGood < futures.size()) {
+  if (idSlice.isNone() && nrGood < futures.size()) {
     return arangodb::Result(
       TRI_ERROR_HOT_BACKUP_DBSERVERS_AWOL,
       std::string("not all db servers could be reached for backup listing"));
   }
-  
+
   for (Future<network::Response>& f : futures) {
     network::Response const& r = f.get();
     if (!r.ok()) {
@@ -2603,7 +2620,7 @@ arangodb::Result hotBackupList(network::ConnectionPool* pool,
       continue;
     }
 
-    if (!payload.isNone() && plan.slice().isNone()) {
+    if (!idSlice.isNone() && plan.slice().isNone()) {
       if (!resSlice.hasKey("agency-dump") || !resSlice.get("agency-dump").isArray() ||
           resSlice.get("agency-dump").length() != 1) {
         return arangodb::Result(TRI_ERROR_HTTP_NOT_FOUND,
@@ -2647,7 +2664,7 @@ arangodb::Result hotBackupList(network::ConnectionPool* pool,
       totalFiles += meta._nrFiles;
     }
 
-    if (valid) {
+    if (valid) {  // backup is identical on all servers
       BackupMeta& front = i.second.front();
       front._sizeInBytes = totalSize;
       front._nrFiles = totalFiles;
@@ -2746,10 +2763,10 @@ arangodb::Result controlMaintenanceFeature(network::ConnectionPool* pool,
     builder.add("duration", VPackValue(30));
     builder.add("id", VPackValue(backupId));
   }
-  
+
   network::RequestOptions reqOpts;
   reqOpts.skipScheduler = true;
-  
+
   std::vector<Future<network::Response>> futures;
   futures.reserve(dbServers.size());
   std::string const url = "/_admin/actions";
@@ -2758,7 +2775,7 @@ arangodb::Result controlMaintenanceFeature(network::ConnectionPool* pool,
     futures.emplace_back(network::sendRequest(pool, "server:" + dbServer,
                                               fuerte::RestVerb::Post, url, body, reqOpts));
   }
-  
+
   LOG_TOPIC("3d080", DEBUG, Logger::BACKUP)
       << "Attempting to execute " << command << " maintenance features for hot backup id "
       << backupId << " using " << builder.toJson();
@@ -2811,13 +2828,13 @@ arangodb::Result restoreOnDBServers(network::ConnectionPool* pool,
   }
 
   std::string const url = apiStr + "restore";
-  
+
   network::RequestOptions reqOpts;
   reqOpts.skipScheduler = true;
-  
+
   std::vector<Future<network::Response>> futures;
   futures.reserve(dbServers.size());
-  
+
   for (auto const& dbServer : dbServers) {
     futures.emplace_back(network::sendRequest(pool, "server:" + dbServer,
                                               fuerte::RestVerb::Post, url, body, reqOpts));
@@ -2932,31 +2949,33 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature, VPackSlice const
   // 6. Wait until all dbservers up again and good
   //    - fail if not
 
-  if (!payload.isObject() || !payload.hasKey("id") || !payload.get("id").isString()) {
+  VPackSlice idSlice;
+  if (!payload.isObject() || !(idSlice = payload.get("id")).isString()) {
     events::RestoreHotbackup("", TRI_ERROR_BAD_PARAMETER);
     return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
         "restore payload must be an object with string attribute 'id'");
   }
+  TRI_ASSERT(idSlice.isString());
 
   bool ignoreVersion =
       payload.hasKey("ignoreVersion") && payload.get("ignoreVersion").isTrue();
 
-  std::string const backupId = payload.get("id").copyString();
+  std::string const backupId = idSlice.copyString();
   VPackBuilder plan;
   ClusterInfo& ci = feature.clusterInfo();
-  
+
   auto const& nf = feature.server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   if (!pool) {
     // shutdown, leave here
     return TRI_ERROR_SHUTTING_DOWN;
   }
-  
+
   std::vector<ServerID> dbServers = ci.getCurrentDBServers();
   std::unordered_map<std::string, BackupMeta> list;
 
-  auto result = hotBackupList(pool, dbServers, payload, list, plan);
+  auto result = hotBackupList(pool, dbServers, idSlice, list, plan);
   if (!result.ok()) {
     LOG_TOPIC("ed4dd", ERR, Logger::BACKUP)
         << "failed to find backup " << backupId
@@ -2994,7 +3013,7 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature, VPackSlice const
     using arangodb::methods::Version;
     using arangodb::methods::VersionResult;
 #ifdef USE_ENTERPRISE
-    // Will never be called in community
+    // Will never be called in Community Edition
     bool autoUpgradeNeeded;   // not actually used
     if (!RocksDBHotBackup::versionTestRestore(meta._version, autoUpgradeNeeded)) {
       events::RestoreHotbackup(backupId, TRI_ERROR_HOT_RESTORE_INTERNAL);
@@ -3057,12 +3076,12 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature, VPackSlice const
     events::RestoreHotbackup(backupId, result.errorNumber());
     return result;
   }
-  
+
   // no need to keep connections to shut-down servers, they auto close when unused
   if (pool) {
     pool->drainConnections();
   }
-  
+
   auto startTime = std::chrono::steady_clock::now();
   while (true) {  // will be left by a timeout
     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -3131,14 +3150,14 @@ arangodb::Result lockDBServerTransactions(network::ConnectionPool* pool,
 
   LOG_TOPIC("707ed", DEBUG, Logger::BACKUP)
       << "Trying to acquire global transaction locks using body " << lock.toJson();
-  
+
   network::RequestOptions reqOpts;
   reqOpts.skipScheduler = true;
   reqOpts.timeout = network::Timeout(lockWait + 5.0);
-  
+
   std::vector<Future<network::Response>> futures;
   futures.reserve(dbServers.size());
-  
+
   for (auto const& dbServer : dbServers) {
     futures.emplace_back(network::sendRequest(pool, "server:" + dbServer,
                                               fuerte::RestVerb::Post, url, body, reqOpts));
@@ -3236,25 +3255,25 @@ arangodb::Result unlockDBServerTransactions(network::ConnectionPool* pool,
   // Make sure all db servers have the backup with backup Id
 
   std::string const url = apiStr + "unlock";
-  
+
   VPackBufferUInt8 body;
   VPackBuilder lock(body);
   {
     VPackObjectBuilder o(&lock);
     lock.add("id", VPackValue(backupId));
   }
-  
+
   network::RequestOptions reqOpts;
   reqOpts.skipScheduler = true;
-  
+
   std::vector<Future<network::Response>> futures;
   futures.reserve(lockedServers.size());
-  
+
   for (auto const& dbServer : lockedServers) {
     futures.emplace_back(network::sendRequest(pool, "server:" + dbServer,
                                               fuerte::RestVerb::Post, url, body, reqOpts));
   }
-  
+
   std::ignore = futures::collectAll(futures).get();
 
   LOG_TOPIC("2ba8f", DEBUG, Logger::BACKUP)
@@ -3286,10 +3305,10 @@ arangodb::Result hotBackupDBServers(network::ConnectionPool* pool,
 
   network::RequestOptions reqOpts;
   reqOpts.skipScheduler = true;
-  
+
   std::vector<Future<network::Response>> futures;
   futures.reserve(dbServers.size());
-  
+
   for (auto const& dbServer : dbServers) {
     futures.emplace_back(network::sendRequest(pool, "server:" + dbServer,
                                               fuerte::RestVerb::Post, url, body, reqOpts));
@@ -3300,6 +3319,7 @@ arangodb::Result hotBackupDBServers(network::ConnectionPool* pool,
   // Now listen to the results:
   size_t totalSize = 0;
   size_t totalFiles = 0;
+  std::vector<std::string> secretHashes;
   std::string version;
   bool sizeValid = true;
   for (Future<network::Response>& f : futures) {
@@ -3320,13 +3340,23 @@ arangodb::Result hotBackupDBServers(network::ConnectionPool* pool,
     }
     resSlice = resSlice.get("result");
 
-    if (!resSlice.hasKey(BackupMeta::ID) ||
-        !resSlice.get(BackupMeta::ID).isString()) {
+    // TODO: shouldn't the id be checked ?
+    VPackSlice value = resSlice.get(BackupMeta::ID);
+    if (!value.isString()) {
       LOG_TOPIC("6240a", ERR, Logger::BACKUP)
           << "DB server " << r.destination << "is missing backup " << backupId;
       return arangodb::Result(TRI_ERROR_FILE_NOT_FOUND,
                               std::string("no backup with id ") + backupId +
                                   " on server " + r.destination);
+    }
+    
+    value = resSlice.get(BackupMeta::SECRETHASH);
+    if (value.isArray()) {
+      for (VPackSlice hash : VPackArrayIterator(value)) {
+        if (hash.isString()) {
+          secretHashes.push_back(hash.copyString());
+        }
+      }
     }
 
     if (resSlice.hasKey(BackupMeta::SIZEINBYTES)) {
@@ -3349,11 +3379,17 @@ arangodb::Result hotBackupDBServers(network::ConnectionPool* pool,
     LOG_TOPIC("b370d", DEBUG, Logger::BACKUP) << r.destination << " created local backup "
                                               << resSlice.get(BackupMeta::ID).copyString();
   }
+  
+  // remove duplicate hashes
+  std::sort(secretHashes.begin(), secretHashes.end());
+  secretHashes.erase(std::unique(secretHashes.begin(), secretHashes.end()), secretHashes.end());
 
   if (sizeValid) {
-    meta = BackupMeta(backupId, version, timeStamp, totalSize, totalFiles, static_cast<unsigned int>(dbServers.size()), "", force);
+    meta = BackupMeta(backupId, version, timeStamp, secretHashes, totalSize, totalFiles,
+                      static_cast<unsigned int>(dbServers.size()), "", force);
   } else {
-    meta = BackupMeta(backupId, version, timeStamp, 0, 0, static_cast<unsigned int>(dbServers.size()), "", force);
+    meta = BackupMeta(backupId, version, timeStamp, secretHashes, 0, 0,
+                      static_cast<unsigned int>(dbServers.size()), "", force);
     LOG_TOPIC("54265", WARN, Logger::BACKUP)
       << "Could not determine total size of backup with id '" << backupId
       << "'!";
@@ -3379,18 +3415,18 @@ arangodb::Result removeLocalBackups(network::ConnectionPool* pool,
   }
 
   std::string const url = apiStr + "delete";
-  
+
   network::RequestOptions reqOpts;
   reqOpts.skipScheduler = true;
-  
+
   std::vector<Future<network::Response>> futures;
   futures.reserve(dbServers.size());
-  
+
   for (auto const& dbServer : dbServers) {
     futures.emplace_back(network::sendRequest(pool, "server:" + dbServer,
                                               fuerte::RestVerb::Post, url, body, reqOpts));
   }
-  
+
   LOG_TOPIC("33e85", DEBUG, Logger::BACKUP) << "Deleting backup " << backupId;
 
   size_t notFoundCount = 0;
@@ -3471,14 +3507,14 @@ arangodb::Result hotbackupAsyncLockDBServersTransactions(network::ConnectionPool
 
   LOG_TOPIC("707ee", DEBUG, Logger::BACKUP)
       << "Trying to acquire async global transaction locks using body " << lock.toJson();
-  
+
   network::RequestOptions reqOpts;
   reqOpts.skipScheduler = true;
   reqOpts.timeout = network::Timeout(lockWait + 5.0);
-  
+
   std::vector<Future<network::Response>> futures;
   futures.reserve(dbServers.size());
-  
+
   for (auto const& dbServer : dbServers) {
     network::Headers headers;
     headers.emplace(StaticStrings::Async, "store");
@@ -3497,7 +3533,7 @@ arangodb::Result hotbackupAsyncLockDBServersTransactions(network::ConnectionPool
                   + r.destination);
     }
     TRI_ASSERT(r.response != nullptr);
-    
+
     if (r.statusCode() != 202) {
       return arangodb::Result(TRI_ERROR_LOCAL_LOCK_FAILED,
           std::string("lock was denied from ") + r.destination +
@@ -3511,7 +3547,7 @@ arangodb::Result hotbackupAsyncLockDBServersTransactions(network::ConnectionPool
           std::string("lock was denied from ") + r.destination +
           " when trying to check for lockId for hot backup " + backupId);
     }
-    
+
     dbserverLockIds[r.serverId()] = jobId;
   }
 
@@ -3525,14 +3561,14 @@ arangodb::Result hotbackupWaitForLockDBServersTransactions(
   std::vector<ServerID> &lockedServers, double const& lockWait)
 {
   // query all remaining jobs here
-  
+
   network::RequestOptions reqOpts;
   reqOpts.skipScheduler = true;
   reqOpts.timeout = network::Timeout(lockWait + 5.0);
-  
+
   std::vector<Future<network::Response>> futures;
   futures.reserve(dbserverLockIds.size());
-  
+
   VPackBufferUInt8 body; // empty body
   for (auto const& lock : dbserverLockIds) {
     futures.emplace_back(network::sendRequest(pool, "server:" + lock.first,
@@ -3617,14 +3653,14 @@ void hotbackupCancelAsyncLocks(
   // the unlock list
 
   // cancel all remaining jobs here
-  
+
   network::RequestOptions reqOpts;
   reqOpts.skipScheduler = true;
   reqOpts.timeout = network::Timeout(5.0);
-  
+
   std::vector<Future<network::Response>> futures;
   futures.reserve(dbserverLockIds.size());
-  
+
   VPackBufferUInt8 body; // empty body
   for (auto const& lock : dbserverLockIds) {
     futures.emplace_back(network::sendRequest(pool, "server:" + lock.first,
@@ -3690,7 +3726,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
     using namespace std::chrono;
     auto end = steady_clock::now() + milliseconds(static_cast<uint64_t>(1000 * timeout));
     ClusterInfo& ci = feature.clusterInfo();
-    
+
     auto const& nf = feature.server().getFeature<NetworkFeature>();
     network::ConnectionPool* pool = nf.pool();
     if (!pool) {
@@ -3714,10 +3750,17 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       return result;
     }
 
+    auto releaseAgencyLock = scopeGuard([&]{
+      LOG_TOPIC("52416", DEBUG, Logger::BACKUP)
+          << "Releasing agency lock with scope guard! backupId: " << backupId;
+      ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+    });
+
     if (end < steady_clock::now()) {
       LOG_TOPIC("352d6", INFO, Logger::BACKUP)
           << "hot backup didn't get to locking phase within " << timeout << "s.";
-      auto hlRes = ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+      // release the lock
+      releaseAgencyLock.fire();
 
       events::CreateHotbackup(timeStamp + "_" + backupId, TRI_ERROR_CLUSTER_TIMEOUT);
       return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT,
@@ -3727,8 +3770,10 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
     // acquire agency dump
     auto agency = std::make_shared<VPackBuilder>();
     result = ci.agencyPlan(agency);
+
     if (!result.ok()) {
-      ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+      // release the lock
+      releaseAgencyLock.fire();
       result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
                    std::string("failed to acquire agency dump: ") + result.errorMessage());
       LOG_TOPIC("c014d", ERR, Logger::BACKUP) << result.errorMessage();
@@ -3747,7 +3792,8 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
         unlockDBServerTransactions(pool, backupId, lockedServers);
         lockedServers.clear();
         if (result.is(TRI_ERROR_LOCAL_LOCK_FAILED)) {  // Unrecoverable
-          ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+          // release the lock
+          releaseAgencyLock.fire();
           events::CreateHotbackup(timeStamp + "_" + backupId, TRI_ERROR_LOCAL_LOCK_FAILED);
           return result;
         }
@@ -3778,7 +3824,6 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       auto releaseLocks = scopeGuard([&]{
         hotbackupCancelAsyncLocks(pool, lockJobIds, lockedServers);
         unlockDBServerTransactions(pool, backupId, lockedServers);
-        ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
       });
 
       // we have to reset the timeout, otherwise the code below will exit too soon
@@ -3825,7 +3870,8 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
     // and we are in the case of a force backup we want to continue here
     if (!gotLocks && !allowInconsistent) {
       unlockDBServerTransactions(pool, backupId, dbServers);
-      ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+      // release the lock
+      releaseAgencyLock.fire();
       result.reset(
           TRI_ERROR_HOT_BACKUP_INTERNAL,
           std::string(
@@ -3836,13 +3882,15 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       return result;
     }
 
-    BackupMeta meta(backupId, "", timeStamp, 0, 0, static_cast<unsigned int>(dbServers.size()), "", !gotLocks);   // Temporary
+    BackupMeta meta(backupId, "", timeStamp, std::vector<std::string>{},
+                    0, 0, static_cast<unsigned int>(dbServers.size()), "", !gotLocks);   // Temporary
     std::vector<std::string> dummy;
     result = hotBackupDBServers(pool, backupId, timeStamp, dbServers, agency->slice(),
                                 /* force */ !gotLocks, meta);
     if (!result.ok()) {
       unlockDBServerTransactions(pool, backupId, dbServers);
-      ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+      // release the lock
+      releaseAgencyLock.fire();
       result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
                    std::string("failed to hot backup on all db servers: ") +
                        result.errorMessage());
@@ -3853,7 +3901,8 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
     }
 
     unlockDBServerTransactions(pool, backupId, dbServers);
-    ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+    // release the lock
+    releaseAgencyLock.fire();
 
     auto agencyCheck = std::make_shared<VPackBuilder>();
     result = ci.agencyPlan(agencyCheck);
@@ -3861,10 +3910,9 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       if (!allowInconsistent) {
         removeLocalBackups(pool, backupId, dbServers, dummy);
       }
-      ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
       result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
                    std::string("failed to acquire agency dump post backup: ") +
-                       result.errorMessage() + " backup's intergrity is not guaranteed");
+                       result.errorMessage() + " backup's integrity is not guaranteed");
       LOG_TOPIC("d4229", ERR, Logger::BACKUP) << result.errorMessage();
       events::CreateHotbackup(timeStamp + "_" + backupId, result.errorNumber());
       return result;
@@ -3918,7 +3966,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
 
 arangodb::Result listHotBackupsOnCoordinator(ClusterFeature& feature, VPackSlice const payload,
                                              VPackBuilder& report) {
-  
+
   auto const& nf = feature.server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   if (!pool) {
@@ -3931,29 +3979,27 @@ arangodb::Result listHotBackupsOnCoordinator(ClusterFeature& feature, VPackSlice
 
   std::unordered_map<std::string, BackupMeta> list;
 
-  if (!payload.isNone()) {
-    if (payload.isObject() && payload.hasKey("id")) {
-      if (payload.get("id").isArray()) {
-        for (auto const i : VPackArrayIterator(payload.get("id"))) {
-          if (!i.isString()) {
-            return arangodb::Result(
-                TRI_ERROR_HTTP_BAD_PARAMETER,
-                "invalid list JSON: all ids must be string.");
-          }
-        }
-      } else {
-        if (!payload.get("id").isString()) {
+  VPackSlice idSlice;
+  if (payload.isObject() && payload.hasKey("id")) {
+    idSlice = payload.get("id");
+    if (idSlice.isArray()) {
+      for (auto const i : VPackArrayIterator(payload.get("id"))) {
+        if (!i.isString()) {
           return arangodb::Result(
               TRI_ERROR_HTTP_BAD_PARAMETER,
-              "invalid JSON: id must be string or array of strings.");
+              "invalid list JSON: all ids must be string.");
         }
       }
-    } else {
+    } else if (!idSlice.isString()) {
       return arangodb::Result(
           TRI_ERROR_HTTP_BAD_PARAMETER,
-          "invalid JSON: body must be empty or object with attribute 'id'.");
+          "invalid JSON: id must be string or array of strings.");
     }
-  }  // allow continuation with None slice
+  } else if (!payload.isNone()) {
+    return arangodb::Result(
+        TRI_ERROR_HTTP_BAD_PARAMETER,
+        "invalid JSON: body must be empty or object with attribute 'id'.");
+  } // allow continuation with None slice
 
   VPackBuilder dummy;
 
@@ -3967,12 +4013,12 @@ arangodb::Result listHotBackupsOnCoordinator(ClusterFeature& feature, VPackSlice
       return Result(TRI_ERROR_SHUTTING_DOWN, "server is shutting down");
     }
 
-    result = hotBackupList(pool, dbServers, payload, list, dummy);
+    result = hotBackupList(pool, dbServers, idSlice, list, dummy);
 
     if (!result.ok()) {
 
-      if (payload.isObject() && payload.hasKey("id") && result.is(TRI_ERROR_HTTP_NOT_FOUND)) {
-        auto error = std::string("failed to locate backup ") + payload.get("id").copyString();
+      if (payload.isObject() && !idSlice.isNone() && result.is(TRI_ERROR_HTTP_NOT_FOUND)) {
+        auto error = std::string("failed to locate backup '") + idSlice.toJson() + "'";
         LOG_TOPIC("2020b", DEBUG, Logger::BACKUP) << error;
         return arangodb::Result(TRI_ERROR_HTTP_NOT_FOUND, error);
       }
@@ -4011,7 +4057,7 @@ arangodb::Result deleteHotBackupsOnCoordinator(ClusterFeature& feature,
   std::vector<std::string> deleted;
   VPackBuilder dummy;
   arangodb::Result result;
-  
+
   auto const& nf = feature.server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   if (!pool) {  // shutdown, leave here
@@ -4050,6 +4096,43 @@ arangodb::Result deleteHotBackupsOnCoordinator(ClusterFeature& feature,
   result.reset();
   events::DeleteHotbackup(id, TRI_ERROR_NO_ERROR);
   return result;
+}
+
+arangodb::Result getEngineStatsFromDBServers(ClusterFeature& feature,
+                                             VPackBuilder& report) {
+  ClusterInfo& ci = feature.clusterInfo();
+
+  std::vector<ServerID> DBservers = ci.getCurrentDBServers();
+
+  auto* pool = feature.server().getFeature<NetworkFeature>().pool();
+
+  network::RequestOptions reqOpts;
+  reqOpts.skipScheduler = false; 
+  std::vector<Future<network::Response>> futures;
+  futures.reserve(DBservers.size());
+
+  for (std::string const& server : DBservers) {
+    futures.emplace_back(
+        network::sendRequestRetry(pool, "server:" + server, fuerte::RestVerb::Get,
+                                  "/_api/engine/stats", VPackBuffer<uint8_t>(), reqOpts));
+  }
+  
+  auto responses = futures::collectAll(std::move(futures)).get();
+
+  report.openObject();
+  for (auto const& tryRes : responses) {
+    network::Response const& r = tryRes.get();
+      
+    if (r.fail()) {
+      return {network::fuerteToArangoErrorCode(r), network::fuerteToArangoErrorMessage(r)};
+    }
+
+    // cut off "server:" from the destination
+    report.add(r.destination.substr(7), r.slice());
+  }
+  report.close();
+
+  return Result();
 }
 
 }  // namespace arangodb

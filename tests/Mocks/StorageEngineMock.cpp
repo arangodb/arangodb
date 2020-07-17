@@ -104,7 +104,7 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
 
   char const* typeName() const override { return "edge-index-iterator-mock"; }
 
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
+  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
     while (limit && _begin != _end && _keysIt.valid()) {
       auto key = _keysIt.value();
 
@@ -126,7 +126,7 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
     return _begin != _end || _keysIt.valid();
   }
 
-  void reset() override {
+  void resetImpl() override {
     _keysIt.reset();
     _begin = _map.begin();
     _end = _map.end();
@@ -385,9 +385,9 @@ class ReverseAllIteratorMock final : public arangodb::IndexIterator {
     return "ReverseAllIteratorMock";
   }
 
-  virtual void reset() override { _end = _size; }
+  virtual void resetImpl() override { _end = _size; }
 
-  virtual bool next(LocalDocumentIdCallback const& callback, size_t limit) override {
+  virtual bool nextImpl(LocalDocumentIdCallback const& callback, size_t limit) override {
     while (_end && limit) {  // `_end` always > 0
       callback(arangodb::LocalDocumentId(_end--));
       --limit;
@@ -409,9 +409,9 @@ class AllIteratorMock final : public arangodb::IndexIterator {
 
   virtual char const* typeName() const override { return "AllIteratorMock"; }
 
-  virtual void reset() override { _it = _data.begin(); }
+  virtual void resetImpl() override { _it = _data.begin(); }
 
-  virtual bool next(LocalDocumentIdCallback const& callback, size_t limit) override {
+  virtual bool nextImpl(LocalDocumentIdCallback const& callback, size_t limit) override {
     while (_it != _data.end() && limit != 0) {
       callback(_it->second.docId());
       ++_it;
@@ -653,7 +653,7 @@ class HashIndexIteratorMock final : public arangodb::IndexIterator {
 
   char const* typeName() const override { return "hash-index-iterator-mock"; }
 
-  bool nextCovering(DocumentCallback const& cb, size_t limit) override {
+  bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
     while (limit && _begin != _end) {
       cb(_begin->first, _begin->second.slice());
       ++_begin;
@@ -663,7 +663,7 @@ class HashIndexIteratorMock final : public arangodb::IndexIterator {
     return _begin != _end;
   }
 
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
+  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
     while (limit && _begin != _end) {
       cb(_begin->first);
       ++_begin;
@@ -673,7 +673,7 @@ class HashIndexIteratorMock final : public arangodb::IndexIterator {
     return _begin != _end;
   }
 
-  void reset() override {
+  void resetImpl() override {
     _documents.clear();
     _begin = _documents.begin();
     _end = _documents.end();
@@ -1502,7 +1502,7 @@ arangodb::Result StorageEngineMock::createTickRanges(VPackBuilder&) {
 
 std::unique_ptr<arangodb::TransactionCollection> StorageEngineMock::createTransactionCollection(
     arangodb::TransactionState& state, TRI_voc_cid_t cid,
-    arangodb::AccessMode::Type accessType, int nestingLevel) {
+    arangodb::AccessMode::Type accessType) {
   return std::unique_ptr<arangodb::TransactionCollection>(
       new TransactionCollectionMock(&state, cid, accessType));
 }
@@ -1512,11 +1512,10 @@ std::unique_ptr<arangodb::transaction::Manager> StorageEngineMock::createTransac
   return std::make_unique<arangodb::transaction::Manager>(feature);
 }
 
-std::unique_ptr<arangodb::TransactionState> StorageEngineMock::createTransactionState(
+std::shared_ptr<arangodb::TransactionState> StorageEngineMock::createTransactionState(
     TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
     arangodb::transaction::Options const& options) {
-  return std::unique_ptr<arangodb::TransactionState>(
-      new TransactionStateMock(vocbase, tid, options));
+  return std::make_shared<TransactionStateMock>(vocbase, tid, options);
 }
 
 arangodb::Result StorageEngineMock::createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id,
@@ -1659,8 +1658,8 @@ TRI_voc_tick_t StorageEngineMock::recoveryTick() {
 }
 
 arangodb::Result StorageEngineMock::lastLogger(
-    TRI_vocbase_t& vocbase, std::shared_ptr<arangodb::transaction::Context> transactionContext,
-    uint64_t tickStart, uint64_t tickEnd, std::shared_ptr<VPackBuilder>& builderSPtr) {
+    TRI_vocbase_t& vocbase, 
+    uint64_t tickStart, uint64_t tickEnd, arangodb::velocypack::Builder& builderSPtr) {
   TRI_ASSERT(false);
   return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
@@ -1736,7 +1735,7 @@ arangodb::Result StorageEngineMock::flushWal(bool waitForSync, bool waitForColle
 TransactionCollectionMock::TransactionCollectionMock(arangodb::TransactionState* state,
                                                      TRI_voc_cid_t cid,
                                                      arangodb::AccessMode::Type accessType)
-    : TransactionCollection(state, cid, accessType, 0) {}
+    : TransactionCollection(state, cid, accessType) {}
 
 bool TransactionCollectionMock::canAccess(arangodb::AccessMode::Type accessType) const {
   return nullptr != _collection;  // collection must have be opened previously
@@ -1747,7 +1746,7 @@ bool TransactionCollectionMock::hasOperations() const {
   return false;
 }
 
-void TransactionCollectionMock::release() {
+void TransactionCollectionMock::releaseUsage() {
   if (_collection) {
     if (!arangodb::ServerState::instance()->isCoordinator()) {
       _transaction->vocbase().releaseCollection(_collection.get());
@@ -1756,25 +1755,19 @@ void TransactionCollectionMock::release() {
   }
 }
 
-void TransactionCollectionMock::unuse(int nestingLevel) {
-  // NOOP, assume success
-}
-
-int TransactionCollectionMock::use(int nestingLevel) {
-  TRI_vocbase_col_status_e status;
-
+arangodb::Result TransactionCollectionMock::lockUsage() {
   bool shouldLock = !arangodb::AccessMode::isNone(_accessType);
 
   if (shouldLock && !isLocked()) {
     // r/w lock the collection
-    int res = doLock(_accessType, nestingLevel);
+    arangodb::Result res = doLock(_accessType);
 
-    if (res == TRI_ERROR_LOCKED) {
+    if (res.is(TRI_ERROR_LOCKED)) {
       // TRI_ERROR_LOCKED is not an error, but it indicates that the lock
       // operation has actually acquired the lock (and that the lock has not
       // been held before)
-      res = TRI_ERROR_NO_ERROR;
-    } else if (res != TRI_ERROR_NO_ERROR) {
+      res.reset();
+    } else if (res.fail()) {
       return res;
     }
   }
@@ -1788,31 +1781,31 @@ int TransactionCollectionMock::use(int nestingLevel) {
       _collection =
           ci.getCollectionNT(_transaction->vocbase().name(), std::to_string(_cid));
     } else {
-      _collection = _transaction->vocbase().useCollection(_cid, status);
+      _collection = _transaction->vocbase().useCollection(_cid, true);
     }
   }
 
-  return _collection ? TRI_ERROR_NO_ERROR : TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+  return arangodb::Result(_collection ? TRI_ERROR_NO_ERROR : TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 }
 
-int TransactionCollectionMock::doLock(arangodb::AccessMode::Type type, int nestingLevel) {
+arangodb::Result TransactionCollectionMock::doLock(arangodb::AccessMode::Type type) {
   if (_lockType > _accessType) {
-    return TRI_ERROR_INTERNAL;
+    return {TRI_ERROR_INTERNAL};
   }
 
   _lockType = type;
 
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
-int TransactionCollectionMock::doUnlock(arangodb::AccessMode::Type type, int nestingLevel) {
+arangodb::Result TransactionCollectionMock::doUnlock(arangodb::AccessMode::Type type) {
   if (_lockType != type) {
-    return TRI_ERROR_INTERNAL;
+    return {TRI_ERROR_INTERNAL};
   }
 
   _lockType = arangodb::AccessMode::Type::NONE;
 
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
 size_t TransactionStateMock::abortTransactionCount;
@@ -1827,7 +1820,7 @@ TransactionStateMock::TransactionStateMock(TRI_vocbase_t& vocbase, arangodb::Tra
 arangodb::Result TransactionStateMock::abortTransaction(arangodb::transaction::Methods* trx) {
   ++abortTransactionCount;
   updateStatus(arangodb::transaction::Status::ABORTED);
-  unuseCollections(nestingLevel());
+//  releaseUsage();
   // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
   const_cast<arangodb::TransactionId&>(_id) = arangodb::TransactionId::none();
 
@@ -1837,8 +1830,12 @@ arangodb::Result TransactionStateMock::abortTransaction(arangodb::transaction::M
 arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::Hints hints) {
   ++beginTransactionCount;
   _hints = hints;
+  
+  arangodb::Result res = useCollections();
+  if (res.fail()) { // something is wrong
+    return res;
+  }
 
-  auto res = useCollections(nestingLevel());
 
   if (!res.ok()) {
     updateStatus(arangodb::transaction::Status::ABORTED);
@@ -1846,22 +1843,16 @@ arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::H
     const_cast<arangodb::TransactionId&>(_id) = arangodb::TransactionId::none();
     return res;
   }
-
-  if (nestingLevel() == 0) {
-    updateStatus(arangodb::transaction::Status::RUNNING);
-  }
-
+  updateStatus(arangodb::transaction::Status::RUNNING);
   return arangodb::Result();
 }
 
 arangodb::Result TransactionStateMock::commitTransaction(arangodb::transaction::Methods* trx) {
   ++commitTransactionCount;
-  if (nestingLevel() == 0) {
-    updateStatus(arangodb::transaction::Status::COMMITTED);
-    // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
-    const_cast<arangodb::TransactionId&>(_id) = arangodb::TransactionId::none();
-  }
-  unuseCollections(nestingLevel());
+  updateStatus(arangodb::transaction::Status::COMMITTED);
+  // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
+  const_cast<arangodb::TransactionId&>(_id) = arangodb::TransactionId::none();
+  //  releaseUsage();
 
   return arangodb::Result();
 }

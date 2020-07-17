@@ -29,7 +29,9 @@ NS_ROOT
 
 class bm25_sort : public sort {
  public:
-  DECLARE_SORT_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "bm25";
+  }
 
   static constexpr float_t K() noexcept {
     return 1.2f;

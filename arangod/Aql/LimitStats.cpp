@@ -47,11 +47,6 @@ auto LimitStats::getFullCount() const noexcept -> std::size_t {
   return _fullCount;
 }
 
-auto aql::operator+=(LimitStats& limitStats, LimitStats const& other) noexcept -> LimitStats& {
-  limitStats.incrFullCountBy(other.getFullCount());
-  return limitStats;
-}
-
 auto aql::operator+=(ExecutionStats& executionStats, LimitStats const& limitStats) noexcept
     -> ExecutionStats& {
   executionStats.fullCount += limitStats.getFullCount();

@@ -45,7 +45,8 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(LogicalCollection* col,
     : IndexIterator(col, trx),
       _bounds(static_cast<RocksDBMetaCollection*>(col->getPhysical())->bounds()),
       _upperBound(_bounds.end()),
-      _cmp(_bounds.columnFamily()->GetComparator()) {
+      _cmp(_bounds.columnFamily()->GetComparator()),
+      _mustSeek(true) {
   // acquire rocksdb transaction
   auto* mthds = RocksDBTransactionState::toMethods(trx);
 
@@ -65,7 +66,13 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(LogicalCollection* col,
   _bounds.columnFamily()->GetDescriptor(&desc);
   TRI_ASSERT(desc.options.prefix_extractor);
 #endif
-  _iterator->Seek(_bounds.start());
+}
+
+void RocksDBAllIndexIterator::seekIfRequired() {
+  if (_mustSeek) {
+    _iterator->Seek(_bounds.start());
+    _mustSeek = false;
+  }
 }
 
 bool RocksDBAllIndexIterator::outOfRange() const {
@@ -73,8 +80,9 @@ bool RocksDBAllIndexIterator::outOfRange() const {
   return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
 }
 
-bool RocksDBAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
+bool RocksDBAllIndexIterator::nextImpl(LocalDocumentIdCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
+  seekIfRequired();
 
   if (limit == 0 || ADB_UNLIKELY(!_iterator->Valid()) || outOfRange()) {
     // No limit no data, or we are actually done. The last call should have
@@ -87,7 +95,7 @@ bool RocksDBAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
 
   TRI_ASSERT(limit > 0);
 
-  do {
+  while (limit > 0) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(_bounds.objectId() == RocksDBKey::objectId(_iterator->key()));
 #endif
@@ -103,14 +111,15 @@ bool RocksDBAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
     } else if (outOfRange()) {
       return false;
     }
-  } while (limit > 0);
+  }
 
   return true;
 }
 
-bool RocksDBAllIndexIterator::nextDocument(IndexIterator::DocumentCallback const& cb,
-                                           size_t limit) {
+bool RocksDBAllIndexIterator::nextDocumentImpl(IndexIterator::DocumentCallback const& cb,
+                                               size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
+  seekIfRequired();
 
   if (limit == 0 || !_iterator->Valid() || outOfRange()) {
     // No limit no data, or we are actually done. The last call should have
@@ -126,9 +135,11 @@ bool RocksDBAllIndexIterator::nextDocument(IndexIterator::DocumentCallback const
     --limit;
     _iterator->Next();
 
-    if (!_iterator->Valid() || outOfRange()) {
+    if (ADB_UNLIKELY(!_iterator->Valid())) {
       // validate that Iterator is in a good shape and hasn't failed
       arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+      return false;
+    } else if (outOfRange()) {
       return false;
     }
   }
@@ -136,13 +147,13 @@ bool RocksDBAllIndexIterator::nextDocument(IndexIterator::DocumentCallback const
   return true;
 }
 
-void RocksDBAllIndexIterator::skip(uint64_t count, uint64_t& skipped) {
+void RocksDBAllIndexIterator::skipImpl(uint64_t count, uint64_t& skipped) {
   TRI_ASSERT(_trx->state()->isRunning());
+  seekIfRequired();
 
   while (count > 0 && _iterator->Valid()) {
     --count;
     ++skipped;
-
     _iterator->Next();
   }
     
@@ -150,9 +161,9 @@ void RocksDBAllIndexIterator::skip(uint64_t count, uint64_t& skipped) {
   arangodb::rocksutils::checkIteratorStatus(_iterator.get());
 }
 
-void RocksDBAllIndexIterator::reset() {
+void RocksDBAllIndexIterator::resetImpl() {
   TRI_ASSERT(_trx->state()->isRunning());
-  _iterator->Seek(_bounds.start());
+  _mustSeek = true;
 }
 
 // ================ Any Iterator ================
@@ -197,7 +208,7 @@ bool RocksDBAnyIndexIterator::checkIter() {
   return true;
 }
 
-bool RocksDBAnyIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
+bool RocksDBAnyIndexIterator::nextImpl(LocalDocumentIdCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
   if (limit == 0 || !_iterator->Valid() || outOfRange()) {
@@ -228,8 +239,8 @@ bool RocksDBAnyIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
   return true;
 }
 
-bool RocksDBAnyIndexIterator::nextDocument(IndexIterator::DocumentCallback const& cb,
-                                           size_t limit) {
+bool RocksDBAnyIndexIterator::nextDocumentImpl(IndexIterator::DocumentCallback const& cb,
+                                               size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
   if (limit == 0 || !_iterator->Valid() || outOfRange()) {
@@ -259,7 +270,7 @@ bool RocksDBAnyIndexIterator::nextDocument(IndexIterator::DocumentCallback const
   return true;
 }
 
-void RocksDBAnyIndexIterator::reset() {
+void RocksDBAnyIndexIterator::resetImpl() {
   // the assumption is that we don't reset this iterator unless
   // it is out of range or invalid
   if (_total == 0 || (_iterator->Valid() && !outOfRange())) {

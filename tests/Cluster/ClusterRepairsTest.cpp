@@ -38,7 +38,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterRepairs.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 #include "Cluster/ServerState.h"
 #include "Random/RandomGenerator.h"
 
@@ -234,21 +234,6 @@ class ClusterRepairsTestBrokenDistribution
     : public ClusterRepairsTest,
       public tests::LogSuppressor<Logger::CLUSTER, LogLevel::FATAL>,
       public tests::LogSuppressor<Logger::FIXME, LogLevel::FATAL> {
- protected:
-  // save old manager (may be null)
-  std::unique_ptr<AgencyCommManager> oldManager;
-  arangodb::application_features::ApplicationServer server;
-
-  ClusterRepairsTestBrokenDistribution()
-      : oldManager(std::move(AgencyCommManager::MANAGER)), server{nullptr, nullptr} {
-    // get a new manager
-    AgencyCommManager::initialize(server, "testArangoAgencyPrefix");
-  }
-
-  ~ClusterRepairsTestBrokenDistribution() {
-    // restore old manager
-    AgencyCommManager::MANAGER = std::move(oldManager);
-  }
 };
 
 TEST_F(ClusterRepairsTestBrokenDistribution,
@@ -445,7 +430,6 @@ class ClusterRepairsTestOperations
     : public ClusterRepairsTest,
       public tests::LogSuppressor<Logger::CLUSTER, LogLevel::FATAL> {
  protected:
-  std::unique_ptr<AgencyCommManager> oldManager;
   std::string const oldServerId;
   RepairOperationToTransactionVisitor conversionVisitor;
   arangodb::application_features::ApplicationServer server;
@@ -460,19 +444,12 @@ class ClusterRepairsTestOperations
     return std::chrono::system_clock::now();
   }
 
-  ClusterRepairsTestOperations()
-      : oldManager(std::move(AgencyCommManager::MANAGER)),
+  ClusterRepairsTestOperations() :
         oldServerId(ServerState::instance()->getId()),
         conversionVisitor(mockJobIdGenerator, mockJobCreationTimestampGenerator),
-        server{nullptr, nullptr} {
-    // get a new manager
-    AgencyCommManager::initialize(server, "testArangoAgencyPrefix");
-  }
+        server{nullptr, nullptr} {}
 
-  ~ClusterRepairsTestOperations() {
-    // restore old manager
-    AgencyCommManager::MANAGER = std::move(oldManager);
-  }
+  ~ClusterRepairsTestOperations() = default;
 };
 
 TEST_F(ClusterRepairsTestOperations,

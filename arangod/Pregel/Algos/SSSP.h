@@ -56,7 +56,7 @@ class SSSPAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
   GraphFormat<int64_t, int64_t>* inputFormat() const override;
 
   MessageFormat<int64_t>* messageFormat() const override {
-    return new IntegerMessageFormat();
+    return new IntegerMessageFormat<int64_t>();
   }
 
   MessageCombiner<int64_t>* messageCombiner() const override {

@@ -38,8 +38,8 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "AqlCall.h"
+#include "Indexes/IndexIterator.h"
 #include "Transaction/Methods.h"
-#include "Utils/OperationCursor.h"
 
 #include <Logger/LogMacros.h>
 #include <utility>
@@ -52,11 +52,11 @@ std::vector<size_t> const emptyAttributePositions;
 }
 
 EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
-    RegisterId outputRegister, ExecutionEngine* engine,
+    RegisterId outputRegister, aql::QueryContext& query,
     Collection const* collection, Variable const* outVariable, bool produceResult,
     Expression* filter, std::vector<std::string> const& projections,
-    std::vector<size_t> const& coveringIndexAttributePositions, bool random)
-    : _engine(engine),
+    std::vector<size_t> const& coveringIndexAttributePositions, bool random, bool count)
+    : _query(query),
       _collection(collection),
       _outVariable(outVariable),
       _filter(filter),
@@ -64,11 +64,8 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
       _coveringIndexAttributePositions(coveringIndexAttributePositions),
       _outputRegisterId(outputRegister),
       _produceResult(produceResult),
-      _random(random) {}
-
-ExecutionEngine* EnumerateCollectionExecutorInfos::getEngine() {
-  return _engine;
-}
+      _random(random),
+      _count(count) {}
 
 Collection const* EnumerateCollectionExecutorInfos::getCollection() const {
   return _collection;
@@ -78,15 +75,11 @@ Variable const* EnumerateCollectionExecutorInfos::getOutVariable() const {
   return _outVariable;
 }
 
-Query* EnumerateCollectionExecutorInfos::getQuery() const {
-  return _engine->getQuery();
+QueryContext& EnumerateCollectionExecutorInfos::getQuery() const {
+  return _query;
 }
 
-transaction::Methods* EnumerateCollectionExecutorInfos::getTrxPtr() const {
-  return _engine->getQuery()->trx();
-}
-
-Expression* EnumerateCollectionExecutorInfos::getFilter() const {
+Expression* EnumerateCollectionExecutorInfos::getFilter() const noexcept {
   return _filter;
 }
 
@@ -99,20 +92,23 @@ std::vector<size_t> const& EnumerateCollectionExecutorInfos::getCoveringIndexAtt
   return _coveringIndexAttributePositions;
 }
 
-bool EnumerateCollectionExecutorInfos::getProduceResult() const {
+bool EnumerateCollectionExecutorInfos::getProduceResult() const noexcept {
   return _produceResult;
 }
 
-bool EnumerateCollectionExecutorInfos::getRandom() const { return _random; }
+bool EnumerateCollectionExecutorInfos::getRandom() const noexcept { return _random; }
+
+bool EnumerateCollectionExecutorInfos::getCount() const noexcept { return _count; }
+
 RegisterId EnumerateCollectionExecutorInfos::getOutputRegisterId() const {
   return _outputRegisterId;
 }
 
-EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher&, Infos& infos)
-    : _infos(infos),
-      _documentProducer(nullptr),
+EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos& infos)
+    : _trx(infos.getQuery().newTrxContext()),
+      _infos(infos),
       _documentProducingFunctionContext(_currentRow, nullptr, _infos.getOutputRegisterId(),
-                                        _infos.getProduceResult(), _infos.getQuery(),
+                                        _infos.getProduceResult(), _infos.getQuery(), _trx,
                                         _infos.getFilter(), _infos.getProjections(),
                                         _infos.getCoveringIndexAttributePositions(),
                                         true, false),
@@ -120,11 +116,11 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher&, Infos& infos)
       _executorState(ExecutorState::HASMORE),
       _cursorHasMore(false),
       _currentRow(InputAqlItemRow{CreateInvalidInputRowHint{}}) {
-  _cursor = std::make_unique<OperationCursor>(
-      _infos.getTrxPtr()->indexScan(_infos.getCollection()->name(),
+  TRI_ASSERT(_trx.status() == transaction::Status::RUNNING);
+  _cursor = _trx.indexScan(_infos.getCollection()->name(),
                                     (_infos.getRandom()
                                          ? transaction::Methods::CursorType::ANY
-                                         : transaction::Methods::CursorType::ALL)));
+                                         : transaction::Methods::CursorType::ALL));
 
   if (_infos.getProduceResult()) {
     _documentProducer =
@@ -138,6 +134,8 @@ EnumerateCollectionExecutor::~EnumerateCollectionExecutor() = default;
 uint64_t EnumerateCollectionExecutor::skipEntries(size_t toSkip,
                                                   EnumerateCollectionStats& stats) {
   uint64_t actuallySkipped = 0;
+      
+  TRI_ASSERT(!_infos.getCount());
 
   if (_infos.getFilter() == nullptr) {
     _cursor->skip(toSkip, actuallySkipped);
@@ -159,6 +157,8 @@ uint64_t EnumerateCollectionExecutor::skipEntries(size_t toSkip,
 
 std::tuple<ExecutorState, EnumerateCollectionStats, size_t, AqlCall> EnumerateCollectionExecutor::skipRowsRange(
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
+  TRI_ASSERT(!_infos.getCount());
+
   AqlCall upstreamCall{};
   EnumerateCollectionStats stats{};
 
@@ -209,8 +209,9 @@ std::tuple<ExecutorState, EnumerateCollectionStats, size_t, AqlCall> EnumerateCo
 
 void EnumerateCollectionExecutor::initializeNewRow(AqlItemBlockInputRange& inputRange) {
   if (_currentRow) {
-    std::ignore = inputRange.nextDataRow();
-  }
+    // moves one row forward
+    inputRange.advanceDataRow();
+  } 
   std::tie(_currentRowState, _currentRow) = inputRange.peekDataRow();
   if (!_currentRow) {
     return;
@@ -220,6 +221,16 @@ void EnumerateCollectionExecutor::initializeNewRow(AqlItemBlockInputRange& input
 
   _cursor->reset();
   _cursorHasMore = _cursor->hasMore();
+}
+
+[[nodiscard]] auto EnumerateCollectionExecutor::expectedNumberOfRowsNew(
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
+  if (_infos.getCount()) {
+    // when we are counting, we will always return a single row
+    return std::max<size_t>(input.countShadowRows(), 1);
+  }
+  // Otherwise we do not know.
+  return call.getLimit();
 }
 
 std::tuple<ExecutorState, EnumerateCollectionStats, AqlCall> EnumerateCollectionExecutor::produceRows(
@@ -242,13 +253,29 @@ std::tuple<ExecutorState, EnumerateCollectionStats, AqlCall> EnumerateCollection
 
     if (_cursorHasMore) {
       TRI_ASSERT(_currentRow.isInitialized());
-      if (_infos.getProduceResult()) {
+      if (_infos.getCount()) {
+        // count optimization
+        TRI_ASSERT(!_documentProducingFunctionContext.hasFilter());
+        uint64_t counter = 0;
+        _cursor->skipAll(counter);
+
+        InputAqlItemRow const& input = _documentProducingFunctionContext.getInputRow();
+        RegisterId registerId = _documentProducingFunctionContext.getOutputRegister();
+        TRI_ASSERT(!output.isFull());
+        AqlValue v((AqlValueHintUInt(counter)));
+        AqlValueGuard guard{v, true};
+        output.moveValueInto(registerId, input, guard);
+        TRI_ASSERT(output.produced());
+        output.advanceRow();
+
+        _cursorHasMore = _cursor->hasMore();
+      } else if (_infos.getProduceResult()) {
         // properly build up results by fetching the actual documents
         // using nextDocument()
         _cursorHasMore =
             _cursor->nextDocument(_documentProducer, output.numRowsLeft() /*atMost*/);
       } else {
-        // performance optimization: we do not need the documents at all,
+        // performance optimization: we do not need the documents at all.
         // so just call next()
         TRI_ASSERT(!_documentProducingFunctionContext.hasFilter());
         _cursorHasMore =

@@ -100,8 +100,6 @@ class VelocyPackHelper {
 
   static arangodb::velocypack::AttributeTranslator* getTranslator();
   
-  static arangodb::velocypack::Options* optionsWithUniquenessCheck();
-
   struct VPackHash {
     size_t operator()(arangodb::velocypack::Slice const&) const;
   };
@@ -386,7 +384,8 @@ class VelocyPackHelper {
 
   static uint64_t extractIdValue(VPackSlice const& slice);
     
-  static arangodb::velocypack::Options requestValidationOptions;
+  static arangodb::velocypack::Options strictRequestValidationOptions;
+  static arangodb::velocypack::Options looseRequestValidationOptions;
 
   static uint8_t const KeyAttribute = 0x31;
   static uint8_t const RevAttribute = 0x32;

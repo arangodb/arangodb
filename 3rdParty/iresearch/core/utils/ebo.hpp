@@ -80,13 +80,7 @@ template<
   compact& operator=(const compact&) = default;
   compact& operator=(compact&&) noexcept { return *this; }
 
-#if IRESEARCH_CXX > IRESEARCH_CXX_11
   constexpr T& get() noexcept { return *this; }
-#else
-  // before c++14 constexpr member function
-  // gets const implicitly
-  T& get() noexcept { return *this; }
-#endif
   constexpr const T& get() const noexcept { return *this; }
 }; // compact
 
@@ -105,6 +99,7 @@ class compact<I, T, false> {
   template<typename U = T>
   compact(U&& value) noexcept
     : val_(std::forward<U>(value)) {
+    static_assert(std::is_nothrow_move_constructible_v<std::remove_pointer_t<decltype(this)>>);
   }
 
   compact& operator=(const compact&) = default;
@@ -123,13 +118,7 @@ class compact<I, T, false> {
     return *this;
   }
 
-#if IRESEARCH_CXX > IRESEARCH_CXX_11
   constexpr T& get() noexcept { return val_; }
-#else
-  // before c++14 constexpr member function
-  // gets const implicitly
-  T& get() noexcept { return val_; }
-#endif
   constexpr const T& get() const noexcept { return val_; }
 
  private:
@@ -163,13 +152,7 @@ template<
 
   compact_ref& operator=(const compact_ref&) = default;
 
-#if IRESEARCH_CXX > IRESEARCH_CXX_11
   constexpr T& get() noexcept { return *this; }
-#else
-  // before c++14 constexpr member function
-  // gets const implicitly
-  T& get() noexcept { return *this; }
-#endif
   constexpr const T& get() const noexcept { return *this; }
 }; // compact_ref
 
@@ -206,13 +189,7 @@ class compact_ref<I, T, false> {
     return *this;
   }
 
-#if IRESEARCH_CXX > IRESEARCH_CXX_11
   constexpr T& get() noexcept { return *val_; }
-#else
-  // before c++14 constexpr member function
-  // gets const implicitly
-  T& get() noexcept { return *val_; }
-#endif
   constexpr const T& get() const noexcept { return *val_; }
 
  private:
@@ -241,6 +218,7 @@ class compact_pair : private compact<0, T0>, private compact<1, T1> {
   compact_pair(U0&& v0, U1&& v1) 
     : first_compressed_t(std::forward<U0>(v0)), 
       second_compressed_t(std::forward<U1>(v1)) { 
+    static_assert(std::is_nothrow_move_constructible_v<std::remove_pointer_t<decltype(this)>>);
   }
 
   compact_pair& operator=(const compact_pair&) = default;
@@ -256,35 +234,17 @@ class compact_pair : private compact<0, T0>, private compact<1, T1> {
     return first_compressed_t::get();
   }
 
-#if IRESEARCH_CXX > IRESEARCH_CXX_11
   first_type& first() noexcept {
     return first_compressed_t::get();
   }
-#else
-  first_type& first() noexcept {
-    // force the c++11 compiler to choose constexpr version of "get"
-    return const_cast<first_type&>(
-      const_cast<const compact_pair&>(*this).first()
-    );
-  }
-#endif
 
   const second_type& second() const noexcept {
     return second_compressed_t::get();
   }
 
-#if IRESEARCH_CXX > IRESEARCH_CXX_11
   second_type& second() noexcept {
     return second_compressed_t::get();
   }
-#else
-  second_type& second() noexcept {
-    // force the c++11 compiler to choose constexpr version of "get"
-    return const_cast<second_type&>(
-      const_cast<const compact_pair&>(*this).second()
-    );
-  }
-#endif
 }; // compact_pair
 
 template<typename T0, typename T1>

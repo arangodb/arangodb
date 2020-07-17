@@ -55,8 +55,11 @@ AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable, b
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
 }
 
-ExecutorExpressionContext::ExecutorExpressionContext(Query* query,
+ExecutorExpressionContext::ExecutorExpressionContext(arangodb::transaction::Methods& trx,
+                                                     QueryContext& context,
+                                                     AqlFunctionsInternalCache& cache,
                                                      InputAqlItemRow const& inputRow,
                                                      std::vector<Variable const*> const& vars,
                                                      std::vector<RegisterId> const& regs)
-    : QueryExpressionContext(query), _inputRow(inputRow), _vars(vars), _regs(regs) {}
+    : QueryExpressionContext(trx, context, cache),
+      _inputRow(inputRow), _vars(vars), _regs(regs) {}

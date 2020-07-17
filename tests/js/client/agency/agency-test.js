@@ -386,9 +386,8 @@ function agencyTestSuite () {
 
       ret = request({url: agencyLeader + "/_api/agency/poll",
                          method: "GET", followRedirect: true});
-      if (ret.statusCode === 200) {
-        ret.bodyParsed = JSON.parse(ret.body);
-      }
+      assertEqual(ret.statusCode, 200);
+      ret.bodyParsed = JSON.parse(ret.body);
       assertTrue(ret.bodyParsed.hasOwnProperty("result"));
       result = ret.bodyParsed.result;
       assertTrue(result.hasOwnProperty("readDB"));
@@ -906,21 +905,21 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/a/y"]]), [{"a":{"y":12}}]);
       wait(1.1);
       assertEqual(readAndCheck([["/a/y"]]), [{a:{}}]);
-      writeAndCheck([[{"/a/y":{"op":"set","new":12, "ttl": 1}}]]);
+      writeAndCheck([[{"/a/y":{"op":"set","new":12, "ttl": 3}}]]);
       assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
-      wait(1.1);
+      wait(3.1);
       assertEqual(readAndCheck([["/a/y"]]), [{a:{}}]);
       writeAndCheck([[{"foo/bar":{"op":"set","new":{"baz":12}}}]]);
       assertEqual(readAndCheck([["/foo/bar/baz"]]),
                   [{"foo":{"bar":{"baz":12}}}]);
       assertEqual(readAndCheck([["/foo/bar"]]), [{"foo":{"bar":{"baz":12}}}]);
       assertEqual(readAndCheck([["/foo"]]), [{"foo":{"bar":{"baz":12}}}]);
-      writeAndCheck([[{"foo/bar":{"op":"set","new":{"baz":12},"ttl":1}}]]);
-      wait(1.1);
+      writeAndCheck([[{"foo/bar":{"op":"set","new":{"baz":12},"ttl":3}}]]);
+      wait(3.1);
       assertEqual(readAndCheck([["/foo"]]), [{"foo":{}}]);
       assertEqual(readAndCheck([["/foo/bar"]]), [{"foo":{}}]);
       assertEqual(readAndCheck([["/foo/bar/baz"]]), [{"foo":{}}]);
-      writeAndCheck([[{"a/u":{"op":"set","new":25, "ttl": 2}}]]);
+      writeAndCheck([[{"a/u":{"op":"set","new":25, "ttl": 3}}]]);
       assertEqual(readAndCheck([["/a/u"]]), [{"a":{"u":25}}]);
       writeAndCheck([[{"a/u":{"op":"set","new":26}}]]);
       assertEqual(readAndCheck([["/a/u"]]), [{"a":{"u":26}}]);

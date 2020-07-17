@@ -35,7 +35,23 @@ namespace arangodb {
 namespace transaction {
 namespace cluster {
 
+void abortTransactions(LogicalCollection& coll) {
+  transaction::Manager* mgr = transaction::ManagerFeature::manager();
+  if (!mgr) { // might be called during shutdown
+    return;
+  }
+
+  bool didWork = mgr->abortManagedTrx(
+      [&coll](TransactionState const& state, std::string const & /*user*/) -> bool {
+    TransactionCollection* tcoll = state.collection(coll.id(), AccessMode::Type::NONE);
+        return tcoll != nullptr;
+      });
+  LOG_TOPIC_IF("7eda2", INFO, Logger::TRANSACTIONS, didWork) <<
+  "aborted leader transactions on shard '" << coll.id() << "'";
+}
+
 void abortLeaderTransactionsOnShard(TRI_voc_cid_t cid) {
+  TRI_ASSERT(ServerState::instance()->isRunningInCluster());
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
 
@@ -52,6 +68,7 @@ void abortLeaderTransactionsOnShard(TRI_voc_cid_t cid) {
 }
 
 void abortFollowerTransactionsOnShard(TRI_voc_cid_t cid) {
+  TRI_ASSERT(ServerState::instance()->isRunningInCluster());
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
 

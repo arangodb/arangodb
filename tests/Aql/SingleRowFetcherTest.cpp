@@ -25,7 +25,6 @@
 
 #include "AqlItemBlockHelper.h"
 #include "DependencyProxyMock.h"
-#include "RowFetcherHelper.h"
 #include "gtest/gtest.h"
 
 #include "Aql/AqlCallStack.h"
@@ -126,7 +125,8 @@ class SingleRowFetcherTestDoNotPassBlocks : public ::testing::Test {
 };
 
 TEST_F(SingleRowFetcherTestPassBlocks, there_are_no_blocks_upstream_the_producer_doesnt_wait) {
-  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 0};
+  RegIdSet inputRegister;
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, inputRegister, 0};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
 
   dependencyProxyMock.shouldReturn(ExecutionState::DONE, nullptr);
@@ -145,7 +145,8 @@ TEST_F(SingleRowFetcherTestPassBlocks, there_are_no_blocks_upstream_the_producer
 }
 
 TEST_F(SingleRowFetcherTestPassBlocks, there_are_blocks_upstream_the_producer_waits) {
-  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 0};
+  RegIdSet inputRegister;
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, inputRegister, 0};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
 
   dependencyProxyMock.shouldReturn(ExecutionState::WAITING, nullptr)
@@ -169,7 +170,8 @@ TEST_F(SingleRowFetcherTestPassBlocks, there_are_blocks_upstream_the_producer_wa
 }
 
 TEST_F(SingleRowFetcherTestDoNotPassBlocks, there_are_blocks_upstream_the_producer_waits) {
-  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 0};
+  RegIdSet inputRegister;
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, inputRegister, 0};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
 
   dependencyProxyMock.shouldReturn(ExecutionState::WAITING, nullptr)
@@ -193,7 +195,8 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks, there_are_blocks_upstream_the_produc
 }
 
 TEST_F(SingleRowFetcherTestDoNotPassBlocks, handling_of_relevant_shadow_rows) {
-  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
+  RegIdSet inputRegister;
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, inputRegister, 0};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
   {
@@ -267,7 +270,8 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks, handling_of_relevant_shadow_rows) {
 }
 
 TEST_F(SingleRowFetcherTestDoNotPassBlocks, handling_of_irrelevant_shadow_rows) {
-  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
+  RegIdSet inputRegister;
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, inputRegister, 0};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
   {
@@ -370,7 +374,8 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks, handling_of_irrelevant_shadow_rows) 
 }
 
 TEST_F(SingleRowFetcherTestDoNotPassBlocks, handling_consecutive_shadowrows) {
-  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
+  RegIdSet inputRegister;
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, inputRegister, 0};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
   {
@@ -460,7 +465,8 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks, handling_consecutive_shadowrows) {
 
 TEST_F(SingleRowFetcherTestPassBlocks,
        single_upstream_block_with_a_single_row_producer_returns_done_immediately) {
-  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
+  RegIdSet inputRegister;
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, inputRegister, 0};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
   dependencyProxyMock.shouldReturn(ExecutionState::DONE, std::move(block));
@@ -482,7 +488,8 @@ TEST_F(SingleRowFetcherTestPassBlocks,
 
 TEST_F(SingleRowFetcherTestDoNotPassBlocks,
        single_upstream_block_with_a_single_row_producer_returns_done_immediately) {
-  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
+  RegIdSet inputRegister;
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, inputRegister, 0};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
   dependencyProxyMock.shouldReturn(ExecutionState::DONE, std::move(block));
@@ -504,7 +511,8 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks,
 
 TEST_F(SingleRowFetcherTestPassBlocks,
        single_upstream_block_with_a_single_row_producer_returns_hasmore_then_done_with_a_nullptr) {
-  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
+  RegIdSet inputRegister;
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, inputRegister, 0};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
   dependencyProxyMock.shouldReturn(ExecutionState::HASMORE, std::move(block))
@@ -531,7 +539,8 @@ TEST_F(SingleRowFetcherTestPassBlocks,
 
 TEST_F(SingleRowFetcherTestDoNotPassBlocks,
        single_upstream_block_with_a_single_row_producer_returns_hasmore_then_done_with_a_nullptr) {
-  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
+  RegIdSet inputRegister;
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, inputRegister, 0};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
   dependencyProxyMock.shouldReturn(ExecutionState::HASMORE, std::move(block))
@@ -558,7 +567,8 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks,
 
 TEST_F(SingleRowFetcherTestPassBlocks,
        single_upstream_block_with_a_single_row_producer_waits_then_returns_done) {
-  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
+  RegIdSet inputRegister;
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, inputRegister, 0};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
   dependencyProxyMock.shouldReturn(ExecutionState::WAITING, nullptr)
@@ -585,7 +595,8 @@ TEST_F(SingleRowFetcherTestPassBlocks,
 
 TEST_F(SingleRowFetcherTestDoNotPassBlocks,
        single_upstream_block_with_a_single_row_producer_waits_then_returns_done) {
-  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
+  RegIdSet inputRegister;
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, inputRegister, 0};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
   dependencyProxyMock.shouldReturn(ExecutionState::WAITING, nullptr)
@@ -612,7 +623,8 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks,
 
 TEST_F(SingleRowFetcherTestPassBlocks,
        single_upstream_bock_with_a_single_row_producer_waits_returns_hasmore_then_done) {
-  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
+  RegIdSet inputRegister;
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, inputRegister, 0};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
   dependencyProxyMock.shouldReturn(ExecutionState::WAITING, nullptr)
@@ -644,7 +656,8 @@ TEST_F(SingleRowFetcherTestPassBlocks,
 
 TEST_F(SingleRowFetcherTestDoNotPassBlocks,
        single_upstream_bock_with_a_single_row_producer_waits_returns_hasmore_then_done) {
-  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
+  RegIdSet inputRegister;
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, inputRegister, 0};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
   dependencyProxyMock.shouldReturn(ExecutionState::WAITING, nullptr)
@@ -678,7 +691,8 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks,
 // specification should be compared with the actual output.
 
 TEST_F(SingleRowFetcherTestPassBlocks, multiple_blocks_upstream_producer_doesnt_wait) {
-  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
+  RegIdSet inputRegister;
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, inputRegister, 0};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   // three 1-column matrices with 3, 2 and 1 rows, respectively
   SharedAqlItemBlockPtr block1 = buildBlock<1>(itemBlockManager, {{{1}}, {{2}}, {{3}}}),
@@ -713,7 +727,8 @@ TEST_F(SingleRowFetcherTestPassBlocks, multiple_blocks_upstream_producer_doesnt_
 }
 
 TEST_F(SingleRowFetcherTestDoNotPassBlocks, multiple_blocks_upstream_producer_doesnt_wait) {
-  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
+  RegIdSet inputRegister;
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, inputRegister, 0};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   // three 1-column matrices with 3, 2 and 1 rows, respectively
   SharedAqlItemBlockPtr block1 = buildBlock<1>(itemBlockManager, {{{1}}, {{2}}, {{3}}}),
@@ -748,7 +763,8 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks, multiple_blocks_upstream_producer_do
 }
 
 TEST_F(SingleRowFetcherTestPassBlocks, multiple_blocks_upstream_producer_waits) {
-  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
+  RegIdSet inputRegister;
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, inputRegister, 0};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   // three 1-column matrices with 3, 2 and 1 rows, respectively
   SharedAqlItemBlockPtr block1 = buildBlock<1>(itemBlockManager, {{{1}}, {{2}}, {{3}}}),
@@ -797,7 +813,8 @@ TEST_F(SingleRowFetcherTestPassBlocks, multiple_blocks_upstream_producer_waits) 
 }
 
 TEST_F(SingleRowFetcherTestDoNotPassBlocks, multiple_blocks_upstream_producer_waits) {
-  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
+  RegIdSet inputRegister;
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, inputRegister, 0};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   // three 1-column matrices with 3, 2 and 1 rows, respectively
   SharedAqlItemBlockPtr block1 = buildBlock<1>(itemBlockManager, {{{1}}, {{2}}, {{3}}}),
@@ -847,7 +864,8 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks, multiple_blocks_upstream_producer_wa
 
 TEST_F(SingleRowFetcherTestPassBlocks,
        multiple_blocks_upstream_producer_waits_and_does_not_return_done) {
-  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
+  RegIdSet inputRegister;
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, inputRegister, 0};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   // three 1-column matrices with 3, 2 and 1 rows, respectively
   SharedAqlItemBlockPtr block1 = buildBlock<1>(itemBlockManager, {{{1}}, {{2}}, {{3}}}),
@@ -889,7 +907,8 @@ TEST_F(SingleRowFetcherTestPassBlocks,
 
 TEST_F(SingleRowFetcherTestDoNotPassBlocks,
        multiple_blocks_upstream_producer_waits_and_does_not_return_done) {
-  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
+  RegIdSet inputRegister;
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, inputRegister, 0};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   // three 1-column matrices with 3, 2 and 1 rows, respectively
   SharedAqlItemBlockPtr block1 = buildBlock<1>(itemBlockManager, {{{1}}, {{2}}, {{3}}}),
@@ -930,7 +949,8 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks,
 }
 
 TEST_F(SingleRowFetcherTestPassBlocks, handling_of_relevant_shadow_rows) {
-  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
+  RegIdSet inputRegister;
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, inputRegister, 0};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
   {
@@ -1004,7 +1024,8 @@ TEST_F(SingleRowFetcherTestPassBlocks, handling_of_relevant_shadow_rows) {
 }
 
 TEST_F(SingleRowFetcherTestPassBlocks, handling_of_irrelevant_shadow_rows) {
-  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
+  RegIdSet inputRegister;
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, inputRegister, 0};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
   {
@@ -1107,7 +1128,8 @@ TEST_F(SingleRowFetcherTestPassBlocks, handling_of_irrelevant_shadow_rows) {
 }
 
 TEST_F(SingleRowFetcherTestPassBlocks, handling_consecutive_shadowrows) {
-  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
+  RegIdSet inputRegister;
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, inputRegister, 0};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
   {
@@ -1196,7 +1218,8 @@ TEST_F(SingleRowFetcherTestPassBlocks, handling_consecutive_shadowrows) {
 }
 
 TEST_F(SingleRowFetcherTestPassBlocks, handling_shadowrows_in_execute_oneAndDone) {
-  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
+  RegIdSet inputRegister;
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, inputRegister, 0};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
 
@@ -1229,7 +1252,8 @@ TEST_F(SingleRowFetcherTestPassBlocks, handling_shadowrows_in_execute_oneAndDone
 }
 
 TEST_F(SingleRowFetcherTestPassBlocks, handling_shadowrows_in_execute_twoAndHasMore) {
-  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
+  RegIdSet inputRegister;
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, inputRegister, 0};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
 

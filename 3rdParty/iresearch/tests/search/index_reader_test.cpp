@@ -86,10 +86,10 @@ TEST(directory_reader_test, open_newest_index) {
   class test_format: public irs::format {
    public:
     mutable test_index_meta_reader index_meta_reader;
-    test_format(const irs::format::type_id& type): irs::format(type) {}
+    test_format(const irs::type_info& type): irs::format(type) {}
     virtual irs::index_meta_writer::ptr get_index_meta_writer() const override { return nullptr; }
     virtual irs::index_meta_reader::ptr get_index_meta_reader() const override {
-      return irs::memory::make_managed<irs::index_meta_reader, false>(&index_meta_reader);
+      return irs::memory::to_managed<irs::index_meta_reader, false>(&index_meta_reader);
     }
     virtual irs::segment_meta_writer::ptr get_segment_meta_writer() const override { return nullptr; }
     virtual irs::segment_meta_reader::ptr get_segment_meta_reader() const override { return nullptr; }
@@ -102,12 +102,23 @@ TEST(directory_reader_test, open_newest_index) {
     virtual irs::columnstore_writer::ptr get_columnstore_writer() const override { return nullptr; }
     virtual irs::columnstore_reader::ptr get_columnstore_reader() const override { return nullptr; }
   };
-  irs::format::type_id test_format0_type("test_format0");
-  irs::format::type_id test_format1_type("test_format1");
-  test_format test_codec0(test_format0_type);
-  test_format test_codec1(test_format1_type);
-  irs::format_registrar test_format0_registrar(test_format0_type, irs::string_ref::NIL, &get_codec0);
-  irs::format_registrar test_format1_registrar(test_format1_type, irs::string_ref::NIL, &get_codec1);
+
+  struct test_format0 {
+    static constexpr irs::string_ref type_name() noexcept {
+      return "test_format0";
+    }
+  };
+
+  struct test_format1 {
+    static constexpr irs::string_ref type_name() noexcept {
+      return "test_format1";
+    }
+  };
+
+  test_format test_codec0(irs::type<test_format0>::get());
+  test_format test_codec1(irs::type<test_format1>::get());
+  irs::format_registrar test_format0_registrar(irs::type<test_format0>::get(), irs::string_ref::NIL, &get_codec0);
+  irs::format_registrar test_format1_registrar(irs::type<test_format1>::get(), irs::string_ref::NIL, &get_codec1);
   test_index_meta_reader& test_reader0 = test_codec0.index_meta_reader;
   test_index_meta_reader& test_reader1 = test_codec1.index_meta_reader;
   codec0 = &test_codec0;
@@ -804,7 +815,3 @@ TEST(segment_reader_test, open) {
     }
   }
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

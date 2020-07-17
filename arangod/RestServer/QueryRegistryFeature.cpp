@@ -20,11 +20,14 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <algorithm>
+
 #include "QueryRegistryFeature.h"
 
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
+#include "Basics/NumberOfCores.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/V8FeaturePhase.h"
@@ -46,14 +49,16 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
     : ApplicationFeature(server, "QueryRegistry"),
       _trackSlowQueries(true),
       _trackBindVars(true),
-      _failOnWarning(false),
+      _failOnWarning(aql::QueryOptions::defaultFailOnWarning),
       _queryCacheIncludeSystem(false),
       _smartJoins(true),
-      _queryMemoryLimit(0),
-      _maxQueryPlans(128),
+      _parallelizeTraversals(true),
+      _queryMemoryLimit(aql::QueryOptions::defaultMemoryLimit),
+      _maxQueryPlans(aql::QueryOptions::defaultMaxNumberOfPlans),
       _queryCacheMaxResultsCount(0),
       _queryCacheMaxResultsSize(0),
       _queryCacheMaxEntrySize(0),
+      _maxParallelism(4),
       _slowQueryThreshold(10.0),
       _slowStreamingQueryThreshold(10.0),
       _queryRegistryTTL(0.0),
@@ -136,10 +141,26 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
   
   options->addOption("--query.smart-joins",
-                     "enable smart joins query optimization",
+                     "enable SmartJoins query optimization",
                      new BooleanParameter(&_smartJoins),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Enterprise))
                      .setIntroducedIn(30405).setIntroducedIn(30500);
+  
+  options->addOption("--query.parallelize-traversals",
+                     "enable traversal parallelization",
+                     new BooleanParameter(&_parallelizeTraversals),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Enterprise))
+                     .setIntroducedIn(30701);
+
+  options
+      ->addOption(
+          "--query.max-parallelism",
+          "maximum number of threads to use for a single query; "
+          "actual query execution may use less depending on various factors",
+          new UInt64Parameter(&_maxParallelism),
+          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
+                                              arangodb::options::Flags::Enterprise))
+      .setIntroducedIn(30701);
 }
 
 void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -152,6 +173,20 @@ void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> optio
 
   // cap the value somehow. creating this many plans really does not make sense
   _maxQueryPlans = std::min(_maxQueryPlans, decltype(_maxQueryPlans)(1024));
+  
+  _maxParallelism = std::clamp(_maxParallelism, static_cast<uint64_t>(1),
+                               static_cast<uint64_t>(NumberOfCores::getValue()));
+                               
+  if (_queryRegistryTTL <= 0) {
+    TRI_ASSERT(ServerState::instance()->getRole() != ServerState::ROLE_UNDEFINED);
+    // set to default value based on instance type
+    _queryRegistryTTL = ServerState::instance()->isSingleServer() ? 30 : 600;
+  }
+  
+  aql::QueryOptions::defaultMemoryLimit = _queryMemoryLimit;
+  aql::QueryOptions::defaultMaxNumberOfPlans = _maxQueryPlans;
+  aql::QueryOptions::defaultTtl = _queryRegistryTTL;
+  aql::QueryOptions::defaultFailOnWarning = _failOnWarning;
 }
 
 void QueryRegistryFeature::prepare() {
@@ -169,12 +204,6 @@ void QueryRegistryFeature::prepare() {
                                                  _queryCacheIncludeSystem,
                                                  _trackBindVars};
   arangodb::aql::QueryCache::instance()->properties(properties);
-
-  if (_queryRegistryTTL <= 0) {
-    // set to default value based on instance type
-    _queryRegistryTTL = ServerState::instance()->isSingleServer() ? 30 : 600;
-  }
-
   // create the query registery
   _queryRegistry.reset(new aql::QueryRegistry(_queryRegistryTTL));
   QUERY_REGISTRY.store(_queryRegistry.get(), std::memory_order_release);

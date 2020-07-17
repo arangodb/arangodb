@@ -40,7 +40,7 @@ struct dummy_compressor final : irs::compression::compressor {
 
 struct dummy_decompressor final : irs::compression::decompressor {
   virtual irs::bytes_ref decompress(
-      irs::byte_type* src, size_t src_size,
+      const irs::byte_type* src, size_t src_size,
       irs::byte_type* dst, size_t dst_size) {
     return irs::bytes_ref::NIL;
   }
@@ -51,7 +51,13 @@ struct dummy_decompressor final : irs::compression::decompressor {
 NS_END
 
 TEST(compression_test, registration) {
-  const irs::compression::type_id type("dummy_compression");
+  struct dummy_compression {
+    static constexpr irs::string_ref type_name() noexcept {
+      return "dummy_compression";
+    }
+  };
+
+  constexpr auto type = irs::type<dummy_compression>::get();
 
   // check absent
   {

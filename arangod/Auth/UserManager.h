@@ -73,11 +73,6 @@ class UserManager {
   typedef std::function<Result(auth::User&)> UserCallback;
   typedef std::function<Result(auth::User const&)> ConstUserCallback;
 
-  void setQueryRegistry(aql::QueryRegistry* registry) {
-    TRI_ASSERT(registry != nullptr);
-    _queryRegistry = registry;
-  }
-
   /// Tells coordinator to reload its data. Only called in HeartBeat thread
   void setGlobalVersion(uint64_t version) {
     _globalVersion.store(version, std::memory_order_release);
@@ -89,7 +84,7 @@ class UserManager {
   }
 
   /// @brief used for caching
-  uint64_t globalVersion() {
+  uint64_t globalVersion() const {
     return _globalVersion.load(std::memory_order_acquire);
   }
 
@@ -139,10 +134,12 @@ class UserManager {
                                 std::string const& dbname, bool configured = false);
   auth::Level collectionAuthLevel(std::string const& username, std::string const& dbname,
                                   std::string const& coll, bool configured = false);
-
+  
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   /// Overwrite internally cached permissions, only use
   /// for testing purposes
   void setAuthInfo(auth::UserMap const& userEntryMap);
+#endif
 
 #ifdef USE_ENTERPRISE
 
@@ -182,8 +179,6 @@ class UserManager {
 
   /// Caches permissions and other user info
   UserMap _userCache;
-
-  aql::QueryRegistry* _queryRegistry;
 #ifdef USE_ENTERPRISE
   /// iterface to external authentication systems like LDAP
   std::unique_ptr<arangodb::auth::Handler> _authHandler;

@@ -104,7 +104,7 @@ function QueriesSuite () {
       coordinators = [];
     },
     
-    testCurrentQueries: function() {
+    testCurrentQueriesCoordinator: function() {
       const query = "RETURN SLEEP(100000)";
       // start background query
       let result = sendRequest('POST', "/_api/cursor", { query }, true, { "x-arango-async" : "true" });
@@ -157,6 +157,69 @@ function QueriesSuite () {
       result = sendRequest('GET', "/_api/query/current", null, false);
       assertEqual(result.status, 200);
       assertFalse(isInList(result.body, query));
+    },
+    
+    testCurrentQueriesDBServer: function() {
+      const cn = "UnitTestsCollection";
+      db._drop(cn);
+      let c = db._create(cn, { numberOfShards: 5 });
+      try {
+        const query = "FOR i IN 1..10000000 INSERT {} INTO " + cn;
+        // start background query
+        let result = sendRequest('POST', "/_api/cursor", { query }, true, { "x-arango-async" : "true" });
+        assertEqual(result.status, 202);
+
+        // wait for query to appear in list of running queries
+        let tries = 0;
+        while (++tries < 60) {
+          result = sendRequest('GET', "/_api/query/current", null, true);
+          assertEqual(result.status, 200);
+          if (isInList(result.body, query)) {
+            break;
+          }
+          require("internal").sleep(0.5);
+        }
+
+        result = sendRequest('GET', "/_api/query/current", null, true);
+        assertEqual(result.status, 200);
+        assertTrue(isInList(result.body, query));
+        
+        result = sendRequest('GET', "/_api/query/current", null, false);
+        assertEqual(result.status, 200);
+        assertTrue(isInList(result.body, query));
+
+        let queries = result.body.filter(function(data) { return data.query.indexOf(query) !== -1; });
+        assertEqual(1, queries.length);
+
+        let id = queries[0].id;
+        assertEqual("string", typeof id);
+
+        // kill the query
+        result = sendRequest('DELETE', "/_api/query/" + id, null, false);
+        assertEqual(result.status, 200);
+      
+        // query must not vanish from list of currently running queries
+        tries = 0;
+        while (++tries < 60) {
+          result = sendRequest('GET', "/_api/query/current", null, true);
+          assertEqual(result.status, 200);
+          if (!isInList(result.body, query)) {
+            break;
+          }
+          require("internal").sleep(0.5);
+        }
+
+        result = sendRequest('GET', "/_api/query/current", null, true);
+        assertEqual(result.status, 200);
+        assertFalse(isInList(result.body, query));
+        
+        result = sendRequest('GET', "/_api/query/current", null, false);
+        assertEqual(result.status, 200);
+        assertFalse(isInList(result.body, query));
+      } catch (err) {
+      } finally {
+        db._drop(cn);
+      }
     },
 
     testSlowQueries: function() {

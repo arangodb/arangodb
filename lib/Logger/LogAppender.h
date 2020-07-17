@@ -33,6 +33,7 @@
 #include <vector>
 
 #include "Basics/Common.h"
+#include "Basics/Result.h"
 #include "Logger/LogLevel.h"
 
 namespace arangodb {
@@ -42,13 +43,11 @@ class Mutex;
 
 class LogAppender {
  public:
-  static void addAppender(std::string const& definition,
-                          std::string const& contentFilter = "");
+  static void addAppender(std::string const& definition);
   
   static void addGlobalAppender(std::shared_ptr<LogAppender>);
   
-  static std::pair<std::shared_ptr<LogAppender>, LogTopic*> buildAppender(
-      std::string const& definition, std::string const& contentFilter);
+  static std::shared_ptr<LogAppender> buildAppender(std::string const& output);
 
   static void logGlobal(LogMessage const&);
   static void log(LogMessage const&);
@@ -58,7 +57,6 @@ class LogAppender {
 
  public:
   LogAppender() = default;
-  explicit LogAppender(std::string const& filter) : _filter(filter) {}
   virtual ~LogAppender() = default;
 
   LogAppender(LogAppender const&) = delete;
@@ -69,21 +67,19 @@ class LogAppender {
 
   virtual std::string details() const = 0;
 
-  bool checkContent(std::string const& message) const {
-    return _filter.empty() || (message.find(_filter) != std::string::npos);
-  }
-
   static bool allowStdLogging() { return _allowStdLogging; }
   static void allowStdLogging(bool value) { _allowStdLogging = value; }
 
- protected:
-  std::string const _filter;  // an optional content filter for log messages
-
+  static Result parseDefinition(std::string const& definition, 
+                                std::string& topicName,
+                                std::string& output,
+                                LogTopic*& topic);
+ 
  private:
   static Mutex _appendersLock;
   static std::vector<std::shared_ptr<LogAppender>> _globalAppenders;
   static std::map<size_t, std::vector<std::shared_ptr<LogAppender>>> _topics2appenders;
-  static std::map<std::pair<std::string, std::string>, std::shared_ptr<LogAppender>> _definition2appenders;
+  static std::map<std::string, std::shared_ptr<LogAppender>> _definition2appenders;
   static bool _allowStdLogging;
 };
 }  // namespace arangodb

@@ -32,7 +32,9 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
+#include "IResearch/IResearchCommon.h"
 #include "IResearchLinkMeta.h"
 #include "Misc.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -233,7 +235,7 @@ bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
         if (!found) {
           // for cluster only check cache to avoid ClusterInfo locking issues
           // analyzer should have been populated via 'analyzerDefinitions' above
-          analyzer = analyzers.get(name, ServerState::instance()->isClusterRole());
+          analyzer = analyzers.get(name, QueryAnalyzerRevisions::QUERY_LATEST, ServerState::instance()->isClusterRole());
         }
 
         if (!analyzer) {
@@ -672,7 +674,6 @@ bool IResearchLinkMeta::init(arangodb::application_features::ApplicationServer& 
             }
           }
         }
-
         irs::string_ref type;
 
         {
@@ -734,8 +735,8 @@ bool IResearchLinkMeta::init(arangodb::application_features::ApplicationServer& 
                 return false;
               }
 
-              auto featureName = getStringRef(subValue);
-              auto* feature = irs::attribute::type_id::get(featureName);
+              const auto featureName = getStringRef(subValue);
+              const auto feature = irs::attributes::get(featureName);
 
               if (!feature) {
                 errorField = fieldName + "[" + std::to_string(itr.index()) + "]." + subFieldName + "." + std::string(featureName);
@@ -743,13 +744,24 @@ bool IResearchLinkMeta::init(arangodb::application_features::ApplicationServer& 
                 return false;
               }
 
-              features.add(*feature);
+              features.add(feature.id());
             }
           }
         }
 
+        arangodb::AnalyzersRevision::Revision revision{ arangodb::AnalyzersRevision::MIN };
+        auto const revisionSlice = value.get(arangodb::StaticStrings::AnalyzersRevision);
+        if (!revisionSlice.isNone()) {
+          if (revisionSlice.isNumber()) {
+            revision = revisionSlice.getNumber<arangodb::AnalyzersRevision::Revision>();
+          } else {
+            errorField = arangodb::StaticStrings::AnalyzersRevision;
+            return false;
+          }
+        }
+
         AnalyzerPool::ptr analyzer;
-        auto const res = IResearchAnalyzerFeature::createAnalyzerPool(analyzer, name, type, properties, features);
+        auto const res = IResearchAnalyzerFeature::createAnalyzerPool(analyzer, name, type, properties, revision, features);
 
         if (res.fail() || !analyzer) {
           errorField = fieldName + "[" + std::to_string(itr.index()) + "]";

@@ -26,7 +26,7 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/RegisterInfos.h"
-#include "Aql/SharedAqlItemBlockPtr.h"
+#include "Aql/Stats.h"
 
 #include <tuple>
 #include <utility>
@@ -73,18 +73,18 @@ class IdExecutorInfos {
 
   [[nodiscard]] auto getOutputRegister() const noexcept -> RegisterId;
 
-  [[nodiscard]] std::string const& distributeId();
+  [[nodiscard]] std::string const& distributeId() const noexcept;
 
-  [[nodiscard]] bool isResponsibleForInitializeCursor() const;
+  [[nodiscard]] bool isResponsibleForInitializeCursor() const noexcept;
 
  private:
   bool _doCount;
+  
+  bool const _isResponsibleForInitializeCursor;
 
   RegisterId _outputRegister;
 
   std::string const _distributeId;
-
-  bool const _isResponsibleForInitializeCursor;
 };
 
 template <class UsedFetcher>

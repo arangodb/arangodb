@@ -43,6 +43,6 @@ TransactionStatistics::TransactionStatistics(MetricsFeature& metrics)
 // --SECTION--                                             static public methods
 // -----------------------------------------------------------------------------
 
-void ServerStatistics::initialize(double startTime) {
-    _startTime = startTime;
+double ServerStatistics::uptime() const noexcept {
+  return StatisticsFeature::time() - _startTime;
 }

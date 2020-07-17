@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryProfile.h"
+#include "Aql/Timing.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
@@ -65,7 +66,7 @@ void QueryEntryCopy::toVelocyPack(velocypack::Builder& out) const {
   out.add(VPackValue(VPackValueType::Object));
   out.add("id", VPackValue(basics::StringUtils::itoa(id)));
   out.add("query", VPackValue(queryString));
-  if (bindParameters != nullptr) {
+  if (bindParameters != nullptr && !bindParameters->slice().isNone()) {
     out.add("bindVars", bindParameters->slice());
   } else {
     out.add("bindVars", arangodb::velocypack::Slice::emptyObjectSlice());
@@ -78,7 +79,7 @@ void QueryEntryCopy::toVelocyPack(velocypack::Builder& out) const {
 }
 
 /// @brief create a query list
-QueryList::QueryList(QueryRegistryFeature& feature, TRI_vocbase_t*)
+QueryList::QueryList(QueryRegistryFeature& feature)
     : _lock(),
       _enabled(feature.trackSlowQueries()),
       _trackSlowQueries(feature.trackSlowQueries()),
@@ -135,46 +136,39 @@ void QueryList::remove(Query* query) {
     return;
   }
 
-  double const started = query->startTime();
-  double const now = TRI_microtime();
+  // elapsed time since query start
+  double const elapsed = elapsedSince(query->startTime());
 
   query->vocbase().server().getFeature<arangodb::MetricsFeature>().counter(
-      StaticStrings::AqlQueryRuntimeMs) += static_cast<uint64_t>(1000 * (now - started));
+      StaticStrings::AqlQueryRuntimeMs) += static_cast<uint64_t>(1000 * elapsed);
 
-  if (!_trackSlowQueries) {
+  if (!_trackSlowQueries.load(std::memory_order_relaxed) || query->killed()) {
     return;
   }
   
   bool const isStreaming = query->queryOptions().stream;
   double threshold = (isStreaming ? _slowStreamingQueryThreshold : _slowQueryThreshold);
 
-  if (threshold < 0.0) {
-    return;
-  }
-
-  try {
-    // check if we need to push the query into the list of slow queries
-    if (now - started >= threshold && !query->killed()) {
-      // yes.
-
+  // check if we need to push the query into the list of slow queries
+  if (elapsed >= threshold && threshold >= 0.0) {
+    // yes.
+    try {
       TRI_IF_FAILURE("QueryList::remove") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
+      
+      // we calculate the query start timestamp as the current time minus
+      // the elapsed time since query start. this is not 100% accurrate, but
+      // best effort, and saves us from bookkeeping the start timestamp of the 
+      // query inside the Query object.
+      double const now = TRI_microtime();
 
       std::string q = extractQueryString(query, _maxQueryStringLength);
-
-      QueryProfile* profile = query->profile();
-      double loadTime = 0.0;
-
-      if (profile != nullptr) {
-        loadTime = profile->timer(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
-      }
-
       std::string bindParameters;
       if (_trackBindVars) {
         // also log bind variables
         auto bp = query->bindParameters();
-        if (bp != nullptr) {
+        if (bp != nullptr && !bp->slice().isNone()) {
           bindParameters.append(", bind vars: ");
           bindParameters.append(bp->slice().toJson());
           if (bindParameters.size() > _maxQueryStringLength) {
@@ -184,20 +178,14 @@ void QueryList::remove(Query* query) {
         }
       }
 
-      if (loadTime >= 0.1) {
-        LOG_TOPIC("d728e", WARN, Logger::QUERIES)
-            << "slow " << (isStreaming ? "streaming " : "") << "query: '" << q
-            << "'" << bindParameters << ", took: " << Logger::FIXED(now - started)
-            << " s, loading took: " << Logger::FIXED(loadTime) << " s";
-      } else {
-        LOG_TOPIC("8bcee", WARN, Logger::QUERIES)
-            << "slow " << (isStreaming ? "streaming " : "") << "query: '" << q << "'"
-            << bindParameters << ", took: " << Logger::FIXED(now - started) << " s";
-      }
+      LOG_TOPIC("8bcee", WARN, Logger::QUERIES)
+          << "slow " << (isStreaming ? "streaming " : "") << "query: '" << q << "'"
+          << bindParameters << ", took: " << Logger::FIXED(elapsed) << " s";
 
       _slow.emplace_back(query->id(), std::move(q),
                          _trackBindVars ? query->bindParameters() : nullptr,
-                         started, now - started,
+                         now - elapsed, /* start timestamp */ 
+                         elapsed /* run time */,
                          query->killed() ? QueryExecutionState::ValueType::KILLED
                                          : QueryExecutionState::ValueType::FINISHED,
                          isStreaming);
@@ -208,8 +196,8 @@ void QueryList::remove(Query* query) {
         // free first element
         _slow.pop_front();
       }
+    } catch (...) {
     }
-  } catch (...) {
   }
 }
 
@@ -220,7 +208,7 @@ Result QueryList::kill(TRI_voc_tick_t id) {
   auto it = _current.find(id);
 
   if (it == _current.end()) {
-    return {TRI_ERROR_QUERY_NOT_FOUND};
+    return {TRI_ERROR_QUERY_NOT_FOUND, "query ID not found in query list"};
   }
 
   Query* query = (*it).second;
@@ -262,14 +250,14 @@ uint64_t QueryList::kill(std::function<bool(Query&)> const& filter, bool silent)
 
 /// @brief get the list of currently running queries
 std::vector<QueryEntryCopy> QueryList::listCurrent() {
-  double const now = TRI_microtime();
-  size_t const maxLength = _maxQueryStringLength;
-
   std::vector<QueryEntryCopy> result;
   // reserve room for some queries outside of the lock already,
   // so we reduce the possibility of having to reserve more room
   // later
   result.reserve(16);
+      
+  size_t const maxLength = _maxQueryStringLength;
+  double const now = TRI_microtime();
 
   {
     READ_LOCKER(readLocker, _lock);
@@ -279,15 +267,19 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
     for (auto const& it : _current) {
       Query const* query = it.second;
 
-      if (query == nullptr || query->queryString().empty()) {
-        continue;
-      }
+      TRI_ASSERT(query != nullptr);
 
-      double const started = query->startTime();
+      // elapsed time since query start
+      double const elapsed = elapsedSince(query->startTime());
 
+      // we calculate the query start timestamp as the current time minus
+      // the elapsed time since query start. this is not 100% accurrate, but
+      // best effort, and saves us from bookkeeping the start timestamp of the 
+      // query inside the Query object.
       result.emplace_back(query->id(), extractQueryString(query, maxLength),
                           _trackBindVars ? query->bindParameters() : nullptr,
-                          started, now - started,
+                          now - elapsed /* start timestamp */, 
+                          elapsed /* run time */,
                           query->killed() ? QueryExecutionState::ValueType::KILLED
                                           : query->state(),
                           query->queryOptions().stream);

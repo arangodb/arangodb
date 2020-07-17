@@ -24,6 +24,8 @@ const CryptoJS = require('crypto-js');
 const hljs = require('highlight.js/lib/highlight');
 const json = require('highlight.js/lib/languages/json');
 
+const env = process.env.NODE_ENV
+
 // import old based css files
 require('../../frontend/css/pure-min.css');
 require('../../frontend/ttf/arangofont/style.css');
@@ -48,15 +50,19 @@ require("../node_modules/noty/lib/themes/sunset.css");
 
 window.JST = {};
 
-// import sass files
 function requireAll(context) {
   context.keys().forEach(context);
   _.each(context.keys(), function(key) {
-    // detect html, later move to ejs back again
-    if (key.substring(key.length - 5, key.length) === '.html') {
+    // detect and store ejs templates
+    if (key.substring(key.length - 4, key.length) === '.ejs') {
       let filename = key.substring(2, key.length);
-      let name = key.substring(2, key.length - 5);
-      window.JST['templates/' + name] = _.template(require('../../frontend/js/templates/' + filename));
+      let name = key.substring(2, key.length - 4);
+      if (env === 'development') {
+        window.JST['templates/' + name] = _.template(require('../../frontend/js/templates/' + filename).default);
+      } else {
+        // production - precompiled templates
+        window.JST['templates/' + name] = require('../../frontend/js/templates/' + filename);
+      }
     }
   });
 }
@@ -85,13 +91,13 @@ require('../../frontend/js/arango/templateEngine.js');
 require('../../frontend/js/arango/arango.js');
 
 // only set this for development
-const env = process.env.NODE_ENV
 if (window.frontendConfig && env === 'development') {
   window.frontendConfig.basePath = process.env.REACT_APP_ARANGODB_HOST;
   window.frontendConfig.react = true;
 }
 
 require('../../frontend/js/lib/jquery-ui-1.9.2.custom.min.js');
+require('../../frontend/js/lib/jquery.form.js');
 require('../../frontend/js/lib/jquery.uploadfile.min.js');
 require('../../frontend/js/lib/bootstrap-min.js');
 
@@ -120,10 +126,10 @@ requireAll(require.context(
 // Third Party Libraries
 window.tippy = require('tippy.js');
 require('../../frontend/js/lib/bootstrap-pagination.min.js');
-window.numeral = require('../../frontend/js/lib/numeral.min.js'); // TODO 
+window.numeral = require('../../frontend/js/lib/numeral.min.js'); // TODO
 window.JSONEditor = jsoneditor;
 
-// ace 
+// ace
 window.define = window.ace.define;
 window.aqltemplates = require('../public/assets/aqltemplates.json');
 

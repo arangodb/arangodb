@@ -38,7 +38,7 @@ class ScatterNode;
 class ScatterExecutorInfos : public ClientsExecutorInfos {
  public:
   explicit ScatterExecutorInfos(std::vector<std::string> clientIds);
-  ScatterExecutorInfos(ScatterExecutorInfos&&) noexcept = default;
+  ScatterExecutorInfos(ScatterExecutorInfos&&) = default;
 };
 
 // The ScatterBlock is actually implemented by specializing ExecutionBlockImpl,
@@ -61,7 +61,7 @@ class ScatterExecutor {
 
    private:
     std::deque<std::tuple<SharedAqlItemBlockPtr, SkipResult>> _queue;
-    // This is unique_ptr to get away with everything beeing forward declared...
+    // This is unique_ptr to get away with everything being forward declared...
     std::unique_ptr<ExecutionBlock> _executor;
     bool _executorHasMore;
   };
@@ -69,7 +69,7 @@ class ScatterExecutor {
   explicit ScatterExecutor(Infos const&);
   ~ScatterExecutor() = default;
 
-  auto distributeBlock(SharedAqlItemBlockPtr block, SkipResult skipped,
+  auto distributeBlock(SharedAqlItemBlockPtr const& block, SkipResult skipped,
                        std::unordered_map<std::string, ClientBlockData>& blockMap) const
       -> void;
 };

@@ -95,7 +95,7 @@ class SortNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final {
+  void getVariablesUsedHere(VarSet& vars) const override final {
     for (auto& p : _elements) {
       vars.emplace(p.var);
     }
@@ -126,7 +126,6 @@ class SortNode : public ExecutionNode {
   // geo-index
   bool _reinsertInCluster;
 
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
  private:
   /// @brief pairs, consisting of variable and sort direction
   /// (true = ascending | false = descending)

@@ -24,13 +24,13 @@
 #ifndef ARANGOD_AQL_GRAPH_NODE_H
 #define ARANGOD_AQL_GRAPH_NODE_H 1
 
+#include "Aql/types.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/GraphNode.h"
 #include "Aql/Graphs.h"
 #include "Cluster/ClusterTypes.h"
-#include "Cluster/TraverserEngineRegistry.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 
@@ -54,7 +54,7 @@ namespace aql {
 //        * graph info parsing
 //        * traverser-engine creation
 //        * option preparation
-//        * Smart Graph Handling
+//        * SmartGraph Handling
 class ExecutionEngine;
 
 class GraphNode : public ExecutionNode {
@@ -68,8 +68,8 @@ class GraphNode : public ExecutionNode {
 
  public:
   bool isUsedAsSatellite() const;
-  bool isSatelliteNode() const;
-  void waitForSatelliteIfRequired(ExecutionEngine const *engine) const;
+  bool isLocalGraphNode() const;
+  void waitForSatelliteIfRequired(ExecutionEngine const* engine) const;
 
   bool isEligibleAsSatelliteTraversal() const;
 
@@ -102,8 +102,11 @@ class GraphNode : public ExecutionNode {
   /// @brief the cost of a graph node
   CostEstimate estimateCost() const override;
 
-  /// @brief flag, if smart traversal (enterprise edition only!) is done
+  /// @brief flag, if smart traversal (Enterprise Edition only!) is done
   bool isSmart() const;
+
+  /// @brief flag, if the graph is a Disjoint SmartGraph (Enterprise Edition only!)
+  bool isDisjoint() const;
 
   /// @brief return the database
   TRI_vocbase_t* vocbase() const;
@@ -141,14 +144,14 @@ class GraphNode : public ExecutionNode {
 
   /// @brief Add a traverser engine Running on a DBServer to this node.
   ///        The block will communicate with them (CLUSTER ONLY)
-  void addEngine(traverser::TraverserEngineID const&, ServerID const&);
+  void addEngine(aql::EngineId, ServerID const&);
 
   /// @brief enhance the TraversalEngine with all necessary info
   ///        to be send to DBServers (CLUSTER ONLY)
   void enhanceEngineInfo(arangodb::velocypack::Builder&) const;
 
   /// @brief Returns a reference to the engines. (CLUSTER ONLY)
-  std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines() const;
+  std::unordered_map<ServerID, aql::EngineId> const* engines() const;
 
   std::vector<aql::Collection*> const& edgeColls() const;
 
@@ -170,10 +173,10 @@ class GraphNode : public ExecutionNode {
     _collectionToShard = map;
   }
   void addCollectionToShard(std::string const& coll, std::string const& shard) {
-    _collectionToShard.emplace(coll, shard);
+    // NOTE: Do not replace this by emplace or insert.
+    // This is also used to overwrite the existing entry.
+    _collectionToShard[coll] = shard;
   }
-
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 
  public:
   graph::Graph const* graph() const noexcept;
@@ -231,10 +234,13 @@ class GraphNode : public ExecutionNode {
   bool _optionsBuilt;
 
   /// @brief The list of traverser engines grouped by server.
-  std::unordered_map<ServerID, traverser::TraverserEngineID> _engines;
+  std::unordered_map<ServerID, aql::EngineId> _engines;
 
-  /// @brief flag, if graph is smart (enterprise edition only!)
+  /// @brief flag, if graph is smart (Enterprise Edition only!)
   bool _isSmart;
+
+  /// @brief flag, if graph is smart *and* disjoint (Enterprise Edition only!)
+  bool _isDisjoint;
 
   /// @brief list of shards involved, required for one-shard-databases
   std::map<std::string, std::string> _collectionToShard;
