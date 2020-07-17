@@ -59,12 +59,7 @@ int main(int argc, char** argv) {
   ctx.variables["S"] = S->slice();
 
   auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-    ["if", [
-      [
-        ["eq?", ["varref", "v"], ["varref", "S"]],
-        ["set", "distance", 0]
-      ]
-    ]]
+    ["+", 5, 6, 7]
   )aql");
 
 	std::cout << "ArangoLISP Interpreter Executing" << std::endl;
