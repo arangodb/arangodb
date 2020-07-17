@@ -62,7 +62,7 @@ class WalkerWorkerBase {
 template <class T, bool unique>
 class WalkerWorker : public WalkerWorkerBase<T> {
  public:
-  virtual bool done(T* en) {
+  virtual bool done([[maybe_unused]] T* en) {
     if constexpr (unique) {
       return !_done.emplace(en).second;
     }
