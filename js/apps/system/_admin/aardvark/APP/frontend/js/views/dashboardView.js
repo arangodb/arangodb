@@ -695,9 +695,8 @@
       }
 
       if (self.server !== '-local-') {
-        urlParams += '&type=short';
         if (self.serverInfo.target) {
-          urlParams += '&DBserver=' + self.serverInfo.target;
+          urlParams += '&DBserver=' + encodeURIComponent(self.serverInfo.target);
         }
 
         if (!self.history.hasOwnProperty(self.server)) {
@@ -739,7 +738,7 @@
 
       if (self.server !== '-local-') {
         url = self.server.endpoint + arangoHelper.databaseUrl('/_admin/aardvark/statistics/cluster');
-        urlParams += '&type=long&DBserver=' + self.server.target;
+        urlParams += '&type=long&DBserver=' + encodeURIComponent(self.server.target);
 
         if (!self.history.hasOwnProperty(self.server)) {
           self.history[self.server] = {};
