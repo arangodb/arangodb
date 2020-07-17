@@ -41,7 +41,6 @@
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -975,8 +974,6 @@ void Agent::load() {
       _server.hasFeature<SystemDatabaseFeature>()
           ? _server.getFeature<SystemDatabaseFeature>().use()
           : nullptr;
-  auto queryRegistry = QueryRegistryFeature::registry();
-
   if (vocbase == nullptr) {
     LOG_TOPIC("63e36", FATAL, Logger::AGENCY) << "could not determine _system database";
     FATAL_ERROR_EXIT();
@@ -990,7 +987,7 @@ void Agent::load() {
 
     LOG_TOPIC("c07e1", DEBUG, Logger::AGENCY) << "Loading persistent state.";
 
-    if (!_state.loadCollections(vocbase.get(), queryRegistry, _config.waitForSync())) {
+    if (!_state.loadCollections(vocbase.get(), _config.waitForSync())) {
       LOG_TOPIC("9b680", FATAL, Logger::AGENCY)
           << "Failed to load persistent state on startup.";
       FATAL_ERROR_EXIT();
@@ -1011,7 +1008,7 @@ void Agent::load() {
 
   LOG_TOPIC("6e997", DEBUG, Logger::AGENCY) << "Starting spearhead worker.";
 
-  _constituent.start(vocbase.get(), queryRegistry);
+  _constituent.start(vocbase.get());
   persistConfiguration(term());
 
   if (_config.supervision()) {
