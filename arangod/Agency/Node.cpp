@@ -13,69 +13,12 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <deque>
-#include <regex>
 
 using namespace arangodb::consensus;
 using namespace arangodb::basics;
 
 const Node::Children Node::dummyChildren = Node::Children();
 const Node Node::_dummyNode = Node("dumm-di-dumm");
-
-static std::string const SLASH("/");
-static std::regex const duplicateSlashesRegex("/+");
-  
-std::string Node::normalize(std::string const& path) {
-
-  if (path.empty()) {
-    return SLASH;
-  }
-
-  std::string key = std::regex_replace(path, duplicateSlashesRegex, SLASH);
-
-  // Must specify absolute path
-  if (key.front() != SLASH.front()) {
-    key = SLASH + key;
-  }
-
-  // Remove trailing slash
-  if (key.size() > 2 && key.back() == SLASH.front()) {
-    key.pop_back();
-  }
-
-  return key;
-
-}
-
-/// @brief Split strings by separator
-std::vector<std::string> Node::split(const std::string& str, char separator) {
-  std::vector<std::string> result;
-  if (str.empty()) {
-    return result;
-  }
-
-  std::string key = std::regex_replace(str, duplicateSlashesRegex, "/");
-
-  if (!key.empty() && key.front() == '/') {
-    key.erase(0, 1);
-  }
-  if (!key.empty() && key.back() == '/') {
-    key.pop_back();
-  }
-
-  std::string::size_type p = 0;
-  std::string::size_type q;
-  while ((q = key.find(separator, p)) != std::string::npos) {
-    result.emplace_back(key, p, q - p);
-    p = q + 1;
-  }
-  result.emplace_back(key, p);
-  result.erase(std::find_if(result.rbegin(), result.rend(),
-                            [](std::string const& s) -> bool {
-                              return !s.empty();
-                            }).base(),
-               result.end());
-  return result;
-}
 
 /// @brief Construct with node name
 Node::Node(std::string const& name)
@@ -145,7 +88,7 @@ std::string Node::uri() const {
 }
 
 /// @brief Move constructor
-Node::Node(Node&& other)
+Node::Node(Node&& other) noexcept
     : _nodeName(std::move(other._nodeName)),
       _parent(nullptr),
       _store(nullptr),
@@ -206,7 +149,7 @@ Node& Node::operator=(VPackSlice const& slice) {
 
 // Move operator
 // cppcheck-suppress operatorEqVarError
-Node& Node::operator=(Node&& rhs) {
+Node& Node::operator=(Node&& rhs) noexcept {
   // 1. remove any existing time to live entry
   // 2. move children map over
   // 3. move value over
@@ -345,12 +288,12 @@ Node const& Node::operator()(std::vector<std::string> const& pv) const {
 
 /// @brief lh-value at path
 Node& Node::operator()(std::string const& path) {
-  return this->operator()(split(path, '/'));
+  return this->operator()(Store::split(path));
 }
 
 /// @brief rh-value at path
 Node const& Node::operator()(std::string const& path) const {
-  return this->operator()(split(path, '/'));
+  return this->operator()(Store::split(path));
 }
 
 // Get method which always throws when not found:
@@ -880,7 +823,12 @@ bool Node::applies(VPackSlice const& slice) {
 
   if (slice.isObject()) {
     for (auto const& i : VPackObjectIterator(slice)) {
-      std::string key = std::regex_replace(i.key.copyString(), duplicateSlashesRegex, "/");
+      // note: no need to remove duplicate forward slashes here...
+      //  if i.key contains duplicate forward slashes, then we will go
+      //  into the  key.find('/')  case, and will be calling  operator()
+      //  on the tainted key. And  operator()  calls  Store::split(),
+      //  which will remove all duplicate forward slashes.
+      std::string key = i.key.copyString();
       if (key.find('/') != std::string::npos) {
         (*this)(key).applies(i.value);
       } else {
@@ -963,14 +911,14 @@ std::vector<std::string> Node::exists(std::vector<std::string> const& rel) const
 }
 
 std::vector<std::string> Node::exists(std::string const& rel) const {
-  return exists(split(rel, '/'));
+  return exists(Store::split(rel));
 }
 
 bool Node::has(std::vector<std::string> const& rel) const {
   return exists(rel).size() == rel.size();
 }
 
-bool Node::has(std::string const& rel) const { return has(split(rel, '/')); }
+bool Node::has(std::string const& rel) const { return has(Store::split(rel)); }
 
 int64_t Node::getInt() const {
   if (type() == NODE) {

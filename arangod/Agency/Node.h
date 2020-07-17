@@ -101,7 +101,7 @@ class Node final {
   Node(Node const& other);
 
   /// @brief Move constructor
-  Node(Node&& other);
+  Node(Node&& other) noexcept;
 
   /// @brief Construct with name and introduce to tree under parent
   Node(std::string const& name, Node* parent);
@@ -122,7 +122,7 @@ class Node final {
   Node& operator=(Node const& node);
 
   /// @brief Move operator
-  Node& operator=(Node&& node);
+  Node& operator=(Node&& node) noexcept;
 
   /// @brief Apply value slice to this node
   Node& operator=(arangodb::velocypack::Slice const&);
@@ -181,12 +181,6 @@ class Node final {
 
   /// @brief Get value type
   ValueType valueType() const;
-
-  /// @brief Normalize node URIs
-  static std::string normalize(std::string const& key);
-
-  /// @brief Split path to path vector
-  static std::vector<std::string> split(const std::string& str, char separator);
 
   /// @brief Create JSON representation of this node and below
   std::string toJson() const;

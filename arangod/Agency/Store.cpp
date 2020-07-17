@@ -30,6 +30,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -656,15 +657,14 @@ bool Store::read(VPackSlice const& query, Builder& ret) const {
   bool showHidden = false;
 
   // Collect all paths
-  std::vector<std::string> query_strs;
-  if (query.isArray()) {
-    for (auto const& sub_query : VPackArrayIterator(query)) {
-      std::string subqstr = sub_query.copyString();
-      query_strs.push_back(subqstr);
-      showHidden |= (subqstr.find("/.") != std::string::npos);
-    }
-  } else {
+  if (!query.isArray()) {
     return false;
+  }
+  
+  std::vector<std::string> query_strs;
+  for (auto const& sub_query : VPackArrayIterator(query)) {
+    query_strs.emplace_back(sub_query.copyString());
+    showHidden |= (query_strs.back().find("/.") != std::string::npos);
   }
 
   // Remove double ranges (inclusion / identity)
@@ -866,7 +866,7 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
           continue;
         }
       }
-      auto uri = Node::normalize(abskeys.at(i.first));
+      auto uri = Store::normalize(abskeys.at(i.first));
       if (op.isEqualString("observe")) {
         bool found = false;
         if (value.get("url").isString()) {
@@ -1036,7 +1036,38 @@ void Store::removeTTL(std::string const& uri) {
   }
 }
 
-/// @brief Split strings by forward slashes, omitting empty strings
+std::string Store::normalize(std::string const& path) {
+  std::string normalized;
+  normalized.reserve(path.size() + 1);
+  size_t offset = 0;
+
+  while (true) {
+    if (normalized.empty() || normalized.back() != '/') {
+      normalized.push_back('/');
+    }
+    size_t pos = path.find('/', offset);
+    if (pos != std::string::npos) {
+      normalized.append(path.data() + offset, pos - offset);
+      offset = pos + 1;
+    } else {
+      normalized.append(path.data() + offset, path.size() - offset);
+      break;
+    }
+  }
+
+  TRI_ASSERT(!normalized.empty());
+  TRI_ASSERT(normalized.front() == '/');
+  if (normalized.size() > 1 && normalized.back() == '/') {
+    normalized.pop_back();
+  }
+  TRI_ASSERT(!normalized.empty());
+  TRI_ASSERT(normalized.front() == '/');
+  TRI_ASSERT(normalized.find("//") == std::string::npos);
+  return normalized;
+}
+
+/// @brief Split strings by forward slashes, omitting empty strings,
+/// and ignoring multiple subsequent forward slashes
 std::vector<std::string> Store::split(std::string const& str) {
   std::vector<std::string> result;
 

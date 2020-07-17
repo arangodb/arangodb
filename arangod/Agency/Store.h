@@ -155,9 +155,12 @@ class Store {
   std::unordered_multimap<std::string, std::string> const& observerTable() const;
   std::unordered_multimap<std::string, std::string>& observedTable();
   std::unordered_multimap<std::string, std::string> const& observedTable() const;
+  
+  /// @brief Normalize node URIs
+  static std::string normalize(std::string const& key);
 
-  /// @brief Split strings by forward slashes, omitting empty strings
-  /// this function is only public so that it can be test by unit tests
+  /// @brief Split strings by forward slashes, omitting empty strings,
+  /// and ignoring multiple subsequent forward slashes
   static std::vector<std::string> split(std::string const& str);
 
  private:
