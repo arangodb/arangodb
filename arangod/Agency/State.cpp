@@ -35,7 +35,6 @@
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
-#include "Aql/QueryRegistry.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -43,7 +42,6 @@
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
@@ -69,7 +67,6 @@ State::State(application_features::ApplicationServer& server)
     _collectionsLoaded(false),
     _nextCompactionAfter(0),
     _lastCompactionAt(0),
-    _queryRegistry(nullptr),
     _cur(0),
     _log_size(
       _server.getFeature<MetricsFeature>().gauge(
@@ -796,16 +793,13 @@ bool State::createCollection(std::string const& name) {
 bool State::ready() const { return _ready; }
 
 /// Load collections
-bool State::loadCollections(TRI_vocbase_t* vocbase,
-                            QueryRegistry* queryRegistry, bool waitForSync) {
+bool State::loadCollections(TRI_vocbase_t* vocbase, bool waitForSync) {
 
   using namespace std::chrono;
   auto const epoch_millis =
     duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 
   _vocbase = vocbase;
-  _queryRegistry = queryRegistry;
-
   TRI_ASSERT(_vocbase != nullptr);
 
   _options.waitForSync = waitForSync;
