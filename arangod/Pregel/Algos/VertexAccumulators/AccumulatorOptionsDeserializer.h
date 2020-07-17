@@ -30,6 +30,7 @@
 #include <string>
 #include <map>
 #include <velocypack/Slice.h>
+#include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <VPackDeserializer/deserializer.h>
@@ -45,6 +46,7 @@ enum class AccumulatorValueType {
   INTS,
   STRINGS,
   BOOL,
+  SLICE,
 };
 
 /* A *single* accumulator */

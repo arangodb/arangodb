@@ -50,12 +50,14 @@ constexpr const char accumulatorValueType_doubles[] = "doubles";
 constexpr const char accumulatorValueType_ints[] = "ints";
 constexpr const char accumulatorValueType_strings[] = "strings";
 constexpr const char accumulatorValueType_bool[] = "bool";
+constexpr const char accumulatorValueType_slice[] = "slice";
 
 using accumulator_value_type_deserializer = enum_deserializer<AccumulatorValueType,
     enum_member<AccumulatorValueType::DOUBLES, values::string_value<accumulatorValueType_doubles>>,
     enum_member<AccumulatorValueType::INTS, values::string_value<accumulatorValueType_ints>>,
     enum_member<AccumulatorValueType::STRINGS, values::string_value<accumulatorValueType_strings>>,
-    enum_member<AccumulatorValueType::BOOL, values::string_value<accumulatorValueType_bool>>
+    enum_member<AccumulatorValueType::BOOL, values::string_value<accumulatorValueType_bool>>,
+    enum_member<AccumulatorValueType::SLICE, values::string_value<accumulatorValueType_slice>>
 >;
 
 constexpr const char accumulatorType[] = "accumulatorType";
@@ -142,6 +144,9 @@ std::ostream& operator<<(std::ostream& os, AccumulatorValueType const& type) {
       break;
     case AccumulatorValueType::BOOL:
       os << accumulatorValueType_bool;
+      break;
+    case AccumulatorValueType::SLICE:
+      os << accumulatorValueType_slice;
       break;
   }
   return os;

@@ -62,6 +62,12 @@ class Accumulator : public AccumulatorBase {
   void updateBySlice(VPackSlice s) override {
     if constexpr (std::is_arithmetic_v<T>) {
       this->update(s.getNumericValue<T>());
+    } else if constexpr (std::is_same_v<T, std::string>) {
+      this->update(s.copyString());
+    } else if constexpr (std::is_same_v<T, bool>) {
+      this->update(s.getBool());
+    } else if constexpr (std::is_same_v<T, VPackSlice>) {
+      this->update(s);
     } else {
       std::abort();
     }

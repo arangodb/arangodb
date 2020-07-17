@@ -27,6 +27,7 @@
 #ifndef ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_ACCUMULATORS_H
 #define ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_ACCUMULATORS_H 1
 
+#include <velocypack/Builder.h>
 #include "AbstractAccumulator.h"
 
 namespace arangodb {
@@ -85,6 +86,20 @@ class StoreAccumulator : public Accumulator<T> {
   void update(T v) override {
     this->_value = std::move(v);
   }
+};
+
+template<>
+class StoreAccumulator<VPackSlice> : public Accumulator<VPackSlice> {
+ public:
+  using Accumulator<VPackSlice>::Accumulator;
+  void update(VPackSlice v) override {
+    _buffer.clear();
+    _buffer.add(v);
+    _value = _buffer.slice();
+  }
+
+ private:
+  VPackBuilder _buffer;
 };
 
 }  // namespace algos
