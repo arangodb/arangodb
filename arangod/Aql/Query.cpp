@@ -147,12 +147,15 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
 Query::Query(std::shared_ptr<transaction::Context> const& ctx,
              QueryString const& queryString, std::shared_ptr<VPackBuilder> const& bindParameters,
              QueryOptions&& options)
-    : Query(ctx, queryString, bindParameters, std::move(options), std::make_shared<SharedQueryState>()) {}
+    : Query(ctx, queryString, bindParameters, std::move(options),
+            std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
 
 Query::Query(std::shared_ptr<transaction::Context> const& ctx,
              QueryString const& queryString, std::shared_ptr<VPackBuilder> const& bindParameters,
              std::shared_ptr<VPackBuilder> const& options)
-    : Query(ctx, queryString, bindParameters, QueryOptions(options != nullptr ? options->slice() : VPackSlice()), std::make_shared<SharedQueryState>()) {}
+    : Query(ctx, queryString, bindParameters,
+            QueryOptions(options != nullptr ? options->slice() : VPackSlice()),
+                         std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
 
 /// @brief destroys a query
 Query::~Query() {
@@ -1291,7 +1294,9 @@ ExecutionEngine* Query::rootEngine() const {
 ClusterQuery::ClusterQuery(std::shared_ptr<transaction::Context> const& ctx,
                            QueryOptions&& options)
     : Query(ctx, aql::QueryString(), /*bindParams*/ nullptr, std::move(options),
-            /*sharedState*/ ServerState::instance()->isDBServer() ? nullptr : std::make_shared<SharedQueryState>()) {}
+            /*sharedState*/ ServerState::instance()->isDBServer()
+                ? nullptr
+                : std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
 
 ClusterQuery::~ClusterQuery() {
   try {

@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fix spurious lock timeout errors when restoring collections.
+
+* Make sure cluster statistics in web UI work in case a coordinator is down.
+
 * Updated arangosync to 0.7.8.
 
 * Fixed hotbackup upload and download with encryption at rest key indirection.

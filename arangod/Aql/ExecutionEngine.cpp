@@ -186,13 +186,14 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
 }
 
 /// @brief create the engine
-ExecutionEngine::ExecutionEngine(QueryContext& query,
-                                 AqlItemBlockManager& itemBlockMgr,
+ExecutionEngine::ExecutionEngine(QueryContext& query, AqlItemBlockManager& itemBlockMgr,
                                  SerializationFormat format,
                                  std::shared_ptr<SharedQueryState> sqs)
     : _query(query),
       _itemBlockManager(itemBlockMgr),
-      _sharedState((sqs != nullptr) ? std::move(sqs) : std::make_shared<SharedQueryState>()),
+      _sharedState((sqs != nullptr)
+                       ? std::move(sqs)
+                       : std::make_shared<SharedQueryState>(query.vocbase().server())),
       _blocks(),
       _root(nullptr),
       _resultRegister(0),
