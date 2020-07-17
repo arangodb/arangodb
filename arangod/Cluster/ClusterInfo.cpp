@@ -4826,21 +4826,13 @@ std::unordered_map<ServerID, std::string> ClusterInfo::getServers() {
 }
 
 std::unordered_map<ServerID, std::string> ClusterInfo::getServerAliases() {
-  std::unordered_map<std::string, std::string> ret;
   READ_LOCKER(readLocker, _serversProt.lock);
-  for (const auto& i : _serverAliases) {
-    ret.try_emplace(i.second, i.first);
-  }
-  return ret;
+  return _serverAliases;
 }
 
 std::unordered_map<ServerID, std::string> ClusterInfo::getServerAdvertisedEndpoints() {
-  std::unordered_map<std::string, std::string> ret;
   READ_LOCKER(readLocker, _serversProt.lock);
-  for (const auto& i : _serverAdvertisedEndpoints) {
-    ret.try_emplace(i.second, i.first);
-  }
-  return ret;
+  return _serverAdvertisedEndpoints;
 }
 
 std::unordered_map<ServerID, std::string> ClusterInfo::getServerTimestamps() {
