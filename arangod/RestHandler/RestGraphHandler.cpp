@@ -288,7 +288,7 @@ void RestGraphHandler::vertexActionRead(Graph& graph, std::string const& collect
     if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
       generateDocumentNotFound(collectionName, key);
     } else if (maybeRev && result.is(TRI_ERROR_ARANGO_CONFLICT)) {
-      generatePreconditionFailed(result.slice());
+      generatePreconditionFailed(result);
     } else {
       generateTransactionError(collectionName, result.result, key);
     }
@@ -548,7 +548,7 @@ void RestGraphHandler::edgeActionRead(Graph& graph, const std::string& definitio
   OperationResult result = gops.getEdge(definitionName, key, maybeRev);
 
   if (result.fail()) {
-    generateTransactionError(result);
+    generateTransactionError(/*collection*/"", result);
     return;
   }
 
@@ -592,7 +592,7 @@ Result RestGraphHandler::edgeActionRemove(Graph& graph, const std::string& defin
       gops.removeEdge(definitionName, key, maybeRev, waitForSync, returnOld);
 
   if (result.fail()) {
-    generateTransactionError(result);
+    generateTransactionError(/*collection*/"", result, key);
     return result.result;
   }
 
@@ -702,7 +702,7 @@ Result RestGraphHandler::modifyEdgeDefinition(graph::Graph& graph, EdgeDefinitio
   }
 
   if (result.fail()) {
-    generateTransactionError(result);
+    generateTransactionError(/*collection*/"", result);
     return result.result;
   }
 
@@ -747,7 +747,7 @@ Result RestGraphHandler::modifyVertexDefinition(graph::Graph& graph,
   }
 
   if (result.fail()) {
-    generateTransactionError(result);
+    generateTransactionError(/*collection*/"", result);
     return result.result;
   }
 
@@ -816,7 +816,7 @@ Result RestGraphHandler::documentModify(graph::Graph& graph, const std::string& 
   }
 
   if (result.fail()) {
-    generateTransactionError(result);
+    generateTransactionError(collectionName, result);
     return result.result;
   }
 
@@ -865,7 +865,7 @@ Result RestGraphHandler::documentCreate(graph::Graph& graph, std::string const& 
 
   if (result.fail()) {
     // need to call more detailed constructor here
-    generateTransactionError(collectionName, result, "", 0);
+    generateTransactionError(collectionName, result);
   } else {
     switch (colType) {
       case TRI_COL_TYPE_DOCUMENT:
@@ -900,7 +900,7 @@ Result RestGraphHandler::vertexActionRemove(graph::Graph& graph,
       gops.removeVertex(collectionName, key, maybeRev, waitForSync, returnOld);
 
   if (result.fail()) {
-    generateTransactionError(result);
+    generateTransactionError(collectionName, result);
     return result.result;
   }
 
@@ -928,7 +928,7 @@ Result RestGraphHandler::graphActionRemoveGraph(graph::Graph const& graph) {
   OperationResult result = _gmngr.removeGraph(graph, waitForSync, dropCollections);
 
   if (result.fail()) {
-    generateTransactionError(result);
+    generateTransactionError(/*collection*/"", result);
     return result.result;
   }
 
@@ -950,7 +950,7 @@ Result RestGraphHandler::graphActionCreateGraph() {
     OperationResult result = _gmngr.createGraph(body, waitForSync);
 
     if (result.fail()) {
-      generateTransactionError(result);
+      generateTransactionError(/*collection*/"", result);
       return result.result;
     }
   }
