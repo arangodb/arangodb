@@ -49,8 +49,13 @@ using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 using AqlValueCache = std::unordered_set<AqlValue, AqlValue::SimpleHash, AqlValue::SimpleEqual>;
 
 namespace {
-inline void CopyValueOver(AqlValueCache& cache, AqlValue const& a,
-                          size_t rowNumber, RegisterId col, SharedAqlItemBlockPtr& res) {
+// T will be std::unordered_set<AqlValue> with or without specialized comparators
+template<typename T>
+inline void copyValueOver(T& cache, 
+                          AqlValue const& a,
+                          size_t rowNumber, 
+                          RegisterId col, 
+                          SharedAqlItemBlockPtr& res) {
   if (!a.isEmpty()) {
     if (a.requiresDestruction()) {
       auto it = cache.find(a);
@@ -469,32 +474,46 @@ void AqlItemBlock::clearRegisters(RegIdFlatSet const& toClear) {
 SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
   auto const numRows = size();
   auto const numRegs = getNrRegs();
-  bool const checkShadowRows = hasShadowRows();
 
-  AqlValueCache cache;
-  cache.reserve(_valueCount.size());
   SharedAqlItemBlockPtr res{aqlItemBlockManager().requestBlock(numRows, numRegs)};
 
-  for (size_t row = 0; row < numRows; row++) {
-    if (checkShadowRows && isShadowRow(row)) {
+  if (!hasShadowRows()) {
+    // optimized version for when no shadow rows exist
+    // use a faster cache type
+    AqlValueCache cache;
+    cache.reserve(_valueCount.size());
+
+    for (size_t row = 0; row < numRows; row++) {
       for (RegisterId col = 0; col < numRegs; col++) {
-        AqlValue a = stealAndEraseValue(row, col);
-        AqlValueGuard guard{a, true};
-        auto [it, inserted] = cache.emplace(a);
-        res->setValue(row, col, *it);
-        // TRI_ASSERT(inserted); // I'm not 100% sure yet that this is true.
-        if (inserted) {
-          // otherwise, destroy this; we used a cached value.
-          guard.steal();
-        }
-      } 
-    } else {
-      for (RegisterId col = 0; col < numRegs; col++) {
-        ::CopyValueOver(cache, _data[getAddress(row, col)], row, col, res);
+        ::copyValueOver(cache, _data[getAddress(row, col)], row, col, res);
       }
     }
+  } else {
+    // at least one shadow row exists. this is the slow path
+    // use a slower cache type
+    std::unordered_set<AqlValue> cache;
+    cache.reserve(_valueCount.size());
 
-    res->copySubQueryDepthFromOtherBlock(row, *this, row);
+    for (size_t row = 0; row < numRows; row++) {
+      if (isShadowRow(row)) {
+        for (RegisterId col = 0; col < numRegs; col++) {
+          AqlValue a = stealAndEraseValue(row, col);
+          AqlValueGuard guard{a, true};
+          auto [it, inserted] = cache.emplace(a);
+          res->setValue(row, col, *it);
+          if (inserted) {
+            // otherwise, destroy this; we used a cached value.
+            guard.steal();
+          }
+        } 
+      } else {
+        for (RegisterId col = 0; col < numRegs; col++) {
+          ::copyValueOver(cache, _data[getAddress(row, col)], row, col, res);
+        }
+      }
+    
+      res->copySubQueryDepthFromOtherBlock(row, *this, row);
+    }
   }
   TRI_ASSERT(res->size() == numRows);
 
@@ -549,7 +568,7 @@ auto AqlItemBlock::slice(std::vector<std::pair<size_t, size_t>> const& ranges) c
     for (size_t row = from; row < to; row++, targetRow++) {
       // Note this loop is special, it will also Copy over the SubqueryDepth data in reg 0
       for (RegisterId col = 0; col < _nrRegs; col++) {
-        ::CopyValueOver(cache, _data[getAddress(row, col)], targetRow, col, res);
+        ::copyValueOver(cache, _data[getAddress(row, col)], targetRow, col, res);
       }
       res->copySubQueryDepthFromOtherBlock(targetRow, *this, row);
     }
@@ -571,7 +590,7 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(size_t row,
   SharedAqlItemBlockPtr res{_manager.requestBlock(1, newNrRegs)};
   for (auto const& col : registers) {
     TRI_ASSERT(col < _nrRegs);
-    ::CopyValueOver(cache, _data[getAddress(row, col)], 0, col, res);
+    ::copyValueOver(cache, _data[getAddress(row, col)], 0, col, res);
   }
   res->copySubQueryDepthFromOtherBlock(0, *this, row);
 
@@ -594,7 +613,7 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(std::vector<size_t> const& chosen,
     size_t const rowIdx = chosen[chosenIdx];
     // we can start at register 1, because depth of subqueries is copied afterwards 
     for (RegisterId col = 1; col < _nrRegs; col++) {
-      ::CopyValueOver(cache, _data[getAddress(rowIdx, col)], resultRowIdx, col, res);
+      ::copyValueOver(cache, _data[getAddress(rowIdx, col)], resultRowIdx, col, res);
     }
     res->copySubQueryDepthFromOtherBlock(resultRowIdx, *this, rowIdx);
   }
