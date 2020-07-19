@@ -324,7 +324,7 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
           } /*else if (ifRid != 0 && opRes.is(TRI_ERROR_ARANGO_CONFLICT)) {
             generatePreconditionFailed(opRes.slice());
           }*/ else {
-            generateTransactionError(collection, res, key);
+            generateTransactionError(collection, opRes, key, ifRid);
           }
           return;
         }
