@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ActionDescription.h"
+#include "Basics/StaticStrings.h"
 
 #include <functional>
 
@@ -92,9 +93,8 @@ bool ActionDescription::operator==(ActionDescription const& other) const {
 
 /// @brief Get action name. Cannot throw. See constructor
 std::string const& ActionDescription::name() const {
-  static const std::string EMPTY_STRING;
   auto const& it = _description.find(NAME);
-  return (it != _description.end()) ? it->second : EMPTY_STRING;
+  return (it != _description.end()) ? it->second : StaticStrings::Empty;
 }
 
 /// @brief summary to velocypack

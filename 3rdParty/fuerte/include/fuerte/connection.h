@@ -93,6 +93,9 @@ class Connection : public std::enable_shared_from_this<Connection> {
   /// @brief endpoint we are connected to
   std::string endpoint() const;
 
+  /// @brief lease a connection (prevent idle timeout)
+  virtual bool lease() = 0;
+
  protected:
   Connection(detail::ConnectionConfiguration const& conf) : _config(conf) {}
 
@@ -211,6 +214,12 @@ class ConnectionBuilder {
   inline vst::VSTVersion vstVersion() const { return _conf._vstVersion; }
   ConnectionBuilder& vstVersion(vst::VSTVersion c) {
     _conf._vstVersion = c;
+    return *this;
+  }
+  
+  /// upgrade http1.1 to http2 connection (not necessary)
+  ConnectionBuilder& upgradeHttp1ToHttp2(bool c) {
+    _conf._upgradeH1ToH2 = c;
     return *this;
   }
 

@@ -40,7 +40,7 @@
 #include "counter.h"
 
 class Metric {
-public:
+ public:
   Metric(std::string const& name, std::string const& help, std::string const& labels);
   virtual ~Metric();
   std::string const& help() const;
@@ -48,7 +48,7 @@ public:
   std::string const& labels() const;
   virtual void toPrometheus(std::string& result) const = 0;
   void header(std::string& result) const;
-protected:
+ protected:
   std::string const _name;
   std::string const _help;
   std::string const _labels;
@@ -67,7 +67,7 @@ struct Metrics {
  * @brief Counter functionality
  */
 class Counter : public Metric {
-public:
+ public:
   Counter(uint64_t const& val, std::string const& name, std::string const& help,
           std::string const& labels = std::string());
   Counter(Counter const&) = delete;
@@ -83,14 +83,14 @@ public:
   void store(uint64_t const&);
   void push();
   virtual void toPrometheus(std::string&) const override;
-private:
+ private:
   mutable Metrics::counter_type _c;
   mutable Metrics::buffer_type _b;
 };
 
 
 template<typename T> class Gauge : public Metric {
-public:
+ public:
   Gauge() = delete;
   Gauge(T const& val, std::string const& name, std::string const& help,
         std::string const& labels = std::string())
@@ -123,13 +123,13 @@ public:
   }
   T load() const {
     return _g.load();
-  };
+  }
   virtual void toPrometheus(std::string& result) const override {
     result += "\n#TYPE " + name() + " gauge\n";
     result += "#HELP " + name() + " " + help() + "\n";
     result += name() + "{" + labels() + "} " + std::to_string(load()) + "\n";
   };
-private:
+ private:
   std::atomic<T> _g;
 };
 
@@ -139,14 +139,14 @@ enum ScaleType {LINEAR, LOGARITHMIC};
 
 template<typename T>
 struct scale_t {
-public:
+ public:
 
   using value_type = T;
 
   scale_t(T const& low, T const& high, size_t n) :
     _low(low), _high(high), _n(n) {
     TRI_ASSERT(n > 1);
-    _delim.resize(n-1);
+    _delim.resize(n - 1);
   }
   virtual ~scale_t() = default;
   /**
@@ -171,7 +171,7 @@ public:
    * @brief number of buckets
    */
   std::string const delim(size_t const& s) const {
-    return (s < _n-1) ? std::to_string(_delim.at(s)) : "+Inf";
+    return (s < _n - 1) ? std::to_string(_delim.at(s)) : "+Inf";
   }
   /**
    * @brief number of buckets
@@ -205,7 +205,8 @@ public:
     o << b.toJson();
     return o;
   }
-protected:
+
+ protected:
   T _low, _high;
   std::vector<T> _delim;
   size_t _n;
@@ -218,7 +219,7 @@ std::ostream& operator<< (std::ostream& o, scale_t<T> const& s) {
 
 template<typename T>
 struct log_scale_t : public scale_t<T> {
-public:
+ public:
 
   using value_type = T;
   static constexpr ScaleType scale_type = LOGARITHMIC;
@@ -226,10 +227,10 @@ public:
   log_scale_t(T const& base, T const& low, T const& high, size_t n) :
     scale_t<T>(low, high, n), _base(base) {
     TRI_ASSERT(base > T(0));
-    double nn = -1.0*(n-1);
+    double nn = -1.0 * (n - 1);
     for (auto& i : this->_delim) {
       i = static_cast<T>(
-        static_cast<double>(high-low) *
+        static_cast<double>(high - low) *
         std::pow(static_cast<double>(base), static_cast<double>(nn++)) + static_cast<double>(low));
     }
     _div = this->_delim.front() - low;
@@ -261,14 +262,15 @@ public:
   T base() const {
     return _base;
   }
-private:
+ 
+ private:
   T _base, _div;
   double _lbase;
 };
 
 template<typename T>
 struct lin_scale_t : public scale_t<T> {
-public:
+ public:
 
   using value_type = T;
   static constexpr ScaleType scale_type = LINEAR;
@@ -300,7 +302,8 @@ public:
     b.add("scale-type", VPackValue("linear"));
     scale_t<T>::toVelocyPack(b);
   }
-private:
+ 
+ private:
   T _base, _div;
 };
 
@@ -323,30 +326,30 @@ std::string strfmt (std::string const& format, Args ... args) {
  */
 template<typename Scale> class Histogram : public Metric {
 
-public:
+ public:
 
   using value_type = typename Scale::value_type;
 
   Histogram() = delete;
 
-  Histogram (Scale&& scale, std::string const& name, std::string const& help,
-             std::string const& labels = std::string())
+  Histogram(Scale&& scale, std::string const& name, std::string const& help,
+            std::string const& labels = std::string())
     : Metric(name, help, labels), _c(Metrics::hist_type(scale.n())), _scale(std::move(scale)),
       _lowr(std::numeric_limits<value_type>::max()),
       _highr(std::numeric_limits<value_type>::min()),
-      _n(_scale.n()-1) {}
+      _n(_scale.n() - 1) {}
 
-  Histogram (Scale const& scale, std::string const& name, std::string const& help,
-             std::string const& labels = std::string())
+  Histogram(Scale const& scale, std::string const& name, std::string const& help,
+            std::string const& labels = std::string())
     : Metric(name, help, labels), _c(Metrics::hist_type(scale.n())), _scale(scale),
       _lowr(std::numeric_limits<value_type>::max()),
       _highr(std::numeric_limits<value_type>::min()),
-      _n(_scale.n()-1) {}
+      _n(_scale.n() - 1) {}
 
   ~Histogram() = default;
 
   void records(value_type const& val) {
-    if(val < _lowr) {
+    if (val < _lowr) {
       _lowr = val;
     } else if (val > _highr) {
       _highr = val;
@@ -401,7 +404,7 @@ public:
     std::string lbs = labels();
     auto const haveLabels = !lbs.empty();
     auto const separator = haveLabels && lbs.back() != ',';
-    value_type sum(0);
+    uint64_t sum(0);
     for (size_t i = 0; i < size(); ++i) {
       uint64_t n = load(i);
       sum += n;
@@ -422,7 +425,7 @@ public:
     return o;
   }
 
-private:
+ private:
   Metrics::hist_type _c;
   Scale _scale;
   value_type _lowr, _highr;

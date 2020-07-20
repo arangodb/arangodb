@@ -181,6 +181,7 @@ struct ConnectionConfiguration {
       : _socketType(SocketType::Tcp),
         _protocolType(ProtocolType::Vst),
         _vstVersion(vst::VST1_1),
+        _upgradeH1ToH2(false),
         _host("localhost"),
         _port("8529"),
         _verifyHost(false),
@@ -197,6 +198,7 @@ struct ConnectionConfiguration {
   SocketType _socketType;      // tcp, ssl or unix
   ProtocolType _protocolType;  // vst or http
   vst::VSTVersion _vstVersion;
+  bool _upgradeH1ToH2;
 
   std::string _host;
   std::string _port;

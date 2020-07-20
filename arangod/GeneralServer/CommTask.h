@@ -89,9 +89,14 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
   // callable from any thread
   virtual void start() = 0;
   virtual void stop() = 0;
-  
-protected:
-  
+
+  // returns the number of scheduled requests
+  std::size_t getRequestCount() const { return _requestCount; }
+
+  void setKeepAliveTimeoutReached() { _keepAliveTimeoutReached = true; }
+
+ protected:
+
   virtual std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode,
                                                           uint64_t messageId) = 0;
 
@@ -119,14 +124,14 @@ protected:
   RequestStatistics::Item const& statistics(uint64_t);
   RequestStatistics::Item stealStatistics(uint64_t);
   
-  /// @brief send simple response including response body
-  void addSimpleResponse(rest::ResponseCode, rest::ContentType, uint64_t messageId,
-                         velocypack::Buffer<uint8_t>&&);
-
   /// @brief send response including error response body
-  void addErrorResponse(rest::ResponseCode, rest::ContentType,
-                        uint64_t messageId, int errorNum,
-                        char const* errorMessage = nullptr);
+  void sendErrorResponse(rest::ResponseCode, rest::ContentType,
+                         uint64_t messageId, int errorNum,
+                         char const* errorMessage = nullptr);
+  
+  /// @brief send simple response including response body
+  void sendSimpleResponse(rest::ResponseCode, rest::ContentType, uint64_t messageId,
+                          velocypack::Buffer<uint8_t>&&);
   
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks the access rights for a specified path, includes automatic
@@ -158,9 +163,11 @@ protected:
   
   ConnectionStatistics::Item _connectionStatistics;
   std::chrono::milliseconds _keepAliveTimeout;
+  std::size_t _requestCount = 0;
+  bool _keepAliveTimeoutReached = false;
   AuthenticationFeature* _auth;
 
-  std::mutex _statisticsMutex;
+  mutable std::mutex _statisticsMutex;
   std::unordered_map<uint64_t, RequestStatistics::Item> _statisticsMap;
 };
 }  // namespace rest

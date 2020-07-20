@@ -695,9 +695,8 @@
       }
 
       if (self.server !== '-local-') {
-        urlParams += '&type=short';
         if (self.serverInfo.target) {
-          urlParams += '&DBserver=' + self.serverInfo.target;
+          urlParams += '&DBserver=' + encodeURIComponent(self.serverInfo.target);
         }
 
         if (!self.history.hasOwnProperty(self.server)) {
@@ -739,7 +738,7 @@
 
       if (self.server !== '-local-') {
         url = self.server.endpoint + arangoHelper.databaseUrl('/_admin/aardvark/statistics/cluster');
-        urlParams += '&type=long&DBserver=' + self.server.target;
+        urlParams += '&type=long&DBserver=' + encodeURIComponent(self.server.target);
 
         if (!self.history.hasOwnProperty(self.server)) {
           self.history[self.server] = {};
@@ -1195,6 +1194,10 @@
         // hide menu entries
         if (!frontendConfig.isCluster) {
           $('#subNavigationBar .breadcrumb').html('');
+        } else {
+          // in cluster mode and db node got found, remove menu entries, as we do not have them here
+          $('#requests-statistics').remove();
+          $('#system-statistics').remove();
         }
         this.getNodeInfo();
       }

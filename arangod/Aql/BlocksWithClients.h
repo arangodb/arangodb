@@ -63,7 +63,7 @@ class ClientsExecutorInfos {
   auto clientIds() const noexcept -> std::vector<std::string> const&;
 
  private:
-  std::vector<std::string> _clientIds;
+  std::vector<std::string> const _clientIds;
 };
 
 class BlocksWithClients {

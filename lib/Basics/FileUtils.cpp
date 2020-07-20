@@ -330,7 +330,7 @@ bool createDirectory(std::string const& name, int mask, int* errorNumber) {
     *errorNumber = 0;
   }
 
-  auto result = TRI_MKDIR(name.c_str(), mask);
+  auto result = TRI_MKDIR(name.c_str(), static_cast<mode_t>(mask));
 
   int res = errno;
   if (result != 0 && res == EEXIST && isDirectory(name)) {

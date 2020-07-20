@@ -415,8 +415,10 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options
       ->addOption("--rocksdb.exclusive-writes",
                   "if true, writes are exclusive. This allows the RocksDB engine to mimic "
-                  "the MMFiles collection locks behavior, but will inhibit concurrent write operations",
-                  new BooleanParameter(&_exclusiveWrites))
+                  "the collection locking behavior of the now-removed MMFiles storage engine, "
+                  "but will inhibit concurrent write operations",
+                  new BooleanParameter(&_exclusiveWrites),
+                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
       .setIntroducedIn(30504);
 }
 

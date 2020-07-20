@@ -40,10 +40,6 @@ namespace arangodb {
 
 class ApplicationServer;
 
-namespace aql {
-class QueryRegistry;
-}
-
 namespace velocypack {
 class Builder;
 class Slice;
@@ -144,7 +140,7 @@ class State {
   bool configure(Agent* agent);
 
   /// @brief Load persisted data from above or start with empty log
-  bool loadCollections(TRI_vocbase_t*, aql::QueryRegistry*, bool);
+  bool loadCollections(TRI_vocbase_t*, bool waitForSync);
 
   /// @brief Pipe to ostream
   friend std::ostream& operator<<(std::ostream& os, State const& s) {
@@ -238,7 +234,7 @@ class State {
   /// @brief Check collections
   bool checkCollections();
 
-  /// @brief Check collection sanity
+  /// @brief Check collection existence
   bool checkCollection(std::string const& name);
 
   /// @brief Create collections
@@ -280,9 +276,6 @@ class State {
   /// @brief compaction indexes
   std::atomic<index_t> _nextCompactionAfter;
   std::atomic<index_t> _lastCompactionAt;
-
-  /// @brief Our query registry
-  aql::QueryRegistry* _queryRegistry;
 
   /// @brief Current log offset, this is the index that is stored at position
   /// 0 in the deque _log.

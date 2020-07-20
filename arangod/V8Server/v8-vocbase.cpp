@@ -705,7 +705,8 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  arangodb::aql::ClusterQuery query(transaction::V8Context::Create(vocbase, true), options);
+  arangodb::aql::ClusterQuery query(transaction::V8Context::Create(vocbase, true),
+                                    aql::QueryOptions(options->slice()));
   
   VPackSlice collections = queryBuilder->slice().get("collections");
   VPackSlice variables = queryBuilder->slice().get("variables");
@@ -1452,10 +1453,6 @@ static void JS_Engine(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_EngineStats(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
-  if (ServerState::instance()->isCoordinator()) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
 
   // return engine data
   StorageEngine* engine = EngineSelectorFeature::ENGINE;

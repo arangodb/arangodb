@@ -197,7 +197,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   }
   
   /// @brief track key in file
-  void blackListKey(RocksDBKey const& key) const;
+  void invalidateCacheEntry(RocksDBKey const& key) const;
   
   /// @brief can use non transactional range delete in write ahead log
   bool canUseRangeDeleteInWal() const;
