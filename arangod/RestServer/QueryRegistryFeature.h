@@ -56,6 +56,7 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   uint64_t queryMemoryLimit() const { return _queryMemoryLimit; }
   uint64_t maxQueryPlans() const { return _maxQueryPlans; }
   aql::QueryRegistry* queryRegistry() const { return _queryRegistry.get(); }
+  uint64_t maxParallelism() const { return _maxParallelism; }
 
  private:
   bool _trackSlowQueries;
@@ -69,6 +70,7 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   uint64_t _queryCacheMaxResultsCount;
   uint64_t _queryCacheMaxResultsSize;
   uint64_t _queryCacheMaxEntrySize;
+  uint64_t _maxParallelism;
   double _slowQueryThreshold;
   double _slowStreamingQueryThreshold;
   double _queryRegistryTTL;

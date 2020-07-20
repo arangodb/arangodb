@@ -20,11 +20,14 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <algorithm>
+
 #include "QueryRegistryFeature.h"
 
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
+#include "Basics/NumberOfCores.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/V8FeaturePhase.h"
@@ -55,6 +58,7 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _queryCacheMaxResultsCount(0),
       _queryCacheMaxResultsSize(0),
       _queryCacheMaxEntrySize(0),
+      _maxParallelism(4),
       _slowQueryThreshold(10.0),
       _slowStreamingQueryThreshold(10.0),
       _queryRegistryTTL(0.0),
@@ -147,6 +151,16 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      new BooleanParameter(&_parallelizeTraversals),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Enterprise))
                      .setIntroducedIn(30701);
+
+  options
+      ->addOption(
+          "--query.max-parallelism",
+          "maximum number of threads to use for a single query; "
+          "actual query execution may use less depending on various factors",
+          new UInt64Parameter(&_maxParallelism),
+          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
+                                              arangodb::options::Flags::Enterprise))
+      .setIntroducedIn(30701);
 }
 
 void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -159,6 +173,9 @@ void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> optio
 
   // cap the value somehow. creating this many plans really does not make sense
   _maxQueryPlans = std::min(_maxQueryPlans, decltype(_maxQueryPlans)(1024));
+  
+  _maxParallelism = std::clamp(_maxParallelism, static_cast<uint64_t>(1),
+                               static_cast<uint64_t>(NumberOfCores::getValue()));
 }
 
 void QueryRegistryFeature::prepare() {
