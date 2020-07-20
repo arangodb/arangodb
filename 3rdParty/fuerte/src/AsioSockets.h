@@ -119,28 +119,28 @@ struct Socket<fuerte::SocketType::Ssl> {
     bool verify = config._verifyHost;
     resolveConnect(
         config, resolver, socket.next_layer(),
-        [=, done(std::forward<F>(done))](auto ec) mutable {
+        [=, done(std::forward<F>(done))](auto const& ec) mutable {
           if (ec) {
             done(ec);
             return;
           }
 
-          // Perform SSL handshake and verify the remote host's certificate.
-          socket.next_layer().set_option(asio_ns::ip::tcp::no_delay(true), ec);
-          if (ec) {
-            done(ec);
-            return;
+          try {
+            // Perform SSL handshake and verify the remote host's certificate.
+            socket.next_layer().set_option(asio_ns::ip::tcp::no_delay(true));
+            if (verify) {
+              socket.set_verify_mode(asio_ns::ssl::verify_peer);
+              socket.set_verify_callback(
+                  asio_ns::ssl::rfc2818_verification(config._host));
+            } else {
+              socket.set_verify_mode(asio_ns::ssl::verify_none);
+            }
+            socket.async_handshake(asio_ns::ssl::stream_base::client,
+                                   std::move(done));
+            
+          } catch(boost::system::system_error const& exc) {
+            done(exc.code());
           }
-          if (verify) {
-            socket.set_verify_mode(asio_ns::ssl::verify_peer);
-            socket.set_verify_callback(
-                asio_ns::ssl::rfc2818_verification(config._host));
-          } else {
-            socket.set_verify_mode(asio_ns::ssl::verify_none);
-          }
-
-          socket.async_handshake(asio_ns::ssl::stream_base::client,
-                                 std::move(done));
         });
   }
 
