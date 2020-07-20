@@ -65,6 +65,12 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
     // dbname -> error
     std::unordered_map<std::string, std::shared_ptr<VPackBuffer<uint8_t>>> databases;
   };
+  
+  /// @brief Lowest limit for worker threads
+  static constexpr uint32_t const minThreadLimit = 2;
+
+  /// @brief Highest limit for worker threads
+  static constexpr uint32_t const maxThreadLimit = 64;
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -79,12 +85,6 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   // Proceed doing maintenance
   void proceed();
 
-  // preparation phase for feature in the preparation phase, the features must
-  // not start any threads. furthermore, they must not write any files under
-  // elevated privileges if they want other features to access them, or if they
-  // want to access these files with dropped privileges
-  virtual void prepare() override;
-
   // start the feature
   virtual void start() override;
 
@@ -93,9 +93,6 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
   // stop the feature
   virtual void stop() override;
-
-  // shut down the feature
-  virtual void unprepare() override {}
 
   //
   // api features
@@ -156,12 +153,12 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
   /// @brief Process specific ID for a new action
   /// @returns uint64_t
-  uint64_t nextActionId() { return _nextActionId++; };
+  uint64_t nextActionId() { return _nextActionId++; }
 
-  bool isShuttingDown() const { return (_isShuttingDown); };
+  bool isShuttingDown() const { return (_isShuttingDown); }
 
   /// @brief Return number of seconds to say "not done" to block retries too soon
-  uint32_t getSecondsActionsBlock() const { return _secondsActionsBlock; };
+  uint32_t getSecondsActionsBlock() const { return _secondsActionsBlock; }
 
   /**
    * @brief Find and return first found not-done action or nullptr
@@ -288,12 +285,6 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
    */
   arangodb::Result copyAllErrors(errors_t& errors) const;
 
-  /// @brief Lowest limit for worker threads
-  static uint32_t const minThreadLimit;
-
-  /// @brief Highest limit for worker threads
-  static uint32_t const maxThreadLimit;
-
   /**
    * @brief get volatile shard version
    */
@@ -314,9 +305,6 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   void initializeMetrics();
 
  private:
-  /// @brief common code used by multiple constructors
-  void init();
-
   /// @brief Search for first action matching hash and predicate
   /// @return shared pointer to action object if exists, empty shared_ptr if not
   std::shared_ptr<maintenance::Action> findFirstActionHash(
@@ -340,6 +328,8 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
  protected:
   /// @brief option for forcing this feature to always be enable - used by the catch tests
   bool _forceActivation;
+  
+  bool _resignLeadershipOnShutdown;
 
   /// @brief tunable option for thread pool size
   uint32_t _maintenanceThreadsMax;
@@ -420,8 +410,6 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// @brief shards have versions in order to be able to distinguish between
   /// independant actions
   std::unordered_map<std::string, size_t> _shardVersion;
-
-  bool _resignLeadershipOnShutdown;
 
   std::atomic<std::chrono::steady_clock::duration> _pauseUntil;
 

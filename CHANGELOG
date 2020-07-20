@@ -6,6 +6,10 @@ devel
 
 * Make sure cluster statistics in web UI work in case a coordinator is down.
 
+* Turn off maintenance threads on Coordinators, as they are not needed there.
+
+* Fixed crash in cleanup of parallel traversal queries (QA-28).
+
 * Updated arangosync to 0.7.8.
 
 * Fixed hotbackup upload and download with encryption at rest key indirection.
