@@ -91,7 +91,11 @@ EvalResult Prim_Div(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder&
       if (!(*iter).isNumber<int64_t>()) {
         return EvalError("Expected int, found: " + (*iter).toJson());
       }
-      tmp /= (*iter).getNumericValue<int64_t>();
+      auto v = (*iter).getNumericValue<int64_t>();
+      if (v == 0) {
+        return EvalError("division by zero");
+      }
+      tmp /= v;
     }
   }
   result.add(VPackValue(tmp));
