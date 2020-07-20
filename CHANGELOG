@@ -1,5 +1,10 @@
 devel
 -----
+
+* Errors with error code 1200 (Arango conflict) will now get the HTTP response 
+  code 409 (Conflict) instead of 412 (Precondition failed), unless "if-match" header
+  was used in `_api/document` or `_api/gharial`.
+
 * Fixed internal issue #733: Primary sort compression in views now used properly
 
 * Fix spurious lock timeout errors when restoring collections.
