@@ -31,75 +31,100 @@
 #include "Interpreter.h"
 #include "Primitives.h"
 
-std::unordered_map<std::string, std::function<void(EvalContext& ctx, VPackSlice const slice, VPackBuilder& result)>> primitives;
+std::unordered_map<std::string, std::function<EvalResult(PrimEvalContext& ctx, VPackSlice const slice, VPackBuilder& result)>> primitives;
 
 
-void Prim_Banana(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_Banana(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto tmp = int64_t{0};
   for (auto p : VPackArrayIterator(params)) {
-    tmp += p.getNumericValue<int64_t>();
+    if (p.isNumber<int64_t>()) {
+      tmp += p.getNumericValue<int64_t>();
+    } else {
+      return EvalError("Expected int, found: " + p.toJson());
+    }
   }
   result.add(VPackValue(tmp));
+  return {};
 }
 
-void Prim_Sub(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_Sub(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto tmp = int64_t{0};
   auto iter = VPackArrayIterator(params);
   if (iter.valid()) {
+    if (!(*iter).isNumber<int64_t>()) {
+      return EvalError("Expected int, found: " + (*iter).toJson());
+    }
     tmp = (*iter).getNumericValue<int64_t>();
     iter++;
     for (; iter.valid(); iter++) {
+      if (!(*iter).isNumber<int64_t>()) {
+        return EvalError("Expected int, found: " + (*iter).toJson());
+      }
       tmp -= (*iter).getNumericValue<int64_t>();
     }
   }
   result.add(VPackValue(tmp));
+  return {};
 }
 
-void Prim_Mul(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_Mul(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto tmp = int64_t{1};
   for (auto p : VPackArrayIterator(params)) {
+    if (!p.isNumber<int64_t>()) {
+      return EvalError("Expected int, found: " + p.toJson());
+    }
     tmp *= p.getNumericValue<int64_t>();
   }
   result.add(VPackValue(tmp));
+  return {};
 }
 
-void Prim_Div(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_Div(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto tmp = int64_t{1};
   auto iter = VPackArrayIterator(params);
   if (iter.valid()) {
+    if (!(*iter).isNumber<int64_t>()) {
+      return EvalError("Expected int, found: " + (*iter).toJson());
+    }
     tmp = (*iter).getNumericValue<int64_t>();
     for (; iter.valid(); iter++) {
+      if (!(*iter).isNumber<int64_t>()) {
+        return EvalError("Expected int, found: " + (*iter).toJson());
+      }
       tmp /= (*iter).getNumericValue<int64_t>();
     }
   }
   result.add(VPackValue(tmp));
+  return {};
 }
 
-void Prim_List(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_List(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   VPackArrayBuilder array(&result);
   result.add(VPackArrayIterator(params));
+  return {};
 }
 
-void Prim_EqHuh(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_EqHuh(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto iter = VPackArrayIterator(params);
   if (iter.valid()) {
     auto proto = *iter;
     for (; iter.valid(); iter++) {
       if (!arangodb::basics::VelocyPackHelper::equal(proto, *iter, true)) {
         result.add(VPackValue(false));
-        return;
+        return {};
       }
     }
   }
   result.add(VPackValue(true));
+  return {};
 }
 
-void Prim_VarRef(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_VarRef(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto&& [name] = unpackTuple<std::string>(params);
-  ctx.getVariable(name, result);
+  return ctx.getVariable(name, result);
 }
 
-void Prim_Attrib(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_Attrib(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto&& [key, slice] = unpackTuple<VPackSlice, VPackSlice>(params);
   if (key.isString()) {
     result.add(slice.get(key.stringRef()));
@@ -110,10 +135,12 @@ void Prim_Attrib(EvalContext& ctx, VPackSlice const params, VPackBuilder& result
     }
     result.add(slice.get(path));
   }
+  return {};
 }
 
-void Prim_This(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_This(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   result.add(VPackValue(ctx.getThisId()));
+  return {};
 }
 
 /*
@@ -123,24 +150,27 @@ void Prim_Doc(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
 }
 */
 
-void Prim_AccumRef(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_AccumRef(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto&& [accumId] = unpackTuple<std::string_view>(params);
   ctx.getAccumulatorValue(accumId, result);
+  return {};
 }
 
-void Prim_Update(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_Update(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto&& [accumId, edgeId, value] =
       unpackTuple<std::string_view, std::string_view, VPackSlice>(params);
   ctx.updateAccumulator(accumId, edgeId, value);
+  return {};
 }
 
-void Prim_Set(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_Set(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto&& [accumId, value] =
       unpackTuple<std::string_view, VPackSlice>(params);
   ctx.setAccumulator(accumId, value);
+  return {};
 }
 
-void Prim_For(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_For(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto&& [dir, vars, body] = unpackTuple<std::string_view, VPackSlice, VPackSlice>(params);
   auto&& [edgeVar, otherVertexVar] = unpackTuple<std::string, std::string>(vars);
 
@@ -156,6 +186,8 @@ void Prim_For(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
     Evaluate(ctx, body, localResult);
     ctx.popStack();
   });
+
+  return {};
 }
 
 void RegisterPrimitives() {

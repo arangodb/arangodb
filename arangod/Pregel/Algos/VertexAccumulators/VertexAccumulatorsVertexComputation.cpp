@@ -25,11 +25,12 @@
 #include <Pregel/Graph.h>
 #include <Pregel/Algos/VertexAccumulators/Greenspun/Interpreter.h>
 #include "VertexAccumulators.h"
+#include "Greenspun/Primitives.h"
 
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 
-struct MyEvalContext : EvalContext {
+struct MyEvalContext : PrimEvalContext {
   explicit MyEvalContext(VertexAccumulators::VertexComputation& computation, VertexData& vertexData)
     : _computation(computation), _vertexData(vertexData) {};
 

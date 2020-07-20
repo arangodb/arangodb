@@ -27,119 +27,170 @@
 #include "Primitives.h"
 
 #include <iostream>
+#include <sstream>
 
 #include <velocypack/Iterator.h>
 
 using namespace arangodb::velocypack;
 
-void InitInterpreter() {
-    RegisterPrimitives();
-}
+void InitInterpreter() { RegisterPrimitives(); }
 
-
-#define EVAL(ctx,slice,result) \
-  { ++ctx.depth; Evaluate(ctx,slice,result); --ctx.depth; }
-
-std::ostream& EvalDebugOut(size_t depth) {
-  for(size_t i = 0; i<depth; ++i) {
-    std::cerr << " ";
+EvalResult Apply(EvalContext& ctx, std::string const& function,
+                 VPackSlice const params, VPackBuilder& result) {
+  TRI_ASSERT(params.isArray())
+  auto f = primitives.find(function);
+  if (f != primitives.end()) {
+    return f->second(reinterpret_cast<PrimEvalContext&>(ctx), params, result)
+        .wrapError([&](EvalError& err) { err.wrapCall(function, params); });
+  } else {
+    return EvalError("primitive not found `" + function + "`");
   }
-  return std::cerr;
 }
 
-
-void Apply(EvalContext& ctx, std::string const& function,
-           VPackSlice const params, VPackBuilder& result) {
-  EvalDebugOut(ctx.depth) << "APPLY IN: " << function << " " << params.toJson()
-                          << std::endl;
-  if (params.isArray()) {
-    auto f = primitives.find(function);
-    if (f != primitives.end()) {
-      f->second(ctx, params, result);
-    } else {
-      std::cerr << "primitive not found " << function << std::endl;
-      std::abort();
+EvalResult SpecialIf(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
+  auto conditions = paramIterator;
+  for (auto iter = ArrayIterator(conditions); iter.valid(); iter++) {
+    auto pair = *iter;
+    if (!pair.isArray() || pair.length() != 2) {
+      return EvalError("in case " + std::to_string(iter.index()) + ", expected pair, found: " + pair.toJson());
     }
 
-  } else {
-    EvalDebugOut(ctx.depth) << "either function params is not an array: " << std::endl;
-    EvalDebugOut(ctx.depth) << params.toJson() << std::endl;
-    std::abort();
-  }
-
-  if (result.isClosed()) {
-    EvalDebugOut(ctx.depth) << "APPLY RESULT: " << result.toJson() << std::endl;
-  } else {
-    EvalDebugOut(ctx.depth)
-        << "APPLY RESULT: (not printable because not sealed object)" << std::endl;
-  }
-}
-
-void PrepareParameters(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
-  { VPackArrayBuilder builder(&result);
-    for(; paramIterator.valid(); ++paramIterator) {
-      EvalDebugOut(ctx.depth) << "PARAM: " << (*paramIterator).toJson() << std::endl;
-      EVAL(ctx, *paramIterator, result);
-    }
-  }
-}
-
-void SpecialIf(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
-  auto conditions = *paramIterator;
-  if (conditions.isArray()) {
-
-    for (auto&& e : ArrayIterator(conditions)) {
-      auto&& [cond, body] = unpackTuple<VPackSlice, VPackSlice>(e);
-
-      VPackBuilder condResult;
-      EVAL(ctx, cond, condResult);
-      EvalDebugOut(ctx.depth) << "IF condition evaluated to `" << condResult.toJson() << "` which is interpreted as " << std::boolalpha << !condResult.slice().isFalse() << std::endl;
-      if (!condResult.slice().isFalse()) {
-        EVAL(ctx, body, result);
-        return;
+    auto&& [cond, body] = unpackTuple<VPackSlice, VPackSlice>(*iter);
+    VPackBuilder condResult;
+    {
+      StackFrameGuard<false> guard(ctx);
+      std::cout << "Test if condition " << cond.toJson() << std::endl;
+      auto res = Evaluate(ctx, cond, condResult);
+      if (!res) {
+        return res.wrapError([&](EvalError& err) {
+          err.wrapMessage("in condition " + std::to_string(iter.index()));
+        });
       }
-
-      result.add(VPackSlice::noneSlice());
     }
-  } else {
-    EvalDebugOut(ctx.depth) << "IF expected conditions to be array, found: " << conditions.toJson();
-    std::abort();
+    if (!condResult.slice().isFalse()) {
+      StackFrameGuard<false> guard(ctx);
+      return Evaluate(ctx, cond, condResult).wrapError([&](EvalError& err) {
+        err.wrapMessage("in case " + std::to_string(iter.index()));
+      });
+    }
   }
+
+  result.add(VPackSlice::noneSlice());
+  return {};
 }
 
-void SpecialList(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
+EvalResult SpecialQuote(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
   VPackArrayBuilder array(&result);
   result.add(paramIterator);
+  return {};
 }
 
-void Evaluate(EvalContext& ctx, VPackSlice const slice, VPackBuilder& result) {
-  EvalDebugOut(ctx.depth) << "EVAL IN: " << slice.toJson() << std::endl;
-  if (slice.isArray()) {
-      auto paramIterator = ArrayIterator(slice);
-
-      VPackBuilder functionBuilder;
-      EvalDebugOut(ctx.depth) << "FUNC: " << std::endl;
-      EVAL(ctx, *paramIterator, functionBuilder);
-      ++paramIterator;
-      VPackSlice functionSlice = functionBuilder.slice();
-      if (functionSlice.isString()) {
-        // check for special forms
-        if (functionSlice.isEqualString("if")) {
-          SpecialIf(ctx, paramIterator, result);
-        } else if (functionSlice.isEqualString("quote")) {
-          SpecialList(ctx, paramIterator, result);
-        } else {
-          VPackBuilder paramBuilder;
-          PrepareParameters(ctx, paramIterator, paramBuilder);
-          Apply(ctx, functionSlice.copyString(), paramBuilder.slice(), result);
-        }
-      } else {
-        EvalDebugOut(ctx.depth) << "function is not a string, found " << functionSlice.toJson();
-        std::abort();
+EvalResult Call(EvalContext& ctx, VPackSlice const functionSlice,
+                ArrayIterator paramIterator, VPackBuilder& result) {
+  VPackBuilder paramBuilder;
+  {
+    VPackArrayBuilder builder(&paramBuilder);
+    for (; paramIterator.valid(); ++paramIterator) {
+      StackFrameGuard<false> guard(ctx);
+      if (auto res = Evaluate(ctx, *paramIterator, paramBuilder); !res) {
+        return res.wrapError([&](EvalError& err) {
+          err.wrapParameter(functionSlice.copyString(), paramIterator.index());
+        });
       }
-  } else {
-    EvalDebugOut(ctx.depth) << "LIT: " << std::endl;
-    result.add(slice);
+    }
   }
-//   EvalDebugOut(ctx.depth) << "EVAL RESULT: " << result.toJson() << std::endl;
+  return Apply(ctx, functionSlice.copyString(), paramBuilder.slice(), result);
+}
+
+EvalResult Evaluate(EvalContext& ctx, VPackSlice const slice, VPackBuilder& result) {
+  if (slice.isArray()) {
+    auto paramIterator = ArrayIterator(slice);
+
+    VPackBuilder functionBuilder;
+    {
+      StackFrameGuard<false> guard(ctx);
+      auto err = Evaluate(ctx, *paramIterator, functionBuilder);
+      if (err.fail()) {
+        return err.wrapError(
+            [&](EvalError& err) { err.wrapMessage("in function expression"); });
+      }
+    }
+    ++paramIterator;
+    VPackSlice functionSlice = functionBuilder.slice();
+    if (functionSlice.isString()) {
+      // check for special forms
+      if (functionSlice.isEqualString("if")) {
+        return SpecialIf(ctx, paramIterator, result);
+      } else if (functionSlice.isEqualString("quote")) {
+        return SpecialQuote(ctx, paramIterator, result);
+      } else {
+        return Call(ctx, functionSlice, paramIterator, result);
+      }
+    } else {
+      return EvalError("function is not a string, found " + functionSlice.toJson());
+    }
+  } else {
+    result.add(slice);
+    return {};
+  }
+}
+
+EvalResult EvalContext::getVariable(const std::string& name, VPackBuilder& result) {
+  //    TRI_ASSERT(!variables.empty());
+
+  for (auto scope = variables.rbegin(); scope != variables.rend(); ++scope) {
+    auto iter = scope->find(name);
+    if (iter != std::end(*scope)) {
+      result.add(iter->second);
+      return {};
+    }
+  }
+  // TODO: variable not found error.
+  result.add(VPackSlice::noneSlice());
+  return EvalError("variable `" + name + "` not found");
+}
+
+EvalResult EvalContext::setVariable(std::string name, VPackSlice value) {
+  TRI_ASSERT(!variables.empty());
+  variables.back().emplace(std::move(name), value);
+  return {};
+}
+
+void EvalContext::pushStack() { variables.emplace_back(); }
+
+void EvalContext::popStack() {
+  TRI_ASSERT(variables.size() > 1);
+  variables.pop_back();
+}
+
+
+
+std::string EvalError::toString() const {
+  std::stringstream ss;
+
+  struct PrintErrorVisistor {
+    std::stringstream& ss;
+
+    void operator()(EvalError::CallFrame const& f) {
+      ss << "in function `" << f.function << "` called with (";
+      for (auto&& s : f.parameter) {
+        ss << " `" << s << "`";
+      }
+      ss << " )" << std::endl;
+    }
+
+    void operator()(EvalError::WrapFrame const& f) {
+      ss << f.message << std::endl;
+    }
+    void operator()(EvalError::ParamFrame const& f) {
+      ss << "in function `" << f.function << "` at parameter " << f.offset << std::endl;
+    }
+  };
+
+  ss << message << std::endl;
+  for (auto&& f : frames) {
+    std::visit(PrintErrorVisistor{ss}, f);
+  }
+
+  return ss.str();
 }
