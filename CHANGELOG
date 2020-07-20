@@ -1,6 +1,8 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Turn off maintenance threads on Coordinators, as they are not needed there.
+
 * Fixed internal issue #733: Primary sort compression in ArangoSearch views now
   used properly.
 
