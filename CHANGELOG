@@ -1,6 +1,9 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Fixed internal issue #733: Primary sort compression in ArangoSearch views now
+  used properly.
+
 * Change HTTP response code for error 1450 ("too many shards") from HTTP 500 to
   HTTP 400, as this is clearly a client error.
 
