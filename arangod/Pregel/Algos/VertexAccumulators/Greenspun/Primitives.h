@@ -33,7 +33,7 @@ struct PrimEvalContext : EvalContext {
   virtual void updateAccumulator(std::string_view accumId,
                                  std::string_view edgeId, VPackSlice value) = 0;
   virtual void setAccumulator(std::string_view accumId, VPackSlice value) = 0;
-  virtual void enumerateEdges(std::function<void(VPackSlice edge, VPackSlice vertex)> cb) const = 0;
+  virtual EvalResult enumerateEdges(std::function<EvalResult(VPackSlice edge, VPackSlice vertex)> cb) const = 0;
 
 };
 

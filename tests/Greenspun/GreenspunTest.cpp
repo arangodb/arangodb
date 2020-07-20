@@ -35,7 +35,7 @@ struct MyEvalContext : PrimEvalContext {
     std::abort();
   }
 
-  void enumerateEdges(std::function<void(VPackSlice edge, VPackSlice vertex)> cb) const override {
+  EvalResult enumerateEdges(std::function<EvalResult(VPackSlice edge, VPackSlice vertex)> cb) const override {
     std::abort();
   }
 };

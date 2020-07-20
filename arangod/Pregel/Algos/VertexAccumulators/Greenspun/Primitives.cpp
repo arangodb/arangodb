@@ -33,14 +33,13 @@
 
 std::unordered_map<std::string, std::function<EvalResult(PrimEvalContext& ctx, VPackSlice const slice, VPackBuilder& result)>> primitives;
 
-
 EvalResult Prim_Banana(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto tmp = int64_t{0};
   for (auto p : VPackArrayIterator(params)) {
     if (p.isNumber<int64_t>()) {
       tmp += p.getNumericValue<int64_t>();
     } else {
-      return EvalError("Expected int, found: " + p.toJson());
+      return EvalError("expected int, found: " + p.toJson());
     }
   }
   result.add(VPackValue(tmp));
@@ -52,13 +51,13 @@ EvalResult Prim_Sub(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder&
   auto iter = VPackArrayIterator(params);
   if (iter.valid()) {
     if (!(*iter).isNumber<int64_t>()) {
-      return EvalError("Expected int, found: " + (*iter).toJson());
+      return EvalError("expected int, found: " + (*iter).toJson());
     }
     tmp = (*iter).getNumericValue<int64_t>();
     iter++;
     for (; iter.valid(); iter++) {
       if (!(*iter).isNumber<int64_t>()) {
-        return EvalError("Expected int, found: " + (*iter).toJson());
+        return EvalError("expected int, found: " + (*iter).toJson());
       }
       tmp -= (*iter).getNumericValue<int64_t>();
     }
@@ -71,7 +70,7 @@ EvalResult Prim_Mul(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder&
   auto tmp = int64_t{1};
   for (auto p : VPackArrayIterator(params)) {
     if (!p.isNumber<int64_t>()) {
-      return EvalError("Expected int, found: " + p.toJson());
+      return EvalError("expected int, found: " + p.toJson());
     }
     tmp *= p.getNumericValue<int64_t>();
   }
@@ -84,12 +83,12 @@ EvalResult Prim_Div(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder&
   auto iter = VPackArrayIterator(params);
   if (iter.valid()) {
     if (!(*iter).isNumber<int64_t>()) {
-      return EvalError("Expected int, found: " + (*iter).toJson());
+      return EvalError("expected int, found: " + (*iter).toJson());
     }
     tmp = (*iter).getNumericValue<int64_t>();
     for (; iter.valid(); iter++) {
       if (!(*iter).isNumber<int64_t>()) {
-        return EvalError("Expected int, found: " + (*iter).toJson());
+        return EvalError("expected int, found: " + (*iter).toJson());
       }
       auto v = (*iter).getNumericValue<int64_t>();
       if (v == 0) {
@@ -198,18 +197,14 @@ EvalResult Prim_For(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder&
 
 
   // TODO translate direction and pass to enumerateEdges
-  ctx.enumerateEdges([&, edgeVar = edgeVar,
+  return ctx.enumerateEdges([&, edgeVar = edgeVar,
                       otherVertexVar = otherVertexVar, body = body](VPackSlice edge, VPackSlice vertex) {
-    ctx.pushStack();
+    StackFrameGuard<true> guard(ctx);
     ctx.setVariable(edgeVar, edge);
     ctx.setVariable(otherVertexVar, vertex);
-
     VPackBuilder localResult;
-    Evaluate(ctx, body, localResult);
-    ctx.popStack();
+    return Evaluate(ctx, body, localResult);
   });
-
-  return {};
 }
 
 EvalResult Prim_Cat(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
