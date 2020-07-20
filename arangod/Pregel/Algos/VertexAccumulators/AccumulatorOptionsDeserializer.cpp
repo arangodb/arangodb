@@ -26,7 +26,7 @@
 
 #include <VPackDeserializer/deserializer.h>
 
-using namespace arangodb::velocypack::deserializer;
+using namespace deserializer;
 
 /* clang-format off */
 

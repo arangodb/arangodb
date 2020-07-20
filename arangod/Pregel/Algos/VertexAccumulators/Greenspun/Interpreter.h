@@ -26,55 +26,122 @@
 #define ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_EVALUATOR_H 1
 
 #include <functional>
+#include <variant>
 
 #include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
-#include <stack>
+#include "template-stuff.h"
 
-#ifndef TRI_ASSERT
-#define TRI_ASSERT(x) if (!(x)) { std::abort(); }
-#endif
+
+struct EvalError {
+  struct CallFrame {
+    std::string function;
+    std::vector<std::string> parameter;
+  };
+
+  struct ParamFrame {
+    std::string function;
+    std::size_t offset;
+  };
+
+  struct WrapFrame {
+    std::string message;
+  };
+
+  using Frame = std::variant<ParamFrame, CallFrame, WrapFrame>;
+
+  explicit EvalError(std::string message) : message(std::move(message)) {}
+  EvalError(EvalError const&) = default;
+  EvalError(EvalError&&) = default;
+  EvalError& operator=(EvalError const&) = default;
+  EvalError& operator=(EvalError&&) = default;
+
+  EvalError& wrapParameter(std::string function, std::size_t off) {
+    frames.emplace_back(ParamFrame{std::move(function), off});
+    return *this;
+  }
+
+  EvalError& wrapMessage(std::string wrap) {
+    frames.emplace_back(WrapFrame{std::move(wrap)});
+    return *this;
+  }
+
+  EvalError& wrapCall(std::string function, VPackSlice parameter) {
+    std::vector<std::string> parameterVec;
+    for (auto&& p : VPackArrayIterator(parameter)) {
+      parameterVec.push_back(p.toJson());
+    }
+    frames.emplace_back(CallFrame{std::move(function), std::move(parameterVec)});
+    return *this;
+  }
+
+  std::string toString() const;
+
+  std::vector<Frame> frames;
+  std::string message;
+};
+
+struct EvalResult {
+
+  bool ok() const { return !_error.has_value(); }
+  bool fail() const { return _error.has_value(); }
+  operator bool() const { return ok(); }
+
+  EvalResult() = default;
+  EvalResult(EvalError error) : _error(error) {}
+  EvalResult(EvalResult const&) = default;
+  EvalResult(EvalResult &&) = default;
+  EvalResult& operator=(EvalResult const&) = default;
+  EvalResult& operator=(EvalResult &&) = default;
+
+  template<typename F>
+  EvalResult& wrapError(F && f) {
+    if (_error) {
+      std::forward<F>(f)(_error.value());
+    }
+    return *this;
+  }
+
+  EvalError& error() { return _error.value(); }
+  EvalError const& error() const { return _error.value(); }
+
+  std::optional<EvalError> _error;
+};
+
+
 
 struct EvalContext {
   virtual ~EvalContext() = default;
   // Variables go here.
-  void pushStack() { variables.emplace_back(); }
-  void popStack() {
-    TRI_ASSERT(variables.size() > 1);
-    variables.pop_back();
-  }
-
-  void setVariable(std::string name, VPackSlice value) {
-    TRI_ASSERT(!variables.empty());
-    variables.back().emplace(std::move(name), value);
-  }
-  void getVariable(std::string const& name, VPackBuilder& result) {
-//    TRI_ASSERT(!variables.empty());
-
-    for(auto scope = variables.rbegin(); scope != variables.rend(); ++scope) {
-      auto iter = scope->find(name);
-      if (iter != std::end(*scope)) {
-        result.add(iter->second);
-        return;
-      }
-    }
-    // TODO: variable not found error.
-    result.add(VPackSlice::noneSlice());
-  }
+  void pushStack();
+  void popStack();
+  EvalResult setVariable(std::string name, VPackSlice value);
+  EvalResult getVariable(std::string const& name, VPackBuilder& result);
 
   size_t depth{0};
-
-  virtual std::string const& getThisId() const = 0;
-
-  virtual void getAccumulatorValue(std::string_view id, VPackBuilder& result) const = 0;
-  virtual void updateAccumulator(std::string_view accumId, std::string_view edgeId, VPackSlice value) = 0;
-  virtual void setAccumulator(std::string_view accumId, VPackSlice value) = 0;
-  virtual void enumerateEdges(std::function<void(VPackSlice edge, VPackSlice vertex)> cb) const = 0;
-
  private:
   std::vector<std::unordered_map<std::string, VPackSlice>> variables;
+};
+
+template <bool isNewScope>
+struct StackFrameGuard {
+  StackFrameGuard(EvalContext& ctx) : _ctx(ctx) {
+    ctx.depth += 1;
+    if constexpr (isNewScope) {
+      ctx.pushStack();
+    }
+  }
+
+  ~StackFrameGuard() {
+    _ctx.depth -= 1;
+    if constexpr (isNewScope) {
+      _ctx.popStack();
+    }
+  }
+
+  EvalContext& _ctx;
 };
 
 //
@@ -83,60 +150,7 @@ struct EvalContext {
 // assignment
 //
 
-
-// FIXME: This needs to go into support code somehwere.
-namespace detail {
-template <class>
-inline constexpr bool always_false_v = false;
-template <typename... Ts, std::size_t... Is>
-auto unpackTuple(VPackArrayIterator& iter, std::index_sequence<Is...>) {
-  std::tuple<Ts...> result;
-  (
-      [&result](VPackSlice slice) {
-        TRI_ASSERT(!slice.isNone());
-        auto& value = std::get<Is>(result);
-        if constexpr (std::is_same_v<Ts, bool>) {
-          TRI_ASSERT(slice.isBool());
-          value = slice.getBool();
-        } else if constexpr (std::is_integral_v<Ts>) {
-          TRI_ASSERT(slice.template isNumber<Ts>());
-          value = slice.template getNumericValue<Ts>();
-        } else if constexpr (std::is_same_v<Ts, double>) {
-          TRI_ASSERT(slice.isDouble());
-          value = slice.getDouble();
-        } else if constexpr (std::is_same_v<Ts, std::string>) {
-          TRI_ASSERT(slice.isString());
-          value = slice.copyString();
-        } else if constexpr (std::is_same_v<Ts, std::string_view>) {
-          TRI_ASSERT(slice.isString());
-          value = slice.stringView();
-        } else if constexpr (std::is_same_v<Ts, VPackStringRef>) {
-          TRI_ASSERT(slice.isString());
-          value = slice.stringRef();
-        } else if constexpr (std::is_same_v<Ts, VPackSlice>) {
-          value = slice;
-        } else {
-          static_assert(always_false_v<Ts>, "Unhandled value type requested");
-        }
-      }(*(iter++)),
-      ...);
-  return result;
-}
-}  // namespace detail
-/// @brief unpacks an array as tuple. Use like this: auto&& [a, b, c] = unpack<size_t, std::string, double>(slice);
-template <typename... Ts>
-static std::tuple<Ts...> unpackTuple(VPackSlice slice) {
-  VPackArrayIterator iter(slice);
-  return detail::unpackTuple<Ts...>(iter, std::index_sequence_for<Ts...>{});
-}
-template <typename... Ts>
-static std::tuple<Ts...> unpackTuple(VPackArrayIterator& iter) {
-  return detail::unpackTuple<Ts...>(iter, std::index_sequence_for<Ts...>{});
-}
-
-
-void Evaluate(EvalContext& ctx, VPackSlice const slice, VPackBuilder& result);
+EvalResult Evaluate(EvalContext& ctx, VPackSlice slice, VPackBuilder& result);
 void InitInterpreter();
-
 
 #endif
