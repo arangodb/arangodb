@@ -608,9 +608,13 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
     TRI_ASSERT(!writeLocker.isLocked());
     TRI_ASSERT(!locker.isLocked());
 
-    if (timeout >= 0.0 && TRI_microtime() > endTime) {
+    if (timeout > 0.0 && TRI_microtime() > endTime) {
       events::DropCollection(name(), colName, TRI_ERROR_LOCK_TIMEOUT);
       return TRI_ERROR_LOCK_TIMEOUT;
+    }
+
+    if (_server.isStopping()) {
+      return TRI_ERROR_SHUTTING_DOWN;
     }
   
     engine->prepareDropCollection(*this, *collection);
@@ -1204,6 +1208,10 @@ arangodb::Result TRI_vocbase_t::dropCollection(TRI_voc_cid_t cid,
     if (state == DROP_PERFORM || state == DROP_EXIT) {
       events::DropCollection(dbName, collection->name(), res);
       return res;
+    }
+
+    if (_server.isStopping()) {
+      return TRI_ERROR_SHUTTING_DOWN;
     }
 
     // try again in next iteration

@@ -1,5 +1,8 @@
 devel
 -----
+* Fixed internal issue #733: Primary sort compression in views now used properly
+
+* Fix spurious lock timeout errors when restoring collections.
 
 * Improve performance of agency cache by not copying the hierarchical Node
   tree result for serialization, but serializing it directly.
