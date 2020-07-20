@@ -98,7 +98,8 @@ void SortNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   nodes.close();
 }
 
-class SortNodeFindMyExpressions : public WalkerWorker<ExecutionNode, false> {
+class SortNodeFindMyExpressions
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
  public:
   size_t _foundCalcNodes;
   SortElementVector _elms;

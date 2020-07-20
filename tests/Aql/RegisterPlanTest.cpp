@@ -137,7 +137,7 @@ struct ExecutionNodeMock {
 
   auto getRegsToKeep() -> RegIdSetStack const& { return _regsToKeep; }
 
-  auto walk(WalkerWorker<ExecutionNodeMock, false>& worker) -> bool {
+  auto walk(WalkerWorker<ExecutionNodeMock, WalkerUniqueness::NonUnique>& worker) -> bool {
     if (worker.before(this)) {
       return true;
     }

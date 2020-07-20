@@ -31,6 +31,7 @@
 #include "Aql/GraphNode.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/ShardLocking.h"
+#include "Aql/WalkerWorker.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
 
@@ -101,7 +102,7 @@ using NodeAliasMap = std::map<ExecutionNodeId, ExecutionNodeId>;
  *                      INTERNAL_GATHER
  *
  */
-class CloneWorker final : public WalkerWorker<ExecutionNode, false> {
+class CloneWorker final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
  public:
   explicit CloneWorker(ExecutionNode* rootNode, GatherNode* internalGather,
                        ScatterNode* internalScatter,

@@ -274,22 +274,13 @@ class ExecutionPlan {
   /// @brief whether or not the plan contains at least one node of this type
   bool contains(ExecutionNode::NodeType) const;
 
-  /// @brief helper struct for using contains as a predicate
-  struct Contains {
-    Contains(ExecutionPlan&);
-    bool operator()(ExecutionNode::NodeType) const;
-
-   private:
-    ExecutionPlan& _plan;
-  };
-
   /// @brief increase the node counter for the type
   void increaseCounter(ExecutionNode::NodeType type) noexcept;
 
   bool fullCount() const noexcept;
 
  private:
-  template <bool unique>
+  template <WalkerUniqueness U>
   /// @brief find nodes of certain types
   void findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
                        std::initializer_list<ExecutionNode::NodeType> const&,

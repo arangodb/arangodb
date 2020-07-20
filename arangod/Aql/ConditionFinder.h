@@ -39,7 +39,7 @@ class SortCondition;
 struct Variable;
 
 /// @brief condition finder
-class ConditionFinder : public WalkerWorker<ExecutionNode, false> {
+class ConditionFinder : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
  public:
   ConditionFinder(ExecutionPlan* plan, std::unordered_map<ExecutionNodeId, ExecutionNode*>* changes,
                   bool* hasEmptyResult, bool viewMode);

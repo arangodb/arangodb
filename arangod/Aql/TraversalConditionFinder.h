@@ -32,7 +32,8 @@ namespace arangodb {
 namespace aql {
 
 /// @brief Traversal condition finder
-class TraversalConditionFinder : public WalkerWorker<ExecutionNode, false> {
+class TraversalConditionFinder
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
  public:
   TraversalConditionFinder(ExecutionPlan* plan, bool* planAltered);
 

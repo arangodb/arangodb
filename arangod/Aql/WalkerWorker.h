@@ -32,6 +32,8 @@
 namespace arangodb {
 namespace aql {
 
+enum class WalkerUniqueness : std::uint8_t { Unique, NonUnique };
+
 /// @brief base interface to walk an execution plan recursively.
 template <class T>
 class WalkerWorkerBase {
@@ -59,11 +61,11 @@ class WalkerWorkerBase {
 /// if template parameter `unique == true`, this will visit each node once, even
 /// if multiple paths lead to the same node. no assertions are raised if
 /// multiple paths lead to the same node
-template <class T, bool unique>
+template <class T, WalkerUniqueness U>
 class WalkerWorker : public WalkerWorkerBase<T> {
  public:
   virtual bool done([[maybe_unused]] T* en) {
-    if constexpr (unique) {
+    if constexpr (U == WalkerUniqueness::Unique) {
       return !_done.emplace(en).second;
     }
 
@@ -84,7 +86,7 @@ class WalkerWorker : public WalkerWorkerBase<T> {
   }
 
   void reset() {
-    if constexpr (unique) {
+    if constexpr (U == WalkerUniqueness::Unique) {
       _done.clear();
       return;
     }

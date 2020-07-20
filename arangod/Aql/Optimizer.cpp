@@ -75,7 +75,7 @@ void Optimizer::addPlanAndRerun(std::unique_ptr<ExecutionPlan> plan,
 
 // Check the plan for inconsistencies, like more than one parent or dependency,
 // or mismatching parents and dependencies in adjacent nodes.
-class PlanChecker : public WalkerWorker<ExecutionNode, false> {
+class PlanChecker : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
  public:
   PlanChecker(ExecutionPlan& plan) : _plan{plan} {}
 

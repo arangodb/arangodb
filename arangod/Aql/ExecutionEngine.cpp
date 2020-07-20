@@ -220,7 +220,8 @@ ExecutionEngine::~ExecutionEngine() {
   }
 }
 
-struct SingleServerQueryInstanciator final : public WalkerWorker<ExecutionNode, false> {
+struct SingleServerQueryInstanciator final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   ExecutionEngine& engine;
   ExecutionBlock* root{};
   std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
@@ -369,7 +370,8 @@ struct SingleServerQueryInstanciator final : public WalkerWorker<ExecutionNode, 
 // of them the nodes from left to right in these lists. In the end, we have
 // a proper instantiation of the whole thing.
 
-struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode, false> {
+struct DistributedQueryInstanciator final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
  private:
   EngineInfoContainerCoordinator _coordinatorParts;
   EngineInfoContainerDBServerServerBased _dbserverParts;

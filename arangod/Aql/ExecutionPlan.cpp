@@ -69,7 +69,7 @@ namespace {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 /// @brief validate the counters of the plan
-struct NodeCounter final : public WalkerWorker<ExecutionNode, false> {
+struct NodeCounter final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   std::array<uint32_t, ExecutionNode::MAX_NODE_TYPE_VALUE> counts;
   std::unordered_set<ExecutionNode const*> seen;
 
@@ -96,7 +96,7 @@ struct NodeCounter final : public WalkerWorker<ExecutionNode, false> {
     if (!arangodb::ServerState::instance()->isDBServer() ||
         (en->getType() != ExecutionNode::REMOTE && en->getType() != ExecutionNode::SCATTER &&
          en->getType() != ExecutionNode::DISTRIBUTE)) {
-      return WalkerWorker<ExecutionNode, false>::done(en);
+      return WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique>::done(en);
     }
     return false;
   }
@@ -364,13 +364,6 @@ std::unique_ptr<ExecutionPlan> ExecutionPlan::instantiateFromAst(Ast* ast) {
 bool ExecutionPlan::contains(ExecutionNode::NodeType type) const {
   TRI_ASSERT(_varUsageComputed);
   return _typeCounts[type] > 0;
-}
-
-ExecutionPlan::Contains::Contains(ExecutionPlan& plan) : _plan(plan) {}
-
-/// @brief whether or not the plan contains at least one node of this type
-bool ExecutionPlan::Contains::operator()(ExecutionNode::NodeType type) const {
-  return _plan.contains(type);
 }
 
 /// @brief increase the node counter for the type
@@ -2137,17 +2130,19 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
   return en;
 }
 
-template <bool unique>
+template <WalkerUniqueness U>
 /// @brief find nodes of certain types
 void ExecutionPlan::findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
                                     std::initializer_list<ExecutionNode::NodeType> const& types,
                                     bool enterSubqueries) {
   // check if any of the node types is actually present in the plan
-  Contains contains(*this);
-  bool haveNodes = std::any_of(types.begin(), types.end(), contains);
+  bool haveNodes = std::any_of(types.begin(), types.end(),
+                               [this](ExecutionNode::NodeType type) -> bool {
+                                 return contains(type);
+                               });
   if (haveNodes) {
     // found a node type that is in the plan
-    NodeFinder<std::initializer_list<ExecutionNode::NodeType>, unique> finder(types, result, enterSubqueries);
+    NodeFinder<std::initializer_list<ExecutionNode::NodeType>, U> finder(types, result, enterSubqueries);
     root()->walk(finder);
   }
 }
@@ -2155,21 +2150,21 @@ void ExecutionPlan::findNodesOfType(::arangodb::containers::SmallVector<Executio
 /// @brief find nodes of a certain type
 void ExecutionPlan::findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
                                     ExecutionNode::NodeType type, bool enterSubqueries) {
-  findNodesOfType<false>(result, {type}, enterSubqueries);
+  findNodesOfType<WalkerUniqueness::NonUnique>(result, {type}, enterSubqueries);
 }
 
 /// @brief find nodes of certain types
 void ExecutionPlan::findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
                                     std::initializer_list<ExecutionNode::NodeType> const& types,
                                     bool enterSubqueries) {
-  findNodesOfType<false>(result, types, enterSubqueries);
+  findNodesOfType<WalkerUniqueness::NonUnique>(result, types, enterSubqueries);
 }
 
 /// @brief find nodes of certain types
 void ExecutionPlan::findUniqueNodesOfType(
     ::arangodb::containers::SmallVector<ExecutionNode*>& result,
     std::initializer_list<ExecutionNode::NodeType> const& types, bool enterSubqueries) {
-  findNodesOfType<true>(result, types, enterSubqueries);
+  findNodesOfType<WalkerUniqueness::Unique>(result, types, enterSubqueries);
 }
 
 /// @brief find all end nodes in a plan
@@ -2495,7 +2490,7 @@ void ExecutionPlan::prepareTraversalOptions() {
 #include <iostream>
 
 /// @brief show an overview over the plan
-struct Shower final : public WalkerWorker<ExecutionNode, false> {
+struct Shower final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   int indent;
 
   Shower() : indent(0) {}

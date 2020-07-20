@@ -945,7 +945,7 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
 
 /// @brief static analysis debugger
 #if 0
-struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode, false> {
+struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   RegisterPlanningDebugger()
     : indent(0) {
   }
@@ -2056,7 +2056,8 @@ bool SubqueryNode::mayAccessCollections() {
   ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
 
-  NodeFinder<std::initializer_list<ExecutionNode::NodeType>, true> finder(types, nodes, true);
+  NodeFinder<std::initializer_list<ExecutionNode::NodeType>, WalkerUniqueness::Unique> finder(
+      types, nodes, true);
   _subquery->walk(finder);
 
   if (!nodes.empty()) {
@@ -2147,7 +2148,8 @@ CostEstimate SubqueryNode::estimateCost() const {
 }
 
 /// @brief helper struct to find all (outer) variables used in a SubqueryNode
-struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode, true> {
+struct SubqueryVarUsageFinder final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::Unique> {
   VarSet _usedLater;
   VarSet _valid;
 
@@ -2200,7 +2202,8 @@ void SubqueryNode::getVariablesUsedHere(VarSet& vars) const {
 }
 
 /// @brief is the node determistic?
-struct DeterministicFinder final : public WalkerWorker<ExecutionNode, true> {
+struct DeterministicFinder final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::Unique> {
   bool _isDeterministic = true;
 
   DeterministicFinder() : _isDeterministic(true) {}

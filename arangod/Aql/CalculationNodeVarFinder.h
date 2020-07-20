@@ -30,7 +30,8 @@
 namespace arangodb {
 namespace aql {
 
-class CalculationNodeVarFinder final : public WalkerWorker<ExecutionNode, false> {
+class CalculationNodeVarFinder final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   Variable const* _lookingFor;
 
   ::arangodb::containers::SmallVector<ExecutionNode*>& _out;
@@ -43,7 +44,8 @@ class CalculationNodeVarFinder final : public WalkerWorker<ExecutionNode, false>
   bool before(ExecutionNode*) override final;
 };
 
-class CalculationNodeVarExistenceFinder final : public WalkerWorker<ExecutionNode, false> {
+class CalculationNodeVarExistenceFinder final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   Variable const* _lookingFor;
 
   VarSet _currentUsedVars;

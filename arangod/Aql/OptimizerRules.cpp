@@ -230,7 +230,7 @@ struct PairHash {
 
 /// WalkerWorker to track collection variable dependencies
 class CollectionVariableTracker final
-    : public arangodb::aql::WalkerWorker<arangodb::aql::ExecutionNode, false> {
+    : public arangodb::aql::WalkerWorker<arangodb::aql::ExecutionNode, arangodb::aql::WalkerUniqueness::NonUnique> {
   using DependencyPair =
       std::pair<arangodb::aql::Variable const*, arangodb::aql::Collection const*>;
   using DependencySet = std::unordered_set<DependencyPair, ::PairHash>;
@@ -344,7 +344,7 @@ class CollectionVariableTracker final
 
 /// WalkerWorker for restrictToSingleShard
 class RestrictToSingleShardChecker final
-    : public arangodb::aql::WalkerWorker<arangodb::aql::ExecutionNode, false> {
+    : public arangodb::aql::WalkerWorker<arangodb::aql::ExecutionNode, arangodb::aql::WalkerUniqueness::NonUnique> {
   arangodb::aql::ExecutionPlan* _plan;
   CollectionVariableTracker& _tracker;
   std::unordered_map<arangodb::aql::Variable const*, std::unordered_set<std::string>> _shardsUsed;
@@ -2045,7 +2045,7 @@ void arangodb::aql::moveFiltersUpRule(Optimizer* opt, std::unique_ptr<ExecutionP
 }
 
 class arangodb::aql::RedundantCalculationsReplacer final
-    : public WalkerWorker<ExecutionNode, false> {
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
  public:
   explicit RedundantCalculationsReplacer(
       Ast* ast, std::unordered_map<VariableId, Variable const*> const& replacements)
@@ -2963,7 +2963,8 @@ void arangodb::aql::useIndexesRule(Optimizer* opt, std::unique_ptr<ExecutionPlan
   }
 }
 
-struct SortToIndexNode final : public WalkerWorker<ExecutionNode, false> {
+struct SortToIndexNode final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   ExecutionPlan* _plan;
   SortNode* _sortNode;
   std::vector<std::pair<Variable const*, bool>> _sorts;
@@ -5102,7 +5103,8 @@ void arangodb::aql::restrictToSingleShardRule(Optimizer* opt,
 }
 
 /// WalkerWorker for undistributeRemoveAfterEnumColl
-class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode, false> {
+class RemoveToEnumCollFinder final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   ExecutionPlan* _plan;
   ::arangodb::containers::HashSet<ExecutionNode*>& _toUnlink;
   bool _foundModification;
@@ -7548,7 +7550,8 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt,
 namespace {
 
 /// @brief is the node parallelizable?
-struct ParallelizableFinder final : public WalkerWorker<ExecutionNode, false> {
+struct ParallelizableFinder final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   bool const _parallelizeWrites;
   bool _isParallelizable;
 
@@ -8039,7 +8042,7 @@ void findSubqueriesSuitableForSplicing(ExecutionPlan const& plan,
   // be omitted later, as soon as support for spliced subqueries / shadow rows
   // is complete.
 
-  class Finder final : public WalkerWorker<ExecutionNode, false> {
+  class Finder final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
    public:
     explicit Finder(ResultVector& result, SuitableNodeSet& suitableNodes)
         : _result{result}, _suitableNodes{suitableNodes}, _isSuitableArena{}, _isSuitableLevel{BoolVec{_isSuitableArena}} {
