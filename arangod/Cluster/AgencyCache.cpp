@@ -57,9 +57,9 @@ std::tuple <query_t, index_t> const AgencyCache::get(
   auto ret = std::make_shared<VPackBuilder>();
   std::lock_guard g(_storeLock);
   if (_commitIndex > 0) {
-    _readDB.get("arango/" + path, *ret);
+    _readDB.get("arango/" + path, *ret, false);
   }
-  return std::tuple(ret, _commitIndex);
+  return std::tuple(std::move(ret), _commitIndex);
 }
 
 // Get Builder from readDB mainly /Plan /Current
@@ -97,7 +97,7 @@ std::tuple <query_t, index_t> const AgencyCache::read(
     }
     _readDB.read(query, result);
   }
-  return std::tuple(result, _commitIndex);
+  return std::tuple(std::move(result), _commitIndex);
 }
 
 futures::Future<arangodb::Result> AgencyCache::waitFor(index_t index) {
