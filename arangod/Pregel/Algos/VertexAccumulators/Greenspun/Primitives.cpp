@@ -119,20 +119,38 @@ EvalResult Prim_EqHuh(PrimEvalContext& ctx, VPackSlice const params, VPackBuilde
 }
 
 EvalResult Prim_VarRef(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
-  auto&& [name] = unpackTuple<std::string>(params);
-  return ctx.getVariable(name, result);
+  if (params.length() != 1) {
+    auto nameSlice = params.at(0);
+    if (nameSlice.isString()) {
+      return ctx.getVariable(nameSlice.copyString(), result);
+    }
+  }
+  return EvalError("expecting a single string parameter");
 }
 
 EvalResult Prim_Attrib(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+  if (!params.isArray() && params.length() != 2) {
+    return EvalError("expected exactly two parameters");
+  }
+
   auto&& [key, slice] = unpackTuple<VPackSlice, VPackSlice>(params);
+  if (!slice.isObject()) {
+    return EvalError("expect second parameter to be an object");
+  }
+
   if (key.isString()) {
     result.add(slice.get(key.stringRef()));
-  } else {
+  } else if(key.isArray()) {
     std::vector<VPackStringRef> path;
     for (auto&& pathStep : VPackArrayIterator(key)) {
+      if (!pathStep.isString()) {
+        return EvalError("expected string in key arrays");
+      }
       path.emplace_back(pathStep.stringRef());
     }
     result.add(slice.get(path));
+  } else {
+    return EvalError("key is neither array nor string");
   }
   return {};
 }
@@ -189,6 +207,35 @@ EvalResult Prim_For(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder&
   return {};
 }
 
+EvalResult Prim_Cat(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+  std::string str;
+
+  for (auto iter = VPackArrayIterator(params); iter.valid(); iter++) {
+    VPackSlice p = *iter;
+    if (p.isString()) {
+      str += p.stringView();
+    } else {
+      return EvalError("expected string, found " + p.toJson());
+    }
+  }
+
+  result.add(VPackValue(str));
+  return {};
+}
+
+EvalResult Prim_IntToStr(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+  if (params.length() != 1) {
+    return EvalError("expected a single argument");
+  }
+  auto value = params.at(0);
+  if (!value.isNumber<int64_t>()) {
+    return EvalError("expected int, found: " + value.toJson());
+  }
+
+  result.add(VPackValue(std::to_string(params.getNumericValue<int64_t>())));
+  return {};
+}
+
 void RegisterPrimitives() {
   primitives["banana"] = Prim_Banana;
   primitives["+"] = Prim_Banana;
@@ -205,4 +252,6 @@ void RegisterPrimitives() {
   primitives["update"] = Prim_Update;
   primitives["set"] = Prim_Set;
   primitives["for"] = Prim_For;
+  primitives["cat"] = Prim_Cat;
+  primitives["int-to-str"] = Prim_IntToStr;
 }

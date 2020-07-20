@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include "Pregel/Algos/VertexAccumulators/Greenspun/Interpreter.h"
+#include "Pregel/Algos/VertexAccumulators/Greenspun/Primitives.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
@@ -19,7 +20,7 @@ int compare(arangodb::velocypack::Slice, arangodb::velocypack::Slice, bool,
 
 }  // namespace arangodb::basics::VelocyPackHelper
 
-struct MyEvalContext : EvalContext {
+struct MyEvalContext : PrimEvalContext {
   std::string const& getThisId() const override { std::abort(); }
 
   void getAccumulatorValue(std::string_view id, VPackBuilder& result) const override {

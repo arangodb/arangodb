@@ -52,7 +52,7 @@ int main(int argc, char** argv) {
   auto program = arangodb::velocypack::Parser::fromJson(R"aql(
   ["+", 3,
     ["if",
-      [["eq?", ["foobar", "hello", 2], 2], 3],
+      [["eq?", ["+", 12, 2], 2], 3],
       [true, 1]
     ]
   ]
