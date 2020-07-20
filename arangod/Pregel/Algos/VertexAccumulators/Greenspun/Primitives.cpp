@@ -47,6 +47,7 @@ void Prim_Sub(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto iter = VPackArrayIterator(params);
   if (iter.valid()) {
     tmp = (*iter).getNumericValue<int64_t>();
+    iter++;
     for (; iter.valid(); iter++) {
       tmp -= (*iter).getNumericValue<int64_t>();
     }
