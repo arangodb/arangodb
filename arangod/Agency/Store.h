@@ -133,6 +133,9 @@ class Store {
   /// Unprotected! Caller must guard the store.
   Node const* nodePtr(std::string const& path = std::string("/")) const;
 
+  /// @brief Get node at path under mutex and store it in velocypack
+  void get(std::string const& path, arangodb::velocypack::Builder& b, bool showHidden) const;
+
   /// @brief Copy out a node
   Node get(std::string const& path = std::string("/")) const;
 

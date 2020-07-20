@@ -5,6 +5,9 @@ devel
 
 * Fix spurious lock timeout errors when restoring collections.
 
+* Improve performance of agency cache by not copying the hierarchical Node
+  tree result for serialization, but serializing it directly.
+
 * Make sure cluster statistics in web UI work in case a coordinator is down.
 
 * Turn off maintenance threads on Coordinators, as they are not needed there.

@@ -1264,12 +1264,10 @@ TEST_F(IResearchViewCoordinatorTest, test_primary_compression_properties) {
     "{ \"field\": \"another.field\", \"asc\": false } "
     "]"
     "}");
+
   auto viewId = std::to_string(ci.uniqid() + 1);  // +1 because LogicalView creation will generate a new ID
 
   EXPECT_TRUE(ci.createViewCoordinator(vocbase->name(), viewId, json->slice()).ok());
-
-  // get current plan version
-  auto planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
 
   auto view = ci.getView(vocbase->name(), viewId);
   EXPECT_NE(nullptr, view);
