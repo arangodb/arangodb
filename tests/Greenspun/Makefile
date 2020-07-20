@@ -20,7 +20,7 @@ dirs:
 	mkdir -p $(EVALUATOR_OBJ_DIR)
 
 
-eval: $(VELOCYPACK_OBJ_FILES) $(EVALUATOR_OBJ_FILES) obj/xxhash.o obj/GreenspunTest.o
+eval: $(VELOCYPACK_OBJ_FILES) $(EVALUATOR_OBJ_FILES) obj/xxhash.o obj/PrimitivesTest.o
 	g++ $(LDFLAGS) -o $@ $^
 
 $(VELOCYPACK_OBJ_DIR)/%.o: $(VELOCYPACK_SRC_DIR)/%.cpp
@@ -32,7 +32,7 @@ $(EVALUATOR_OBJ_DIR)/%.o: $(EVALUATOR_SRC_DIR)/%.cpp
 obj/xxhash.o: ../../lib/Basics/xxhash.cpp
 	g++ $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $<
 
-obj/GreenspunTest.o: GreenspunTest.cpp
+obj/PrimitivesTest.o: PrimitivesTest.cpp
 	g++ $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $<
 
 
