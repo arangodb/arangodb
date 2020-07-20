@@ -44,7 +44,7 @@ class Accumulator;
 
 struct AccumulatorBase {
   virtual ~AccumulatorBase() = default;
-  template<typename T>
+  template <typename T>
   Accumulator<T>* castAccumulatorType() {
     return dynamic_cast<Accumulator<T>*>(this);
   }
@@ -59,12 +59,10 @@ class Accumulator : public AccumulatorBase {
  public:
   using data_type = T;
 
-  explicit Accumulator(AccumulatorOptions const&) {};
+  explicit Accumulator(AccumulatorOptions const&){};
   ~Accumulator() override = default;
 
-  virtual void set(data_type v) {
-    _value = v;
-  };
+  virtual void set(data_type v) { _value = v; };
   virtual void update(data_type v) = 0;
 
   void setBySlice(VPackSlice s) override {
@@ -88,7 +86,11 @@ class Accumulator : public AccumulatorBase {
     }
   }
   void getIntoBuilder(VPackBuilder& builder) override {
-    builder.add(VPackValue(_value));
+    if constexpr (std::is_same_v<T, VPackSlice>) {
+      builder.add(_value);
+    } else {
+      builder.add(VPackValue(_value));
+    }
   }
 
   data_type const& get() const { return _value; };

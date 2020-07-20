@@ -40,21 +40,27 @@
 struct EvalContext {
   virtual ~EvalContext() = default;
   // Variables go here.
-  void pushStack() { variables.emplace(); }
+  void pushStack() { variables.emplace_back(); }
   void popStack() {
     TRI_ASSERT(variables.size() > 1);
-    variables.pop();
+    variables.pop_back();
   }
 
   void setVariable(std::string name, VPackSlice value) {
     TRI_ASSERT(!variables.empty());
-    variables.top().emplace(std::move(name), value);
+    variables.back().emplace(std::move(name), value);
   }
   void getVariable(std::string const& name, VPackBuilder& result) {
-    TRI_ASSERT(!variables.empty());
-    if (auto iter = variables.top().find(name); iter != std::end(variables.top())) {
-      result.add(iter->second);
+//    TRI_ASSERT(!variables.empty());
+
+    for(auto scope = variables.rbegin(); scope != variables.rend(); ++scope) {
+      auto iter = scope->find(name);
+      if (iter != std::end(*scope)) {
+        result.add(iter->second);
+        return;
+      }
     }
+    // TODO: variable not found error.
     result.add(VPackSlice::noneSlice());
   }
 
@@ -68,7 +74,7 @@ struct EvalContext {
   virtual void enumerateEdges(std::function<void(VPackSlice edge, VPackSlice vertex)> cb) const = 0;
 
  private:
-  std::stack<std::unordered_map<std::string, VPackSlice>> variables;
+  std::vector<std::unordered_map<std::string, VPackSlice>> variables;
 };
 
 //

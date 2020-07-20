@@ -23,12 +23,8 @@ struct MyEvalContext : EvalContext {
     std::abort();
   }
 
-  VPackSlice getDocumentById(std::string_view id) const override {
+  void getAccumulatorValue(std::string_view id, VPackBuilder& result) const override {
     std::abort();
-  }
-
-  VPackSlice getAccumulatorValue(std::string_view id) const override {
-    return VPackSlice::zeroSlice();
   }
 
   void updateAccumulator(std::string_view accumId, std::string_view vertexId, VPackSlice value) override {
@@ -55,11 +51,12 @@ int main(int argc, char** argv) {
   auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
   auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
 
-  ctx.variables["v"] = v->slice();
-  ctx.variables["S"] = S->slice();
-
   auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-    ["+", 5, 6, 7]
+                  [ "for", "outbound", ["quote", "edge", "target"],
+                                          [ "update", ["varref", "target"], "distance",
+                                              ["+",
+                                                  ["accumref", ["varref", "this"], "distance"],
+                                                  ["attrib", ["varref", "target"], "cost"] ] ] ]
   )aql");
 
 	std::cout << "ArangoLISP Interpreter Executing" << std::endl;
