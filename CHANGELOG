@@ -1,23 +1,25 @@
 devel
 -----
 
+* Fixed internal issue #733: Primary sort compression in views now used properly.
+
 * Errors with error code 1200 (Arango conflict) will now get the HTTP response 
   code 409 (Conflict) instead of 412 (Precondition failed), unless "if-match" header
   was used in `_api/document` or `_api/gharial`.
 
-* Fixed internal issue #733: Primary sort compression in views now used properly
-
 * Fix spurious lock timeout errors when restoring collections.
 
 * Make sure cluster statistics in web UI work in case a coordinator is down.
+
+* Turn off maintenance threads on Coordinators, as they are not needed there.
+
+* Fixed crash in cleanup of parallel traversal queries.
 
 * Updated arangosync to 0.7.8.
 
 * Fixed hotbackup upload and download with encryption at rest key indirection.
 
 * Fixed a race between a new request and the keepAlive timeout.
-
-* Fixed crash in cleanup of parallel traversal queries.
 
 * Added cluster metrics `arangodb_load_plan_accum_runtime_msec` and
   `arangodb_load_current_accum_runtime_msec` to track the total time spent
