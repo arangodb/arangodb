@@ -35,32 +35,38 @@ struct MyEvalContext : EvalContext {
 
   std::string const& getThisId() const override { return thisId; }
 
-  VPackSlice getDocumentById(std::string_view id) const override {
-    std::abort();
-  }
-
-  VPackSlice getAccumulatorValue(std::string_view id) const override {
-    return VPackSlice::zeroSlice();
+  void getAccumulatorValue(std::string_view accumId, VPackBuilder& builder) const override {
+    _vertexData._accumulators.at(std::string{accumId})->getIntoBuilder(builder);
   }
 
   void setAccumulator(std::string_view accumId, VPackSlice value) override {
-    std::abort();
+    // FIXME: oh. my. god. in 2020. we copy string views.
+    // FIXME error handling (such as accumulator not found, etc)
+    _vertexData._accumulators.at(std::string{accumId})->setBySlice(value);
   }
 
+  // Need edge
   void updateAccumulator(std::string_view accumId, std::string_view vertexId,
                          VPackSlice value) override {
     //  sendMessage();
-    std::abort();
+    MessageData msg;
+    msg.reset(std::string{accumId}, value);
+
+    RangeIterator<Edge<EdgeData>> edgeIter = _computation.getEdges();
+
+    // Fix fix fix
+    LOG_DEVEL << "sending a message now: " << accumId << " " << value.toJson();
+    _computation.sendMessage(*edgeIter, msg);
   }
 
   void enumerateEdges(std::function<void(VPackSlice edge, VPackSlice vertex)> cb) const override {
     RangeIterator<Edge<EdgeData>> edgeIter = _computation.getEdges();
     for (; edgeIter.hasMore(); ++edgeIter) {
-      // FIXME: PLEASE!
-      VPackBuilder yolo;
-      yolo.add(VPackValue((*edgeIter)->toKey().toString()));
-      cb(yolo.slice(), yolo.slice());
-//      cb((*edgeIter)->data(), yolo.slice()));
+      VPackSlice edgeDoc = (*edgeIter)->data()._document.slice();
+      // TODO: this we don't need, as it currently is in the document.
+      VPackSlice toId = (*edgeIter)->data()._document.getKey("_to");
+
+      cb(edgeDoc, toId);
     }
   }
 
@@ -91,6 +97,7 @@ void VertexAccumulators::VertexComputation::compute(MessageIterator<MessageData>
     VPackBuilder stepResultBuilder;
     Evaluate(evalContext, _algorithm.options().updateProgram, stepResultBuilder);
 
+    voteHalt();
     /*
     if(somethingHasChanged) {
       voteActive();

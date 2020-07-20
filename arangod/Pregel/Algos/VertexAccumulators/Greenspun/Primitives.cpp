@@ -115,14 +115,16 @@ void Prim_This(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) 
   result.add(VPackValue(ctx.getThisId()));
 }
 
+/*
 void Prim_Doc(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto&& [docId] = unpackTuple<std::string_view>(params);
   result.add(ctx.getDocumentById(docId));
 }
+*/
 
 void Prim_AccumRef(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto&& [accumId] = unpackTuple<std::string_view>(params);
-  result.add(ctx.getAccumulatorValue(accumId));
+  ctx.getAccumulatorValue(accumId, result);
 }
 
 void Prim_Update(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
@@ -166,7 +168,7 @@ void RegisterPrimitives() {
   primitives["varref"] = Prim_VarRef;
   primitives["attrib"] = Prim_Attrib;
   primitives["this"] = Prim_This;
-  primitives["doc"] = Prim_Doc;
+//  primitives["doc"] = Prim_Doc;
   primitives["accumref"] = Prim_AccumRef;
   primitives["update"] = Prim_Update;
   primitives["set"] = Prim_Set;

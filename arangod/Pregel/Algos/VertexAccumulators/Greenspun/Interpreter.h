@@ -62,8 +62,7 @@ struct EvalContext {
 
   virtual std::string const& getThisId() const = 0;
 
-  virtual VPackSlice getDocumentById(std::string_view id) const = 0;
-  virtual VPackSlice getAccumulatorValue(std::string_view id) const = 0;
+  virtual void getAccumulatorValue(std::string_view id, VPackBuilder& result) const = 0;
   virtual void updateAccumulator(std::string_view accumId, std::string_view edgeId, VPackSlice value) = 0;
   virtual void setAccumulator(std::string_view accumId, VPackSlice value) = 0;
   virtual void enumerateEdges(std::function<void(VPackSlice edge, VPackSlice vertex)> cb) const = 0;

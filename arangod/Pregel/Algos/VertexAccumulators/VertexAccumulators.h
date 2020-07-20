@@ -47,7 +47,7 @@ class VertexData {
   void reset(AccumulatorsDeclaration const& accumulatorsDeclaration,
              std::string documentId, VPackSlice const& doc);
 
-  std::map<std::string, std::unique_ptr<AccumulatorBase>> _accumulators;
+  std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> _accumulators;
 
   std::string _documentId;
   // FIXME: YOLO. we copy the whole document, which is
@@ -61,7 +61,7 @@ struct EdgeData {
   void reset(VPackSlice const& doc);
   // FIXME: YOLO. we copy the whole document, which is
   //        probably super expensive.
- private:
+  // FIXME. VERDAMMT. 
   VPackBuilder _document;
 };
 

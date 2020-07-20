@@ -55,8 +55,11 @@ void VertexAccumulators::GraphFormat::copyEdgeData(arangodb::velocypack::Slice e
 bool VertexAccumulators::GraphFormat::buildVertexDocument(arangodb::velocypack::Builder& b,
                                                           const vertex_type* ptr,
                                                           size_t size) const {
-  // FIXME
-  b.add(_resultField, VPackValue("banana"));
+  VPackObjectBuilder guard(&b, _resultField);
+  for (auto&& acc : ptr->_accumulators) {
+    b.add(VPackValue(acc.first));
+    acc.second->getIntoBuilder(b);
+  }
   return true;
 }
 

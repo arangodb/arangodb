@@ -28,6 +28,9 @@
 #define ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_ABSTRACT_ACCUMULATOR_H 1
 #include <numeric>
 
+#include "velocypack/Builder.h"
+#include "velocypack/velocypack-aliases.h"
+
 #include "AccumulatorOptionsDeserializer.h"
 
 namespace arangodb {
@@ -46,7 +49,9 @@ struct AccumulatorBase {
     return dynamic_cast<Accumulator<T>*>(this);
   }
 
+  virtual void setBySlice(VPackSlice) = 0;
   virtual void updateBySlice(VPackSlice) = 0;
+  virtual void getIntoBuilder(VPackBuilder& builder) = 0;
 };
 
 template <typename T>
@@ -57,8 +62,18 @@ class Accumulator : public AccumulatorBase {
   explicit Accumulator(AccumulatorOptions const&) {};
   ~Accumulator() override = default;
 
+  virtual void set(data_type v) {
+    _value = v;
+  };
   virtual void update(data_type v) = 0;
 
+  void setBySlice(VPackSlice s) override {
+    if constexpr (std::is_arithmetic_v<T>) {
+      this->set(s.getNumericValue<T>());
+    } else {
+      std::abort();
+    }
+  }
   void updateBySlice(VPackSlice s) override {
     if constexpr (std::is_arithmetic_v<T>) {
       this->update(s.getNumericValue<T>());
@@ -71,6 +86,9 @@ class Accumulator : public AccumulatorBase {
     } else {
       std::abort();
     }
+  }
+  void getIntoBuilder(VPackBuilder& builder) override {
+    builder.add(VPackValue(_value));
   }
 
   data_type const& get() const { return _value; };
