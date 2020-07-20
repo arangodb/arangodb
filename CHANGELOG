@@ -6,6 +6,9 @@ devel
 
 * Make sure cluster statistics in web UI work in case a coordinator is down.
 
+* Change HTTP response code for error 1450 ("too many shards") from HTTP 500 to
+  HTTP 404, as this is clearly a client error.
+
 * Updated arangosync to 0.7.8.
 
 * Fixed hotbackup upload and download with encryption at rest key indirection.
