@@ -119,7 +119,7 @@ struct AqlValueHintEmptyObject {
   constexpr AqlValueHintEmptyObject() noexcept = default;
 };
 
-struct alignas(16) AqlValue final {
+struct AqlValue final {
   friend struct std::hash<arangodb::aql::AqlValue>;
   friend struct std::equal_to<arangodb::aql::AqlValue>;
 
