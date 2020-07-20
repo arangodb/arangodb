@@ -591,7 +591,7 @@ void ClusterInfo::loadPlan() {
       LOG_TOPIC("20450", DEBUG, Logger::CLUSTER)
           << "We already know this or a later version, do not update. "
           << "newPlanVersion=" << newPlanVersion << " _planVersion=" << _planVersion;
-
+      _planProt.doneVersion = storedVersion;
       return;
     }
   }
@@ -1061,9 +1061,9 @@ void ClusterInfo::loadPlan() {
   // mark plan as fully loaded only if all incoming objects were fully loaded
   // must still swap structures to allow creation of new vocbases and removal of stale datasources
   if (planValid) {
-    _planProt.doneVersion = storedVersion;
     _planProt.isValid = true;
   }
+  _planProt.doneVersion = storedVersion;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
