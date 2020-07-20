@@ -1,6 +1,8 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
-* Fixed internal issue #733: Primary sort compression in views now used properly
+
+* Fixed internal issue #733: Primary sort compression in ArangoSearch views now
+  used properly.
 
 * Fix spurious lock timeout errors when restoring collections.
 
