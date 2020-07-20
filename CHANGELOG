@@ -1,12 +1,12 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Change HTTP response code for error 1450 ("too many shards") from HTTP 500 to
+  HTTP 400, as this is clearly a client error.
+
 * Fix spurious lock timeout errors when restoring collections.
 
 * Make sure cluster statistics in web UI work in case a coordinator is down.
-
-* Change HTTP response code for error 1450 ("too many shards") from HTTP 500 to
-  HTTP 400, as this is clearly a client error.
 
 * Updated arangosync to 0.7.8.
 
