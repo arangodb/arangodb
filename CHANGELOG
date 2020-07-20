@@ -1,6 +1,7 @@
 devel
 -----
-* Fixed internal issue #733: Primary sort compression in views now used properly
+
+* Fixed internal issue #733: Primary sort compression in views now used properly.
 
 * Fix spurious lock timeout errors when restoring collections.
 
@@ -8,7 +9,7 @@ devel
 
 * Turn off maintenance threads on Coordinators, as they are not needed there.
 
-* Fixed crash in cleanup of parallel traversal queries (QA-28).
+* Fixed crash in cleanup of parallel traversal queries.
 
 * Updated arangosync to 0.7.8.
 
