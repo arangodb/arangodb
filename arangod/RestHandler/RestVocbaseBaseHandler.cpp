@@ -383,9 +383,11 @@ void RestVocbaseBaseHandler::generateForbidden() {
 /// @brief generates precondition failed
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generatePreconditionFailed(VPackSlice const& slice) {
+void RestVocbaseBaseHandler::generatePreconditionFailed(OperationResult const& opres) {
+  TRI_ASSERT(opres.errorNumber() == TRI_ERROR_ARANGO_CONFLICT);
   resetResponse(rest::ResponseCode::PRECONDITION_FAILED);
-
+  
+  VPackSlice slice = opres.slice();
   if (slice.isObject()) {  // single document case
     std::string const rev =
         VelocyPackHelper::getStringValue(slice, StaticStrings::RevString, "");
@@ -398,7 +400,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(VPackSlice const& slice)
     builder.add(StaticStrings::Code,
                 VPackValue(static_cast<int32_t>(rest::ResponseCode::PRECONDITION_FAILED)));
     builder.add(StaticStrings::ErrorNum, VPackValue(TRI_ERROR_ARANGO_CONFLICT));
-    builder.add(StaticStrings::ErrorMessage, VPackValue("precondition failed"));
+    builder.add(StaticStrings::ErrorMessage, VPackValue(opres.errorMessage()));
 
     if (slice.isObject()) {
       builder.add(StaticStrings::IdString, slice.get(StaticStrings::IdString));
@@ -412,24 +414,6 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(VPackSlice const& slice)
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
 
   writeResult(builder.slice(), *(ctx->getVPackOptionsForDump()));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates precondition failed
-////////////////////////////////////////////////////////////////////////////////
-
-void RestVocbaseBaseHandler::generatePreconditionFailed(std::string const& collectionName,
-                                                        std::string const& key,
-                                                        TRI_voc_rid_t rev) {
-  VPackBuilder builder;
-  builder.openObject();
-  builder.add(StaticStrings::IdString,
-              VPackValue(assembleDocumentId(collectionName, key, false)));
-  builder.add(StaticStrings::KeyString, VPackValue(key));
-  builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(rev)));
-  builder.close();
-
-  generatePreconditionFailed(builder.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -510,11 +494,22 @@ void RestVocbaseBaseHandler::generateTransactionError(std::string const& collect
       if (result.buffer != nullptr && !result.slice().isNone()) {
         // This case happens if we come via the generateTransactionError that
         // has a proper OperationResult with a slice:
-        generatePreconditionFailed(result.slice());
+        generatePreconditionFailed(result);
       } else {
         // This case happens if we call this method directly with a dummy
         // OperationResult:
-        generatePreconditionFailed(collectionName, key.empty() ? "unknown" : key, rev);
+        
+        OperationResult tmp(result.result);
+        tmp.buffer = std::make_shared<VPackBufferUInt8>();
+        VPackBuilder builder(tmp.buffer);
+        builder.openObject();
+        builder.add(StaticStrings::IdString,
+                    VPackValue(assembleDocumentId(collectionName, key, false)));
+        builder.add(StaticStrings::KeyString, VPackValue(key));
+        builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(rev)));
+        builder.close();
+      
+        generatePreconditionFailed(tmp);
       }
       return;
 

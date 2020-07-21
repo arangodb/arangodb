@@ -218,7 +218,7 @@ RestStatus RestDocumentHandler::insertDocument() {
             // result stays valid!
             Result res = _activeTrx->finish(opres.result);
             if (opres.fail()) {
-              generateTransactionError(opres);
+              generateTransactionError(cname, opres);
               return;
             }
 
@@ -316,15 +316,13 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
 
   return waitForFuture(
       _activeTrx->documentAsync(collection, search, options).thenValue([=, buffer(std::move(buffer))](OperationResult opRes) {
-        auto res = _activeTrx->finish(opRes.result);
+        Result res = _activeTrx->finish(opRes.result);
 
         if (!opRes.ok()) {
           if (opRes.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
             generateDocumentNotFound(collection, key);
-          } else if (ifRid != 0 && opRes.is(TRI_ERROR_ARANGO_CONFLICT)) {
-            generatePreconditionFailed(opRes.slice());
           } else {
-            generateTransactionError(collection, res, key);
+            generateTransactionError(collection, opRes, key, ifRid);
           }
           return;
         }
@@ -514,19 +512,19 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   }
 
   return waitForFuture(std::move(f).thenValue([=, buffer(std::move(buffer))](OperationResult opRes) {
-    auto res = _activeTrx->finish(opRes.result);
+    Result res = _activeTrx->finish(opRes.result);
 
     // ...........................................................................
     // outside write transaction
     // ...........................................................................
 
     if (opRes.fail()) {
-      generateTransactionError(opRes);
+      generateTransactionError(cname, opRes, key);
       return;
     }
 
     if (!res.ok()) {
-      generateTransactionError(cname, res, key, 0);
+      generateTransactionError(cname, res, key);
       return;
     }
 
@@ -629,7 +627,7 @@ RestStatus RestDocumentHandler::removeDocument() {
     // ...........................................................................
 
     if (opRes.fail()) {
-      generateTransactionError(opRes);
+      generateTransactionError(cname, opRes, key);
       return;
     }
 
@@ -687,7 +685,7 @@ RestStatus RestDocumentHandler::readManyDocuments() {
     auto res = _activeTrx->finish(opRes.result);
 
     if (opRes.fail()) {
-      generateTransactionError(opRes);
+      generateTransactionError(cname, opRes);
       return;
     }
 

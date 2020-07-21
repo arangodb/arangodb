@@ -568,7 +568,6 @@ void ClusterInfo::loadPlan() {
   using namespace std::chrono;
   using clock = std::chrono::high_resolution_clock;
 
-  std::shared_ptr<VPackBuilder> acb;
   consensus::index_t idx = 0;
   uint64_t newPlanVersion = 0;
 
@@ -910,9 +909,7 @@ void ClusterInfo::loadPlan() {
   //  "_system": {
   //    "3010001": {
   //      "deleted": false,
-  //      DO_COMPACT: true,
   //      "id": "3010001",
-  //      INDEX_BUCKETS: 8,
   //      "indexes": [
   //        {
   //          "fields": [
@@ -1216,7 +1213,6 @@ void ClusterInfo::loadCurrent() {
   using namespace std::chrono;
   using clock = std::chrono::high_resolution_clock;
 
-  std::shared_ptr<VPackBuilder> acb;
   consensus::index_t idx = 0;
   uint64_t newCurrentVersion = 0;
 
@@ -1285,12 +1281,11 @@ void ClusterInfo::loadCurrent() {
     swapDatabases = true;
 
     for (auto const& databaseSlicePair : velocypack::ObjectIterator(currentDatabasesSlice)) {
-      auto const database = databaseSlicePair.key.copyString();
-
       if (!databaseSlicePair.value.isObject()) {
         continue;
       }
 
+      auto const database = databaseSlicePair.key.copyString();
       std::unordered_map<ServerID, velocypack::Slice> serverList;
 
       for (auto const& serverSlicePair :
@@ -1298,7 +1293,7 @@ void ClusterInfo::loadCurrent() {
         serverList.try_emplace(serverSlicePair.key.copyString(), serverSlicePair.value);
       }
 
-      newDatabases.try_emplace(database, serverList);
+      newDatabases.try_emplace(std::move(database), std::move(serverList));
     }
   }
 
@@ -1308,18 +1303,18 @@ void ClusterInfo::loadCurrent() {
     swapCollections = true;
 
     for (auto const& databaseSlice : velocypack::ObjectIterator(currentCollectionsSlice)) {
-      auto const databaseName = databaseSlice.key.copyString();
+      std::string databaseName = databaseSlice.key.copyString();
       DatabaseCollectionsCurrent databaseCollections;
 
       for (auto const& collectionSlice :
            velocypack::ObjectIterator(databaseSlice.value)) {
-        auto const collectionName = collectionSlice.key.copyString();
+        std::string collectionName = collectionSlice.key.copyString();
 
         auto collectionDataCurrent =
             std::make_shared<CollectionInfoCurrent>(newCurrentVersion);
 
         for (auto const& shardSlice : velocypack::ObjectIterator(collectionSlice.value)) {
-          auto const shardID = shardSlice.key.copyString();
+          std::string shardID = shardSlice.key.copyString();
 
           collectionDataCurrent->add(shardID, shardSlice.value);
 
@@ -1335,20 +1330,20 @@ void ClusterInfo::loadCurrent() {
               collectionDataCurrent->servers(shardID)  // args
           );
 
-          newShardIds.try_emplace(shardID, servers);
+          newShardIds.try_emplace(std::move(shardID), std::move(servers));
         }
 
-        databaseCollections.try_emplace(collectionName, collectionDataCurrent);
+        databaseCollections.try_emplace(std::move(collectionName), std::move(collectionDataCurrent));
       }
 
-      newCollections.try_emplace(databaseName, databaseCollections);
+      newCollections.try_emplace(std::move(databaseName), std::move(databaseCollections));
     }
   }
 
   // Now set the new value:
   WRITE_LOCKER(writeLocker, _currentProt.lock);
 
-  _current = currentBuilder;
+  _current = std::move(currentBuilder);
   _currentVersion = newCurrentVersion;
   _currentIndex = idx;
   LOG_TOPIC("feddd", DEBUG, Logger::CLUSTER)
@@ -4077,7 +4072,7 @@ void ClusterInfo::loadServers() {
                               AgencyCommHelper::path(mapUniqueToShortId),
                               AgencyCommHelper::path(prefixServersKnown)}));
   auto result = acb->slice();
-  if(!result.isArray()) {
+  if (!result.isArray()) {
     LOG_TOPIC("be98b", DEBUG, Logger::CLUSTER)
       << "Failed to load server lists from the agency cache given " << acb->toJson();
     return;
@@ -4409,9 +4404,9 @@ void ClusterInfo::loadCurrentMappings() {
       decltype(_coordinatorIdMap) newCoordinatorIdMap;
 
       for (auto const& mapping : VPackObjectIterator(mappings)) {
-        ServerID fullId = mapping.key.copyString();
         auto mapObject = mapping.value;
         if (mapObject.isObject()) {
+          ServerID fullId = mapping.key.copyString();
           ServerShortName shortName = mapObject.get("ShortName").copyString();
 
           ServerShortID shortId =
@@ -4419,7 +4414,7 @@ void ClusterInfo::loadCurrentMappings() {
           static std::string const expectedPrefix{"Coordinator"};
           if (shortName.size() > expectedPrefix.size() &&
               shortName.substr(0, expectedPrefix.size()) == expectedPrefix) {
-            newCoordinatorIdMap.try_emplace(shortId, fullId);
+            newCoordinatorIdMap.try_emplace(shortId, std::move(fullId));
           }
         }
       }
@@ -4749,7 +4744,7 @@ std::vector<ServerID> ClusterInfo::getCurrentCoordinators() {
 /// @brief lookup full coordinator ID from short ID
 ////////////////////////////////////////////////////////////////////////////////
 
-ServerID ClusterInfo::getCoordinatorByShortID(ServerShortID shortId) {
+ServerID ClusterInfo::getCoordinatorByShortID(ServerShortID const& shortId) {
   ServerID result;
 
   if (!_mappingsProt.isValid) {
@@ -4772,10 +4767,8 @@ ServerID ClusterInfo::getCoordinatorByShortID(ServerShortID shortId) {
 //////////////////////////////////////////////////////////////////////////////
 
 void ClusterInfo::invalidateCurrentCoordinators() {
-  {
-    WRITE_LOCKER(writeLocker, _coordinatorsProt.lock);
-    _coordinatorsProt.isValid = false;
-  }
+  WRITE_LOCKER(writeLocker, _coordinatorsProt.lock);
+  _coordinatorsProt.isValid = false;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -4783,10 +4776,8 @@ void ClusterInfo::invalidateCurrentCoordinators() {
 //////////////////////////////////////////////////////////////////////////////
 
 void ClusterInfo::invalidateCurrentMappings() {
-  {
-    WRITE_LOCKER(writeLocker, _mappingsProt.lock);
-    _mappingsProt.isValid = false;
-  }
+  WRITE_LOCKER(writeLocker, _mappingsProt.lock);
+  _mappingsProt.isValid = false;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -4836,13 +4827,15 @@ std::unordered_map<ServerID, std::string> ClusterInfo::getServers() {
     loadServers();
   }
   READ_LOCKER(readLocker, _serversProt.lock);
-  std::unordered_map<ServerID, std::string> serv = _servers;
-  return serv;
+  return _servers;
 }
 
 std::unordered_map<ServerID, std::string> ClusterInfo::getServerAliases() {
-  READ_LOCKER(readLocker, _serversProt.lock);
   std::unordered_map<std::string, std::string> ret;
+  READ_LOCKER(readLocker, _serversProt.lock);
+  // note: don't try to change this to 
+  //  return _serverAlias
+  // because we are returning the aliases in {value, key} order here
   for (const auto& i : _serverAliases) {
     ret.try_emplace(i.second, i.first);
   }
@@ -4850,8 +4843,11 @@ std::unordered_map<ServerID, std::string> ClusterInfo::getServerAliases() {
 }
 
 std::unordered_map<ServerID, std::string> ClusterInfo::getServerAdvertisedEndpoints() {
-  READ_LOCKER(readLocker, _serversProt.lock);
   std::unordered_map<std::string, std::string> ret;
+  READ_LOCKER(readLocker, _serversProt.lock);
+  // note: don't try to change this to 
+  //  return _serverAdvertisedEndpoints
+  // because we are returning the aliases in {value, key} order here
   for (const auto& i : _serverAdvertisedEndpoints) {
     ret.try_emplace(i.second, i.first);
   }

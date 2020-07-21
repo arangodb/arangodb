@@ -216,7 +216,7 @@ RestStatus RestCollectionHandler::handleCommandGet() {
     return waitForFuture(methods::Collections::revisionId(*_ctxt).thenValue(
         [this, coll](OperationResult&& res) {
           if (res.fail()) {
-            generateTransactionError(res);
+            generateTransactionError(coll->name(), res);
             return;
           }
 
@@ -500,7 +500,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
           // result stays valid!
           Result res = _activeTrx->finish(opres.result);
           if (opres.fail()) {
-            generateTransactionError(opres);
+            generateTransactionError(coll->name(), opres);
             return;
           }
 

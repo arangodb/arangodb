@@ -62,7 +62,6 @@ TEST_F(NodeTest, node_name) {
   Node n(name);
 
   EXPECT_EQ(n.name(), name);
-  
 }
 
 
