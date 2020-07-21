@@ -124,7 +124,7 @@ struct AqlValue final {
   friend struct std::equal_to<arangodb::aql::AqlValue>;
 
  public:
-  /// @brief auxiliary struct to quickly compute hashes of the underyling
+  /// @brief auxiliary struct to quickly compute hashes of the underlying
   /// AqlValue. It just hashes the stored pointer, and nothing else (not
   /// even the type - the idea is that two AqlValues with different types
   /// will not manage memory via the same pointer). 
