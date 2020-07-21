@@ -124,13 +124,13 @@ EvalResult Prim_EqHuh(PrimEvalContext& ctx, VPackSlice const params, VPackBuilde
 }
 
 EvalResult Prim_VarRef(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
-  if (params.length() != 1) {
+  if (params.length() == 1) {
     auto nameSlice = params.at(0);
     if (nameSlice.isString()) {
       return ctx.getVariable(nameSlice.copyString(), result);
     }
   }
-  return EvalError("expecting a single string parameter");
+  return EvalError("expecting a single string parameter, found " + params.toJson());
 }
 
 EvalResult Prim_Attrib(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
