@@ -86,7 +86,7 @@ void VstConnection<ST>::finishConnect() {
       this->_proto.socket, asio_ns::buffer(vstHeader, strlen(vstHeader)),
       [self](asio_ns::error_code const& ec, std::size_t nsend) {
         auto* me = static_cast<VstConnection<ST>*>(self.get());
-        if (ec) {
+        if (ec || !me->_active.load()) {
           FUERTE_LOG_ERROR << ec.message() << "\n";
           me->shutdownConnection(Error::CouldNotConnect,
                                  "unable to connect: " + ec.message());
@@ -98,7 +98,6 @@ void VstConnection<ST>::finishConnect() {
           me->sendAuthenticationRequest();
         } else {
           me->_state.store(Connection::State::Connected);
-          me->_active.store(true);
           me->asyncWriteNextRequest();
         }
       });
@@ -108,19 +107,21 @@ void VstConnection<ST>::finishConnect() {
 template <SocketType ST>
 void VstConnection<ST>::sendAuthenticationRequest() {
   FUERTE_ASSERT(this->_config._authenticationType != AuthenticationType::None);
+  FUERTE_ASSERT(this->_active.load());
 
   // Part 1: Build ArangoDB VST auth message (1000)
   auto self = Connection::shared_from_this();
   auto item = std::make_shared<RequestItem>(nullptr,
                                             [self](Error error, std::unique_ptr<Request>,
                                                    std::unique_ptr<Response> resp) {
-    auto* me = static_cast<VstConnection<ST>*>(self.get());
+    auto& me = static_cast<VstConnection<ST>&>(*self);
     if (error != Error::NoError || resp->statusCode() != StatusOK) {
-      me->shutdownConnection(Error::VstUnauthorized, "could not authenticate");
+      me.shutdownConnection(Error::VstUnauthorized, "could not authenticate");
     } else {
-      me->_state.store(Connection::State::Connected);
-      me->_active.store(true);
-      me->asyncWriteNextRequest();
+      me._state.store(Connection::State::Connected);
+      if (!me._writing) {
+        me.asyncWriteNextRequest();
+      }
     }
   });
   item->expires = std::chrono::steady_clock::now() + Request::defaultTimeout;
@@ -149,7 +150,6 @@ void VstConnection<ST>::sendAuthenticationRequest() {
       this->shutdownConnection(Error::CouldNotConnect,
                                "authorization message failed");
     } else {
-      this->_active.store(true);
       asyncWriteCallback(ec, item, nsend);
     }
   });
@@ -163,6 +163,10 @@ void VstConnection<ST>::sendAuthenticationRequest() {
 template <SocketType ST>
 void VstConnection<ST>::asyncWriteNextRequest() {
   FUERTE_LOG_VSTTRACE << "asyncWrite: preparing to send next\n";
+  
+  auto state = this->_state.load();
+  FUERTE_ASSERT(state == Connection::State::Connected ||
+                state == Connection::State::Closed);
 
   RequestItem* ptr = nullptr;
   if (!this->_queue.pop(ptr)) {
