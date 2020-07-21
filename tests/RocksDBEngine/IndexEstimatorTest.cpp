@@ -265,7 +265,7 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_out_of_order) {
   }
 
   // now remove first blocker and make sure we apply everything
-  meta.removeBlocker(TransactionId{0});
+  meta.removeBlocker(TransactionId::none());
   est.serialize(serialization, meta.committableSeq(UINT64_MAX));
   expected = currentSeq;
   serialization.clear();
