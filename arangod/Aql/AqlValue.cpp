@@ -1641,7 +1641,7 @@ size_t AqlValue::memoryUsage() const noexcept {
       // no need to count the memory usage for the item blocks in docvec.
       // these have already been counted elsewhere (in ctors of AqlItemBlock
       // and AqlItemBlock::setValue)
-      return sizeof(std::vector<SharedAqlItemBlockPtr>) + sizeof(SharedAqlItemBlockPtr) * _data.docvec->size();
+      return sizeof(_data.docvec) + sizeof(decltype(_data.docvec)::value_type) * _data.docvec->size();
     case RANGE:
       return sizeof(Range);
   }
