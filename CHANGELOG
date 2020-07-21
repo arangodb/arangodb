@@ -1,6 +1,9 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Conflict error codes (1200) will now use the proper error message instead
+  of a generic and misleading "precondition failed".
+
 * Fix spurious lock timeout errors when restoring collections.
 
 * Make sure cluster statistics in web UI work in case a coordinator is down.
