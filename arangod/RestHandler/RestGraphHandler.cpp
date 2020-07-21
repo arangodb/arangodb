@@ -811,7 +811,7 @@ Result RestGraphHandler::documentModify(graph::Graph& graph, const std::string& 
 
   if (result.fail()) {
     // simon: do not pass in collection name, otherwise HTTP return code
-    //        changes to 404 in for unkown _to/_from collection -> breaks API
+    //        changes to 404 in for unknown _to/_from collection -> breaks API
     generateTransactionError(/*cname*/"", result, key, maybeRev.value_or(0));
     return result.result;
   }
