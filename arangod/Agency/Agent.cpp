@@ -41,7 +41,6 @@
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -912,7 +911,7 @@ futures::Future<query_t> Agent::poll(
       builder->add("commitIndex", VPackValue(_commitIndex));
       builder->add("firstIndex", VPackValue(0));
       builder->add(VPackValue("readDB"));
-      _readDB.get().toBuilder(*builder, true);
+      _readDB.get("", *builder, true);
     } else if (index <= _commitIndex) {   // deliver immediately all logs since index
       builder = std::make_shared<VPackBuilder>();
       VPackObjectBuilder r(builder.get());
@@ -975,8 +974,6 @@ void Agent::load() {
       _server.hasFeature<SystemDatabaseFeature>()
           ? _server.getFeature<SystemDatabaseFeature>().use()
           : nullptr;
-  auto queryRegistry = QueryRegistryFeature::registry();
-
   if (vocbase == nullptr) {
     LOG_TOPIC("63e36", FATAL, Logger::AGENCY) << "could not determine _system database";
     FATAL_ERROR_EXIT();
@@ -990,7 +987,7 @@ void Agent::load() {
 
     LOG_TOPIC("c07e1", DEBUG, Logger::AGENCY) << "Loading persistent state.";
 
-    if (!_state.loadCollections(vocbase.get(), queryRegistry, _config.waitForSync())) {
+    if (!_state.loadCollections(vocbase.get(), _config.waitForSync())) {
       LOG_TOPIC("9b680", FATAL, Logger::AGENCY)
           << "Failed to load persistent state on startup.";
       FATAL_ERROR_EXIT();
@@ -1011,7 +1008,7 @@ void Agent::load() {
 
   LOG_TOPIC("6e997", DEBUG, Logger::AGENCY) << "Starting spearhead worker.";
 
-  _constituent.start(vocbase.get(), queryRegistry);
+  _constituent.start(vocbase.get());
   persistConfiguration(term());
 
   if (_config.supervision()) {
@@ -1911,7 +1908,8 @@ arangodb::consensus::index_t Agent::readDB(VPackBuilder& builder) const {
 
   uint64_t commitIndex = 0;
 
-  { READ_LOCKER(oLocker, _outputLock);
+  { 
+    READ_LOCKER(oLocker, _outputLock);
 
     commitIndex = _commitIndex;
     // commit index
@@ -1920,7 +1918,8 @@ arangodb::consensus::index_t Agent::readDB(VPackBuilder& builder) const {
 
     // key-value store {}
     builder.add(VPackValue("agency"));
-    _readDB.get().toBuilder(builder, true); }
+    _readDB.get("", builder, true); 
+  }
 
   // replicated log []
   _state.toVelocyPack(commitIndex, builder);

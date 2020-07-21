@@ -1,17 +1,27 @@
 devel
 -----
 
+* Fixed internal issue #733: Primary sort compression in views now used properly.
+
 * Fix spurious lock timeout errors when restoring collections.
 
+* Improve performance of agency cache by not copying the hierarchical Node
+  tree result for serialization, but serializing it directly.
+
 * Make sure cluster statistics in web UI work in case a coordinator is down.
+
+* Change HTTP response code for error 1450 ("too many shards") from HTTP 500 to
+  HTTP 400, as this is clearly a client error.
+
+* Turn off maintenance threads on Coordinators, as they are not needed there.
+
+* Fixed crash in cleanup of parallel traversal queries.
 
 * Updated arangosync to 0.7.8.
 
 * Fixed hotbackup upload and download with encryption at rest key indirection.
 
 * Fixed a race between a new request and the keepAlive timeout.
-
-* Fixed crash in cleanup of parallel traversal queries.
 
 * Added cluster metrics `arangodb_load_plan_accum_runtime_msec` and
   `arangodb_load_current_accum_runtime_msec` to track the total time spent

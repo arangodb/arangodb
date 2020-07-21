@@ -51,8 +51,10 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _trackBindVars(true),
       _failOnWarning(aql::QueryOptions::defaultFailOnWarning),
       _queryCacheIncludeSystem(false),
+#ifdef USE_ENTERPRISE
       _smartJoins(true),
       _parallelizeTraversals(true),
+#endif
       _queryMemoryLimit(aql::QueryOptions::defaultMemoryLimit),
       _maxQueryPlans(aql::QueryOptions::defaultMaxNumberOfPlans),
       _queryCacheMaxResultsCount(0),
@@ -140,6 +142,7 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      new DoubleParameter(&_queryRegistryTTL),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
   
+#ifdef USE_ENTERPRISE
   options->addOption("--query.smart-joins",
                      "enable SmartJoins query optimization",
                      new BooleanParameter(&_smartJoins),
@@ -152,6 +155,9 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Enterprise))
                      .setIntroducedIn(30701);
 
+  // this is an Enterprise-only option
+  // in Community Edition, _maxParallelism will stay at its default value
+  // (currently 4), but will not be used.
   options
       ->addOption(
           "--query.max-parallelism",
@@ -161,6 +167,7 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
           arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
                                               arangodb::options::Flags::Enterprise))
       .setIntroducedIn(30701);
+#endif
 }
 
 void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
