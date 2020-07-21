@@ -417,24 +417,6 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(OperationResult const& o
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates precondition failed
-////////////////////////////////////////////////////////////////////////////////
-
-//void RestVocbaseBaseHandler::generatePreconditionFailed(std::string const& collectionName,
-//                                                        std::string const& key,
-//                                                        TRI_voc_rid_t rev) {
-//  VPackBuilder builder;
-//  builder.openObject();
-//  builder.add(StaticStrings::IdString,
-//              VPackValue(assembleDocumentId(collectionName, key, false)));
-//  builder.add(StaticStrings::KeyString, VPackValue(key));
-//  builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(rev)));
-//  builder.close();
-//
-//  generatePreconditionFailed(builder.slice());
-//}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief generates not modified
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -516,7 +498,6 @@ void RestVocbaseBaseHandler::generateTransactionError(std::string const& collect
       } else {
         // This case happens if we call this method directly with a dummy
         // OperationResult:
-//        generatePreconditionFailed(collectionName, key.empty() ? "unknown" : key, rev);
         
         OperationResult tmp(result.result);
         tmp.buffer = std::make_shared<VPackBufferUInt8>();
