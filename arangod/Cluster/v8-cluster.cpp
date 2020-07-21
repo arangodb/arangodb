@@ -1316,8 +1316,8 @@ static void JS_StatusServerState(v8::FunctionCallbackInfo<v8::Value> const& args
   TRI_V8_TRY_CATCH_END
 }
 
-typedef TransactionId CoordTransactionID;
-typedef TransactionId OperationID;
+typedef std::uint64_t CoordTransactionID;
+typedef std::uint64_t OperationID;
 namespace {
 struct AsyncRequest {
   network::Response response;
@@ -1403,16 +1403,16 @@ static void PrepareClusterCommRequest(v8::FunctionCallbackInfo<v8::Value> const&
     }
   }
 
-  coordTransactionID = TransactionId::none();
+  coordTransactionID = 0;
   timeout = 24 * 3600.0;
 
   if (args.Length() > 6 && args[6]->IsObject()) {
     v8::Handle<v8::Object> opt = args[6].As<v8::Object>();
     TRI_GET_GLOBAL_STRING(CoordTransactionIDKey);
     if (TRI_HasProperty(context, isolate, opt, CoordTransactionIDKey)) {
-      coordTransactionID = TransactionId{TRI_ObjectToUInt64(
+      coordTransactionID = TRI_ObjectToUInt64(
           isolate,
-          opt->Get(context, CoordTransactionIDKey).FromMaybe(v8::Handle<v8::Value>()), true)};
+          opt->Get(context, CoordTransactionIDKey).FromMaybe(v8::Handle<v8::Value>()), true);
     }
     TRI_GET_GLOBAL_STRING(TimeoutKey);
     if (TRI_HasProperty(context, isolate, opt, TimeoutKey)) {
@@ -1423,8 +1423,8 @@ static void PrepareClusterCommRequest(v8::FunctionCallbackInfo<v8::Value> const&
       initTimeout = TRI_ObjectToDouble(isolate, opt->Get(context, InitTimeoutKey).FromMaybe(v8::Handle<v8::Value>()));
     }
   }
-  if (coordTransactionID.empty()) {
-    coordTransactionID = TransactionId::createSingleServer();
+  if (coordTransactionID == 0) {
+    coordTransactionID = TRI_NewTickServer();
   }
   if (timeout == 0) {
     timeout = 24 * 3600.0;
@@ -1445,10 +1445,10 @@ static void Return_PrepareClusterCommResultForJS(v8::FunctionCallbackInfo<v8::Va
     // convert the ids to strings as uint64_t might be too big for JavaScript
     // numbers
     TRI_GET_GLOBAL_STRING(CoordTransactionIDKey);
-    std::string id = StringUtils::itoa(res.coordTransactionID.id());
+    std::string id = StringUtils::itoa(res.coordTransactionID);
     r->Set(context, CoordTransactionIDKey, TRI_V8_STD_STRING(isolate, id)).FromMaybe(false);
 
-    id = StringUtils::itoa(res.operationID.id());
+    id = StringUtils::itoa(res.operationID);
     TRI_GET_GLOBAL_STRING(OperationIDKey);
     r->Set(context, OperationIDKey, TRI_V8_STD_STRING(isolate, id)).FromMaybe(false);
     TRI_GET_GLOBAL_STRING(EndpointKey);
@@ -1555,7 +1555,7 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string path;
   VPackBufferUInt8 body;
   std::unordered_map<std::string, std::string> headerFields;
-  CoordTransactionID coordTransactionID = CoordTransactionID::none();
+  CoordTransactionID coordTransactionID = 0;
   double timeout = 0.0;
   double initTimeout = -1.0;
 
@@ -1568,8 +1568,8 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   reqOpts.timeout = network::Timeout(timeout);
   reqOpts.skipScheduler = true;
   reqOpts.contentType = StaticStrings::MimeTypeJsonNoEncoding;
-  
-  OperationID opId = OperationID::createSingleServer();
+
+  OperationID opId = TRI_NewTickServer();
   auto ar = std::make_shared<::AsyncRequest>();
   ar->destination = destination;
   ar->operationID = opId;
@@ -1611,7 +1611,7 @@ static void JS_Enquire(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("enquire(operationID)");
   }
 
-  OperationID operationID = OperationID{TRI_ObjectToUInt64(isolate, args[0], true)};
+  OperationID operationID = TRI_ObjectToUInt64(isolate, args[0], true);
 
   LOG_TOPIC("77dbd", DEBUG, Logger::CLUSTER)
       << "JS_Enquire: calling ClusterComm::enquire()";
@@ -1660,8 +1660,8 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
   //   - shardID              (string)
   //   - timeout              (number)
 
-  CoordTransactionID mycoordTransactionID = CoordTransactionID::none();
-  OperationID myoperationID = OperationID::none();
+  CoordTransactionID mycoordTransactionID = 0;
+  OperationID myoperationID = 0;
   ShardID myshardID = "";
   double mytimeout = 24 * 3600.0;
 
@@ -1669,14 +1669,15 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::Handle<v8::Object> obj = args[0].As<v8::Object>();
     TRI_GET_GLOBAL_STRING(CoordTransactionIDKey);
     if (TRI_HasProperty(context, isolate, obj, CoordTransactionIDKey)) {
-      mycoordTransactionID = CoordTransactionID{TRI_ObjectToUInt64(
+      mycoordTransactionID = TRI_ObjectToUInt64(
           isolate,
-          obj->Get(context, CoordTransactionIDKey).FromMaybe(v8::Handle<v8::Value>()), true)};
+          obj->Get(context, CoordTransactionIDKey).FromMaybe(v8::Handle<v8::Value>()), true);
     }
     TRI_GET_GLOBAL_STRING(OperationIDKey);
     if (TRI_HasProperty(context, isolate, obj, OperationIDKey)) {
-      myoperationID = OperationID{TRI_ObjectToUInt64(
-          isolate, obj->Get(context, OperationIDKey).FromMaybe(v8::Handle<v8::Value>()), true)};
+      myoperationID = TRI_ObjectToUInt64(
+          isolate,
+          obj->Get(context, OperationIDKey).FromMaybe(v8::Handle<v8::Value>()), true);
     }
     TRI_GET_GLOBAL_STRING(ShardIDKey);
     if (TRI_HasProperty(context, isolate, obj, ShardIDKey)) {
@@ -1743,22 +1744,23 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
   //   - operationID          (number)
   //   - shardID              (string)
 
-  CoordTransactionID mycoordTransactionID = CoordTransactionID::none();
-  OperationID myoperationID = OperationID::none();
+  CoordTransactionID mycoordTransactionID = 0;
+  OperationID myoperationID = 0;
   ShardID myshardID = "";
 
   if (args[0]->IsObject()) {
     v8::Handle<v8::Object> obj = args[0].As<v8::Object>();
     TRI_GET_GLOBAL_STRING(CoordTransactionIDKey);
     if (TRI_HasProperty(context, isolate, obj, CoordTransactionIDKey)) {
-      mycoordTransactionID = CoordTransactionID{TRI_ObjectToUInt64(
+      mycoordTransactionID = TRI_ObjectToUInt64(
           isolate,
-          obj->Get(context, CoordTransactionIDKey).FromMaybe(v8::Handle<v8::Value>()), true)};
+          obj->Get(context, CoordTransactionIDKey).FromMaybe(v8::Handle<v8::Value>()), true);
     }
     TRI_GET_GLOBAL_STRING(OperationIDKey);
     if (TRI_HasProperty(context, isolate, obj, OperationIDKey)) {
-      myoperationID = OperationID{TRI_ObjectToUInt64(
-          isolate, obj->Get(context, OperationIDKey).FromMaybe(v8::Handle<v8::Value>()), true)};
+      myoperationID = TRI_ObjectToUInt64(
+          isolate,
+          obj->Get(context, OperationIDKey).FromMaybe(v8::Handle<v8::Value>()), true);
     }
     TRI_GET_GLOBAL_STRING(ShardIDKey);
     if (TRI_HasProperty(context, isolate, obj, ShardIDKey)) {
