@@ -81,7 +81,7 @@ inline void copyValueOver(T& cache,
 
 /// @brief create the block
 AqlItemBlock::AqlItemBlock(AqlItemBlockManager& manager, size_t nrItems, RegisterCount nrRegs)
-    : _valueCount(1, AqlValue::SimpleHash(), AqlValue::SimpleEqual()),
+    : _valueCount(0, AqlValue::SimpleHash(), AqlValue::SimpleEqual()),
       _nrItems(nrItems), _nrRegs(nrRegs), _manager(manager), _refCount(0), _rowIndex(0) {
   TRI_ASSERT(nrItems > 0);  // empty AqlItemBlocks are not allowed!
   // check that the nrRegs value is somewhat sensible
@@ -474,28 +474,15 @@ void AqlItemBlock::clearRegisters(RegIdFlatSet const& toClear) {
 SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
   auto const numRows = size();
   auto const numRegs = getNrRegs();
-
+  
   SharedAqlItemBlockPtr res{aqlItemBlockManager().requestBlock(numRows, numRegs)};
 
-  if (!hasShadowRows()) {
-    // optimized version for when no shadow rows exist
-    // use a faster cache type
-    AqlValueCache cache;
+  auto copyRows = [&](auto& cache) {
+    constexpr bool checkShadowRows = !std::is_same<decltype(cache), AqlValueCache>::value;
     cache.reserve(_valueCount.size());
 
     for (size_t row = 0; row < numRows; row++) {
-      for (RegisterId col = 0; col < numRegs; col++) {
-        ::copyValueOver(cache, _data[getAddress(row, col)], row, col, res);
-      }
-    }
-  } else {
-    // at least one shadow row exists. this is the slow path
-    // use a slower cache type
-    std::unordered_set<AqlValue> cache;
-    cache.reserve(_valueCount.size());
-
-    for (size_t row = 0; row < numRows; row++) {
-      if (isShadowRow(row)) {
+      if (checkShadowRows && isShadowRow(row)) {
         for (RegisterId col = 0; col < numRegs; col++) {
           AqlValue a = stealAndEraseValue(row, col);
           AqlValueGuard guard{a, true};
@@ -512,8 +499,22 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
         }
       }
     
-      res->copySubQueryDepthFromOtherBlock(row, *this, row);
+      if constexpr (checkShadowRows) {
+        res->copySubQueryDepthFromOtherBlock(row, *this, row);
+      }
     }
+  };
+
+  if (!hasShadowRows()) {
+    // optimized version for when no shadow rows exist
+    // use a faster cache type
+    AqlValueCache cache;
+    copyRows(cache);
+  } else {
+    // at least one shadow row exists. this is the slow path
+    // use a slower cache type
+    std::unordered_set<AqlValue> cache;
+    copyRows(cache);
   }
   TRI_ASSERT(res->size() == numRows);
 
