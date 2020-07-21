@@ -864,7 +864,7 @@ public:
   /// @brief lookup a full coordinator ID by short ID
   //////////////////////////////////////////////////////////////////////////////
 
-  ServerID getCoordinatorByShortID(ServerShortID);
+  ServerID getCoordinatorByShortID(ServerShortID const& shortId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidate planned
@@ -1209,8 +1209,17 @@ public:
   mutable std::mutex _waitCurrentVersionLock;
   std::multimap<uint64_t, futures::Promise<arangodb::Result>> _waitCurrentVersion;
 
+  /// @brief histogram for loadPlan runtime
   Histogram<log_scale_t<float>>& _lpTimer;
+  
+  /// @brief total time for loadPlan runtime
+  Counter& _lpTotal;
+  
+  /// @brief histogram for loadCurrent runtime
   Histogram<log_scale_t<float>>& _lcTimer;
+  
+  /// @brief total time for loadCurrent runtime
+  Counter& _lcTotal;
     
 };
 

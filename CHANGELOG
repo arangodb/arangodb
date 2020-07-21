@@ -1,6 +1,56 @@
 devel
 -----
 
+* Fixed internal issue #733: Primary sort compression in views now used properly.
+
+* Fix spurious lock timeout errors when restoring collections.
+
+* Improve performance of agency cache by not copying the hierarchical Node
+  tree result for serialization, but serializing it directly.
+
+* Make sure cluster statistics in web UI work in case a coordinator is down.
+
+* Change HTTP response code for error 1450 ("too many shards") from HTTP 500 to
+  HTTP 400, as this is clearly a client error.
+
+* Turn off maintenance threads on Coordinators, as they are not needed there.
+
+* Fixed crash in cleanup of parallel traversal queries.
+
+* Updated arangosync to 0.7.8.
+
+* Fixed hotbackup upload and download with encryption at rest key indirection.
+
+* Fixed a race between a new request and the keepAlive timeout.
+
+* Added cluster metrics `arangodb_load_plan_accum_runtime_msec` and
+  `arangodb_load_current_accum_runtime_msec` to track the total time spent
+  in `loadPlan()` and `loadCurrent()` operations.
+
+* Fixed wrong reporting of failures in all maintenace failure counter metrics
+  (`arangodb_maintenance_action_failure_counter`). Previously, each successful
+  maintenance operation was reported as a failure, so the failure counters
+  actually were counters for the number of successful maintenance actions.
+
+* Adjusted the scale of the `arangodb_maintenance_action_queue_time_msec` to
+  cover a more useful range.
+
+* The filter executor will now overfetch data again if followed by a limit, same as in 3.6 series.
+  The following queries are effected:
+  ```
+  something
+  FILTER a == b
+  LIMIT 10
+  ```
+  something will now be asked for a full batch, instead of only 10 documents.
+
+* In rare cases SmartBFS could use a wrong index for looking up edges. This is fixed now.
+
+* The internally used JS-based ClusterComm send request function can now again use JSON, and does
+  not require VelocyPack anymore. This fixes an issue with Foxx-App management (install, updated, remove)
+  got delayed in a sharded environment, all servers do get all apps eventually, now the fast-path
+  will work again.
+
 * Fixed a rare race in Agents, if the leader is rebooted quickly there is a chance
   that it is still assumed to be the leader, but delivers a state shortly in the
   past.

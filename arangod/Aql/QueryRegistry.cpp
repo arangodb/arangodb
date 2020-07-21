@@ -38,7 +38,6 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
-using namespace arangodb::cluster;
 
 QueryRegistry::~QueryRegistry() {
   disallowInserts();
@@ -462,8 +461,7 @@ void QueryRegistry::unregisterSnippets(SnippetList const& snippets) noexcept {
 }
 
 QueryRegistry::QueryInfo::QueryInfo(std::unique_ptr<ClusterQuery> query, double ttl)
-    : _vocbase(&(query->vocbase())),
-      _query(std::move(query)),
+    : _query(std::move(query)),
       _timeToLive(ttl),
       _expires(TRI_microtime() + ttl),
       _numEngines(0),
