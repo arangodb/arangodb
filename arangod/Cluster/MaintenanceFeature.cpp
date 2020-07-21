@@ -53,9 +53,6 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 using namespace arangodb::maintenance;
 
-const uint32_t MaintenanceFeature::minThreadLimit = 2;
-const uint32_t MaintenanceFeature::maxThreadLimit = 64;
-
 namespace {
 
 bool findNotDoneActions(std::shared_ptr<maintenance::Action> const& action) {
@@ -67,37 +64,27 @@ bool findNotDoneActions(std::shared_ptr<maintenance::Action> const& action) {
 MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Maintenance"),
       _forceActivation(false),
-      _maintenanceThreadsMax(2),
-      _resignLeadershipOnShutdown(false) {
+      _resignLeadershipOnShutdown(false),
+      _maintenanceThreadsMax((std::max)(static_cast<uint32_t>(minThreadLimit),
+                                        static_cast<uint32_t>(NumberOfCores::getValue() / 4 + 1))),
+      _secondsActionsBlock(2),
+      _secondsActionsLinger(3600),
+      _isShuttingDown(false),
+      _nextActionId(1),
+      _pauseUntil(std::chrono::steady_clock::duration::zero()) {
   // the number of threads will be adjusted later. it's just that we want to
   // initialize all members properly
 
-  // this feature has to know the role of this server in its `start`. The role
+  // this feature has to know the role of this server in its `start` method. The role
   // is determined by `ClusterFeature::validateOptions`, hence the following
   // line of code is not required. For philosophical reasons we added it to the
   // ClusterPhase and let it start after `Cluster`.
   startsAfter<ClusterFeature>();
   startsAfter<MetricsFeature>();
 
-  init();
-}  // MaintenanceFeature::MaintenanceFeature
-
-void MaintenanceFeature::init() {
-  _isShuttingDown = false;
-  _nextActionId = 1;
-  _pauseUntil = std::chrono::steady_clock::duration::zero();
-
   setOptional(true);
-  requiresElevatedPrivileges(false);  // ??? this mean admin priv?
-
-  // these parameters might be updated by config and/or command line options
-
-  _maintenanceThreadsMax =
-      (std::max)(static_cast<uint32_t>(minThreadLimit),
-                 static_cast<uint32_t>(NumberOfCores::getValue() / 4 + 1));
-  _secondsActionsBlock = 2;
-  _secondsActionsLinger = 3600;
-}  // MaintenanceFeature::init
+  requiresElevatedPrivileges(false); 
+}
 
 void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
@@ -106,26 +93,34 @@ void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
       "--server.maintenance-threads",
       "maximum number of threads available for maintenance actions",
       new UInt32Parameter(&_maintenanceThreadsMax),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
-                                          arangodb::options::Flags::Dynamic));
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                   arangodb::options::Flags::OnDBServer,
+                                   arangodb::options::Flags::Hidden,
+                                   arangodb::options::Flags::Dynamic));
 
   options->addOption(
       "--server.maintenance-actions-block",
       "minimum number of seconds finished Actions block duplicates",
       new Int32Parameter(&_secondsActionsBlock),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                   arangodb::options::Flags::OnDBServer,
+                                   arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--server.maintenance-actions-linger",
       "minimum number of seconds finished Actions remain in deque",
       new Int32Parameter(&_secondsActionsLinger),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                   arangodb::options::Flags::OnDBServer,
+                                   arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--cluster.resign-leadership-on-shutdown",
       "create resign leader ship job for this dbsever on shutdown",
       new BooleanParameter(&_resignLeadershipOnShutdown),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                   arangodb::options::Flags::OnDBServer,
+                                   arangodb::options::Flags::Hidden));
 
 }  // MaintenanceFeature::collectOptions
 
@@ -134,17 +129,16 @@ void MaintenanceFeature::validateOptions(std::shared_ptr<ProgramOptions> options
     LOG_TOPIC("37726", WARN, Logger::MAINTENANCE)
         << "Need at least" << minThreadLimit << "maintenance-threads";
     _maintenanceThreadsMax = minThreadLimit;
-  } else if (_maintenanceThreadsMax >= maxThreadLimit) {
+  } else if (_maintenanceThreadsMax > maxThreadLimit) {
     LOG_TOPIC("8fb0e", WARN, Logger::MAINTENANCE)
         << "maintenance-threads limited to " << maxThreadLimit;
     _maintenanceThreadsMax = maxThreadLimit;
   }
 }
 
-/// do not start threads in prepare
-void MaintenanceFeature::prepare() {}  // MaintenanceFeature::prepare
-
 void MaintenanceFeature::initializeMetrics() {
+  TRI_ASSERT(ServerState::instance()->isDBServer() || _forceActivation);
+
   if (_phase1_runtime_msec.has_value()) {
     // Already initialized.
     // This actually is only necessary because of tests
@@ -168,13 +162,13 @@ void MaintenanceFeature::initializeMetrics() {
 
   _phase1_accum_runtime_msec =
       metricsFeature.counter(StaticStrings::MaintenancePhaseOneAccumRuntimeMs,
-                             0, "Accumulated runtime of phase one");
+                             0, "Accumulated runtime of phase one [ms]");
   _phase2_accum_runtime_msec =
       metricsFeature.counter(StaticStrings::MaintenancePhaseTwoAccumRuntimeMs,
-                             0, "Accumulated runtime of phase two");
+                             0, "Accumulated runtime of phase two [ms]");
   _agency_sync_total_accum_runtime_msec =
       metricsFeature.counter(StaticStrings::MaintenanceAgencySyncAccumRuntimeMs,
-                             0, "Accumulated runtime of agency sync phase");
+                             0, "Accumulated runtime of agency sync phase [ms]");
 
   _shards_out_of_sync = metricsFeature.gauge<uint64_t>(
       StaticStrings::ShardsOutOfSync, 0,
@@ -215,7 +209,7 @@ void MaintenanceFeature::initializeMetrics() {
                                  "Time spend execution the action [ms]"),
         metricsFeature.histogram(
             {StaticStrings::MaintenanceActionQueueTimeMs, action_label},
-            log_scale_t<uint64_t>(2, 82, 86400000, 12),
+            log_scale_t<uint64_t>(2, 82, 3600000, 12),
             "Time spend in the queue before execution [ms]"),
 
         metricsFeature.counter({StaticStrings::MaintenanceActionAccumRuntimeMs, action_label},
@@ -232,11 +226,16 @@ void MaintenanceFeature::initializeMetrics() {
 void MaintenanceFeature::start() {
   auto serverState = ServerState::instance();
 
-  // _forceActivation is set by the catch tests
+  // _forceActivation is set by the gtest unit tests
   if (!_forceActivation && (serverState->isAgent() || serverState->isSingleServer())) {
     LOG_TOPIC("deb1a", TRACE, Logger::MAINTENANCE)
         << "Disable maintenance-threads"
         << " for single-server or agents.";
+    return;
+  }
+  
+  if (serverState->isCoordinator()) {
+    // no need for maintenance on a coordinator
     return;
   }
 
@@ -245,7 +244,7 @@ void MaintenanceFeature::start() {
   // start threads
   for (uint32_t loop = 0; loop < _maintenanceThreadsMax; ++loop) {
     // First worker will be available only to fast track
-    std::unordered_set<std::string> labels{};
+    std::unordered_set<std::string> labels;
     if (loop == 0) {
       labels.emplace(ActionBase::FAST_TRACK);
     }

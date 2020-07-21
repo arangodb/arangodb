@@ -440,6 +440,11 @@ public:
    */
   void startSyncers();
 
+  /**
+   * @brief wait for syncers' full stop
+   */
+  void waitForSyncersToStop();
+
   /// @brief produces an agency dump and logs it
   void logAgencyDump() const;
 
@@ -859,7 +864,7 @@ public:
   /// @brief lookup a full coordinator ID by short ID
   //////////////////////////////////////////////////////////////////////////////
 
-  ServerID getCoordinatorByShortID(ServerShortID);
+  ServerID getCoordinatorByShortID(ServerShortID const& shortId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidate planned
@@ -970,6 +975,7 @@ public:
 
   application_features::ApplicationServer& server() const;
 
+ private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about our plan
   /// Usually one does not have to call this directly.
@@ -984,8 +990,6 @@ public:
 
   void loadCurrent();
 
-
- private:
   void buildIsBuildingSlice(CreateDatabaseInfo const& database,
                               VPackBuilder& builder);
 
@@ -1205,8 +1209,17 @@ public:
   mutable std::mutex _waitCurrentVersionLock;
   std::multimap<uint64_t, futures::Promise<arangodb::Result>> _waitCurrentVersion;
 
+  /// @brief histogram for loadPlan runtime
   Histogram<log_scale_t<float>>& _lpTimer;
+  
+  /// @brief total time for loadPlan runtime
+  Counter& _lpTotal;
+  
+  /// @brief histogram for loadCurrent runtime
   Histogram<log_scale_t<float>>& _lcTimer;
+  
+  /// @brief total time for loadCurrent runtime
+  Counter& _lcTotal;
     
 };
 

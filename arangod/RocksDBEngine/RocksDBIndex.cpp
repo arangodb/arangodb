@@ -290,15 +290,15 @@ void RocksDBIndex::compact() {
   }
 }
 
-// blacklist given key from transactional cache
-void RocksDBIndex::blackListKey(char const* data, std::size_t len) {
+// banish given key from transactional cache
+void RocksDBIndex::invalidateCacheEntry(char const* data, std::size_t len) {
   if (useCache()) {
     TRI_ASSERT(_cache != nullptr);
-    bool blacklisted = false;
-    while (!blacklisted) {
-      auto status = _cache->blacklist(data, static_cast<uint32_t>(len));
+    bool banished = false;
+    while (!banished) {
+      auto status = _cache->banish(data, static_cast<uint32_t>(len));
       if (status.ok()) {
-        blacklisted = true;
+        banished = true;
       } else if (status.errorNumber() == TRI_ERROR_SHUTTING_DOWN) {
         destroyCache();
         break;

@@ -40,8 +40,6 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Graph/GraphManager.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -784,7 +782,8 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
 /*static*/ arangodb::Result Collections::drop(  // drop collection
     arangodb::LogicalCollection& coll,          // collection to drop
     bool allowDropSystem,  // allow dropping system collection
-    double timeout         // single-server drop timeout
+    double timeout,         // single-server drop timeout
+    bool keepUserRights
 ) {
 
   ExecContext const& exec = ExecContext::current();
@@ -802,7 +801,8 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
   Result res;
 
   // If we are a coordinator in a cluster, we have to behave differently:
-  if (ServerState::instance()->isCoordinator()) {
+  auto const role = ServerState::instance()->getRole();
+  if (ServerState::isCoordinator(role)) {
 #ifdef USE_ENTERPRISE
     res = DropColCoordinatorEnterprise(&coll, allowDropSystem);
 #else
@@ -816,16 +816,17 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
     << "error while dropping collection: '" << collName
     << "' error: '" << res.errorMessage() << "'";
 
-  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  if (ADB_LIKELY(!keepUserRights)) {
+    auth::UserManager* um = AuthenticationFeature::instance()->userManager();
 
-  if (res.ok() && um != nullptr) {
-    res = um->enumerateUsers(
-        [&](auth::User& entry) -> bool {
-          return entry.removeCollection(dbname, collName);
-        },
-        /*retryOnConflict*/ true);
+    if (res.ok() && um != nullptr) {
+      res = um->enumerateUsers(
+          [&](auth::User& entry) -> bool {
+            return entry.removeCollection(dbname, collName);
+          },
+          /*retryOnConflict*/ true);
+    }
   }
-
   events::DropCollection(coll.vocbase().name(), coll.name(), res.errorNumber());
 
   return res;

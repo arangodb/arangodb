@@ -683,11 +683,10 @@ CostEstimate ExecutionNode::getCost() const {
 
 /// @brief functionality to walk an execution plan recursively
 bool ExecutionNode::walk(WalkerWorkerBase<ExecutionNode>& worker) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (worker.done(this)) {
     return false;
   }
-#endif
+
   if (worker.before(this)) {
     return true;
   }
@@ -946,7 +945,7 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
 
 /// @brief static analysis debugger
 #if 0
-struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode> {
+struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   RegisterPlanningDebugger()
     : indent(0) {
   }
@@ -2041,22 +2040,24 @@ bool SubqueryNode::mayAccessCollections() {
 
   // if the subquery contains any of these nodes, it may access data from
   // a collection
-  std::vector<ExecutionNode::NodeType> const types = {ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
-                                                      ExecutionNode::ENUMERATE_COLLECTION,
-                                                      ExecutionNode::INDEX,
-                                                      ExecutionNode::INSERT,
-                                                      ExecutionNode::UPDATE,
-                                                      ExecutionNode::REPLACE,
-                                                      ExecutionNode::REMOVE,
-                                                      ExecutionNode::UPSERT,
-                                                      ExecutionNode::TRAVERSAL,
-                                                      ExecutionNode::SHORTEST_PATH,
-                                                      ExecutionNode::K_SHORTEST_PATHS};
+  std::initializer_list<ExecutionNode::NodeType> const types = {
+      ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
+      ExecutionNode::ENUMERATE_COLLECTION,
+      ExecutionNode::INDEX,
+      ExecutionNode::INSERT,
+      ExecutionNode::UPDATE,
+      ExecutionNode::REPLACE,
+      ExecutionNode::REMOVE,
+      ExecutionNode::UPSERT,
+      ExecutionNode::TRAVERSAL,
+      ExecutionNode::SHORTEST_PATH,
+      ExecutionNode::K_SHORTEST_PATHS};
 
   ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
 
-  UniqueNodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, nodes, true);
+  NodeFinder<std::initializer_list<ExecutionNode::NodeType>, WalkerUniqueness::Unique> finder(
+      types, nodes, true);
   _subquery->walk(finder);
 
   if (!nodes.empty()) {
@@ -2147,7 +2148,8 @@ CostEstimate SubqueryNode::estimateCost() const {
 }
 
 /// @brief helper struct to find all (outer) variables used in a SubqueryNode
-struct SubqueryVarUsageFinder final : public UniqueWalkerWorker<ExecutionNode> {
+struct SubqueryVarUsageFinder final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::Unique> {
   VarSet _usedLater;
   VarSet _valid;
 
@@ -2200,7 +2202,8 @@ void SubqueryNode::getVariablesUsedHere(VarSet& vars) const {
 }
 
 /// @brief is the node determistic?
-struct DeterministicFinder final : public UniqueWalkerWorker<ExecutionNode> {
+struct DeterministicFinder final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::Unique> {
   bool _isDeterministic = true;
 
   DeterministicFinder() : _isDeterministic(true) {}

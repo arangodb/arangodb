@@ -176,35 +176,35 @@ struct BoostScorer : public irs::sort {
       return nullptr;
     }
 
-    virtual void prepare_score(irs::byte_type* score) const override {
-      traits_t::score_cast(score) = 0.f;
-    }
-
     virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
       return nullptr;
     }
 
-    virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
-                    irs::sub_reader const&, irs::term_reader const&, irs::byte_type const*,
+    virtual irs::score_function prepare_scorer(
+                    irs::sub_reader const&, irs::term_reader const&,
+                    irs::byte_type const*, irs::byte_type* score_buf,
                     irs::attribute_provider const&, irs::boost_t boost) const override {
       struct ScoreCtx : public irs::score_ctx {
-        ScoreCtx(irs::boost_t score) : scr(score) {}
+        explicit ScoreCtx(irs::byte_type const* score_buf) noexcept
+          : score_buf(score_buf) {
+        }
 
-        irs::boost_t scr;
+        irs::byte_type const* score_buf;;
       };
 
+      irs::sort::score_cast<irs::boost_t>(score_buf) = boost;
+
       return {
-        std::make_unique<ScoreCtx>(boost),
-                        [](const irs::score_ctx* ctx, irs::byte_type* score_buf) noexcept {
-          auto & state = *static_cast<const ScoreCtx*>(ctx);
-          irs::sort::score_cast<irs::boost_t>(score_buf) = state.scr;
+        std::make_unique<ScoreCtx>(score_buf),
+        [](irs::score_ctx* ctx) noexcept {
+          return static_cast<ScoreCtx*>(ctx)->score_buf;
         }
       };
     }
   };  // namespace
 
   static irs::sort::ptr make(irs::string_ref const&) {
-    return std::make_shared<BoostScorer>();
+    return std::make_unique<BoostScorer>();
   }
 
   BoostScorer() : irs::sort(irs::type<BoostScorer>::get()) {}
@@ -243,28 +243,30 @@ struct CustomScorer : public irs::sort {
       return nullptr;
     }
 
-    virtual void prepare_score(irs::byte_type* score) const override {
-      traits_t::score_cast(score) = 0.f;
-    }
-
     virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
       return nullptr;
     }
 
-    virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
-                    irs::sub_reader const&, irs::term_reader const&, irs::byte_type const*,
+    virtual irs::score_function prepare_scorer(
+                    irs::sub_reader const&, irs::term_reader const&,
+                    irs::byte_type const*, irs::byte_type* score_buf,
                     irs::attribute_provider const&, irs::boost_t) const override {
       struct ScoreCtx : public irs::score_ctx {
-        ScoreCtx(float_t score) : i(score) {}
+        ScoreCtx(float_t scoreValue, irs::byte_type* scoreBuf) noexcept
+          : scoreValue(scoreValue), scoreBuf(scoreBuf) {
+        }
 
-        float_t i;
+        float_t scoreValue;
+        irs::byte_type* scoreBuf;
       };
 
-      return {std::make_unique<ScoreCtx>(i),
-                        [](const irs::score_ctx* ctx, irs::byte_type* score_buf) noexcept {
-          auto & state = *static_cast<const ScoreCtx*>(ctx);
-          irs::sort::score_cast<float_t>(score_buf) = state.i;
-        }
+      return {
+          std::make_unique<ScoreCtx>(this->i, score_buf),
+          [](irs::score_ctx* ctx) noexcept -> irs::byte_type const* {
+            auto& state = *static_cast<ScoreCtx const*>(ctx);
+            *reinterpret_cast<float_t*>(state.scoreBuf) = state.scoreValue;
+            return state.scoreBuf;
+          }
       };
     }
 
@@ -273,7 +275,7 @@ struct CustomScorer : public irs::sort {
 
   static irs::sort::ptr make(irs::string_ref const& args) {
     if (args.null()) {
-      return std::make_shared<CustomScorer>(0u);
+      return std::make_unique<CustomScorer>(0u);
     }
 
     // velocypack::Parser::fromJson(...) will throw exception on parse error
@@ -296,7 +298,7 @@ struct CustomScorer : public irs::sort {
       return nullptr;
     }
 
-    return std::make_shared<CustomScorer>(itr.value().getNumber<size_t>());
+    return std::make_unique<CustomScorer>(itr.value().getNumber<size_t>());
   }
 
   CustomScorer(size_t i) : irs::sort(irs::type<CustomScorer>::get()), i(i) {}

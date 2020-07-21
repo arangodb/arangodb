@@ -90,12 +90,6 @@ Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
   if (_asyncMode) {
     LOG_TOPIC("1b1c2", DEBUG, Logger::PREGEL) << "Running in async mode";
   }
-  VPackSlice lazy = _userParams.slice().get(Utils::lazyLoadingKey);
-  _lazyLoading = _algorithm->supportsLazyLoading();
-  _lazyLoading = _lazyLoading && (lazy.isNone() || lazy.getBoolean());
-  if (_lazyLoading) {
-    LOG_TOPIC("464dd", DEBUG, Logger::PREGEL) << "Enabled lazy loading";
-  }
   _useMemoryMaps = VelocyPackHelper::getBooleanValue(_userParams.slice(),
                                                      Utils::useMemoryMaps, _useMemoryMaps);
   VPackSlice storeSlice = config.get("store");
@@ -578,7 +572,6 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
     b.add(Utils::userParametersKey, _userParams.slice());
     b.add(Utils::coordinatorIdKey, VPackValue(coordinatorId));
     b.add(Utils::asyncModeKey, VPackValue(_asyncMode));
-    b.add(Utils::lazyLoadingKey, VPackValue(_lazyLoading));
     b.add(Utils::useMemoryMaps, VPackValue(_useMemoryMaps));
     if (additional.isObject()) {
       for (auto pair : VPackObjectIterator(additional)) {

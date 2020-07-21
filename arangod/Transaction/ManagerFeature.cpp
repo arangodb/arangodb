@@ -73,7 +73,10 @@ namespace transaction {
 std::unique_ptr<transaction::Manager> ManagerFeature::MANAGER;
 
 ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "TransactionManager"), _workItem(nullptr), _gcfunc() {
+    : ApplicationFeature(server, "TransactionManager"),
+      _workItem(nullptr),
+      _gcfunc(),
+      _streamingLockTimeout(8.0) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
 
@@ -93,6 +96,16 @@ ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
       ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc);
     }
   };
+}
+
+void ManagerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  options->addSection("transaction", "Transaction features");
+
+  options->addOption("--transaction.streaming-lock-timeout", "lock timeout in seconds "
+		     "in case of parallel access to the same streaming transaction",
+                     new DoubleParameter(&_streamingLockTimeout),
+		     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+    .setIntroducedIn(30605).setIntroducedIn(30701);
 }
 
 void ManagerFeature::prepare() {

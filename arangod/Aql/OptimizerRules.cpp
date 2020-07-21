@@ -230,7 +230,7 @@ struct PairHash {
 
 /// WalkerWorker to track collection variable dependencies
 class CollectionVariableTracker final
-    : public arangodb::aql::WalkerWorker<arangodb::aql::ExecutionNode> {
+    : public arangodb::aql::WalkerWorker<arangodb::aql::ExecutionNode, arangodb::aql::WalkerUniqueness::NonUnique> {
   using DependencyPair =
       std::pair<arangodb::aql::Variable const*, arangodb::aql::Collection const*>;
   using DependencySet = std::unordered_set<DependencyPair, ::PairHash>;
@@ -344,7 +344,7 @@ class CollectionVariableTracker final
 
 /// WalkerWorker for restrictToSingleShard
 class RestrictToSingleShardChecker final
-    : public arangodb::aql::WalkerWorker<arangodb::aql::ExecutionNode> {
+    : public arangodb::aql::WalkerWorker<arangodb::aql::ExecutionNode, arangodb::aql::WalkerUniqueness::NonUnique> {
   arangodb::aql::ExecutionPlan* _plan;
   CollectionVariableTracker& _tracker;
   std::unordered_map<arangodb::aql::Variable const*, std::unordered_set<std::string>> _shardsUsed;
@@ -586,14 +586,14 @@ void findShardKeysInExpression(arangodb::aql::AstNode const* root,
 }
 
 // static node types used by some optimizer rules
-// having them statically available avoids having to build the vectors over
+// having them statically available avoids having to build the lists over
 // and over for each AQL query
-std::vector<arangodb::aql::ExecutionNode::NodeType> const removeUnnecessaryCalculationsNodeTypes{
+std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const removeUnnecessaryCalculationsNodeTypes{
     arangodb::aql::ExecutionNode::CALCULATION, arangodb::aql::ExecutionNode::SUBQUERY};
-std::vector<arangodb::aql::ExecutionNode::NodeType> const interchangeAdjacentEnumerationsNodeTypes{
+std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const interchangeAdjacentEnumerationsNodeTypes{
     arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
     arangodb::aql::ExecutionNode::ENUMERATE_LIST};
-std::vector<arangodb::aql::ExecutionNode::NodeType> const scatterInClusterNodeTypes{
+std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const scatterInClusterNodeTypes{
     arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
     arangodb::aql::ExecutionNode::INDEX,
     arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
@@ -602,16 +602,16 @@ std::vector<arangodb::aql::ExecutionNode::NodeType> const scatterInClusterNodeTy
     arangodb::aql::ExecutionNode::REPLACE,
     arangodb::aql::ExecutionNode::REMOVE,
     arangodb::aql::ExecutionNode::UPSERT};
-std::vector<arangodb::aql::ExecutionNode::NodeType> const removeDataModificationOutVariablesNodeTypes{
+std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const removeDataModificationOutVariablesNodeTypes{
     arangodb::aql::ExecutionNode::REMOVE, arangodb::aql::ExecutionNode::INSERT,
     arangodb::aql::ExecutionNode::UPDATE, arangodb::aql::ExecutionNode::REPLACE,
     arangodb::aql::ExecutionNode::UPSERT};
-std::vector<arangodb::aql::ExecutionNode::NodeType> const patchUpdateRemoveStatementsNodeTypes{
+std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const patchUpdateRemoveStatementsNodeTypes{
     arangodb::aql::ExecutionNode::UPDATE, arangodb::aql::ExecutionNode::REPLACE,
     arangodb::aql::ExecutionNode::REMOVE};
-std::vector<arangodb::aql::ExecutionNode::NodeType> const moveFilterIntoEnumerateTypes{
+std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const moveFilterIntoEnumerateTypes{
     arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION, arangodb::aql::ExecutionNode::INDEX};
-std::vector<arangodb::aql::ExecutionNode::NodeType> const undistributeNodeTypes{
+std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const undistributeNodeTypes{
     arangodb::aql::ExecutionNode::UPDATE, arangodb::aql::ExecutionNode::REPLACE,
     arangodb::aql::ExecutionNode::REMOVE};
 
@@ -2045,7 +2045,7 @@ void arangodb::aql::moveFiltersUpRule(Optimizer* opt, std::unique_ptr<ExecutionP
 }
 
 class arangodb::aql::RedundantCalculationsReplacer final
-    : public WalkerWorker<ExecutionNode> {
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
  public:
   explicit RedundantCalculationsReplacer(
       Ast* ast, std::unordered_map<VariableId, Variable const*> const& replacements)
@@ -2963,7 +2963,8 @@ void arangodb::aql::useIndexesRule(Optimizer* opt, std::unique_ptr<ExecutionPlan
   }
 }
 
-struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
+struct SortToIndexNode final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   ExecutionPlan* _plan;
   SortNode* _sortNode;
   std::vector<std::pair<Variable const*, bool>> _sorts;
@@ -5102,7 +5103,8 @@ void arangodb::aql::restrictToSingleShardRule(Optimizer* opt,
 }
 
 /// WalkerWorker for undistributeRemoveAfterEnumColl
-class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
+class RemoveToEnumCollFinder final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   ExecutionPlan* _plan;
   ::arangodb::containers::HashSet<ExecutionNode*>& _toUnlink;
   bool _foundModification;
@@ -5298,6 +5300,14 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
         return false;  // continue . . .
       }
       case EN::CALCULATION: {
+        auto calculationNode = ExecutionNode::castTo<CalculationNode*>(en);
+        auto expr = calculationNode->expression();
+
+        // If we find an expression that is not allowed to run on a DBServer,
+        // we cannot undistribute (as then the expression *would* run on a dbserver)
+        if (!expr->canRunOnDBServer()) {
+          break;
+        }
         return false;  // continue . . .
       }
       case EN::ENUMERATE_COLLECTION:
@@ -7540,7 +7550,8 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt,
 namespace {
 
 /// @brief is the node parallelizable?
-struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
+struct ParallelizableFinder final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   bool const _parallelizeWrites;
   bool _isParallelizable;
 
@@ -8031,7 +8042,7 @@ void findSubqueriesSuitableForSplicing(ExecutionPlan const& plan,
   // be omitted later, as soon as support for spliced subqueries / shadow rows
   // is complete.
 
-  class Finder final : public WalkerWorker<ExecutionNode> {
+  class Finder final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
    public:
     explicit Finder(ResultVector& result, SuitableNodeSet& suitableNodes)
         : _result{result}, _suitableNodes{suitableNodes}, _isSuitableArena{}, _isSuitableLevel{BoolVec{_isSuitableArena}} {

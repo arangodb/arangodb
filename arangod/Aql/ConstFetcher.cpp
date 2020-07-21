@@ -43,8 +43,10 @@ auto ConstFetcher::execute(AqlCallStack& stack)
   // We can replace this by pop again if all executors also only take a reference to the stack.
   auto call = stack.peek();
   if (_blockForPassThrough == nullptr) {
+    SkipResult skipped = _skipped;
+    _skipped.reset();
     // we are done, nothing to move arround here.
-    return {ExecutionState::DONE, SkipResult{}, AqlItemBlockInputRange{ExecutorState::DONE}};
+    return {ExecutionState::DONE, skipped, AqlItemBlockInputRange{ExecutorState::DONE}};
   }
   std::vector<std::pair<size_t, size_t>> sliceIndexes;
   sliceIndexes.emplace_back(_rowIndex, _blockForPassThrough->size());
@@ -53,7 +55,7 @@ auto ConstFetcher::execute(AqlCallStack& stack)
   // to is one after the last data row to be returned
 
   if (_blockForPassThrough->hasShadowRows()) {
-    auto shadowIndexes = _blockForPassThrough->getShadowRowIndexes();
+    auto const& shadowIndexes = _blockForPassThrough->getShadowRowIndexes();
     auto shadowRow = shadowIndexes.lower_bound(_rowIndex);
     if (shadowRow != shadowIndexes.end()) {
       size_t fromShadowRow = *shadowRow;
@@ -63,9 +65,9 @@ auto ConstFetcher::execute(AqlCallStack& stack)
           ShadowAqlItemRow srow{_blockForPassThrough, toShadowRow};
           TRI_ASSERT(srow.isInitialized());
           if (srow.isRelevant()) {
-            // we cannot jump over relveant shadow rows.
+            // we cannot jump over relevant shadow rows.
             // Unfortunately we need to stop including rows here.
-            // NOTE: As all blocks have this behaviour anyway
+            // NOTE: As all blocks have this behavior anyway
             // this is not cirtical.
             break;
           }
@@ -149,7 +151,8 @@ auto ConstFetcher::execute(AqlCallStack& stack)
     // FastPath
     // No need for slicing
     _rowIndex = 0;
-    SkipResult skipped{};
+    SkipResult skipped = _skipped;
+    _skipped.reset();
     skipped.didSkip(call.getSkipCount());
     return {ExecutionState::DONE, skipped,
             DataRange{ExecutorState::DONE, call.getSkipCount(), std::move(_blockForPassThrough), 0}};
@@ -174,33 +177,32 @@ auto ConstFetcher::execute(AqlCallStack& stack)
   ExecutorState rangeState =
       _blockForPassThrough == nullptr ? ExecutorState::DONE : ExecutorState::HASMORE;
 
-  SkipResult skipped{};
+  SkipResult skipped = _skipped;
+  _skipped.reset();
   skipped.didSkip(call.getSkipCount());
 
   if (sliceIndexes.empty()) {
     // No data to be returned
-    resultBlock = nullptr;
     return {resState, skipped, DataRange{rangeState, call.getSkipCount()}};
   }
 
   // Slowest path need to slice, this unfortunately requires copy of data
   resultBlock = resultBlock->slice(sliceIndexes);
-  return {resState, skipped, DataRange{rangeState, call.getSkipCount(), resultBlock, 0}};
+  return {resState, skipped, DataRange{rangeState, call.getSkipCount(), std::move(resultBlock), 0}};
 }
 
-void ConstFetcher::injectBlock(SharedAqlItemBlockPtr block) {
+void ConstFetcher::injectBlock(SharedAqlItemBlockPtr block, SkipResult skipped) {
+  // If this assert triggers, we have injected a block adn skip pair
+  // that has not yet been fetched.
+  TRI_ASSERT(_skipped.nothingSkipped());
   _currentBlock = block;
+  _skipped = skipped;
   _blockForPassThrough = std::move(block);
   _rowIndex = 0;
 }
 
 auto ConstFetcher::indexIsValid() const noexcept -> bool {
   return _currentBlock != nullptr && _rowIndex + 1 <= _currentBlock->size();
-}
-
-auto ConstFetcher::isLastRowInBlock() const noexcept -> bool {
-  TRI_ASSERT(indexIsValid());
-  return _rowIndex + 1 == _currentBlock->size();
 }
 
 auto ConstFetcher::numRowsLeft() const noexcept -> size_t {

@@ -66,11 +66,11 @@ class ExecutionEngine {
  public:
   
   // @brief create an execution engine from a plan
-  static Result instantiateFromPlan(Query& query,
-                                    ExecutionPlan& plan,
-                                    bool planRegisters,
-                                    SerializationFormat format,
-                                    SnippetList& list);
+  static void instantiateFromPlan(Query& query,
+                                  ExecutionPlan& plan,
+                                  bool planRegisters,
+                                  SerializationFormat format,
+                                  SnippetList& list);
   
   TEST_VIRTUAL Result createBlocks(std::vector<ExecutionNode*> const& nodes,
                                    MapRemoteToSnippet const& queryIds);
@@ -142,8 +142,16 @@ class ExecutionEngine {
   /// should only be used by the RemoteExecutor and intenally
   ExecutionStats& globalStats() { return _execStats; }
   
-  void setShutdown() {
-    _wasShutdown.store(true, std::memory_order_relaxed);
+  enum class ShutdownState : uint8_t {
+    Legacy = 0, NotShutdown = 2, ShutdownSent = 4,
+    Done = 8
+  };
+  
+  void setShutdown(ShutdownState s) {
+    _shutdownState.store(s, std::memory_order_relaxed);
+  }
+  ShutdownState shutdownState() const {
+    return _shutdownState.load(std::memory_order_relaxed);
   }
   
   bool waitForSatellites(aql::QueryContext& query, Collection const* collection) const;
@@ -194,8 +202,7 @@ class ExecutionEngine {
   /// @brief whether or not initializeCursor was called
   bool _initializeCursorCalled;
   
-  std::atomic<bool> _wasShutdown;
-  std::atomic<bool> _sentShutdownResponse;
+  std::atomic<ShutdownState> _shutdownState;
 };
 }  // namespace aql
 }  // namespace arangodb

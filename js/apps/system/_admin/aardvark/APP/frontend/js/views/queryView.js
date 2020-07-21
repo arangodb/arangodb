@@ -150,7 +150,7 @@
         }
         this.setCachedQuery(this.aqlEditor.getValue(), JSON.stringify(this.bindParamTableObj));
       } else {
-        arangoHelper.arangoError('Bind parameter', 'Could not parse bind parameter');
+        arangoHelper.arangoError('Bind parameters', 'Could not parse bind parameters');
       }
       this.resize();
     },
@@ -165,7 +165,11 @@
 
     initQueryImport: function () {
       var self = this;
-      self.allowUpload = false;
+
+      if (self.allowUpload) {
+        $('#confirmQueryImport').removeClass('disabled');
+      }
+
       $('#importQueries').change(function (e) {
         self.files = e.target.files || e.dataTransfer.files;
         self.file = self.files[0];
@@ -184,8 +188,6 @@
               self.updateLocalQueries();
               self.updateQueryTable();
               self.resize();
-              self.allowUpload = false;
-              $('#confirmQueryImport').addClass('disabled');
               $('#queryImportDialog').modal('hide');
             },
             error: function (data) {
@@ -244,20 +246,23 @@
     },
 
     exportCustomQueries: function () {
-      var name;
       var self = this;
 
-      $.ajax('whoAmI?_=' + Date.now()).success(function (data) {
-        name = data.user;
+      $.ajax({
+        type: 'GET',
+        url: 'whoAmI?_=' + Date.now(),
+        success: function (data) {
+          var name = data.user;
 
-        if (name === null || name === false) {
-          name = 'root';
-        }
-        if (frontendConfig.ldapEnabled) {
-          self.collection.downloadLocalQueries();
-        } else {
-          var url = 'query/download/' + encodeURIComponent(name);
-          arangoHelper.download(url);
+          if (name === null || name === false) {
+            name = 'root';
+          }
+          if (frontendConfig.ldapEnabled) {
+            self.collection.downloadLocalQueries();
+          } else {
+            var url = 'query/download/' + encodeURIComponent(name);
+            arangoHelper.download(url);
+          }
         }
       });
     },

@@ -87,7 +87,10 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
     auto cols = vocbase.collections(false);
 
     for (auto const& collection : cols) {
-      if (!collection->system()) {
+      // note: system collections are ignored here, but the local parts of 
+      // smart edge collections are system collections, too. these are
+      // included.
+      if (!collection->system() || collection->isSmartChild()) {
         std::string const colname = collection->name();
 
         collections.add(VPackValue(colname));
@@ -246,8 +249,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     auto report = rb.slice();
     if (report.isObject()) {
       std::vector<std::string> path = {maintenance::PHASE_TWO, "agency"};
-      if (report.hasKey(path) && report.get(path).isObject()) {
-        auto agency = report.get(path);
+      auto agency = report.get(path);
+      if (agency.isObject()) {
         LOG_TOPIC("9c099", DEBUG, Logger::MAINTENANCE)
             << "DBServerAgencySync reporting to Current: " << agency.toJson();
 
@@ -259,8 +262,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
             auto const key = ao.key.copyString();
             auto const op = ao.value.get("op").copyString();
 
-            if (ao.value.hasKey("precondition")) {
-              auto const precondition = ao.value.get("precondition");
+            auto const precondition = ao.value.get("precondition");
+            if (!precondition.isNone()) {
+              // have a precondition 
               preconditions.push_back(AgencyPrecondition(precondition.keyAt(0).copyString(),
                                                          AgencyPrecondition::Type::VALUE,
                                                          precondition.valueAt(0)));

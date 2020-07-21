@@ -47,7 +47,7 @@ function dumpIntegrationSuite () {
         structure = cn + ".structure.json";
       }
       let structureFile = fs.join(dumpDir, structure);
-      assertTrue(fs.isFile(structureFile),"structure file does not exist: " + structureFile);
+      assertTrue(fs.isFile(structureFile), "structure file does not exist: " + structureFile);
       assertNotEqual(-1, tree.indexOf(structure));
       data = JSON.parse(fs.readFileSync(fs.join(dumpDir, structure)).toString());
       assertEqual(cn, data.parameters.name);

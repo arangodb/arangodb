@@ -62,7 +62,6 @@ TEST_F(NodeTest, node_name) {
   Node n(name);
 
   EXPECT_EQ(n.name(), name);
-  
 }
 
 
@@ -153,7 +152,7 @@ TEST_F(NodeTest, node_applyOp_set) {
 
   ret = n(path).applyOp(b->slice());
   EXPECT_EQ(ret.ok(), false);
-  std::cout << ret.errorMessage() << std::endl;
+  // std::cout << ret.errorMessage() << std::endl;
 
   b = std::make_shared<VPackBuilder>();
   { VPackObjectBuilder a(b.get());
@@ -161,7 +160,7 @@ TEST_F(NodeTest, node_applyOp_set) {
 
   ret = n(path).applyOp(b->slice());
   EXPECT_EQ(ret.ok(), false);
-  std::cout << ret.errorMessage() << std::endl;
+  // std::cout << ret.errorMessage() << std::endl;
 }
 
 TEST_F(NodeTest, node_applyOp_delete) {

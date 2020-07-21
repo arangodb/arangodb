@@ -77,6 +77,7 @@ RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t& vocbase, TRI_voc
 /// @brief free a transaction container
 RocksDBTransactionState::~RocksDBTransactionState() {
   cleanupTransaction();
+  _status = transaction::Status::ABORTED;
 }
 
 /// @brief start a transaction
@@ -299,7 +300,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // sanity check our on-disk WAL format
+  // integrity-check our on-disk WAL format
   uint64_t x = _numInserts + _numRemoves + _numUpdates;
   if (hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
     TRI_ASSERT(x <= 1 && _numLogdata == x);

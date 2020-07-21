@@ -181,6 +181,8 @@ void GraphStore<V, E>::loadDocument(WorkerConfig* config, std::string const& doc
 template <typename V, typename E>
 void GraphStore<V, E>::loadDocument(WorkerConfig* config, PregelShard sourceShard,
                                     VPackStringRef const& _key) {
+  // Apparently this code has not been implemented yet; find out whether it's
+  // needed at all or remove
   TRI_ASSERT(false);
 }
 

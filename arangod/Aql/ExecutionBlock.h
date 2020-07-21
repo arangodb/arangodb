@@ -140,9 +140,13 @@ class ExecutionBlock {
   /// @brief the Result returned during the shutdown phase. Is kept for multiple
   ///        waiting phases.
   Result _shutdownResult;
+
+  /// @brief the execution state of the dependency
+  ///        used to determine HASMORE or DONE better
+  ExecutionState _upstreamState;
   
   /// @brief profiling level
-  uint32_t _profile;
+  uint16_t _profile;
 
   /// @brief if this is set, we are done, this is reset to false by execute()
   bool _done;
@@ -161,10 +165,6 @@ class ExecutionBlock {
   std::vector<ExecutionBlock*>::iterator _dependencyPos;
   
   ExecutionNodeStats _execNodeStats;
-
-  /// @brief the execution state of the dependency
-  ///        used to determine HASMORE or DONE better
-  ExecutionState _upstreamState;
 };
 
 }  // namespace aql

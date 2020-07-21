@@ -95,11 +95,7 @@ class Manager final {
   Manager(Manager const&) = delete;
   Manager& operator=(Manager const&) = delete;
 
-  explicit Manager(ManagerFeature& feature)
-      : _feature(feature),
-        _nrRunning(0),
-        _disallowInserts(false),
-        _writeLockHeld(false) {}
+  explicit Manager(ManagerFeature& feature);
 
   // register a transaction
   void registerTransaction(TRI_voc_tid_t transactionId, bool isReadOnlyTransaction);
@@ -163,10 +159,10 @@ class Manager final {
   // temporarily block all new transactions
   template <typename TimeOutType>
   bool holdTransactions(TimeOutType timeout) {
-    std::unique_lock<std::mutex> guard(_mutex);
     bool ret = false;
+    std::unique_lock<std::mutex> guard(_mutex);
     if (!_writeLockHeld) {
-      ret = _rwLock.writeLock(timeout);
+      ret = _rwLock.lockWrite(timeout);
       if (ret) {
         _writeLockHeld = true;
       }
@@ -203,9 +199,6 @@ class Manager final {
 
   ManagerFeature& _feature;
 
-  // a lock protecting ALL buckets in _transactions
-  mutable basics::ReadWriteLock _allTransactionsLock;
-
   struct {
     // a lock protecting _managed
     mutable basics::ReadWriteLock _lock;
@@ -224,6 +217,8 @@ class Manager final {
                       // time.
   basics::ReadWriteLock _rwLock;
   bool _writeLockHeld;
+
+  double _streamingLockTimeout;
 };
 }  // namespace transaction
 }  // namespace arangodb
