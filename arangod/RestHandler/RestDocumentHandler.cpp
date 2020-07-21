@@ -624,12 +624,12 @@ RestStatus RestDocumentHandler::removeDocument() {
     // ...........................................................................
 
     if (opRes.fail()) {
-      generateTransactionError(cname, opRes, key, revision);
+      generateTransactionError(cname, opRes);
       return;
     }
 
     if (!res.ok()) {
-      generateTransactionError(cname, res, key, revision);
+      generateTransactionError(cname, res, key);
       return;
     }
 
