@@ -47,25 +47,30 @@ struct MyEvalContext : PrimEvalContext {
   }
 
   // Need edge
-  void updateAccumulator(std::string_view accumId, std::string_view vertexId,
+  void updateAccumulator(std::string_view accumId, std::string_view edgeId,
                          VPackSlice value) override {
-    //  sendMessage();
     MessageData msg;
     msg.reset(std::string{accumId}, value);
 
-    RangeIterator<Edge<EdgeData>> edgeIter = _computation.getEdges();
+    auto edgeIter = _computation.getEdges();
 
-    // Fix fix fix
-    LOG_DEVEL << "sending a message now: " << accumId << " " << value.toJson();
-    _computation.sendMessage(*edgeIter, msg);
+    for (;edgeIter.hasMore(); ++edgeIter) {
+      auto edge = *edgeIter;
+      LOG_DEVEL << "edge tokey: " << edge->toKey() << " " << "accumid: " << accumId;
+      if (edge->toKey().toString() == edgeId) {
+        _computation.sendMessage(edge, msg);
+
+        // Fix fix fix
+        LOG_DEVEL << "sending a message now: " << accumId << " " << value.toJson();
+        return;
+      }
+    }
   }
 
   EvalResult enumerateEdges(std::function<EvalResult(VPackSlice edge)> cb) const override {
     RangeIterator<Edge<EdgeData>> edgeIter = _computation.getEdges();
     for (; edgeIter.hasMore(); ++edgeIter) {
       VPackSlice edgeDoc = (*edgeIter)->data()._document.slice();
-      // TODO: this we don't need, as it currently is in the document.
-      //VPackSlice toId = (*edgeIter)->data()._document.getKey("_to");
       if (auto e = cb(edgeDoc); e.fail()) {
         return e.wrapError([&](EvalError& err) {
           err.wrapMessage("during edge enumeration");

@@ -27,27 +27,36 @@ struct MyEvalContext : PrimEvalContext {
   std::string const& getThisId() const override { std::abort(); }
 
   void getAccumulatorValue(std::string_view id, VPackBuilder& result) const override {
-    std::abort();
+    std::cerr << "accumulotor value on " << id << " requested ";
   }
 
   void updateAccumulator(std::string_view accumId, std::string_view vertexId,
                          VPackSlice value) override {
-    std::abort();
+    std::cerr << "update called on " << accumId << " " << vertexId << " "
+              << value.toJson() << std::endl;
   }
 
   void setAccumulator(std::string_view accumId, VPackSlice value) override {
-    std::abort();
+    std::cerr << "set called on " << accumId << " with value " << value.toJson()
+              << std::endl;
   }
 
   EvalResult enumerateEdges(std::function<EvalResult(VPackSlice edge)> cb) const override {
-    std::cerr << "one edge is built:" << std::endl;
     auto oneEdge = arangodb::velocypack::Parser::fromJson(
-      R"json({ "_from": "V/1",
+        R"json({ "_from": "V/1",
                "_to": "V/2",
                "_cost": 15 })json");
-    std::cerr << "one edge is built: " << oneEdge->slice().toJson() << std::endl;
+    std::cerr << "1" << std::endl;
     cb(oneEdge->slice());
-    std::cerr << "one edge is called back:" << std::endl;
+    std::cerr << "1" << std::endl;
+    cb(oneEdge->slice());
+    std::cerr << "1" << std::endl;
+    cb(oneEdge->slice());
+    std::cerr << "1" << std::endl;
+    cb(oneEdge->slice());
+    std::cerr << "1" << std::endl;
+    cb(oneEdge->slice());
+    std::cerr << "1" << std::endl;
 
     return {};
   }
@@ -251,7 +260,8 @@ int main(int argc, char** argv) {
     auto line = lineEditor.prompt("aql> ", "aql> ", eof);
     lineEditor.addHistory(line);
 
-    if (line.empty() && eof == arangodb::ShellBase::EOF_ABORT) {
+    if (line.empty() && (eof == arangodb::ShellBase::EOF_ABORT ||
+                         eof == arangodb::ShellBase::EOF_FORCE_ABORT)) {
       break;
     }
 

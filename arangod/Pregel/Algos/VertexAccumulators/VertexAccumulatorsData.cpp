@@ -33,7 +33,7 @@ void VertexData::reset(AccumulatorsDeclaration const& accumulatorsDeclaration,
   _document.add(doc);
 
   for (auto&& acc : accumulatorsDeclaration) {
-    _accumulators.emplace(acc.first, instanciateAccumulator(acc.second));
+    _accumulators.emplace(acc.first, instantiateAccumulator(acc.second));
   }
 }
 

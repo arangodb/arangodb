@@ -99,7 +99,7 @@ class Accumulator : public AccumulatorBase {
   data_type _value;
 };
 
-std::unique_ptr<AccumulatorBase> instanciateAccumulator(::AccumulatorOptions const& options);
+std::unique_ptr<AccumulatorBase> instantiateAccumulator(::AccumulatorOptions const& options);
 
 }  // namespace algos
 }  // namespace pregel
