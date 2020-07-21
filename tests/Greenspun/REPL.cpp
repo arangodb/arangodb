@@ -234,7 +234,7 @@ int main(int argc, char** argv) {
 
   MyEvalContext ctx;
 
-  LispLineEditor lineEditor(std::string{});
+  LispLineEditor lineEditor(".arangolisphist");
   lineEditor.open(true);
 
   while (true) {

@@ -31,7 +31,8 @@
 #include "Interpreter.h"
 #include "Primitives.h"
 
-std::unordered_map<std::string, std::function<EvalResult(PrimEvalContext& ctx, VPackSlice const slice, VPackBuilder& result)>> primitives;
+using PrimitiveFunction = std::function<EvalResult(PrimEvalContext& ctx, VPackSlice const slice, VPackBuilder& result)>;
+std::unordered_map<std::string, PrimitiveFunction> primitives;
 
 EvalResult Prim_Banana(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto tmp = int64_t{0};
@@ -101,19 +102,14 @@ EvalResult Prim_Div(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder&
   return {};
 }
 
-EvalResult Prim_List(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
-  VPackArrayBuilder array(&result);
-  result.add(VPackArrayIterator(params));
-  return {};
-}
-
-EvalResult Prim_EqHuh(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+template <typename T>
+EvalResult Prim_CmpHuh(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto iter = VPackArrayIterator(params);
   if (iter.valid()) {
     auto proto = *iter;
     iter++;
     for (; iter.valid(); iter++) {
-      if (!arangodb::basics::VelocyPackHelper::equal(proto, *iter, true)) {
+      if (T{}(arangodb::basics::VelocyPackHelper::compare(proto, *iter, true), 0)) {
         result.add(VPackValue(false));
         return {};
       }
@@ -145,7 +141,7 @@ EvalResult Prim_Attrib(PrimEvalContext& ctx, VPackSlice const params, VPackBuild
 
   if (key.isString()) {
     result.add(slice.get(key.stringRef()));
-  } else if(key.isArray()) {
+  } else if (key.isArray()) {
     std::vector<VPackStringRef> path;
     for (auto&& pathStep : VPackArrayIterator(key)) {
       if (!pathStep.isString()) {
@@ -165,13 +161,6 @@ EvalResult Prim_This(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder
   return {};
 }
 
-/*
-void Prim_Doc(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
-  auto&& [docId] = unpackTuple<std::string_view>(params);
-  result.add(ctx.getDocumentById(docId));
-}
-*/
-
 EvalResult Prim_AccumRef(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto&& [accumId] = unpackTuple<std::string_view>(params);
   ctx.getAccumulatorValue(accumId, result);
@@ -186,8 +175,7 @@ EvalResult Prim_Update(PrimEvalContext& ctx, VPackSlice const params, VPackBuild
 }
 
 EvalResult Prim_Set(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
-  auto&& [accumId, value] =
-      unpackTuple<std::string_view, VPackSlice>(params);
+  auto&& [accumId, value] = unpackTuple<std::string_view, VPackSlice>(params);
   ctx.setAccumulator(accumId, value);
   return {};
 }
@@ -196,10 +184,9 @@ EvalResult Prim_For(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder&
   auto&& [dir, vars, body] = unpackTuple<std::string_view, VPackSlice, VPackSlice>(params);
   auto&& [edgeVar, otherVertexVar] = unpackTuple<std::string, std::string>(vars);
 
-
   // TODO translate direction and pass to enumerateEdges
-  return ctx.enumerateEdges([&, edgeVar = edgeVar,
-                      otherVertexVar = otherVertexVar, body = body](VPackSlice edge, VPackSlice vertex) {
+  return ctx.enumerateEdges([&, edgeVar = edgeVar, otherVertexVar = otherVertexVar,
+                             body = body](VPackSlice edge, VPackSlice vertex) {
     StackFrameGuard<true> guard(ctx);
     ctx.setVariable(edgeVar, edge);
     ctx.setVariable(otherVertexVar, vertex);
@@ -208,7 +195,7 @@ EvalResult Prim_For(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder&
   });
 }
 
-EvalResult Prim_Cat(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_StringCat(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   std::string str;
 
   for (auto iter = VPackArrayIterator(params); iter.valid(); iter++) {
@@ -221,6 +208,20 @@ EvalResult Prim_Cat(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder&
   }
 
   result.add(VPackValue(str));
+  return {};
+}
+
+EvalResult Prim_ListCat(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+  VPackArrayBuilder array(&result);
+  for (auto iter = VPackArrayIterator(params); iter.valid(); iter++) {
+    VPackSlice p = *iter;
+    if (p.isArray()) {
+      result.add(VPackArrayIterator(p));
+    } else {
+      return EvalError("expected array, found " + p.toJson());
+    }
+  }
+
   return {};
 }
 
@@ -237,22 +238,62 @@ EvalResult Prim_IntToStr(PrimEvalContext& ctx, VPackSlice const params, VPackBui
   return {};
 }
 
+EvalResult Prim_FalseHuh(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+  if (params.length() != 1) {
+    return EvalError("expected a single argument");
+  }
+  result.add(VPackValue(ValueConsideredFalse(params.at(0))));
+  return {};
+}
+
+EvalResult Prim_TrueHuh(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+  if (params.length() != 1) {
+    return EvalError("expected a single argument");
+  }
+  result.add(VPackValue(ValueConsideredTrue(params.at(0))));
+  return {};
+}
+
+EvalResult Prim_Not(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+  if (params.length() != 1) {
+    return EvalError("expected a single argument");
+  }
+  result.add(VPackValue(ValueConsideredTrue(params.at(0))));
+  return {};
+}
+
 void RegisterPrimitives() {
   primitives["banana"] = Prim_Banana;
   primitives["+"] = Prim_Banana;
   primitives["-"] = Prim_Sub;
   primitives["*"] = Prim_Mul;
   primitives["/"] = Prim_Div;
-  primitives["list"] = Prim_List;
-  primitives["eq?"] = Prim_EqHuh;
-  primitives["varref"] = Prim_VarRef;
+
+  primitives["not"] = Prim_Not;  // unary
+
+  primitives["false?"] = Prim_FalseHuh;
+  primitives["true?"] = Prim_TrueHuh;
+
+  primitives["eq?"] = Prim_CmpHuh<std::equal_to<>>;
+  primitives["gt?"] = Prim_CmpHuh<std::greater<>>;
+  primitives["ge?"] = Prim_CmpHuh<std::greater_equal<>>;
+  primitives["le?"] = Prim_CmpHuh<std::less_equal<>>;
+  primitives["lt?"] = Prim_CmpHuh<std::less<>>;
+  primitives["ne?"] = Prim_CmpHuh<std::not_equal_to<>>;
+
+
+  primitives["list-cat"] = Prim_ListCat;
+  primitives["string-cat"] = Prim_StringCat;
+  primitives["int-to-str"] = Prim_IntToStr;
   primitives["attrib"] = Prim_Attrib;
+
+  primitives["var-ref"] = Prim_VarRef;
+
+
   primitives["this"] = Prim_This;
-//  primitives["doc"] = Prim_Doc;
+  //  primitives["doc"] = Prim_Doc;
   primitives["accumref"] = Prim_AccumRef;
   primitives["update"] = Prim_Update;
   primitives["set"] = Prim_Set;
   primitives["for"] = Prim_For;
-  primitives["cat"] = Prim_Cat;
-  primitives["int-to-str"] = Prim_IntToStr;
 }

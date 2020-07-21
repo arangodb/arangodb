@@ -213,3 +213,12 @@ std::string EvalError::toString() const {
 
   return ss.str();
 }
+
+
+bool ValueConsideredFalse(VPackSlice const value) {
+  return value.isFalse();
+}
+
+bool ValueConsideredTrue(VPackSlice const value) {
+  return !value.isFalse();
+}

@@ -153,4 +153,7 @@ struct StackFrameGuard {
 EvalResult Evaluate(EvalContext& ctx, VPackSlice slice, VPackBuilder& result);
 void InitInterpreter();
 
+bool ValueConsideredTrue(VPackSlice const value);
+bool ValueConsideredFalse(VPackSlice const value);
+
 #endif
