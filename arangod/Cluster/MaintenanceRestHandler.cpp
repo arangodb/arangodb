@@ -94,11 +94,11 @@ RestStatus MaintenanceRestHandler::postAction() {
 
   if (body.isObject()) {
     std::chrono::seconds dur(0);
-    if (body.hasKey("execute") && body.get("execute").isString()) {
+    if (body.get("execute").isString()) {
       // {"execute": "pause", "duration": 60} / {"execute": "proceed"}
       auto const ex = body.get("execute").copyString();
       if (ex == "pause") {
-        if (body.hasKey("duration") && body.get("duration").isNumber()) {
+        if (body.get("duration").isNumber()) {
           dur = std::chrono::seconds(body.get("duration").getNumber<int64_t>());
           if (dur.count() <= 0 || dur.count() > 300) {
             es << "invalid mainenance pause duration: " << dur.count()
@@ -216,7 +216,7 @@ bool MaintenanceRestHandler::parsePutBody(VPackSlice const& parameters) {
     }  // else
   }    // for
 
-  _actionDesc = std::make_shared<maintenance::ActionDescription>(desc, priority, prop);
+  _actionDesc = std::make_shared<maintenance::ActionDescription>(std::move(desc), priority, std::move(prop));
 
   return good;
 
