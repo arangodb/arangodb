@@ -446,7 +446,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
     applySlice = _documentBuilder.slice();
   }
 
-  if (tid.id()) {  // part of a transaction
+  if (tid.isSet()) {  // part of a transaction
     auto it = _ongoingTransactions.find(tid);
 
     if (it == _ongoingTransactions.end()) {
