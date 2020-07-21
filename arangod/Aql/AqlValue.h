@@ -139,11 +139,11 @@ struct AqlValue final {
     inline size_t operator()(AqlValue const& value) const noexcept {
       TRI_ASSERT(value.type() != VPACK_INLINE);
       /// hash only the pointer. should be very quick
-      return _hasher(value._data.pointer);
+      return _hasher(value._data.words[0]);
     }
 
    private:
-    std::hash<void const*> _hasher;
+    std::hash<uint64_t> _hasher;
   };
 
   /// @brief auxiliary struct to quickly compare the equality of two
@@ -160,7 +160,7 @@ struct AqlValue final {
                            arangodb::aql::AqlValue const& rhs) const noexcept {
       TRI_ASSERT(lhs.type() != VPACK_INLINE && rhs.type() != VPACK_INLINE);
       /// compare only the pointers. should be very quick
-      return lhs._data.pointer == rhs._data.pointer;
+      return lhs._data.words[0] == rhs._data.words[0];
     }
   };
 
