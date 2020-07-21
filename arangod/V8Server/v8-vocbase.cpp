@@ -705,7 +705,8 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  arangodb::aql::ClusterQuery query(transaction::V8Context::Create(vocbase, true), options);
+  arangodb::aql::ClusterQuery query(transaction::V8Context::Create(vocbase, true),
+                                    aql::QueryOptions(options->slice()));
   
   VPackSlice collections = queryBuilder->slice().get("collections");
   VPackSlice variables = queryBuilder->slice().get("variables");
