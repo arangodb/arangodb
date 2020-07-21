@@ -141,15 +141,21 @@ EvalResult SpecialOr(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder
 EvalResult SpecialSeq(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
   VPackBuilder store;
   for (; paramIterator.valid(); paramIterator++) {
-    store.clear();
-    if (auto res = Evaluate(ctx, *paramIterator, store); res.fail()) {
+    auto& usedBuilder = std::invoke([&]() -> VPackBuilder& {
+      if (paramIterator.isLast()) {
+        return result;
+      }
+
+      store.clear();
+      return store;
+    });
+    if (auto res = Evaluate(ctx, *paramIterator, usedBuilder); res.fail()) {
       return res.wrapError([&](EvalError &err) {
         err.wrapMessage("at position " + std::to_string(paramIterator.index()));
       });
     }
   }
 
-  result.add(store.slice());
   return {};
 }
 
