@@ -1087,7 +1087,7 @@ function checkArangoAlive (arangod, options) {
     }
     let msg = ' ArangoD of role [' + arangod.role + '] with PID ' + arangod.pid + ' is gone';
     print(Date() + msg + ':');
-    arangod.message += (arangod.message.len === 0) ? '\n' : '' + msg + ' ';
+    arangod.message += (arangod.message.length === 0) ? '\n' : '' + msg + ' ';
     if (!arangod.hasOwnProperty('exitStatus')) {
       arangod.exitStatus = res;
     }
