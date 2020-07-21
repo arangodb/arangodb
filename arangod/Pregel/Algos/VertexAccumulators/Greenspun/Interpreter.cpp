@@ -85,6 +85,23 @@ EvalResult SpecialQuote(EvalContext& ctx, ArrayIterator paramIterator, VPackBuil
   return {};
 }
 
+EvalResult SpecialCons(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
+
+  auto&& [head, list] = unpackTuple<VPackSlice, VPackSlice>(paramIterator);
+  if (paramIterator.valid()) {
+    return EvalError("Excess elements in cons call");
+  }
+
+  if (!list.isArray()) {
+    return EvalError("Expected array as second parameter");
+  }
+
+  VPackArrayBuilder array(&result);
+  result.add(head);
+  result.add(ArrayIterator(list));
+  return {};
+}
+
 EvalResult Call(EvalContext& ctx, VPackSlice const functionSlice,
                 ArrayIterator paramIterator, VPackBuilder& result) {
   VPackBuilder paramBuilder;
@@ -123,6 +140,8 @@ EvalResult Evaluate(EvalContext& ctx, VPackSlice const slice, VPackBuilder& resu
         return SpecialIf(ctx, paramIterator, result);
       } else if (functionSlice.isEqualString("quote")) {
         return SpecialQuote(ctx, paramIterator, result);
+      } else if (functionSlice.isEqualString("cons")) {
+        return SpecialCons(ctx, paramIterator, result);
       } else {
         return Call(ctx, functionSlice, paramIterator, result);
       }

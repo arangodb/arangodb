@@ -115,7 +115,8 @@ using my_accum_mapping = accum_mapping<
     accum_value_pair<SumAccumulator, AccumulatorType::SUM, integral_restriction>,
     accum_value_pair<OrAccumulator, AccumulatorType::AND, bool_restriction>,
     accum_value_pair<AndAccumulator, AccumulatorType::OR, bool_restriction>,
-    accum_value_pair<StoreAccumulator, AccumulatorType::STORE, no_restriction>
+    accum_value_pair<StoreAccumulator, AccumulatorType::STORE, no_restriction>,
+    accum_value_pair<ListAccumulator, AccumulatorType::LIST, no_restriction>
 >;
 
 using my_type_mapping = value_type_mapping<

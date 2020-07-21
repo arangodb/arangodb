@@ -67,7 +67,9 @@ struct MyEvalContext : PrimEvalContext {
       // TODO: this we don't need, as it currently is in the document.
       VPackSlice toId = (*edgeIter)->data()._document.getKey("_to");
       if (auto e = cb(edgeDoc, toId); e.fail()) {
-        return e;
+        return e.wrapError([&](EvalError& err) {
+          err.wrapMessage("during edge enumeration");
+        });
       }
     }
 

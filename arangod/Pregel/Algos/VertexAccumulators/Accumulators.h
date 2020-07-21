@@ -102,6 +102,33 @@ class StoreAccumulator<VPackSlice> : public Accumulator<VPackSlice> {
   VPackBuilder _buffer;
 };
 
+template<typename T>
+class ListAccumulator : public Accumulator<T> {
+  using Accumulator<T>::Accumulator;
+  void update(T v) override {
+    _list.emplace_back(std::move(v));
+  }
+ private:
+  std::vector<T> _list;
+};
+
+template<>
+class ListAccumulator<VPackSlice> : public Accumulator<VPackSlice> {
+  using Accumulator<VPackSlice>::Accumulator;
+  void update(VPackSlice v) override {
+    _list.emplace_back().add(v);
+  }
+
+  void getIntoBuilder(VPackBuilder& builder) override {
+    VPackArrayBuilder array(&builder);
+    for (auto&& p : _list) {
+      builder.add(p.slice());
+    }
+  }
+ private:
+  std::vector<VPackBuilder> _list;
+};
+
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb
