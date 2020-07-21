@@ -111,6 +111,7 @@ EvalResult Prim_EqHuh(PrimEvalContext& ctx, VPackSlice const params, VPackBuilde
   auto iter = VPackArrayIterator(params);
   if (iter.valid()) {
     auto proto = *iter;
+    iter++;
     for (; iter.valid(); iter++) {
       if (!arangodb::basics::VelocyPackHelper::equal(proto, *iter, true)) {
         result.add(VPackValue(false));

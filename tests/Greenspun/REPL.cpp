@@ -263,14 +263,5 @@ int main(int argc, char** argv) {
       continue;
     }
   }
-  /*
-    shell.
-    auto res = Evaluate(ctx, program->slice(), result).wrapError([](EvalError& err) { err.wrapMessage("at top-level"); });
-    if (res.fail()) {
-      std::cerr << "Evaluate failed: " << res.error().toString() << std::endl;
-    } else {
-      std::cout << " ArangoLISP executed, result " << result.toJson() << std::endl;
-    }
-  */
   return 0;
 }
