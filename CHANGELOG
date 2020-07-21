@@ -1,6 +1,9 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Revive faster out-of-range comparator for secondary index scans that do a full
+  collection index scan for index types "hash", "skiplist", "persistent".
+
 * Conflict error codes (1200) will now use the proper error message instead of a
   generic and misleading "precondition failed".
 
