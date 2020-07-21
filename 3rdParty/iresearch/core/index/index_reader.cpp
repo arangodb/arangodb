@@ -21,7 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
-#include "field_meta.hpp"
 #include "index_reader.hpp"
 #include "segment_reader.hpp"
 #include "index_meta.hpp"
@@ -87,7 +86,3 @@ const columnstore_reader::column_reader* sub_reader::column_reader(
 }
 
 NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

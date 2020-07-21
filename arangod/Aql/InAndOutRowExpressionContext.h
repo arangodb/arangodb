@@ -41,8 +41,11 @@ class Query;
  */
 class InAndOutRowExpressionContext final : public QueryExpressionContext {
  public:
-  InAndOutRowExpressionContext(Query* query, std::vector<Variable const*> const&& vars,
-                               std::vector<RegisterId> const&& regs, size_t vertexVarIdx,
+  InAndOutRowExpressionContext(transaction::Methods& trx,
+                               QueryContext& query,
+                               AqlFunctionsInternalCache& cache,
+                               std::vector<Variable const*> vars,
+                               std::vector<RegisterId> regs, size_t vertexVarIdx,
                                size_t edgeVarIdx, size_t pathVarIdx);
 
   ~InAndOutRowExpressionContext() override = default;
@@ -50,6 +53,8 @@ class InAndOutRowExpressionContext final : public QueryExpressionContext {
   void setInputRow(InputAqlItemRow input);
 
   void invalidateInputRow();
+
+  bool isDataFromCollection(Variable const* variable) const override;
 
   AqlValue getVariableValue(Variable const* variable, bool doCopy,
                             bool& mustDestroy) const override;

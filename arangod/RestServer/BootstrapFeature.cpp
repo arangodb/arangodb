@@ -23,6 +23,7 @@
 #include "RestServer/BootstrapFeature.h"
 
 #include "Agency/AgencyComm.h"
+#include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryList.h"
 #include "Cluster/ClusterFeature.h"
@@ -61,8 +62,8 @@ using namespace arangodb;
 using namespace arangodb::options;
 
 BootstrapFeature::BootstrapFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, ::FEATURE_NAME), 
-      _isReady(false), 
+    : ApplicationFeature(server, ::FEATURE_NAME),
+      _isReady(false),
       _bark(false) {
   startsAfter<application_features::ServerFeaturePhase>();
 
@@ -110,7 +111,7 @@ void raceForClusterBootstrap(BootstrapFeature& feature) {
     }
 
     VPackSlice value = result.slice()[0].get(
-        std::vector<std::string>({AgencyCommManager::path(), ::bootstrapKey}));
+        std::vector<std::string>({AgencyCommHelper::path(), ::bootstrapKey}));
     if (value.isString()) {
       // key was found and is a string
       std::string bootstrapVal = value.copyString();
@@ -254,7 +255,7 @@ void runActiveFailoverStart(BootstrapFeature& feature, std::string const& myId) 
     AgencyComm agency(feature.server());
     AgencyCommResult res = agency.getValues(leaderPath);
     if (res.successful()) {
-      VPackSlice leader = res.slice()[0].get(AgencyCommManager::slicePath(leaderPath));
+      VPackSlice leader = res.slice()[0].get(AgencyCommHelper::slicePath(leaderPath));
       if (!leader.isString() || leader.getStringLength() == 0) {  // no leader in agency
         if (leader.isNone()) {
           res = agency.casValue(leaderPath, myIdBuilder.slice(),
@@ -325,7 +326,7 @@ void BootstrapFeature::start() {
 
     // become leader before running server.js to ensure the leader
     // is the foxxmaster. Everything else is handled in heartbeat
-    if (ServerState::isSingleServer(role) && AgencyCommManager::isEnabled()) {
+    if (ServerState::isSingleServer(role) && AsyncAgencyCommManager::isEnabled()) {
       ::runActiveFailoverStart(*this, myId);
     } else {
       ServerState::instance()->setFoxxmaster(myId);  // could be empty, but set anyway
@@ -345,12 +346,12 @@ void BootstrapFeature::start() {
       um->createRootUser();
     }
   }
-  
+
   if (ServerState::isClusterRole(role)) {
     waitForHealthEntry();
   }
 
-  if (ServerState::isSingleServer(role) && AgencyCommManager::isEnabled()) {
+  if (ServerState::isSingleServer(role) && AsyncAgencyCommManager::isEnabled()) {
     // simon: this is set to correct value in the heartbeat thread
     ServerState::setServerMode(ServerState::Mode::TRYAGAIN);
   } else {
@@ -394,7 +395,7 @@ void BootstrapFeature::waitForHealthEntry() {
     AgencyCommResult result = agency.getValues(::healthKey);
     if (result.successful()) {
       VPackSlice value = result.slice()[0].get(
-        std::vector<std::string>({AgencyCommManager::path(), "Supervision", "Health", ServerState::instance()->getId(), "Status"}));
+        std::vector<std::string>({AgencyCommHelper::path(), "Supervision", "Health", ServerState::instance()->getId(), "Status"}));
       if (value.isString() && !value.copyString().empty()) {
         found = true;
         break;

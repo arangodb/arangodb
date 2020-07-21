@@ -54,7 +54,7 @@ SortedCollectExecutor::CollectGroup::CollectGroup(bool count, Infos& infos)
       infos(infos),
       _lastInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}) {
   for (auto const& aggName : infos.getAggregateTypes()) {
-    aggregators.emplace_back(Aggregator::fromTypeString(infos.getTransaction(), aggName));
+    aggregators.emplace_back(Aggregator::fromTypeString(infos.getVPackOptions(), aggName));
   }
   TRI_ASSERT(infos.getAggregatedRegisters().size() == aggregators.size());
 }
@@ -128,7 +128,7 @@ SortedCollectExecutorInfos::SortedCollectExecutorInfos(
     Variable const* expressionVariable, std::vector<std::string>&& aggregateTypes,
     std::vector<std::pair<std::string, RegisterId>>&& inputVariables,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-    transaction::Methods* trxPtr, bool count)
+    velocypack::Options const* opts, bool count)
     : _aggregateTypes(std::move(aggregateTypes)),
       _aggregateRegisters(std::move(aggregateRegisters)),
       _groupRegisters(std::move(groupRegisters)),
@@ -136,8 +136,8 @@ SortedCollectExecutorInfos::SortedCollectExecutorInfos(
       _expressionRegister(expressionRegister),
       _inputVariables(std::move(inputVariables)),
       _expressionVariable(expressionVariable),
-      _count(count),
-      _trxPtr(trxPtr) {}
+      _vpackOptions(opts),
+      _count(count) {}
 
 SortedCollectExecutor::SortedCollectExecutor(Fetcher&, Infos& infos)
     : _infos(infos), _currentGroup(infos.getCount(), infos) {
@@ -175,14 +175,14 @@ void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow const& input) 
       groupLength++;
     } else if (infos.getExpressionVariable() != nullptr) {
       // compute the expression
-      input.getValue(infos.getExpressionRegister()).toVelocyPack(infos.getTransaction(), _builder, false);
+      input.getValue(infos.getExpressionRegister()).toVelocyPack(infos.getVPackOptions(), _builder, false);
     } else {
       // copy variables / keep variables into result register
 
       _builder.openObject();
       for (auto const& pair : infos.getInputVariables()) {
         _builder.add(VPackValue(pair.first));
-        input.getValue(pair.second).toVelocyPack(infos.getTransaction(), _builder, false);
+        input.getValue(pair.second).toVelocyPack(infos.getVPackOptions(), _builder, false);
       }
       _builder.close();
     }
@@ -204,7 +204,7 @@ bool SortedCollectExecutor::CollectGroup::isSameGroup(InputAqlItemRow const& inp
     for (auto& it : infos.getGroupRegisters()) {
       // we already had a group, check if the group has changed
       // compare values 1 1 by one
-      int cmp = AqlValue::Compare(infos.getTransaction(), this->groupValues[i],
+      int cmp = AqlValue::Compare(infos.getVPackOptions(), this->groupValues[i],
                                   input.getValue(it.second), false);
 
       if (cmp != 0) {
@@ -221,7 +221,7 @@ bool SortedCollectExecutor::CollectGroup::isSameGroup(InputAqlItemRow const& inp
 void SortedCollectExecutor::CollectGroup::groupValuesToArray(VPackBuilder& builder) {
   builder.openArray();
   for (auto const& value : groupValues) {
-    value.toVelocyPack(infos.getTransaction(), builder, false);
+    value.toVelocyPack(infos.getVPackOptions(), builder, false);
   }
 
   builder.close();
@@ -375,7 +375,7 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       }
     }
 
-    inputRange.nextDataRow();
+    inputRange.advanceDataRow();
 
     bool produceMore = !output.isFull();
     if (!produceMore) {
@@ -408,62 +408,59 @@ auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aq
     INTERNAL_LOG_SC << "clientCall.getSkipCount() == " << clientCall.getSkipCount();
     INTERNAL_LOG_SC << "clientCall.needSkipMore() == " << clientCall.needSkipMore();
 
-    {
-      auto [state, input] = inputRange.peekDataRow();
+    auto [state, input] = inputRange.peekDataRow();
 
-      INTERNAL_LOG_SC << "SortedCollectExecutor::skipRowsRange " << state << " "
-                   << std::boolalpha << input.isInitialized();
+    INTERNAL_LOG_SC << "SortedCollectExecutor::skipRowsRange " << state << " "
+                 << std::boolalpha << input.isInitialized();
 
-      if (input.isInitialized()) {
-        // we received data
-        _haveSeenData = true;
+    if (input.isInitialized()) {
+      // we received data
+      _haveSeenData = true;
 
-        // if we are in the same group, we can skip this line
-        if (_currentGroup.isSameGroup(input)) {
-          INTERNAL_LOG_SC << "input is same group";
-          std::ignore = inputRange.nextDataRow();
-          /* do nothing */
-        } else {
-          if (_currentGroup.isValid()) {
-            INTERNAL_LOG_SC << "input is new group, skipping current group";
-            // The current group is completed, skip it and create a new one
-            clientCall.didSkip(1);
-            _currentGroup.reset(InputAqlItemRow{CreateInvalidInputRowHint{}});
-            continue;
-          }
+      // if we are in the same group, we can skip this line
+      if (_currentGroup.isSameGroup(input)) {
+        INTERNAL_LOG_SC << "input is same group";
+        /* do nothing */
+      } else {
+        if (_currentGroup.isValid()) {
+          INTERNAL_LOG_SC << "input is new group, skipping current group";
+          // The current group is completed, skip it and create a new one
+          clientCall.didSkip(1);
+          _currentGroup.reset(InputAqlItemRow{CreateInvalidInputRowHint{}});
+          continue;
+        }
 
-          INTERNAL_LOG_SC << "group is invalid, creating new group";
-          _currentGroup.reset(input);
-          std::ignore = inputRange.nextDataRow();
+        INTERNAL_LOG_SC << "group is invalid, creating new group";
+        _currentGroup.reset(input);
+      }
+      inputRange.advanceDataRow();
+    }
+
+    if (!clientCall.needSkipMore()) {
+      INTERNAL_LOG_SC << "stop skipping early, there could be a pending group";
+      break;
+    }
+
+    if (state == ExecutorState::DONE) {
+      if (!_haveSeenData) {
+        // we have never been called with data
+        INTERNAL_LOG_SC << "never called with data";
+        if (_infos.getGroupRegisters().empty()) {
+          // by definition we need to emit one collect row
+          clientCall.didSkip(1);
+        }
+      } else {
+        if (_currentGroup.isValid()) {
+          INTERNAL_LOG_SC << "skipping final group";
+          clientCall.didSkip(1);
+          _currentGroup.reset(InputAqlItemRow{CreateInvalidInputRowHint{}});
         }
       }
-
-      if (!clientCall.needSkipMore()) {
-        INTERNAL_LOG_SC << "stop skipping early, there could be a pending group";
-        break;
-      }
-
-      if (state == ExecutorState::DONE) {
-        if (!_haveSeenData) {
-          // we have never been called with data
-          INTERNAL_LOG_SC << "never called with data";
-          if (_infos.getGroupRegisters().empty()) {
-            // by definition we need to emit one collect row
-            clientCall.didSkip(1);
-          }
-        } else {
-          if (_currentGroup.isValid()) {
-            INTERNAL_LOG_SC << "skipping final group";
-            clientCall.didSkip(1);
-            _currentGroup.reset(InputAqlItemRow{CreateInvalidInputRowHint{}});
-          }
-        }
-        break;
-      } else if (!input.isInitialized()) {
-        TRI_ASSERT(state == ExecutorState::HASMORE);
-        INTERNAL_LOG_SC << "waiting for more data to skip";
-        break;
-      }
+      break;
+    } else if (!input.isInitialized()) {
+      TRI_ASSERT(state == ExecutorState::HASMORE);
+      INTERNAL_LOG_SC << "waiting for more data to skip";
+      break;
     }
   }
 

@@ -41,21 +41,21 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 DistinctCollectExecutorInfos::DistinctCollectExecutorInfos(std::pair<RegisterId, RegisterId> groupRegister,
-                                                           transaction::Methods* trxPtr)
-    : _groupRegister(std::move(groupRegister)), _trxPtr(trxPtr) {}
+                                                           velocypack::Options const* opts)
+    : _groupRegister(std::move(groupRegister)), _vpackOptions(opts) {}
 
 std::pair<RegisterId, RegisterId> const& DistinctCollectExecutorInfos::getGroupRegister() const {
   return _groupRegister;
 }
 
-transaction::Methods* DistinctCollectExecutorInfos::getTransaction() const {
-  return _trxPtr;
+velocypack::Options const* DistinctCollectExecutorInfos::vpackOptions() const {
+  return _vpackOptions;
 }
 
 DistinctCollectExecutor::DistinctCollectExecutor(Fetcher&, Infos& infos)
     : _infos(infos),
-      _seen(1024, AqlValueGroupHash(_infos.getTransaction(), 1),
-            AqlValueGroupEqual(_infos.getTransaction())) {}
+      _seen(1024, AqlValueGroupHash(1),
+            AqlValueGroupEqual(_infos.vpackOptions())) {}
 
 DistinctCollectExecutor::~DistinctCollectExecutor() { destroyValues(); }
 
@@ -107,7 +107,7 @@ auto DistinctCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       break;
     }
 
-    std::tie(state, input) = inputRange.nextDataRow();
+    std::tie(state, input) = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     INTERNAL_LOG_DC << "inputRange.nextDataRow() = " << state;
     TRI_ASSERT(input.isInitialized());
 
@@ -150,7 +150,7 @@ auto DistinctCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, 
       return {ExecutorState::HASMORE, {}, skipped, {}};
     }
 
-    std::tie(state, input) = inputRange.nextDataRow();
+    std::tie(state, input) = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     INTERNAL_LOG_DC << "inputRange.nextDataRow() = " << state;
     TRI_ASSERT(input.isInitialized());
 

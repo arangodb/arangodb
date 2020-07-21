@@ -89,7 +89,7 @@ RestStatus RestCursorHandler::continueExecute() {
 
   if (_query != nullptr) {  // non-stream query
     if (type == rest::RequestType::POST || type == rest::RequestType::PUT) {
-      return processQuery();
+      return processQuery(/*continuation*/ true);
     }
   } else if (_cursor) {  // stream cursor query
 
@@ -216,47 +216,53 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   VPackSlice opts = _options->slice();
 
   bool stream = VelocyPackHelper::getBooleanValue(opts, "stream", false);
+  if (ServerState::instance()->isDBServer()) {
+    stream = false;
+  }
   size_t batchSize = VelocyPackHelper::getNumericValue<size_t>(opts, "batchSize", 1000);
   double ttl = VelocyPackHelper::getNumericValue<double>(opts, "ttl",
                                                          _queryRegistry->defaultTTL());
   bool count = VelocyPackHelper::getBooleanValue(opts, "count", false);
+  
+  // simon: access mode can always be write on the coordinator
+  const AccessMode::Type mode = AccessMode::Type::WRITE;
+  auto query = std::make_unique<aql::Query>(createTransactionContext(mode),
+      arangodb::aql::QueryString(querySlice.copyString()),
+      bindVarsBuilder, _options);
 
   if (stream) {
+    TRI_ASSERT(!ServerState::instance()->isDBServer());
     if (count) {
       generateError(Result(TRI_ERROR_BAD_PARAMETER,
                            "cannot use 'count' option for a streaming query"));
       return RestStatus::DONE;
-    } else {
-      CursorRepository* cursors = _vocbase.cursorRepository();
-      TRI_ASSERT(cursors != nullptr);
-      _cursor = cursors->createQueryStream(querySlice.copyString(), bindVarsBuilder,
-                                           _options, batchSize, ttl,
-                                           /*contextOwnedByExt*/ false,
-                                           createTransactionContext());
-      _cursor->setWakeupHandler([self = shared_from_this()]() { return self->wakeupHandler(); });
-      
-      return generateCursorResult(rest::ResponseCode::CREATED);
     }
+    
+    CursorRepository* cursors = _vocbase.cursorRepository();
+    TRI_ASSERT(cursors != nullptr);
+    _cursor = cursors->createQueryStream(std::move(query), batchSize, ttl);
+    _cursor->setWakeupHandler([self = shared_from_this()]() { return self->wakeupHandler(); });
+    
+    return generateCursorResult(rest::ResponseCode::CREATED);
   }
 
   // non-stream case. Execute query, then build a cursor
-  //  with the entire result set.
-  VPackValueLength l;
-  char const* queryStr = querySlice.getString(l);
-  TRI_ASSERT(l > 0);
+  // with the entire result set.
+  if (!ServerState::instance()->isDBServer()) {
+    auto ss = query->sharedState();
+    TRI_ASSERT(ss != nullptr);
+    if (ss == nullptr) {
+      generateError(Result(TRI_ERROR_INTERNAL, "invalid query state"));
+      return RestStatus::DONE;
+    }
 
-  auto query = std::make_unique<aql::Query>(
-      false, _vocbase, arangodb::aql::QueryString(queryStr, static_cast<size_t>(l)),
-      bindVarsBuilder, _options, arangodb::aql::PART_MAIN);
-  query->setTransactionContext(createTransactionContext());
-
-  std::shared_ptr<aql::SharedQueryState> ss = query->sharedState();
-  ss->setWakeupHandler([self = shared_from_this()] {
-    return self->wakeupHandler();
-  });
+    ss->setWakeupHandler([self = shared_from_this()] {
+      return self->wakeupHandler();
+    });
+  }
 
   registerQuery(std::move(query));
-  return processQuery();
+  return processQuery(/*continuation*/false);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -265,7 +271,7 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
 /// in AQL we can post a handler calling this function again.
 //////////////////////////////////////////////////////////////////////////////
 
-RestStatus RestCursorHandler::processQuery() {
+RestStatus RestCursorHandler::processQuery(bool continuation) {
   if (_query == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
@@ -277,7 +283,7 @@ RestStatus RestCursorHandler::processQuery() {
     auto guard = scopeGuard([this]() { unregisterQuery(); });
 
     // continue handler is registered earlier
-    auto state = _query->execute(_queryRegistry, _queryResult);
+    auto state = _query->execute(_queryResult);
     if (state == aql::ExecutionState::WAITING) {
       guard.cancel();
       return RestStatus::WAITING;
@@ -289,6 +295,7 @@ RestStatus RestCursorHandler::processQuery() {
   return handleQueryResult();
 }
 
+// non stream case, result is complete
 RestStatus RestCursorHandler::handleQueryResult() {
   if (_queryResult.result.fail()) {
     if (_queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
@@ -383,6 +390,11 @@ RestStatus RestCursorHandler::handleQueryResult() {
 
 /// @brief returns the short id of the server which should handle this request
 ResultT<std::pair<std::string, bool>> RestCursorHandler::forwardingTarget() {
+  auto base = RestVocbaseBaseHandler::forwardingTarget();
+  if (base.ok() && !std::get<0>(base.get()).empty()) {
+    return base;
+  }
+
   rest::RequestType const type = _request->requestType();
   if (type != rest::RequestType::PUT && type != rest::RequestType::DELETE_REQ) {
     return {std::make_pair(StaticStrings::Empty, false)};
@@ -441,8 +453,19 @@ void RestCursorHandler::cancelQuery() {
 
     // cursor is canceled. now remove the continue handler we may have
     // registered in the query
-    std::shared_ptr<aql::SharedQueryState> ss = _query->sharedState();
-    ss->invalidate();
+    std::shared_ptr<aql::SharedQueryState> ss;
+    try {
+      ss = _query->sharedState();
+    } catch (...) {
+      // in case we cannot get the query state, the query is not (yet)
+      // initialized. this is not an error, but the kill/cancel command
+      // has been sent too early
+      return;
+    }
+
+    if (ss != nullptr) {
+      ss->invalidate();
+    }
   } else if (!_hasStarted) {
     _queryKilled = true;
   }
@@ -490,6 +513,12 @@ void RestCursorHandler::buildOptions(VPackSlice const& slice) {
       }
       _options->add(keyName, it.value);
     }
+  }
+
+  if (ServerState::instance()->isDBServer()) {
+    // we do not support creating streaming cursors on DB-Servers, at all.
+    // always turn such cursors into non-streaming cursors.
+    isStream = false;
   }
     
   _options->add("stream", VPackValue(isStream));

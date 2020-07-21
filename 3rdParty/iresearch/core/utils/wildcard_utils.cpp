@@ -226,6 +226,7 @@ automaton from_wildcard(const bytes_ref& expr) {
     fst::kILabelSorted | fst::kOLabelSorted |
     fst::kAcceptor;
   assert(EXPECTED_PROPERTIES == a.Properties(EXPECTED_PROPERTIES, true));
+  UNUSED(EXPECTED_PROPERTIES);
 #endif
 
   return a;

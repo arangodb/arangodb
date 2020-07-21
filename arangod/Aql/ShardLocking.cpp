@@ -149,7 +149,7 @@ void ShardLocking::updateLocking(Collection const* col,
   }
   if (info.allShards.empty()) {
     // Load shards only once per collection!
-    auto const shards = col->shardIds(_query->queryOptions().shardIds);
+    auto const shards = col->shardIds(_query.queryOptions().restrictToShards);
     // What if we have an empty shard list here?
     if (shards->empty()) {
       LOG_TOPIC("0997e", WARN, arangodb::Logger::AQL)
@@ -293,7 +293,7 @@ std::unordered_map<ShardID, ServerID> const& ShardLocking::getShardMapping() {
         }
       }
     }
-    auto& server = _query->vocbase().server();
+    auto& server = _query.vocbase().server();
     if (!server.hasFeature<ClusterFeature>()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }

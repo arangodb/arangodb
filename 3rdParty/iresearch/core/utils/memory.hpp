@@ -29,6 +29,7 @@
 #include "shared.hpp"
 #include "ebo.hpp"
 #include "log.hpp"
+#include "noncopyable.hpp"
 #include "math_utils.hpp"
 #include "type_utils.hpp"
 
@@ -289,10 +290,21 @@ struct noop_deleter {
 // ----------------------------------------------------------------------------
 
 template<typename T>
-struct managed_deleter {
+struct managed_deleter : util::noncopyable {
  public:
-  managed_deleter(T* ptr = nullptr) noexcept
+  using value_type = T;
+  using pointer = T*;
+
+  explicit managed_deleter(pointer ptr = nullptr) noexcept
     : ptr_(ptr) {
+  }
+
+  template<
+    typename U,
+    typename = std::enable_if_t<std::is_convertible_v<U*, pointer>, U*>>
+  managed_deleter(managed_deleter<U>&& rhs) noexcept
+    : ptr_(rhs.ptr_) {
+    rhs.ptr_ = nullptr;
   }
 
   managed_deleter(managed_deleter&& rhs) noexcept
@@ -308,16 +320,29 @@ struct managed_deleter {
     return *this;
   }
 
-  void operator()(T*) noexcept {
+  template<
+    typename U,
+    typename = std::enable_if_t<std::is_convertible_v<U*, pointer>, U*>>
+  managed_deleter& operator=(managed_deleter<U>&& rhs) noexcept {
+    ptr_ = rhs.ptr_;
+    rhs.ptr_ = nullptr;
+    return *this;
+  }
+
+  void operator()(pointer p) noexcept {
+    assert(!ptr_ || p == ptr_);
     delete ptr_;
   }
 
-  T* get() const noexcept {
+  pointer get() const noexcept {
     return ptr_;
   }
 
  private:
-  T* ptr_;
+  template<typename U>
+  friend struct managed_deleter;
+
+  pointer ptr_;
 }; // managed_deleter
 
 template<typename T>
@@ -327,25 +352,35 @@ template <typename T, bool Manage = true>
 inline typename std::enable_if<
   !std::is_array<T>::value,
   managed_ptr<T>
->::type make_managed(T* ptr) noexcept {
-  return managed_ptr<T>(ptr, Manage ? ptr : nullptr);
+>::type to_managed(T* ptr) noexcept {
+  return managed_ptr<T>(ptr, Manage ? managed_deleter<T>(ptr) : managed_deleter<T>(nullptr));
 }
 
 template <typename T>
 inline typename std::enable_if<
   !std::is_array<T>::value,
   managed_ptr<T>
->::type make_managed(std::unique_ptr<T>&& ptr) noexcept {
+>::type to_managed(std::unique_ptr<T>&& ptr) noexcept {
   auto* p = ptr.release();
-  return managed_ptr<T>(p, p);
+  return managed_ptr<T>(p, managed_deleter<T>(p));
 }
 
-
-template <typename T>
-std::shared_ptr<T> make_shared(managed_ptr<T>&& ptr) {
-  auto tmp = std::shared_ptr<T>(ptr.get(), memory::managed_deleter<T>(ptr.get_deleter().get()));
-  ptr.release();
-  return tmp;
+template<typename T, typename... Types>
+inline typename std::enable_if<
+  !std::is_array<T>::value,
+  managed_ptr<T>
+>::type make_managed(Types&&... Args) {
+  try {
+    return to_managed<T, true>(new T(std::forward<Types>(Args)...));
+  } catch (std::bad_alloc&) {
+    fprintf(
+      stderr,
+      "Memory allocation failure while creating and initializing an object of size " IR_SIZE_T_SPECIFIER " bytes\n",
+      sizeof(T)
+    );
+    dump_mem_stats_trace();
+    throw;
+  }
 }
 
 #define DECLARE_MANAGED_PTR(class_name) typedef irs::memory::managed_ptr<class_name> ptr
@@ -373,7 +408,7 @@ inline std::shared_ptr<T> make_shared(Args&&... args) {
 // --SECTION--                                                      make_unique
 // ----------------------------------------------------------------------------
 
-template <typename T, typename... Types>
+template<typename T, typename... Types>
 inline typename std::enable_if<
   !std::is_array<T>::value,
   std::unique_ptr<T>
@@ -617,9 +652,6 @@ NS_END // ROOT
 #define DECLARE_UNIQUE_PTR(class_name) \
   friend struct irs::memory::maker<class_name, false>; \
   typedef std::unique_ptr<class_name> ptr
-
-#define DECLARE_REFERENCE(class_name) typedef std::reference_wrapper<class_name> ref
-#define DECLARE_CONST_REFERENCE(class_name) typedef std::reference_wrapper<const class_name> cref
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief default inline implementation of a factory method, instantiation on

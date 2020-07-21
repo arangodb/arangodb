@@ -121,7 +121,7 @@ struct LPGraphFormat : public GraphFormat<LPValue, int8_t> {
 
   void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
                       LPValue& value) override {
-    value.currentCommunity = vertexIdRange++;
+    value.currentCommunity = _vertexIdRange++;
   }
 
   void copyEdgeData(arangodb::velocypack::Slice document, int8_t& targetPtr) override {}

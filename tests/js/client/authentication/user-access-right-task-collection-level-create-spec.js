@@ -164,7 +164,7 @@ describe('User Rights Management', () => {
                       global.KEY_SET('${keySpaceId}', '${name}_status', true);
                     } catch (e) {
                       global.KEY_SET('${keySpaceId}', '${name}_status', false);
-                    }finally {
+                    } finally {
                       global.KEY_SET('${keySpaceId}', '${name}', true);
                     }
                   })(params);`

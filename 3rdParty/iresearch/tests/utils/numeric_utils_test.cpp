@@ -1955,7 +1955,3 @@ TEST(numeric_utils_test, long_double_traits) {
   typedef irs::numeric_utils::numeric_traits<type> traits_t;
 
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

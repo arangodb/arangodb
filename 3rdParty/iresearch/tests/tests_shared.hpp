@@ -36,10 +36,6 @@ NS_BEGIN(cmdline)
 class parser;
 NS_END // cmdline
 
-inline void TODO_IMPLEMENT() {
-  std::cerr << "\x1b[31mTODO: implement me" << std::endl;
-}
-
 class test_env {
  public:
   static const std::string test_results;
@@ -59,7 +55,7 @@ class test_env {
  private:
   static void make_directories();
   static void parse_command_line(cmdline::parser& vm);
-  static void prepare(const cmdline::parser& vm );
+  static bool prepare(const cmdline::parser& vm );
 
   static int argc_;
   static char** argv_;

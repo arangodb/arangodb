@@ -25,7 +25,7 @@
 #include "Aql/Function.h"
 #include "Aql/Parser.h"
 #include "Aql/Quantifier.h"
-#include "Aql/Query.h"
+#include "Aql/QueryContext.h"
 #include "Aql/types.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
@@ -69,12 +69,12 @@ namespace {
 /// introduced by the COLLECT itself, in which case it would fail
 void checkIntoVariables(Parser* parser, AstNode const* expression,
                         int line, int column,
-                        ::arangodb::containers::HashSet<Variable const*> const& variablesIntroduced) {
+                        VarSet const& variablesIntroduced) {
   if (expression == nullptr) {
     return;
   }
 
-  ::arangodb::containers::HashSet<Variable const*> varsInAssignment;
+  VarSet varsInAssignment{};
   Ast::getReferencedVariables(expression, varsInAssignment);
 
   for (auto const& it : varsInAssignment) {
@@ -89,9 +89,9 @@ void checkIntoVariables(Parser* parser, AstNode const* expression,
 /// @brief register variables in the scope
 void registerAssignVariables(Parser* parser, arangodb::aql::Scopes* scopes,
                              int line, int column,
-                             ::arangodb::containers::HashSet<Variable const*>& variablesIntroduced,
+                             VarSet& variablesIntroduced,
                              AstNode const* vars) {
-  ::arangodb::containers::HashSet<Variable const*> varsInAssignment;
+  VarSet varsInAssignment{};
 
   size_t const n = vars->numMembers();
 
@@ -432,7 +432,7 @@ optional_with:
       parser->pushStack(node);
      } with_collection_list {
       auto node = static_cast<AstNode*>(parser->popStack());
-      auto const& resolver = parser->query()->resolver();
+      auto const& resolver = parser->query().resolver();
       auto withNode = parser->ast()->createNodeWithCollections(node, resolver);
       parser->ast()->addOperation(withNode);
      }
@@ -832,7 +832,7 @@ collect_statement:
       auto scopes = parser->ast()->scopes();
 
       if (::startCollectScope(scopes)) {
-        ::arangodb::containers::HashSet<Variable const*> variables;
+        VarSet variables{};
         ::registerAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variables, $1);
       }
 
@@ -841,7 +841,7 @@ collect_statement:
     }
   | T_COLLECT aggregate collect_optional_into options {
       /* AGGREGATE var = expr OPTIONS ... */
-      ::arangodb::containers::HashSet<Variable const*> variablesIntroduced;
+      VarSet variablesIntroduced{};
       auto scopes = parser->ast()->scopes();
 
       if (::startCollectScope(scopes)) {
@@ -865,7 +865,7 @@ collect_statement:
     }
   | collect_variable_list aggregate collect_optional_into options {
       /* COLLECT var = expr AGGREGATE var = expr OPTIONS ... */
-      ::arangodb::containers::HashSet<Variable const*> variablesIntroduced;
+      VarSet variablesIntroduced{};
       auto scopes = parser->ast()->scopes();
 
       if (::startCollectScope(scopes)) {
@@ -882,7 +882,7 @@ collect_statement:
       }
 
       // note all group variables
-      ::arangodb::containers::HashSet<Variable const*> groupVars;
+      VarSet groupVars{};
       size_t n = $1->numMembers();
       for (size_t i = 0; i < n; ++i) {
         auto member = $1->getMember(i);
@@ -900,7 +900,7 @@ collect_statement:
 
         if (member != nullptr) {
           TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
-          ::arangodb::containers::HashSet<Variable const*> variablesUsed;
+          VarSet variablesUsed{};
           Ast::getReferencedVariables(member->getMember(1), variablesUsed);
 
           for (auto& it : groupVars) {
@@ -921,7 +921,7 @@ collect_statement:
     }
   | collect_variable_list collect_optional_into options {
       /* COLLECT var = expr INTO var OPTIONS ... */
-      ::arangodb::containers::HashSet<Variable const*> variablesIntroduced;
+      VarSet variablesIntroduced{};
       auto scopes = parser->ast()->scopes();
 
       if (::startCollectScope(scopes)) {
@@ -940,7 +940,7 @@ collect_statement:
     }
   | collect_variable_list collect_optional_into keep options {
       /* COLLECT var = expr INTO var KEEP ... OPTIONS ... */
-      ::arangodb::containers::HashSet<Variable const*> variablesIntroduced;
+      VarSet variablesIntroduced{};
       auto scopes = parser->ast()->scopes();
 
       if (::startCollectScope(scopes)) {
@@ -1308,7 +1308,7 @@ function_name:
       std::string temp($1.value, $1.length);
       temp.append("::");
       temp.append($3.value, $3.length);
-      auto p = parser->query()->registerString(temp);
+      auto p = parser->ast()->resources().registerString(temp);
 
       if (p == nullptr) {
         ABORT_OOM
@@ -1749,7 +1749,7 @@ graph_subject:
     graph_collection {
       auto node = parser->ast()->createNodeArray();
       node->addMember($1);
-      auto const& resolver = parser->query()->resolver();
+      auto const& resolver = parser->query().resolver();
       $$ = parser->ast()->createNodeCollectionList(node, resolver);
     }
   | graph_collection T_COMMA {
@@ -1758,7 +1758,7 @@ graph_subject:
       node->addMember($1);
     } graph_collection_list {
       auto node = static_cast<AstNode*>(parser->popStack());
-      auto const& resolver = parser->query()->resolver();
+      auto const& resolver = parser->query().resolver();
       $$ = parser->ast()->createNodeCollectionList(node, resolver);
     }
   | T_GRAPH bind_parameter {
@@ -1766,6 +1766,10 @@ graph_subject:
       $$ = $2;
     }
   | T_GRAPH T_QUOTED_STRING {
+      // graph name
+      $$ = parser->ast()->createNodeValueString($2.value, $2.length);
+    }
+  | T_GRAPH T_STRING {
       // graph name
       $$ = parser->ast()->createNodeValueString($2.value, $2.length);
     }
@@ -1819,7 +1823,7 @@ reference:
 
       if (node == nullptr) {
         // variable not found. so it must have been a collection or view
-        auto const& resolver = parser->query()->resolver();
+        auto const& resolver = parser->query().resolver();
         node = ast->createNodeDataSource(resolver, $1.value, $1.length, arangodb::AccessMode::Type::READ, true, false);
       }
 
@@ -1994,11 +1998,11 @@ value_literal:
 
 in_or_into_collection_name:
     T_STRING {
-      auto const& resolver = parser->query()->resolver();
+      auto const& resolver = parser->query().resolver();
       $$ = parser->ast()->createNodeCollection(resolver, $1.value, $1.length, arangodb::AccessMode::Type::WRITE);
     }
   | T_QUOTED_STRING {
-      auto const& resolver = parser->query()->resolver();
+      auto const& resolver = parser->query().resolver();
       $$ = parser->ast()->createNodeCollection(resolver, $1.value, $1.length, arangodb::AccessMode::Type::WRITE);
     }
   | T_DATA_SOURCE_PARAMETER {

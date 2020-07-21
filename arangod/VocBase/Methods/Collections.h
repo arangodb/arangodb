@@ -52,19 +52,18 @@ struct Collections {
     Context(Context const&) = delete;
     Context& operator=(Context const&) = delete;
 
-    Context(TRI_vocbase_t& vocbase, LogicalCollection& coll);
-    Context(TRI_vocbase_t& vocbase, LogicalCollection& coll, transaction::Methods* trx);
+    explicit Context(std::shared_ptr<LogicalCollection> coll);
+    Context(std::shared_ptr<LogicalCollection> coll, transaction::Methods* trx);
 
     ~Context();
 
     transaction::Methods* trx(AccessMode::Type const& type, bool embeddable,
                               bool forceLoadCollection);
-    TRI_vocbase_t& vocbase() const;
-    LogicalCollection* coll() const;
+    //TRI_vocbase_t& vocbase() const;
+    std::shared_ptr<LogicalCollection> coll() const;
 
    private:
-    TRI_vocbase_t& _vocbase;
-    LogicalCollection& _coll;
+    std::shared_ptr<LogicalCollection> _coll;
     transaction::Methods* _trx;
     bool const _responsibleForTrx;
   };
@@ -118,7 +117,8 @@ struct Collections {
   static arangodb::Result drop(           // drop collection
       arangodb::LogicalCollection& coll,  // collection to drop
       bool allowDropSystem,               // allow dropping system collection
-      double timeout                      // single-server drop timeout
+      double timeout,                     // single-server drop timeout
+      bool keepUserRights = false         // flag if we want to keep access rights in-place
   );
 
   static futures::Future<Result> warmup(TRI_vocbase_t& vocbase,
@@ -133,9 +133,13 @@ struct Collections {
   /// @brief Helper implementation similar to ArangoCollection.all() in v8
   static arangodb::Result all(TRI_vocbase_t& vocbase, std::string const& cname,
                               DocCallback const& cb);
+  
+  static arangodb::Result checksum(LogicalCollection& collection,
+                                   bool withRevisions, bool withData,
+                                   uint64_t& checksum, RevisionId& revId);
 
-  static arangodb::Result checksum(LogicalCollection& collection, bool withRevisions,
-                                   bool withData, uint64_t& checksum, RevisionId& revId);
+  /// @brief filters properties for collection creation
+  static arangodb::velocypack::Builder filterInput(arangodb::velocypack::Slice slice);
 };
 #ifdef USE_ENTERPRISE
 Result ULColCoordinatorEnterprise(ClusterFeature& feature, std::string const& databaseName,

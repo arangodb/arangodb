@@ -68,6 +68,13 @@ constexpr std::reverse_iterator<Iterator> make_reverse_iterator(Iterator it) {
   return std::reverse_iterator<Iterator>(it);
 }
 
+template<typename Container, typename Iterator>
+void swap_remove(Container& cont, Iterator it) {
+  assert(!cont.empty());
+  std::swap(*it, cont.back());
+  cont.pop_back();
+}
+
 NS_BEGIN(heap)
 NS_BEGIN(detail)
 
@@ -160,9 +167,14 @@ inline bool all_equal(ForwardIterator begin, ForwardIterator end) {
 /// @brief provide in place construction capabilities for stl algorithms 
 ////////////////////////////////////////////////////////////////////////////
 template<typename Container>
-class back_emplace_iterator : public std::iterator<std::output_iterator_tag, void, void, void, void> {
+class back_emplace_iterator {
  public:
-  typedef Container container_type;
+  using container_type = Container;
+  using iterator_category = std::output_iterator_tag;
+  using value_type = void;
+  using pointer = void;
+  using reference = void;
+  using difference_type = void;
 
   explicit back_emplace_iterator(Container& cont) 
     : cont_(std::addressof(cont)) {
@@ -193,25 +205,30 @@ inline back_emplace_iterator<Container> back_emplacer(Container& cont) {
 ///        characters into underlying stream
 //////////////////////////////////////////////////////////////////////////////
 template<typename Stream>
-class output_stream_iterator
-    : public std::iterator<std::output_iterator_tag, void, void, void, void> {
-  public:
-   explicit output_stream_iterator(Stream& strm) noexcept
-     : strm_(&strm) {
-   }
+class output_stream_iterator {
+public:
+  using iterator_category = std::output_iterator_tag;
+  using value_type = void;
+  using pointer = void;
+  using reference = void;
+  using difference_type = void;
 
-    output_stream_iterator& operator*() noexcept { return *this; }
-    output_stream_iterator& operator++() noexcept { return *this; }
-    output_stream_iterator& operator++(int) noexcept { return *this; }
+  explicit output_stream_iterator(Stream& strm) noexcept
+    : strm_(&strm) {
+  }
 
-    template<typename T>
-    output_stream_iterator& operator=(const T& value) {
-      strm_->put(value);
-      return *this;
-    }
+  output_stream_iterator& operator*() noexcept { return *this; }
+  output_stream_iterator& operator++() noexcept { return *this; }
+  output_stream_iterator& operator++(int) noexcept { return *this; }
 
-  private:
-   Stream* strm_;
+  template<typename T>
+  output_stream_iterator& operator=(const T& value) {
+    strm_->put(value);
+    return *this;
+  }
+
+private:
+  Stream* strm_;
 };
 
 template<typename Stream>
@@ -225,24 +242,27 @@ output_stream_iterator<Stream> make_ostream_iterator(Stream& strm) {
 ///        characters from underlying stream
 //////////////////////////////////////////////////////////////////////////////
 template<typename Stream>
-class input_stream_iterator
-    : public std::iterator<std::input_iterator_tag, typename Stream::char_type> {
-  public:
-   typedef typename Stream::int_type int_type;
+class input_stream_iterator {
+public:
+  using iterator_category = std::input_iterator_tag;
+  using value_type = typename Stream::char_type;
+  using pointer = value_type*;
+  using reference = value_type&;
+  using difference_type = void;
 
-   explicit input_stream_iterator(Stream& strm) noexcept
-     : strm_(&strm) {
-   }
+  explicit input_stream_iterator(Stream& strm) noexcept
+    : strm_(&strm) {
+  }
 
-    int_type operator*() const noexcept {
-      return strm_->get();
-    }
+  typename Stream::int_type operator*() const noexcept {
+    return strm_->get();
+  }
 
-    input_stream_iterator& operator++() noexcept { return *this; }
-    input_stream_iterator& operator++(int) noexcept { return *this; }
+  input_stream_iterator& operator++() noexcept { return *this; }
+  input_stream_iterator& operator++(int) noexcept { return *this; }
 
-  private:
-   Stream* strm_;
+private:
+  Stream* strm_;
 }; // input_stream_iterator
 
 template<typename Stream>
@@ -259,10 +279,7 @@ struct initializer {
   static constexpr auto Idx = Size - 1;
 
   template<typename Array>
-#ifndef IRESEARCH_CXX_11
-  constexpr
-#endif
-  initializer(Array& cache) : init_(cache) {
+  constexpr initializer(Array& cache) : init_(cache) {
     cache[Idx] = []() -> const type& {
       static const typename Builder::type INSTANCE
         = Builder::make(Idx);
@@ -280,10 +297,7 @@ struct initializer<Builder, 1> {
   static constexpr auto Idx = 0;
 
   template<typename Array>
-#ifndef IRESEARCH_CXX_11
-  constexpr
-#endif
-  initializer(Array& cache) {
+  constexpr initializer(Array& cache) {
     cache[Idx] = []() -> const type& {
       static const typename Builder::type INSTANCE
         = Builder::make(Idx);
@@ -308,10 +322,7 @@ class static_lazy_array {
   }
 
  private:
-#ifndef IRESEARCH_CXX_11
-  constexpr
-#endif
-  static_lazy_array() : init_{cache_} {
+  constexpr static_lazy_array() : init_{cache_} {
     cache_[Size] = []() -> const type& {
       static const type INSTANCE;
       return INSTANCE;

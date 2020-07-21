@@ -102,7 +102,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
   }
 
   /// @brief Get the next limit many element in the index
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
+  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
     TRI_ASSERT(_trx->state()->isRunning());
 
     if (limit == 0 || _done) {
@@ -124,7 +124,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
     return false;
   }
 
-  bool nextCovering(DocumentCallback const& cb, size_t limit) override {
+  bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
     TRI_ASSERT(_trx->state()->isRunning());
 
     if (limit == 0 || _done) {
@@ -148,7 +148,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
   }
 
   /// @brief Reset the cursor
-  void reset() override {
+  void resetImpl() override {
     TRI_ASSERT(_trx->state()->isRunning());
 
     _done = false;
@@ -180,14 +180,15 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       : IndexIterator(collection, trx),
         _index(index),
         _cmp(static_cast<RocksDBVPackComparator const*>(index->comparator())),
-        _bounds(std::move(bounds)) {
+        _bounds(std::move(bounds)),
+        _mustSeek(true) {
     TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::vpack());
 
     RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
     rocksdb::ReadOptions options = mthds->iteratorReadOptions();
     // we need to have a pointer to a slice for the upper bound
     // so we need to assign the slice to an instance variable here
-    if (reverse) {
+    if constexpr (reverse) {
       _rangeBound = _bounds.start();
       options.iterate_lower_bound = &_rangeBound;
     } else {
@@ -197,19 +198,15 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
     TRI_ASSERT(options.prefix_same_as_start);
     _iterator = mthds->NewIterator(options, index->columnFamily());
-    if (reverse) {
-      _iterator->SeekForPrev(_bounds.end());
-    } else {
-      _iterator->Seek(_bounds.start());
-    }
   }
 
  public:
   char const* typeName() const override { return "rocksdb-index-iterator"; }
 
   /// @brief Get the next limit many elements in the index
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
+  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
     TRI_ASSERT(_trx->state()->isRunning());
+    seekIfRequired();
 
     if (limit == 0 || !_iterator->Valid() || outOfRange()) {
       // No limit no data, or we are actually done. The last call should have
@@ -226,19 +223,21 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       cb(_index->_unique ? RocksDBValue::documentId(_iterator->value())
                          : RocksDBKey::indexDocumentId(_iterator->key()));
 
-      --limit;
       if (!advance()) {
         // validate that Iterator is in a good shape and hasn't failed
         arangodb::rocksutils::checkIteratorStatus(_iterator.get());
         return false;
       }
-    }
+      
+      --limit;
+    } 
 
     return true;
   }
 
-  bool nextCovering(DocumentCallback const& cb, size_t limit) override {
+  bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
     TRI_ASSERT(_trx->state()->isRunning());
+    seekIfRequired();
 
     if (limit == 0 || !_iterator->Valid() || outOfRange()) {
       // No limit no data, or we are actually done. The last call should have
@@ -258,19 +257,21 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
                           : RocksDBKey::indexDocumentId(key));
       cb(documentId, RocksDBKey::indexedVPack(key));
 
-      --limit;
       if (!advance()) {
         // validate that Iterator is in a good shape and hasn't failed
         arangodb::rocksutils::checkIteratorStatus(_iterator.get());
         return false;
       }
+      
+      --limit;
     }
 
     return true;
   }
 
-  void skip(uint64_t count, uint64_t& skipped) override {
+  void skipImpl(uint64_t count, uint64_t& skipped) override {
     TRI_ASSERT(_trx->state()->isRunning());
+    seekIfRequired();
 
     if (!_iterator->Valid() || outOfRange()) {
       // validate that Iterator is in a good shape and hasn't failed
@@ -292,17 +293,9 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   }
 
   /// @brief Reset the cursor
-  void reset() override {
+  void resetImpl() override {
     TRI_ASSERT(_trx->state()->isRunning());
-
-    if (reverse) {
-      _iterator->SeekForPrev(_bounds.end());
-    } else {
-      _iterator->Seek(_bounds.start());
-    }
-
-    // validate that Iterator is in a good shape and hasn't failed
-    arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+    _mustSeek = true;
   }
 
   /// @brief we provide a method to provide the index attribute values
@@ -317,15 +310,29 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     // so we really need to run the full-featured (read: expensive)
     // comparator
 
-    if (reverse) {
+    if constexpr (reverse) {
       return (_cmp->Compare(_iterator->key(), _rangeBound) < 0);
     } else {
       return (_cmp->Compare(_iterator->key(), _rangeBound) > 0);
     }
   }
 
+  void seekIfRequired() {
+    if (_mustSeek) {
+      if constexpr (reverse) {
+        _iterator->SeekForPrev(_bounds.end());
+      } else {
+        _iterator->Seek(_bounds.start());
+      }
+      _mustSeek = false;
+    
+      // validate that Iterator is in a good shape and hasn't failed
+      arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+    }
+  }
+
   inline bool advance() {
-    if (reverse) {
+    if constexpr (reverse) {
       _iterator->Prev();
     } else {
       _iterator->Next();
@@ -340,6 +347,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   RocksDBKeyBounds _bounds;
   // used for iterate_upper_bound iterate_lower_bound
   rocksdb::Slice _rangeBound;
+  bool _mustSeek;
 };
 
 } // namespace
@@ -764,13 +772,9 @@ namespace {
 
       // fetch subattribute
       first = first.get(begin->name);
-      if (first.isExternal()) {
-        first = first.resolveExternal();
-      }
+      first = first.resolveExternal();
       second = second.get(begin->name);
-      if (second.isExternal()) {
-        second = second.resolveExternal();
-      }
+      second = second.resolveExternal();
 
       if (begin->shouldExpand &&
           first.isArray() && second.isArray()) {

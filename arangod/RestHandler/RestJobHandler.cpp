@@ -79,8 +79,8 @@ void RestJobHandler::putJob() {
 
   AsyncJobResult::Status status;
   uint64_t messageId = _response->messageId();
-  std::unique_ptr<GeneralResponse> response;
-  response.reset(_jobManager->getJobResult(jobId, status, true));  // gets job and removes it from the manager
+  // gets job and removes it from the manager
+  std::unique_ptr<GeneralResponse> response(_jobManager->getJobResult(jobId, status, true));  
 
   if (status == AsyncJobResult::JOB_UNDEFINED) {
     // unknown or already fetched job

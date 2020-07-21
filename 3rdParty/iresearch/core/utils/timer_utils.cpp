@@ -107,10 +107,6 @@ scoped_timer::scoped_timer(timer_stat_t& stat):
   ++(stat_.count);
 }
 
-scoped_timer::scoped_timer(scoped_timer&& other) noexcept
-  : start_(other.start_), stat_(other.stat_) {
-}
-
 scoped_timer::~scoped_timer() {
   stat_.time += std::chrono::system_clock::now().time_since_epoch().count() - start_;
 }
@@ -178,7 +174,3 @@ void flush_stats(std::ostream &out) {
 
 NS_END // timer_utils
 NS_END // NS_ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

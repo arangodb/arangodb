@@ -28,6 +28,7 @@
 #include "Aql/ModificationExecutorAccumulator.h"
 #include "Aql/ModificationExecutorHelpers.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/QueryContext.h"
 #include "Basics/Common.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
@@ -65,38 +66,36 @@ ModifierOperationType UpdateReplaceModifierCompletion::accumulate(
   //
   // We must never take _rev from the document if there is a key
   // expression.
-  TRI_ASSERT(_infos._trx->resolver() != nullptr);
-  CollectionNameResolver const& collectionNameResolver{*_infos._trx->resolver()};
+  CollectionNameResolver const& collectionNameResolver{_infos._query.resolver()};
 
-  Result result;
   auto key = std::string{};
   auto rev = std::string{};
 
   AqlValue const& keyDoc = hasKeyVariable ? row.getValue(keyReg) : inDoc;
-  result = getKeyAndRevision(collectionNameResolver, keyDoc, key, rev);
+  Result result = getKeyAndRevision(collectionNameResolver, keyDoc, key, rev);
 
   if (!result.ok()) {
     // error happened extracting key, record in operations map
     if (!_infos._ignoreErrors) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
+      THROW_ARANGO_EXCEPTION(result);
     }
     return ModifierOperationType::SkipRow;
   }
 
   if (writeRequired(_infos, inDoc.slice(), key)) {
     if (hasKeyVariable) {
-      VPackBuilder keyDocBuilder;
+      _keyDocBuilder.clear();
 
       if (_infos._options.ignoreRevs) {
         rev.clear();
       }
 
-      buildKeyAndRevDocument(keyDocBuilder, key, rev);
+      buildKeyAndRevDocument(_keyDocBuilder, key, rev);
 
       // This deletes _rev if rev is empty or ignoreRevs is set in
       // options.
       auto merger =
-          VPackCollection::merge(inDoc.slice(), keyDocBuilder.slice(), false, true);
+          VPackCollection::merge(inDoc.slice(), _keyDocBuilder.slice(), false, true);
       accu.add(merger.slice());
     } else {
       accu.add(inDoc.slice());
@@ -107,10 +106,10 @@ ModifierOperationType UpdateReplaceModifierCompletion::accumulate(
   }
 }
 
-OperationResult UpdateReplaceModifierCompletion::transact(VPackSlice const& data) {
+OperationResult UpdateReplaceModifierCompletion::transact(transaction::Methods& trx, VPackSlice const data) {
   if (_infos._isReplace) {
-    return _infos._trx->replace(_infos._aqlCollection->name(), data, _infos._options);
+    return trx.replace(_infos._aqlCollection->name(), data, _infos._options);
   } else {
-    return _infos._trx->update(_infos._aqlCollection->name(), data, _infos._options);
+    return trx.update(_infos._aqlCollection->name(), data, _infos._options);
   }
 }

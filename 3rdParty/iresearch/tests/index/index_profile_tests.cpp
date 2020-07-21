@@ -259,7 +259,9 @@ class index_profile_test_case : public tests::index_test_base {
               auto value_term = csv_doc_template.indexed.get<tests::templates::string_field>(value_field)->value();
               std::string updated_term(value_term.c_str(), value_term.size());
 
-              static_cast<irs::by_term&>(*filter).field(key_field).term(key_term);
+              auto& filter_impl = static_cast<irs::by_term&>(*filter);
+              *filter_impl.mutable_field() = key_field;
+              filter_impl.mutable_options()->term = irs::ref_cast<irs::byte_type>(key_term);
               updated_term.append(value_term.c_str(), value_term.size()); // double up term
               csv_doc_template.indexed.get<tests::templates::string_field>(value_field)->value(updated_term);
               csv_doc_template.insert(std::make_shared<tests::templates::string_field>("updated"));
@@ -537,7 +539,3 @@ INSTANTIATE_TEST_CASE_P(
   ),
   tests::to_string
 );
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

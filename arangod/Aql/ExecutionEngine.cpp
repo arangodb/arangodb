@@ -24,9 +24,9 @@
 #include "ExecutionEngine.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/AqlResult.h"
 #include "Aql/BlocksWithClients.h"
 #include "Aql/Collection.h"
+#include "Aql/AqlItemBlockManager.h"
 #include "Aql/EngineInfoContainerCoordinator.h"
 #include "Aql/EngineInfoContainerDBServerServerBased.h"
 #include "Aql/ExecutionBlockImpl.h"
@@ -35,19 +35,19 @@
 #include "Aql/GraphNode.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/OptimizerRule.h"
-#include "Aql/Query.h"
-#include "Aql/QueryRegistry.h"
+#include "Aql/QueryContext.h"
 #include "Aql/RemoteExecutor.h"
 #include "Aql/ReturnExecutor.h"
 #include "Aql/SkipResult.h"
+#include "Aql/SharedQueryState.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
+#include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
-#include "RestServer/QueryRegistryFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -83,16 +83,14 @@ struct TraverserEngineShardLists {
  * Only works in cluster mode
  *
  * @param nodes The list of Nodes => Blocks
- * @param restrictToShards This query is restricted to those shards
  * @param queryIds A Mapping: RemoteNodeId -> DBServerId -> [snippetId]
  *
  * @return A result containing the error in bad case.
  */
 Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
-                                     std::unordered_set<std::string> const& restrictToShards,
                                      MapRemoteToSnippet const& queryIds) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
-
+  
   std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
   RemoteNode* remoteNode = nullptr;
 
@@ -104,7 +102,7 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
 
     if (nodeType == ExecutionNode::REMOTE) {
       remoteNode = ExecutionNode::castTo<RemoteNode*>(en);
-      continue;
+      continue; // handled on GatherNode
     }
 
     // for all node types but REMOTEs, we create blocks
@@ -159,6 +157,7 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
       for (auto const& serverToSnippet : serversForRemote->second) {
         std::string const& serverID = serverToSnippet.first;
         for (std::string const& snippetId : serverToSnippet.second) {
+          
           remoteNode->queryId(snippetId);
           remoteNode->server(serverID);
           remoteNode->setDistributeId({""});
@@ -166,7 +165,7 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           auto remoteBlock = dynamic_cast<ExecutionBlockImpl<RemoteExecutor>*>(r.get());
           TRI_ASSERT(remoteBlock->server() == serverID);
-          TRI_ASSERT(remoteBlock->ownName() == "");  // NOLINT(readability-container-size-empty)
+          TRI_ASSERT(remoteBlock->distributeId() == "");  // NOLINT(readability-container-size-empty)
           TRI_ASSERT(remoteBlock->queryId() == snippetId);
 #endif
 
@@ -187,15 +186,20 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
 }
 
 /// @brief create the engine
-ExecutionEngine::ExecutionEngine(Query& query, SerializationFormat format)
-    : _stats(),
-      _itemBlockManager(query.resourceMonitor(), format),
+ExecutionEngine::ExecutionEngine(QueryContext& query, AqlItemBlockManager& itemBlockMgr,
+                                 SerializationFormat format,
+                                 std::shared_ptr<SharedQueryState> sqs)
+    : _query(query),
+      _itemBlockManager(itemBlockMgr),
+      _sharedState((sqs != nullptr)
+                       ? std::move(sqs)
+                       : std::make_shared<SharedQueryState>(query.vocbase().server())),
       _blocks(),
       _root(nullptr),
-      _query(query),
       _resultRegister(0),
       _initializeCursorCalled(false),
-      _wasShutdown(false) {
+      _shutdownState(ShutdownState::NotShutdown) {
+  TRI_ASSERT(_sharedState != nullptr);
   _blocks.reserve(8);
 }
 
@@ -206,66 +210,58 @@ ExecutionEngine::~ExecutionEngine() {
   } catch (...) {
     // shutdown can throw - ignore it in the destructor
   }
+  
+  if (_sharedState) {  // ensure no async task is working anymore
+    _sharedState->invalidate();
+  }
 
   for (auto& it : _blocks) {
     delete it;
   }
 }
 
-struct SingleServerQueryInstanciator final : public WalkerWorker<ExecutionNode> {
+struct SingleServerQueryInstanciator final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   ExecutionEngine& engine;
   ExecutionBlock* root{};
   std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
 
   explicit SingleServerQueryInstanciator(ExecutionEngine& engine) noexcept
       : engine(engine) {}
+        
+  void after(ExecutionNode* en) override {
+    if (en->getType() == ExecutionNode::TRAVERSAL ||
+        en->getType() == ExecutionNode::SHORTEST_PATH ||
+        en->getType() == ExecutionNode::K_SHORTEST_PATHS) {
+      // We have to prepare the options before we build the block
+      ExecutionNode::castTo<GraphNode*>(en)->prepareOptions();
+    }
 
-  virtual void after(ExecutionNode* en) override final {
     ExecutionBlock* block = nullptr;
-    bool doEmplace = true;
-    {
-      if (en->getType() == ExecutionNode::TRAVERSAL ||
-          en->getType() == ExecutionNode::SHORTEST_PATH ||
-          en->getType() == ExecutionNode::K_SHORTEST_PATHS) {
-        // We have to prepare the options before we build the block
-        ExecutionNode::castTo<GraphNode*>(en)->prepareOptions();
-      }
-      if (!arangodb::ServerState::instance()->isDBServer()) {
-        // do we need to adjust the root node?
-        auto const nodeType = en->getType();
+    if (!arangodb::ServerState::instance()->isDBServer()) {
+      auto const nodeType = en->getType();
 
-        if (nodeType == ExecutionNode::DISTRIBUTE ||
-            nodeType == ExecutionNode::SCATTER || nodeType == ExecutionNode::GATHER) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_INTERNAL,
-              "logic error, got cluster node in local query");
-        }
-        block = engine.addBlock(en->createBlock(engine, cache));
-      } else {
-        auto const& cached = cache.find(en);
-        if (cached != cache.end()) {
-          // We allow to have SCATTER, REMOTE and DISTRIBUTE multiple times.
-          // But only these.
-          // Chances are if you hit a different node here, that you created a loop.
-          TRI_ASSERT(en->getType() == ExecutionNode::REMOTE ||
-                     en->getType() == ExecutionNode::SCATTER ||
-                     en->getType() == ExecutionNode::DISTRIBUTE);
-          block = cached->second;
-          doEmplace = false;
-        } else {
-          block = engine.addBlock(en->createBlock(engine, cache));
-        }
+      if (nodeType == ExecutionNode::DISTRIBUTE ||
+          nodeType == ExecutionNode::SCATTER ||
+          (nodeType == ExecutionNode::GATHER &&
+           // simon: parallel traversals use a GatherNode
+           static_cast<GatherNode*>(en)->parallelism() != GatherNode::Parallelism::Parallel)) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL,
+            "logic error, got cluster node in local query");
       }
-
-      if (!en->hasParent()) {
-        // yes. found a new root!
-        root = block;
+    } else {
+      auto const& cached = cache.find(en);
+      if (cached != cache.end()) {
+        block = cached->second;
+        TRI_ASSERT(block != nullptr);
       }
     }
 
-    TRI_ASSERT(block != nullptr);
-    if (doEmplace) {
-      // We have visited this node earlier, so we got it's dependencies
+    if (block == nullptr) {
+      block = engine.addBlock(en->createBlock(engine, cache));
+      TRI_ASSERT(block != nullptr);
+      // We have visited this node earlier, so we got its dependencies
       // Now add dependencies:
       for (auto const& it : en->getDependencies()) {
         auto it2 = cache.find(it);
@@ -275,6 +271,13 @@ struct SingleServerQueryInstanciator final : public WalkerWorker<ExecutionNode> 
       }
 
       cache.try_emplace(en, block);
+    }
+    TRI_ASSERT(block != nullptr);
+      
+    // do we need to adjust the root node?
+    if (!en->hasParent()) {
+      // yes. found a new root!
+      root = block;
     }
   }
 
@@ -367,7 +370,8 @@ struct SingleServerQueryInstanciator final : public WalkerWorker<ExecutionNode> 
 // of them the nodes from left to right in these lists. In the end, we have
 // a proper instantiation of the whole thing.
 
-struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
+struct DistributedQueryInstanciator final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
  private:
   EngineInfoContainerCoordinator _coordinatorParts;
   EngineInfoContainerDBServerServerBased _dbserverParts;
@@ -416,7 +420,7 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
         case ExecutionNode::TRAVERSAL:
         case ExecutionNode::SHORTEST_PATH:
         case ExecutionNode::K_SHORTEST_PATHS:
-          _dbserverParts.addGraphNode(ExecutionNode::castTo<GraphNode*>(en));
+          _dbserverParts.addGraphNode(ExecutionNode::castTo<GraphNode*>(en), _pushToSingleServer);
           break;
         default:
           // Do nothing
@@ -426,7 +430,7 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
       TRI_ASSERT((_lastGatherNode != nullptr) == (nodeType == ExecutionNode::GATHER));
     } else {
       // on dbserver
-      _dbserverParts.addNode(en, false);
+      _dbserverParts.addNode(en, _pushToSingleServer);
       // switch back from DB server to coordinator, if we are not pushing the
       // entire plan to the DB server
       if (ExecutionNode::REMOTE == nodeType) {
@@ -471,56 +475,70 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
   ///        * In case the Network is broken, all non-reachable DBServers will
   ///        clean out their snippets after a TTL.
   ///        Returns the First Coordinator Engine, the one not in the registry.
-  ExecutionEngineResult buildEngines(QueryRegistry* registry) {
+  Result buildEngines(AqlItemBlockManager& mgr, SnippetList& snippets) {
+    TRI_ASSERT(ServerState::instance()->isCoordinator());
+    
     // QueryIds are filled by responses of DBServer parts.
-    MapRemoteToSnippet queryIds{};
+    MapRemoteToSnippet snippetIds{};
 
-    NetworkFeature const& nf = _query.vocbase().server().getFeature<NetworkFeature>();
-    network::ConnectionPool* pool = nf.pool();
-    auto cleanupGuard = scopeGuard([this, pool, &queryIds]() {
-      _dbserverParts.cleanupEngines(pool, TRI_ERROR_INTERNAL,
-                                    _query.vocbase().name(), queryIds);
-    });
-
-    std::unordered_map<ExecutionNodeId, ExecutionNodeId> nodeAliases;
-    ExecutionEngineResult res =
-        _dbserverParts.buildEngines(_nodesById, queryIds, nodeAliases);
+    std::map<std::string, QueryId> serverToQueryId;
+    std::map<ExecutionNodeId, ExecutionNodeId> nodeAliases;
+    Result res =
+        _dbserverParts.buildEngines(_nodesById, snippetIds, serverToQueryId, nodeAliases);
     if (res.fail()) {
       return res;
     }
 
     // The coordinator engines cannot decide on lock issues later on,
     // however every engine gets injected the list of locked shards.
-    std::vector<uint64_t> coordinatorQueryIds{};
-    res = _coordinatorParts.buildEngines(_query, registry, _query.vocbase().name(),
-                                         _query.queryOptions().shardIds,
-                                         queryIds, coordinatorQueryIds);
-
-    if (res.ok()) {
-      TRI_ASSERT(_query.engine() != nullptr);
-      _query.engine()->_stats.addAliases(std::move(nodeAliases));
-      cleanupGuard.cancel();
+    res = _coordinatorParts.buildEngines(_query, mgr, snippetIds, snippets);
+    if (res.fail()) {
+      return res;
     }
-
-    _query.engine()->snippetMapping(std::move(queryIds), std::move(coordinatorQueryIds));
-
+    
+    TRI_ASSERT(snippets.size() > 0);
+    TRI_ASSERT(snippets[0].first == 0);
+    
+    bool knowsAllQueryIds = snippetIds.empty() || !serverToQueryId.empty();
+    // simon: pre 3.7 servers do not have queryIds, might not have all IDs
+    for (auto const& [serverDst, queryId] : serverToQueryId) {
+      if (queryId == 0) {
+        knowsAllQueryIds = false;
+        break;
+      }
+    }
+    
+    for (auto& [engineId, engine] : snippets) {
+      if (knowsAllQueryIds) {
+        if (engineId != 0) { // only the root snippet executes a shutdown on the Coordinator
+          engine->setShutdown(ExecutionEngine::ShutdownState::Done);
+        }
+      } else {
+        engine->setShutdown(ExecutionEngine::ShutdownState::Legacy);
+      }
+    }
+    
+    TRI_ASSERT(snippets[0].first == 0);
+    snippets[0].second->snippetMapping(std::move(snippetIds), std::move(serverToQueryId));
+    snippets[0].second->globalStats().setAliases(std::move(nodeAliases));
+    TRI_ASSERT(snippets[0].second->shutdownState() != ExecutionEngine::ShutdownState::Done);
+    
     return res;
   }
 };
 
 void ExecutionEngine::kill() {
-  // kill coordinator parts
-  // TODO: this doesn't seem to be necessary and sometimes even show adverse
-  // effects so leaving this deactivated for now
-  /*
-  auto queryRegistry = QueryRegistryFeature::registry();
-  if (queryRegistry != nullptr) {
-    for (auto const& id : _coordinatorQueryIds) {
-      queryRegistry->kill(&(_query.vocbase()), id);
-    }
+  if (!ServerState::instance()->isCoordinator()) {
+    TRI_ASSERT(_dbServerMapping.empty());
+    return;
   }
-  */
 
+  // just use the global query shutdown instead of killing
+  if (shutdownState() != ShutdownState::Legacy) {
+    shutdown(TRI_ERROR_QUERY_KILLED);
+    return;
+  }
+  
   // kill DB server parts
   // RemoteNodeId -> DBServerId -> [snippetId]
   NetworkFeature const& nf = _query.vocbase().server().getFeature<NetworkFeature>();
@@ -528,7 +546,8 @@ void ExecutionEngine::kill() {
   if (pool == nullptr) {
     return;
   }
-
+  
+  // TODO: maybe kill global DBServers ?
   VPackBuffer<uint8_t> body;
   std::vector<network::FutureRes> futures;
 
@@ -626,7 +645,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionEngine::getSome(size_t
   auto const [state, skipped, block] = _root->execute(std::move(compatibilityStack));
   // We cannot trigger a skip operation from here
   TRI_ASSERT(skipped.nothingSkipped());
-  return {state, block};
+  return {state, std::move(block)};
 }
 
 std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
@@ -651,6 +670,10 @@ std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
 }
 
 Result ExecutionEngine::shutdownSync(int errorCode) noexcept try {
+  if (_root == nullptr || shutdownState() == ShutdownState::Done) {
+    return Result();
+  }
+  
   Result res{TRI_ERROR_INTERNAL, "unable to shutdown query"};
   ExecutionState state = ExecutionState::WAITING;
   try {
@@ -658,14 +681,13 @@ Result ExecutionEngine::shutdownSync(int errorCode) noexcept try {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    std::shared_ptr<SharedQueryState> sharedState = _query.sharedState();
-    if (sharedState != nullptr) {
-      sharedState->resetWakeupHandler();
-      while (state == ExecutionState::WAITING) {
-        std::tie(state, res) = shutdown(errorCode);
-        if (state == ExecutionState::WAITING) {
-          sharedState->waitForAsyncWakeup();
-        }
+    std::shared_ptr<SharedQueryState> sharedState = _sharedState;
+    TRI_ASSERT(sharedState != nullptr);
+    sharedState->resetWakeupHandler();
+    while (state == ExecutionState::WAITING) {
+      std::tie(state, res) = shutdown(errorCode);
+      if (state == ExecutionState::WAITING) {
+        sharedState->waitForAsyncWakeup();
       }
     }
   } catch (basics::Exception const& ex) {
@@ -676,22 +698,8 @@ Result ExecutionEngine::shutdownSync(int errorCode) noexcept try {
     res.reset(TRI_ERROR_INTERNAL);
   }
 
-  if (res.fail() && ServerState::instance()->isCoordinator()) {
-    // shutdown attempt has failed...
-    // in a cluster, try to at least abort all other coordinator parts
-    auto queryRegistry = QueryRegistryFeature::registry();
-    if (queryRegistry != nullptr) {
-      for (auto const& id : _coordinatorQueryIds) {
-        try {
-          queryRegistry->destroy(_query.vocbase().name(), id, errorCode, false);
-        } catch (...) {
-          // we want to abort all parts, even if aborting other parts fails
-        }
-      }
-    }
-  }
-
   return res;
+  
 } catch (...) {
   // nothing we can do here...
   return Result(TRI_ERROR_INTERNAL, "unable to shutdown query");
@@ -699,66 +707,108 @@ Result ExecutionEngine::shutdownSync(int errorCode) noexcept try {
 
 /// @brief shutdown, will be called exactly once for the whole query
 std::pair<ExecutionState, Result> ExecutionEngine::shutdown(int errorCode) {
-  ExecutionState state = ExecutionState::DONE;
-  Result res;
-  if (_root != nullptr && !_wasShutdown) {
-    std::tie(state, res) = _root->shutdown(errorCode);
+  auto st = _shutdownState.load(std::memory_order_relaxed);
+  if (_root == nullptr || st == ShutdownState::Done) {
+    return {ExecutionState::DONE, _shutdownResult};
+  }
+  
+  TRI_ASSERT(_sharedState != nullptr);
+  
+  if (ShutdownState::NotShutdown == st) {
+    if (_shutdownState.compare_exchange_strong(st, ShutdownState::ShutdownSent, std::memory_order_relaxed)) {
+      // enter shutdown phase, forget previous wakeups
+      _sharedState->resetNumWakeups();
+      return shutdownDBServerQueries(errorCode);
+    }
+    TRI_ASSERT(st == ShutdownState::ShutdownSent);
+  }
+  
+  if (st == ShutdownState::ShutdownSent) {
+    return {ExecutionState::WAITING, {}};
+  } else if (ShutdownState::Legacy == st) {
+    // enter shutdown phase, forget previous wakeups
+    _sharedState->resetNumWakeups();
+    
+    auto [state, res] = _root->shutdown(errorCode);
     if (state == ExecutionState::WAITING) {
       return {state, res};
     }
-
-    // prevent a duplicate shutdown
-    _wasShutdown = true;
+    
+    LOG_TOPIC("47b85", INFO, Logger::QUERIES) << "executing legacy query shutdown";
+    
+    _shutdownState.store(ShutdownState::Done, std::memory_order_relaxed);
+    
+    return {state, res};
   }
-
-  return {state, res};
+  
+  return {ExecutionState::DONE, _shutdownResult};
 }
 
-/// @brief create an execution engine from a plan
-ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry& queryRegistry,
-                                                      Query& query, ExecutionPlan& plan,
-                                                      bool planRegisters,
-                                                      SerializationFormat format) {
-  auto role = arangodb::ServerState::instance()->getRole();
+// @brief create an execution engine from a plan
+void ExecutionEngine::instantiateFromPlan(Query& query,
+                                          ExecutionPlan& plan,
+                                          bool planRegisters,
+                                          SerializationFormat format,
+                                          SnippetList& snippets) {
+  auto const role = arangodb::ServerState::instance()->getRole();
+  
+  TRI_ASSERT(snippets.empty() || ServerState::instance()->isClusterRole(role));
 
   plan.findVarUsage();
   if (planRegisters) {
     plan.planRegisters();
+    plan.findCollectionAccessVariables();
   }
 
-  std::unique_ptr<ExecutionEngine> engine;
   ExecutionBlock* root = nullptr;
+  ExecutionEngine* engine = nullptr;
 #ifdef USE_ENTERPRISE
   bool const pushToSingleServer = plan.hasAppliedRule(
       static_cast<int>(OptimizerRule::RuleLevel::clusterOneShardRule));
 #else
   bool const pushToSingleServer = false;
 #endif
+  
+  AqlItemBlockManager& mgr = query.itemBlockManager();
 
   if (arangodb::ServerState::isCoordinator(role)) {
     // distributed query
     DistributedQueryInstanciator inst(query, plan.getNodesById(), pushToSingleServer);
     plan.root()->walk(inst);
 
-    auto result = inst.buildEngines(&queryRegistry);
-    if (!result.ok()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
+    Result res = inst.buildEngines(mgr, snippets);
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
     }
-
-    engine.reset(result.engine());
-    TRI_ASSERT(engine != nullptr);
-
-    root = engine->root();
-    TRI_ASSERT(root != nullptr);
+    
+    TRI_ASSERT(snippets.size() > 0);
+    TRI_ASSERT(snippets[0].first == 0);
+    engine = snippets[0].second.get();
+    root = snippets[0].second->root();
+    
   } else {
+    
+#ifdef USE_ENTERPRISE
+    std::map<aql::ExecutionNodeId, aql::ExecutionNodeId> aliases;
+    ExecutionEngine::parallelizeTraversals(query, plan, aliases);
+#endif
+   
     // instantiate the engine on a local server
-    engine.reset(new ExecutionEngine(query, format));
+    auto retEngine = std::make_unique<ExecutionEngine>(query, mgr, format, query.sharedState());
+    
+#ifdef USE_ENTERPRISE
+    for (auto const& pair : aliases) {
+      retEngine->_execStats.addAlias(pair.first, pair.second);
+    }
+#endif
 
-    SingleServerQueryInstanciator inst(*engine);
+    SingleServerQueryInstanciator inst(*retEngine);
     plan.root()->walk(inst);
 
     root = inst.root;
-    TRI_ASSERT(root != nullptr);
+    engine = retEngine.get();
+
+    snippets.emplace_back(std::make_pair(0, std::move(retEngine)));
   }
 
   TRI_ASSERT(root != nullptr);
@@ -771,7 +821,8 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry& queryRegist
 
     // in short: this avoids copying the return values
 
-    bool const returnInheritedResults = !arangodb::ServerState::isDBServer(role);
+    bool const returnInheritedResults =
+        ExecutionNode::castTo<ReturnNode const*>(root->getPlanNode())->returnInheritedResults();
     if (returnInheritedResults) {
       auto returnNode =
           dynamic_cast<ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>*>(
@@ -784,15 +835,16 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry& queryRegist
     }
   }
 
-  engine->_root = root;
-
-  return engine.release();
+  engine->_root = root; // simon: otherwise it breaks
+      
+  TRI_ASSERT(snippets.size() == 1 || ServerState::instance()->isClusterRole(role));
 }
 
 /// @brief add a block to the engine
 ExecutionBlock* ExecutionEngine::addBlock(std::unique_ptr<ExecutionBlock> block) {
   TRI_ASSERT(block != nullptr);
 
+  // TODO track resource usage
   _blocks.emplace_back(block.get());
   return block.release();
 }
@@ -807,7 +859,7 @@ void ExecutionEngine::root(ExecutionBlock* root) {
   _root = root;
 }
 
-Query* ExecutionEngine::getQuery() const { return &_query; }
+QueryContext& ExecutionEngine::getQuery() const { return _query; }
 
 bool ExecutionEngine::initializeCursorCalled() const {
   return _initializeCursorCalled;
@@ -823,12 +875,106 @@ AqlItemBlockManager& ExecutionEngine::itemBlockManager() {
   return _itemBlockManager;
 }
 
-auto ExecutionEngine::getStats() const noexcept -> ExecutionStats const& {
-  return _stats;
+///  @brief collected execution stats
+void ExecutionEngine::collectExecutionStats(ExecutionStats& stats) {
+  for (ExecutionBlock* block : _blocks) {
+    block->collectExecStats(_execStats);
+  }
+  stats.add(_execStats);
+  _execStats.clear();
+}
+
+std::pair<ExecutionState, Result> ExecutionEngine::shutdownDBServerQueries(int errorCode) {
+  TRI_ASSERT(shutdownState() == ShutdownState::ShutdownSent);
+  if (_serverToQueryId.empty()) { // happens during tests
+    _shutdownState.store(ShutdownState::Done);
+    return {ExecutionState::DONE, Result()};
+  }
+  
+  NetworkFeature const& nf = _query.vocbase().server().getFeature<NetworkFeature>();
+  network::ConnectionPool* pool = nf.pool();
+  if (pool == nullptr) {
+    return {ExecutionState::DONE, Result(TRI_ERROR_SHUTTING_DOWN)};
+  }
+  
+  network::RequestOptions options;
+  options.database = _query.vocbase().name();
+  options.timeout = network::Timeout(60.0);  // Picked arbitrarily
+
+  VPackBuffer<uint8_t> body;
+  VPackBuilder builder(body);
+  builder.openObject(true);
+  builder.add(StaticStrings::Code, VPackValue(errorCode));
+  builder.close();
+  
+  _query.incHttpRequests(static_cast<unsigned>(_serverToQueryId.size()));
+   
+  std::vector<futures::Future<futures::Unit>> futures;
+  futures.reserve(_serverToQueryId.size());
+  auto ss = _sharedState;
+  TRI_ASSERT(ss != nullptr);
+
+  for (auto const& [serverDst, queryId] : _serverToQueryId) {
+
+    TRI_ASSERT(serverDst.substr(0, 7) == "server:");
+    
+    auto f = network::sendRequest(pool, serverDst, fuerte::RestVerb::Delete,
+                         "/_api/aql/finish/" + std::to_string(queryId), body, options)
+    .thenValue([ss, this](network::Response&& res) {
+      ss->executeLocked([&] {
+        if (res.fail()) {
+          _shutdownResult = network::fuerteToArangoErrorCode(res);
+          return;
+        } else if (!res.slice().isObject()) {
+          _shutdownResult.reset(TRI_ERROR_INTERNAL, "shutdown response is malformed");
+          return;
+        }
+        
+        VPackSlice stats = res.slice().get("stats");
+        if (stats.isObject()) {
+          _execStats.add(ExecutionStats(stats));
+        }
+        // read "warnings" attribute if present and add it to our query
+        VPackSlice warnings = res.slice().get("warnings");
+        if (warnings.isArray()) {
+          for (VPackSlice it : VPackArrayIterator(warnings)) {
+            if (it.isObject()) {
+              VPackSlice code = it.get("code");
+              VPackSlice message = it.get("message");
+              if (code.isNumber() && message.isString()) {
+                _query.warnings().registerWarning(code.getNumericValue<int>(),
+                                                  message.copyString());
+              }
+            }
+          }
+        }
+        if (res.slice().hasKey("code") && _shutdownResult.ok()) {
+          _shutdownResult.reset(res.slice().get("code").getNumericValue<int>());
+        }
+      });
+    }).thenError<std::exception>([ss, this](std::exception ptr) {
+      ss->executeLocked([&] {
+        _shutdownResult.reset(TRI_ERROR_INTERNAL, "unhandled query shutdown exception");
+      });
+    });
+
+    futures.emplace_back(std::move(f));
+  }
+  
+  
+  futures::collectAll(std::move(futures)).thenFinal([ss, this](auto&& vals) {
+    ss->executeAndWakeup([&] {
+      TRI_ASSERT(shutdownState() == ShutdownState::ShutdownSent);
+      _shutdownState.store(ShutdownState::Done, std::memory_order_relaxed);
+      return true;
+    });
+  });
+  
+  return {ExecutionState::WAITING, Result()};
 }
 
 #ifndef USE_ENTERPRISE
-bool ExecutionEngine::waitForSatellites(Collection const* collection) const {
+bool ExecutionEngine::waitForSatellites(QueryContext& /*query*/, Collection const* /*collection*/) const {
   return true;
 }
 #endif

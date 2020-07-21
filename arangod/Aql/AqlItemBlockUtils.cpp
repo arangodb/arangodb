@@ -24,7 +24,6 @@
 
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/AqlValue.h"
-#include "Aql/BlockCollector.h"
 #include "Aql/InputAqlItemRow.h"
 
 using namespace arangodb;
@@ -38,7 +37,7 @@ SharedAqlItemBlockPtr itemBlock::concatenate(AqlItemBlockManager& manager,
   TRI_ASSERT(!blocks.empty());
 
   size_t totalSize = 0;
-  RegisterId nrRegs = 0;
+  RegisterCount nrRegs = 0;
   for (auto& it : blocks) {
     totalSize += it->size();
     if (nrRegs == 0) {

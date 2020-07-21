@@ -151,28 +151,30 @@ static arangodb::Result getReadLockId(network::ConnectionPool* pool,
   options.timeout = network::Timeout(timeout);
   options.skipScheduler = true; // hack to speed up future.get()
   
-  auto res = network::sendRequest(pool, endpoint, fuerte::RestVerb::Get,
+  auto response = network::sendRequest(pool, endpoint, fuerte::RestVerb::Get,
                                   REPL_HOLD_READ_LOCK,
                                   VPackBuffer<uint8_t>(), options)
                  .get();
+  auto res = response.combinedResult();
 
-  if (res.ok() && res.response->statusCode() == fuerte::StatusOK) {
-    auto const idSlice = res.response->slice();
+  if (res.ok()) {
+    auto const idSlice = response.response->slice();
     TRI_ASSERT(idSlice.isObject());
     TRI_ASSERT(idSlice.hasKey(ID));
     try {
       id = std::stoull(idSlice.get(ID).copyString());
+      return arangodb::Result();
     } catch (std::exception const&) {
       error += " expecting id to be uint64_t ";
       error += idSlice.toJson();
       return arangodb::Result(TRI_ERROR_INTERNAL, error);
+    } catch (...) {
+      TRI_ASSERT(false);
+      return arangodb::Result(TRI_ERROR_INTERNAL, error);
     }
   } else {
-    error.append(network::fuerteToArangoErrorMessage(res));
-    return arangodb::Result(TRI_ERROR_INTERNAL, error);
+    return res;
   }
-
-  return arangodb::Result();
 }
 
 static arangodb::Result collectionCount(std::shared_ptr<arangodb::LogicalCollection> const& col,
@@ -276,20 +278,22 @@ static arangodb::Result addShardFollower(
     options.timeout = network::Timeout(timeout);
     options.skipScheduler = true; // hack to speed up future.get()
     
-    auto res = network::sendRequest(pool, endpoint, fuerte::RestVerb::Put,
+    auto response = network::sendRequest(pool, endpoint, fuerte::RestVerb::Put,
                                     REPL_ADD_FOLLOWER,
                                     std::move(*body.steal()), options)
                    .get();
+    auto result = response.combinedResult();
 
-    std::string errorMessage(
-        "addShardFollower: could not add us to the leader's follower list. ");
-    if (res.fail() || res.response->statusCode() != fuerte::StatusOK) {
+    if (result.fail()) {
+      auto const errorMessage =
+          "addShardFollower: could not add us to the leader's follower list. ";
+
       if (lockJobId != 0) {
-        errorMessage += network::fuerteToArangoErrorMessage(res);
-        LOG_TOPIC("22e0a", ERR, Logger::MAINTENANCE) << errorMessage;
+        LOG_TOPIC("22e0a", WARN, Logger::MAINTENANCE)
+            << errorMessage << result.errorMessage();
       } else {
-        errorMessage += "With shortcut (can happen, no problem).";
-        LOG_TOPIC("abf2e", INFO, Logger::MAINTENANCE) << errorMessage;
+        LOG_TOPIC("abf2e", INFO, Logger::MAINTENANCE)
+            << errorMessage << "With shortcut (can happen, no problem).";
       }
       return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
     }
@@ -327,14 +331,15 @@ static arangodb::Result cancelReadLockOnLeader(network::ConnectionPool* pool,
   options.database = database;
   options.timeout = network::Timeout(timeout);
   options.skipScheduler = true; // hack to speed up future.get()
-  
-  auto res = network::sendRequest(pool, endpoint, fuerte::RestVerb::Delete,
+
+  auto response = network::sendRequest(pool, endpoint, fuerte::RestVerb::Delete,
                                   REPL_HOLD_READ_LOCK,
                                   std::move(*body.steal()), options)
                  .get();
 
-  if (res.ok() && res.response && res.response->statusCode() == fuerte::StatusNotFound) {
-    auto const slice = res.response->slice();
+  if (response.ok() && response.response &&
+      response.response->statusCode() == fuerte::StatusNotFound) {
+    auto const slice = response.response->slice();
     if (slice.isObject()) {
       VPackSlice s = slice.get(StaticStrings::ErrorNum);
       if (s.isNumber()) {
@@ -347,18 +352,19 @@ static arangodb::Result cancelReadLockOnLeader(network::ConnectionPool* pool,
     }
   }
 
-  if (res.fail() || res.response->statusCode() != fuerte::StatusOK) {
-    auto errorMessage = network::fuerteToArangoErrorMessage(res);
+  auto res = response.combinedResult();
+
+  if (res.fail()) {
     // rebuild body since we stole it earlier
     VPackBuilder body;
     {
       VPackObjectBuilder b(&body);
       body.add(ID, VPackValue(std::to_string(lockJobId)));
     }
-    LOG_TOPIC("52924", ERR, Logger::MAINTENANCE)
+    LOG_TOPIC("52924", WARN, Logger::MAINTENANCE)
         << "cancelReadLockOnLeader: exception caught for " << body.toJson()
-        << ": " << errorMessage;
-    return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
+        << ": " << res.errorMessage();
+    return arangodb::Result(TRI_ERROR_INTERNAL, res.errorMessage());
   }
 
   LOG_TOPIC("4355c", DEBUG, Logger::MAINTENANCE) << "cancelReadLockOnLeader: success";
@@ -383,31 +389,32 @@ static arangodb::Result cancelBarrier(network::ConnectionPool* pool,
   options.timeout = network::Timeout(timeout);
   options.skipScheduler = true; // hack to speed up future.get()
   
-  auto res =
+  auto response =
       network::sendRequest(pool, endpoint, fuerte::RestVerb::Delete,
                            REPL_BARRIER_API + std::to_string(barrierId),
                            VPackBuffer<uint8_t>(), options)
           .get();
 
-  if (res.ok()) {
-    auto* response = res.response.get();
-    if (response->statusCode() != fuerte::StatusOK &&
-        response->statusCode() != fuerte::StatusNoContent) {
-      std::string errorMessage = "got status " + std::to_string(response->statusCode());
-      LOG_TOPIC("f5733", ERR, Logger::MAINTENANCE)
+  auto res = response.combinedResult();
+
+  if (res.fail()) {
+    if (response.ok() && !fuerte::statusIsSuccess(response.response->statusCode())) {
+      std::string errorMessage =
+          "got status " + std::to_string(response.response->statusCode());
+      LOG_TOPIC("f5733", WARN, Logger::MAINTENANCE)
           << "CancelBarrier: error '" << errorMessage << "'";
-      return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
+      return arangodb::Result(res.errorNumber(), errorMessage);
+    } else {
+      std::string error(
+          "CancelBarrier: failed to send message to leader : status ");
+      error += res.errorMessage();
+      LOG_TOPIC("1c48a", WARN, Logger::MAINTENANCE) << error;
+      return arangodb::Result(res.errorNumber(), error);
     }
   } else {
-    std::string error(
-        "CancelBarrier: failed to send message to leader : status ");
-    error += network::fuerteToArangoErrorMessage(res);
-    LOG_TOPIC("1c48a", ERR, Logger::MAINTENANCE) << error;
-    return arangodb::Result(TRI_ERROR_INTERNAL, error);
+    LOG_TOPIC("313dc", DEBUG, Logger::MAINTENANCE) << "cancelBarrier: success";
+    return arangodb::Result();
   }
-
-  LOG_TOPIC("313dc", DEBUG, Logger::MAINTENANCE) << "cancelBarrier: success";
-  return arangodb::Result();
 }
 
 arangodb::Result SynchronizeShard::getReadLock(
@@ -447,59 +454,53 @@ arangodb::Result SynchronizeShard::getReadLock(
   network::RequestOptions options;
   options.timeout = network::Timeout(timeout);
   options.database = database;
-  
-  auto res = network::sendRequest(
+
+  auto response = network::sendRequest(
     pool, endpoint, fuerte::RestVerb::Post,
     REPL_HOLD_READ_LOCK, *buf, options).get();
 
-  if (!res.fail() && res.response->statusCode() == fuerte::StatusOK) {
+  auto res = response.combinedResult();
+
+  if (res.ok()) {
     // Habemus clausum, we have a lock
     return arangodb::Result();
   }
-    
+
   LOG_TOPIC("cba32", DEBUG, Logger::MAINTENANCE)
     << "startReadLockOnLeader: couldn't POST lock body, "
-    << network::fuerteToArangoErrorMessage(res) << ", giving up.";
+    << network::fuerteToArangoErrorMessage(response) << ", giving up.";
 
   // We MUSTN'T exit without trying to clean up a lock that was maybe acquired
-  if (res.error == fuerte::Error::CouldNotConnect) {
+  if (response.error == fuerte::Error::CouldNotConnect) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
       "startReadLockOnLeader: couldn't POST lock body, giving up.");
   }
-  
+
   double timeLeft =
-    double(timeout) - duration<double>(steady_clock::now()-start).count() ;
+      double(timeout) - duration<double>(steady_clock::now() - start).count();
   if (timeLeft < 60.0) {
     timeLeft = 60.0;
   }
 
   // Ambiguous POST, we'll try to DELETE a potentially acquired lock
   try {
-    auto r = network::sendRequest(pool, endpoint, fuerte::RestVerb::Delete, REPL_HOLD_READ_LOCK,
+    auto response = network::sendRequest(pool, endpoint, fuerte::RestVerb::Delete, REPL_HOLD_READ_LOCK,
                                   *buf, options)
                  .get();
-    if (r.fail() || r.response->statusCode() != fuerte::StatusOK) {
-      std::string addendum;
-      if (r.fail()) {
-        addendum = network::fuerteToArangoErrorMessage(r);
-      } else {
-        addendum.append("code '")
-                .append(std::to_string(r.statusCode()))
-                .append("', error '")
-                .append(network::resultFromBody(r.slice(), TRI_ERROR_INTERNAL).errorMessage())
-                .append("'");
-      }
-      LOG_TOPIC("4f34d", ERR, Logger::MAINTENANCE)
+    auto res = response.combinedResult();
+    if (res.fail()) {
+      LOG_TOPIC("4f34d", WARN, Logger::MAINTENANCE)
           << "startReadLockOnLeader: cancelation error for shard - "
-          << collection << ": " << addendum;
+          << collection << ": " << res.errorMessage();
     }
   } catch (std::exception const& e) {
-    LOG_TOPIC("7fcc9", ERR, Logger::MAINTENANCE)
-      << "startReadLockOnLeader: exception in cancel: " << e.what();
+    LOG_TOPIC("7fcc9", WARN, Logger::MAINTENANCE)
+        << "startReadLockOnLeader: exception in cancel: " << e.what();
   }
-  return arangodb::Result(
-    TRI_ERROR_CLUSTER_TIMEOUT, "startReadLockOnLeader: giving up");
+
+  return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT,
+                          "startReadLockOnLeader: giving up");
 }
 
 arangodb::Result SynchronizeShard::startReadLockOnLeader(
@@ -512,7 +513,7 @@ arangodb::Result SynchronizeShard::startReadLockOnLeader(
   arangodb::Result result =
       getReadLockId(pool, endpoint, database, clientId, timeout, rlid);
   if (!result.ok()) {
-    LOG_TOPIC("2e5ae", ERR, Logger::MAINTENANCE) << result.errorMessage();
+    LOG_TOPIC("2e5ae", WARN, Logger::MAINTENANCE) << result.errorMessage();
     return result;
   }
   LOG_TOPIC("c8d18", DEBUG, Logger::MAINTENANCE) << "Got read lock id: " << rlid;
@@ -1158,6 +1159,44 @@ void SynchronizeShard::setState(ActionState state) {
     if (COMPLETE == state) {
       LOG_TOPIC("50827", INFO, Logger::MAINTENANCE)
         << "SynchronizeShard: synchronization completed for shard " << shard;
+    }
+
+    // Acquire current version from agency and wait for it to have been dealt
+    // with in local current cache. Any future current version will do, as
+    // the version is incremented by the leader ahead of getting here on the
+    // follower.
+    uint64_t v = 0;
+    using namespace std::chrono;
+    using clock = steady_clock;
+    auto timeout = duration<double>(600.0);
+    auto stoppage = clock::now() + timeout;
+    auto snooze = milliseconds(100);
+    while (!_feature.server().isStopping() && clock::now() < stoppage ) {
+      cluster::fetchCurrentVersion(0.1 * timeout)
+        .thenValue(
+          [&v] (auto&& res) { v = res.get(); })
+        .thenError<std::exception>(
+          [&shard] (std::exception const& e) {
+            LOG_TOPIC("3ae99", ERR, Logger::CLUSTER)
+              << "Failed to acquire current version from agency while increasing shard version: "
+              << "for shard " << shard << ": " << e.what();
+          })
+        .wait();
+      if (v > 0) {
+        break;
+      }
+      std::this_thread::sleep_for(snooze);
+      if (snooze < seconds(2)) {
+        snooze += milliseconds(100);
+      }
+    }
+
+    // We're here, cause we either ran out of time or have an actual version number.
+    // In the former case, we tried our best and will safely continue some 10 min later.
+    // If however v is an actual positive integer, we'll wait for it to sync in out
+    // ClusterInfo cache through loadCurrent.
+    if ( v > 0) {
+      _feature.server().getFeature<ClusterFeature>().clusterInfo().waitForCurrentVersion(v).wait();
     }
     _feature.incShardVersion(shard);
   }

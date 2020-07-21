@@ -26,7 +26,7 @@
 
 #include "Aql/Query.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 
 #include <map>
 #include <set>
@@ -39,8 +39,11 @@ class DistributeConsumerNode;
 class ExecutionNode;
 class ExecutionPlan;
 class GatherNode;
+class RemoteNode;
 class ScatterNode;
 class ShardLocking;
+
+using MapNodeToColNameToShards = std::unordered_map<ExecutionNode*, std::unordered_map<std::string, std::set<ShardID>>>;
 
 class QuerySnippet {
  public:
@@ -73,7 +76,7 @@ class QuerySnippet {
   void serializeIntoBuilder(ServerID const& server,
                             std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
                             ShardLocking& shardMapping,
-                            std::unordered_map<ExecutionNodeId, ExecutionNodeId>& nodeAliases,
+                            std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases,
                             velocypack::Builder& infoBuilder);
 
   void useQueryIdAsInput(QueryId inputSnippet) { _inputSnippet = inputSnippet; }
@@ -81,18 +84,17 @@ class QuerySnippet {
   Id id() const { return _id; }
 
  private:
-  ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> prepareFirstBranch(
+  ResultT<MapNodeToColNameToShards> prepareFirstBranch(
       ServerID const& server,
       std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
       ShardLocking& shardLocking);
 
-  DistributeConsumerNode* createConsumerNode(ExecutionPlan* plan, ScatterNode* internalScatter,
-                                             std::string const& distributeId);
-
  private:
-  GatherNode const* _sinkNode;
+  GatherNode const* _sinkNode; // node that merges the results for all shards
 
   ExecutionNodeId const _idOfSinkRemoteNode;
+
+  RemoteNode * _remoteNode{nullptr};
 
   bool _madeResponsibleForShutdown;
 

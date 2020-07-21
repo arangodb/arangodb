@@ -62,6 +62,10 @@ class H2Connection final : public fuerte::GeneralConnection<T> {
  protected:
   void finishConnect() override;
 
+  /// The following is called when the connection is permanently failed. It is
+  /// used to shut down any activity in a way that avoids sleeping barbers
+  void terminateActivity() override;
+
   // Thread-Safe: activate the writer loop (if off and items are queud)
   void startWriting() override;
 
@@ -111,6 +115,7 @@ class H2Connection final : public fuerte::GeneralConnection<T> {
 
   void initNgHttp2Session();
 
+  void sendHttp1UpgradeRequest();
   void readSwitchingProtocolsResponse();
 
   // adjust the timeouts (only call from IO-Thread)

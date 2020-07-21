@@ -38,7 +38,6 @@
 #include "Cluster/MaintenanceRestHandler.h"
 #include "Cluster/RestAgencyCallbacksHandler.h"
 #include "Cluster/RestClusterHandler.h"
-#include "Cluster/TraverserEngineRegistry.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
@@ -48,6 +47,7 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Rest/HttpResponse.h"
 #include "RestHandler/RestAdminClusterHandler.h"
 #include "RestHandler/RestAdminDatabaseHandler.h"
 #include "RestHandler/RestAdminExecuteHandler.h"
@@ -100,7 +100,6 @@
 #include "RestHandler/RestWalAccessHandler.h"
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -319,17 +318,6 @@ void GeneralServerFeature::defineHandlers() {
   HotBackupFeature& backup = server().getFeature<HotBackupFeature>();
 #endif
 
-
-  auto queryRegistry = QueryRegistryFeature::registry();
-  auto traverserEngineRegistry = TraverserEngineRegistryFeature::registry();
-  if (_combinedRegistries == nullptr) {
-    _combinedRegistries =
-        std::make_unique<std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>>(
-            queryRegistry, traverserEngineRegistry);
-  } else {
-    TRI_ASSERT(false);
-  }
-
   // ...........................................................................
   // /_msg
   // ...........................................................................
@@ -352,6 +340,7 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::CONTROL_PREGEL_PATH,
                                     RestHandlerCreator<RestControlPregelHandler>::createNoData);
 
+  auto queryRegistry = QueryRegistryFeature::registry();
   _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::CURSOR_PATH,
                                     RestHandlerCreator<RestCursorHandler>::createData<aql::QueryRegistry*>,
                                     queryRegistry);
@@ -417,8 +406,7 @@ void GeneralServerFeature::defineHandlers() {
   // for it.
   _handlerFactory->addPrefixHandler(
       "/_api/aql",
-      RestHandlerCreator<aql::RestAqlHandler>::createData<std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>*>,
-      _combinedRegistries.get());
+      RestHandlerCreator<aql::RestAqlHandler>::createData<aql::QueryRegistry*>, queryRegistry);
 
   _handlerFactory->addPrefixHandler("/_api/aql-builtin",
                                     RestHandlerCreator<RestAqlFunctionsHandler>::createNoData);
@@ -467,8 +455,8 @@ void GeneralServerFeature::defineHandlers() {
   }
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH,
-      RestHandlerCreator<InternalRestTraverserHandler>::createData<traverser::TraverserEngineRegistry*>,
-      traverserEngineRegistry);
+      RestHandlerCreator<InternalRestTraverserHandler>::createData<aql::QueryRegistry*>,
+       queryRegistry);
 
   // And now some handlers which are registered in both /_api and /_admin
   _handlerFactory->addHandler("/_admin/actions",

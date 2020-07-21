@@ -69,7 +69,7 @@ function ahuacatlMemoryLimitTestSuite () {
       assertEqual(10000, actual.length);
       
       // should still be ok
-      actual = AQL_EXECUTE("FOR i IN 1..10000 RETURN i", null, { memoryLimit: 100 * 1000 }).json;
+      actual = AQL_EXECUTE("FOR i IN 1..10000 RETURN i", null, { memoryLimit: 100 * 1000 + 4096 }).json;
       assertEqual(10000, actual.length);
     },
 

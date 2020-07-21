@@ -24,8 +24,8 @@
 #include "ModificationExecutorInfos.h"
 
 #include "Aql/RegisterPlan.h"
-#include "StorageEngine/TransactionState.h"
-#include "Transaction/Methods.h"
+#include "Aql/QueryContext.h"
+#include "Cluster/ServerState.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -33,18 +33,17 @@ using namespace arangodb::aql;
 ModificationExecutorInfos::ModificationExecutorInfos(
     RegisterId input1RegisterId, RegisterId input2RegisterId, RegisterId input3RegisterId,
     RegisterId outputNewRegisterId, RegisterId outputOldRegisterId,
-    RegisterId outputRegisterId, transaction::Methods* trx, OperationOptions options,
+    RegisterId outputRegisterId, arangodb::aql::QueryContext& query, OperationOptions options,
     aql::Collection const* aqlCollection, ProducesResults producesResults,
     ConsultAqlWriteFilter consultAqlWriteFilter, IgnoreErrors ignoreErrors,
     DoCount doCount, IsReplace isReplace, IgnoreDocumentNotFound ignoreDocumentNotFound)
-    : _trx(trx),
+    : _query(query),
       _options(options),
       _aqlCollection(aqlCollection),
       _producesResults(ProducesResults(producesResults._value || !_options.silent)),
       _consultAqlWriteFilter(consultAqlWriteFilter),
       _ignoreErrors(ignoreErrors),
       _doCount(doCount),
-
       _isReplace(isReplace),
       _ignoreDocumentNotFound(ignoreDocumentNotFound),
       _input1RegisterId(input1RegisterId),
@@ -56,8 +55,7 @@ ModificationExecutorInfos::ModificationExecutorInfos(
   // If we're running on a DBServer in a cluster some modification operations legitimately
   // fail due to the affected document not being available (which is reflected in _ignoreDocumentNotFound).
   // This makes sure that results are reported back from a DBServer.
-  TRI_ASSERT(_trx);
-  auto isDBServer = _trx->state()->isDBServer();
+  auto isDBServer = ServerState::instance()->isDBServer();
   _producesResults = ProducesResults(_producesResults || !_options.silent ||
                                      (isDBServer && _ignoreDocumentNotFound));
 }

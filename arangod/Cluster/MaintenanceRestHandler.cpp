@@ -82,27 +82,23 @@ RestStatus MaintenanceRestHandler::execute() {
 }
 
 RestStatus MaintenanceRestHandler::postAction() {
-  std::stringstream es;
-
-  std::shared_ptr<VPackBuilder> bptr;
-  try {
-
-    bptr = _request->toVelocyPackBuilderPtr();
-    LOG_TOPIC("a0212", DEBUG, Logger::MAINTENANCE) << "parsed post action " << bptr->toJson();
-  } catch (std::exception const& e) {
-    es << "failed parsing post action "  << bptr->toJson() << " " << e.what();
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess) {  // error message generated in parseVPackBody
     return RestStatus::DONE;
   }
-
-  VPackSlice body = bptr->slice();
   
+  LOG_TOPIC("a0212", DEBUG, Logger::MAINTENANCE) << "parsed post action " << body.toJson();
+  
+  std::stringstream es;
+
   if (body.isObject()) {
     std::chrono::seconds dur(0);
-    if (body.hasKey("execute") && body.get("execute").isString()) {
+    if (body.get("execute").isString()) {
       // {"execute": "pause", "duration": 60} / {"execute": "proceed"}
       auto const ex = body.get("execute").copyString();
       if (ex == "pause") {
-        if (body.hasKey("duration") && body.get("duration").isNumber()) {
+        if (body.get("duration").isNumber()) {
           dur = std::chrono::seconds(body.get("duration").getNumber<int64_t>());
           if (dur.count() <= 0 || dur.count() > 300) {
             es << "invalid mainenance pause duration: " << dur.count()
@@ -220,7 +216,7 @@ bool MaintenanceRestHandler::parsePutBody(VPackSlice const& parameters) {
     }  // else
   }    // for
 
-  _actionDesc = std::make_shared<maintenance::ActionDescription>(desc, priority, prop);
+  _actionDesc = std::make_shared<maintenance::ActionDescription>(std::move(desc), priority, std::move(prop));
 
   return good;
 

@@ -59,6 +59,9 @@ struct IRESEARCH_API field_meta {
   field_id norm{ field_limits::invalid() };
 }; // field_meta
 
+static_assert(std::is_move_constructible<field_meta>::value,
+              "default move constructor expected");
+
 //////////////////////////////////////////////////////////////////////////////
 /// @struct column_meta 
 /// @brief represents column metadata
@@ -81,6 +84,9 @@ struct IRESEARCH_API column_meta {
   std::string name;
   field_id id{ field_limits::invalid() };
 }; // column_meta
+
+static_assert(std::is_nothrow_move_constructible<column_meta>::value,
+              "default move constructor expected");
 
 NS_END
 

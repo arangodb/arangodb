@@ -183,7 +183,13 @@ TEST_F(AqlItemBlockTest, test_emplace_values) {
 }
 
 TEST_F(AqlItemBlockTest, test_block_contains_shadow_rows) {
-  auto block = buildBlock<1>(itemBlockManager, {{{{{5}}}, {{{6}}}, {{{7}}}, {{{8}}}}});
+  auto block = buildBlock<1>(itemBlockManager, {
+                                                   {{5}},
+                                                   {{6}},
+                                                   {{7}},
+                                                   {{8}}
+                                               });
+
   // No shadow Rows included
   assertShadowRowIndexes(block, {});
 

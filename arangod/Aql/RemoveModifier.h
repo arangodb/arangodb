@@ -27,6 +27,8 @@
 #include "Aql/ModificationExecutorAccumulator.h"
 #include "Aql/ModificationExecutorInfos.h"
 
+#include <velocypack/Builder.h>
+
 namespace arangodb {
 namespace aql {
 
@@ -39,10 +41,11 @@ class RemoveModifierCompletion {
 
   ModifierOperationType accumulate(ModificationExecutorAccumulator& accu,
                                    InputAqlItemRow& row);
-  OperationResult transact(VPackSlice const& data);
+  OperationResult transact(transaction::Methods& trx, VPackSlice const& data);
 
  private:
   ModificationExecutorInfos& _infos;
+  arangodb::velocypack::Builder _keyDocBuilder;
 };
 
 }  // namespace aql

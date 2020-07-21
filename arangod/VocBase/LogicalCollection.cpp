@@ -78,12 +78,28 @@ static std::string translateStatus(TRI_vocbase_col_status_e status) {
 }
 
 std::string readGloballyUniqueId(arangodb::velocypack::Slice info) {
-  static const std::string empty;
   auto guid = arangodb::basics::VelocyPackHelper::getStringValue(info, arangodb::StaticStrings::DataSourceGuid,
-                                                                 empty);
+                                                                 arangodb::StaticStrings::Empty);
 
   if (!guid.empty()) {
-    return guid;
+    // check if the globallyUniqueId is only numeric. This causes ambiguities later
+    // and can only happen (only) for collections created with v3.3.0 (the GUID
+    // generation process was changed in v3.3.1 already to fix this issue).
+    // remove the globallyUniqueId so a new one will be generated server.side
+    bool validNumber = false;
+    NumberUtils::atoi_positive<uint64_t>(guid.data(), guid.data() + guid.size(), validNumber);
+    if (!validNumber) { 
+      // GUID is not just numeric, this is fine
+      return guid;
+    }
+
+    // GUID is only numeric - we must not use it
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // this should never happen for any collections created during testing. the
+    // only way to make this happen is using a collection created with v3.3.0, 
+    // which we will not have in our tests.
+    TRI_ASSERT(false);
+#endif
   }
 
   auto version = arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
@@ -93,10 +109,10 @@ std::string readGloballyUniqueId(arangodb::velocypack::Slice info) {
   // predictable UUID for legacy collections
   if (static_cast<LogicalCollection::Version>(version) < LogicalCollection::Version::v33 && info.isObject()) {
     return arangodb::basics::VelocyPackHelper::getStringValue(info, arangodb::StaticStrings::DataSourceName,
-                                                              empty);
+                                                              arangodb::StaticStrings::Empty);
   }
 
-  return empty;
+  return arangodb::StaticStrings::Empty;
 }
 
 std::string readStringValue(arangodb::velocypack::Slice info,
@@ -152,6 +168,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
           info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
       _isAStub(isAStub),
 #ifdef USE_ENTERPRISE
+      _isDisjoint(Helper::getBooleanValue(info, StaticStrings::IsDisjoint, false)),
       _isSmart(Helper::getBooleanValue(info, StaticStrings::IsSmart, false)),
       _isSmartChild(Helper::getBooleanValue(info, StaticStrings::IsSmartChild, false)),
 #endif
@@ -185,7 +202,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
   }
 
   auto res = updateValidators(info.get(StaticStrings::Schema));
-  if(res.fail()){
+  if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
@@ -246,8 +263,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
     }
   }
 #else
-  // whatever we got passed in, in a non-enterprise build, we just ignore
-  // any specification for the smartJoinAttribute
+  // whatever we got passed in, in a non-Enterprise Edition build, we just
+  // ignore any specification for the smartJoinAttribute
   _smartJoinAttribute.clear();
 #endif
 
@@ -275,23 +292,27 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
 
 Result LogicalCollection::updateValidators(VPackSlice validatorSlice) {
   using namespace std::literals::string_literals;
-  if(validatorSlice.isNone() || validatorSlice.isNull()) {
+  if (validatorSlice.isNone()) {
     return { TRI_ERROR_NO_ERROR };
-  } else if (!validatorSlice.isObject()) {
-    return {TRI_ERROR_VALIDATION_BAD_PARAMETER, "Validator description is not an object."};
+  } 
+  if (validatorSlice.isNull()) {
+    validatorSlice = VPackSlice::emptyObjectSlice();
+  }
+  if (!validatorSlice.isObject()) {
+    return {TRI_ERROR_VALIDATION_BAD_PARAMETER, "Schema description is not an object."};
   }
 
   TRI_ASSERT(validatorSlice.isObject());
 
-  std::shared_ptr<ValidatorVec> newVec = std::make_shared<ValidatorVec>();
+  auto newVec = std::make_shared<ValidatorVec>();
 
   // delete validators if empty object is given
-  if(!validatorSlice.isEmptyObject()) {
+  if (!validatorSlice.isEmptyObject()) {
     try {
       auto validator = std::make_unique<ValidatorJsonSchema>(validatorSlice);
       newVec->push_back(std::move(validator));
     } catch (std::exception const& ex) {
-      return { TRI_ERROR_VALIDATION_BAD_PARAMETER, "Error when building validator: "s + ex.what() };
+      return { TRI_ERROR_VALIDATION_BAD_PARAMETER, "Error when building schema: "s + ex.what() };
     }
   }
 
@@ -443,21 +464,6 @@ void LogicalCollection::executeWhileStatusWriteLocked(std::function<void()> cons
   callback();
 }
 
-void LogicalCollection::executeWhileStatusLocked(std::function<void()> const& callback) {
-  READ_LOCKER(locker, _statusLock);
-  callback();
-}
-
-bool LogicalCollection::tryExecuteWhileStatusLocked(std::function<void()> const& callback) {
-  TRY_READ_LOCKER(readLocker, _statusLock);
-  if (!readLocker.isLocked()) {
-    return false;
-  }
-
-  callback();
-  return true;
-}
-
 TRI_vocbase_col_status_e LogicalCollection::tryFetchStatus(bool& didFetch) {
   TRY_READ_LOCKER(locker, _statusLock);
   if (locker.isLocked()) {
@@ -499,6 +505,10 @@ void LogicalCollection::setSyncByRevision(bool usesRevisions) {
   if (!_syncByRevision.load() && _usesRevisionsAsDocumentIds.load() && usesRevisions) {
     _syncByRevision.store(true);
   }
+}
+
+bool LogicalCollection::useSyncByRevision() const {
+  return !_isAStub && _syncByRevision.load();
 }
 
 bool LogicalCollection::determineSyncByRevision() const {
@@ -761,6 +771,7 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   }
 
   // Cluster Specific
+  result.add(StaticStrings::IsDisjoint, VPackValue(isDisjoint()));
   result.add(StaticStrings::IsSmart, VPackValue(isSmart()));
   result.add(StaticStrings::IsSmartChild, VPackValue(isSmartChild()));
   result.add(StaticStrings::UsesRevisionsAsDocumentIds,
@@ -809,7 +820,7 @@ VPackBuilder LogicalCollection::toVelocyPackIgnore(std::unordered_set<std::strin
 }
 
 void LogicalCollection::includeVelocyPackEnterprise(VPackBuilder&) const {
-  // We ain't no enterprise
+  // We ain't no Enterprise Edition
 }
 
 void LogicalCollection::increaseV8Version() { ++_v8CacheVersion; }
@@ -823,7 +834,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
   // - _isSystem
   // - _isVolatile
   // ... probably a few others missing here ...
-
+      
   if (!vocbase().server().hasFeature<DatabaseFeature>()) {
     return Result(
         TRI_ERROR_INTERNAL,
@@ -841,7 +852,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
   MUTEX_LOCKER(guard, _infoLock);  // prevent simultaneous updates
 
   auto res = updateValidators(slice.get(StaticStrings::Schema));
-  if(res.fail()){
+  if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
@@ -870,7 +881,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
       }
 
       if (ServerState::instance()->isCoordinator() &&
-          replicationFactor != _sharding->replicationFactor()) {  // sanity checks
+          replicationFactor != _sharding->replicationFactor()) {  // check if changed
         if (!_sharding->distributeShardsLike().empty()) {
           return Result(TRI_ERROR_FORBIDDEN,
                         "cannot change replicationFactor for a collection using 'distributeShardsLike'");
@@ -880,7 +891,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
                         "not supported for smart edge collections");
         } else if (isSatellite()) {
           return Result(TRI_ERROR_FORBIDDEN,
-                        "cannot change replicationFactor of a satellite collection");
+                        "cannot change replicationFactor of a SatelliteCollection");
         }
       }
     } else if (replicationFactorSlice.isString()) {
@@ -891,13 +902,13 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
       // we got the string "satellite"...
 #ifdef USE_ENTERPRISE
       if (!isSatellite()) {
-        // but the collection is not a satellite collection!
+        // but the collection is not a SatelliteCollection!
         return Result(TRI_ERROR_FORBIDDEN,
-                      "cannot change satellite collection status");
+                      "cannot change SatelliteCollection status");
       }
 #else
       return Result(TRI_ERROR_FORBIDDEN,
-                    "cannot use satellite collection status");
+                    "cannot use SatelliteCollection status");
 #endif
       // fallthrough here if we set the string "satellite" for a satellite
       // collection
@@ -923,7 +934,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
       }
 
       if (ServerState::instance()->isCoordinator() &&
-          replicationFactor != _sharding->writeConcern()) {  // sanity checks
+          writeConcern != _sharding->writeConcern()) {  // check if changed
         if (!_sharding->distributeShardsLike().empty()) {
           return Result(TRI_ERROR_FORBIDDEN,
                         "Cannot change writeConcern, please change " +
@@ -934,7 +945,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
                         "not supported for smart edge collections");
         } else if (isSatellite()) {
           return Result(TRI_ERROR_FORBIDDEN,
-                        "Satellite collection, "
+                        "SatelliteCollection, "
                         "cannot change writeConcern");
         }
       }
@@ -1146,7 +1157,7 @@ bool LogicalCollection::readDocumentWithCallback(transaction::Methods* trx,
 }
 
 /// @brief a method to skip certain documents in AQL write operations,
-/// this is only used in the enterprise edition for smart graphs
+/// this is only used in the Enterprise Edition for SmartGraphs
 #ifndef USE_ENTERPRISE
 bool LogicalCollection::skipForAqlWrite(arangodb::velocypack::Slice document,
                                         std::string const& key) const {
@@ -1164,7 +1175,7 @@ VPackSlice LogicalCollection::keyOptions() const {
 
 void LogicalCollection::validatorsToVelocyPack(VPackBuilder& b) const {
   auto vals = std::atomic_load_explicit(&_validators, std::memory_order_relaxed);
-  if(vals == nullptr || vals->empty()){
+  if (vals == nullptr || vals->empty()) {
     b.add(VPackSlice::nullSlice());
     return;
   }
@@ -1176,7 +1187,7 @@ Result LogicalCollection::validate(VPackSlice s, VPackOptions const* options) co
   if (vals == nullptr) { return {}; }
   for(auto const& validator : *vals) {
     auto rv = validator->validate(s, VPackSlice::noneSlice(), true, options);
-    if(rv.fail()) {
+    if (rv.fail()) {
       return rv;
     }
   }
@@ -1188,7 +1199,7 @@ Result LogicalCollection::validate(VPackSlice modifiedDoc, VPackSlice oldDoc, VP
   if (vals == nullptr) { return {}; }
   for(auto const& validator : *vals) {
     auto rv = validator->validate(modifiedDoc, oldDoc, false, options);
-    if(rv.fail()) {
+    if (rv.fail()) {
       return rv;
     }
   }

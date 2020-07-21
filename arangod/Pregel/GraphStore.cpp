@@ -24,6 +24,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/MutexLocker.h"
+#include "Indexes/IndexIterator.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/IndexHelpers.h"
 #include "Pregel/PregelFeature.h"
@@ -38,7 +39,6 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/OperationCursor.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -71,7 +71,7 @@ GraphStore<V, E>::~GraphStore() {
 }
 
 static const char* shardError =
-    "Collections need to have the same number of shards"
+    "Collections need to have the same number of shards,"
     " use distributeShardsLike";
 
 template <typename V, typename E>
@@ -180,6 +180,8 @@ void GraphStore<V, E>::loadDocument(WorkerConfig* config, std::string const& doc
 template <typename V, typename E>
 void GraphStore<V, E>::loadDocument(WorkerConfig* config, PregelShard sourceShard,
                                     VPackStringRef const& _key) {
+  // Apparently this code has not been implemented yet; find out whether it's
+  // needed at all or remove
   TRI_ASSERT(false);
 }
 
@@ -267,7 +269,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
   
   transaction::Options trxOpts;
   trxOpts.waitForSync = false;
-  trxOpts.allowImplicitCollections = true;
+  trxOpts.allowImplicitCollectionsForRead = true;
   auto ctx = transaction::StandaloneContext::Create(_vocbaseGuard.database());
   transaction::Methods trx(ctx, {}, {}, {}, trxOpts);
   Result res = trx.begin();
@@ -277,10 +279,10 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
   }
 
   PregelShard sourceShard = (PregelShard)_config->shardId(vertexShard);
-  OperationCursor cursor(trx.indexScan(vertexShard, transaction::Methods::CursorType::ALL));
+  auto cursor = trx.indexScan(vertexShard, transaction::Methods::CursorType::ALL);
 
   // tell the formatter the number of docs we are about to load
-  LogicalCollection* coll = cursor.collection();
+  LogicalCollection* coll = cursor->collection();
   uint64_t numVertices = coll->numberDocuments(&trx, transaction::CountType::Normal);
   _graphFormat->willLoadVertices(numVertices);
   
@@ -298,9 +300,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
   
   std::string documentId; // temp buffer for _id of vertex
   auto cb = [&](LocalDocumentId const& token, VPackSlice slice) {
-    if (slice.isExternal()) {
-      slice = slice.resolveExternal();
-    }
+    slice = slice.resolveExternal();
     
     if (vertexBuff == nullptr || vertexBuff->remainingCapacity() == 0) {
       vertices.push_back(createBuffer<Vertex<V, E>>(*_config, segmentSize));
@@ -345,7 +345,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
   bool hasMore = true;
   while (hasMore && numVertices > 0) {
     TRI_ASSERT(segmentSize > 0);
-    hasMore = cursor.nextDocument(cb, segmentSize);
+    hasMore = cursor->nextDocument(cb, segmentSize);
     if (_destroyed) {
       LOG_TOPIC("4355a", WARN, Logger::PREGEL) << "Aborted loading graph";
       break;
@@ -376,7 +376,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
 
   traverser::EdgeCollectionInfo info(&trx, edgeShard);
   ManagedDocumentResult mmdr;
-  std::unique_ptr<OperationCursor> cursor = info.getEdges(documentID);
+  auto cursor = info.getEdges(documentID);
   
   TypedBuffer<Edge<E>>* edgeBuff = edges.empty() ? nullptr : edges.back().get();
   TypedBuffer<char>* keyBuff = edgeKeys.empty() ? nullptr : edgeKeys.back().get();
@@ -440,12 +440,13 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
       TRI_ASSERT(edgeSlice.isString());
       
       VPackStringRef toValue(edgeSlice);
-      allocateSpace(toValue.size());
+      size_t space = toValue.size();
+      allocateSpace(space);
       Edge<E>* edge = edgeBuff->appendElement();
       buildEdge(edge, toValue);
       return true;
     };
-    while (cursor->nextWithExtra(cb, 1000)) {
+    while (cursor->nextExtra(cb, 1000)) {
       if (_destroyed) {
         LOG_TOPIC("29018", WARN, Logger::PREGEL) << "Aborted loading graph";
         break;
@@ -454,9 +455,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
     
   } else {
     auto cb = [&](LocalDocumentId const& token, VPackSlice slice) {
-      if (slice.isExternal()) {
-        slice = slice.resolveExternal();
-      }
+      slice = slice.resolveExternal();
       
       VPackStringRef toValue(transaction::helpers::extractToFromDocument(slice));
       allocateSpace(toValue.size());
@@ -588,7 +587,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
       try {
         RangeIterator<Vertex<V, E>> it = vertexIterator(startI, endI);
         _storeVertices(_config->globalShardIDs(), it);
-        // TODO can't just write edges with smart graphs
+        // TODO can't just write edges with SmartGraphs
       } catch (std::exception const& e) {
         LOG_TOPIC("e22c8", ERR, Logger::PREGEL) << "Storing vertex data failed: '" << e.what() << "'";
       } catch (...) {
@@ -610,6 +609,8 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
 }
 
 template class arangodb::pregel::GraphStore<int64_t, int64_t>;
+template class arangodb::pregel::GraphStore<uint64_t, uint64_t>;
+template class arangodb::pregel::GraphStore<uint64_t, uint8_t>;
 template class arangodb::pregel::GraphStore<float, float>;
 template class arangodb::pregel::GraphStore<double, float>;
 template class arangodb::pregel::GraphStore<double, double>;

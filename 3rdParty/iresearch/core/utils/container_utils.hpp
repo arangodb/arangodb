@@ -78,31 +78,16 @@ class array
     }
   }
 
-#if IRESEARCH_CXX > IRESEARCH_CXX_11
-  // before c++14 constexpr member function
-  // gets const implicitly
-  constexpr
-#endif
-  reference operator[](size_t i) noexcept {
+  constexpr reference operator[](size_t i) noexcept {
     assert(i < Size);
     return *(begin() + i);
   }
 
-#if IRESEARCH_CXX > IRESEARCH_CXX_11
-  // before c++14 constexpr member function
-  // gets const implicitly
-  constexpr
-#endif
-  const_reference operator[](size_t i) const noexcept {
+  constexpr const_reference operator[](size_t i) const noexcept {
     return const_cast<array&>(*this)[i];
   }
 
-#if IRESEARCH_CXX > IRESEARCH_CXX_11
-  // before c++14 constexpr member function
-  // gets const implicitly
-  constexpr
-#endif
-  reference back() noexcept {
+  constexpr reference back() noexcept {
     return *(end()-1);
   }
 
@@ -110,12 +95,7 @@ class array
     return const_cast<array*>(this)->back();
   }
 
-#if IRESEARCH_CXX > IRESEARCH_CXX_11
-  // before c++14 constexpr member function
-  // gets const implicitly
-  constexpr
-#endif
-  reference front() noexcept {
+  constexpr reference front() noexcept {
     return *begin();
   }
 
@@ -123,21 +103,11 @@ class array
     return const_cast<array*>(this)->front();
   }
 
-#if IRESEARCH_CXX > IRESEARCH_CXX_11
-  // before c++14 constexpr member function
-  // gets const implicitly
-  constexpr
-#endif
-  iterator begin() noexcept {
+  constexpr iterator begin() noexcept {
     return reinterpret_cast<T*>(buffer_t::data);
   }
 
-#if IRESEARCH_CXX > IRESEARCH_CXX_11
-  // before c++14 constexpr member function
-  // gets const implicitly
-  constexpr
-#endif
-  iterator end() noexcept {
+  constexpr iterator end() noexcept {
     return this->begin() + Size;
   }
 
@@ -149,21 +119,11 @@ class array
     return const_cast<array*>(this)->end();
   }
 
-#if IRESEARCH_CXX > IRESEARCH_CXX_11
-  // before c++14 constexpr member function
-  // gets const implicitly
-  constexpr
-#endif
-  reverse_iterator rbegin() noexcept {
+  constexpr reverse_iterator rbegin() noexcept {
     return reverse_iterator(end());
   }
 
-#if IRESEARCH_CXX > IRESEARCH_CXX_11
-  // before c++14 constexpr member function
-  // gets const implicitly
-  constexpr
-#endif
-  reverse_iterator rend() noexcept {
+  constexpr reverse_iterator rend() noexcept {
     return reverse_iterator(begin());
   }
 
@@ -350,6 +310,9 @@ class raw_block_vector_base
 
     typename Allocator::value_type ptr;
   };
+
+  static_assert(std::is_nothrow_move_constructible<buffer_entry_t>::value,
+                "default move constructor expected");
 
   buffer_t& push_buffer(size_t offset, const bucket_size_t& bucket) {
     auto& allocator = allocator_ref_t::get();

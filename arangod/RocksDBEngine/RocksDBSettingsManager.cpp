@@ -180,9 +180,12 @@ Result RocksDBSettingsManager::sync(bool force) {
     TRI_ASSERT(!vocbase->isDangling());
     TRI_DEFER(vocbase->release());
 
-    // intentionally do not `useCollection`, tends to break CI tests
-    TRI_vocbase_col_status_e status;
-    std::shared_ptr<LogicalCollection> coll = vocbase->useCollection(cid, status);
+    std::shared_ptr<LogicalCollection> coll;
+    try {
+      coll = vocbase->useCollection(cid, /*checkPermissions*/ false);
+    } catch (...) {
+      // will fail if collection does not exist
+    }
     if (!coll) {
       continue;
     }

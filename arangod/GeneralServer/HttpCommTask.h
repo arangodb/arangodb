@@ -52,7 +52,7 @@ class HttpCommTask final : public GeneralCommTask<T> {
 
   bool readCallback(asio_ns::error_code ec) override;
 
-  void sendResponse(std::unique_ptr<GeneralResponse> response, RequestStatistics* stat) override;
+  void sendResponse(std::unique_ptr<GeneralResponse> response, RequestStatistics::Item stat) override;
 
   std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode, uint64_t messageId) override;
 
@@ -72,7 +72,7 @@ class HttpCommTask final : public GeneralCommTask<T> {
   void processRequest();
 
   // called on IO context thread
-  void writeResponse(RequestStatistics* stat);
+  void writeResponse(RequestStatistics::Item stat);
 
  private:
   /// the node http-parser

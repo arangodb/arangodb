@@ -84,8 +84,7 @@ int HttpCommTask<T>::on_message_began(llhttp_t* p) {
   me->_messageDone = false;
 
   // acquire a new statistics entry for the request
-  RequestStatistics* stat = me->acquireStatistics(1UL);
-  RequestStatistics::SET_READ_START(stat, TRI_microtime());
+  me->acquireStatistics(1UL).SET_READ_START(TRI_microtime());
 
   return HPE_OK;
 }
@@ -96,13 +95,12 @@ int HttpCommTask<T>::on_url(llhttp_t* p, const char* at, size_t len) {
   me->_request->parseUrl(at, len);
   me->_request->setRequestType(llhttpToRequestType(p));
   if (me->_request->requestType() == RequestType::ILLEGAL) {
-    me->addSimpleResponse(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                          rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
+    me->sendSimpleResponse(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                           rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
     return HPE_USER;
   }
 
-  RequestStatistics* stat = me->statistics(1UL);
-  RequestStatistics::SET_REQUEST_TYPE(stat, me->_request->requestType());
+  me->statistics(1UL).SET_REQUEST_TYPE(me->_request->requestType());
 
   return HPE_OK;
 }
@@ -149,12 +147,12 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
 
   if ((p->http_major != 1 && p->http_minor != 0) &&
       (p->http_major != 1 && p->http_minor != 1)) {
-    me->addSimpleResponse(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED,
-                          rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
+    me->sendSimpleResponse(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED,
+                           rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
     return HPE_USER;
   }
   if (p->content_length > GeneralCommTask<T>::MaximalBodySize) {
-    me->addSimpleResponse(rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE,
+    me->sendSimpleResponse(rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE,
                           rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
     return HPE_USER;
   }
@@ -195,8 +193,7 @@ template <SocketType T>
 int HttpCommTask<T>::on_message_complete(llhttp_t* p) {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
 
-  RequestStatistics* stat = me->statistics(1UL);
-  RequestStatistics::SET_READ_END(stat);
+  me->statistics(1UL).SET_READ_END();
   me->_messageDone = true;
 
   return HPE_PAUSED;
@@ -210,7 +207,7 @@ HttpCommTask<T>::HttpCommTask(GeneralServer& server, ConnectionInfo info,
       _shouldKeepAlive(false),
       _messageDone(false),
       _allowMethodOverride(GeneralServerFeature::allowMethodOverride()) {
-  ConnectionStatistics::SET_HTTP(this->_connectionStatistics);
+  this->_connectionStatistics.SET_HTTP();
 
   // initialize http parsing code
   llhttp_settings_init(&_parserSettings);
@@ -262,8 +259,7 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
     // Remove consumed data from receive buffer.
     this->_protocol->buffer.consume(nparsed);
     // And count it in the statistics:
-    RequestStatistics* stat = this->statistics(1UL);
-    RequestStatistics::ADD_RECEIVED_BYTES(stat, nparsed);
+    this->statistics(1UL).ADD_RECEIVED_BYTES(nparsed);
 
     if (_messageDone) {
       TRI_ASSERT(err == HPE_PAUSED);
@@ -300,41 +296,56 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
 namespace {
 static constexpr const char* vst10 = "VST/1.0\r\n\r\n";
 static constexpr const char* vst11 = "VST/1.1\r\n\r\n";
+static constexpr const char* h2Preface = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n";
+static constexpr size_t vstLen = 11;          // length of vst connection preface
+static constexpr size_t h2PrefaceLen = 24;    // length of h2 connection preface
+static constexpr size_t minHttpRequestLen = 18; // min length of http 1.0 request
 }  // namespace
 
 template <SocketType T>
 void HttpCommTask<T>::checkVSTPrefix() {
   auto cb = [self = this->shared_from_this()](asio_ns::error_code const& ec, size_t nread) {
-    auto* me = static_cast<HttpCommTask<T>*>(self.get());
-    if (ec || nread < 11) {
-      me->close(ec);
+    auto& me = static_cast<HttpCommTask<T>&>(*self);
+    if (ec || nread < vstLen) {
+      me.close(ec);
       return;
     }
-    me->_protocol->buffer.commit(nread);
+    me._protocol->buffer.commit(nread);
 
-    auto bg = asio_ns::buffers_begin(me->_protocol->buffer.data());
-    if (std::equal(::vst10, ::vst10 + 11, bg, bg + 11)) {
-      me->_protocol->buffer.consume(11);  // remove VST/1.0 prefix
-      auto commTask = std::make_unique<VstCommTask<T>>(me->_server, me->_connectionInfo,
-                                                       std::move(me->_protocol),
+    auto bg = asio_ns::buffers_begin(me._protocol->buffer.data());
+    if (std::equal(::vst10, ::vst10 + vstLen, bg, bg + ptrdiff_t(vstLen))) {
+      me._protocol->buffer.consume(vstLen);  // remove VST/1.0 prefix
+      auto commTask = std::make_unique<VstCommTask<T>>(me._server, me._connectionInfo,
+                                                       std::move(me._protocol),
                                                        fuerte::vst::VST1_0);
-      me->_server.registerTask(std::move(commTask));
+      me._server.registerTask(std::move(commTask));
+      me.close(ec);
       return;  // vst 1.0
 
-    } else if (std::equal(::vst11, ::vst11 + 11, bg, bg + 11)) {
-      me->_protocol->buffer.consume(11);  // remove VST/1.1 prefix
-      auto commTask = std::make_unique<VstCommTask<T>>(me->_server, me->_connectionInfo,
-                                                       std::move(me->_protocol),
+    } else if (std::equal(::vst11, ::vst11 + vstLen, bg, bg + ptrdiff_t(vstLen))) {
+      me._protocol->buffer.consume(vstLen);  // remove VST/1.1 prefix
+      auto commTask = std::make_unique<VstCommTask<T>>(me._server, me._connectionInfo,
+                                                       std::move(me._protocol),
                                                        fuerte::vst::VST1_1);
-      me->_server.registerTask(std::move(commTask));
+      me._server.registerTask(std::move(commTask));
+      me.close(ec);
       return;  // vst 1.1
+    } else if (nread >= h2PrefaceLen &&
+               std::equal(::h2Preface, ::h2Preface + h2PrefaceLen,
+                          bg, bg + ptrdiff_t(h2PrefaceLen))) {
+      // do not remove the preface here
+      auto commTask = std::make_unique<H2CommTask<T>>(me._server, me._connectionInfo,
+                                                      std::move(me._protocol));
+      me._server.registerTask(std::move(commTask));
+      me.close(ec);
+      return;  // http2 upgrade
     }
 
-    me->asyncReadSome();  // continue reading
+    me.asyncReadSome();  // continue reading
   };
   auto buffs = this->_protocol->buffer.prepare(GeneralCommTask<T>::ReadBlockSize);
   asio_ns::async_read(this->_protocol->socket, buffs,
-                      asio_ns::transfer_at_least(11), std::move(cb));
+                      asio_ns::transfer_at_least(minHttpRequestLen), std::move(cb));
 }
 
 #ifdef USE_DTRACE
@@ -353,6 +364,11 @@ void HttpCommTask<T>::processRequest() {
 
   TRI_ASSERT(_request);
   this->_protocol->timer.cancel();
+  this->_requestCount += 1;
+  if (this->_keepAliveTimeoutReached) {
+    return ;  // we have to ignore this request because the connection has already been closed
+  }
+
 
   // we may have gotten an H2 Upgrade request
   if (ADB_UNLIKELY(_parser.upgrade)) {
@@ -364,6 +380,7 @@ void HttpCommTask<T>::processRequest() {
       auto task = std::make_shared<H2CommTask<T>>(this->_server, this->_connectionInfo,
                                                   std::move(this->_protocol));
       task->upgradeHttp1(std::move(_request));
+      this->close();
       return;
     }
   }
@@ -405,7 +422,7 @@ void HttpCommTask<T>::processRequest() {
 
   // We want to separate superuser token traffic:
   if (_request->authenticated() && _request->user().empty()) {
-    RequestStatistics::SET_SUPERUSER(this->statistics(1UL));
+    this->statistics(1UL).SET_SUPERUSER();
   }
 
   // first check whether we allow the request to continue
@@ -416,8 +433,8 @@ void HttpCommTask<T>::processRequest() {
 
   // unzip / deflate
   if (!this->handleContentEncoding(*_request)) {
-    this->addErrorResponse(rest::ResponseCode::BAD, _request->contentTypeResponse(),
-                           1, TRI_ERROR_BAD_PARAMETER, "decoding error");
+    this->sendErrorResponse(rest::ResponseCode::BAD, _request->contentTypeResponse(),
+                            1, TRI_ERROR_BAD_PARAMETER, "decoding error");
     return;
   }
 
@@ -438,7 +455,7 @@ static void DTraceHttpCommTaskSendResponse(size_t) {}
 
 template <SocketType T>
 void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
-                                   RequestStatistics* stat) {
+                                   RequestStatistics::Item stat) {
 
   DTraceHttpCommTaskSendResponse((size_t) this);
 
@@ -543,7 +560,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   TRI_ASSERT(_response == nullptr);
   _response = response.stealBody();
   // append write buffer and statistics
-  double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
+  double const totalTime = stat.ELAPSED_SINCE_READ_START();
 
   // and give some request information
   LOG_TOPIC("8f555", DEBUG, Logger::REQUESTS)
@@ -554,9 +571,10 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
       << Logger::FIXED(totalTime, 6);
 
   // sendResponse is always called from a scheduler thread
-  this->_protocol->context.io_context.post([self = this->shared_from_this(), stat]() mutable {
-    static_cast<HttpCommTask<T>&>(*self).writeResponse(stat);
-  });
+  boost::asio::post(this->_protocol->context.io_context,
+    [self = this->shared_from_this(), stat = std::move(stat)]() mutable {
+      static_cast<HttpCommTask<T>&>(*self).writeResponse(std::move(stat));
+    });
 }
 
 #ifdef USE_DTRACE
@@ -574,13 +592,13 @@ static void DTraceHttpCommTaskResponseWritten(size_t) {}
 
 // called on IO context thread
 template <SocketType T>
-void HttpCommTask<T>::writeResponse(RequestStatistics* stat) {
+void HttpCommTask<T>::writeResponse(RequestStatistics::Item stat) {
 
   DTraceHttpCommTaskWriteResponse((size_t) this);
 
   TRI_ASSERT(!_header.empty());
 
-  RequestStatistics::SET_WRITE_START(stat);
+  stat.SET_WRITE_START();
 
   std::array<asio_ns::const_buffer, 2> buffers;
   buffers[0] = asio_ns::buffer(_header.data(), _header.size());
@@ -591,13 +609,13 @@ void HttpCommTask<T>::writeResponse(RequestStatistics* stat) {
   // FIXME measure performance w/o sync write
   asio_ns::async_write(this->_protocol->socket, buffers,
                        [self = this->shared_from_this(),
-                        stat](asio_ns::error_code ec, size_t nwrite) {
+                        stat = std::move(stat)](asio_ns::error_code ec, size_t nwrite) {
 
                          DTraceHttpCommTaskResponseWritten((size_t) self.get());
 
                          auto* thisPtr = static_cast<HttpCommTask<T>*>(self.get());
-                         RequestStatistics::SET_WRITE_END(stat);
-                         RequestStatistics::ADD_SENT_BYTES(stat, nwrite);
+                         stat.SET_WRITE_END();
+                         stat.ADD_SENT_BYTES(nwrite);
 
                          thisPtr->_response.reset();
 
@@ -607,9 +625,6 @@ void HttpCommTask<T>::writeResponse(RequestStatistics* stat) {
                          } else {  // ec == HPE_PAUSED
                            llhttp_resume(&thisPtr->_parser);
                            thisPtr->asyncReadSome();
-                         }
-                         if (stat != nullptr) {
-                           stat->release();
                          }
                        });
 }

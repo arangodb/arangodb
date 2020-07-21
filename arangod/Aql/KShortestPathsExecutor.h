@@ -32,8 +32,6 @@
 
 #include <velocypack/Builder.h>
 
-using namespace arangodb::velocypack;
-
 namespace arangodb {
 
 class Result;
@@ -78,7 +76,7 @@ class KShortestPathsExecutorInfos {
 
   KShortestPathsExecutorInfos() = delete;
 
-  KShortestPathsExecutorInfos(KShortestPathsExecutorInfos&&) noexcept = default;
+  KShortestPathsExecutorInfos(KShortestPathsExecutorInfos&&) = default;
   KShortestPathsExecutorInfos(KShortestPathsExecutorInfos const&) = delete;
   ~KShortestPathsExecutorInfos() = default;
 
@@ -183,7 +181,7 @@ class KShortestPathsExecutor {
   [[nodiscard]] auto getVertexId(bool isTarget, arangodb::velocypack::Slice& id) -> bool;
 
   [[nodiscard]] auto getVertexId(KShortestPathsExecutorInfos::InputVertex const& vertex,
-                                 InputAqlItemRow& row, Builder& builder, Slice& id) -> bool;
+                                 InputAqlItemRow& row, arangodb::velocypack::Builder& builder, arangodb::velocypack::Slice& id) -> bool;
 
  private:
   Infos& _infos;

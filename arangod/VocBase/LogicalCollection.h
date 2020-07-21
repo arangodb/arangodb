@@ -28,7 +28,6 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
-#include "Containers/MerkleTree.h"
 #include "Futures/Future.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/CountCache.h"
@@ -86,6 +85,9 @@ class LogicalCollection : public LogicalDataSource {
   LogicalCollection& operator=(LogicalCollection const&) = delete;
   ~LogicalCollection() override;
 
+  /// @brief maximal collection name length
+  static constexpr size_t maxNameLength = 256;
+
   enum class Version { v30 = 5, v31 = 6, v33 = 7, v34 = 8, v37 = 9 };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -110,8 +112,8 @@ class LogicalCollection : public LogicalDataSource {
   std::string globallyUniqueId() const;
 
   // For normal collections the realNames is just a vector of length 1
-  // with its name. For smart edge collections (enterprise only) this is
-  // different.
+  // with its name. For smart edge collections (Enterprise Edition only)
+  // this is different.
   virtual std::vector<std::string> realNames() const {
     return std::vector<std::string>{name()};
   }
@@ -124,8 +126,6 @@ class LogicalCollection : public LogicalDataSource {
   TRI_vocbase_col_status_e getStatusLocked();
 
   void executeWhileStatusWriteLocked(std::function<void()> const& callback);
-  void executeWhileStatusLocked(std::function<void()> const& callback);
-  bool tryExecuteWhileStatusLocked(std::function<void()> const& callback);
 
   /// @brief try to fetch the collection status under a lock
   /// the boolean value will be set to true if the lock could be acquired
@@ -140,9 +140,11 @@ class LogicalCollection : public LogicalDataSource {
   bool waitForSync() const { return _waitForSync; }
   void waitForSync(bool value) { _waitForSync = value; }
 #ifdef USE_ENTERPRISE
+  bool isDisjoint() const { return _isDisjoint; }
   bool isSmart() const { return _isSmart; }
   bool isSmartChild() const { return _isSmartChild; }
 #else
+  bool isDisjoint() const { return false; }
   bool isSmart() const { return false; }
   bool isSmartChild() const { return false; }
 #endif
@@ -156,8 +158,8 @@ class LogicalCollection : public LogicalDataSource {
 
   bool hasClusterWideUniqueRevs() const;
 
-  /// @brief return the name of the smart join attribute (empty string
-  /// if no smart join attribute is present)
+  /// @brief return the name of the SmartJoin attribute (empty string
+  /// if no SmartJoin attribute is present)
   std::string const& smartJoinAttribute() const { return _smartJoinAttribute; }
 
   // SECTION: sharding
@@ -214,7 +216,7 @@ class LogicalCollection : public LogicalDataSource {
                        std::function<bool(arangodb::Index const*, uint8_t&)> const& filter) const;
 
   /// @brief a method to skip certain documents in AQL write operations,
-  /// this is only used in the enterprise edition for smart graphs
+  /// this is only used in the Enterprise Edition for SmartGraphs
   virtual bool skipForAqlWrite(velocypack::Slice document, std::string const& key) const;
 
   bool allowUserKeys() const;
@@ -327,8 +329,14 @@ class LogicalCollection : public LogicalDataSource {
 
   std::unique_ptr<FollowerInfo> const& followers() const;
 
+  /// @brief returns the value of _syncByRevision
   bool syncByRevision() const;
+  /// @brief sets the value of _syncByRevision
   void setSyncByRevision(bool);
+  
+  /// @brief returns the value of _syncByRevision, but only for "real" collections with data backing.
+  /// returns false for all collections with no data backing.
+  bool useSyncByRevision() const;
 
  protected:
   virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder& builder,
@@ -369,9 +377,12 @@ class LogicalCollection : public LogicalDataSource {
   bool const _isAStub;
 
 #ifdef USE_ENTERPRISE
-  // @brief Flag if this collection is a smart one. (Enterprise only)
+  // @brief Flag if this collection is a disjoint smart one. (Enterprise Edition only)
+  // can only be true if _isSmart is also true
+  bool const _isDisjoint;
+  // @brief Flag if this collection is a smart one. (Enterprise Edition only)
   bool const _isSmart;
-  // @brief Flag if this collection is a child of a smart collection (Enterprise only)
+  // @brief Flag if this collection is a child of a smart collection (Enterprise Edition only)
   bool const _isSmartChild;
 #endif
 

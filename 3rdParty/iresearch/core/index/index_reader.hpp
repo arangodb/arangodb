@@ -23,16 +23,17 @@
 #ifndef IRESEARCH_INDEX_READER_H
 #define IRESEARCH_INDEX_READER_H
 
-#include "store/directory.hpp"
-#include "store/directory_attributes.hpp"
-#include "utils/string.hpp"
-#include "formats/formats.hpp"
-#include "utils/memory.hpp"
-#include "utils/iterator.hpp"
-
 #include <vector>
 #include <numeric>
 #include <functional>
+
+#include "index/field_meta.hpp"
+#include "formats/formats.hpp"
+#include "store/directory.hpp"
+#include "store/directory_attributes.hpp"
+#include "utils/iterator.hpp"
+#include "utils/memory.hpp"
+#include "utils/string.hpp"
 
 NS_ROOT
 
@@ -43,18 +44,21 @@ struct sub_reader;
 /// @brief generic interface for accessing an index
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API index_reader {
-  class reader_iterator
-      : public std::iterator<std::forward_iterator_tag, const sub_reader> {
+  class reader_iterator {
    public:
-    typedef std::iterator<std::forward_iterator_tag, const sub_reader> iterator_t;
+    using iterator_category = std::forward_iterator_tag;
+    using value_type = const sub_reader;
+    using pointer = value_type*;
+    using reference = value_type&;
+    using difference_type = void;
 
-    iterator_t::reference operator*() const {
+    reference operator*() const {
       // can't mark noexcept because of virtual operator[]
       assert(i_ < reader_->size());
       return (*reader_)[i_];
     }
 
-    iterator_t::pointer operator->() const {
+    pointer operator->() const {
       return &(**this);
     }
 
@@ -89,8 +93,7 @@ struct IRESEARCH_API index_reader {
     size_t i_;
   }; // reader_iterator
 
-  DECLARE_SHARED_PTR(const index_reader);
-  DEFINE_FACTORY_INLINE(index_reader)
+  using ptr = std::shared_ptr<const index_reader>;
 
   virtual ~index_reader() = default;
 
@@ -122,8 +125,7 @@ struct IRESEARCH_API index_reader {
 /// @brief generic interface for accessing an index segment
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API sub_reader : index_reader {
-  DECLARE_SHARED_PTR(const sub_reader);
-  DEFINE_FACTORY_INLINE(sub_reader)
+  using ptr = std::shared_ptr<const sub_reader>;
 
   static const sub_reader& empty() noexcept;
 
@@ -149,6 +151,27 @@ struct IRESEARCH_API sub_reader : index_reader {
 
   const columnstore_reader::column_reader* column_reader(const string_ref& field) const;
 }; // sub_reader
+
+template<typename Visitor, typename FilterVisitor>
+void visit(const index_reader& index, const string_ref& field,
+           const flags& required, const FilterVisitor& field_visitor,
+           Visitor& visitor) {
+  for (auto& segment : index) {
+    const auto* reader = segment.field(field);
+
+    if (!reader || (!required.empty() && !required.is_subset_of(reader->meta().features))) {
+      continue;
+    }
+
+    field_visitor(segment, *reader, visitor);
+  }
+}
+
+template<typename Visitor, typename FilterVisitor>
+void visit(const index_reader& index, const string_ref& field,
+           const FilterVisitor& field_visitor, Visitor& visitor) {
+  visit(index, field, flags::empty_instance(), field_visitor, visitor);
+}
 
 NS_END
 

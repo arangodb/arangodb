@@ -43,8 +43,7 @@ NS_LOCAL
 
 bool all_equal(
     const uint32_t* RESTRICT begin,
-    const uint32_t* RESTRICT end
-) noexcept {
+    const uint32_t* RESTRICT end) noexcept {
 #ifdef IRESEARCH_SSE4_2
   assert(0 == (std::distance(begin, end) % SIMDBlockSize));
 
@@ -74,8 +73,7 @@ bool all_equal(
 void fill(
     uint32_t* RESTRICT begin,
     uint32_t* RESTRICT end,
-    const uint32_t value
-) noexcept {
+    const uint32_t value) noexcept {
   assert(0 == (std::distance(begin, end) % SIMDBlockSize));
 
   auto* mmbegin = reinterpret_cast<__m128i*>(begin);
@@ -83,8 +81,39 @@ void fill(
 
   const auto mmvalue = _mm_set1_epi32(value);
 
-  for (; mmbegin != mmend; ++mmbegin) {
+  for (; mmbegin != mmend; mmbegin += 4) {
     _mm_storeu_si128(mmbegin, mmvalue);
+    _mm_storeu_si128(mmbegin + 1, mmvalue);
+    _mm_storeu_si128(mmbegin + 2, mmvalue);
+    _mm_storeu_si128(mmbegin + 3, mmvalue);
+  }
+}
+
+void fill_block(
+    uint32_t* RESTRICT begin,
+    const uint32_t value) noexcept {
+  auto* mmbegin = reinterpret_cast<__m128i*>(begin);
+  const auto mmvalue = _mm_set1_epi32(value);
+
+  for (size_t i = 0; i < 8; mmbegin += 4, ++i) {
+    _mm_storeu_si128(mmbegin, mmvalue);
+    _mm_storeu_si128(mmbegin + 1, mmvalue);
+    _mm_storeu_si128(mmbegin + 2, mmvalue);
+    _mm_storeu_si128(mmbegin + 3, mmvalue);
+  }
+}
+
+void unpack(const uint32_t* RESTRICT encoded,
+            const size_t size,
+            const uint32_t bits,
+            uint32_t* decoded) noexcept {
+  const auto* decoded_end = decoded + size;
+  const size_t step = 4*bits;
+
+  while (decoded != decoded_end) {
+    ::simdunpack(reinterpret_cast<const __m128i*>(encoded), decoded, bits);
+    decoded += SIMDBlockSize;
+    encoded += step;
   }
 }
 
@@ -93,6 +122,41 @@ NS_END
 NS_ROOT
 NS_BEGIN(encode)
 NS_BEGIN(bitpack)
+
+void read_block_simd(
+    data_input& in,
+    uint32_t* RESTRICT encoded,
+    uint32_t* RESTRICT decoded) {
+  assert(encoded);
+  assert(decoded);
+
+  const uint32_t bits = in.read_vint();
+  if (ALL_EQUAL == bits) {
+    fill_block(decoded, in.read_vint());
+  } else {
+    const size_t required = packed::bytes_required_32(SIMDBlockSize, bits);
+    const auto* buf = in.read_buffer(required, BufferHint::NORMAL);
+
+    if (buf) {
+      ::simdunpack(reinterpret_cast<const __m128i*>(buf), decoded, bits);
+      return;
+    }
+
+#ifdef IRESEARCH_DEBUG
+    const auto read = in.read_bytes(
+      reinterpret_cast<byte_type*>(encoded),
+      required);
+    assert(read == required);
+    UNUSED(read);
+#else
+    in.read_bytes(
+      reinterpret_cast<byte_type*>(encoded),
+      required);
+#endif // IRESEARCH_DEBUG
+
+    ::simdunpack(reinterpret_cast<const __m128i*>(encoded), decoded, bits);
+  }
+}
 
 void read_block_simd(
     data_input& in,
@@ -107,31 +171,52 @@ void read_block_simd(
   if (ALL_EQUAL == bits) {
     fill(decoded, decoded + size, in.read_vint());
   } else {
-    const size_t reqiured = packed::bytes_required_32(size, bits);
+    const size_t required = packed::bytes_required_32(size, bits);
+    const auto* buf = in.read_buffer(required, BufferHint::NORMAL);
+
+    if (buf) {
+      ::unpack(reinterpret_cast<const uint32_t*>(buf), size, bits, decoded);
+
+      return;
+    }
 
 #ifdef IRESEARCH_DEBUG
     const auto read = in.read_bytes(
       reinterpret_cast<byte_type*>(encoded),
-      reqiured 
-    );
-    assert(read == reqiured);
+      required);
+    assert(read == required);
     UNUSED(read);
 #else
     in.read_bytes(
       reinterpret_cast<byte_type*>(encoded),
-      reqiured 
-    );
+      required);
 #endif // IRESEARCH_DEBUG
 
-    const auto* decoded_end = decoded + size;
-    const size_t step = 4*bits;
-
-    while (decoded != decoded_end) {
-      ::simdunpack(reinterpret_cast<const __m128i*>(encoded), decoded, bits);
-      decoded += SIMDBlockSize;
-      encoded += step;
-    }
+    ::unpack(encoded, size, bits, decoded);
   }
+}
+
+uint32_t write_block_simd(
+    data_output& out,
+    const uint32_t* RESTRICT decoded,
+    uint32_t* RESTRICT encoded) {
+  assert(encoded);
+  assert(decoded);
+
+  if (all_equal(decoded, decoded + SIMDBlockSize)) {
+    out.write_vint(ALL_EQUAL);
+    out.write_vint(*decoded);
+    return ALL_EQUAL;
+  }
+
+  const auto bits = ::maxbits_length(decoded, SIMDBlockSize);
+  std::memset(encoded, 0, sizeof(uint32_t) * SIMDBlockSize); // FIXME do we need memset???
+  ::simdpackwithoutmask(decoded, reinterpret_cast<__m128i*>(encoded), bits);
+
+  out.write_vint(bits);
+  out.write_bytes(reinterpret_cast<const byte_type*>(encoded), 16*bits);
+
+  return bits;
 }
 
 uint32_t write_block_simd(
@@ -165,8 +250,7 @@ uint32_t write_block_simd(
   out.write_vint(bits);
   out.write_bytes(
     reinterpret_cast<const byte_type*>(encoded),
-    size/SIMDBlockSize*4*step
-  );
+    size/SIMDBlockSize*4*step);
 
   return bits;
 }
@@ -176,7 +260,3 @@ NS_END // bitpack
 NS_END // ROOT
 
 #endif // IRESEARCH_SSE2
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

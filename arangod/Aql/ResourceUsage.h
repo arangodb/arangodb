@@ -30,44 +30,50 @@
 #include "Basics/system-compiler.h"
 
 #include <algorithm>
+#include <atomic>
 
 namespace arangodb {
 namespace aql {
 
-struct ResourceUsage {
+struct ResourceUsage final {
   constexpr ResourceUsage() 
       : memoryUsage(0), 
         peakMemoryUsage(0) {}
-
-  ResourceUsage(ResourceUsage const& other) = default;
 
   void clear() { 
     memoryUsage = 0; 
     peakMemoryUsage = 0;
   }
 
-  size_t memoryUsage;
-  size_t peakMemoryUsage;
+  std::atomic<size_t> memoryUsage;
+  std::atomic<size_t> peakMemoryUsage;
 };
 
-struct ResourceMonitor {
-  ResourceMonitor() : currentResources(), maxResources() {}
-  explicit ResourceMonitor(ResourceUsage const& maxResources)
-      : currentResources(), maxResources(maxResources) {}
+struct ResourceMonitor final {
+  ResourceMonitor() : currentResources(), maxMemoryUsage(0) {}
 
-  void setMemoryLimit(size_t value) { maxResources.memoryUsage = value; }
+  void setMemoryLimit(size_t value) { maxMemoryUsage = value; }
+
+  size_t memoryLimit() const { return maxMemoryUsage; }
 
   inline void increaseMemoryUsage(size_t value) {
-    currentResources.memoryUsage += value;
+    size_t current = currentResources.memoryUsage.fetch_add(value, std::memory_order_relaxed);
+    current += value;
 
-    if (maxResources.memoryUsage > 0 &&
-        ADB_UNLIKELY(currentResources.memoryUsage > maxResources.memoryUsage)) {
-      currentResources.memoryUsage -= value;
+    if (maxMemoryUsage > 0 && ADB_UNLIKELY(current > maxMemoryUsage)) {
+      currentResources.memoryUsage.fetch_sub(value, std::memory_order_relaxed);
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_RESOURCE_LIMIT, "query would use more memory than allowed");
     }
-
-    currentResources.peakMemoryUsage = std::max(currentResources.memoryUsage, currentResources.peakMemoryUsage);
+    
+    size_t peak = currentResources.peakMemoryUsage.load(std::memory_order_relaxed);
+    while (peak < current) {
+      if (currentResources.peakMemoryUsage.compare_exchange_weak(peak, current,
+                                                                 std::memory_order_release,
+                                                                 std::memory_order_relaxed)) {
+        break;
+      }
+    }
   }
 
   inline void decreaseMemoryUsage(size_t value) noexcept {
@@ -76,9 +82,15 @@ struct ResourceMonitor {
   }
 
   void clear() { currentResources.clear(); }
+  
+  size_t peakMemoryUsage() const {
+    return currentResources.peakMemoryUsage.load(std::memory_order_relaxed);
+  }
+  
+private:
 
   ResourceUsage currentResources;
-  ResourceUsage maxResources;
+  std::size_t maxMemoryUsage;
 };
 
 }  // namespace aql

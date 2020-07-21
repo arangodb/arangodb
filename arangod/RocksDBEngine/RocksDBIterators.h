@@ -50,20 +50,22 @@ class RocksDBAllIndexIterator final : public IndexIterator {
 
   char const* typeName() const override { return "all-index-iterator"; }
 
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
-  bool nextDocument(DocumentCallback const& cb, size_t limit) override;
-  void skip(uint64_t count, uint64_t& skipped) override;
-
-  void reset() override;
+  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override;
+  bool nextDocumentImpl(DocumentCallback const& cb, size_t limit) override;
+  void skipImpl(uint64_t count, uint64_t& skipped) override;
+  void resetImpl() override;
 
  private:
   bool outOfRange() const;
+  void seekIfRequired();
 
  private:
   RocksDBKeyBounds const _bounds;
   rocksdb::Slice _upperBound;  // used for iterate_upper_bound
   std::unique_ptr<rocksdb::Iterator> _iterator;
   rocksdb::Comparator const* _cmp;
+  // we use _mustSeek to save repeated seeks for the same start key
+  bool _mustSeek;
 };
 
 class RocksDBAnyIndexIterator final : public IndexIterator {
@@ -73,10 +75,10 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
 
   char const* typeName() const override { return "any-index-iterator"; }
 
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
-  bool nextDocument(DocumentCallback const& cb, size_t limit) override;
+  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override;
+  bool nextDocumentImpl(DocumentCallback const& cb, size_t limit) override;
   // cppcheck-suppress virtualCallInConstructor ; desired impl
-  void reset() override;
+  void resetImpl() override;
 
  private:
   bool outOfRange() const;

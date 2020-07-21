@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,6 +52,7 @@ class TransactionState;
 namespace transaction {
 
 class Methods;
+struct Options;
 
 class Context {
  public:
@@ -65,9 +66,16 @@ class Context {
  public:
   /// @brief destroy the context
   virtual ~Context();
+  
+  /// @brief destroys objects owned by the context,
+  /// this can be called multiple times.
+  /// currently called by dtor and by unit test mocks. 
+  /// we cannot move this into the dtor (where it was before) because
+  /// the mocked objects in unittests do not seem to call it and effectively leak.
+  void cleanup() noexcept;
 
   /// @brief factory to create a custom type handler, not managed
-  static arangodb::velocypack::CustomTypeHandler* createCustomTypeHandler(
+  static std::unique_ptr<arangodb::velocypack::CustomTypeHandler> createCustomTypeHandler(
       TRI_vocbase_t&, arangodb::CollectionNameResolver const&);
 
   /// @brief return the vocbase
@@ -104,16 +112,14 @@ class Context {
 
  public:
   /// @brief get a custom type handler
-  virtual std::shared_ptr<arangodb::velocypack::CustomTypeHandler> orderCustomTypeHandler() = 0;
+  virtual arangodb::velocypack::CustomTypeHandler* orderCustomTypeHandler() = 0;
 
-  /// @brief get parent transaction (if any) increase nesting
-  virtual TransactionState* getParentTransaction() const = 0;
+  /// @brief get transaction state, determine commit responsiblity
+  virtual std::shared_ptr<TransactionState> acquireState(transaction::Options const& options,
+                                                         bool& responsibleForCommit) = 0;
 
   /// @brief whether or not the transaction is embeddable
   virtual bool isEmbeddable() const = 0;
-
-  /// @brief register the transaction in the context
-  virtual void registerTransaction(TransactionState*) = 0;
 
   virtual CollectionNameResolver const& resolver() = 0;
 
@@ -123,20 +129,28 @@ class Context {
   /// @brief generate persisted transaction ID
   virtual TRI_voc_tid_t generateId() const;
   
+  /// @brief only supported on some contexts
+  virtual std::shared_ptr<Context> clone() const;
+  
+  virtual bool isV8Context() { return false; }
+  
   /// @brief generates correct ID based on server type
   static TRI_voc_tid_t makeTransactionId();
 
  protected:
   /// @brief create a resolver
   CollectionNameResolver const* createResolver();
+  
+  std::shared_ptr<TransactionState> createState(transaction::Options const& options);
 
  protected:
   TRI_vocbase_t& _vocbase;
   CollectionNameResolver const* _resolver;
-  std::shared_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
+  std::unique_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
 
-  ::arangodb::containers::SmallVector<arangodb::velocypack::Builder*, 32>::allocator_type::arena_type _arena;
-  ::arangodb::containers::SmallVector<arangodb::velocypack::Builder*, 32> _builders;
+  using BuilderList = containers::SmallVector<arangodb::velocypack::Builder*, 32>;
+  BuilderList::allocator_type::arena_type _arena;
+  BuilderList _builders;
 
   std::unique_ptr<arangodb::basics::StringBuffer> _stringBuffer;
 

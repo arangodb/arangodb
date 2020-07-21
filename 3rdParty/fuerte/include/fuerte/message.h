@@ -88,7 +88,7 @@ struct MessageHeader {
   StringMap _meta;  /// Header meta data (equivalent to HTTP headers)
   short _version;
   ContentType _contentType = ContentType::Unset;
-  ContentType _acceptType = ContentType::Unset;
+  ContentType _acceptType = ContentType::VPack;
 };
 
 struct RequestHeader final : public MessageHeader {
@@ -242,6 +242,7 @@ class Response : public Message {
 
   // statusCode returns the (HTTP) status code for the request (200==OK).
   StatusCode statusCode() const noexcept { return header.responseCode; }
+
   // checkStatus returns true if the statusCode equals one of the given valid
   // code, false otherwise.
   bool checkStatus(std::initializer_list<StatusCode> validStatusCodes) const {

@@ -24,7 +24,7 @@
 #ifndef ARANGOD_CLUSTER_CLUSTER_TRAVERSER_H
 #define ARANGOD_CLUSTER_CLUSTER_TRAVERSER_H 1
 
-#include "Cluster/TraverserEngineRegistry.h"
+#include "Aql/types.h"
 #include "Graph/Traverser.h"
 #include "Graph/TraverserOptions.h"
 #include "VocBase/LogicalCollection.h"
@@ -45,8 +45,8 @@ class ClusterTraverser final : public Traverser {
 
  public:
   ClusterTraverser(TraverserOptions* opts,
-                   std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
-                   std::string const& dbname, transaction::Methods* trx);
+                   std::unordered_map<ServerID, aql::EngineId> const* engines,
+                   std::string const& dbname);
 
   ~ClusterTraverser() = default;
 
@@ -93,7 +93,7 @@ class ClusterTraverser final : public Traverser {
 
   std::string _dbname;
 
-  std::unordered_map<ServerID, traverser::TraverserEngineID> const* _engines;
+  std::unordered_map<ServerID, aql::EngineId> const* _engines;
 
   std::unordered_set<arangodb::velocypack::StringRef> _verticesToFetch;
 };

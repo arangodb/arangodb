@@ -63,7 +63,7 @@ main(){
   addEvent updateCoordinator updateCoordinator@Transaction.cpp
   addEvent replaceCoordinator replaceCoordinator@Transaction.cpp
   addEvent documentCoordinator documentCoordinator@Transaction.cpp
-  # For the enterprise version:
+  # For the Enterprise Edition:
   addEvent insertCoordinator insertCoordinator@TransactionEE.cpp
   addEvent removeCoordinator removeCoordinator@TransactionEE.cpp
   addEvent updateCoordinator updateCoordinator@TransactionEE.cpp

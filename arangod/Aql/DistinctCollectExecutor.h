@@ -53,7 +53,7 @@ class SingleRowFetcher;
 class DistinctCollectExecutorInfos {
  public:
   DistinctCollectExecutorInfos(std::pair<RegisterId, RegisterId> groupRegister,
-                               transaction::Methods* trxPtr);
+                               velocypack::Options const* opts);
 
   DistinctCollectExecutorInfos() = delete;
   DistinctCollectExecutorInfos(DistinctCollectExecutorInfos&&) = default;
@@ -62,14 +62,14 @@ class DistinctCollectExecutorInfos {
 
  public:
   [[nodiscard]] std::pair<RegisterId, RegisterId> const& getGroupRegister() const;
-  transaction::Methods* getTransaction() const;
+  velocypack::Options const* vpackOptions() const;
 
  private:
   /// @brief pairs, consisting of out register and in register
   std::pair<RegisterId, RegisterId> _groupRegister;
 
   /// @brief the transaction for this query
-  transaction::Methods* _trxPtr;
+  velocypack::Options const* _vpackOptions;
 };
 
 /**

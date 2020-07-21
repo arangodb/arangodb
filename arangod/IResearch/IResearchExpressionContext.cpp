@@ -24,13 +24,61 @@
 #include "IResearchExpressionContext.h"
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/AqlFunctionsInternalCache.h"
+#include "Aql/QueryContext.h"
 #include "Aql/IResearchViewNode.h"
 #include "Basics/StaticStrings.h"
+
+#include <Containers/HashSet.h>
 
 namespace arangodb {
 namespace iresearch {
 
 using namespace arangodb::aql;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                          ViewExpressionContextBase implementation
+// -----------------------------------------------------------------------------
+
+void ViewExpressionContextBase::registerWarning(int errorCode, char const* msg) {
+  _query->warnings().registerWarning(errorCode, msg);
+}
+
+void ViewExpressionContextBase::registerError(int errorCode, char const* msg) {
+  _query->warnings().registerError(errorCode, msg);
+}
+
+icu::RegexMatcher* ViewExpressionContextBase::buildRegexMatcher(char const* ptr, size_t length,
+                                                             bool caseInsensitive) {
+  return _aqlFunctionsInternalCache->buildRegexMatcher(ptr, length, caseInsensitive);
+}
+
+icu::RegexMatcher* ViewExpressionContextBase::buildLikeMatcher(char const* ptr, size_t length,
+                                                            bool caseInsensitive) {
+  return _aqlFunctionsInternalCache->buildLikeMatcher(ptr, length, caseInsensitive);
+}
+
+icu::RegexMatcher* ViewExpressionContextBase::buildSplitMatcher(AqlValue splitExpression,
+                                                             velocypack::Options const* opts,
+                                                             bool& isEmptyExpression) {
+  return _aqlFunctionsInternalCache->buildSplitMatcher(splitExpression, opts, isEmptyExpression);
+}
+
+arangodb::ValidatorBase* ViewExpressionContextBase::buildValidator(arangodb::velocypack::Slice const& params) {
+  return _aqlFunctionsInternalCache->buildValidator(params);
+}
+
+TRI_vocbase_t& ViewExpressionContextBase::vocbase() const {
+  return _trx->vocbase();
+}
+
+transaction::Methods& ViewExpressionContextBase::trx() const {
+  return *_trx;
+}
+
+bool ViewExpressionContextBase::killed() const  {
+  return _query->killed();
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                              ViewExpressionContext implementation

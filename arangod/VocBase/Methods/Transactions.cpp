@@ -17,10 +17,6 @@
 
 #include <velocypack/Slice.h>
 
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Transaction/IgnoreNoAccessMethods.h"
-#endif
-
 namespace arangodb {
 
 Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
@@ -117,7 +113,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
   TRI_GET_GLOBALS();
   TRI_GET_GLOBAL_STRING(WaitForSyncKey);
 
-  // do extra sanity checking for user facing APIs, parsing
+  // do extra validity checking for user facing APIs, parsing
   // is performed in `transaction::Options::fromVelocyPack`
   if (TRI_HasProperty(context, isolate, object, "lockTimeout")) {
     auto lockTimeout = object->Get(context, TRI_V8_ASCII_STRING(isolate, "lockTimeout"));
@@ -141,7 +137,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
   // extract the properties from the object
   transaction::Options trxOptions;
   {
-    // parse all other options. `allowImplicitCollections` will
+    // parse all other options. `allowImplicitCollectionsForRead` will
     // be overwritten later if is contained in `object`
     VPackBuilder builder;
     // we must use "convertFunctionsToNull" here, because "action" is most
@@ -188,7 +184,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
   std::vector<std::string> exclusiveCollections;
 
   if (TRI_HasProperty(context, isolate, collections, "allowImplicit")) {
-    trxOptions.allowImplicitCollections =
+    trxOptions.allowImplicitCollectionsForRead =
         TRI_ObjectToBoolean(isolate,
                             collections->Get(context, 
                                              TRI_V8_ASCII_STRING(isolate, "allowImplicit"))
@@ -281,7 +277,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
   v8::Handle<v8::Function> action;
   auto maybeAction = object->Get(context, TRI_V8_ASCII_STRING(isolate, "action"));
   if (!maybeAction.IsEmpty()) {
-    if(maybeAction.FromMaybe(v8::Local<v8::Value>())->IsFunction()) {
+    if (maybeAction.FromMaybe(v8::Local<v8::Value>())->IsFunction()) {
       action = v8::Handle<v8::Function>::Cast(maybeAction.FromMaybe(v8::Local<v8::Value>()));
       v8::Local<v8::Value> v8_fnname = action->GetName();
       std::string fnname = TRI_ObjectToString(isolate, v8_fnname);

@@ -26,6 +26,7 @@
 
 #include "Agency/Store.h"
 #include "AgencyCommon.h"
+#include "RestServer/MetricsFeature.h"
 #include "Utils/OperationOptions.h"
 
 #include <cstdint>
@@ -37,9 +38,7 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 
-namespace aql {
-class QueryRegistry;
-}
+class ApplicationServer;
 
 namespace velocypack {
 class Builder;
@@ -56,7 +55,7 @@ class Agent;
 class State {
  public:
   /// @brief Default constructor
-  State();
+  State(application_features::ApplicationServer& server);
 
   /// @brief Default Destructor
   virtual ~State();
@@ -82,7 +81,7 @@ class State {
   ///        Default: [first, last]
   std::vector<log_t> get(index_t = 0, index_t = (std::numeric_limits<uint64_t>::max)()) const;
 
-  
+
   uint64_t toVelocyPack(index_t lastIndex, VPackBuilder& builder) const;
 
  private:
@@ -141,7 +140,7 @@ class State {
   bool configure(Agent* agent);
 
   /// @brief Load persisted data from above or start with empty log
-  bool loadCollections(TRI_vocbase_t*, aql::QueryRegistry*, bool);
+  bool loadCollections(TRI_vocbase_t*, bool waitForSync);
 
   /// @brief Pipe to ostream
   friend std::ostream& operator<<(std::ostream& os, State const& s) {
@@ -221,7 +220,7 @@ class State {
                std::string const&) const;
 
   /// @brief Save currentTerm, votedFor, log entries for reconfiguration
-  bool persistconf(index_t, term_t, uint64_t, arangodb::velocypack::Slice const&,
+  bool persistConf(index_t, term_t, uint64_t, arangodb::velocypack::Slice const&,
                    std::string const&) const;
 
   bool saveCompacted();
@@ -235,7 +234,7 @@ class State {
   /// @brief Check collections
   bool checkCollections();
 
-  /// @brief Check collection sanity
+  /// @brief Check collection existence
   bool checkCollection(std::string const& name);
 
   /// @brief Create collections
@@ -252,6 +251,9 @@ class State {
 
   /// @brief Remove obsolete logs
   bool removeObsolete(arangodb::consensus::index_t cind);
+
+  /// @brief Our agent
+  application_features::ApplicationServer& _server;
 
   /// @brief Our agent
   Agent* _agent;
@@ -275,9 +277,6 @@ class State {
   std::atomic<index_t> _nextCompactionAfter;
   std::atomic<index_t> _lastCompactionAt;
 
-  /// @brief Our query registry
-  aql::QueryRegistry* _queryRegistry;
-
   /// @brief Current log offset, this is the index that is stored at position
   /// 0 in the deque _log.
   size_t _cur;
@@ -290,6 +289,10 @@ class State {
 
   /// @brief Protect writing into configuration collection
   arangodb::Mutex _configurationWriteLock;
+
+  /// @brief Current state deque size in bytes
+  Gauge<uint64_t>& _log_size;
+
 };
 
 }  // namespace consensus

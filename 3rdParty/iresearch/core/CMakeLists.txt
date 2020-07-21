@@ -18,12 +18,6 @@ if (NOT MSVC AND NOT APPLE)
   set(ATOMIC_LIBRARY atomic)
 endif()
 
-# set required standard version
-if ("${CMAKE_CXX_STANDARD}" STREQUAL "") 
-  set(CMAKE_CXX_STANDARD 11)
-endif()
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 # calculate version
 math(EXPR IResearch_int_version "(${IResearch_version_major} * 1000000) + (${IResearch_version_minor} * 10000) + (${IResearch_version_revision} * 100) + (${IResearch_version_patch} * 1)" )
 set(IResearch_version "${IResearch_version_major}.${IResearch_version_minor}.${IResearch_version_revision}.${IResearch_version_patch}")
@@ -106,14 +100,17 @@ set(IResearch_core_sources
   ./iql/query_builder.cpp
   ./search/all_filter.cpp
   ./search/all_iterator.cpp
+  ./search/boost_sort.cpp
   ./search/granular_range_filter.cpp
   ./search/scorers.cpp
   ./search/sort.cpp
   ./search/cost.cpp
+  ./search/collectors.cpp
   ./search/score.cpp
   ./search/bitset_doc_iterator.cpp
   ./search/filter.cpp
   ./search/term_filter.cpp
+  ./search/terms_filter.cpp
   ./search/prefix_filter.cpp
   ./search/range_filter.cpp
   ./search/phrase_filter.cpp
@@ -137,6 +134,7 @@ set(IResearch_core_sources
   ./store/store_utils_simd.cpp
   ./utils/async_utils.cpp
   ./utils/attributes.cpp
+  ./utils/attribute_store.cpp
   ./utils/automaton_utils.cpp
   ./utils/bit_packing.cpp
   ./utils/encryption.cpp
@@ -154,7 +152,6 @@ set(IResearch_core_sources
   ./utils/wildcard_utils.cpp
   ./utils/levenshtein_default_pdp.cpp
   ./utils/memory.cpp
-  ./utils/text_format.cpp
   ./utils/timer_utils.cpp
   ./utils/version_utils.cpp
   ./utils/utf8_path.cpp
@@ -195,12 +192,12 @@ set(IResearch_core_headers
   ./iql/query_builder.hpp
   ./search/all_filter.hpp
   ./search/all_iterator.hpp
+  ./search/boost_sort.hpp
   ./search/granular_range_filter.hpp
   ./search/scorers.hpp
   ./search/sort.hpp
   ./search/cost.hpp
   ./search/filter.hpp
-  ./search/score_doc_iterators.hpp
   ./search/term_filter.hpp
   ./search/phrase_filter.hpp
   ./search/same_position_filter.hpp
@@ -278,6 +275,7 @@ include_directories( $<$<BOOL:${SUPPRESS_EXTERNAL_WARNINGS}>:SYSTEM>
   ${BFD_INCLUDE_DIR}
   ${Lz4_INCLUDE_DIR}
   ${Unwind_INCLUDE_DIR}
+  ${FROZEN_INCLUDE_DIR}
 )
 
 
@@ -418,7 +416,6 @@ if(MSVC)
  )
 endif()
 
-
 target_include_directories(${IResearch_TARGET_NAME}-shared
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
   PRIVATE ${ICU_INCLUDE_DIR}
@@ -490,6 +487,10 @@ set_target_properties(${IResearch_TARGET_NAME}-static
   COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
 )
 
+if (USE_IWYU)
+  set_property(TARGET ${IResearch_TARGET_NAME}-static PROPERTY CXX_INCLUDE_WHAT_YOU_USE ${IWYU_PATH})
+endif()
+
 # setup CRT
 if(MSVC)
   set_target_properties(${IResearch_TARGET_NAME}-shared-scrt
@@ -524,7 +525,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${BFD_SHARED_LIBS}
   ${Boost_SHARED_sharedRT_LIBRARIES}
   ${Lz4_SHARED_LIB}
-  ${ICU_LIBS}
+  ${ICU_SHARED_LIBS}
   ${Unwind_SHARED_LIBS}
   ${DL_LIBRARY}
   ${MSVC_ONLY_LIBRARIES}
@@ -546,7 +547,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${GCOV_LIBRARY}
   ${BFD_STATIC_LIBS}
   ${Lz4_STATIC_LIB}
-  ${ICU_LIBS}
+  ${ICU_STATIC_LIBS}
   ${Unwind_STATIC_LIBS}
   ${DL_LIBRARY}
   ${MSVC_ONLY_LIBRARIES}
@@ -568,7 +569,7 @@ if(MSVC)
     ${BFD_SHARED_LIBS}
     ${Boost_SHARED_sharedRT_LIBRARIES}
     ${Lz4_SHARED_LIB}
-    ${ICU_LIBS}
+    ${ICU_SHARED_LIBS}
     ${Unwind_SHARED_LIBS}
     ${DL_LIBRARY}
     ${MSVC_ONLY_LIBRARIES}
@@ -588,7 +589,7 @@ if(MSVC)
     ${GCOV_LIBRARY}
     ${BFD_STATIC_LIBS}
     ${Lz4_STATIC_LIB}
-    ${ICU_LIBS}
+    ${ICU_STATIC_LIBS}
     ${Unwind_STATIC_LIBS}
     ${DL_LIBRARY}
     ${MSVC_ONLY_LIBRARIES}
@@ -601,7 +602,7 @@ unset(IResearch_STATIC_LIBRARIES)
 set(IRESEARCH_STATIC_DEPENDENCIES
   ${BFD_STATIC_LIBS}
   ${Unwind_STATIC_LIBS}
-  ${ICU_LIBS}
+  ${ICU_STATIC_LIBS}
   "$<TARGET_FILE:lz4_static>"
   "$<TARGET_FILE:stemmer-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimiter-static>"
@@ -689,7 +690,7 @@ if (MSVC)
 
   set_target_properties(${IResearch_TARGET_NAME}-static-scrt-allinone
     PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "$<TARGET_PROPERTY:${IResearch_TARGET_NAME}-static-srct,INTERFACE_INCLUDE_DIRECTORIES>"
+    INTERFACE_INCLUDE_DIRECTORIES "$<TARGET_PROPERTY:${IResearch_TARGET_NAME}-static-scrt,INTERFACE_INCLUDE_DIRECTORIES>"
     IMPORTED_LOCATION "${IResearch_STATIC_SCRT_LIBRARIES_OUT}"
   )
 

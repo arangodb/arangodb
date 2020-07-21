@@ -25,11 +25,13 @@
 
 #include "Aql/AqlTransaction.h"
 #include "Aql/Ast.h"
+#include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/IndexNode.h"
 #include "Aql/Query.h"
+#include "Aql/OptimizerUtils.h"
 #include "Containers/HashSet.h"
 #include "Cluster/ClusterEdgeCursor.h"
 #include "Graph/ShortestPathOptions.h"
@@ -38,7 +40,6 @@
 #include "Graph/TraverserCacheFactory.h"
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
-#include "Utils/OperationCursor.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -59,7 +60,7 @@ BaseOptions::LookupInfo::LookupInfo()
 
 BaseOptions::LookupInfo::~LookupInfo() = default;
 
-BaseOptions::LookupInfo::LookupInfo(arangodb::aql::Query* query,
+BaseOptions::LookupInfo::LookupInfo(arangodb::aql::QueryContext& query,
                                     VPackSlice const& info, VPackSlice const& shards) {
   TRI_ASSERT(shards.isArray());
   idxHandles.reserve(shards.length());
@@ -81,19 +82,24 @@ BaseOptions::LookupInfo::LookupInfo(arangodb::aql::Query* query,
                                    "Each handle requires id to be a string");
   }
   std::string idxId = read.copyString();
-  auto trx = query->trx();
-
+  aql::Collections const& collections = query.collections();
+  
   for (VPackSlice it : VPackArrayIterator(shards)) {
     if (!it.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "Shards have to be a list of strings");
     }
-    idxHandles.emplace_back(trx->getIndexByIdentifier(it.copyString(), idxId));
+    auto* coll = collections.get(it.copyString());
+    if (!coll) {
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    }
+    idxHandles.emplace_back(coll->indexByIdentifier(idxId));
   }
 
   read = info.get("expression");
   if (read.isObject()) {
-    expression = std::make_unique<aql::Expression>(query->plan(), query->ast(), read);
+    expression = std::make_unique<aql::Expression>(query.ast(), read);
   } else {
     expression.reset();
   }
@@ -104,7 +110,7 @@ BaseOptions::LookupInfo::LookupInfo(arangodb::aql::Query* query,
         TRI_ERROR_BAD_PARAMETER,
         "Each lookup requires condition to be an object");
   }
-  indexCondition = new aql::AstNode(query->ast(), read);
+  indexCondition = new aql::AstNode(query.ast(), read);
 }
 
 BaseOptions::LookupInfo::LookupInfo(LookupInfo const& other)
@@ -113,7 +119,7 @@ BaseOptions::LookupInfo::LookupInfo(LookupInfo const& other)
       conditionNeedUpdate(other.conditionNeedUpdate),
       conditionMemberToUpdate(other.conditionMemberToUpdate) {
   if (other.expression != nullptr) {
-    expression = other.expression->clone(nullptr, nullptr);
+    expression = other.expression->clone(nullptr);
   }
 }
 
@@ -158,7 +164,7 @@ double BaseOptions::LookupInfo::estimateCost(size_t& nrItems) const {
   return 1000.0;
 }
 
-std::unique_ptr<BaseOptions> BaseOptions::createOptionsFromSlice(arangodb::aql::Query* query,
+std::unique_ptr<BaseOptions> BaseOptions::createOptionsFromSlice(arangodb::aql::QueryContext& query,
                                                                  VPackSlice const& definition) {
   VPackSlice type = definition.get("type");
   if (type.isString() && type.isEqualString("shortestPath")) {
@@ -167,35 +173,39 @@ std::unique_ptr<BaseOptions> BaseOptions::createOptionsFromSlice(arangodb::aql::
   return std::make_unique<TraverserOptions>(query, definition);
 }
 
-BaseOptions::BaseOptions(arangodb::aql::Query* query)
-    : _query(query),
-      _ctx(_query),
-      _trx(_query->trx()),
+BaseOptions::BaseOptions(arangodb::aql::QueryContext& query)
+    : _trx(query.newTrxContext()),
+      _expressionCtx(_trx, query, _aqlFunctionsInternalCache),
+      _query(query),
+      _tmpVar(nullptr),
+      _parallelism(1),
       _produceVertices(true),
-      _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
-      _tmpVar(nullptr) {}
+      _isCoordinator(arangodb::ServerState::instance()->isCoordinator()) {}
 
-BaseOptions::BaseOptions(BaseOptions const& other, bool const allowAlreadyBuiltCopy)
-    : _query(other._query),
-      _ctx(_query),
-      _trx(other._trx),
+BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
+    : _trx(other._query.newTrxContext()),
+      _expressionCtx(_trx, other._query, _aqlFunctionsInternalCache),
+      _query(other._query),
+      _tmpVar(nullptr),
+      _collectionToShard(other._collectionToShard),
+      _parallelism(other._parallelism),
       _produceVertices(other._produceVertices),
-      _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
-      _tmpVar(nullptr) {
+      _isCoordinator(arangodb::ServerState::instance()->isCoordinator()) {
   if (!allowAlreadyBuiltCopy) {
     TRI_ASSERT(other._baseLookupInfos.empty());
     TRI_ASSERT(other._tmpVar == nullptr);
   }
 }
 
-BaseOptions::BaseOptions(arangodb::aql::Query* query, VPackSlice info, VPackSlice collections)
+BaseOptions::BaseOptions(arangodb::aql::QueryContext& query,
+                         VPackSlice info, VPackSlice collections)
     : BaseOptions(query) {
   VPackSlice read = info.get("tmpVar");
   if (!read.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "The options require a tmpVar");
   }
-  _tmpVar = query->ast()->variables()->createVariable(read);
+  _tmpVar = query.ast()->variables()->createVariable(read);
 
   read = info.get("baseLookupInfos");
   if (!read.isArray()) {
@@ -215,7 +225,13 @@ BaseOptions::BaseOptions(arangodb::aql::Query* query, VPackSlice info, VPackSlic
     itLookup.next();
     itCollections.next();
   }
-
+      
+  // parallelism is optional
+  read = info.get("parallelism");
+  if (read.isInteger()) {
+    _parallelism = read.getNumber<size_t>();
+  }
+  
   TRI_ASSERT(_produceVertices);
   read = info.get("produceVertices");
   if (read.isBool() && !read.getBool()) {
@@ -251,21 +267,26 @@ void BaseOptions::setVariable(aql::Variable const* variable) {
 }
 
 void BaseOptions::addLookupInfo(aql::ExecutionPlan* plan, std::string const& collectionName,
-                                std::string const& attributeName, aql::AstNode* condition) {
-  injectLookupInfoInList(_baseLookupInfos, plan, collectionName, attributeName, condition);
+                                std::string const& attributeName,
+                                aql::AstNode* condition, bool onlyEdgeIndexes) {
+  injectLookupInfoInList(_baseLookupInfos, plan, collectionName, attributeName, condition, onlyEdgeIndexes);
 }
 
 void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
                                          aql::ExecutionPlan* plan,
                                          std::string const& collectionName,
                                          std::string const& attributeName,
-                                         aql::AstNode* condition) {
+                                         aql::AstNode* condition, bool onlyEdgeIndexes) {
   LookupInfo info;
   info.indexCondition = condition->clone(plan->getAst());
-  bool res =
-      _trx->getBestIndexHandleForFilterCondition(collectionName, info.indexCondition,
-                                                 _tmpVar, 1000, aql::IndexHint(),
-                                                 info.idxHandles[0]);
+  auto coll = _query.collections().get(collectionName);
+  if (!coll) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  }
+
+  bool res = aql::utils::getBestIndexHandleForFilterCondition(*coll, info.indexCondition,
+                                                              _tmpVar, 1000, aql::IndexHint(),
+                                                              info.idxHandles[0], onlyEdgeIndexes);
   // Right now we have an enforced edge index which should always fit.
   if (!res) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -318,29 +339,29 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
         condition->removeMemberUnchecked(n - 1);
       }
     }
-    info.expression = std::make_unique<aql::Expression>(plan, plan->getAst(), condition);
+    info.expression = std::make_unique<aql::Expression>(plan->getAst(), condition);
   }
   list.emplace_back(std::move(info));
 }
 
-void BaseOptions::clearVariableValues() { _ctx.clearVariableValues(); }
+void BaseOptions::clearVariableValues() { _expressionCtx.clearVariableValues(); }
 
 void BaseOptions::setVariableValue(aql::Variable const* var, aql::AqlValue const value) {
-  _ctx.setVariableValue(var, value);
+  _expressionCtx.setVariableValue(var, value);
 }
 
 void BaseOptions::serializeVariables(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenArray());
-  _ctx.serializeAllVariables(_trx, builder);
+  _expressionCtx.serializeAllVariables(_query.vpackOptions(), builder);
 }
 
 void BaseOptions::setCollectionToShard(std::map<std::string, std::string> const& in) {
   _collectionToShard = std::move(in);
 }
 
-arangodb::transaction::Methods* BaseOptions::trx() const { return _trx; }
+arangodb::transaction::Methods* BaseOptions::trx() const { return &_trx; }
 
-arangodb::aql::Query* BaseOptions::query() const { return _query; }
+arangodb::aql::QueryContext& BaseOptions::query() const { return _query; }
 
 void BaseOptions::injectEngineInfo(VPackBuilder& result) const {
   TRI_ASSERT(result.isOpenObject());
@@ -373,7 +394,7 @@ bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,
   TRI_ASSERT(value.isObject() || value.isNull());
   expression->setVariable(_tmpVar, value);
   bool mustDestroy = false;
-  aql::AqlValue res = expression->execute(_trx, &_ctx, mustDestroy);
+  aql::AqlValue res = expression->execute(&_expressionCtx, mustDestroy);
   TRI_ASSERT(res.isBoolean());
   bool result = res.toBoolean();
   expression->clearVariable(_tmpVar);
@@ -419,7 +440,7 @@ void BaseOptions::ensureCache() {
 }
 
 void BaseOptions::activateCache(bool enableDocumentCache,
-                                std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines) {
+                                std::unordered_map<ServerID, aql::EngineId> const* engines) {
   // Do not call this twice.
   TRI_ASSERT(_cache == nullptr);
   _cache.reset(CacheFactory::CreateCache(_query, enableDocumentCache, engines, this));

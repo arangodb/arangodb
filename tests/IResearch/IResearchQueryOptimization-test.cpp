@@ -56,10 +56,10 @@ bool findEmptyNodes(TRI_vocbase_t& vocbase, std::string const& queryString,
       //    "{ \"tracing\" : 1 }"
       "{ }");
 
-  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                             bindVars, options, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
+                             bindVars, options);
 
-  query.prepare(arangodb::QueryRegistryFeature::registry(), arangodb::aql::SerializationFormat::SHADOWROWS);
+  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
   arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
   arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
@@ -193,10 +193,22 @@ TEST_F(IResearchQueryOptimizationTest, test_1) {
       auto& root = expected.add<irs::And>();
       {
         auto& sub = root.add<irs::Or>();
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("@");
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+        }
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
       }
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -246,11 +258,27 @@ TEST_F(IResearchQueryOptimizationTest, test_2) {
       auto& root = expected.add<irs::And>();
       {
         auto& sub = root.add<irs::Or>();
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
       }
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -297,10 +325,22 @@ TEST_F(IResearchQueryOptimizationTest, test_3) {
       auto& root = expected.add<irs::And>();
       {
         auto& sub = root.add<irs::Or>();
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
       }
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -347,13 +387,22 @@ TEST_F(IResearchQueryOptimizationTest, test_4) {
       auto& root = expected.add<irs::And>();
       {
         auto& sub = root.add<irs::Or>();
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("@");
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+        }
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
       }
-      root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("D");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+      }
 
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -402,13 +451,23 @@ TEST_F(IResearchQueryOptimizationTest, test_5) {
       auto& root = expected.add<irs::And>();
       {
         auto& sub = root.add<irs::Or>();
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("@");
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+        }
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
       }
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("B");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -453,13 +512,23 @@ TEST_F(IResearchQueryOptimizationTest, test_6) {
       auto& root = expected.add<irs::And>();
       {
         auto& sub = root.add<irs::Or>();
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("D");
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        }
       }
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("D");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -545,13 +614,23 @@ TEST_F(IResearchQueryOptimizationTest, test_8) {
       auto& root = expected.add<irs::And>();
       {
         auto& sub = root.add<irs::Or>();
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
       }
-      root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("A");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -596,13 +675,22 @@ TEST_F(IResearchQueryOptimizationTest, test_9) {
       auto& root = expected.add<irs::And>();
       {
         auto& sub = root.add<irs::Or>();
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
       }
-      root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("@");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+      }
 
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -650,13 +738,24 @@ TEST_F(IResearchQueryOptimizationTest, test_10) {
       auto& root = expected.add<irs::And>();
       {
         auto& sub = root.add<irs::Or>();
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
       }
-      root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("C");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -703,13 +802,24 @@ TEST_F(IResearchQueryOptimizationTest, test_11) {
       auto& root = expected.add<irs::And>();
       {
         auto& sub = root.add<irs::Or>();
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
       }
-      root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("C");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -756,13 +866,24 @@ TEST_F(IResearchQueryOptimizationTest, test_12) {
       auto& root = expected.add<irs::And>();
       {
         auto& sub = root.add<irs::Or>();
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("D");
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        }
       }
-      root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -810,13 +931,24 @@ TEST_F(IResearchQueryOptimizationTest, test_13) {
       auto& root = expected.add<irs::And>();
       {
         auto& sub = root.add<irs::Or>();
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
       }
-      root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("D");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -862,13 +994,24 @@ TEST_F(IResearchQueryOptimizationTest, test_14) {
       auto& root = expected.add<irs::And>();
       {
         auto& sub = root.add<irs::Or>();
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
       }
-      root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("C");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -914,13 +1057,24 @@ TEST_F(IResearchQueryOptimizationTest, test_15) {
       auto& root = expected.add<irs::And>();
       {
         auto& sub = root.add<irs::Or>();
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
       }
-      root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("A");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -966,13 +1120,23 @@ TEST_F(IResearchQueryOptimizationTest, test_16) {
       auto& root = expected.add<irs::And>();
       {
         auto& sub = root.add<irs::Or>();
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("@");
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+        }
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
       }
-      root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+      }
 
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -1021,13 +1185,24 @@ TEST_F(IResearchQueryOptimizationTest, test_17) {
       auto& root = expected.add<irs::And>();
       {
         auto& sub = root.add<irs::Or>();
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("@");
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+        }
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
       }
-      root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("A");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -1073,13 +1248,23 @@ TEST_F(IResearchQueryOptimizationTest, test_18) {
       auto& root = expected.add<irs::And>();
       {
         auto& sub = root.add<irs::Or>();
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("D");
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        }
       }
-      root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+      }
 
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -1128,13 +1313,24 @@ TEST_F(IResearchQueryOptimizationTest, test_19) {
       auto& root = expected.add<irs::And>();
       {
         auto& sub = root.add<irs::Or>();
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("@");
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+        }
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
       }
-      root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -1182,13 +1378,24 @@ TEST_F(IResearchQueryOptimizationTest, test_20) {
       auto& root = expected.add<irs::And>();
       {
         auto& sub = root.add<irs::Or>();
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
       }
-      root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -1235,13 +1442,24 @@ TEST_F(IResearchQueryOptimizationTest, test_21) {
       auto& root = expected.add<irs::And>();
       {
         auto& sub = root.add<irs::Or>();
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("D");
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        }
       }
-      root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -1291,14 +1509,34 @@ TEST_F(IResearchQueryOptimizationTest, test_22) {
       auto& root = expected.add<irs::And>();
       {
         auto& sub = root.add<irs::Or>();
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
       }
       {
         auto& sub = root.add<irs::Or>();
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
-        sub.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = sub.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -1345,8 +1583,17 @@ TEST_F(IResearchQueryOptimizationTest, test_23) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      }
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -1390,7 +1637,11 @@ TEST_F(IResearchQueryOptimizationTest, test_24) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -1436,8 +1687,16 @@ TEST_F(IResearchQueryOptimizationTest, test_25) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      }
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -1485,17 +1744,27 @@ TEST_F(IResearchQueryOptimizationTest, test_26) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("B");
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
       } else {
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("B");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
       }
 
       assertFilterOptimized(vocbase(), query, expected);
@@ -1548,20 +1817,31 @@ TEST_F(IResearchQueryOptimizationTest, test_27) {
       if (optimizeType < disabledDnfOptimizationStart) {
         irs::And expected;
         auto& root = expected;
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("C");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
         assertFilterOptimized(vocbase(), query, expected);
       } else {
         irs::Or expected;
         auto& root = expected.add<irs::And>();
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("C");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
+
         assertFilterOptimized(vocbase(), query, expected);
       }
     }
@@ -1609,17 +1889,27 @@ TEST_F(IResearchQueryOptimizationTest, test_28) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("C");
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
       } else {
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("C");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -1665,12 +1955,23 @@ TEST_F(IResearchQueryOptimizationTest, test_29) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
       } else {
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
-        root.add<irs::by_range>().field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("C");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -1718,11 +2019,18 @@ TEST_F(IResearchQueryOptimizationTest, test_30) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("C");
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -1767,11 +2075,18 @@ TEST_F(IResearchQueryOptimizationTest, test_31) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("B");
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -1818,13 +2133,23 @@ TEST_F(IResearchQueryOptimizationTest, test_32) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
       } else{
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("C");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -1873,13 +2198,23 @@ TEST_F(IResearchQueryOptimizationTest, test_33) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
       } else {
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("B");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -1926,11 +2261,17 @@ TEST_F(IResearchQueryOptimizationTest, test_34) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("B");
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -1976,17 +2317,29 @@ TEST_F(IResearchQueryOptimizationTest, test_35) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("B");
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
       } else {
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("B");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -2035,13 +2388,23 @@ TEST_F(IResearchQueryOptimizationTest, test_36) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
       } else {
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("B");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -2089,13 +2452,23 @@ TEST_F(IResearchQueryOptimizationTest, test_37) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
       } else {
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("B");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -2143,17 +2516,29 @@ TEST_F(IResearchQueryOptimizationTest, test_38) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("B");
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
       } else {
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("B");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -2201,17 +2586,29 @@ TEST_F(IResearchQueryOptimizationTest, test_39) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("B");
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
       } else {
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("B");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -2260,13 +2657,23 @@ TEST_F(IResearchQueryOptimizationTest, test_40) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
       } else {
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("B");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -2313,8 +2720,16 @@ TEST_F(IResearchQueryOptimizationTest, test_41) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      }
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -2359,7 +2774,11 @@ TEST_F(IResearchQueryOptimizationTest, test_41) {
       {
         irs::Or expected;
         auto& root = expected.add<irs::And>();
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
         assertFilterOptimized(vocbase(), query, expected);
       }
 
@@ -2404,8 +2823,16 @@ TEST_F(IResearchQueryOptimizationTest, test_43) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      }
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -2452,17 +2879,27 @@ TEST_F(IResearchQueryOptimizationTest, test_44) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("B");
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
       } else {
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("B");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -2513,20 +2950,32 @@ TEST_F(IResearchQueryOptimizationTest, test_45) {
       if (optimizeType < disabledDnfOptimizationStart) {
         irs::And expected;
         auto& root = expected; 
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("C");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
+
         assertFilterOptimized(vocbase(), query, expected);
       } else {
         irs::Or expected;
         auto& root = expected.add<irs::And>();
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("C");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
+
         assertFilterOptimized(vocbase(), query, expected);
       }
     }
@@ -2572,17 +3021,27 @@ TEST_F(IResearchQueryOptimizationTest, test_46) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("C");
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
       } else {
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("C");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -2629,13 +3088,23 @@ TEST_F(IResearchQueryOptimizationTest, test_47) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
       } else {
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("C");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -2682,11 +3151,18 @@ TEST_F(IResearchQueryOptimizationTest, test_48) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("C");
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -2731,11 +3207,18 @@ TEST_F(IResearchQueryOptimizationTest, test_49) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("B");
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -2782,13 +3265,23 @@ TEST_F(IResearchQueryOptimizationTest, test_50) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
       } else {
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("C");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -2836,12 +3329,18 @@ TEST_F(IResearchQueryOptimizationTest, test_51) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      }
       if (optimizeType >= disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("B");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -2888,11 +3387,18 @@ TEST_F(IResearchQueryOptimizationTest, test_52) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("B");
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -2939,17 +3445,29 @@ TEST_F(IResearchQueryOptimizationTest, test_53) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("B");
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
       } else {
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("B");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -2997,12 +3515,18 @@ TEST_F(IResearchQueryOptimizationTest, test_54) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      }
       if (optimizeType >= disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("B");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -3050,12 +3574,18 @@ TEST_F(IResearchQueryOptimizationTest, test_55) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      }
       if (optimizeType >= disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("B");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -3104,17 +3634,29 @@ TEST_F(IResearchQueryOptimizationTest, test_56) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("B");
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
       } else {
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("B");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -3162,17 +3704,29 @@ TEST_F(IResearchQueryOptimizationTest, test_57) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("B");
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
       } else {
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("B");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -3220,12 +3774,18 @@ TEST_F(IResearchQueryOptimizationTest, test_58) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      }
       if (optimizeType >= disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("A");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -3272,11 +3832,16 @@ TEST_F(IResearchQueryOptimizationTest, test_59) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("@");
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+      }
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -3322,11 +3887,17 @@ TEST_F(IResearchQueryOptimizationTest, test_60) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("A");
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -3377,20 +3948,32 @@ TEST_F(IResearchQueryOptimizationTest, test_61) {
       if (optimizeType < disabledDnfOptimizationStart) {
         irs::And expected;
         auto& root = expected; 
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("A");
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
+
         assertFilterOptimized(vocbase(), query, expected);
       } else {
         irs::Or expected;
         auto& root = expected.add<irs::And>();
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("A");
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
+
         assertFilterOptimized(vocbase(), query, expected);
       }
     }
@@ -3435,11 +4018,17 @@ TEST_F(IResearchQueryOptimizationTest, test_62) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("D");
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+      }
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -3484,11 +4073,17 @@ TEST_F(IResearchQueryOptimizationTest, test_63) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("B");
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      }
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -3531,14 +4126,17 @@ TEST_F(IResearchQueryOptimizationTest, test_64) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("@");
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("D");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+      }
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -3583,14 +4181,17 @@ TEST_F(IResearchQueryOptimizationTest, test_65) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("A");
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("B");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -3632,10 +4233,11 @@ TEST_F(IResearchQueryOptimizationTest, test_66) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("D");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -3680,10 +4282,11 @@ TEST_F(IResearchQueryOptimizationTest, test_67) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("A");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -3726,14 +4329,16 @@ TEST_F(IResearchQueryOptimizationTest, test_68) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("B");
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("A");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      }
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -3775,14 +4380,17 @@ TEST_F(IResearchQueryOptimizationTest, test_69) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("0");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("C");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -3827,14 +4435,17 @@ TEST_F(IResearchQueryOptimizationTest, test_70) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("A");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("B");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -3877,14 +4488,18 @@ TEST_F(IResearchQueryOptimizationTest, test_71) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("@");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("B");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -3929,14 +4544,18 @@ TEST_F(IResearchQueryOptimizationTest, test_72) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("D");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("D");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -3981,14 +4600,18 @@ TEST_F(IResearchQueryOptimizationTest, test_73) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("D");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("B");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -4033,14 +4656,18 @@ TEST_F(IResearchQueryOptimizationTest, test_74) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("C");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("B");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -4083,14 +4710,18 @@ TEST_F(IResearchQueryOptimizationTest, test_75) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("0");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("B");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -4133,15 +4764,19 @@ TEST_F(IResearchQueryOptimizationTest, test_76) {
     // check structure
     {
       irs::Or expected;
-      auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("A");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("B");
+      auto& root = expected.add<irs::And>();      
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -4184,14 +4819,18 @@ TEST_F(IResearchQueryOptimizationTest, test_77) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("D");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("D");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -4236,14 +4875,18 @@ TEST_F(IResearchQueryOptimizationTest, test_78) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("B");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("B");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -4286,14 +4929,18 @@ TEST_F(IResearchQueryOptimizationTest, test_79) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("D");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("B");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -4338,14 +4985,18 @@ TEST_F(IResearchQueryOptimizationTest, test_80) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("C");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("B");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -4388,14 +5039,18 @@ TEST_F(IResearchQueryOptimizationTest, test_81) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("0");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("B");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -4440,14 +5095,18 @@ TEST_F(IResearchQueryOptimizationTest, test_82) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("A");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("B");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -4491,14 +5150,18 @@ TEST_F(IResearchQueryOptimizationTest, test_83) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("0");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("0");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
+        filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -4544,14 +5207,18 @@ TEST_F(IResearchQueryOptimizationTest, test_84) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("A");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("A");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -4595,14 +5262,18 @@ TEST_F(IResearchQueryOptimizationTest, test_85) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("D");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("A");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -4648,14 +5319,18 @@ TEST_F(IResearchQueryOptimizationTest, test_86) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("C");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("A");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -4699,14 +5374,18 @@ TEST_F(IResearchQueryOptimizationTest, test_87) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("0");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("B");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -4752,14 +5431,18 @@ TEST_F(IResearchQueryOptimizationTest, test_88) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("A");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("B");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -4803,14 +5486,18 @@ TEST_F(IResearchQueryOptimizationTest, test_89) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("0");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("0");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
+        filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -4856,14 +5543,18 @@ TEST_F(IResearchQueryOptimizationTest, test_90) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("A");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("A");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -4907,14 +5598,18 @@ TEST_F(IResearchQueryOptimizationTest, test_91) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("D");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("A");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -4960,14 +5655,18 @@ TEST_F(IResearchQueryOptimizationTest, test_92) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("C");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("A");
+      {
+        auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -5012,17 +5711,30 @@ TEST_F(IResearchQueryOptimizationTest, test_93) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("B");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
+
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("B");
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -5071,17 +5783,29 @@ TEST_F(IResearchQueryOptimizationTest, test_94) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("B");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("B");
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -5130,12 +5854,20 @@ TEST_F(IResearchQueryOptimizationTest, test_95) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType >= disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("C");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
       }
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -5183,23 +5915,29 @@ TEST_F(IResearchQueryOptimizationTest, test_96) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("D");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("B");
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("B");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("D");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -5248,23 +5986,29 @@ TEST_F(IResearchQueryOptimizationTest, test_97) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("C");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("B");
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("B");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("C");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -5311,23 +6055,29 @@ TEST_F(IResearchQueryOptimizationTest, test_98) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("D");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("D");
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("D");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("D");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -5376,23 +6126,29 @@ TEST_F(IResearchQueryOptimizationTest, test_99) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("B");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("B");
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("B");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("B");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -5439,23 +6195,30 @@ TEST_F(IResearchQueryOptimizationTest, test_100) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("0");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("C");
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
+
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("C");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("0");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -5504,23 +6267,29 @@ TEST_F(IResearchQueryOptimizationTest, test_101) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("B");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("C");
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("C");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("B");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -5566,15 +6335,20 @@ TEST_F(IResearchQueryOptimizationTest, test_102) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+      }
+
       if (optimizeType >= disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("C");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -5622,10 +6396,12 @@ TEST_F(IResearchQueryOptimizationTest, test_103) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -5677,15 +6453,19 @@ TEST_F(IResearchQueryOptimizationTest, test_104) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType >= disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("C");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
       }
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -5727,15 +6507,19 @@ TEST_F(IResearchQueryOptimizationTest, test_105) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+      }
       if (optimizeType >= disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("C");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -5783,15 +6567,19 @@ TEST_F(IResearchQueryOptimizationTest, test_106) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("C");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+      }
       if (optimizeType >= disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("C");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -5840,15 +6628,19 @@ TEST_F(IResearchQueryOptimizationTest, test_107) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType >= disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("C");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
       }
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -5896,23 +6688,31 @@ TEST_F(IResearchQueryOptimizationTest, test_108) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("C");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("B");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("B");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("C");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -5961,23 +6761,31 @@ TEST_F(IResearchQueryOptimizationTest, test_109) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("B");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("B");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("B");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("B");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -6026,23 +6834,31 @@ TEST_F(IResearchQueryOptimizationTest, test_110) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("B");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("C");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("C");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("B");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -6091,23 +6907,31 @@ TEST_F(IResearchQueryOptimizationTest, test_111) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("C");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("B");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("B");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("C");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -6154,23 +6978,31 @@ TEST_F(IResearchQueryOptimizationTest, test_112) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("B");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("B");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("B");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("B");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -6219,23 +7051,31 @@ TEST_F(IResearchQueryOptimizationTest, test_113) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("A");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("C");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("C");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("A");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -6284,17 +7124,29 @@ TEST_F(IResearchQueryOptimizationTest, test_114) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("A");
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("A");
-        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -6343,12 +7195,18 @@ TEST_F(IResearchQueryOptimizationTest, test_115) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType >= disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("A");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
       }
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -6396,12 +7254,18 @@ TEST_F(IResearchQueryOptimizationTest, test_116) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType >= disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("B");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
       }
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -6449,23 +7313,29 @@ TEST_F(IResearchQueryOptimizationTest, test_117) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("D");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("A");
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("A");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("D");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -6514,23 +7384,29 @@ TEST_F(IResearchQueryOptimizationTest, test_118) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("B");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("A");
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("A");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("B");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -6577,23 +7453,29 @@ TEST_F(IResearchQueryOptimizationTest, test_119) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("B");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("B");
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("B");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("B");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -6640,23 +7522,29 @@ TEST_F(IResearchQueryOptimizationTest, test_120) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("D");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("D");
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("D");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("D");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -6705,23 +7593,29 @@ TEST_F(IResearchQueryOptimizationTest, test_121) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("@");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("C");
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("C");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("@");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -6770,23 +7664,29 @@ TEST_F(IResearchQueryOptimizationTest, test_122) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("B");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("C");
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("C");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("B");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -6832,15 +7732,19 @@ TEST_F(IResearchQueryOptimizationTest, test_123) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("A");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+      }
       if (optimizeType >= disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("B");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -6889,15 +7793,19 @@ TEST_F(IResearchQueryOptimizationTest, test_124) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType >= disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("B");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
       }
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -6944,15 +7852,19 @@ TEST_F(IResearchQueryOptimizationTest, test_125) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType >= disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("C");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
       }
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -6999,15 +7911,19 @@ TEST_F(IResearchQueryOptimizationTest, test_126) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("A");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+      }
       if (optimizeType >= disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("B");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -7054,10 +7970,12 @@ TEST_F(IResearchQueryOptimizationTest, test_127) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -7104,15 +8022,19 @@ TEST_F(IResearchQueryOptimizationTest, test_128) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType >= disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("C");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
       }
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -7160,23 +8082,31 @@ TEST_F(IResearchQueryOptimizationTest, test_129) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("B");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("A");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("A");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("B");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -7225,23 +8155,31 @@ TEST_F(IResearchQueryOptimizationTest, test_130) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("A");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("A");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("A");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("A");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -7290,23 +8228,31 @@ TEST_F(IResearchQueryOptimizationTest, test_131) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("A");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("C");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("C");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("A");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -7355,23 +8301,31 @@ TEST_F(IResearchQueryOptimizationTest, test_132) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("B");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("A");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("A");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("B");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -7420,23 +8374,31 @@ TEST_F(IResearchQueryOptimizationTest, test_133) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("A");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("A");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("A");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("A");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -7485,23 +8447,31 @@ TEST_F(IResearchQueryOptimizationTest, test_134) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("A");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("C");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MAX>(true)
-          .term<irs::Bound::MAX>("C");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("A");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+          filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -7550,12 +8520,18 @@ TEST_F(IResearchQueryOptimizationTest, test_135) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType >= disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("A");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
       }
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -7602,12 +8578,18 @@ TEST_F(IResearchQueryOptimizationTest, test_136) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType >= disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("A");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
       }
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -7654,11 +8636,17 @@ TEST_F(IResearchQueryOptimizationTest, test_137) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("B");
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+      }
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -7704,23 +8692,29 @@ TEST_F(IResearchQueryOptimizationTest, test_138) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("D");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("A");
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("A");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("D");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -7769,23 +8763,29 @@ TEST_F(IResearchQueryOptimizationTest, test_139) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("B");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("A");
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("A");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("B");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -7832,23 +8832,29 @@ TEST_F(IResearchQueryOptimizationTest, test_140) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("@");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("@");
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("@");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("@");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -7897,23 +8903,29 @@ TEST_F(IResearchQueryOptimizationTest, test_141) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("A");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("A");
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("A");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("A");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -7959,23 +8971,29 @@ TEST_F(IResearchQueryOptimizationTest, test_142) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("D");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("B");
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("B");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("D");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -8024,23 +9042,29 @@ TEST_F(IResearchQueryOptimizationTest, test_143) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("A");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("B");
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("B");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("A");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -8085,14 +9109,19 @@ TEST_F(IResearchQueryOptimizationTest, test_144) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("A");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -8137,14 +9166,19 @@ TEST_F(IResearchQueryOptimizationTest, test_145) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("B");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -8189,14 +9223,19 @@ TEST_F(IResearchQueryOptimizationTest, test_146) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("C");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -8241,14 +9280,19 @@ TEST_F(IResearchQueryOptimizationTest, test_147) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("A");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -8293,14 +9337,18 @@ TEST_F(IResearchQueryOptimizationTest, test_148) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("B");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -8344,14 +9392,18 @@ TEST_F(IResearchQueryOptimizationTest, test_149) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("C");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("A");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -8398,15 +9450,20 @@ TEST_F(IResearchQueryOptimizationTest, test_150) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType >= disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("A");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
       }
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -8452,10 +9509,13 @@ TEST_F(IResearchQueryOptimizationTest, test_151) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -8501,15 +9561,19 @@ TEST_F(IResearchQueryOptimizationTest, test_152) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("C");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+      }
       if (optimizeType >= disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("B");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -8558,15 +9622,20 @@ TEST_F(IResearchQueryOptimizationTest, test_153) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType >= disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("A");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
       }
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -8614,15 +9683,20 @@ TEST_F(IResearchQueryOptimizationTest, test_154) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType >= disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("B");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
       }
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -8669,15 +9743,20 @@ TEST_F(IResearchQueryOptimizationTest, test_155) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+      }
+
       if (optimizeType >= disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("A");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -8726,12 +9805,18 @@ TEST_F(IResearchQueryOptimizationTest, test_156) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType >= disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("A");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
       }
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -8777,11 +9862,17 @@ TEST_F(IResearchQueryOptimizationTest, test_157) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("B");
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      }
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -8826,11 +9917,17 @@ TEST_F(IResearchQueryOptimizationTest, test_158) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("B");
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      }
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -8877,23 +9974,29 @@ TEST_F(IResearchQueryOptimizationTest, test_159) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("D");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("A");
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("A");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("D");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("D"));
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -8942,23 +10045,29 @@ TEST_F(IResearchQueryOptimizationTest, test_160) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("B");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("A");
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("A");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("B");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -9005,23 +10114,29 @@ TEST_F(IResearchQueryOptimizationTest, test_161) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("@");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("@");
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("@");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("@");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -9071,23 +10186,29 @@ TEST_F(IResearchQueryOptimizationTest, test_162) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("A");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("A");
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("A");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("A");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -9134,23 +10255,29 @@ TEST_F(IResearchQueryOptimizationTest, test_163) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("@");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("B");
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("B");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("@");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("@"));
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -9199,23 +10326,29 @@ TEST_F(IResearchQueryOptimizationTest, test_164) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType < disabledDnfOptimizationStart) {
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("A");
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("B");
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
       } else {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("B");
-        root.add<irs::Not>()
-          .filter<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("A");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
+        {
+          auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -9260,14 +10393,19 @@ TEST_F(IResearchQueryOptimizationTest, test_165) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("A");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("C");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -9311,14 +10449,19 @@ TEST_F(IResearchQueryOptimizationTest, test_166) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("B");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -9365,14 +10508,19 @@ TEST_F(IResearchQueryOptimizationTest, test_167) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("C");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("A");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -9415,14 +10563,19 @@ TEST_F(IResearchQueryOptimizationTest, test_168) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("A");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -9467,14 +10620,19 @@ TEST_F(IResearchQueryOptimizationTest, test_169) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("B");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -9519,14 +10677,19 @@ TEST_F(IResearchQueryOptimizationTest, test_170) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("B");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("A");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      }
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -9573,15 +10736,20 @@ TEST_F(IResearchQueryOptimizationTest, test_171) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType >= disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("A");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
       }
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -9628,15 +10796,19 @@ TEST_F(IResearchQueryOptimizationTest, test_172) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      }
       if (optimizeType >= disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("B");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -9684,15 +10856,19 @@ TEST_F(IResearchQueryOptimizationTest, test_173) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      }
       if (optimizeType >= disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(true)
-          .term<irs::Bound::MIN>("A");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -9741,15 +10917,20 @@ TEST_F(IResearchQueryOptimizationTest, test_174) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       if (optimizeType >= disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("A");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
       }
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -9795,10 +10976,13 @@ TEST_F(IResearchQueryOptimizationTest, test_175) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -9844,15 +11028,19 @@ TEST_F(IResearchQueryOptimizationTest, test_176) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("B");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      }
       if (optimizeType >= disabledDnfOptimizationStart) {
-        root.add<irs::by_range>()
-          .field(mangleStringIdentity("values"))
-          .include<irs::Bound::MIN>(false)
-          .term<irs::Bound::MIN>("A");
+        {
+          auto& filter = root.add<irs::by_range>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+          filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+        }
       }
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -9901,9 +11089,12 @@ TEST_F(IResearchQueryOptimizationTest, test_177) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("B");
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -9940,38 +11131,53 @@ TEST_F(IResearchQueryOptimizationTest, test_178) {
     // left part B && C
     {
       auto& andFilter = root.add<irs::And>();
-      andFilter.add<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("B");
-      andFilter.add<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("C");
+      {
+        auto& filter = andFilter.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      }
+      {
+        auto& filter = andFilter.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      }
     }
     // right part B && A
     {
       auto& andFilter = root.add<irs::And>();
-      andFilter.add<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("B");
-      andFilter.add<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("A");
+      {
+        auto& filter = andFilter.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      }
+      {
+        auto& filter = andFilter.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
     }
   };
 
   auto nonConvertedExpected = [](irs::Or& expected) {
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_term>()
-      .field(mangleStringIdentity("values"))
-      .term("B");
     {
-      auto& filter = root.add<irs::Or>();
-      filter.add<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("C");
-      filter.add<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("A");
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("values");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+    }
+
+    {
+      auto& sub = root.add<irs::Or>();
+      {
+        auto& filter = sub.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      }
+      {
+        auto& filter = sub.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
     }
   };
 
@@ -10033,42 +11239,58 @@ TEST_F(IResearchQueryOptimizationTest, test_179) {
       auto& andFilter = root.add<irs::And>();
       {
         auto& part = andFilter.add<irs::Or>();
-        part.add<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("A");
-        part.add<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("C");
+        {
+          auto& filter = part.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
+        {
+          auto& filter = part.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
       }
       {
         auto& part = andFilter.add<irs::Or>();
-        part.add<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("B");
-        part.add<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("C");
+        {
+          auto& filter = part.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = part.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
       }
     }
     {
       auto& andFilter = root.add<irs::And>();
       {
         auto& part = andFilter.add<irs::Or>();
-        part.add<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("A");
-        part.add<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("C");
+        {
+          auto& filter = part.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
+        {
+          auto& filter = part.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
       }
       {
         auto& part = andFilter.add<irs::Or>();
-        part.add<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("A");
-        part.add<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("B");
+        {
+          auto& filter = part.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
+        {
+          auto& filter = part.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
       }
     }
   };
@@ -10076,33 +11298,45 @@ TEST_F(IResearchQueryOptimizationTest, test_179) {
   auto nonConvertedExpected = [](irs::Or& expected) {
     auto& root = expected.add<irs::And>();
     {
-      auto& filter = root.add<irs::Or>();
-      filter.add<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("A");
-      filter.add<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("C");
+      auto& sub = root.add<irs::Or>();
+      {
+        auto& filter = sub.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
+      {
+        auto& filter = sub.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      }
     }
     {
       auto& filter = root.add<irs::Or>();
       {
         auto& or2 = filter.add<irs::Or>();
-        or2.add<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("B");
-        or2.add<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("C");
+        {
+          auto& filter = or2.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = or2.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
       }
       {
         auto& or2 = filter .add<irs::Or>();
-        or2.add<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("A");
-        or2.add<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("B");
+        {
+          auto& filter = or2.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
+        {
+          auto& filter = or2.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
       }
     }
   };
@@ -10162,36 +11396,47 @@ TEST_F(IResearchQueryOptimizationTest, test_180) {
   auto dnfConvertedExpected = [](irs::Or& expected) {
     auto& root = expected;
     {
-      
       {
         auto& andFilter = root.add<irs::And>();
         auto& part = andFilter.add<irs::Or>();
-        part.add<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("A");
-        part.add<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("C");
+        {
+          auto& filter = part.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
+        {
+          auto& filter = part.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
       }
       {
         auto& andFilter = root.add<irs::And>();
         auto& part = andFilter.add<irs::Or>();
-        part.add<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("B");
-        part.add<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("C");
+        {
+          auto& filter = part.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = part.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
       }
       {
         auto& andFilter = root.add<irs::And>();
         auto& part = andFilter.add<irs::Or>();
-        part.add<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("A");
-        part.add<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("B");
+        {
+          auto& filter = part.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
+        {
+          auto& filter = part.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
       }
     }
   };
@@ -10199,31 +11444,43 @@ TEST_F(IResearchQueryOptimizationTest, test_180) {
   auto nonConvertedExpected = [](irs::Or& expected) {
     auto& root = expected;
     {
-      auto& filter = root.add<irs::And>().add<irs::Or>();
-      filter.add<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("A");
-      filter.add<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("C");
+      auto& sub = root.add<irs::And>().add<irs::Or>();
+      {
+        auto& filter = sub.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
+      {
+        auto& filter = sub.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      }
     }
     {
       auto& orFilter = root.add<irs::And>().add<irs::Or>();
-      orFilter.add<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("B");
-      orFilter.add<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("C");
+      {
+        auto& filter = orFilter.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      }
+      {
+        auto& filter = orFilter.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      }
     }
     {
       auto& orFilter = root.add<irs::And>().add<irs::Or>();
-      orFilter.add<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("A");
-      orFilter.add<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("B");
+      {
+        auto& filter = orFilter.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
+      {
+        auto& filter = orFilter.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      }
     }
   };
 
@@ -10283,32 +11540,44 @@ TEST_F(IResearchQueryOptimizationTest, test_181) {
     auto& root = expected;
     {
       auto& orFilter = root.add<irs::And>().add<irs::Or>();
-      orFilter.add<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("A");
-      orFilter.add<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("C");
+      {
+        auto& filter = orFilter.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
+      {
+        auto& filter = orFilter.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      }
     }
     {
       auto& andFilter = root.add<irs::And>();
       {
         auto& part = andFilter.add<irs::Or>();
-        part.add<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("B");
-        part.add<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("C");
+        {
+          auto& filter = part.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = part.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
       }
       {
         auto& part = andFilter.add<irs::Or>();
-        part.add<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("A");
-        part.add<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("B");
+        {
+          auto& filter = part.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
+        {
+          auto& filter = part.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
       }
     }
   };
@@ -10316,32 +11585,44 @@ TEST_F(IResearchQueryOptimizationTest, test_181) {
   auto nonConvertedExpected = [](irs::Or& expected) {
     {
       auto& orFilter = expected.add<irs::And>().add<irs::Or>();
-      orFilter.add<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("A");
-      orFilter.add<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("C");
+      {
+        auto& filter = orFilter.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
+      {
+        auto& filter = orFilter.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      }
     }
     {
       auto& andFilter = expected.add<irs::And>();
       {
         auto& orFilter = andFilter.add<irs::Or>();
-        orFilter.add<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("B");
-        orFilter.add<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("C");
+        {
+          auto& filter = orFilter.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
+        {
+          auto& filter = orFilter.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+        }
       }
       {
         auto& orFilter = andFilter.add<irs::Or>();
-        orFilter.add<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("A");
-        orFilter.add<irs::by_term>()
-          .field(mangleStringIdentity("values"))
-          .term("B");
+        {
+          auto& filter = orFilter.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+        }
+        {
+          auto& filter = orFilter.add<irs::by_term>();
+          *filter.mutable_field() = mangleStringIdentity("values");
+          filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+        }
       }
     }
   };
@@ -10403,26 +11684,34 @@ TEST_F(IResearchQueryOptimizationTest, test_182) {
     auto& root = expected;
     {
       auto& notFilter = root.add<irs::And>().add<irs::Not>();
-      notFilter.filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("A");
+      {
+        auto& filter = notFilter.filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
     }
     {
       auto& notFilter = root.add<irs::And>().add<irs::Not>();
-      notFilter.filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("B");
+      {
+        auto& filter = notFilter.filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      }
     }
   };
 
   auto nonConvertedExpected = [](irs::Or& expected) {
     auto& root = expected.add<irs::And>().add<irs::Not>().filter<irs::And>().add<irs::And>();
-    root.add<irs::by_term>()
-      .field(mangleStringIdentity("values"))
-      .term("A");
-    root.add<irs::by_term>()
-      .field(mangleStringIdentity("values"))
-      .term("B");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("values");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("values");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+    }
   };
 
   std::vector<std::function<void(irs::Or&)>> structureChecks =
@@ -10480,27 +11769,35 @@ TEST_F(IResearchQueryOptimizationTest, test_183) {
   auto negationConvertedExpected = [](irs::Or& expected) {
     auto& root = expected.add<irs::And>();
     {
-      auto & notFilter = root.add<irs::Not>();
-      notFilter.filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("A");
+      auto& notFilter = root.add<irs::Not>();
+      {
+        auto& filter = notFilter.filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
     }
     {
-      auto & notFilter = root.add<irs::Not>();
-      notFilter.filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("B");
+      auto& notFilter = root.add<irs::Not>();
+      {
+        auto& filter = notFilter.filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      }
     }
   };
 
   auto nonConvertedExpected = [](irs::Or& expected) {
     auto& root = expected.add<irs::And>().add<irs::Not>().filter<irs::And>().add<irs::Or>();
-    root.add<irs::by_term>()
-      .field(mangleStringIdentity("values"))
-      .term("A");
-    root.add<irs::by_term>()
-      .field(mangleStringIdentity("values"))
-      .term("B");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("values");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("values");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+    }
   };
 
   std::vector<std::function<void(irs::Or&)>> structureChecks =
@@ -10572,15 +11869,28 @@ TEST_F(IResearchQueryOptimizationTest, test_184) {
       irs::Or expected;
       auto& andFilter = expected.add<irs::And>();
       auto& left = andFilter.add<irs::Or>();
-      left.add<irs::by_term>().field(mangleStringIdentity("values"))
-        .term("A");
-      left.add<irs::by_term>().field(mangleStringIdentity("values"))
-        .term("B");
+      {
+        auto& filter = left.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
+      {
+        auto& filter = left.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      }
       auto& right = andFilter.add<irs::Or>();
-      right.add<irs::by_term>().field(mangleStringIdentity("values"))
-        .term("A");
-      right.add<irs::by_term>().field(mangleStringIdentity("values"))
-        .term("C");
+      {
+        auto& filter = right.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
+      {
+        auto& filter = right.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
     std::vector<arangodb::velocypack::Slice> expectedDocs{
@@ -10629,15 +11939,28 @@ TEST_F(IResearchQueryOptimizationTest, test_185) {
       irs::Or expected;
       auto& andFilter = expected.add<irs::And>();
       auto& left = andFilter.add<irs::Or>();
-      left.add<irs::by_term>().field(mangleStringIdentity("values"))
-        .term("A");
-      left.add<irs::by_term>().field(mangleStringIdentity("values"))
-        .term("B");
+      {
+        auto& filter = left.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
+      {
+        auto& filter = left.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+      }
       auto& right = andFilter.add<irs::Or>();
-      right.add<irs::by_term>().field(mangleStringIdentity("values"))
-        .term("A");
-      right.add<irs::by_term>().field(mangleStringIdentity("values"))
-        .term("C");
+      {
+        auto& filter = right.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+      }
+      {
+        auto& filter = right.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("values");
+        filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("C"));
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
     std::vector<arangodb::velocypack::Slice> expectedDocs{

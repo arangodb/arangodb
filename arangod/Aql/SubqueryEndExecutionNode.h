@@ -38,7 +38,7 @@ class SubqueryEndNode : public ExecutionNode {
   SubqueryEndNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
   SubqueryEndNode(ExecutionPlan* plan, ExecutionNodeId id, Variable const* inVariable,
-                  Variable const* outVariable, bool isModificationSubquery);
+                  Variable const* outVariable);
 
   CostEstimate estimateCost() const override final;
 
@@ -60,7 +60,7 @@ class SubqueryEndNode : public ExecutionNode {
 
   bool isEqualTo(ExecutionNode const& other) const override final;
 
-  void getVariablesUsedHere(arangodb::containers::HashSet<Variable const*>& usedVars) const final {
+  void getVariablesUsedHere(VarSet& usedVars) const final {
     if (_inVariable != nullptr) {
       usedVars.emplace(_inVariable);
     }
@@ -71,14 +71,15 @@ class SubqueryEndNode : public ExecutionNode {
   }
 
   void replaceOutVariable(Variable const* var);
-  bool isModificationNode() const override;
 
-  VariableIdSet getOutputVariables() const final;
+  // We only override this to TRI_ASSERT(false), because
+  // noone should ever ask this node whether it is a modification
+  // node
+  bool isModificationNode() const override;
 
  private:
   Variable const* _inVariable;
   Variable const* _outVariable;
-  bool _isModificationSubquery;
 };
 
 }  // namespace aql

@@ -21,18 +21,13 @@ window.ArangoUsers = Backbone.Collection.extend({
   },
 
   fetch: function (options) {
-    var basePath = frontendConfig.basePath;
-    if (frontendConfig.react) {
-      basePath = '';
-    }
-
     if (options.fetchAllUsers) {
       // flag to load all user profiles, this only works within _system database and needs at least read access
-      this.url = arangoHelper.databaseUrl(basePath + '/_api/user/');
+      this.url = arangoHelper.databaseUrl('/_api/user/');
     } else if (frontendConfig.authenticationEnabled && window.App.currentUser) {
-      this.url = arangoHelper.databaseUrl(basePath + '/_api/user/' + encodeURIComponent(window.App.currentUser));
+      this.url = arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(window.App.currentUser));
     } else {
-      this.url = arangoHelper.databaseUrl(basePath + '/_api/user/');
+      this.url = arangoHelper.databaseUrl('/_api/user/');
     }
     return Backbone.Collection.prototype.fetch.call(this, options);
   },
@@ -58,9 +53,8 @@ window.ArangoUsers = Backbone.Collection.extend({
         username: username,
         password: password
       }),
-      dataType: 'json'
-    }).success(
-      function (data) {
+      dataType: 'json',
+      success: function (data) {
         var jwtParts = data.jwt.split('.');
 
         if (!jwtParts[1]) {
@@ -81,14 +75,13 @@ window.ArangoUsers = Backbone.Collection.extend({
         }
 
         callback(false, self.activeUser);
-      }
-    ).error(
-      function () {
+      },
+      error: function () {
         arangoHelper.setCurrentJwt(null, null);
         self.activeUser = null;
         callback(true, null);
       }
-    );
+    });
   },
 
   setSortingDesc: function (yesno) {
@@ -176,21 +169,23 @@ window.ArangoUsers = Backbone.Collection.extend({
       callback(false, this.activeUser);
       return;
     }
+
     var url = 'whoAmI?_=' + Date.now();
     if (frontendConfig.react) {
       url = arangoHelper.databaseUrl('/_admin/aardvark/' + url);
     }
-    $.ajax(url)
-      .success(
-        function (data) {
-          self.activeUser = data.user;
-          callback(false, data.user);
-        }
-      ).error(
-        function () {
-          callback(true, null);
-        }
-      );
+
+    $.ajax({
+      type: 'GET',
+      url: url,
+      success: function (data) {
+        self.activeUser = data.user;
+        callback(false, data.user);
+      },
+      error: function () {
+        callback(true, null);
+      }
+    });
   }
 
 });

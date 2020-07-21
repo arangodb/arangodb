@@ -23,11 +23,67 @@
 #ifndef IRESEARCH_MULTITERM_QUERY_H
 #define IRESEARCH_MULTITERM_QUERY_H
 
-#include "filter.hpp"
-#include "cost.hpp"
-#include "limited_sample_collector.hpp"
+#include "search/cost.hpp"
+#include "search/filter.hpp"
+#include "utils/bitset.hpp"
 
 NS_ROOT
+
+//////////////////////////////////////////////////////////////////////////////
+/// @struct multiterm_state
+/// @brief cached per reader state
+//////////////////////////////////////////////////////////////////////////////
+struct multiterm_state {
+  struct term_state {
+    term_state(seek_term_iterator::seek_cookie::ptr&& cookie,
+               uint32_t stat_offset,
+               boost_t boost = no_boost()) noexcept
+      : cookie(std::move(cookie)),
+        stat_offset(stat_offset),
+        boost(boost) {
+    }
+
+    seek_term_iterator::seek_cookie::ptr cookie;
+    uint32_t stat_offset{};
+    float_t boost{ no_boost() };
+  };
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return true if state is empty
+  //////////////////////////////////////////////////////////////////////////////
+  bool empty() const noexcept {
+    return !scored_states_estimation && unscored_docs.none();
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return total cost of execution
+  //////////////////////////////////////////////////////////////////////////////
+  cost::cost_t estimation() const noexcept {
+    return scored_states_estimation + unscored_docs.count();
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief reader using for iterate over the terms
+  //////////////////////////////////////////////////////////////////////////////
+  const term_reader* reader{};
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief scored term states
+  //////////////////////////////////////////////////////////////////////////////
+  std::vector<term_state> scored_states;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief matching doc_ids that may have been skipped
+  ///        while collecting statistics and should not be
+  ///        scored by the disjunction
+  //////////////////////////////////////////////////////////////////////////////
+  bitset unscored_docs;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief estimated cost of scored states
+  //////////////////////////////////////////////////////////////////////////////
+  cost::cost_t scored_states_estimation{};
+}; // multiterm_state
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class multiterm_query
@@ -37,8 +93,6 @@ class multiterm_query : public filter::prepared {
  public:
   typedef states_cache<multiterm_state> states_t;
   typedef std::vector<bstring> stats_t;
-
-  DECLARE_SHARED_PTR(multiterm_query);
 
   explicit multiterm_query(states_t&& states,
                            std::shared_ptr<stats_t> const& stats,
@@ -67,7 +121,7 @@ class multiterm_query : public filter::prepared {
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
-      const attribute_view& /*ctx*/) const override;
+      const attribute_provider* /*ctx*/) const override;
 
  private:
   const stats_t& stats() const noexcept {

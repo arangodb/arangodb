@@ -37,12 +37,9 @@ NS_ROOT
 // --SECTION--                                             Java style iterators 
 // ----------------------------------------------------------------------------
 
-template< typename T >
+template<typename T>
 struct IRESEARCH_API_TEMPLATE iterator {
-  DECLARE_UNIQUE_PTR(iterator<T>);
-  DEFINE_FACTORY_INLINE(iterator<T>)
-
-  virtual ~iterator() {}
+  virtual ~iterator() = default;
   virtual T value() const = 0;
   virtual bool next() = 0;
 };

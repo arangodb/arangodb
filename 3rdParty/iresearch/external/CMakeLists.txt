@@ -259,3 +259,9 @@ target_include_directories(
   SYSTEM
   INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/utfcpp
 )
+
+################################################################################
+### frozen library
+################################################################################
+
+set(FROZEN_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/frozen/include PARENT_SCOPE)

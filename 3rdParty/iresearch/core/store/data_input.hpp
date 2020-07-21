@@ -37,18 +37,41 @@
 
 NS_ROOT
 
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @enum BufferHint
+/// @brief various hints for direct buffer access
+////////////////////////////////////////////////////////////////////////////////
+enum class BufferHint {
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief buffer is valid until the next read operation
+  //////////////////////////////////////////////////////////////////////////////
+  NORMAL = 0,
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief stream guarantees that buffer is immutable and will reside
+  ///        in memory while underlying stream is open
+  //////////////////////////////////////////////////////////////////////////////
+  PERSISTENT
+}; // BufferHint
+
+////////////////////////////////////////////////////////////////////////////////
 /// @struct data_input
 /// @brief base interface for all low-level input data streams
-//////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API data_input
-    : std::iterator<std::forward_iterator_tag, byte_type, void, void, void> {
+////////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API data_input {
+  using iterator_category = std::forward_iterator_tag;
+  using value_type = byte_type;
+  using pointer = void;
+  using reference = void;
+  using difference_type = void;
 
   virtual ~data_input() = default;
 
   virtual byte_type read_byte() = 0;
 
   virtual size_t read_bytes(byte_type* b, size_t count) = 0;
+
+  virtual const byte_type* read_buffer(size_t count, BufferHint hint) = 0;
 
   virtual size_t file_pointer() const = 0;
 
@@ -89,8 +112,7 @@ struct IRESEARCH_API data_input
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API index_input : public data_input {
  public:
-  DECLARE_UNIQUE_PTR(index_input);
-  DEFINE_FACTORY_INLINE(index_input)
+  using ptr = std::unique_ptr<index_input>;
 
   virtual ptr dup() const = 0; // non-thread-safe fd copy (offset preserved)
   virtual ptr reopen() const = 0; // thread-safe new low-level-fd (offset preserved)
@@ -138,6 +160,8 @@ class IRESEARCH_API buffered_index_input : public index_input {
   virtual byte_type read_byte() override final;
 
   virtual size_t read_bytes(byte_type* b, size_t count) override final;
+
+  virtual const byte_type* read_buffer(size_t size, BufferHint hint) noexcept final;
 
   virtual size_t file_pointer() const override final {
     return start_ + offset();

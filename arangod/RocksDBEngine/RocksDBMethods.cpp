@@ -195,6 +195,7 @@ std::unique_ptr<rocksdb::Iterator> RocksDBReadOnlyMethods::NewIterator(
 
 bool RocksDBTrxMethods::DisableIndexing() {
   if (!_indexingDisabled) {
+    TRI_ASSERT(_state != nullptr);
     _state->_rocksTransaction->DisableIndexing();
     _indexingDisabled = true;
     return true;
@@ -212,13 +213,16 @@ bool RocksDBTrxMethods::EnableIndexing() {
 }
 
 RocksDBTrxMethods::RocksDBTrxMethods(RocksDBTransactionState* state)
-    : RocksDBMethods(state), _indexingDisabled(false) {}
-
+    : RocksDBMethods(state), _indexingDisabled(false) {
+  TRI_ASSERT(_state != nullptr);
+}
 
 rocksdb::Status RocksDBTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                        rocksdb::Slice const& key,
                                        rocksdb::PinnableSlice* val) {
   TRI_ASSERT(cf != nullptr);
+  TRI_ASSERT(_state != nullptr);
+  TRI_ASSERT(_state->_rocksTransaction);
   rocksdb::ReadOptions const& ro = _state->_rocksReadOptions;
   TRI_ASSERT(ro.snapshot != nullptr);
   return _state->_rocksTransaction->Get(ro, cf, key, val);
@@ -228,6 +232,8 @@ rocksdb::Status RocksDBTrxMethods::GetForUpdate(rocksdb::ColumnFamilyHandle* cf,
                                                 rocksdb::Slice const& key,
                                                 rocksdb::PinnableSlice* val) {
   TRI_ASSERT(cf != nullptr);
+  TRI_ASSERT(_state != nullptr);
+  TRI_ASSERT(_state->_rocksTransaction);
   rocksdb::ReadOptions const& ro = _state->_rocksReadOptions;
   TRI_ASSERT(ro.snapshot != nullptr);
   return _state->_rocksTransaction->GetForUpdate(ro, cf, key, val);
@@ -238,46 +244,64 @@ rocksdb::Status RocksDBTrxMethods::Put(rocksdb::ColumnFamilyHandle* cf,
                                        rocksdb::Slice const& val,
                                        bool assume_tracked) {
   TRI_ASSERT(cf != nullptr);
+  TRI_ASSERT(_state != nullptr);
+  TRI_ASSERT(_state->_rocksTransaction);
   return _state->_rocksTransaction->Put(cf, key.string(), val, assume_tracked);
 }
 
 rocksdb::Status RocksDBTrxMethods::PutUntracked(rocksdb::ColumnFamilyHandle* cf,
                                        RocksDBKey const& key, rocksdb::Slice const& val) {
   TRI_ASSERT(cf != nullptr);
+  TRI_ASSERT(_state != nullptr);
+  TRI_ASSERT(_state->_rocksTransaction);
   return _state->_rocksTransaction->PutUntracked(cf, key.string(), val);
 }
 
 rocksdb::Status RocksDBTrxMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
                                           RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);
+  TRI_ASSERT(_state != nullptr);
+  TRI_ASSERT(_state->_rocksTransaction);
   return _state->_rocksTransaction->Delete(cf, key.string());
 }
 
 rocksdb::Status RocksDBTrxMethods::SingleDelete(rocksdb::ColumnFamilyHandle* cf,
                                                 RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);
+  TRI_ASSERT(_state != nullptr);
+  TRI_ASSERT(_state->_rocksTransaction);
   return _state->_rocksTransaction->SingleDelete(cf, key.string());
 }
 
 void RocksDBTrxMethods::PutLogData(rocksdb::Slice const& blob) {
+  TRI_ASSERT(_state != nullptr);
+  TRI_ASSERT(_state->_rocksTransaction);
   _state->_rocksTransaction->PutLogData(blob);
 }
 
 std::unique_ptr<rocksdb::Iterator> RocksDBTrxMethods::NewIterator(
     rocksdb::ReadOptions const& opts, rocksdb::ColumnFamilyHandle* cf) {
   TRI_ASSERT(cf != nullptr);
+  TRI_ASSERT(_state != nullptr);
+  TRI_ASSERT(_state->_rocksTransaction);
   return std::unique_ptr<rocksdb::Iterator>(_state->_rocksTransaction->GetIterator(opts, cf));
 }
 
 void RocksDBTrxMethods::SetSavePoint() {
+  TRI_ASSERT(_state != nullptr);
+  TRI_ASSERT(_state->_rocksTransaction);
   _state->_rocksTransaction->SetSavePoint();
 }
 
 rocksdb::Status RocksDBTrxMethods::RollbackToSavePoint() {
+  TRI_ASSERT(_state != nullptr);
+  TRI_ASSERT(_state->_rocksTransaction);
   return _state->_rocksTransaction->RollbackToSavePoint();
 }
 
 void RocksDBTrxMethods::PopSavePoint() {
+  TRI_ASSERT(_state != nullptr);
+  TRI_ASSERT(_state->_rocksTransaction);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   rocksdb::Status s = _state->_rocksTransaction->PopSavePoint();
   TRI_ASSERT(s.ok());

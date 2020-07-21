@@ -21,6 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Mocks/Servers.h"  // this must be first because windows
+
 #include "src/api/api.h"  // must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
 // #include "src/objects-inl.h"  // (required to avoid compile warnings) must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
 #include "src/objects/scope-info.h"  // must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
@@ -31,7 +33,6 @@
 
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
-#include "Mocks/Servers.h"
 
 #include "Aql/QueryRegistry.h"
 #include "Basics/StaticStrings.h"
@@ -226,8 +227,7 @@ TEST_F(V8ViewsTest, test_auth) {
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
+    
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -349,8 +349,7 @@ TEST_F(V8ViewsTest, test_auth) {
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
+    
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -471,8 +470,7 @@ TEST_F(V8ViewsTest, test_auth) {
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
+    
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -597,8 +595,7 @@ TEST_F(V8ViewsTest, test_auth) {
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
+    
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -771,8 +768,7 @@ TEST_F(V8ViewsTest, test_auth) {
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
+    
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -946,8 +942,7 @@ TEST_F(V8ViewsTest, test_auth) {
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
+    
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -1089,8 +1084,7 @@ TEST_F(V8ViewsTest, test_auth) {
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
+    
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -1227,8 +1221,7 @@ TEST_F(V8ViewsTest, test_auth) {
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
+    
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });

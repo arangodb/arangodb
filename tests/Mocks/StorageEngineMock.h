@@ -148,13 +148,12 @@ class TransactionCollectionMock : public arangodb::TransactionCollection {
                             arangodb::AccessMode::Type accessType);
   virtual bool canAccess(arangodb::AccessMode::Type accessType) const override;
   virtual bool hasOperations() const override;
-  virtual void release() override;
-  virtual void unuse(int nestingLevel) override;
-  virtual int use(int nestingLevel) override;
+  virtual void releaseUsage() override;
+  virtual arangodb::Result lockUsage() override;
 
  private:
-  int doLock(arangodb::AccessMode::Type type, int nestingLevel) override;
-  int doUnlock(arangodb::AccessMode::Type type, int nestingLevel) override;
+  arangodb::Result doLock(arangodb::AccessMode::Type type) override;
+  arangodb::Result doUnlock(arangodb::AccessMode::Type type) override;
 };
 
 class TransactionStateMock : public arangodb::TransactionState {
@@ -200,10 +199,10 @@ class StorageEngineMock : public arangodb::StorageEngine {
   virtual arangodb::Result createTickRanges(VPackBuilder&) override;
   virtual std::unique_ptr<arangodb::TransactionCollection> createTransactionCollection(
       arangodb::TransactionState& state, TRI_voc_cid_t cid,
-      arangodb::AccessMode::Type, int nestingLevel) override;
+      arangodb::AccessMode::Type) override;
   virtual std::unique_ptr<arangodb::transaction::Manager> createTransactionManager(
       arangodb::transaction::ManagerFeature&) override;
-  virtual std::unique_ptr<arangodb::TransactionState> createTransactionState(
+  virtual std::shared_ptr<arangodb::TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
       arangodb::transaction::Options const& options) override;
   virtual arangodb::Result createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id,
@@ -237,10 +236,11 @@ class StorageEngineMock : public arangodb::StorageEngine {
                                           std::string const& keysId) override;
   virtual arangodb::RecoveryState recoveryState() override;
   virtual TRI_voc_tick_t recoveryTick() override;
+
   virtual arangodb::Result lastLogger(TRI_vocbase_t& vocbase,
-                                      std::shared_ptr<arangodb::transaction::Context> transactionContext,
                                       uint64_t tickStart, uint64_t tickEnd,
-                                      std::shared_ptr<VPackBuilder>& builderSPtr) override;
+                                      arangodb::velocypack::Builder& builderSPtr) override;
+
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::CreateDatabaseInfo&&,
                                                       bool isUpgrade) override;
   using StorageEngine::registerCollection;

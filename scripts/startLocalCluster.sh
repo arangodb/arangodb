@@ -52,7 +52,6 @@ if [ "$POOLSZ" == "" ] ; then
 fi
 
 STORAGE_ENGINE="--server.storage-engine=rocksdb"
-DEFAULT_REPLICATION=""
 
 if [ "$AUTOUPGRADE" == "1" ];then
   echo "-- Using autoupgrade procedure"
@@ -121,7 +120,7 @@ if [ ! -z "$INTERACTIVE_MODE" ] ; then
         CO_ARANGOD="$XTERM $XTERMOPTIONS ${BUILD}/bin/arangod --console"
         echo "Starting one coordinator in terminal with --console"
     elif [ "$INTERACTIVE_MODE" == "R" ] ; then
-        ARANGOD="$XTERM $XTERMOPTIONS rr ${BUILD}/bin/arangod"
+        ARANGOD="rr ${BUILD}/bin/arangod"
         CO_ARANGOD="$ARANGOD --console"
         echo Running cluster in rr with --console.
     fi
@@ -193,6 +192,11 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
 done
 
 start() {
+    if [ "$NRDBSERVERS" == "1" ]; then
+        SYSTEM_REPLICATION_FACTOR="--cluster.system-replication-factor=1"
+    else
+        SYSTEM_REPLICATION_FACTOR=""
+    fi
 
     if [ "$1" == "dbserver" ]; then
         ROLE="DBSERVER"
@@ -237,6 +241,7 @@ start() {
           --log.force-direct false \
           --log.level $LOG_LEVEL_CLUSTER \
           --javascript.allow-admin-execute true \
+          $SYSTEM_REPLICATION_FACTOR \
           $STORAGE_ENGINE \
           $AUTHENTICATION \
           $SSLKEYFILE \
@@ -262,6 +267,7 @@ start() {
         --log.thread true \
         --log.level $LOG_LEVEL_CLUSTER \
         --javascript.allow-admin-execute true \
+        $SYSTEM_REPLICATION_FACTOR \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \

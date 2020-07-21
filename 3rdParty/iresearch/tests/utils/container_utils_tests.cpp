@@ -257,10 +257,10 @@ TEST(container_utils_array_tests, check_alignment) {
     "wrong data alignment"
   );
 
-  typedef irs::container_utils::array<MAX_ALIGN_T, 5> array_aligned_max_t;
+  typedef irs::container_utils::array<std::max_align_t, 5> array_aligned_max_t;
 
   static_assert(
-    alignof(array_aligned_max_t) == alignof(MAX_ALIGN_T),
+    alignof(array_aligned_max_t) == alignof(std::max_align_t),
     "wrong data alignment"
   );
 
@@ -369,7 +369,3 @@ TEST(container_utils_array_tests, construct) {
     ASSERT_EQ(&objects[1], &objects.back());
   }
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

@@ -107,11 +107,10 @@ class StorageEngine : public application_features::ApplicationFeature {
   }
 
   virtual std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) = 0;
-  virtual std::unique_ptr<TransactionState> createTransactionState(
+  virtual std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TRI_voc_tid_t, transaction::Options const& options) = 0;
   virtual std::unique_ptr<TransactionCollection> createTransactionCollection(
-      TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType,
-      int nestingLevel) = 0;
+      TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType) = 0;
 
   // when a new collection is created, this method is called to augment the
   // collection creation data with engine-specific information
@@ -334,9 +333,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual Result createTickRanges(velocypack::Builder& builder) = 0;
   virtual Result firstTick(uint64_t& tick) = 0;
   virtual Result lastLogger(TRI_vocbase_t& vocbase,
-                            std::shared_ptr<transaction::Context> transactionContext,
                             uint64_t tickStart, uint64_t tickEnd,
-                            std::shared_ptr<velocypack::Builder>& builderSPtr) = 0;
+                            velocypack::Builder& builder) = 0;
   virtual WalAccess const* walAccess() const = 0;
 
   void getCapabilities(velocypack::Builder& builder) const {

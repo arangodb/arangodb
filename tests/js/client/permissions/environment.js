@@ -30,10 +30,10 @@
 
 let env = require('process').env;
 if (getOptions === true) {
-  env['PATHTT'] = 'whitelist';
+  env['PATHTT'] = 'denylist';
   return {
-    'javascript.environment-variables-blacklist': 'PATH',
-    'javascript.environment-variables-whitelist': '^MIAU-DERFUCHS$|PATHTT|^INSTANCEINFO$'
+    'javascript.environment-variables-denylist': 'PATH',
+    'javascript.environment-variables-allowlist': '^MIAU-DERFUCHS$|PATHTT|^INSTANCEINFO$'
   };
 }
 
@@ -75,7 +75,7 @@ function testSuite() {
       assertTrue(env['INSTANCEINFO'].length > 0);
 
       assertTrue(env.hasOwnProperty('PATHTT'));
-      assertEqual(env['PATHTT'], 'whitelist');
+      assertEqual(env['PATHTT'], 'denylist');
       
     }
   };

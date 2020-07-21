@@ -31,7 +31,7 @@
 #include "Aql/VariableGenerator.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 #include "Graph/Graph.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -43,9 +43,7 @@ namespace graph {
 class GraphManager {
  private:
   TRI_vocbase_t& _vocbase;
-
-  bool _isInTransaction;
-
+  
   std::shared_ptr<transaction::Context> ctx() const;
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -61,21 +59,14 @@ class GraphManager {
                                    bool waitForSync, VPackSlice options);
 
  public:
-  explicit GraphManager(TRI_vocbase_t& vocbase)
-      : GraphManager(vocbase, false) {}
+  explicit GraphManager(TRI_vocbase_t& vocbase) : _vocbase(vocbase) {}
 
-  GraphManager(TRI_vocbase_t& vocbase, bool isInTransaction)
-      : _vocbase(vocbase), _isInTransaction(isInTransaction) {}
+  OperationResult readGraphs(velocypack::Builder& builder) const;
 
-  OperationResult readGraphs(velocypack::Builder& builder,
-                             arangodb::aql::QueryPart queryPart) const;
-
-  OperationResult readGraphKeys(velocypack::Builder& builder,
-                                arangodb::aql::QueryPart queryPart) const;
+  OperationResult readGraphKeys(velocypack::Builder& builder) const;
 
   OperationResult readGraphByQuery(velocypack::Builder& builder,
-                                   arangodb::aql::QueryPart queryPart,
-                                   std::string queryStr) const;
+                                   std::string const& queryStr) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find and return a collections if available
@@ -102,10 +93,11 @@ class GraphManager {
   /// @brief find or create collections by EdgeDefinitions
   ////////////////////////////////////////////////////////////////////////////////
   OperationResult findOrCreateCollectionsByEdgeDefinitions(
-      std::map<std::string, EdgeDefinition> const& edgeDefinitions,
+      Graph const& graph, std::map<std::string, EdgeDefinition> const& edgeDefinitions,
       bool waitForSync, VPackSlice options);
 
-  OperationResult findOrCreateCollectionsByEdgeDefinition(EdgeDefinition const& edgeDefinition,
+  OperationResult findOrCreateCollectionsByEdgeDefinition(Graph const& graph,
+                                                          EdgeDefinition const& edgeDefinition,
                                                           bool waitForSync,
                                                           VPackSlice options);
 
@@ -155,7 +147,7 @@ class GraphManager {
    */
   Result ensureCollections(Graph* graph, bool waitForSync) const;
 
-  /// @brief check if only satellite collections are used
+  /// @brief check if only SatelliteCollections are used
   bool onlySatellitesUsed(Graph const* graph) const;
 
   /**

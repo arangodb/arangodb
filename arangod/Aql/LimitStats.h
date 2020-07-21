@@ -43,6 +43,10 @@ class LimitStats {
   void incrFullCountBy(size_t amount) noexcept;
 
   [[nodiscard]] auto getFullCount() const noexcept -> std::size_t;
+  
+  auto operator+=(LimitStats const& other) noexcept -> void {
+    incrFullCountBy(other.getFullCount());
+  }
 
  private:
   std::size_t _fullCount{0};
@@ -51,8 +55,6 @@ class LimitStats {
 
 auto operator+=(ExecutionStats& executionStats, LimitStats const& limitStats) noexcept
     -> ExecutionStats&;
-
-auto operator+=(LimitStats& limitStats, LimitStats const& other) noexcept -> LimitStats&;
 
 auto operator==(LimitStats const&, LimitStats const&) noexcept -> bool;
 

@@ -37,7 +37,6 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Cluster/TraverserEngineRegistry.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
@@ -47,7 +46,6 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -103,8 +101,9 @@ class SortLimitTest
   std::string sorterType(TRI_vocbase_t& vocbase, std::string const& queryString,
                          std::string rules = "") {
     auto options = buildOptions(rules);
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               nullptr, options, arangodb::aql::PART_MAIN);
+    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+    arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString),
+                               nullptr, options);
 
     auto result = query.explain();
     VPackSlice nodes = result.data->slice().get("nodes");
@@ -128,15 +127,15 @@ class SortLimitTest
                              std::vector<size_t> const& expected,
                              size_t fullCount, std::string rules = "") {
     auto options = buildOptions(rules);
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               nullptr, options, arangodb::aql::PART_MAIN);
-    std::shared_ptr<arangodb::aql::SharedQueryState> ss = query.sharedState();
+    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+    arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString),
+                               nullptr, options);
     arangodb::aql::QueryResult result;
 
     while (true) {
-      auto state = query.execute(arangodb::QueryRegistryFeature::registry(), result);
+      auto state = query.execute(result);
       if (state == arangodb::aql::ExecutionState::WAITING) {
-        ss->waitForAsyncWakeup();
+        query.sharedState()->waitForAsyncWakeup();
       } else {
         break;
       }

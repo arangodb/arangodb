@@ -30,33 +30,18 @@
 NS_ROOT
 NS_BEGIN(analysis)
 
-class IRESEARCH_API analyzer: public token_stream {
+class IRESEARCH_API analyzer : public token_stream {
  public:
-  DECLARE_SHARED_PTR(analyzer);
+  using ptr = std::shared_ptr<analyzer>;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @class type_id
-  //////////////////////////////////////////////////////////////////////////////
-  class type_id: public iresearch::type_id, util::noncopyable {
-   public:
-    type_id(const string_ref& name): name_(name) {}
-    operator const type_id*() const { return this; }
-    const string_ref& name() const { return name_; }
-
-   private:
-    string_ref name_;
-  };
-
-  explicit analyzer(const type_id& id) noexcept;
+  explicit analyzer(const type_info& type) noexcept;
 
   virtual bool reset(const string_ref& data) = 0;
 
-  const type_id& type() const noexcept { return *type_; }
+  constexpr type_info::type_id type() const noexcept { return type_; }
 
-protected:
- 
  private:
-  const type_id* type_;
+  type_info::type_id type_;
 };
 
 NS_END // analysis

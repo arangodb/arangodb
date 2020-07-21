@@ -28,7 +28,6 @@
 #include "Aql/AqlCall.h"
 #include "AqlExecutorTestCase.h"
 #include "AqlItemBlockHelper.h"
-#include "RowFetcherHelper.h"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Ast.h"
@@ -92,20 +91,18 @@ class CalculationExecutorTest
 
   CalculationExecutorTest()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
-        ast(fakedQuery.get()),
+        ast(*fakedQuery.get()),
         one(ast.createNodeValueInt(1)),
-        var("a", 0),
+        var("a", 0, false),
         a(::initializeReference(ast, var)),
         node(ast.createNodeBinaryOperator(AstNodeType::NODE_TYPE_OPERATOR_BINARY_PLUS, a, one)),
         plan(&ast),
-        expr(&plan, &ast, node),
+        expr(&ast, node),
         outRegID(1),
         inRegID(0),
-        registerInfos(make_shared_unordered_set({inRegID}),
-                      make_shared_unordered_set({outRegID}),
+        registerInfos(RegIdSet{inRegID}, RegIdSet{outRegID},
                       RegisterId(1) /*in width*/, RegisterId(2) /*out width*/,
-                      std::unordered_set<RegisterId>{} /*to clear*/,
-                      std::unordered_set<RegisterId>{} /*to keep*/),
+                      RegIdSet{} /*to clear*/, RegIdSetStack{{}} /*to keep*/),
         executorInfos(outRegID /*out reg*/, *fakedQuery.get() /*query*/, expr /*expression*/,
                       std::vector<Variable const*>{&var} /*expression input variables*/,
                       std::vector<RegisterId>({inRegID}) /*expression input registers*/) {}
@@ -172,7 +169,7 @@ TEST_P(CalculationExecutorTest, reference_some_input) {
       .run(true);
 }
 
-TEST_P(CalculationExecutorTest, referece_some_input_skip) {
+TEST_P(CalculationExecutorTest, reference_some_input_skip) {
   AqlCall call{};
   call.offset = 4;
   ExecutionStats stats{};
@@ -197,7 +194,7 @@ TEST_P(CalculationExecutorTest, referece_some_input_skip) {
 
 TEST_P(CalculationExecutorTest, reference_some_input_limit) {
   AqlCall call{};
-  call.hardLimit = 4;
+  call.hardLimit = 4u;
   ExecutionStats stats{};
 
   makeExecutorTestHelper<2, 2>()
@@ -221,7 +218,7 @@ TEST_P(CalculationExecutorTest, reference_some_input_limit) {
 
 TEST_P(CalculationExecutorTest, reference_some_input_limit_fullcount) {
   AqlCall call{};
-  call.hardLimit = 4;
+  call.hardLimit = 4u;
   call.fullCount = true;
   ExecutionStats stats{};
 
@@ -294,7 +291,7 @@ TEST_P(CalculationExecutorTest, condition_some_input_skip) {
 
 TEST_P(CalculationExecutorTest, condition_some_input_limit) {
   AqlCall call{};
-  call.hardLimit = 4;
+  call.hardLimit = 4u;
   ExecutionStats stats{};
 
   makeExecutorTestHelper<2, 2>()
@@ -318,7 +315,7 @@ TEST_P(CalculationExecutorTest, condition_some_input_limit) {
 
 TEST_P(CalculationExecutorTest, condition_some_input_limit_fullcount) {
   AqlCall call{};
-  call.hardLimit = 4;
+  call.hardLimit = 4u;
   call.fullCount = true;
   ExecutionStats stats{};
 

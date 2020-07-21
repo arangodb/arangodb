@@ -24,14 +24,16 @@
 #define ARANGOD_AQL_DISTRIBUTE_EXECUTOR_H
 
 #include "Aql/BlocksWithClients.h"
+#include "Aql/DistributeClientBlock.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/RegisterInfos.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 
 namespace arangodb {
 namespace aql {
 
 class AqlItemBlockManager;
+class DistributeClientBlock;
 class DistributeNode;
 
 class DistributeExecutorInfos : public ClientsExecutorInfos {
@@ -39,7 +41,7 @@ class DistributeExecutorInfos : public ClientsExecutorInfos {
   DistributeExecutorInfos(std::vector<std::string> clientIds, Collection const* collection,
                           RegisterId regId, RegisterId alternativeRegId,
                           bool allowSpecifiedKeys, bool allowKeyConversionToObject,
-                          bool createKeys, ScatterNode::ScatterType type);
+                          bool createKeys, bool fixupGraphInput, ScatterNode::ScatterType type);
 
   auto registerId() const noexcept -> RegisterId;
   auto hasAlternativeRegister() const noexcept -> bool;
@@ -55,6 +57,8 @@ class DistributeExecutorInfos : public ClientsExecutorInfos {
 
   auto createKey(VPackSlice input) const -> std::string;
 
+  auto needsToFixGraphInput() const -> bool;
+
  private:
   RegisterId _regId;
   RegisterId _alternativeRegId;
@@ -62,6 +66,7 @@ class DistributeExecutorInfos : public ClientsExecutorInfos {
   bool _createKeys;
   bool _usesDefaultSharding;
   bool _allowSpecifiedKeys;
+  bool _fixupGraphInput;
 
   /// @brief _colectionName: the name of the sharded collection
   Collection const* _collection;
@@ -80,45 +85,7 @@ class DistributeExecutor {
  public:
   using Infos = DistributeExecutorInfos;
 
-  class ClientBlockData {
-   public:
-    ClientBlockData(ExecutionEngine& engine, ScatterNode const* node,
-                    RegisterInfos const& registerInfos);
-
-    auto clear() -> void;
-    auto addBlock(SharedAqlItemBlockPtr block, std::vector<size_t> usedIndexes) -> void;
-
-    auto addSkipResult(SkipResult const& skipResult) -> void;
-    auto hasDataFor(AqlCall const& call) -> bool;
-
-    auto execute(AqlCallStack callStack, ExecutionState upstreamState)
-        -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
-
-   private:
-    /**
-     * @brief This call will join as many blocks as available from the queue
-     *        and return them in a SingleBlock. We then use the IdExecutor
-     *        to hand out the data contained in these blocks
-     *        We do on purpose not give any kind of guarantees on the sizing
-     * of this block to be flexible with the implementation, and find a good
-     *        trade-off between blocksize and block copy operations.
-     *
-     * @return SharedAqlItemBlockPtr a joined block from the queue.
-     *         SkipResult the skip information matching to this block
-     */
-    auto popJoinedBlock() -> std::tuple<SharedAqlItemBlockPtr, SkipResult>;
-
-   private:
-    AqlItemBlockManager& _blockManager;
-    RegisterInfos const& registerInfos;
-
-    std::deque<std::pair<SharedAqlItemBlockPtr, std::vector<size_t>>> _queue;
-    SkipResult _skipped{};
-
-    // This is unique_ptr to get away with everything being forward declared...
-    std::unique_ptr<ExecutionBlock> _executor;
-    bool _executorHasMore = false;
-  };
+  using ClientBlockData = DistributeClientBlock;
 
   DistributeExecutor(DistributeExecutorInfos const& infos);
   ~DistributeExecutor() = default;
@@ -151,6 +118,8 @@ class DistributeExecutor {
    */
   auto getClient(SharedAqlItemBlockPtr block, size_t rowIndex) -> std::string;
 
+  auto getClientByIdSlice(arangodb::velocypack::Slice input) -> std::string;
+
  private:
   DistributeExecutorInfos const& _infos;
 
@@ -160,8 +129,6 @@ class DistributeExecutor {
   // a reusable Builder object for building document objects
   arangodb::velocypack::Builder _objectBuilder;
 };
-
-class Query;
 
 /**
  * @brief See ExecutionBlockImpl.h for documentation.

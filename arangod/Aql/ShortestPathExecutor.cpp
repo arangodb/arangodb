@@ -211,7 +211,7 @@ auto ShortestPathExecutor::fetchPath(AqlItemBlockInputRange& input) -> bool {
   while (input.hasDataRow()) {
     auto source = VPackSlice{};
     auto target = VPackSlice{};
-    std::tie(std::ignore, _inputRow) = input.nextDataRow();
+    std::tie(std::ignore, _inputRow) = input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(_inputRow.isInitialized());
 
     // Ordering important here.
@@ -307,7 +307,7 @@ bool ShortestPathExecutor::getVertexId(ShortestPathExecutorInfos::InputVertex co
         id = in.slice();
         // Validation
         if (!::isValidId(id)) {
-          _finder.options().query()->registerWarning(
+          _finder.options().query().warnings().registerWarning(
               TRI_ERROR_BAD_PARAMETER,
               "Invalid input for Shortest Path: "
               "Only id strings or objects with "
@@ -316,7 +316,7 @@ bool ShortestPathExecutor::getVertexId(ShortestPathExecutorInfos::InputVertex co
         }
         return true;
       } else {
-        _finder.options().query()->registerWarning(
+        _finder.options().query().warnings().registerWarning(
             TRI_ERROR_BAD_PARAMETER,
             "Invalid input for Shortest Path: "
             "Only id strings or objects with "
@@ -327,7 +327,7 @@ bool ShortestPathExecutor::getVertexId(ShortestPathExecutorInfos::InputVertex co
     case ShortestPathExecutorInfos::InputVertex::Type::CONSTANT: {
       id = builder.slice();
       if (!::isValidId(id)) {
-        _finder.options().query()->registerWarning(
+        _finder.options().query().warnings().registerWarning(
             TRI_ERROR_BAD_PARAMETER,
             "Invalid input for Shortest Path: "
             "Only id strings or objects with "

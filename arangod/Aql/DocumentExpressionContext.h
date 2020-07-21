@@ -30,13 +30,17 @@
 
 namespace arangodb {
 namespace aql {
-class Query;
 
 class DocumentExpressionContext final : public QueryExpressionContext {
  public:
-  DocumentExpressionContext(Query* query, arangodb::velocypack::Slice document);
+  DocumentExpressionContext(transaction::Methods& trx, QueryContext& query,
+                            AqlFunctionsInternalCache& cache, arangodb::velocypack::Slice document);
 
   ~DocumentExpressionContext() = default;
+
+  bool isDataFromCollection(Variable const* variable) const override {
+    return true;
+  }
 
   AqlValue getVariableValue(Variable const* variable, bool doCopy,
                             bool& mustDestroy) const override;

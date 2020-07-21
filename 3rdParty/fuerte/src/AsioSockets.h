@@ -125,16 +125,20 @@ struct Socket<fuerte::SocketType::Ssl> {
             return;
           }
 
-          // Perform SSL handshake and verify the remote host's certificate.
-          socket.next_layer().set_option(asio_ns::ip::tcp::no_delay(true));
-          if (verify) {
-            socket.set_verify_mode(asio_ns::ssl::verify_peer);
-            socket.set_verify_callback(
-                asio_ns::ssl::rfc2818_verification(config._host));
-          } else {
-            socket.set_verify_mode(asio_ns::ssl::verify_none);
+          try {
+            // Perform SSL handshake and verify the remote host's certificate.
+            socket.next_layer().set_option(asio_ns::ip::tcp::no_delay(true));
+            if (verify) {
+              socket.set_verify_mode(asio_ns::ssl::verify_peer);
+              socket.set_verify_callback(
+                  asio_ns::ssl::rfc2818_verification(config._host));
+            } else {
+              socket.set_verify_mode(asio_ns::ssl::verify_none);
+            }
+          } catch(boost::system::system_error const& exc) {
+            done(exc.code());
+            return;
           }
-
           socket.async_handshake(asio_ns::ssl::stream_base::client,
                                  std::move(done));
         });
@@ -198,6 +202,7 @@ struct Socket<fuerte::SocketType::Unix> {
   }
 
   void cancel() {
+    timer.cancel();
     if (socket.is_open()) {  // non-graceful shutdown
       asio_ns::error_code ec;
       socket.close(ec);

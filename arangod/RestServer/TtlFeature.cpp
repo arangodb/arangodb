@@ -43,7 +43,7 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
+#include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -247,9 +247,6 @@ class TtlThread final : public Thread {
 
     stats.runs++;
 
-    auto& queryRegistryFeature = _server.getFeature<QueryRegistryFeature>();
-    auto queryRegistry = queryRegistryFeature.queryRegistry();
-
     double const stamp = TRI_microtime();
     uint64_t limitLeft = properties.maxTotalRemoves; 
     
@@ -330,8 +327,10 @@ class TtlThread final : public Thread {
           bindVars->add("limit", VPackValue(std::min(properties.maxCollectionRemoves, limitLeft)));
           bindVars->close();
 
-          aql::Query query(false, *vocbase, aql::QueryString(::removeQuery), bindVars, nullptr, arangodb::aql::PART_MAIN);
-          aql::QueryResult queryResult = query.executeSync(queryRegistry);
+          aql::Query query(transaction::StandaloneContext::Create(*vocbase),
+                           aql::QueryString(::removeQuery), bindVars, nullptr);
+          query.collections().add(collection->name(), AccessMode::Type::WRITE, aql::Collection::Hint::Shard);
+          aql::QueryResult queryResult = query.executeSync();
 
           if (queryResult.result.fail()) {
             // we can probably live with an error here...

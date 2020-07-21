@@ -22,11 +22,8 @@
 
 #include "prefix_filter.hpp"
 
-#include <boost/functional/hash.hpp>
-
 #include "shared.hpp"
-#include "filter_visitor.hpp"
-#include "multiterm_query.hpp"
+#include "search/limited_sample_collector.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
 #include "index/iterators.hpp"
@@ -37,6 +34,7 @@ using namespace irs;
 
 template<typename Visitor>
 void visit(
+    const sub_reader& segment,
     const term_reader& reader,
     const bytes_ref& prefix,
     Visitor& visitor) {
@@ -52,10 +50,10 @@ void visit(
   if (starts_with(value, prefix)) {
     terms->read();
 
-    visitor.prepare(*terms);
+    visitor.prepare(segment, reader, *terms);
 
     do {
-      visitor.visit();
+      visitor.visit(no_boost());
 
       if (!terms->next()) {
         break;
@@ -70,7 +68,6 @@ NS_END
 
 NS_ROOT
 
-DEFINE_FILTER_TYPE(by_prefix)
 DEFINE_FACTORY_DEFAULT(by_prefix)
 
 /*static*/ filter::prepared::ptr by_prefix::prepare(
@@ -82,6 +79,7 @@ DEFINE_FACTORY_DEFAULT(by_prefix)
     size_t scored_terms_limit) {
   limited_sample_collector<term_frequency> collector(ord.empty() ? 0 : scored_terms_limit); // object for collecting order stats
   multiterm_query::states_t states(index.size());
+  multiterm_visitor<multiterm_query::states_t> mtv(collector, states);
 
   // iterate over the segments
   for (const auto& segment: index) {
@@ -92,42 +90,23 @@ DEFINE_FACTORY_DEFAULT(by_prefix)
       continue;
     }
 
-    multiterm_visitor<multiterm_query::states_t> mtv(segment, *reader, collector, states);
-
-    ::visit(*reader, prefix, mtv);
+    ::visit(segment, *reader, prefix, mtv);
   }
 
   std::vector<bstring> stats;
   collector.score(index, ord, stats);
 
-  return memory::make_shared<multiterm_query>(
+  return memory::make_managed<multiterm_query>(
     std::move(states), std::move(stats),
     boost, sort::MergeType::AGGREGATE);
 }
 
 /*static*/ void by_prefix::visit(
+    const sub_reader& segment,
     const term_reader& reader,
     const bytes_ref& prefix,
     filter_visitor& visitor) {
-  ::visit(reader, prefix, visitor);
-}
-
-by_prefix::by_prefix() noexcept : by_prefix(by_prefix::type()) { }
-
-size_t by_prefix::hash() const noexcept {
-  size_t seed = 0;
-  ::boost::hash_combine(seed, by_term::hash());
-  ::boost::hash_combine(seed, scored_terms_limit_);
-  return seed;
-}
-
-bool by_prefix::equals(const filter& rhs) const noexcept {
-  const auto& impl = static_cast<const by_prefix&>(rhs);
-  return by_term::equals(rhs) && scored_terms_limit_ == impl.scored_terms_limit_;
+  ::visit(segment, reader, prefix, visitor);
 }
 
 NS_END // ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

@@ -34,7 +34,6 @@
 
 struct TRI_vocbase_t;
 namespace arangodb {
-class SingleCollectionTransaction;
 namespace pregel {
 
 template <typename V, typename E, typename M>
@@ -58,8 +57,6 @@ class WorkerConfig {
   inline uint64_t localSuperstep() const { return _localSuperstep; }
 
   inline bool asynchronousMode() const { return _asynchronousMode; }
-
-  inline bool lazyLoading() const { return _lazyLoading; }
 
   inline bool useMemoryMaps() const { return _useMemoryMaps; }
 
@@ -135,8 +132,6 @@ class WorkerConfig {
 
   /// Let async
   bool _asynchronousMode = false;
-  /// load vertices on a lazy basis
-  bool _lazyLoading = false;
   bool _useMemoryMaps = false; /// always use mmaps
 
   size_t _parallelism = 1;

@@ -32,11 +32,6 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-
-namespace traverser {
-class TraverserEngineRegistry;
-}
-
 namespace aql {
 class Query;
 class QueryRegistry;
@@ -45,8 +40,8 @@ enum class SerializationFormat;
 /// @brief shard control request handler
 class RestAqlHandler : public RestVocbaseBaseHandler {
  public:
-  RestAqlHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*,
-                 std::pair<QueryRegistry*, traverser::TraverserEngineRegistry*>*);
+  RestAqlHandler(application_features::ApplicationServer&, GeneralRequest*,
+                 GeneralResponse*, QueryRegistry*);
 
  public:
   char const* name() const override final { return "RestAqlHandler"; }
@@ -135,36 +130,20 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 
   void setupClusterQuery();
 
-  bool registerSnippets(arangodb::velocypack::Slice const snippets,
-                        arangodb::velocypack::Slice const collections,
-                        arangodb::velocypack::Slice const variables,
-                        std::shared_ptr<arangodb::velocypack::Builder> const& options,
-                        std::shared_ptr<transaction::Context> const& ctx,
-                        double const ttl, aql::SerializationFormat format,
-                        bool& needToLock, arangodb::velocypack::Builder& answer);
-
-  bool registerTraverserEngines(arangodb::velocypack::Slice const traversers,
-                                std::shared_ptr<transaction::Context> const& ctx,
-                                double const ttl, bool& needToLock,
-                                arangodb::velocypack::Builder& answer);
-
   // handle for useQuery
   RestStatus handleUseQuery(std::string const&, arangodb::velocypack::Slice const);
+  
+  // handle query finalization for all engines
+  void handleFinishQuery(std::string const& idString);
 
  private:
   // dig out vocbase from context and query from ID, handle errors
-  Query* findQuery(std::string const& idString);
-
-  // generate patched options with TTL extracted from request
-  std::pair<double, std::shared_ptr<VPackBuilder>> getPatchedOptionsWithTTL(VPackSlice const& optionsSlice) const;
+  ExecutionEngine* findEngine(std::string const& idString);
 
   // our query registry
   QueryRegistry* _queryRegistry;
 
-  // our traversal engine registry
-  traverser::TraverserEngineRegistry* _traverserRegistry;
-
-  aql::Query* _query;
+  aql::ExecutionEngine* _engine;
 
   // id of current query
   QueryId _qId;

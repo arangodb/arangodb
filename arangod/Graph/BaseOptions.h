@@ -25,10 +25,10 @@
 #define ARANGOD_GRAPH_BASE_OPTIONS_H 1
 
 #include "Aql/FixedVarExpressionContext.h"
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Cluster/TraverserEngineRegistry.h"
 #include "Transaction/Methods.h"
 
 #include <memory>
@@ -39,7 +39,7 @@ namespace aql {
 struct AstNode;
 class ExecutionPlan;
 class Expression;
-class Query;
+class QueryContext;
 
 }  // namespace aql
 
@@ -73,7 +73,8 @@ struct BaseOptions {
     LookupInfo(LookupInfo const&);
     LookupInfo& operator=(LookupInfo const&) = delete;
 
-    LookupInfo(arangodb::aql::Query*, arangodb::velocypack::Slice const&,
+    LookupInfo(arangodb::aql::QueryContext&,
+               arangodb::velocypack::Slice const&,
                arangodb::velocypack::Slice const&);
 
     /// @brief Build a velocypack containing all relevant information
@@ -85,9 +86,10 @@ struct BaseOptions {
 
  public:
   static std::unique_ptr<BaseOptions> createOptionsFromSlice(
-      arangodb::aql::Query* query, arangodb::velocypack::Slice const& definition);
+      arangodb::aql::QueryContext& query,
+      arangodb::velocypack::Slice const& definition);
 
-  explicit BaseOptions(arangodb::aql::Query* query);
+  explicit BaseOptions(arangodb::aql::QueryContext& query);
 
   /// @brief This copy constructor is only working during planning phase.
   ///        After planning this node should not be copied anywhere.
@@ -97,7 +99,8 @@ struct BaseOptions {
   BaseOptions(BaseOptions const&, bool allowAlreadyBuiltCopy = false);
   BaseOptions& operator=(BaseOptions const&) = delete;
 
-  BaseOptions(arangodb::aql::Query*, arangodb::velocypack::Slice, arangodb::velocypack::Slice);
+  BaseOptions(aql::QueryContext&,
+              arangodb::velocypack::Slice, arangodb::velocypack::Slice);
 
   virtual ~BaseOptions();
 
@@ -108,7 +111,8 @@ struct BaseOptions {
   void setVariable(aql::Variable const*);
 
   void addLookupInfo(aql::ExecutionPlan* plan, std::string const& collectionName,
-                     std::string const& attributeName, aql::AstNode* condition);
+                     std::string const& attributeName, aql::AstNode* condition,
+                     bool onlyEdgeIndexes = false);
 
   void clearVariableValues();
 
@@ -127,8 +131,8 @@ struct BaseOptions {
   void setProduceEdges(bool value) { _produceEdges = value; }
 
   transaction::Methods* trx() const;
-
-  aql::Query* query() const;
+  
+  aql::QueryContext& query() const;
 
   /// @brief Build a velocypack for cloning in the plan.
   virtual void toVelocyPack(arangodb::velocypack::Builder&) const = 0;
@@ -151,13 +155,19 @@ struct BaseOptions {
   void ensureCache();
 
   void activateCache(bool enableDocumentCache,
-                     std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines);
+                     std::unordered_map<ServerID, aql::EngineId> const* engines);
 
-  std::map<std::string, std::string> const& collectionToShard() const {
-    return _collectionToShard;
-  }
+  std::map<std::string, std::string> const& collectionToShard() const { return _collectionToShard; }
+  
+  aql::AqlFunctionsInternalCache& aqlFunctionsInternalCache() { return _aqlFunctionsInternalCache; }
 
   virtual auto estimateDepth() const noexcept -> uint64_t = 0;
+  
+  void setParallelism(size_t p) noexcept {
+    _parallelism = p;
+  }
+
+  size_t parallelism() const { return _parallelism; }
 
  protected:
   double costForLookupInfoList(std::vector<LookupInfo> const& list, size_t& createItems) const;
@@ -172,29 +182,21 @@ struct BaseOptions {
   bool evaluateExpression(aql::Expression*, arangodb::velocypack::Slice varValue);
 
   void injectLookupInfoInList(std::vector<LookupInfo>&, aql::ExecutionPlan* plan,
-                              std::string const& collectionName,
-                              std::string const& attributeName, aql::AstNode* condition);
+                              std::string const& collectionName, std::string const& attributeName,
+                              aql::AstNode* condition, bool onlyEdgeIndexes = false);
 
   void injectTestCache(std::unique_ptr<TraverserCache>&& cache);
 
  protected:
-  aql::Query* _query;
-
-  aql::FixedVarExpressionContext _ctx;
-
-  transaction::Methods* _trx;
+  
+  mutable arangodb::transaction::Methods _trx;
+  arangodb::aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache; // needed for expression evaluation
+  arangodb::aql::FixedVarExpressionContext _expressionCtx;
 
   /// @brief Lookup info to find all edges fulfilling the base conditions
   std::vector<LookupInfo> _baseLookupInfos;
-
-  /// @brief whether or not the traversal will produce vertices
-  bool _produceVertices;
-
-  /// @brief whether or not the traversal will produce edges
-  bool _produceEdges{true};
-
-  /// @brief whether or not we are running on a coordinator
-  bool const _isCoordinator;
+  
+  aql::QueryContext& _query;
 
   aql::Variable const* _tmpVar;
 
@@ -203,6 +205,18 @@ struct BaseOptions {
 
   // @brief - translations for one-shard-databases
   std::map<std::string, std::string> _collectionToShard;
+  
+  /// @brief a value of 1 (which is the default) means "no parallelism"
+  size_t _parallelism;
+  
+  /// @brief whether or not the traversal will produce vertices
+  bool _produceVertices;
+
+  /// @brief whether or not the traversal will produce edges
+  bool _produceEdges{true};
+
+  /// @brief whether or not we are running on a coordinator
+  bool const _isCoordinator;
 };
 
 }  // namespace graph

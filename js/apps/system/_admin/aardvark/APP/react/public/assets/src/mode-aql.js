@@ -96,7 +96,7 @@ var AqlHighlightRules = function() {
         "concat|concat_separator|char_length|lower|upper|substring|left|right|trim|reverse|contains|" +
         "log|log2|log10|exp|exp2|sin|cos|tan|asin|acos|atan|atan2|radians|degrees|pi|regex_test|" +
         "like|floor|ceil|round|abs|rand|sqrt|pow|length|count|min|max|average|sum|median|variance_population|" +
-        "variance_sample|first|last|unique|outersection|jaccard|matches|merge|merge_recursive|has|attributes|values|unset|unset_recursive|keep|" +
+        "variance_sample|first|last|unique|outersection|interleave|in_range|jaccard|matches|merge|merge_recursive|has|attributes|values|unset|unset_recursive|keep|" +
         "near|within|within_rectangle|is_in_polygon|distance|fulltext|paths|traversal|traversal_tree|edges|stddev_sample|stddev_population|" +
         "slice|nth|position|translate|zip|call|apply|push|append|pop|shift|unshift|remove_value|remove_values|" + 
         "remove_nth|replace_nth|date_now|date_timestamp|date_iso8601|date_dayofweek|date_year|date_month|date_day|date_hour|" +

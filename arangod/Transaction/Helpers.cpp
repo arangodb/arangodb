@@ -39,9 +39,7 @@ using namespace arangodb;
 /// the document must have at least two attributes, and _key is supposed to
 /// be the first one
 VPackSlice transaction::helpers::extractKeyFromDocument(VPackSlice slice) {
-  if (slice.isExternal()) {
-    slice = slice.resolveExternal();
-  }
+  slice = slice.resolveExternal();
   TRI_ASSERT(slice.isObject());
 
   if (slice.isEmptyObject()) {
@@ -67,9 +65,7 @@ VPackSlice transaction::helpers::extractKeyFromDocument(VPackSlice slice) {
 
 /// @brief extract the _key attribute from a slice
 arangodb::velocypack::StringRef transaction::helpers::extractKeyPart(VPackSlice slice) {
-  if (slice.isExternal()) {
-    slice = slice.resolveExternal();
-  }
+  slice = slice.resolveExternal();
 
   // extract _key
   if (slice.isObject()) {
@@ -97,9 +93,7 @@ std::string transaction::helpers::extractIdString(CollectionNameResolver const* 
                                                   VPackSlice const& base) {
   VPackSlice id;
 
-  if (slice.isExternal()) {
-    slice = slice.resolveExternal();
-  }
+  slice = slice.resolveExternal();
 
   if (slice.isObject()) {
     // extract id attribute from object
@@ -166,9 +160,7 @@ std::string transaction::helpers::extractIdString(CollectionNameResolver const* 
 /// be the second one
 /// note that this may return a Slice of type Custom!
 VPackSlice transaction::helpers::extractIdFromDocument(VPackSlice slice) {
-  if (slice.isExternal()) {
-    slice = slice.resolveExternal();
-  }
+  slice = slice.resolveExternal();
   TRI_ASSERT(slice.isObject());
 
   if (slice.isEmptyObject()) {
@@ -199,9 +191,7 @@ VPackSlice transaction::helpers::extractIdFromDocument(VPackSlice slice) {
 /// the document must have at least five attributes: _key, _id, _from, _to
 /// and _rev (in this order)
 VPackSlice transaction::helpers::extractFromFromDocument(VPackSlice slice) {
-  if (slice.isExternal()) {
-    slice = slice.resolveExternal();
-  }
+  slice = slice.resolveExternal();
   TRI_ASSERT(slice.isObject());
 
   if (slice.isEmptyObject()) {
@@ -234,9 +224,7 @@ VPackSlice transaction::helpers::extractFromFromDocument(VPackSlice slice) {
 /// the document must have at least five attributes: _key, _id, _from, _to
 /// and _rev (in this order)
 VPackSlice transaction::helpers::extractToFromDocument(VPackSlice slice) {
-  if (slice.isExternal()) {
-    slice = slice.resolveExternal();
-  }
+  slice = slice.resolveExternal();
   TRI_ASSERT(slice.isObject());
 
   if (slice.isEmptyObject()) {
@@ -269,9 +257,7 @@ VPackSlice transaction::helpers::extractToFromDocument(VPackSlice slice) {
 /// collection and compaction
 void transaction::helpers::extractKeyAndRevFromDocument(VPackSlice slice, VPackSlice& keySlice,
                                                         RevisionId& revisionId) {
-  if (slice.isExternal()) {
-    slice = slice.resolveExternal();
-  }
+  slice = slice.resolveExternal();
   TRI_ASSERT(slice.isObject());
   TRI_ASSERT(slice.length() >= 2);
 

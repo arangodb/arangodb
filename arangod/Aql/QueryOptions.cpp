@@ -35,52 +35,56 @@
 
 using namespace arangodb::aql;
 
-QueryOptions::QueryOptions(arangodb::QueryRegistryFeature& feature)
+size_t QueryOptions::defaultMemoryLimit = 0;
+size_t QueryOptions::defaultMaxNumberOfPlans = 128;
+double QueryOptions::defaultTtl;
+bool QueryOptions::defaultFailOnWarning;
+
+QueryOptions::QueryOptions()
     : memoryLimit(0),
-      maxNumberOfPlans(0),
+      maxNumberOfPlans(QueryOptions::defaultMaxNumberOfPlans),
       maxWarningCount(10),
       maxRuntime(0),
       satelliteSyncWait(60.0),
-      ttl(0),
+      ttl(QueryOptions::defaultTtl), // get global default ttl
       profile(PROFILE_LEVEL_NONE),
       allPlans(false),
       verbosePlans(false),
       stream(false),
       silent(false),
-      failOnWarning(false),
+      failOnWarning(QueryOptions::defaultFailOnWarning), // use global "failOnWarning" value
       cache(false),
       fullCount(false),
       count(false),
       verboseErrors(false),
-      inspectSimplePlans(true) {
+      inspectSimplePlans(true),
+      explainRegisters(ExplainRegisterPlan::No)
+{
   // now set some default values from server configuration options
   // use global memory limit value
-  uint64_t globalLimit = feature.queryMemoryLimit();
+  uint64_t globalLimit = QueryOptions::defaultMemoryLimit;
   if (globalLimit > 0) {
     memoryLimit = globalLimit;
   }
-
-  // get global default ttl
-  ttl = feature.registry()->defaultTTL();
-
-  // use global "failOnWarning" value
-  failOnWarning = feature.failOnWarning();
-
+  
   // "cache" only defaults to true if query cache is turned on
   auto queryCacheMode = QueryCache::instance()->mode();
   cache = (queryCacheMode == CACHE_ALWAYS_ON);
 
-  maxNumberOfPlans = feature.maxQueryPlans();
   TRI_ASSERT(maxNumberOfPlans > 0);
 }
 
-void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
+QueryOptions::QueryOptions(arangodb::velocypack::Slice const slice) : QueryOptions() {
+  this->fromVelocyPack(slice);
+}
+
+void QueryOptions::fromVelocyPack(VPackSlice const slice) {
   if (!slice.isObject()) {
     return;
   }
 
   VPackSlice value;
-
+  
   // numeric options
   value = slice.get("memoryLimit");
   if (value.isNumber()) {
@@ -123,7 +127,7 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
   if (value.isBool()) {
     profile = value.getBool() ? PROFILE_LEVEL_BASIC : PROFILE_LEVEL_NONE;
   } else if (value.isNumber()) {
-    profile = static_cast<ProfileLevel>(value.getNumber<uint32_t>());
+    profile = static_cast<ProfileLevel>(value.getNumber<uint16_t>());
   }
 
   value = slice.get("stream");
@@ -167,6 +171,11 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
   if (value.isBool()) {
     verboseErrors = value.getBool();
   }
+  value = slice.get("explainRegisters");
+  if (value.isBool()) {
+    explainRegisters =
+        value.getBool() ? ExplainRegisterPlan::Yes : ExplainRegisterPlan::No;
+  }
 
   VPackSlice optimizer = slice.get("optimizer");
   if (optimizer.isObject()) {
@@ -189,7 +198,7 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
     while (it.valid()) {
       VPackSlice value = it.value();
       if (value.isString()) {
-        shardIds.emplace(value.copyString());
+        restrictToShards.emplace(value.copyString());
       }
       it.next();
     }
@@ -208,6 +217,11 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
     }
   }
 #endif
+  
+  value = slice.get("exportCollection");
+  if (value.isString()) {
+    exportCollection = value.copyString();
+  }
 
   // also handle transaction options
   transactionOptions.fromVelocyPack(slice);
@@ -249,9 +263,9 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
   }
   builder.close();  // optimizer
 
-  if (!shardIds.empty()) {
+  if (!restrictToShards.empty()) {
     builder.add("shardIds", VPackValue(VPackValueType::Array));
-    for (auto const& it : shardIds) {
+    for (auto const& it : restrictToShards) {
       builder.add(VPackValue(it));
     }
     builder.close();  // shardIds
@@ -266,6 +280,8 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
     builder.close();  // inaccessibleCollections
   }
 #endif
+  
+  // "exportCollection" is only used internally and not exposed via toVelocyPack
 
   // also handle transaction options
   transactionOptions.toVelocyPack(builder);

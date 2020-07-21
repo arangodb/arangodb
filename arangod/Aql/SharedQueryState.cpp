@@ -22,28 +22,47 @@
 
 #include "SharedQueryState.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-
-#include "Logger/LogMacros.h"
+#include "Transaction/Context.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
+SharedQueryState::SharedQueryState(application_features::ApplicationServer& server)
+    : _server(server),
+      _wakeupCb(nullptr),
+      _numWakeups(0),
+      _cbVersion(0),
+      _maxTasks(static_cast<unsigned>(_server.getFeature<QueryRegistryFeature>().maxParallelism())),
+      _numTasks(0),
+      _valid(true) {}
+
 void SharedQueryState::invalidate() {
-  std::lock_guard<std::mutex> guard(_mutex);
-  _wakeupCb = nullptr;
-  _cbVersion++;
-  _valid = false;
-  _cv.notify_all();
+  {
+    std::lock_guard<std::mutex> guard(_mutex);
+    _wakeupCb = nullptr;
+    _cbVersion++;
+    _valid = false;
+  }
+  _cv.notify_all(); // wakeup everyone else
+  
+  if (_numTasks.load() > 0) {
+    std::unique_lock<std::mutex> guard(_mutex);
+    _cv.wait(guard, [&] { return _numTasks.load() == 0; });
+  }
 }
 
 /// this has to stay for a backwards-compatible AQL HTTP API (hasMore).
 void SharedQueryState::waitForAsyncWakeup() {
   std::unique_lock<std::mutex> guard(_mutex);
   if (!_valid) {
-    return;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
   
   TRI_ASSERT(!_wakeupCb);
@@ -68,12 +87,24 @@ void SharedQueryState::resetWakeupHandler() {
   _cbVersion++;
 }
 
-/// execute the _continueCallback. must hold _mutex,
-void SharedQueryState::execute() {
-  TRI_ASSERT(_valid);
-  uint32_t n = _numWakeups++;
+void SharedQueryState::resetNumWakeups() {
+  std::lock_guard<std::mutex> guard(_mutex);
+  _numWakeups = 0;
+  _cbVersion++;
+}
 
+/// execute the _continueCallback. must hold _mutex,
+void SharedQueryState::notifyWaiter(std::unique_lock<std::mutex>& guard) {
+  TRI_ASSERT(guard);
+  if (!_valid) {
+    guard.unlock();
+    _cv.notify_all();
+    return;
+  }
+  
+  unsigned n = _numWakeups++;
   if (!_wakeupCb) {
+    guard.unlock();
     _cv.notify_one();
     return;
   }
@@ -96,44 +127,48 @@ void SharedQueryState::queueHandler() {
     // We are shutting down
     return;
   }
+      
+  bool queued = scheduler->queue(RequestLane::CLUSTER_AQL,
+                                 [self = shared_from_this(),
+                                  cb = _wakeupCb,
+                                  v = _cbVersion]() {
+    
+    std::unique_lock<std::mutex> lck(self->_mutex, std::defer_lock);
 
-  bool queued =
-      scheduler->queue(RequestLane::CLUSTER_AQL, [self = shared_from_this(),
-                                                  cb = _wakeupCb, v = _cbVersion]() {
-        //    auto guard = scopeGuard([&] {
-        //      std::unique_lock<std::mutex> lck(self->_mutex);
-        //      self->_inWakeupCb = false;
-        //    });
+    do {
+      bool cntn = false;
+      try {
+        cntn = cb();
+      } catch (...) {}
+      
+      lck.lock();
+      if (v == self->_cbVersion) {
+        unsigned c = self->_numWakeups--;
+        TRI_ASSERT(c > 0);
+        if (c == 1 || !cntn || !self->_valid) {
+          break;
+        }
+      } else {
+        return;
+      }
+      lck.unlock();
+    } while (true);
 
-        std::unique_lock<std::mutex> lck(self->_mutex, std::defer_lock);
-
-        do {
-          bool cntn = false;
-          try {
-            cntn = cb();
-          } catch (...) {
-          }
-
-          lck.lock();
-          if (v == self->_cbVersion) {
-            uint32_t c = self->_numWakeups--;
-            TRI_ASSERT(c > 0);
-            if (c == 1 || !cntn || !self->_valid) {
-              break;
-            }
-          } else {
-            return;
-          }
-          lck.unlock();
-        } while (true);
-
-        TRI_ASSERT(lck);
-        self->queueHandler();
-      });
-
+    TRI_ASSERT(lck);
+    self->queueHandler();
+  });
+  
   if (!queued) { // just invalidate
      _wakeupCb = nullptr;
      _valid = false;
      _cv.notify_all();
   }
+}
+
+bool SharedQueryState::queueAsyncTask(fu2::unique_function<void()> cb) {
+  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  if (scheduler) {
+    return scheduler->queue(RequestLane::CLIENT_AQL, std::move(cb));
+  }
+  return false;
 }

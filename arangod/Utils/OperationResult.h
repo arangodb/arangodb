@@ -99,8 +99,14 @@ struct OperationResult {
     return VPackSlice(buffer->data());
   }
 
+  void reset() {
+    result.reset();
+    buffer.reset();
+    _options = OperationOptions();
+    countErrorCodes.clear();
+  }
+
   Result result;
-  // TODO: add a slice that points to either buffer or raw data
   std::shared_ptr<VPackBuffer<uint8_t>> buffer;
   OperationOptions _options;
 

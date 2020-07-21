@@ -42,9 +42,15 @@ namespace utf8 {
 namespace unchecked {
 
 template<typename octet_iterator>
-class break_iterator : public std::iterator<std::forward_iterator_tag, std::string> {
-  public:
-  typedef unchecked::iterator<octet_iterator> utf8iterator;
+class break_iterator {
+ public:
+  using utf8iterator = unchecked::iterator<octet_iterator>;
+
+  using iterator_category = std::forward_iterator_tag;
+  using value_type = std::string;
+  using pointer = value_type*;
+  using reference = value_type&;
+  using difference_type = void;
 
   break_iterator(utf8::uint32_t delim, const octet_iterator& begin, const octet_iterator& end)
     : delim_(delim), wbegin_(begin), wend_(begin), end_(end) {
@@ -128,7 +134,7 @@ field_base::field_base(field_base&& rhs) noexcept
 
 field_base& field_base::operator=(field_base&& rhs) noexcept {
   if (this != &rhs) {
-    features_ = std::move(features_);
+    features_ = std::move(rhs.features_);
     name_ = std::move(rhs.name_);
   }
 
@@ -154,8 +160,8 @@ bool long_field::write(irs::data_output& out) const {
 // -----------------------------------------------------------------------------
 
 irs::token_stream& int_field::get_tokens() const {
-  stream_.reset(value_);
-  return stream_;
+  stream_->reset(value_);
+  return *stream_;
 }
 
 bool int_field::write(irs::data_output& out) const {
@@ -311,10 +317,11 @@ void delim_doc_generator::reset() {
 // -----------------------------------------------------------------------------
 
 csv_doc_generator::csv_doc_generator(
-    const irs::utf8_path& file, doc_template& doc
-): doc_(doc),
-   ifs_(file.native(), std::ifstream::in | std::ifstream::binary),
-   stream_(irs::analysis::analyzers::get("delimiter", irs::text_format::text, ",")) {
+    const irs::utf8_path& file,
+    doc_template& doc)
+  : doc_(doc),
+    ifs_(file.native(), std::ifstream::in | std::ifstream::binary),
+    stream_(irs::analysis::analyzers::get("delimiter", irs::type<irs::text_format::text>::get(), ",")) {
   doc_.init();
   doc_.reset();
 }
@@ -324,14 +331,14 @@ const tests::document* csv_doc_generator::next() {
     return nullptr;
   }
 
-  auto& term = stream_->attributes().get<irs::term_attribute>();
+  auto* term = irs::get<irs::term_attribute>(*stream_);
 
   if (!term || !stream_->reset(line_)) {
     return nullptr;
   }
 
   for (size_t i = 0; stream_->next(); ++i) {
-    doc_.value(i, irs::ref_cast<char>(term->value()));
+    doc_.value(i, irs::ref_cast<char>(term->value));
   }
 
   return &doc_;
@@ -521,7 +528,3 @@ void json_doc_generator::reset() {
 }
 
 NS_END // tests
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

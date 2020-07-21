@@ -24,6 +24,7 @@
 #include "tests_shared.hpp"
 #include "index/index_tests.hpp"
 #include "search/all_filter.hpp"
+#include "search/column_existence_filter.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/phrase_filter.hpp"
 #include "search/prefix_filter.hpp"
@@ -81,10 +82,10 @@ class tfidf_test: public index_test_base {
 
 TEST_P(tfidf_test, test_load) {
   irs::order order;
-  auto scorer = irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::NIL);
+  auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
 
   ASSERT_NE(nullptr, scorer);
-  ASSERT_EQ(1, order.add(true, scorer).size());
+  ASSERT_EQ(1, order.add(true, std::move(scorer)).size());
 }
 
 #ifndef IRESEARCH_DLL
@@ -92,22 +93,22 @@ TEST_P(tfidf_test, test_load) {
 TEST_P(tfidf_test, make_from_bool) {
   // `withNorms` argument
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "true");
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "true");
     ASSERT_NE(nullptr, scorer);
     auto& tfidf = dynamic_cast<irs::tfidf_sort&>(*scorer);
     ASSERT_EQ(true, tfidf.normalize());
   }
 
   // invalid `withNorms` argument
-  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::text_format::json, "\"false\""));
-  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::text_format::json, "null"));
-  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::text_format::json, "1"));
+  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "\"false\""));
+  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "null"));
+  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "1"));
 }
 
 TEST_P(tfidf_test, make_from_array) {
   // default args
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::NIL);
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
     ASSERT_NE(nullptr, scorer);
     auto& tfidf = dynamic_cast<irs::tfidf_sort&>(*scorer);
     ASSERT_EQ(irs::tfidf_sort::WITH_NORMS(), tfidf.normalize());
@@ -115,7 +116,7 @@ TEST_P(tfidf_test, make_from_array) {
 
   // default args
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "[]");
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "[]");
     ASSERT_NE(nullptr, scorer);
     auto& tfidf = dynamic_cast<irs::tfidf_sort&>(*scorer);
     ASSERT_EQ(irs::tfidf_sort::WITH_NORMS(), tfidf.normalize());
@@ -123,18 +124,18 @@ TEST_P(tfidf_test, make_from_array) {
 
   // `withNorms` argument
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "[ true ]");
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "[ true ]");
     ASSERT_NE(nullptr, scorer);
     auto& tfidf = dynamic_cast<irs::tfidf_sort&>(*scorer);
     ASSERT_EQ(true, tfidf.normalize());
   }
 
   // invalid `withNorms` argument
-  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::text_format::json, "[ \"false\" ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::text_format::json, "[ null]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::text_format::json, "[ 1 ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::text_format::json, "[ {} ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::text_format::json, "[ [] ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "[ \"false\" ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "[ null]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "[ 1 ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "[ {} ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "[ [] ]"));
 }
 
 #endif // IRESEARCH_DLL
@@ -142,47 +143,47 @@ TEST_P(tfidf_test, make_from_array) {
 TEST_P(tfidf_test, test_normalize_features) {
   // default norms
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::NIL);
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::flags({irs::frequency::type()}), prepared->features());
+    ASSERT_EQ(irs::flags({irs::type<irs::frequency>::get()}), prepared->features());
   }
 
   // with norms (as args)
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "true");
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "true");
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::flags({irs::frequency::type(), irs::norm::type()}), prepared->features());
+    ASSERT_EQ(irs::flags({irs::type<irs::frequency>::get(), irs::type<irs::norm>::get()}), prepared->features());
   }
 
   // with norms
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "{\"withNorms\": true}");
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "{\"withNorms\": true}");
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::flags({irs::frequency::type(), irs::norm::type()}), prepared->features());
+    ASSERT_EQ(irs::flags({irs::type<irs::frequency>::get(), irs::type<irs::norm>::get()}), prepared->features());
   }
 
   // without norms (as args)
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "false");
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "false");
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::flags({irs::frequency::type()}), prepared->features());
+    ASSERT_EQ(irs::flags({irs::type<irs::frequency>::get()}), prepared->features());
   }
 
   // without norms
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "{\"withNorms\": false}");
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "{\"withNorms\": false}");
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::flags({irs::frequency::type()}), prepared->features());
+    ASSERT_EQ(irs::flags({irs::type<irs::frequency>::get()}), prepared->features());
   }
 }
 
@@ -200,7 +201,7 @@ TEST_P(tfidf_test, test_phrase) {
       }
 
       const irs::flags& features() const {
-        static irs::flags features{ irs::frequency::type() };
+        static irs::flags features{ irs::type<irs::frequency>::get() };
         return features;
       }
     }; // string_field
@@ -229,7 +230,7 @@ TEST_P(tfidf_test, test_phrase) {
   }
 
   irs::order order;
-  order.add(true, irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::NIL));
+  order.add(true, irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
   auto prepared_order = order.prepare();
 
   auto comparer = [&prepared_order] (const iresearch::bstring& lhs, const iresearch::bstring& rhs) {
@@ -244,9 +245,10 @@ TEST_P(tfidf_test, test_phrase) {
   // "jumps high" with order
   {
     irs::by_phrase filter;
-    filter.field("phrase_anl")
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("jumps"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("high"))});
+    *filter.mutable_field() = "phrase_anl";
+    auto& phrase = *filter.mutable_options();
+    phrase.push_back(irs::by_term_options{}).term = irs::ref_cast<irs::byte_type>(irs::string_ref("jumps"));
+    phrase.push_back(irs::by_term_options{}).term = irs::ref_cast<irs::byte_type>(irs::string_ref("high"));
 
     std::multimap<irs::bstring, std::string, decltype(comparer)> sorted(comparer);
 
@@ -259,25 +261,21 @@ TEST_P(tfidf_test, test_phrase) {
 
     auto prepared_filter = filter.prepare(*index, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
     auto column = segment.column_reader("name");
     ASSERT_NE(nullptr, column);
     auto values = column->values();
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
     irs::bytes_ref key_value;
 
     while (docs->next()) {
-      score->evaluate();
       ASSERT_TRUE(values(docs->value(), key_value));
 
       sorted.emplace(
-        score_value,
-        irs::to_string<std::string>(key_value.c_str())
-      );
+        irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
+        irs::to_string<std::string>(key_value.c_str()));
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -291,16 +289,17 @@ TEST_P(tfidf_test, test_phrase) {
   // "cookies ca* p_e bisKuit meringue|marshmallows" with order
   {
     irs::by_phrase filter;
-    irs::by_phrase::simple_term st{irs::ref_cast<irs::byte_type>(irs::string_ref("cookies"))};
-    irs::by_phrase::prefix_term pt;
-    pt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("ca"));
-    irs::by_phrase::wildcard_term wt;
-    wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("p_e"));
-    irs::by_phrase::levenshtein_term lt;
+    *filter.mutable_field() = "phrase_anl";
+    auto& phrase = *filter.mutable_options();
+    phrase.push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("cookies"));
+    phrase.push_back<irs::by_prefix_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("ca"));
+    phrase.push_back<irs::by_wildcard_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("p_e"));
+    auto& lt = phrase.push_back<irs::by_edit_distance_filter_options>();
     lt.max_distance = 1;
     lt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("biscuit"));
-    irs::by_phrase::set_term ct{{irs::ref_cast<irs::byte_type>(irs::string_ref("meringue")), irs::ref_cast<irs::byte_type>(irs::string_ref("marshmallows"))}};
-    filter.field("phrase_anl").push_back(st).push_back(pt).push_back(wt).push_back(lt).push_back(ct);
+    auto& ct = phrase.push_back<irs::by_terms_options>();
+    ct.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("meringue")));
+    ct.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("marshmallows")));
 
     std::multimap<irs::bstring, std::string, decltype(comparer)> sorted(comparer);
 
@@ -313,23 +312,20 @@ TEST_P(tfidf_test, test_phrase) {
 
     auto prepared_filter = filter.prepare(*index, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
     auto column = segment.column_reader("name");
     ASSERT_NE(nullptr, column);
     auto values = column->values();
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
     irs::bytes_ref key_value;
 
     while (docs->next()) {
-      score->evaluate();
       ASSERT_TRUE(values(docs->value(), key_value));
 
       sorted.emplace(
-        score_value,
+        irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
         irs::to_string<std::string>(key_value.c_str())
       );
     }
@@ -360,7 +356,7 @@ TEST_P(tfidf_test, test_query) {
 
   irs::order order;
 
-  order.add(true, irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::NIL));
+  order.add(true, irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
 
   auto prepared_order = order.prepare();
   auto comparer = [&prepared_order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
@@ -376,8 +372,8 @@ TEST_P(tfidf_test, test_query) {
   // by_term
   {
     irs::by_term filter;
-
-    filter.field("field").term("7");
+    *filter.mutable_field() = "field";
+    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("7"));
 
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{ 0, 1, 5, 7 };
@@ -386,20 +382,18 @@ TEST_P(tfidf_test, test_query) {
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
-
     while(docs->next()) {
-      score->evaluate();
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(score_value, seq);
+      sorted.emplace(
+        irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
+        seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -456,7 +450,8 @@ TEST_P(tfidf_test, test_query) {
 
     auto reader = irs::directory_reader::open(dir(), codec());
     irs::by_term filter;
-    filter.field("field").term("6");
+    *filter.mutable_field() = "field";
+    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
 
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{
@@ -473,20 +468,18 @@ TEST_P(tfidf_test, test_query) {
       ASSERT_NE(nullptr, column);
       auto values = column->values();
       auto docs = prepared_filter->execute(segment, prepared_order);
-      auto& score = docs->attributes().get<irs::score>();
+      auto* score = irs::get<irs::score>(*docs);
       ASSERT_TRUE(bool(score));
 
-      // ensure that we avoid COW for pre c++11 std::basic_string
-      const irs::bytes_ref score_value = score->value();
-
       while(docs->next()) {
-        score->evaluate();
         ASSERT_TRUE(values(docs->value(), actual_value));
         in.reset(actual_value);
 
         auto str_seq = irs::read_string<std::string>(in);
         auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-        sorted.emplace(score_value, seq);
+        sorted.emplace(
+          irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
+          seq);
       }
     }
 
@@ -544,8 +537,18 @@ TEST_P(tfidf_test, test_query) {
 
     auto reader = irs::directory_reader::open(dir(), codec());
     irs::Or filter;
-    filter.add<irs::by_term>().field("field").term("6"); // doc 0, 2, 5
-    filter.add<irs::by_term>().field("field").term("8"); // doc 3, 7
+    {
+      // doc 0, 2, 5
+      auto& sub = filter.add<irs::by_term>();
+      *sub.mutable_field() = "field";
+      sub.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
+    }
+    {
+      // doc 3, 7
+      auto& sub = filter.add<irs::by_term>();
+      *sub.mutable_field() = "field";
+      sub.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
+    }
 
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{
@@ -562,20 +565,18 @@ TEST_P(tfidf_test, test_query) {
       ASSERT_NE(nullptr, column);
       auto values = column->values();
       auto docs = prepared_filter->execute(segment, prepared_order);
-      auto& score = docs->attributes().get<irs::score>();
+      auto* score = irs::get<irs::score>(*docs);
       ASSERT_TRUE(bool(score));
 
-      // ensure that we avoid COW for pre c++11 std::basic_string
-      const irs::bytes_ref score_value = score->value();
-
       while(docs->next()) {
-        score->evaluate();
         ASSERT_TRUE(values(docs->value(), actual_value));
         in.reset(actual_value);
 
         auto str_seq = irs::read_string<std::string>(in);
         auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-        sorted.emplace(score_value, seq);
+        sorted.emplace(
+          irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
+          seq);
       }
     }
 
@@ -633,7 +634,8 @@ TEST_P(tfidf_test, test_query) {
 
     auto reader = irs::directory_reader::open(dir(), codec());
     irs::by_prefix filter;
-    filter.field("prefix").term("");
+    *filter.mutable_field() = "prefix";
+    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref(""));
 
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{
@@ -651,20 +653,18 @@ TEST_P(tfidf_test, test_query) {
       ASSERT_NE(nullptr, column);
       auto values = column->values();
       auto docs = prepared_filter->execute(segment, prepared_order);
-      auto& score = docs->attributes().get<irs::score>();
+      auto* score = irs::get<irs::score>(*docs);
       ASSERT_TRUE(bool(score));
 
-      // ensure that we avoid COW for pre c++11 std::basic_string
-      const irs::bytes_ref score_value = score->value();
-
       while(docs->next()) {
-        score->evaluate();
         ASSERT_TRUE(values(docs->value(), actual_value));
         in.reset(actual_value);
 
         auto str_seq = irs::read_string<std::string>(in);
         auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-        sorted.emplace(score_value, seq);
+        sorted.emplace(
+          irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
+          seq);
       }
     }
 
@@ -679,10 +679,11 @@ TEST_P(tfidf_test, test_query) {
   // by_range single
   {
     irs::by_range filter;
-
-    filter.field("field")
-      .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("6")
-      .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("8");
+    *filter.mutable_field() = "field";
+    filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
+    filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+    filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
+    filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{ 0, 1, 5, 7 };
@@ -691,20 +692,18 @@ TEST_P(tfidf_test, test_query) {
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
-
     while(docs->next()) {
-      score->evaluate();
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(score_value, seq);
+      sorted.emplace(
+        irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
+        seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -718,10 +717,12 @@ TEST_P(tfidf_test, test_query) {
   // by_range single + scored_terms_limit(1)
   {
     irs::by_range filter;
-
-    filter.field("field").scored_terms_limit(1)
-      .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("8")
-      .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("9");
+    *filter.mutable_field() = "field";
+    filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
+    filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+    filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("9"));
+    filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
+    filter.mutable_options()->scored_terms_limit = 1;
 
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{ 3, 7 };
@@ -730,20 +731,18 @@ TEST_P(tfidf_test, test_query) {
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
-
     while(docs->next()) {
-      score->evaluate();
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(score_value, seq);
+      sorted.emplace(
+       irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
+       seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -770,7 +769,7 @@ TEST_P(tfidf_test, test_query) {
 //    irs::bytes_ref_input in;
 //    auto prepared_filter = filter.prepare(reader, prepared_order);
 //    auto docs = prepared_filter->execute(segment, prepared_order);
-//    auto& score = docs->attributes().get<irs::score>();
+//    auto* score = irs::get<irs::score>(*docs);
 //    ASSERT_TRUE(bool(score));
 //
 //    // ensure that we avoid COW for pre c++11 std::basic_string
@@ -797,10 +796,11 @@ TEST_P(tfidf_test, test_query) {
   // by_range multiple
   {
     irs::by_range filter;
-
-    filter.field("field")
-      .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("6")
-      .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("8");
+    *filter.mutable_field() = "field";
+    filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
+    filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+    filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
+    filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{
@@ -816,20 +816,18 @@ TEST_P(tfidf_test, test_query) {
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
-
     while(docs->next()) {
-      score->evaluate();
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(score_value, seq);
+      sorted.emplace(
+        irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
+        seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -843,10 +841,11 @@ TEST_P(tfidf_test, test_query) {
   // by_range multiple (3 values)
   {
     irs::by_range filter;
-
-    filter.field("field")
-      .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("6")
-      .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("8");
+    *filter.mutable_field() = "field";
+    filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
+    filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
+    filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
+    filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{
@@ -863,20 +862,18 @@ TEST_P(tfidf_test, test_query) {
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
-
     while(docs->next()) {
-      score->evaluate();
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(score_value, seq);
+      sorted.emplace(
+        irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
+        seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -890,8 +887,9 @@ TEST_P(tfidf_test, test_query) {
   // by_phrase
   {
     irs::by_phrase filter;
-
-    filter.field("field").push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("7"))});
+    *filter.mutable_field() = "field";
+    auto& phrase = *filter.mutable_options();
+    phrase.push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("7"));
 
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<std::pair<float_t, uint64_t>> expected = {
@@ -905,20 +903,18 @@ TEST_P(tfidf_test, test_query) {
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
-
     while(docs->next()) {
-      score->evaluate();
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(score_value, seq);
+      sorted.emplace(
+        irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
+        seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -942,21 +938,95 @@ TEST_P(tfidf_test, test_query) {
     irs::bytes_ref actual_value;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
-
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
+    ASSERT_FALSE(score->is_default());
 
     irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
     while(docs->next()) {
       ASSERT_EQ(doc, docs->value());
-      score->evaluate();
+
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
       ASSERT_TRUE(values(docs->value(), actual_value));
       ++doc;
       ASSERT_EQ(1.5f, *reinterpret_cast<const float_t*>(score_value.c_str()));
     }
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), docs->value());
+    ASSERT_EQ(irs::doc_limits::eof(), docs->value());
+  }
+
+  // all
+  {
+    irs::all filter;
+    filter.boost(0.f);
+
+    irs::bytes_ref actual_value;
+    auto prepared_filter = filter.prepare(reader, prepared_order);
+    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto* score = irs::get<irs::score>(*docs);
+    ASSERT_TRUE(bool(score));
+    ASSERT_TRUE(score->is_default());
+
+    irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
+    while(docs->next()) {
+      ASSERT_EQ(doc, docs->value());
+
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ++doc;
+      ASSERT_EQ(0.f, *reinterpret_cast<const float_t*>(score_value.c_str()));
+    }
+    ASSERT_EQ(irs::doc_limits::eof(), docs->value());
+  }
+
+  // column existence
+  {
+    irs::by_column_existence filter;
+    *filter.mutable_field() = "seq";
+    filter.mutable_options()->prefix_match = false;
+
+    irs::bytes_ref actual_value;
+    auto prepared_filter = filter.prepare(reader, prepared_order);
+    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto* score = irs::get<irs::score>(*docs);
+    ASSERT_TRUE(bool(score));
+    ASSERT_FALSE(score->is_default());
+
+    irs::doc_id_t doc = irs::doc_limits::min();
+    while(docs->next()) {
+      ASSERT_EQ(doc, docs->value());
+
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ++doc;
+      ASSERT_EQ(1.f, *reinterpret_cast<const float_t*>(score_value.c_str()));
+    }
+    ASSERT_EQ(irs::doc_limits::eof(), docs->value());
+  }
+
+  // column existence
+  {
+    irs::by_column_existence filter;
+    *filter.mutable_field() = "seq";
+    filter.mutable_options()->prefix_match = false;
+    filter.boost(0.f);
+
+    irs::bytes_ref actual_value;
+    auto prepared_filter = filter.prepare(reader, prepared_order);
+    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto* score = irs::get<irs::score>(*docs);
+    ASSERT_TRUE(bool(score));
+    ASSERT_TRUE(score->is_default());
+
+    irs::doc_id_t doc = irs::doc_limits::min();
+    while(docs->next()) {
+      ASSERT_EQ(doc, docs->value());
+
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ++doc;
+      ASSERT_EQ(0.f, *reinterpret_cast<const float_t*>(score_value.c_str()));
+    }
+    ASSERT_EQ(irs::doc_limits::eof(), docs->value());
   }
 }
 
@@ -1033,7 +1103,7 @@ TEST_P(tfidf_test, test_collector_serialization) {
     ASSERT_NE(nullptr, collector);
     bstring_data_output out0;
     collector->write(out0);
-    collector->collect(reader[0], *field, term->attributes());
+    collector->collect(reader[0], *field, *term);
     bstring_data_output out1;
     collector->write(out1);
     tcollector_out = out1.out_;
@@ -1102,7 +1172,7 @@ TEST_P(tfidf_test, test_collector_serialization) {
 TEST_P(tfidf_test, test_make) {
   // default values
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::NIL);
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::tfidf_sort&>(*scorer);
     ASSERT_FALSE(scr.normalize());
@@ -1110,13 +1180,13 @@ TEST_P(tfidf_test, test_make) {
 
   // invalid args
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "\"12345");
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "\"12345");
     ASSERT_EQ(nullptr, scorer);
   }
 
   // custom value
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "true");
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "true");
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::tfidf_sort&>(*scorer);
     ASSERT_EQ(true, scr.normalize());
@@ -1124,13 +1194,13 @@ TEST_P(tfidf_test, test_make) {
 
   // invalid value (non-bool)
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "42");
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "42");
     ASSERT_EQ(nullptr, scorer);
   }
 
   // custom values
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "{\"withNorms\": true}");
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "{\"withNorms\": true}");
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::tfidf_sort&>(*scorer);
     ASSERT_EQ(true, scr.normalize());
@@ -1138,7 +1208,7 @@ TEST_P(tfidf_test, test_make) {
 
   // invalid values (withNorms)
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "{\"withNorms\": 42}");
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "{\"withNorms\": 42}");
     ASSERT_EQ(nullptr, scorer);
   }
 }
@@ -1161,8 +1231,8 @@ TEST_P(tfidf_test, test_order) {
   auto reader = iresearch::directory_reader::open(dir(), codec());
   auto& segment = *(reader.begin());
 
-  iresearch::by_term query;
-  query.field("field");
+  irs::by_term query;
+  *query.mutable_field() = "field";
 
   iresearch::order ord;
   ord.add<iresearch::tfidf_sort>(true);
@@ -1178,7 +1248,7 @@ TEST_P(tfidf_test, test_order) {
   auto values = column->values();
 
   {
-    query.term("7");
+    query.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("7"));
 
     std::multimap<iresearch::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{ 0, 1, 5, 7 };
@@ -1187,20 +1257,18 @@ TEST_P(tfidf_test, test_order) {
     irs::bytes_ref_input in;
     auto prepared = query.prepare(reader, prepared_order);
     auto docs = prepared->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<iresearch::score>();
+    auto* score = irs::get<iresearch::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
-
     for (; docs->next();) {
-      score->evaluate();
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
       auto str_seq = iresearch::read_string<std::string>(in);
       seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(score_value, seq);
+      sorted.emplace(
+        irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
+        seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -1230,7 +1298,3 @@ INSTANTIATE_TEST_CASE_P(
 #endif // IRESEARCH_DLL
 
 NS_END // NS_LOCAL
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

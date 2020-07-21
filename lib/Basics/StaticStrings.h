@@ -99,6 +99,11 @@ class StaticStrings {
   static std::string const Statistics15Collection;
   static std::string const StatisticsRawCollection;
 
+  // analyzers names
+  static std::string const AnalyzersRevision;
+  static std::string const AnalyzersBuildingRevision;
+  static std::string const AnalyzersDeletedRevision;
+
   // database definition fields
   static std::string const DatabaseId;
   static std::string const DatabaseName;
@@ -170,6 +175,7 @@ class StaticStrings {
   static std::string const ContentTypeHeader;
   static std::string const CorsMethods;
   static std::string const Error;
+  static std::string const ErrorCode;
   static std::string const ErrorMessage;
   static std::string const ErrorNum;
   static std::string const Errors;
@@ -231,11 +237,13 @@ class StaticStrings {
   static std::string const Schema;
   static std::string const Version;
   static std::string const WriteConcern;
+  static std::string const ShardingSingle;
 
   // graph attribute names
   static std::string const GraphCollection;
-  static std::string const GraphIsSmart;
+  static std::string const IsDisjoint;
   static std::string const GraphIsSatellite;
+  static std::string const GraphIsSmart;
   static std::string const GraphFrom;
   static std::string const GraphTo;
   static std::string const GraphOptions;
@@ -310,6 +318,9 @@ class StaticStrings {
   static std::string const AqlRemoteStateHasmore;
   static std::string const AqlCallListSpecific;
   static std::string const AqlCallListDefault;
+  static std::string const ArangoSearchAnalyzersRevision;
+  static std::string const ArangoSearchCurrentAnalyzersRevision;
+  static std::string const ArangoSearchSystemAnalyzersRevision;
 
   // validation
   static std::string const ValidationLevelNone;
@@ -329,7 +340,6 @@ class StaticStrings {
   static std::string const MaintenancePhaseTwoRuntimeMs;
   static std::string const MaintenanceAgencySyncRuntimeMs;
 
-
   static std::string const MaintenanceActionRuntimeMs;
   static std::string const MaintenanceActionAccumRuntimeMs;
   static std::string const MaintenanceActionFailureCounter;
@@ -339,7 +349,6 @@ class StaticStrings {
   static std::string const MaintenancePhaseOneAccumRuntimeMs;
   static std::string const MaintenancePhaseTwoAccumRuntimeMs;
   static std::string const MaintenanceAgencySyncAccumRuntimeMs;
-
 
   static std::string const ActionDuplicateCounter;
   static std::string const ActionRegisteredCounter;

@@ -138,7 +138,7 @@ bool depIsSingletonOrConstCalc(ExecutionNode const* node) {
       return false;
     }
 
-    ::arangodb::containers::HashSet<Variable const*> used;
+    VarSet used;
     node->getVariablesUsedHere(used);
     if (!used.empty()) {
       return false;
@@ -323,7 +323,7 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt, ExecutionP
     CalculationNode* calc = nullptr;
 
     if (keyVar) {
-      ::arangodb::containers::HashSet<Variable const*> keySet;
+      VarSet keySet;
       keySet.emplace(keyVar);
 
       while (cursor) {

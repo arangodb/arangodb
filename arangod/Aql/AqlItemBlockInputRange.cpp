@@ -53,6 +53,11 @@ SharedAqlItemBlockPtr AqlItemBlockInputRange::getBlock() const noexcept {
   return _block;
 }
 
+bool AqlItemBlockInputRange::hasValidRow() const noexcept {
+  // covers both data rows & shadow rows
+  return isIndexValid(_rowIndex);
+}
+
 bool AqlItemBlockInputRange::hasDataRow() const noexcept {
   return isIndexValid(_rowIndex) && !isShadowRowAtIndex(_rowIndex);
 }
@@ -68,11 +73,32 @@ std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::peekDataRow() 
 }
 
 std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::nextDataRow() {
-  auto res = peekDataRow();
-  if (res.second) {
+  // this is an optimized version that intentionally does not call peekDataRow()
+  // in order to save a few if conditions
+  if (hasDataRow()) {
+    TRI_ASSERT(_block != nullptr);
+    auto state = nextState<LookAhead::NEXT, RowType::DATA>();
+    return std::make_pair(state, InputAqlItemRow{_block, _rowIndex++});
+  }
+  return std::make_pair(nextState<LookAhead::NOW, RowType::DATA>(),
+                        InputAqlItemRow{CreateInvalidInputRowHint{}});
+}
+
+/// @brief: this is a performance-optimized version of nextDataRow() that must only
+/// be used if it is sure that there is another data row
+std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::nextDataRow(HasDataRow /*tag unused*/) {
+  TRI_ASSERT(_block != nullptr);
+  TRI_ASSERT(hasDataRow());
+  // must calculate nextState() before the increase of _rowIndex here.
+  auto state = nextState<LookAhead::NEXT, RowType::DATA>();
+  return std::make_pair(state, InputAqlItemRow{_block, _rowIndex++});
+}
+
+/// @brief moves the row index one forward if we are at a row right now
+void AqlItemBlockInputRange::advanceDataRow() noexcept {
+  if (hasDataRow()) {
     ++_rowIndex;
   }
-  return res;
 }
 
 ExecutorState AqlItemBlockInputRange::upstreamState() const noexcept {
@@ -108,19 +134,15 @@ std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputRange::nextShadowRow
     ShadowAqlItemRow row{_block, _rowIndex};
     // Advance the current row.
     _rowIndex++;
-    return std::make_pair(nextState<LookAhead::NOW, RowType::SHADOW>(), row);
+    return std::make_pair(nextState<LookAhead::NOW, RowType::SHADOW>(), std::move(row));
   }
   return std::make_pair(nextState<LookAhead::NOW, RowType::SHADOW>(),
                         ShadowAqlItemRow{CreateInvalidShadowRowHint{}});
 }
 
 size_t AqlItemBlockInputRange::skipAllRemainingDataRows() {
-  ExecutorState state;
-  InputAqlItemRow row{CreateInvalidInputRowHint{}};
-
   while (hasDataRow()) {
-    std::tie(state, row) = nextDataRow();
-    TRI_ASSERT(row.isInitialized());
+    ++_rowIndex;
   }
   return 0;
 }
@@ -136,11 +158,9 @@ ExecutorState AqlItemBlockInputRange::nextState() const noexcept {
     return _finalState;
   }
 
-  bool isShadowRow = isShadowRowAtIndex(testRowIndex);
-
   if constexpr (RowType::DATA == type) {
     // We Return HASMORE, if the next row is a data row
-    if (!isShadowRow) {
+    if (!isShadowRowAtIndex(testRowIndex)) {
       return ExecutorState::HASMORE;
     }
     return ExecutorState::DONE;

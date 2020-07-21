@@ -51,22 +51,30 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
     return _slowStreamingQueryThreshold;
   }
   bool failOnWarning() const { return _failOnWarning; }
+#ifdef USE_ENTERPRISE
   bool smartJoins() const { return _smartJoins; }
+  bool parallelizeTraversals() const { return _parallelizeTraversals; }
+#endif
   uint64_t queryMemoryLimit() const { return _queryMemoryLimit; }
   uint64_t maxQueryPlans() const { return _maxQueryPlans; }
   aql::QueryRegistry* queryRegistry() const { return _queryRegistry.get(); }
+  uint64_t maxParallelism() const { return _maxParallelism; }
 
  private:
   bool _trackSlowQueries;
   bool _trackBindVars;
   bool _failOnWarning;
   bool _queryCacheIncludeSystem;
+#ifdef USE_ENTERPRISE
   bool _smartJoins;
+  bool _parallelizeTraversals;
+#endif
   uint64_t _queryMemoryLimit;
   uint64_t _maxQueryPlans;
   uint64_t _queryCacheMaxResultsCount;
   uint64_t _queryCacheMaxResultsSize;
   uint64_t _queryCacheMaxEntrySize;
+  uint64_t _maxParallelism;
   double _slowQueryThreshold;
   double _slowStreamingQueryThreshold;
   double _queryRegistryTTL;

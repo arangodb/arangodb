@@ -63,12 +63,11 @@ class ClusterEngine final : public StorageEngine {
   void start() override;
 
   std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) override;
-  std::unique_ptr<TransactionState> createTransactionState(TRI_vocbase_t& vocbase,
+  std::shared_ptr<TransactionState> createTransactionState(TRI_vocbase_t& vocbase,
                                                            TRI_voc_tid_t tid,
                                                            transaction::Options const& options) override;
   std::unique_ptr<TransactionCollection> createTransactionCollection(
-      TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType,
-      int nestingLevel) override;
+      TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType) override;
 
   // create storage-engine specific collection
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
@@ -135,9 +134,8 @@ class ClusterEngine final : public StorageEngine {
     return {TRI_ERROR_NOT_IMPLEMENTED};
   }
   Result lastLogger(TRI_vocbase_t& vocbase,
-                    std::shared_ptr<transaction::Context> transactionContext,
                     uint64_t tickStart, uint64_t tickEnd,
-                    std::shared_ptr<velocypack::Builder>& builderSPtr) override {
+                    velocypack::Builder& builder) override {
     return {TRI_ERROR_NOT_IMPLEMENTED};
   }
   WalAccess const* walAccess() const override {

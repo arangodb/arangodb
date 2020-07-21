@@ -33,6 +33,7 @@
 
 #include "FetcherTestHelper.h"
 
+#include <Containers/HashSet.h>
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -49,8 +50,9 @@ class AllRowsFetcherTest : public ::testing::Test {
   AqlItemMatrix const* matrix = nullptr;
   VPackBuilder input;
   ResourceMonitor monitor;
-  DependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, 1};
   AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  RegIdSet inputRegisters{};
+  DependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, inputRegisters, 1};
 };
 
 TEST_F(AllRowsFetcherTest, no_blocks_upstream_the_producer_does_not_wait) {

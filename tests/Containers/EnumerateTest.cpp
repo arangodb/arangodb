@@ -35,10 +35,10 @@ template<typename T>
 struct NonCopyableType {
   explicit NonCopyableType(T t) : t(std::move(t)) {}
   NonCopyableType(NonCopyableType const&) = delete;
-  NonCopyableType(NonCopyableType &&) noexcept = default;
+  NonCopyableType(NonCopyableType &&) = default;
 
   NonCopyableType& operator=(NonCopyableType const&) = delete;
-  NonCopyableType& operator=(NonCopyableType&&) noexcept = default;
+  NonCopyableType& operator=(NonCopyableType&&) = default;
 
   T t;
 };

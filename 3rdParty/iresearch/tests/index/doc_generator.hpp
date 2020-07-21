@@ -50,7 +50,7 @@ NS_BEGIN(tests)
 /// @brief base interface for all fields
 //////////////////////////////////////////////////////////////////////////////
 struct ifield {
-  DECLARE_SHARED_PTR(ifield);
+  using ptr = std::shared_ptr<ifield>;
   virtual ~ifield() = default;
 
   virtual const irs::flags& features() const = 0;
@@ -113,7 +113,9 @@ class int_field: public field_base {
  public:
   typedef int32_t value_t;
 
-  int_field() = default;
+  int_field()
+    : stream_(std::make_shared<irs::numeric_token_stream>()) {
+  }
   int_field(int_field&& other) noexcept
     : field_base(std::move(other)),
       stream_(std::move(other.stream_)),
@@ -126,7 +128,7 @@ class int_field: public field_base {
   bool write(irs::data_output& out) const override;
 
  private:
-  mutable irs::numeric_token_stream stream_;
+  mutable std::shared_ptr<irs::numeric_token_stream> stream_;
   int32_t value_{};
 }; // int_field 
 
@@ -291,8 +293,7 @@ struct document: irs::util::noncopyable {
 
 /* Base class for document generators */
 struct doc_generator_base {
-  DECLARE_UNIQUE_PTR(doc_generator_base);
-  DEFINE_FACTORY_INLINE(doc_generator_base)
+  using ptr = std::unique_ptr<doc_generator_base>;
 
   virtual const tests::document* next() = 0;
   virtual void reset() = 0;

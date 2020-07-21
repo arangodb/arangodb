@@ -606,7 +606,7 @@ function doOnePathInner (path) {
 }
 
 function scanTestPaths (paths, options) {
-  // add enterprise tests
+  // add Enterprise Edition tests
   if (global.ARANGODB_CLIENT_VERSION(true)['enterprise-version']) {
     paths = paths.concat(paths.map(function(p) {
       return 'enterprise/' + p;
@@ -876,6 +876,7 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
       'return runTest(' + JSON.stringify(file) + ', true' + mochaGrep + ');\n';
   }
 
+  require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
   let testFunc;
   eval('testFunc = function () { \nglobal.instanceInfo = ' + JSON.stringify(instanceInfo) + ';\n' + testCode + "}");
   

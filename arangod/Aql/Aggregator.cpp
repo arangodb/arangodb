@@ -52,7 +52,7 @@ constexpr bool internalOnly = false;
 /// @brief struct containing aggregator meta information
 struct AggregatorInfo {
   /// @brief function to generate a new aggregator instance in a query
-  std::function<std::unique_ptr<Aggregator>(transaction::Methods* trx)> generator;
+  std::function<std::unique_ptr<Aggregator>(velocypack::Options const* opts)> generator;
 
   /// @brief whether or not the aggregator needs input
   /// note: currently this is false only for LENGTH/COUNT, for which the input
@@ -147,10 +147,10 @@ class MemoryBlockAllocator {
 
 /// @brief aggregator for LENGTH()
 struct AggregatorLength final : public Aggregator {
-  explicit AggregatorLength(transaction::Methods* trx)
-      : Aggregator(trx), count(0) {}
-  AggregatorLength(transaction::Methods* trx, uint64_t initialCount)
-      : Aggregator(trx), count(initialCount) {}
+  explicit AggregatorLength(velocypack::Options const* opts)
+      : Aggregator(opts), count(0) {}
+  AggregatorLength(velocypack::Options const* opts, uint64_t initialCount)
+      : Aggregator(opts), count(initialCount) {}
 
   void reset() override { count = 0; }
 
@@ -166,8 +166,8 @@ struct AggregatorLength final : public Aggregator {
 };
 
 struct AggregatorMin final : public Aggregator {
-  explicit AggregatorMin(transaction::Methods* trx)
-      : Aggregator(trx), value() {}
+  explicit AggregatorMin(velocypack::Options const* opts)
+      : Aggregator(opts), value() {}
 
   ~AggregatorMin() { value.destroy(); }
 
@@ -175,7 +175,7 @@ struct AggregatorMin final : public Aggregator {
 
   void reduce(AqlValue const& cmpValue) override {
     if (!cmpValue.isNull(true) && (value.isEmpty() || 
-                                   AqlValue::Compare(trx, value, cmpValue, true) > 0)) {
+                                   AqlValue::Compare(_vpackOptions, value, cmpValue, true) > 0)) {
       // the value `null` itself will not be used in MIN() to compare lower than
       // e.g. value `false`
       value.destroy();
@@ -196,15 +196,15 @@ struct AggregatorMin final : public Aggregator {
 };
 
 struct AggregatorMax final : public Aggregator {
-  explicit AggregatorMax(transaction::Methods* trx)
-      : Aggregator(trx), value() {}
+  explicit AggregatorMax(velocypack::Options const* opts)
+      : Aggregator(opts), value() {}
 
   ~AggregatorMax() { value.destroy(); }
 
   void reset() override { value.erase(); }
 
   void reduce(AqlValue const& cmpValue) override {
-    if (value.isEmpty() || AqlValue::Compare(trx, value, cmpValue, true) < 0) {
+    if (value.isEmpty() || AqlValue::Compare(_vpackOptions, value, cmpValue, true) < 0) {
       value.destroy();
       value = cmpValue.clone();
     }
@@ -223,8 +223,8 @@ struct AggregatorMax final : public Aggregator {
 };
 
 struct AggregatorSum final : public Aggregator {
-  explicit AggregatorSum(transaction::Methods* trx)
-      : Aggregator(trx), sum(0.0), invalid(false), invoked(false) {}
+  explicit AggregatorSum(velocypack::Options const* opts)
+      : Aggregator(opts), sum(0.0), invalid(false), invoked(false) {}
 
   void reset() override {
     sum = 0.0;
@@ -268,8 +268,8 @@ struct AggregatorSum final : public Aggregator {
 
 /// @brief the single-server variant of AVERAGE
 struct AggregatorAverage : public Aggregator {
-  explicit AggregatorAverage(transaction::Methods* trx)
-      : Aggregator(trx), count(0), sum(0.0), invalid(false) {}
+  explicit AggregatorAverage(velocypack::Options const* opts)
+      : Aggregator(opts), count(0), sum(0.0), invalid(false) {}
 
   void reset() override final {
     count = 0;
@@ -315,8 +315,8 @@ struct AggregatorAverage : public Aggregator {
 
 /// @brief the DB server variant of AVERAGE, producing a sum and a count
 struct AggregatorAverageStep1 final : public AggregatorAverage {
-  explicit AggregatorAverageStep1(transaction::Methods* trx)
-      : AggregatorAverage(trx) {}
+  explicit AggregatorAverageStep1(velocypack::Options const* opts)
+      : AggregatorAverage(opts) {}
 
   // special version that will produce an array with sum and count separately
   AqlValue stealValue() override {
@@ -342,8 +342,8 @@ struct AggregatorAverageStep1 final : public AggregatorAverage {
 /// @brief the coordinator variant of AVERAGE, aggregating partial sums and
 /// counts
 struct AggregatorAverageStep2 final : public AggregatorAverage {
-  explicit AggregatorAverageStep2(transaction::Methods* trx)
-      : AggregatorAverage(trx) {}
+  explicit AggregatorAverageStep2(velocypack::Options const* opts)
+      : AggregatorAverage(opts) {}
 
   void reduce(AqlValue const& cmpValue) override {
     if (!cmpValue.isArray()) {
@@ -373,8 +373,8 @@ struct AggregatorAverageStep2 final : public AggregatorAverage {
 
 /// @brief base functionality for VARIANCE
 struct AggregatorVarianceBase : public Aggregator {
-  AggregatorVarianceBase(transaction::Methods* trx, bool population)
-      : Aggregator(trx), population(population), count(0), sum(0.0), mean(0.0), invalid(false) {}
+  AggregatorVarianceBase(velocypack::Options const* opts, bool population)
+      : Aggregator(opts), population(population), count(0), sum(0.0), mean(0.0), invalid(false) {}
 
   void reset() override {
     count = 0;
@@ -413,8 +413,8 @@ struct AggregatorVarianceBase : public Aggregator {
 
 /// @brief the single server variant of VARIANCE
 struct AggregatorVariance : public AggregatorVarianceBase {
-  AggregatorVariance(transaction::Methods* trx, bool population)
-      : AggregatorVarianceBase(trx, population) {}
+  AggregatorVariance(velocypack::Options const* opts, bool population)
+      : AggregatorVarianceBase(opts, population) {}
 
   AqlValue stealValue() override {
     if (invalid || count == 0 || (count == 1 && !population) ||
@@ -439,8 +439,8 @@ struct AggregatorVariance : public AggregatorVarianceBase {
 
 /// @brief the DB server variant of VARIANCE/STDDEV
 struct AggregatorVarianceBaseStep1 final : public AggregatorVarianceBase {
-  AggregatorVarianceBaseStep1(transaction::Methods* trx, bool population)
-      : AggregatorVarianceBase(trx, population) {}
+  AggregatorVarianceBaseStep1(velocypack::Options const* opts, bool population)
+      : AggregatorVarianceBase(opts, population) {}
 
   AqlValue stealValue() override {
     builder.clear();
@@ -469,8 +469,8 @@ struct AggregatorVarianceBaseStep1 final : public AggregatorVarianceBase {
 
 /// @brief the coordinator variant of VARIANCE
 struct AggregatorVarianceBaseStep2 : public AggregatorVarianceBase {
-  AggregatorVarianceBaseStep2(transaction::Methods* trx, bool population)
-      : AggregatorVarianceBase(trx, population) {}
+  AggregatorVarianceBaseStep2(velocypack::Options const* opts, bool population)
+      : AggregatorVarianceBase(opts, population) {}
 
   void reset() override {
     AggregatorVarianceBase::reset();
@@ -545,8 +545,8 @@ struct AggregatorVarianceBaseStep2 : public AggregatorVarianceBase {
 
 /// @brief the single server variant of STDDEV
 struct AggregatorStddev : public AggregatorVarianceBase {
-  AggregatorStddev(transaction::Methods* trx, bool population)
-      : AggregatorVarianceBase(trx, population) {}
+  AggregatorStddev(velocypack::Options const* opts, bool population)
+      : AggregatorVarianceBase(opts, population) {}
 
   AqlValue stealValue() override {
     if (invalid || count == 0 || (count == 1 && !population) ||
@@ -571,8 +571,8 @@ struct AggregatorStddev : public AggregatorVarianceBase {
 
 /// @brief the coordinator variant of STDDEV
 struct AggregatorStddevBaseStep2 final : public AggregatorVarianceBaseStep2 {
-  AggregatorStddevBaseStep2(transaction::Methods* trx, bool population)
-      : AggregatorVarianceBaseStep2(trx, population) {}
+  AggregatorStddevBaseStep2(velocypack::Options const* opts, bool population)
+      : AggregatorVarianceBaseStep2(opts, population) {}
 
   AqlValue stealValue() override {
     if (invalid || count == 0 || (count == 1 && !population)) {
@@ -603,12 +603,11 @@ struct AggregatorStddevBaseStep2 final : public AggregatorVarianceBaseStep2 {
 
 /// @brief the single-server and DB server variant of UNIQUE
 struct AggregatorUnique : public Aggregator {
-  explicit AggregatorUnique(transaction::Methods* trx)
-      : Aggregator(trx),
+  explicit AggregatorUnique(velocypack::Options const* opts)
+      : Aggregator(opts),
         allocator(1024),
         seen(512, basics::VelocyPackHelper::VPackHash(),
-             basics::VelocyPackHelper::VPackEqual(
-                 trx->transactionContext()->getVPackOptions())) {}
+             basics::VelocyPackHelper::VPackEqual(_vpackOptions)) {}
 
   ~AggregatorUnique() {
     reset();
@@ -622,7 +621,7 @@ struct AggregatorUnique : public Aggregator {
   }
 
   void reduce(AqlValue const& cmpValue) override {
-    AqlValueMaterializer materializer(trx);
+    AqlValueMaterializer materializer(_vpackOptions);
 
     VPackSlice s = materializer.slice(cmpValue, true);
 
@@ -660,11 +659,11 @@ struct AggregatorUnique : public Aggregator {
 
 /// @brief the coordinator variant of UNIQUE
 struct AggregatorUniqueStep2 final : public AggregatorUnique {
-  explicit AggregatorUniqueStep2(transaction::Methods* trx)
-      : AggregatorUnique(trx) {}
+  explicit AggregatorUniqueStep2(velocypack::Options const* opts)
+      : AggregatorUnique(opts) {}
 
   void reduce(AqlValue const& cmpValue) override final {
-    AqlValueMaterializer materializer(trx);
+    AqlValueMaterializer materializer(_vpackOptions);
 
     VPackSlice s = materializer.slice(cmpValue, true);
 
@@ -691,10 +690,10 @@ struct AggregatorUniqueStep2 final : public AggregatorUnique {
 
 /// @brief the single-server and DB server variant of SORTED_UNIQUE
 struct AggregatorSortedUnique : public Aggregator {
-  explicit AggregatorSortedUnique(transaction::Methods* trx)
-      : Aggregator(trx),
+  explicit AggregatorSortedUnique(velocypack::Options const* opts)
+      : Aggregator(opts),
         allocator(1024),
-        seen(trx->transactionContext()->getVPackOptions()) {}
+        seen(_vpackOptions) {}
 
   ~AggregatorSortedUnique() { reset(); }
 
@@ -706,7 +705,7 @@ struct AggregatorSortedUnique : public Aggregator {
   }
 
   void reduce(AqlValue const& cmpValue) override {
-    AqlValueMaterializer materializer(trx);
+    AqlValueMaterializer materializer(_vpackOptions);
 
     VPackSlice s = materializer.slice(cmpValue, true);
 
@@ -739,11 +738,11 @@ struct AggregatorSortedUnique : public Aggregator {
 
 /// @brief the coordinator variant of SORTED_UNIQUE
 struct AggregatorSortedUniqueStep2 final : public AggregatorSortedUnique {
-  explicit AggregatorSortedUniqueStep2(transaction::Methods* trx)
-      : AggregatorSortedUnique(trx) {}
+  explicit AggregatorSortedUniqueStep2(velocypack::Options const* opts)
+      : AggregatorSortedUnique(opts) {}
 
   void reduce(AqlValue const& cmpValue) override final {
-    AqlValueMaterializer materializer(trx);
+    AqlValueMaterializer materializer(_vpackOptions);
 
     VPackSlice s = materializer.slice(cmpValue, true);
 
@@ -764,12 +763,11 @@ struct AggregatorSortedUniqueStep2 final : public AggregatorSortedUnique {
 };
 
 struct AggregatorCountDistinct : public Aggregator {
-  explicit AggregatorCountDistinct(transaction::Methods* trx)
-      : Aggregator(trx),
+  explicit AggregatorCountDistinct(velocypack::Options const* opts)
+      : Aggregator(opts),
         allocator(1024),
         seen(512, basics::VelocyPackHelper::VPackHash(),
-             basics::VelocyPackHelper::VPackEqual(
-                 trx->transactionContext()->getVPackOptions())) {}
+             basics::VelocyPackHelper::VPackEqual(_vpackOptions)) {}
 
   ~AggregatorCountDistinct() { reset(); }
 
@@ -781,7 +779,7 @@ struct AggregatorCountDistinct : public Aggregator {
   }
 
   void reduce(AqlValue const& cmpValue) override {
-    AqlValueMaterializer materializer(trx);
+    AqlValueMaterializer materializer(_vpackOptions);
 
     VPackSlice s = materializer.slice(cmpValue, true);
 
@@ -807,11 +805,11 @@ struct AggregatorCountDistinct : public Aggregator {
 
 /// @brief the coordinator variant of COUNT_DISTINCT
 struct AggregatorCountDistinctStep2 final : public AggregatorCountDistinct {
-  explicit AggregatorCountDistinctStep2(transaction::Methods* trx)
-      : AggregatorCountDistinct(trx) {}
+  explicit AggregatorCountDistinctStep2(velocypack::Options const* opts)
+      : AggregatorCountDistinct(opts) {}
 
   void reduce(AqlValue const& cmpValue) override {
-    AqlValueMaterializer materializer(trx);
+    AqlValueMaterializer materializer(_vpackOptions);
 
     VPackSlice s = materializer.slice(cmpValue, true);
 
@@ -835,142 +833,142 @@ struct AggregatorCountDistinctStep2 final : public AggregatorCountDistinct {
 std::unordered_map<std::string, AggregatorInfo> const aggregators = {
     {"LENGTH",
      {
-         [](transaction::Methods* trx) {
-           return std::make_unique<AggregatorLength>(trx);
+         [](velocypack::Options const* opts) {
+           return std::make_unique<AggregatorLength>(opts);
          },
          doesNotRequireInput, official, "LENGTH",
          "SUM"  // we need to sum up the lengths from the DB servers
      }},
     {"MIN",
      {
-         [](transaction::Methods* trx) {
-           return std::make_unique<AggregatorMin>(trx);
+         [](velocypack::Options const* opts) {
+           return std::make_unique<AggregatorMin>(opts);
          },
          doesRequireInput, official, "MIN",
          "MIN"  // min is commutative
      }},
     {"MAX",
      {
-         [](transaction::Methods* trx) {
-           return std::make_unique<AggregatorMax>(trx);
+         [](velocypack::Options const* opts) {
+           return std::make_unique<AggregatorMax>(opts);
          },
          doesRequireInput, official, "MAX",
          "MAX"  // max is commutative
      }},
     {"SUM",
      {
-         [](transaction::Methods* trx) {
-           return std::make_unique<AggregatorSum>(trx);
+         [](velocypack::Options const* opts) {
+           return std::make_unique<AggregatorSum>(opts);
          },
          doesRequireInput, official, "SUM",
          "SUM"  // sum is commutative
      }},
     {"AVERAGE",
-     {[](transaction::Methods* trx) {
-        return std::make_unique<AggregatorAverage>(trx);
+     {[](velocypack::Options const* opts) {
+        return std::make_unique<AggregatorAverage>(opts);
       },
       doesRequireInput, official, "AVERAGE_STEP1", "AVERAGE_STEP2"}},
     {"AVERAGE_STEP1",
-     {[](transaction::Methods* trx) {
-        return std::make_unique<AggregatorAverageStep1>(trx);
+     {[](velocypack::Options const* opts) {
+        return std::make_unique<AggregatorAverageStep1>(opts);
       },
       doesRequireInput, internalOnly, "", "AVERAGE_STEP1"}},
     {"AVERAGE_STEP2",
-     {[](transaction::Methods* trx) {
-        return std::make_unique<AggregatorAverageStep2>(trx);
+     {[](velocypack::Options const* opts) {
+        return std::make_unique<AggregatorAverageStep2>(opts);
       },
       doesRequireInput, internalOnly, "", "AVERAGE_STEP2"}},
     {"VARIANCE_POPULATION",
-     {[](transaction::Methods* trx) {
-        return std::make_unique<AggregatorVariance>(trx, true);
+     {[](velocypack::Options const* opts) {
+        return std::make_unique<AggregatorVariance>(opts, true);
       },
       doesRequireInput, official, "VARIANCE_POPULATION_STEP1",
       "VARIANCE_POPULATION_STEP2"}},
     {"VARIANCE_POPULATION_STEP1",
-     {[](transaction::Methods* trx) {
-        return std::make_unique<AggregatorVarianceBaseStep1>(trx, true);
+     {[](velocypack::Options const* opts) {
+        return std::make_unique<AggregatorVarianceBaseStep1>(opts, true);
       },
       doesRequireInput, internalOnly, "", "VARIANCE_POPULATION_STEP1"}},
     {"VARIANCE_POPULATION_STEP2",
-     {[](transaction::Methods* trx) {
-        return std::make_unique<AggregatorVarianceBaseStep2>(trx, true);
+     {[](velocypack::Options const* opts) {
+        return std::make_unique<AggregatorVarianceBaseStep2>(opts, true);
       },
       doesRequireInput, internalOnly, "", "VARIANCE_POPULATION_STEP2"}},
     {"VARIANCE_SAMPLE",
-     {[](transaction::Methods* trx) {
-        return std::make_unique<AggregatorVariance>(trx, false);
+     {[](velocypack::Options const* opts) {
+        return std::make_unique<AggregatorVariance>(opts, false);
       },
       doesRequireInput, official, "VARIANCE_SAMPLE_STEP1",
       "VARIANCE_SAMPLE_STEP2"}},
     {"VARIANCE_SAMPLE_STEP1",
-     {[](transaction::Methods* trx) {
-        return std::make_unique<AggregatorVarianceBaseStep1>(trx, false);
+     {[](velocypack::Options const* opts) {
+        return std::make_unique<AggregatorVarianceBaseStep1>(opts, false);
       },
       doesRequireInput, internalOnly, "", "VARIANCE_SAMPLE_STEP1"}},
     {"VARIANCE_SAMPLE_STEP2",
-     {[](transaction::Methods* trx) {
-        return std::make_unique<AggregatorVarianceBaseStep2>(trx, false);
+     {[](velocypack::Options const* opts) {
+        return std::make_unique<AggregatorVarianceBaseStep2>(opts, false);
       },
       doesRequireInput, internalOnly, "", "VARIANCE_SAMPLE_STEP2"}},
     {"STDDEV_POPULATION",
-     {[](transaction::Methods* trx) {
-        return std::make_unique<AggregatorStddev>(trx, true);
+     {[](velocypack::Options const* opts) {
+        return std::make_unique<AggregatorStddev>(opts, true);
       },
       doesRequireInput, official, "STDDEV_POPULATION_STEP1",
       "STDDEV_POPULATION_STEP2"}},
     {"STDDEV_POPULATION_STEP1",
-     {[](transaction::Methods* trx) {
-        return std::make_unique<AggregatorVarianceBaseStep1>(trx, true);
+     {[](velocypack::Options const* opts) {
+        return std::make_unique<AggregatorVarianceBaseStep1>(opts, true);
       },
       doesRequireInput, internalOnly, "", "STDDEV_POPULATION_STEP1"}},
     {"STDDEV_POPULATION_STEP2",
-     {[](transaction::Methods* trx) {
-        return std::make_unique<AggregatorStddevBaseStep2>(trx, true);
+     {[](velocypack::Options const* opts) {
+        return std::make_unique<AggregatorStddevBaseStep2>(opts, true);
       },
       doesRequireInput, internalOnly, "", "STDDEV_POPULATION_STEP2"}},
     {"STDDEV_SAMPLE",
-     {[](transaction::Methods* trx) {
-        return std::make_unique<AggregatorStddev>(trx, false);
+     {[](velocypack::Options const* opts) {
+        return std::make_unique<AggregatorStddev>(opts, false);
       },
       doesRequireInput, official, "STDDEV_SAMPLE_STEP1", "STDDEV_SAMPLE_STEP2"}},
     {"STDDEV_SAMPLE_STEP1",
-     {[](transaction::Methods* trx) {
-        return std::make_unique<AggregatorVarianceBaseStep1>(trx, false);
+     {[](velocypack::Options const* opts) {
+        return std::make_unique<AggregatorVarianceBaseStep1>(opts, false);
       },
       doesRequireInput, internalOnly, "", "STDDEV_SAMPLE_STEP1"}},
     {"STDDEV_SAMPLE_STEP2",
-     {[](transaction::Methods* trx) {
-        return std::make_unique<AggregatorStddevBaseStep2>(trx, false);
+     {[](velocypack::Options const* opts) {
+        return std::make_unique<AggregatorStddevBaseStep2>(opts, false);
       },
       doesRequireInput, internalOnly, "", "STDDEV_SAMPLE_STEP2"}},
     {"UNIQUE",
-     {[](transaction::Methods* trx) {
-        return std::make_unique<AggregatorUnique>(trx);
+     {[](velocypack::Options const* opts) {
+        return std::make_unique<AggregatorUnique>(opts);
       },
       doesRequireInput, official, "UNIQUE", "UNIQUE_STEP2"}},
     {"UNIQUE_STEP2",
-     {[](transaction::Methods* trx) {
-        return std::make_unique<AggregatorUniqueStep2>(trx);
+     {[](velocypack::Options const* opts) {
+        return std::make_unique<AggregatorUniqueStep2>(opts);
       },
       doesRequireInput, internalOnly, "", "UNIQUE_STEP2"}},
     {"SORTED_UNIQUE",
-     {[](transaction::Methods* trx) {
-        return std::make_unique<AggregatorSortedUnique>(trx);
+     {[](velocypack::Options const* opts) {
+        return std::make_unique<AggregatorSortedUnique>(opts);
       },
       doesRequireInput, official, "SORTED_UNIQUE", "SORTED_UNIQUE_STEP2"}},
     {"SORTED_UNIQUE_STEP2",
-     {[](transaction::Methods* trx) {
-        return std::make_unique<AggregatorSortedUniqueStep2>(trx);
+     {[](velocypack::Options const* opts) {
+        return std::make_unique<AggregatorSortedUniqueStep2>(opts);
       },
       doesRequireInput, internalOnly, "", "SORTED_UNIQUE_STEP2"}},
     {"COUNT_DISTINCT",
-     {[](transaction::Methods* trx) {
-        return std::make_unique<AggregatorCountDistinct>(trx);
+     {[](velocypack::Options const* opts) {
+        return std::make_unique<AggregatorCountDistinct>(opts);
       },
       doesRequireInput, official, "UNIQUE", "COUNT_DISTINCT_STEP2"}},
     {"COUNT_DISTINCT_STEP2",
-     {[](transaction::Methods* trx) {
-        return std::make_unique<AggregatorCountDistinctStep2>(trx);
+     {[](velocypack::Options const* opts) {
+        return std::make_unique<AggregatorCountDistinctStep2>(opts);
       },
       doesRequireInput, internalOnly, "", "COUNT_DISTINCT_STEP2"}}};
 
@@ -985,27 +983,27 @@ std::unordered_map<std::string, std::string> const aliases = {
 
 }  // namespace
 
-std::unique_ptr<Aggregator> Aggregator::fromTypeString(transaction::Methods* trx,
+std::unique_ptr<Aggregator> Aggregator::fromTypeString(velocypack::Options const* opts,
                                                        std::string const& type) {
   // will always return a valid generator function or throw an exception
   auto generator = Aggregator::factoryFromTypeString(type);
   TRI_ASSERT(generator != nullptr);
 
-  return (*generator)(trx);
+  return (*generator)(opts);
 }
 
-std::unique_ptr<Aggregator> Aggregator::fromVPack(transaction::Methods* trx,
+std::unique_ptr<Aggregator> Aggregator::fromVPack(velocypack::Options const* opts,
                                                   arangodb::velocypack::Slice const& slice,
                                                   char const* nameAttribute) {
   VPackSlice variable = slice.get(nameAttribute);
 
   if (variable.isString()) {
-    return fromTypeString(trx, variable.copyString());
+    return fromTypeString(opts, variable.copyString());
   }
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid aggregator type");
 }
 
-std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const* Aggregator::factoryFromTypeString(
+Aggregator::Factory Aggregator::factoryFromTypeString(
     std::string const& type) {
   auto it = ::aggregators.find(translateAlias(type));
 

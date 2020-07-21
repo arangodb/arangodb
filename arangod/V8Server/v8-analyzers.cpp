@@ -28,6 +28,9 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/StaticStrings.h"
+#include "Cluster/ClusterTypes.h"
+#include "Cluster/ServerState.h"
+#include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -105,11 +108,11 @@ void JS_AnalyzerFeatures(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     for (auto& feature: analyzer->features()) {
       if (feature) { // valid
-        if (feature->name().null()) {
+        if (feature().name().null()) {
           result->Set(context, i++, v8::Null(isolate)).FromMaybe(false);
         } else {
           result->Set(context,  // set value
-                      i++, TRI_V8_STD_STRING(isolate, std::string(feature->name()))).FromMaybe(false); // args
+                      i++, TRI_V8_STD_STRING(isolate, std::string(feature().name()))).FromMaybe(false); // args
         }
       }
     }
@@ -305,7 +308,7 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
       name, vocbase, *sysVocbase // args
     );
     name = nameBuf;
-  };
+  }
 
   auto type = TRI_ObjectToString(isolate, args[1]);
 
@@ -349,14 +352,13 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
         TRI_V8_THROW_TYPE_ERROR("<feature> must be a string");
       }
 
-      auto* feature = // feature
-        irs::attribute::type_id::get(TRI_ObjectToString(isolate, subValue), false);
+      const auto feature = irs::attributes::get(TRI_ObjectToString(isolate, subValue), false);
 
       if (!feature) {
         TRI_V8_THROW_TYPE_ERROR("<feature> not supported");
       }
 
-      features.add(*feature);
+      features.add(feature.id());
     }
   }
 
@@ -385,13 +387,10 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "problem creating view" // message
       );
     }
-
     auto v8Result = WrapAnalyzer(isolate, result.first);
-
     if (v8Result.IsEmpty()) {
       TRI_V8_THROW_EXCEPTION_MEMORY();
     }
-
     TRI_V8_RETURN(v8Result);
   } catch (arangodb::basics::Exception const& ex) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());
@@ -472,7 +471,7 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   try {
-    auto analyzer = analyzers.get(name);
+    auto analyzer = analyzers.get(name, arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
 
     if (!analyzer) {
       TRI_V8_RETURN_NULL();
@@ -616,11 +615,9 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string nameBuf;
   if (sysVocbase) {
-    nameBuf = arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
-      name, vocbase, *sysVocbase // args
-    );
+    nameBuf = arangodb::iresearch::IResearchAnalyzerFeature::normalize(name, vocbase, *sysVocbase);
     name = nameBuf;
-  };
+  }
 
   bool force = false;
 
@@ -645,11 +642,9 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   try {
     auto res = analyzers.remove(name, force);
-
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res);
     }
-
     TRI_V8_RETURN_UNDEFINED();
   } catch (arangodb::basics::Exception const& ex) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());
@@ -661,7 +656,6 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
       "cannot remove analyzer" // message
     );
   }
-
   TRI_V8_TRY_CATCH_END
 }
 

@@ -55,14 +55,14 @@ struct ServerStatistics {
   ServerStatistics& operator=(ServerStatistics &&) = delete;
 
   ServerStatistics& statistics();
-  void initialize(double);
 
   TransactionStatistics _transactionsStatistics;
-  double _startTime;
-  std::atomic<double> _uptime;
+  const double _startTime;
+  
+  double uptime() const noexcept;
 
   explicit ServerStatistics(arangodb::MetricsFeature& metrics, double start)
-      : _transactionsStatistics(metrics), _startTime(start), _uptime(0.0) {}
+      : _transactionsStatistics(metrics), _startTime(start) {}
 };
 
 #endif

@@ -32,16 +32,16 @@
 namespace arangodb {
 namespace aql {
 
-template <typename T>
-class NodeFinder final : public WalkerWorker<ExecutionNode> {
-  T _lookingFor;
-
+template <typename T, WalkerUniqueness U>
+class NodeFinder final : public WalkerWorker<ExecutionNode, U> {
   ::arangodb::containers::SmallVector<ExecutionNode*>& _out;
+  
+  T _lookingFor;
 
   bool _enterSubqueries;
 
  public:
-  NodeFinder(T, ::arangodb::containers::SmallVector<ExecutionNode*>&, bool);
+  NodeFinder(T const&, ::arangodb::containers::SmallVector<ExecutionNode*>&, bool enterSubqueries);
 
   bool before(ExecutionNode*) override final;
 
@@ -50,7 +50,7 @@ class NodeFinder final : public WalkerWorker<ExecutionNode> {
   }
 };
 
-class EndNodeFinder final : public WalkerWorker<ExecutionNode> {
+class EndNodeFinder final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   ::arangodb::containers::SmallVector<ExecutionNode*>& _out;
 
   std::vector<bool> _found;
@@ -58,7 +58,7 @@ class EndNodeFinder final : public WalkerWorker<ExecutionNode> {
   bool _enterSubqueries;
 
  public:
-  EndNodeFinder(::arangodb::containers::SmallVector<ExecutionNode*>&, bool);
+  EndNodeFinder(::arangodb::containers::SmallVector<ExecutionNode*>&, bool enterSubqueries);
 
   bool before(ExecutionNode*) override final;
 

@@ -1695,13 +1695,13 @@ exports._graph = function (graphName) {
   if (g.isSmart) {
     let err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_GRAPH.code;
-    err.errorMessage = 'The graph you requested is a SmartGraph (Enterprise Only)';
+    err.errorMessage = 'The graph you requested is a SmartGraph (Enterprise Edition only)';
     throw err;
   }
   if (g.isSatellite) {
     let err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_GRAPH.code;
-    err.errorMessage = 'The graph you requested is a SatelliteGraph (Enterprise Only)';
+    err.errorMessage = 'The graph you requested is a SatelliteGraph (Enterprise Edition only)';
     throw err;
   }
 

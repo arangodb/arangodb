@@ -260,15 +260,19 @@ struct OptimizerRule {
     scatterIResearchViewInClusterRule,
 
 #ifdef USE_ENTERPRISE
-    // move traversal on satellite graph to db server and add scatter / gather / remote
+    // move traversal on SatelliteGraph to db server and add scatter / gather / remote
     scatterSatelliteGraphRule,
 #endif
 
 #ifdef USE_ENTERPRISE
-    // remove any superfluous satellite collection joins...
+    // remove any superfluous SatelliteCollection joins...
     // put it after Scatter rule because we would do
     // the work twice otherwise
     removeSatelliteJoinsRule,
+
+    // remove multiple remote <-> distribute snippets if we are able
+    // to combine multiple in only one
+    removeDistributeNodesRule,
 #endif
 
     // move FilterNodes & Calculation nodes in between
@@ -304,11 +308,19 @@ struct OptimizerRule {
     // avoid copying large amounts of unneeded documents
     moveFiltersIntoEnumerateRule,
 
+    // turns LENGTH(FOR doc IN collection ... RETURN doc) into an optimized count
+    // operation
+    optimizeCountRule,
+
     // parallelizes execution in coordinator-sided GatherNodes
     parallelizeGatherRule,
 
     // reduce a sorted gather to an unsorted gather if only a single shard is affected
     decayUnnecessarySortedGatherRule,
+
+#ifdef USE_ENTERPRISE
+    clusterPushSubqueryToDBServer,
+#endif
 
     // move document materialization after SORT and LIMIT
     // this must be run AFTER all cluster rules as this rule
@@ -333,7 +345,7 @@ struct OptimizerRule {
   static_assert(clusterOneShardRule < smartJoinsRule);
   static_assert(clusterOneShardRule < scatterInClusterRule);
 
-  // smart joins must come before we move filters around, so the smart-join
+  // SmartJoins must come before we move filters around, so the smart-join
   // detection code does not need to take the special filters into account
   static_assert(smartJoinsRule < moveFiltersIntoEnumerateRule);
 #endif

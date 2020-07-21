@@ -25,7 +25,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/system-functions.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -296,6 +296,8 @@ bool RocksDBReplicationManager::containsUsedContext() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBReplicationManager::drop(TRI_vocbase_t* vocbase) {
+  TRI_ASSERT(vocbase != nullptr);
+
   LOG_TOPIC("ce3b0", TRACE, Logger::REPLICATION)
       << "dropping all replication contexts for database " << vocbase->name();
 
@@ -315,6 +317,8 @@ void RocksDBReplicationManager::drop(TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBReplicationManager::drop(LogicalCollection* collection) {
+  TRI_ASSERT(collection != nullptr);
+
   LOG_TOPIC("fe4bb", TRACE, Logger::REPLICATION)
       << "dropping all replication contexts for collection " << collection->name();
 

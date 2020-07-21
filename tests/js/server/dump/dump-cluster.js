@@ -31,10 +31,12 @@ const fs = require('fs');
 const internal = require("internal");
 const jsunity = require("jsunity");
 const arangosh = require('@arangodb/arangosh');
+let analyzers = require("@arangodb/analyzers");
 const isEnterprise = internal.isEnterprise();
 const db = internal.db;
 const _ = require('lodash');
-const {assertEqual, assertNotEqual, assertTrue, assertFalse, assertUndefined, assertTypeOf} = jsunity.jsUnity.assertions;
+const {assertEqual, assertNotEqual, assertTrue, assertFalse, 
+       assertUndefined, assertTypeOf, assertNull, assertNotNull} = jsunity.jsUnity.assertions;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -367,8 +369,24 @@ function dumpTestSuite () {
 
       res = db._query("FOR doc IN UnitTestsDumpView SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en')  RETURN doc").toArray();
       assertEqual(1, res.length);
-    }
-
+    },
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test custom analyzers restoring
+////////////////////////////////////////////////////////////////////////////////
+    testAnalyzers: function() {
+      assertNotNull(db._collection("_analyzers"));
+      assertEqual(isEnterprise ? 2 : 1, db._analyzers.count()); // only 1 stored custom analyzers
+                                                                // plus 1 for smartgraph in enerprise
+      let analyzer = analyzers.analyzer("custom");
+      assertEqual(db._name() + "::custom", analyzer.name());
+      assertEqual("delimiter", analyzer.type());
+      assertEqual(Object.keys(analyzer.properties()).length, 1);
+      assertEqual(" ", analyzer.properties().delimiter);
+      assertEqual(1, analyzer.features().length);
+      assertEqual("frequency", analyzer.features()[0]);
+      
+      assertNull(analyzers.analyzer("custom_dst"));
+    },
   };
 }
 
@@ -755,7 +773,7 @@ function dumpTestEnterpriseSuite () {
        * 10 -> 11 -> 12
        */
 
-      //Validate that everything is wired to a smart graph correctly
+      //Validate that everything is wired to a SmartGraph correctly
       const res = db._query(q).toArray();
       assertEqual(4, res.length);
       assertEqual("8", res[0].value);
@@ -793,7 +811,7 @@ function dumpTestEnterpriseSuite () {
        * 10 <- 11 <- 12
        */
 
-      //Validate that everything is wired to a smart graph correctly
+      //Validate that everything is wired to a SmartGraph correctly
       const res = db._query(q).toArray();
       assertEqual('8 8 8 8 9 9 11 11 12 12 12 12'.split(' '), res);
     },

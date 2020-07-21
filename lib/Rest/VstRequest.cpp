@@ -77,14 +77,12 @@ arangodb::velocypack::StringRef VstRequest::rawPayload() const {
                                          _payload.size() - _payloadOffset);
 }
 
-VPackSlice VstRequest::payload(VPackOptions const* options) {
-  TRI_ASSERT(options != nullptr);
-
+VPackSlice VstRequest::payload(bool strictValidation) {
   if (_contentType == ContentType::JSON) {
     if (!_vpackBuilder && _payload.size() > _payloadOffset) {
       _vpackBuilder = VPackParser::fromJson(_payload.data() + _payloadOffset,
                                             _payload.size() - _payloadOffset, 
-                                            &basics::VelocyPackHelper::requestValidationOptions);
+                                            validationOptions(strictValidation));
     }
     if (_vpackBuilder) {
       return _vpackBuilder->slice();
@@ -94,7 +92,8 @@ VPackSlice VstRequest::payload(VPackOptions const* options) {
       uint8_t const* ptr = _payload.data() + _payloadOffset;
       if (!_validatedPayload) {
         /// the header is validated in VstCommTask, the actual body is only validated on demand
-        VPackValidator validator(&basics::VelocyPackHelper::requestValidationOptions);
+        VPackOptions const* options = validationOptions(strictValidation);
+        VPackValidator validator(options);
         // will throw on error
         _validatedPayload = validator.validate(ptr, _payload.size() - _payloadOffset);
       }

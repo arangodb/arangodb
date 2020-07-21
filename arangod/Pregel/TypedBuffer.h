@@ -84,6 +84,7 @@ struct TypedBuffer {
     return static_cast<size_t>(_capacity - _end);
   }
   
+  /// move end cursor, calls placement new 
   T* appendElement() {
     TRI_ASSERT(_begin <= _end);
     TRI_ASSERT(_end < _capacity);
@@ -255,7 +256,7 @@ class MappedFileBuffer : public TypedBuffer<T> {
     }
     if (_fd != -1) {
       TRI_ASSERT(_fd >= 0);
-      int res = TRI_CLOSE(_fd);
+      res = TRI_CLOSE(_fd);
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_TOPIC("00e1d", ERR, arangodb::Logger::FIXME)
             << "unable to close pregel mapped file '" << _filename << "': " << res;

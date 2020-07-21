@@ -102,6 +102,11 @@ std::string const StaticStrings::StatisticsCollection("_statistics");
 std::string const StaticStrings::Statistics15Collection("_statistics15");
 std::string const StaticStrings::StatisticsRawCollection("_statisticsRaw");
 
+// analyzers names
+std::string const StaticStrings::AnalyzersRevision("revision");
+std::string const StaticStrings::AnalyzersBuildingRevision("buildingRevision");
+std::string const StaticStrings::AnalyzersDeletedRevision("revisionDeleted");
+
 // Database definition fields
 std::string const StaticStrings::DatabaseId("id");
 std::string const StaticStrings::DatabaseName("name");
@@ -181,6 +186,7 @@ std::string const StaticStrings::ContentTypeHeader("content-type");
 std::string const StaticStrings::CorsMethods(
     "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT");
 std::string const StaticStrings::Error("error");
+std::string const StaticStrings::ErrorCode("errorCode");
 std::string const StaticStrings::ErrorMessage("errorMessage");
 std::string const StaticStrings::ErrorNum("errorNum");
 std::string const StaticStrings::Errors("x-arango-errors");
@@ -250,9 +256,11 @@ std::string const StaticStrings::UsesRevisionsAsDocumentIds(
 std::string const StaticStrings::Schema("schema");
 std::string const StaticStrings::Version("version");
 std::string const StaticStrings::WriteConcern("writeConcern");
+std::string const StaticStrings::ShardingSingle("single");
 
 // graph attribute names
 std::string const StaticStrings::GraphCollection("_graphs");
+std::string const StaticStrings::IsDisjoint("isDisjoint");
 std::string const StaticStrings::GraphIsSmart("isSmart");
 std::string const StaticStrings::GraphIsSatellite("isSatellite");
 std::string const StaticStrings::GraphFrom("from");
@@ -336,6 +344,9 @@ std::string const StaticStrings::AqlRemoteStateDone("done");
 std::string const StaticStrings::AqlRemoteStateHasmore("hasmore");
 std::string const StaticStrings::AqlCallListSpecific("specifics");
 std::string const StaticStrings::AqlCallListDefault("default");
+std::string const StaticStrings::ArangoSearchAnalyzersRevision("analyzersRevision");
+std::string const StaticStrings::ArangoSearchCurrentAnalyzersRevision("current");
+std::string const StaticStrings::ArangoSearchSystemAnalyzersRevision("system");
 
 // validation
 std::string const StaticStrings::ValidationLevelNone("none");
@@ -348,46 +359,75 @@ std::string const StaticStrings::ValidationParameterLevel("level");
 std::string const StaticStrings::ValidationParameterRule("rule");
 
 // metrics prometheus labels
-std::string const StaticStrings::HeartbeatSendTimeMs("arangodb_heartbeat_send_time_msec");
-std::string const StaticStrings::HeartbeatFailureCounter("arangodb_heartbeat_failures");
+std::string const StaticStrings::HeartbeatSendTimeMs(
+    "arangodb_heartbeat_send_time_msec");
+std::string const StaticStrings::HeartbeatFailureCounter(
+    "arangodb_heartbeat_failures");
 
-std::string const StaticStrings::MaintenancePhaseOneRuntimeMs("arangodb_maintenance_phase1_runtime_msec");
-std::string const StaticStrings::MaintenancePhaseTwoRuntimeMs("arangodb_maintenance_phase2_runtime_msec");
-std::string const StaticStrings::MaintenanceAgencySyncRuntimeMs("arangodb_maintenance_agency_sync_runtime_msec");
+std::string const StaticStrings::MaintenancePhaseOneRuntimeMs(
+    "arangodb_maintenance_phase1_runtime_msec");
+std::string const StaticStrings::MaintenancePhaseTwoRuntimeMs(
+    "arangodb_maintenance_phase2_runtime_msec");
+std::string const StaticStrings::MaintenanceAgencySyncRuntimeMs(
+    "arangodb_maintenance_agency_sync_runtime_msec");
 
+std::string const StaticStrings::MaintenanceActionRuntimeMs(
+    "arangodb_maintenance_action_runtime_msec");
+std::string const StaticStrings::MaintenanceActionAccumRuntimeMs(
+    "arangodb_maintenance_action_accum_runtime_msec");
+std::string const StaticStrings::MaintenanceActionFailureCounter(
+    "arangodb_maintenance_action_failure_counter");
+std::string const StaticStrings::MaintenanceActionQueueTimeMs(
+    "arangodb_maintenance_action_queue_time_msec");
+std::string const StaticStrings::MaintenanceActionAccumQueueTimeMs(
+    "arangodb_maintenance_action_accum_queue_time_msec");
 
-std::string const StaticStrings::MaintenanceActionRuntimeMs("arangodb_maintenance_action_runtime_msec");
-std::string const StaticStrings::MaintenanceActionAccumRuntimeMs("arangodb_maintenance_action_accum_runtime_msec");
-std::string const StaticStrings::MaintenanceActionFailureCounter("arangodb_maintenance_action_failure_counter");
-std::string const StaticStrings::MaintenanceActionQueueTimeMs("arangodb_maintenance_action_queue_time_msec");
-std::string const StaticStrings::MaintenanceActionAccumQueueTimeMs("arangodb_maintenance_action_accum_queue_time_msec");
+std::string const StaticStrings::MaintenancePhaseOneAccumRuntimeMs(
+    "arangodb_maintenance_phase1_accum_runtime_msec");
+std::string const StaticStrings::MaintenancePhaseTwoAccumRuntimeMs(
+    "arangodb_maintenance_phase2_accum_runtime_msec");
+std::string const StaticStrings::MaintenanceAgencySyncAccumRuntimeMs(
+    "arangodb_maintenance_agency_sync_accum_runtime_msec");
 
-std::string const StaticStrings::MaintenancePhaseOneAccumRuntimeMs("arangodb_maintenance_phase1_accum_runtime_msec");
-std::string const StaticStrings::MaintenancePhaseTwoAccumRuntimeMs("arangodb_maintenance_phase2_accum_runtime_msec");
-std::string const StaticStrings::MaintenanceAgencySyncAccumRuntimeMs("arangodb_maintenance_agency_sync_accum_runtime_msec");
-
-std::string const StaticStrings::ActionDuplicateCounter("arangodb_maintenance_action_duplicate_counter");
-std::string const StaticStrings::ActionRegisteredCounter("arangodb_maintenance_action_registered_counter");
-std::string const StaticStrings::ActionDoneCounter("arangodb_maintenance_action_done_counter");
+std::string const StaticStrings::ActionDuplicateCounter(
+    "arangodb_maintenance_action_duplicate_counter");
+std::string const StaticStrings::ActionRegisteredCounter(
+    "arangodb_maintenance_action_registered_counter");
+std::string const StaticStrings::ActionDoneCounter(
+    "arangodb_maintenance_action_done_counter");
 
 std::string const StaticStrings::ShardsOutOfSync("arangodb_shards_out_of_sync");
-std::string const StaticStrings::ShardsTotalCount("arangodb_shards_total_count");
-std::string const StaticStrings::ShardsLeaderCount("arangodb_shards_leader_count");
-std::string const StaticStrings::ShardsNotReplicated("arangodb_shards_not_replicated");
+std::string const StaticStrings::ShardsTotalCount(
+    "arangodb_shards_total_count");
+std::string const StaticStrings::ShardsLeaderCount(
+    "arangodb_shards_leader_count");
+std::string const StaticStrings::ShardsNotReplicated(
+    "arangodb_shards_not_replicated");
 
-std::string const StaticStrings::AgencyCommRequestTimeMs("arangodb_agencycomm_request_time_msec");
+std::string const StaticStrings::AgencyCommRequestTimeMs(
+    "arangodb_agencycomm_request_time_msec");
 
-std::string const StaticStrings::AqlQueryRuntimeMs("arangodb_aql_total_query_time_msec");
+std::string const StaticStrings::AqlQueryRuntimeMs(
+    "arangodb_aql_total_query_time_msec");
 
-std::string const StaticStrings::SchedulerQueueLength("arangodb_scheduler_queue_length");
-std::string const StaticStrings::SchedulerAwakeWorkers("arangodb_scheduler_awake_threads");
-std::string const StaticStrings::SchedulerNumWorker("arangodb_scheduler_num_worker_threads");
+std::string const StaticStrings::SchedulerQueueLength(
+    "arangodb_scheduler_queue_length");
+std::string const StaticStrings::SchedulerAwakeWorkers(
+    "arangodb_scheduler_awake_threads");
+std::string const StaticStrings::SchedulerNumWorker(
+    "arangodb_scheduler_num_worker_threads");
 
-std::string const StaticStrings::DroppedFollowerCount("arangodb_dropped_followers_count");
+std::string const StaticStrings::DroppedFollowerCount(
+    "arangodb_dropped_followers_count");
 
-std::string const StaticStrings::SupervisionRuntimeMs("arangodb_agency_supervision_runtime_msec");
-std::string const StaticStrings::SupervisionRuntimeWaitForSyncMs("arangodb_agency_supervision_runtime_wait_for_replication_msec");
+std::string const StaticStrings::SupervisionRuntimeMs(
+    "arangodb_agency_supervision_runtime_msec");
+std::string const StaticStrings::SupervisionRuntimeWaitForSyncMs(
+    "arangodb_agency_supervision_runtime_wait_for_replication_msec");
 
-std::string const StaticStrings::SupervisionAccumRuntimeMs("arangodb_agency_supervision_accum_runtime_msec");
-std::string const StaticStrings::SupervisionAccumRuntimeWaitForSyncMs("arangodb_agency_supervision_accum_runtime_wait_for_replication_msec");
-std::string const StaticStrings::SupervisionFailedServerCount("arangodb_agency_supervision_failed_server_count");
+std::string const StaticStrings::SupervisionAccumRuntimeMs(
+    "arangodb_agency_supervision_accum_runtime_msec");
+std::string const StaticStrings::SupervisionAccumRuntimeWaitForSyncMs(
+    "arangodb_agency_supervision_accum_runtime_wait_for_replication_msec");
+std::string const StaticStrings::SupervisionFailedServerCount(
+    "arangodb_agency_supervision_failed_server_count");

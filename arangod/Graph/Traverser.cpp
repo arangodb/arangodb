@@ -128,8 +128,8 @@ void Traverser::UniqueVertexGetter::reset(arangodb::velocypack::StringRef const&
   _returnedVertices.emplace(startVertex);
 }
 
-Traverser::Traverser(arangodb::traverser::TraverserOptions* opts, transaction::Methods* trx)
-    : _trx(trx),
+Traverser::Traverser(arangodb::traverser::TraverserOptions* opts)
+    : _trx(opts->trx()),
       _done(true),
       _opts(opts) {
   if (opts->uniqueVertices == TraverserOptions::UniquenessLevel::GLOBAL) {

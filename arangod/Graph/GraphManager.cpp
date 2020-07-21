@@ -46,7 +46,6 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardingInfo.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -63,10 +62,10 @@ using namespace arangodb::graph;
 using VelocyPackHelper = basics::VelocyPackHelper;
 
 namespace {
-static bool ArrayContainsCollection(VPackSlice array, std::string const& colName) {
+static bool arrayContainsCollection(VPackSlice array, std::string const& colName) {
   TRI_ASSERT(array.isArray());
   for (VPackSlice it : VPackArrayIterator(array)) {
-    if (it.copyString() == colName) {
+    if (it.stringRef() == colName) {
       return true;
     }
   }
@@ -75,12 +74,8 @@ static bool ArrayContainsCollection(VPackSlice array, std::string const& colName
 }  // namespace
 
 std::shared_ptr<transaction::Context> GraphManager::ctx() const {
-  if (_isInTransaction) {
-    // we must use v8
-    return transaction::V8Context::Create(_vocbase, true);
-  }
-
-  return transaction::StandaloneContext::Create(_vocbase);
+  // we must use v8
+  return transaction::V8Context::CreateWhenRequired(_vocbase, true);
 }
 
 OperationResult GraphManager::createEdgeCollection(std::string const& name,
@@ -185,17 +180,17 @@ bool GraphManager::renameGraphCollection(std::string const& oldName,
     builder.close();
 
     try {
-      OperationResult checkDoc =
+      OperationResult opRes =
           trx.update(StaticStrings::GraphCollection, builder.slice(), options);
-      if (checkDoc.fail()) {
-        res = trx.finish(checkDoc.result);
+      if (opRes.fail()) {
+        res = trx.finish(opRes.result);
         if (res.fail()) {
           return false;
         }
       }
     } catch (...) {
     }
-  };
+  }
 
   res = trx.finish(checkDoc.result);
   if (res.fail()) {
@@ -231,12 +226,13 @@ Result GraphManager::checkForEdgeDefinitionConflicts(std::map<std::string, EdgeD
 }
 
 OperationResult GraphManager::findOrCreateCollectionsByEdgeDefinitions(
-    std::map<std::string, EdgeDefinition> const& edgeDefinitions,
+    Graph const& graph, std::map<std::string, EdgeDefinition> const& edgeDefinitions,
     bool waitForSync, VPackSlice options) {
   for (auto const& it : edgeDefinitions) {
     EdgeDefinition const& edgeDefinition = it.second;
     OperationResult res =
-        findOrCreateCollectionsByEdgeDefinition(edgeDefinition, waitForSync, options);
+        findOrCreateCollectionsByEdgeDefinition(graph, edgeDefinition,
+                                                waitForSync, options);
 
     if (res.fail()) {
       return res;
@@ -247,7 +243,8 @@ OperationResult GraphManager::findOrCreateCollectionsByEdgeDefinitions(
 }
 
 OperationResult GraphManager::findOrCreateCollectionsByEdgeDefinition(
-    EdgeDefinition const& edgeDefinition, bool waitForSync, VPackSlice const options) {
+    Graph const& graph, EdgeDefinition const& edgeDefinition, bool waitForSync,
+    VPackSlice const options) {
   std::string const& edgeCollection = edgeDefinition.getName();
   std::shared_ptr<LogicalCollection> def =
       getCollectionByName(ctx()->vocbase(), edgeCollection);
@@ -274,6 +271,11 @@ OperationResult GraphManager::findOrCreateCollectionsByEdgeDefinition(
       OperationResult res = createVertexCollection(colName, waitForSync, options);
       if (res.fail()) {
         return res;
+      }
+    } else {
+      auto res = graph.validateCollection(*def.get());
+      if (res.fail()) {
+        return OperationResult{std::move(res)};
       }
     }
   }
@@ -455,9 +457,10 @@ OperationResult GraphManager::storeGraph(Graph const& graph, bool waitForSync,
 
 Result GraphManager::applyOnAllGraphs(std::function<Result(std::unique_ptr<Graph>)> const& callback) const {
   std::string const queryStr{"FOR g IN _graphs RETURN g"};
-  arangodb::aql::Query query(false, _vocbase, arangodb::aql::QueryString{"FOR g IN _graphs RETURN g"},
-                             nullptr, nullptr, aql::PART_MAIN);
-  aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::registry());
+  arangodb::aql::Query query(transaction::StandaloneContext::Create(_vocbase),
+                             arangodb::aql::QueryString{"FOR g IN _graphs RETURN g"},
+                             nullptr, nullptr);
+  aql::QueryResult queryResult = query.executeSync();
 
   if (queryResult.result.fail()) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
@@ -611,56 +614,45 @@ Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
   }
 
   std::vector<std::shared_ptr<LogicalCollection>> created;
-  return methods::Collections::create(vocbase, collectionsToCreate, waitForSync,
-                                      true, false, nullptr, created);
-};
+  return methods::Collections::create(
+      vocbase, collectionsToCreate, waitForSync, true, false, nullptr, created);
+}
 
 bool GraphManager::onlySatellitesUsed(Graph const* graph) const {
-  bool onlySatellites = true;
-
   for (auto const& cname : graph->vertexCollections()) {
     if (!_vocbase.lookupCollection(cname).get()->isSatellite()) {
-      onlySatellites = false;
-    }
-    if (!onlySatellites) {
-      break;  // quick exit
+      return false;
     }
   }
 
   for (auto const& cname : graph->edgeCollections()) {
     if (!_vocbase.lookupCollection(cname).get()->isSatellite()) {
-      onlySatellites = false;
-    }
-    if (!onlySatellites) {
-      break;  // quick exit
+      return false;
     }
   }
 
-  return onlySatellites;
-};
-
-OperationResult GraphManager::readGraphs(velocypack::Builder& builder,
-                                         aql::QueryPart const queryPart) const {
-  std::string const queryStr{
-      "FOR g IN _graphs RETURN MERGE(g, {name: g._key})"};
-  return readGraphByQuery(builder, queryPart, queryStr);
+  return true;
 }
 
-OperationResult GraphManager::readGraphKeys(velocypack::Builder& builder,
-                                            aql::QueryPart const queryPart) const {
+OperationResult GraphManager::readGraphs(velocypack::Builder& builder) const {
+  std::string const queryStr{
+      "FOR g IN _graphs RETURN MERGE(g, {name: g._key})"};
+  return readGraphByQuery(builder, queryStr);
+}
+
+OperationResult GraphManager::readGraphKeys(velocypack::Builder& builder) const {
   std::string const queryStr{"FOR g IN _graphs RETURN g._key"};
-  return readGraphByQuery(builder, queryPart, queryStr);
+  return readGraphByQuery(builder, queryStr);
 }
 
 OperationResult GraphManager::readGraphByQuery(velocypack::Builder& builder,
-                                               aql::QueryPart const queryPart,
-                                               std::string queryStr) const {
-  arangodb::aql::Query query(false, ctx()->vocbase(), arangodb::aql::QueryString(queryStr),
-                             nullptr, nullptr, queryPart);
+                                               std::string const& queryStr) const {
+  arangodb::aql::Query query(ctx(), arangodb::aql::QueryString(queryStr),
+                             nullptr, nullptr);
 
   LOG_TOPIC("f6782", DEBUG, arangodb::Logger::GRAPHS)
       << "starting to load graphs information";
-  aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::registry());
+  aql::QueryResult queryResult = query.executeSync();
 
   if (queryResult.result.fail()) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
@@ -674,7 +666,8 @@ OperationResult GraphManager::readGraphByQuery(velocypack::Builder& builder,
 
   if (graphsSlice.isNone()) {
     return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
-  } else if (!graphsSlice.isArray()) {
+  } 
+  if (!graphsSlice.isArray()) {
     LOG_TOPIC("338b7", ERR, arangodb::Logger::GRAPHS)
         << "cannot read graphs from _graphs collection";
   }
@@ -901,10 +894,10 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
 }
 
 OperationResult GraphManager::pushCollectionIfMayBeDropped(
-    const std::string& colName, const std::string& graphName,
+    std::string const& colName, std::string const& graphName,
     std::unordered_set<std::string>& toBeRemoved) {
   VPackBuilder graphsBuilder;
-  OperationResult result = readGraphs(graphsBuilder, aql::PART_DEPENDENT);
+  OperationResult result = readGraphs(graphsBuilder);
   if (result.fail()) {
     return result;
   }
@@ -924,7 +917,7 @@ OperationResult GraphManager::pushCollectionIfMayBeDropped(
       // Short circuit
       break;
     }
-    if (graph.get(StaticStrings::KeyString).copyString() == graphName) {
+    if (graph.get(StaticStrings::KeyString).stringRef() == graphName) {
       continue;
     }
 
@@ -933,16 +926,17 @@ OperationResult GraphManager::pushCollectionIfMayBeDropped(
     if (edgeDefinitions.isArray()) {
       for (auto const& edgeDefinition : VPackArrayIterator(edgeDefinitions)) {
         // edge collection
-        std::string collection = edgeDefinition.get("collection").copyString();
-        if (collection == colName) {
-          collectionUnused = false;
-        }
-        // from's
-        if (::ArrayContainsCollection(edgeDefinition.get(StaticStrings::GraphFrom), colName)) {
+        if (edgeDefinition.get("collection").stringRef() == colName) {
           collectionUnused = false;
           break;
         }
-        if (::ArrayContainsCollection(edgeDefinition.get(StaticStrings::GraphTo), colName)) {
+        // from's
+        if (::arrayContainsCollection(edgeDefinition.get(StaticStrings::GraphFrom), colName)) {
+          collectionUnused = false;
+          break;
+        }
+        // to's
+        if (::arrayContainsCollection(edgeDefinition.get(StaticStrings::GraphTo), colName)) {
           collectionUnused = false;
           break;
         }
@@ -954,7 +948,7 @@ OperationResult GraphManager::pushCollectionIfMayBeDropped(
     // check orphan collections
     VPackSlice orphanCollections = graph.get(StaticStrings::GraphOrphans);
     if (orphanCollections.isArray()) {
-      if (::ArrayContainsCollection(orphanCollections, colName)) {
+      if (::arrayContainsCollection(orphanCollections, colName)) {
         collectionUnused = false;
         break;
       }
