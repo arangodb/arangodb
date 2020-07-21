@@ -206,29 +206,6 @@ void H1Connection<ST>::finishConnect() {
   }
 }
 
-/// The following is called when the connection is permanently failed. It is
-/// used to shut down any activity in the derived classes in a way that avoids
-/// sleeping barbers
-//template <SocketType ST>
-//void H1Connection<ST>::terminateActivity() {
-//  // Usually, we are `active == true` when we get here, except for the following
-//  // case: If we are inactive but the connection is still open and then the
-//  // idle timeout goes off, then we shutdownConnection and in the TLS case we
-//  // call this method here. In this case it is OK to simply proceed, therefore
-//  // no assertion on `_active`.
-//  FUERTE_ASSERT(this->_state.load() == Connection::State::Closed);
-//  FUERTE_LOG_HTTPTRACE << "terminateActivity: active=true, this=" << this << "\n";
-//  while (true) {
-//    this->drainQueue(Error::Canceled);
-//    this->_active.store(false);
-//    // Now need to check again:
-//    if (this->_queue.empty()) {
-//      return;
-//    }
-//    this->_active.store(true);
-//  }
-//}
-//
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
