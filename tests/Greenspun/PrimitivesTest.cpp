@@ -162,3 +162,13 @@ TEST_CASE("Test [/] primitive", "[division]") {
 }
 
 TEST_CASE("Test [list] primitive", "[list]") {}
+TEST_CASE("Test [eq?] primitive", "[equals]") {}
+TEST_CASE("Test [varref] primitive", "[varref]") {}
+TEST_CASE("Test [attrib] primitive", "[attrib]") {}
+TEST_CASE("Test [this] primitive", "[this]") {}
+TEST_CASE("Test [accumref] primitive", "[accumref]") {}
+TEST_CASE("Test [update] primitive", "[update]") {}
+TEST_CASE("Test [set] primitive", "[set]") {}
+TEST_CASE("Test [for] primitive", "[for]") {}
+TEST_CASE("Test [cat] primitive", "[cat]") {}
+TEST_CASE("Test [int-to-str] primitive", "[int-to-str]") {}
