@@ -51,7 +51,7 @@ using namespace arangodb::aql;
 using namespace arangodb::containers;
 
 namespace {
-struct Comparator final : public WalkerWorker<ExecutionNode> {
+struct Comparator final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   Comparator(Comparator const&) = delete;
   Comparator& operator=(Comparator const&) = delete;
 
