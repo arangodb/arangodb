@@ -60,13 +60,13 @@ struct MyEvalContext : PrimEvalContext {
     _computation.sendMessage(*edgeIter, msg);
   }
 
-  EvalResult enumerateEdges(std::function<EvalResult(VPackSlice edge, VPackSlice vertex)> cb) const override {
+  EvalResult enumerateEdges(std::function<EvalResult(VPackSlice edge)> cb) const override {
     RangeIterator<Edge<EdgeData>> edgeIter = _computation.getEdges();
     for (; edgeIter.hasMore(); ++edgeIter) {
       VPackSlice edgeDoc = (*edgeIter)->data()._document.slice();
       // TODO: this we don't need, as it currently is in the document.
-      VPackSlice toId = (*edgeIter)->data()._document.getKey("_to");
-      if (auto e = cb(edgeDoc, toId); e.fail()) {
+      //VPackSlice toId = (*edgeIter)->data()._document.getKey("_to");
+      if (auto e = cb(edgeDoc); e.fail()) {
         return e.wrapError([&](EvalError& err) {
           err.wrapMessage("during edge enumeration");
         });
