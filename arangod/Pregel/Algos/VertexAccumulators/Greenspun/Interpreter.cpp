@@ -154,6 +154,14 @@ EvalResult Evaluate(EvalContext& ctx, VPackSlice const slice, VPackBuilder& resu
   }
 }
 
+
+
+EvalContext::EvalContext() noexcept {
+  // Top level variables
+  pushStack();
+}
+
+
 EvalResult EvalContext::getVariable(const std::string& name, VPackBuilder& result) {
   //    TRI_ASSERT(!variables.empty());
 
@@ -178,11 +186,10 @@ EvalResult EvalContext::setVariable(std::string name, VPackSlice value) {
 void EvalContext::pushStack() { variables.emplace_back(); }
 
 void EvalContext::popStack() {
+  // Top level variables must not be popped
   TRI_ASSERT(variables.size() > 1);
   variables.pop_back();
 }
-
-
 
 std::string EvalError::toString() const {
   std::stringstream ss;
