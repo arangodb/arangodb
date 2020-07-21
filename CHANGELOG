@@ -10,6 +10,9 @@ devel
 
 * Make sure cluster statistics in web UI work in case a coordinator is down.
 
+* Change HTTP response code for error 1450 ("too many shards") from HTTP 500 to
+  HTTP 400, as this is clearly a client error.
+
 * Turn off maintenance threads on Coordinators, as they are not needed there.
 
 * Fixed crash in cleanup of parallel traversal queries.
