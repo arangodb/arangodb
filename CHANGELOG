@@ -1,6 +1,9 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Conflict error codes (1200) will now use the proper error message instead of a
+  generic and misleading "precondition failed".
+
 * Improve performance of agency cache by not copying the hierarchical Node
   tree result for serialization, but serializing it directly.
 
