@@ -265,6 +265,24 @@ EvalResult Prim_Not(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder&
   return {};
 }
 
+EvalResult Prim_PrintLn(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+  for (auto&& p : VPackArrayIterator(params)) {
+    if (p.isString()) {
+      std::cout << p.stringView();
+    } else if (p.isNumber()) {
+      std::cout << p.getNumber<double>();
+    } else {
+      std::cout << p.toJson();
+    }
+    std::cout << " ";
+  }
+
+  std::cout << std::endl;
+
+  result.add(VPackSlice::noneSlice());
+  return {};
+}
+
 void RegisterPrimitives() {
   primitives["banana"] = Prim_Banana;
   primitives["+"] = Prim_Banana;
@@ -284,6 +302,7 @@ void RegisterPrimitives() {
   primitives["lt?"] = Prim_CmpHuh<std::less<>>;
   primitives["ne?"] = Prim_CmpHuh<std::not_equal_to<>>;
 
+  primitives["print"] = Prim_PrintLn;
 
   primitives["list-cat"] = Prim_ListCat;
   primitives["string-cat"] = Prim_StringCat;

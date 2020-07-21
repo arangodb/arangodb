@@ -58,7 +58,6 @@ EvalResult SpecialIf(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder
     VPackBuilder condResult;
     {
       StackFrameGuard<false> guard(ctx);
-      std::cout << "Test if condition " << cond.toJson() << std::endl;
       auto res = Evaluate(ctx, cond, condResult);
       if (!res) {
         return res.wrapError([&](EvalError& err) {
@@ -66,7 +65,6 @@ EvalResult SpecialIf(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder
         });
       }
     }
-    std::cout << "Condition result = " << condResult.toJson() << std::endl;
     if (!condResult.slice().isFalse()) {
       StackFrameGuard<false> guard(ctx);
       return Evaluate(ctx, body, result).wrapError([&](EvalError& err) {
@@ -99,6 +97,59 @@ EvalResult SpecialCons(EvalContext& ctx, ArrayIterator paramIterator, VPackBuild
   VPackArrayBuilder array(&result);
   result.add(head);
   result.add(ArrayIterator(list));
+  return {};
+}
+
+EvalResult SpecialAnd(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
+  for (; paramIterator.valid(); paramIterator++) {
+    VPackBuilder value;
+    if (auto res = Evaluate(ctx, *paramIterator, value); res.fail()) {
+      return res.wrapError([&](EvalError &err) {
+        err.wrapMessage("in case " + std::to_string(paramIterator.index()));
+      });
+    }
+
+    if (ValueConsideredFalse(value.slice())) {
+      result.add(VPackSlice::falseSlice());
+      return {};
+    }
+  }
+
+  result.add(VPackValue(true));
+  return {};
+}
+
+EvalResult SpecialOr(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
+  for (; paramIterator.valid(); paramIterator++) {
+    VPackBuilder value;
+    if (auto res = Evaluate(ctx, *paramIterator, value); res.fail()) {
+      return res.wrapError([&](EvalError &err) {
+        err.wrapMessage("in case " + std::to_string(paramIterator.index()));
+      });
+    }
+
+    if (ValueConsideredTrue(value.slice())) {
+      result.add(VPackSlice::trueSlice());
+      return {};
+    }
+  }
+
+  result.add(VPackValue(false));
+  return {};
+}
+
+EvalResult SpecialSeq(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
+  VPackBuilder store;
+  for (; paramIterator.valid(); paramIterator++) {
+    store.clear();
+    if (auto res = Evaluate(ctx, *paramIterator, store); res.fail()) {
+      return res.wrapError([&](EvalError &err) {
+        err.wrapMessage("at position " + std::to_string(paramIterator.index()));
+      });
+    }
+  }
+
+  result.add(store.slice());
   return {};
 }
 
@@ -142,6 +193,12 @@ EvalResult Evaluate(EvalContext& ctx, VPackSlice const slice, VPackBuilder& resu
         return SpecialQuote(ctx, paramIterator, result);
       } else if (functionSlice.isEqualString("cons")) {
         return SpecialCons(ctx, paramIterator, result);
+      } else if (functionSlice.isEqualString("and")) {
+        return SpecialAnd(ctx, paramIterator, result);
+      } else if (functionSlice.isEqualString("or")) {
+        return SpecialOr(ctx, paramIterator, result);
+      } else if (functionSlice.isEqualString("seq")) {
+        return SpecialSeq(ctx, paramIterator, result);
       } else {
         return Call(ctx, functionSlice, paramIterator, result);
       }

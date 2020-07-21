@@ -46,7 +46,7 @@ struct MyEvalContext : PrimEvalContext {
                "_to": "V/2",
                "_cost": 15 })json");
     std::cerr << "one edge is built: " << oneEdge->slice().toJson() << std::endl;
-    cb(oneEdge->slice()); 
+    cb(oneEdge->slice());
     std::cerr << "one edge is called back:" << std::endl;
 
     return {};
@@ -265,7 +265,11 @@ int main(int argc, char** argv) {
       if (res.fail()) {
         std::cerr << "error: " << res.error().toString() << std::endl;
       } else {
-        std::cout << " = " << result.toJson() << std::endl;
+        if (result.slice().isNone()) {
+          std::cout << " (no result)" << std::endl;
+        } else {
+          std::cout << " = " << result.toJson() << std::endl;
+        }
       }
     } catch (VPackException const& e) {
       std::cerr << "VPack failed: " << e.what() << std::endl;
