@@ -3441,6 +3441,15 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
         "BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
+  // test invalid input type (array) via ref
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "LET input = NOOPT([ 1, \"abc\" ])"
+      "FOR d IN testView SEARCH PHRASE(d['value'], input) SORT "
+      "BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
 
   // test invalid input type (boolean)
   {
@@ -3457,6 +3466,16 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d['value'], false) SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid input type (boolean) via ref
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "LET input = NOOPT(true)"
+      "FOR d IN testView SEARCH PHRASE(d.value, input) SORT BM25(d) ASC, "
+      "TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
@@ -3879,6 +3898,91 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
 
     EXPECT_EQ(i, expected.size());
   }
+
+  // test parameters via reference
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[7].slice(),  insertedDocs[8].slice(),
+      insertedDocs[13].slice(), insertedDocs[19].slice(),
+      insertedDocs[22].slice(), insertedDocs[24].slice(),
+      insertedDocs[29].slice(),
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "LET phraseStruct = NOOPT(['v', 2, 'c']) FOR d IN testView "
+      "SEARCH ANALYZER(PHRASE(d['duplicated'], phraseStruct), 'test_analyzer') "
+      "SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    ASSERT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      ASSERT_TRUE(i < expected.size());
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+        resolved, true)));
+    }
+
+    EXPECT_EQ(i, expected.size());
+  }
+  // test parameters via reference in TERMS object
+  // FIXME: move to TERMS tests
+  //{
+  //  std::vector<arangodb::velocypack::Slice> expected = {
+  //    insertedDocs[7].slice(),  insertedDocs[8].slice(),
+  //    insertedDocs[13].slice(), insertedDocs[19].slice(),
+  //    insertedDocs[22].slice(), insertedDocs[24].slice(),
+  //    insertedDocs[29].slice(),
+  //  };
+  //  auto result = arangodb::tests::executeQuery(
+  //    vocbase,
+  //    "LET phraseStruct = NOOPT(['v','c']) FOR d IN testView "
+  //    "SEARCH ANALYZER(PHRASE(d['duplicated'], [{ TERMS: phraseStruct}, 2, 'c']), 'test_analyzer') "
+  //    "SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+  //  std::cerr << result.errorMessage();
+  //  ASSERT_TRUE(result.result.ok());
+  //  auto slice = result.data->slice();
+  //  ASSERT_TRUE(slice.isArray());
+  //  size_t i = 0;
+
+  //  for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+  //    auto const resolved = itr.value().resolveExternals();
+  //    ASSERT_TRUE(i < expected.size());
+  //    EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+  //      resolved, true)));
+  //  }
+
+  //  EXPECT_EQ(i, expected.size());
+  //}
+  //// test parameters via reference full object
+  //// FIXME: move to TERMS tests
+  //{
+  //  std::vector<arangodb::velocypack::Slice> expected = {
+  //    insertedDocs[7].slice(),  insertedDocs[8].slice(),
+  //    insertedDocs[13].slice(), insertedDocs[19].slice(),
+  //    insertedDocs[22].slice(), insertedDocs[24].slice(),
+  //    insertedDocs[29].slice(),
+  //  };
+  //  auto result = arangodb::tests::executeQuery(
+  //    vocbase,
+  //    "LET phraseStruct = NOOPT([{ TERMS: ['v', ';']}, 2, { TERMS: ['c', ';']}]) FOR d IN testView "
+  //    "SEARCH ANALYZER(PHRASE(d['duplicated'], phraseStruct), 'test_analyzer') "
+  //    "SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+  //  ASSERT_TRUE(result.result.ok());
+  //  auto slice = result.data->slice();
+  //  ASSERT_TRUE(slice.isArray());
+  //  size_t i = 0;
+
+  //  for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+  //    auto const resolved = itr.value().resolveExternals();
+  //    ASSERT_TRUE(i < expected.size());
+  //    EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+  //      resolved, true)));
+  //  }
+
+  //  EXPECT_EQ(i, expected.size());
+  //}
 
   // test custom analyzer with offsets via []
   {
