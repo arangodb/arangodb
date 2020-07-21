@@ -146,7 +146,7 @@ bool State::persist(index_t index, term_t term, uint64_t millis,
   return res.ok();
 }
 
-bool State::persistconf(index_t index, term_t term, uint64_t millis,
+bool State::persistConf(index_t index, term_t term, uint64_t millis,
                         arangodb::velocypack::Slice const& entry,
                         std::string const& clientId) const {
   LOG_TOPIC("7d1c0", TRACE, Logger::AGENCY)
@@ -302,7 +302,7 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
   auto buf = std::make_shared<Buffer<uint8_t>>();
   buf->append((char const*)slice.begin(), byteSize);
 
-  bool success = reconfiguration ? persistconf(idx, term, millis, slice, clientId)
+  bool success = reconfiguration ? persistConf(idx, term, millis, slice, clientId)
     : persist(idx, term, millis, slice, clientId);
 
   if (!success) {  // log to disk or die
