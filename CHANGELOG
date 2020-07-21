@@ -1,7 +1,8 @@
 v3.6.6 (XXXX-XX-XX)
 -------------------
 
-
+* Revive faster out-of-range comparator for secondary index scans that do a full
+  collection index scan for index types "hash", "skiplist", "persistent".
 
 
 v3.6.5 (2020-07-15)
