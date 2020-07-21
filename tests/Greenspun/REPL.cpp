@@ -239,7 +239,7 @@ int main(int argc, char** argv) {
 
   while (true) {
     arangodb::ShellBase::EofType eof;
-    auto line = lineEditor.prompt("aql>", "aql>", eof);
+    auto line = lineEditor.prompt("aql> ", "aql> ", eof);
     lineEditor.addHistory(line);
 
     if (line.empty() && eof == arangodb::ShellBase::EOF_ABORT) {

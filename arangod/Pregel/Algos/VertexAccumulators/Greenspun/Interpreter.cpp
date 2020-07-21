@@ -48,8 +48,7 @@ EvalResult Apply(EvalContext& ctx, std::string const& function,
 }
 
 EvalResult SpecialIf(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
-  auto conditions = paramIterator;
-  for (auto iter = ArrayIterator(conditions); iter.valid(); iter++) {
+  for (auto iter = paramIterator; iter.valid(); iter++) {
     auto pair = *iter;
     if (!pair.isArray() || pair.length() != 2) {
       return EvalError("in case " + std::to_string(iter.index()) + ", expected pair, found: " + pair.toJson());
@@ -67,9 +66,10 @@ EvalResult SpecialIf(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder
         });
       }
     }
+    std::cout << "Condition result = " << condResult.toJson() << std::endl;
     if (!condResult.slice().isFalse()) {
       StackFrameGuard<false> guard(ctx);
-      return Evaluate(ctx, cond, condResult).wrapError([&](EvalError& err) {
+      return Evaluate(ctx, body, result).wrapError([&](EvalError& err) {
         err.wrapMessage("in case " + std::to_string(iter.index()));
       });
     }
