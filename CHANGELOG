@@ -1,6 +1,9 @@
 devel
 -----
 
+* Revive faster out-of-range comparator for secondary index scans that do a full 
+  collection index scan for index types "hash", "skiplist", "persistent". 
+
 * Fixed internal issue #733: Primary sort compression in views now used properly.
 
 * Fix spurious lock timeout errors when restoring collections.
