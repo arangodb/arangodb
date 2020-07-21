@@ -58,22 +58,21 @@ enum ActionState {
  * This structure holds once initialized constant parameters of a maintenance
  * action. Members are declared const, thus thread safety guards are omitted.
  */
-struct ActionDescription {
- public:
+struct ActionDescription final {
   /**
    * @brief Construct with properties
    * @param  desc  Descriminatory properties, which are considered for hash
-   * @param  supp  Non discriminatory properties
+   * @param  properties  Non discriminatory properties
    */
-  explicit ActionDescription(
-      std::map<std::string, std::string> const& desc,
+  ActionDescription(
+      std::map<std::string, std::string> description,
       int priority,
-      std::shared_ptr<VPackBuilder> const& properties = std::make_shared<VPackBuilder>());
+      std::shared_ptr<VPackBuilder> properties = std::make_shared<VPackBuilder>());
 
   /**
    * @brief Clean up
    */
-  virtual ~ActionDescription();
+  ~ActionDescription();
 
   /**
    * @brief Check equality (only _description considered)
@@ -85,8 +84,8 @@ struct ActionDescription {
    * @brief Calculate hash of _description as concatenation
    * @param  other  Other descriptor
    */
-  std::size_t hash() const;
-  static std::size_t hash(std::map<std::string, std::string> const& desc);
+  std::size_t hash() const noexcept;
+  static std::size_t hash(std::map<std::string, std::string> const& desc) noexcept;
 
   /// @brief Name of action
   std::string const& name() const;

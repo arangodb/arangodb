@@ -702,12 +702,12 @@ TEST_F(MaintenanceTestActionPhaseOne, add_one_collection_to_local) {
 TEST_F(MaintenanceTestActionPhaseOne,
        modify_journalsize_in_plan_should_update_the_according_collection) {
   VPackBuilder v;
-  v.add(VPackValue(0));
+  v.add(VPackValue(true));
 
   for (auto node : localNodes) {
     std::vector<ActionDescription> actions;
     std::string dbname = "_system";
-    std::string prop = arangodb::maintenance::JOURNAL_SIZE;
+    std::string prop = arangodb::maintenance::WAIT_FOR_SYNC;
 
     auto cb = node.second(dbname).children().begin()->second->toBuilder();
     auto collection = cb.slice();
