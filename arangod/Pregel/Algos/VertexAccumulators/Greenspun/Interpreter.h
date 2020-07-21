@@ -113,6 +113,7 @@ struct EvalResult {
 
 
 struct EvalContext {
+  EvalContext() noexcept;
   virtual ~EvalContext() = default;
   // Variables go here.
   void pushStack();

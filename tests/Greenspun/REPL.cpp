@@ -39,8 +39,17 @@ struct MyEvalContext : PrimEvalContext {
     std::abort();
   }
 
-  EvalResult enumerateEdges(std::function<EvalResult(VPackSlice edge, VPackSlice vertex)> cb) const override {
-    std::abort();
+  EvalResult enumerateEdges(std::function<EvalResult(VPackSlice edge)> cb) const override {
+    std::cerr << "one edge is built:" << std::endl;
+    auto oneEdge = arangodb::velocypack::Parser::fromJson(
+      R"json({ "_from": "V/1",
+               "_to": "V/2",
+               "_cost": 15 })json");
+    std::cerr << "one edge is built: " << oneEdge->slice().toJson() << std::endl;
+    cb(oneEdge->slice()); 
+    std::cerr << "one edge is called back:" << std::endl;
+
+    return {};
   }
 };
 

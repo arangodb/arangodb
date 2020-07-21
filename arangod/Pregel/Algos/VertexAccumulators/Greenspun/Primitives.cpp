@@ -182,15 +182,18 @@ EvalResult Prim_Set(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder&
 
 EvalResult Prim_For(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto&& [dir, vars, body] = unpackTuple<std::string_view, VPackSlice, VPackSlice>(params);
-  auto&& [edgeVar, otherVertexVar] = unpackTuple<std::string, std::string>(vars);
+  auto&& [edgeVar] = unpackTuple<std::string>(vars);
 
+  std::cerr << "execcuting for" << std::endl;
   // TODO translate direction and pass to enumerateEdges
-  return ctx.enumerateEdges([&, edgeVar = edgeVar, otherVertexVar = otherVertexVar,
-                             body = body](VPackSlice edge, VPackSlice vertex) {
+  return ctx.enumerateEdges([&, edgeVar = edgeVar, body = body](VPackSlice edge) {
+                              std::cerr << "stack frame guard" << std::endl;
     StackFrameGuard<true> guard(ctx);
+    std::cerr << "set variable" << std::endl;
     ctx.setVariable(edgeVar, edge);
-    ctx.setVariable(otherVertexVar, vertex);
+    std::cerr << "local result" << std::endl;
     VPackBuilder localResult;
+    std::cerr << "stack frame evaluate" << std::endl;
     return Evaluate(ctx, body, localResult);
   });
 }
