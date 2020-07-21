@@ -624,7 +624,7 @@ RestStatus RestDocumentHandler::removeDocument() {
     // ...........................................................................
 
     if (opRes.fail()) {
-      generateTransactionError(cname, opRes);
+      generateTransactionError(cname, opRes, key, revision);
       return;
     }
 

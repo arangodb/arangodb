@@ -1685,7 +1685,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
   TRI_ASSERT(previousMdr.revisionId() != 0);
 
   // Check old revision:
-  if (!options.ignoreRevs && expectedRev != 0.) {
+  if (!options.ignoreRevs && expectedRev != 0) {
     if (!checkRevision(&trx, expectedRev, previousMdr.revisionId())) {
       return res.reset(TRI_ERROR_ARANGO_CONFLICT, "conflict, _rev values do not match");
     }
