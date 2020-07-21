@@ -61,14 +61,17 @@ struct EdgeData {
   void reset(VPackSlice const& doc);
   // FIXME: YOLO. we copy the whole document, which is
   //        probably super expensive.
-  // FIXME. VERDAMMT. 
+  // FIXME. VERDAMMT.
   VPackBuilder _document;
+
+  // At the moment it's only important that message is sent
+  // to the correct neighbour
+  std::string _toId;
 };
 
 struct MessageData {
   void reset(std::string accumulatorName, VPackSlice const& value);
 
- private:
   std::string _accumulatorName;
 
   // We copy the value :/ is this necessary?

@@ -40,6 +40,8 @@ void VertexData::reset(AccumulatorsDeclaration const& accumulatorsDeclaration,
 void EdgeData::reset(VPackSlice const& doc) {
   _document.clear();
   _document.add(doc);
+
+  _toId = doc.get("_to").copyString();
 }
 
 void MessageData::reset(std::string accumulatorName, VPackSlice const& value) {

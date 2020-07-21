@@ -24,7 +24,8 @@ int compare(arangodb::velocypack::Slice, arangodb::velocypack::Slice, bool,
 }  // namespace arangodb::basics::VelocyPackHelper
 
 struct MyEvalContext : PrimEvalContext {
-  std::string const& getThisId() const override { std::abort(); }
+  std::string thisId = "V/1";
+  std::string const& getThisId() const override { return thisId; }
 
   void getAccumulatorValue(std::string_view id, VPackBuilder& result) const override {
     std::cerr << "accumulotor value on " << id << " requested ";

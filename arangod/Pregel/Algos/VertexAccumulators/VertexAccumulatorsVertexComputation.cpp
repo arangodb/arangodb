@@ -32,9 +32,10 @@ using namespace arangodb::pregel::algos;
 
 struct MyEvalContext : PrimEvalContext {
   explicit MyEvalContext(VertexAccumulators::VertexComputation& computation, VertexData& vertexData)
-    : _computation(computation), _vertexData(vertexData) {};
+    : _computation(computation), _vertexData(vertexData) {
+  };
 
-  std::string const& getThisId() const override { return thisId; }
+  std::string const& getThisId() const override { return _vertexData._documentId; }
 
   void getAccumulatorValue(std::string_view accumId, VPackBuilder& builder) const override {
     _vertexData._accumulators.at(std::string{accumId})->getIntoBuilder(builder);
@@ -47,21 +48,19 @@ struct MyEvalContext : PrimEvalContext {
   }
 
   // Need edge
-  void updateAccumulator(std::string_view accumId, std::string_view edgeId,
+  void updateAccumulator(std::string_view accumId, std::string_view toId,
                          VPackSlice value) override {
     MessageData msg;
     msg.reset(std::string{accumId}, value);
 
+    // FIXME: this is extremely stupid to do,
+    //        once we have proper variables, we should
+    //        carry Edge with us and use that directly
     auto edgeIter = _computation.getEdges();
-
-    for (;edgeIter.hasMore(); ++edgeIter) {
+    for (; edgeIter.hasMore(); ++edgeIter) {
       auto edge = *edgeIter;
-      LOG_DEVEL << "edge tokey: " << edge->toKey() << " " << "accumid: " << accumId;
-      if (edge->toKey().toString() == edgeId) {
+      if (edge->data()._toId == toId) {
         _computation.sendMessage(edge, msg);
-
-        // Fix fix fix
-        LOG_DEVEL << "sending a message now: " << accumId << " " << value.toJson();
         return;
       }
     }
@@ -81,7 +80,6 @@ struct MyEvalContext : PrimEvalContext {
     return {};
   }
 
-  std::string thisId;
   VertexAccumulators::VertexComputation& _computation;
   VertexData& _vertexData;
 };
@@ -94,20 +92,27 @@ void VertexAccumulators::VertexComputation::compute(MessageIterator<MessageData>
 
   if (globalSuperstep() == 0) {
     VPackBuilder initResultBuilder;
+
+    auto result = Evaluate(evalContext, _algorithm.options().initProgram, initResultBuilder);
+    if (!result) {
+      LOG_DEVEL << "execution of initializer: " << result.error().toString();
+    }
+
     Evaluate(evalContext, _algorithm.options().initProgram, initResultBuilder);
     // TODO: return value relevant? Maybe for activation?
   } else {
-    /* process incoming messages, update vertex accumulators */
-    /* MessageData will contain updates for some vertex accumulators */
-
     for (const MessageData* msg : incomingMessages) {
-      LOG_DEVEL << " a message " << msg;
+      vertexData()._accumulators.at(msg->_accumulatorName)->updateBySlice(msg->_value.slice());
     }
 
     VPackBuilder stepResultBuilder;
-    Evaluate(evalContext, _algorithm.options().updateProgram, stepResultBuilder);
 
-    voteHalt();
+    auto result = Evaluate(evalContext, _algorithm.options().updateProgram, stepResultBuilder);
+    if(!result) {
+      LOG_DEVEL << "execution of step: " << result.error().toString();
+    }
+
+    // voteHalt();
     /*
     if(somethingHasChanged) {
       voteActive();

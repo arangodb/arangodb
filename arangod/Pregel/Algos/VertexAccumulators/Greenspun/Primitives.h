@@ -31,10 +31,10 @@ struct PrimEvalContext : EvalContext {
   virtual std::string const& getThisId() const = 0;
   virtual void getAccumulatorValue(std::string_view id, VPackBuilder& result) const = 0;
   virtual void updateAccumulator(std::string_view accumId,
-                                 std::string_view edgeId, VPackSlice value) = 0;
+                                 std::string_view toId, VPackSlice value) = 0;
   virtual void setAccumulator(std::string_view accumId, VPackSlice value) = 0;
-  virtual EvalResult enumerateEdges(std::function<EvalResult(VPackSlice edge)> cb) const = 0;
 
+  virtual EvalResult enumerateEdges(std::function<EvalResult(VPackSlice edge)> cb) const = 0;
 };
 
 extern std::unordered_map<std::string, std::function<EvalResult(PrimEvalContext& ctx, VPackSlice const slice, VPackBuilder& result)>> primitives;

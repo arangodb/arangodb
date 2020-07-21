@@ -26,6 +26,7 @@
 #define ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_EVALUATOR_H 1
 
 #include <functional>
+#include <map>
 #include <variant>
 
 #include <velocypack/Builder.h>
@@ -110,8 +111,6 @@ struct EvalResult {
   std::optional<EvalError> _error;
 };
 
-
-
 struct EvalContext {
   EvalContext() noexcept;
   virtual ~EvalContext() = default;
@@ -123,7 +122,7 @@ struct EvalContext {
 
   size_t depth{0};
  private:
-  std::vector<std::unordered_map<std::string, VPackSlice>> variables;
+  std::vector<std::map<std::string, VPackSlice>> variables;
 };
 
 template <bool isNewScope>

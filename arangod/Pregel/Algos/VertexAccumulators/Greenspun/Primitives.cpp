@@ -168,9 +168,10 @@ EvalResult Prim_AccumRef(PrimEvalContext& ctx, VPackSlice const params, VPackBui
 }
 
 EvalResult Prim_Update(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
-  auto&& [accumId, edgeId, value] =
+  auto&& [accumId, toId, value] =
       unpackTuple<std::string_view, std::string_view, VPackSlice>(params);
-  ctx.updateAccumulator(accumId, edgeId, value);
+
+  ctx.updateAccumulator(accumId, toId, value);
   return {};
 }
 

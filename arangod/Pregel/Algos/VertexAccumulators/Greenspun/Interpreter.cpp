@@ -226,8 +226,6 @@ EvalContext::EvalContext() noexcept {
 
 
 EvalResult EvalContext::getVariable(const std::string& name, VPackBuilder& result) {
-  //    TRI_ASSERT(!variables.empty());
-
   for (auto scope = variables.rbegin(); scope != variables.rend(); ++scope) {
     auto iter = scope->find(name);
     if (iter != std::end(*scope)) {
@@ -251,6 +249,7 @@ void EvalContext::pushStack() { variables.emplace_back(); }
 void EvalContext::popStack() {
   // Top level variables must not be popped
   TRI_ASSERT(variables.size() > 1);
+
   variables.pop_back();
 }
 

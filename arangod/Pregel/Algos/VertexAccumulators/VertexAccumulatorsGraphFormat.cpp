@@ -27,10 +27,12 @@
 using namespace arangodb::pregel::algos;
 
 // Graph Format
-VertexAccumulators::GraphFormat::GraphFormat(application_features::ApplicationServer& server,
-                                             std::string const& resultField,
-                                             std::map<std::string, AccumulatorOptions> const& accumulatorDeclarations)
-  : graph_format(server), _resultField(resultField), _accumulatorDeclarations(accumulatorDeclarations) {};
+VertexAccumulators::GraphFormat::GraphFormat(
+    application_features::ApplicationServer& server, std::string const& resultField,
+    std::map<std::string, AccumulatorOptions> const& accumulatorDeclarations)
+    : graph_format(server),
+      _resultField(resultField),
+      _accumulatorDeclarations(accumulatorDeclarations){};
 
 size_t VertexAccumulators::GraphFormat::estimatedVertexSize() const {
   return sizeof(vertex_type);
@@ -46,7 +48,6 @@ void VertexAccumulators::GraphFormat::copyVertexData(std::string const& document
   targetPtr.reset(_accumulatorDeclarations, documentId, vertexDocument);
 }
 
-// Extract edge data from edge document into edge_type
 void VertexAccumulators::GraphFormat::copyEdgeData(arangodb::velocypack::Slice edgeDocument,
                                                    edge_type& targetPtr) {
   targetPtr.reset(edgeDocument);
