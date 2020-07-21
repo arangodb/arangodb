@@ -127,7 +127,7 @@ void AgencyCache::handleCallbacksNoLock(VPackSlice slice, std::unordered_set<uin
   std::vector<std::string> keys;
   keys.reserve(slice.length());
   for (auto const& i : VPackObjectIterator(slice)) {
-    keys.push_back(Node::normalize(i.key.copyString()));
+    keys.push_back(Store::normalize(i.key.copyString()));
   }
 
   std::sort(keys.begin(), keys.end());
@@ -337,7 +337,7 @@ void AgencyCache::triggerWaiting(index_t commitIndex) {
 
 /// Register local callback
 bool AgencyCache::registerCallback(std::string const& key, uint64_t const& id) {
-  std::string const ckey = Node::normalize(AgencyCommHelper::path(key));
+  std::string const ckey = Store::normalize(AgencyCommHelper::path(key));
   LOG_TOPIC("67bb8", DEBUG, Logger::CLUSTER) << "Registering callback for " << ckey;
 
   size_t size = 0;
@@ -355,7 +355,7 @@ bool AgencyCache::registerCallback(std::string const& key, uint64_t const& id) {
 
 /// Unregister local callback
 void AgencyCache::unregisterCallback(std::string const& key, uint64_t const& id) {
-  std::string const ckey = Node::normalize(AgencyCommHelper::path(key));
+  std::string const ckey = Store::normalize(AgencyCommHelper::path(key));
   LOG_TOPIC("cc768", DEBUG, Logger::CLUSTER) << "Unregistering callback for " << ckey;
 
   size_t size = 0;

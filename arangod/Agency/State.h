@@ -220,7 +220,7 @@ class State {
                std::string const&) const;
 
   /// @brief Save currentTerm, votedFor, log entries for reconfiguration
-  bool persistconf(index_t, term_t, uint64_t, arangodb::velocypack::Slice const&,
+  bool persistConf(index_t, term_t, uint64_t, arangodb::velocypack::Slice const&,
                    std::string const&) const;
 
   bool saveCompacted();
