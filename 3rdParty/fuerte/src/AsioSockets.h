@@ -135,12 +135,12 @@ struct Socket<fuerte::SocketType::Ssl> {
             } else {
               socket.set_verify_mode(asio_ns::ssl::verify_none);
             }
-            socket.async_handshake(asio_ns::ssl::stream_base::client,
-                                   std::move(done));
-            
           } catch(boost::system::system_error const& exc) {
             done(exc.code());
+            return;
           }
+          socket.async_handshake(asio_ns::ssl::stream_base::client,
+                                 std::move(done));
         });
   }
 
