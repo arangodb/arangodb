@@ -295,7 +295,7 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
       // where it is unclear who is responsible for the data
       AqlValue a = input.stealValue(reg.second);
       AqlValueGuard guard{a, true};
-      _nextGroupValues.emplace_back(input.stealValue(reg.second));
+      _nextGroupValues.emplace_back(a);
       guard.steal();
     }
   } else {
