@@ -1,6 +1,9 @@
 v3.6.6 (XXXX-XX-XX)
 -------------------
 
+* Change HTTP response code for error 1450 ("too many shards") from HTTP 500 to
+  HTTP 400, as this is clearly a client error.
+
 * In rare cases SmartBFS could use a wrong index for looking up edges. This is
   fixed now.
 
