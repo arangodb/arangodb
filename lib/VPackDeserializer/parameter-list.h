@@ -69,6 +69,7 @@ struct factory_slice_parameter {
       ::arangodb::velocypack::deserializer::slice_type::nullSlice();
 };
 
+
 template <char const N[], typename T>
 struct factory_optional_value_parameter {
   using value_type = std::optional<T>;
@@ -85,6 +86,8 @@ struct factory_deserialized_parameter {
       "result type must be default constructible if it is not required");
 };
 
+template <const char N[], bool required>
+using factory_builder_parameter = factory_deserialized_parameter<N, values::vpack_builder_deserializer, required>;
 
 /*
  * expected_value does not generate a additional parameter to the factory but instead

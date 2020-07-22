@@ -66,8 +66,8 @@ struct VertexAccumulatorOptions {
   std::string resultField;
   AccumulatorsDeclaration accumulatorsDeclaration;
   BindingDeclarations bindings;
-  VPackSlice initProgram;
-  VPackSlice updateProgram;
+  VPackBuilder initProgram;
+  VPackBuilder updateProgram;
 };
 
 std::ostream& operator<<(std::ostream&, AccumulatorOptions const&);

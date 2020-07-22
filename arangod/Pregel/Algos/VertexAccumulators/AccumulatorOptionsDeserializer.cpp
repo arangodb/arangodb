@@ -96,8 +96,8 @@ using vertex_accumulator_options_plan = parameter_list<
   factory_deserialized_parameter<resultField, values::value_deserializer<std::string>, true>,
   factory_deserialized_parameter<accumulatorsDeclaration, accumulators_map_deserializer, true>,
   factory_deserialized_parameter<bindings, bindings_map_deserializer, /* required */ false>, // will be default constructed as empty map
-  factory_slice_parameter<initProgram, true>,
-  factory_slice_parameter<updateProgram, true>>;
+  factory_builder_parameter<initProgram, true>,
+  factory_builder_parameter<updateProgram, true>>;
 
 using vertex_accumulator_options_deserializer =
     utilities::constructing_deserializer<VertexAccumulatorOptions, vertex_accumulator_options_plan>;

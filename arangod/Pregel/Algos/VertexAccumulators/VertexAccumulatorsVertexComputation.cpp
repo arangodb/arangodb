@@ -100,12 +100,12 @@ void VertexAccumulators::VertexComputation::compute(MessageIterator<MessageData>
   if (globalSuperstep() == 0) {
     VPackBuilder initResultBuilder;
 
-    auto result = Evaluate(evalContext, _algorithm.options().initProgram, initResultBuilder);
+    auto result = Evaluate(evalContext, _algorithm.options().initProgram.slice(), initResultBuilder);
     if (!result) {
       LOG_DEVEL << "execution of initializer: " << result.error().toString();
     }
 
-    Evaluate(evalContext, _algorithm.options().initProgram, initResultBuilder);
+    Evaluate(evalContext, _algorithm.options().initProgram.slice(), initResultBuilder);
     // TODO: return value relevant? Maybe for activation?
   } else {
     for (const MessageData* msg : incomingMessages) {
@@ -114,7 +114,7 @@ void VertexAccumulators::VertexComputation::compute(MessageIterator<MessageData>
 
     VPackBuilder stepResultBuilder;
 
-    auto result = Evaluate(evalContext, _algorithm.options().updateProgram, stepResultBuilder);
+    auto result = Evaluate(evalContext, _algorithm.options().updateProgram.slice(), stepResultBuilder);
     if(!result) {
       LOG_DEVEL << "execution of step: " << result.error().toString();
     }
