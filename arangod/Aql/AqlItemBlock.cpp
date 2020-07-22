@@ -471,27 +471,36 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
   
   SharedAqlItemBlockPtr res{aqlItemBlockManager().requestBlock(numRows, numRegs)};
 
+  // these structs are used to pass in type information into the following lambda
   struct WithoutShadowRows {};
   struct WithShadowRows {};
 
   auto copyRows = [&](arangodb::containers::HashSet<void*>& cache, auto type) {
-    constexpr bool checkShadowRows = std::is_same<decltype(type),WithShadowRows>::value;
+    constexpr bool checkShadowRows = std::is_same<decltype(type), WithShadowRows>::value;
     cache.reserve(_valueCount.size());
 
     for (size_t row = 0; row < numRows; row++) {
       if (checkShadowRows && isShadowRow(row)) {
+        // this is a shadow row. needs special handling
         for (RegisterId col = 0; col < numRegs; col++) {
           AqlValue a = stealAndEraseValue(row, col);
-          AqlValueGuard guard{a, true};
-          auto [it, inserted] = cache.emplace(a.data());
-          res->setValue(row, col, AqlValue(a.type(), a.data()));
-          if (inserted) {
-            // otherwise, destroy this; we used a cached value.
-            guard.steal();
+          if (a.requiresDestruction()) {
+            AqlValueGuard guard{a, true};
+            auto [it, inserted] = cache.emplace(a.data());
+            res->setValue(row, col, AqlValue(a.type(), a.data()));
+            if (inserted) {
+              // otherwise, destroy this; we used a cached value.
+              guard.steal();
+            }
+          } else {
+            res->setValue(row, col, a);
           }
         } 
-        res->copySubQueryDepthFromOtherBlock(row, *this, row);
+ 
+        // make it a shadow row
+        res->copySubQueryDepthFromOtherBlock(row, *this, row, true);
       } else {
+        // this is a normal row. 
         for (RegisterId col = 0; col < numRegs; col++) {
           ::copyValueOver(cache, _data[getAddress(row, col)], row, col, res);
         }
@@ -563,7 +572,7 @@ auto AqlItemBlock::slice(std::vector<std::pair<size_t, size_t>> const& ranges) c
       for (RegisterId col = 0; col < _nrRegs; col++) {
         ::copyValueOver(cache, _data[getAddress(row, col)], targetRow, col, res);
       }
-      res->copySubQueryDepthFromOtherBlock(targetRow, *this, row);
+      res->copySubQueryDepthFromOtherBlock(targetRow, *this, row, false);
     }
   }
 
@@ -584,7 +593,7 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(size_t row,
     TRI_ASSERT(col < _nrRegs);
     ::copyValueOver(cache, _data[getAddress(row, col)], 0, col, res);
   }
-  res->copySubQueryDepthFromOtherBlock(0, *this, row);
+  res->copySubQueryDepthFromOtherBlock(0, *this, row, false);
 
   return res;
 }
@@ -603,11 +612,10 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(std::vector<size_t> const& chosen,
   size_t resultRowIdx = 0;
   for (size_t chosenIdx = from; chosenIdx < to; ++chosenIdx, ++resultRowIdx) {
     size_t const rowIdx = chosen[chosenIdx];
-    // we can start at register 1, because depth of subqueries is copied afterwards 
-    for (RegisterId col = 1; col < _nrRegs; col++) {
+    for (RegisterId col = 0; col < _nrRegs; col++) {
       ::copyValueOver(cache, _data[getAddress(rowIdx, col)], resultRowIdx, col, res);
     }
-    res->copySubQueryDepthFromOtherBlock(resultRowIdx, *this, rowIdx);
+    res->copySubQueryDepthFromOtherBlock(resultRowIdx, *this, rowIdx, false);
   }
 
   return res;
@@ -869,8 +877,11 @@ ResourceMonitor& AqlItemBlock::resourceMonitor() noexcept {
 
 void AqlItemBlock::copySubQueryDepthFromOtherBlock(size_t targetRow,
                                                    AqlItemBlock const& source,
-                                                   size_t sourceRow) {
-  if (source.isShadowRow(sourceRow)) {
+                                                   size_t sourceRow,
+                                                   bool forceShadowRow) {
+  TRI_ASSERT(!forceShadowRow || source.isShadowRow(sourceRow));
+
+  if (forceShadowRow || source.isShadowRow(sourceRow)) {
     AqlValue const& d = source.getShadowRowDepth(sourceRow);
     // Value set, copy it over
     TRI_ASSERT(!d.requiresDestruction());
@@ -1173,7 +1184,7 @@ size_t AqlItemBlock::moveOtherBlockHere(size_t const targetRow, AqlItemBlock& so
         setValue(thisRow, col, a);
       }
     }
-    copySubQueryDepthFromOtherBlock(thisRow, source, sourceRow);
+    copySubQueryDepthFromOtherBlock(thisRow, source, sourceRow, false);
   }
   source.eraseAll();
 

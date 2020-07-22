@@ -336,7 +336,7 @@ class AqlItemBlock {
 
  private:
   void copySubQueryDepthFromOtherBlock(size_t targetRow, AqlItemBlock const& source,
-                                       size_t sourceRow);
+                                       size_t sourceRow, bool forceShadowRow);
 
   // This includes the amount of internal registers that are not visible to the outside.
   RegisterCount internalNrRegs() const noexcept;
