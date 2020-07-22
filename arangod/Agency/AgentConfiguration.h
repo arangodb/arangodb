@@ -200,9 +200,6 @@ struct config_t {
   /// @brief remove endpoint from gossip peers
   bool addGossipPeer(std::string const& endpoint);
 
-  /// @brief add active agents
-  bool activePushBack(std::string const& id);
-
   /// @brief my endpoint
   std::string endpoint() const;
 
