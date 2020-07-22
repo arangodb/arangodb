@@ -264,11 +264,29 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
   }
 
   _nextGroupValues.clear();
-  // for inserting into group we need to clone the values
-  // and take over ownership
-  for (auto const& reg : _infos.getGroupRegisters()) {
-    _nextGroupValues.emplace_back(input.stealValue(reg.second));
+
+  if (_infos.getGroupRegisters().size() == 1) {
+    for (auto const& reg : _infos.getGroupRegisters()) {
+      // On a single register there can be no duplicate value
+      // inside the groupValues, so we cannot get into a situation
+      // where it is unclear who is responsible for the data
+      _nextGroupValues.emplace_back(input.stealValue(reg.second));
+    }
+  } else {
+    for (auto const& reg : _infos.getGroupRegisters()) {
+      // With more then 1 register we cannot reliably figure out who
+      // is responsible for which value.
+      // E.g. for 2 registers we have two groups: A , 1 and A , 2
+      // Now A can be from different input blocks, and can be also
+      // be written to different output blocks, or even not handed over
+      // because of a limit. So we simply clone A here on every new group.
+      // So this block is responsible for every grouped tuple, until it
+      // is handed over to the output block. There is no overlapping
+      // of responsibilities of tuples.
+      _nextGroupValues.emplace_back(input.stealValue(reg.second).clone());
+    }
   }
+
   // this builds a new group with aggregate functions being prepared.
   auto aggregateValues = std::make_unique<AggregateValuesType>();
   aggregateValues->reserve(_aggregatorFactories.size());
