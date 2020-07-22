@@ -156,7 +156,8 @@ class AqlItemBlock {
     // Now update the reference count, if this fails, we'll roll it back
     if (value->requiresDestruction()) {
       try {
-        auto& valueInfo = _valueCount[*value];
+        // note: this may create a new entry in _valueCount, which is fine
+        auto& valueInfo = _valueCount[value->data()];
         if (++valueInfo.refCount == 1) {
           size_t memoryUsage = value->memoryUsage();
           increaseMemoryUsage(memoryUsage);
@@ -358,7 +359,9 @@ class AqlItemBlock {
   /// setValue above puts values in the map and increases the count if they
   /// are already there, eraseValue decreases the count. One can ask the
   /// count with valueCount.
-  std::unordered_map<AqlValue, ValueInfo, AqlValue::SimpleHash, AqlValue::SimpleEqual> _valueCount;
+  /// note: only AqlValues that point to dynamically allocated memory
+  /// should be added to this map. Other types (VPACK_INLINE) are not supported.
+  std::unordered_map<void const*, ValueInfo> _valueCount;
 
   /// @brief _nrItems, number of rows
   size_t _nrItems = 0;
