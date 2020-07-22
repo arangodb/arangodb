@@ -110,7 +110,7 @@ EvalResult Prim_CmpHuh(PrimEvalContext& ctx, VPackSlice const params, VPackBuild
     auto proto = *iter;
     iter++;
     for (; iter.valid(); iter++) {
-      if (T{}(arangodb::basics::VelocyPackHelper::compare(proto, *iter, true), 0)) {
+      if (!T{}(arangodb::basics::VelocyPackHelper::compare(proto, *iter, true), 0)) {
         result.add(VPackValue(false));
         return {};
       }
