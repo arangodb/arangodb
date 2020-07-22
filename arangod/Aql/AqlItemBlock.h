@@ -27,6 +27,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ResourceUsage.h"
 
+#include <limits>
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
@@ -90,10 +91,15 @@ class AqlItemBlock {
       TRI_ASSERT(value > 0);
       TRI_ASSERT(refCount == 1);
       TRI_ASSERT(memoryUsage == 0);
-      // in theory, the memory usage value of an item consuming more than 4 GB 
-      // could be truncated here, but this case will be so rare and likely will
-      // cause a lot of other issues upfront, that we don't care here.
-      memoryUsage = static_cast<uint32_t>(value);
+      // In theory, there can be items consuming more than 4 GB here.
+      // This case will be very rare and likely will cause a lot of other 
+      // issues upfront. If we get such huge value, we count it as using
+      // 4 GB of memory and ignore the rest.
+      if (ADB_UNLIKELY(value > std::numeric_limits<uint32_t>::max())) {
+        memoryUsage = std::numeric_limits<uint32_t>::max();
+      } else {
+        memoryUsage = static_cast<uint32_t>(value);
+      }
     }
 
     /// @brief how many occurrences of the item are in use in this
