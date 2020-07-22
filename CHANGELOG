@@ -1,6 +1,10 @@
 v3.6.6 (XXXX-XX-XX)
 -------------------
 
+* Fixed a rare race in Agents, if the leader is rebooted quickly there is a
+  chance that it is still assumed to be the leader, but delivers a state shortly
+  in the past.
+
 * Fixed restoring a SmartGraph into a database that already contains that same
   graph.
   The use case is restoring a SmartGraph from backup, apply some modifications,
