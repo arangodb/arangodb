@@ -70,7 +70,7 @@ struct factory_slice_parameter {
 };
 
 template <char const N[], typename T>
-struct factory_optional_parameter {
+struct factory_optional_value_parameter {
   using value_type = std::optional<T>;
   constexpr static auto name = N;
   constexpr static auto default_value = value_type{};
@@ -80,13 +80,11 @@ template <const char N[], typename D, bool required>
 struct factory_deserialized_parameter {
   using value_type = typename D::constructed_type;
   constexpr static auto name = N;
+  static_assert(
+      required || std::is_default_constructible_v<value_type>,
+      "result type must be default constructible if it is not required");
 };
 
-template <const char N[], typename D>
-struct factory_deserialized_parameter<N, D, false> {
-  using value_type = std::optional<typename D::constructed_type>;
-  constexpr static auto name = N;
-};
 
 /*
  * expected_value does not generate a additional parameter to the factory but instead
@@ -148,7 +146,7 @@ struct parameter_executor<factory_simple_parameter<N, T, required, default_v>, H
 };
 
 template <char const N[], typename T, typename H>
-struct parameter_executor<factory_optional_parameter<N, T>, H> {
+struct parameter_executor<factory_optional_value_parameter<N, T>, H> {
   using value_type = std::optional<T>;
   using result_type = result<std::pair<value_type, bool>, deserialize_error>;
   constexpr static bool has_value = true;

@@ -78,6 +78,7 @@ using accumulator_options_deserializer =
 
 constexpr const char resultField[] = "resultField";
 constexpr const char accumulatorsDeclaration[] = "accumulatorsDeclaration";
+constexpr const char bindings[] = "bindings";
 constexpr const char initProgram[] = "initProgram";
 constexpr const char updateProgram[] = "updateProgram";
 
@@ -89,10 +90,12 @@ using non_empty_array_deserializer = validate<
     array_deserializer<D, C>, utilities::not_empty_validator>;
 
 using accumulators_map_deserializer = map_deserializer<accumulator_options_deserializer, my_map>;
+using bindings_map_deserializer = map_deserializer<values::slice_deserializer, my_map>;
 
 using vertex_accumulator_options_plan = parameter_list<
   factory_deserialized_parameter<resultField, values::value_deserializer<std::string>, true>,
   factory_deserialized_parameter<accumulatorsDeclaration, accumulators_map_deserializer, true>,
+  factory_deserialized_parameter<bindings, bindings_map_deserializer, /* required */ false>, // will be default constructed as empty map
   factory_slice_parameter<initProgram, true>,
   factory_slice_parameter<updateProgram, true>>;
 

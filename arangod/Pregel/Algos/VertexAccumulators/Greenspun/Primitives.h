@@ -35,6 +35,9 @@ struct PrimEvalContext : EvalContext {
   virtual void setAccumulator(std::string_view accumId, VPackSlice value) = 0;
 
   virtual EvalResult enumerateEdges(std::function<EvalResult(VPackSlice edge)> cb) const = 0;
+  virtual EvalResult getBindingValue(std::string_view id, VPackBuilder& result) const {
+      return EvalError("not impemented");
+  }
 };
 
 extern std::unordered_map<std::string, std::function<EvalResult(PrimEvalContext& ctx, VPackSlice const slice, VPackBuilder& result)>> primitives;

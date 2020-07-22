@@ -80,6 +80,14 @@ struct MyEvalContext : PrimEvalContext {
     return {};
   }
 
+  EvalResult getBindingValue(std::string_view id, VPackBuilder& result) const override {
+    if (auto bindParameter = _computation.algorithm().getBindParameter(id); bindParameter) {
+      result.add(bindParameter.value());
+      return {};
+    }
+    return EvalError("bind parameter `" + std::string{id} + "` not found");
+  }
+
   VertexAccumulators::VertexComputation& _computation;
   VertexData& _vertexData;
 };

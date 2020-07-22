@@ -122,6 +122,12 @@ struct value_deserializer {
   using factory = utilities::identity_factory<T>;
 };
 
+struct slice_deserializer {
+  using plan = slice_deserializer;
+  using constructed_type = slice_type;
+  using factory = utilities::identity_factory<constructed_type>;
+};
+
 }  // namespace deserializer::values
 
 template <typename T, int V>
@@ -148,6 +154,20 @@ struct deserialize_plan_executor<values::value_deserializer<T>, H> {
         [](T t) { return std::make_tuple(std::move(t)); });
   }
 };
+
+template <typename H>
+struct deserialize_plan_executor<values::slice_deserializer, H> {
+  using value_type = slice_type ;
+  using tuple_type = std::tuple<value_type>;
+  using result_type = result<tuple_type, deserialize_error>;
+
+  template <typename C>
+  static auto unpack(::arangodb::velocypack::deserializer::slice_type s, typename H::state_type, C &&)
+  -> result_type {
+    return result_type{s};
+  }
+};
+
 }  // namespace deserializer::executor
 }  // namespace velocypack
 }  // namespace arangodb

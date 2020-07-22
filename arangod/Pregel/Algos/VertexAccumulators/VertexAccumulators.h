@@ -116,7 +116,7 @@ struct VertexAccumulators : public Algorithm<VertexData, EdgeData, MessageData> 
   struct VertexComputation : public vertex_computation {
     explicit VertexComputation(VertexAccumulators const& algorithm);
     void compute(MessageIterator<message_type> const& messages) override;
-
+    VertexAccumulators const& algorithm() const { return _algorithm; }
    private:
     VertexAccumulators const& _algorithm;
   };
@@ -133,6 +133,8 @@ struct VertexAccumulators : public Algorithm<VertexData, EdgeData, MessageData> 
   message_format* messageFormat() const override { return new MessageFormat(); }
   message_combiner* messageCombiner() const override { return nullptr; }
   vertex_computation* createComputation(WorkerConfig const*) const override;
+
+  std::optional<VPackSlice> getBindParameter(std::string_view) const;
 
  private:
   void parseUserParams(VPackSlice userParams);

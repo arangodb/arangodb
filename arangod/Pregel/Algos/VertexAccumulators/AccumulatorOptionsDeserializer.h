@@ -59,11 +59,13 @@ struct AccumulatorOptions {
 // An accumulator declaration consists of a unique name
 // and a struct of options
 using AccumulatorsDeclaration = std::map<std::string, AccumulatorOptions>;
+using BindingDeclarations = std::map<std::string, VPackSlice>;
 
 /* The Pregel Algorithm */
 struct VertexAccumulatorOptions {
   std::string resultField;
   AccumulatorsDeclaration accumulatorsDeclaration;
+  BindingDeclarations bindings;
   VPackSlice initProgram;
   VPackSlice updateProgram;
 };

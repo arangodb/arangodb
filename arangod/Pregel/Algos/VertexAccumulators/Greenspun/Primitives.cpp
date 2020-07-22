@@ -279,6 +279,17 @@ EvalResult Prim_PrintLn(PrimEvalContext& ctx, VPackSlice const params, VPackBuil
   return {};
 }
 
+EvalResult Prim_BindRef(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+  if (params.length() == 1) {
+    VPackSlice name = params.at(0);
+    if (name.isString()) {
+      return ctx.getBindingValue(name.stringView(), result);
+    }
+  }
+
+  return EvalError("expected a single string argument");
+}
+
 void RegisterPrimitives() {
   primitives["banana"] = Prim_Banana;
   primitives["+"] = Prim_Banana;
@@ -306,6 +317,7 @@ void RegisterPrimitives() {
   primitives["attrib"] = Prim_Attrib;
 
   primitives["var-ref"] = Prim_VarRef;
+  primitives["bind-ref"] = Prim_BindRef;
 
 
   primitives["this"] = Prim_This;
