@@ -271,17 +271,6 @@ double config_t::supervisionFrequency() const {
   return _supervisionFrequency;
 }
 
-bool config_t::activePushBack(std::string const& id) {
-  WRITE_LOCKER(writeLocker, _lock);
-  if (_active.size() < _agencySize &&
-      std::find(_active.begin(), _active.end(), id) == _active.end()) {
-    _active.push_back(id);
-    ++_version;
-    return true;
-  }
-  return false;
-}
-
 std::unordered_set<std::string> config_t::gossipPeers() const {
   READ_LOCKER(lock, _lock);
   return _gossipPeers;
