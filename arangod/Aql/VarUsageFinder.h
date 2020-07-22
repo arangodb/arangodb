@@ -43,7 +43,7 @@ struct VarUsageFinderT;
 using VarUsageFinder = VarUsageFinderT<ExecutionNode>;
 
 template <class T>
-struct VarUsageFinderT final : public WalkerWorker<T> {
+struct VarUsageFinderT final : public WalkerWorker<T, WalkerUniqueness::NonUnique> {
   VarSetStack _usedLaterStack{VarSet{}};
   VarSetStack _varsValidStack{VarSet{}};
 

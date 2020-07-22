@@ -49,7 +49,7 @@ using EN = arangodb::aql::ExecutionNode;
 
 namespace {
 
-std::vector<ExecutionNode::NodeType> const reduceExtractionToProjectionTypes = {
+std::initializer_list<ExecutionNode::NodeType> const reduceExtractionToProjectionTypes = {
     ExecutionNode::ENUMERATE_COLLECTION, ExecutionNode::INDEX};
 
 }  // namespace

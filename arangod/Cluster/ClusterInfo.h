@@ -864,7 +864,7 @@ public:
   /// @brief lookup a full coordinator ID by short ID
   //////////////////////////////////////////////////////////////////////////////
 
-  ServerID getCoordinatorByShortID(ServerShortID);
+  ServerID getCoordinatorByShortID(ServerShortID const& shortId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidate planned
