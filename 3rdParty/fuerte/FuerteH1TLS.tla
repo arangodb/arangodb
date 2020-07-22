@@ -5,7 +5,7 @@ EXTENDS Integers, TLC, Sequences
 --algorithm H1Connection {
 
 variables   \* VERIFIED
-  state = "Disconnected",       \* this is a member variable in the program
+  state = "Created",       \* this is a member variable in the program
   active = FALSE,     \* this is a member variable in the program
   queueSize = 0,      \* this is the length of the input queue
   alarm = "off",      \* this encodes, if an alarm is set
@@ -22,10 +22,10 @@ variables   \* VERIFIED
 
 procedure startConnection() {   \* VERIFIED
 (* This is called whenever the connection broke and we want to immediately
-   reconnect. Therefore we know that the state is "Disconnected" and we
+   reconnect. Therefore we know that the state is "Created" and we
    are active and no alarm is set. *)
  startConnectionBegin:
-  assert /\ state = "Disconnected"
+  assert /\ state = "Created"
          /\ active
          /\ asyncRunning = "none"
          /\ alarm = "off";
@@ -36,11 +36,11 @@ procedure startConnection() {   \* VERIFIED
 };
 
 procedure terminateActivity() {    \* VERIFIED
-(* This is called when a connection goes to Failed state and we want to
+(* This is called when a connection goes to Closed state and we want to
    immediately shut down all activity. We must do this in a way that
    avoids a sleeping barber in case new requests are posted concurrently. *)
  terminateActivityBegin:
-  assert /\ state = "Failed"
+  assert /\ state = "Closed"
          /\ asyncRunning = "none"
          /\ alarm = "off";
  terminateLoop: 
@@ -60,11 +60,11 @@ procedure terminateActivity() {    \* VERIFIED
 
 procedure asyncWriteNextRequest() {     \* VERIFIED
 (* This is called whenever we are active and potentially want to continue
-   writing. It can also be called if we are in the "Failed" state. In this
+   writing. It can also be called if we are in the "Closed" state. In this
    case the purpose is to reset the `active` flag, which is exclusively
    done in this procedure. *)
  asyncWriteNextRequestBegin:
-  assert /\ state \in {"Connected", "Failed"}
+  assert /\ state \in {"Connected", "Closed"}
          /\ active
          /\ asyncRunning = "none";
   (* We use the check-set-check pattern to make sure we are not going to
@@ -111,11 +111,11 @@ process(fuerte = "fuertethread") {
           assert state /= "Connecting";
           iocontext := Tail(iocontext);
           if (active) {
-            if (state = "Disconnected") {
+            if (state = "Created") {
               call startConnection();
             } else if (state = "Connected") {
               call asyncWriteNextRequest();
-            } else if (state = "Failed") {
+            } else if (state = "Closed") {
               call terminateActivity();
             };
           };
@@ -124,7 +124,7 @@ process(fuerte = "fuertethread") {
       or connectDone:    \* VERIFIED
         if (/\ Len(iocontext) >= 1
             /\ Head(iocontext) \in {"connect", "connectBAD"}) {
-          assert active /\ state \in {"Connecting", "Disconnected", "Failed"};
+          assert active /\ state \in {"Connecting", "Created", "Closed"};
           alarm := "off";
           if (Head(iocontext) = "connect" /\ state = "Connecting") {
             iocontext := Tail(iocontext);
@@ -132,9 +132,9 @@ process(fuerte = "fuertethread") {
             call asyncWriteNextRequest();
           } else {
             (* for the sake of simplicity we ignore the retries here and
-               directly go to the Failed state *)
+               directly go to the Closed state *)
             iocontext := Tail(iocontext);
-            state := "Failed";
+            state := "Closed";
             call terminateActivity();
           }; 
         };
@@ -143,7 +143,7 @@ process(fuerte = "fuertethread") {
         if (/\ Len(iocontext) >= 1
             /\ Head(iocontext) \in {"write", "writeBAD"}) {
           assert /\ active
-                 /\ state \in {"Connected", "Disconnected", "Failed"}
+                 /\ state \in {"Connected", "Created", "Closed"}
                  /\ writing;
           writing := FALSE;
           if (Head(iocontext) = "write" /\ state = "Connected") {
@@ -154,7 +154,7 @@ process(fuerte = "fuertethread") {
           } else {
             iocontext := Tail(iocontext);
             alarm := "off";
-            state := "Failed";
+            state := "Closed";
             call terminateActivity();
           };
         };
@@ -162,7 +162,7 @@ process(fuerte = "fuertethread") {
       or readDone:   \* VERIFIED
         if (/\ Len(iocontext) >= 1
             /\ Head(iocontext) \in {"read", "readBAD"}) {
-          assert active /\ state \in {"Connected", "Disconnected", "Failed"}; 
+          assert active /\ state \in {"Connected", "Created", "Closed"}; 
           alarm := "off";
           reading := FALSE;
           if (Head(iocontext) = "read" /\ state = "Connected") {
@@ -170,7 +170,7 @@ process(fuerte = "fuertethread") {
             call asyncWriteNextRequest();
           } else {
             iocontext := Tail(iocontext);
-            state := "Failed";
+            state := "Closed";
             call terminateActivity();
           };
         };
@@ -180,7 +180,7 @@ process(fuerte = "fuertethread") {
           iocontext := Tail(iocontext);
           \* Note that we *do not* set active to FALSE here, since we want
           \* to interfere as little as possible with the active business.
-          state := "Failed";
+          state := "Closed";
           queueSize := 0;
           alarm := "off";
           if (asyncRunning = "connect") {
@@ -240,7 +240,7 @@ process(fuerte = "fuertethread") {
         if (Len(iocontext) >= 1 /\ Head(iocontext) = "idleAlarm") {
           iocontext := Tail(iocontext);
           if (~ active /\ state = "Connected") {
-            state := "Failed";
+            state := "Closed";
             alarm := "off";
             call terminateActivity();
             \* it is possible that the idle alarm was still set, since we have
@@ -255,7 +255,7 @@ process(fuerte = "fuertethread") {
 process(client = "clientthread") {
   sendMessage:   \* VERIFIED
     while (TRUE) {
-        await queueSize < 2 /\ state /= "Failed";
+        await queueSize < 2 /\ state /= "Closed";
       pushQueue:
         queueSize := queueSize + 1;
       postActivate:
@@ -273,7 +273,7 @@ process(cancel = "cancelthread") {
 
 }
 *)
-\* BEGIN TRANSLATION
+\* BEGIN TRANSLATION - the hash of the PCal code: PCal-f7074c52657fc266c8f5e1be64d6260c
 VARIABLES state, active, queueSize, alarm, asyncRunning, iocontext, reading, 
           writing, pc, stack
 
@@ -283,7 +283,7 @@ vars == << state, active, queueSize, alarm, asyncRunning, iocontext, reading,
 ProcSet == {"fuertethread"} \cup {"clientthread"} \cup {"cancelthread"}
 
 Init == (* Global variables *)
-        /\ state = "Disconnected"
+        /\ state = "Created"
         /\ active = FALSE
         /\ queueSize = 0
         /\ alarm = "off"
@@ -297,7 +297,7 @@ Init == (* Global variables *)
                                         [] self = "cancelthread" -> "cancelBegin"]
 
 startConnectionBegin(self) == /\ pc[self] = "startConnectionBegin"
-                              /\ Assert(/\ state = "Disconnected"
+                              /\ Assert(/\ state = "Created"
                                         /\ active
                                         /\ asyncRunning = "none"
                                         /\ alarm = "off", 
@@ -313,7 +313,7 @@ startConnectionBegin(self) == /\ pc[self] = "startConnectionBegin"
 startConnection(self) == startConnectionBegin(self)
 
 terminateActivityBegin(self) == /\ pc[self] = "terminateActivityBegin"
-                                /\ Assert(/\ state = "Failed"
+                                /\ Assert(/\ state = "Closed"
                                           /\ asyncRunning = "none"
                                           /\ alarm = "off", 
                                           "Failure of assertion at line 43, column 3.")
@@ -361,7 +361,7 @@ terminateActivity(self) == terminateActivityBegin(self)
                               \/ reactivate2(self)
 
 asyncWriteNextRequestBegin(self) == /\ pc[self] = "asyncWriteNextRequestBegin"
-                                    /\ Assert(/\ state \in {"Connected", "Failed"}
+                                    /\ Assert(/\ state \in {"Connected", "Closed"}
                                               /\ active
                                               /\ asyncRunning = "none", 
                                               "Failure of assertion at line 67, column 3.")
@@ -445,7 +445,7 @@ activate == /\ pc["fuertethread"] = "activate"
                                  "Failure of assertion at line 111, column 11.")
                        /\ iocontext' = Tail(iocontext)
                        /\ IF active
-                             THEN /\ IF state = "Disconnected"
+                             THEN /\ IF state = "Created"
                                         THEN /\ stack' = [stack EXCEPT !["fuertethread"] = << [ procedure |->  "startConnection",
                                                                                                 pc        |->  "loop" ] >>
                                                                                             \o stack["fuertethread"]]
@@ -455,7 +455,7 @@ activate == /\ pc["fuertethread"] = "activate"
                                                                                                            pc        |->  "loop" ] >>
                                                                                                        \o stack["fuertethread"]]
                                                         /\ pc' = [pc EXCEPT !["fuertethread"] = "asyncWriteNextRequestBegin"]
-                                                   ELSE /\ IF state = "Failed"
+                                                   ELSE /\ IF state = "Closed"
                                                               THEN /\ stack' = [stack EXCEPT !["fuertethread"] = << [ procedure |->  "terminateActivity",
                                                                                                                       pc        |->  "loop" ] >>
                                                                                                                   \o stack["fuertethread"]]
@@ -472,7 +472,7 @@ activate == /\ pc["fuertethread"] = "activate"
 connectDone == /\ pc["fuertethread"] = "connectDone"
                /\ IF /\ Len(iocontext) >= 1
                      /\ Head(iocontext) \in {"connect", "connectBAD"}
-                     THEN /\ Assert(active /\ state \in {"Connecting", "Disconnected", "Failed"}, 
+                     THEN /\ Assert(active /\ state \in {"Connecting", "Created", "Closed"}, 
                                     "Failure of assertion at line 127, column 11.")
                           /\ alarm' = "off"
                           /\ IF Head(iocontext) = "connect" /\ state = "Connecting"
@@ -483,7 +483,7 @@ connectDone == /\ pc["fuertethread"] = "connectDone"
                                                                                     \o stack["fuertethread"]]
                                      /\ pc' = [pc EXCEPT !["fuertethread"] = "asyncWriteNextRequestBegin"]
                                 ELSE /\ iocontext' = Tail(iocontext)
-                                     /\ state' = "Failed"
+                                     /\ state' = "Closed"
                                      /\ stack' = [stack EXCEPT !["fuertethread"] = << [ procedure |->  "terminateActivity",
                                                                                         pc        |->  "loop" ] >>
                                                                                     \o stack["fuertethread"]]
@@ -497,7 +497,7 @@ writeDone == /\ pc["fuertethread"] = "writeDone"
              /\ IF /\ Len(iocontext) >= 1
                    /\ Head(iocontext) \in {"write", "writeBAD"}
                    THEN /\ Assert(/\ active
-                                  /\ state \in {"Connected", "Disconnected", "Failed"}
+                                  /\ state \in {"Connected", "Created", "Closed"}
                                   /\ writing, 
                                   "Failure of assertion at line 145, column 11.")
                         /\ writing' = FALSE
@@ -510,7 +510,7 @@ writeDone == /\ pc["fuertethread"] = "writeDone"
                                    /\ UNCHANGED << state, stack >>
                               ELSE /\ iocontext' = Tail(iocontext)
                                    /\ alarm' = "off"
-                                   /\ state' = "Failed"
+                                   /\ state' = "Closed"
                                    /\ stack' = [stack EXCEPT !["fuertethread"] = << [ procedure |->  "terminateActivity",
                                                                                       pc        |->  "loop" ] >>
                                                                                   \o stack["fuertethread"]]
@@ -524,7 +524,7 @@ writeDone == /\ pc["fuertethread"] = "writeDone"
 readDone == /\ pc["fuertethread"] = "readDone"
             /\ IF /\ Len(iocontext) >= 1
                   /\ Head(iocontext) \in {"read", "readBAD"}
-                  THEN /\ Assert(active /\ state \in {"Connected", "Disconnected", "Failed"}, 
+                  THEN /\ Assert(active /\ state \in {"Connected", "Created", "Closed"}, 
                                  "Failure of assertion at line 165, column 11.")
                        /\ alarm' = "off"
                        /\ reading' = FALSE
@@ -536,7 +536,7 @@ readDone == /\ pc["fuertethread"] = "readDone"
                                   /\ pc' = [pc EXCEPT !["fuertethread"] = "asyncWriteNextRequestBegin"]
                                   /\ state' = state
                              ELSE /\ iocontext' = Tail(iocontext)
-                                  /\ state' = "Failed"
+                                  /\ state' = "Closed"
                                   /\ stack' = [stack EXCEPT !["fuertethread"] = << [ procedure |->  "terminateActivity",
                                                                                      pc        |->  "loop" ] >>
                                                                                  \o stack["fuertethread"]]
@@ -548,7 +548,7 @@ readDone == /\ pc["fuertethread"] = "readDone"
 cancellation == /\ pc["fuertethread"] = "cancellation"
                 /\ IF /\ Len(iocontext) >= 1 /\ Head(iocontext) = "cancel"
                       THEN /\ iocontext' = Tail(iocontext)
-                           /\ state' = "Failed"
+                           /\ state' = "Closed"
                            /\ queueSize' = 0
                            /\ alarm' = "off"
                            /\ IF asyncRunning = "connect"
@@ -628,7 +628,7 @@ handleIdleAlarm == /\ pc["fuertethread"] = "handleIdleAlarm"
                    /\ IF Len(iocontext) >= 1 /\ Head(iocontext) = "idleAlarm"
                          THEN /\ iocontext' = Tail(iocontext)
                               /\ IF ~ active /\ state = "Connected"
-                                    THEN /\ state' = "Failed"
+                                    THEN /\ state' = "Closed"
                                          /\ alarm' = "off"
                                          /\ stack' = [stack EXCEPT !["fuertethread"] = << [ procedure |->  "terminateActivity",
                                                                                             pc        |->  "loop" ] >>
@@ -647,7 +647,7 @@ fuerte == loop \/ activate \/ connectDone \/ writeDone \/ readDone
              \/ handleIdleAlarm
 
 sendMessage == /\ pc["clientthread"] = "sendMessage"
-               /\ queueSize < 2 /\ state /= "Failed"
+               /\ queueSize < 2 /\ state /= "Closed"
                /\ pc' = [pc EXCEPT !["clientthread"] = "pushQueue"]
                /\ UNCHANGED << state, active, queueSize, alarm, asyncRunning, 
                                iocontext, reading, writing, stack >>
@@ -685,7 +685,7 @@ Next == fuerte \/ client \/ cancel
 
 Spec == Init /\ [][Next]_vars
 
-\* END TRANSLATION
+\* END TRANSLATION - the hash of the generated TLA code (remove to silence divergence warnings): TLA-6903b58a8787d6ca557c3f7c9d00465d
 
 \* Invariants to prove:
 
@@ -740,5 +740,6 @@ NoSleepingBarber == /\ NothingForgottenOnQueue
 
 =============================================================================
 \* Modification History
+\* Last modified Wed Jul 22 14:22:46 CEST 2020 by simon
 \* Last modified Tue May 05 08:45:25 CEST 2020 by neunhoef
 \* Created Mi 22. Apr 22:46:19 CEST 2020 by neunhoef
