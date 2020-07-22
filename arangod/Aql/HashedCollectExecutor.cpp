@@ -270,7 +270,10 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
       // On a single register there can be no duplicate value
       // inside the groupValues, so we cannot get into a situation
       // where it is unclear who is responsible for the data
+      AqlValue a = input.stealValue(reg.second);
+      AqlValueGuard guard{a, true};
       _nextGroupValues.emplace_back(input.stealValue(reg.second));
+      guard.steal();
     }
   } else {
     for (auto const& reg : _infos.getGroupRegisters()) {
@@ -283,7 +286,10 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
       // So this block is responsible for every grouped tuple, until it
       // is handed over to the output block. There is no overlapping
       // of responsibilities of tuples.
-      _nextGroupValues.emplace_back(input.getValue(reg.second).clone());
+      AqlValue a = input.getValue(reg.second).clone();
+      AqlValueGuard guard{a, true};
+      _nextGroupValues.emplace_back(a);
+      guard.steal();
     }
   }
 
