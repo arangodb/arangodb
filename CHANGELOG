@@ -1,7 +1,7 @@
 devel
 -----
 
-* Fixed undefined behaviour in AQL COLLECT with multiple group variables.
+* Fixed undefined behavior in AQL COLLECT with multiple group variables.
   If you are grouping on "large" values that occur multiple times in different
   groups, and two different groups with the same large value are written
   to different batches in the output then the memory could be invalid.
