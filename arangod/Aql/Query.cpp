@@ -1166,7 +1166,7 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, bool sync,
       auto& plan = _plans[0];
 
       if (ServerState::instance()->isCoordinator()) {
-        std::vector<arangodb::aql::ExecutionNode::NodeType> const collectionNodeTypes{
+        std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const collectionNodeTypes{
             arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
             arangodb::aql::ExecutionNode::INDEX,
             arangodb::aql::ExecutionNode::REMOVE,
@@ -1192,8 +1192,7 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, bool sync,
       // remove additional ASYNC and TraversalNodes added for traversal parallelization
       ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
       ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
-      plan->findUniqueNodesOfType(nodes, std::vector<ExecutionNode::NodeType>{
-        arangodb::aql::ExecutionNode::MUTEX}, true);
+      plan->findUniqueNodesOfType(nodes, {arangodb::aql::ExecutionNode::MUTEX}, true);
 
       for (ExecutionNode* n : nodes) {
         auto parents = n->getParents();
