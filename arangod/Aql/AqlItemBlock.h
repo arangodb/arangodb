@@ -321,9 +321,6 @@ class AqlItemBlock {
   /// The source block will be cleared after this.
   size_t moveOtherBlockHere(size_t targetRow, AqlItemBlock& source);
 
-  void copySubQueryDepthFromOtherBlock(size_t targetRow, AqlItemBlock const& source,
-                                       size_t sourceRow);
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 // MaintainerMode method to validate if ShadowRows organization are consistent.
 // e.g. If a block always follows this pattern:
@@ -338,6 +335,9 @@ class AqlItemBlock {
   size_t decrRefCount() const noexcept;
 
  private:
+  void copySubQueryDepthFromOtherBlock(size_t targetRow, AqlItemBlock const& source,
+                                       size_t sourceRow);
+
   // This includes the amount of internal registers that are not visible to the outside.
   RegisterCount internalNrRegs() const noexcept;
 

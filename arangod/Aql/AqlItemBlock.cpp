@@ -490,27 +490,22 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
             guard.steal();
           }
         } 
+        res->copySubQueryDepthFromOtherBlock(row, *this, row);
       } else {
         for (RegisterId col = 0; col < numRegs; col++) {
           ::copyValueOver(cache, _data[getAddress(row, col)], row, col, res);
         }
-      }
-    
-      if constexpr (checkShadowRows) {
-        res->copySubQueryDepthFromOtherBlock(row, *this, row);
       }
     }
   };
 
   arangodb::containers::HashSet<void*> cache;
 
-  if (!hasShadowRows()) {
+  if (hasShadowRows()) {
     // optimized version for when no shadow rows exist
-    // use a faster cache type
     copyRows(cache, WithShadowRows{});
   } else {
     // at least one shadow row exists. this is the slow path
-    // use a slower cache type
     copyRows(cache, WithoutShadowRows{});
   }
   TRI_ASSERT(res->size() == numRows);
@@ -872,9 +867,9 @@ ResourceMonitor& AqlItemBlock::resourceMonitor() noexcept {
   return *_manager.resourceMonitor();
 }
 
-void AqlItemBlock::copySubQueryDepthFromOtherBlock(size_t const targetRow,
+void AqlItemBlock::copySubQueryDepthFromOtherBlock(size_t targetRow,
                                                    AqlItemBlock const& source,
-                                                   size_t const sourceRow) {
+                                                   size_t sourceRow) {
   if (source.isShadowRow(sourceRow)) {
     AqlValue const& d = source.getShadowRowDepth(sourceRow);
     // Value set, copy it over
