@@ -1,6 +1,10 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
+* Fixed a rare race in Agents, if the leader is rebooted quickly there is a
+  chance that it is still assumed to be the leader, but delivers a state shortly
+  in the past.
+
 * Keep the list of last-acknowledged entires in Agency more consistent.
   During leadership take-over it was possible to get into a situation that the
   new leader does not successfully report the agency config, which was
