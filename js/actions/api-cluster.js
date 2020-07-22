@@ -300,7 +300,8 @@ actions.defineHttp({
       res.body = JSON.stringify({
         'error': true,
         'errorMessage': 'error from server, possibly server unknown',
-        'body': bodyobj
+        'body': bodyobj,
+        'server': serverId
       });
     }
   }

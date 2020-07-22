@@ -371,7 +371,8 @@ class Methods {
 
   ENTERPRISE_VIRT bool getBestIndexHandleForFilterCondition(
       std::string const&, arangodb::aql::AstNode*&,
-      arangodb::aql::Variable const*, size_t, aql::IndexHint const&, IndexHandle&);
+      arangodb::aql::Variable const*, size_t, aql::IndexHint const&, IndexHandle&,
+      bool onlyEdgeIndexes = false);
 
   /// @brief Gets the best fitting index for an AQL sort condition
   /// note: the caller must have read-locked the underlying collection when
