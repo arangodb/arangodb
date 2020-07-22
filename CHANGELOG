@@ -1,6 +1,8 @@
 v3.6.6 (XXXX-XX-XX)
 -------------------
 
+* Make sure cluster statistics in web UI work in case a coordinator is down.
+
 * Fixed a rare race in Agents, if the leader is rebooted quickly there is a
   chance that it is still assumed to be the leader, but delivers a state shortly
   in the past.
