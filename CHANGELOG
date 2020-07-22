@@ -1,6 +1,19 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
+* Fixed undefined behavior in AQL COLLECT with multiple group variables (issue
+  #12267).
+  If you are grouping on "large" values that occur multiple times in different
+  groups, and two different groups with the same large value are written to
+  different batches in the output then the memory could be invalid.
+  e.g. the following query is affected:
+  ```
+  FOR d IN documents
+  FOR batchSizeFiller IN 1..1001
+  COLLECT largeVal = d.largeValue, t = batchSizeFiller
+  RETURN 1
+  ```
+
 * Fixed a rare race in Agents, if the leader is rebooted quickly there is a
   chance that it is still assumed to be the leader, but delivers a state shortly
   in the past.
