@@ -530,14 +530,6 @@ router.get('/coordshort', function (req, res) {
       }
 
       return {};
-
-      /* don't throw here, as this will render the entire web UI cluster stats broken */
-      /*
-      throw Object.assign(
-        new httperr.BadRequest("error from Coordinator '" + coordinator + "', possibly Coordinator unknown or down"),
-        {extra: {body}}
-      );
-      */
     });
 
     if (coordinatorStats) {
