@@ -87,6 +87,7 @@ EvalResult Prim_Div(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder&
       return EvalError("expected int, found: " + (*iter).toJson());
     }
     tmp = (*iter).getNumericValue<int64_t>();
+    iter++;
     for (; iter.valid(); iter++) {
       if (!(*iter).isNumber<int64_t>()) {
         return EvalError("expected int, found: " + (*iter).toJson());
