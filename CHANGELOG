@@ -1,8 +1,9 @@
-v3.6.5 (XXXX-XX-XX)
--------------------
-
 * Change HTTP response code for error 1450 ("too many shards") from HTTP 500 to
   HTTP 400, as this is clearly a client error.
+
+
+v3.6.5 (XXXX-XX-XX)
+-------------------
 
 * Updated arangosync to 0.7.8.
 
