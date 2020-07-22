@@ -846,12 +846,14 @@ void H2Connection<T>::setIOTimeout() {
       
       if (_streams.empty()) { // we still have streams left
         setIOTimeout();
-      } else {
-        me._proto.cancel();
-        me._timeoutOnReadWrite = true;
-        // We simply cancel all ongoing asynchronous operations, the completion
-        // handlers will do the rest.
+        return;
       }
+      
+      me._proto.cancel();
+      me._timeoutOnReadWrite = true;
+      // We simply cancel all ongoing asynchronous operations, the completion
+      // handlers will do the rest.
+      
     } else if (isIdle && !me._writing & !me._reading) {
       if (!me._active && me._state == Connection::State::Connected) {
         FUERTE_LOG_DEBUG << "HTTP-Request idle timeout"
