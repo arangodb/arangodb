@@ -28,10 +28,7 @@ const pregel = require("@arangodb/pregel");
 /* Execute the given pregel program */
 /* TODO parametrise with bindings?  */
 function execute_program(graphName, program) {
-  return pregel.start(
-    "vertexaccumulators",
-    graphName,
-    program);
+  return pregel.start("vertexaccumulators", graphName, program);
 }
 
 function test_bind_parameter_program(bindParameter, value) {
@@ -44,11 +41,11 @@ function test_bind_parameter_program(bindParameter, value) {
         storeSender: true,
       },
     },
-    bindings: {"bind-test-name": "Hello, world" },
+    bindings: { "bind-test-name": "Hello, world" },
     initProgram: ["seq", ["print", ["bind-ref", "bind-test-name"]]],
-    updateProgram: ["seq", ["print", "hallo"]]
+    updateProgram: ["seq", ["print", "hallo"]],
   };
-};
+}
 
 /* Performs a single-source shortest path search (currently without path reconstruction)
    on all vertices in the graph starting from startVertex, using the cost stored
@@ -70,7 +67,6 @@ function single_source_shortest_path_program(
     },
     initProgram: [
       "seq",
-      ["print", " this = ", ["this"]],
       [
         "if",
         [
@@ -81,23 +77,26 @@ function single_source_shortest_path_program(
       ],
     ],
     updateProgram: [
-      "for",
-      "outbound",
-      ["quote", "edge"],
+      "seq",
       [
-        "quote",
-        "seq",
+        "for",
+        "outbound",
+        ["quote", "edge"],
         [
-          "update",
-          "distance",
-          ["attrib", "_to", ["var-ref", "edge"]],
-          ["attrib", weightAttribute, ["var-ref", "edge"]],
-          true
+          "quote",
+          "seq",
+          [
+            "update",
+            "distance",
+            ["attrib", "_to", ["var-ref", "edge"]],
+            ["attrib", weightAttribute, ["var-ref", "edge"]],
+          ],
         ],
       ],
+      false,
     ],
   };
-};
+}
 
 function single_source_shortest_path(
   graphName,
@@ -114,12 +113,10 @@ function single_source_shortest_path(
       weightAttribute
     )
   );
-};
+}
 
 exports.single_source_shortest_path_program = single_source_shortest_path_program;
 exports.single_source_shortest_path = single_source_shortest_path;
 exports.test_bind_parameter_program = test_bind_parameter_program;
 
 exports.execute = execute_program;
-
-

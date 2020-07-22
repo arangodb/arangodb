@@ -27,7 +27,9 @@ const pe = require("@arangodb/pregel-example-graphs");
 
 function exec_test() {
   pe.create_wiki_vote_graph("WikiVoteGraph");
-  return pp.single_source_shortest_path("WikiVoteGraph", "SSSP", "V/1", "cost");
+  const some_vertex = db._query(`FOR d IN V FILTER d.id == "15" RETURN d._id`).toArray()[0];
+
+  return pp.single_source_shortest_path("WikiVoteGraph", "SSSP", some_vertex, "cost");
 }
 
 exports.exec_test = exec_test;
