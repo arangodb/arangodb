@@ -1646,9 +1646,9 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
   }
 
   // Check old revision:
-  LocalDocumentId expectedId;
+  RevisionId expectedId;
   if (!options.ignoreRevs && slice.isObject()) {
-    expectedId = LocalDocumentId::create(RevisionId::fromSlice(slice));
+    expectedId = RevisionId::fromSlice(slice);
   }
 
   return remove(trx, documentId, expectedId, previousMdr, options);
@@ -1657,7 +1657,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
 Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
                                  ManagedDocumentResult& previousMdr,
                                  OperationOptions& options) {
-  return remove(trx, documentId, LocalDocumentId(), previousMdr, options);
+  return remove(trx, documentId, RevisionId::none(), previousMdr, options);
 }
 
 Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
