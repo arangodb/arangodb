@@ -1,10 +1,16 @@
-v3.6.5 (XXXX-XX-XX)
+v3.6.6 (XXXX-XX-XX)
 -------------------
 
 * Keep the list of last-acknowledged entires in Agency more consistent.
   During leadership take-over it was possible to get into a situation that the
   new leader does not successfully report the agency config, which was
   eventually fixed by the Agent itself. Now this situation is impossible.
+
+
+v3.6.5 (2020-07-15)
+-------------------
+
+* Updated arangosync to 0.7.8.
 
 * Added missing state rollback for failed attempt-based write locking of spin
   locks.
@@ -41,8 +47,6 @@ v3.6.5 (XXXX-XX-XX)
 * Internal issue BTS-71: Fixed error handling regarding communication with the
   agency. This could in a specific case cause collection creation in a cluster
   report success when it failed.
-
-* Updated arangosync to 0.7.7.
 
 * Fixed a document parsing bug in the Web UI. This issue occured in the
   document list view in case a document had an attribute called `length`.
