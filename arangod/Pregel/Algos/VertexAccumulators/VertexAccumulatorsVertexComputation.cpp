@@ -22,20 +22,21 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <Pregel/Graph.h>
 #include <Pregel/Algos/VertexAccumulators/Greenspun/Interpreter.h>
-#include "VertexAccumulators.h"
+#include <Pregel/Graph.h>
 #include "Greenspun/Primitives.h"
+#include "VertexAccumulators.h"
 
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 
 struct MyEvalContext : PrimEvalContext {
   explicit MyEvalContext(VertexAccumulators::VertexComputation& computation, VertexData& vertexData)
-    : _computation(computation), _vertexData(vertexData) {
-  };
+      : _computation(computation), _vertexData(vertexData){};
 
-  std::string const& getThisId() const override { return _vertexData._documentId; }
+  std::string const& getThisId() const override {
+    return _vertexData._documentId;
+  }
 
   void getAccumulatorValue(std::string_view accumId, VPackBuilder& builder) const override {
     _vertexData._accumulators.at(std::string{accumId})->getIntoBuilder(builder);
@@ -71,9 +72,8 @@ struct MyEvalContext : PrimEvalContext {
     for (; edgeIter.hasMore(); ++edgeIter) {
       VPackSlice edgeDoc = (*edgeIter)->data()._document.slice();
       if (auto e = cb(edgeDoc); e.fail()) {
-        return e.wrapError([&](EvalError& err) {
-          err.wrapMessage("during edge enumeration");
-        });
+        return e.wrapError(
+            [&](EvalError& err) { err.wrapMessage("during edge enumeration"); });
       }
     }
 
@@ -100,31 +100,48 @@ void VertexAccumulators::VertexComputation::compute(MessageIterator<MessageData>
   if (globalSuperstep() == 0) {
     VPackBuilder initResultBuilder;
 
-    auto result = Evaluate(evalContext, _algorithm.options().initProgram.slice(), initResultBuilder);
+    auto result = Evaluate(evalContext, _algorithm.options().initProgram.slice(),
+                           initResultBuilder);
     if (!result) {
-      LOG_DEVEL << "execution of initializer: " << result.error().toString();
+      LOG_DEVEL << "execution of initializer: " << result.error().toString() << " voting to halt.";
+      voteHalt();
+    } else {
+      auto rs = initResultBuilder.slice();
+      if (rs.isBoolean()) {
+        if (rs.getBoolean()) {
+          voteActive();
+        } else {
+          voteHalt();
+        }
+      } else {
+        LOG_DEVEL << "initProgram did not return a boolean value, but " << rs.toJson();
+      }
     }
-
-    Evaluate(evalContext, _algorithm.options().initProgram.slice(), initResultBuilder);
-    // TODO: return value relevant? Maybe for activation?
   } else {
     for (const MessageData* msg : incomingMessages) {
-      vertexData()._accumulators.at(msg->_accumulatorName)->updateBySlice(msg->_value.slice());
+      vertexData()
+          ._accumulators.at(msg->_accumulatorName)
+          ->updateBySlice(msg->_value.slice());
     }
 
     VPackBuilder stepResultBuilder;
 
-    auto result = Evaluate(evalContext, _algorithm.options().updateProgram.slice(), stepResultBuilder);
-    if(!result) {
-      LOG_DEVEL << "execution of step: " << result.error().toString();
-    }
-
-    // voteHalt();
-    /*
-    if(somethingHasChanged) {
-      voteActive();
-    } else {
+    auto result = Evaluate(evalContext, _algorithm.options().updateProgram.slice(),
+                           stepResultBuilder);
+    if (!result) {
+      LOG_DEVEL << "execution of step: " << result.error().toString() << " voting to halt";
       voteHalt();
-      }; */
+    } else {
+      auto rs = stepResultBuilder.slice();
+      if (rs.isBoolean()) {
+        if (rs.getBoolean()) {
+          voteActive();
+        } else {
+          voteHalt();
+        }
+      } else {
+        LOG_DEVEL << "updateProgram did not return a boolean value, but " << rs.toJson();
+      }
+    }
   }
 }
