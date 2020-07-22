@@ -786,7 +786,8 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
 /*static*/ arangodb::Result Collections::drop(  // drop collection
     arangodb::LogicalCollection& coll,          // collection to drop
     bool allowDropSystem,  // allow dropping system collection
-    double timeout         // single-server drop timeout
+    double timeout,        // single-server drop timeout
+    bool keepUserRights    // flag to keep existing user rights
 ) {
 
   ExecContext const& exec = ExecContext::current();
@@ -814,14 +815,16 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
     res = coll.vocbase().dropCollection(coll.id(), allowDropSystem, timeout);
   }
 
-  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  if (ADB_LIKELY(!keepUserRights)) {
+    auth::UserManager* um = AuthenticationFeature::instance()->userManager();
 
-  if (res.ok() && um != nullptr) {
-    res = um->enumerateUsers(
-        [&](auth::User& entry) -> bool {
-          return entry.removeCollection(dbname, collName);
-        },
-        /*retryOnConflict*/ true);
+    if (res.ok() && um != nullptr) {
+      res = um->enumerateUsers(
+          [&](auth::User& entry) -> bool {
+            return entry.removeCollection(dbname, collName);
+          },
+          /*retryOnConflict*/ true);
+    }
   }
 
   events::DropCollection(coll.vocbase().name(), coll.name(), res.errorNumber());

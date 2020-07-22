@@ -115,7 +115,9 @@ bool Agent::id(std::string const& id) {
 
 /// Merge command line and persisted comfigurations
 bool Agent::mergeConfiguration(VPackSlice const& persisted) {
-  return _config.merge(persisted);  // Concurrency managed in merge
+  auto res = _config.merge(persisted);  // Concurrency managed in merge
+  syncActiveAndAcknowledged();
+  return res;
 }
 
 /// Dtor shuts down thread
@@ -287,8 +289,8 @@ index_t Agent::index() {
   }
 
   MUTEX_LOCKER(tiLocker, _tiLock);
-  return _confirmed[id()];
-
+  TRI_ASSERT(_lastAckedIndex.find(id()) != _lastAckedIndex.end());
+  return _lastAckedIndex.at(id()).second;
 }
 
 //  AgentCallback reports id of follower and its highest processed index
@@ -301,7 +303,11 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
 
     // Update last acknowledged answer
     auto t = steady_clock::now();
-    std::chrono::duration<double> d = t - _lastAcked[peerId];
+
+    TRI_ASSERT(_lastAckedIndex.find(peerId) != _lastAckedIndex.end());
+    // Reference here, the entry will be updated.
+    auto& [lastTime, lastIndex] = _lastAckedIndex.at(peerId);
+    std::chrono::duration<double> d = t - lastTime;
     auto secsSince = d.count();
     if (secsSince < 1.5e9 && peerId != id() &&
         secsSince > _config.minPing() * _config.timeoutMult()) {
@@ -313,10 +319,9 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
         << "Setting _lastAcked[" << peerId << "] to time "
         << std::chrono::duration_cast<std::chrono::microseconds>(t.time_since_epoch())
                .count();
-    _lastAcked[peerId] = t;
-
-    if (index > _confirmed[peerId]) {  // progress this follower?
-      _confirmed[peerId] = index;
+    lastTime = t;
+    if (index > lastIndex) {  // progress this follower?
+      lastIndex = index;
       if (toLog > 0) {  // We want to reset the wait time only if a package callback
         LOG_TOPIC("ba4d2", DEBUG, Logger::AGENCY)
             << "Got call back of " << toLog
@@ -345,7 +350,9 @@ void Agent::reportFailed(std::string const& slaveId, size_t toLog, bool sent) {
     LOG_TOPIC("9e856", DEBUG, Logger::AGENCY)
         << "Resetting _earliestPackage to now for id " << slaveId;
     _earliestPackage[slaveId] = steady_clock::now() + seconds(1);
-    _confirmed[slaveId] = 0;
+    TRI_ASSERT(_lastAckedIndex.find(slaveId) != _lastAckedIndex.end());
+    auto& [unused, lastIndex] = _lastAckedIndex.at(slaveId);
+    lastIndex = 0;
   } else {
     // answer to sendAppendEntries to empty request, when follower's highest
     // log index is 0. This is necessary so that a possibly restarted agent
@@ -354,7 +361,9 @@ void Agent::reportFailed(std::string const& slaveId, size_t toLog, bool sent) {
     // handled
     if (sent) {
       MUTEX_LOCKER(guard, _tiLock);
-      _confirmed[slaveId] = 0;
+      TRI_ASSERT(_lastAckedIndex.find(slaveId) != _lastAckedIndex.end());
+      auto& [unused, lastIndex] = _lastAckedIndex.at(slaveId);
+      lastIndex = 0;
     }
   }
 }
@@ -469,9 +478,8 @@ void Agent::sendAppendEntriesRPC() {
       {
         t = this->term();
         MUTEX_LOCKER(tiLocker, _tiLock);
-        lastConfirmed = _confirmed[followerId];
-        lastAcked = _lastAcked[followerId];
-        earliestPackage = _earliestPackage[followerId];
+        TRI_ASSERT(_lastAckedIndex.find(followerId) != _lastAckedIndex.end());
+        std::tie(lastAcked, lastConfirmed) = _lastAckedIndex.at(followerId);
       }
 
       // We essentially have to send some log entries from their lastConfirmed+1
@@ -756,8 +764,8 @@ void Agent::advanceCommitIndex() {
   {
     MUTEX_LOCKER(_tiLocker, _tiLock);
     for (auto const& id : config().active()) {
-      if (_confirmed.find(id) != _confirmed.end()) {
-        temp.push_back(_confirmed[id]);
+      if (_lastAckedIndex.find(id) != _lastAckedIndex.end()) {
+        temp.push_back(_lastAckedIndex[id].second);
       }
     }
   }
@@ -807,6 +815,8 @@ bool Agent::active() const {
 /// @brief Activate agency (Inception thread for multi-host, main thread else)
 void Agent::activateAgency() {
   _config.activate();
+  syncActiveAndAcknowledged();
+  
   try {
     _state.persistActiveAgents(_config.activeToBuilder(), _config.poolToBuilder());
   } catch (std::exception const& e) {
@@ -885,9 +895,9 @@ bool Agent::challengeLeadership() {
 
   std::string const myid = id();
 
-  for (auto const& i : _lastAcked) {
+  for (auto const& i : _lastAckedIndex) {
     if (i.first != myid) {  // do not count ourselves
-      duration<double> m = steady_clock::now() - i.second;
+      duration<double> m = steady_clock::now() - i.second.first;
       LOG_TOPIC("22f78", DEBUG, Logger::AGENCY)
           << "challengeLeadership: found "
              "_lastAcked["
@@ -917,50 +927,47 @@ bool Agent::challengeLeadership() {
 
 /// Get last acknowledged responses on leader
 void Agent::lastAckedAgo(Builder& ret) const {
-  std::unordered_map<std::string, index_t> confirmed;
-  std::unordered_map<std::string, SteadyTimePoint> lastAcked;
+  std::unordered_map<std::string, std::pair<SteadyTimePoint, index_t>> lastAckedIndex;
   std::unordered_map<std::string, SteadyTimePoint> lastSent;
   index_t lastCompactionAt, nextCompactionAfter;
 
   {
     MUTEX_LOCKER(tiLocker, _tiLock);
-    lastAcked = _lastAcked;
-    confirmed = _confirmed;
+    lastAckedIndex = _lastAckedIndex;
     lastSent = _lastSent;
     lastCompactionAt = _state.lastCompactionAt();
     nextCompactionAfter = _state.nextCompactionAfter();
   }
 
-  std::function<double(std::pair<std::string, SteadyTimePoint> const&)> dur2str =
-      [&](std::pair<std::string, SteadyTimePoint> const& i) {
-        return id() == i.first
-                   ? 0.0
-                   : 1.0e-3 *
-                         std::floor(
-                             duration<double>(steady_clock::now() - i.second).count() * 1.0e3);
-      };
+  auto dur2str = [&](std::string const& key, SteadyTimePoint const& time) -> double {
+    return id() == key
+               ? 0.0
+               : 1.0e-3 *
+                     std::floor(duration<double>(steady_clock::now() - time).count() * 1.0e3);
+  };
 
   ret.add("lastCompactionAt", VPackValue(lastCompactionAt));
   ret.add("nextCompactionAfter", VPackValue(nextCompactionAfter));
+  
   if (leading()) {
     ret.add(VPackValue("lastAcked"));
     VPackObjectBuilder b(&ret);
-    for (auto const& i : lastAcked) {
-      auto lsit = lastSent.find(i.first);
+    for (auto const& [key, pair] : lastAckedIndex) {
+      auto lsit = lastSent.find(key);
       // Note that it is possible that a server is already in lastAcked
       // but not yet in lastSent, since lastSent only has times of non-empty
       // appendEntriesRPC calls, but we also get lastAcked entries for the
       // empty ones.
-      ret.add(VPackValue(i.first));
+      ret.add(VPackValue(key));
       {
         VPackObjectBuilder o(&ret);
-        ret.add("lastAckedTime", VPackValue(dur2str(i)));
-        ret.add("lastAckedIndex", VPackValue(confirmed.at(i.first)));
-        if (i.first != id()) {
+        ret.add("lastAckedTime", VPackValue(dur2str(key, pair.first)));
+        ret.add("lastAckedIndex", VPackValue(pair.second));
+        if (key != id()) {
           if (lsit != lastSent.end()) {
-            ret.add("lastAppend", VPackValue(dur2str(*lsit)));
+            ret.add("lastAppend", VPackValue(dur2str(lsit->first, lsit->second)));
           } else {
-            ret.add("lastAppend", VPackValue(dur2str(i)));
+            ret.add("lastAppend", VPackValue(dur2str(key, pair.first)));
             // This is just for the above mentioned case, which will very
             // soon be rectified.
           }
@@ -1290,7 +1297,6 @@ read_ret_t Agent::read(query_t const& query) {
 void Agent::run() {
   // Only run in case we are in multi-host mode
   while (!this->isStopping() && size() > 1) {
-
     {
       // We set the variable to false here, if any change happens during
       // or after the calls in this loop, this will be set to true to
@@ -1408,6 +1414,15 @@ void Agent::persistConfiguration(term_t t) {
     }
   }
 
+  {
+    // Make sure we have setup the local list of lastAckedIndex
+    // only containing the leader
+    _tiLock.assertNotLockedByCurrentThread();
+    MUTEX_LOCKER(tiLocker, _tiLock);
+    if (_lastAckedIndex.find(id()) == _lastAckedIndex.end()) {
+      _lastAckedIndex.emplace(id(), std::make_pair(steady_clock::now(), 0));
+    }
+  }
   // In case we've lost leadership, no harm will arise as the failed write
   // prevents bogus agency configuration to be replicated among agents. ***
   write(agency, WriteMode(true, true));
@@ -1466,12 +1481,7 @@ bool Agent::prepareLead() {
   }
 
   // Reset last acknowledged
-  {
-    MUTEX_LOCKER(tiLocker, _tiLock);
-    for (auto const& i : _config.active()) {
-      _lastAcked[i] = steady_clock::now();
-    }
-  }
+  syncActiveAndAcknowledged();
 
   return true;
 }
@@ -1489,9 +1499,9 @@ void Agent::lead() {
     }
 
     MUTEX_LOCKER(tiLocker, _tiLock);
-    for (auto& i : _confirmed) {
+    for (auto& i : _lastAckedIndex) {
       if (i.first != id()) {
-        i.second = commitIndex;
+        i.second.second = commitIndex;
       }
     }
   }
@@ -1590,6 +1600,8 @@ void Agent::notify(query_t const& message) {
   _config.update(message);
 
   _state.persistActiveAgents(_config.activeToBuilder(), _config.poolToBuilder());
+  // update causes the list of peers to change potentially
+  syncActiveAndAcknowledged();
 }
 
 // Rebuild key value stores
@@ -2121,6 +2133,8 @@ Inception const* Agent::inception() const { return _inception.get(); }
 
 void Agent::updateConfiguration(Slice const& slice) {
   _config.updateConfiguration(slice);
+  // updateConfiguration causes the list of peers to change potentially
+  syncActiveAndAcknowledged();
 }
 
 void Agent::updateSomeConfigValues(VPackSlice data) {
@@ -2141,6 +2155,22 @@ void Agent::updateSomeConfigValues(VPackSlice data) {
     LOG_TOPIC("12342", DEBUG, Logger::SUPERVISION) << "Updating gracePeriod to " << d;
     _config.setSupervisionGracePeriod(d);
     _supervision.setGracePeriod(d);
+  }
+}
+
+void Agent::syncActiveAndAcknowledged() {
+  // We reset the list of last Acknowledged indexes, to contain
+  // at least every peer. If there is a new peer it will be inserted
+  // with lastAckknowledged NOW for index 0.
+  {
+    _tiLock.assertNotLockedByCurrentThread();
+    MUTEX_LOCKER(tiLocker, _tiLock);
+    // The number of Agents is small, so we can afford to always scan linearly here
+    for (auto const& peer : _config.active()) {
+      if (_lastAckedIndex.find(peer) == _lastAckedIndex.end()) {
+        _lastAckedIndex.emplace(peer, std::make_pair(steady_clock::now(), 0));
+      }
+    }
   }
 }
 
