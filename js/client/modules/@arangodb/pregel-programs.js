@@ -25,6 +25,14 @@
 const internal = require("internal");
 const pregel = require("@arangodb/pregel");
 
+/* Execute the given pregel program */
+/* TODO parametrise with bindings?  */
+function execute_program(graphName, program) {
+  return pregel.start(
+    "vertexaccumulators",
+    graphName,
+    program);
+}
 
 function test_bind_parameter_program(bindParameter, value) {
   return {
@@ -84,6 +92,7 @@ function single_source_shortest_path_program(
           "distance",
           ["attrib", "_to", ["var-ref", "edge"]],
           ["attrib", weightAttribute, ["var-ref", "edge"]],
+          true
         ],
       ],
     ],
@@ -110,3 +119,7 @@ function single_source_shortest_path(
 exports.single_source_shortest_path_program = single_source_shortest_path_program;
 exports.single_source_shortest_path = single_source_shortest_path;
 exports.test_bind_parameter_program = test_bind_parameter_program;
+
+exports.execute = execute_program;
+
+
