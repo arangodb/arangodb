@@ -1672,7 +1672,7 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
                                      collectionName == StaticStrings::UsersCollection);
 
   LogicalCollection* collection = trx.documentCollection(collectionName);
-  if (generateNewRevisionIds && !collection) {
+  if (!collection) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   PhysicalCollection* physical = collection->getPhysical();
