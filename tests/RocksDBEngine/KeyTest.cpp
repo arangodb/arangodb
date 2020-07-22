@@ -590,7 +590,7 @@ TEST_F(RocksDBKeyBoundsTestLittleEndian, test_hash_index) {
   key6.constructVPackIndexValue(1, b.slice(), LocalDocumentId(90));
   key7.constructVPackIndexValue(1, c.slice(), LocalDocumentId(12));
 
-  bounds = RocksDBKeyBounds::VPackIndex(1, a.slice(), c.slice());
+  bounds = RocksDBKeyBounds::VPackIndex(1, a.slice(), c.slice(), false);
   EXPECT_TRUE(cmp->Compare(bounds.start(), key4.string()) < 0);
   EXPECT_TRUE(cmp->Compare(key4.string(), bounds.end()) < 0);
   EXPECT_TRUE(cmp->Compare(bounds.start(), key5.string()) < 0);
@@ -715,7 +715,7 @@ TEST_F(RocksDBKeyBoundsTestBigEndian, test_hash_index) {
   key6.constructVPackIndexValue(1, b.slice(), LocalDocumentId(90));
   key7.constructVPackIndexValue(1, c.slice(), LocalDocumentId(12));
 
-  bounds = RocksDBKeyBounds::VPackIndex(1, a.slice(), c.slice());
+  bounds = RocksDBKeyBounds::VPackIndex(1, a.slice(), c.slice(), false);
   EXPECT_TRUE(cmp->Compare(bounds.start(), key4.string()) < 0);
   EXPECT_TRUE(cmp->Compare(key4.string(), bounds.end()) < 0);
   EXPECT_TRUE(cmp->Compare(bounds.start(), key5.string()) < 0);
