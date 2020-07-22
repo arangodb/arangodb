@@ -2102,8 +2102,6 @@ public:
   static bool isDeterministic(arangodb::aql::AstNode const& arg) {
     return arg.isDeterministic();
   }
-
-  static constexpr bool canProcessObjects() { return true; } // FIXME Kludge
 };
 
 template<>
@@ -2115,9 +2113,12 @@ public:
   [[nodiscard]] static ScopedAqlValue&& getMember(ScopedAqlValue const& arg, size_t idx) {
     return std::move(arg.at(idx));
   }
-  static ScopedAqlValue& getValue(ScopedAqlValue& arg, ScopedAqlValue&, QueryContext const& ctx) {
-    arg.execute(ctx);
-    return arg;
+  static ScopedAqlValue& getValue(ScopedAqlValue& arg, ScopedAqlValue& value, QueryContext const& ctx) {
+    if (arg.execute(ctx)) {
+      return arg;
+    }
+    value.reset(ScopedAqlValue::INVALID_NODE);
+    return value;
   }
 
   static size_t numMembers(ScopedAqlValue const& arg) {
@@ -2182,8 +2183,6 @@ public:
   static bool isDeterministic(ScopedAqlValue const& arg) {
     return arg.isDeterministic();
   }
-
-  static constexpr bool canProcessObjects() { return false; } // FIXME Kludge
 };
 
 template<>
@@ -2285,7 +2284,7 @@ public:
       out = arg.getInt();
     } else if constexpr (std::is_same<T, double>::value) {
       if (!arg.getDouble(out)) {
-        return error::failedToParse(funcName, i + 1, expectedType);
+        return error::failedToParse(funcName, i + 1, SCOPED_VALUE_TYPE_DOUBLE);
       }
     } else if constexpr (std::is_same<T, bool>::value) {
       out = arg.getBoolean();
@@ -2944,13 +2943,6 @@ arangodb::Result processPhraseArgObjectType(char const* funcName,
         .append(std::to_string(funcArgumentPosition + 1)).append("'")
       };
     }
-    if (value.isArray() && !value.isEmptyArray()) {
-      // make array brackets optional for single non-array arg functions
-      auto elem = value.at(0);
-      if (!elem.isArray() && value.length() == 1) {
-        value = elem;
-      }
-    }
     return entry->second(funcName, funcArgumentPosition, entry->first.c_str(), filter, ctx, value, firstOffset, analyzer);
   } else {
     return {
@@ -2961,6 +2953,36 @@ arangodb::Result processPhraseArgObjectType(char const* funcName,
   }
 }
 
+template<typename ElementType, typename ElementTraits = ArgsArrayTraits<ElementType>>
+arangodb::Result processPhraseSubArray(char const* funcName,
+                                       size_t subArrayPos,
+                                       irs::by_phrase* phrase,
+                                       QueryContext const& ctx,
+                                       FilterContext const& filterCtx,
+                                       ElementType const& subarray,
+                                       irs::analysis::analyzer* analyzer,
+                                       size_t& offset,
+                                       bool isInArray) {
+  auto const argc = ElementTraits::numMembers(subarray);
+  if (0 != argc) {
+    // array arg is processed with possible default 0 offsets - to be easily compatible with TOKENS function
+    if (!isInArray) {
+      auto subRes = processPhraseArgs(funcName, phrase, ctx, filterCtx, subarray, 0,
+                                      argc, analyzer, offset, true, true);
+      if (subRes.fail()) {
+        return subRes;
+      }
+    } else {
+      auto res = fromFuncPhraseTerms(funcName, subArrayPos, termsFuncName, phrase, ctx,
+                                     subarray, offset, analyzer);
+      if (res.fail()) {
+        return res;
+      }
+    }
+    offset = 0;
+  }
+  return {};
+}
 
 
 template<typename ElementType, typename ElementTraits = ArgsArrayTraits<ElementType>>
@@ -2979,51 +3001,22 @@ arangodb::Result processPhraseArgs(char const* funcName,
   for (size_t idx = valueArgsBegin; idx < valueArgsEnd; ++idx) {
     ScopedAqlValue valueHolder;
     auto currentArg (ElementTraits::getMember(valueArgs, idx));
-    if constexpr (ElementTraits::canProcessObjects()) { // FIXME:  kludge
-      if (currentArg.isObject()) {
-        if (currentArg.numMembers() != 1) {
-          return {
-            TRI_ERROR_BAD_PARAMETER,
-            "'"s.append(funcName).append("' AQL function: Invalid number of fields in an object (expected 1) "
-            "at position '").append(std::to_string(idx)).append("'")
-          };
-        }
-        auto res = processPhraseArgObjectType(funcName, idx, phrase, ctx, currentArg, offset);
+    if (currentArg.isArray()) {
+      if (!expectingOffset || allowDefaultOffset) {
+        auto res = processPhraseSubArray(funcName, idx, phrase, ctx, filterCtx, currentArg, analyzer, offset, isInArray);
         if (res.fail()) {
           return res;
         }
-        offset = 0;
         expectingOffset = true;
         continue;
+      } else {
+        return {
+          TRI_ERROR_BAD_PARAMETER,
+          "'"s.append(funcName).append("' AQL function: Unexpected array at position ")
+          .append(std::to_string(idx))
+        };
       }
-      if (currentArg.isArray()) {
-        if (!expectingOffset || allowDefaultOffset) {
-          if (0 == currentArg.numMembers()) {
-            expectingOffset = true;
-            // do not reset offset here as we should accumulate it
-            continue; // just skip empty arrays. This is not error anymore as this case may arise while working with autocomplete
-          }
-          if (isInArray) {
-            auto res = fromFuncPhraseTerms(funcName, idx, termsFuncName, phrase, ctx, currentArg, offset, analyzer);
-            if (res.fail()) {
-              return res;
-            }
-            expectingOffset = true;
-            offset = 0;
-            continue;
-          }
-          //else {
-          //  auto subRes = processPhraseArgs(funcName, phrase, ctx, filterCtx, currentArg, 0, currentArg.numMembers(), analyzer, offset, true, true);
-          //  if (subRes.fail()) {
-          //    return subRes;
-          //  }
-          //  expectingOffset = true;
-          //  offset = 0;
-          //  continue;
-          //}
-        }
-      }
-    } //// Kludge end
+    }
     if (!currentArg.isConstant() && !phrase) {
       // in case of non const node encountered while parsing we can not decide
       // if current and following args are correct before execution
@@ -3057,11 +3050,6 @@ arangodb::Result processPhraseArgs(char const* funcName,
           offset = 0;
           continue;
         }
-        //return {
-        //  TRI_ERROR_BAD_PARAMETER,
-        //  "'"s.append(funcName).append("' AQL function: recursive arrays not allowed at position ")
-        //  .append(std::to_string(idx))
-        //};
       }
     } else if (valueArg.isObject()) {
       auto res = processPhraseArgObjectType(funcName, idx, phrase, ctx, valueArg, offset);
@@ -3109,7 +3097,6 @@ arangodb::Result processPhraseArgs(char const* funcName,
       .append(std::to_string(valueArgsEnd - 1)).append("as a value")
     };
   }
-
   return {};
 }
 
