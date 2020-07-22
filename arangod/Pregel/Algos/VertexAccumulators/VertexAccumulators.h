@@ -134,7 +134,7 @@ struct VertexAccumulators : public Algorithm<VertexData, EdgeData, MessageData> 
   message_combiner* messageCombiner() const override { return nullptr; }
   vertex_computation* createComputation(WorkerConfig const*) const override;
 
-  std::optional<VPackSlice> getBindParameter(std::string_view) const;
+  bool getBindParameter(std::string_view, VPackBuilder& into) const;
 
  private:
   void parseUserParams(VPackSlice userParams);

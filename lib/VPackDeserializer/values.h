@@ -21,8 +21,8 @@
 /// @author Lars Maier
 ///
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef VELOCYPACK_VALUES_H
-#define VELOCYPACK_VALUES_H
+#ifndef VELOCYPACK_DESERIALIZER_VALUES_H
+#define VELOCYPACK_DESERIALIZER_VALUES_H
 #include "gadgets.h"
 #include "plan-executor.h"
 #include "utilities.h"
@@ -128,6 +128,12 @@ struct slice_deserializer {
   using factory = utilities::identity_factory<constructed_type>;
 };
 
+struct vpack_builder_deserializer {
+  using plan = vpack_builder_deserializer;
+  using constructed_type = builder_type;
+  using factory = utilities::identity_factory<constructed_type>;
+};
+
 }  // namespace deserializer::values
 
 template <typename T, int V>
@@ -165,6 +171,21 @@ struct deserialize_plan_executor<values::slice_deserializer, H> {
   static auto unpack(::arangodb::velocypack::deserializer::slice_type s, typename H::state_type, C &&)
   -> result_type {
     return result_type{s};
+  }
+};
+
+template <typename H>
+struct deserialize_plan_executor<values::vpack_builder_deserializer, H> {
+  using value_type = builder_type;
+  using tuple_type = std::tuple<value_type>;
+  using result_type = result<tuple_type, deserialize_error>;
+
+  template <typename C>
+  static auto unpack(::arangodb::velocypack::deserializer::slice_type s, typename H::state_type, C &&)
+  -> result_type {
+    builder_type builder;
+    builder.add(s);
+    return result_type{std::move(builder)};
   }
 };
 

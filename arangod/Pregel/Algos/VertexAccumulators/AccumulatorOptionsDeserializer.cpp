@@ -90,7 +90,7 @@ using non_empty_array_deserializer = validate<
     array_deserializer<D, C>, utilities::not_empty_validator>;
 
 using accumulators_map_deserializer = map_deserializer<accumulator_options_deserializer, my_map>;
-using bindings_map_deserializer = map_deserializer<values::slice_deserializer, my_map>;
+using bindings_map_deserializer = map_deserializer<values::vpack_builder_deserializer, my_map>;
 
 using vertex_accumulator_options_plan = parameter_list<
   factory_deserialized_parameter<resultField, values::value_deserializer<std::string>, true>,
