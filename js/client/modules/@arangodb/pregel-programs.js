@@ -37,7 +37,7 @@ function test_bind_parameter_program(bindParameter, value) {
     accumulatorsDeclaration: {
       distance: {
         accumulatorType: "min",
-        valueType: "ints",
+        valueType: "doubles",
         storeSender: true,
       },
     },
@@ -61,7 +61,7 @@ function single_source_shortest_path_program(
     accumulatorsDeclaration: {
       distance: {
         accumulatorType: "min",
-        valueType: "ints",
+        valueType: "doubles",
         storeSender: true,
       },
     },
@@ -73,7 +73,7 @@ function single_source_shortest_path_program(
           ["eq?", ["this"], startVertexId],
           ["seq", ["set", "distance", 0], true],
         ],
-        [true, ["seq", ["set", "distance", 999999], false]],
+        [true, ["seq", ["set", "distance", 999999.5], false]],
       ],
     ],
     updateProgram: [
