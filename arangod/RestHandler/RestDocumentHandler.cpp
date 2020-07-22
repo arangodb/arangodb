@@ -218,7 +218,7 @@ RestStatus RestDocumentHandler::insertDocument() {
             // result stays valid!
             Result res = _activeTrx->finish(opres.result);
             if (opres.fail()) {
-              generateTransactionError(opres);
+              generateTransactionError(cname, opres);
               return;
             }
 
@@ -316,21 +316,15 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
 
   return waitForFuture(
       _activeTrx->documentAsync(collection, search, options).thenValue([=, buffer(std::move(buffer))](OperationResult opRes) {
-        auto res = _activeTrx->finish(opRes.result);
+        Result res = _activeTrx->finish(opRes.result);
 
         if (!opRes.ok()) {
-          if (opRes.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-            generateDocumentNotFound(collection, key);
-          } else if (ifRid != 0 && opRes.is(TRI_ERROR_ARANGO_CONFLICT)) {
-            generatePreconditionFailed(opRes.slice());
-          } else {
-            generateTransactionError(collection, res, key);
-          }
+          generateTransactionError(collection, opRes, key, ifRid);
           return;
         }
 
         if (!res.ok()) {
-          generateTransactionError(collection, res, key);
+          generateTransactionError(collection, res, key, ifRid);
           return;
         }
 
@@ -453,9 +447,10 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
 
   // extract the revision, if single document variant and header given:
   std::shared_ptr<VPackBuffer<uint8_t>> buffer;
+  TRI_voc_rid_t headerRev = 0;
   if (!isArrayCase) {
     bool isValidRevision;
-    TRI_voc_rid_t headerRev = extractRevision("if-match", isValidRevision);
+    headerRev = extractRevision("if-match", isValidRevision);
     if (!isValidRevision) {
       headerRev = UINT64_MAX;  // an impossible revision, so precondition failed
     }
@@ -514,19 +509,19 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   }
 
   return waitForFuture(std::move(f).thenValue([=, buffer(std::move(buffer))](OperationResult opRes) {
-    auto res = _activeTrx->finish(opRes.result);
+    Result res = _activeTrx->finish(opRes.result);
 
     // ...........................................................................
     // outside write transaction
     // ...........................................................................
 
     if (opRes.fail()) {
-      generateTransactionError(opRes);
+      generateTransactionError(cname, opRes, key, headerRev);
       return;
     }
 
     if (!res.ok()) {
-      generateTransactionError(cname, res, key, 0);
+      generateTransactionError(cname, res, key, headerRev);
       return;
     }
 
@@ -629,7 +624,7 @@ RestStatus RestDocumentHandler::removeDocument() {
     // ...........................................................................
 
     if (opRes.fail()) {
-      generateTransactionError(opRes);
+      generateTransactionError(cname, opRes, key, revision);
       return;
     }
 
@@ -687,7 +682,7 @@ RestStatus RestDocumentHandler::readManyDocuments() {
     auto res = _activeTrx->finish(opRes.result);
 
     if (opRes.fail()) {
-      generateTransactionError(opRes);
+      generateTransactionError(cname, opRes);
       return;
     }
 

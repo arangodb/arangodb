@@ -562,12 +562,9 @@ void PhysicalCollection::removeRevisionTreeBlocker(TRI_voc_tid_t) {
 }
 
 /// @brief checks the revision of a document
-int PhysicalCollection::checkRevision(transaction::Methods*, TRI_voc_rid_t expected,
+bool PhysicalCollection::checkRevision(transaction::Methods*, TRI_voc_rid_t expected,
                                       TRI_voc_rid_t found) const {
-  if (expected != 0 && found != expected) {
-    return TRI_ERROR_ARANGO_CONFLICT;
-  }
-  return TRI_ERROR_NO_ERROR;
+  return expected == 0 || found == expected;
 }
 
 /// @brief hands out a list of indexes
