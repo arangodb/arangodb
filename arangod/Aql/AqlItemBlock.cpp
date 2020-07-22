@@ -32,6 +32,7 @@
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Containers/HashSet.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
@@ -44,21 +45,15 @@ using namespace arangodb::aql;
 
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
-/// @brief an unordered_set with an optimized hash and compare function.
-/// can only be used for AqlValues with dynamic memory allocation.
-using AqlValueCache = std::unordered_set<AqlValue, AqlValue::SimpleHash, AqlValue::SimpleEqual>;
-
 namespace {
-// T will be std::unordered_set<AqlValue> with or without specialized comparators
-template<typename T>
-inline void copyValueOver(T& cache, 
+inline void copyValueOver(arangodb::containers::HashSet<void*>& cache, 
                           AqlValue const& a,
                           size_t rowNumber, 
                           RegisterId col, 
                           SharedAqlItemBlockPtr& res) {
   if (!a.isEmpty()) {
     if (a.requiresDestruction()) {
-      auto it = cache.find(a);
+      auto it = cache.find(a.data());
 
       if (it == cache.end()) {
         AqlValue b = a.clone();
@@ -68,9 +63,9 @@ inline void copyValueOver(T& cache,
           b.destroy();
           throw;
         }
-        cache.emplace(b);
+        cache.emplace(b.data());
       } else {
-        res->setValue(rowNumber, col, (*it));
+        res->setValue(rowNumber, col, AqlValue(a.type(), (*it)));
       }
     } else {
       res->setValue(rowNumber, col, a);
@@ -81,8 +76,7 @@ inline void copyValueOver(T& cache,
 
 /// @brief create the block
 AqlItemBlock::AqlItemBlock(AqlItemBlockManager& manager, size_t nrItems, RegisterCount nrRegs)
-    : _valueCount(0, AqlValue::SimpleHash(), AqlValue::SimpleEqual()),
-      _nrItems(nrItems), _nrRegs(nrRegs), _manager(manager), _refCount(0), _rowIndex(0) {
+    : _nrItems(nrItems), _nrRegs(nrRegs), _manager(manager), _refCount(0), _rowIndex(0) {
   TRI_ASSERT(nrItems > 0);  // empty AqlItemBlocks are not allowed!
   // check that the nrRegs value is somewhat sensible
   // this compare value is arbitrary, but having so many registers in a single
@@ -317,7 +311,7 @@ void AqlItemBlock::destroy() noexcept {
     for (size_t i = 0; i < n; i++) {
       auto& it = _data[i];
       if (it.requiresDestruction()) {
-        auto it2 = _valueCount.find(it);
+        auto it2 = _valueCount.find(it.data());
         if (it2 != _valueCount.end()) {  // if we know it, we are still responsible
           auto& valueInfo = (*it2).second;
           TRI_ASSERT(valueInfo.refCount > 0);
@@ -375,7 +369,7 @@ void AqlItemBlock::shrink(size_t nrItems) {
   for (size_t i = n; i < _data.size(); ++i) {
     AqlValue& a = _data[i];
     if (a.requiresDestruction()) {
-      auto it = _valueCount.find(a);
+      auto it = _valueCount.find(a.data());
 
       if (it != _valueCount.end()) {
         auto& valueInfo = (*it).second;
@@ -450,7 +444,7 @@ void AqlItemBlock::clearRegisters(RegIdFlatSet const& toClear) {
       AqlValue& a(_data[getAddress(i, reg)]);
 
       if (a.requiresDestruction()) {
-        auto it = _valueCount.find(a);
+        auto it = _valueCount.find(a.data());
 
         if (it != _valueCount.end()) {
           auto& valueInfo = (*it).second;
@@ -477,8 +471,11 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
   
   SharedAqlItemBlockPtr res{aqlItemBlockManager().requestBlock(numRows, numRegs)};
 
-  auto copyRows = [&](auto& cache) {
-    constexpr bool checkShadowRows = !std::is_same<decltype(cache), AqlValueCache>::value;
+  struct WithoutShadowRows {};
+  struct WithShadowRows {};
+
+  auto copyRows = [&](arangodb::containers::HashSet<void*>& cache, auto type) {
+    constexpr bool checkShadowRows = std::is_same<decltype(type),WithShadowRows>::value;
     cache.reserve(_valueCount.size());
 
     for (size_t row = 0; row < numRows; row++) {
@@ -486,8 +483,8 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
         for (RegisterId col = 0; col < numRegs; col++) {
           AqlValue a = stealAndEraseValue(row, col);
           AqlValueGuard guard{a, true};
-          auto [it, inserted] = cache.emplace(a);
-          res->setValue(row, col, *it);
+          auto [it, inserted] = cache.emplace(a.data());
+          res->setValue(row, col, AqlValue(a.type(), a.data()));
           if (inserted) {
             // otherwise, destroy this; we used a cached value.
             guard.steal();
@@ -505,16 +502,16 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
     }
   };
 
+  arangodb::containers::HashSet<void*> cache;
+
   if (!hasShadowRows()) {
     // optimized version for when no shadow rows exist
     // use a faster cache type
-    AqlValueCache cache;
-    copyRows(cache);
+    copyRows(cache, WithShadowRows{});
   } else {
     // at least one shadow row exists. this is the slow path
     // use a slower cache type
-    std::unordered_set<AqlValue> cache;
-    copyRows(cache);
+    copyRows(cache, WithoutShadowRows{});
   }
   TRI_ASSERT(res->size() == numRows);
 
@@ -560,7 +557,7 @@ auto AqlItemBlock::slice(std::vector<std::pair<size_t, size_t>> const& ranges) c
     numRows += to - from;
   }
 
-  AqlValueCache cache;
+  arangodb::containers::HashSet<void*> cache;
   cache.reserve(numRows * _nrRegs / 4 + 1);
 
   SharedAqlItemBlockPtr res{_manager.requestBlock(numRows, _nrRegs)};
@@ -586,8 +583,7 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(size_t row,
                                           RegisterCount newNrRegs) const {
   TRI_ASSERT(_nrRegs <= newNrRegs);
 
-  AqlValueCache  cache;
-
+  arangodb::containers::HashSet<void*> cache;
   SharedAqlItemBlockPtr res{_manager.requestBlock(1, newNrRegs)};
   for (auto const& col : registers) {
     TRI_ASSERT(col < _nrRegs);
@@ -604,7 +600,7 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(std::vector<size_t> const& chosen,
                                           size_t from, size_t to) const {
   TRI_ASSERT(from < to && to <= chosen.size());
 
-  AqlValueCache cache;
+  arangodb::containers::HashSet<void*> cache;
   cache.reserve((to - from) * internalNrRegs() / 4 + 1);
 
   SharedAqlItemBlockPtr res{_manager.requestBlock(to - from, _nrRegs)};
@@ -946,7 +942,8 @@ void AqlItemBlock::setValue(size_t index, RegisterId varNr, AqlValue const& valu
 
   // First update the reference count, if this fails, the value is empty
   if (value.requiresDestruction()) {
-    auto& valueInfo = _valueCount[value];
+    // note: this may create a new entry in _valueCount, which is fine
+    auto& valueInfo = _valueCount[value.data()];
     if (++valueInfo.refCount == 1) {
       // we just inserted the item
       size_t memoryUsage = value.memoryUsage();
@@ -962,7 +959,7 @@ void AqlItemBlock::destroyValue(size_t index, RegisterId varNr) {
   auto& element = _data[getAddress(index, varNr)];
 
   if (element.requiresDestruction()) {
-    auto it = _valueCount.find(element);
+    auto it = _valueCount.find(element.data());
 
     if (it != _valueCount.end()) {
       auto& valueInfo = (*it).second;
@@ -982,7 +979,7 @@ void AqlItemBlock::eraseValue(size_t index, RegisterId varNr) {
   auto& element = _data[getAddress(index, varNr)];
 
   if (element.requiresDestruction()) {
-    auto it = _valueCount.find(element);
+    auto it = _valueCount.find(element.data());
 
     if (it != _valueCount.end()) {
       auto& valueInfo = (*it).second;
@@ -1025,8 +1022,8 @@ void AqlItemBlock::referenceValuesFromRow(size_t currentRow,
       // First update the reference count, if this fails, the value is empty
       AqlValue const& a = getValueReference(fromRow, reg);
       if (a.requiresDestruction()) {
-        TRI_ASSERT(_valueCount.find(a) != _valueCount.end());
-        ++_valueCount[a].refCount;
+        TRI_ASSERT(_valueCount.find(a.data()) != _valueCount.end());
+        ++_valueCount[a.data()].refCount;
       }
       _data[getAddress(currentRow, reg)] = a;
     }
@@ -1037,7 +1034,7 @@ void AqlItemBlock::referenceValuesFromRow(size_t currentRow,
 
 void AqlItemBlock::steal(AqlValue const& value) {
   if (value.requiresDestruction()) {
-    auto it = _valueCount.find(value);
+    auto it = _valueCount.find(value.data());
     if (it != _valueCount.end()) {
       decreaseMemoryUsage((*it).second.memoryUsage);
       _valueCount.erase(it);
