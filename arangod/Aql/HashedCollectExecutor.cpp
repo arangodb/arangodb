@@ -306,7 +306,7 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
       // So this block is responsible for every grouped tuple, until it
       // is handed over to the output block. There is no overlapping
       // of responsibilities of tuples.
-      _nextGroupValues.emplace_back(input.stealValue(reg.second).clone());
+      _nextGroupValues.emplace_back(input.getValue(reg.second).clone());
     }
   }
 
