@@ -25,6 +25,23 @@
 const internal = require("internal");
 const pregel = require("@arangodb/pregel");
 
+
+function test_bind_parameter_program(bindParameter, value) {
+  return {
+    resultField: "bindParameterTest",
+    accumulatorsDeclaration: {
+      distance: {
+        accumulatorType: "min",
+        valueType: "ints",
+        storeSender: true,
+      },
+    },
+    bindings: {"bind-test-name": "Hello, world" },
+    initProgram: ["seq", ["print", ["bind-ref", "bind-test-name"]]],
+    updateProgram: ["seq", ["print", "hallo"]]
+  };
+};
+
 /* Performs a single-source shortest path search (currently without path reconstruction)
    on all vertices in the graph starting from startVertex, using the cost stored
    in weightAttribute on each edge and storing the end result in resultField as an object
@@ -92,3 +109,4 @@ function single_source_shortest_path(
 
 exports.single_source_shortest_path_program = single_source_shortest_path_program;
 exports.single_source_shortest_path = single_source_shortest_path;
+exports.test_bind_parameter_program = test_bind_parameter_program;
