@@ -128,20 +128,20 @@ class RocksDBKeyBounds {
   /// specified non-unique index (skiplist and permanent)
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds VPackIndex(uint64_t indexId, VPackSlice const& left,
-                                     VPackSlice const& right);
+                                     VPackSlice const& right, bool isReverse);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all documents within a value range belonging to a
   /// specified unique index
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds UniqueVPackIndex(uint64_t indexId, VPackSlice const& left,
-                                           VPackSlice const& right);
+                                           VPackSlice const& right, bool isReverse);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all documents within a value range belonging to a
   /// specified unique index. this method is used for point lookups
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds UniqueVPackIndex(uint64_t indexId, VPackSlice const& left);
+  static RocksDBKeyBounds UniqueVPackIndex(uint64_t indexId, VPackSlice const& value);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all views belonging to a specified database
@@ -221,7 +221,7 @@ class RocksDBKeyBounds {
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, arangodb::velocypack::StringRef const& second);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, VPackSlice const& second);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
-                   VPackSlice const& second, VPackSlice const& third);
+                   VPackSlice const& second, VPackSlice const& third, bool isReverse);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, uint64_t second, uint64_t third);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t id, std::string const& lower,
                    std::string const& upper);

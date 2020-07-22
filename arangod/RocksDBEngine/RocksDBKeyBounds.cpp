@@ -97,14 +97,14 @@ RocksDBKeyBounds RocksDBKeyBounds::GeoIndex(uint64_t indexId, uint64_t minCell,
 }
 
 RocksDBKeyBounds RocksDBKeyBounds::VPackIndex(uint64_t indexId, VPackSlice const& left,
-                                              VPackSlice const& right) {
-  return RocksDBKeyBounds(RocksDBEntryType::VPackIndexValue, indexId, left, right);
+                                              VPackSlice const& right, bool isReverse) {
+  return RocksDBKeyBounds(RocksDBEntryType::VPackIndexValue, indexId, left, right, isReverse);
 }
 
 /// used for seeking lookups
 RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId, VPackSlice const& left,
-                                                    VPackSlice const& right) {
-  return RocksDBKeyBounds(RocksDBEntryType::UniqueVPackIndexValue, indexId, left, right);
+                                                    VPackSlice const& right, bool isReverse) {
+  return RocksDBKeyBounds(RocksDBEntryType::UniqueVPackIndexValue, indexId, left, right, isReverse);
 }
 
 RocksDBKeyBounds RocksDBKeyBounds::PrimaryIndex(uint64_t indexId, std::string const& left,
@@ -113,8 +113,8 @@ RocksDBKeyBounds RocksDBKeyBounds::PrimaryIndex(uint64_t indexId, std::string co
 }
 
 /// used for point lookups
-RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId, VPackSlice const& left) {
-  return RocksDBKeyBounds(RocksDBEntryType::UniqueVPackIndexValue, indexId, left);
+RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId, VPackSlice const& value) {
+  return RocksDBKeyBounds(RocksDBEntryType::UniqueVPackIndexValue, indexId, value);
 }
 
 RocksDBKeyBounds RocksDBKeyBounds::DatabaseViews(TRI_voc_tick_t databaseId) {
@@ -439,13 +439,10 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
     : _type(type) {
   switch (_type) {
     case RocksDBEntryType::UniqueVPackIndexValue: {
-      size_t startLength = sizeof(uint64_t) + static_cast<size_t>(second.byteSize());
-
-      _internals.reserve(startLength);
+      size_t const byteSize = static_cast<size_t>(second.byteSize());
+      _internals.reserve(sizeof(uint64_t) + byteSize);
       uint64ToPersistent(_internals.buffer(), first);
-      _internals.buffer().append(reinterpret_cast<char const*>(second.begin()),
-                                 static_cast<size_t>(second.byteSize()));
-
+      _internals.buffer().append(reinterpret_cast<char const*>(second.begin()), byteSize);
       _internals.separate();
       // second bound is intentionally left empty!
       break;
@@ -458,25 +455,47 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
 
 /// iterate over the specified bounds of the velocypack index
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
-                                   VPackSlice const& second, VPackSlice const& third)
+                                   VPackSlice const& second, VPackSlice const& third,
+                                   bool isReverse)
     : _type(type) {
   switch (_type) {
     case RocksDBEntryType::VPackIndexValue:
     case RocksDBEntryType::UniqueVPackIndexValue: {
-      size_t startLength = sizeof(uint64_t) + static_cast<size_t>(second.byteSize());
-      size_t endLength = 2 * sizeof(uint64_t) + static_cast<size_t>(third.byteSize());
+      uint64_t objectIdStart = first;
+      size_t byteSizeStart = 0;
+      if (isReverse && second.isArray() && second.length() == 1 && second.at(0).isMinKey() && objectIdStart > 0) {
+        // if we get here, the lower bound is the minimum value in the index.
+        // we can create a special bound only consisting of the index object id minus one.
+        objectIdStart--;
+      } else {
+        byteSizeStart = second.byteSize();
+        TRI_ASSERT(byteSizeStart > 0);
+      }
+      
+      uint64_t objectIdEnd = first;
+      size_t byteSizeEnd = 0;
+      if (!isReverse && third.isArray() && third.length() == 1 && third.at(0).isMaxKey() && objectIdEnd < UINT64_MAX) {
+        // if we get here, the upper bound is the maximum value in the index.
+        // we can create a special bound only consisting of the index object id plus one.
+        objectIdEnd++;
+      } else {
+        byteSizeEnd = static_cast<size_t>(third.byteSize());
+        TRI_ASSERT(byteSizeEnd > 0);
+      }
 
-      _internals.reserve(startLength + endLength);
-      uint64ToPersistent(_internals.buffer(), first);
-      _internals.buffer().append(reinterpret_cast<char const*>(second.begin()),
-                                 static_cast<size_t>(second.byteSize()));
+      _internals.reserve(2 * sizeof(uint64_t) + byteSizeStart + byteSizeEnd + (byteSizeEnd > 0 ? sizeof(uint64_t) : 0));
+      uint64ToPersistent(_internals.buffer(), objectIdStart);
+      // note: byteSizeStart may be 0 here, so nothing will be appended
+      _internals.buffer().append(reinterpret_cast<char const*>(second.begin()), byteSizeStart);
 
       _internals.separate();
 
-      uint64ToPersistent(_internals.buffer(), first);
-      _internals.buffer().append(reinterpret_cast<char const*>(third.begin()),
-                                 static_cast<size_t>(third.byteSize()));
-      uint64ToPersistent(_internals.buffer(), UINT64_MAX);
+      uint64ToPersistent(_internals.buffer(), objectIdEnd);
+      // note: byteSizeEnd may be 0 here, so nothing will be appended
+      _internals.buffer().append(reinterpret_cast<char const*>(third.begin()), byteSizeEnd);
+      if (byteSizeEnd > 0) {
+        uint64ToPersistent(_internals.buffer(), UINT64_MAX);
+      }
       break;
     }
 
