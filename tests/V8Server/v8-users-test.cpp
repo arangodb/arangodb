@@ -343,7 +343,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
                       ->CallAsFunction(context, arangoUsers,
                                        static_cast<int>(grantArgs.size()),
                                        grantArgs.data());
-    EXPECT_FALSE(result.IsEmpty());
+    ASSERT_FALSE(result.IsEmpty());
     EXPECT_TRUE(result.ToLocalChecked()->IsUndefined());
     EXPECT_FALSE(tryCatch.HasCaught());
     EXPECT_TRUE(
