@@ -71,8 +71,6 @@ class GeneralCommTask : public CommTask {
   std::unique_ptr<AsioSocket<T>> _protocol;
   
   std::atomic<bool> _stopped;
-  
-  bool _reading;
 };
 }  // namespace rest
 }  // namespace arangodb

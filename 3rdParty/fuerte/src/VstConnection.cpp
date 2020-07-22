@@ -177,6 +177,7 @@ void VstConnection<ST>::asyncWriteNextRequest() {
     this->_active.store(false);
     if (this->_queue.empty()) {
       FUERTE_LOG_VSTTRACE << "asyncWriteNextRequest (vst): write stopped\n";
+      FUERTE_ASSERT(!this->_writing);
       return;  // done, someone else may restart
     }
 
@@ -308,6 +309,8 @@ void VstConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
   if (_messages.empty() && !(this->_writing)) {
     FUERTE_LOG_VSTTRACE << "shouldStopReading: no more pending "
                            "messages/requests, stopping read\n";
+    FUERTE_ASSERT(!this->_reading);
+    setIOTimeout(); // may set idle timeout
     return;  // write-loop restarts read-loop if necessary
   }
 
@@ -445,14 +448,17 @@ void VstConnection<ST>::setIOTimeout() {
       
       me.abortExpiredRequests();
       
-      if (_messages.empty()) { // we still have messages left
-        setIOTimeout();
-      } else {
+      if (_messages.empty()) {
         me._proto.cancel();
         me._timeoutOnReadWrite = true;
         // We simply cancel all ongoing asynchronous operations, the completion
         // handlers will do the rest.
+        return;
       }
+      
+      // we still have messages left
+      setIOTimeout();
+      
     } else if (isIdle && !me._writing & !me._reading) {
       if (!me._active && me._state == Connection::State::Connected) {
         FUERTE_LOG_DEBUG << "HTTP-Request idle timeout"

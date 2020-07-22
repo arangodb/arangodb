@@ -35,12 +35,6 @@
 
 namespace arangodb { namespace fuerte {
 
-// Reason for timeout:
-enum class TimeoutType : uint8_t {
-  Idle = 0,
-  ReadWrite = 1
-};
-
 // GeneralConnection implements shared code between all protocol implementations
 template <SocketType ST, typename RT>
 class GeneralConnection : public fuerte::Connection {
@@ -134,7 +128,7 @@ class GeneralConnection : public fuerte::Connection {
                  asio_ns::error_code());
     } else {
       FUERTE_LOG_DEBUG << "startConnection: this=" << this << " found unexpected state "
-        << static_cast<int>(exp) << " not equal to 'Disconnected'";
+        << static_cast<int>(exp) << " not equal to 'Created'";
       FUERTE_ASSERT(false);
     }
   }

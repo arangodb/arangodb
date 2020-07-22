@@ -44,7 +44,7 @@ class Connection : public std::enable_shared_from_this<Connection> {
   ///  Connection state
   ///  Created
   ///  +
-  ///  |  +-------------------+--> Failed
+  ///  |  +-------------------+--> Closed
   ///  |  |                   |
   ///  v  +                +
   ///  Connecting +-----> Connected
