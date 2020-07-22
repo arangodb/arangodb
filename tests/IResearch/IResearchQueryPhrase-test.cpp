@@ -721,6 +721,15 @@ void testWildcard(TRI_vocbase_t& vocbase, const std::vector<arangodb::velocypack
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
+  // test invalid input for wildcard (object) via variable
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "LET phraseStruct = NOOPT({wildcard: {a: '1'}})"
+      "FOR d IN testView SEARCH PHRASE(d['value'], phraseStruct) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
   // test invalid input for wildcard (object) via []
   {
     auto result = arangodb::tests::executeQuery(
@@ -993,6 +1002,33 @@ void testWildcard(TRI_vocbase_t& vocbase, const std::vector<arangodb::velocypack
     EXPECT_EQ(i, expected.size());
   }
 
+  // test custom analyzer with wilDCard via [] via vriable
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[6].slice(), insertedDocs[10].slice(),
+      insertedDocs[16].slice(), insertedDocs[26].slice(),
+      insertedDocs[32].slice(), insertedDocs[36].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "LET phraseStruct = NOOPT([{wilDCard: '_'}, 'b', 'c', 'd'])"
+      "FOR d IN testView SEARCH PHRASE(d.duplicated, phraseStruct, "
+      "'test_analyzer') SORT d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    ASSERT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      ASSERT_TRUE(i < expected.size());
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+        resolved, true)));
+    }
+
+    EXPECT_EQ(i, expected.size());
+  }
+
   // test custom analyzer with wildcard (in an array)
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -1052,6 +1088,15 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase, const std::vector<arangodb::ve
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN testView SEARCH PHRASE(d['value'], {levenshtein_match: {a: '1'}}) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid input for levenshtein_match (no array object) via variable
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "LET phraseStruct = NOOPT({levenshtein_match: {a: '1'}})"
+      "FOR d IN testView SEARCH PHRASE(d['value'], phraseStruct) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
@@ -1617,6 +1662,33 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase, const std::vector<arangodb::ve
     EXPECT_EQ(i, expected.size());
   }
 
+  // test custom analyzer with levenshtein_match via [] via vaiable
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[6].slice(), insertedDocs[10].slice(),
+      insertedDocs[16].slice(), insertedDocs[26].slice(),
+      insertedDocs[32].slice(), insertedDocs[36].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "LET phraseStruct = NOOPT([{levenshtein_match: ['f', 1]}, 'b', 'c', 'd'])"
+      "FOR d IN testView SEARCH PHRASE(d.duplicated, phraseStruct, "
+      "'test_analyzer') SORT d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    ASSERT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      ASSERT_TRUE(i < expected.size());
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+        resolved, true)));
+    }
+
+    EXPECT_EQ(i, expected.size());
+  }
+
   // test custom analyzer with levenshtein_match via []
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -1871,6 +1943,33 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase, const std::vector<arangodb::ve
 
     EXPECT_EQ(i, expected.size());
   }
+
+  // test custom analyzer with levenshtein_match via [] (Damerau-Levenshtein) via variable
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[6].slice(), insertedDocs[10].slice(),
+      insertedDocs[16].slice(), insertedDocs[26].slice(),
+      insertedDocs[32].slice(), insertedDocs[36].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "LET phraseStruct = NOOPT({levenshtein_match: ['f', 1, true]})"
+      "FOR d IN testView SEARCH PHRASE(d.duplicated, [phraseStruct, 'b', 'c', 'd'], "
+      "'test_analyzer') SORT d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    ASSERT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      ASSERT_TRUE(i < expected.size());
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+        resolved, true)));
+    }
+
+    EXPECT_EQ(i, expected.size());
+  }
 }
 
 void testTerms(TRI_vocbase_t& vocbase, const std::vector<arangodb::velocypack::Builder>& insertedDocs) {
@@ -2015,6 +2114,15 @@ void testTerms(TRI_vocbase_t& vocbase, const std::vector<arangodb::velocypack::B
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN testView SEARCH PHRASE(d['value'], [{terms: [['1']]}]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid input for terms (wrong array) via [] via variable
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "LET phraseStruct = NOOPT([{terms: [['1']]}])"
+      "FOR d IN testView SEARCH PHRASE(d['value'], phraseStruct) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
@@ -2381,6 +2489,15 @@ void testTerms(TRI_vocbase_t& vocbase, const std::vector<arangodb::velocypack::B
 }
 
 void testInRange(TRI_vocbase_t& vocbase, const std::vector<arangodb::velocypack::Builder>& insertedDocs) {
+  // test invalid input for in_range (no array object) via variable
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "LET phraseStruct = NOOPT({in_range: {a: '1'}}) "
+      "FOR d IN testView SEARCH PHRASE(d['value'], phraseStruct) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
   // test invalid input for in_range (no array object)
   {
     auto result = arangodb::tests::executeQuery(
@@ -2405,11 +2522,30 @@ void testInRange(TRI_vocbase_t& vocbase, const std::vector<arangodb::velocypack:
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
+  // test invalid input for in_range (empty array) via variable
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "LET phraseStruct = NOOPT({in_range: []}) "
+      "FOR d IN testView SEARCH PHRASE(d['value'], phraseStruct) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+
   // test invalid input for in_range (empty array) via []
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN testView SEARCH PHRASE(d['value'], [{in_range: []}]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid input for in_range (no array wrong string) via variable
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "LET phraseStruct = NOOPT({in_range: '1'}) "
+      "FOR d IN testView SEARCH PHRASE(d['value'], phraseStruct) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
@@ -2429,6 +2565,15 @@ void testInRange(TRI_vocbase_t& vocbase, const std::vector<arangodb::velocypack:
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
+  // test invalid input for in_range (no array wrong integer) via variable
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "LET phraseStruct = NOOPT({in_range: 1}) "
+      "FOR d IN testView SEARCH PHRASE(d['value'], phraseStruct) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
   // test invalid input for in_range (no array wrong integer)
   {
     auto result = arangodb::tests::executeQuery(
@@ -2442,6 +2587,15 @@ void testInRange(TRI_vocbase_t& vocbase, const std::vector<arangodb::velocypack:
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN testView SEARCH PHRASE(d['value'], [{in_range: 1}]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid input for in_range (no array wrong number) via variable
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "LET phraseStruct = NOOPT({in_range: 1.2}) "
+      "FOR d IN testView SEARCH PHRASE(d['value'], phraseStruct) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
@@ -2461,6 +2615,15 @@ void testInRange(TRI_vocbase_t& vocbase, const std::vector<arangodb::velocypack:
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
+  // test invalid input for in_range (no array wrong bool) via variable
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "LET phraseStruct = NOOPT({in_range: true}) "
+      "FOR d IN testView SEARCH PHRASE(d['value'], phraseStruct) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
   // test invalid input for in_range (no array wrong bool)
   {
     auto result = arangodb::tests::executeQuery(
@@ -2477,6 +2640,15 @@ void testInRange(TRI_vocbase_t& vocbase, const std::vector<arangodb::velocypack:
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
+  // test invalid input for in_range (no array wrong null) via variable
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "LET phraseStruct = NOOPT({in_range: null}) "
+      "FOR d IN testView SEARCH PHRASE(d['value'], phraseStruct) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
   // test invalid input for in_range (no array wrong null)
   {
     auto result = arangodb::tests::executeQuery(
@@ -2490,6 +2662,15 @@ void testInRange(TRI_vocbase_t& vocbase, const std::vector<arangodb::velocypack:
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN testView SEARCH PHRASE(d['value'], [{in_range: null}]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid input for in_range (wrong object 1) via variable
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "LET phraseStruct = NOOPT({in_range: [{t: '1'}, '2', true, true]}) "
+      "FOR d IN testView SEARCH PHRASE(d['value'], phraseStruct) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
@@ -2517,11 +2698,29 @@ void testInRange(TRI_vocbase_t& vocbase, const std::vector<arangodb::velocypack:
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
+  // test invalid input for in_range (wrong array 1) via variable
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "LET phraseStruct = NOOPT([{in_range: [['1'], '2', true, true]}]) "
+      "FOR d IN testView SEARCH PHRASE(d['value'], phraseStruct) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
   // test invalid input for in_range (wrong array 1) via []
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN testView SEARCH PHRASE(d['value'], [{in_range: [['1'], '2', true, true]}]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid input for in_range (wrong integer 1)
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "LET phraseStruct = NOOPT({in_range: [1, '2', true, true]}) "
+      "FOR d IN testView SEARCH PHRASE(d['value'], phraseStruct) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
@@ -2605,6 +2804,16 @@ void testInRange(TRI_vocbase_t& vocbase, const std::vector<arangodb::velocypack:
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
+  // test invalid input for in_range (wrong array 2) via variable
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "LET phraseStruct = NOOPT({in_range: ['1', ['2'], true, true]}) "
+      "FOR d IN testView SEARCH PHRASE(d['value'], phraseStruct) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+
   // test invalid input for in_range (wrong array 2)
   {
     auto result = arangodb::tests::executeQuery(
@@ -2618,6 +2827,15 @@ void testInRange(TRI_vocbase_t& vocbase, const std::vector<arangodb::velocypack:
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN testView SEARCH PHRASE(d['value'], [{in_range: ['1', ['2'], true, true]}]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid input for in_range (wrong array 2) via [] and variable
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "LET phraseStruct = NOOPT({in_range: ['1', ['2'], true, true]}) "
+      "FOR d IN testView SEARCH PHRASE(d['value'], [phraseStruct]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
@@ -2701,6 +2919,15 @@ void testInRange(TRI_vocbase_t& vocbase, const std::vector<arangodb::velocypack:
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
+  // test invalid input for in_range (wrong array 3) via variable
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "LET phraseStruct = NOOPT({in_range: ['1', '2', [true], true]}) "
+      "FOR d IN testView SEARCH PHRASE(d['value'], phraseStruct) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
   // test invalid input for in_range (wrong array 3)
   {
     auto result = arangodb::tests::executeQuery(
@@ -2781,11 +3008,29 @@ void testInRange(TRI_vocbase_t& vocbase, const std::vector<arangodb::velocypack:
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
+  // test invalid input for in_range (wrong object 4) via variable
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "LET phraseStruct = NOOPT({in_range: ['1', '2', true, {t: true}]}) "
+      "FOR d IN testView SEARCH PHRASE(d['value'], phraseStruct) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
   // test invalid input for in_range (wrong object 4)
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN testView SEARCH PHRASE(d['value'], {in_range: ['1', '2', true, {t: true}]}) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid input for in_range (wrong object 4) via [] and variable
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "LET phraseStruct = NOOPT([{in_range: ['1', '2', true, {t: true}]}]) "
+      "FOR d IN testView SEARCH PHRASE(d['value'], phraseStruct) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
@@ -2941,6 +3186,15 @@ void testInRange(TRI_vocbase_t& vocbase, const std::vector<arangodb::velocypack:
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
+  // test invalid input for in_range (wrong same type object) via variable
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "LET phraseStruct = NOOPT({in_range: [{t: '1'}, {t: '2'}, true, true]})"
+      "FOR d IN testView SEARCH PHRASE(d['value'], phraseStruct) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
   // test invalid input for in_range (wrong same type object)
   {
     auto result = arangodb::tests::executeQuery(
@@ -3073,6 +3327,33 @@ void testInRange(TRI_vocbase_t& vocbase, const std::vector<arangodb::velocypack:
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN testView SEARCH PHRASE(d.duplicated, [{in_range: ['a', 'b', true, true]}, 'b', 'c', 'd'], "
+      "'test_analyzer') SORT d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    ASSERT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      ASSERT_TRUE(i < expected.size());
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+        resolved, true)));
+    }
+
+    EXPECT_EQ(i, expected.size());
+  }
+
+  // test custom analyzer with in_range (true, true) via variable
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[6].slice(), insertedDocs[10].slice(),
+      insertedDocs[16].slice(), insertedDocs[26].slice(),
+      insertedDocs[32].slice(), insertedDocs[36].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "LET phraseStruct = NOOPT({in_range: ['a', 'b', true, true]})"
+      "FOR d IN testView SEARCH PHRASE(d.duplicated, phraseStruct, 0, 'b', 0, 'c', 0, 'd', "
       "'test_analyzer') SORT d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -3230,6 +3511,33 @@ void testInRange(TRI_vocbase_t& vocbase, const std::vector<arangodb::velocypack:
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN testView SEARCH PHRASE(d.duplicated, [{in_range: ['!', 'b', false, true]}, 'b', 'c', 'd'], "
+      "'test_analyzer') SORT d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    ASSERT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      ASSERT_TRUE(i < expected.size());
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+        resolved, true)));
+    }
+
+    EXPECT_EQ(i, expected.size());
+  }
+
+  // test custom analyzer with in_range (true, false) via variable
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[6].slice(), insertedDocs[10].slice(),
+      insertedDocs[16].slice(), insertedDocs[26].slice(),
+      insertedDocs[32].slice(), insertedDocs[36].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "LET phraseStruct = NOOPT({in_range: ['a', 'b', true, false]})"
+      "FOR d IN testView SEARCH PHRASE(d.duplicated, phraseStruct, 0, 'b', 0, 'c', 0, 'd', "
       "'test_analyzer') SORT d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
