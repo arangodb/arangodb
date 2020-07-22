@@ -27,6 +27,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ResourceUsage.h"
 
+#include <limits>
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
@@ -75,6 +76,40 @@ class AqlItemBlock {
 
   SerializationFormat getFormatType() const;
 
+  /// @brief auxiliary struct to track how often the same AqlValue is
+  /// present in an AqlItemBlock, and how much dynamic memory on instance
+  /// of the item uses
+  struct ValueInfo {
+    ValueInfo() noexcept 
+        : refCount(0), memoryUsage(0) {}
+    ValueInfo(ValueInfo&& other) noexcept = default;
+    ValueInfo& operator=(ValueInfo&& other) noexcept = default;
+
+    /// @brief set the memory usage for the item, expects refCount to be 
+    /// exactly 1
+    void setMemoryUsage(size_t value) noexcept {
+      TRI_ASSERT(value > 0);
+      TRI_ASSERT(refCount == 1);
+      TRI_ASSERT(memoryUsage == 0);
+      // In theory, there can be items consuming more than 4 GB here.
+      // This case will be very rare and likely will cause a lot of other 
+      // issues upfront. If we get such huge value, we count it as using
+      // 4 GB of memory and ignore the rest.
+      if (ADB_UNLIKELY(value > std::numeric_limits<uint32_t>::max())) {
+        memoryUsage = std::numeric_limits<uint32_t>::max();
+      } else {
+        memoryUsage = static_cast<uint32_t>(value);
+      }
+    }
+
+    /// @brief how many occurrences of the item are in use in this
+    /// AqlItemBlock? it is expected to be 1 or more. the caller that sets
+    /// the ref count to 0 is expected to remove the item from the
+    /// _valueCount map completely
+    uint32_t refCount;
+    uint32_t memoryUsage;
+  };
+
  protected:
   /// @brief destroy the block
   /// Should only ever be deleted by AqlItemManager::returnBlock, so the
@@ -118,18 +153,21 @@ class AqlItemBlock {
       throw;
     }
 
-    try {
-      // Now update the reference count, if this fails, we'll roll it back
-      if (value->requiresDestruction()) {
-        if (++_valueCount[*value] == 1) {
-          increaseMemoryUsage(value->memoryUsage());
+    // Now update the reference count, if this fails, we'll roll it back
+    if (value->requiresDestruction()) {
+      try {
+        auto& valueInfo = _valueCount[*value];
+        if (++valueInfo.refCount == 1) {
+          size_t memoryUsage = value->memoryUsage();
+          increaseMemoryUsage(memoryUsage);
+          valueInfo.setMemoryUsage(memoryUsage);
         }
+      } catch (...) {
+        // invoke dtor
+        value->~AqlValue();
+        _data[address].destroy();
+        throw;
       }
-    } catch (...) {
-      // invoke dtor
-      value->~AqlValue();
-      _data[address].destroy();
-      throw;
     }
   }
 
@@ -320,7 +358,7 @@ class AqlItemBlock {
   /// setValue above puts values in the map and increases the count if they
   /// are already there, eraseValue decreases the count. One can ask the
   /// count with valueCount.
-  std::unordered_map<AqlValue, uint32_t> _valueCount;
+  std::unordered_map<AqlValue, ValueInfo, AqlValue::SimpleHash, AqlValue::SimpleEqual> _valueCount;
 
   /// @brief _nrItems, number of rows
   size_t _nrItems = 0;

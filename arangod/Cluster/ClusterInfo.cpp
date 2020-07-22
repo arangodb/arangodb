@@ -5217,7 +5217,7 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId,
     auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
     auto [res, index] = agencyCache.get("Supervision/State/Mode");
 
-    if(!res->slice().isString()) {
+    if (!res->slice().isString()) {
       LOG_TOPIC("6ae46", WARN, Logger::BACKUP)
           << "Invalid JSON from agency when deactivating supervision mode for "
              "backup "

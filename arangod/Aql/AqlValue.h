@@ -124,6 +124,47 @@ struct AqlValue final {
   friend struct std::equal_to<arangodb::aql::AqlValue>;
 
  public:
+  /// @brief auxiliary struct to quickly compute hashes of the underlying
+  /// AqlValue. It just hashes the stored pointer, and nothing else (not
+  /// even the type - the idea is that two AqlValues with different types
+  /// will not manage memory via the same pointer). 
+  /// note: only works reliably if the underlying AqlValue has a type other
+  /// than VPACK_INLINE!!! This is the case for AqlValues inserted into the
+  /// _valueCount map of an AqlItemBlock, for example. Here, only AqlValues
+  /// with dynamic memory allocations are inserted, thus the assumption 
+  /// holds true
+  struct SimpleHash {
+    SimpleHash() : _hasher() {}
+
+    inline size_t operator()(AqlValue const& value) const noexcept {
+      TRI_ASSERT(value.type() != VPACK_INLINE);
+      /// hash only the pointer. should be very quick
+      return _hasher(value._data.words[0]);
+    }
+
+   private:
+    std::hash<uint64_t> _hasher;
+  };
+
+  /// @brief auxiliary struct to quickly compare the equality of two
+  /// AqlValues. It just compares the stored pointers, and nothing else (not
+  /// even the type - the idea is that two AqlValues with different types
+  /// will not manage memory via the same pointer). 
+  /// note: only works reliably if the underlying AqlValues have a type other
+  /// than VPACK_INLINE!!! This is the case for AqlValues inserted into the
+  /// _valueCount map of an AqlItemBlock, for example. Here, only AqlValues
+  /// with dynamic memory allocations are inserted, thus the assumption 
+  /// holds true
+  struct SimpleEqual {
+    inline bool operator()(arangodb::aql::AqlValue const& lhs,
+                           arangodb::aql::AqlValue const& rhs) const noexcept {
+      TRI_ASSERT(lhs.type() != VPACK_INLINE && rhs.type() != VPACK_INLINE);
+      /// compare only the pointers. should be very quick
+      return lhs._data.words[0] == rhs._data.words[0];
+    }
+  };
+
+ public:
   /// @brief AqlValueType, indicates what sort of value we have
   enum AqlValueType : uint8_t {
     VPACK_INLINE = 0,      // contains vpack data, inline
@@ -321,12 +362,6 @@ struct AqlValue final {
   /// @brief return the range value
   Range const* range() const;
 
-  /// @brief return the total size of the docvecs
-  size_t docvecSize() const;
-
-  /// @brief return the size of the docvec array
-  size_t sizeofDocvec() const;
-
   AqlItemBlock* docvecAt(size_t position) const;
 
   /// @brief construct a V8 value as input for the expression execution in V8
@@ -378,6 +413,9 @@ struct AqlValue final {
 
   template <bool isManagedDoc>
   void setPointer(uint8_t const* pointer) noexcept;
+  
+  /// @brief return the total size of the docvecs
+  size_t docvecLength() const;
 };
 
 // Check that the defaulted constructors, destructor and assignment
