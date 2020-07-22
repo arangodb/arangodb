@@ -39,8 +39,8 @@ constexpr const char accumulatorType_store[] = "store";
 constexpr const char accumulatorType_list[] = "list";
 
 using accumulator_type_deserializer = enum_deserializer<AccumulatorType,
-    enum_member<AccumulatorType::MIN, values::string_value<accumulatorType_max>>,
-    enum_member<AccumulatorType::MAX, values::string_value<accumulatorType_min>>,
+    enum_member<AccumulatorType::MIN, values::string_value<accumulatorType_min>>,
+    enum_member<AccumulatorType::MAX, values::string_value<accumulatorType_max>>,
     enum_member<AccumulatorType::SUM, values::string_value<accumulatorType_sum>>,
     enum_member<AccumulatorType::AND, values::string_value<accumulatorType_and>>,
     enum_member<AccumulatorType::OR, values::string_value<accumulatorType_or>>,
