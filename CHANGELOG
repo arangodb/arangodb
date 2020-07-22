@@ -1,8 +1,17 @@
 v3.6.6 (XXXX-XX-XX)
 -------------------
 
-
-
+* Fixed undefined behaviour in AQL COLLECT with multiple group variables.
+  If you are grouping on "large" values that occur multiple times in different
+  groups, and two different groups with the same large value are written
+  to different batches in the output then the memory could be invalid.
+  e.g. the following query is affected:
+  ```
+  FOR d IN documents
+  FOR batchSizeFiller IN 1..1001
+  COLLECT largeVal = d.largeValue, t = batchSizeFiller
+  RETURN 1
+  ```
 
 v3.6.5 (2020-07-15)
 -------------------
