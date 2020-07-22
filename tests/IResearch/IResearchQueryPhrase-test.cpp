@@ -2139,6 +2139,32 @@ void testTerms(TRI_vocbase_t& vocbase, const std::vector<arangodb::velocypack::B
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
+      "FOR d IN testView SEARCH PHRASE(d.duplicated, {terms: ['a']}, 0, 'b', 0, 'c', 0, 'd', "
+      "'test_analyzer') SORT d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    ASSERT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      ASSERT_TRUE(i < expected.size());
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+        resolved, true)));
+    }
+
+    EXPECT_EQ(i, expected.size());
+  }
+
+  // test custom analyzer with terms
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[6].slice(), insertedDocs[10].slice(),
+      insertedDocs[16].slice(), insertedDocs[26].slice(),
+      insertedDocs[32].slice(), insertedDocs[36].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
       "FOR d IN testView SEARCH PHRASE(d.duplicated, {terms: ['a', 'b']}, 0, 'b', 0, 'c', 0, 'd', "
       "'test_analyzer') SORT d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
@@ -2296,6 +2322,61 @@ void testTerms(TRI_vocbase_t& vocbase, const std::vector<arangodb::velocypack::B
     auto slice = result.data->slice();
     ASSERT_TRUE(slice.isArray());
     ASSERT_TRUE(slice.isEmptyArray());
+  }
+
+  // test parameters via reference in TERMS object
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[7].slice(),  insertedDocs[8].slice(),
+      insertedDocs[13].slice(), insertedDocs[19].slice(),
+      insertedDocs[22].slice(), insertedDocs[24].slice(),
+      insertedDocs[29].slice(),
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "LET phraseStruct = NOOPT(['v','c']) FOR d IN testView "
+      "SEARCH ANALYZER(PHRASE(d['duplicated'], [{ TERMS: phraseStruct}, 2, 'c']), 'test_analyzer') "
+      "SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    ASSERT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      ASSERT_TRUE(i < expected.size());
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+        resolved, true)));
+    }
+
+    EXPECT_EQ(i, expected.size());
+  }
+  // test parameters via reference full object
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[7].slice(),  insertedDocs[8].slice(),
+      insertedDocs[13].slice(), insertedDocs[19].slice(),
+      insertedDocs[22].slice(), insertedDocs[24].slice(),
+      insertedDocs[29].slice(),
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "LET phraseStruct = NOOPT([{ TERMS: ['v', ';']}, 2, { TERMS: ['c', ';']}]) FOR d IN testView "
+      "SEARCH ANALYZER(PHRASE(d['duplicated'], phraseStruct), 'test_analyzer') "
+      "SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    ASSERT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      ASSERT_TRUE(i < expected.size());
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+        resolved, true)));
+    }
+
+    EXPECT_EQ(i, expected.size());
   }
 }
 
@@ -3926,63 +4007,6 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
 
     EXPECT_EQ(i, expected.size());
   }
-  // test parameters via reference in TERMS object
-  // FIXME: move to TERMS tests
-  //{
-  //  std::vector<arangodb::velocypack::Slice> expected = {
-  //    insertedDocs[7].slice(),  insertedDocs[8].slice(),
-  //    insertedDocs[13].slice(), insertedDocs[19].slice(),
-  //    insertedDocs[22].slice(), insertedDocs[24].slice(),
-  //    insertedDocs[29].slice(),
-  //  };
-  //  auto result = arangodb::tests::executeQuery(
-  //    vocbase,
-  //    "LET phraseStruct = NOOPT(['v','c']) FOR d IN testView "
-  //    "SEARCH ANALYZER(PHRASE(d['duplicated'], [{ TERMS: phraseStruct}, 2, 'c']), 'test_analyzer') "
-  //    "SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-  //  std::cerr << result.errorMessage();
-  //  ASSERT_TRUE(result.result.ok());
-  //  auto slice = result.data->slice();
-  //  ASSERT_TRUE(slice.isArray());
-  //  size_t i = 0;
-
-  //  for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-  //    auto const resolved = itr.value().resolveExternals();
-  //    ASSERT_TRUE(i < expected.size());
-  //    EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-  //      resolved, true)));
-  //  }
-
-  //  EXPECT_EQ(i, expected.size());
-  //}
-  //// test parameters via reference full object
-  //// FIXME: move to TERMS tests
-  //{
-  //  std::vector<arangodb::velocypack::Slice> expected = {
-  //    insertedDocs[7].slice(),  insertedDocs[8].slice(),
-  //    insertedDocs[13].slice(), insertedDocs[19].slice(),
-  //    insertedDocs[22].slice(), insertedDocs[24].slice(),
-  //    insertedDocs[29].slice(),
-  //  };
-  //  auto result = arangodb::tests::executeQuery(
-  //    vocbase,
-  //    "LET phraseStruct = NOOPT([{ TERMS: ['v', ';']}, 2, { TERMS: ['c', ';']}]) FOR d IN testView "
-  //    "SEARCH ANALYZER(PHRASE(d['duplicated'], phraseStruct), 'test_analyzer') "
-  //    "SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-  //  ASSERT_TRUE(result.result.ok());
-  //  auto slice = result.data->slice();
-  //  ASSERT_TRUE(slice.isArray());
-  //  size_t i = 0;
-
-  //  for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-  //    auto const resolved = itr.value().resolveExternals();
-  //    ASSERT_TRUE(i < expected.size());
-  //    EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-  //      resolved, true)));
-  //  }
-
-  //  EXPECT_EQ(i, expected.size());
-  //}
 
   // test custom analyzer with offsets via []
   {

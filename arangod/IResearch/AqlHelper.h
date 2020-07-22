@@ -265,6 +265,18 @@ class ScopedAqlValue : private irs::util::noncopyable {
     rhs._executed = true;
   }
 
+  ScopedAqlValue& operator=(ScopedAqlValue&& rhs) noexcept {
+    std::swap(_value, rhs._value);
+    std::swap(_node, rhs._node);
+    std::swap(_type, rhs._type);
+    std::swap(_executed, rhs._executed);
+    //rhs._node = &INVALID_NODE;
+    //rhs._type = SCOPED_VALUE_TYPE_INVALID;
+    //rhs._destroy = false;
+    //rhs._executed = true;
+    return *this;
+  }
+
   void reset(aql::AstNode const& node = INVALID_NODE) noexcept {
     _node = &node;
     _type = AqlValueTraits::type(node);
@@ -276,7 +288,8 @@ class ScopedAqlValue : private irs::util::noncopyable {
   // FIXME: Remove this kludge!
   aql::AstNode const* getNode() const noexcept { return _node; }
 
-  bool isConstant() const noexcept { return _node->isConstant(); }
+  bool isConstant() const { return _node->isConstant(); }
+  bool isDeterministic() const { return _node->isDeterministic(); }
   bool isObject() const noexcept { return _type == SCOPED_VALUE_TYPE_OBJECT; }
   bool isArray() const noexcept { return _type == SCOPED_VALUE_TYPE_ARRAY; }
   bool isInvalid() const noexcept { return _type == SCOPED_VALUE_TYPE_INVALID; }
