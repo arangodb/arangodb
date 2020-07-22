@@ -283,9 +283,7 @@ arangodb::Result modifyLinks( // modify links
     //        arangodb::Index::Compare(...)
     //        hence must use 'isCreation=true' for normalize(...) to match
     auto res = arangodb::iresearch::IResearchLinkHelper::normalize( // normalize to validate analyzer definitions
-        normalized, link, true, view.vocbase(), &view.primarySort(),
-        &view.primarySortCompression(), &view.storedValues(),
-        link.get(arangodb::StaticStrings::IndexId)
+      normalized, link, true, view.vocbase(), &view.primarySort(), &view.storedValues(), link.get(arangodb::StaticStrings::IndexId)
     );
 
     if (!res.ok()) {
@@ -398,6 +396,7 @@ arangodb::Result modifyLinks( // modify links
       // remove modification state if removal of non-existant link
       if (!state._link  // links currently does not exist
           && state._linkDefinitionsOffset >= linkDefinitions.size()) {  // link removal request
+
         LOG_TOPIC("c7111", TRACE, arangodb::iresearch::TOPIC)
             << "found link for collection '" << state._collection->name()
             << "' - slated for removal";
@@ -668,7 +667,6 @@ namespace iresearch {
     bool isCreation, // definition for index creation
     TRI_vocbase_t const& vocbase, // index vocbase
     IResearchViewSort const* primarySort, /* = nullptr */
-    irs::type_info::type_id const* primarySortCompression /*= nullptr*/,
     IResearchViewStoredValues const* storedValues, /* = nullptr */
     arangodb::velocypack::Slice idSlice /* = arangodb::velocypack::Slice()*/ // id for normalized
 ) {
@@ -735,10 +733,6 @@ namespace iresearch {
   if (primarySort) {
     // normalize sort if specified
     meta._sort = *primarySort;
-  }
-
-  if (primarySortCompression) {
-    meta._sortCompression = *primarySortCompression;
   }
 
   if (storedValues) {
@@ -824,7 +818,7 @@ namespace iresearch {
         for (const auto& analyzer : meta._analyzerDefinitions) {
           TRI_ASSERT(analyzer); // should be checked in meta init
           if (ADB_UNLIKELY(!analyzer)) {
-            continue;
+            continue; 
           }
           auto* pool = analyzer.get();
           auto analyzerVocbase = IResearchAnalyzerFeature::extractVocbaseName(pool->name());

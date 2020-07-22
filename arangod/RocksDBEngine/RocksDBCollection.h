@@ -140,7 +140,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
  protected:
   Result remove(transaction::Methods& trx, LocalDocumentId documentId,
-                LocalDocumentId expectedId, ManagedDocumentResult& previous,
+                RevisionId expectedRev, ManagedDocumentResult& previous,
                 OperationOptions& options);
 
  private:

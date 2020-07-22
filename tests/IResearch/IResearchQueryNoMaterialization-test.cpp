@@ -93,8 +93,9 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
     // create view
     std::shared_ptr<arangodb::iresearch::IResearchView> view;
     {
-      auto createJson = VPackParser::fromJson(std::string("{") + "\"name\": \"" + viewName +
-                                              "\", \
+      auto createJson = VPackParser::fromJson(
+          std::string("{") +
+          "\"name\": \"" + viewName + "\", \
            \"type\": \"arangosearch\", \
            \"primarySort\": [{\"field\": \"value\", \"direction\": \"asc\"}, {\"field\": \"foo\", \"direction\": \"desc\"}], \
            \"storedValues\": [{\"fields\":[\"str\"], \"compression\":\"none\"}, [\"value\"], [\"_id\"], [\"str\", \"value\"], [\"exist\"]] \
@@ -497,7 +498,7 @@ TEST_F(IResearchQueryNoMaterializationTest, testStoredValuesRecordWithCompressio
   ASSERT_TRUE(logicalCollection);
   size_t const columnsCount = 6; // PK + storedValues
   auto viewJson = arangodb::velocypack::Parser::fromJson(
-      "{ \
+    "{ \
         \"id\": 42, \
         \"name\": \"testView\", \
         \"type\": \"arangosearch\", \

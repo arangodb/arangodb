@@ -116,7 +116,7 @@ bool IResearchViewStoredValues::buildStoredColumnFromSlice(
             newField = false;
             break;
           }
-        } else {  // f.second.size() > fieldSize
+        } else { // f.second.size() > fieldSize
           if (isPrefix(field, f.second)) {
             // take shortest path field (obj.a is better than obj.a.sub_a)
             columnLength += fieldName.size() - f.second.size();

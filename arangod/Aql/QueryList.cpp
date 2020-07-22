@@ -145,7 +145,7 @@ void QueryList::remove(Query* query) {
   if (!_trackSlowQueries.load(std::memory_order_relaxed) || query->killed()) {
     return;
   }
-
+  
   bool const isStreaming = query->queryOptions().stream;
   double threshold = (isStreaming ? _slowStreamingQueryThreshold : _slowQueryThreshold);
 
@@ -190,8 +190,8 @@ void QueryList::remove(Query* query) {
                                          : QueryExecutionState::ValueType::FINISHED,
                          isStreaming);
 
-      // _slow is an std::list, but since c++11 the size() method of all
-      // standard containers is O(1), so this is ok
+      // _slow is an std::list, but since c++11 the size() method of all standard
+      // containers is O(1), so this is ok
       if (_slow.size() > _maxSlowQueries) {
         // free first element
         _slow.pop_front();

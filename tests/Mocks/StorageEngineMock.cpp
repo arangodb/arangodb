@@ -1171,7 +1171,7 @@ arangodb::Result PhysicalCollectionMock::lookupKey(
   if (it != _documents.end()) {
     if (_documents.find(arangodb::velocypack::StringRef{key}) != _documents.end()) {
       result.first = it->second.docId();
-      result.second = arangodb::RevisionId{result.first};
+      result.second = arangodb::RevisionId::fromSlice(it->second.data());
       return arangodb::Result();
     }
   }

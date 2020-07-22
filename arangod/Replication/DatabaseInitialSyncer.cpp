@@ -1491,8 +1491,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
         }
         auto& currentRange = ranges[chunk];
         if (!local.hasMore() ||
-            local.revision() < static_cast<RevisionId>(currentRange.first)) {
-          local.seek(std::max(iterResume, static_cast<RevisionId>(currentRange.first)));
+            local.revision() < RevisionId{currentRange.first}) {
+          local.seek(std::max(iterResume, RevisionId{currentRange.first}));
         }
 
         RevisionId removalBound = masterSlice.isEmptyArray()

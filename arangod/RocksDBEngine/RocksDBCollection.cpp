@@ -386,7 +386,7 @@ arangodb::RevisionId getRevisionFromOldDocumentId(rocksdb::DB& db,
       db.Get(rocksdb::ReadOptions(), arangodb::RocksDBColumnFamily::documents(),
              key.string(), &ps);
   if (!s.ok()) {
-    return arangodb::RevisionId{0};
+    return arangodb::RevisionId::none();
   }
 
   arangodb::velocypack::Slice doc = arangodb::RocksDBValue::data(ps);
@@ -1196,7 +1196,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
     }
 
     bool hasPerformedIntermediateCommit = false;
-    res = state->addOperation(_logicalCollection.id(), RevisionId{docId},
+    res = state->addOperation(_logicalCollection.id(), newRevisionId(),
                               TRI_VOC_DOCUMENT_OPERATION_REMOVE,
                               hasPerformedIntermediateCommit);
 
@@ -1661,7 +1661,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
 }
 
 Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
-                                 LocalDocumentId expectedId, ManagedDocumentResult& previousMdr,
+                                 RevisionId expectedRev, ManagedDocumentResult& previousMdr,
                                  OperationOptions& options) {
   if (!documentId.isSet()) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -1681,8 +1681,8 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
   TRI_ASSERT(previousMdr.revisionId().isSet());
 
   // Check old revision:
-  if (!options.ignoreRevs && expectedId.isSet()) {
-    res = checkRevision(&trx, RevisionId{expectedId}, previousMdr.revisionId());
+  if (!options.ignoreRevs && expectedRev.isSet()) {
+    res = checkRevision(&trx, expectedRev, previousMdr.revisionId());
     if (res.fail()) {
       return res;
     }
@@ -1911,7 +1911,7 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
 
   if (res.ok()) {
     RocksDBTransactionState::toState(trx)->trackInsert(_logicalCollection.id(),
-                                                       RevisionId{documentId});
+                                                       RevisionId::fromSlice(doc));
   }
 
   return res;
@@ -1967,7 +1967,7 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
 
   if (res.ok()) {
     RocksDBTransactionState::toState(trx)->trackRemove(_logicalCollection.id(),
-                                                       RevisionId{documentId});
+                                                       RevisionId::fromSlice(doc));
   }
 
   return res;
@@ -2036,9 +2036,9 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
 
   if (res.ok()) {
     RocksDBTransactionState::toState(trx)->trackRemove(_logicalCollection.id(),
-                                                       RevisionId{oldDocumentId});
+                                                       RevisionId::fromSlice(oldDoc));
     RocksDBTransactionState::toState(trx)->trackInsert(_logicalCollection.id(),
-                                                       RevisionId{newDocumentId});
+                                                       RevisionId::fromSlice(newDoc));
   }
 
   return res;

@@ -187,15 +187,16 @@ Result IResearchViewCoordinator::appendVelocyPackImpl(
     [](irs::string_ref const&) -> bool { return true; };
 
   static const std::function<bool(irs::string_ref const&)> linkPropertiesAcceptor =
-      [](irs::string_ref const& key) -> bool {
-    return key != iresearch::StaticStrings::AnalyzerDefinitionsField &&
-           key != iresearch::StaticStrings::PrimarySortField &&
-           key != iresearch::StaticStrings::StoredValuesField;
+    [](irs::string_ref const& key) -> bool {
+      return key != iresearch::StaticStrings::AnalyzerDefinitionsField
+          && key != iresearch::StaticStrings::PrimarySortField
+          && key != iresearch::StaticStrings::StoredValuesField;
   };
 
   auto* acceptor = &propertiesAcceptor;
 
-  if (context == Serialization::Persistence || context == Serialization::PersistenceWithInProgress) {
+  if (context == Serialization::Persistence ||
+      context == Serialization::PersistenceWithInProgress) {
     auto res = arangodb::LogicalViewHelperClusterInfo::properties(builder, *this);
 
     if (!res.ok()) {

@@ -34,7 +34,6 @@
 #include "Aql/types.h"
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Indexes/IndexIterator.h"
-#include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -144,7 +143,7 @@ struct DocumentProducingFunctionContext {
   arangodb::velocypack::Builder _objectBuilder;
 
   /// @brief set of already returned documents. Used to make the result distinct
-  std::unordered_set<RevisionId> _alreadyReturned;
+  std::unordered_set<LocalDocumentId> _alreadyReturned;
 
   RegisterId const _outputRegister;
   bool const _produceResult;

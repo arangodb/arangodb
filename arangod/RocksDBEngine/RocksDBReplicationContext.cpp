@@ -464,7 +464,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
           << "an offet of " << adjustment << " will be applied";
       auto* rcoll = static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
       auto seq = rocksutils::latestSequenceNumber();
-      rcoll->meta().adjustNumberDocuments(seq, static_cast<RevisionId>(0), adjustment);
+      rcoll->meta().adjustNumberDocuments(seq, RevisionId::none(), adjustment);
     }
   }
 

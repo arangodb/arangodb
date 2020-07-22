@@ -29,7 +29,6 @@
 #include "Basics/Result.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
-#include <utils/type_id.hpp>
 
 namespace arangodb {
 namespace application_features {
@@ -100,7 +99,6 @@ struct IResearchLinkHelper {
     bool isCreation, // definition for index creation
     TRI_vocbase_t const& vocbase, // index vocbase
     IResearchViewSort const* primarySort = nullptr,
-    irs::type_info::type_id const* primarySortCompression = nullptr,
     IResearchViewStoredValues const* storedValues = nullptr,
     arangodb::velocypack::Slice idSlice = arangodb::velocypack::Slice() // id for normalized
   );

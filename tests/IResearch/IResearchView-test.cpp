@@ -7377,14 +7377,13 @@ TEST_F(IResearchViewTest, create_view_with_stored_value) {
   // default
   {
     auto json = arangodb::velocypack::Parser::fromJson(
-        "{ "
-        "  \"name\": \"testView\", "
-        "  \"type\": \"arangosearch\", "
-        "  \"storedValues\": [ "
-        "    [\"obj.a\"], [\"obj.b.b1\"], [\"\"], [], [\"\"], "
-        "    [\"obj.c\", \"\", \"obj.d\"], [\"obj.e\", \"obj.f.f1\", "
-        "\"obj.g\"] ] "
-        "} ");
+          "{ "
+          "  \"name\": \"testView\", "
+          "  \"type\": \"arangosearch\", "
+          "  \"storedValues\": [ "
+          "    [\"obj.a\"], [\"obj.b.b1\"], [\"\"], [], [\"\"], "
+          "    [\"obj.c\", \"\", \"obj.d\"], [\"obj.e\", \"obj.f.f1\", \"obj.g\"] ] "
+          "} ");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     EXPECT_TRUE((arangodb::iresearch::IResearchView::factory().create(view, vocbase, json->slice()).ok()));
@@ -7422,14 +7421,13 @@ TEST_F(IResearchViewTest, create_view_with_stored_value) {
   // repeated fields and columns
   {
     auto json = arangodb::velocypack::Parser::fromJson(
-        "{ "
-        "  \"name\": \"testView\", "
-        "  \"type\": \"arangosearch\", "
-        "  \"storedValues\": [ "
-        "    [\"obj.a\"], [\"obj.a\"], [\"obj.b\"], [\"obj.c\"], [\"obj.d\"], "
-        "    [\"obj.d\"], [\"obj.c.c1\", \"obj.c\", \"obj.c\", \"obj.d\", "
-        "\"obj.c.c2\"], [\"obj.b\", \"obj.b\"] ] "
-        "} ");
+          "{ "
+          "  \"name\": \"testView\", "
+          "  \"type\": \"arangosearch\", "
+          "  \"storedValues\": [ "
+          "    [\"obj.a\"], [\"obj.a\"], [\"obj.b\"], [\"obj.c\"], [\"obj.d\"], "
+          "    [\"obj.d\"], [\"obj.c.c1\", \"obj.c\", \"obj.c\", \"obj.d\", \"obj.c.c2\"], [\"obj.b\", \"obj.b\"] ] "
+          "} ");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     EXPECT_TRUE((arangodb::iresearch::IResearchView::factory().create(view, vocbase, json->slice()).ok()));
@@ -7467,21 +7465,17 @@ TEST_F(IResearchViewTest, create_view_with_stored_value) {
 }
 
 TEST_F(IResearchViewTest, create_view_with_stored_value_with_compression) {
-  auto json = arangodb::velocypack::Parser::fromJson(
+    auto json = arangodb::velocypack::Parser::fromJson(
       "{ "
       "  \"name\": \"testView\", "
       "  \"type\": \"arangosearch\", "
       "  \"storedValues\": [ "
-      "    {\"fields\":[\"obj.a\"], \"compression\":\"none\"} , "
-      "{\"fields\":[\"obj.b.b1\"], \"compression\":\"lz4\"} ] "
+      "    {\"fields\":[\"obj.a\"], \"compression\":\"none\"} , {\"fields\":[\"obj.b.b1\"], \"compression\":\"lz4\"} ] "
       "} ");
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
-  arangodb::LogicalView::ptr view;
-  EXPECT_TRUE((arangodb::iresearch::IResearchView::factory()
-                   .create(view, vocbase, json->slice())
-                   .ok()));
-  EXPECT_FALSE(!view);
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    arangodb::LogicalView::ptr view;
+    EXPECT_TRUE((arangodb::iresearch::IResearchView::factory().create(view, vocbase, json->slice()).ok()));
+    EXPECT_FALSE(!view);
 
     arangodb::velocypack::Builder builder;
     builder.openObject();

@@ -3145,8 +3145,8 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
       }
       RevisionId left = RevisionId::fromSlice(first);
       RevisionId right = RevisionId::fromSlice(second);
-      if (left == std::numeric_limits<RevisionId>::max() ||
-          right == std::numeric_limits<RevisionId>::max() || left >= right ||
+      if (left == RevisionId::max() ||
+          right == RevisionId::max() || left >= right ||
           left < previousRight) {
         badFormat = true;
         break;
@@ -3272,8 +3272,8 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
         badFormat = true;
         break;
       }
-      std::uint64_t entryNum = basics::HybridLogicalClock::decodeTimeStamp(entry);
-      if (entryNum == std::numeric_limits<std::uint64_t>::max()) {
+      RevisionId rev = RevisionId::fromSlice(entry);
+      if (rev == RevisionId::max()) {
         badFormat = true;
         break;
       }

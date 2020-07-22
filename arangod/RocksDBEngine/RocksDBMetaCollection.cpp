@@ -493,7 +493,7 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
     }
     auto* state = RocksDBTransactionState::toState(&trx);
 
-    std::vector<RevisionId::BaseType> revisions;
+    std::vector<std::uint64_t> revisions;
     auto iter = getReplicationIterator(ReplicationIterator::Ordering::Revision, trx);
     if (!iter) {
       LOG_TOPIC("d1e54", WARN, arangodb::Logger::ENGINES)
