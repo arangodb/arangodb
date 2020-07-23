@@ -249,7 +249,8 @@ class PhysicalCollection {
                              bool isEdgeCollection, velocypack::Builder& builder,
                              bool isRestore, RevisionId& revisionId) const;
 
-  int checkRevision(transaction::Methods* trx, RevisionId expected, RevisionId found) const;
+  bool checkRevision(transaction::Methods* trx, RevisionId expected,
+                     RevisionId found) const;
 
   LogicalCollection& _logicalCollection;
   bool const _isDBServer;

@@ -1399,12 +1399,13 @@ Result RocksDBCollection::update(transaction::Methods* trx,
                                  velocypack::Slice newSlice,
                                  ManagedDocumentResult& resultMdr, OperationOptions& options,
                                  ManagedDocumentResult& previousMdr) {
+  Result res;
 
   VPackSlice keySlice = newSlice.get(StaticStrings::KeyString);
   if (keySlice.isNone()) {
-    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+    return res.reset(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   } else if (!keySlice.isString()) {
-    return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+    return res.reset(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   }
 
   auto const oldDocumentId = primaryIndex()->lookupKey(trx, VPackStringRef(keySlice));
@@ -1414,8 +1415,8 @@ Result RocksDBCollection::update(transaction::Methods* trx,
   std::string* prevBuffer = previousMdr.setManaged();
   // uses either prevBuffer or avoids memcpy (if read hits block cache)
   rocksdb::PinnableSlice previousPS(prevBuffer);
-  Result res = lookupDocumentVPack(trx, oldDocumentId, previousPS,
-                                   /*readCache*/true, /*fillCache*/false);
+  res = lookupDocumentVPack(trx, oldDocumentId, previousPS,
+                            /*readCache*/true, /*fillCache*/false);
   if (res.fail()) {
     return res;
   }
@@ -1427,9 +1428,8 @@ Result RocksDBCollection::update(transaction::Methods* trx,
 
   if (!options.ignoreRevs) {  // Check old revision:
     RevisionId expectedRev = RevisionId::fromSlice(newSlice);
-    int result = checkRevision(trx, expectedRev, previousMdr.revisionId());
-    if (result != TRI_ERROR_NO_ERROR) {
-      return res.reset(result);
+    if (!checkRevision(trx, expectedRev, previousMdr.revisionId())) {
+      return res.reset(TRI_ERROR_ARANGO_CONFLICT, "conflict, _rev values do not match");
     }
   }
 
@@ -1519,23 +1519,24 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
                                   velocypack::Slice newSlice,
                                   ManagedDocumentResult& resultMdr, OperationOptions& options,
                                   ManagedDocumentResult& previousMdr) {
+  Result res;
 
   VPackSlice keySlice = newSlice.get(StaticStrings::KeyString);
   if (keySlice.isNone()) {
-    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+    return res.reset(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   } else if (!keySlice.isString()) {
-    return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+    return res.reset(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   }
 
   auto const oldDocumentId = primaryIndex()->lookupKey(trx, VPackStringRef(keySlice));
   if (!oldDocumentId.isSet()) {
-    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+    return res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
   std::string* prevBuffer = previousMdr.setManaged();
   // uses either prevBuffer or avoids memcpy (if read hits block cache)
   rocksdb::PinnableSlice previousPS(prevBuffer);
-  Result res = lookupDocumentVPack(trx, oldDocumentId, previousPS,
-                                   /*readCache*/ true, /*fillCache*/ false);
+  res = lookupDocumentVPack(trx, oldDocumentId, previousPS,
+  /*readCache*/ true, /*fillCache*/ false);
   if (res.fail()) {
     return res;
   }
@@ -1547,9 +1548,8 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
 
   if (!options.ignoreRevs) {  // Check old revision:
     RevisionId expectedRev = RevisionId::fromSlice(newSlice);
-    res = checkRevision(trx, expectedRev, previousMdr.revisionId());
-    if (res.fail()) {
-      return res;
+    if (!checkRevision(trx, expectedRev, previousMdr.revisionId())) {
+      return res.reset(TRI_ERROR_ARANGO_CONFLICT, "conflict, _rev values do not match");
     }
   }
 
@@ -1572,7 +1572,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
     }
     if (arangodb::smartJoinAttributeChanged(_logicalCollection, oldDoc,
                                             builder->slice(), false)) {
-      return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE);
+      return res.reset(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE);
     }
   }
 
@@ -1646,7 +1646,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
   }
 
   // Check old revision:
-  RevisionId expectedId;
+  RevisionId expectedId = RevisionId::none();
   if (!options.ignoreRevs && slice.isObject()) {
     expectedId = RevisionId::fromSlice(slice);
   }
@@ -1657,20 +1657,22 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
 Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
                                  ManagedDocumentResult& previousMdr,
                                  OperationOptions& options) {
-  return remove(trx, documentId, RevisionId::none(), previousMdr, options);
+  return remove(trx, documentId, /*expectedRev*/ RevisionId::none(), previousMdr, options);
 }
 
 Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
                                  RevisionId expectedRev, ManagedDocumentResult& previousMdr,
                                  OperationOptions& options) {
+  Result res;
+  
   if (!documentId.isSet()) {
-    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+    return res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
   std::string* prevBuffer = previousMdr.setManaged();
   // uses either prevBuffer or avoids memcpy (if read hits block cache)
   rocksdb::PinnableSlice previousPS(prevBuffer);
-  Result res = lookupDocumentVPack(&trx, documentId, previousPS,
-                                   /*readCache*/ true, /*fillCache*/ false);
+  res = lookupDocumentVPack(&trx, documentId, previousPS,
+  /*readCache*/ true, /*fillCache*/ false);
   if (res.fail()) {
     return res;
   }
@@ -1682,9 +1684,8 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
 
   // Check old revision:
   if (!options.ignoreRevs && expectedRev.isSet()) {
-    res = checkRevision(&trx, expectedRev, previousMdr.revisionId());
-    if (res.fail()) {
-      return res;
+    if (!checkRevision(&trx, expectedRev, previousMdr.revisionId())) {
+      return res.reset(TRI_ERROR_ARANGO_CONFLICT, "conflict, _rev values do not match");
     }
   }
 

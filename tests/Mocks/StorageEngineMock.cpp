@@ -1354,9 +1354,8 @@ arangodb::Result PhysicalCollectionMock::updateInternal(
       }
       TRI_ASSERT(doc.isObject());
       arangodb::RevisionId oldRev = arangodb::RevisionId::fromSlice(doc);
-      int res = checkRevision(trx, expectedRev, oldRev);
-      if (res != TRI_ERROR_NO_ERROR) {
-        return arangodb::Result(res);
+      if (!checkRevision(trx, expectedRev, oldRev)) {
+        return arangodb::Result(TRI_ERROR_ARANGO_CONFLICT, "_rev values mismatch");
       }
     }
     arangodb::velocypack::Builder builder;
