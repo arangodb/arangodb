@@ -43,8 +43,7 @@ using namespace arangodb;
 
 
 /// @brief transaction type
-TransactionState::TransactionState(TRI_vocbase_t& vocbase,
-                                   TRI_voc_tid_t tid,
+TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                                    transaction::Options const& options)
     : _vocbase(vocbase),
       _id(tid),

@@ -88,7 +88,7 @@ uint64_t AqlValue::hash(uint64_t seed) const {
       return slice(t).normalizedHash(seed);
     }
     case DOCVEC: {
-      uint64_t const tmp = docvecSize() ^ 0xba5bedf00d;
+      uint64_t const tmp = docvecLength() ^ 0xba5bedf00d;
       uint64_t value = VELOCYPACK_HASH(&tmp, sizeof(tmp), seed);
       for (auto const& it : *_data.docvec) {
         size_t const n = it->size();
@@ -342,7 +342,7 @@ size_t AqlValue::length() const {
       return static_cast<size_t>(slice(t).length());
     }
     case DOCVEC: {
-      return docvecSize();
+      return docvecLength();
     }
     case RANGE: {
       return range()->size();
@@ -385,7 +385,7 @@ AqlValue AqlValue::at(int64_t position, bool& mustDestroy, bool doCopy) const {
       break;
     }
     case DOCVEC: {
-      size_t const n = docvecSize();
+      size_t const n = docvecLength();
       if (position < 0) {
         // a negative position is allowed
         position = static_cast<int64_t>(n) + position;
@@ -991,19 +991,15 @@ bool AqlValue::toBoolean() const {
 }
 
 /// @brief return the total size of the docvecs
-size_t AqlValue::docvecSize() const {
+size_t AqlValue::docvecLength() const {
   TRI_ASSERT(type() == DOCVEC);
+  TRI_ASSERT(_data.docvec != nullptr);
   size_t s = 0;
   for (auto const& it : *_data.docvec) {
+    TRI_ASSERT(it != nullptr);
     s += it->size();
   }
   return s;
-}
-
-/// @brief return the size of the docvec array
-size_t AqlValue::sizeofDocvec() const {
-  TRI_ASSERT(type() == DOCVEC);
-  return sizeof(_data.docvec[0]) * _data.docvec->size();
 }
 
 /// @brief construct a V8 value as input for the expression execution in V8
@@ -1019,7 +1015,7 @@ v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate, velocypack::Options c
     }
     case DOCVEC: {
       // calculate the result array length
-      size_t const s = docvecSize();
+      size_t const s = docvecLength();
       // allocate the result array
       v8::Handle<v8::Array> result = v8::Array::New(isolate, static_cast<int>(s));
       uint32_t j = 0;  // output row count
@@ -1165,9 +1161,10 @@ AqlValue AqlValue::clone() const {
     }
     case DOCVEC: {
       auto c = std::make_unique<std::vector<SharedAqlItemBlockPtr>>();
-      c->reserve(docvecSize());
+      c->reserve(docvecLength());
       for (auto const& it : *_data.docvec) {
         c->emplace_back(it->slice(0, it->size()));
+        TRI_ASSERT(c->back() != nullptr);
       }
       return AqlValue(c.release());
     }
@@ -1373,6 +1370,11 @@ int AqlValue::Compare(transaction::Methods* trx, AqlValue const& left,
 AqlValue::AqlValue(std::vector<arangodb::aql::SharedAqlItemBlockPtr>* docvec) noexcept {
   TRI_ASSERT(docvec != nullptr);
   _data.docvec = docvec;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  for (auto const& it : *_data.docvec) {
+    TRI_ASSERT(it != nullptr);
+  }
+#endif
   setType(AqlValueType::DOCVEC);
 }
 
@@ -1639,7 +1641,7 @@ size_t AqlValue::memoryUsage() const noexcept {
       // no need to count the memory usage for the item blocks in docvec.
       // these have already been counted elsewhere (in ctors of AqlItemBlock
       // and AqlItemBlock::setValue)
-      return sizeofDocvec();
+      return sizeof(_data.docvec) + sizeof(SharedAqlItemBlockPtr) * _data.docvec->size();
     case RANGE:
       return sizeof(Range);
   }

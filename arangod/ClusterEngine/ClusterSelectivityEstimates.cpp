@@ -49,7 +49,7 @@ void ClusterSelectivityEstimates::flush() {
   std::atomic_store(&_data, std::shared_ptr<InternalData>());
 }
 
-IndexEstMap ClusterSelectivityEstimates::get(bool allowUpdating, TRI_voc_tid_t tid) {
+IndexEstMap ClusterSelectivityEstimates::get(bool allowUpdating, TransactionId tid) {
   auto data = std::atomic_load<ClusterSelectivityEstimates::InternalData>(&_data);
 
   if (allowUpdating) {

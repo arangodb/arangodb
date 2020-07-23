@@ -528,7 +528,7 @@ bool LogicalCollection::determineSyncByRevision() const {
   return false;
 }
 
-IndexEstMap LogicalCollection::clusterIndexEstimates(bool allowUpdating, TRI_voc_tid_t tid) {
+IndexEstMap LogicalCollection::clusterIndexEstimates(bool allowUpdating, TransactionId tid) {
   return getPhysical()->clusterIndexEstimates(allowUpdating, tid);
 }
 

@@ -1353,9 +1353,8 @@ arangodb::Result PhysicalCollectionMock::updateInternal(
       }
       TRI_ASSERT(doc.isObject());
       TRI_voc_rid_t oldRev = TRI_ExtractRevisionId(doc);
-      int res = checkRevision(trx, expectedRev, oldRev);
-      if (res != TRI_ERROR_NO_ERROR) {
-        return arangodb::Result(res);
+      if (!checkRevision(trx, expectedRev, oldRev)) {
+        return arangodb::Result(TRI_ERROR_ARANGO_CONFLICT, "_rev values mismatch");
       }
     }
     arangodb::velocypack::Builder builder;
@@ -1513,7 +1512,8 @@ std::unique_ptr<arangodb::transaction::Manager> StorageEngineMock::createTransac
 }
 
 std::shared_ptr<arangodb::TransactionState> StorageEngineMock::createTransactionState(
-    TRI_vocbase_t& vocbase, TRI_voc_tid_t tid, arangodb::transaction::Options const& options) {
+    TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
+    arangodb::transaction::Options const& options) {
   return std::make_shared<TransactionStateMock>(vocbase, tid, options);
 }
 
@@ -1812,7 +1812,7 @@ size_t TransactionStateMock::beginTransactionCount;
 size_t TransactionStateMock::commitTransactionCount;
 
 // ensure each transaction state has a unique ID
-TransactionStateMock::TransactionStateMock(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+TransactionStateMock::TransactionStateMock(TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
                                            arangodb::transaction::Options const& options)
     : TransactionState(vocbase, tid, options) {}
 
@@ -1821,7 +1821,7 @@ arangodb::Result TransactionStateMock::abortTransaction(arangodb::transaction::M
   updateStatus(arangodb::transaction::Status::ABORTED);
 //  releaseUsage();
   // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
-  const_cast<TRI_voc_tid_t&>(_id) = 0;
+  const_cast<arangodb::TransactionId&>(_id) = arangodb::TransactionId::none();
 
   return arangodb::Result();
 }
@@ -1839,7 +1839,7 @@ arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::H
   if (!res.ok()) {
     updateStatus(arangodb::transaction::Status::ABORTED);
     // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
-    const_cast<TRI_voc_tid_t&>(_id) = 0;
+    const_cast<arangodb::TransactionId&>(_id) = arangodb::TransactionId::none();
     return res;
   }
   updateStatus(arangodb::transaction::Status::RUNNING);
@@ -1850,8 +1850,8 @@ arangodb::Result TransactionStateMock::commitTransaction(arangodb::transaction::
   ++commitTransactionCount;
   updateStatus(arangodb::transaction::Status::COMMITTED);
   // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
-  const_cast<TRI_voc_tid_t&>(_id) = 0;
-//  releaseUsage();
+  const_cast<arangodb::TransactionId&>(_id) = arangodb::TransactionId::none();
+  //  releaseUsage();
 
   return arangodb::Result();
 }

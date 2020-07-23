@@ -224,7 +224,7 @@ class TailingSyncer : public Syncer {
   bool _workInParallel;
 
   /// @brief which transactions were open and need to be treated specially
-  std::unordered_map<TRI_voc_tid_t, std::unique_ptr<ReplicationTransaction>> _ongoingTransactions;
+  std::unordered_map<TransactionId, std::unique_ptr<ReplicationTransaction>> _ongoingTransactions;
 
   /// @brief recycled builder for repeated document creation
   arangodb::velocypack::Builder _documentBuilder;

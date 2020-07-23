@@ -258,8 +258,8 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   std::string const clientInfo = _request->value("clientInfo");
 
   // check if a barrier id was specified in request
-  TRI_voc_tid_t barrierId =
-      _request->parsedValue("barrier", static_cast<TRI_voc_tid_t>(0));
+  TransactionId barrierId{
+      _request->parsedValue("barrier", static_cast<TransactionId::BaseType>(0))};
 
   ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
@@ -403,10 +403,9 @@ void RestWalAccessHandler::handleCommandDetermineOpenTransactions(WalAccess cons
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
   builder.openArray();
-  WalAccessResult r =
-      wal->openTransactions(filter, [&](TRI_voc_tick_t tick, TRI_voc_tid_t tid) {
-        builder.add(VPackValue(std::to_string(tid)));
-      });
+  WalAccessResult r = wal->openTransactions(filter, [&](TransactionId, TransactionId tid) {
+    builder.add(VPackValue(std::to_string(tid.id())));
+  });
   builder.close();
 
   _response->setContentType(rest::ContentType::DUMP);
