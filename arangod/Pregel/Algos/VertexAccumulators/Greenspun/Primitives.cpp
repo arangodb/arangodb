@@ -370,7 +370,7 @@ void RegisterPrimitives() {
 
   primitives["this"] = Prim_This;
   //  primitives["doc"] = Prim_Doc;
-  primitives["accumref"] = Prim_AccumRef;
+  primitives["accum-ref"] = Prim_AccumRef;
   primitives["update"] = Prim_Update;
   primitives["set"] = Prim_Set;
   primitives["for"] = Prim_For;
