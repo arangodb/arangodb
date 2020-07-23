@@ -41,6 +41,7 @@
 
 namespace arangodb {
 
+class ClusterInfo;
 class LocalDocumentId;
 class Index;
 class IndexIterator;
@@ -253,6 +254,7 @@ class PhysicalCollection {
                      RevisionId found) const;
 
   LogicalCollection& _logicalCollection;
+  ClusterInfo& _ci;
   bool const _isDBServer;
 
   mutable basics::ReadWriteLock _indexesLock;

@@ -31,7 +31,6 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
-#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBFormat.h"
@@ -96,9 +95,7 @@ void RevisionId::toPersistent(std::string& buffer) const {
 RevisionId RevisionId::create() { return RevisionId{TRI_HybridLogicalClock()}; }
 
 /// @brief create a revision id which is guaranteed to be unique cluster-wide
-RevisionId RevisionId::createClusterWideUnique(application_features::ApplicationServer& server) {
-  ClusterFeature& cf = server.getFeature<ClusterFeature>();
-  ClusterInfo& ci = cf.clusterInfo();
+RevisionId RevisionId::createClusterWideUnique(ClusterInfo& ci) {
   return RevisionId{ci.uniqid()};
 }
 

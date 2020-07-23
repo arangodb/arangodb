@@ -32,9 +32,7 @@
 #include "Basics/Identifier.h"
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
+class ClusterInfo;
 class LocalDocumentId;
 
 /// @brief server id type
@@ -85,7 +83,7 @@ class RevisionId : public arangodb::basics::Identifier {
   static RevisionId create();
 
   /// @brief create a revision id which is guaranteed to be unique cluster-wide
-  static RevisionId createClusterWideUnique(application_features::ApplicationServer& server);
+  static RevisionId createClusterWideUnique(ClusterInfo& ci);
 
   /// @brief Convert a string into a revision ID, returns none() if invalid
   static RevisionId fromString(std::string const& ridStr);
