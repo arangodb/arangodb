@@ -18,11 +18,10 @@ TEST_CASE("Test [+] primitive", "[addition]") {
   InitInterpreter();
   MyEvalContext ctx;
   VPackBuilder result;
+  auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
+  auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
 
   SECTION("Test basic int addition") {
-    auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
-    auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
-
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["+", 1, 1]
     )aql");
@@ -32,15 +31,11 @@ TEST_CASE("Test [+] primitive", "[addition]") {
   }
 
   SECTION( "Test basic double addition" ) {
-    auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
-    auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
-
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["+", 1.1, 2.1]
     )aql");
 
     Evaluate(ctx, program->slice(), result);
-
     REQUIRE( 3.2 == result.slice().getDouble());
   }
 }
@@ -49,11 +44,10 @@ TEST_CASE("Test [-] primitive", "[subtraction]") {
   InitInterpreter();
   MyEvalContext ctx;
   VPackBuilder result;
+  auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
+  auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
 
   SECTION("Test basic int subtraction") {
-    auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
-    auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
-
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["-", 1, 1]
     )aql");
@@ -63,9 +57,6 @@ TEST_CASE("Test [-] primitive", "[subtraction]") {
   }
 
   SECTION("Test basic double subtraction") {
-    auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
-    auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
-
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["-", 4.4, 1.2]
     )aql");
@@ -76,9 +67,6 @@ TEST_CASE("Test [-] primitive", "[subtraction]") {
   }
 
   SECTION("Test negative int result value") {
-    auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
-    auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
-
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["-", 2, 4]
     )aql");
@@ -92,11 +80,10 @@ TEST_CASE("Test [*] primitive", "[multiplication]") {
   InitInterpreter();
   MyEvalContext ctx;
   VPackBuilder result;
+  auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
+  auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
 
   SECTION("Test basic int multiplication") {
-    auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
-    auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
-
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["*", 2, 2]
     )aql");
@@ -106,9 +93,6 @@ TEST_CASE("Test [*] primitive", "[multiplication]") {
   }
 
   SECTION("Test int zero multiplication") {
-    auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
-    auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
-
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["*", 2, 0]
     )aql");
@@ -122,11 +106,10 @@ TEST_CASE("Test [/] primitive", "[division]") {
   InitInterpreter();
   MyEvalContext ctx;
   VPackBuilder result;
+  auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
+  auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
 
   SECTION("Test basic int division") {
-    auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
-    auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
-
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["/", 2, 2]
     )aql");
@@ -136,9 +119,6 @@ TEST_CASE("Test [/] primitive", "[division]") {
   }
 
   SECTION("Test invalid int division") {
-    auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
-    auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
-
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["/", 2, 0]
     )aql");
@@ -157,17 +137,25 @@ TEST_CASE("Test [false?] primitive", "[false?]") {
   InitInterpreter();
   MyEvalContext ctx;
   VPackBuilder result;
+  auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
+  auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
 
   SECTION("Test true boolean") {
-    auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
-    auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
-
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["false?", true]
     )aql");
 
     Evaluate(ctx, program->slice(), result);
     REQUIRE(false == result.slice().getBoolean());
+  }
+
+  SECTION("Test false boolean") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["false?", false]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(true == result.slice().getBoolean());
   }
 }
 TEST_CASE("Test [true?] primitive", "[true?]") {}
@@ -197,11 +185,10 @@ TEST_CASE("Test [int-to-str] primitive", "[int-to-str]") {
   InitInterpreter();
   MyEvalContext ctx;
   VPackBuilder result;
+  auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
+  auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
 
   SECTION("Test int to string conversion") {
-    auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
-    auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
-
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["int-to-str", 2]
     )aql");
