@@ -62,6 +62,19 @@ TEST_CASE("Test [-] primitive", "[subtraction]") {
     REQUIRE(0 == result.slice().getDouble());
   }
 
+  SECTION("Test basic double subtraction") {
+    auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
+    auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
+
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["-", 4.4, 1.2]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    // TODO: also do more precise double comparison here
+    REQUIRE(3.2 == result.slice().getDouble());
+  }
+
   SECTION("Test negative int result value") {
     auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
     auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
