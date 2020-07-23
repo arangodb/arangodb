@@ -264,6 +264,11 @@ EvalResult Prim_ListCat(PrimEvalContext& ctx, VPackSlice const params, VPackBuil
   return {};
 }
 
+// TODO: Only for debugging purpose. Can be removed later again.
+void print(std::string msg) {
+  std::cout << " >> LOG: " <<  msg << std::endl;
+}
+
 EvalResult Prim_IntToStr(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   if (params.length() != 1) {
     return EvalError("expected a single argument");
@@ -272,8 +277,8 @@ EvalResult Prim_IntToStr(PrimEvalContext& ctx, VPackSlice const params, VPackBui
   if (!value.isNumber<int64_t>()) {
     return EvalError("expected int, found: " + value.toJson());
   }
-
-  result.add(VPackValue(std::to_string(params.getNumericValue<int64_t>())));
+  
+  result.add(VPackValue(std::to_string(value.getNumericValue<int64_t>())));
   return {};
 }
 
@@ -339,17 +344,19 @@ EvalResult Prim_GlobalSuperstep(PrimEvalContext& ctx, VPackSlice const params, V
 }
 
 void RegisterPrimitives() {
+  // Calculation operators
   primitives["banana"] = Prim_Banana;
   primitives["+"] = Prim_Banana;
   primitives["-"] = Prim_Sub;
   primitives["*"] = Prim_Mul;
   primitives["/"] = Prim_Div;
 
+  // Logical operators
   primitives["not"] = Prim_Not;  // unary
-
   primitives["false?"] = Prim_FalseHuh;
   primitives["true?"] = Prim_TrueHuh;
 
+  // Comparison operators
   primitives["eq?"] = Prim_CmpHuh<std::equal_to<>>;
   primitives["gt?"] = Prim_CmpHuh<std::greater<>>;
   primitives["ge?"] = Prim_CmpHuh<std::greater_equal<>>;
@@ -357,13 +364,15 @@ void RegisterPrimitives() {
   primitives["lt?"] = Prim_CmpHuh<std::less<>>;
   primitives["ne?"] = Prim_CmpHuh<std::not_equal_to<>>;
 
+  // Debug operators
   primitives["print"] = Prim_PrintLn;
 
   primitives["list-cat"] = Prim_ListCat;
   primitives["string-cat"] = Prim_StringCat;
   primitives["int-to-str"] = Prim_IntToStr;
-  primitives["attrib"] = Prim_Attrib;
 
+  // Access operators
+  primitives["attrib"] = Prim_Attrib;
   primitives["var-ref"] = Prim_VarRef;
   primitives["bind-ref"] = Prim_BindRef;
 
