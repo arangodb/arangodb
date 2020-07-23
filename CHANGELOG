@@ -6,6 +6,19 @@ v3.7.1-rc.1 (XXXX-XX-XX)
   change from one loadPlan run to the next. It reduces CPU usage considerably on
   both Coordinators and DB-servers.
 
+* Fixed undefined behavior in AQL COLLECT with multiple group variables (issue
+  #12267).
+  If you are grouping on "large" values that occur multiple times in different
+  groups, and two different groups with the same large value are written to
+  different batches in the output then the memory could be invalid.
+  e.g. the following query is affected:
+  ```
+  FOR d IN documents
+  FOR batchSizeFiller IN 1..1001
+  COLLECT largeVal = d.largeValue, t = batchSizeFiller
+  RETURN 1
+  ```
+
 * Revive faster out-of-range comparator for secondary index scans that do a full
   collection index scan for index types "hash", "skiplist", "persistent".
 

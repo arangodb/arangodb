@@ -905,9 +905,9 @@ function ClusterCollectionSuite () {
         {'@cn' : cn});
       assertEqual(1, c.toArray().length);
       var doc = c.any();
-      assertTrue(doc.super === "cat");
+      assertEqual(doc.super, "cat");
       doc = cursor.next();                // should be: cursor >>= id
-      assertTrue(doc[0].super === "cat");  // extra [] buy subquery return
+      assertEqual(doc[0].super, "cat");  // extra [] buy subquery return
 
       //remove
       cursor = db._query(`
