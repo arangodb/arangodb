@@ -2231,7 +2231,7 @@ public:
       std::is_same<T, double_t>::value ||
       std::is_same<T, bool>::value);
 
-    if (!args.isArray() && i != 0) { // array-like access but we have no array
+    if (!args.isArray()) { // array-like access but we have no array
       return {
         TRI_ERROR_BAD_PARAMETER,
         "'"s.append(funcName).append("' AQL function: argument has invalid type '")
@@ -2245,8 +2245,7 @@ public:
         .append(std::to_string(i))
       };
     }
-    // this will handle case with optional array for single arg.
-    auto arg = (args.isArray() ? args.at(i) : args);
+    auto arg = args.at(i);
     bool typeOk{ false };
     if constexpr (std::is_same<T, irs::string_ref>::value) {
       typeOk = arg.isString();
