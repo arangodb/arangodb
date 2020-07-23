@@ -1131,7 +1131,7 @@ void ClusterInfo::loadPlan() {
           if (!isBuilding) {
             // register with name as well as with id:
             databaseCollections.try_emplace(collectionName, cwh);
-            databaseCollections.try_emplace(collectionId, cwd);
+            databaseCollections.try_emplace(collectionId, cwh);
           }
 
           auto shardIDs = newCollection->shardIds();
