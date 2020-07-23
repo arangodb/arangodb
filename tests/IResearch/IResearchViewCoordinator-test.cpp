@@ -1269,8 +1269,6 @@ TEST_F(IResearchViewCoordinatorTest, test_primary_compression_properties) {
   EXPECT_TRUE(ci.createViewCoordinator(vocbase->name(), viewId, json->slice()).ok());
 
   // get current plan version
-  auto planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
-
   auto view = ci.getView(vocbase->name(), viewId);
   EXPECT_NE(nullptr, view);
   EXPECT_NE(nullptr, std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
