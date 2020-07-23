@@ -41,7 +41,7 @@ class QueryRegistryFeature;
 
 namespace aql {
 
-enum ProfileLevel : uint32_t {
+enum ProfileLevel : uint16_t {
   /// no profiling information
   PROFILE_LEVEL_NONE = 0,
   /// Output timing for query stages
@@ -55,12 +55,13 @@ enum ProfileLevel : uint32_t {
 };
 
 struct QueryOptions {
-  explicit QueryOptions(QueryRegistryFeature&);
+  explicit QueryOptions();
+  explicit QueryOptions(arangodb::velocypack::Slice const);
   TEST_VIRTUAL ~QueryOptions() = default;
 
-  void fromVelocyPack(arangodb::velocypack::Slice const& slice);
+  void fromVelocyPack(arangodb::velocypack::Slice const slice);
   void toVelocyPack(arangodb::velocypack::Builder&, bool disableOptimizerRules) const;
-  TEST_VIRTUAL ProfileLevel getProfileLevel() const { return profile; };
+  TEST_VIRTUAL ProfileLevel getProfileLevel() const { return profile; }
 
   size_t memoryLimit;
   size_t maxNumberOfPlans;
@@ -99,6 +100,11 @@ struct QueryOptions {
 #endif
 
   transaction::Options transactionOptions;
+  
+  static size_t defaultMemoryLimit;
+  static size_t defaultMaxNumberOfPlans;
+  static double defaultTtl;
+  static bool defaultFailOnWarning;
 };
 
 }  // namespace aql

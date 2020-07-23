@@ -89,8 +89,10 @@ public:
   /// @brief Cache has these path? Paths are absolute
   std::vector<bool> has(std::vector<std::string> const& paths) const;
 
-  /// @brief Used exclusively in unit tests
-  consensus::check_ret_t set(VPackSlice const trx);
+  /// @brief Used exclusively in unit tests!
+  ///        Do not use for production code under any circumstances
+  std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> applyTestTransaction (
+    consensus::query_t const& trx);
 
   /// @brief Used exclusively in unit tests
   consensus::Store& store();

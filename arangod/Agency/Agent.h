@@ -368,6 +368,8 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief Find out, if we've had acknowledged RPCs recent enough
   bool challengeLeadership();
 
+  void syncActiveAndAcknowledged();
+
   /// @brief Leader election delegate
   Constituent _constituent;
 
@@ -429,11 +431,8 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// The following three members are protected by _tiLock:
 
   /// @brief stores for each follower the highest index log it has reported as
-  /// locally logged.
-  std::unordered_map<std::string, index_t> _confirmed;
-
-  /// @brief _lastAcked: last time we received an answer to a sendAppendEntries
-  std::unordered_map<std::string, SteadyTimePoint> _lastAcked;
+  /// locally logged, and the timestamp we last recevied an answer to sendAppendEntries
+  std::unordered_map<std::string, std::pair<SteadyTimePoint, index_t>> _lastAckedIndex;
 
   /// @brief The earliest timepoint at which we will send new sendAppendEntries
   /// to a particular follower. This is a measure to avoid bombarding a

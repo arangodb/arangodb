@@ -29,7 +29,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 // TODO: This class is not yet memory efficient or optimized in any way.
-// it might be reimplement soon to have the above features, Focus now is on
+// it might be reimplemented soon to have the above features, Focus now is on
 // the API we want to use.
 
 using namespace arangodb;
@@ -191,11 +191,12 @@ auto AqlCallStack::needToSkipSubquery() const noexcept -> bool {
 
 auto AqlCallStack::shadowRowDepthToSkip() const -> size_t {
   TRI_ASSERT(needToCountSubquery());
-  for (size_t i = 0; i < _operations.size(); ++i) {
-    auto& call = _operations.at(i);
+  size_t const n = _operations.size();
+  for (size_t i = 0; i < n; ++i) {
+    auto& call = _operations[i];
     auto const& nextCall = call.peekNextCall();
      if (nextCall.needSkipMore() || nextCall.getLimit() == 0) {
-      return _operations.size() - i - 1;
+      return n - i - 1;
     }
   }
   return 0;

@@ -478,14 +478,14 @@ void Manager::unprepareTask(Manager::TaskEnvironment environment) {
         SpinLocker guard(SpinLocker::Mode::Write, _lock);
         _rebalancing = false;
         _rebalanceCompleted = std::chrono::steady_clock::now();
-      };
+      }
       break;
     }
     case TaskEnvironment::resizing: {
       if ((--_resizingTasks) == 0) {
         SpinLocker guard(SpinLocker::Mode::Write, _lock);
         _resizing = false;
-      };
+      }
       break;
     }
     case TaskEnvironment::none:

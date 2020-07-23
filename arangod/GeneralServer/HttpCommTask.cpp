@@ -364,6 +364,11 @@ void HttpCommTask<T>::processRequest() {
 
   TRI_ASSERT(_request);
   this->_protocol->timer.cancel();
+  this->_requestCount += 1;
+  if (this->_keepAliveTimeoutReached) {
+    return ;  // we have to ignore this request because the connection has already been closed
+  }
+
 
   // we may have gotten an H2 Upgrade request
   if (ADB_UNLIKELY(_parser.upgrade)) {

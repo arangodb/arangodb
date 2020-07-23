@@ -29,6 +29,7 @@
 #include "Basics/Result.h"
 #include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 
 #include <atomic>
@@ -90,7 +91,7 @@ class Manager final {
   };
 
  public:
-  typedef std::function<void(TRI_voc_tid_t, TransactionData const*)> TrxCallback;
+  typedef std::function<void(TransactionId, TransactionData const*)> TrxCallback;
 
   Manager(Manager const&) = delete;
   Manager& operator=(Manager const&) = delete;
@@ -98,10 +99,10 @@ class Manager final {
   explicit Manager(ManagerFeature& feature);
 
   // register a transaction
-  void registerTransaction(TRI_voc_tid_t transactionId, bool isReadOnlyTransaction);
+  void registerTransaction(TransactionId transactionId, bool isReadOnlyTransaction);
 
   // unregister a transaction
-  void unregisterTransaction(TRI_voc_tid_t transactionId, bool isReadOnlyTransaction);
+  void unregisterTransaction(TransactionId transactionId, bool isReadOnlyTransaction);
 
   uint64_t getActiveTransactionCount();
 
@@ -111,14 +112,14 @@ class Manager final {
 
   /// @brief register a AQL transaction
   void registerAQLTrx(std::shared_ptr<TransactionState> const&);
-  void unregisterAQLTrx(TRI_voc_tid_t tid) noexcept;
+  void unregisterAQLTrx(TransactionId tid) noexcept;
 
   /// @brief create managed transaction
-  Result createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+  Result createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
                           velocypack::Slice const trxOpts);
 
   /// @brief create managed transaction
-  Result createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+  Result createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
                           std::vector<std::string> const& readCollections,
                           std::vector<std::string> const& writeCollections,
                           std::vector<std::string> const& exclusiveCollections,
@@ -126,15 +127,15 @@ class Manager final {
                           double ttl = 0.0);
 
   /// @brief lease the transaction, increases nesting
-  std::shared_ptr<transaction::Context> leaseManagedTrx(TRI_voc_tid_t tid,
+  std::shared_ptr<transaction::Context> leaseManagedTrx(TransactionId tid,
                                                         AccessMode::Type mode);
-  void returnManagedTrx(TRI_voc_tid_t) noexcept;
+  void returnManagedTrx(TransactionId) noexcept;
 
   /// @brief get the meta transasction state
-  transaction::Status getManagedTrxStatus(TRI_voc_tid_t) const;
+  transaction::Status getManagedTrxStatus(TransactionId) const;
 
-  Result commitManagedTrx(TRI_voc_tid_t);
-  Result abortManagedTrx(TRI_voc_tid_t);
+  Result commitManagedTrx(TransactionId);
+  Result abortManagedTrx(TransactionId);
 
   /// @brief collect forgotten transactions
   bool garbageCollect(bool abortAll);
@@ -159,10 +160,10 @@ class Manager final {
   // temporarily block all new transactions
   template <typename TimeOutType>
   bool holdTransactions(TimeOutType timeout) {
-    std::unique_lock<std::mutex> guard(_mutex);
     bool ret = false;
+    std::unique_lock<std::mutex> guard(_mutex);
     if (!_writeLockHeld) {
-      ret = _rwLock.writeLock(timeout);
+      ret = _rwLock.lockWrite(timeout);
       if (ret) {
         _writeLockHeld = true;
       }
@@ -181,17 +182,17 @@ class Manager final {
 
  private:
   /// @brief performs a status change on a transaction using a timeout
-  Result statusChangeWithTimeout(TRI_voc_tid_t tid, transaction::Status status);
-  
+  Result statusChangeWithTimeout(TransactionId tid, transaction::Status status);
+
   /// @brief hashes the transaction id into a bucket
-  inline size_t getBucket(TRI_voc_tid_t tid) const {
-    return std::hash<TRI_voc_cid_t>()(tid) % numBuckets;
+  inline size_t getBucket(TransactionId tid) const {
+    return std::hash<TransactionId>()(tid) % numBuckets;
   }
 
-  Result updateTransaction(TRI_voc_tid_t tid, transaction::Status status, bool clearServers);
+  Result updateTransaction(TransactionId tid, transaction::Status status, bool clearServers);
 
   /// @brief calls the callback function for each managed transaction
-  void iterateManagedTrx(std::function<void(TRI_voc_tid_t, ManagedTrx const&)> const&) const;
+  void iterateManagedTrx(std::function<void(TransactionId, ManagedTrx const&)> const&) const;
   
   static double ttlForType(Manager::MetaType);
   
@@ -204,7 +205,7 @@ class Manager final {
     mutable basics::ReadWriteLock _lock;
 
     // managed transactions, seperate lifetime from above
-    std::unordered_map<TRI_voc_tid_t, ManagedTrx> _managed;
+    std::unordered_map<TransactionId, ManagedTrx> _managed;
   } _transactions[numBuckets];
 
   /// Nr of running transactions

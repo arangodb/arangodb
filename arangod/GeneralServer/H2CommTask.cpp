@@ -428,6 +428,10 @@ void H2CommTask<T>::processStream(H2CommTask<T>::Stream* stream) {
   req->body().resetTo(req->body().size() - 1);
 
   this->_protocol->timer.cancel();
+  this->_requestCount += 1;
+  if (this->_keepAliveTimeoutReached) {
+    return;
+  }
 
   {
     LOG_TOPIC("924ce", INFO, Logger::REQUESTS)

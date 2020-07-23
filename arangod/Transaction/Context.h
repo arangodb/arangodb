@@ -28,6 +28,7 @@
 
 #include "Basics/Common.h"
 #include "Containers/SmallVector.h"
+#include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Options.h>
@@ -107,8 +108,8 @@ class Context {
 
   /// @brief unregister the transaction
   /// this will save the transaction's id and status locally
-  void storeTransactionResult(TRI_voc_tid_t id, 
-                              bool wasRegistered, bool isReadOnlyTransaction) noexcept;
+  void storeTransactionResult(TransactionId id, bool wasRegistered,
+                              bool isReadOnlyTransaction) noexcept;
 
  public:
   /// @brief get a custom type handler
@@ -127,7 +128,7 @@ class Context {
   virtual void unregisterTransaction() noexcept = 0;
 
   /// @brief generate persisted transaction ID
-  virtual TRI_voc_tid_t generateId() const;
+  virtual TransactionId generateId() const;
   
   /// @brief only supported on some contexts
   virtual std::shared_ptr<Context> clone() const;
@@ -135,7 +136,7 @@ class Context {
   virtual bool isV8Context() { return false; }
   
   /// @brief generates correct ID based on server type
-  static TRI_voc_tid_t makeTransactionId();
+  static TransactionId makeTransactionId();
 
  protected:
   /// @brief create a resolver
@@ -162,7 +163,7 @@ class Context {
   
  private:
   struct {
-    TRI_voc_tid_t id;
+    TransactionId id;
     bool isReadOnlyTransaction;
   } _transaction;
 

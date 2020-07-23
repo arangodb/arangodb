@@ -81,8 +81,7 @@ CreateCollection::CreateCollection(MaintenanceFeature& feature, ActionDescriptio
   }
   TRI_ASSERT(desc.has(SERVER_ID));
 
-  if (!properties().hasKey(StaticStrings::DataSourceType) ||
-      !properties().get(StaticStrings::DataSourceType).isNumber()) {
+  if (!properties().get(StaticStrings::DataSourceType).isNumber()) {
     error << "properties slice must specify collection type. ";
   }
   TRI_ASSERT(properties().hasKey(StaticStrings::DataSourceType) &&
@@ -124,12 +123,12 @@ bool CreateCollection::first() {
     auto& cluster = _feature.server().getFeature<ClusterFeature>();
 
     bool waitForRepl =
-        (props.hasKey(WAIT_FOR_SYNC_REPL) && props.get(WAIT_FOR_SYNC_REPL).isBool())
+        (props.get(WAIT_FOR_SYNC_REPL).isBool())
             ? props.get(WAIT_FOR_SYNC_REPL).getBool()
             : cluster.createWaitsForSyncReplication();
 
     bool enforceReplFact =
-        (props.hasKey(ENF_REPL_FACT) && props.get(ENF_REPL_FACT).isBool())
+        (props.get(ENF_REPL_FACT).isBool())
             ? props.get(ENF_REPL_FACT).getBool()
             : true;
 

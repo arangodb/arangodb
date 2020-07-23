@@ -146,7 +146,7 @@ class RocksDBEngine final : public StorageEngine {
 
   std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) override;
   std::shared_ptr<TransactionState> createTransactionState(
-      TRI_vocbase_t& vocbase, TRI_voc_tid_t, transaction::Options const& options) override;
+      TRI_vocbase_t& vocbase, TransactionId, transaction::Options const& options) override;
   std::unique_ptr<TransactionCollection> createTransactionCollection(
       TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType) override;
 
@@ -333,6 +333,11 @@ class RocksDBEngine final : public StorageEngine {
   /// rotate user-provided keys, writes out the internal key files
   Result rotateUserEncryptionKeys();
   
+  /// load encryption at rest key from specified keystore
+  Result decryptInternalKeystore(std::string const& keystorePath,
+                                 std::vector<enterprise::EncryptionSecret>& userKeys,
+                                 std::string& encryptionKey) const;
+  
  private:
   /// load encryption at rest key from keystore
   Result decryptInternalKeystore();
@@ -471,6 +476,9 @@ class RocksDBEngine final : public StorageEngine {
 
   arangodb::basics::ReadWriteLock _purgeLock;
 };
+
+static constexpr const char* kEncryptionTypeFile = "ENCRYPTION";
+static constexpr const char* kEncryptionKeystoreFolder = "ENCRYPTION-KEYS";
 
 }  // namespace arangodb
 

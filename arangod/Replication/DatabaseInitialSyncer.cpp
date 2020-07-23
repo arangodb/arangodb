@@ -521,7 +521,6 @@ Result DatabaseInitialSyncer::sendFlush() {
   builder.openObject();
   builder.add("waitForSync", VPackValue(true));
   builder.add("waitForCollector", VPackValue(true));
-  builder.add("waitForCollectorQueue", VPackValue(true));
   builder.add("maxWaitTime", VPackValue(300.0));
   builder.close();
 
@@ -1330,7 +1329,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
   PhysicalCollection* physical = coll->getPhysical();
   TRI_ASSERT(physical);
   auto context = arangodb::transaction::StandaloneContext::Create(coll->vocbase());
-  TRI_voc_tid_t blockerId = context->generateId();
+  TransactionId blockerId = context->generateId();
   physical->placeRevisionTreeBlocker(blockerId);
   std::unique_ptr<arangodb::SingleCollectionTransaction> trx;
   try {

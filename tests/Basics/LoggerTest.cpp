@@ -54,19 +54,19 @@ class LoggerTest : public ::testing::Test {
   std::string const logfile2;
 
   LoggerTest()
-      : backup(LogAppenderFile::getFds()),
+      : backup(LogAppenderFile::getAppenders()),
         path(TRI_GetTempPath()),
         logfile1(path + "logfile1"),
         logfile2(path + "logfile2") {
     FileUtils::remove(logfile1);
     FileUtils::remove(logfile2);
     // remove any previous loggers
-    LogAppenderFile::clear();
+    LogAppenderFile::closeAll();
   }
 
   ~LoggerTest() {
     // restore old state
-    LogAppenderFile::setFds(backup);
+    LogAppenderFile::setAppenders(backup);
     LogAppenderFile::reopenAll();
 
     FileUtils::remove(logfile1);
@@ -75,10 +75,10 @@ class LoggerTest : public ::testing::Test {
 };
 
 TEST_F(LoggerTest, test_fds) {
-  LogAppenderFile logger1(logfile1, "");
-  LogAppenderFile logger2(logfile2, "");
+  LogAppenderFile logger1(logfile1);
+  LogAppenderFile logger2(logfile2);
 
-  auto fds = LogAppenderFile::getFds();
+  auto fds = LogAppenderFile::getAppenders();
   EXPECT_EQ(fds.size(), 2);
 
   EXPECT_EQ(std::get<1>(fds[0]), logfile1);
@@ -95,14 +95,14 @@ TEST_F(LoggerTest, test_fds) {
   EXPECT_EQ(content.find("some error message"), std::string::npos);
   EXPECT_NE(content.find("some warning message"), std::string::npos);
 
-  LogAppenderFile::clear();
+  LogAppenderFile::closeAll();
 }
 
 TEST_F(LoggerTest, test_fds_after_reopen) {
-  LogAppenderFile logger1(logfile1, "");
-  LogAppenderFile logger2(logfile2, "");
+  LogAppenderFile logger1(logfile1);
+  LogAppenderFile logger2(logfile2);
 
-  auto fds = LogAppenderFile::getFds();
+  auto fds = LogAppenderFile::getAppenders();
   EXPECT_EQ(fds.size(), 2);
 
   EXPECT_EQ(std::get<1>(fds[0]), logfile1);
@@ -122,7 +122,7 @@ TEST_F(LoggerTest, test_fds_after_reopen) {
 
   LogAppenderFile::reopenAll();
 
-  fds = LogAppenderFile::getFds();
+  fds = LogAppenderFile::getAppenders();
   EXPECT_EQ(fds.size(), 2);
 
   EXPECT_TRUE(std::get<0>(fds[0]) > STDERR_FILENO);
@@ -142,5 +142,5 @@ TEST_F(LoggerTest, test_fds_after_reopen) {
   EXPECT_EQ(content.find("some warning message"), std::string::npos);
   EXPECT_NE(content.find("some other warning message"), std::string::npos);
 
-  LogAppenderFile::clear();
+  LogAppenderFile::closeAll();
 }

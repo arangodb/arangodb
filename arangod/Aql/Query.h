@@ -82,11 +82,13 @@ class Query : public QueryContext {
   /// @brief internal constructor, Used to construct a full query or a ClusterQuery
   Query(std::shared_ptr<transaction::Context> const& ctx, QueryString const& queryString,
         std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
-        std::shared_ptr<arangodb::velocypack::Builder> const& options,
-        std::shared_ptr<SharedQueryState> sharedState);
+        aql::QueryOptions&& options, std::shared_ptr<SharedQueryState> sharedState);
 
  public:
   /// @brief public constructor, Used to construct a full query
+  Query(std::shared_ptr<transaction::Context> const& ctx, QueryString const& queryString,
+        std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
+        aql::QueryOptions&& options);
   Query(std::shared_ptr<transaction::Context> const& ctx, QueryString const& queryString,
         std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
         std::shared_ptr<arangodb::velocypack::Builder> const& options);
@@ -100,10 +102,6 @@ class Query : public QueryContext {
 
   /// @brief whether or not the query is killed
   bool killed() const override;
-  
-  void setKilled() override {
-    _killed = true;
-  }
 
   /// @brief set the query to killed
   void kill();
@@ -111,8 +109,6 @@ class Query : public QueryContext {
   QueryString const& queryString() const { return _queryString; }
   
   QueryProfile* profile() const { return _profile.get(); }
-
-  velocypack::Slice optionsSlice() const { return _options->slice(); }
   
   TEST_VIRTUAL QueryOptions& queryOptions() { return _queryOptions; }
 
@@ -233,6 +229,8 @@ class Query : public QueryContext {
   ExecutionState cleanupPlanAndEngine(int errorCode, bool sync,
                                       velocypack::Builder* statsBuilder = nullptr,
                                       bool includePlan = false);
+  
+  void unregisterSnippets();
 
  protected:
   
@@ -252,9 +250,6 @@ class Query : public QueryContext {
 
   /// @brief bind parameters for the query
   BindParameters _bindParameters;
-
-  /// @brief raw query options
-  std::shared_ptr<arangodb::velocypack::Builder> _options;
   
   /// @brief parsed query options
   QueryOptions _queryOptions;
@@ -298,8 +293,13 @@ class Query : public QueryContext {
   
   /// @brief whether or not someone else has acquired a V8 context for us
   bool const _contextOwnedByExterior;
-
-  bool _killed;
+  
+  /// avoid killing a query in normal shutdown / cleanup
+  enum class KillState : uint8_t {
+    None, Shutdown, Killed
+  };
+  
+  std::atomic<KillState> _killState;
   
   /// @brief whether or not the hash was already calculated
   bool _queryHashCalculated;
@@ -311,7 +311,7 @@ class ClusterQuery final : public Query {
   
   /// Used to construct a full query
   ClusterQuery(std::shared_ptr<transaction::Context> const& ctx,
-               std::shared_ptr<arangodb::velocypack::Builder> const& options);
+               QueryOptions&& options);
   ~ClusterQuery();
   
   traverser::GraphEngineList const& traversers() const {
