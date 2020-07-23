@@ -54,7 +54,9 @@ namespace arangodb {
 PhysicalCollection::PhysicalCollection(LogicalCollection& collection,
                                        arangodb::velocypack::Slice const& info)
     : _logicalCollection(collection),
-      _ci(collection.vocbase().server().getFeature<ClusterFeature>().clusterInfo()),
+      _ci(collection.vocbase().server().hasFeature<ClusterFeature>()
+              ? &collection.vocbase().server().getFeature<ClusterFeature>().clusterInfo()
+              : nullptr),
       _isDBServer(ServerState::instance()->isDBServer()),
       _indexes() {}
 
@@ -175,7 +177,8 @@ std::shared_ptr<Index> PhysicalCollection::lookupIndex(std::string const& idxNam
 
 RevisionId PhysicalCollection::newRevisionId() const {
   if (_logicalCollection.hasClusterWideUniqueRevs()) {
-    return RevisionId::createClusterWideUnique(_ci);
+    TRI_ASSERT(_ci != nullptr);
+    return RevisionId::createClusterWideUnique(*_ci);
   }
   return RevisionId::create();
 }

@@ -254,7 +254,7 @@ class PhysicalCollection {
                      RevisionId found) const;
 
   LogicalCollection& _logicalCollection;
-  ClusterInfo& _ci;
+  ClusterInfo* _ci;
   bool const _isDBServer;
 
   mutable basics::ReadWriteLock _indexesLock;
