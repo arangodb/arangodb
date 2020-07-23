@@ -77,7 +77,7 @@ class TransactionManagerTest : public ::testing::Test {
   arangodb::tests::mocks::TransactionManagerSetup setup;
   TRI_vocbase_t vocbase;
   transaction::Manager* mgr;
-  TRI_voc_tid_t tid;
+  TransactionId tid;
 
   TransactionManagerTest()
       : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(setup.server.server())),
@@ -463,7 +463,7 @@ TEST_F(TransactionManagerTest, permission_denied_readonly) {
   EXPECT_TRUE(res.ok());
   ASSERT_TRUE(mgr->abortManagedTrx(tid).ok());
 
-  tid = TRI_NewTickServer();
+  tid = TransactionId::createSingleServer();
   json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"42\"]}}");
   res = mgr->createManagedTrx(vocbase, tid, json->slice());

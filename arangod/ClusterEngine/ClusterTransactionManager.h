@@ -36,13 +36,13 @@ class ClusterTransactionManager final : public TransactionManager {
   ~ClusterTransactionManager() = default;
 
   // register a transaction
-  void registerTransaction(TRI_voc_tid_t /*transactionId*/,
+  void registerTransaction(TransactionId /*transactionId*/,
                            bool /*isReadOnlyTransaction*/) override {
     ++_nrRunning;
   }
 
   // unregister a transaction
-  void unregisterTransaction(TRI_voc_tid_t transactionId, bool /*isReadOnlyTransaction*/) override {
+  void unregisterTransaction(TransactionId transactionId, bool /*isReadOnlyTransaction*/) override {
     --_nrRunning;
   }
 

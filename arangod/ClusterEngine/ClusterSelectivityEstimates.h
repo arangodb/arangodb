@@ -40,7 +40,7 @@ class ClusterSelectivityEstimates {
   /// @brief fetch estimates from cache or server
   /// @param allowUpdate allow cluster communication
   /// @param tid specify ongoing transaction this is a part of
-  IndexEstMap get(bool allowUpdating, TRI_voc_tick_t tid);
+  IndexEstMap get(bool allowUpdating, TransactionId tid);
   void set(IndexEstMap const& estimates);
 
  private:

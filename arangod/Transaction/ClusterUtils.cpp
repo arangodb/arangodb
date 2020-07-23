@@ -57,7 +57,7 @@ void abortLeaderTransactionsOnShard(TRI_voc_cid_t cid) {
 
   bool didWork = mgr->abortManagedTrx(
       [cid](TransactionState const& state, std::string const & /*user*/) -> bool {
-        if (transaction::isLeaderTransactionId(state.id())) {
+        if (state.id().isLeaderTransactionId()) {
           TransactionCollection* tcoll = state.collection(cid, AccessMode::Type::NONE);
           return tcoll != nullptr;
         }
@@ -74,7 +74,7 @@ void abortFollowerTransactionsOnShard(TRI_voc_cid_t cid) {
 
   bool didWork = mgr->abortManagedTrx(
       [cid](TransactionState const& state, std::string const & /*user*/) -> bool {
-        if (transaction::isFollowerTransactionId(state.id())) {
+        if (state.id().isFollowerTransactionId()) {
           TransactionCollection* tcoll = state.collection(cid, AccessMode::Type::NONE);
           return tcoll != nullptr;
         }
@@ -115,14 +115,15 @@ void abortTransactionsWithFailedServers(ClusterInfo& ci) {
     }
     
     // abort all transaction started by a certain coordinator
-    didWork = mgr->abortManagedTrx([&](TransactionState const& state, std::string const& /*user*/) -> bool {
-      uint32_t serverId = TRI_ExtractServerIdFromTick(state.id());
-      if (serverId != 0) {
-        ServerID coordId = ci.getCoordinatorByShortID(serverId);
-        return std::find(failed.begin(), failed.end(), coordId) != failed.end();
-      }
-      return false;
-    });
+    didWork = mgr->abortManagedTrx(
+        [&](TransactionState const& state, std::string const & /*user*/) -> bool {
+          uint32_t serverId = state.id().serverId();
+          if (serverId != 0) {
+            ServerID coordId = ci.getCoordinatorByShortID(serverId);
+            return std::find(failed.begin(), failed.end(), coordId) != failed.end();
+          }
+          return false;
+        });
   }
   
   LOG_TOPIC_IF("b59e3", INFO, Logger::TRANSACTIONS, didWork) <<

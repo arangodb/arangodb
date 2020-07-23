@@ -2085,8 +2085,9 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(transaction::Methods* tr
 
   if (!s.ok()) {
     LOG_TOPIC("f63dd", DEBUG, Logger::ENGINES)
-        << "NOT FOUND rev: " << documentId.id() << " trx: " << trx->state()->id()
-        << " objectID " << objectId() << " name: " << _logicalCollection.name();
+        << "NOT FOUND rev: " << documentId.id()
+        << " trx: " << trx->state()->id().id() << " objectID " << objectId()
+        << " name: " << _logicalCollection.name();
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
 

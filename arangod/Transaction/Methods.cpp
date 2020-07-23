@@ -561,7 +561,7 @@ Future<Result> transaction::Methods::finishAsync(Result const& res) {
 }
 
 /// @brief return the transaction id
-TRI_voc_tid_t transaction::Methods::tid() const {
+TransactionId transaction::Methods::tid() const {
   TRI_ASSERT(_state != nullptr);
   return _state->id();
 }
