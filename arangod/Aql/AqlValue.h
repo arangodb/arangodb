@@ -124,47 +124,6 @@ struct AqlValue final {
   friend struct std::equal_to<arangodb::aql::AqlValue>;
 
  public:
-  /// @brief auxiliary struct to quickly compute hashes of the underlying
-  /// AqlValue. It just hashes the stored pointer, and nothing else (not
-  /// even the type - the idea is that two AqlValues with different types
-  /// will not manage memory via the same pointer). 
-  /// note: only works reliably if the underlying AqlValue has a type other
-  /// than VPACK_INLINE!!! This is the case for AqlValues inserted into the
-  /// _valueCount map of an AqlItemBlock, for example. Here, only AqlValues
-  /// with dynamic memory allocations are inserted, thus the assumption 
-  /// holds true
-  struct SimpleHash {
-    SimpleHash() : _hasher() {}
-
-    inline size_t operator()(AqlValue const& value) const noexcept {
-      TRI_ASSERT(value.type() != VPACK_INLINE);
-      /// hash only the pointer. should be very quick
-      return _hasher(value._data.words[0]);
-    }
-
-   private:
-    std::hash<uint64_t> _hasher;
-  };
-
-  /// @brief auxiliary struct to quickly compare the equality of two
-  /// AqlValues. It just compares the stored pointers, and nothing else (not
-  /// even the type - the idea is that two AqlValues with different types
-  /// will not manage memory via the same pointer). 
-  /// note: only works reliably if the underlying AqlValues have a type other
-  /// than VPACK_INLINE!!! This is the case for AqlValues inserted into the
-  /// _valueCount map of an AqlItemBlock, for example. Here, only AqlValues
-  /// with dynamic memory allocations are inserted, thus the assumption 
-  /// holds true
-  struct SimpleEqual {
-    inline bool operator()(arangodb::aql::AqlValue const& lhs,
-                           arangodb::aql::AqlValue const& rhs) const noexcept {
-      TRI_ASSERT(lhs.type() != VPACK_INLINE && rhs.type() != VPACK_INLINE);
-      /// compare only the pointers. should be very quick
-      return lhs._data.words[0] == rhs._data.words[0];
-    }
-  };
-
- public:
   /// @brief AqlValueType, indicates what sort of value we have
   enum AqlValueType : uint8_t {
     VPACK_INLINE = 0,      // contains vpack data, inline
@@ -202,6 +161,7 @@ struct AqlValue final {
     uint8_t internal[16];
     uint8_t const* pointer;
     uint8_t* slice;
+    void* data;
     arangodb::velocypack::Buffer<uint8_t>* buffer;
     std::vector<arangodb::aql::SharedAqlItemBlockPtr>* docvec;
     Range const* range;
@@ -214,6 +174,9 @@ struct AqlValue final {
 
   // construct from pointer, not copying!
   explicit AqlValue(uint8_t const* pointer);
+  
+  // construct from type and pointer, not copying!
+  explicit AqlValue(AqlValueType type, void* data) noexcept;
 
   // construct from docvec, taking over its ownership
   explicit AqlValue(std::vector<arangodb::aql::SharedAqlItemBlockPtr>* docvec) noexcept;
@@ -359,10 +322,12 @@ struct AqlValue final {
   /// @brief whether or not an AqlValue evaluates to true/false
   bool toBoolean() const;
 
+  /// @brief return the pointer to the underlying AqlValue. 
+  /// only supported for AqlValue types with dynamic memory management
+  void* data() const noexcept;
+
   /// @brief return the range value
   Range const* range() const;
-
-  AqlItemBlock* docvecAt(size_t position) const;
 
   /// @brief construct a V8 value as input for the expression execution in V8
   v8::Handle<v8::Value> toV8(v8::Isolate* isolate, arangodb::velocypack::Options const*) const;
@@ -400,11 +365,11 @@ struct AqlValue final {
   static int Compare(transaction::Methods*, AqlValue const& left,
                      AqlValue const& right, bool useUtf8);
 
- private:
   /// @brief Returns the type of this value. If true it uses an external pointer
   /// if false it uses the internal data structure
   AqlValueType type() const noexcept;
 
+ private:
   /// @brief initializes value from a slice
   void initFromSlice(arangodb::velocypack::Slice const& slice);
 
