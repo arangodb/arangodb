@@ -264,6 +264,7 @@ class ScopedAqlValue : private irs::util::noncopyable {
     rhs._destroy = false;
     rhs._executed = true;
   }
+  ScopedAqlValue& operator=(ScopedAqlValue const& rhs) = delete;
 
   ScopedAqlValue& operator=(ScopedAqlValue&& rhs) noexcept {
     std::swap(_value, rhs._value);
