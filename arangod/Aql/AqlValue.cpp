@@ -1378,12 +1378,6 @@ AqlValue::AqlValue(std::vector<arangodb::aql::SharedAqlItemBlockPtr>* docvec) no
   setType(AqlValueType::DOCVEC);
 }
 
-/// @brief return the item block at position
-AqlItemBlock* AqlValue::docvecAt(size_t position) const {
-  TRI_ASSERT(isDocvec());
-  return _data.docvec->at(position).get();
-}
-
 AqlValue::AqlValue() noexcept {
   // construct a slice of type None
   // we will simply zero-initialize the two 64 bit words
@@ -1407,6 +1401,13 @@ AqlValue::AqlValue(uint8_t const* pointer) {
     setPointer<false>(pointer);
   }
   TRI_ASSERT(!VPackSlice(_data.pointer).isExternal());
+}
+
+AqlValue::AqlValue(AqlValueType type, void* data) noexcept {
+  TRI_ASSERT(data != nullptr);
+  TRI_ASSERT(type != VPACK_INLINE);
+  _data.data = data;
+  setType(type);
 }
 
 AqlValue::AqlValue(AqlValueHintNone const&) noexcept {
@@ -1673,6 +1674,12 @@ void AqlValue::initFromSlice(arangodb::velocypack::Slice const& slice) {
 
 void AqlValue::setType(AqlValue::AqlValueType type) noexcept {
   _data.internal[sizeof(_data.internal) - 1] = type;
+}
+
+void* AqlValue::data() const noexcept {
+  TRI_ASSERT(type() != VPACK_INLINE);
+  TRI_ASSERT(_data.data != nullptr);
+  return _data.data;
 }
 
 template <bool isManagedDoc>
