@@ -31,7 +31,7 @@ TEST_CASE("Test [+] primitive", "[addition]") {
     REQUIRE(2 == result.slice().getDouble());
   }
 
-  /*SECTION( "Test basic double addition" ) {
+  SECTION( "Test basic double addition" ) {
     auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
     auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
 
@@ -42,7 +42,7 @@ TEST_CASE("Test [+] primitive", "[addition]") {
     Evaluate(ctx, program->slice(), result);
 
     REQUIRE( 3.2 == result.slice().getDouble());
-  }*/
+  }
 }
 
 TEST_CASE("Test [-] primitive", "[subtraction]") {
@@ -205,9 +205,9 @@ TEST_CASE("Test [int-to-str] primitive", "[int-to-str]") {
 TEST_CASE("Test [attrib] primitive", "[attrib]") {}
 TEST_CASE("Test [var-ref] primitive", "[var-ref]") {}
 TEST_CASE("Test [bind-ref] primitive", "[bind-ref]") {}
+TEST_CASE("Test [accum-ref] primitive", "[accumref]") {}
 
 TEST_CASE("Test [this] primitive", "[this]") {}
-TEST_CASE("Test [accumref] primitive", "[accumref]") {}
 TEST_CASE("Test [update] primitive", "[update]") {}
 TEST_CASE("Test [set] primitive", "[set]") {}
 TEST_CASE("Test [for] primitive", "[for]") {}
