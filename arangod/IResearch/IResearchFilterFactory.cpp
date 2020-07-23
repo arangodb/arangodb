@@ -2733,6 +2733,25 @@ arangodb::Result getInRangeArguments(char const* funcName, bool isFilter,
     }
     TRI_ASSERT((*field)->isDeterministic());
   }
+ 
+  // (3 - First) argument defines inclusion of lower boundary
+  ScopedAqlValue includeValue;
+  auto res = ElementTraits::evaluateArg(minInclude, includeValue, funcName, args, 3 - First, isFilter, ctx);
+  if (res.fail()) {
+    return {
+      res.errorNumber(),
+      res.errorMessage().append(errorSuffix)
+    };
+  }
+
+  // (4 - First) argument defines inclusion of upper boundary
+  res = ElementTraits::evaluateArg(maxInclude, includeValue, funcName, args, 4 - First, isFilter, ctx);
+  if (res.fail()) {
+    return {
+      res.errorNumber(),
+      res.errorMessage().append(errorSuffix)
+    };
+  }
 
   // (1 - First) argument defines a lower boundary
   {
@@ -2753,25 +2772,6 @@ arangodb::Result getInRangeArguments(char const* funcName, bool isFilter,
         res.errorMessage().append(errorSuffix)
       };
     }
-  }
-
-  // (3 - First) argument defines inclusion of lower boundary
-  ScopedAqlValue includeValue;
-  auto res = ElementTraits::evaluateArg(minInclude, includeValue, funcName, args, 3 - First, isFilter, ctx);
-  if (res.fail()) {
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(errorSuffix)
-    };
-  }
-
-  // (4 - First) argument defines inclusion of upper boundary
-  res = ElementTraits::evaluateArg(maxInclude, includeValue, funcName, args, 4 - First, isFilter, ctx);
-  if (res.fail()) {
-    return {
-      res.errorNumber(),
-      res.errorMessage().append(errorSuffix)
-    };
   }
 
   if (ret) {
