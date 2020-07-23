@@ -2078,8 +2078,8 @@ public:
 
   template<typename T, bool CheckDeterminism = false>
   static arangodb::Result evaluateArg(T& out, ScopedAqlValue& value, char const* funcName,
-    arangodb::aql::AstNode const& args, size_t i, bool isFilter,
-    QueryContext const& ctx) {
+                                      arangodb::aql::AstNode const& args, size_t i, bool isFilter,
+                                      QueryContext const& ctx) {
     return ::evaluateArg<T, CheckDeterminism>(out, value, funcName, args, i, isFilter, ctx);
   }
 
@@ -2174,14 +2174,6 @@ template<>
 class ArgsArrayTraits<VPackSlice> {
 public:
   using ValueType = VPackSlice;
-
-  static bool getString(ValueType const& arg, irs::string_ref& ref) {
-    if (arg.isString()) {
-      ref = getStringRef(arg);
-      return true;
-    }
-    return false;
-  }
 
   static ScopedValueType scopedType(ValueType& v) {
     if (v.isNumber()) {
