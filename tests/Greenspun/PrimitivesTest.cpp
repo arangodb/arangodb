@@ -10,6 +10,10 @@
 #include "velocypack/velocypack-aliases.h"
 #include "./structs/EvalContext.h"
 
+/*
+ * Calculation operators
+ */
+
 TEST_CASE("Test [+] primitive", "[addition]") {
   InitInterpreter();
   MyEvalContext ctx;
@@ -24,7 +28,7 @@ TEST_CASE("Test [+] primitive", "[addition]") {
     )aql");
 
     Evaluate(ctx, program->slice(), result);
-    REQUIRE(2 == result.slice().getInt());
+    REQUIRE(2 == result.slice().getDouble());
   }
 
   /*SECTION( "Test basic double addition" ) {
@@ -55,7 +59,7 @@ TEST_CASE("Test [-] primitive", "[subtraction]") {
     )aql");
 
     Evaluate(ctx, program->slice(), result);
-    REQUIRE(0 == result.slice().getInt());
+    REQUIRE(0 == result.slice().getDouble());
   }
 
   SECTION("Test negative int result value") {
@@ -67,7 +71,7 @@ TEST_CASE("Test [-] primitive", "[subtraction]") {
     )aql");
 
     Evaluate(ctx, program->slice(), result);
-    REQUIRE(-2 == result.slice().getInt());
+    REQUIRE(-2 == result.slice().getDouble());
   }
 }
 
@@ -85,7 +89,7 @@ TEST_CASE("Test [*] primitive", "[multiplication]") {
     )aql");
 
     Evaluate(ctx, program->slice(), result);
-    REQUIRE(4 == result.slice().getInt());
+    REQUIRE(4 == result.slice().getDouble());
   }
 
   SECTION("Test int zero multiplication") {
@@ -97,7 +101,7 @@ TEST_CASE("Test [*] primitive", "[multiplication]") {
     )aql");
 
     Evaluate(ctx, program->slice(), result);
-    REQUIRE(0 == result.slice().getInt());
+    REQUIRE(0 == result.slice().getDouble());
   }
 }
 
@@ -115,7 +119,7 @@ TEST_CASE("Test [/] primitive", "[division]") {
     )aql");
 
     Evaluate(ctx, program->slice(), result);
-    REQUIRE(1 == result.slice().getInt());
+    REQUIRE(1 == result.slice().getDouble());
   }
 
   SECTION("Test invalid int division") {
@@ -126,21 +130,56 @@ TEST_CASE("Test [/] primitive", "[division]") {
       ["/", 2, 0]
     )aql");
 
-    REQUIRE_THROWS(Evaluate(ctx, program->slice(), result));
+    EvalResult res = Evaluate(ctx, program->slice(), result);
+    REQUIRE(res.fail());
   }
 }
 
-TEST_CASE("Test [list] primitive", "[list]") {}
-TEST_CASE("Test [eq?] primitive", "[equals]") {}
-TEST_CASE("Test [varref] primitive", "[varref]") {}
-TEST_CASE("Test [attrib] primitive", "[attrib]") {}
-TEST_CASE("Test [this] primitive", "[this]") {}
-TEST_CASE("Test [accumref] primitive", "[accumref]") {}
-TEST_CASE("Test [update] primitive", "[update]") {}
-TEST_CASE("Test [set] primitive", "[set]") {}
-TEST_CASE("Test [for] primitive", "[for]") {}
-TEST_CASE("Test [cat] primitive", "[cat]") {}
+/*
+ * Logical operators
+ */
 
+TEST_CASE("Test [not] primitive - unary", "[not]") {}
+TEST_CASE("Test [false?] primitive", "[false?]") {
+  InitInterpreter();
+  MyEvalContext ctx;
+  VPackBuilder result;
+
+  SECTION("Test true boolean") {
+    auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
+    auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
+
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["false?", true]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(false == result.slice().getBoolean());
+  }
+}
+TEST_CASE("Test [true?] primitive", "[true?]") {}
+
+/*
+ * Comparison operators
+ */
+
+TEST_CASE("Test [eq?] primitive", "[equals]") {}
+TEST_CASE("Test [gt?] primitive", "[greater]") {}
+TEST_CASE("Test [ge?] primitive", "[greater equal]") {}
+TEST_CASE("Test [le?] primitive", "[less equal]") {}
+TEST_CASE("Test [lt?] primitive", "[less]") {}
+TEST_CASE("Test [ne?] primitive", "[not equal]") {}
+
+/*
+ * Debug operators
+ */
+
+TEST_CASE("Test [print] primitive", "[print]") {
+
+}
+
+TEST_CASE("Test [list-cat] primitive", "[list-cat]") {}
+TEST_CASE("Test [string-cat] primitive", "[string-cat]") {}
 TEST_CASE("Test [int-to-str] primitive", "[int-to-str]") {
   InitInterpreter();
   MyEvalContext ctx;
@@ -155,6 +194,22 @@ TEST_CASE("Test [int-to-str] primitive", "[int-to-str]") {
     )aql");
 
     Evaluate(ctx, program->slice(), result);
-    REQUIRE("1" == result.slice().toString());
+    REQUIRE("2" == result.slice().toString());
   }
 }
+
+/*
+ * Access operators
+ */
+
+TEST_CASE("Test [attrib] primitive", "[attrib]") {}
+TEST_CASE("Test [var-ref] primitive", "[var-ref]") {}
+TEST_CASE("Test [bind-ref] primitive", "[bind-ref]") {}
+
+TEST_CASE("Test [this] primitive", "[this]") {}
+TEST_CASE("Test [accumref] primitive", "[accumref]") {}
+TEST_CASE("Test [update] primitive", "[update]") {}
+TEST_CASE("Test [set] primitive", "[set]") {}
+TEST_CASE("Test [for] primitive", "[for]") {}
+TEST_CASE("Test [global-superstep] primitive", "[global-superstep]") {}
+
