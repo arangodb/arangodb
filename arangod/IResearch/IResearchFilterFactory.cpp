@@ -2190,6 +2190,8 @@ public:
         return SCOPED_VALUE_TYPE_OBJECT;
       case VPackValueType::Null:
         return SCOPED_VALUE_TYPE_NULL;
+      default:
+        break; // Make Clang happy
     }
     return SCOPED_VALUE_TYPE_INVALID;
   }
@@ -2860,7 +2862,7 @@ arangodb::Result processPhraseArgs(char const* funcName,
   irs::string_ref value;
   bool expectingOffset = false;
   for (size_t idx = valueArgsBegin; idx < valueArgsEnd; ++idx) {
-    ElementTraits::ValueType valueArg;
+    typename ElementTraits::ValueType valueArg;
     {
       bool skippedEvaluation{ false };
       auto res = ElementTraits::getMemberValue(valueArgs, idx, funcName, valueArg,
