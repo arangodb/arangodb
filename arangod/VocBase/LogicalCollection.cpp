@@ -516,10 +516,6 @@ IndexEstMap LogicalCollection::clusterIndexEstimates(bool allowUpdating, TRI_voc
   return getPhysical()->clusterIndexEstimates(allowUpdating, tid);
 }
 
-void LogicalCollection::setClusterIndexEstimates(IndexEstMap&& estimates) {
-  getPhysical()->setClusterIndexEstimates(std::move(estimates));
-}
-
 void LogicalCollection::flushClusterIndexEstimates() {
   getPhysical()->flushClusterIndexEstimates();
 }

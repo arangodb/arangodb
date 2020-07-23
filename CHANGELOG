@@ -1,6 +1,11 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Add internal caching for LogicalCollection objects inside ClusterInfo::loadPlan.
+  This allows avoiding the recreation of LogicalCollection objects that did not
+  change from one loadPlan run to the next. It reduces CPU usage considerably on
+  both Coordinators and DB-servers.
+
 * Revive faster out-of-range comparator for secondary index scans that do a full
   collection index scan for index types "hash", "skiplist", "persistent".
 
