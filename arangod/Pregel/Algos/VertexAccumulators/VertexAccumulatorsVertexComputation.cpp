@@ -87,6 +87,11 @@ struct MyEvalContext : PrimEvalContext {
     return EvalError("bind parameter `" + std::string{id} + "` not found");
   }
 
+  EvalResult getGlobalSuperstep(VPackBuilder &result) const override {
+    result.add(VPackValue(_computation.globalSuperstep()));
+    return {};
+  }
+
   VertexAccumulators::VertexComputation& _computation;
   VertexData& _vertexData;
 };

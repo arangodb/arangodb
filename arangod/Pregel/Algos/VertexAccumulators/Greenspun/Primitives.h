@@ -36,7 +36,10 @@ struct PrimEvalContext : EvalContext {
 
   virtual EvalResult enumerateEdges(std::function<EvalResult(VPackSlice edge)> cb) const = 0;
   virtual EvalResult getBindingValue(std::string_view id, VPackBuilder& result) const {
-      return EvalError("not impemented");
+    return EvalError("not impemented");
+  }
+  virtual EvalResult getGlobalSuperstep(VPackBuilder& result) const {
+    return EvalError("not impemented");
   }
 };
 

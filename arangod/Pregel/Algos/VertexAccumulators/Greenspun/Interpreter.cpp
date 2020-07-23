@@ -29,6 +29,7 @@
 #include <iostream>
 #include <sstream>
 
+#include <Basics/VelocyPackHelper.h>
 #include <velocypack/Iterator.h>
 
 using namespace arangodb::velocypack;
@@ -159,6 +160,40 @@ EvalResult SpecialSeq(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilde
   return {};
 }
 
+EvalResult SpecialMatch(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
+  if (!paramIterator.valid()) {
+    return EvalError("expected at least one argument");
+  }
+
+  VPackBuilder proto;
+  if (auto res = Evaluate(ctx, *paramIterator, proto); !res) {
+    return res;
+  }
+  paramIterator++;
+  for (; paramIterator.valid(); paramIterator++) {
+    auto pair = *paramIterator;
+    if (!pair.isArray() || pair.length() != 2) {
+      return EvalError("in case " + std::to_string(paramIterator.index()) + ", expected pair, found: " + pair.toJson());
+    }
+    auto&& [cmp, body] = unpackTuple<VPackSlice, VPackSlice>(pair);
+    VPackBuilder cmpValue;
+    if (auto res = Evaluate(ctx, cmp, cmpValue); !res) {
+      return res.wrapError([&](EvalError& err) {
+        err.wrapMessage("in condition " + std::to_string(paramIterator.index() - 1));
+      });
+    }
+
+    if (arangodb::basics::VelocyPackHelper::compare(proto.slice(), cmpValue.slice(), true) == 0) {
+      return Evaluate(ctx, body, result).wrapError([&](EvalError &err) {
+        err.wrapMessage("in case " + std::to_string(paramIterator.index() - 1));
+      });
+    }
+  }
+
+  result.add(VPackSlice::noneSlice());
+  return {};
+}
+
 EvalResult Call(EvalContext& ctx, VPackSlice const functionSlice,
                 ArrayIterator paramIterator, VPackBuilder& result) {
   VPackBuilder paramBuilder;
@@ -205,6 +240,8 @@ EvalResult Evaluate(EvalContext& ctx, VPackSlice const slice, VPackBuilder& resu
         return SpecialOr(ctx, paramIterator, result);
       } else if (functionSlice.isEqualString("seq")) {
         return SpecialSeq(ctx, paramIterator, result);
+      } else if (functionSlice.isEqualString("match")) {
+        return SpecialMatch(ctx, paramIterator, result);
       } else {
         return Call(ctx, functionSlice, paramIterator, result);
       }

@@ -291,6 +291,14 @@ EvalResult Prim_BindRef(PrimEvalContext& ctx, VPackSlice const params, VPackBuil
   return EvalError("expected a single string argument");
 }
 
+EvalResult Prim_GlobalSuperstep(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+  if (params.isEmptyArray()) {
+    return ctx.getGlobalSuperstep(result);
+  }
+
+  return EvalError("expected no arguments");
+}
+
 void RegisterPrimitives() {
   primitives["banana"] = Prim_Banana;
   primitives["+"] = Prim_Banana;
@@ -327,4 +335,5 @@ void RegisterPrimitives() {
   primitives["update"] = Prim_Update;
   primitives["set"] = Prim_Set;
   primitives["for"] = Prim_For;
+  primitives["global-superstep"] = Prim_GlobalSuperstep;
 }
