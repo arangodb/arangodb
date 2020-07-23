@@ -1115,7 +1115,8 @@ void ClusterInfo::loadPlan() {
         // the cache check is very coarse-grained: it simply hashes the Plan VelocyPack
         // data for the collection, and will only reuse a collection from the cache if 
         // the hash is identical. 
-        auto [newCollection, hash] = buildCollection(isBuilding, existingCollections, collectionId, collectionSlice, *vocbase, newPlanVersion);
+        CollectionWithHash cwh = buildCollection(isBuilding, existingCollections, collectionId, collectionSlice, *vocbase, newPlanVersion);
+        auto& newCollection = cwh.collection; 
         TRI_ASSERT(newCollection != nullptr);
      
         try {
@@ -1129,8 +1130,8 @@ void ClusterInfo::loadPlan() {
 
           if (!isBuilding) {
             // register with name as well as with id:
-            databaseCollections.try_emplace(collectionName, CollectionWithHash{hash, newCollection});
-            databaseCollections.try_emplace(collectionId, CollectionWithHash{hash, newCollection});
+            databaseCollections.try_emplace(collectionName, cwh);
+            databaseCollections.try_emplace(collectionId, cwd);
           }
 
           auto shardIDs = newCollection->shardIds();
