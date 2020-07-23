@@ -92,7 +92,7 @@ RocksDBMetadata::RocksDBMetadata()
  * @param  seq   The sequence number immediately prior to call
  * @return       May return error if we fail to allocate and place blocker
  */
-Result RocksDBMetadata::placeBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumber seq) {
+Result RocksDBMetadata::placeBlocker(TransactionId trxId, rocksdb::SequenceNumber seq) {
   return basics::catchToResult([&]() -> Result {
     Result res;
     WRITE_LOCKER(locker, _blockerLock);
@@ -119,7 +119,7 @@ Result RocksDBMetadata::placeBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumbe
  * @param  seq   The sequence number from the internal snapshot
  * @return       May return error if we fail to allocate and place blocker
  */
-Result RocksDBMetadata::updateBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumber seq) {
+Result RocksDBMetadata::updateBlocker(TransactionId trxId, rocksdb::SequenceNumber seq) {
   return basics::catchToResult([&]() -> Result {
     Result res;
     WRITE_LOCKER(locker, _blockerLock);
@@ -155,7 +155,7 @@ Result RocksDBMetadata::updateBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumb
  * @param trxId Identifier for active transaction (should match input to
  *              earlier `placeBlocker` call)
  */
-void RocksDBMetadata::removeBlocker(TRI_voc_tid_t trxId) {
+void RocksDBMetadata::removeBlocker(TransactionId trxId) {
   WRITE_LOCKER(locker, _blockerLock);
   auto it = _blockers.find(trxId);
   if (ADB_LIKELY(_blockers.end() != it)) {

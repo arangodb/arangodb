@@ -29,6 +29,7 @@
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/RevisionId.h"
+#include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -68,20 +69,20 @@ class RocksDBTransactionCollection final : public TransactionCollection {
    * @param trxId    Active transaction ID
    * @param beginSeq Current seq/tick on transaction begin
    */
-  void prepareTransaction(uint64_t trxId, uint64_t beginSeq);
+  void prepareTransaction(TransactionId trxId, uint64_t beginSeq);
 
   /**
    * @brief Signal upstream abort/rollback to clean up index blockers
    * @param trxId Active transaction ID
    */
-  void abortCommit(uint64_t trxId);
+  void abortCommit(TransactionId trxId);
 
   /**
    * @brief Commit collection counts and buffer tracked index updates
    * @param trxId     Active transaction ID
    * @param commitSeq Seq/tick immediately after upstream commit
    */
-  void commitCounts(TRI_voc_tid_t trxId, uint64_t commitSeq);
+  void commitCounts(TransactionId trxId, uint64_t commitSeq);
 
   /// @brief Track documents inserted to the collection
   ///        Used to update the revision tree for replication after commit

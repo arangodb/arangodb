@@ -1111,7 +1111,7 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
 Result selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string const& dbname,
                                          std::string const& collname,
                                          std::unordered_map<std::string, double>& result,
-                                         TRI_voc_tick_t tid) {
+                                         TransactionId tid) {
   // Set a few variables needed for our work:
   ClusterInfo& ci = feature.clusterInfo();
 
@@ -1138,8 +1138,8 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string co
   std::string requestsUrl;
   for (auto const& p : *shards) {
     network::Headers headers;
-    if (tid != 0) {
-      headers.try_emplace(StaticStrings::TransactionId, std::to_string(tid));
+    if (tid.isSet()) {
+      headers.try_emplace(StaticStrings::TransactionId, std::to_string(tid.id()));
     }
 
     reqOpts.param("collection", p.first);

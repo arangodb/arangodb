@@ -86,8 +86,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
   void revisionTreeSummary(VPackBuilder& builder);
 
-  void placeRevisionTreeBlocker(TRI_voc_tid_t transactionId) override;
-  void removeRevisionTreeBlocker(TRI_voc_tid_t transactionId) override;
+  void placeRevisionTreeBlocker(TransactionId transactionId) override;
+  void removeRevisionTreeBlocker(TransactionId transactionId) override;
 
   /**
    * @brief Buffer updates to this collection to be applied when appropriate

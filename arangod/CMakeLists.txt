@@ -399,6 +399,7 @@ set(LIB_ARANGO_VOCBASE_SOURCES
   VocBase/Identifiers/LocalDocumentId.cpp
   VocBase/Identifiers/RevisionId.cpp
   VocBase/Identifiers/ServerId.cpp
+  VocBase/Identifiers/TransactionId.cpp
   VocBase/KeyGenerator.cpp
   VocBase/LogicalCollection.cpp
   VocBase/LogicalDataSource.cpp

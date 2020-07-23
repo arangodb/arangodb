@@ -101,9 +101,9 @@ basics::ReadWriteLock RestReplicationHandler::_tombLock;
 std::unordered_map<std::string, std::chrono::time_point<std::chrono::steady_clock>>
     RestReplicationHandler::_tombstones = {};
 
-static aql::QueryId ExtractReadlockId(VPackSlice slice) {
+static TransactionId ExtractReadlockId(VPackSlice slice) {
   TRI_ASSERT(slice.isString());
-  return StringUtils::uint64(slice.copyString());
+  return TransactionId{StringUtils::uint64(slice.copyString())};
 }
 
 static bool ignoreHiddenEnterpriseCollection(std::string const& name, bool force) {
@@ -2532,7 +2532,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
   // get into trouble here we may need to be more lenient
   TRI_ASSERT(checksumSlice.isString() && readLockIdSlice.isString());
 
-  aql::QueryId readLockId = ExtractReadlockId(readLockIdSlice);
+  TransactionId readLockId = ExtractReadlockId(readLockIdSlice);
 
   // referenceChecksum is the stringified number of documents in the collection
   ResultT<std::string> referenceChecksum =
@@ -2759,7 +2759,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     return;
   }
 
-  aql::QueryId id = ExtractReadlockId(idSlice);
+  TransactionId id = ExtractReadlockId(idSlice);
   auto col = _vocbase.lookupCollection(collection.copyString());
 
   if (col == nullptr) {
@@ -2843,7 +2843,7 @@ void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
                   "'id' needs to be a string");
     return;
   }
-  aql::QueryId id = ExtractReadlockId(idSlice);
+  TransactionId id = ExtractReadlockId(idSlice);
   LOG_TOPIC("05a75", DEBUG, Logger::REPLICATION) << "Test if Lock " << id << " is still active.";
   auto res = isLockHeld(id);
   if (!res.ok()) {
@@ -2887,7 +2887,7 @@ void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
                   "'id' needs to be a string");
     return;
   }
-  aql::QueryId id = ExtractReadlockId(idSlice);
+  TransactionId id = ExtractReadlockId(idSlice);
   LOG_TOPIC("9a5e3", DEBUG, Logger::REPLICATION) << "Attempt to cancel Lock: " << id;
 
   auto res = cancelBlockingTransaction(id);
@@ -2918,7 +2918,7 @@ void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
 void RestReplicationHandler::handleCommandGetIdForReadLockCollection() {
   TRI_ASSERT(ServerState::instance()->isDBServer());
 
-  std::string id = std::to_string(transaction::Context::makeTransactionId());
+  std::string id = std::to_string(transaction::Context::makeTransactionId().id());
   VPackBuilder b;
   {
     VPackObjectBuilder bb(&b);
@@ -3465,7 +3465,7 @@ struct RebootCookie : public arangodb::TransactionState::Cookie {
 }
 
 Result RestReplicationHandler::createBlockingTransaction(
-    TRI_voc_tick_t id, LogicalCollection& col, double ttl, AccessMode::Type access,
+    TransactionId id, LogicalCollection& col, double ttl, AccessMode::Type access,
     RebootId const& rebootId, std::string const& serverId) {
   // This is a constant JSON structure for Queries.
   // we actually do not need a plan, as we only want the query registry to have
@@ -3489,7 +3489,7 @@ Result RestReplicationHandler::createBlockingTransaction(
   transaction::Options opts;
   opts.lockTimeout = ttl; // not sure if appropriate ?
   Result res = mgr->createManagedTrx(_vocbase, id, read, {}, exc, opts, ttl);
-  
+
   if (res.fail()) {
     return res;
   }
@@ -3545,7 +3545,7 @@ Result RestReplicationHandler::createBlockingTransaction(
   return Result();
 }
 
-ResultT<bool> RestReplicationHandler::isLockHeld(aql::QueryId id) const {
+ResultT<bool> RestReplicationHandler::isLockHeld(TransactionId id) const {
   // The query is only hold for long during initial locking
   // there it should return false.
   // In all other cases it is released quickly.
@@ -3555,7 +3555,7 @@ ResultT<bool> RestReplicationHandler::isLockHeld(aql::QueryId id) const {
   
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
-  
+
   transaction::Status stats = mgr->getManagedTrxStatus(id);
   if (stats == transaction::Status::UNDEFINED) {
     return ResultT<bool>::error(TRI_ERROR_HTTP_NOT_FOUND,
@@ -3565,7 +3565,7 @@ ResultT<bool> RestReplicationHandler::isLockHeld(aql::QueryId id) const {
   return ResultT<bool>::success(true);
 }
 
-ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(aql::QueryId id) const {
+ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(TransactionId id) const {
   // This lookup is only required for API compatibility,
   // otherwise an unconditional destroy() would do.
   auto res = isLockHeld(id);
@@ -3585,14 +3585,13 @@ ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(aql::QueryId id)
 }
 
 ResultT<std::string> RestReplicationHandler::computeCollectionChecksum(
-    aql::QueryId id, LogicalCollection* col) const {
+    TransactionId id, LogicalCollection* col) const {
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   if (!mgr) {
     return ResultT<std::string>::error(TRI_ERROR_SHUTTING_DOWN);
   }
 
   try {
-    
     auto ctx = mgr->leaseManagedTrx(id, AccessMode::Type::READ);
     if (!ctx) {
       // Trx does not exist. So we assume it got cancelled.
@@ -3613,8 +3612,8 @@ ResultT<std::string> RestReplicationHandler::computeCollectionChecksum(
   }
 }
 
-static std::string IdToTombstoneKey(TRI_vocbase_t& vocbase, aql::QueryId id) {
-  return vocbase.name() + "/" + StringUtils::itoa(id);
+static std::string IdToTombstoneKey(TRI_vocbase_t& vocbase, TransactionId id) {
+  return vocbase.name() + "/" + StringUtils::itoa(id.id());
 }
 
 void RestReplicationHandler::timeoutTombstones() const {
@@ -3649,7 +3648,7 @@ void RestReplicationHandler::timeoutTombstones() const {
   }
 }
 
-bool RestReplicationHandler::isTombstoned(aql::QueryId id) const {
+bool RestReplicationHandler::isTombstoned(TransactionId id) const {
   std::string key = IdToTombstoneKey(_vocbase, id);
   bool isDead = false;
   {
@@ -3671,7 +3670,7 @@ bool RestReplicationHandler::isTombstoned(aql::QueryId id) const {
   return isDead;
 }
 
-void RestReplicationHandler::registerTombstone(aql::QueryId id) const {
+void RestReplicationHandler::registerTombstone(TransactionId id) const {
   std::string key = IdToTombstoneKey(_vocbase, id);
   {
     WRITE_LOCKER(writeLocker, RestReplicationHandler::_tombLock);

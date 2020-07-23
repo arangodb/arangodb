@@ -87,7 +87,7 @@ class PhysicalCollection {
   /// @brief fetches current index selectivity estimates
   /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
   /// to fetch current values!
-  virtual IndexEstMap clusterIndexEstimates(bool allowUpdating, TRI_voc_tick_t tid);
+  virtual IndexEstMap clusterIndexEstimates(bool allowUpdating, TransactionId tid);
 
   /// @brief sets the current index selectivity estimates
   virtual void setClusterIndexEstimates(IndexEstMap&& estimates);
@@ -213,8 +213,8 @@ class PhysicalCollection {
 
   virtual Result rebuildRevisionTree();
 
-  virtual void placeRevisionTreeBlocker(TRI_voc_tid_t transactionId);
-  virtual void removeRevisionTreeBlocker(TRI_voc_tid_t transactionId);
+  virtual void placeRevisionTreeBlocker(TransactionId transactionId);
+  virtual void removeRevisionTreeBlocker(TransactionId transactionId);
 
   RevisionId newRevisionId() const;
 

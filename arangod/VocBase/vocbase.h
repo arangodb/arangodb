@@ -39,6 +39,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Basics/voc-errors.h"
+#include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/voc-types.h"
 
@@ -155,7 +156,7 @@ struct TRI_vocbase_t {
   std::unique_ptr<arangodb::ReplicationClientsProgressTracker> _replicationClients;
 
  public:
-  arangodb::basics::DeadlockDetector<TRI_voc_tid_t, arangodb::LogicalCollection> _deadlockDetector;
+  arangodb::basics::DeadlockDetector<arangodb::TransactionId, arangodb::LogicalCollection> _deadlockDetector;
   arangodb::basics::ReadWriteLock _inventoryLock;  // object lock needed when
                                                    // replication is assessing
                                                    // the state of the vocbase

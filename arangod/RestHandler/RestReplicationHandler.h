@@ -514,18 +514,18 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
   void timeoutTombstones() const;
 
-  bool isTombstoned(aql::QueryId id) const;
+  bool isTombstoned(TransactionId id) const;
 
-  void registerTombstone(aql::QueryId id) const;
+  void registerTombstone(TransactionId id) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a blocking transaction for the given collectionName,
   ///        It will be registered with the given id, and it will have
   ///        the given time to live.
   //////////////////////////////////////////////////////////////////////////////
-  Result createBlockingTransaction(TRI_voc_tid_t tid, LogicalCollection& col, double ttl,
-                                   AccessMode::Type access, RebootId const& rebootId,
-                                   std::string const& serverId);
+  Result createBlockingTransaction(TransactionId tid, LogicalCollection& col,
+                                   double ttl, AccessMode::Type access,
+                                   RebootId const& rebootId, std::string const& serverId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Test if we already have the read-lock
@@ -534,14 +534,14 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ///        Will return error, if the lock has expired.
   //////////////////////////////////////////////////////////////////////////////
 
-  ResultT<bool> isLockHeld(TRI_voc_tick_t tid) const;
+  ResultT<bool> isLockHeld(TransactionId tid) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief compute a local checksum for the given collection
   ///        Will return error if the lock has expired.
   //////////////////////////////////////////////////////////////////////////////
 
-  ResultT<std::string> computeCollectionChecksum(aql::QueryId readLockId,
+  ResultT<std::string> computeCollectionChecksum(TransactionId readLockId,
                                                  LogicalCollection* col) const;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -551,7 +551,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ///        Will return error if the lock has expired or is not found.
   //////////////////////////////////////////////////////////////////////////////
 
-  ResultT<bool> cancelBlockingTransaction(aql::QueryId id) const;
+  ResultT<bool> cancelBlockingTransaction(TransactionId id) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Validate that the requesting user has access rights to this route

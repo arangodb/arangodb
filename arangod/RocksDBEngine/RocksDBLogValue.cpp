@@ -85,12 +85,12 @@ RocksDBLogValue RocksDBLogValue::ViewChange(TRI_voc_tick_t dbid, TRI_voc_cid_t v
   return RocksDBLogValue(RocksDBLogType::ViewChange, dbid, vid);
 }
 
-RocksDBLogValue RocksDBLogValue::BeginTransaction(TRI_voc_tick_t dbid, TRI_voc_tid_t tid) {
-  return RocksDBLogValue(RocksDBLogType::BeginTransaction, dbid, tid);
+RocksDBLogValue RocksDBLogValue::BeginTransaction(TRI_voc_tick_t dbid, TransactionId tid) {
+  return RocksDBLogValue(RocksDBLogType::BeginTransaction, dbid, tid.id());
 }
 
-RocksDBLogValue RocksDBLogValue::CommitTransaction(TRI_voc_tick_t dbid, TRI_voc_tid_t tid) {
-  return RocksDBLogValue(RocksDBLogType::CommitTransaction, dbid, tid);
+RocksDBLogValue RocksDBLogValue::CommitTransaction(TRI_voc_tick_t dbid, TransactionId tid) {
+  return RocksDBLogValue(RocksDBLogType::CommitTransaction, dbid, tid.id());
 }
 
 RocksDBLogValue RocksDBLogValue::DocumentRemoveV2(RevisionId rid) {
@@ -261,12 +261,13 @@ TRI_voc_cid_t RocksDBLogValue::viewId(rocksdb::Slice const& slice) {
   return uint64FromPersistent(slice.data() + sizeof(RocksDBLogType) + sizeof(uint64_t));
 }
 
-TRI_voc_tid_t RocksDBLogValue::transactionId(rocksdb::Slice const& slice) {
+TransactionId RocksDBLogValue::transactionId(rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() >= sizeof(RocksDBLogType) + sizeof(uint64_t));
   RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
   TRI_ASSERT(type == RocksDBLogType::BeginTransaction || type == RocksDBLogType::CommitTransaction);
   // <type> + 8-byte <dbId> + 8-byte <trxId>
-  return uint64FromPersistent(slice.data() + sizeof(RocksDBLogType) + sizeof(TRI_voc_tick_t));
+  return TransactionId{uint64FromPersistent(slice.data() + sizeof(RocksDBLogType) +
+                                            sizeof(TRI_voc_tick_t))};
 }
 
 IndexId RocksDBLogValue::indexId(rocksdb::Slice const& slice) {

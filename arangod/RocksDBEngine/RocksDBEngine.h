@@ -146,7 +146,7 @@ class RocksDBEngine final : public StorageEngine {
 
   std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) override;
   std::shared_ptr<TransactionState> createTransactionState(
-      TRI_vocbase_t& vocbase, TRI_voc_tid_t, transaction::Options const& options) override;
+      TRI_vocbase_t& vocbase, TransactionId, transaction::Options const& options) override;
   std::unique_ptr<TransactionCollection> createTransactionCollection(
       TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType) override;
 

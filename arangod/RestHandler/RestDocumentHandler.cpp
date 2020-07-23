@@ -112,12 +112,12 @@ ResultT<std::pair<std::string, bool>> RestDocumentHandler::forwardingTarget() {
   bool found = false;
   std::string const& value = _request->header(StaticStrings::TransactionId, found);
   if (found) {
-    uint64_t tid = basics::StringUtils::uint64(value);
-    if (!transaction::isCoordinatorTransactionId(tid)) {
-      TRI_ASSERT(transaction::isLegacyTransactionId(tid));
+    TransactionId tid{basics::StringUtils::uint64(value)};
+    if (!tid.isCoordinatorTransactionId()) {
+      TRI_ASSERT(tid.isLegacyTransactionId());
       return {std::make_pair(StaticStrings::Empty, false)};
     }
-    uint32_t sourceServer = TRI_ExtractServerIdFromTick(tid);
+    uint32_t sourceServer = tid.serverId();
     if (sourceServer == ServerState::instance()->getShortId()) {
       return {std::make_pair(StaticStrings::Empty, false)};
     }

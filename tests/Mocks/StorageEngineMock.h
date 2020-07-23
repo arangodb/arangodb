@@ -162,7 +162,7 @@ class TransactionStateMock : public arangodb::TransactionState {
   static size_t beginTransactionCount;
   static size_t commitTransactionCount;
 
-  TransactionStateMock(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+  TransactionStateMock(TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
                        arangodb::transaction::Options const& options);
   virtual arangodb::Result abortTransaction(arangodb::transaction::Methods* trx) override;
   virtual arangodb::Result beginTransaction(arangodb::transaction::Hints hints) override;
@@ -203,7 +203,7 @@ class StorageEngineMock : public arangodb::StorageEngine {
   virtual std::unique_ptr<arangodb::transaction::Manager> createTransactionManager(
       arangodb::transaction::ManagerFeature&) override;
   virtual std::shared_ptr<arangodb::TransactionState> createTransactionState(
-      TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+      TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
       arangodb::transaction::Options const& options) override;
   virtual arangodb::Result createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id,
                                       arangodb::LogicalView const& view) override;
