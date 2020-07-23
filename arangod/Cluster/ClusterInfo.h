@@ -987,7 +987,7 @@ public:
       arangodb::velocypack::Slice data, TRI_vocbase_t& vocbase, uint64_t planVersion);
 
   /// @brief create a new collecion object from the data, using the cache if possible
-  std::pair<std::shared_ptr<LogicalCollection>, uint64_t> buildCollection(
+  CollectionWithHash buildCollection(
     bool isBuilding, AllCollections::const_iterator existingCollections,
     std::string const& collectionId, arangodb::velocypack::Slice data,
     TRI_vocbase_t& vocbase, uint64_t planVersion) const;

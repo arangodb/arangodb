@@ -559,7 +559,7 @@ void ClusterInfo::loadClusterId() {
 }
 
 /// @brief create a new collecion object from the data, using the cache if possible
-std::pair<std::shared_ptr<LogicalCollection>, uint64_t> ClusterInfo::buildCollection(
+ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
     bool isBuilding, AllCollections::const_iterator existingCollections,
     std::string const& collectionId, arangodb::velocypack::Slice data,
     TRI_vocbase_t& vocbase, uint64_t planVersion) const {
@@ -623,7 +623,7 @@ std::pair<std::shared_ptr<LogicalCollection>, uint64_t> ClusterInfo::buildCollec
   TRI_ASSERT(collection != nullptr);
   TRI_ASSERT(!isBuilding || hash == 0);
 
-  return {collection, hash};
+  return {hash, collection};
 }
 
 /// @brief helper function to build a new LogicalCollection object from the velocypack
@@ -1114,7 +1114,8 @@ void ClusterInfo::loadPlan() {
         // the cache check is very coarse-grained: it simply hashes the Plan VelocyPack
         // data for the collection, and will only reuse a collection from the cache if 
         // the hash is identical. 
-        auto [newCollection, hash] = buildCollection(isBuilding, existingCollections, collectionId, collectionSlice, *vocbase, newPlanVersion);
+        CollectionWithHash cwh = buildCollection(isBuilding, existingCollections, collectionId, collectionSlice, *vocbase, newPlanVersion);
+        auto& newCollection = cwh.collection; 
         TRI_ASSERT(newCollection != nullptr);
      
         try {
@@ -1128,8 +1129,8 @@ void ClusterInfo::loadPlan() {
 
           if (!isBuilding) {
             // register with name as well as with id:
-            databaseCollections.try_emplace(collectionName, CollectionWithHash{hash, newCollection});
-            databaseCollections.try_emplace(collectionId, CollectionWithHash{hash, newCollection});
+            databaseCollections.try_emplace(collectionName, cwh);
+            databaseCollections.try_emplace(collectionId, cwh);
           }
 
           auto shardIDs = newCollection->shardIds();
