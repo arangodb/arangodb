@@ -560,7 +560,7 @@ void ClusterInfo::loadClusterId() {
 }
 
 /// @brief create a new collecion object from the data, using the cache if possible
-CollectionWithHash ClusterInfo::buildCollection(
+ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
     bool isBuilding, AllCollections::const_iterator existingCollections,
     std::string const& collectionId, arangodb::velocypack::Slice data,
     TRI_vocbase_t& vocbase, uint64_t planVersion) const {
