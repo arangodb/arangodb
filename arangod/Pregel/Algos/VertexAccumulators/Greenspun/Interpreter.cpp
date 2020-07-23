@@ -170,6 +170,10 @@ EvalResult SpecialMatch(EvalContext& ctx, ArrayIterator paramIterator, VPackBuil
   if (auto res = Evaluate(ctx, *paramIterator, proto); !res) {
     return res;
   }
+  if (!proto.slice().isNumber()) {
+    return EvalError("expected numeric expression in pattern");
+  }
+  auto pattern = proto.slice().getNumber<double>();
   paramIterator++;
   for (; paramIterator.valid(); paramIterator++) {
     auto pair = *paramIterator;
@@ -184,7 +188,12 @@ EvalResult SpecialMatch(EvalContext& ctx, ArrayIterator paramIterator, VPackBuil
       });
     }
 
-    if (arangodb::basics::VelocyPackHelper::compare(proto.slice(), cmpValue.slice(), true) == 0) {
+    if (!cmpValue.slice().isNumber()) {
+      return EvalError("in condition " + std::to_string(paramIterator.index() - 1) +
+                       " expected numeric value, found: " + cmpValue.toJson());
+    }
+
+    if (pattern == cmpValue.slice().getNumber<double>()) {
       return Evaluate(ctx, body, result).wrapError([&](EvalError &err) {
         err.wrapMessage("in case " + std::to_string(paramIterator.index() - 1));
       });
