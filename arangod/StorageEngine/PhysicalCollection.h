@@ -86,7 +86,7 @@ class PhysicalCollection {
   /// @brief fetches current index selectivity estimates
   /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
   /// to fetch current values!
-  virtual IndexEstMap clusterIndexEstimates(bool allowUpdating, TRI_voc_tick_t tid);
+  virtual IndexEstMap clusterIndexEstimates(bool allowUpdating, TransactionId tid);
 
   /// @brief sets the current index selectivity estimates
   virtual void setClusterIndexEstimates(IndexEstMap&& estimates);
@@ -213,8 +213,8 @@ class PhysicalCollection {
 
   virtual Result rebuildRevisionTree();
 
-  virtual void placeRevisionTreeBlocker(TRI_voc_tid_t transactionId);
-  virtual void removeRevisionTreeBlocker(TRI_voc_tid_t transactionId);
+  virtual void placeRevisionTreeBlocker(TransactionId transactionId);
+  virtual void removeRevisionTreeBlocker(TransactionId transactionId);
 
   TRI_voc_rid_t newRevisionId() const;
 
@@ -250,8 +250,8 @@ class PhysicalCollection {
                              bool isEdgeCollection, velocypack::Builder& builder,
                              bool isRestore, TRI_voc_rid_t& revisionId) const;
 
-  int checkRevision(transaction::Methods* trx, TRI_voc_rid_t expected,
-                    TRI_voc_rid_t found) const;
+  bool checkRevision(transaction::Methods* trx, TRI_voc_rid_t expected,
+                     TRI_voc_rid_t found) const;
 
   LogicalCollection& _logicalCollection;
   bool const _isDBServer;

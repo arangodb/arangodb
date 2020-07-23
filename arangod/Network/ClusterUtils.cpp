@@ -67,6 +67,7 @@ OperationResult clusterResultDocument(arangodb::fuerte::StatusCode code,
   switch (code) {
     case fuerte::StatusOK:
       return OperationResult(Result(), std::move(body), std::move(options), errorCounter);
+    case fuerte::StatusConflict:
     case fuerte::StatusPreconditionFailed:
       return OperationResult(Result(TRI_ERROR_ARANGO_CONFLICT), std::move(body),
                              std::move(options), errorCounter);
@@ -114,6 +115,7 @@ OperationResult clusterResultDelete(arangodb::fuerte::StatusCode code,
       options.waitForSync = (code != fuerte::StatusAccepted);
       return OperationResult(Result(), std::move(body), std::move(options), errorCounter);
     }
+    case fuerte::StatusConflict:
     case fuerte::StatusPreconditionFailed:
       return OperationResult(network::resultFromBody(body, TRI_ERROR_ARANGO_CONFLICT),
                              body, std::move(options), errorCounter);

@@ -215,7 +215,7 @@ class Methods {
   Future<Result> finishAsync(Result const& res);
 
   /// @brief return the transaction id
-  TRI_voc_tid_t tid() const;
+  TransactionId tid() const;
 
   /// @brief return a collection name
   std::string name(TRI_voc_cid_t cid) const;

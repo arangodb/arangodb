@@ -42,8 +42,7 @@
 using namespace arangodb;
 
 /// @brief transaction type
-ClusterTransactionState::ClusterTransactionState(TRI_vocbase_t& vocbase,
-                                                 TRI_voc_tid_t tid,
+ClusterTransactionState::ClusterTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                                                  transaction::Options const& options)
     : TransactionState(vocbase, tid, options) {
   TRI_ASSERT(isCoordinator());
