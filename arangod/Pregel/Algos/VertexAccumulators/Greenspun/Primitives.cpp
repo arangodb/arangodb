@@ -35,12 +35,12 @@ using PrimitiveFunction = std::function<EvalResult(PrimEvalContext& ctx, VPackSl
 std::unordered_map<std::string, PrimitiveFunction> primitives;
 
 EvalResult Prim_Banana(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
-  auto tmp = int64_t{0};
+  auto tmp = double{0};
   for (auto p : VPackArrayIterator(params)) {
-    if (p.isNumber<int64_t>()) {
-      tmp += p.getNumericValue<int64_t>();
+    if (p.isNumber<double>()) {
+      tmp += p.getNumericValue<double>();
     } else {
-      return EvalError("expected int, found: " + p.toJson());
+      return EvalError("expected double, found: " + p.toJson());
     }
   }
   result.add(VPackValue(tmp));
@@ -48,19 +48,19 @@ EvalResult Prim_Banana(PrimEvalContext& ctx, VPackSlice const params, VPackBuild
 }
 
 EvalResult Prim_Sub(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
-  auto tmp = int64_t{0};
+  auto tmp = double{0};
   auto iter = VPackArrayIterator(params);
   if (iter.valid()) {
-    if (!(*iter).isNumber<int64_t>()) {
-      return EvalError("expected int, found: " + (*iter).toJson());
+    if (!(*iter).isNumber<double>()) {
+      return EvalError("expected double, found: " + (*iter).toJson());
     }
-    tmp = (*iter).getNumericValue<int64_t>();
+    tmp = (*iter).getNumericValue<double>();
     iter++;
     for (; iter.valid(); iter++) {
-      if (!(*iter).isNumber<int64_t>()) {
-        return EvalError("expected int, found: " + (*iter).toJson());
+      if (!(*iter).isNumber<double>()) {
+        return EvalError("expected double, found: " + (*iter).toJson());
       }
-      tmp -= (*iter).getNumericValue<int64_t>();
+      tmp -= (*iter).getNumericValue<double>();
     }
   }
   result.add(VPackValue(tmp));
@@ -68,31 +68,31 @@ EvalResult Prim_Sub(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder&
 }
 
 EvalResult Prim_Mul(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
-  auto tmp = int64_t{1};
+  auto tmp = double{1};
   for (auto p : VPackArrayIterator(params)) {
-    if (!p.isNumber<int64_t>()) {
-      return EvalError("expected int, found: " + p.toJson());
+    if (!p.isNumber<double>()) {
+      return EvalError("expected double, found: " + p.toJson());
     }
-    tmp *= p.getNumericValue<int64_t>();
+    tmp *= p.getNumericValue<double>();
   }
   result.add(VPackValue(tmp));
   return {};
 }
 
 EvalResult Prim_Div(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
-  auto tmp = int64_t{1};
+  auto tmp = double{1};
   auto iter = VPackArrayIterator(params);
   if (iter.valid()) {
-    if (!(*iter).isNumber<int64_t>()) {
-      return EvalError("expected int, found: " + (*iter).toJson());
+    if (!(*iter).isNumber<double>()) {
+      return EvalError("expected double, found: " + (*iter).toJson());
     }
-    tmp = (*iter).getNumericValue<int64_t>();
+    tmp = (*iter).getNumericValue<double>();
     iter++;
     for (; iter.valid(); iter++) {
-      if (!(*iter).isNumber<int64_t>()) {
-        return EvalError("expected int, found: " + (*iter).toJson());
+      if (!(*iter).isNumber<double>()) {
+        return EvalError("expected double, found: " + (*iter).toJson());
       }
-      auto v = (*iter).getNumericValue<int64_t>();
+      auto v = (*iter).getNumericValue<double>();
       if (v == 0) {
         return EvalError("division by zero");
       }
@@ -109,11 +109,34 @@ EvalResult Prim_CmpHuh(PrimEvalContext& ctx, VPackSlice const params, VPackBuild
   if (iter.valid()) {
     auto proto = *iter;
     iter++;
-    for (; iter.valid(); iter++) {
-      if (!T{}(arangodb::basics::VelocyPackHelper::compare(proto, *iter, true), 0)) {
-        result.add(VPackValue(false));
-        return {};
+    if (proto.isNumber()) {
+      auto value = proto.getNumber<double>();
+      for (; iter.valid(); iter++) {
+        auto other = *iter;
+        if (!other.isNumber()) {
+          return EvalError("Expected numerical value at parameter " +
+                           std::to_string(iter.index()) + ", found: " + other.toJson());
+        }
+
+        if (!T{}(value, other.getNumber<double>())) {
+          result.add(VPackValue(false));
+          return {};
+        }
       }
+    } else if (proto.isBool()) {
+      if constexpr (!std::is_same_v<T, std::equal_to<>> && !std::is_same_v<T, std::not_equal_to<>>) {
+        return EvalError("There is not relation on booleans");
+      }
+      auto value = proto.getBool();
+      for (; iter.valid(); iter++) {
+        auto other = *iter;
+        if (!T{}(value, ValueConsideredTrue(other))) {
+          result.add(VPackValue(false));
+          return {};
+        }
+      }
+    } else {
+      return EvalError("Cannot compare values of given type, found: " + proto.toJson());
     }
   }
   result.add(VPackValue(true));

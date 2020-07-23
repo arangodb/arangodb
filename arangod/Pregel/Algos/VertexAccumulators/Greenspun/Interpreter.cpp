@@ -36,6 +36,7 @@ using namespace arangodb::velocypack;
 
 void InitInterpreter() { RegisterPrimitives(); }
 
+
 EvalResult Apply(EvalContext& ctx, std::string const& function,
                  VPackSlice const params, VPackBuilder& result) {
   TRI_ASSERT(params.isArray())
@@ -322,9 +323,9 @@ std::string EvalError::toString() const {
 
 
 bool ValueConsideredFalse(VPackSlice const value) {
-  return value.isFalse();
+  return value.isFalse() || value.isNone();
 }
 
 bool ValueConsideredTrue(VPackSlice const value) {
-  return !value.isFalse();
+  return !ValueConsideredFalse(value);
 }
