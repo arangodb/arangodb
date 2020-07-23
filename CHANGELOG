@@ -1,6 +1,8 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
+* Make sure cluster statistics in web UI work in case a coordinator is down.
+
 * Fixed undefined behavior in AQL COLLECT with multiple group variables (issue
   #12267).
   If you are grouping on "large" values that occur multiple times in different
