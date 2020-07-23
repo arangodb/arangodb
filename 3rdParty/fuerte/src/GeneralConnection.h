@@ -135,11 +135,6 @@ class GeneralConnection : public fuerte::Connection {
   
   // shutdown connection, cancel async operations
   void shutdownConnection(fuerte::Error err, std::string const& msg = "") {
-    // keepalive timeout may have expired
-    if (_timeoutOnReadWrite && err == fuerte::Error::Canceled) {
-      err = fuerte::Error::Timeout;
-    }
-    
     FUERTE_LOG_DEBUG << "shutdownConnection: err = '" << to_string(err) << "' ";
     if (!msg.empty()) {
       FUERTE_LOG_DEBUG << ", msg = '" << msg<< "' ";
@@ -238,6 +233,20 @@ class GeneralConnection : public fuerte::Connection {
       }
       this->_active.store(true);
     }
+  }
+  
+  fuerte::Error translateError(asio_ns::error_code e, fuerte::Error c) const {
+    
+    if (e == asio_ns::error::misc_errors::eof ||
+        e == asio_ns::error::connection_reset) {
+      return fuerte::Error::ConnectionClosed;
+    } else if (e == asio_ns::error::operation_aborted) {
+      // keepalive timeout may have expired
+      return _timeoutOnReadWrite ? fuerte::Error::Timeout :
+                                   fuerte::Error::Canceled;
+    }
+    
+    return c;
   }
   
 protected:

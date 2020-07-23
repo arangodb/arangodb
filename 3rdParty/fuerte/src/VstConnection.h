@@ -76,8 +76,7 @@ class VstConnection final : public fuerte::GeneralConnection<ST, vst::RequestIte
   void asyncWriteNextRequest();
 
   // called by the async_write handler (called from IO thread)
-  void asyncWriteCallback(asio_ns::error_code const& ec,
-                          std::shared_ptr<RequestItem>, size_t nwrite);
+  void asyncWriteCallback(asio_ns::error_code const& ec);
 
   // Send out the authentication message on this connection
   void sendAuthenticationRequest();
@@ -92,7 +91,7 @@ class VstConnection final : public fuerte::GeneralConnection<ST, vst::RequestIte
 
  private:
   /// stores in-flight messages
-  std::map<MessageID, std::shared_ptr<vst::RequestItem>> _messages;
+  std::map<MessageID, std::unique_ptr<vst::RequestItem>> _messages;
   std::atomic<uint32_t> _numMessages;
 
   const VSTVersion _vstVersion;

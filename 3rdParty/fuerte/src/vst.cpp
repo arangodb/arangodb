@@ -35,6 +35,8 @@
 #include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "debugging.h"
+
 namespace arangodb { namespace fuerte { inline namespace v1 { namespace vst {
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -176,8 +178,8 @@ void message::responseHeader(ResponseHeader const& header,
   // 0 - version
   builder.add(VPackValue(header.version()));
 
-  assert(header.responseType() == MessageType::Response ||
-         header.responseType() == MessageType::ResponseUnfinished);
+  FUERTE_ASSERT(header.responseType() == MessageType::Response ||
+                header.responseType() == MessageType::ResponseUnfinished);
 
   // 1 - type
   builder.add(VPackValue(static_cast<int>(header.responseType())));
@@ -304,9 +306,9 @@ void message::prepareForNetwork(VSTVersion vstVersion, MessageID messageId,
       chunkDataLen -= header.size();
     }
     if (chunkDataLen > 0) {
-      assert(payload.size() > 0);
+      FUERTE_ASSERT(payload.size() > 0);
 #ifdef FUERTE_DEBUG
-      assert(begin < end);
+      FUERTE_ASSERT(begin < end);
 #endif
       // Add chunk data buffer
       result.emplace_back(begin, chunkDataLen);
@@ -384,7 +386,7 @@ ChunkState readChunkVST1_0(Chunk& chunk, uint8_t const* hdr,
     chunk.header._messageLength = 0;
   }
 
-  assert(avail >= chunk.header._chunkLength);
+  FUERTE_ASSERT(avail >= chunk.header._chunkLength);
   if (hdrLen > chunk.header._chunkLength) {
     return ChunkState::Invalid;  // chunk incomplete / invalid chunk length
   }
@@ -491,12 +493,12 @@ RequestHeader requestHeaderFromSlice(VPackSlice const& headerSlice) {
 };
 
 ResponseHeader responseHeaderFromSlice(VPackSlice const& headerSlice) {
-  assert(headerSlice.isArray());
+  FUERTE_ASSERT(headerSlice.isArray());
   ResponseHeader header;
 
   header.setVersion(headerSlice.at(0).getNumber<short>());  // version
-  assert(headerSlice.at(1).getNumber<int>() ==
-         static_cast<int>(MessageType::Response));
+  FUERTE_ASSERT(headerSlice.at(1).getNumber<int>() ==
+                static_cast<int>(MessageType::Response));
   header.responseCode = headerSlice.at(2).getNumber<StatusCode>();
   if (headerSlice.length() >= 4) {
     VPackSlice meta = headerSlice.at(3);
@@ -562,6 +564,9 @@ void RequestItem::addChunk(Chunk const& chunk) {
   // Copy _data to response buffer
   FUERTE_LOG_VSTCHUNKTRACE << "RequestItem::addChunk: adding "
                            << chunk.body.size() << " bytes to buffer\n";
+  if (_responseChunks.empty()) {  //
+    resetSendData();
+  }
 
   // Gather number of chunk info
   if (chunk.header.isFirst()) {
@@ -569,9 +574,11 @@ void RequestItem::addChunk(Chunk const& chunk) {
     _responseChunks.reserve(_responseNumberOfChunks);
     FUERTE_LOG_VSTCHUNKTRACE << "RequestItem::addChunk: set #chunks to "
                              << _responseNumberOfChunks << "\n";
-    assert(_buffer.empty());
+    FUERTE_ASSERT(_buffer.empty());
     if (_buffer.capacity() < chunk.header.messageLength()) {
-      _buffer.reserve(chunk.header.messageLength() - _buffer.capacity());
+      FUERTE_ASSERT(_buffer.capacity() >= _buffer.size());
+      _buffer.reserve(chunk.header.messageLength() - _buffer.size());
+      FUERTE_ASSERT(_buffer.capacity() >= chunk.header.messageLength());
     }
   }
   uint8_t const* begin = reinterpret_cast<uint8_t const*>(chunk.body.data());
@@ -602,7 +609,7 @@ std::unique_ptr<VPackBuffer<uint8_t>> RequestItem::assemble() {
         << "RequestItem::assemble: not all chunks have arrived" << "\n";
     return nullptr;
   }
-  assert(_responseChunks.size() == _responseNumberOfChunks);
+  FUERTE_ASSERT(_responseChunks.size() == _responseNumberOfChunks);
 
   // fast-path: chunks received in-order
   bool reject = false;

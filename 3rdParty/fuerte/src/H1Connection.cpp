@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2018-2020 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -353,7 +353,7 @@ void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
                        << " milliseconds\n";
     }
     
-    this->shutdownConnection(translateError(ec, Error::WriteError));
+    this->shutdownConnection(this->translateError(ec, Error::WriteError));
     return;
   }
   FUERTE_ASSERT(_item != nullptr);
@@ -383,7 +383,7 @@ void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
                      << ec.message() << "' , this=" << this << "\n";
     
     // Restart connection, will invoke _item cb
-    this->shutdownConnection(translateError(ec, Error::ReadError));
+    this->shutdownConnection(this->translateError(ec, Error::ReadError));
     return;
   }
   FUERTE_ASSERT(_item != nullptr);

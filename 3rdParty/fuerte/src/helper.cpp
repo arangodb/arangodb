@@ -253,18 +253,6 @@ void toLowerInPlace(std::string& str) {
     pos += len;
   }
 }
-  
-fuerte::Error translateError(asio_ns::error_code e, fuerte::Error c) {
-  
-  if (e == asio_ns::error::misc_errors::eof ||
-      e == asio_ns::error::connection_reset) {
-    return fuerte::Error::ConnectionClosed;
-  } else if (e == asio_ns::error::operation_aborted) {
-    return fuerte::Error::Canceled;
-  }
-  
-  return c;
-}
 
 std::string extractPathParameters(std::string const& p, StringMap& params) {
   

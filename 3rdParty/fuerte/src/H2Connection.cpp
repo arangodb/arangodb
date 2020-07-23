@@ -704,7 +704,7 @@ void H2Connection<T>::asyncReadCallback(asio_ns::error_code const& ec) {
     FUERTE_LOG_DEBUG
         << "asyncReadCallback: Error while reading from socket: "
         << ec.message() << "\n";
-    this->shutdownConnection(translateError(ec, Error::ReadError));
+    this->shutdownConnection(this->translateError(ec, Error::ReadError));
     return;
   }
 
@@ -739,56 +739,6 @@ void H2Connection<T>::asyncReadCallback(asio_ns::error_code const& ec) {
 
   this->asyncReadSome();  // Continue read loop
 }
-
-#if 0
-// adjust the timeouts (only call from IO-Thread)
-template <SocketType T>
-void H2Connection<T>::setTimeout() {
-  // set to smallest point in time
-  auto expires = std::chrono::steady_clock::time_point::max();
-  if (_streams.empty()) {  // use default connection timeout
-    expires = std::chrono::steady_clock::now() + this->_config._idleTimeout;
-  } else {
-    for (auto const& pair : _streams) {
-      expires = std::min(expires, pair.second->expires);
-    }
-  }
-
-  this->_proto.timer.expires_at(expires);
-  this->_proto.timer.async_wait(
-      [self = Connection::weak_from_this()](asio_ns::error_code const& ec) {
-        std::shared_ptr<Connection> s;
-        if (ec || !(s = self.lock())) {  // was canceled / deallocated
-          return;
-        }
-
-        auto& me = static_cast<H2Connection<T>&>(*s);
-        // cancel expired requests
-        auto now = std::chrono::steady_clock::now();
-        std::vector<int32_t> expired;
-        for (auto const& pair : me._streams) {
-          if (pair.second->expires < now) {
-            expired.push_back(pair.first);
-          }
-        }
-        std::for_each(expired.begin(), expired.end(), [&](auto sid) {
-          auto strm = me.eraseStream(sid);
-          if (strm) {
-            strm->invokeOnError(Error::Timeout);
-          }
-        });
-
-        if (me._streams.empty()) {  // no more messages to wait on
-          FUERTE_LOG_DEBUG << "HTTP2-Connection timeout\n";
-          // shouldWrite() == false after GOAWAY frame is send
-          nghttp2_session_terminate_session(me._session, 0);
-          me.doWrite();
-        } else {
-          me.setTimeout();
-        }
-      });
-}
-#endif
 
 /// abort ongoing / unfinished requests (locally)
 template <SocketType T>
