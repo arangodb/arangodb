@@ -8,38 +8,7 @@
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
-
-namespace arangodb::basics::VelocyPackHelper {
-
-int compare(arangodb::velocypack::Slice, arangodb::velocypack::Slice, bool,
-            arangodb::velocypack::Options const*,
-            arangodb::velocypack::Slice const*, arangodb::velocypack::Slice const*) {
-  std::cerr << "WARNING! YOU ARE ABOUT TO SHOOT YOURSELF IN THE FOOT!" << std::endl;
-  return 0;
-}
-
-}  // namespace arangodb::basics::VelocyPackHelper
-
-struct MyEvalContext : PrimEvalContext {
-  std::string const& getThisId() const override { std::abort(); }
-
-  void getAccumulatorValue(std::string_view id, VPackBuilder& result) const override {
-    std::abort();
-  }
-
-  void updateAccumulator(std::string_view accumId, std::string_view vertexId,
-                         VPackSlice value) override {
-    std::abort();
-  }
-
-  void setAccumulator(std::string_view accumId, VPackSlice value) override {
-    std::abort();
-  }
-
-  EvalResult enumerateEdges(std::function<EvalResult(VPackSlice edge)> cb) const override {
-    std::abort();
-  }
-};
+#include "./structs/EvalContext.h"
 
 TEST_CASE("Test [+] primitive", "[addition]") {
   InitInterpreter();

@@ -5,6 +5,7 @@
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
+#include "./structs/EvalContext.h"
 
 /* YOLO */
 
@@ -19,26 +20,6 @@ int compare(arangodb::velocypack::Slice, arangodb::velocypack::Slice, bool,
 
 }  // namespace arangodb::basics::VelocyPackHelper
 
-struct MyEvalContext : PrimEvalContext {
-  std::string const& getThisId() const override { std::abort(); }
-
-  void getAccumulatorValue(std::string_view id, VPackBuilder& result) const override {
-    std::abort();
-  }
-
-  void updateAccumulator(std::string_view accumId, std::string_view vertexId,
-                         VPackSlice value) override {
-    std::abort();
-  }
-
-  void setAccumulator(std::string_view accumId, VPackSlice value) override {
-    std::abort();
-  }
-
-  EvalResult enumerateEdges(std::function<EvalResult(VPackSlice edge, VPackSlice vertex)> cb) const override {
-    std::abort();
-  }
-};
 
 int main(int argc, char** argv) {
   InitInterpreter();
