@@ -132,7 +132,32 @@ TEST_CASE("Test [/] primitive", "[division]") {
  * Logical operators
  */
 
-TEST_CASE("Test [not] primitive - unary", "[not]") {}
+TEST_CASE("Test [not] primitive - unary", "[not]") {
+  InitInterpreter();
+  MyEvalContext ctx;
+  VPackBuilder result;
+  auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
+  auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
+
+  SECTION("Test true boolean") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["not", true]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(true == result.slice().getBoolean());
+  }
+
+  SECTION("Test false boolean") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["not", false]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(false == result.slice().getBoolean());
+  }
+}
+
 TEST_CASE("Test [false?] primitive", "[false?]") {
   InitInterpreter();
   MyEvalContext ctx;
@@ -158,6 +183,7 @@ TEST_CASE("Test [false?] primitive", "[false?]") {
     REQUIRE(true == result.slice().getBoolean());
   }
 }
+
 TEST_CASE("Test [true?] primitive", "[true?]") {
   InitInterpreter();
   MyEvalContext ctx;
