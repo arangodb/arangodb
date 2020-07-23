@@ -125,12 +125,28 @@ EvalResult Prim_CmpHuh(PrimEvalContext& ctx, VPackSlice const params, VPackBuild
       }
     } else if (proto.isBool()) {
       if constexpr (!std::is_same_v<T, std::equal_to<>> && !std::is_same_v<T, std::not_equal_to<>>) {
-        return EvalError("There is not relation on booleans");
+        return EvalError("There is no relation on booleans");
       }
       auto value = proto.getBool();
       for (; iter.valid(); iter++) {
         auto other = *iter;
         if (!T{}(value, ValueConsideredTrue(other))) {
+          result.add(VPackValue(false));
+          return {};
+        }
+      }
+    } else if (proto.isString()) {
+      if constexpr (!std::is_same_v<T, std::equal_to<>> && !std::is_same_v<T, std::not_equal_to<>>) {
+        return EvalError("There is no relation on strings implemented");
+      }
+      auto value = proto.stringView();
+      for (; iter.valid(); iter++) {
+        auto other = *iter;
+        if (!other.isString()) {
+          return EvalError("Expected string value at parameter " +
+                           std::to_string(iter.index()) + ", found: " + other.toJson());
+        }
+        if (!T{}(value, other.stringView())) {
           result.add(VPackValue(false));
           return {};
         }
