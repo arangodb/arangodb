@@ -47,6 +47,8 @@ function test_bind_parameter_program(bindParameter, value) {
   };
 }
 
+
+
 /* Performs a single-source shortest path search (currently without path reconstruction)
    on all vertices in the graph starting from startVertex, using the cost stored
    in weightAttribute on each edge and storing the end result in resultField as an object
@@ -89,7 +91,7 @@ function single_source_shortest_path_program(
             "update",
             "distance",
             ["attrib", "_to", ["var-ref", "edge"]],
-            ["attrib", weightAttribute, ["var-ref", "edge"]],
+            ["+", ["accum-ref", "distance"], ["attrib", weightAttribute, ["var-ref", "edge"]]],
           ],
         ],
       ],
@@ -97,6 +99,20 @@ function single_source_shortest_path_program(
     ],
   };
 }
+
+/*
+  (for outbound edge
+    (update "distance"
+            (attrib "_to" (var-ref edge))
+            (+ (accum-ref "distance") (attrib "weightAttribute" (var-ref edge))))
+
+
+  (for source-edge->target
+    (update target.distance with source.distance + edge.weightAttribute))
+
+  ["+", ["accum-ref", "distance"], 5]
+  ["for", "variable", ["quote", "body"]]
+*/
 
 function single_source_shortest_path(
   graphName,
