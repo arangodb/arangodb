@@ -25,6 +25,7 @@
 #include "v8-utils.h"
 
 #include "Basics/Common.h"
+#include "Basics/operating-system.h"
 
 #ifdef _WIN32
 #include <WinSock2.h>  // must be before windows.h
@@ -78,7 +79,6 @@
 #include "Basics/error.h"
 #include "Basics/files.h"
 #include "Basics/memory.h"
-#include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
 #include "Basics/signals.h"
 #include "Basics/socket-utils.h"
@@ -1678,6 +1678,7 @@ static void JS_MakeAbsolute(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JS_List
 ////////////////////////////////////////////////////////////////////////////////
@@ -3045,6 +3046,46 @@ static void JS_Read(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief was docuBlock JS_Read
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_ReadPipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("readPipe(<external-identifier>)");
+  }
+
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+
+  if (!v8security.isAllowedToControlProcesses(isolate)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        "not allowed to execute or modify state of external processes");
+  }
+
+  TRI_pid_t pid = static_cast<TRI_pid_t>(TRI_ObjectToInt64(isolate, args[0]));
+  ExternalProcess const* proc = TRI_LookupSpawnedProcess(pid);
+
+  if (proc == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+      "didn't find the process identified by <external-identifier> to read the pipe from.");
+  }
+
+  char content[1024];
+  size_t length = sizeof(content) - 1;
+  auto read_len = TRI_ReadPipe(proc, content, length);
+
+  auto result = TRI_V8_PAIR_STRING(isolate, content, read_len);
+
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JS_ReadBuffer
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4339,9 +4380,9 @@ static void JS_ExecuteExternal(v8::FunctionCallbackInfo<v8::Value> const& args) 
   auto context = TRI_IGETC;
 
   // extract the arguments
-  if (4 < args.Length() || args.Length() < 1) {
+  if (5 < args.Length() || args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "executeExternal(<filename>[, <arguments> [,<usePipes> [,<env>] ] ])");
+        "executeExternal(<filename>[, <arguments> [,<usePipes> [,<env> [, <workingDirectory> ] ] ] ])");
   }
 
   TRI_GET_GLOBALS();
@@ -4394,6 +4435,12 @@ static void JS_ExecuteExternal(v8::FunctionCallbackInfo<v8::Value> const& args) 
     }
   }
 
+  bool usePipes = false;
+
+  if (3 <= args.Length()) {
+    usePipes = TRI_ObjectToBoolean(isolate, args[2]);
+  }
+
   std::vector<std::string> additionalEnv;
 
   if (4 <= args.Length()) {
@@ -4416,14 +4463,23 @@ static void JS_ExecuteExternal(v8::FunctionCallbackInfo<v8::Value> const& args) 
     }
   }
 
-  bool usePipes = false;
+  auto workingDirectory = FileUtils::currentDirectory().result();
+  std::string subProcessWorkingDirectory = workingDirectory;
 
-  if (3 <= args.Length()) {
-    usePipes = TRI_ObjectToBoolean(isolate, args[2]);
+  if (5 <= args.Length()) {
+    TRI_Utf8ValueNFC name(isolate, args[4]);
+    if (*name == nullptr) {
+      TRI_V8_THROW_TYPE_ERROR("<workingDirectory> must be a string");
+    }
+
+    subProcessWorkingDirectory = std::string(*name, name.length());
   }
-
   ExternalId external;
+  if (subProcessWorkingDirectory != workingDirectory) {
+    FileUtils::changeDirectory(subProcessWorkingDirectory);
+  }
   TRI_CreateExternalProcess(*name, arguments, additionalEnv, usePipes, &external);
+  FileUtils::changeDirectory(workingDirectory);
 
   if (external._pid == TRI_INVALID_PROCESS_ID) {
     TRI_V8_THROW_ERROR("Process could not be started");
@@ -4509,9 +4565,9 @@ static void JS_ExecuteExternalAndWait(v8::FunctionCallbackInfo<v8::Value> const&
   auto context = TRI_IGETC;
 
   // extract the arguments
-  if (5 < args.Length() || args.Length() < 1) {
+  if (6 < args.Length() || args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "executeExternalAndWait(<filename>[, <arguments> [,<usePipes>, [, <timeoutms> [, <env>] ] ] ])");
+        "executeExternalAndWait(<filename>[, <arguments> [,<usePipes>, [, <timeoutms> [, <env> [, <workingDirectory> ] ] ] ] ])");
   }
 
   TRI_Utf8ValueNFC name(isolate, args[0]);
@@ -4564,6 +4620,16 @@ static void JS_ExecuteExternalAndWait(v8::FunctionCallbackInfo<v8::Value> const&
     }
   }
 
+  bool usePipes = false;
+  if (args.Length() >= 3) {
+    usePipes = TRI_ObjectToBoolean(isolate, args[2]);
+  }
+
+  uint32_t timeoutms = 0;
+  if (args.Length() >= 4) {
+    timeoutms = static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, args[3], true));
+  }
+
   std::vector<std::string> additionalEnv;
 
   if (5 <= args.Length()) {
@@ -4586,18 +4652,23 @@ static void JS_ExecuteExternalAndWait(v8::FunctionCallbackInfo<v8::Value> const&
     }
   }
 
-  bool usePipes = false;
-  if (args.Length() >= 3) {
-    usePipes = TRI_ObjectToBoolean(isolate, args[2]);
-  }
+  auto workingDirectory = FileUtils::currentDirectory().result();
+  std::string subProcessWorkingDirectory = workingDirectory;
 
-  uint32_t timeoutms = 0;
-  if (args.Length() >= 4) {
-    timeoutms = static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, args[3], true));
-  }
+  if (5 <= args.Length()) {
+    TRI_Utf8ValueNFC name(isolate, args[4]);
+    if (*name == nullptr) {
+      TRI_V8_THROW_TYPE_ERROR("<workingDirectory> must be a string");
+    }
 
+    subProcessWorkingDirectory = std::string(*name, name.length());
+  }
   ExternalId external;
+  if (subProcessWorkingDirectory != workingDirectory) {
+    FileUtils::changeDirectory(subProcessWorkingDirectory);
+  }
   TRI_CreateExternalProcess(*name, arguments, additionalEnv, usePipes, &external);
+  FileUtils::changeDirectory(workingDirectory);
 
   if (external._pid == TRI_INVALID_PROCESS_ID) {
     TRI_V8_THROW_ERROR("Process could not be started");
@@ -5489,7 +5560,7 @@ void TRI_ClearObjectCacheV8(v8::Isolate* isolate) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check if we are in the enterprise edition
+/// @brief check if we are in the Enterprise Edition
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_IsEnterprise(v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -5504,7 +5575,7 @@ static void JS_IsEnterprise(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert errror number to httpCode
+/// @brief convert error number to httpCode
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ErrorNumberToHttpCode(v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -5714,6 +5785,7 @@ void TRI_InitV8Utils(v8::Isolate* isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_GET_PID"), JS_GetPid);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_RAND"), JS_Rand);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_READ"), JS_Read);
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_READPIPE"), JS_ReadPipe);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_READ64"), JS_Read64);
   TRI_AddGlobalFunctionVocbase(isolate,

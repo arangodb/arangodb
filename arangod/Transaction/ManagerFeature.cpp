@@ -49,7 +49,10 @@ void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& 
         arangodb::basics::function_utils::retryUntilTimeout<arangodb::Scheduler::WorkHandle>(
             [&gcfunc]() -> std::pair<bool, arangodb::Scheduler::WorkHandle> {
               auto off = std::chrono::seconds(1);
-              return arangodb::SchedulerFeature::SCHEDULER->queueDelay(arangodb::RequestLane::INTERNAL_LOW,
+              // The RequestLane needs to be something which is `HIGH` priority, otherwise
+              // all threads executing this might be blocking, waiting for a lock to be
+              // released.
+              return arangodb::SchedulerFeature::SCHEDULER->queueDelay(arangodb::RequestLane::CLUSTER_INTERNAL,
                                                                        off, gcfunc);
             },
             arangodb::Logger::TRANSACTIONS,
@@ -70,7 +73,10 @@ namespace transaction {
 std::unique_ptr<transaction::Manager> ManagerFeature::MANAGER;
 
 ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "TransactionManager"), _workItem(nullptr), _gcfunc() {
+    : ApplicationFeature(server, "TransactionManager"),
+      _workItem(nullptr),
+      _gcfunc(),
+      _streamingLockTimeout(8.0) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
 
@@ -90,6 +96,16 @@ ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
       ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc);
     }
   };
+}
+
+void ManagerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  options->addSection("transaction", "Transaction features");
+
+  options->addOption("--transaction.streaming-lock-timeout", "lock timeout in seconds "
+		     "in case of parallel access to the same streaming transaction",
+                     new DoubleParameter(&_streamingLockTimeout),
+		     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+    .setIntroducedIn(30605).setIntroducedIn(30701);
 }
 
 void ManagerFeature::prepare() {

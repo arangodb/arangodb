@@ -93,6 +93,9 @@ class Connection : public std::enable_shared_from_this<Connection> {
   /// @brief endpoint we are connected to
   std::string endpoint() const;
 
+  /// @brief lease a connection (prevent idle timeout)
+  virtual bool lease() = 0;
+
  protected:
   Connection(detail::ConnectionConfiguration const& conf) : _config(conf) {}
 
@@ -200,12 +203,6 @@ class ConnectionBuilder {
     _conf._jwtToken = t;
     return *this;
   }
-  // Set the maximum size for chunks (VST only)
-  /*inline std::size_t maxChunkSize() const { return _conf._maxChunkSize; }
-  ConnectionBuilder& maxChunkSize(std::size_t c) {
-    _conf._maxChunkSize = c;
-    return *this;
-  }*/
 
   /// @brief tcp, ssl or unix
   inline SocketType socketType() const { return _conf._socketType; }
@@ -217,6 +214,12 @@ class ConnectionBuilder {
   inline vst::VSTVersion vstVersion() const { return _conf._vstVersion; }
   ConnectionBuilder& vstVersion(vst::VSTVersion c) {
     _conf._vstVersion = c;
+    return *this;
+  }
+  
+  /// upgrade http1.1 to http2 connection (not necessary)
+  ConnectionBuilder& upgradeHttp1ToHttp2(bool c) {
+    _conf._upgradeH1ToH2 = c;
     return *this;
   }
 

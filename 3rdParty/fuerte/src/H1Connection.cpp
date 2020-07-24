@@ -138,9 +138,11 @@ H1Connection<ST>::H1Connection(EventLoopService& loop,
       _reading(false),
       _writing(false),
       _writeStart(),
+      _leased(0),
       _lastHeaderWasValue(false),
       _shouldKeepAlive(false),
-      _messageComplete(false) {
+      _messageComplete(false),
+      _timeoutOnReadWrite(false) {
   // initialize http parsing code
   http_parser_settings_init(&_parserSettings);
   _parserSettings.on_message_begin = &on_message_begin;
@@ -209,6 +211,18 @@ void H1Connection<ST>::sendRequest(std::unique_ptr<Request> req,
   item.release();  // queue owns this now
 
   FUERTE_LOG_HTTPTRACE << "queued item: this=" << this << "\n";
+
+  // If the connection was leased explicitly, we set the _leased indicator
+  // to 2 here, such that it can be reset to 0 once the idle alarm is
+  // enabled explicitly later. We do not have to check if this has worked
+  // for the following reason: The value is only ever set to -1, 0, 1 or 2.
+  // If it is already 2, no action is needed. If it is still 0, then the
+  // connection was not leased and we do not have to mark it here to indicate
+  // that a `sendRequest` has happened. If it is currently -1, then the
+  // connection will be shut down anyway. In the TLS case, this will set
+  // the _state to Failed and the current operation will fail anyway.
+  int exp = 1;
+  _leased.compare_exchange_strong(exp, 2);
 
   // Note that we have first posted on the queue with std::memory_order_seq_cst
   // and now we check _active std::memory_order_seq_cst. This prevents a sleeping
@@ -404,6 +418,20 @@ void H1Connection<ST>::asyncWriteNextRequest() {
       if (_shouldKeepAlive && this->_config._idleTimeout.count() > 0) {
         FUERTE_LOG_HTTPTRACE << "setting idle keep alive timer, this=" << this
                              << "\n";
+        // We want to enable the idle timeout alarm here. However, if the
+        // connection object has been leased, but no `sendRequest` has been
+        // called on it yet, then the alarm must not go off. Therefore,
+        // if _leased is 2 (`sendRequest` has been called), we reset it to
+        // 0, if _leased is still 1 (`lease` has happened, but `sendRequest`
+        // has not yet been called), then we leave it untouched. Since
+        // this method here is only ever executed on the iothread and
+        // the value -1 only happens for a brief period in the iothread,
+        // it will never be observed here. Therefore, no actual need to check
+        // the result of the compare_exchange_strong.
+        int exp = 2;
+        if (!_leased.compare_exchange_strong(exp, 0)) {
+          FUERTE_ASSERT(exp != -1);
+        }
         setTimeout(this->_config._idleTimeout, TimeoutType::IDLE);
       } else {
         this->shutdownConnection(Error::CloseRequested);
@@ -424,6 +452,7 @@ void H1Connection<ST>::asyncWriteNextRequest() {
   _item.reset(ptr);
 
   setTimeout(_item->request->timeout(), TimeoutType::WRITE);
+  _timeoutOnReadWrite = false;
   _writeStart = std::chrono::steady_clock::now();
   _writing = true;
 
@@ -471,6 +500,9 @@ void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
 
     // keepalive timeout may have expired
     auto err = translateError(ec, Error::WriteError);
+    if (this->_timeoutOnReadWrite && err == fuerte::Error::Canceled) {
+      err = fuerte::Error::Timeout;
+    }
     if (item) { // may be null if connection was canceled
       if (ec == asio_ns::error::broken_pipe && nwrite == 0) {  // re-queue
         // Note that this has the potential to change the order in which requests
@@ -507,6 +539,7 @@ void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
   // Continue with a read, use the remaining part of the timeout as
   // timeout:
   setTimeout(_item->request->timeout() - timePassed, TimeoutType::READ);    // extend timeout
+  _timeoutOnReadWrite = false;
 
   _reading = true;
   this->asyncReadSome();  // listen for the response
@@ -521,7 +554,7 @@ template <SocketType ST>
 void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
   this->_reading = false;
   // Do not cancel timeout now, because we might be going on to read!
-  if (ec) {
+  if (ec || _item == nullptr) {
     this->_proto.timer.cancel();
 
     FUERTE_LOG_DEBUG << "asyncReadCallback: Error while reading from socket: '"
@@ -530,7 +563,11 @@ void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
     auto state = this->_state.load();
     if (state != Connection::State::Failed) {
       // Restart connection, will invoke _item cb
-      this->restartConnection(translateError(ec, Error::ReadError));
+      auto err = translateError(ec, Error::ReadError);
+      if (_timeoutOnReadWrite && err == fuerte::Error::Canceled) {
+        err = fuerte::Error::Timeout;
+      }
+      this->restartConnection(err);
     } else {
       drainQueue(Error::Canceled);
       abortOngoingRequests(Error::Canceled);
@@ -594,9 +631,12 @@ void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
 template <SocketType ST>
 void H1Connection<ST>::setTimeout(std::chrono::milliseconds millis, TimeoutType type) {
   if (millis.count() == 0) {
+    FUERTE_LOG_TRACE << "deleting timeout of type " << (int) type << " this=" << this << "\n";
     this->_proto.timer.cancel();
     return;
   }
+
+  FUERTE_LOG_TRACE << "setting timeout of type " << (int) type << " this=" << this << "\n";
 
   // expires_after cancels pending ops
   this->_proto.timer.expires_after(millis);
@@ -609,14 +649,24 @@ void H1Connection<ST>::setTimeout(std::chrono::milliseconds millis, TimeoutType 
         auto* me = static_cast<H1Connection<ST>*>(s.get());
         if ((type == TimeoutType::WRITE && me->_writing) ||
             (type == TimeoutType::READ && me->_reading)) {
-          FUERTE_LOG_DEBUG << "HTTP-Request timeout\n";
+          FUERTE_LOG_DEBUG << "HTTP-Request timeout" << " this=" << me << "\n";
           me->_proto.cancel();
+          me->_timeoutOnReadWrite = true;
           // We simply cancel all ongoing asynchronous operations, the completion
           // handlers will do the rest.
           return;
-        } else if (type == TimeoutType::IDLE) {
+        } else if (type == TimeoutType::IDLE && !me->_writing & !me->_reading && me->_leased == 0) {
           if (!me->_active && me->_state == Connection::State::Connected) {
-            me->shutdownConnection(Error::CloseRequested);
+            int exp = 0;
+            if (me->_leased.compare_exchange_strong(exp, -1)) {
+              // Note that we check _leased here with std::memory_order_seq_cst
+              // **before** we call `shutdownConnection` and actually kill the
+              // connection. This is important, see below!
+              FUERTE_LOG_DEBUG << "HTTP-Request idle timeout"
+                    << " this=" << me << "\n";
+              me->shutdownConnection(Error::CloseRequested);
+              me->_leased.store(0, std::memory_order_seq_cst);
+            }
           }
         }
         // In all other cases we do nothing, since we have been posted to the
@@ -647,6 +697,30 @@ void H1Connection<ST>::drainQueue(const fuerte::Error ec) {
     FUERTE_ASSERT(q > 0);
     guard->invokeOnError(ec);
   }
+}
+
+// Lease this connection (cancel idle alarm)
+template <SocketType ST>
+bool H1Connection<ST>::lease() {
+  int exp = 0;
+  // We have to guard against data races here. Some other thread might call
+  // cancel() on the connection, but then it is OK that the next request
+  // runs into an error. Somebody was asking for trouble and gets it.
+  // The iothread itself can only set the state to Failed if a real
+  // error occurs (in which case it is again OK to run into an error with
+  // the next request), or if the idle timeout alarm goes off. This code
+  // guards against the idle alarm going off despite the fact that the
+  // connection was already leased, since we first compare exchange from
+  // 0 to 1 and then check again that the connection is not Failed. Both
+  // accesses happen with std::memory_order_seq_cst and the check for
+  // _leased in the idle alarm handler happens before shutdownConnection
+  // is called.
+  if (!this->_leased.compare_exchange_strong(exp, 1) ||
+      this->_state == Connection::State::Failed) {
+    return false;
+  }
+  FUERTE_LOG_TRACE << "Connection leased: this=" << this;
+  return true;   // this is a noop, derived classes can override
 }
 
 template class arangodb::fuerte::v1::http::H1Connection<SocketType::Tcp>;

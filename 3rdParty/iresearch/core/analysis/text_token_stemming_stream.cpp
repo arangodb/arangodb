@@ -183,18 +183,15 @@ NS_END
 NS_ROOT
 NS_BEGIN(analysis)
 
-DEFINE_ANALYZER_TYPE_NAMED(text_token_stemming_stream, "stem")
-
-text_token_stemming_stream::text_token_stemming_stream(
-    const std::locale& locale
-): analyzer(text_token_stemming_stream::type()),
-   attrs_(4), // increment + offset + payload + term
-   locale_(locale), 
-   term_eof_(true) {
-  attrs_.emplace(inc_);
-  attrs_.emplace(offset_);
-  attrs_.emplace(payload_);
-  attrs_.emplace(term_);
+text_token_stemming_stream::text_token_stemming_stream(const std::locale& locale)
+  : attributes{{
+      { irs::type<increment>::id(), &inc_       },
+      { irs::type<offset>::id(), &offset_       },
+      { irs::type<payload>::id(), &payload_     },
+      { irs::type<term_attribute>::id(), &term_ }},
+      irs::type<text_token_stemming_stream>::get()},
+    locale_(locale),
+    term_eof_(true) {
 }
 
 /*static*/ void text_token_stemming_stream::init() {
@@ -204,9 +201,7 @@ text_token_stemming_stream::text_token_stemming_stream(
                          normalize_text_config); // match registration above
 }
 
-/*static*/ analyzer::ptr text_token_stemming_stream::make(
-    const string_ref& locale
-) {
+/*static*/ analyzer::ptr text_token_stemming_stream::make(const string_ref& locale) {
   return make_text(locale);
 }
 
@@ -230,7 +225,7 @@ bool text_token_stemming_stream::reset(const irs::string_ref& data) {
     );
   }
 
-  term_.value(irs::bytes_ref::NIL); // reset
+  term_.value = irs::bytes_ref::NIL; // reset
   term_buf_.clear();
   term_eof_ = true;
 
@@ -269,10 +264,8 @@ bool text_token_stemming_stream::reset(const irs::string_ref& data) {
 
     if (value) {
       static_assert(sizeof(irs::byte_type) == sizeof(sb_symbol), "sizeof(irs::byte_type) != sizeof(sb_symbol)");
-      term_.value(irs::bytes_ref(
-        reinterpret_cast<const irs::byte_type*>(value),
-        sb_stemmer_length(stemmer_.get())
-      ));
+      term_.value = irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(value),
+                                   sb_stemmer_length(stemmer_.get()));
 
       return true;
     }
@@ -282,7 +275,7 @@ bool text_token_stemming_stream::reset(const irs::string_ref& data) {
   // use the value of the unstemmed token
   // ...........................................................................
   static_assert(sizeof(irs::byte_type) == sizeof(char), "sizeof(irs::byte_type) != sizeof(char)");
-  term_.value(irs::ref_cast<irs::byte_type>(term_buf_));
+  term_.value = irs::ref_cast<irs::byte_type>(term_buf_);
 
   return true;
 }

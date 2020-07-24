@@ -92,21 +92,20 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
  protected:
 
   arangodb::tests::mocks::MockCoordinator server;
-  arangodb::consensus::Store& _agencyStore;
 
-  IResearchViewCoordinatorTest() : server(), _agencyStore(server.getAgencyStore()) {
+  IResearchViewCoordinatorTest() : server() {
     arangodb::tests::init();
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
     TransactionStateMock::commitTransactionCount = 0;
-    }
+  }
 
   void createTestDatabase(TRI_vocbase_t*& vocbase) {
     vocbase = server.createDatabase("testDatabase");
     ASSERT_NE(nullptr, vocbase);
     ASSERT_EQ("testDatabase", vocbase->name());
     ASSERT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, vocbase->type());
-    }
+  }
 
   ~IResearchViewCoordinatorTest() = default;
 };
@@ -147,6 +146,7 @@ TEST_F(IResearchViewCoordinatorTest, test_rename) {
 
 TEST_F(IResearchViewCoordinatorTest, visit_collections) {
   auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
+
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
   createTestDatabase(vocbase);
@@ -163,24 +163,27 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
       "{ \"name\": \"testCollection2\", \"shards\":{} }");
   auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"view\": \"1\" }");
   auto json = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\" "
-      "}");
-  ASSERT_TRUE((ci.createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1, 1, false,
-                                              collectionJson0->slice(), 0.0, false, nullptr)
-                   .ok()));
+      "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\" }");
+
+  ASSERT_TRUE(ci.createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1, 1, false,
+                                            collectionJson0->slice(), 0.0, false, nullptr).ok());
+
   auto logicalCollection0 = ci.getCollection(vocbase->name(), collectionId0);
   ASSERT_TRUE((false == !logicalCollection0));
   ASSERT_TRUE((ci.createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1, 1, false,
                                               collectionJson1->slice(), 0.0, false, nullptr)
                    .ok()));
+
   auto logicalCollection1 = ci.getCollection(vocbase->name(), collectionId1);
   ASSERT_TRUE((false == !logicalCollection1));
   ASSERT_TRUE((ci.createCollectionCoordinator(vocbase->name(), collectionId2, 0, 1, 1, false,
                                               collectionJson2->slice(), 0.0, false, nullptr)
                    .ok()));
+
   auto logicalCollection2 = ci.getCollection(vocbase->name(), collectionId2);
   ASSERT_TRUE((false == !logicalCollection2));
   ASSERT_TRUE((ci.createViewCoordinator(vocbase->name(), viewId, json->slice()).ok()));
+
   auto logicalView = ci.getView(vocbase->name(), viewId);
   ASSERT_TRUE((false == !logicalView));
   auto* view =
@@ -222,8 +225,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
   // view definition with LogicalView (for persistence)
   {
     auto json = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\" "
-        "}");
+        "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE(
@@ -557,8 +559,7 @@ TEST_F(IResearchViewCoordinatorTest, test_create_drop_view) {
   // create and drop view
   {
     auto json = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testView\", \"id\": \"42\", \"type\": "
-        "\"arangosearch\" }");
+        "{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
     auto viewId = std::to_string(42);
 
     EXPECT_TRUE(
@@ -649,10 +650,10 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
   {
     VPackBuilder agencyRecord;
     agencyRecord.openArray();
-    _agencyStore.read(arangodb::velocypack::Parser::fromJson(
-                          "[\"arango/Plan/Collections/testDatabase/" + collectionId + "\"]")
-                          ->slice(),
-                      agencyRecord);
+
+    server.getFeature<arangodb::ClusterFeature>().agencyCache().store().read(
+      arangodb::velocypack::Parser::fromJson(
+        "[\"arango/Plan/Collections/testDatabase/" + collectionId + "\"]")->slice(), agencyRecord);
     agencyRecord.close();
 
     ASSERT_TRUE(agencyRecord.slice().isArray());
@@ -774,7 +775,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    
+
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -865,8 +866,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
     // update properties - full update
     {
       auto props = arangodb::velocypack::Parser::fromJson(
-          "{ \"cleanupIntervalStep\": 42, \"consolidationIntervalMsec\": 50 "
-          "}");
+          "{ \"cleanupIntervalStep\": 42, \"consolidationIntervalMsec\": 50 }");
       EXPECT_TRUE(view->properties(props->slice(), false).ok());
       EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));  // plan version changed
       planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
@@ -1243,6 +1243,229 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
   }
 }
 
+TEST_F(IResearchViewCoordinatorTest, test_primary_compression_properties) {
+  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
+
+  TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
+
+  createTestDatabase(vocbase);
+
+  // create view
+  auto json = arangodb::velocypack::Parser::fromJson(
+    "{ \"name\": \"testView\", "
+    "\"type\": \"arangosearch\", "
+    "\"writebufferActive\": 25, "
+    "\"writebufferIdle\": 64, "
+    "\"locale\": \"C\", "
+    "\"version\": 1, "
+    "\"primarySortCompression\":\"none\","
+    "\"primarySort\": [ "
+    "{ \"field\": \"my.Nested.field\", \"direction\": \"asc\" }, "
+    "{ \"field\": \"another.field\", \"asc\": false } "
+    "]"
+    "}");
+
+  auto viewId = std::to_string(ci.uniqid() + 1);  // +1 because LogicalView creation will generate a new ID
+
+  EXPECT_TRUE(ci.createViewCoordinator(vocbase->name(), viewId, json->slice()).ok());
+
+  auto view = ci.getView(vocbase->name(), viewId);
+  EXPECT_NE(nullptr, view);
+  EXPECT_NE(nullptr, std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
+  // check serialization for properties
+  {
+    VPackSlice tmpSlice, tmpSlice2;
+
+    VPackBuilder builder;
+    builder.openObject();
+    view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
+    builder.close();
+
+    auto slice = builder.slice();
+    EXPECT_TRUE(slice.isObject());
+    EXPECT_EQ(15, slice.length());
+    EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
+    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    tmpSlice = slice.get("writebufferActive");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 25 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferIdle");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferSizeMax");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("primarySort");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(2, tmpSlice.length());
+    {
+      auto first = tmpSlice.at(0);
+      ASSERT_TRUE(first.isObject());
+      tmpSlice2 = first.get("field");
+      ASSERT_TRUE(tmpSlice2.isString());
+      ASSERT_EQ("my.Nested.field", tmpSlice2.copyString());
+      tmpSlice2 = first.get("asc");
+      ASSERT_TRUE(tmpSlice2.isBoolean());
+      ASSERT_TRUE(tmpSlice2.getBoolean());
+    }
+    {
+      auto second = tmpSlice.at(1);
+      ASSERT_TRUE(second.isObject());
+      tmpSlice2 = second.get("field");
+      ASSERT_TRUE(tmpSlice2.isString());
+      ASSERT_EQ("another.field", tmpSlice2.copyString());
+      tmpSlice2 = second.get("asc");
+      ASSERT_TRUE(tmpSlice2.isBoolean());
+      ASSERT_FALSE(tmpSlice2.getBoolean());
+    }
+    tmpSlice = slice.get("primarySortCompression");
+    EXPECT_TRUE(tmpSlice.isString());
+    EXPECT_EQ(std::string("none"), tmpSlice.copyString());
+    tmpSlice = slice.get("storedValues");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(0, tmpSlice.length());
+  }
+
+  // check serialization for persistence
+  {
+    VPackSlice tmpSlice, tmpSlice2;
+
+    arangodb::velocypack::Builder builder;
+    builder.openObject();
+    view->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence);
+    builder.close();
+
+    auto slice = builder.slice();
+    EXPECT_TRUE(slice.isObject());
+    EXPECT_EQ(18, slice.length());
+    EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
+    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 10000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("deleted").isBool() && !slice.get("deleted").getBool());
+    EXPECT_TRUE(slice.get("isSystem").isBool() && !slice.get("isSystem").getBool());
+
+    { // consolidation policy
+      tmpSlice = slice.get("consolidationPolicy");
+      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      tmpSlice2 = tmpSlice.get("type");
+      EXPECT_TRUE(tmpSlice2.isString() && std::string("tier") == tmpSlice2.copyString());
+      tmpSlice2 = tmpSlice.get("segmentsMin");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("minScore");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>()));
+    }
+    tmpSlice = slice.get("writebufferActive");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 25 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferIdle");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferSizeMax");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("primarySort");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(2, tmpSlice.length());
+    {
+      auto first = tmpSlice.at(0);
+      ASSERT_TRUE(first.isObject());
+      tmpSlice2 = first.get("field");
+      ASSERT_TRUE(tmpSlice2.isString());
+      ASSERT_EQ("my.Nested.field", tmpSlice2.copyString());
+      tmpSlice2 = first.get("asc");
+      ASSERT_TRUE(tmpSlice2.isBoolean());
+      ASSERT_TRUE(tmpSlice2.getBoolean());
+    }
+    {
+      auto second = tmpSlice.at(1);
+      ASSERT_TRUE(second.isObject());
+      tmpSlice2 = second.get("field");
+      ASSERT_TRUE(tmpSlice2.isString());
+      ASSERT_EQ("another.field", tmpSlice2.copyString());
+      tmpSlice2 = second.get("asc");
+      ASSERT_TRUE(tmpSlice2.isBoolean());
+      ASSERT_FALSE(tmpSlice2.getBoolean());
+    }
+    tmpSlice = slice.get("primarySortCompression");
+    EXPECT_TRUE(tmpSlice.isString());
+    EXPECT_EQ(std::string("none"), tmpSlice.copyString());
+  }
+
+  // check serialization for inventory
+  {
+    VPackSlice tmpSlice, tmpSlice2;
+
+    arangodb::velocypack::Builder builder;
+    builder.openObject();
+    view->properties(builder, arangodb::LogicalDataSource::Serialization::Inventory);
+    builder.close();
+
+    auto slice = builder.slice();
+    EXPECT_TRUE(slice.isObject());
+    EXPECT_EQ(15, slice.length());
+    EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
+    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 10000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+    { // consolidation policy
+      tmpSlice = slice.get("consolidationPolicy");
+      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      tmpSlice2 = tmpSlice.get("type");
+      EXPECT_TRUE(tmpSlice2.isString() && std::string("tier") == tmpSlice2.copyString());
+      tmpSlice2 = tmpSlice.get("segmentsMin");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("minScore");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>()));
+    }
+    tmpSlice = slice.get("writebufferActive");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 25 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferIdle");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferSizeMax");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("primarySort");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(2, tmpSlice.length());
+    {
+      auto first = tmpSlice.at(0);
+      ASSERT_TRUE(first.isObject());
+      tmpSlice2 = first.get("field");
+      ASSERT_TRUE(tmpSlice2.isString());
+      ASSERT_EQ("my.Nested.field", tmpSlice2.copyString());
+      tmpSlice2 = first.get("asc");
+      ASSERT_TRUE(tmpSlice2.isBoolean());
+      ASSERT_TRUE(tmpSlice2.getBoolean());
+    }
+    {
+      auto second = tmpSlice.at(1);
+      ASSERT_TRUE(second.isObject());
+      tmpSlice2 = second.get("field");
+      ASSERT_TRUE(tmpSlice2.isString());
+      ASSERT_EQ("another.field", tmpSlice2.copyString());
+      tmpSlice2 = second.get("asc");
+      ASSERT_TRUE(tmpSlice2.isBoolean());
+      ASSERT_FALSE(tmpSlice2.getBoolean());
+    }
+    tmpSlice = slice.get("primarySortCompression");
+    EXPECT_TRUE(tmpSlice.isString());
+    EXPECT_EQ(std::string("none"), tmpSlice.copyString());
+    tmpSlice = slice.get("storedValues");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(0, tmpSlice.length());
+  }
+}
+
 TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
   auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
@@ -1399,7 +1622,7 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
       EXPECT_TRUE(25 == meta._writebufferActive);
       EXPECT_TRUE(12 == meta._writebufferIdle);
       EXPECT_TRUE(42 * (size_t(1) << 20) == meta._writebufferSizeMax);
-      EXPECT_EQ(&irs::compression::none::type(), meta._primarySortCompression);
+      EXPECT_EQ(irs::type<irs::compression::none>::id(), meta._primarySortCompression);
       EXPECT_TRUE(2 == meta._primarySort.size());
       {
         auto& field = meta._primarySort.field(0);
@@ -1490,8 +1713,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
 
   // get current plan version
   auto planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
-
-  ci.loadCurrent();
 
   // create view
   auto viewJson = arangodb::velocypack::Parser::fromJson(
@@ -2144,8 +2365,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
 
   // get current plan version
   auto planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
-
-  ci.loadCurrent();
 
   // create view
   auto viewJson = arangodb::velocypack::Parser::fromJson(
@@ -2847,8 +3066,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   // get current plan version
   auto planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
 
-  ci.loadCurrent();
-
   // create view
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" "
@@ -3493,8 +3710,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   // get current plan version
   auto planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
 
-  ci.loadCurrent();
-
   // create view
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" "
@@ -3945,8 +4160,6 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((nullptr != logicalCollection));
   }
-
-  ci.loadCurrent();
 
   auto const currentCollectionPath = "/Current/Collections/" + vocbase->name() +
                                      "/" + std::to_string(logicalCollection->id());
@@ -4609,7 +4822,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    
+
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -5775,6 +5988,10 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     node.addDependency(&singleton);
 
     std::unordered_map<arangodb::aql::ExecutionNode*, arangodb::aql::ExecutionBlock*> cache;
+    singleton.setVarsUsedLater({arangodb::aql::VarSet{&outVariable}});
+    singleton.setVarsValid({{}});
+    node.setVarsUsedLater({{}});
+    node.setVarsValid({arangodb::aql::VarSet{&outVariable}});
     singleton.setVarUsageValid();
     node.setVarUsageValid();
     singleton.planRegisters(nullptr);

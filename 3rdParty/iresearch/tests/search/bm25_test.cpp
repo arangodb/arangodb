@@ -25,6 +25,7 @@
 #include "index/index_tests.hpp"
 #include "search/all_filter.hpp"
 #include "search/boolean_filter.hpp"
+#include "search/column_existence_filter.hpp"
 #include "search/phrase_filter.hpp"
 #include "search/prefix_filter.hpp"
 #include "search/range_filter.hpp"
@@ -79,10 +80,10 @@ class bm25_test: public index_test_base { };
 
 TEST_P(bm25_test, test_load) {
   irs::order order;
-  auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL);
+  auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
 
   ASSERT_NE(nullptr, scorer);
-  ASSERT_EQ(1, order.add(true, scorer).size());
+  ASSERT_EQ(1, order.add(true, std::move(scorer)).size());
 }
 
 #ifndef IRESEARCH_DLL
@@ -90,7 +91,7 @@ TEST_P(bm25_test, test_load) {
 TEST_P(bm25_test, make_from_array) {
   // default args
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL);
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
     ASSERT_NE(nullptr, scorer);
     auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(irs::bm25_sort::K(), bm25.k());
@@ -99,7 +100,7 @@ TEST_P(bm25_test, make_from_array) {
 
   // default args
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "[]");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[]");
     ASSERT_NE(nullptr, scorer);
     auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(irs::bm25_sort::K(), bm25.k());
@@ -108,7 +109,7 @@ TEST_P(bm25_test, make_from_array) {
 
   // `k` argument
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "[ 1.5 ]");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 1.5 ]");
     ASSERT_NE(nullptr, scorer);
     auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(1.5f, bm25.k());
@@ -116,17 +117,17 @@ TEST_P(bm25_test, make_from_array) {
   }
 
   // invalid `k` argument
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ \"1.5\" ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ \"abc\" ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ null]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ true ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ false ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ {} ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ [] ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ \"1.5\" ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ \"abc\" ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ null]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ true ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ false ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ {} ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ [] ]"));
 
   // `b` argument
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "[ 1.5, 1.7 ]");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 1.5, 1.7 ]");
     ASSERT_NE(nullptr, scorer);
     auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(1.5f, bm25.k());
@@ -134,13 +135,13 @@ TEST_P(bm25_test, make_from_array) {
   }
 
   // invalid `b` argument
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ 1.5, \"1.7\" ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ 1.5, \"abc\" ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ 1.5, null]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ 1.5, true ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ 1.5, false ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ 1.5, {} ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ 1.5, [] ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 1.5, \"1.7\" ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 1.5, \"abc\" ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 1.5, null]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 1.5, true ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 1.5, false ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 1.5, {} ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 1.5, [] ]"));
 }
 
 #endif // IRESEARCH_DLL
@@ -148,29 +149,29 @@ TEST_P(bm25_test, make_from_array) {
 TEST_P(bm25_test, test_normalize_features) {
   // default norms
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL);
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::flags({irs::frequency::type(), irs::norm::type()}), prepared->features());
+    ASSERT_EQ(irs::flags({irs::type<irs::frequency>::get(), irs::type<irs::norm>::get()}), prepared->features());
   }
 
   // without norms (bm15)
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"b\": 0.0}");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{\"b\": 0.0}");
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::flags({irs::frequency::type()}), prepared->features());
+    ASSERT_EQ(irs::flags({irs::type<irs::frequency>::get()}), prepared->features());
   }
 
   // without norms (bm15), integer argument
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"b\": 0}");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{\"b\": 0}");
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::flags({irs::frequency::type()}), prepared->features());
+    ASSERT_EQ(irs::flags({irs::type<irs::frequency>::get()}), prepared->features());
   }
 }
 
@@ -188,7 +189,7 @@ TEST_P(bm25_test, test_phrase) {
       }
 
       const irs::flags& features() const {
-        static irs::flags features{ irs::frequency::type() };
+        static irs::flags features{ irs::type<irs::frequency>::get() };
         return features;
       }
     }; // string_field
@@ -217,7 +218,7 @@ TEST_P(bm25_test, test_phrase) {
   }
 
   irs::order order;
-  order.add(true, irs::scorers::get("bm25", irs::text_format::json, "{ \"b\" : 0 }"));
+  order.add(true, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }"));
   auto prepared_order = order.prepare();
 
   auto comparer = [&prepared_order] (const iresearch::bstring& lhs, const iresearch::bstring& rhs) {
@@ -247,7 +248,7 @@ TEST_P(bm25_test, test_phrase) {
 
     auto prepared_filter = filter.prepare(*index, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
     auto column = segment.column_reader("name");
@@ -255,11 +256,10 @@ TEST_P(bm25_test, test_phrase) {
     auto values = column->values();
 
     // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
     irs::bytes_ref key_value;
 
     while (docs->next()) {
-      score->evaluate();
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
       ASSERT_TRUE(values(docs->value(), key_value));
 
       sorted.emplace(
@@ -302,19 +302,17 @@ TEST_P(bm25_test, test_phrase) {
 
     auto prepared_filter = filter.prepare(*index, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
     auto column = segment.column_reader("name");
     ASSERT_NE(nullptr, column);
     auto values = column->values();
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
     irs::bytes_ref key_value;
 
     while (docs->next()) {
-      score->evaluate();
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
       ASSERT_TRUE(values(docs->value(), key_value));
 
       sorted.emplace(
@@ -349,7 +347,7 @@ TEST_P(bm25_test, test_query) {
 
   irs::order order;
 
-  order.add(true, irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL));
+  order.add(true, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
 
   auto prepared_order = order.prepare();
   auto comparer = [&prepared_order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
@@ -375,14 +373,11 @@ TEST_P(bm25_test, test_query) {
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
-
     while(docs->next()) {
-      score->evaluate();
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
@@ -463,14 +458,11 @@ TEST_P(bm25_test, test_query) {
       ASSERT_NE(nullptr, column);
       auto values = column->values();
       auto docs = prepared_filter->execute(segment, prepared_order);
-      auto& score = docs->attributes().get<irs::score>();
+      auto* score = irs::get<irs::score>(*docs);
       ASSERT_TRUE(bool(score));
 
-      // ensure that we avoid COW for pre c++11 std::basic_string
-      const irs::bytes_ref score_value = score->value();
-
       while(docs->next()) {
-        score->evaluate();
+        const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
         ASSERT_TRUE(values(docs->value(), actual_value));
         in.reset(actual_value);
 
@@ -562,14 +554,11 @@ TEST_P(bm25_test, test_query) {
       ASSERT_NE(nullptr, column);
       auto values = column->values();
       auto docs = prepared_filter->execute(segment, prepared_order);
-      auto& score = docs->attributes().get<irs::score>();
+      auto* score = irs::get<irs::score>(*docs);
       ASSERT_TRUE(bool(score));
 
-      // ensure that we avoid COW for pre c++11 std::basic_string
-      const irs::bytes_ref score_value = score->value();
-
       while(docs->next()) {
-        score->evaluate();
+        const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
         ASSERT_TRUE(values(docs->value(), actual_value));
         in.reset(actual_value);
 
@@ -652,14 +641,11 @@ TEST_P(bm25_test, test_query) {
       ASSERT_NE(nullptr, column);
       auto values = column->values();
       auto docs = prepared_filter->execute(segment, prepared_order);
-      auto& score = docs->attributes().get<irs::score>();
+      auto* score = irs::get<irs::score>(*docs);
       ASSERT_TRUE(bool(score));
 
-      // ensure that we avoid COW for pre c++11 std::basic_string
-      const irs::bytes_ref score_value = score->value();
-
       while(docs->next()) {
-        score->evaluate();
+        const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
         ASSERT_TRUE(values(docs->value(), actual_value));
         in.reset(actual_value);
 
@@ -693,13 +679,10 @@ TEST_P(bm25_test, test_query) {
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
-
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
+    auto* score = irs::get<irs::score>(*docs);
 
     while(docs->next()) {
-      score->evaluate();
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
@@ -733,14 +716,11 @@ TEST_P(bm25_test, test_query) {
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
-
     while(docs->next()) {
-      score->evaluate();
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
@@ -773,14 +753,11 @@ TEST_P(bm25_test, test_query) {
 //    irs::bytes_ref_input in;
 //    auto prepared_filter = filter.prepare(reader, prepared_order);
 //    auto docs = prepared_filter->execute(segment, prepared_order);
-//    auto& score = docs->attributes().get<irs::score>();
+//    auto* score = irs::get<irs::score>(*docs);
 //    ASSERT_TRUE(bool(score));
 //
-//    // ensure that we avoid COW for pre c++11 std::basic_string
-//    const irs::bytes_ref score_value = score->value();
-//
 //    while(docs->next()) {
-//      score->evaluate();
+//      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
 //      ASSERT_TRUE(values(docs->value(), actual_value));
 //      in.reset(actual_value);
 //
@@ -820,13 +797,10 @@ TEST_P(bm25_test, test_query) {
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
-
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
+    auto* score = irs::get<irs::score>(*docs);
 
     while(docs->next()) {
-      score->evaluate();
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
@@ -867,14 +841,11 @@ TEST_P(bm25_test, test_query) {
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
-
     while(docs->next()) {
-      score->evaluate();
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
@@ -909,13 +880,10 @@ TEST_P(bm25_test, test_query) {
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
-
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
+    auto* score = irs::get<irs::score>(*docs);
 
     while(docs->next()) {
-      score->evaluate();
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
@@ -945,21 +913,93 @@ TEST_P(bm25_test, test_query) {
     irs::bytes_ref actual_value;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
-
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
 
     irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
     while(docs->next()) {
       ASSERT_EQ(doc, docs->value());
-      score->evaluate();
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
       ASSERT_TRUE(values(docs->value(), actual_value));
       ++doc;
       ASSERT_EQ(1.5f, *reinterpret_cast<const float_t*>(score_value.c_str()));
     }
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), docs->value());
+    ASSERT_EQ(irs::doc_limits::eof(), docs->value());
+  }
+
+  // all
+  {
+    irs::all filter;
+    filter.boost(0.f);
+
+    irs::bytes_ref actual_value;
+    auto prepared_filter = filter.prepare(reader, prepared_order);
+    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto* score = irs::get<irs::score>(*docs);
+    ASSERT_TRUE(bool(score));
+    ASSERT_TRUE(score->is_default());
+
+    irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
+    while(docs->next()) {
+      ASSERT_EQ(doc, docs->value());
+
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ++doc;
+      ASSERT_EQ(0.f, *reinterpret_cast<const float_t*>(score_value.c_str()));
+    }
+    ASSERT_EQ(irs::doc_limits::eof(), docs->value());
+  }
+
+  // column existence
+  {
+    irs::by_column_existence filter;
+    *filter.mutable_field() = "seq";
+    filter.mutable_options()->prefix_match = false;
+
+    irs::bytes_ref actual_value;
+    auto prepared_filter = filter.prepare(reader, prepared_order);
+    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto* score = irs::get<irs::score>(*docs);
+    ASSERT_TRUE(bool(score));
+    ASSERT_FALSE(score->is_default());
+
+    irs::doc_id_t doc = irs::doc_limits::min();
+    while(docs->next()) {
+      ASSERT_EQ(doc, docs->value());
+
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ++doc;
+      ASSERT_EQ(1.f, *reinterpret_cast<const float_t*>(score_value.c_str()));
+    }
+    ASSERT_EQ(irs::doc_limits::eof(), docs->value());
+  }
+
+  // column existence
+  {
+    irs::by_column_existence filter;
+    *filter.mutable_field() = "seq";
+    filter.mutable_options()->prefix_match = false;
+    filter.boost(0.f);
+
+    irs::bytes_ref actual_value;
+    auto prepared_filter = filter.prepare(reader, prepared_order);
+    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto* score = irs::get<irs::score>(*docs);
+    ASSERT_TRUE(bool(score));
+    ASSERT_TRUE(score->is_default());
+
+    irs::doc_id_t doc = irs::doc_limits::min();
+    while(docs->next()) {
+      ASSERT_EQ(doc, docs->value());
+
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ++doc;
+      ASSERT_EQ(0.f, *reinterpret_cast<const float_t*>(score_value.c_str()));
+    }
+    ASSERT_EQ(irs::doc_limits::eof(), docs->value());
   }
 }
 
@@ -968,7 +1008,7 @@ TEST_P(bm25_test, test_query_norms) {
     tests::json_doc_generator gen(
       resource("simple_sequential_order.json"),
       [](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
-        static irs::flags extra_features = { irs::norm::type() };
+        static irs::flags extra_features = { irs::type<irs::norm>::get() };
 
         if (data.is_string()) { // field
           doc.insert(std::make_shared<templates::string_field>(name, data.str, extra_features), true, false);
@@ -982,7 +1022,7 @@ TEST_P(bm25_test, test_query_norms) {
 
   irs::order order;
 
-  order.add(true, irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL));
+  order.add(true, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
 
   auto prepared_order = order.prepare();
   auto comparer = [&prepared_order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
@@ -1018,14 +1058,11 @@ TEST_P(bm25_test, test_query_norms) {
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
-
     while(docs->next()) {
-      score->evaluate();
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
@@ -1066,13 +1103,10 @@ TEST_P(bm25_test, test_query_norms) {
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
-
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
+    auto* score = irs::get<irs::score>(*docs);
 
     while(docs->next()) {
-      score->evaluate();
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 
@@ -1163,7 +1197,7 @@ TEST_P(bm25_test, test_collector_serialization) {
     ASSERT_NE(nullptr, collector);
     bstring_data_output out0;
     collector->write(out0);
-    collector->collect(reader[0], *field, term->attributes());
+    collector->collect(reader[0], *field, *term);
     bstring_data_output out1;
     collector->write(out1);
     tcollector_out = out1.out_;
@@ -1232,7 +1266,7 @@ TEST_P(bm25_test, test_collector_serialization) {
 TEST_P(bm25_test, test_make) {
   // default values
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL);
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(0.75f, scr.b());
@@ -1243,7 +1277,7 @@ TEST_P(bm25_test, test_make) {
 
   // custom values
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"b\": 123.456, \"k\": 78.9 }");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{\"b\": 123.456, \"k\": 78.9 }");
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(123.456f, scr.b());
@@ -1254,7 +1288,7 @@ TEST_P(bm25_test, test_make) {
 
   // custom values (integer argument)
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"b\": 123.456, \"k\": 78 }");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{\"b\": 123.456, \"k\": 78 }");
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(123.456f, scr.b());
@@ -1265,7 +1299,7 @@ TEST_P(bm25_test, test_make) {
 
   // bm11
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"b\": 1.0, \"k\": 78.9 }");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{\"b\": 1.0, \"k\": 78.9 }");
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(1.f, scr.b());
@@ -1276,7 +1310,7 @@ TEST_P(bm25_test, test_make) {
 
   // bm11 (integer argument)
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"b\": 1, \"k\": 78.9 }");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{\"b\": 1, \"k\": 78.9 }");
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(1.f, scr.b());
@@ -1287,7 +1321,7 @@ TEST_P(bm25_test, test_make) {
 
   // bm15
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"b\": 0.0, \"k\": 78.9 }");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{\"b\": 0.0, \"k\": 78.9 }");
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(0.f, scr.b());
@@ -1298,7 +1332,7 @@ TEST_P(bm25_test, test_make) {
 
   // bm15 (integer argument)
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"b\": 0, \"k\": 78.9 }");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{\"b\": 0, \"k\": 78.9 }");
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(0.f, scr.b());
@@ -1309,19 +1343,19 @@ TEST_P(bm25_test, test_make) {
 
   // invalid args
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "\"12345");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "\"12345");
     ASSERT_EQ(nullptr, scorer);
   }
 
   // invalid values (b)
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"b\": false, \"k\": 78.9}");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{\"b\": false, \"k\": 78.9}");
     ASSERT_EQ(nullptr, scorer);
   }
 
   // invalid values (k)
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"b\": 123.456, \"k\": true}");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{\"b\": 123.456, \"k\": true}");
     ASSERT_EQ(nullptr, scorer);
   }
 }
@@ -1370,14 +1404,11 @@ TEST_P(bm25_test, test_order) {
     irs::bytes_ref_input in;
     auto prepared = query.prepare(reader, prepared_order);
     auto docs = prepared->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<iresearch::score>();
+    auto* score = irs::get<iresearch::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    // ensure that we avoid COW for pre c++11 std::basic_string
-    const irs::bytes_ref score_value = score->value();
-
     for (; docs->next();) {
-      score->evaluate();
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
       ASSERT_TRUE(values(docs->value(), actual_value));
       in.reset(actual_value);
 

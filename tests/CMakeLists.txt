@@ -24,13 +24,13 @@ set(ARANGODB_TESTS_SOURCES
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp
-  Aql/AllRowsFetcherTest.cpp
   Aql/BlockCollector.cpp
   Aql/AqlCallListTest.cpp
   Aql/AqlExecutorTestCase.cpp
   Aql/AqlHelper.cpp
   Aql/AqlItemBlockInputRangeTest.cpp
   Aql/AqlItemBlockTest.cpp
+  Aql/AqlItemMatrixTest.cpp
   Aql/AqlItemRowPrinter.cpp
   Aql/AqlItemRowTest.cpp
   Aql/AqlShadowRowTest.cpp
@@ -50,6 +50,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/ExecutionNodeTest.cpp
   Aql/ExecutorTestHelper.cpp
   Aql/FilterExecutorTest.cpp
+  Aql/GatherExecutorCommonTest.cpp
   Aql/HashedCollectExecutorTest.cpp
   Aql/IdExecutorTest.cpp
   Aql/IndexNodeTest.cpp
@@ -58,7 +59,6 @@ set(ARANGODB_TESTS_SOURCES
   Aql/KShortestPathsExecutorTest.cpp
   Aql/LimitExecutorTest.cpp
   Aql/MockTypedNode.cpp
-  Aql/MultiDependencySingleRowFetcherTest.cpp
   Aql/NgramMatchFunctionTest.cpp
   Aql/NgramSimilarityFunctionTest.cpp
   Aql/NgramPosSimilarityFunctionTest.cpp
@@ -73,7 +73,6 @@ set(ARANGODB_TESTS_SOURCES
   Aql/ScatterExecutorTest.cpp
   Aql/ShortestPathExecutorTest.cpp
   Aql/SkipResultTest.cpp
-  Aql/SingleRowFetcherTest.cpp
   Aql/SortedCollectExecutorTest.cpp
   Aql/SortExecutorTest.cpp
   Aql/SortLimit-test.cpp
@@ -82,7 +81,6 @@ set(ARANGODB_TESTS_SOURCES
   Aql/SubqueryEndExecutorTest.cpp
   Aql/SubqueryStartExecutorTest.cpp
   Aql/TestEmptyExecutorHelper.cpp
-  Aql/TestExecutorHelper.cpp
   Aql/TestLambdaExecutor.cpp
   Aql/TraversalExecutorTest.cpp
   Aql/UpdateExecutorTest.cpp
@@ -113,6 +111,8 @@ set(ARANGODB_TESTS_SOURCES
   Basics/InifileParserTest.cpp
   Basics/LoggerTest.cpp
   Basics/RandomTest.cpp
+  Basics/ReadWriteLockTest.cpp
+  Basics/SpinLockTest.cpp
   Basics/StringBufferTest.cpp
   Basics/StringUtilsTest.cpp
   Basics/VelocyPackHelper-test.cpp
@@ -135,6 +135,7 @@ set(ARANGODB_TESTS_SOURCES
   Cluster/ClusterHelpersTest.cpp
   Cluster/ClusterRepairsTest.cpp
   Cluster/RebootTrackerTest.cpp
+  Cluster/QueryAnalyzerRevisions-test.cpp
   Containers/EnumerateTest.cpp
   Containers/HashSetTest.cpp
   Containers/MerkleTreeTest.cpp
@@ -247,7 +248,8 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/vocbase-test.cpp
   VocBase/LogicalDataSource-test.cpp
   VocBase/LogicalView-test.cpp
-  VocBase/VersionTest.cpp)
+  VocBase/VersionTest.cpp
+  VPackDeserializer/BasicTests.cpp)
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags

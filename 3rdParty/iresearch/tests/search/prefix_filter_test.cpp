@@ -66,13 +66,21 @@ class prefix_filter_test_case : public tests::filter_test_case_base {
       size_t finish_count = 0;
       auto& scorer = order.add<tests::sort::custom_sort>(false);
 
-      scorer.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
+      scorer.collector_collect_field = [&collect_field_count](
+          const irs::sub_reader&, const irs::term_reader&)->void{
         ++collect_field_count;
       };
-      scorer.collector_collect_term = [&collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+      scorer.collector_collect_term = [&collect_term_count](
+          const irs::sub_reader&,
+          const irs::term_reader&,
+          const irs::attribute_provider&)->void{
         ++collect_term_count;
       };
-      scorer.collectors_collect_ = [&finish_count](irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
+      scorer.collectors_collect_ = [&finish_count](
+          irs::byte_type*,
+          const irs::index_reader&,
+          const irs::sort::field_collector*,
+          const irs::sort::term_collector*)->void {
         ++finish_count;
       };
       scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
@@ -249,7 +257,7 @@ TEST(by_prefix_test, options) {
 
 TEST(by_prefix_test, ctor) {
   irs::by_prefix q;
-  ASSERT_EQ(irs::by_prefix::type(), q.type());
+  ASSERT_EQ(irs::type<irs::by_prefix>::id(), q.type());
   ASSERT_EQ(irs::by_prefix_options{}, q.options());
   ASSERT_EQ("", q.field());
   ASSERT_EQ(irs::no_boost(), q.boost());

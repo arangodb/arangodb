@@ -40,12 +40,10 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(velocypack::Options const* const options,
-                                                   RegisterId inReg, RegisterId outReg,
-                                                   bool isModificationSubquery)
+                                                   RegisterId inReg, RegisterId outReg)
     : _vpackOptions(options),
       _outReg(outReg),
-      _inReg(inReg),
-      _isModificationSubquery(isModificationSubquery) {}
+      _inReg(inReg) {}
 
 SubqueryEndExecutorInfos::~SubqueryEndExecutorInfos() = default;
 
@@ -65,10 +63,6 @@ RegisterId SubqueryEndExecutorInfos::getInputRegister() const noexcept {
   return _inReg;
 }
 
-bool SubqueryEndExecutorInfos::isModificationSubquery() const noexcept {
-  return _isModificationSubquery;
-}
-
 SubqueryEndExecutor::SubqueryEndExecutor(Fetcher&, SubqueryEndExecutorInfos& infos)
     : _infos(infos), _accumulator(_infos.vpackOptions()) {}
 
@@ -82,10 +76,10 @@ auto SubqueryEndExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlIt
   // or in the reporting by the Executor data is requested from
   TRI_ASSERT(input.skippedInFlight() == 0);
   ExecutorState state{ExecutorState::HASMORE};
-  InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint()};
+  InputAqlItemRow inputRow{CreateInvalidInputRowHint()};
 
   while (input.hasDataRow()) {
-    std::tie(state, inputRow) = input.nextDataRow();
+    std::tie(state, inputRow) = input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(inputRow.isInitialized());
 
     // We got a data row, put it into the accumulator,
@@ -106,10 +100,10 @@ auto SubqueryEndExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& 
   // or in the reporting by the Executor data is requested from
   TRI_ASSERT(input.skippedInFlight() == 0);
   ExecutorState state;
-  InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint()};
+  InputAqlItemRow inputRow{CreateInvalidInputRowHint()};
 
   while (input.hasDataRow()) {
-    std::tie(state, inputRow) = input.nextDataRow();
+    std::tie(state, inputRow) = input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(inputRow.isInitialized());
   }
   // This is correct since the SubqueryEndExecutor produces one output out
@@ -123,10 +117,6 @@ auto SubqueryEndExecutor::consumeShadowRow(ShadowAqlItemRow shadowRow,
   AqlValue value;
   AqlValueGuard guard = _accumulator.stealValue(value);
   output.consumeShadowRow(_infos.getOutputRegister(), shadowRow, guard);
-}
-
-auto SubqueryEndExecutor::isModificationSubquery() const noexcept -> bool {
-  return _infos.isModificationSubquery();
 }
 
 void SubqueryEndExecutor::Accumulator::reset() {

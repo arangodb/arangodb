@@ -117,7 +117,17 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
     }
     ClusterInfo& clusterInfo = server().getFeature<ClusterFeature>().clusterInfo();
 
-    clusterInfo.loadPlan();
+    auto waitForNewPlan = [&clusterInfo] {
+      using namespace std::chrono_literals;
+      auto fRes = clusterInfo.fetchAndWaitForPlanVersion(10.0s);
+      // Note that get() might throw
+      return fRes.get();
+    };
+
+    if (auto res = waitForNewPlan(); !res.ok()) {
+      generateError(res);
+      return RestStatus::DONE;
+    }
     std::shared_ptr<VPackBuilder> planBuilder = clusterInfo.getPlan();
 
     VPackSlice plan = planBuilder->slice();
@@ -186,16 +196,18 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
 
     generateResult(responseCode, response, errorOccurred);
 
-    clusterInfo.loadPlan();
+    if (auto res = waitForNewPlan(); !res.ok()) {
+      LOG_TOPIC("293c5", WARN, arangodb::Logger::CLUSTER)
+          << "RestRepairHandler::repairDistributeShardsLike: "
+          << "failed to wait for new plan version after successful operation: "
+          << res.errorMessage();
+      return RestStatus::DONE;
+    }
   } catch (basics::Exception const& e) {
     LOG_TOPIC("78521", ERR, arangodb::Logger::CLUSTER)
         << "RestRepairHandler::repairDistributeShardsLike: "
         << "Caught exception: " << e.message();
     generateError(rest::ResponseCode::SERVER_ERROR, e.code());
-
-    if (server().hasFeature<ClusterFeature>()) {
-      server().getFeature<ClusterFeature>().clusterInfo().loadPlan();
-    }
   }
   return RestStatus::DONE;
 }
@@ -350,8 +362,10 @@ Result RestRepairHandler::executeRepairOperations(DatabaseID const& databaseId,
         << "Sending a transaction to the agency";
 
     AgencyCommResult result = comm.sendTransactionWithFailover(wtrx);
+
+    // THIS_WARNING
     if (server().hasFeature<ClusterFeature>()) {
-      server().getFeature<ClusterFeature>().clusterInfo().loadPlan();
+      server().getFeature<ClusterFeature>().clusterInfo().getPlan();
     }
     if (!result.successful()) {
       std::stringstream errMsg;
@@ -649,7 +663,8 @@ ResultT<bool> RestRepairHandler::checkReplicationFactor(DatabaseID const& databa
   }
   ClusterInfo& clusterInfo = server().getFeature<ClusterFeature>().clusterInfo();
 
-  clusterInfo.loadPlan();
+  // WARNING
+  clusterInfo.getPlan();
   std::shared_ptr<LogicalCollection> const collection =
       clusterInfo.getCollection(databaseId, collectionId);
   std::shared_ptr<ShardMap> const shardMap = collection->shardIds();

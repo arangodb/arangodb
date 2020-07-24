@@ -520,9 +520,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
     case EN::LIMIT:
     case EN::SHORTEST_PATH:
     case EN::K_SHORTEST_PATHS:
-    case EN::ENUMERATE_IRESEARCH_VIEW:
-    case EN::PARALLEL_START:
-    case EN::PARALLEL_END: {
+    case EN::ENUMERATE_IRESEARCH_VIEW: {
       // in these cases we simply ignore the intermediate nodes, note
       // that we have taken care of nodes that could throw exceptions
       // above.
@@ -607,7 +605,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
       TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
       // edit in-place; TODO: replace node instead
       TEMPORARILY_UNLOCK_NODE(andNode);
-      ::arangodb::containers::HashSet<Variable const*> varsUsedByCondition;
+      VarSet varsUsedByCondition;
 
       auto originalFilterConditions = std::make_unique<Condition>(_plan->getAst());
       for (size_t i = andNode->numMembers(); i > 0; --i) {
@@ -742,14 +740,14 @@ bool TraversalConditionFinder::enterSubquery(ExecutionNode*, ExecutionNode*) {
 }
 
 bool TraversalConditionFinder::isTrueOnNull(AstNode* node, Variable const* pathVar) const {
-  ::arangodb::containers::HashSet<Variable const*> vars;
+  VarSet vars;
   Ast::getReferencedVariables(node, vars);
   if (vars.size() > 1) {
     // More then one variable.
     // Too complex, would require to figure out all
     // possible values for all others vars and play them through
     // Do not opt.
-    return false;
+    return true;
   }
   TRI_ASSERT(vars.size() == 1);
   TRI_ASSERT(vars.find(pathVar) != vars.end());
@@ -759,21 +757,12 @@ bool TraversalConditionFinder::isTrueOnNull(AstNode* node, Variable const* pathV
   bool mustDestroy = false;
   Expression tmpExp(_plan->getAst(), node);
 
-  RegexCache rcache;
+  AqlFunctionsInternalCache rcache;
   FixedVarExpressionContext ctxt(_plan->getAst()->query().trxForOptimization(),
                                  _plan->getAst()->query(),
                                  rcache);
   ctxt.setVariableValue(pathVar, {});
   AqlValue res = tmpExp.execute(&ctxt, mustDestroy);
-  TRI_ASSERT(res.isBoolean());
-
-  if (mustDestroy) {
-    // Slower case, first copy out the result, then destroy, then return copy.
-    bool result = res.toBoolean();
-    res.destroy();
-    return result;
-  }
-
-  // Opt Case directly return the outcome of the result.
+  AqlValueGuard guard(res, mustDestroy);
   return res.toBoolean();
 }

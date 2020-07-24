@@ -27,6 +27,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ClusterTrxMethods.h"
 #include "ClusterEngine/ClusterEngine.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -41,10 +42,17 @@
 using namespace arangodb;
 
 /// @brief transaction type
-ClusterTransactionState::ClusterTransactionState(TRI_vocbase_t& vocbase,
-                                                 TRI_voc_tid_t tid,
+ClusterTransactionState::ClusterTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                                                  transaction::Options const& options)
-    : TransactionState(vocbase, tid, options) {}
+    : TransactionState(vocbase, tid, options) {
+  TRI_ASSERT(isCoordinator());
+  // we have to read revisions here as validateAndOptimize is executed before
+  // transaction is started and during validateAndOptimize some simple
+  // function calls could be executed and calls requires valid analyzers revisions.
+  acceptAnalyzersRevision(
+      _vocbase.server().getFeature<arangodb::ClusterFeature>()
+        .clusterInfo().getQueryAnalyzersRevision(vocbase.name()));
+}
 
 /// @brief start a transaction
 Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
@@ -57,7 +65,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 
   // set hints
   _hints = hints;
-  
+
   auto cleanup = scopeGuard([&] {
     updateStatus(transaction::Status::ABORTED);
     _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted++;
@@ -89,12 +97,10 @@ Result ClusterTransactionState::commitTransaction(transaction::Methods* activeTr
     return Result(TRI_ERROR_DEBUG);
   }
 
-  arangodb::Result res;
-  
   updateStatus(transaction::Status::COMMITTED);
   _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsCommitted++;
 
-  return res;
+  return {};
 }
 
 /// @brief abort and rollback a transaction
@@ -105,5 +111,5 @@ Result ClusterTransactionState::abortTransaction(transaction::Methods* activeTrx
   updateStatus(transaction::Status::ABORTED);
   _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted++;
   
-  return Result();
+  return {};
 }

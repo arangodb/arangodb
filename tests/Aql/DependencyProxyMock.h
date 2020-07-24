@@ -43,6 +43,7 @@ template <::arangodb::aql::BlockPassthrough passBlocksThrough>
 class DependencyProxyMock : public ::arangodb::aql::DependencyProxy<passBlocksThrough> {
  public:
   explicit DependencyProxyMock(arangodb::aql::ResourceMonitor& monitor,
+                               ::arangodb::aql::RegIdSet const& inputRegisters,
                                ::arangodb::aql::RegisterId nrRegisters);
 
  public:
@@ -88,6 +89,7 @@ class MultiDependencyProxyMock
     : public ::arangodb::aql::DependencyProxy<passBlocksThrough> {
  public:
   MultiDependencyProxyMock(arangodb::aql::ResourceMonitor& monitor,
+                           ::arangodb::aql::RegIdSet const& inputRegisters,
                            ::arangodb::aql::RegisterId nrRegisters, size_t nrDeps);
 
  public:

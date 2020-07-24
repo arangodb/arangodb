@@ -69,7 +69,7 @@ namespace {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 /// @brief validate the counters of the plan
-struct NodeCounter final : public WalkerWorker<ExecutionNode> {
+struct NodeCounter final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   std::array<uint32_t, ExecutionNode::MAX_NODE_TYPE_VALUE> counts;
   std::unordered_set<ExecutionNode const*> seen;
 
@@ -89,12 +89,14 @@ struct NodeCounter final : public WalkerWorker<ExecutionNode> {
   }
 
   bool done(ExecutionNode* en) override final {
-    if ((!arangodb::ServerState::instance()->isDBServer() &&
-         en->getType() != ExecutionNode::PARALLEL_START) ||
+    if (en->getType() == ExecutionNode::MUTEX &&
+        seen.find(en) != seen.end()) {
+      return true;
+    }
+    if (!arangodb::ServerState::instance()->isDBServer() ||
         (en->getType() != ExecutionNode::REMOTE && en->getType() != ExecutionNode::SCATTER &&
-         en->getType() != ExecutionNode::DISTRIBUTE &&
-          en->getType() != ExecutionNode::PARALLEL_START)) {
-      return WalkerWorker<ExecutionNode>::done(en);
+         en->getType() != ExecutionNode::DISTRIBUTE)) {
+      return WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique>::done(en);
     }
     return false;
   }
@@ -148,9 +150,10 @@ void parseGraphCollectionRestriction(std::vector<std::string>& collections,
   }
 }
 
-std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::QueryContext& query,
+std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
                                                            AstNode const* direction,
                                                            AstNode const* optionsNode) {
+  aql::QueryContext& query = ast->query();
   auto options = std::make_unique<traverser::TraverserOptions>(query);
 
   TRI_ASSERT(direction != nullptr);
@@ -158,6 +161,8 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::QueryContext& qu
   TRI_ASSERT(direction->numMembers() == 2);
 
   auto steps = direction->getMember(1);
+
+  bool invalidDepth = false;
 
   if (steps->isNumericValue()) {
     // Check if a double value is integer
@@ -169,10 +174,13 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::QueryContext& qu
     options->maxDepth = checkTraversalDepthValue(steps->getMember(1));
 
     if (options->maxDepth < options->minDepth) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                     "invalid traversal depth");
+      invalidDepth = true;
     }
   } else {
+    invalidDepth = true;
+  }
+
+  if (invalidDepth) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
                                    "invalid traversal depth");
   }
@@ -214,6 +222,12 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::QueryContext& qu
           parseGraphCollectionRestriction(options->edgeCollections, value);
         } else if (name == "vertexCollections") {
           parseGraphCollectionRestriction(options->vertexCollections, value);
+        } else if (name == "parallelism") {
+          if (ast->canApplyParallelism()) {
+            // parallelism is only used when there is no usage of V8 in the
+            // query and if the query is not a modification query.
+            options->setParallelism(Ast::validatedParallelism(value));
+          }
         }
       }
     }
@@ -347,7 +361,6 @@ std::unique_ptr<ExecutionPlan> ExecutionPlan::instantiateFromAst(Ast* ast) {
   return plan;
 }
 
-/// @brief whether or not the plan contains at least one node of this type
 bool ExecutionPlan::contains(ExecutionNode::NodeType type) const {
   TRI_ASSERT(_varUsageComputed);
   return _typeCounts[type] > 0;
@@ -372,10 +385,13 @@ void ExecutionPlan::getCollectionsFromVelocyPack(aql::Collections& colls, VPackS
   }
 
   for (auto const& collection : VPackArrayIterator(collectionsSlice)) {
-    colls.add(basics::VelocyPackHelper::checkAndGetStringValue(collection, "name"),
+    colls.add(
+        basics::VelocyPackHelper::checkAndGetStringValue(collection, "name"),
         AccessMode::fromString(arangodb::basics::VelocyPackHelper::checkAndGetStringValue(collection,
                                                                                           "type")
-                                   .c_str()));
+                                   .c_str()),
+        aql::Collection::Hint::Shard
+    );
   }
 }
 
@@ -406,22 +422,27 @@ ExecutionPlan* ExecutionPlan::clone(Ast* ast) {
 ExecutionPlan* ExecutionPlan::clone() { return clone(_ast); }
 
 /// @brief export to VelocyPack
-std::shared_ptr<VPackBuilder> ExecutionPlan::toVelocyPack(Ast* ast, bool verbose) const {
+std::shared_ptr<VPackBuilder> ExecutionPlan::toVelocyPack(Ast* ast, bool verbose,
+                                                          ExplainRegisterPlan explainRegisterPlan) const {
   VPackOptions options;
   options.checkAttributeUniqueness = false;
   options.buildUnindexedArrays = true;
   auto builder = std::make_shared<VPackBuilder>(&options);
 
-  toVelocyPack(*builder, ast, verbose);
+  toVelocyPack(*builder, ast, verbose, explainRegisterPlan);
   return builder;
 }
 
 /// @brief export to VelocyPack
-void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose) const {
+void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose,
+                                 ExplainRegisterPlan explainRegisterPlan) const {
   unsigned flags = ExecutionNode::SERIALIZE_ESTIMATES;
   if (verbose) {
     flags |= ExecutionNode::SERIALIZE_PARENTS | ExecutionNode::SERIALIZE_DETAILS |
              ExecutionNode::SERIALIZE_FUNCTIONS;
+  }
+  if (explainRegisterPlan == ExplainRegisterPlan::Yes) {
+    flags |= ExecutionNode::SERIALIZE_REGISTER_INFORMATION;
   }
   // keeps top level of built object open
   _root->toVelocyPack(builder, flags, true);
@@ -859,10 +880,16 @@ ExecutionNode* ExecutionPlan::registerNode(std::unique_ptr<ExecutionNode> node) 
   
   // may throw
   _ast->query().resourceMonitor().increaseMemoryUsage(sizeof(ExecutionNode));
-  
-  auto emplaced = _ids.try_emplace(node->id(), node.get()).second;  // take ownership
-  TRI_ASSERT(emplaced);
-  return node.release();
+ 
+  try {
+    auto emplaced = _ids.try_emplace(node->id(), node.get()).second;  // take ownership
+    TRI_ASSERT(emplaced);
+    return node.release();
+  } catch (...) {
+    // clean up
+    _ast->query().resourceMonitor().decreaseMemoryUsage(sizeof(ExecutionNode));
+    throw;
+  }
 }
 
 /// @brief register a node with the plan, will delete node if addition fails
@@ -1105,8 +1132,8 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous, AstNode
       createPruneExpression(this, _ast, node->getMember(3));
 
   auto options =
-      createTraversalOptions(getAst()->query(), direction, node->getMember(4));
-
+      createTraversalOptions(getAst(), direction, node->getMember(4));
+  
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
   TRI_ASSERT(direction->numMembers() == 2);
   direction = direction->getMember(0);
@@ -1337,26 +1364,6 @@ ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous, AstNode const
     // other variables
     return createCalculation(v, expression, previous);
   }
-
-  return addDependency(previous, en);
-}
-
-/// @brief create an execution plan element from an AST PARALLEL start node
-ExecutionNode* ExecutionPlan::fromNodeParallelStart(ExecutionNode* previous, AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_PARALLEL_START);
-  
-  // at least one sort criterion remained
-  auto en = registerNode(new ParallelStartNode(this, nextId()));
-
-  return addDependency(previous, en);
-}
-
-/// @brief create an execution plan element from an AST PARALLEL end node
-ExecutionNode* ExecutionPlan::fromNodeParallelEnd(ExecutionNode* previous, AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_PARALLEL_END);
-  
-  // at least one sort criterion remained
-  auto en = registerNode(new ParallelEndNode(this, nextId()));
 
   return addDependency(previous, en);
 }
@@ -2058,16 +2065,6 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
         break;
       }
       
-      case NODE_TYPE_PARALLEL_START: {
-        en = fromNodeParallelStart(en, member);
-        break;
-      }
-      
-      case NODE_TYPE_PARALLEL_END: {
-        en = fromNodeParallelEnd(en, member);
-        break;
-      }
-
       case NODE_TYPE_SORT: {
         en = fromNodeSort(en, member);
         break;
@@ -2133,33 +2130,41 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
   return en;
 }
 
+template <WalkerUniqueness U>
+/// @brief find nodes of certain types
+void ExecutionPlan::findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
+                                    std::initializer_list<ExecutionNode::NodeType> const& types,
+                                    bool enterSubqueries) {
+  // check if any of the node types is actually present in the plan
+  bool haveNodes = std::any_of(types.begin(), types.end(),
+                               [this](ExecutionNode::NodeType type) -> bool {
+                                 return contains(type);
+                               });
+  if (haveNodes) {
+    // found a node type that is in the plan
+    NodeFinder<std::initializer_list<ExecutionNode::NodeType>, U> finder(types, result, enterSubqueries);
+    root()->walk(finder);
+  }
+}
+
 /// @brief find nodes of a certain type
 void ExecutionPlan::findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
                                     ExecutionNode::NodeType type, bool enterSubqueries) {
-  // consult our nodes-of-type counters array
-  if (!contains(type)) {
-    // node type not present in plan, do nothing
-    return;
-  }
-
-  NodeFinder<ExecutionNode::NodeType> finder(type, result, enterSubqueries);
-  root()->walk(finder);
+  findNodesOfType<WalkerUniqueness::NonUnique>(result, {type}, enterSubqueries);
 }
 
-/// @brief find nodes of a certain types
+/// @brief find nodes of certain types
 void ExecutionPlan::findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
-                                    std::vector<ExecutionNode::NodeType> const& types,
+                                    std::initializer_list<ExecutionNode::NodeType> const& types,
                                     bool enterSubqueries) {
-  // check if any of the node types is actually present in the plan
-  for (auto const& type : types) {
-    if (contains(type)) {
-      // found a node type that is in the plan
-      NodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, result, enterSubqueries);
-      root()->walk(finder);
-      // abort, because we were looking for all nodes at the same type
-      return;
-    }
-  }
+  findNodesOfType<WalkerUniqueness::NonUnique>(result, types, enterSubqueries);
+}
+
+/// @brief find nodes of certain types
+void ExecutionPlan::findUniqueNodesOfType(
+    ::arangodb::containers::SmallVector<ExecutionNode*>& result,
+    std::initializer_list<ExecutionNode::NodeType> const& types, bool enterSubqueries) {
+  findNodesOfType<WalkerUniqueness::Unique>(result, types, enterSubqueries);
 }
 
 /// @brief find all end nodes in a plan
@@ -2190,6 +2195,10 @@ void ExecutionPlan::findVarUsage() {
 
 /// @brief determine if the above are already set
 bool ExecutionPlan::varUsageComputed() const { return _varUsageComputed; }
+
+void ExecutionPlan::planRegisters(ExplainRegisterPlan explainRegisterPlan) {
+  _root->planRegisters(nullptr, explainRegisterPlan);
+}
 
 /// @brief unlinkNodes, note that this does not delete the removed
 /// nodes and that one cannot remove the root node of the plan.
@@ -2481,12 +2490,12 @@ void ExecutionPlan::prepareTraversalOptions() {
 #include <iostream>
 
 /// @brief show an overview over the plan
-struct Shower final : public WalkerWorker<ExecutionNode> {
+struct Shower final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   int indent;
 
   Shower() : indent(0) {}
 
-  ~Shower() = default;
+  ~Shower() override = default;
 
   bool enterSubquery(ExecutionNode*, ExecutionNode*) final {
     indent++;

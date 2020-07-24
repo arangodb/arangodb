@@ -30,16 +30,13 @@
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
+#include "RestServer/MetricsFeature.h"
 
 #include <list>
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
-namespace aql {
-class QueryRegistry;
-}
-
 namespace consensus {
 
 static inline double steadyClockToDouble() {
@@ -106,7 +103,7 @@ class Constituent : public Thread {
   // Orderly shutdown of thread
   void beginShutdown() override;
 
-  bool start(TRI_vocbase_t* vocbase, aql::QueryRegistry*);
+  bool start(TRI_vocbase_t* vocbase);
 
   // update leaderId and term if inactive
   void update(std::string const&, term_t);
@@ -148,9 +145,9 @@ class Constituent : public Thread {
   int64_t countRecentElectionEvents(double threshold);
 
   TRI_vocbase_t* _vocbase;
-  aql::QueryRegistry* _queryRegistry;
 
   term_t _term;  // term number
+  Gauge<term_t>& _gterm;  // term number
 
   std::string _leaderID;  // Current leader
   std::string _id;        // My own id

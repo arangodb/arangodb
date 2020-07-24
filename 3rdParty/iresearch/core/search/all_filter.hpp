@@ -33,7 +33,10 @@ NS_ROOT
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API all: public filter {
  public:
-  DECLARE_FILTER_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::all";
+  }
+
   DECLARE_FACTORY();
 
   all() noexcept;
@@ -44,8 +47,7 @@ class IRESEARCH_API all: public filter {
     const index_reader& reader,
     const order::prepared& order,
     boost_t filter_boost,
-    const attribute_view& ctx
-  ) const override;
+    const attribute_provider* ctx) const override;
 }; // all
 
 NS_END // ROOT

@@ -56,7 +56,7 @@ class AqlItemBlockManager {
 
  public:
   /// @brief request a block with the specified size
-  TEST_VIRTUAL SharedAqlItemBlockPtr requestBlock(size_t nrItems, RegisterId nrRegs);
+  TEST_VIRTUAL SharedAqlItemBlockPtr requestBlock(size_t nrItems, RegisterCount nrRegs);
 
   /// @brief request a block and initialize it from the slice
   TEST_VIRTUAL SharedAqlItemBlockPtr requestAndInitBlock(velocypack::Slice slice);

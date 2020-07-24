@@ -29,7 +29,6 @@
 #endif
 
 #ifdef TRI_HAVE_UNISTD_H
-#include <fuerte/FuerteLogger.h>
 #include <unistd.h>
 #endif
 
@@ -61,12 +60,20 @@
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+// Please leave this code in for the next time we have to debug fuerte.
+#if 0
+void LogHackWriter(char const* p) {
+  LOG_DEVEL << p;
+}
+#endif
+
 namespace arangodb {
 
 LoggerFeature::LoggerFeature(application_features::ApplicationServer& server, bool threaded)
     : ApplicationFeature(server, "Logger"),
       _timeFormatString(LogTimeFormats::defaultFormatName()),
       _threaded(threaded) {
+
   setOptional(false);
 
   startsAfter<ShellColorsFeature>();
@@ -85,10 +92,6 @@ LoggerFeature::~LoggerFeature() {
 
 void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("log.tty", "log.foreground-tty");
-  options->addOldOption("log.content-filter", "");
-  options->addOldOption("log.source-filter", "");
-  options->addOldOption("log.application", "");
-  options->addOldOption("log.facility", "");
 
   options
       ->addOption("--log", "the global or topic-specific log level",
@@ -145,6 +148,18 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       .setIntroducedIn(30405)
       .setIntroducedIn(30500);
 
+  options->addOption("--log.api-enabled",
+                     "whether the log api is enabled (true) or not (false), or only enabled for superuser JWT (jwt)",
+                     new StringParameter(&_apiSwitch))
+      .setIntroducedIn(30411)
+      .setIntroducedIn(30506)
+      .setIntroducedIn(30605);
+
+  options
+      ->addOption("--log.use-json-format", "use json output format",
+                  new BooleanParameter(&_useJson))
+      .setIntroducedIn(30701);
+
 #ifdef ARANGODB_HAVE_SETGID
   options
       ->addOption(
@@ -173,6 +188,11 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "shorten filenames in log output (use with --log.line-number)",
       new BooleanParameter(&_shortenFilenames),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  
+  options->addOption("--log.process", "show process identifier (pid) in log message",
+                     new BooleanParameter(&_processId),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30701);
 
   options->addOption("--log.thread", "show thread identifier in log message",
                      new BooleanParameter(&_threadId),
@@ -209,6 +229,11 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "include full URLs and HTTP request parameters in trace logs",
       new BooleanParameter(&_logRequestParameters),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  
+  options->addObsoleteOption("log.content-filter", "", true);
+  options->addObsoleteOption("log.source-filter", "", true);
+  options->addObsoleteOption("log.application", "", true);
+  options->addObsoleteOption("log.facility", "", true);
 }
 
 void LoggerFeature::loadOptions(std::shared_ptr<options::ProgramOptions>,
@@ -257,6 +282,18 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     // if not valid, the following call will throw an exception and
     // abort the startup
     LogTimeFormats::formatFromName(_timeFormatString);
+  }
+
+  if (_apiSwitch == "true" || _apiSwitch == "on" ||
+      _apiSwitch == "On") {
+    _apiEnabled = true;
+    _apiSwitch = "true";
+  } else if (_apiSwitch == "jwt" || _apiSwitch == "JWT") {
+    _apiEnabled = true;
+    _apiSwitch = "jwt";
+  } else {
+    _apiEnabled = false;
+    _apiSwitch = "false";
   }
 
   if (!_fileMode.empty()) {
@@ -326,11 +363,13 @@ void LoggerFeature::prepare() {
   Logger::setUseEscaped(_useEscaped);
   Logger::setShowLineNumber(_lineNumber);
   Logger::setShortenFilenames(_shortenFilenames);
+  Logger::setShowProcessIdentifier(_processId);
   Logger::setShowThreadIdentifier(_threadId);
   Logger::setShowThreadName(_threadName);
   Logger::setOutputPrefix(_prefix);
   Logger::setKeepLogrotate(_keepLogRotate);
   Logger::setLogRequestParameters(_logRequestParameters);
+  Logger::setUseJson(_useJson);
 
   for (auto const& definition : _output) {
     if (_supervisor && StringUtils::isPrefix(definition, "file://")) {

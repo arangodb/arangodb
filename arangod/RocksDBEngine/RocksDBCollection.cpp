@@ -1401,12 +1401,13 @@ Result RocksDBCollection::update(transaction::Methods* trx,
                                  velocypack::Slice newSlice,
                                  ManagedDocumentResult& resultMdr, OperationOptions& options,
                                  ManagedDocumentResult& previousMdr) {
+  Result res;
 
   VPackSlice keySlice = newSlice.get(StaticStrings::KeyString);
   if (keySlice.isNone()) {
-    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+    return res.reset(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   } else if (!keySlice.isString()) {
-    return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+    return res.reset(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   }
 
   auto const oldDocumentId = primaryIndex()->lookupKey(trx, VPackStringRef(keySlice));
@@ -1416,8 +1417,8 @@ Result RocksDBCollection::update(transaction::Methods* trx,
   std::string* prevBuffer = previousMdr.setManaged();
   // uses either prevBuffer or avoids memcpy (if read hits block cache)
   rocksdb::PinnableSlice previousPS(prevBuffer);
-  Result res = lookupDocumentVPack(trx, oldDocumentId, previousPS,
-                                   /*readCache*/true, /*fillCache*/false);
+  res = lookupDocumentVPack(trx, oldDocumentId, previousPS,
+                            /*readCache*/true, /*fillCache*/false);
   if (res.fail()) {
     return res;
   }
@@ -1429,9 +1430,8 @@ Result RocksDBCollection::update(transaction::Methods* trx,
 
   if (!options.ignoreRevs) {  // Check old revision:
     TRI_voc_rid_t expectedRev = TRI_ExtractRevisionId(newSlice);
-    int result = checkRevision(trx, expectedRev, previousMdr.revisionId());
-    if (result != TRI_ERROR_NO_ERROR) {
-      return res.reset(result);
+    if (!checkRevision(trx, expectedRev, previousMdr.revisionId())) {
+      return res.reset(TRI_ERROR_ARANGO_CONFLICT, "conflict, _rev values do not match");
     }
   }
 
@@ -1521,23 +1521,24 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
                                   velocypack::Slice newSlice,
                                   ManagedDocumentResult& resultMdr, OperationOptions& options,
                                   ManagedDocumentResult& previousMdr) {
+  Result res;
 
   VPackSlice keySlice = newSlice.get(StaticStrings::KeyString);
   if (keySlice.isNone()) {
-    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+    return res.reset(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   } else if (!keySlice.isString()) {
-    return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+    return res.reset(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   }
 
   auto const oldDocumentId = primaryIndex()->lookupKey(trx, VPackStringRef(keySlice));
   if (!oldDocumentId.isSet()) {
-    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+    return res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
   std::string* prevBuffer = previousMdr.setManaged();
   // uses either prevBuffer or avoids memcpy (if read hits block cache)
   rocksdb::PinnableSlice previousPS(prevBuffer);
-  Result res = lookupDocumentVPack(trx, oldDocumentId, previousPS,
-                                   /*readCache*/ true, /*fillCache*/ false);
+  res = lookupDocumentVPack(trx, oldDocumentId, previousPS,
+  /*readCache*/ true, /*fillCache*/ false);
   if (res.fail()) {
     return res;
   }
@@ -1549,9 +1550,8 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
 
   if (!options.ignoreRevs) {  // Check old revision:
     TRI_voc_rid_t expectedRev = TRI_ExtractRevisionId(newSlice);
-    res = checkRevision(trx, expectedRev, previousMdr.revisionId());
-    if (res.fail()) {
-      return res;
+    if (!checkRevision(trx, expectedRev, previousMdr.revisionId())) {
+      return res.reset(TRI_ERROR_ARANGO_CONFLICT, "conflict, _rev values do not match");
     }
   }
 
@@ -1574,7 +1574,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
     }
     if (arangodb::smartJoinAttributeChanged(_logicalCollection, oldDoc,
                                             builder->slice(), false)) {
-      return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE);
+      return res.reset(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE);
     }
   }
 
@@ -1648,9 +1648,9 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
   }
 
   // Check old revision:
-  LocalDocumentId expectedId;
+  TRI_voc_rid_t expectedId = 0;
   if (!options.ignoreRevs && slice.isObject()) {
-    expectedId = LocalDocumentId::create(TRI_ExtractRevisionId(slice));
+    expectedId = TRI_ExtractRevisionId(slice);
   }
 
   return remove(trx, documentId, expectedId, previousMdr, options);
@@ -1659,20 +1659,22 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
 Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
                                  ManagedDocumentResult& previousMdr,
                                  OperationOptions& options) {
-  return remove(trx, documentId, LocalDocumentId(), previousMdr, options);
+  return remove(trx, documentId, /*expectedRev*/0, previousMdr, options);
 }
 
 Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
-                                 LocalDocumentId expectedId, ManagedDocumentResult& previousMdr,
+                                 TRI_voc_rid_t expectedRev, ManagedDocumentResult& previousMdr,
                                  OperationOptions& options) {
+  Result res;
+  
   if (!documentId.isSet()) {
-    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+    return res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
   std::string* prevBuffer = previousMdr.setManaged();
   // uses either prevBuffer or avoids memcpy (if read hits block cache)
   rocksdb::PinnableSlice previousPS(prevBuffer);
-  Result res = lookupDocumentVPack(&trx, documentId, previousPS,
-                                   /*readCache*/ true, /*fillCache*/ false);
+  res = lookupDocumentVPack(&trx, documentId, previousPS,
+  /*readCache*/ true, /*fillCache*/ false);
   if (res.fail()) {
     return res;
   }
@@ -1683,10 +1685,9 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
   TRI_ASSERT(previousMdr.revisionId() != 0);
 
   // Check old revision:
-  if (!options.ignoreRevs && expectedId.isSet()) {
-    res = checkRevision(&trx, expectedId.id(), previousMdr.revisionId());
-    if (res.fail()) {
-      return res;
+  if (!options.ignoreRevs && expectedRev != 0) {
+    if (!checkRevision(&trx, expectedRev, previousMdr.revisionId())) {
+      return res.reset(TRI_ERROR_ARANGO_CONFLICT, "conflict, _rev values do not match");
     }
   }
 
@@ -1877,8 +1878,8 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
 
   RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
   if (state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    // blacklist new document to avoid caching without committing first
-    blackListKey(key.ref());
+    // banish new document to avoid caching without committing first
+    invalidateCacheEntry(key.ref());
   }
 
   RocksDBMethods* mthds = state->rocksdbMethods();
@@ -1932,7 +1933,7 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
   RocksDBKeyLeaser key(trx);
   key->constructDocument(objectId(), documentId);
 
-  blackListKey(key.ref());
+  invalidateCacheEntry(key.ref());
 
   RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
 
@@ -1995,7 +1996,7 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   RocksDBKeyLeaser key(trx);
   key->constructDocument(objectId(), oldDocumentId);
   TRI_ASSERT(key->containsLocalDocumentId(oldDocumentId));
-  blackListKey(key.ref());
+  invalidateCacheEntry(key.ref());
 
   rocksdb::Status s = mthds->SingleDelete(RocksDBColumnFamily::documents(), key.ref());
   if (!s.ok()) {
@@ -2012,8 +2013,8 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   }
 
   if (state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    // blacklist new document to avoid caching without committing first
-    blackListKey(key.ref());
+    // banish new document to avoid caching without committing first
+    invalidateCacheEntry(key.ref());
   }
 
   READ_LOCKER(guard, _indexesLock);
@@ -2084,8 +2085,9 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(transaction::Methods* tr
 
   if (!s.ok()) {
     LOG_TOPIC("f63dd", DEBUG, Logger::ENGINES)
-        << "NOT FOUND rev: " << documentId.id() << " trx: " << trx->state()->id()
-        << " objectID " << objectId() << " name: " << _logicalCollection.name();
+        << "NOT FOUND rev: " << documentId.id()
+        << " trx: " << trx->state()->id().id() << " objectID " << objectId()
+        << " name: " << _logicalCollection.name();
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
 
@@ -2197,16 +2199,16 @@ void RocksDBCollection::destroyCache() const {
   _cache.reset();
 }
 
-// blacklist given key from transactional cache
-void RocksDBCollection::blackListKey(RocksDBKey const& k) const {
+// banish given key from transactional cache
+void RocksDBCollection::invalidateCacheEntry(RocksDBKey const& k) const {
   if (useCache()) {
     TRI_ASSERT(_cache != nullptr);
-    bool blacklisted = false;
-    while (!blacklisted) {
-      auto status = _cache->blacklist(k.buffer()->data(),
-                                      static_cast<uint32_t>(k.buffer()->size()));
+    bool banished = false;
+    while (!banished) {
+      auto status = _cache->banish(k.buffer()->data(),
+                                   static_cast<uint32_t>(k.buffer()->size()));
       if (status.ok()) {
-        blacklisted = true;
+        banished = true;
       } else if (status.errorNumber() == TRI_ERROR_SHUTTING_DOWN) {
         destroyCache();
         break;

@@ -23,7 +23,7 @@
 #include "gtest/gtest.h"
 
 #include "Aql/SkipResult.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>

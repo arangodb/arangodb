@@ -1,14 +1,682 @@
 devel
 -----
 
-* Added option `--rocksdb.edge-cache` to toggle in-memory caching for 
+* Fixed undefined behavior in AQL COLLECT with multiple group variables (issue
+  #12267).
+  If you are grouping on "large" values that occur multiple times in different
+  groups, and two different groups with the same large value are written to
+  different batches in the output then the memory could be invalid.
+  e.g. the following query is affected:
+  ```
+  FOR d IN documents
+  FOR batchSizeFiller IN 1..1001
+  COLLECT largeVal = d.largeValue, t = batchSizeFiller
+  RETURN 1
+  ```
+
+* Revive faster out-of-range comparator for secondary index scans that do a full 
+  collection index scan for index types "hash", "skiplist", "persistent". 
+
+* Fixed internal issue #733: Primary sort compression in views now used properly.
+
+* Errors with error code 1200 (Arango conflict) will now get the HTTP response 
+  code 409 (Conflict) instead of 412 (Precondition failed), unless "if-match" header
+  was used in `_api/document` or `_api/gharial`.
+
+* Fix spurious lock timeout errors when restoring collections.
+
+* Improve performance of agency cache by not copying the hierarchical Node
+  tree result for serialization, but serializing it directly.
+
+* Make sure cluster statistics in web UI work in case a coordinator is down.
+
+* Change HTTP response code for error 1450 ("too many shards") from HTTP 500 to
+  HTTP 400, as this is clearly a client error.
+
+* Turn off maintenance threads on Coordinators, as they are not needed there.
+
+* Fixed crash in cleanup of parallel traversal queries.
+
+* Updated arangosync to 0.7.8.
+
+* Fixed hotbackup upload and download with encryption at rest key indirection.
+
+* Fixed a race between a new request and the keepAlive timeout.
+
+* Added cluster metrics `arangodb_load_plan_accum_runtime_msec` and
+  `arangodb_load_current_accum_runtime_msec` to track the total time spent
+  in `loadPlan()` and `loadCurrent()` operations.
+
+* Fixed wrong reporting of failures in all maintenace failure counter metrics
+  (`arangodb_maintenance_action_failure_counter`). Previously, each successful
+  maintenance operation was reported as a failure, so the failure counters
+  actually were counters for the number of successful maintenance actions.
+
+* Adjusted the scale of the `arangodb_maintenance_action_queue_time_msec` to
+  cover a more useful range.
+
+* The filter executor will now overfetch data again if followed by a limit, same as in 3.6 series.
+  The following queries are effected:
+  ```
+  something
+  FILTER a == b
+  LIMIT 10
+  ```
+  something will now be asked for a full batch, instead of only 10 documents.
+
+* In rare cases SmartBFS could use a wrong index for looking up edges. This is fixed now.
+
+* The internally used JS-based ClusterComm send request function can now again use JSON, and does
+  not require VelocyPack anymore. This fixes an issue with Foxx-App management (install, updated, remove)
+  got delayed in a sharded environment, all servers do get all apps eventually, now the fast-path
+  will work again.
+
+* Fixed a rare race in Agents, if the leader is rebooted quickly there is a chance
+  that it is still assumed to be the leader, but delivers a state shortly in the
+  past.
+
+* Fixed a race in the ConnectionPool which could lease out a connection
+  that got its idle timeout after the lease was completed. This could lead
+  to sporadic network failures in TLS and to inefficiencies with TCP.
+
+* Fixed restoring a SmartGraph into a database that already contains that same graph.
+  The use case is restoring a SmartGraph from backup, apply some modifications, which are
+  undesired, and then resetting it to the restored state, without dropping the database.
+  One way to achieve this is to use arangorestore with the `overwrite` option on the same dataset, 
+  effectively resetting the SmartGraph to the original state.
+  Without this fix, the workaround for is to either drop the graph (or the database) before the
+  restore call, yielding an identical result.
+  
+* Keep the list of last-acknowledged entires in Agency more consistent.
+  During leadership take-over it was possible to get into a situation that
+  the new leader does not successfully report the agency config, which
+  was eventually fixed by the Agent itself. Now this situation is impossible.
+
+* Allow changing collection properties for smart edge collections as well. 
+
+* Fixed that the hotbackup agency lock is released under all circumstances
+  using scope guards. This addresses a rare case in which the lock was left
+  behind.
+
+* Privatized load plan / current in cluster info and cleanup following
+  agency cache implementation.
+
+* Fix cluster-internal request forwarding for VST requests that do not have any
+  Content-Type header set. Such requests could have been caused by the Java
+  driver (ES-635).
+
+* Fixed issue OASIS-252: Hotbackup agency locks without clientId.
+
+* The `_from` and `_to` attributes of an edge document can now be edited from
+  within the UI.
+
+* Added vertex collection validation in case of a SmartGraph edge definition
+  update. 
+
+* Updated arangosync to 0.7.7.
+
+* Added support `db._engineStats()` API in coordinator. Previously calling this
+  API always produced an empty result. Now it will return the engine statistics
+  as an object, with an entry for each individual DB-Server.
+
+* Fixed a document parsing bug in the Web UI. This issue occured in the
+  document list view in case a document had an attribute called `length`.
+  The result was an incorrect representation of the document preview.
+
+* Improve readability of running and slow queries in web UI by properly left-
+  aligning the query strings.
+
+* The Web UI is not disabling the query import button after file upload takes
+  place.
+
+* The Web UI is now reporting errors properly in case of editing ArangoSearch
+  Views with invalid properties.
+
+* In case of a graph deletion failure, the Web UI displays now the correct
+  error message.
+
+* In case a document got requested via the UI of a collection which does not
+  exist, the UI now properly displays an error view instead of having a bad
+  display state.
+
+* Removed the edge id's hover styling in case of embedded document editor in
+  the Web UI as this functionality is disabled. This was misleading because
+  the elements are not clickable.
+
+* The Web UI now displays an error message inside the node information view in
+  case the user has no access to retreive the neccessary information.
+
+* Web UI: Removed unnecessary menubar entry in case of database node inspection.
+
+* Fixed a potential agency crash if trace logging is on.
+
+* Re-enable access to GET `/_admin/cluster/numberOfServers` for all users by
+  default. Requests to PUT `/_admin/cluster/numberOfServers` require admin
+  user privileges. This restores the pre-3.7 behavior.
+  In contrast to pre-3.7 behavior, the `--server.harden` option now can be
+  used to restrict access to GET `/_admin/cluster/numberOfServers` to admin
+  users, too. This can be used to lock down this API for non-admin users
+  entirely.
+
+* Network layer now reports connection setup issues in more cases
+  this replaces some INTERNAL_ERROR reports by more precise errors,
+  those are only reached during failover scenarios.
+
+* Improve readability of running and slow queries in web UI by properly left-
+  aligning the query strings.
+
+* Allow changing collection properties for smart edge collections as well.
+  Previously, collection property changes for smart edge collections were not
+  propagated.
+
+* Adjust arangodump integration test to desired behavior, and make sure
+  arangodump behaves as specified when invoking it with non-existing
+  collections.
+
+* Fixed BTS-110: Fulltext index with minLength <= 0 not allowed.
+
+* Disallow using V8 dependent functions in SEARCH statement.
+
+* Remove superflous `%>` output in the UI modal dialog in case the JSON editor
+  was embedded.
+
+* Fixed a misleading error message in AQL.
+
+* Fix undistribute-remove-after-enum-coll which would allow calculations
+  to be pushed to a DBServer which are not allowed to run there.
+
+* Fixed issue ES-609: "Transaction already in use" error when running
+  transaction.
+  Added option `--transaction.streaming-lock-timeout` to control the timeout in
+  seconds in case of parallel access to a streaming transaction.
+
+* Returned `AQL_WARNING()` to emit warnings from UDFs.
+
+* Fixed internal issue BTS-107, offset over the main query passed through a
+  subquery which has modification access to shards could yield incorrect
+  results, if shards are large enough and skipping was large enough, both to
+  overflow the batch-size in AQL for each shard individually.
+
+  The following query would be affected:
+
+  FOR x IN 1..100
+  LET sub = (
+    FOR y IN Collection
+    UPDATE y WITH {updated: true} IN Collection
+    RETURN new
+  )
+  LIMIT 5, 10
+  REUTRN {x,sub}
+
+  If a shard in Collection, has enough entries to fill a batch, the second shard
+  could run into the issue that it actually does not skip the first 5 main
+  queries, but reports their results in addition. This has the negative side
+  effect that merging the subqueries back together was off.
+
+* Correct some log entries.
+
+* Allow removal of existing schemas by saving a schema of either `null` or `{}`
+  (empty object). Using an empty string as schema will produce  an error in the
+  web interface and will not remove the schema.
+
+  The change also adjusts the behavior for the SCHEMA_VALIDATE AQL function in
+  case the first parameter was no document/object. In this case, the function
+  will now return null and register a warning in the query, so the user can
+  handle it.
+
+* Internal issue BTS-71: Added a precondition to prevent creating a collection
+  with an invalid `distributeShardsLike` property.
+
+* Internal issue BTS-71: In a cluster, for collections in creation, suspend
+  supervision jobs concerning replication factor until creation is completed.
+  Previously, it could cause collection creation to fail (e.g. when a server
+  failed during creation), even when it didn't have to.
+
+* Internal issue BTS-71: Fixed error handling regarding communication with the
+  agency. This could in a specific case cause collection creation in a cluster
+  report success when it failed.
+
+* Fixed internal issue #725: Added analyzers revision for _system database in
+  queries.
+
+* Allow restoring collections from v3.3.0 with their all-numeric collection
+  GUID values, by creating a new, unambiguous collection GUID for them. 
+  v3.3.0 had a bug because it created all-numeric GUID values, which can be
+  confused with numeric collection ids in lookups. v3.3.1 already changed the
+  GUID routine to produce something non-numeric already, but collections
+  created with v3.3.0 can still have an ambiguous GUID. This fix adjusts
+  the restore routine to drop such GUID values, so it only changes something
+  if v3.3.0 collections are dumped, dropped on the server and then restored
+  with the flawed GUIDs.
+
+* Fixed bug in IResearchViewExecutor that lead to only up to 1000 rows being
+  produced.
+
+* Changing the current users profile icon in the Web UI now renders the new
+  icon directly without the need of a full UI browser reload.
+
+* The Web UI's replication view is now checking the replication state
+  automatically without the need of a manual reload.
+
+* Fixed an error scenario where a call could miss count skip.
+  It was triggered in the case of Gather in Cluster, if we skipped over a full
+  shard, and the shard did actually skip, but there are more documents to skip
+  on another shard.
+
+* Fixed hotbackup agency lock cleanup procedure.
+
+* Only advance shard version after follower is reported in sync in agency.
+
+* Fixed cluster behavior with HotBackup and non-existing backups on DB-Servers.
+
+* Fixed that, when performing a graph AQL query while a (graceful) failover for
+  the leader of the system collections is in progress, ArangoDB would report a
+  "Graph not found error".
+  The real error, namely that an agency transaction failed, was swallowed in
+  the graph lookup code due to a wrong error code being used from Fuerte.
+  We now generate a more appropriate 503 - Service Unavailable error.
+
+* added option `--log.use-json-format` to switch log output to JSON format.
+  Each log message then produces a seperate line with JSON-encoded log data,
+  which can be consumed by applications.
+
+* added option `--log.process` to toggle the logging of the process id
+  (pid) in log messages. Logging the process id is useless when running
+  arangod in Docker containers, as the pid will always be 1. So one may
+  as well turn it off in these contexts.
+
+* added option `--log.in-memory` to toggle storing log messages in memory,
+  from which they can be consumed via the `/_admin/log` and by the web UI. By
+  default, this option is turned on, so log messages are consumable via API 
+  and the web UI. Turning this option off will disable that functionality and
+  save a tiny bit of memory for the in-memory log buffers.
+
+* Allow for faster cluster shutdown. This should reduce the number of shutdown
+  hangers in case the agents are stopped already and then coordinators or
+  DB-Servers are shut down.
+
+* Fixed issue ES-598. Web UI now shows correct permissions in case wildcard
+  database level and wildcard collection level permissions are both set.
+
+* Fixed non-deterministic test failure in Pregel WCC test.
+
+* Fixed unintentional connection re-use for cluster-internal communications.
+
+* Fixed problem with newer replication protocol and ArangoSearch which could
+  lead to server crashes during normal operation.
+
+* Fixed bad behavior that led to unnecessary additional revision tree rebuilding
+  on server restart.
+
+* Allow AQL queries on DB-Servers again. This is not an official supported
+  feature, but is sometimes used for debugging. Previous changes made it
+  impossible to run a query on a local shard.
+
+* Fix restoring old arangodumps from ArangoDB 3.3 and before, which had index
+  information stored in slightly different places in the dump.
+
+* Fix invalid calls to `AgencyCommResult::slice()` method, which must only be
+  made in case of an agency result was retrieved successfully. In case the call
+  to the agency was not successful, `slice()` must not be called on it. This
+  change makes sure this invariant holds true.
+
+* Fix internal test helper function `removeCost` to really remove costs.
+
+* Fix potential AQL query shutdown hanger.
+
+* Use smarter default value preset in web UI for replication factor in case
+  there are constraints established for the replication factor by the
+  startup options `--cluster.min-replication-factor` and
+  `--cluster.max-replication-factor`.
+
+* Modified the exception handling in the RestHandler. Asynchronous communication
+  could lead to less detailed failure information.
+
+* Added permissions check before trying to read data from `_analyzers`
+  collection.
+  If these permissions are not there, no load is performed (user can not use
+  analyzers from database anyway).
+
+* Updated arangosync to 0.7.6.
+
+* Make the reboot tracker catch a failed server and permanently removed
+  servers. This allows other servers in the cluster to move on more quickly,
+  when a server fails and does not immediately come back.
+
+* Added WCC pregel algorithm for weakly connected components.
+
+* Display "geoJson" value for geo indexes in index overview in web UI.
+
+* Allow specifiying arbitrary vertex attributes when creating a vertex via the
+  graph viewer in the web UI. This is necessary for collections that have a
+  schema and that require new vertices to have certain attributes/values.
+
+* Pass through AQL query errors to UI graph viewer without turning them into
+  "Internal Server Error"s.
+
+* Augment nodes view in web UI with node id and full datetime of startup.
+
+* Fixed "Create Debug Package" in web UI in cluster mode.
+
+* Pick up selected "write concern" value entered in web UI when creating a
+  collection in the cluster. Previously, the "write concern" value was not
+  picked up correctly and collections were created with the default write
+  concern.
+
+* Fixed the creation of edges in the web UI, which did not work due to a
+  JavaScript error.
+
+* Fixed velocypack validator for proper check of keys.
+
+* Handle missing "shardingStrategy" in Plan agency entries for collections.
+  "shardingStrategy" entries can be missing for collections created with
+  ArangoDB clusters in version 3.3 or earlier. A missing "shardingStrategy"
+  entry can cause issues for certain queries that need to check the shard
+  distribution on the DB-Servers.
+  This change transparently handles missing "shardingStrategy" entries.
+
+* Taken collection dropping from fast track in maintenance. This avoids
+  blocking fast track maintenance threads when a shard cannot immediately
+  be dropped because of some pending lock.
+
+* Updated ArangoDB Starter to 0.14.15.
+
+* Fixed a spuriously occuring shutdown deadlock between AgencyCallbackRegistry
+  and AgencyCache.
+
+* Fixed `"Plan" is not an object in agency` error messages when restarting
+  DB-Servers that contained ArangoSearch Views with links.
+
+* Fixed misordering of skipped number of rows report. Only triggered if you do
+  a modification on a subquery nesting level 2 or more, e.g.:
+  ```
+    LET s1 = (
+      LET s2 = (
+        INSERT {} INTO collection
+      )
+      COLLECT WITH COUNT INTO c
+      RETURN c
+    )
+  ```
+  Here the c would be off, or a count on main query would be off.
+
+* Fix crash in execution of non-spliced subqueries if remainder of subquery is
+  skipped.
+
+* Added missing mutex to ConnectionPool::cancelConnections().
+
+* Foxx API now respects "idiomatic" flag being explicitly set to false.
+
+* Fixed crash in execution of non-spliced subqueries if remainder of subquery is
+  skipped.
+
+* Made modification subqueries non-passthrough. The passthrough logic only works
+  if exactly as many output rows are produced as input rows are injected.
+  If the subquery with modification is skipped however this API is violated, we
+  perform the subquery with the modification, but then discard the input if
+  skipped).
+
+* Optimized Web UI styling for ArangoSearch Views when in read-only mode.
+
+* Fixed a bug in the internal `recalculateCount()` method for adjusting
+  collection counts. The bug could have led to count adjustments being
+  applied with the wrong sign.
+
+* Removed external file loading in a used 3rd party library (Web UI). 
+
+* More substantial metrics in agency.
+
+* arangodump and arangorestore will now fail when using the `--collection`
+  option and none of the specified collections actually exist in the database
+  (on dump) or in the dump to restore (on restore). In case some of the specified
+  collections exist, arangodump/restore will issue warnings about the invalid
+  collections, but will continue to work for the valid collections.
+
+* Improved network send request for more robustness.
+
+* Added multiple RocksDB configuration options to arangod:
+  * `--rocksdb.cache-index-and-filter-blocks` to make the RocksDB block cache quota
+    also include RocksDB memtable sizes
+  * `--rocksdb.cache-index-and-filter-blocks-with-high-priority` to use cache index
+    and filter blocks with high priority making index and filter blocks be less
+    likely to be evicted than data blocks
+  * `--rocksdb.pin-l0-filter-and-index-blocks-in-cache` make filter and index blocks
+    be pinned and only evicted from cache when the table reader is freed
+  * `--rocksdb.pin-top-level-index-and-filter` make the top-level index of partitioned
+    filter and index blocks pinned and only be evicted from cache when the table reader 
+    is freed
+
+* Don't move potentially expensive AQL function calls into loops in the
+  `remove-unnecessary-calculations-rule`.
+
+  For example, in the query
+
+      LET x = NOOPT(1..100)
+      LET values = SORTED(x)
+      FOR j IN 1..100
+        FILTER j IN values
+        RETURN j
+
+  there is only one use of the `values` variable. So the optimizer can remove
+  that variable and replace the filter condition with `FILTER j IN SORTED(x)`.
+  However, that would move the potentially expensive function call into the
+  inner loop, which could be a pessimization.
+
+  Now the optimizer will not move the calculation of values into the loop when
+  it merges calculations in the `remove-unnecessary-calculations` optimizer rule.
+
+* Fixed modification executors inside of a subquery, where the subquery decided to
+  fetch all rows from upstream first and the amount of rows is higher then the 
+  batch size.
+
+* Fixed reporting of skipped number of documents if we have a LIMIT x, 0
+  right after the modification.
+
+* Added exceptions catching in agency callbacks.
+
+* Fixed issue #11104 case with complex condition on second branch of OR
+  operator.
+
+* Fixed bad behavior when dropping followers. A follower should be dropped
+  immediately when it is officially FAILED, not only after a longish timeout.
+
+* Fixed a bug in CollectionNameResolver which could lead to an extended
+  busy spin on a core when a collection was dropped, but documents of it
+  still remained in the WAL.
+
+* Fixed return value of fuerte::H1Connection in case of timeout.
+
+* Usability improvements for arangodump and arangorestore:
+  - when a dump is restricted to one or multiple collections using the
+    `--collection` option of arangodump, warnings are issued for all specified
+    collections that are not present in the database. Previously there were
+    no warnings, so missing a collection by misspelling its name could easily
+    go unnoticed.
+  - when a restore is restricted to one or multiple collections using the 
+    `--collection` option of arangorestore, warnings are issued for all specified
+    collections that are not present in the dump. Previously there were
+    no warnings, so missing a collection by misspelling its name could easily
+    go unnoticed.
+  - when a dump was taken using the `--overwrite` option, there was no check
+    that validated whether the encryption mode used in the existing dump
+    directory was the same as the requested encryption mode. This could have
+    led to dump directories with both encrypted and unencrypted files. This
+    was only the case when using `--overwrite true`, which is not the default.
+  - when a restore was performed using the `--encryption.keyfile` option, 
+    there was no check whether the to-be-restored files were actually encrypted.
+    Now this check is enforced and arangorestore will bail out with an error
+    if the requested encryption mode for restore is not the same as for the
+    stored dump files.
+
+* Fixed traversal issue: If you have a traversal with different minDepth and maxDepth
+  values and filter on path elements that are larger then minDepth, in a way that a
+  shorter path would match the condition, the shorter paths would in some cases
+  not be returned, even if they are valid. e.g.
+
+  FOR v, e, p IN 1..3 OUTBOUND @start Graph "myGraph"
+    FILTER p.vertices[2].label != "foo"
+    RETURN p
+
+  In the above query, a path of length 1 would be valid. There p.vertices[2]
+  does not exist => Evaluated to `null`. `null`.label is again evaluated to `null`
+  => `null != "foo"` is true, so the path is valid.
+
+* Fixed traversal issue: If you have a filter on the path that is based on a
+  variable value, which could not be deduced as constant during runtime, in
+  a sharded GeneralGraph the filter was not applied correctly.
+  SmartGraphs and SingleServer traversals are not effected by this issue.
+  Also OneShard traversals are not effected.
+
+* Added `securityScheme`, `securityScope` and `security` methods to Foxx
+  endpoints to allow defining Swagger security schemes.
+
+* Foxx routes now always have a Swagger `operationId`. If the route is unnamed,
+  a distinct operationId will be generated based on the HTTP method and URL.
+
+* Fixed, if you have a collection access within a Subquery, where the main query is fully skipped
+  and the "splice-subqueries" rule is active. The information of the skip was not transported
+  correctly. This could cause incorrect counting reports.
+  If splice-subqueries are disabled, or the main-query is only partly skipped, everything worked
+  as expected.
+
+* Expanded -std=c++17 flag to all compilers.
+
+* Fixed issue ES-600: log out of LDAP automatically.
+
+  Option `--ldap.allow-offline` was added with `false` value by default to let
+  server use cached offline credentials in case of LDAP server communication was
+  lost and ArangoDB can't prolong cache online.
+
+* Include all requests to the web interface at endpoint `/_admin/aardvark` in 
+  a node's requests statistics. Previously, requests going to `/_admin/aardvark`
+  were excluded from the request statistics if and only if the requested
+  database was the `_system` database.
+
+* Fixed an issue with truncate of a collection after a dbserver was restarted
+  very quickly. This could block arangosync from making progress because the
+  _jobs collection could no longer be truncated.
+
+* Web UI is now using pre-compiled templates.
+
+* Fixed issue #11652: Error: AQL: missing variable #2 (1) for node #6
+  (FilterNode) while planning registers.
+
+* Fixed internal issue #650: Added analyzer cache update before ArangoSearch
+  view creation/update.
+
+* Update OpenLDAP to 2.4.50.
+
+* Fixed issue ES-554: failed to build filter while querying ArangoSearch view.
+
+  This change provides global fix for ArangoSearch analyzers distribution and
+  management within a cluster.
+
+* Fixed issue ES-545: failing modification operations led to random crashes with
+  "Index out of bound" error message.
+
+* Fix edge cases in RocksDB primary index range lookups for operators >= and <.
+
+* Fixed issue #11525: Address security vulnerability by updating Swagger-UI
+  dependency (upgraded Swagger UI to 3.25.1).
+
+* Updated arangosync to 0.7.5.
+
+* Fixed ability to edit graph edge in Graph Viewer of web UI.
+
+* Fixed issue #10371: For k-shortest-paths queries on certain graphs a condition
+  to abort search was too eager and hence missed the shortest path between two
+  vertices and returned a longer one.
+
+* Added feature: Disjoint SmartGraphs
+
+  SmartGraphs have been extended to a new subtype, called **Disjoint SmartGraphs**.
+  A Disjoint SmartGraph prohibits edges between different SmartGraph components. 
+  In case the graph schema can be represented without the need of connected 
+  SmartGraph components, a Disjoint SmartGraph should be used as this knowledge 
+  can be used by the internal optimizer to gain even better query traversal 
+  execution times.
+
+* Fixed issue ES-605: arangodump broken when using encryption.
+
+* Fixed a lockup in dropCollection due to a mutex being held for too long.
+
+* Add an optimizer rule that enables execution of certain subqueries on a
+  DB Server. For this optimization to work, the subquery must contain exactly
+  one DISTRIBUTE/GATHER pair and only access at most one collection.
+
+  This proves particularly useful for traversals, shortest path, and k-shortest
+  paths queries on Disjoint SmartGraphs where the entire traversal is executed
+  on the DB Server without involvement of a coordinator.
+
+* ClusterInfo does its own updating of plan / current caches.
+
+* Properly forward requests based on the transaction header.
+
+* Fix a bug in Agency poll, which would sometimes return a wrong firstIndex.
+
+* Made several improvements to AQL's internal register planning. This will
+  improve query performance in several cases; mainly of large queries with many
+  variables, and of spliced subqueries. This also fixes the github issues #10853
+  and #11358 which reported performance degradation caused by subquery splicing.
+
+* Fixed issue #11590: Querying for document by _key returning only a single
+  seemingly random property on entity ("old", in this case).
+
+  This fixes single-key document lookups in the cluster for simple by-key
+  AQL queries, such as `FOR doc IN collection FILTER doc._key == @key RETURN
+  doc` in case the document has either an "old" or a "new" attribute.
+
+* Restored behavior of Foxx API documentation being expanded to show all routes
+  rather than collapsing all sections by default.
+
+* Add optimization for subqueries for which only the number of results
+  matters. The optimization will be triggered for read-only subqueries that 
+  use a full collection scan or an index scan, without any additional filtering
+  (early pruning or document post-filtering) and without LIMIT.
+
+  It will help in the following situation:
+
+      FOR doc IN ...
+        LET count = COUNT(
+          FOR sub IN subCollection 
+            FILTER sub._from == doc._id 
+            RETURN sub
+        )
+        ...
+
+  The restrictions are that the subquery result must only be used with the 
+  COUNT/LENGTH function and not for anything else. The subquery itself must
+  be read-only (no data-modification subquery), not use nested FOR loops nor
+  LIMIT, nor a FILTER condition or calculation that requires accessing the 
+  document data. Accessing index data is supported for filtering, but not
+  for further calculations.
+
+  If the optimization is triggered, it will show up in the query execution
+  plan under the name `optimize-count`.
+
+* Integrated libiresearch log topic properly into ArangoDB logging system.
+
+* Fix a bad deadlock because transaction cleanup was pushed with too low
+  priority.
+
+* Allow specifying graph names as unquoted string in an AQL graph traversal
+  query, e.g. `FOR ... IN ... GRAPH abc`. Previously, the graph name had
+  to be a bind parameter or a string enclosed in quotes.
+
+* loadPlan and loadCurrent have been fixed to not miss out on increments.
+
+* ClusterInfo and all data definition changes use the local agency cache.
+
+* Coordinators and DB servers cache the agency's read key value store.
+
+* Agency offers the new poll API to subscribe to the Raft log stream.
+
+* Added option `--rocksdb.edge-cache` to toggle in-memory caching for
   edges. The option is turned on by default. This normally helps with
   performance in read-only and read-mostly workloads.
 
 * Fixed a bug in Maintenance which could prevent collection creation from
   working (made CreateCollection action idempotent).
-
-* Integrated libiresearch log topic properly into ArangoDB logging system
 
 * Fix potential undefined behavior in some operations issued to the REST
   handler at `/_api/collection` in cluster mode.
@@ -24,25 +692,25 @@ devel
 * Fixed a sleeping barber in fuerte. Added TLA+ model to prove that there
   is not another one hiding somewhere.
 
-* Fix spurious bugs in `resilience_move` tests due to replication context of 
+* Fix spurious bugs in `resilience_move` tests due to replication context of
   to-be-dropped collections lingering around until timeout.
 
-* Fix invalid value of `isSystem` attribute for non-system databases.
+* Fixed issue 11243: `db._isSystem()` returns true for a non-system DB.
 
 * Fix REST API `/_admin/cluster/removeServer`.
   This also fixes the removal of servers via the web interface.
 
 * Updated OpenSSL to 1.1.1g.
 
-* Lower the default values for `--rocksdb.block-cache-size` and 
+* Lower the default values for `--rocksdb.block-cache-size` and
   `--rocksdb.total-write-buffer-size` for systems with less than 1 GB of RAM.
   For these systems the default value were presumably too high and needed manual
   adjustment.
 
-* Allow to override the detected number of avaiable CPU cores via an environment
+* Allow to override the detected number of available CPU cores via an environment
   variable ARANGODB_OVERRIDE_DETECTED_NUMBER_OF_CORES.
 
-* Fix a bug in the optimizer which handled combinations of smart joins with
+* Fix a bug in the optimizer which handled combinations of SmartJoins with
   query components that had to run on a coordinator wrong.
 
 * Remove the scatter-arangosearch-view-in-cluster optimizer rule; it was
@@ -55,7 +723,6 @@ devel
   parameter.
 
 * Added collection property changes into auditing.
-
 
 * Fix creation of example graphs when `--cluster.min-replication-factor` is set
   and no replication factor was specified for a graph. In this case, the new
@@ -75,7 +742,7 @@ devel
   deployments that are known to already contain invalid UTF-8 data and to keep
   them operational until the wrong string encoding is fixed in the data.
 
-* Fixed a bug which occurred if a dbserver was shut down exactly
+* Fixed a bug which occurred if a DB-Server was shut down exactly
   when it was supposed to resign from its leadership for a shard.
 
 * Improve continuation behavior of AQL queries. We post the continuation
@@ -284,7 +951,7 @@ devel
   server keys and certificate chains and the system dynamically uses
   the right one depending on the value of the TLS servername extension.
   This allows to use different TLS setups for the same server which is
-  reachable behind different DNS names, for example (enterprise only).
+  reachable behind different DNS names, for example (Enterprise Edition only).
 
 * Do not create a reboot tracker for empty serverId ubin sync repl.
 
@@ -542,7 +1209,7 @@ devel
 
 * added `REPLACE_NTH` AQL function to replace a member inside an array.
 
-* Added JWT secret rotation (Enterprise only).
+* Added JWT secret rotation (Enterprise Edition only).
 
 * The `--dump-options` command for arangod now also provides the "components"
   attribute that shows for which components (agent, coordinator, db server,
@@ -662,7 +1329,7 @@ devel
 
 * Fixed uptime in _admin/statistics.
 
-* Fixed a bug in smart graph bfs traversals that might violate path uniqueness
+* Fixed a bug in SmartGraph bfs traversals that might violate path uniqueness
   requirements in rare cases.
 
 * Add acquisition of system report to arangod instances.
@@ -1119,7 +1786,7 @@ v3.5.0-rc.5 (2019-07-22)
   minReplicationFactor can have the values: 1 <= minReplicationFactor <= replicationFactor.
   Having minReplicationFactor == 1 ArangoDB behaves the same way as in any previous version.
 
-* Fixed a query abort error with smart joins if both collections were restricted to a
+* Fixed a query abort error with SmartJoins if both collections were restricted to a
   single shard using the "restrict-to-single-shard" optimizer rule.
 
 * Fixed a performance regression of COLLECT WITH COUNT INTO.
@@ -1221,7 +1888,7 @@ v3.5.0-rc.3 (2019-05-31)
 
 * The system collection '_jobs' will from now on be created with non-unique, non-sparse indexes.
 
-* Bugfix for smart graph traversals with uniqueVertices: path, which could
+* Bugfix for SmartGraph traversals with uniqueVertices: path, which could
   sometimes lead to erroneous traversal results.
 
 * Pregel algorithms can be run with the option "useMemoryMaps: true" to be
@@ -1236,7 +1903,7 @@ v3.5.0-rc.3 (2019-05-31)
 v3.5.0-rc.2 (2019-05-23)
 ------------------------
 
-* Fixed "collection not found" exception during setup of 3-way smart join queries in the
+* Fixed "collection not found" exception during setup of 3-way SmartJoin queries in the
   cluster.
 
 * Fixed an edge case of handling `null` values in the AQL function `MIN` for input
@@ -1371,12 +2038,12 @@ v3.5.0-rc.1 (2019-05-14)
   `--log.use-localtime`, because the functionality provided by these options
   is covered by `--log.time-format` too.
 
-* Added "smart joins" to the ArangoDB Enterprise Edition that allows running cluster
+* Added "SmartJoins" to the ArangoDB Enterprise Edition that allows running cluster
   joins between two certain sharded collections with performance close to that of a
   local join operation.
 
 * Fixed internal issue #3815: fixed the removal of connected edges when
-  removing a vertex graph node in a smart graph environment.
+  removing a vertex graph node in a SmartGraph environment.
 
 * Show startup warning in case kernel setting `vm.overcommit_memory` is set
   to a value of 2 and the jemalloc memory allocator is in use. This combination
@@ -1492,7 +2159,7 @@ v3.5.0-rc.1 (2019-05-14)
 
 * Allowed MoveShard from leader to a follower, thus swapping the two.
 
-* Supervision fix: Satellite collections, various fixes.
+* Supervision fix: SatelliteCollections, various fixes.
 
 * Added coordinator route for agency dump.
 
@@ -1868,7 +2535,7 @@ v3.4.7 (2019-07-02)
 * Pregel algorithms can be run with the option "useMemoryMaps: true" to be able to run algorithms
   on data that is bigger than the available RAM.
 
-* Bugfix for smart graph traversals with uniqueVertices: path, which could
+* Bugfix for SmartGraph traversals with uniqueVertices: path, which could
   sometimes lead to erroneous traversal results
 
 * The system-collection '_jobs' will from now on use non-unique, non-sparse indexes.
@@ -1879,7 +2546,7 @@ v3.4.7 (2019-07-02)
   case in 3.3 and before. If no VERSION files are created, this may cause problems on upgrade
   to 3.5. The 3.5 branch was also modified to handle this problem gracefully.
 
-* fixed "collection not found" exception during setup of 3-way smart join queries in the
+* fixed "collection not found" exception during setup of 3-way SmartJoin queries in the
   cluster
 
 * fixed an edge case of handling `null` values in the AQL function `MIN` for input
@@ -1952,7 +2619,7 @@ v3.4.6 (2019-05-21)
 * removed bug during start up with a single agent, that leads to dbserver crash.
 
 * fix the creation of debug packages (in the web interface) for queries that
-  involve smart graphs and/or multiple edge collections from a traversal
+  involve SmartGraphs and/or multiple edge collections from a traversal
 
 * add --compress-output flag to arangodump. Activates gzip compression for
   collection data. Metadata files, such as .structure.json and .view.json,
@@ -1989,7 +2656,7 @@ v3.4.5 (2019-03-27)
   active Pregel jobs executing
 
 * fixed internal issue #3815: fixed the removal of connected edges when
-  removing a vertex graph node in a smart graph environment.
+  removing a vertex graph node in a SmartGraph environment.
 
 * added AQL functions CRC32 and FNV64 for hashing data
 
@@ -2018,7 +2685,7 @@ v3.4.5 (2019-03-27)
   double resync was made
 
 * don't check for the presence of ArangoDB upgrades available when firing up an
-  arangosh enterprise edition build
+  arangosh Enterprise Edition build
 
 * added startup option `--rocksdb.allow-fallocate`
 
@@ -2207,7 +2874,7 @@ v3.4.4 (2019-03-12)
 
 * Allow MoveShard from leader to a follower, thus swapping the two
 
-* Supervision fix: Satellite collections, various fixes
+* Supervision fix: SatellitCollections, various fixes
 
 * Add coordinator route for agency dump
 
@@ -2446,7 +3113,7 @@ v3.4.1 (2018-12-19)
 v3.4.0 (2018-12-06)
 -------------------
 
-* Add license key checking to enterprise version in Docker containers.
+* Add license key checking to Enterprise Edition in Docker containers.
 
 
 v3.4.0-rc.5 (2018-11-29)
@@ -2661,7 +3328,7 @@ v3.4.0-rc.3 (2018-10-23)
 * fix internal issue #2785: web ui's sort dialog sometimes got rendered, even
   if it should not.
 
-* fix internal issue #2764: the waitForSync property of a satellite collection
+* fix internal issue #2764: the waitForSync property of a SatelliteCollection
   could not be changed via the Web UI
 
 * dynamically manage libcurl's number of open connections to increase performance
@@ -3546,7 +4213,7 @@ v3.3.19 (2018-10-20)
 * fix internal issue #2785: web ui's sort dialog sometimes got rendered, even
   if it should not.
 
-* fix internal issue #2764: the waitForSync property of a satellite collection
+* fix internal issue #2764: the waitForSync property of a SatelliteCollection
   could not be changed via the Web UI
 
 * improved logging in case of replication errors
@@ -4111,11 +4778,11 @@ v3.3.8 (2018-04-24)
 * added arangod startup option `--dump-options` to print all configuration parameters
   as a JSON object
 
-* fixed: (Enterprise only) If you restore a SmartGraph where the collections
+* fixed: (Enterprise Edition only) If you restore a SmartGraph where the collections
   are still existing and are supposed to be dropped on restore we ended up in
   duplicate name error. This is now gone and the SmartGraph is correctly restored.
 
-* fix lookups by `_id` in smart graph edge collections
+* fix lookups by `_id` in SmartGraph edge collections
 
 * improve startup resilience in case there are datafile errors (MMFiles)
 
@@ -4156,10 +4823,10 @@ v3.3.7 (2018-04-11)
 * fixed internal issue #2237: AQL queries on collections with replicationFactor:
   "satellite" crashed arangod in single server mode
 
-* fixed restore of satellite collections: replicationFactor was set to 1 during
+* fixed restore of SatelliteCollections: replicationFactor was set to 1 during
   restore
 
-* fixed dump and restore of smart graphs:
+* fixed dump and restore of SmartGraphs:
   a) The dump will not include the hidden shadow collections anymore, they were dumped
      accidentially and only contain duplicated data.
   b) Restore will now ignore hidden shadow collections as all data is contained
@@ -4615,7 +5282,7 @@ v3.3.rc1 (2017-11-17)
 * performance improvements for full collection scans and a few other operations
   in MMFiles engine
 
-* added `--rocksdb.encryption-key-generator` for enterprise
+* added `--rocksdb.encryption-key-generator` to Enterprise Edition
 
 * removed `--compat28` parameter from arangodump and replication API
 
@@ -4980,7 +5647,7 @@ v3.2.7 (2017-11-13)
 
   these changes speed up arangodump in cluster context
 
-* smart graphs now return a proper inventory in response to replication inventory
+* SmartGraphs now return a proper inventory in response to replication inventory
   requests
 
 * fixed issue #3618: Inconsistent behavior of OR statement with object bind parameters
@@ -5185,7 +5852,7 @@ v3.2.4 (2017-09-26)
   from the early ArangoDB days and did not provide any value in the current
   implementation.
 
-* (Enterprise only) added `skipInaccessibleCollections` option for AQL queries:
+* (Enterprise Edition only) added `skipInaccessibleCollections` option for AQL queries:
   if set, AQL queries (especially graph traversals) will treat collections to
   which a user has no access rights to as if these collections were empty.
 
@@ -5650,7 +6317,7 @@ v3.2.beta1 (2017-06-12)
 * `--server.maximal-queue-size` is now an absolute maximum. If the queue is
   full, then 503 is returned. Setting it to 0 means "no limit".
 
-* (Enterprise only) added authentication against an LDAP server
+* (Enterprise Edition only) added authentication against an LDAP server
 
 * fixed issue #2083: Foxx services aren't distributed to all coordinators
 
@@ -6021,7 +6688,7 @@ v3.1.18 (2017-04-18)
   rare cases if the computation on one DBServer could be completed much earlier
   than the other server. It could also be restricted to SmartGraphs only.
 
-* (Enterprise only) Fixed a bug in SmartGraph DepthFirstSearch. In some
+* (Enterprise Edition only) Fixed a bug in SmartGraph DepthFirstSearch. In some
   more complicated queries, the maxDepth limit of 1 was not considered strictly
   enough, causing the traverser to do unlimited depth searches.
 
@@ -6035,14 +6702,14 @@ v3.1.18 (2017-04-18)
 v3.1.17 (2017-04-04)
 --------------------
 
-* (Enterprise only) fixed a bug where replicationFactor was not correctly
+* (Enterprise Edition only) fixed a bug where replicationFactor was not correctly
   forwarded in SmartGraph creation.
 
 * fixed issue #2404
 
 * fixed issue #2397
 
-* ui - fixed smart graph option not appearing
+* ui - fixed SmartGraph option not appearing
 
 * fixed issue #2389
 
@@ -6167,7 +6834,7 @@ v3.1.11 (2017-02-17)
 * fixed a race between connection closing and sending out last chunks of data to clients
   when the "Connection: close" HTTP header was set in requests
 
-* ui: optimized smart graph creation usability
+* ui: optimized SmartGraph creation usability
 
 * ui: fixed #2308
 
@@ -6422,7 +7089,7 @@ v3.1.2 (2016-11-24)
 
 * added support for descriptions field in Foxx dependencies
 
-* (Enterprise only) fixed a bug in the statistic report for SmartGraph traversals.
+* (Enterprise Edition only) fixed a bug in the statistic report for SmartGraph traversals.
 Now they state correctly how many documents were fetched from the index and how many
 have been filtered.
 
@@ -6509,7 +7176,7 @@ v3.1.1 (2016-11-15)
   search values were used on different attribute names. in this case, the search always
   produced an empty result
 
-* disallow updating `_from` and `_to` values of edges in Smart Graphs. Updating these
+* disallow updating `_from` and `_to` values of edges in SmartGraphs. Updating these
   attributes would lead to potential redistribution of edges to other shards, which must be
   avoided.
 

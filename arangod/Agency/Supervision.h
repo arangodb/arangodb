@@ -89,7 +89,7 @@ class Supervision : public arangodb::CriticalThread {
     std::string jobId;
   };
 
-  /// @brief Construct sanity checking
+  /// @brief Construct cluster consistency checking
   explicit Supervision(application_features::ApplicationServer& server);
 
   /// @brief Default dtor
@@ -155,6 +155,9 @@ class Supervision : public arangodb::CriticalThread {
   /// @brief Check for boken collections
   void checkBrokenCollections();
 
+  /// @brief Check for broken analyzers
+  void checkBrokenAnalyzers();
+
   struct ResourceCreatorLostEvent {
     std::shared_ptr<Node> const& resource;
     std::string const& coordinatorId;
@@ -165,6 +168,10 @@ class Supervision : public arangodb::CriticalThread {
   // @brief Checks if a resource (database or collection). Action is called if resource should be deleted
   void ifResourceCreatorLost(std::shared_ptr<Node> const& resource,
                              std::function<void(ResourceCreatorLostEvent const&)> const& action);
+
+  // @brief Action is called if resource should be deleted
+  void resourceCreatorLost(std::shared_ptr<Node> const& resource,
+                           std::function<void(const ResourceCreatorLostEvent&)> const& action);
 
   /// @brief Check for inconsistencies in replication factor vs dbs entries
   void enforceReplication();
@@ -196,7 +203,7 @@ class Supervision : public arangodb::CriticalThread {
   /// @brief Get unique ids from agency
   void getUniqueIds();
 
-  /// @brief Perform sanity checking
+  /// @brief Perform consistency checking
   bool doChecks();
 
   /// @brief update my local agency snapshot
@@ -234,6 +241,13 @@ class Supervision : public arangodb::CriticalThread {
   void deleteBrokenCollection(std::string const& database, std::string const& collection,
                               std::string const& coordinatorID,
                               uint64_t rebootID, bool coordinatorFound);
+
+  void restoreBrokenAnalyzersRevision(std::string const& database,
+                                      AnalyzersRevision::Revision revision,
+                                      AnalyzersRevision::Revision buildingRevision,
+                                      std::string const& coordinatorID,
+                                      uint64_t rebootID,
+                                      bool coordinatorFound);
 
   /// @brief Migrate chains of distributeShardsLike to depth 1
   void fixPrototypeChain(VPackBuilder&);

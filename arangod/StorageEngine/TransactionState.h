@@ -27,12 +27,14 @@
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/ClusterTypes.h"
 #include "Containers/HashSet.h"
 #include "Containers/SmallVector.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 
 #include <map>
@@ -41,7 +43,7 @@
 
 #define LOG_TRX(logid, llevel, trx)                \
   LOG_TOPIC(logid, llevel, arangodb::Logger::TRANSACTIONS) \
-      << "#" << trx->id() << " ("         \
+      << "#" << trx->id().id() << " ("         \
       << transaction::statusString(trx->status()) << "): "
 
 #else
@@ -76,7 +78,7 @@ class TransactionState {
   TransactionState(TransactionState const&) = delete;
   TransactionState& operator=(TransactionState const&) = delete;
 
-  TransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+  TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                    transaction::Options const& options);
   virtual ~TransactionState();
 
@@ -97,7 +99,7 @@ class TransactionState {
   inline transaction::Options& options() { return _options; }
   inline transaction::Options const& options() const { return _options; }
   inline TRI_vocbase_t& vocbase() const { return _vocbase; }
-  inline TRI_voc_tid_t id() const { return _id; }
+  inline TransactionId id() const { return _id; }
   inline transaction::Status status() const { return _status; }
   inline bool isRunning() const {
     return _status == transaction::Status::RUNNING;
@@ -207,6 +209,14 @@ class TransactionState {
   TRI_voc_tick_t lastOperationTick() const noexcept {
     return _lastWrittenOperationTick;
   }
+
+
+  void acceptAnalyzersRevision(
+      QueryAnalyzerRevisions const& analyzersRevsion) noexcept;
+
+  const QueryAnalyzerRevisions& analyzersRevision() const noexcept {
+    return _analyzersRevision;
+  }
   
   #ifdef USE_ENTERPRISE
     void addInaccessibleCollection(TRI_voc_cid_t cid, std::string const& cname);
@@ -229,7 +239,7 @@ class TransactionState {
   
  protected:
   TRI_vocbase_t& _vocbase;  /// @brief vocbase for this transaction
-  TRI_voc_tid_t const _id;  /// @brief local trx id
+  TransactionId const _id;  /// @brief local trx id
 
   /// @brief tick of last added & written operation
   TRI_voc_tick_t _lastWrittenOperationTick;
@@ -256,6 +266,7 @@ class TransactionState {
   /// @brief servers we already talked to for this transactions
   ::arangodb::containers::HashSet<std::string> _knownServers;
 
+  QueryAnalyzerRevisions _analyzersRevision;
   bool _registeredTransaction;
 };
 

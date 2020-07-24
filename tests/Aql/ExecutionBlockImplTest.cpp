@@ -111,22 +111,21 @@ class SharedExecutionBlockImplTest {
       EXPECT_EQ(outputRegisters, 0);
     }
 
-    auto readAble = make_shared_unordered_set();
-    auto writeAble = make_shared_unordered_set();
-    auto registersToKeep = std::unordered_set<RegisterId>{};
+    auto readAble = RegIdSet{};
+    auto writeAble = RegIdSet{};
     if (inputRegisters != RegisterPlan::MaxRegisterId) {
       for (RegisterId i = 0; i <= inputRegisters; ++i) {
-        readAble->emplace(i);
-        registersToKeep.emplace(i);
+        readAble.emplace(i);
       }
       for (RegisterId i = inputRegisters + 1; i <= outputRegisters; ++i) {
-        writeAble->emplace(i);
+        writeAble.emplace(i);
       }
     } else if (outputRegisters != RegisterPlan::MaxRegisterId) {
       for (RegisterId i = 0; i <= outputRegisters; ++i) {
-        writeAble->emplace(i);
+        writeAble.emplace(i);
       }
     }
+    RegIdSetStack registersToKeep = {readAble, readAble, readAble};
     RegisterId regsToRead =
         (inputRegisters == RegisterPlan::MaxRegisterId) ? 0 : inputRegisters + 1;
     RegisterId regsToWrite =
@@ -307,10 +306,10 @@ class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTes
    * @return std::unique_ptr<ExecutionBlock> The singleton ExecutionBlock.
    */
   std::unique_ptr<ExecutionBlock> createSingleton() {
-    auto writableOutputRegisters = make_shared_unordered_set({0});
+    auto writableOutputRegisters = RegIdSet{0};
     auto res = std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(
         fakedQuery->rootEngine(), generateNodeDummy(),
-        RegisterInfos{{}, std::move(writableOutputRegisters), 0, 1, {}, {}},
+        RegisterInfos{{}, std::move(writableOutputRegisters), 0, 1, RegIdFlatSet{}, RegIdFlatSetStack{{}}},
         IdExecutorInfos{false});
     InputAqlItemRow inputRow{CreateInvalidInputRowHint{}};
     auto const [state, result] = res->initializeCursor(inputRow);
@@ -321,15 +320,17 @@ class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTes
 
   std::unique_ptr<ExecutionBlock> createSubqueryStart(ExecutionBlock* dependency,
                                                       RegisterId nrRegs) {
-    auto readableIn = make_shared_unordered_set({});
-    auto writeableOut = make_shared_unordered_set({});
-    std::unordered_set<RegisterId> registersToClear{};
-    std::unordered_set<RegisterId> registersToKeep{};
+    auto readableIn = RegIdSet{};
+    auto writeableOut = RegIdSet{};
+    auto registersToClear = RegIdFlatSet{};
+    auto regsToKeepProto = RegIdFlatSet{};
     for (RegisterId r = 1; r <= nrRegs; ++r) {
       // NrReg and usedRegs are off-by-one...
-      readableIn->emplace(r - 1);
-      registersToKeep.emplace(r - 1);
+      readableIn.emplace(r - 1);
+      regsToKeepProto.emplace(r - 1);
     }
+    RegIdFlatSetStack registersToKeep{regsToKeepProto, regsToKeepProto,
+                                      regsToKeepProto, regsToKeepProto};
 
     auto res = std::make_unique<ExecutionBlockImpl<SubqueryStartExecutor>>(
         fakedQuery->rootEngine(), generateNodeDummy(),
@@ -442,7 +443,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_unlimited_call) {
 // Test a softlimit call: no skip, given softlimit.
 TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_softlimit_call) {
   AqlCall fullCall{};
-  fullCall.softLimit = 20;
+  fullCall.softLimit = 20u;
   size_t nrCalls = 0;
 
   // Note here: passthrough only reserves the correct amount of rows.
@@ -467,7 +468,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_softlimit_call) {
 // Test a hardlimit call: no skip, given hardlimit.
 TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_hardlimit_call) {
   AqlCall fullCall{};
-  fullCall.hardLimit = 20;
+  fullCall.hardLimit = 20u;
   size_t nrCalls = 0;
 
   // Note here: passthrough only reserves the correct amount of rows.
@@ -520,7 +521,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_offset_only_call) {
   fullCall.offset = 20;
   // This test simulates a simple "skipSome" call on the old API.
   // It is releveant in any intermediate state.
-  fullCall.softLimit = 0;
+  fullCall.softLimit = 0u;
   size_t nrCalls = 0;
 
   // Note here: We skip everything, no produce should be called
@@ -798,7 +799,7 @@ struct BaseCallAsserter {
  *        Assumes that we are always called once with an empty input.
  *        And once with a given input.
  *        Will expect to be called for skip and fullCount (4 counts)
- *        Does expect to not be called if skip and/or fullCount are ommited.
+ *        Does expect to not be called if skip and/or fullCount are omitted.
  */
 struct SkipCallAsserter : public BaseCallAsserter {
   explicit SkipCallAsserter(AqlCall const& expectedCall)
@@ -1263,15 +1264,14 @@ class ExecutionBlockImplExecuteIntegrationTest
 
   std::unique_ptr<ExecutionBlock> createSubqueryStart(ExecutionBlock* dependency,
                                                       RegisterId nrRegs) {
-    auto readableIn = make_shared_unordered_set({});
-    auto writeableOut = make_shared_unordered_set({});
-    std::unordered_set<RegisterId> registersToClear{};
-    std::unordered_set<RegisterId> registersToKeep{};
+    auto readableIn = RegIdSet{};
+    auto writeableOut = RegIdSet{};
+    RegIdSet registersToClear{};
     for (RegisterId r = 1; r <= nrRegs; ++r) {
       // NrReg and usedRegs are off-by-one...
-      readableIn->emplace(r - 1);
-      registersToKeep.emplace(r - 1);
+      readableIn.emplace(r - 1);
     }
+    RegIdSetStack registersToKeep{readableIn, readableIn, readableIn};
 
     auto res = std::make_unique<ExecutionBlockImpl<SubqueryStartExecutor>>(
         fakedQuery->rootEngine(), generateNodeDummy(),
@@ -2080,7 +2080,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, multiple_subqueries) {
         skipAsserter.reset();
         // Now trigger fast-forward to move to next subquery
         AqlCall forwardCall{};
-        forwardCall.hardLimit = 0;
+        forwardCall.hardLimit = 0u;
         forwardCall.fullCount = false;
 
         auto forwardStack = buildStack(AqlCall{}, AqlCall{});
@@ -2354,19 +2354,19 @@ static constexpr auto skipCall = []() -> const AqlCall {
 
 static constexpr auto softLimit = []() -> const AqlCall {
   AqlCall res{};
-  res.softLimit = 35;
+  res.softLimit = 35u;
   return res;
 };
 
 static constexpr auto hardLimit = []() -> const AqlCall {
   AqlCall res{};
-  res.hardLimit = 76;
+  res.hardLimit = 76u;
   return res;
 };
 
 static constexpr auto fullCount = []() -> const AqlCall {
   AqlCall res{};
-  res.hardLimit = 17;
+  res.hardLimit = 17u;
   res.fullCount = true;
   return res;
 };
@@ -2374,33 +2374,33 @@ static constexpr auto fullCount = []() -> const AqlCall {
 static constexpr auto skipAndSoftLimit = []() -> const AqlCall {
   AqlCall res{};
   res.offset = 16;
-  res.softLimit = 64;
+  res.softLimit = 64u;
   return res;
 };
 
 static constexpr auto skipAndHardLimit = []() -> const AqlCall {
   AqlCall res{};
   res.offset = 32;
-  res.hardLimit = 51;
+  res.hardLimit = 51u;
   return res;
 };
 static constexpr auto skipAndHardLimitAndFullCount = []() -> const AqlCall {
   AqlCall res{};
   res.offset = 8;
-  res.hardLimit = 57;
+  res.hardLimit = 57u;
   res.fullCount = true;
   return res;
 };
 static constexpr auto onlyFullCount = []() -> const AqlCall {
   AqlCall res{};
-  res.hardLimit = 0;
+  res.hardLimit = 0u;
   res.fullCount = true;
   return res;
 };
 static constexpr auto onlySkipAndCount = []() -> const AqlCall {
   AqlCall res{};
   res.offset = 16;
-  res.hardLimit = 0;
+  res.hardLimit = 0u;
   res.fullCount = true;
   return res;
 };

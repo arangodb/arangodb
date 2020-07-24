@@ -38,6 +38,7 @@
 #include "Agency/State.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
+#include "Aql/ExpressionContext.h"
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryExecutionState.h"
@@ -182,6 +183,9 @@ static void JS_Transactions(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   bool const fanout = ServerState::instance()->isCoordinator();
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
+  if (!mgr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
   std::string user;
   if (arangodb::ExecContext::isAuthEnabled()) {
     user = ExecContext::current().user();
@@ -520,6 +524,39 @@ static void JS_ParseAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief registers a warning for the currently running AQL query
+static void JS_WarningAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("AQL_WARNING(<code>, <message>)");
+  }
+
+  // get the query string
+  if (!args[1]->IsString()) {
+    TRI_V8_THROW_TYPE_ERROR("expecting string for <message>");
+  }
+
+  TRI_GET_GLOBALS();
+
+  if (v8g->_expressionContext != nullptr) {
+    // only register the error if we have a query...
+    // note: we may not have a query if the AQL functions are called without
+    // a query, e.g. during tests
+    int code = static_cast<int>(TRI_ObjectToInt64(isolate, args[0]));
+    std::string const message = TRI_ObjectToString(isolate, args[1]);
+
+    auto expressionContext = static_cast<arangodb::aql::ExpressionContext*>(v8g->_expressionContext);
+    expressionContext->registerWarning( code, message.c_str());
+  } else {
+    TRI_V8_THROW_TYPE_ERROR("must only be invoked from AQL user defined functions");
+  }
+  TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief explains an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -668,10 +705,17 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  arangodb::aql::ClusterQuery query(transaction::V8Context::Create(vocbase, true), options);
+  arangodb::aql::ClusterQuery query(transaction::V8Context::Create(vocbase, true),
+                                    aql::QueryOptions(options->slice()));
   
   VPackSlice collections = queryBuilder->slice().get("collections");
   VPackSlice variables = queryBuilder->slice().get("variables");
+  
+  QueryAnalyzerRevisions analyzersRevision;
+  auto revisionRes = analyzersRevision.fromVelocyPack(queryBuilder->slice());
+  if (ADB_UNLIKELY(revisionRes.fail())) {
+    TRI_V8_THROW_EXCEPTION(revisionRes);
+  }
   
   // simon: hack to get the behaviour of old second aql::Query constructor
   VPackBuilder snippetBuilder; // simon: hack to make format conform
@@ -680,12 +724,13 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   snippetBuilder.add("nodes", queryBuilder->slice().get("nodes"));
   snippetBuilder.close();
   snippetBuilder.close();
-  
-
+ 
   TRI_ASSERT(!ServerState::instance()->isDBServer());
   VPackBuilder ignoreResponse;
-  query.prepareClusterQuery(aql::SerializationFormat::SHADOWROWS, collections, variables,
-                             snippetBuilder.slice(), VPackSlice::noneSlice(), ignoreResponse);
+  query.prepareClusterQuery(aql::SerializationFormat::SHADOWROWS, VPackSlice::emptyObjectSlice(),
+                            collections, variables,
+                            snippetBuilder.slice(), VPackSlice::noneSlice(), ignoreResponse,
+                            analyzersRevision);
   
   aql::QueryResult queryResult = query.executeSync();
 
@@ -1409,10 +1454,6 @@ static void JS_EngineStats(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (ServerState::instance()->isCoordinator()) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
   // return engine data
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   VPackBuilder builder;
@@ -1817,7 +1858,7 @@ static void JS_LdapEnabled(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto& ldap = v8g->_server.getFeature<LdapFeature>();
   TRI_V8_RETURN(v8::Boolean::New(isolate, ldap.isEnabled()));
 #else
-  // LDAP only enabled in enterprise mode
+  // LDAP only enabled in Enterprise Edition
   TRI_V8_RETURN(v8::False(isolate));
 #endif
 
@@ -2088,6 +2129,9 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "AQL_PARSE"),
                                JS_ParseAql, true);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "AQL_WARNING"),
+                               JS_WarningAql, true);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,
                                                    "AQL_QUERIES_PROPERTIES"),

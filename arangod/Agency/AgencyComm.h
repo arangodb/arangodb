@@ -28,15 +28,18 @@
 #include <deque>
 #include <list>
 #include <memory>
+#include <optional>
 #include <string>
+#include <string_view>
+#include <type_traits>
 #include <unordered_map>
+#include <utility>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
-#include <type_traits>
-#include <utility>
 
+#include "Agency/PathComponent.h"
 #include "Basics/Mutex.h"
 #include "Basics/Result.h"
 #include "GeneralServer/GeneralDefinitions.h"
@@ -216,6 +219,17 @@ class AgencyPrecondition {
     value = builder->slice();
   };
 
+  AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path, Type, bool e);
+  AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path,
+                     Type, velocypack::Slice const&);
+  template <typename T>
+  AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path,
+                     Type t, T const& v)
+      : key(path->str()), type(t), empty(false), builder(std::make_shared<VPackBuilder>()) {
+    builder->add(VPackValue(v));
+    value = builder->slice();
+  };
+
  public:
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   void toGeneralBuilder(arangodb::velocypack::Builder& builder) const;
@@ -278,9 +292,8 @@ class AgencyOperation {
 
 class AgencyCommResult {
  public:
-  AgencyCommResult();
-  AgencyCommResult(int code, std::string const& message,
-                   std::string const& transactionId = std::string());
+  AgencyCommResult() = default;
+  AgencyCommResult(int code, std::string message);
 
   ~AgencyCommResult() = default;
 
@@ -291,54 +304,50 @@ class AgencyCommResult {
   AgencyCommResult& operator=(AgencyCommResult&& other) noexcept;
 
  public:
-  void set(int code, std::string const& message);
+  void set(int code, std::string message);
 
-  bool successful() const { return (_statusCode >= 200 && _statusCode <= 299); }
+  [[nodiscard]] bool successful() const { return (_statusCode >= 200 && _statusCode <= 299); }
 
-  bool connected() const;
+  [[nodiscard]] bool connected() const;
 
-  int httpCode() const;
+  [[nodiscard]] int httpCode() const;
 
-  int errorCode() const;
+  [[nodiscard]] int errorCode() const;
 
-  std::string errorMessage() const;
+  [[nodiscard]] std::string errorMessage() const;
 
-  std::string errorDetails() const;
+  [[nodiscard]] std::string errorDetails() const;
 
-  std::string const location() const { return _location; }
+  [[nodiscard]] std::string const& location() const { return _location; }
 
-  std::string const body() const { return _body; }
-  std::string const& bodyRef() const { return _body; }
+  [[nodiscard]] std::string body() const;
 
-  bool sent() const;
+  [[nodiscard]] bool sent() const;
 
   void clear();
 
-  velocypack::Slice slice() const;
+  [[nodiscard]] velocypack::Slice slice() const;
+
   void setVPack(std::shared_ptr<velocypack::Builder> const& vpack) {
     _vpack = vpack;
   }
 
-  Result asResult() {
-    if (successful()) {
-      return Result{};
-    }
-    return Result{errorCode(), errorMessage()};
-  }
+  [[nodiscard]] Result asResult() const;
 
   void toVelocyPack(VPackBuilder& builder) const;
 
-  VPackBuilder toVelocyPack() const;
+  [[nodiscard]] VPackBuilder toVelocyPack() const;
+
+  [[nodiscard]] std::optional<std::pair<int, std::string_view>> parseBodyError() const;
 
  public:
-  std::string _location;
-  std::string _message;
-  std::string _body;
+  std::string _location = "";
+  std::string _message = "";
 
-  std::unordered_map<std::string, AgencyCommResultEntry> _values;
-  int _statusCode;
-  bool _connected;
-  bool _sent;
+  std::unordered_map<std::string, AgencyCommResultEntry> _values = {};
+  int _statusCode = 0;
+  bool _connected = false;
+  bool _sent = false;
 
  private:
   std::shared_ptr<velocypack::Builder> _vpack;
@@ -575,7 +584,7 @@ class AgencyComm {
  public:
   explicit AgencyComm(application_features::ApplicationServer&);
 
-  AgencyCommResult sendServerState();
+  AgencyCommResult sendServerState(double timeout);
 
   std::string version();
 
@@ -592,8 +601,9 @@ class AgencyComm {
 
   AgencyCommResult setValue(std::string const&, arangodb::velocypack::Slice const&, double);
 
-  AgencyCommResult setTransient(std::string const&,
-                                arangodb::velocypack::Slice const&, uint64_t);
+  AgencyCommResult setTransient(std::string const& key,
+                                arangodb::velocypack::Slice const& slice, 
+                                uint64_t ttl, double timeout);
 
   bool exists(std::string const&);
 
@@ -636,6 +646,8 @@ class AgencyComm {
 
   AgencyCommResult sendWithFailover(arangodb::rest::RequestType, double,
                                     std::string const&, velocypack::Slice);
+
+  static void buildInitialAnalyzersSlice(VPackBuilder& builder);
 
  private:
   bool lock(std::string const&, double, double, arangodb::velocypack::Slice const&);

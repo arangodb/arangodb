@@ -55,7 +55,7 @@ class ClientsExecutorInfos {
  public:
   explicit ClientsExecutorInfos(std::vector<std::string> clientIds);
 
-  ClientsExecutorInfos(ClientsExecutorInfos&&) noexcept = default;
+  ClientsExecutorInfos(ClientsExecutorInfos&&) = default;
   ClientsExecutorInfos(ClientsExecutorInfos const&) = delete;
   ~ClientsExecutorInfos() = default;
 
@@ -63,7 +63,7 @@ class ClientsExecutorInfos {
   auto clientIds() const noexcept -> std::vector<std::string> const&;
 
  private:
-  std::vector<std::string> _clientIds;
+  std::vector<std::string> const _clientIds;
 };
 
 class BlocksWithClients {

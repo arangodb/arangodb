@@ -48,6 +48,7 @@
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
+#include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 
 #include "RocksDBEngine/RocksDBPrefixExtractor.h"
@@ -68,7 +69,7 @@ using namespace arangodb;
 
 namespace {
 std::string const lowest;            // smallest possible key
-std::string const highest = "\xFF";  // greatest possible key
+std::string const highest(KeyGenerator::maxKeyLength, std::numeric_limits<std::string::value_type>::max());  // greatest possible key
 }  // namespace
 
 // ================ Primary Index Iterators ================
@@ -211,7 +212,7 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
       _iterator = VPackArrayIterator(_keys->slice());
       return true;
     }
-      
+
     return false;
   }
 
@@ -277,7 +278,7 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
   bool const _allowCoveringIndexOptimization;
 };
 
-template<bool reverse>
+template <bool reverse>
 class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
  private:
   friend class RocksDBVPackIndex;
@@ -285,15 +286,15 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
  public:
   RocksDBPrimaryIndexRangeIterator(LogicalCollection* collection, transaction::Methods* trx,
                                    arangodb::RocksDBPrimaryIndex const* index,
-                                   RocksDBKeyBounds&& bounds,
-                                   bool allowCoveringIndexOptimization)
+                                   RocksDBKeyBounds&& bounds, bool allowCoveringIndexOptimization)
       : IndexIterator(collection, trx),
         _index(index),
         _cmp(index->comparator()),
         _allowCoveringIndexOptimization(allowCoveringIndexOptimization),
+        _mustSeek(true),
         _bounds(std::move(bounds)) {
     TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::primary());
-  
+
     RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
     rocksdb::ReadOptions options = mthds->iteratorReadOptions();
     // we need to have a pointer to a slice for the upper bound
@@ -308,11 +309,6 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
 
     TRI_ASSERT(options.prefix_same_as_start);
     _iterator = mthds->NewIterator(options, index->columnFamily());
-    if constexpr (reverse) {
-      _iterator->SeekForPrev(_bounds.end());
-    } else {
-      _iterator->Seek(_bounds.start());
-    }
   }
 
  public:
@@ -323,6 +319,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
   /// @brief Get the next limit many elements in the index
   bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
     TRI_ASSERT(_trx->state()->isRunning());
+    seekIfRequired();
 
     if (limit == 0 || !_iterator->Valid() || outOfRange()) {
       // No limit no data, or we are actually done. The last call should have
@@ -353,14 +350,15 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
   
   bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
     TRI_ASSERT(_allowCoveringIndexOptimization);
-    
+    seekIfRequired();
+
     if (limit == 0 || !_iterator->Valid() || outOfRange()) {
       // No limit no data, or we are actually done. The last call should have
       // returned false
       TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
       return false;
     }
-      
+
     transaction::BuilderLeaser builder(transaction());
 
     while (limit > 0) {
@@ -382,11 +380,13 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
         return false;
       }
     }
+
     return true;
   }
 
   void skipImpl(uint64_t count, uint64_t& skipped) override {
     TRI_ASSERT(_trx->state()->isRunning());
+    seekIfRequired();
 
     if (!_iterator->Valid() || outOfRange()) {
       return;
@@ -412,12 +412,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
   /// @brief Reset the cursor
   void resetImpl() override {
     TRI_ASSERT(_trx->state()->isRunning());
-
-    if constexpr (reverse) {
-      _iterator->SeekForPrev(_bounds.end());
-    } else {
-      _iterator->Seek(_bounds.start());
-    }
+    _mustSeek = true;
   }
 
   /// @brief we provide a method to provide the index attribute values
@@ -434,10 +429,22 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
     }
   }
 
+  void seekIfRequired() {
+    if (_mustSeek) {
+      if constexpr (reverse) {
+        _iterator->SeekForPrev(_bounds.end());
+      } else {
+        _iterator->Seek(_bounds.start());
+      }
+      _mustSeek = false;
+    }
+  }
+
   arangodb::RocksDBPrimaryIndex const* _index;
   rocksdb::Comparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   bool const _allowCoveringIndexOptimization;
+  bool _mustSeek;
   RocksDBKeyBounds _bounds;
   // used for iterate_upper_bound iterate_lower_bound
   rocksdb::Slice _rangeBound;
@@ -449,13 +456,14 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
 
 RocksDBPrimaryIndex::RocksDBPrimaryIndex(arangodb::LogicalCollection& collection,
                                          arangodb::velocypack::Slice const& info)
-    : RocksDBIndex(IndexId::primary(), collection, StaticStrings::IndexNamePrimary,
-                   std::vector<std::vector<arangodb::basics::AttributeName>>(
-                       {{arangodb::basics::AttributeName(StaticStrings::KeyString, false)}}),
-                   true, false, RocksDBColumnFamily::primary(),
-                   basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId),
-                   basics::VelocyPackHelper::stringUInt64(info, StaticStrings::TempObjectId),
-                   static_cast<RocksDBCollection*>(collection.getPhysical())->cacheEnabled()),
+    : RocksDBIndex(
+          IndexId::primary(), collection, StaticStrings::IndexNamePrimary,
+          std::vector<std::vector<arangodb::basics::AttributeName>>(
+              {{arangodb::basics::AttributeName(StaticStrings::KeyString, false)}}),
+          true, false, RocksDBColumnFamily::primary(),
+          basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId),
+          basics::VelocyPackHelper::stringUInt64(info, StaticStrings::TempObjectId),
+          static_cast<RocksDBCollection*>(collection.getPhysical())->cacheEnabled()),
       _isRunningInCluster(ServerState::instance()->isRunningInCluster()) {
   TRI_ASSERT(_cf == RocksDBColumnFamily::primary());
   TRI_ASSERT(objectId() != 0);
@@ -605,8 +613,8 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
   }
 
   if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    // blacklist new index entry to avoid caching without committing first
-    blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
+    // invalidate new index cache entry to avoid caching without committing first
+    invalidateCacheEntry(key->string().data(), static_cast<uint32_t>(key->string().size()));
   }
 
   TRI_ASSERT(revision != 0);
@@ -634,11 +642,11 @@ Result RocksDBPrimaryIndex::update(transaction::Methods& trx, RocksDBMethods* mt
 
   TRI_voc_rid_t revision = transaction::helpers::extractRevFromDocument(newDoc);
   auto value = RocksDBValue::PrimaryIndexValue(newDocumentId, revision);
-  
-  // blacklist new index entry to avoid caching without committing first
-  blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
-  rocksdb::Status s = mthd->Put(_cf, key.ref(), value.string(), /*assume_tracked*/false);
+  // invalidate new index cache entry to avoid caching without committing first
+  invalidateCacheEntry(key->string().data(), static_cast<uint32_t>(key->string().size()));
+
+  rocksdb::Status s = mthd->Put(_cf, key.ref(), value.string(), /*assume_tracked*/ false);
   if (!s.ok()) {
     res.reset(rocksutils::convertStatus(s, rocksutils::index));
     addErrorMsg(res);
@@ -658,7 +666,7 @@ Result RocksDBPrimaryIndex::remove(transaction::Methods& trx, RocksDBMethods* mt
   RocksDBKeyLeaser key(&trx);
   key->constructPrimaryIndexValue(objectId(), arangodb::velocypack::StringRef(keySlice));
 
-  blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
+  invalidateCacheEntry(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
   // acquire rocksdb transaction
   auto* mthds = RocksDBTransactionState::toMethods(&trx);
@@ -673,22 +681,23 @@ Result RocksDBPrimaryIndex::remove(transaction::Methods& trx, RocksDBMethods* mt
 /// @brief checks whether the index supports the condition
 Index::FilterCosts RocksDBPrimaryIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-    arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
-    size_t itemsInIndex) const {
-  return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex);
+    arangodb::aql::AstNode const* node,
+    arangodb::aql::Variable const* reference, size_t itemsInIndex) const {
+  return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node,
+                                                              reference, itemsInIndex);
 }
 
-Index::SortCosts RocksDBPrimaryIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
-                                                            arangodb::aql::Variable const* reference,
-                                                            size_t itemsInIndex) const {
-  return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference, itemsInIndex);
+Index::SortCosts RocksDBPrimaryIndex::supportsSortCondition(
+    arangodb::aql::SortCondition const* sortCondition,
+    arangodb::aql::Variable const* reference, size_t itemsInIndex) const {
+  return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition,
+                                                            reference, itemsInIndex);
 }
 
 /// @brief creates an IndexIterator for the given Condition
 std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
     transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
-
   TRI_ASSERT(!isSorted() || opts.sorted);
   if (node == nullptr) {
     // full range scan
@@ -825,7 +834,12 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
         return std::make_unique<EmptyIndexIterator>(&_collection, trx);
       } else {
         if (type == aql::NODE_TYPE_OPERATOR_BINARY_LT && !value.empty()) {
-          value.back() -= 0x01U;  // modify upper bound so that it is not included
+          // modify upper bound so that it is not included
+          // primary keys are ASCII only, so we don't need to care about UTF-8 characters here
+          if (value.back() >= static_cast<std::string::value_type>(0x02)) {
+            value.back() -= 0x01;  
+            value.append(::highest);
+          }
         }
         if (!upperFound || value < upper) {
           upper = std::move(value);
@@ -843,7 +857,12 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
         return std::make_unique<EmptyIndexIterator>(&_collection, trx);
       } else {
         if (type == aql::NODE_TYPE_OPERATOR_BINARY_GE && !value.empty()) {
-          value.back() -= 0x01U;  // modify lower bound so it is included
+          // modify lower bound so it is included in the results
+          // primary keys are ASCII only, so we don't need to care about UTF-8 characters here
+          if (value.back() >= static_cast<std::string::value_type>(0x02)) {
+            value.back() -= 0x01;  
+            value.append(::highest);
+          }
         }
         if (!lowerFound || value > lower) {
           lower = std::move(value);
@@ -886,10 +905,9 @@ arangodb::aql::AstNode* RocksDBPrimaryIndex::specializeCondition(
 }
 
 /// @brief create the iterator, for a single attribute, IN operator
-std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::createInIterator(transaction::Methods* trx,
-                                                                     arangodb::aql::AstNode const* attrNode,
-                                                                     arangodb::aql::AstNode const* valNode,
-                                                                     bool ascending) {
+std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::createInIterator(
+    transaction::Methods* trx, arangodb::aql::AstNode const* attrNode,
+    arangodb::aql::AstNode const* valNode, bool ascending) {
   // _key or _id?
   bool const isId = (attrNode->stringEquals(StaticStrings::IdString));
 
@@ -900,13 +918,14 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::createInIterator(transaction
   std::unique_ptr<VPackBuilder> keys(builder.steal());
 
   fillInLookupValues(trx, *(keys.get()), valNode, ascending, isId);
-  return std::make_unique<RocksDBPrimaryIndexInIterator>(&_collection, trx, this, std::move(keys), !isId);
+  return std::make_unique<RocksDBPrimaryIndexInIterator>(&_collection, trx, this,
+                                                         std::move(keys), !isId);
 }
 
 /// @brief create the iterator, for a single attribute, EQ operator
-std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::createEqIterator(transaction::Methods* trx,
-                                                                     arangodb::aql::AstNode const* attrNode,
-                                                                     arangodb::aql::AstNode const* valNode) {
+std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::createEqIterator(
+    transaction::Methods* trx, arangodb::aql::AstNode const* attrNode,
+    arangodb::aql::AstNode const* valNode) {
   // _key or _id?
   bool const isId = (attrNode->stringEquals(StaticStrings::IdString));
 
@@ -922,7 +941,8 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::createEqIterator(transaction
   }
 
   if (!key->isEmpty()) {
-    return std::make_unique<RocksDBPrimaryIndexEqIterator>(&_collection, trx, this, std::move(key), !isId);
+    return std::make_unique<RocksDBPrimaryIndexEqIterator>(&_collection, trx, this,
+                                                           std::move(key), !isId);
   }
 
   return std::make_unique<EmptyIndexIterator>(&_collection, trx);
@@ -1004,9 +1024,12 @@ void RocksDBPrimaryIndex::handleValNode(transaction::Methods* trx, VPackBuilder*
               TRI_ERROR_INTERNAL, "unable to cast smart edge collection");
         }
 
-        if (_collection.planId() != c->getLocalCid() &&
-            _collection.planId() != c->getFromCid() &&
-            _collection.planId() != c->getToCid()) {
+        if (!c->isDisjoint() && (_collection.planId() != c->getLocalCid() &&
+                                 _collection.planId() != c->getFromCid() &&
+                                 _collection.planId() != c->getToCid())) {
+          // invalid planId
+          return;
+        } else if (c->isDisjoint() && _collection.planId() != c->getLocalCid()) {
           // invalid planId
           return;
         }

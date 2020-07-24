@@ -42,7 +42,7 @@ using namespace arangodb::aql;
 // --SECTION--                                             Coordinator Container
 // -----------------------------------------------------------------------------
 
-EngineInfoContainerCoordinator::EngineInfo::EngineInfo(QueryId id, ExecutionNodeId idOfRemoteNode)
+EngineInfoContainerCoordinator::EngineInfo::EngineInfo(EngineId id, ExecutionNodeId idOfRemoteNode)
     : _id(id), _idOfRemoteNode(idOfRemoteNode) {
   TRI_ASSERT(_nodes.empty());
 }
@@ -80,7 +80,7 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
   return {TRI_ERROR_NO_ERROR};
 }
 
-QueryId EngineInfoContainerCoordinator::EngineInfo::queryId() const { return _id; }
+EngineId EngineInfoContainerCoordinator::EngineInfo::engineId() const { return _id; }
 
 EngineInfoContainerCoordinator::EngineInfoContainerCoordinator() {
   // We always start with an empty coordinator snippet
@@ -111,7 +111,7 @@ QueryId EngineInfoContainerCoordinator::closeSnippet() {
   TRI_ASSERT(!_engineStack.empty());
 
   size_t idx = _engineStack.top();
-  QueryId id = _engines[idx].queryId();
+  QueryId id = _engines[idx].engineId();
   _engineStack.pop();
   return id;
 }
@@ -132,11 +132,11 @@ Result EngineInfoContainerCoordinator::buildEngines(
       if (res.fail()) {
         return res;
       }
-      TRI_ASSERT(!first || info.queryId() == 0);
+      TRI_ASSERT(!first || info.engineId() == 0);
       TRI_ASSERT(!first || query.sharedState() == engine->sharedState());
       
       first = false;
-      coordSnippets.emplace_back(std::make_pair(info.queryId(), std::move(engine)));
+      coordSnippets.emplace_back(std::make_pair(info.engineId(), std::move(engine)));
     }
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.message());

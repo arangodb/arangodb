@@ -94,8 +94,6 @@ class multiterm_query : public filter::prepared {
   typedef states_cache<multiterm_state> states_t;
   typedef std::vector<bstring> stats_t;
 
-  DECLARE_SHARED_PTR(multiterm_query);
-
   explicit multiterm_query(states_t&& states,
                            std::shared_ptr<stats_t> const& stats,
                            boost_t boost,
@@ -123,7 +121,7 @@ class multiterm_query : public filter::prepared {
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
-      const attribute_view& /*ctx*/) const override;
+      const attribute_provider* /*ctx*/) const override;
 
  private:
   const stats_t& stats() const noexcept {

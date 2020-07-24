@@ -332,18 +332,6 @@ static void JS_APIAgency(std::string const& envelope,
     THROW_AGENCY_EXCEPTION(result);
   }
 
-  try {
-    result.setVPack(VPackParser::fromJson(result.bodyRef()));
-    result._body.clear();
-  } catch (std::exception const& e) {
-    LOG_TOPIC("57115", ERR, Logger::AGENCYCOMM) << "Error transforming result: " << e.what();
-    result.clear();
-  } catch (...) {
-    LOG_TOPIC("ec86e", ERR, Logger::AGENCYCOMM)
-        << "Error transforming result: out of memory";
-    result.clear();
-  }
-
   auto l = TRI_VPackToV8(isolate, result.slice());
 
   TRI_V8_RETURN(l);
@@ -466,18 +454,6 @@ static void JS_Agency(v8::FunctionCallbackInfo<v8::Value> const& args) {
     THROW_AGENCY_EXCEPTION(result);
   }
 
-  try {
-    result.setVPack(VPackParser::fromJson(result.bodyRef()));
-    result._body.clear();
-  } catch (std::exception const& e) {
-    LOG_TOPIC("d8594", ERR, Logger::AGENCYCOMM) << "Error transforming result: " << e.what();
-    result.clear();
-  } catch (...) {
-    LOG_TOPIC("0ba23", ERR, Logger::AGENCYCOMM)
-        << "Error transforming result: out of memory";
-    result.clear();
-  }
-
   auto l = TRI_VPackToV8(isolate, result.slice());
 
   TRI_V8_RETURN(l);
@@ -583,9 +559,9 @@ static void JS_VersionAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_GET_GLOBALS();
   AgencyComm comm(v8g->_server);
-  std::string const version = comm.version();
+  auto const version = comm.version();
 
-  TRI_V8_RETURN_STD_STRING(version);
+  TRI_V8_RETURN_STD_STRING_VIEW(version);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -630,7 +606,7 @@ static void JS_Databases(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_GET_GLOBALS();
   auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
-  std::vector<DatabaseID> res = ci.databases(true);
+  std::vector<DatabaseID> res = ci.databases(false);
   v8::Handle<v8::Array> a = v8::Array::New(isolate, (int)res.size());
   std::vector<DatabaseID>::iterator it;
   int count = 0;
@@ -1340,8 +1316,8 @@ static void JS_StatusServerState(v8::FunctionCallbackInfo<v8::Value> const& args
   TRI_V8_TRY_CATCH_END
 }
 
-typedef TRI_voc_tid_t CoordTransactionID;
-typedef TRI_voc_tid_t OperationID;
+typedef std::uint64_t CoordTransactionID;
+typedef std::uint64_t OperationID;
 namespace {
 struct AsyncRequest {
   network::Response response;
@@ -1434,8 +1410,9 @@ static void PrepareClusterCommRequest(v8::FunctionCallbackInfo<v8::Value> const&
     v8::Handle<v8::Object> opt = args[6].As<v8::Object>();
     TRI_GET_GLOBAL_STRING(CoordTransactionIDKey);
     if (TRI_HasProperty(context, isolate, opt, CoordTransactionIDKey)) {
-      coordTransactionID =
-        TRI_ObjectToUInt64(isolate, opt->Get(context, CoordTransactionIDKey).FromMaybe(v8::Handle<v8::Value>()), true);
+      coordTransactionID = TRI_ObjectToUInt64(
+          isolate,
+          opt->Get(context, CoordTransactionIDKey).FromMaybe(v8::Handle<v8::Value>()), true);
     }
     TRI_GET_GLOBAL_STRING(TimeoutKey);
     if (TRI_HasProperty(context, isolate, opt, TimeoutKey)) {
@@ -1492,18 +1469,22 @@ static void Return_PrepareClusterCommResultForJS(v8::FunctionCallbackInfo<v8::Va
     network::Response const& response = res.response;
 
     if (response.ok()) {
-      // The headers:
-      v8::Handle<v8::Object> h = v8::Object::New(isolate);
-      TRI_GET_GLOBAL_STRING(StatusKey);
-      r->Set(context, StatusKey, TRI_V8_ASCII_STRING(isolate, "RECEIVED")).FromMaybe(false);
+      {
+        // The headers:
+        v8::Handle<v8::Object> h = v8::Object::New(isolate);
+        TRI_GET_GLOBAL_STRING(StatusKey);
+        r->Set(context, StatusKey, TRI_V8_ASCII_STRING(isolate, "RECEIVED")).FromMaybe(false);
 
-      auto headers = response.response->header.meta();
-      headers[StaticStrings::ContentLength] = StringUtils::itoa(response.response->payloadSize());
-      for (auto& it : headers) {
-        h->Set(context, TRI_V8_STD_STRING(isolate, it.first), TRI_V8_STD_STRING(isolate, it.second)).FromMaybe(false);
+        auto headers = response.response->header.meta();
+        headers[StaticStrings::ContentLength] = StringUtils::itoa(response.response->payloadSize());
+        for (auto& it : headers) {
+          h->Set(context, TRI_V8_STD_STRING(isolate, it.first), TRI_V8_STD_STRING(isolate, it.second)).FromMaybe(false);
+        }
+        r->Set(context, TRI_V8_ASCII_STRING(isolate, "headers"), h).FromMaybe(false);
       }
-      r->Set(context, TRI_V8_ASCII_STRING(isolate, "headers"), h).FromMaybe(false);
-
+      TRI_GET_GLOBAL_STRING(CodeKey);
+      r->Set(context, CodeKey, v8::Number::New(isolate, response.statusCode())).FromMaybe(false);
+    
       std::string json;
       if (response.response->isContentTypeVPack()) {
         json = response.response->slice().toJson();
@@ -1586,7 +1567,8 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   reqOpts.retryNotFound = false;
   reqOpts.timeout = network::Timeout(timeout);
   reqOpts.skipScheduler = true;
-  
+  reqOpts.contentType = StaticStrings::MimeTypeJsonNoEncoding;
+
   OperationID opId = TRI_NewTickServer();
   auto ar = std::make_shared<::AsyncRequest>();
   ar->destination = destination;
@@ -1678,7 +1660,6 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
   //   - shardID              (string)
   //   - timeout              (number)
 
-
   CoordTransactionID mycoordTransactionID = 0;
   OperationID myoperationID = 0;
   ShardID myshardID = "";
@@ -1688,12 +1669,15 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::Handle<v8::Object> obj = args[0].As<v8::Object>();
     TRI_GET_GLOBAL_STRING(CoordTransactionIDKey);
     if (TRI_HasProperty(context, isolate, obj, CoordTransactionIDKey)) {
-      mycoordTransactionID =
-        TRI_ObjectToUInt64(isolate, obj->Get(context, CoordTransactionIDKey).FromMaybe(v8::Handle<v8::Value>()), true);
+      mycoordTransactionID = TRI_ObjectToUInt64(
+          isolate,
+          obj->Get(context, CoordTransactionIDKey).FromMaybe(v8::Handle<v8::Value>()), true);
     }
     TRI_GET_GLOBAL_STRING(OperationIDKey);
     if (TRI_HasProperty(context, isolate, obj, OperationIDKey)) {
-      myoperationID = TRI_ObjectToUInt64(isolate, obj->Get(context, OperationIDKey).FromMaybe(v8::Handle<v8::Value>()), true);
+      myoperationID = TRI_ObjectToUInt64(
+          isolate,
+          obj->Get(context, OperationIDKey).FromMaybe(v8::Handle<v8::Value>()), true);
     }
     TRI_GET_GLOBAL_STRING(ShardIDKey);
     if (TRI_HasProperty(context, isolate, obj, ShardIDKey)) {
@@ -1768,15 +1752,15 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::Handle<v8::Object> obj = args[0].As<v8::Object>();
     TRI_GET_GLOBAL_STRING(CoordTransactionIDKey);
     if (TRI_HasProperty(context, isolate, obj, CoordTransactionIDKey)) {
-      mycoordTransactionID =
-        TRI_ObjectToUInt64(isolate, obj->Get(context, CoordTransactionIDKey).FromMaybe(v8::Handle<v8::Value>()), true);
+      mycoordTransactionID = TRI_ObjectToUInt64(
+          isolate,
+          obj->Get(context, CoordTransactionIDKey).FromMaybe(v8::Handle<v8::Value>()), true);
     }
     TRI_GET_GLOBAL_STRING(OperationIDKey);
     if (TRI_HasProperty(context, isolate, obj, OperationIDKey)) {
-      myoperationID = TRI_ObjectToUInt64(isolate,
-                                         obj->Get(context,
-                                                  OperationIDKey).FromMaybe(v8::Handle<v8::Value>()),
-                                         true);
+      myoperationID = TRI_ObjectToUInt64(
+          isolate,
+          obj->Get(context, OperationIDKey).FromMaybe(v8::Handle<v8::Value>()), true);
     }
     TRI_GET_GLOBAL_STRING(ShardIDKey);
     if (TRI_HasProperty(context, isolate, obj, ShardIDKey)) {
@@ -1905,6 +1889,36 @@ static void JS_GetCollectionShardDistribution(v8::FunctionCallbackInfo<v8::Value
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns database analyzers revision
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_GetAnalyzersRevision(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+
+  onlyInCluster();
+
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("getAnalyzersRevision(<databaseName>)");
+  }
+
+  auto const databaseID = TRI_ObjectToString(isolate, args[0]);
+
+  TRI_GET_GLOBALS();
+  auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
+  auto const analyzerRevision = ci.getAnalyzersRevision(databaseID);
+
+  if (!analyzerRevision) {
+    TRI_V8_THROW_EXCEPTION_PARAMETER("<databaseName> is invalid");
+  }
+
+  VPackBuilder result;
+  analyzerRevision->toVelocyPack(result);
+
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a global cluster context
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2003,6 +2017,7 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(isolate, rt,
                        TRI_V8_ASCII_STRING(isolate, "getCoordinators"), JS_GetCoordinators);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "uniqid"), JS_UniqidClusterInfo);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getAnalyzersRevision"), JS_GetAnalyzersRevision);
 
   v8g->ClusterInfoTempl.Reset(isolate, rt);
   TRI_AddGlobalFunctionVocbase(isolate,

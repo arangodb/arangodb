@@ -34,6 +34,7 @@
 #include "Network/NetworkFeature.h"
 #include "VocBase/ticks.h"
 
+#include <fuerte/types.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
@@ -197,16 +198,14 @@ int toArangoErrorCodeInternal(fuerte::Error err) {
     case fuerte::Error::CouldNotConnect:
       return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
 
-    case fuerte::Error::CloseRequested:
     case fuerte::Error::ConnectionClosed:
+    case fuerte::Error::CloseRequested:
       return TRI_ERROR_CLUSTER_CONNECTION_LOST;
 
     case fuerte::Error::Timeout:  // No reply, we give up:
       return TRI_ERROR_CLUSTER_TIMEOUT;
 
     case fuerte::Error::Canceled:
-      return TRI_ERROR_REQUEST_CANCELED;
-
     case fuerte::Error::QueueCapacityExceeded:  // there is no result
     case fuerte::Error::ReadError:
     case fuerte::Error::WriteError:
@@ -296,6 +295,20 @@ std::string fuerteToArangoErrorMessage(network::Response const& res) {
 
 std::string fuerteToArangoErrorMessage(fuerte::Error err) {
   return TRI_errno_string(fuerteToArangoErrorCode(err));
+}
+
+int fuerteStatusToArangoErrorCode(fuerte::Response const& res) {
+  if (fuerte::statusIsSuccess(res.statusCode())) {
+    return TRI_ERROR_NO_ERROR;
+  } else if (res.statusCode() > 0) {
+    return static_cast<int>(res.statusCode());
+  } else {
+    return TRI_ERROR_INTERNAL;
+  }
+}
+
+std::string fuerteStatusToArangoErrorMessage(fuerte::Response const& res) {
+  return fuerte::status_code_to_string(res.statusCode());
 }
 
 }  // namespace network

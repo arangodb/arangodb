@@ -84,7 +84,7 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
   // Extract the local shards for edge collections.
   for (auto const& col : edges) {
 #ifdef USE_ENTERPRISE
-    if (query.trxForOptimization().isInaccessibleCollection(col->getPlanId())) {
+    if (query.trxForOptimization().isInaccessibleCollection(col->id())) {
       _inaccessible.insert(col->name());
       _inaccessible.insert(std::to_string(col->id()));
     }
@@ -100,7 +100,7 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
   // Or if we guarantee to never read vertex data.
   for (auto const& col : vertices) {
 #ifdef USE_ENTERPRISE
-    if (query.trxForOptimization().isInaccessibleCollection(col->getPlanId())) {
+    if (query.trxForOptimization().isInaccessibleCollection(col->id())) {
       _inaccessible.insert(col->name());
       _inaccessible.insert(std::to_string(col->id()));
     }
@@ -241,7 +241,7 @@ void EngineInfoContainerDBServerServerBased::openSnippet(GatherNode const* sinkG
 // to the given queryid of the coordinator.
 void EngineInfoContainerDBServerServerBased::closeSnippet(QueryId inputSnippet) {
   TRI_ASSERT(!_snippetStack.empty());
-  auto e = _snippetStack.top();
+  std::shared_ptr<QuerySnippet> e = _snippetStack.top();
   TRI_ASSERT(e);
   _snippetStack.pop();
   e->useQueryIdAsInput(inputSnippet);
@@ -261,7 +261,7 @@ void EngineInfoContainerDBServerServerBased::closeSnippet(QueryId inputSnippet) 
 //   the DBServers will clean up their snippets after a TTL.
 Result EngineInfoContainerDBServerServerBased::buildEngines(
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
-    MapRemoteToSnippet& snippetIds,  std::map<std::string, QueryId>& serverToQueryId,
+    MapRemoteToSnippet& snippetIds, std::map<std::string, QueryId>& serverToQueryId,
     std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases) {
   // This needs to be a set with a defined order, it is important, that we contact
   // the database servers only in this specific order to avoid cluster-wide deadlock situations.
@@ -310,6 +310,9 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 
     addVariablesPart(infoBuilder);
     TRI_ASSERT(infoBuilder.isOpenObject());
+    
+    infoBuilder.add("isModificationQuery", VPackValue(_query.isModificationQuery()));
+    infoBuilder.add("isAsyncQuery", VPackValue(_query.isAsyncQuery()));
 
     addSnippetPart(nodesById, infoBuilder, _shardLocking, nodeAliases, server);
     TRI_ASSERT(infoBuilder.isOpenObject());
@@ -322,6 +325,8 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     infoBuilder.add(StaticStrings::SerializationFormat,
                     VPackValue(static_cast<SerializationFormatType>(
                         aql::SerializationFormat::SHADOWROWS)));
+
+    trx.state()->analyzersRevision().toVelocyPack(infoBuilder);
     infoBuilder.close();  // Base object
     TRI_ASSERT(infoBuilder.isClosed());
 
@@ -558,12 +563,11 @@ void EngineInfoContainerDBServerServerBased::addOptionsPart(arangodb::velocypack
     for (Collection const* coll : used) {
       TRI_ASSERT(coll != nullptr);
       // simon: add collection name, plan ID and shard IDs
-      if (_query.trxForOptimization().isInaccessibleCollection(coll->getPlanId())) {
+      if (_query.trxForOptimization().isInaccessibleCollection(coll->id())) {
         for (ShardID const& sid : _shardLocking.getShardsForCollection(server, coll)) {
           opts.inaccessibleCollections.insert(sid);
         }
-        opts.inaccessibleCollections.insert(std::to_string(coll->getPlanId()));
-//        opts.inaccessibleCollections.insert(coll->name());
+        opts.inaccessibleCollections.insert(std::to_string(coll->id()));
       }
     }
     opts.toVelocyPack(builder, true);

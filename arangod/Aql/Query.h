@@ -35,7 +35,9 @@
 #include "Aql/ResourceUsage.h"
 #include "Aql/SharedQueryState.h"
 #include "Basics/Common.h"
+#include "Basics/system-functions.h"
 #include "V8Server/V8Context.h"
+#include "Cluster/ClusterTypes.h"
 
 #include <velocypack/Builder.h>
 
@@ -76,8 +78,17 @@ class Query : public QueryContext {
   Query(Query const&) = delete;
   Query& operator=(Query const&) = delete;
 
+ protected:
+  /// @brief internal constructor, Used to construct a full query or a ClusterQuery
+  Query(std::shared_ptr<transaction::Context> const& ctx, QueryString const& queryString,
+        std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
+        aql::QueryOptions&& options, std::shared_ptr<SharedQueryState> sharedState);
+
  public:
-  /// Used to construct a full query
+  /// @brief public constructor, Used to construct a full query
+  Query(std::shared_ptr<transaction::Context> const& ctx, QueryString const& queryString,
+        std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
+        aql::QueryOptions&& options);
   Query(std::shared_ptr<transaction::Context> const& ctx, QueryString const& queryString,
         std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
         std::shared_ptr<arangodb::velocypack::Builder> const& options);
@@ -91,27 +102,18 @@ class Query : public QueryContext {
 
   /// @brief whether or not the query is killed
   bool killed() const override;
-  
-  void setKilled() override {
-    _killed = true;
-  }
 
   /// @brief set the query to killed
   void kill();
 
   QueryString const& queryString() const { return _queryString; }
   
-  /// @brief Inject a transaction from outside. Use with care!
-  void injectTransaction(std::unique_ptr<transaction::Methods> trx);
-
   QueryProfile* profile() const { return _profile.get(); }
-
-  velocypack::Slice optionsSlice() const { return _options->slice(); }
   
   TEST_VIRTUAL QueryOptions& queryOptions() { return _queryOptions; }
 
-  /// @brief return the start timestamp of the query
-  double startTime() const { return _startTime; }
+  /// @brief return the start time of the query (steady clock value)
+  double startTime() const noexcept;
 
   void prepareQuery(SerializationFormat format);
   
@@ -138,12 +140,9 @@ class Query : public QueryContext {
   QueryResult explain();
 
   /// @brief whether or not a query is a modification query
-  bool isModificationQuery() const;
+  virtual bool isModificationQuery() const noexcept override;
 
-  /// @brief mark a query as modification query
-  void setIsModificationQuery();
-  
-  void setIsAsyncQuery() { _isAsyncQuery = true; }
+  virtual bool isAsyncQuery() const noexcept override;
 
   /// @brief enter a V8 context
   virtual void enterV8Context() override;
@@ -203,7 +202,7 @@ class Query : public QueryContext {
 
  protected:
   /// @brief initializes the query
-  void init();
+  void init(bool createProfile);
 
   /// @brief calculate a hash for the query, once
   uint64_t hash();
@@ -228,7 +227,10 @@ class Query : public QueryContext {
 
   /// @brief cleanup plan and engine for current query can issue WAITING
   ExecutionState cleanupPlanAndEngine(int errorCode, bool sync,
-                                      velocypack::Builder* statsBuilder = nullptr);
+                                      velocypack::Builder* statsBuilder = nullptr,
+                                      bool includePlan = false);
+  
+  void unregisterSnippets();
 
  protected:
   
@@ -248,9 +250,6 @@ class Query : public QueryContext {
 
   /// @brief bind parameters for the query
   BindParameters _bindParameters;
-
-  /// @brief raw query options
-  std::shared_ptr<arangodb::velocypack::Builder> _options;
   
   /// @brief parsed query options
   QueryOptions _queryOptions;
@@ -281,9 +280,9 @@ class Query : public QueryContext {
   /// only populated when the query has generated its result(s) and before
   /// storing the cache entry in the query cache
   std::unique_ptr<QueryCacheResultEntry> _cacheEntry;
-
-  /// @brief query start time
-  double _startTime;
+  
+  /// @brief query start time (steady clock value)
+  double const _startTime;
 
   /// @brief hash for this query. will be calculated only once when needed
   mutable uint64_t _queryHash = DontCache;
@@ -295,11 +294,13 @@ class Query : public QueryContext {
   /// @brief whether or not someone else has acquired a V8 context for us
   bool const _contextOwnedByExterior;
   
-  bool _killed;
+  /// avoid killing a query in normal shutdown / cleanup
+  enum class KillState : uint8_t {
+    None, Shutdown, Killed
+  };
   
-  /// @brief does this query contain async execution nodes
-  bool _isAsyncQuery;
-
+  std::atomic<KillState> _killState;
+  
   /// @brief whether or not the hash was already calculated
   bool _queryHashCalculated;
 };
@@ -310,7 +311,7 @@ class ClusterQuery final : public Query {
   
   /// Used to construct a full query
   ClusterQuery(std::shared_ptr<transaction::Context> const& ctx,
-               std::shared_ptr<arangodb::velocypack::Builder> const& options);
+               QueryOptions&& options);
   ~ClusterQuery();
   
   traverser::GraphEngineList const& traversers() const {
@@ -318,11 +319,13 @@ class ClusterQuery final : public Query {
   }
   
   void prepareClusterQuery(SerializationFormat format,
+                           arangodb::velocypack::Slice querySlice,
                            arangodb::velocypack::Slice collections,
                            arangodb::velocypack::Slice variables,
                            arangodb::velocypack::Slice snippets,
                            arangodb::velocypack::Slice traversals,
-                           arangodb::velocypack::Builder& answer);
+                           arangodb::velocypack::Builder& answer,
+                           arangodb::QueryAnalyzerRevisions const& analyzersRevision);
   
   Result finalizeClusterQuery(ExecutionStats& stats, int errorCode);
 

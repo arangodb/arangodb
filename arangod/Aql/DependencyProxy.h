@@ -69,8 +69,8 @@ class DependencyProxy {
    */
   DependencyProxy(std::vector<ExecutionBlock*> const& dependencies,
                   AqlItemBlockManager& itemBlockManager,
-                  std::shared_ptr<std::unordered_set<RegisterId> const> inputRegisters,
-                  RegisterId nrInputRegisters, velocypack::Options const*);
+                  RegIdSet const& inputRegisters,
+                  RegisterCount nrInputRegisters, velocypack::Options const*);
 
   TEST_VIRTUAL ~DependencyProxy() = default;
 
@@ -93,7 +93,7 @@ class DependencyProxy {
   [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForDependency(
       size_t dependency, size_t atMost = ExecutionBlock::DefaultBatchSize);
 
-  [[nodiscard]] TEST_VIRTUAL RegisterId getNrInputRegisters() const;
+  [[nodiscard]] TEST_VIRTUAL RegisterCount getNrInputRegisters() const;
 
   // Tries to fetch a block from upstream and push it, wrapped, onto
   // _blockQueue. If it succeeds, it returns HASMORE (the returned state
@@ -127,8 +127,8 @@ class DependencyProxy {
  private:
   std::vector<ExecutionBlock*> const& _dependencies;
   AqlItemBlockManager& _itemBlockManager;
-  std::shared_ptr<std::unordered_set<RegisterId> const> const _inputRegisters;
-  RegisterId const _nrInputRegisters;
+  RegIdSet const& _inputRegisters;
+  RegisterCount const _nrInputRegisters;
   std::string _distributeId;
 
   // A queue would suffice, but for the clear() call in reset().

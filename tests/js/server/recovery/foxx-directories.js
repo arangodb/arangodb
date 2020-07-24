@@ -56,13 +56,16 @@ function runSetup () {
   fs.write(fs.join(appPath, 'UnitTestsRecovery2', 'bar.json'), 'test');
 
   db._dropDatabase('UnitTestsRecovery2');
+  // garbage-collect once
+  require("internal").wait(0.5, true);
 
   // we need to wait long enough for the DatabaseManagerThread to 
   // physically carry out the deletion
   let path = fs.join(appPath, 'UnitTestsRecovery2');
   let tries = 0;
-  while (++tries < 10) {
+  while (++tries < 30) {
     if (!fs.isDirectory(path)) {
+      require("console").log("database directory for UnitTestsRecovery2 is gone");
       break;
     }
     internal.wait(1, false);

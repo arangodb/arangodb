@@ -46,18 +46,8 @@ class states_cache : private util::noncopyable {
     states_.reserve(size);
   }
 
-  states_cache(states_cache&& rhs)
-      noexcept(std::is_nothrow_move_constructible_v<states_map>)
-    : states_(std::move(rhs.states_)) {
-  }
-
-  states_cache& operator=(states_cache&& rhs)
-      noexcept(std::is_nothrow_move_assignable_v<states_map>) {
-    if (this != &rhs) {
-      states_ = std::move(rhs.states_);
-    }
-    return *this;
-  }
+  states_cache(states_cache&&) = default;
+  states_cache& operator=(states_cache&&) = default;
 
   State& insert(const sub_reader& rdr) {
     return states_[&rdr];
@@ -89,8 +79,7 @@ class IRESEARCH_API filter {
   //////////////////////////////////////////////////////////////////////////////
   class IRESEARCH_API prepared {
    public:
-    DECLARE_SHARED_PTR(const prepared);
-    DEFINE_FACTORY_INLINE(prepared)
+    using ptr = memory::managed_ptr<const prepared>;
 
     static prepared::ptr empty();
 
@@ -107,14 +96,13 @@ class IRESEARCH_API filter {
     doc_iterator::ptr execute(
         const sub_reader& rdr,
         const order::prepared& ord) const {
-      return execute(rdr, ord, attribute_view::empty_instance());
+      return execute(rdr, ord, nullptr);
     }
 
     virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
-      const attribute_view& ctx
-    ) const = 0;
+      const attribute_provider* ctx) const = 0;
 
     boost_t boost() const noexcept { return boost_; }
 
@@ -125,14 +113,13 @@ class IRESEARCH_API filter {
     boost_t boost_;
   }; // prepared
 
-  DECLARE_UNIQUE_PTR(filter);
-  DEFINE_FACTORY_INLINE(filter)
+  using ptr = std::unique_ptr<filter>;
 
-  explicit filter(const type_id& type) noexcept;
+  explicit filter(const type_info& type) noexcept;
   virtual ~filter() = default;
 
   virtual size_t hash() const noexcept {
-    return std::hash<const type_id*>()(type_);
+    return std::hash<type_info::type_id>()(type_);
   }
 
   bool operator==(const filter& rhs) const noexcept {
@@ -148,13 +135,12 @@ class IRESEARCH_API filter {
       const index_reader& rdr,
       const order::prepared& ord,
       boost_t boost,
-      const attribute_view& ctx
-  ) const = 0;
+      const attribute_provider* ctx) const = 0;
 
   filter::prepared::ptr prepare(
       const index_reader& rdr,
       const order::prepared& ord,
-      const attribute_view& ctx) const {
+      const attribute_provider* ctx) const {
     return prepare(rdr, ord, irs::no_boost(), ctx);
   }
 
@@ -162,7 +148,7 @@ class IRESEARCH_API filter {
       const index_reader& rdr,
       const order::prepared& ord,
       boost_t boost) const {
-    return prepare(rdr, ord, boost, attribute_view::empty_instance());
+    return prepare(rdr, ord, boost, nullptr);
   }
 
   filter::prepared::ptr prepare(
@@ -182,7 +168,7 @@ class IRESEARCH_API filter {
     return *this;
   }
 
-  const type_id& type() const noexcept { return *type_; }
+  type_info::type_id type() const noexcept { return type_; }
 
  protected:
   virtual bool equals(const filter& rhs) const noexcept {
@@ -191,7 +177,7 @@ class IRESEARCH_API filter {
 
  private:
   boost_t boost_;
-  const type_id* type_;
+  type_info::type_id type_;
 }; // filter
 
 // boost::hash_combine support
@@ -209,7 +195,7 @@ class filter_with_options : public filter {
   using options_type = Options;
   using filter_type = typename options_type::filter_type;
 
-  filter_with_options() : filter(filter_type::type()) { }
+  filter_with_options() : filter(irs::type<filter_type>::get()) { }
 
   const options_type& options() const noexcept { return options_; }
   options_type* mutable_options() noexcept { return &options_; }
@@ -272,18 +258,16 @@ class filter_base : public filter_with_options<Options> {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // filter_base
 
-#define DECLARE_FILTER_TYPE() DECLARE_TYPE_ID(::iresearch::type_id)
-#define DEFINE_FILTER_TYPE(class_name) DEFINE_TYPE_ID(class_name,::iresearch::type_id) { \
-  static ::iresearch::type_id type; \
-  return type; }
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @class empty
 /// @brief filter which returns no documents
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API empty: public filter {
+class IRESEARCH_API empty final : public filter {
  public:
-  DECLARE_FILTER_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::empty";
+  }
+
   DECLARE_FACTORY();
 
   empty();
@@ -292,8 +276,7 @@ class IRESEARCH_API empty: public filter {
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx
-  ) const override;
+    const attribute_provider* ctx) const override;
 }; // empty
 
 struct filter_visitor;

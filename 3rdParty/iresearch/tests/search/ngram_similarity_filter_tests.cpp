@@ -60,7 +60,7 @@ TEST(ngram_similarity_base_test, options) {
 
 TEST(ngram_similarity_base_test, ctor) {
   irs::by_ngram_similarity q;
-  ASSERT_EQ(irs::by_ngram_similarity::type(), q.type());
+  ASSERT_EQ(irs::type<irs::by_ngram_similarity>::id(), q.type());
   ASSERT_EQ(irs::by_ngram_similarity_options{}, q.options());
   ASSERT_EQ(irs::no_boost(), q.boost());
   ASSERT_EQ("", q.field());
@@ -190,9 +190,9 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_1) {
   auto prepared = filter.prepare(rdr, prepared_order);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
-    auto& doc = docs->attributes().get<irs::document>();
-    auto& boost = docs->attributes().get<irs::filter_boost>();
-    auto& frequency = docs->attributes().get<irs::frequency>();
+    auto* doc = irs::get<irs::document>(*docs);
+    auto* boost = irs::get<irs::filter_boost>(*docs);
+    auto* frequency = irs::get<irs::frequency>(*docs);
     ASSERT_TRUE(bool(doc)); // ensure all iterators contain "document" attribute
     ASSERT_TRUE(bool(boost));
     ASSERT_TRUE(docs->next());
@@ -229,9 +229,9 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_2) {
   auto prepared = filter.prepare(rdr, prepared_order);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
-    auto& doc = docs->attributes().get<irs::document>();
-    auto& boost = docs->attributes().get<irs::filter_boost>();
-    auto& frequency = docs->attributes().get<irs::frequency>();
+    auto* doc = irs::get<irs::document>(*docs);
+    auto* boost = irs::get<irs::filter_boost>(*docs);
+    auto* frequency = irs::get<irs::frequency>(*docs);
     // ensure all iterators contain  attributes
     ASSERT_TRUE(bool(doc));
     ASSERT_TRUE(bool(boost));
@@ -269,9 +269,9 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_3) {
   auto prepared = filter.prepare(rdr, prepared_order);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
-    auto& doc = docs->attributes().get<irs::document>();
-    auto& boost = docs->attributes().get<irs::filter_boost>();
-    auto& frequency = docs->attributes().get<irs::frequency>();
+    auto* doc = irs::get<irs::document>(*docs);
+    auto* boost = irs::get<irs::filter_boost>(*docs);
+    auto* frequency = irs::get<irs::frequency>(*docs);
     // ensure all iterators contain  attributes
     ASSERT_TRUE(bool(doc));
     ASSERT_TRUE(bool(boost));
@@ -309,9 +309,9 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_4) {
   auto prepared = filter.prepare(rdr, prepared_order);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
-    auto& doc = docs->attributes().get<irs::document>();
-    auto& boost = docs->attributes().get<irs::filter_boost>();
-    auto& frequency = docs->attributes().get<irs::frequency>();
+    auto* doc = irs::get<irs::document>(*docs);
+    auto* boost = irs::get<irs::filter_boost>(*docs);
+    auto* frequency = irs::get<irs::frequency>(*docs);
     // ensure all iterators contain  attributes
     ASSERT_TRUE(bool(doc));
     ASSERT_TRUE(bool(boost));
@@ -350,9 +350,9 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_5) {
   auto prepared = filter.prepare(rdr, prepared_order);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
-    auto& doc = docs->attributes().get<irs::document>();
-    auto& boost = docs->attributes().get<irs::filter_boost>();
-    auto& frequency = docs->attributes().get<irs::frequency>();
+    auto* doc = irs::get<irs::document>(*docs);
+    auto* boost = irs::get<irs::filter_boost>(*docs);
+    auto* frequency = irs::get<irs::frequency>(*docs);
     // ensure all iterators contain  attributes
     ASSERT_TRUE(bool(doc));
     ASSERT_TRUE(bool(boost));
@@ -391,9 +391,9 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_6) {
   auto prepared = filter.prepare(rdr, prepared_order);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
-    auto& doc = docs->attributes().get<irs::document>();
-    auto& boost = docs->attributes().get<irs::filter_boost>();
-    auto& frequency = docs->attributes().get<irs::frequency>();
+    auto* doc = irs::get<irs::document>(*docs);
+    auto* boost = irs::get<irs::filter_boost>(*docs);
+    auto* frequency = irs::get<irs::frequency>(*docs);
     // ensure all iterators contain  attributes
     ASSERT_TRUE(bool(doc));
     ASSERT_TRUE(bool(boost));
@@ -432,9 +432,9 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_7) {
     auto prepared = filter.prepare(rdr, prepared_order);
     for (const auto& sub : rdr) {
         auto docs = prepared->execute(sub, prepared_order);
-        auto& doc = docs->attributes().get<irs::document>();
-        auto& boost = docs->attributes().get<irs::filter_boost>();
-        auto& frequency = docs->attributes().get<irs::frequency>();
+        auto* doc = irs::get<irs::document>(*docs);
+        auto* boost = irs::get<irs::filter_boost>(*docs);
+        auto* frequency = irs::get<irs::frequency>(*docs);
         // ensure all iterators contain  attributes
         ASSERT_TRUE(bool(doc));
         ASSERT_TRUE(bool(boost));
@@ -473,9 +473,9 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_8) {
   auto prepared = filter.prepare(rdr, prepared_order);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
-    auto& doc = docs->attributes().get<irs::document>();
-    auto& boost = docs->attributes().get<irs::filter_boost>();
-    auto& frequency = docs->attributes().get<irs::frequency>();
+    auto* doc = irs::get<irs::document>(*docs);
+    auto* boost = irs::get<irs::filter_boost>(*docs);
+    auto* frequency = irs::get<irs::frequency>(*docs);
     // ensure all iterators contain  attributes
     ASSERT_TRUE(bool(doc));
     ASSERT_TRUE(bool(boost));
@@ -514,9 +514,9 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_9) {
   auto prepared = filter.prepare(rdr, prepared_order);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
-    auto& doc = docs->attributes().get<irs::document>();
-    auto& boost = docs->attributes().get<irs::filter_boost>();
-    auto& frequency = docs->attributes().get<irs::frequency>();
+    auto* doc = irs::get<irs::document>(*docs);
+    auto* boost = irs::get<irs::filter_boost>(*docs);
+    auto* frequency = irs::get<irs::frequency>(*docs);
     // ensure all iterators contain  attributes
     ASSERT_TRUE(bool(doc));
     ASSERT_TRUE(bool(boost));
@@ -555,9 +555,9 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_10) {
   auto prepared = filter.prepare(rdr, prepared_order);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
-    auto& doc = docs->attributes().get<irs::document>();
-    auto& boost = docs->attributes().get<irs::filter_boost>();
-    auto& frequency = docs->attributes().get<irs::frequency>();
+    auto* doc = irs::get<irs::document>(*docs);
+    auto* boost = irs::get<irs::filter_boost>(*docs);
+    auto* frequency = irs::get<irs::frequency>(*docs);
     // ensure all iterators contain  attributes
     ASSERT_TRUE(bool(doc));
     ASSERT_TRUE(bool(boost));
@@ -592,7 +592,7 @@ TEST_P(ngram_similarity_filter_test_case, no_match_case) {
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub);
 
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc)); // ensure all iterators contain "document" attribute
     ASSERT_FALSE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
@@ -615,7 +615,7 @@ TEST_P(ngram_similarity_filter_test_case, no_serial_match_case) {
   auto prepared = filter.prepare(rdr, irs::order::prepared::unordered());
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub);
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc)); // ensure all iterators contain "document" attribute
     ASSERT_FALSE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
@@ -642,7 +642,7 @@ TEST_P(ngram_similarity_filter_test_case, one_match_case) {
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub);
 
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc)); // ensure all iterators contain "document" attribute
     while (docs->next()) {
       ASSERT_EQ(docs->value(), doc->value);
@@ -673,7 +673,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_test) {
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub);
 
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc)); // ensure all iterators contain "document" attribute
     while (docs->next()) {
       ASSERT_EQ(docs->value(), doc->value);
@@ -704,7 +704,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_test) {
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub);
 
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc)); // ensure all iterators contain "document" attribute
     while (docs->next()) {
       ASSERT_EQ(docs->value(), doc->value);
@@ -735,7 +735,7 @@ TEST_P(ngram_similarity_filter_test_case, not_miss_match_for_tail) {
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub);
 
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc)); // ensure all iterators contain "document" attribute
     while (docs->next()) {
       ASSERT_EQ(docs->value(), doc->value);
@@ -768,7 +768,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle_test) {
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub);
 
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc)); // ensure all iterators contain "document" attribute
     while (docs->next()) {
       ASSERT_EQ(docs->value(), doc->value);
@@ -800,7 +800,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle2_test) {
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub);
 
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc)); // ensure all iterators contain "document" attribute
     while (docs->next()) {
       ASSERT_EQ(docs->value(), doc->value);
@@ -832,7 +832,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle3_test) {
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub);
 
-    auto& doc = docs->attributes().get<irs::document>();
+    auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc)); // ensure all iterators contain "document" attribute
     while (docs->next()) {
       ASSERT_EQ(docs->value(), doc->value);
@@ -845,13 +845,24 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle3_test) {
 }
 
 struct test_score_ctx : public irs::score_ctx {
-  test_score_ctx(std::vector<size_t>* f, const irs::frequency* p, std::vector<irs::boost_t>* b, const irs::filter_boost* fb)
-    : freq(f), freq_from_filter(p), filter_boost(b), boost_from_filter(fb)  {}
+  test_score_ctx(
+      std::vector<size_t>* f,
+      const irs::frequency* p,
+      std::vector<irs::boost_t>* b,
+      const irs::filter_boost* fb,
+      irs::byte_type* score_buf) noexcept
+    : freq(f),
+      filter_boost(b),
+      freq_from_filter(p),
+      boost_from_filter(fb),
+      score_buf(score_buf) {
+  }
 
   std::vector<size_t>* freq;
   std::vector<irs::boost_t>* filter_boost;
   const irs::frequency* freq_from_filter;
   const irs::filter_boost* boost_from_filter;
+  irs::byte_type* score_buf;
 };
 
 TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
@@ -874,13 +885,21 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
   std::vector<size_t> frequency;
   std::vector<irs::boost_t> filter_boost;
   auto& scorer = order.add<tests::sort::custom_sort>(false);
-  scorer.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
+  scorer.collector_collect_field = [&collect_field_count](
+      const irs::sub_reader&, const irs::term_reader&)->void{
     ++collect_field_count;
   };
-  scorer.collector_collect_term = [&collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+  scorer.collector_collect_term = [&collect_term_count](
+      const irs::sub_reader&,
+      const irs::term_reader&,
+      const irs::attribute_provider&)->void{
     ++collect_term_count;
   };
-  scorer.collectors_collect_ = [&finish_count](irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
+  scorer.collectors_collect_ = [&finish_count](
+      irs::byte_type*,
+      const irs::index_reader&,
+      const irs::sort::field_collector*,
+      const irs::sort::term_collector*)->void {
     ++finish_count;
   };
   scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
@@ -889,21 +908,23 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
   scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
     return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
   };
-
-
-  scorer.prepare_scorer = [&frequency, &filter_boost](const irs::sub_reader& segment,
+  scorer.prepare_scorer = [&frequency, &filter_boost](
+    const irs::sub_reader& segment,
     const irs::term_reader& term,
-    const irs::byte_type* data,
-    const irs::attribute_view& attr)->std::pair<irs::score_ctx_ptr, irs::score_f> {
-      auto& freq = attr.get<irs::frequency>();
-      auto& boost = attr.get<irs::filter_boost>();
+    const irs::byte_type* stats_buf,
+    irs::byte_type* score_buf,
+    const irs::attribute_provider& attr)->irs::score_function {
+      auto* freq = irs::get<irs::frequency>(attr);
+      auto* boost = irs::get<irs::filter_boost>(attr);
       return {
-        irs::memory::make_unique<test_score_ctx>(&frequency, freq.get(), &filter_boost, boost.get()),
-        [](const irs::score_ctx* ctx, irs::byte_type* RESTRICT score_buf) noexcept {
-        auto& freq = *reinterpret_cast<const test_score_ctx*>(ctx);
-        freq.freq->push_back(freq.freq_from_filter->value);
-        freq.filter_boost->push_back(freq.boost_from_filter->value);
-      }
+        irs::memory::make_unique<test_score_ctx>(&frequency, freq, &filter_boost, boost, score_buf),
+        [](irs::score_ctx* ctx) noexcept -> const irs::byte_type* {
+          const auto& freq = *reinterpret_cast<test_score_ctx*>(ctx);
+          freq.freq->push_back(freq.freq_from_filter->value);
+          freq.filter_boost->push_back(freq.boost_from_filter->value);
+
+          return freq.score_buf;
+        }
       };
   };
   std::vector<size_t> expectedFrequency{1, 1, 2, 1, 1, 1, 1};
@@ -940,13 +961,21 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
   std::vector<size_t> frequency;
   std::vector<irs::boost_t> filter_boost;
   auto& scorer = order.add<tests::sort::custom_sort>(false);
-  scorer.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
+  scorer.collector_collect_field = [&collect_field_count](
+      const irs::sub_reader&, const irs::term_reader&)->void{
     ++collect_field_count;
   };
-  scorer.collector_collect_term = [&collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+  scorer.collector_collect_term = [&collect_term_count](
+      const irs::sub_reader&,
+      const irs::term_reader&,
+      const irs::attribute_provider&)->void{
     ++collect_term_count;
   };
-  scorer.collectors_collect_ = [&finish_count](irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
+  scorer.collectors_collect_ = [&finish_count](
+      irs::byte_type*,
+      const irs::index_reader&,
+      const irs::sort::field_collector*,
+      const irs::sort::term_collector*)->void {
     ++finish_count;
   };
   scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
@@ -955,22 +984,24 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
   scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
     return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
   };
+  scorer.prepare_scorer = [&frequency, &filter_boost](
+      const irs::sub_reader& /*segment*/,
+      const irs::term_reader& /*term*/,
+      const irs::byte_type* /*stats_buf*/,
+      irs::byte_type* score_buf,
+      const irs::attribute_provider& attr)->irs::score_function {
+    auto* freq = irs::get<irs::frequency>(attr);
+    auto* boost = irs::get<irs::filter_boost>(attr);
+    return {
+        irs::memory::make_unique<test_score_ctx>(&frequency, freq, &filter_boost, boost, score_buf),
+        [](irs::score_ctx* ctx) noexcept -> const irs::byte_type* {
+          const auto& freq = *reinterpret_cast<test_score_ctx*>(ctx);
+          freq.freq->push_back(freq.freq_from_filter->value);
+          freq.filter_boost->push_back(freq.boost_from_filter->value);
 
-
-  scorer.prepare_scorer = [&frequency, &filter_boost](const irs::sub_reader& segment,
-    const irs::term_reader& term,
-    const irs::byte_type* data,
-    const irs::attribute_view& attr)->std::pair<irs::score_ctx_ptr, irs::score_f> {
-      auto& freq = attr.get<irs::frequency>();
-      auto& boost = attr.get<irs::filter_boost>();
-      return {
-        irs::memory::make_unique<test_score_ctx>(&frequency, freq.get(), &filter_boost, boost.get()),
-        [](const irs::score_ctx* ctx, irs::byte_type* RESTRICT score_buf) noexcept {
-        auto& freq = *reinterpret_cast<const test_score_ctx*>(ctx);
-        freq.freq->push_back(freq.freq_from_filter->value);
-        freq.filter_boost->push_back(freq.boost_from_filter->value);
-      }
-      };
+          return freq.score_buf;
+        }
+    };
   };
   std::vector<size_t> expected_frequency{1, 1, 2, 1, 1, 1, 1};
   std::vector<irs::boost_t> expected_filter_boost{4.f/6.f, 4.f/6.f, 4.f/6.f, 4.f/6.f, 0.5, 0.5, 0.5};

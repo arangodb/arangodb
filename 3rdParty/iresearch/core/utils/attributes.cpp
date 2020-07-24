@@ -29,32 +29,31 @@
 
 NS_LOCAL
 
-class attribute_register:
-  public irs::tagged_generic_register<irs::string_ref, const irs::attribute::type_id*, irs::string_ref, attribute_register> {
+class attribute_register
+    : public irs::tagged_generic_register<irs::string_ref, irs::type_info,
+                                          irs::string_ref, attribute_register> {
 };
 
-const iresearch::attribute_store EMPTY_ATTRIBUTE_STORE(0);
-const iresearch::attribute_view  EMPTY_ATTRIBUTE_VIEW(0);
+
+static const irs::flags EMPTY_INSTANCE;
 
 NS_END
 
 NS_ROOT
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                attribute::type_id
+// --SECTION--                                                        attributes
 // -----------------------------------------------------------------------------
 
-/*static*/ bool attribute::type_id::exists(
+/*static*/ bool attributes::exists(
     const string_ref& name,
-    bool load_library /*= true*/
-) {
-  return nullptr != attribute_register::instance().get(name, load_library);
+    bool load_library /*= true*/) {
+  return static_cast<bool>(attribute_register::instance().get(name, load_library));
 }
 
-/*static*/ const attribute::type_id* attribute::type_id::get(
+/*static*/ type_info attributes::get(
     const string_ref& name,
-    bool load_library /*= true*/
-) noexcept {
+    bool load_library /*= true*/) noexcept {
   try {
     return attribute_register::instance().get(name, load_library);
   } catch (...) {
@@ -62,44 +61,31 @@ NS_ROOT
     IR_LOG_EXCEPTION();
   }
 
-  return nullptr;
+  return {}; // invalid type id
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             flags 
 // -----------------------------------------------------------------------------
 
-const flags& flags::empty_instance() {
-  static flags instance;
-  return instance;
+const flags& flags::empty_instance() noexcept {
+  return EMPTY_INSTANCE;
 }
 
-flags::flags(flags&& rhs) noexcept
-  : map_(std::move(rhs.map_)) {
-}
-
-flags& flags::operator=(flags&& rhs) noexcept {
-  if (this != &rhs) {
-    map_ = std::move(rhs.map_);
-  }
-
-  return *this;
-}
-
-flags::flags(std::initializer_list<const attribute::type_id*> flags) {
+flags::flags(std::initializer_list<type_info> flags) {
   std::for_each( 
     flags.begin(), flags.end(), 
-    [this](const attribute::type_id* type) {
-      add(*type);
+    [this](const type_info& type) {
+      add(type.id());
   } );
 }
 
-flags& flags::operator=(std::initializer_list<const attribute::type_id*> flags) {
+flags& flags::operator=(std::initializer_list<type_info> flags) {
   map_.clear();
   std::for_each( 
     flags.begin(), flags.end(), 
-    [this](const attribute::type_id* type) {
-      add(*type);
+    [this](const type_info& type) {
+      add(type.id());
   });
   return *this;
 }
@@ -109,19 +95,17 @@ flags& flags::operator=(std::initializer_list<const attribute::type_id*> flags) 
 // -----------------------------------------------------------------------------
 
 attribute_registrar::attribute_registrar(
-    const attribute::type_id& type,
-    const char* source /*= nullptr*/
-) {
+    const type_info& type,
+    const char* source /*= nullptr*/) {
   irs::string_ref source_ref(source);
   auto entry = attribute_register::instance().set(
     type.name(),
-    &type,
-    source_ref.null() ? nullptr : &source_ref
-  );
+    type,
+    source_ref.null() ? nullptr : &source_ref);
 
   registered_ = entry.second;
 
-  if (!registered_ && &type != entry.first) {
+  if (!registered_ && type != entry.first) {
     auto* registered_source = attribute_register::instance().tag(type.name());
 
     if (source && registered_source) {
@@ -154,28 +138,6 @@ attribute_registrar::attribute_registrar(
 
 attribute_registrar::operator bool() const noexcept {
   return registered_;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   attribute_store
-// -----------------------------------------------------------------------------
-
-attribute_store::attribute_store(size_t /*reserve = 0*/) {
-}
-
-/*static*/ const attribute_store& attribute_store::empty_instance() {  
-  return EMPTY_ATTRIBUTE_STORE;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    attribute_view
-// -----------------------------------------------------------------------------
-
-attribute_view::attribute_view(size_t /*reserve = 0*/) {
-}
-
-/*static*/ const attribute_view& attribute_view::empty_instance() {  
-  return EMPTY_ATTRIBUTE_VIEW;
 }
 
 NS_END

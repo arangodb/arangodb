@@ -59,7 +59,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   // moved into some RemoteExecutorInfos class.
   ExecutionBlockImpl(ExecutionEngine* engine, RemoteNode const* node,
                      RegisterInfos&& infos, std::string const& server,
-                     std::string const& ownName, std::string const& queryId, Api);
+                     std::string const& distributeId, std::string const& queryId, Api);
 
   ~ExecutionBlockImpl() override = default;
 
@@ -71,11 +71,15 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   [[nodiscard]] auto api() const noexcept -> Api;
 
+  std::string const& distributeId() const { return _distributeId; }
+
+  std::string const& server() const { return _server; }
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // only for asserts:
  public:
-  std::string const& server() const { return _server; }
-  std::string const& ownName() const { return _ownName; }
+
+
   std::string const& queryId() const { return _queryId; }
 #endif
 
@@ -128,7 +132,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   /// @brief our own identity, in case of the coordinator this is empty,
   /// in case of the DBservers, this is the shard ID as a string
-  std::string const _ownName;
+  std::string const _distributeId;
 
   /// @brief the ID of the query on the server as a string
   std::string const _queryId;

@@ -34,13 +34,13 @@ namespace iresearch {
     /// @brief class for passing control to the proxied query
     ////////////////////////////////////////////////////////////////////////////////
     template<typename PTR>
-    class IRESEARCH_API proxy_filter_t: public iresearch::filter {
+    class IRESEARCH_API proxy_filter_t: public irs::filter {
      public:
-      proxy_filter_t(const type_id& type): iresearch::filter(type) {}
+      proxy_filter_t(const type_info& type): irs::filter(type) {}
       template<typename T, typename... Args>
       T& proxy(Args&&... args) {
         typedef typename std::enable_if<
-          std::is_base_of<iresearch::filter, T>::value, T
+          std::is_base_of<irs::filter, T>::value, T
         >::type type;
 
         filter_ = type::make(std::forward<Args>(args)...);
@@ -51,19 +51,18 @@ namespace iresearch {
       virtual size_t hash() const noexcept override {
         return !filter_ ? 0 : filter_->hash();
       }
-      virtual iresearch::filter::prepared::ptr prepare(
-        const index_reader& rdr,
-        const order::prepared& ord,
-        boost_t boost,
-        const attribute_view& ctx
-      ) const override {
+      virtual irs::filter::prepared::ptr prepare(
+          const index_reader& rdr,
+          const order::prepared& ord,
+          boost_t boost,
+          const attribute_provider* ctx) const override {
         return filter_->prepare(rdr, ord, boost, ctx);
       };
 
      protected:
-      virtual bool equals(const iresearch::filter& rhs) const noexcept override {
+      virtual bool equals(const irs::filter& rhs) const noexcept override {
         const auto& typed_rhs =
-          static_cast<const iresearch::iql::proxy_filter_t<PTR>&>(rhs);
+          static_cast<const irs::iql::proxy_filter_t<PTR>&>(rhs);
 
         return filter::equals(rhs) && filter_.get() == typed_rhs.filter_.get();
       }
@@ -75,14 +74,17 @@ namespace iresearch {
     };
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief proxy_filter specialized for iresearch::filter::ptr
+    /// @brief proxy_filter specialized for irs::filter::ptr
     ////////////////////////////////////////////////////////////////////////////////
-    class IRESEARCH_API proxy_filter: public proxy_filter_t<iresearch::filter::ptr> {
+    class IRESEARCH_API proxy_filter: public proxy_filter_t<irs::filter::ptr> {
      public:
-      DECLARE_FACTORY();
-      DECLARE_TYPE_ID(iresearch::type_id);
+      static constexpr string_ref type_name() noexcept {
+        return "irs::iql::proxy_filter";
+      }
 
-      proxy_filter(): proxy_filter_t(proxy_filter::type()) {}
+      DECLARE_FACTORY();
+
+      proxy_filter(): proxy_filter_t(irs::type<proxy_filter>::get()) {}
     };
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -92,8 +94,8 @@ namespace iresearch {
     ///        error iff no error then nullptr, else the error string
     ////////////////////////////////////////////////////////////////////////////////
     struct query {
-      iresearch::filter::ptr filter;
-      iresearch::order* order = nullptr;
+      irs::filter::ptr filter;
+      irs::order* order = nullptr;
       size_t* limit = nullptr;
       std::string* error = nullptr;
       query(): order(nullptr), limit(nullptr), error(nullptr) {}
@@ -104,7 +106,8 @@ namespace iresearch {
         error(other.error) {
       }
     };
-
+    static_assert(std::is_move_constructible<query>::value,
+                  "default move constructor expected");
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief helper class for transforming a textual query into an iResearch query
     ////////////////////////////////////////////////////////////////////////////////

@@ -28,6 +28,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -40,9 +41,9 @@
 
 using namespace arangodb;
 
+
 /// @brief transaction type
-TransactionState::TransactionState(TRI_vocbase_t& vocbase,
-                                   TRI_voc_tid_t tid,
+TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                                    transaction::Options const& options)
     : _vocbase(vocbase),
       _id(tid),
@@ -289,6 +290,15 @@ void TransactionState::setExclusiveAccessType() {
         "cannot change the type of a running transaction");
   }
   _type = AccessMode::Type::EXCLUSIVE;
+}
+
+void TransactionState::acceptAnalyzersRevision(
+    QueryAnalyzerRevisions const& analyzersRevision) noexcept {
+  // only init from default allowed! Or we have problem -> different analyzersRevision in one transaction
+  LOG_TOPIC_IF("9127a", ERR, Logger::AQL, (_analyzersRevision != analyzersRevision && !_analyzersRevision.isDefault()))
+    << " Changing analyzers revision for transaction from " << _analyzersRevision << " to " << analyzersRevision;
+  TRI_ASSERT(_analyzersRevision == analyzersRevision || _analyzersRevision.isDefault());
+  _analyzersRevision = analyzersRevision;
 }
 
 Result TransactionState::checkCollectionPermission(TRI_voc_cid_t cid,

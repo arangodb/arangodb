@@ -43,8 +43,7 @@ namespace transaction {
 /// same TransactionState instance will be used across shards on the same server.
 class SmartContext : public Context {
  public:
-
-  SmartContext(TRI_vocbase_t& vocbase, TRI_voc_tid_t globalId,
+  SmartContext(TRI_vocbase_t& vocbase, TransactionId globalId,
                std::shared_ptr<TransactionState> state);
     
   /// @brief destroy the context
@@ -62,22 +61,26 @@ class SmartContext : public Context {
   }
   
   /// @brief locally persisted transaction ID
-  TRI_voc_tid_t generateId() const override final;
+  TransactionId generateId() const override final;
   
-  bool isStateSet() const {
+  bool isStateSet() const noexcept {
     return _state != nullptr;
+  }
+  
+  void setState(std::shared_ptr<arangodb::TransactionState> const& state) noexcept {
+    _state = state;
   }
   
  protected:
   /// @brief ID of the transaction to use
-  TRI_voc_tid_t const _globalId;
+  TransactionId const _globalId;
   std::shared_ptr<arangodb::TransactionState> _state;
 };
   
 /// @brief Acquire a transaction from the Manager
 struct ManagedContext final : public SmartContext {
   
-  ManagedContext(TRI_voc_tid_t globalId, std::shared_ptr<TransactionState> state,
+  ManagedContext(TransactionId globalId, std::shared_ptr<TransactionState> state,
                  bool responsibleForCommit, bool cloned = false);
   
   ~ManagedContext();
@@ -99,9 +102,8 @@ private:
 /// Used for a standalone AQL query. Always creates the state first.
 /// Registers the TransactionState with the manager
 struct AQLStandaloneContext final : public SmartContext {
-  
-  AQLStandaloneContext(TRI_vocbase_t& vocbase, TRI_voc_tid_t globalId)
-    : SmartContext(vocbase, globalId, nullptr) {}
+  AQLStandaloneContext(TRI_vocbase_t& vocbase, TransactionId globalId)
+      : SmartContext(vocbase, globalId, nullptr) {}
 
   /// @brief get transaction state, determine commit responsiblity
   std::shared_ptr<TransactionState> acquireState(transaction::Options const& options,

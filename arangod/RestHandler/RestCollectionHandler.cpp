@@ -216,7 +216,7 @@ RestStatus RestCollectionHandler::handleCommandGet() {
     return waitForFuture(methods::Collections::revisionId(*_ctxt).thenValue(
         [this, coll](OperationResult&& res) {
           if (res.fail()) {
-            generateTransactionError(res);
+            generateTransactionError(coll->name(), res);
             return;
           }
 
@@ -332,31 +332,9 @@ void RestCollectionHandler::handleCommandPost() {
   }
 
 
-  // for some "security" a whitelist of allowed parameters
-  VPackBuilder filtered = VPackCollection::keep(
-      body, std::unordered_set<std::string>{StaticStrings::DoCompact,
-                                            StaticStrings::DataSourceSystem,
-                                            StaticStrings::DataSourceId,
-                                            "isVolatile",
-                                            StaticStrings::JournalSize,
-                                            StaticStrings::IndexBuckets,
-                                            "keyOptions",
-                                            StaticStrings::WaitForSyncString,
-                                            StaticStrings::CacheEnabled,
-                                            StaticStrings::ShardKeys,
-                                            StaticStrings::NumberOfShards,
-                                            StaticStrings::DistributeShardsLike,
-                                            "avoidServers",
-                                            StaticStrings::IsSmart,
-                                            StaticStrings::ShardingStrategy,
-                                            StaticStrings::GraphSmartGraphAttribute,
-                                            StaticStrings::SmartJoinAttribute,
-                                            StaticStrings::ReplicationFactor,
-                                            StaticStrings::MinReplicationFactor, // deprecated
-                                            StaticStrings::WriteConcern,
-                                            StaticStrings::Schema,
-                                            "servers"
-                                          });
+  // for some "security" a list of allowed parameters (i.e. all
+  // others are disallowed!)
+  VPackBuilder filtered = methods::Collections::filterInput(body);
   VPackSlice const parameters = filtered.slice();
 
   // now we can create the collection
@@ -523,7 +501,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
           // result stays valid!
           Result res = _activeTrx->finish(opres.result);
           if (opres.fail()) {
-            generateTransactionError(opres);
+            generateTransactionError(coll->name(), opres);
             return;
           }
 

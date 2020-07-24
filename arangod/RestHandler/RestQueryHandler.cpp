@@ -331,6 +331,11 @@ bool RestQueryHandler::parseQuery() {
 ResultT<std::pair<std::string, bool>> RestQueryHandler::forwardingTarget() {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
+  auto base = RestVocbaseBaseHandler::forwardingTarget();
+  if (base.ok() && !std::get<0>(base.get()).empty()) {
+    return base;
+  }
+
   if (_request->requestType() == RequestType::DELETE_REQ) {
     // kill operation
     auto const& suffixes = _request->suffixes();

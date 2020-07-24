@@ -201,7 +201,7 @@ struct IResearchLinkMeta : public FieldMeta {
   std::set<AnalyzerPool::ptr, FieldMeta::AnalyzerComparer> _analyzerDefinitions;
   IResearchViewSort _sort; // sort condition associated with the link
   IResearchViewStoredValues _storedValues; // stored values associated with the link
-  irs::compression::type_id const* _sortCompression{&getDefaultCompression()};
+  irs::type_info::type_id _sortCompression{getDefaultCompression()};
   // NOTE: if adding fields don't forget to modify the comparison operator !!!
   // NOTE: if adding fields don't forget to modify IResearchLinkMeta::Mask !!!
   // NOTE: if adding fields don't forget to modify IResearchLinkMeta::Mask constructor !!!

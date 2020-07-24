@@ -72,7 +72,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
       auto docs0 = prepared->execute(*sub);
-      auto& doc = docs0->attributes().get<irs::document>();
+      auto* doc = irs::get<irs::document>(*docs0);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(docs0->value(), doc->value);
       auto docs1 = prepared->execute(*sub);
@@ -117,18 +117,17 @@ class term_filter_test_case : public tests::filter_test_case_base {
     {
       auto prep = filter.prepare(rdr, pord);
       auto docs = prep->execute(*(rdr.begin()), pord);
-      auto& doc = docs->attributes().get<irs::document>();
+      auto* doc = irs::get<irs::document>(*docs);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(docs->value(), doc->value);
 
-      auto& scr = docs->attributes().get<irs::score>();
+      auto* scr = irs::get<irs::score>(*docs);
       ASSERT_FALSE(!scr);
 
       // first hit
       {
         ASSERT_TRUE(docs->next());
-        scr->evaluate();
-        auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
+        auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0);
         ASSERT_EQ(irs::boost_t(0), doc_boost);
         ASSERT_EQ(docs->value(), doc->value);
       }
@@ -145,15 +144,13 @@ class term_filter_test_case : public tests::filter_test_case_base {
       auto prep = filter.prepare(rdr, pord);
       auto docs = prep->execute(*(rdr.begin()), pord);
 
-      auto& scr = docs->attributes().get<irs::score>();
+      auto* scr = irs::get<irs::score>(*docs);
       ASSERT_FALSE(!scr);
 
       // first hit
       {
         ASSERT_TRUE(docs->next());
-        scr->evaluate();
-
-        auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
+        auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0);
         ASSERT_EQ(irs::boost_t(value), doc_boost);
       }
 
@@ -178,17 +175,17 @@ class term_filter_test_case : public tests::filter_test_case_base {
             doc.insert(std::make_shared<tests::binary_field>());
             auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
             field.name(irs::string_ref(name));
-            field.value(irs::null_token_stream::value_null());
+            field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
           } else if (data.is_bool() && data.b) {
             doc.insert(std::make_shared<tests::binary_field>());
             auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
             field.name(irs::string_ref(name));
-            field.value(irs::boolean_token_stream::value_true());
+            field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
           } else if (data.is_bool() && !data.b) {
             doc.insert(std::make_shared<tests::binary_field>());
             auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
             field.name(irs::string_ref(name));
-            field.value(irs::boolean_token_stream::value_true());
+            field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
           } else if (data.is_number()) {
             const double dValue = data.as_number<double_t>();
             {
@@ -233,10 +230,10 @@ class term_filter_test_case : public tests::filter_test_case_base {
     {
       irs::numeric_token_stream stream;
       stream.reset(INT64_C(20));
-      auto& term = stream.attributes().get<irs::term_attribute>();
+      auto* term = irs::get<irs::term_attribute>(stream);
       ASSERT_TRUE(stream.next());
 
-      irs::by_term query = make_filter("seq", irs::ref_cast<char>(term->value()));
+      irs::by_term query = make_filter("seq", irs::ref_cast<char>(term->value));
 
       auto prepared = query.prepare(rdr);
 
@@ -256,10 +253,10 @@ class term_filter_test_case : public tests::filter_test_case_base {
     {
       irs::numeric_token_stream stream;
       stream.reset(INT32_C(21));
-      auto& term = stream.attributes().get<irs::term_attribute>();
+      auto* term = irs::get<irs::term_attribute>(stream);
       ASSERT_TRUE(stream.next());
 
-      irs::by_term query = make_filter("seq", irs::ref_cast<char>(term->value()));
+      irs::by_term query = make_filter("seq", irs::ref_cast<char>(term->value));
 
       auto prepared = query.prepare(rdr);
 
@@ -268,7 +265,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
-        auto& doc = docs->attributes().get<irs::document>();
+        auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
@@ -283,10 +280,10 @@ class term_filter_test_case : public tests::filter_test_case_base {
     {
       irs::numeric_token_stream stream;
       stream.reset((double_t)90.564);
-      auto& term = stream.attributes().get<irs::term_attribute>();
+      auto* term = irs::get<irs::term_attribute>(stream);
       ASSERT_TRUE(stream.next());
 
-      irs::by_term query = make_filter("value", irs::ref_cast<char>(term->value()));
+      irs::by_term query = make_filter("value", irs::ref_cast<char>(term->value));
 
       auto prepared = query.prepare(rdr);
 
@@ -295,7 +292,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
-        auto& doc = docs->attributes().get<irs::document>();
+        auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
@@ -310,10 +307,10 @@ class term_filter_test_case : public tests::filter_test_case_base {
     {
       irs::numeric_token_stream stream;
       stream.reset((float_t)90.564f);
-      auto& term = stream.attributes().get<irs::term_attribute>();
+      auto* term = irs::get<irs::term_attribute>(stream);
       ASSERT_TRUE(stream.next());
 
-      irs::by_term query = make_filter("value", irs::ref_cast<char>(term->value()));
+      irs::by_term query = make_filter("value", irs::ref_cast<char>(term->value));
 
       auto prepared = query.prepare(rdr);
 
@@ -322,7 +319,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
-        auto& doc = docs->attributes().get<irs::document>();
+        auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
@@ -337,10 +334,10 @@ class term_filter_test_case : public tests::filter_test_case_base {
     {
       irs::numeric_token_stream stream;
       stream.reset((double_t)100.);
-      auto& term = stream.attributes().get<irs::term_attribute>();
+      auto* term = irs::get<irs::term_attribute>(stream);
       ASSERT_TRUE(stream.next());
 
-      irs::by_term query = make_filter("value", irs::ref_cast<char>(term->value()));
+      irs::by_term query = make_filter("value", irs::ref_cast<char>(term->value));
 
       auto prepared = query.prepare(rdr);
 
@@ -349,7 +346,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
-        auto& doc = docs->attributes().get<irs::document>();
+        auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
@@ -364,10 +361,10 @@ class term_filter_test_case : public tests::filter_test_case_base {
     {
       irs::numeric_token_stream stream;
       stream.reset((float_t)100.f);
-      auto& term = stream.attributes().get<irs::term_attribute>();
+      auto* term = irs::get<irs::term_attribute>(stream);
       ASSERT_TRUE(stream.next());
 
-      irs::by_term query = make_filter("value", irs::ref_cast<char>(term->value()));
+      irs::by_term query = make_filter("value", irs::ref_cast<char>(term->value));
 
       auto prepared = query.prepare(rdr);
 
@@ -376,7 +373,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
-        auto& doc = docs->attributes().get<irs::document>();
+        auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
@@ -391,10 +388,10 @@ class term_filter_test_case : public tests::filter_test_case_base {
     {
       irs::numeric_token_stream stream;
       stream.reset(100);
-      auto& term = stream.attributes().get<irs::term_attribute>();
+      auto* term = irs::get<irs::term_attribute>(stream);
       ASSERT_TRUE(stream.next());
 
-      irs::by_term query = make_filter("value", irs::ref_cast<char>(term->value()));
+      irs::by_term query = make_filter("value", irs::ref_cast<char>(term->value));
 
       auto prepared = query.prepare(rdr);
 
@@ -403,7 +400,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
-        auto& doc = docs->attributes().get<irs::document>();
+        auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
@@ -418,10 +415,10 @@ class term_filter_test_case : public tests::filter_test_case_base {
     {
       irs::numeric_token_stream stream;
       stream.reset(INT64_C(100));
-      auto& term = stream.attributes().get<irs::term_attribute>();
+      auto* term = irs::get<irs::term_attribute>(stream);
       ASSERT_TRUE(stream.next());
 
-      irs::by_term query = make_filter("value", irs::ref_cast<char>(term->value()));
+      irs::by_term query = make_filter("value", irs::ref_cast<char>(term->value));
 
       auto prepared = query.prepare(rdr);
 
@@ -430,7 +427,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
-        auto& doc = docs->attributes().get<irs::document>();
+        auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
@@ -465,13 +462,21 @@ class term_filter_test_case : public tests::filter_test_case_base {
       irs::order ord;
       auto& scorer = ord.add<tests::sort::custom_sort>(false);
 
-      scorer.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
+      scorer.collector_collect_field = [&collect_field_count](
+          const irs::sub_reader&, const irs::term_reader&)->void{
         ++collect_field_count;
       };
-      scorer.collector_collect_term = [&collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+      scorer.collector_collect_term = [&collect_term_count](
+          const irs::sub_reader&,
+          const irs::term_reader&,
+          const irs::attribute_provider&)->void{
         ++collect_term_count;
       };
-      scorer.collectors_collect_ = [&finish_count](irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
+      scorer.collectors_collect_ = [&finish_count](
+          irs::byte_type*,
+          const irs::index_reader&,
+          const irs::sort::field_collector*,
+          const irs::sort::term_collector*)->void {
         ++finish_count;
       };
       scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
@@ -486,11 +491,12 @@ class term_filter_test_case : public tests::filter_test_case_base {
       auto prep = filter.prepare(rdr, pord);
       auto docs = prep->execute(*(rdr.begin()), pord);
 
-      auto& scr = docs->attributes().get<irs::score>();
+      auto* scr = irs::get<irs::score>(*docs);
       ASSERT_FALSE(!scr);
 
       while (docs->next()) {
-        scr->evaluate();
+        const auto* score_value = scr->evaluate();
+        UNUSED(score_value);
         ASSERT_EQ(1, expected.erase(docs->value()));
       }
 
@@ -637,7 +643,7 @@ TEST(by_prefix_test, options) {
 
 TEST(by_term_test, ctor) {
   irs::by_term q;
-  ASSERT_EQ(irs::by_term::type(), q.type());
+  ASSERT_EQ(irs::type<irs::by_term>::id(), q.type());
   ASSERT_EQ(irs::by_term_options{}, q.options());
   ASSERT_EQ("", q.field());
   ASSERT_EQ(irs::no_boost(), q.boost());

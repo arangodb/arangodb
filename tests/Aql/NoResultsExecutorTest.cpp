@@ -56,12 +56,8 @@ class NoResultsExecutorTest : public AqlExecutorTestCaseWithParam<NoResultsInput
   }
 
   auto makeInfos() -> RegisterInfos {
-    return RegisterInfos{make_shared_unordered_set({0}),
-                         make_shared_unordered_set(),
-                         1,
-                         1,
-                         {},
-                         {}};
+    return RegisterInfos{RegIdSet{0},          {}, 1, 1, RegIdFlatSet{},
+                         RegIdFlatSetStack{{}}};
   }
 };
 

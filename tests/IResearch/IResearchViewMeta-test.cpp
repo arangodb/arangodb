@@ -26,6 +26,7 @@
 #include "../Mocks/StorageEngineMock.h"
 
 #include "utils/locale_utils.hpp"
+#include "utils/lz4compression.hpp"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "IResearch/IResearchViewMeta.h"
@@ -120,22 +121,23 @@ TEST_F(IResearchViewMetaTest, test_inheritDefaults) {
 
   {
     auto json = arangodb::velocypack::Parser::fromJson("{}");
-    EXPECT_TRUE(true == meta.init(json->slice(), tmpString, defaults));
-    EXPECT_TRUE((true == metaState.init(json->slice(), tmpString, defaultsState)));
-    EXPECT_TRUE((1 == metaState._collections.size()));
-    EXPECT_TRUE((42 == *(metaState._collections.begin())));
-    EXPECT_TRUE(654 == meta._cleanupIntervalStep);
-    EXPECT_TRUE((321 == meta._commitIntervalMsec));
-    EXPECT_TRUE(456 == meta._consolidationIntervalMsec);
-    EXPECT_TRUE((std::string("tier") ==
-                 meta._consolidationPolicy.properties().get("type").copyString()));
-    EXPECT_TRUE((true == !meta._consolidationPolicy.policy()));
-    EXPECT_TRUE((.11f == meta._consolidationPolicy.properties().get("threshold").getNumber<float>()));
-    EXPECT_TRUE(std::string("C") == irs::locale_utils::name(meta._locale));
-    EXPECT_TRUE((10 == meta._writebufferActive));
-    EXPECT_TRUE((11 == meta._writebufferIdle));
-    EXPECT_TRUE((12 == meta._writebufferSizeMax));
-    EXPECT_TRUE(meta._primarySort == defaults._primarySort);
+    EXPECT_TRUE(meta.init(json->slice(), tmpString, defaults));
+    EXPECT_TRUE(metaState.init(json->slice(), tmpString, defaultsState));
+    EXPECT_EQ(1, metaState._collections.size());
+    EXPECT_EQ(42, *(metaState._collections.begin()));
+    EXPECT_EQ(654, meta._cleanupIntervalStep);
+    EXPECT_EQ(321, meta._commitIntervalMsec);
+    EXPECT_EQ(456, meta._consolidationIntervalMsec);
+    EXPECT_EQ(std::string("tier"),
+              meta._consolidationPolicy.properties().get("type").copyString());
+    EXPECT_EQ(nullptr, meta._consolidationPolicy.policy());
+    EXPECT_EQ(.11f, meta._consolidationPolicy.properties().get("threshold").getNumber<float>());
+    EXPECT_EQ(std::string("C"), irs::locale_utils::name(meta._locale));
+    EXPECT_EQ(10, meta._writebufferActive);
+    EXPECT_EQ(11, meta._writebufferIdle);
+    EXPECT_EQ(12, meta._writebufferSizeMax);
+    EXPECT_EQ(meta._primarySort, defaults._primarySort);
+    EXPECT_EQ(meta._primarySortCompression, defaults._primarySortCompression);
   }
 }
 
@@ -168,8 +170,10 @@ TEST_F(IResearchViewMetaTest, test_readDefaults) {
     EXPECT_TRUE((64 == meta._writebufferIdle));
     EXPECT_TRUE((32 * (size_t(1) << 20) == meta._writebufferSizeMax));
     EXPECT_TRUE(meta._primarySort.empty());
+    EXPECT_EQ(irs::type<irs::compression::lz4>::id(),
+              meta._primarySortCompression);
   }
-}
+} 
 
 TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
   std::unordered_set<TRI_voc_cid_t> expectedCollections = {42};
@@ -463,6 +467,7 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
         \"writebufferActive\": 10, \
         \"writebufferIdle\": 11, \
         \"writebufferSizeMax\": 12, \
+        \"primarySortCompression\": \"none\",\
         \"primarySort\" : [ \
           { \"field\": \"nested.field\", \"direction\": \"desc\" }, \
           { \"field\": \"another.nested.field\", \"direction\": \"asc\" }, \
@@ -492,7 +497,8 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
   EXPECT_TRUE((10 == meta._writebufferActive));
   EXPECT_TRUE((11 == meta._writebufferIdle));
   EXPECT_TRUE((12 == meta._writebufferSizeMax));
-
+  EXPECT_EQ(irs::type<irs::compression::none>::id(),
+            meta._primarySortCompression);
   {
     EXPECT_TRUE(4 == meta._primarySort.size());
     {
@@ -661,7 +667,7 @@ TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
           arangodb::basics::AttributeName(VPackStringRef("nested")),
           arangodb::basics::AttributeName(VPackStringRef("field"))},
       false);
-  meta._primarySortCompression = &irs::compression::none::type();
+  meta._primarySortCompression = irs::type<irs::compression::none>::id();
   auto storedValuesJSON = arangodb::velocypack::Parser::fromJson("[[], [\"\"], [\"\"], [\"test.t\"], {\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}]");
   std::string error;
   meta._storedValues.fromVelocyPack(storedValuesJSON->slice(), error);

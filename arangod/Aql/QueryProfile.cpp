@@ -25,8 +25,9 @@
 
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
+#include "Aql/Timing.h"
 #include "Basics/EnumIterator.h"
-#include "Basics/system-functions.h"
+#include "Basics/debugging.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -43,8 +44,6 @@ QueryProfile::QueryProfile(Query* query)
   for (auto& it : _timers) {
     it = 0.0;  // reset timers
   }
-
-  registerInQueryList(query);
 }
 
 /// @brief destroy a profile
@@ -52,9 +51,10 @@ QueryProfile::~QueryProfile() {
   unregisterFromQueryList();
 }
 
-void QueryProfile::registerInQueryList(Query* query) {
-  auto queryList = query->vocbase().queryList();
-  _tracked = queryList->insert(query);
+void QueryProfile::registerInQueryList() {
+  TRI_ASSERT(!_tracked);
+  auto queryList = _query->vocbase().queryList();
+  _tracked = queryList->insert(_query);
 }
 
 void QueryProfile::unregisterFromQueryList() noexcept {
@@ -73,7 +73,7 @@ void QueryProfile::unregisterFromQueryList() noexcept {
 
 /// @brief sets a state to done
 double QueryProfile::setStateDone(QueryExecutionState::ValueType state) {
-  double const now = TRI_microtime();
+  double const now = arangodb::aql::currentSteadyClockValue();
 
   if (state != QueryExecutionState::ValueType::INVALID_STATE &&
       state != QueryExecutionState::ValueType::KILLED) {

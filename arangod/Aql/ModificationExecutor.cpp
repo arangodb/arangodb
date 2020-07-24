@@ -91,20 +91,19 @@ template <typename FetcherType, typename ModifierType>
 ModificationExecutor<FetcherType, ModifierType>::ModificationExecutor(Fetcher& fetcher, Infos& infos)
     : _trx(infos._query.newTrxContext()), _lastState(ExecutionState::HASMORE), _infos(infos), _modifier(infos) {}
 
-// Fetches as many rows as possible from upstream using the fetcher's fetchRow
-// method and accumulates results through the modifier
+// Fetches as many rows as possible from upstream and accumulates results
+// through the modifier
 template <typename FetcherType, typename ModifierType>
 auto ModificationExecutor<FetcherType, ModifierType>::doCollect(AqlItemBlockInputRange& input,
                                                                 size_t maxOutputs)
     -> void {
-  // for fetchRow
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   ExecutionState state = ExecutionState::HASMORE;
 
   // Maximum number of rows we can put into output
   // So we only ever produce this many here
   while (_modifier.nrOfOperations() < maxOutputs && input.hasDataRow()) {
-    auto [state, row] = input.nextDataRow();
+    auto [state, row] = input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
 
     // Make sure we have a valid row
     TRI_ASSERT(row.isInitialized());
@@ -249,7 +248,21 @@ template <typename FetcherType, typename ModifierType>
         stats.addWritesExecuted(_modifier.nrOfWritesExecuted());
         stats.addWritesIgnored(_modifier.nrOfWritesIgnored());
       }
-      call.didSkip(_modifier.nrOfOperations());
+
+      if (call.needsFullCount()) {
+        // If we need to do full count the nr of writes we did
+        // in this batch is always correct.
+        // If we are in offset phase and need to produce data
+        // after the toSkip is limited to offset().
+        // otherwise we need to report everything we write
+        call.didSkip(_modifier.nrOfWritesExecuted());
+      } else {
+        // If we do not need to report fullcount.
+        // we cannot report more than offset
+        // but also not more than the operations we
+        // have successfully executed
+        call.didSkip((std::min)(call.getOffset(), _modifier.nrOfWritesExecuted()));
+      }
     }
   }
 

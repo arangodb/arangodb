@@ -67,7 +67,7 @@ enum level_t {
   IRL_TRACE
 };
 
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// @brief log appender callback
 /// @param context user defined context supplied with the appender callback
 /// @param function source function name. Could be a nullptr.
@@ -76,9 +76,10 @@ enum level_t {
 /// @param level message log level
 /// @param message text to log. Null terminated. Could be a nullptr.
 /// @param message_len length of message text in bytes not including null terminator.
-//////////////////////////////////////////////////////////////////////////////
-typedef void  (*log_appender_callback_t)(void* context, const char* function, const char* file, int line,
-                                         level_t level, const char* message, size_t message_len);
+////////////////////////////////////////////////////////////////////////////////
+using log_appender_callback_t = void(*)(void* context, const char* function,
+                                        const char* file, int line, level_t level,
+                                        const char* message, size_t message_len);
 
 IRESEARCH_API bool enabled(level_t level);
 
@@ -88,22 +89,25 @@ IRESEARCH_API void output_le(level_t level, FILE* out); // nullptr == /dev/null
 // Custom appender control functions
 IRESEARCH_API void output(level_t level, log_appender_callback_t appender, void* context); // nullptr == appender -> log level disabled
 IRESEARCH_API void output_le(level_t level, log_appender_callback_t appender, void* context); // nullptr == appender -> log level disabled
-
 IRESEARCH_API void log(const char* function, const char* file, int line,
                        level_t level, const char* message, size_t len);
-
 IRESEARCH_API void stack_trace(level_t level);
 IRESEARCH_API void stack_trace(level_t level, const std::exception_ptr& eptr);
 IRESEARCH_API irs::logger::level_t stack_trace_level(); // stack trace output level
 IRESEARCH_API void stack_trace_level(level_t level); // stack trace output level
 
+#ifndef _MSC_VER
+  // +1 to skip stack_trace_nomalloc(...)
+  void IRESEARCH_API stack_trace_nomalloc(level_t level, int fd, size_t skip = 1);
+#endif
+
 NS_BEGIN(detail)
 // not everyone who includes header actually logs something, that`s ok
 [[maybe_unused]] static void log_formatted(const char* function, const char* file, int line,
-                          level_t level, const char* format, ...) {
+                                           level_t level, const char* format, ...) {
   va_list args;
   va_start(args, format);
-  const auto required_len = vsnprintf(nullptr, 0, format, args);
+  const ptrdiff_t required_len = vsnprintf(nullptr, 0, format, args);
   va_end(args);
   if (required_len > 0) {
     std::string buf(size_t(required_len) + 1, 0);
@@ -111,16 +115,10 @@ NS_BEGIN(detail)
     va_start(args1, format);
     vsnprintf(buf.data(), buf.size(), format, args1);
     va_end(args1);
-    log(function, file, line, level, buf.data(), required_len);
+    log(function, file, line, level, buf.data(), size_t(required_len));
   }
 }
-}
-
-#ifndef _MSC_VER
-  // +1 to skip stack_trace_nomalloc(...)
-  void IRESEARCH_API stack_trace_nomalloc(level_t level, int fd, size_t skip = 1);
-#endif
-
+NS_END // detail
 NS_END // logger
 NS_END
 

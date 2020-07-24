@@ -185,15 +185,13 @@ class FakePathFinder : public ShortestPathFinder {
 };
 
 struct TestShortestPathOptions : public ShortestPathOptions {
-  TestShortestPathOptions(Query* query) :
-    ShortestPathOptions(*query) {
+  TestShortestPathOptions(Query* query) : ShortestPathOptions(*query) {
     std::unique_ptr<TraverserCache> cache = std::make_unique<TokenTranslator>(query, this);
     injectTestCache(std::move(cache));
   }
 };
 
 using Vertex = ShortestPathExecutorInfos::InputVertex;
-using RegisterSet = std::unordered_set<RegisterId>;
 using RegisterMapping =
     std::unordered_map<ShortestPathExecutorInfos::OutputName, RegisterId, ShortestPathExecutorInfos::OutputNameHash>;
 using Path = std::vector<std::string>;
@@ -203,14 +201,14 @@ enum class ShortestPathOutput { VERTEX_ONLY, VERTEX_AND_EDGE };
 
 // TODO: this needs a << operator
 struct ShortestPathTestParameters {
-  static RegisterSet _makeOutputRegisters(ShortestPathOutput in) {
+  static RegIdSet _makeOutputRegisters(ShortestPathOutput in) {
     switch (in) {
       case ShortestPathOutput::VERTEX_ONLY:
-        return RegisterSet{std::initializer_list<RegisterId>{2}};
+        return RegIdSet{std::initializer_list<RegisterId>{2}};
       case ShortestPathOutput::VERTEX_AND_EDGE:
-        return RegisterSet{std::initializer_list<RegisterId>{2, 3}};
+        return RegIdSet{std::initializer_list<RegisterId>{2, 3}};
     }
-    return RegisterSet{};
+    return RegIdSet{};
   }
   static RegisterMapping _makeRegisterMapping(ShortestPathOutput in) {
     switch (in) {
@@ -238,8 +236,8 @@ struct ShortestPathTestParameters {
 
   Vertex _source;
   Vertex _target;
-  RegisterSet _inputRegisters;
-  RegisterSet _outputRegisters;
+  RegIdSet _inputRegisters;
+  RegIdSet _outputRegisters;
   RegisterMapping _registerMapping;
   MatrixBuilder<2> _inputMatrix;
   MatrixBuilder<2> _inputMatrixCopy;
@@ -284,9 +282,8 @@ class ShortestPathExecutorTest
         fakedQuery(server.createFakeQuery()),
         options(fakedQuery.get()),
         translator(*(static_cast<TokenTranslator*>(options.cache()))),
-        registerInfos(std::make_shared<RegisterSet>(parameters._inputRegisters),
-                      std::make_shared<RegisterSet>(parameters._outputRegisters),
-                      2, 4, {}, {0, 1}),
+        registerInfos(parameters._inputRegisters, parameters._outputRegisters,
+                      2, 4, {}, {RegIdSet{0, 1}}),
         executorInfos(std::make_unique<FakePathFinder>(options, translator),
                       std::move(parameters._registerMapping),
                       std::move(parameters._source), std::move(parameters._target)),
@@ -325,7 +322,8 @@ class ShortestPathExecutorTest
       auto target = std::string{};
 
       if (executorInfos.useRegisterForSourceInput()) {
-        AqlValue value = block->getValue(blockIndex, executorInfos.getSourceInputRegister());
+        AqlValue value =
+            block->getValue(blockIndex, executorInfos.getSourceInputRegister());
         ASSERT_TRUE(value.isString());
         source = value.slice().copyString();
       } else {
@@ -333,7 +331,8 @@ class ShortestPathExecutorTest
       }
 
       if (executorInfos.useRegisterForTargetInput()) {
-        AqlValue value = block->getValue(blockIndex, executorInfos.getTargetInputRegister());
+        AqlValue value =
+            block->getValue(blockIndex, executorInfos.getTargetInputRegister());
         ASSERT_TRUE(value.isString());
         target = value.slice().copyString();
       } else {
@@ -351,7 +350,8 @@ class ShortestPathExecutorTest
     auto pathsQueriedBetween = finder.getCalledWith();
 
     FakePathFinder& finder = static_cast<FakePathFinder&>(executorInfos.finder());
-    TokenTranslator& translator = *(static_cast<TokenTranslator*>(executorInfos.cache()));
+    TokenTranslator& translator =
+        *(static_cast<TokenTranslator*>(executorInfos.cache()));
 
     auto expectedRowsFound = std::vector<std::string>{};
     auto expectedPathStarts = std::set<size_t>{};
@@ -378,7 +378,8 @@ class ShortestPathExecutorTest
         for (size_t blockIndex = 0; blockIndex < block->size(); ++blockIndex, ++expectedRowsIndex) {
           if (executorInfos.usesOutputRegister(ShortestPathExecutorInfos::VERTEX)) {
             AqlValue value =
-                block->getValue(blockIndex, executorInfos.getOutputRegister(ShortestPathExecutorInfos::VERTEX));
+                block->getValue(blockIndex, executorInfos.getOutputRegister(
+                                                ShortestPathExecutorInfos::VERTEX));
             EXPECT_TRUE(value.isObject());
             EXPECT_TRUE(arangodb::basics::VelocyPackHelper::compare(
                             value.slice(),
@@ -388,7 +389,8 @@ class ShortestPathExecutorTest
           }
           if (executorInfos.usesOutputRegister(ShortestPathExecutorInfos::EDGE)) {
             AqlValue value =
-                block->getValue(blockIndex, executorInfos.getOutputRegister(ShortestPathExecutorInfos::EDGE));
+                block->getValue(blockIndex, executorInfos.getOutputRegister(
+                                                ShortestPathExecutorInfos::EDGE));
 
             if (expectedPathStarts.find(expectedRowsIndex) != expectedPathStarts.end()) {
               EXPECT_TRUE(value.isNull(false));
@@ -435,6 +437,7 @@ class ShortestPathExecutorTest
       std::tie(state, std::ignore /* stats */, skippedInitial, std::ignore) =
           testee.skipRowsRange(input, ourCall);
     }
+    ourCall.resetSkipCount();
 
     // Produce rows
     while (state == ExecutorState::HASMORE && ourCall.getLimit() > 0) {
@@ -455,11 +458,12 @@ class ShortestPathExecutorTest
     // FullCount
     if (ourCall.needsFullCount()) {
       // Emulate being called with a full count
-      ourCall.hardLimit = 0;
-      ourCall.softLimit = 0;
+      ourCall.hardLimit = 0u;
+      ourCall.softLimit = 0u;
       std::tie(state, std::ignore /* stats */, skippedFullCount, std::ignore) =
           testee.skipRowsRange(input, ourCall);
     }
+    ourCall.resetSkipCount();
 
     ValidateCalledWith();
     ValidateResult(outputs, skippedInitial, skippedFullCount);
@@ -539,9 +543,10 @@ auto targets = testing::Values(constTarget, regTarget, brokenTarget);
 static auto inputs = testing::Values(noneRow, oneRow, twoRows, threeRows, someRows);
 auto paths = testing::Values(noPath, onePath, threePaths, somePaths);
 auto calls =
-    testing::Values(AqlCall{}, AqlCall{0, 0, 0, false}, AqlCall{0, 1, 0, false},
-                    AqlCall{0, 0, 1, false}, AqlCall{0, 1, 1, false}, AqlCall{1, 1, 1},
-                    AqlCall{100, 1, 1}, AqlCall{1000}, AqlCall{0, 0, 0, true},
+    testing::Values(AqlCall{}, AqlCall{0, 0u, 0u, false},
+                    AqlCall{0, 1u, 0u, false}, AqlCall{0, 0u, 1u, false},
+                    AqlCall{0, 1u, 1u, false}, AqlCall{1, 1u, 1u},
+                    AqlCall{100, 1u, 1u}, AqlCall{1000}, AqlCall{0, 0u, 0u, true},
                     AqlCall{0, AqlCall::Infinity{}, AqlCall::Infinity{}, true});
 
 auto variants = testing::Values(ShortestPathOutput::VERTEX_ONLY,

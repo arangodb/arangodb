@@ -44,7 +44,7 @@ class levenshtein_automaton_index_test_case : public tests::index_test_base {
         auto actual_terms = fields->value().iterator(matcher);
         ASSERT_NE(nullptr, actual_terms);
 
-        auto& payload = actual_terms->attributes().get<irs::payload>();
+        auto* payload = irs::get<irs::payload>(*actual_terms);
         ASSERT_NE(nullptr, payload);
         ASSERT_EQ(1, payload->value.size());
 

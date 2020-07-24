@@ -38,22 +38,30 @@
 #include <velocypack/velocypack-aliases.h>
 #include <cstring>
 
-using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::rest;
-
 using arangodb::velocypack::StringRef;
+
+namespace arangodb {
+namespace rest {
+
+struct H2Response : public HttpResponse {
+  H2Response(ResponseCode code, uint64_t mid)
+    : HttpResponse(code, mid, nullptr) {}
+  
+  RequestStatistics::Item statistics;
+};
 
 template <SocketType T>
 /*static*/ int H2CommTask<T>::on_begin_headers(nghttp2_session* session,
                                                const nghttp2_frame* frame, void* user_data) {
   H2CommTask<T>* me = static_cast<H2CommTask<T>*>(user_data);
-
+   
   if (frame->hd.type != NGHTTP2_HEADERS || frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
     return 0;
   }
 
   const int32_t sid = frame->hd.stream_id;
+  me->acquireStatistics(sid).SET_READ_START(TRI_microtime());
   auto req = std::make_unique<HttpRequest>(me->_connectionInfo, /*messageId*/ sid,
                                            /*allowMethodOverride*/ false);
   me->createStream(sid, std::move(req));
@@ -118,7 +126,7 @@ template <SocketType T>
       if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
         const int32_t sid = frame->hd.stream_id;
         LOG_TOPIC("c75b1", TRACE, Logger::REQUESTS)
-            << "<http2> finalized request on stream " << sid;
+            << "<http2> finalized request on stream " << sid << " with ptr " << me;
         
         Stream* strm = me->findStream(sid);
         if (strm) {
@@ -151,7 +159,14 @@ template <SocketType T>
 /*static*/ int H2CommTask<T>::on_stream_close(nghttp2_session* session, int32_t stream_id,
                                               uint32_t error_code, void* user_data) {
   H2CommTask<T>* me = static_cast<H2CommTask<T>*>(user_data);
-  me->_streams.erase(stream_id);
+  auto it = me->_streams.find(stream_id);
+  if (it != me->_streams.end()) {
+    Stream& strm = *it->second;
+    if (strm.response) {
+      strm.response->statistics.SET_WRITE_END();
+    }
+    me->_streams.erase(it);
+  }
   
   if (error_code != NGHTTP2_NO_ERROR) {
     LOG_TOPIC("2824d", DEBUG, Logger::REQUESTS) << "<http2> closing stream "
@@ -191,7 +206,7 @@ template <SocketType T>
 H2CommTask<T>::H2CommTask(GeneralServer& server, ConnectionInfo info,
                           std::unique_ptr<AsioSocket<T>> so)
     : GeneralCommTask<T>(server, std::move(info), std::move(so)) {
-  ConnectionStatistics::SET_HTTP(this->_connectionStatistics);
+  this->_connectionStatistics.SET_HTTP();
   initNgHttp2Session();
 }
 
@@ -203,7 +218,7 @@ H2CommTask<T>::~H2CommTask() noexcept {
     LOG_TOPIC("924cf", DEBUG, Logger::REQUESTS)
         << "<http2> got " << _streams.size() << " remaining streams";
   }
-  HttpResponse* res = nullptr;
+  H2Response* res = nullptr;
   while (_responses.pop(res)) {
     delete res;
   }
@@ -319,7 +334,7 @@ void H2CommTask<T>::upgradeHttp1(std::unique_ptr<HttpRequest> req) {
       return;
     }
     
-    ::submitConnectionPreface(me._session);
+    submitConnectionPreface(me._session);
     
     // The HTTP/1.1 request that is sent prior to upgrade is assigned
     // a stream identifier of 1 (see Section 5.1.1).
@@ -349,7 +364,7 @@ void H2CommTask<T>::start() {
     submitConnectionPreface(me._session);
 
     me.doWrite();  // write out preface
-    me.asyncReadSome();
+    me.asyncReadSome(); // start reading
   });
 }
 
@@ -413,6 +428,10 @@ void H2CommTask<T>::processStream(H2CommTask<T>::Stream* stream) {
   req->body().resetTo(req->body().size() - 1);
 
   this->_protocol->timer.cancel();
+  this->_requestCount += 1;
+  if (this->_keepAliveTimeoutReached) {
+    return;
+  }
 
   {
     LOG_TOPIC("924ce", INFO, Logger::REQUESTS)
@@ -434,6 +453,12 @@ void H2CommTask<T>::processStream(H2CommTask<T>::Stream* stream) {
   
   // store origin header for later use
   stream->origin = req->header(StaticStrings::Origin);
+  auto messageId = req->messageId();
+  RequestStatistics::Item const& stat = this->statistics(messageId);
+  stat.SET_REQUEST_TYPE(req->requestType());
+  stat.ADD_RECEIVED_BYTES(stream->headerBuffSize + req->body().size());
+  stat.SET_READ_END();
+  stat.SET_WRITE_START();
 
   // OPTIONS requests currently go unauthenticated
   if (req->requestType() == rest::RequestType::OPTIONS) {
@@ -446,7 +471,7 @@ void H2CommTask<T>::processStream(H2CommTask<T>::Stream* stream) {
 
   // We want to separate superuser token traffic:
   if (req->authenticated() && req->user().empty()) {
-    RequestStatistics::SET_SUPERUSER(this->statistics(1UL));
+    stat.SET_SUPERUSER();
   }
 
   // first check whether we allow the request to continue
@@ -457,14 +482,13 @@ void H2CommTask<T>::processStream(H2CommTask<T>::Stream* stream) {
 
   // unzip / deflate
   if (!this->handleContentEncoding(*req)) {
-    this->addErrorResponse(rest::ResponseCode::BAD, req->contentTypeResponse(),
-                           1, TRI_ERROR_BAD_PARAMETER, "decoding error");
+    this->sendErrorResponse(rest::ResponseCode::BAD, req->contentTypeResponse(),
+                            1, TRI_ERROR_BAD_PARAMETER, "decoding error");
     return;
   }
 
   // create a handler and execute
-  auto resp = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR,
-                                             req->messageId(), nullptr);
+  auto resp = std::make_unique<H2Response>(rest::ResponseCode::SERVER_ERROR, messageId);
   resp->setContentType(req->contentTypeResponse());
   this->executeRequest(std::move(req), std::move(resp));
 }
@@ -487,15 +511,11 @@ static void DTraceH2CommTaskSendResponse(size_t) {}
 
 template <SocketType T>
 void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
-                                 RequestStatistics* stat) {
+                                 RequestStatistics::Item stat) {
 
   DTraceH2CommTaskSendResponse((size_t) this);
 
-  // TODO the statistics are total bogus here
-  double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
-  if (stat) {
-    stat->release();
-  }
+  double const totalTime = stat.ELAPSED_SINCE_READ_START();
   
   if (this->_stopped.load(std::memory_order_acquire)) {
     return;
@@ -510,7 +530,9 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
        << "\",\"" << static_cast<int>(res->responseCode()) << "\","
        << Logger::FIXED(totalTime, 6);
   
-  auto* tmp = static_cast<HttpResponse*>(res.get());
+  auto* tmp = static_cast<H2Response*>(res.get());
+  tmp->statistics = std::move(stat);
+  
   // this uses fixed capacity queue, push might fail (it shouldn't though)
   int retries = 1024;
   while (ADB_UNLIKELY(!_responses.push(tmp))) {
@@ -536,9 +558,9 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
 // queue the response onto the session, call only on IO thread
 template <SocketType T>
 void H2CommTask<T>::queueHttp2Responses() {
-  HttpResponse* response = nullptr;
+  H2Response* response = nullptr;
   while (_responses.pop(response)) {
-    std::unique_ptr<HttpResponse> guard(response);
+    std::unique_ptr<H2Response> guard(response);
     
     const int32_t streamId = static_cast<int32_t>(response->messageId());
     Stream* strm = findStream(streamId);
@@ -548,11 +570,11 @@ void H2CommTask<T>::queueHttp2Responses() {
       return;
     }
     strm->response = std::move(guard);
+    auto& res = *response;
 
     // will add CORS headers if necessary
-    this->finishExecution(*strm->response, strm->origin);
+    this->finishExecution(res, strm->origin);
 
-    auto& res = *response;
     // we need a continuous block of memory for headers
     std::vector<nghttp2_nv> nva;
     nva.reserve(4 + res.headers().size());
@@ -587,8 +609,8 @@ void H2CommTask<T>::queueHttp2Responses() {
     }
 
     for (std::string const& cookie : res.cookies()) {
-      nva.push_back({(uint8_t*)"set-cookie", (uint8_t*)cookie.c_str(), 10,
-                     cookie.length(),
+      nva.push_back({(uint8_t*)"set-cookie", (uint8_t*)cookie.data(), 10,
+                     cookie.size(),
                      NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE});
     }
 
@@ -599,18 +621,19 @@ void H2CommTask<T>::queueHttp2Responses() {
                      type.length(), NGHTTP2_NV_FLAG_NO_COPY_NAME});
     }
 
+    std::string len;
     nghttp2_data_provider *prd_ptr = nullptr, prd;
     if (!res.generateBody() ||
-        ::expectResponseBody(static_cast<int>(res.responseCode()))
+        expectResponseBody(static_cast<int>(res.responseCode()))
       ) {
-      std::string len;
       len = std::to_string(res.bodySize());
       nva.push_back({(uint8_t*)"content-length", (uint8_t*)len.c_str(), 14,
-                     len.length(), NGHTTP2_NV_FLAG_NO_COPY_NAME});
+                     len.size(), NGHTTP2_NV_FLAG_NO_COPY_NAME});
     }
+    
     if ((res.bodySize() > 0) &&
         res.generateBody() &&
-        ::expectResponseBody(static_cast<int>(res.responseCode()))
+        expectResponseBody(static_cast<int>(res.responseCode()))
       ) {
       prd.source.ptr = strm;
       prd.read_callback = [](nghttp2_session* session, int32_t stream_id,
@@ -641,7 +664,9 @@ void H2CommTask<T>::queueHttp2Responses() {
       };
       prd_ptr = &prd;
     }
-
+    
+    res.statistics.ADD_SENT_BYTES(res.bodySize());
+    
     int rv = nghttp2_submit_response(this->_session, streamId, nva.data(),
                                      nva.size(), prd_ptr);
     if (rv != 0) {
@@ -743,7 +768,7 @@ void H2CommTask<T>::doWrite() {
 template <SocketType T>
 std::unique_ptr<GeneralResponse> H2CommTask<T>::createResponse(rest::ResponseCode responseCode,
                                                                uint64_t mid) {
-  return std::make_unique<HttpResponse>(responseCode, mid);
+  return std::make_unique<H2Response>(responseCode, mid);
 }
 
 template <SocketType T>
@@ -790,3 +815,6 @@ template class arangodb::rest::H2CommTask<SocketType::Ssl>;
 #ifndef _WIN32
 template class arangodb::rest::H2CommTask<SocketType::Unix>;
 #endif
+
+} // namespace rest
+} // namespace arangodb

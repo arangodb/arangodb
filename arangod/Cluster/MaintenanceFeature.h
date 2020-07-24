@@ -34,6 +34,8 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/MetricsFeature.h"
 
+#include <memory>
+#include <mutex>
 #include <queue>
 
 namespace arangodb {
@@ -63,6 +65,12 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
     // dbname -> error
     std::unordered_map<std::string, std::shared_ptr<VPackBuffer<uint8_t>>> databases;
   };
+  
+  /// @brief Lowest limit for worker threads
+  static constexpr uint32_t const minThreadLimit = 2;
+
+  /// @brief Highest limit for worker threads
+  static constexpr uint32_t const maxThreadLimit = 64;
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -77,12 +85,6 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   // Proceed doing maintenance
   void proceed();
 
-  // preparation phase for feature in the preparation phase, the features must
-  // not start any threads. furthermore, they must not write any files under
-  // elevated privileges if they want other features to access them, or if they
-  // want to access these files with dropped privileges
-  virtual void prepare() override;
-
   // start the feature
   virtual void start() override;
 
@@ -91,9 +93,6 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
   // stop the feature
   virtual void stop() override;
-
-  // shut down the feature
-  virtual void unprepare() override {}
 
   //
   // api features
@@ -154,12 +153,12 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
   /// @brief Process specific ID for a new action
   /// @returns uint64_t
-  uint64_t nextActionId() { return _nextActionId++; };
+  uint64_t nextActionId() { return _nextActionId++; }
 
-  bool isShuttingDown() const { return (_isShuttingDown); };
+  bool isShuttingDown() const { return (_isShuttingDown); }
 
   /// @brief Return number of seconds to say "not done" to block retries too soon
-  uint32_t getSecondsActionsBlock() const { return _secondsActionsBlock; };
+  uint32_t getSecondsActionsBlock() const { return _secondsActionsBlock; }
 
   /**
    * @brief Find and return first found not-done action or nullptr
@@ -286,12 +285,6 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
    */
   arangodb::Result copyAllErrors(errors_t& errors) const;
 
-  /// @brief Lowest limit for worker threads
-  static uint32_t const minThreadLimit;
-
-  /// @brief Highest limit for worker threads
-  static uint32_t const maxThreadLimit;
-
   /**
    * @brief get volatile shard version
    */
@@ -308,36 +301,10 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
    */
   void delShardVersion(std::string const& shardId);
 
-  /**
-   * @brief Get the number of loadCurrent operations.
-   *        NOTE: The Counter functions can be removed
-   *        as soon as we use a push based approach on Plan and Current
-   * @return The most recent count for getCurrent calls
-   */
-  uint64_t getCurrentCounter() const;
-
-  /**
-   * @brief increase the counter for loadCurrent operations triggered
-   *        during maintenance. This is used to delay some Actions, that
-   *        require a recent current to continue
-   */
-  void increaseCurrentCounter();
-
-  /**
-   * @brief wait until the current counter is larger then the given old one
-   *        the idea here is to first request the `getCurrentCounter`.
-   * @param old  The last number of getCurrentCounter(). This function will
-   *             return only of the recent counter is larger than old.
-   */
-  void waitForLargerCurrentCounter(uint64_t old);
-
  protected:
   void initializeMetrics();
 
  private:
-  /// @brief common code used by multiple constructors
-  void init();
-
   /// @brief Search for first action matching hash and predicate
   /// @return shared pointer to action object if exists, empty shared_ptr if not
   std::shared_ptr<maintenance::Action> findFirstActionHash(
@@ -361,6 +328,8 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
  protected:
   /// @brief option for forcing this feature to always be enable - used by the catch tests
   bool _forceActivation;
+  
+  bool _resignLeadershipOnShutdown;
 
   /// @brief tunable option for thread pool size
   uint32_t _maintenanceThreadsMax;
@@ -442,18 +411,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// independant actions
   std::unordered_map<std::string, size_t> _shardVersion;
 
-  bool _resignLeadershipOnShutdown;
-
   std::atomic<std::chrono::steady_clock::duration> _pauseUntil;
-
-  /// @brief Mutex for the current counter condition variable
-  mutable std::mutex _currentCounterLock;
-
-  /// @brief Condition variable where Actions can wait on until _currentCounter increased
-  std::condition_variable _currentCounterCondition;
-
-  /// @brief  counter for load_current requests.
-  uint64_t _currentCounter;
 
  public:
   std::optional<std::reference_wrapper<Histogram<log_scale_t<uint64_t>>>> _phase1_runtime_msec;

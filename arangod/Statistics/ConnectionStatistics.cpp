@@ -23,29 +23,31 @@
 
 #include "ConnectionStatistics.h"
 
-#include "Basics/MutexLocker.h"
 #include "Rest/CommonDefines.h"
 
+#include <boost/lockfree/queue.hpp>
+
 using namespace arangodb;
-using namespace arangodb::basics;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    static members
+// --SECTION--                                                  global variables
 // -----------------------------------------------------------------------------
 
-std::unique_ptr<ConnectionStatistics[]> ConnectionStatistics::_statisticsBuffer;
+static size_t const QUEUE_SIZE = 64 * 1024 - 2;  // current (1.62) boost maximum
 
-boost::lockfree::queue<ConnectionStatistics*, boost::lockfree::capacity<ConnectionStatistics::QUEUE_SIZE>> ConnectionStatistics::_freeList;
+static std::unique_ptr<ConnectionStatistics[]> _statisticsBuffer;
+
+static boost::lockfree::queue<ConnectionStatistics*, boost::lockfree::capacity<QUEUE_SIZE>> _freeList;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods
 // -----------------------------------------------------------------------------
 
-void ConnectionStatistics::SET_HTTP(ConnectionStatistics* stat) {
-  if (stat != nullptr) {
-    stat->_http = true;
+void ConnectionStatistics::Item::SET_HTTP() {
+  if (_stat != nullptr) {
+    _stat->_http = true;
 
-    TRI_HttpConnectionsStatistics.incCounter();
+    statistics::HttpConnections.incCounter();
   }
 }
 
@@ -59,33 +61,27 @@ void ConnectionStatistics::initialize() {
   }
 }
 
-ConnectionStatistics* ConnectionStatistics::acquire() {
+ConnectionStatistics::Item ConnectionStatistics::acquire() {
   ConnectionStatistics* statistics = nullptr;
 
   if (StatisticsFeature::enabled() && _freeList.pop(statistics)) {
-    return statistics;
+    return Item{ statistics };
   }
 
-  return nullptr;
+  return Item{};
 }
 
-void ConnectionStatistics::fill(
-    StatisticsCounter& httpConnections, StatisticsCounter& totalRequests,
-    std::array<StatisticsCounter, MethodRequestsStatisticsSize>& methodRequests,
-    StatisticsCounter& asyncRequests, StatisticsDistribution& connectionTime) {
+void ConnectionStatistics::getSnapshot(Snapshot& snapshot) {
   if (!StatisticsFeature::enabled()) {
     // all the below objects may be deleted if we don't have statistics enabled
     return;
   }
 
-  httpConnections = TRI_HttpConnectionsStatistics;
-  totalRequests = TRI_TotalRequestsStatistics;
-  {
-    MUTEX_LOCKER(locker, TRI_RequestsStatisticsMutex);
-    methodRequests = TRI_MethodRequestsStatistics;
-  }
-  asyncRequests = TRI_AsyncRequestsStatistics;
-  connectionTime = TRI_ConnectionTimeDistributionStatistics;
+  snapshot.httpConnections = statistics::HttpConnections;
+  snapshot.totalRequests = statistics::TotalRequests;
+  snapshot.methodRequests = statistics::MethodRequests;
+  snapshot.asyncRequests = statistics::AsyncRequests;
+  snapshot.connectionTime = statistics::ConnectionTimeDistribution;
 }
 
 // -----------------------------------------------------------------------------
@@ -95,12 +91,12 @@ void ConnectionStatistics::fill(
 void ConnectionStatistics::release() {
   {
     if (_http) {
-      TRI_HttpConnectionsStatistics.decCounter();
+      statistics::HttpConnections.decCounter();
     }
 
     if (_connStart != 0.0 && _connEnd != 0.0) {
       double totalTime = _connEnd - _connStart;
-      TRI_ConnectionTimeDistributionStatistics.addFigure(totalTime);
+      statistics::ConnectionTimeDistribution.addFigure(totalTime);
     }
   }
 

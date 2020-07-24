@@ -49,7 +49,7 @@ using EN = arangodb::aql::ExecutionNode;
 
 namespace {
 
-std::vector<ExecutionNode::NodeType> const reduceExtractionToProjectionTypes = {
+std::initializer_list<ExecutionNode::NodeType> const reduceExtractionToProjectionTypes = {
     ExecutionNode::ENUMERATE_COLLECTION, ExecutionNode::INDEX};
 
 }  // namespace
@@ -80,7 +80,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
   plan->findNodesOfType(nodes, ::reduceExtractionToProjectionTypes, true);
 
   bool modified = false;
-  ::arangodb::containers::HashSet<Variable const*> vars;
+  VarSet vars;
   std::unordered_set<std::string> attributes;
 
   for (auto& n : nodes) {

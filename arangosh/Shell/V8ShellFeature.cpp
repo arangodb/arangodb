@@ -1048,7 +1048,7 @@ void V8ShellFeature::initGlobals() {
     // version-specific js path exists!
     _startupDirectory = versionedPath;
   }
-  v8security.addToInternalWhitelist(_startupDirectory, FSAccessType::READ);
+  v8security.addToInternalAllowList(_startupDirectory, FSAccessType::READ);
 
   for (auto& it : _moduleDirectories) {
     versionedPath = basics::FileUtils::buildFilename(it, versionAppendix);
@@ -1060,7 +1060,7 @@ void V8ShellFeature::initGlobals() {
       // version-specific js path exists!
       it = versionedPath;
     }
-    v8security.addToInternalWhitelist(it, FSAccessType::READ);  // expand
+    v8security.addToInternalAllowList(it, FSAccessType::READ);  // expand
   }
 
   LOG_TOPIC("930d9", DEBUG, Logger::V8)
@@ -1090,7 +1090,7 @@ void V8ShellFeature::initGlobals() {
 
   if (_currentModuleDirectory) {
     modules += sep + FileUtils::currentDirectory().result();
-    v8security.addToInternalWhitelist(FileUtils::currentDirectory().result(),
+    v8security.addToInternalAllowList(FileUtils::currentDirectory().result(),
                                       FSAccessType::READ);
   }
 
@@ -1131,6 +1131,10 @@ void V8ShellFeature::initMode(ShellFeature::RunMode runMode,
 
   TRI_AddGlobalVariableVocbase(_isolate,
                                TRI_V8_ASCII_STRING(_isolate, "ARGUMENTS"), p);
+ 
+  std::string const& binaryPath = ArangoGlobalContext::CONTEXT->getBinaryPath();
+  TRI_AddGlobalVariableVocbase(_isolate, TRI_V8_ASCII_STRING(_isolate, "ARANGOSH_PATH"),
+                               TRI_V8_STD_STRING(_isolate, binaryPath));
 
   // set mode flags
   TRI_AddGlobalVariableVocbase(

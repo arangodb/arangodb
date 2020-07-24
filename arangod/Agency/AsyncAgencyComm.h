@@ -34,8 +34,8 @@
 
 #include "Agency/AgencyComm.h"
 
-#include "Cluster/PathComponent.h"
-#include "Cluster/ResultT.h"
+#include "Agency/PathComponent.h"
+#include "Basics/ResultT.h"
 #include "Futures/Future.h"
 #include "Network/Methods.h"
 
@@ -53,13 +53,24 @@ struct AsyncAgencyCommResult {
 
   VPackSlice slice() const { return response->slice(); }
 
+  std::shared_ptr<velocypack::Buffer<uint8_t>> copyPayload() const {
+    return response->copyPayload();
+  }
+  std::shared_ptr<velocypack::Buffer<uint8_t>> stealPayload() const {
+    return response->stealPayload();
+  }
+  std::string payloadAsString() const {
+    return response->payloadAsString();
+  }
+  std::size_t payloadSize() const { return response->payloadSize(); }
+
   arangodb::fuerte::StatusCode statusCode() const {
     return response->statusCode();
   }
 
   Result asResult() {
     if (!ok()) {
-      return Result{int(error), arangodb::fuerte::to_string(error)};
+      return Result{int(error), to_string(error)};
     } else if (200 <= statusCode() && statusCode() <= 299) {
       return Result{};
     } else {
@@ -67,6 +78,15 @@ struct AsyncAgencyCommResult {
     }
   }
 };
+
+// Work around a spurious compiler warning in GCC 9.3 with our maintainer mode
+// switched off. And since warnings are considered to be errors, we must
+// switch the warning off:
+
+#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
 
 struct AgencyReadResult : public AsyncAgencyCommResult {
   AgencyReadResult(AsyncAgencyCommResult&& result,
@@ -85,6 +105,10 @@ struct AgencyReadResult : public AsyncAgencyCommResult {
   VPackSlice _value;
   std::shared_ptr<arangodb::cluster::paths::Path const> _valuePath;
 };
+
+#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
+#pragma GCC diagnostic pop
+#endif
 
 class AsyncAgencyComm;
 
@@ -149,6 +173,7 @@ class AsyncAgencyComm final {
   [[nodiscard]] FutureResult getValues(std::string const& path) const;
   [[nodiscard]] FutureReadResult getValues(
       std::shared_ptr<arangodb::cluster::paths::Path const> const& path) const;
+  [[nodiscard]] FutureResult poll(network::Timeout timeout, uint64_t index) const;
 
   template <typename T>
   [[nodiscard]] FutureResult setValue(network::Timeout timeout,
@@ -192,13 +217,13 @@ class AsyncAgencyComm final {
                                                   velocypack::Buffer<uint8_t>&& body) const;
   [[nodiscard]] FutureResult sendReadTransaction(network::Timeout timeout,
                                                  velocypack::Buffer<uint8_t>&& body) const;
+  [[nodiscard]] FutureResult sendPollTransaction(network::Timeout timeout, uint64_t index) const;
 
   [[nodiscard]] FutureResult sendTransaction(network::Timeout timeout,
                                              AgencyReadTransaction const&) const;
   [[nodiscard]] FutureResult sendTransaction(network::Timeout timeout,
                                              AgencyWriteTransaction const&) const;
 
- public:
   enum class RequestType {
     READ,   // send the transaction again in the case of no response
     WRITE,  // does not send the transaction again but instead tries to do inquiry with the given ids
@@ -224,7 +249,10 @@ class AsyncAgencyComm final {
                                               network::Timeout timeout, RequestType type,
                                               velocypack::Buffer<uint8_t>&& body) const;
 
- public:
+  [[nodiscard]] FutureResult sendWithFailover(
+    arangodb::fuerte::RestVerb method, std::string const& url,
+    network::Timeout timeout, RequestType type, uint64_t index) const;
+
   AsyncAgencyComm() : _manager(AsyncAgencyCommManager::getInstance()) {}
   explicit AsyncAgencyComm(AsyncAgencyCommManager& manager)
       : _manager(manager) {}

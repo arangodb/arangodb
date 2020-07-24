@@ -28,37 +28,67 @@
 #include "index/index_reader.hpp"
 #include "utils/memory_pool.hpp"
 
+NS_LOCAL
+
+using namespace irs;
+
+const order UNORDERED;
+const order::prepared PREPARED_UNORDERED;
+
+const byte_type* no_score(score_ctx* ctx) noexcept {
+  return reinterpret_cast<byte_type*>(ctx);
+}
+
+NS_END
+
 NS_ROOT
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      filter_boost
 // -----------------------------------------------------------------------------
 
-filter_boost::filter_boost() noexcept
-  : basic_attribute<boost_t>(no_boost()) {
+REGISTER_ATTRIBUTE(filter_boost);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    score_function
+// -----------------------------------------------------------------------------
+
+score_function::score_function() noexcept
+  : func_(&::no_score) {
 }
 
-REGISTER_ATTRIBUTE(filter_boost);
-DEFINE_ATTRIBUTE_TYPE(filter_boost);
+score_function::score_function(score_function&& rhs) noexcept
+  : ctx_(std::move(rhs.ctx_)),
+    func_(rhs.func_) {
+  rhs.func_ = &::no_score;
+}
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                             sort
-// ----------------------------------------------------------------------------
+score_function& score_function::operator=(score_function&& rhs) noexcept {
+  if (this != &rhs) {
+    ctx_ = std::move(rhs.ctx_);
+    func_ = rhs.func_;
+    rhs.func_ = &::no_score;
+  }
+  return *this;
+}
 
-sort::sort(const type_id& type) noexcept
-  : type_(&type) {
+// -----------------------------------------------------------------------------
+// --SECTION--                                                              sort
+// -----------------------------------------------------------------------------
+
+sort::sort(const type_info& type) noexcept
+  : type_(type.id()) {
 }
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                            order 
 // ----------------------------------------------------------------------------
 
-const order& order::unordered() {
-  static order ord;
-  return ord;
+const order& order::unordered() noexcept {
+  return UNORDERED;
 }
 
-void order::remove(const type_id& type) {
+void order::remove(type_info::type_id type) {
   order_.erase(
     std::remove_if(
       order_.begin(), order_.end(),
@@ -66,31 +96,8 @@ void order::remove(const type_id& type) {
   ));
 }
 
-const order::prepared& order::prepared::unordered() {
-  static order::prepared ord;
-  return ord;
-}
-
-order::prepared::prepared(order::prepared&& rhs) noexcept
-  : order_(std::move(rhs.order_)),
-    features_(std::move(rhs.features_)),
-    score_size_(rhs.score_size_),
-    stats_size_(rhs.stats_size_) {
-  rhs.score_size_ = 0;
-  rhs.stats_size_ = 0;
-}
-
-order::prepared& order::prepared::operator=(order::prepared&& rhs) noexcept {
-  if (this != &rhs) {
-    order_ = std::move(rhs.order_);
-    features_ = std::move(rhs.features_);
-    score_size_ = rhs.score_size_;
-    rhs.score_size_ = 0;
-    stats_size_ = rhs.stats_size_;
-    rhs.stats_size_ = 0;
-  }
-
-  return *this;
+const order::prepared& order::prepared::unordered() noexcept {
+  return PREPARED_UNORDERED;
 }
 
 bool order::operator==(const order& other) const {
@@ -117,9 +124,9 @@ bool order::operator==(const order& other) const {
   return true;
 }
 
-order& order::add(bool reverse, const sort::ptr& sort) {
+order& order::add(bool reverse, sort::ptr&& sort) {
   assert(sort);
-  order_.emplace_back(sort, reverse);
+  order_.emplace_back(std::move(sort), reverse);
 
   return *this;
 }
@@ -177,12 +184,14 @@ order::prepared order::prepare() const {
 // ----------------------------------------------------------------------------
 
 order::prepared::scorers::scorers(
-    const prepared_order_t& buckets,
+    const order::prepared& buckets,
     const sub_reader& segment,
     const term_reader& field,
     const byte_type* stats_buf,
-    const attribute_view& doc,
-    boost_t boost) {
+    byte_type* score_buf,
+    const attribute_provider& doc,
+    boost_t boost)
+  : score_buf_(score_buf){
   scorers_.reserve(buckets.size());
 
   for (auto& entry: buckets) {
@@ -191,58 +200,31 @@ order::prepared::scorers::scorers(
     const auto& bucket = *entry.bucket;
 
     auto scorer = bucket.prepare_scorer(
-      segment, field, stats_buf + entry.stats_offset, doc, boost
-    );
+      segment, field,
+      stats_buf + entry.stats_offset,
+      score_buf + entry.score_offset,
+      doc, boost);
 
-    if (scorer.second) {
+    if (scorer) {
       // skip empty scorers
-      scorers_.emplace_back(std::move(scorer.first), scorer.second, entry.score_offset);
+      scorers_.emplace_back(std::move(scorer), &entry);
     }
   }
 }
 
-order::prepared::scorers::scorers(order::prepared::scorers&& other) noexcept
-  : scorers_(std::move(other.scorers_)) {
-}
-
-order::prepared::scorers& order::prepared::scorers::operator=(
-    order::prepared::scorers&& other
-) noexcept {
-  if (this != &other) {
-    scorers_ = std::move(other.scorers_);
-  }
-
-  return *this;
-}
-
-void order::prepared::scorers::score(byte_type* scr) const {
+const byte_type* order::prepared::scorers::evaluate() const {
   for (auto& scorer : scorers_) {
-    assert(scorer.func);
-    (*scorer.func)(scorer.ctx.get(), scr + scorer.offset);
+    scorer.func();
   }
+  return score_buf_;
 }
 
 void order::prepared::prepare_collectors(
     byte_type* stats_buf,
-    const index_reader& index
-) const {
+    const index_reader& index) const {
   for (auto& entry: order_) {
     assert(entry.bucket); // ensured by order::prepared
     entry.bucket->collect(stats_buf + entry.stats_offset, index, nullptr, nullptr);
-  }
-}
-
-void order::prepared::prepare_score(byte_type* score) const {
-  for (auto& sort : order_) {
-    assert(sort.bucket);
-    sort.bucket->prepare_score(score + sort.score_offset);
-  }
-}
-
-void order::prepared::prepare_stats(byte_type* stats) const {
-  for (auto& sort : order_) {
-    assert(sort.bucket);
-    sort.bucket->prepare_stats(stats + sort.stats_offset);
   }
 }
 

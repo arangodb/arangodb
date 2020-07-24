@@ -110,16 +110,33 @@ VPackSlice TraverserCache::lookupVertexInCollection(arangodb::velocypack::String
     }
   }
 
-  Result res = _trx->documentFastPathLocal(collectionName,
-                                           id.substr(pos + 1), _mmdr);
-  if (res.ok()) {
-    ++_insertedDocuments;
-    return VPackSlice(_mmdr.vpack());
-  }
+  try {
+    Result res = _trx->documentFastPathLocal(collectionName,
+                                             id.substr(pos + 1), _mmdr);
+    if (res.ok()) {
+      ++_insertedDocuments;
+      return VPackSlice(_mmdr.vpack());
+    }
 
-  if (!res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-    // ok we are in a rather bad state. Better throw and abort.
-    THROW_ARANGO_EXCEPTION(res);
+    if (!res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+      // ok we are in a rather bad state. Better throw and abort.
+      THROW_ARANGO_EXCEPTION(res);
+    }
+  } catch (basics::Exception const& ex) {
+    if (ServerState::instance()->isDBServer()) {
+      // on a DB server, we could have got here only in the OneShard case.
+      // in this case turn the rather misleading "collection or view not found"
+      // error into a nicer "collection not known to traversal, please add WITH"
+      // message, so users know what to do
+      if (ex.code() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
+                                         "collection not known to traversal: '" +
+                                             collectionName + "'. please add 'WITH " + collectionName +
+                                             "' as the first line in your AQL");
+      }
+    }
+
+    throw;
   }
 
   ++_insertedDocuments;

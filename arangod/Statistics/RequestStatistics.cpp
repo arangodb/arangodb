@@ -29,18 +29,21 @@
 
 #include <iomanip>
 
+#include <boost/lockfree/queue.hpp>
+
 using namespace arangodb;
-using namespace arangodb::basics;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    static members
+// --SECTION--                                                  global variables
 // -----------------------------------------------------------------------------
 
-std::unique_ptr<RequestStatistics[]> RequestStatistics::_statisticsBuffer;
+static size_t const QUEUE_SIZE = 64 * 1024 - 2;  // current (1.62) boost maximum
 
-boost::lockfree::queue<RequestStatistics*, boost::lockfree::capacity<RequestStatistics::QUEUE_SIZE>> RequestStatistics::_freeList;
+static std::unique_ptr<RequestStatistics[]> _statisticsBuffer;
 
-boost::lockfree::queue<RequestStatistics*, boost::lockfree::capacity<RequestStatistics::QUEUE_SIZE>> RequestStatistics::_finishedList;
+static boost::lockfree::queue<RequestStatistics*, boost::lockfree::capacity<QUEUE_SIZE>> _freeList;
+
+static boost::lockfree::queue<RequestStatistics*, boost::lockfree::capacity<QUEUE_SIZE>> _finishedList;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods
@@ -75,9 +78,9 @@ size_t RequestStatistics::processAll() {
   return count;
 }
 
-RequestStatistics* RequestStatistics::acquire() {
+RequestStatistics::Item RequestStatistics::acquire() {
   if (!StatisticsFeature::enabled()) {
-    return nullptr;
+    return Item{};
   }
 
   RequestStatistics* statistics = nullptr;
@@ -85,7 +88,6 @@ RequestStatistics* RequestStatistics::acquire() {
   if (_freeList.pop(statistics)) {
     TRI_ASSERT(statistics->_released);
     TRI_ASSERT(!statistics->_inQueue);
-
     statistics->_released = false;
   } else {
     statistics = nullptr;
@@ -93,7 +95,7 @@ RequestStatistics* RequestStatistics::acquire() {
         << "no free element on statistics queue";
   }
 
-  return statistics;
+  return Item{statistics};
 }
 
 // -----------------------------------------------------------------------------
@@ -104,16 +106,13 @@ void RequestStatistics::process(RequestStatistics* statistics) {
   TRI_ASSERT(statistics != nullptr);
 
   {
-    TRI_TotalRequestsStatistics.incCounter();
+    statistics::TotalRequests.incCounter();
 
     if (statistics->_async) {
-      TRI_AsyncRequestsStatistics.incCounter();
+      statistics::AsyncRequests.incCounter();
     }
 
-    {
-      MUTEX_LOCKER(locker, TRI_RequestsStatisticsMutex);
-      TRI_MethodRequestsStatistics[(size_t)statistics->_requestType].incCounter();
-    }
+    statistics::MethodRequests[(size_t)statistics->_requestType].incCounter();
 
     // check that the request was completely received and transmitted
     if (statistics->_readStart != 0.0 &&
@@ -126,50 +125,28 @@ void RequestStatistics::process(RequestStatistics* statistics) {
         totalTime = statistics->_writeEnd - statistics->_readStart;
       }
 
-      if (statistics->_superuser) {
-        TRI_TotalTimeDistributionStatistics.addFigure(totalTime);
+      statistics::RequestFigures& figures = statistics->_superuser
+        ? statistics::GeneralRequestFigures
+        : statistics::UserRequestFigures;
 
-        double requestTime = statistics->_requestEnd - statistics->_requestStart;
-        TRI_RequestTimeDistributionStatistics.addFigure(requestTime);
+      figures.totalTimeDistribution.addFigure(totalTime);
 
-        double queueTime = 0.0;
+      double requestTime = statistics->_requestEnd - statistics->_requestStart;
+      figures.requestTimeDistribution.addFigure(requestTime);
 
-        if (statistics->_queueStart != 0.0 && statistics->_queueEnd != 0.0) {
-          queueTime = statistics->_queueEnd - statistics->_queueStart;
-          TRI_QueueTimeDistributionStatistics.addFigure(queueTime);
-        }
-
-        double ioTime = totalTime - requestTime - queueTime;
-
-        if (ioTime >= 0.0) {
-          TRI_IoTimeDistributionStatistics.addFigure(ioTime);
-        }
-
-        TRI_BytesSentDistributionStatistics.addFigure(statistics->_sentBytes);
-        TRI_BytesReceivedDistributionStatistics.addFigure(statistics->_receivedBytes);
-      } else {
-        TRI_TotalTimeDistributionStatisticsUser.addFigure(totalTime);
-
-        double requestTime = statistics->_requestEnd - statistics->_requestStart;
-        TRI_RequestTimeDistributionStatisticsUser.addFigure(requestTime);
-
-        double queueTime = 0.0;
-
-        if (statistics->_queueStart != 0.0 && statistics->_queueEnd != 0.0) {
-          queueTime = statistics->_queueEnd - statistics->_queueStart;
-          TRI_QueueTimeDistributionStatisticsUser.addFigure(queueTime);
-        }
-
-        double ioTime = totalTime - requestTime - queueTime;
-
-        if (ioTime >= 0.0) {
-          TRI_IoTimeDistributionStatisticsUser.addFigure(ioTime);
-        }
-
-        TRI_BytesSentDistributionStatisticsUser.addFigure(statistics->_sentBytes);
-        TRI_BytesReceivedDistributionStatisticsUser.addFigure(statistics->_receivedBytes);
-
+      double queueTime = 0.0;
+      if (statistics->_queueStart != 0.0 && statistics->_queueEnd != 0.0) {
+        queueTime = statistics->_queueEnd - statistics->_queueStart;
+        figures.queueTimeDistribution.addFigure(queueTime);
       }
+
+      double ioTime = totalTime - requestTime - queueTime;
+      if (ioTime >= 0.0) {
+        figures.ioTimeDistribution.addFigure(ioTime);
+      }
+
+      figures.bytesSentDistribution.addFigure(statistics->_sentBytes);
+      figures.bytesReceivedDistribution.addFigure(statistics->_receivedBytes);
     }
   }
 
@@ -210,120 +187,44 @@ void RequestStatistics::release() {
   }
 }
 
-void RequestStatistics::fill(StatisticsDistribution& totalTime,
-                             StatisticsDistribution& requestTime,
-                             StatisticsDistribution& queueTime,
-                             StatisticsDistribution& ioTime, StatisticsDistribution& bytesSent,
-                             StatisticsDistribution& bytesReceived,
-                             stats::RequestStatisticsSource source) {
+void RequestStatistics::getSnapshot(Snapshot& snapshot, stats::RequestStatisticsSource source) {
   if (!StatisticsFeature::enabled()) {
     // all the below objects may be deleted if we don't have statistics enabled
     return;
   }
 
-  if (source == stats::RequestStatisticsSource::USER) {
-    totalTime = TRI_TotalTimeDistributionStatisticsUser;
-    requestTime = TRI_RequestTimeDistributionStatisticsUser;
-    queueTime = TRI_QueueTimeDistributionStatisticsUser;
-    ioTime = TRI_IoTimeDistributionStatisticsUser;
-    bytesSent = TRI_BytesSentDistributionStatisticsUser;
-    bytesReceived = TRI_BytesReceivedDistributionStatisticsUser;
-  } else {
-    totalTime = TRI_TotalTimeDistributionStatistics;
-    requestTime = TRI_RequestTimeDistributionStatistics;
-    queueTime = TRI_QueueTimeDistributionStatistics;
-    ioTime = TRI_IoTimeDistributionStatistics;
-    bytesSent = TRI_BytesSentDistributionStatistics;
-    bytesReceived = TRI_BytesReceivedDistributionStatistics;
-  }
+  statistics::RequestFigures& figures = source == stats::RequestStatisticsSource::USER
+    ? statistics::UserRequestFigures
+    : statistics::GeneralRequestFigures;
+
+  snapshot.totalTime = figures.totalTimeDistribution;
+  snapshot.requestTime = figures.requestTimeDistribution;
+  snapshot.queueTime = figures.queueTimeDistribution;
+  snapshot.ioTime = figures.ioTimeDistribution;
+  snapshot.bytesSent = figures.bytesSentDistribution;
+  snapshot.bytesReceived = figures.bytesReceivedDistribution;
+  
   if (source == stats::RequestStatisticsSource::ALL) {
-    totalTime.add(TRI_TotalTimeDistributionStatisticsUser);
-    requestTime.add(TRI_RequestTimeDistributionStatisticsUser);
-    queueTime.add(TRI_QueueTimeDistributionStatisticsUser);
-    ioTime.add(TRI_IoTimeDistributionStatisticsUser);
-    bytesSent.add(TRI_BytesSentDistributionStatisticsUser);
-    bytesReceived.add(TRI_BytesReceivedDistributionStatisticsUser);
+    snapshot.totalTime.add(statistics::UserRequestFigures.totalTimeDistribution);
+    snapshot.requestTime.add(statistics::UserRequestFigures.requestTimeDistribution);
+    snapshot.queueTime.add(statistics::UserRequestFigures.queueTimeDistribution);
+    snapshot.ioTime.add(statistics::UserRequestFigures.ioTimeDistribution);
+    snapshot.bytesSent.add(statistics::UserRequestFigures.bytesSentDistribution);
+    snapshot.bytesReceived.add(statistics::UserRequestFigures.bytesReceivedDistribution);
   }
 }
 
-std::string RequestStatistics::timingsCsv() {
+std::string RequestStatistics::Item::timingsCsv() {
+  TRI_ASSERT(_stat != nullptr);
   std::stringstream ss;
 
-  ss << std::setprecision(9) << std::fixed << "read," << (_readEnd - _readStart)
-     << ",queue," << (_queueEnd - _queueStart) << ",queue-size," << _queueSize
-     << ",request," << (_requestEnd - _requestStart) << ",total,"
-     << (StatisticsFeature::time() - _readStart) << ",error,"
-     << (_executeError ? "true" : "false");
+  ss << std::setprecision(9) << std::fixed
+     << "read," << (_stat->_readEnd - _stat->_readStart)
+     << ",queue," << (_stat->_queueEnd - _stat->_queueStart)
+     << ",queue-size," << _stat->_queueSize
+     << ",request," << (_stat->_requestEnd - _stat->_requestStart)
+     << ",total," << (StatisticsFeature::time() - _stat->_readStart)
+     << ",error," << (_stat->_executeError ? "true" : "false");
 
   return ss.str();
-}
-
-std::string RequestStatistics::to_string() {
-  std::stringstream ss;
-
-  ss << std::boolalpha << std::setprecision(20) << "statistics      " << std::endl
-     << "_readStart      " << _readStart << std::endl
-     << "_readEnd        " << _readEnd << std::endl
-     << "_queueStart     " << _queueStart << std::endl
-     << "_queueEnd       " << _queueEnd << std::endl
-     << "_requestStart   " << _requestStart << std::endl
-     << "_requestEnd     " << _requestEnd << std::endl
-     << "_writeStart     " << _writeStart << std::endl
-     << "_writeEnd       " << _writeEnd << std::endl
-     << "_receivedBytes  " << _receivedBytes << std::endl
-     << "_sentBytes      " << _sentBytes << std::endl
-     << "_async          " << _async << std::endl
-     << "_tooLarge       " << _tooLarge << std::endl
-     << "_executeError   " << _executeError << std::endl
-     << "_ignore         " << _ignore << std::endl
-     << "_superuser      " << _superuser << std::endl;
-
-  return ss.str();
-}
-
-void RequestStatistics::trace_log() {
-  LOG_TOPIC("4a0b6", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-                                     << "_readStart      " << _readStart;
-
-  LOG_TOPIC("8620b", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-                                     << "_readEnd        " << _readEnd;
-
-  LOG_TOPIC("13bae", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-                                     << "_queueStart     " << _queueStart;
-
-  LOG_TOPIC("e6292", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-                                     << "_queueEnd       " << _queueEnd;
-
-  LOG_TOPIC("9c947", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-                                     << "_requestStart   " << _requestStart;
-
-  LOG_TOPIC("09e63", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-                                     << "_requestEnd     " << _requestEnd;
-
-  LOG_TOPIC("4eef0", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-                                     << "_writeStart     " << _writeStart;
-
-  LOG_TOPIC("3922b", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-                                     << "_writeEnd       " << _writeEnd;
-
-  LOG_TOPIC("49e75", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-                                     << "_receivedBytes  " << _receivedBytes;
-
-  LOG_TOPIC("399d0", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-                                     << "_sentBytes      " << _sentBytes;
-
-  LOG_TOPIC("54d62", TRACE, Logger::REQUESTS)
-      << std::boolalpha << std::setprecision(20) << "_async          " << _async;
-
-  LOG_TOPIC("5e68c", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-                                     << "_tooLarge       " << _tooLarge;
-
-  LOG_TOPIC("f4089", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-                                     << "_executeError   " << _executeError;
-
-  LOG_TOPIC("31657", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-                                     << "_ignore         " << _ignore;
-
-  LOG_TOPIC("31658", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-                                     << "_superuser      " << _superuser;
 }

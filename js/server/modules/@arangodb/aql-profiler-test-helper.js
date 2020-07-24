@@ -45,6 +45,7 @@ const defaultBatchSize = 1000;
 const defaultTestRowCounts = [1, 2, 10, 100, 999, 1000, 1001, 1500, 2000, 10500];
 const defaultClusterTestRowCounts = [1, 999, 1000, 1001];
 
+const AsyncNode = 'AsyncNode';
 const CalculationNode = 'CalculationNode';
 const CollectNode = 'CollectNode';
 const DistributeNode = 'DistributeNode';
@@ -56,6 +57,7 @@ const GatherNode = 'GatherNode';
 const IndexNode = 'IndexNode';
 const InsertNode = 'InsertNode';
 const LimitNode = 'LimitNode';
+const MutexNode = 'MutexNode';
 const NoResultsNode = 'NoResultsNode';
 const RemoteNode = 'RemoteNode';
 const RemoveNode = 'RemoveNode';
@@ -71,13 +73,14 @@ const UpdateNode = 'UpdateNode';
 const UpsertNode = 'UpsertNode';
 
 const nodeTypesList = [
-  CalculationNode, CollectNode, DistributeNode, EnumerateCollectionNode,
+  AsyncNode, CalculationNode, CollectNode, DistributeNode, EnumerateCollectionNode,
   EnumerateListNode, EnumerateViewNode, FilterNode, GatherNode, IndexNode,
-  InsertNode, LimitNode, NoResultsNode, RemoteNode, RemoveNode, ReplaceNode,
+  InsertNode, LimitNode, MutexNode, NoResultsNode, RemoteNode, RemoveNode, ReplaceNode,
   ReturnNode, ScatterNode, ShortestPathNode, SingletonNode, SortNode,
   SubqueryNode, TraversalNode, UpdateNode, UpsertNode
 ];
 
+const AsyncBlock = 'AsyncNode';
 const CalculationBlock = 'CalculationNode';
 const ConstrainedSortBlock = 'SortLimitNode';
 const CountCollectBlock = 'CountCollectNode';
@@ -88,6 +91,7 @@ const FilterBlock = 'FilterNode';
 const HashedCollectBlock = 'HashedCollectNode';
 const IndexBlock = 'IndexNode';
 const LimitBlock = 'LimitNode';
+const MutexBlock = 'MutexNode';
 const NoResultsBlock = 'NoResultsNode';
 const RemoteBlock = 'RemoteNode';
 const ReturnBlock = 'ReturnNode';
@@ -111,9 +115,9 @@ const IResearchViewBlock = 'IResearchViewNode';
 const IResearchViewOrderedBlock = 'IResearchOrderedViewNode';
 
 const blockTypesList = [
-  CalculationBlock, ConstrainedSortBlock, CountCollectBlock, DistinctCollectBlock,
+  AsyncBlock, CalculationBlock, ConstrainedSortBlock, CountCollectBlock, DistinctCollectBlock,
   EnumerateCollectionBlock, EnumerateListBlock, FilterBlock,
-  HashedCollectBlock, IndexBlock, LimitBlock, NoResultsBlock, RemoteBlock,
+  HashedCollectBlock, IndexBlock, LimitBlock, MutexBlock, NoResultsBlock, RemoteBlock,
   ReturnBlock, ShortestPathBlock, SingletonBlock, SortBlock,
   SortedCollectBlock, SortingGatherBlock, SubqueryBlock, TraversalBlock,
   UnsortingGatherBlock, RemoveBlock, InsertBlock, UpdateBlock, ReplaceBlock,
@@ -233,8 +237,7 @@ function getPlanNodesWithId (profile) {
 function getStatsNodesWithId (profile) {
   return profile.stats.nodes.map(
     node => ({
-      id: node.id,
-      type: node.type,
+      id: node.id
     })
   );
 }
@@ -721,6 +724,7 @@ exports.viewName = viewName;
 exports.edgeColName = edgeColName;
 exports.defaultBatchSize = defaultBatchSize;
 exports.defaultTestRowCounts = defaultTestRowCounts;
+exports.AsyncNode = AsyncNode;
 exports.CalculationNode = CalculationNode;
 exports.CollectNode = CollectNode;
 exports.DistributeNode = DistributeNode;
@@ -732,6 +736,7 @@ exports.GatherNode = GatherNode;
 exports.IndexNode = IndexNode;
 exports.InsertNode = InsertNode;
 exports.LimitNode = LimitNode;
+exports.MutexNode = MutexNode;
 exports.NoResultsNode = NoResultsNode;
 exports.RemoteNode = RemoteNode;
 exports.RemoveNode = RemoveNode;
@@ -746,6 +751,7 @@ exports.TraversalNode = TraversalNode;
 exports.UpdateNode = UpdateNode;
 exports.UpsertNode = UpsertNode;
 exports.nodeTypesList = nodeTypesList;
+exports.AsyncBlock = AsyncBlock;
 exports.CalculationBlock = CalculationBlock;
 exports.ConstrainedSortBlock = ConstrainedSortBlock;
 exports.CountCollectBlock = CountCollectBlock;
@@ -756,6 +762,7 @@ exports.FilterBlock = FilterBlock;
 exports.HashedCollectBlock = HashedCollectBlock;
 exports.IndexBlock = IndexBlock;
 exports.LimitBlock = LimitBlock;
+exports.MutexBlock = MutexBlock;
 exports.NoResultsBlock = NoResultsBlock;
 exports.RemoteBlock = RemoteBlock;
 exports.ReturnBlock = ReturnBlock;

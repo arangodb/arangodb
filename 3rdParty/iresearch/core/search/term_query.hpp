@@ -44,14 +44,12 @@ class term_query final : public filter::prepared {
 
   typedef states_cache<term_state> states_t;
 
-  DECLARE_SHARED_PTR(term_query);
-
   explicit term_query(states_t&& states, bstring&& stats, boost_t boost);
 
   virtual doc_iterator::ptr execute(
     const sub_reader& rdr,
     const order::prepared& ord,
-    const attribute_view& /*ctx*/
+    const attribute_provider* /*ctx*/
   ) const override;
 
  private:

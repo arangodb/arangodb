@@ -145,6 +145,9 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   }
 
  protected:
+  /// @brief returns the short id of the server which should handle this request
+  ResultT<std::pair<std::string, bool>> forwardingTarget() override;
+
   /// @brief assemble a document id from a string and a string
   /// optionally url-encodes
   std::string assembleDocumentId(std::string const& collectionName, 
@@ -177,13 +180,9 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   /// @brief generates forbidden
   void generateForbidden();
 
-  /// @brief generates precondition failed, without transaction info
-  ///        DEPRECATED
-  void generatePreconditionFailed(std::string const&, std::string const& key,
-                                  TRI_voc_rid_t rev);
-
-  /// @brief generates precondition failed, without transaction info
-  void generatePreconditionFailed(arangodb::velocypack::Slice const& slice);
+  /// @brief generates conflict error
+  void generateConflictError(arangodb::OperationResult const&,
+                             bool precFailed = false);
 
   /// @brief generates not modified
   void generateNotModified(TRI_voc_rid_t);
@@ -197,7 +196,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   /// is used by the others.
   void generateTransactionError(std::string const& collectionName,
                                 OperationResult const& result,
-                                std::string const& key, TRI_voc_rid_t = 0);
+                                std::string const& key = "", TRI_voc_rid_t = 0);
 
   /// @brief generate an error message for a transaction error
   void generateTransactionError(std::string const& collectionName, 
@@ -205,12 +204,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
                                 std::string const& key, TRI_voc_rid_t rid = 0) {
     generateTransactionError(collectionName, OperationResult(res), key, rid);
   }
-
-  /// @brief generate an error message for a transaction error
-  void generateTransactionError(OperationResult const& result) {
-    generateTransactionError("", result, "", 0);
-  }
-
+  
   /// @brief extracts the revision. "header" must be lowercase.
   TRI_voc_rid_t extractRevision(char const* header, bool& isValid) const;
 
@@ -234,7 +228,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
                                                           AccessMode::Type mode) const;
   
   /// @brief create proper transaction context, including the proper IDs
-  std::shared_ptr<transaction::Context> createTransactionContext() const;
+  std::shared_ptr<transaction::Context> createTransactionContext(AccessMode::Type mode) const;
 
  protected:
   /// @brief request context

@@ -41,14 +41,28 @@ struct term_meta : irs::term_meta {
   }
 };
 
-struct sort : irs::sort {
-  DECLARE_SORT_TYPE();
+NS_END
 
-  static irs::sort::ptr make() {
-    return std::make_shared<sort>();
+NS_ROOT
+
+// use base irs::term_meta type for ancestors
+template<>
+struct type<::term_meta> : type<irs::term_meta> { };
+
+NS_END
+
+NS_LOCAL
+
+struct sort : irs::sort {
+  static constexpr irs::string_ref type_name() noexcept {
+    return __FILE__ ":" STRINGIFY(__LINE__);
   }
 
-  sort() noexcept : irs::sort(type()) { }
+  static irs::sort::ptr make() {
+    return std::make_unique<sort>();
+  }
+
+  sort() noexcept : irs::sort(irs::type<sort>::get()) { }
 
   struct prepared final : irs::sort::prepared {
     struct field_collector final : irs::sort::field_collector {
@@ -59,7 +73,7 @@ struct sort : irs::sort {
                            const irs::term_reader& field) {
         docs_with_field += field.docs_count();
 
-        auto& freq = field.attributes().get<irs::frequency>();
+        auto* freq = irs::get<irs::frequency>(field);
 
         if (freq) {
           total_term_freq += freq->value;
@@ -80,8 +94,8 @@ struct sort : irs::sort {
 
       virtual void collect(const irs::sub_reader& segment,
                            const irs::term_reader& field,
-                           const irs::attribute_view& term_attrs) override {
-        auto& meta = term_attrs.get<irs::term_meta>();
+                           const irs::attribute_provider& term_attrs) override {
+        auto* meta = irs::get<irs::term_meta>(term_attrs);
 
         if (meta) {
           docs_with_term += meta->docs_count;
@@ -115,19 +129,15 @@ struct sort : irs::sort {
       return irs::memory::make_unique<term_collector>();
     }
 
-    virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
-        const irs::sub_reader& segment,
-        const irs::term_reader& field,
-        const irs::byte_type* stats,
-        const irs::attribute_view& doc_attrs,
-        irs::boost_t boost) const {
+    virtual irs::score_function prepare_scorer(
+        const irs::sub_reader& /*segment*/,
+        const irs::term_reader& /*field*/,
+        const irs::byte_type* /*stats*/,
+        irs::byte_type* /*score_buf*/,
+        const irs::attribute_provider& /*doc_attrs*/,
+        irs::boost_t /*boost*/) const {
       return { nullptr, nullptr };
     }
-
-    virtual void prepare_score(irs::byte_type* score) const {  }
-
-    virtual void prepare_stats(irs::byte_type* stats) const {  }
-
 
     virtual bool less(const irs::byte_type* lhs,
                       const irs::byte_type* rhs) const {
@@ -148,15 +158,12 @@ struct sort : irs::sort {
   }
 };
 
-DEFINE_SORT_TYPE(sort);
-
 class seek_term_iterator final : public irs::seek_term_iterator {
  public:
   typedef const std::pair<irs::string_ref, term_meta>* iterator_type;
 
   seek_term_iterator(iterator_type begin, iterator_type end)
     : begin_(begin), end_(end), cookie_ptr_(begin) {
-    attrs_.emplace(meta_);
   }
 
   virtual irs::SeekResult seek_ge(const irs::bytes_ref& value) {
@@ -178,8 +185,11 @@ class seek_term_iterator final : public irs::seek_term_iterator {
     return irs::memory::make_unique<struct seek_ptr>(cookie_ptr_);
   }
 
-  virtual const irs::attribute_view& attributes() const noexcept override {
-    return attrs_;
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    if (type == irs::type<decltype(meta_)>::id()) {
+      return &meta_;
+    }
+    return nullptr;
   }
 
   virtual bool next() noexcept override {
@@ -213,7 +223,6 @@ class seek_term_iterator final : public irs::seek_term_iterator {
   };
 
  private:
-  irs::attribute_view attrs_;
   term_meta meta_;
   irs::bytes_ref value_;
   iterator_type begin_;

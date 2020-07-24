@@ -80,12 +80,17 @@ class ArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
 
 class EmptyAnalyzer : public irs::analysis::analyzer {
  public:
-  DECLARE_ANALYZER_TYPE();
-  EmptyAnalyzer() : irs::analysis::analyzer(EmptyAnalyzer::type()) {
-    _attrs.emplace(_attr);
+  static constexpr irs::string_ref type_name() noexcept {
+    return "v8-analyzer-empty";
   }
-  virtual irs::attribute_view const& attributes() const noexcept override {
-    return _attrs;
+  EmptyAnalyzer() : irs::analysis::analyzer(irs::type<EmptyAnalyzer>::get()) {
+  }
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    if (type == irs::type<irs::frequency>::id()) {
+      return &_attr;
+    }
+
+    return nullptr;
   }
   static ptr make(irs::string_ref const&) {
     PTR_NAMED(EmptyAnalyzer, ptr);
@@ -114,12 +119,11 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
   virtual bool reset(irs::string_ref const& data) override { return true; }
 
  private:
-  irs::attribute_view _attrs;
   irs::frequency _attr;
 };
 
-DEFINE_ANALYZER_TYPE_NAMED(EmptyAnalyzer, "v8-analyzer-empty");
 REGISTER_ANALYZER_VPACK(EmptyAnalyzer, EmptyAnalyzer::make, EmptyAnalyzer::normalize);
+
 }  // namespace
 
 // -----------------------------------------------------------------------------
@@ -179,7 +183,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
   ASSERT_TRUE(analyzers.emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
                                 "identity", VPackSlice::noneSlice()).ok());
   auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                "::testAnalyzer1");
+                                "::testAnalyzer1", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
   ASSERT_FALSE(!analyzer);
 
   struct ExecContext : public arangodb::ExecContext {
@@ -448,7 +452,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     ASSERT_TRUE(analyzers
                     .emplace(result, name, "v8-analyzer-empty",
                              VPackParser::fromJson("{\"args\":\"12312\"}")->slice(),
-                             irs::flags{irs::frequency::type()})
+                             irs::flags{irs::type<irs::frequency>::get()})
                     .ok());
   }
 
@@ -701,7 +705,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
         v8AnalyzerWeak->properties());
     ASSERT_TRUE(v8AnalyzerWeak->features().empty());
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                  "::testAnalyzer1");
+                                  "::testAnalyzer1", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_FALSE(!analyzer);
   }
 
@@ -768,7 +772,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
         v8AnalyzerWeak->properties());
     ASSERT_TRUE(v8AnalyzerWeak->features().empty());
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                  "::testAnalyzer2");
+                                  "::testAnalyzer2", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_FALSE(!analyzer);
   }
   // successful creation with DB name prefix
@@ -801,7 +805,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
         VPackSlice::emptyObjectSlice(),
         v8AnalyzerWeak->properties());
     ASSERT_TRUE(v8AnalyzerWeak->features().empty());
-    auto analyzer = analyzers.get(vocbase.name() + "::testAnalyzer3");
+    auto analyzer = analyzers.get(vocbase.name() + "::testAnalyzer3", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_FALSE(!analyzer);
   }
   // successful creation in system db by :: prefix
@@ -834,7 +838,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
         VPackSlice::emptyObjectSlice(),
         v8AnalyzerWeak->properties());
     ASSERT_TRUE(v8AnalyzerWeak->features().empty());
-    auto analyzer = analyzers.get(vocbase.name() + "::testAnalyzer4");
+    auto analyzer = analyzers.get(vocbase.name() + "::testAnalyzer4", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_NE(nullptr, analyzer);
   }
 }
@@ -1697,7 +1701,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
                  TRI_ERROR_FORBIDDEN ==
                      slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                  "::testAnalyzer1");
+                                  "::testAnalyzer1", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_FALSE(!analyzer);
   }
 
@@ -1709,7 +1713,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
         v8::False(isolate.get()),
     };
     auto inUseAnalyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                       "::testAnalyzer2");  // hold ref to mark in-use
+                                       "::testAnalyzer2", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);  // hold ref to mark in-use
     ASSERT_FALSE(!inUseAnalyzer);
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1736,7 +1740,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
                  TRI_ERROR_ARANGO_CONFLICT ==
                      slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                  "::testAnalyzer2");
+                                  "::testAnalyzer2", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_FALSE(!analyzer);
   }
 
@@ -1748,7 +1752,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
         v8::True(isolate.get()),
     };
     auto inUseAnalyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                       "::testAnalyzer2");  // hold ref to mark in-use
+                                       "::testAnalyzer2", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);  // hold ref to mark in-use
     ASSERT_FALSE(!inUseAnalyzer);
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1765,7 +1769,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsUndefined());
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                  "::testAnalyzer2");
+                                  "::testAnalyzer2", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_FALSE(analyzer);
   }
 
@@ -1790,7 +1794,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsUndefined());
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                  "::testAnalyzer1");
+                                  "::testAnalyzer1", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_FALSE(analyzer);
   }
   // removal by system db name with ::
@@ -1817,7 +1821,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsUndefined());
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                  "::testAnalyzer3");
+                                  "::testAnalyzer3", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_EQ(nullptr, analyzer);
   }
   //  removal from wrong db
@@ -1852,7 +1856,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_FORBIDDEN ==
                      slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
-    auto analyzer = analyzers.get("testVocbase::testAnalyzer1");
+    auto analyzer = analyzers.get("testVocbase::testAnalyzer1", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_NE(nullptr,  analyzer);
   }
   // success removal from non-system db
@@ -1875,7 +1879,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsUndefined());
-    auto analyzer = analyzers.get("testVocbase::testAnalyzer2");
+    auto analyzer = analyzers.get("testVocbase::testAnalyzer2", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_EQ(nullptr, analyzer);
   }
   // success removal with db name prefix
@@ -1898,7 +1902,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsUndefined());
-    auto analyzer = analyzers.get("testVocbase::testAnalyzer3");
+    auto analyzer = analyzers.get("testVocbase::testAnalyzer3", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_EQ(nullptr, analyzer);
   }
 }

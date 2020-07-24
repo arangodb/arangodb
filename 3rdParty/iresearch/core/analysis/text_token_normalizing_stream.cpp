@@ -324,18 +324,16 @@ NS_END
 NS_ROOT
 NS_BEGIN(analysis)
 
-DEFINE_ANALYZER_TYPE_NAMED(text_token_normalizing_stream, "norm")
-
 text_token_normalizing_stream::text_token_normalizing_stream(
-    const options_t& options
-): analyzer(text_token_normalizing_stream::type()),
-  attrs_(4), // increment + offset + payload + term
-  state_(memory::make_unique<state_t>(options)),
-  term_eof_(true) {
- attrs_.emplace(inc_);
- attrs_.emplace(offset_);
- attrs_.emplace(payload_);
- attrs_.emplace(term_);
+    const options_t& options)
+  : attributes{{
+      { irs::type<increment>::id(), &inc_       },
+      { irs::type<offset>::id(), &offset_       },
+      { irs::type<payload>::id(), &payload_     },
+      { irs::type<term_attribute>::id(), &term_ }},
+      irs::type<text_token_normalizing_stream>::get()},
+    state_(memory::make_unique<state_t>(options)),
+    term_eof_(true) {
 }
 
 /*static*/ void text_token_normalizing_stream::init() {
@@ -461,7 +459,7 @@ bool text_token_normalizing_stream::reset(const irs::string_ref& data) {
   // use the normalized value
   // ...........................................................................
   static_assert(sizeof(irs::byte_type) == sizeof(char), "sizeof(irs::byte_type) != sizeof(char)");
-  term_.value(irs::ref_cast<irs::byte_type>(irs::string_ref(state_->term_buf)));
+  term_.value = irs::ref_cast<irs::byte_type>(state_->term_buf);
   offset_.start = 0;
   offset_.end = data.size();
   payload_.value = ref_cast<uint8_t>(data);

@@ -97,8 +97,8 @@ class automaton_term_iterator final : public seek_term_iterator {
     return next;
   }
 
-  virtual const attribute_view& attributes() const noexcept override {
-    return it_->attributes();
+  virtual attribute* get_mutable(type_info::type_id type) noexcept override {
+    return it_->get_mutable(type);
   }
 
   virtual SeekResult seek_ge(const bytes_ref& target) override {
@@ -225,6 +225,8 @@ class IRESEARCH_API utf8_transitions_builder {
       rhs.id = fst::kNoStateId;
     }
 
+    state& operator=(state&&) = delete;
+
     void clear() noexcept {
       rho_id = fst::kNoStateId;
       id = fst::kNoStateId;
@@ -235,6 +237,8 @@ class IRESEARCH_API utf8_transitions_builder {
     automaton::StateId id{fst::kNoStateId};
     std::vector<arc> arcs;
   }; // state
+
+  static_assert(std::is_nothrow_move_constructible_v<state>);
 
   struct state_hash {
     size_t operator()(const state& s, const automaton& fst) const noexcept {

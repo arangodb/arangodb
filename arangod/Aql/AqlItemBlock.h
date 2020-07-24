@@ -27,6 +27,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ResourceUsage.h"
 
+#include <limits>
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
@@ -69,11 +70,45 @@ class AqlItemBlock {
   AqlItemBlock& operator=(AqlItemBlock const&) = delete;
 
   /// @brief create the block
-  AqlItemBlock(AqlItemBlockManager&, size_t nrItems, RegisterId nrRegs);
+  AqlItemBlock(AqlItemBlockManager&, size_t nrItems, RegisterCount nrRegs);
 
   void initFromSlice(arangodb::velocypack::Slice);
 
   SerializationFormat getFormatType() const;
+
+  /// @brief auxiliary struct to track how often the same AqlValue is
+  /// present in an AqlItemBlock, and how much dynamic memory on instance
+  /// of the item uses
+  struct ValueInfo {
+    ValueInfo() noexcept 
+        : refCount(0), memoryUsage(0) {}
+    ValueInfo(ValueInfo&& other) noexcept = default;
+    ValueInfo& operator=(ValueInfo&& other) noexcept = default;
+
+    /// @brief set the memory usage for the item, expects refCount to be 
+    /// exactly 1
+    void setMemoryUsage(size_t value) noexcept {
+      TRI_ASSERT(value > 0);
+      TRI_ASSERT(refCount == 1);
+      TRI_ASSERT(memoryUsage == 0);
+      // In theory, there can be items consuming more than 4 GB here.
+      // This case will be very rare and likely will cause a lot of other 
+      // issues upfront. If we get such huge value, we count it as using
+      // 4 GB of memory and ignore the rest.
+      if (ADB_UNLIKELY(value > std::numeric_limits<uint32_t>::max())) {
+        memoryUsage = std::numeric_limits<uint32_t>::max();
+      } else {
+        memoryUsage = static_cast<uint32_t>(value);
+      }
+    }
+
+    /// @brief how many occurrences of the item are in use in this
+    /// AqlItemBlock? it is expected to be 1 or more. the caller that sets
+    /// the ref count to 0 is expected to remove the item from the
+    /// _valueCount map completely
+    uint32_t refCount;
+    uint32_t memoryUsage;
+  };
 
  protected:
   /// @brief destroy the block
@@ -118,18 +153,22 @@ class AqlItemBlock {
       throw;
     }
 
-    try {
-      // Now update the reference count, if this fails, we'll roll it back
-      if (value->requiresDestruction()) {
-        if (++_valueCount[*value] == 1) {
-          increaseMemoryUsage(value->memoryUsage());
+    // Now update the reference count, if this fails, we'll roll it back
+    if (value->requiresDestruction()) {
+      try {
+        // note: this may create a new entry in _valueCount, which is fine
+        auto& valueInfo = _valueCount[value->data()];
+        if (++valueInfo.refCount == 1) {
+          size_t memoryUsage = value->memoryUsage();
+          increaseMemoryUsage(memoryUsage);
+          valueInfo.setMemoryUsage(memoryUsage);
         }
+      } catch (...) {
+        // invoke dtor
+        value->~AqlValue();
+        _data[address].destroy();
+        throw;
       }
-    } catch (...) {
-      // invoke dtor
-      value->~AqlValue();
-      _data[address].destroy();
-      throw;
     }
   }
 
@@ -148,8 +187,7 @@ class AqlItemBlock {
   /// elsewhere
   void eraseAll();
 
-  void referenceValuesFromRow(size_t currentRow,
-                         std::unordered_set<RegisterId> const& regs, size_t fromRow);
+  void referenceValuesFromRow(size_t currentRow, RegIdFlatSet const& regs, size_t fromRow);
 
   /// @brief steal, steal an AqlValue from an AqlItemBlock, it will never free
   /// the same value again. Note that once you do this for a single AqlValue
@@ -160,7 +198,7 @@ class AqlItemBlock {
   AqlValue stealAndEraseValue(size_t index, RegisterId varNr);
 
   /// @brief getter for _nrRegs
-  RegisterId getNrRegs() const noexcept;
+  RegisterCount getNrRegs() const noexcept;
 
   /// @brief getter for _nrItems
   size_t size() const noexcept;
@@ -183,11 +221,11 @@ class AqlItemBlock {
   /// @brief rescales the block to the specified dimensions
   /// note that the block should be empty before rescaling to prevent
   /// losses of still managed AqlValues
-  void rescale(size_t nrItems, RegisterId nrRegs);
+  void rescale(size_t nrItems, RegisterCount nrRegs);
 
   /// @brief clears out some columns (registers), this deletes the values if
   /// necessary, using the reference count.
-  void clearRegisters(std::unordered_set<RegisterId> const& toClear);
+  void clearRegisters(RegIdFlatSet const& toClear);
 
   /// @brief clone all data rows, but move all shadow rows
   SharedAqlItemBlockPtr cloneDataAndMoveShadow();
@@ -283,16 +321,23 @@ class AqlItemBlock {
   /// The source block will be cleared after this.
   size_t moveOtherBlockHere(size_t targetRow, AqlItemBlock& source);
 
-  void copySubQueryDepthFromOtherBlock(size_t targetRow, AqlItemBlock const& source,
-                                       size_t sourceRow);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+// MaintainerMode method to validate if ShadowRows organization are consistent.
+// e.g. If a block always follows this pattern:
+// ((Data* Shadow(0))* Shadow(1))* ...
+  void validateShadowRowConsistency() const;
+#endif
 
  protected:
   AqlItemBlockManager& aqlItemBlockManager() noexcept;
   size_t getRefCount() const noexcept;
   void incrRefCount() const noexcept;
-  void decrRefCount() const noexcept;
+  size_t decrRefCount() const noexcept;
 
  private:
+  void copySubQueryDepthFromOtherBlock(size_t targetRow, AqlItemBlock const& source,
+                                       size_t sourceRow, bool forceShadowRow);
+
   // This includes the amount of internal registers that are not visible to the outside.
   RegisterCount internalNrRegs() const noexcept;
 
@@ -314,7 +359,9 @@ class AqlItemBlock {
   /// setValue above puts values in the map and increases the count if they
   /// are already there, eraseValue decreases the count. One can ask the
   /// count with valueCount.
-  std::unordered_map<AqlValue, uint32_t> _valueCount;
+  /// note: only AqlValues that point to dynamically allocated memory
+  /// should be added to this map. Other types (VPACK_INLINE) are not supported.
+  std::unordered_map<void const*, ValueInfo> _valueCount;
 
   /// @brief _nrItems, number of rows
   size_t _nrItems = 0;

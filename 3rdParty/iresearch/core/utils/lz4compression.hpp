@@ -47,7 +47,9 @@ lz4stream lz4_make_stream();
 lz4stream_decode lz4_make_stream_decode();
 
 struct IRESEARCH_API lz4 {
-  DECLARE_COMPRESSION_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::compression::lz4";
+  }
 
   class IRESEARCH_API lz4compressor final : public compression::compressor {
    public:
@@ -65,7 +67,7 @@ struct IRESEARCH_API lz4 {
 
   class IRESEARCH_API lz4decompressor final : public compression::decompressor {
    public:
-    virtual bytes_ref decompress(byte_type* src, size_t src_size,
+    virtual bytes_ref decompress(const byte_type* src, size_t src_size,
                                  byte_type* dst, size_t dst_size) override;
   };
 

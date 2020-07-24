@@ -55,7 +55,7 @@ auto FilterExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& 
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   FilterStats stats{};
   while (inputRange.hasDataRow() && call.needSkipMore()) {
-    auto const [unused, input] = inputRange.nextDataRow();
+    auto const [unused, input] = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     if (!input) {
       TRI_ASSERT(!inputRange.hasDataRow());
       break;
@@ -67,14 +67,8 @@ auto FilterExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& 
     }
   }
 
+  // Just fetch everything from above, allow overfetching
   AqlCall upstreamCall{};
-  if (call.needSkipMore() && call.getLimit() == 0) {
-    // FullCount case, we need to skip more, but limit is reached.
-    upstreamCall.softLimit = ExecutionBlock::SkipAllSize();
-  } else {
-    upstreamCall.softLimit = call.getOffset();
-  }
-
   return {inputRange.upstreamState(), stats, call.getSkipCount(), upstreamCall};
 }
 
@@ -86,7 +80,7 @@ auto FilterExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIt
   FilterStats stats{};
 
   while (inputRange.hasDataRow() && !output.isFull()) {
-    auto const& [state, input] = inputRange.nextDataRow();
+    auto const& [state, input] = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input.isInitialized());
     if (input.getValue(_infos.getInputRegister()).toBoolean()) {
       output.copyRow(input);
@@ -96,12 +90,8 @@ auto FilterExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIt
     }
   }
 
+  // Just fetch everything from above, allow overfetching
   AqlCall upstreamCall{};
-  auto const& clientCall = output.getClientCall();
-  // This is a optimistic fetch. We do not do any overfetching here, only if we
-  // pass through all rows this fetch is correct, otherwise we have too few rows.
-  upstreamCall.softLimit = clientCall.getOffset() +
-                           (std::min)(clientCall.softLimit, clientCall.hardLimit);
   return {inputRange.upstreamState(), stats, upstreamCall};
 }
 

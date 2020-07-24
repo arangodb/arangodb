@@ -131,6 +131,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_REPLICATION_START_TICK_NOT_PRESENT, "start tick not present");
   REG_ERROR(ERROR_REPLICATION_WRONG_CHECKSUM, "wrong checksum");
   REG_ERROR(ERROR_REPLICATION_SHARD_NONEMPTY, "shard not empty");
+  REG_ERROR(ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED, "creating collection failed due to precondition");
   REG_ERROR(ERROR_CLUSTER_SERVER_UNKNOWN, "got a request from an unkown server");
   REG_ERROR(ERROR_CLUSTER_TOO_MANY_SHARDS, "too many shards");
   REG_ERROR(ERROR_CLUSTER_COLLECTION_ID_EXISTS, "collection ID already exists");
@@ -218,8 +219,8 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_QUERY_USER_WARN, "%s");
   REG_ERROR(ERROR_CURSOR_NOT_FOUND, "cursor not found");
   REG_ERROR(ERROR_CURSOR_BUSY, "cursor is busy");
-  REG_ERROR(ERROR_VALIDATION_FAILED, "validation failed");
-  REG_ERROR(ERROR_VALIDATION_BAD_PARAMETER, "invalid validation parameter");
+  REG_ERROR(ERROR_VALIDATION_FAILED, "schema validation failed");
+  REG_ERROR(ERROR_VALIDATION_BAD_PARAMETER, "invalid schema validation parameter");
   REG_ERROR(ERROR_TRANSACTION_INTERNAL, "internal transaction error");
   REG_ERROR(ERROR_TRANSACTION_NESTED, "nested transactions detected");
   REG_ERROR(ERROR_TRANSACTION_UNREGISTERED_COLLECTION, "unregistered collection used in transaction");
@@ -322,6 +323,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE, "shard key value must be prefixed with the value of the smart join attribute");
   REG_ERROR(ERROR_NO_SMART_JOIN_ATTRIBUTE, "smart join attribute not given or invalid");
   REG_ERROR(ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE, "must not change the value of the smartJoinAttribute");
+  REG_ERROR(ERROR_INVALID_DISJOINT_SMART_EDGE, "non disjoint edge found");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_FAILED, "error during cluster repairs");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY, "not enough (healthy) db servers");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED, "replication factor violated during cluster repairs");
@@ -347,16 +349,17 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_ACTION_OPERATION_UNABORTABLE, "this maintenance action cannot be stopped");
   REG_ERROR(ERROR_ACTION_UNFINISHED, "maintenance action still processing");
   REG_ERROR(ERROR_NO_SUCH_ACTION, "no such maintenance action");
-  REG_ERROR(ERROR_HOT_BACKUP_INTERNAL, " \"internal hot backup error\"");
-  REG_ERROR(ERROR_HOT_RESTORE_INTERNAL, " \"internal hot restore error\"");
-  REG_ERROR(ERROR_BACKUP_TOPOLOGY, " \"backup does not match this topology\"");
-  REG_ERROR(ERROR_NO_SPACE_LEFT_ON_DEVICE, " \"no space left on device\"");
-  REG_ERROR(ERROR_FAILED_TO_UPLOAD_BACKUP, " \"failed to upload hot backup set to remote target\"");
-  REG_ERROR(ERROR_FAILED_TO_DOWNLOAD_BACKUP, " \"failed to download hot backup set from remote source\"");
-  REG_ERROR(ERROR_NO_SUCH_HOT_BACKUP, " \"no such hot backup set can be found");
-  REG_ERROR(ERROR_REMOTE_REPOSITORY_CONFIG_BAD, " \"remote hotback repository configuration error\"");
-  REG_ERROR(ERROR_LOCAL_LOCK_FAILED, " \"some db servers cannot be reached for transaction locks\"");
-  REG_ERROR(ERROR_LOCAL_LOCK_RETRY, " \"some db servers cannot be reached for transaction locks\"");
-  REG_ERROR(ERROR_HOT_BACKUP_CONFLICT, " \"hot backup conflict\"");
-  REG_ERROR(ERROR_HOT_BACKUP_DBSERVERS_AWOL, " \"hot backup not all db servers reachable\"");
+  REG_ERROR(ERROR_HOT_BACKUP_INTERNAL, "internal hot backup error");
+  REG_ERROR(ERROR_HOT_RESTORE_INTERNAL, "internal hot restore error");
+  REG_ERROR(ERROR_BACKUP_TOPOLOGY, "backup does not match this topology");
+  REG_ERROR(ERROR_NO_SPACE_LEFT_ON_DEVICE, "no space left on device");
+  REG_ERROR(ERROR_FAILED_TO_UPLOAD_BACKUP, "failed to upload hot backup set to remote target");
+  REG_ERROR(ERROR_FAILED_TO_DOWNLOAD_BACKUP, "failed to download hot backup set from remote source");
+  REG_ERROR(ERROR_NO_SUCH_HOT_BACKUP, "no such hot backup set can be found");
+  REG_ERROR(ERROR_REMOTE_REPOSITORY_CONFIG_BAD, "remote hotback repository configuration error");
+  REG_ERROR(ERROR_LOCAL_LOCK_FAILED, "some db servers cannot be reached for transaction locks");
+  REG_ERROR(ERROR_LOCAL_LOCK_RETRY, "some db servers cannot be reached for transaction locks");
+  REG_ERROR(ERROR_HOT_BACKUP_CONFLICT, "hot backup conflict");
+  REG_ERROR(ERROR_HOT_BACKUP_DBSERVERS_AWOL, "hot backup not all db servers reachable");
+  REG_ERROR(ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN, "analyzers in plan could not be modified");
 }

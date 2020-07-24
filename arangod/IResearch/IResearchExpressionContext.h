@@ -37,7 +37,7 @@ class AqlItemBlock;
 struct AstNode;
 class ExecutionEngine;
 class QueryContext;
-class RegexCache;
+class AqlFunctionsInternalCache;
 }  // namespace aql
 
 namespace iresearch {
@@ -53,8 +53,8 @@ class IResearchViewNode;
 struct ViewExpressionContextBase : public arangodb::aql::ExpressionContext {
   explicit ViewExpressionContextBase(arangodb::transaction::Methods* trx,
                                      aql::QueryContext* query,
-                                     aql::RegexCache* cache)
-  : ExpressionContext(), _trx(trx), _query(query), _regexCache(cache)  {}
+                                     aql::AqlFunctionsInternalCache* cache)
+  : ExpressionContext(), _trx(trx), _query(query), _aqlFunctionsInternalCache(cache)  {}
   
   void registerWarning(int errorCode, char const* msg) override final;
   void registerError(int errorCode, char const* msg) override final;
@@ -66,6 +66,8 @@ struct ViewExpressionContextBase : public arangodb::aql::ExpressionContext {
   icu::RegexMatcher* buildSplitMatcher(aql::AqlValue splitExpression, velocypack::Options const* opts,
                                        bool& isEmptyExpression) override final;
 
+  arangodb::ValidatorBase* buildValidator(arangodb::velocypack::Slice const&) override final;
+
   TRI_vocbase_t& vocbase() const override final;
   /// may be inaccessible on some platforms
   transaction::Methods& trx() const override final;
@@ -76,7 +78,7 @@ struct ViewExpressionContextBase : public arangodb::aql::ExpressionContext {
 protected:
   arangodb::transaction::Methods* _trx;
   arangodb::aql::QueryContext* _query;
-  arangodb::aql::RegexCache* _regexCache;
+  arangodb::aql::AqlFunctionsInternalCache* _aqlFunctionsInternalCache;
 };                              // ViewExpressionContextBase
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -87,7 +89,7 @@ struct ViewExpressionContext final : public ViewExpressionContextBase {
 
   ViewExpressionContext(arangodb::transaction::Methods& trx,
                         aql::QueryContext& query,
-                        aql::RegexCache& cache, aql::Variable const& outVar,
+                        aql::AqlFunctionsInternalCache& cache, aql::Variable const& outVar,
                         VarInfoMap const& varInfoMap, int nodeDepth)
       : ViewExpressionContextBase(&trx, &query, &cache),
         _outVar(outVar),

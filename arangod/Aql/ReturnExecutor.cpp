@@ -67,7 +67,7 @@ auto ReturnExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& 
     // but this executor will always delegate the skipping
     // to upstream.
     TRI_ASSERT(false);
-    auto [state, input] = inputRange.nextDataRow();
+    auto [state, input] = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input.isInitialized());
     TRI_IF_FAILURE("ReturnBlock::getSome") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -94,7 +94,7 @@ auto ReturnExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIt
   Stats stats{};
 
   while (inputRange.hasDataRow() && !output.isFull()) {
-    auto [state, input] = inputRange.nextDataRow();
+    auto [state, input] = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input.isInitialized());
     // REMARK: it is called `getInputRegisterId` here but FilterExecutor calls it `getInputRegister`.
     AqlValue val = input.stealValue(_infos.getInputRegisterId());

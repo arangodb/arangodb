@@ -90,12 +90,12 @@ CalculationExecutor<calculationType>::produceRows(AqlItemBlockInputRange& inputR
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   ExecutorState state = ExecutorState::HASMORE;
-  InputAqlItemRow input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
   while (inputRange.hasDataRow()) {
     // This executor is passthrough. it has enough place to write.
     TRI_ASSERT(!output.isFull());
-    std::tie(state, input) = inputRange.nextDataRow();
+    std::tie(state, input) = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input.isInitialized());
 
     doEvaluation(input, output);
@@ -169,7 +169,7 @@ template <>
 void CalculationExecutor<CalculationType::Condition>::doEvaluation(InputAqlItemRow& input,
                                                                    OutputAqlItemRow& output) {
   // execute the expression
-  ExecutorExpressionContext ctx(_trx, _infos.getQuery(), _regexCache, input,
+  ExecutorExpressionContext ctx(_trx, _infos.getQuery(), _aqlFunctionsInternalCache, input,
                                 _infos.getExpInVars(), _infos.getExpInRegs());
 
   bool mustDestroy;  // will get filled by execution
@@ -202,7 +202,7 @@ void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(InputAqlIte
   ISOLATE;
   v8::HandleScope scope(isolate);  // do not delete this!
   // execute the expression
-  ExecutorExpressionContext ctx(_trx, _infos.getQuery(), _regexCache, input,
+  ExecutorExpressionContext ctx(_trx, _infos.getQuery(), _aqlFunctionsInternalCache, input,
                                 _infos.getExpInVars(), _infos.getExpInRegs());
 
   bool mustDestroy;  // will get filled by execution
@@ -217,8 +217,6 @@ void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(InputAqlIte
 
   if (input.blockHasMoreDataRowsAfterThis()) {
     // We will be called again before the fetcher needs to get a new block.
-    // Thus we won't wait for upstream, nor will get a WAITING on the next
-    // fetchRow().
     // So we keep the context open.
     // This works because this block allows pass through, i.e. produces exactly
     // one output row per input row.

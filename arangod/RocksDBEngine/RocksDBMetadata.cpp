@@ -20,24 +20,27 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <rocksdb/db.h>
+#include <rocksdb/utilities/transaction.h>
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "RocksDBMetadata.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-compiler.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
-
-#include <rocksdb/db.h>
-#include <rocksdb/utilities/transaction.h>
-
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 
@@ -87,7 +90,7 @@ RocksDBMetadata::RocksDBMetadata()
  * @param  seq   The sequence number immediately prior to call
  * @return       May return error if we fail to allocate and place blocker
  */
-Result RocksDBMetadata::placeBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumber seq) {
+Result RocksDBMetadata::placeBlocker(TransactionId trxId, rocksdb::SequenceNumber seq) {
   return basics::catchToResult([&]() -> Result {
     Result res;
     WRITE_LOCKER(locker, _blockerLock);
@@ -114,7 +117,7 @@ Result RocksDBMetadata::placeBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumbe
  * @param  seq   The sequence number from the internal snapshot
  * @return       May return error if we fail to allocate and place blocker
  */
-Result RocksDBMetadata::updateBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumber seq) {
+Result RocksDBMetadata::updateBlocker(TransactionId trxId, rocksdb::SequenceNumber seq) {
   return basics::catchToResult([&]() -> Result {
     Result res;
     WRITE_LOCKER(locker, _blockerLock);
@@ -150,7 +153,7 @@ Result RocksDBMetadata::updateBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumb
  * @param trxId Identifier for active transaction (should match input to
  *              earlier `placeBlocker` call)
  */
-void RocksDBMetadata::removeBlocker(TRI_voc_tid_t trxId) {
+void RocksDBMetadata::removeBlocker(TransactionId trxId) {
   WRITE_LOCKER(locker, _blockerLock);
   auto it = _blockers.find(trxId);
   if (ADB_LIKELY(_blockers.end() != it)) {
@@ -327,7 +330,8 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   if (rcoll->needToPersistRevisionTree(maxCommitSeq)) {
     if (coll.useSyncByRevision()) {
       output.clear();
-      rocksdb::SequenceNumber seq = rcoll->serializeRevisionTree(output, maxCommitSeq);
+      rocksdb::SequenceNumber seq =
+          rcoll->serializeRevisionTree(output, maxCommitSeq, force);
       appliedSeq = std::min(appliedSeq, seq);
       if (!output.empty()) {
         rocksutils::uint64ToPersistent(output, seq);
@@ -344,7 +348,8 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
       }
     } else {
       output.clear();
-      rocksdb::SequenceNumber seq = rcoll->serializeRevisionTree(output, maxCommitSeq);
+      rocksdb::SequenceNumber seq =
+          rcoll->serializeRevisionTree(output, maxCommitSeq, force);
       appliedSeq = std::min(appliedSeq, seq);
       TRI_ASSERT(output.empty());
       key.constructRevisionTreeValue(rcoll->objectId());
@@ -368,6 +373,10 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
   TRI_ASSERT(!coll.isAStub());
 
   RocksDBCollection* rcoll = static_cast<RocksDBCollection*>(coll.getPhysical());
+
+  auto& selector = coll.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  rocksdb::SequenceNumber globalSeq = engine.settingsManager()->earliestSeqNeeded();
 
   // Step 1. load the counter
   auto cf = RocksDBColumnFamily::definitions();
@@ -472,7 +481,11 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
       if (tree) {
         uint64_t seq = rocksutils::uint64FromPersistent(
             value.data() + value.size() - sizeof(uint64_t));
-        rcoll->setRevisionTree(std::move(tree), seq);
+        // we may have skipped writing out the tree because it hadn't changed,
+        // but we had already applied everything through the global released
+        // seq anyway, so take the max
+        rocksdb::SequenceNumber useSeq = std::max(globalSeq, seq);
+        rcoll->setRevisionTree(std::move(tree), useSeq);
       } else {
         LOG_TOPIC("dcd99", ERR, Logger::ENGINES)
             << "unsupported revision tree format in collection "

@@ -59,6 +59,7 @@
 #include "IResearch/IResearchPDP.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 
 using namespace arangodb::iresearch;
@@ -316,7 +317,8 @@ arangodb::Result getAnalyzerByName(
     : nullptr;
 
   if (sysVocbase) {
-    analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase);
+    analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase, 
+                                   ctx.trx->state()->analyzersRevision());
 
     shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
       analyzerId, ctx.trx->vocbase(), *sysVocbase, false);  // args
@@ -329,7 +331,6 @@ arangodb::Result getAnalyzerByName(
           .append(analyzerId.c_str(), analyzerId.size()).append("'")
     };
   }
-
   return {};
 }
 
@@ -405,13 +406,14 @@ void appendTerms(irs::by_phrase& filter, irs::string_ref const& value,
   stream.reset(value);
 
   // get token attribute
-  assert(stream.attributes().contains<irs::term_attribute>());
-  irs::term_attribute const& token = *stream.attributes().get<irs::term_attribute>();
+  TRI_ASSERT(irs::get<irs::term_attribute>(stream));
+  irs::term_attribute const* token = irs::get<irs::term_attribute>(stream);
+  TRI_ASSERT(token);
 
   // add tokens
   for (auto* options = filter.mutable_options(); stream.next(); ) {
     irs::assign(options->push_back<irs::by_term_options>(firstOffset).term,
-                token.value());
+                token->value);
 
     firstOffset = 0;
   }
@@ -467,16 +469,15 @@ arangodb::Result byTerm(irs::by_term* filter, std::string&& name,
         kludge::mangleNumeric(name);
 
         irs::numeric_token_stream stream;
-        irs::term_attribute const* term =
-            stream.attributes().get<irs::term_attribute>().get();
-        TRI_ASSERT(term);
+        irs::term_attribute const* token = irs::get<irs::term_attribute>(stream);
+        TRI_ASSERT(token);
         stream.reset(dblValue);
         stream.next();
 
         *filter->mutable_field() = std::move(name);
         filter->boost(filterCtx.boost);
         irs::assign(filter->mutable_options()->term,
-                    term->value());
+                    token->value);
       }
       return {};
     case arangodb::iresearch::SCOPED_VALUE_TYPE_STRING:
@@ -1744,7 +1745,8 @@ arangodb::Result fromFuncAnalyzer(
                           : nullptr;
 
     if (sysVocbase) {
-      analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase);
+      analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase,
+                                     ctx.trx->state()->analyzersRevision());
 
       shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
           analyzerId, ctx.trx->vocbase(), *sysVocbase, false);  // args
@@ -2397,10 +2399,11 @@ arangodb::Result fromFuncPhraseTerms(char const* funcName,
       // reset analyzer
       analyzer->reset(term);
       // get token attribute
-      irs::term_attribute const& token = *analyzer->attributes().get<irs::term_attribute>();
+      irs::term_attribute const* token = irs::get<irs::term_attribute>(*analyzer);
+      TRI_ASSERT(token);
       // add tokens
       while (analyzer->next()) {
-        terms.emplace(token.value());
+        terms.emplace(token->value);
       }
     } else {
       terms.emplace(irs::ref_cast<irs::byte_type>(term));
@@ -2658,7 +2661,7 @@ arangodb::Result processPhraseArgs(
     FilterContext const& filterCtx,
     arangodb::aql::AstNode const& valueArgs,
     size_t valueArgsBegin, size_t valueArgsEnd,
-    irs::analysis::analyzer::ptr& analyzer,
+    irs::analysis::analyzer* analyzer,
     size_t offset,
     bool allowDefaultOffset,
     bool isInArray) {
@@ -2672,7 +2675,7 @@ arangodb::Result processPhraseArgs(
     if (currentArg->isArray()) {
       // '[' <term0> [, <term1>, ...] ']'
       if (isInArray) {
-        auto res = fromFuncPhraseTerms(funcName, idx, termsFuncName, phrase, ctx, *currentArg, offset, &*analyzer);
+        auto res = fromFuncPhraseTerms(funcName, idx, termsFuncName, phrase, ctx, *currentArg, offset, analyzer);
         if (res.fail()) {
           return res;
         }
@@ -2860,7 +2863,7 @@ arangodb::Result fromFuncPhrase(
   }
   // on top level we require explicit offsets - to be backward compatible and be able to distinguish last argument as analyzer or value
   // Also we allow recursion inside array to support older syntax (one array arg) and add ability to pass several arrays as args
-  return processPhraseArgs(funcName, phrase, ctx, filterCtx, *valueArgs, valueArgsBegin, valueArgsEnd, analyzer, 0, false, false);
+  return processPhraseArgs(funcName, phrase, ctx, filterCtx, *valueArgs, valueArgsBegin, valueArgsEnd, analyzer.get(), 0, false, false);
 }
 
 // NGRAM_MATCH (attribute, target, threshold [, analyzer])
@@ -3004,9 +3007,10 @@ arangodb::Result fromFuncNgramMatch(
     ngramFilter.boost(filterCtx.boost);
 
     analyzer->reset(matchValue);
-    irs::term_attribute const& token = *analyzer->attributes().get<irs::term_attribute>();
+    irs::term_attribute const* token = irs::get<irs::term_attribute>(*analyzer);
+    TRI_ASSERT(token);
     while (analyzer->next()) {
-      opts->ngrams.push_back(token.value());
+      opts->ngrams.push_back(token->value);
     }
   }
   return {};
@@ -3457,6 +3461,13 @@ namespace iresearch {
     irs::boolean_filter* filter,
     QueryContext const& ctx,
     arangodb::aql::AstNode const& node) {
+  if (node.willUseV8()) {
+    return {
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "using V8 dependent function is not allowed in SEARCH statement"
+    };
+  }
+
   // The analyzer is referenced in the FilterContext and used during the
   // following ::filter() call, so may not be a temporary.
   FieldMeta::Analyzer analyzer = FieldMeta::Analyzer();

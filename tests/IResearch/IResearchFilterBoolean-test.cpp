@@ -569,7 +569,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleBool("a.b.c");
-    filter.mutable_options()->term = irs::boolean_token_stream::value_true();
+    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
 
     assertFilterSuccess(
         vocbase(), "FOR d IN collection FILTER not (d.a.b.c == true) RETURN d", expected);
@@ -603,7 +603,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleBool("a.b.c.bool");
-    filter.mutable_options()->term = irs::boolean_token_stream::value_false();
+    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess(
         vocbase(),
@@ -624,7 +624,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleBool("a[1].b.c.bool");
-    filter.mutable_options()->term = irs::boolean_token_stream::value_false();
+    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess(
         vocbase(),
@@ -654,7 +654,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleBool("a.b[23].c");
-    filter.mutable_options()->term = irs::boolean_token_stream::value_false();
+    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess(
         vocbase(),
@@ -706,7 +706,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleBool("a.b.c.e[4].f[5].g[3].g.a");
-    filter.mutable_options()->term = irs::boolean_token_stream::value_true();
+    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
 
     assertFilterSuccess(
         vocbase(),
@@ -784,7 +784,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleNull("a.b.c.bool");
-    filter.mutable_options()->term = irs::null_token_stream::value_null();
+    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
         vocbase(),
@@ -807,7 +807,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleNull("a.b.c.bool[42]");
-    filter.mutable_options()->term = irs::null_token_stream::value_null();
+    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
         vocbase(),
@@ -839,7 +839,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleNull("a.b[23].c");
-    filter.mutable_options()->term = irs::null_token_stream::value_null();
+    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
         vocbase(),
@@ -890,7 +890,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleNull("a.b.c.e[4].f[5].g[3].g.a");
-    filter.mutable_options()->term = irs::null_token_stream::value_null();
+    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
         vocbase(),
@@ -968,12 +968,12 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::numeric_token_stream stream;
     stream.reset(3.);
     EXPECT_TRUE(stream.next());
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     irs::Or expected;
     auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleNumeric("a.b.c.numeric");
-    filter.mutable_options()->term = term->value();
+    filter.mutable_options()->term = term->value;
 
     assertFilterSuccess(
         vocbase(),
@@ -1009,7 +1009,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     auto& filter = expected.add<irs::by_term>();
     *filter.mutable_field() = mangleBool("a");
-    filter.mutable_options()->term = irs::boolean_token_stream::value_false();
+    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess(vocbase(),
                         "FOR d IN collection FILTER d.a == not '1' RETURN d",
@@ -1024,12 +1024,12 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::numeric_token_stream stream;
     stream.reset(3.);
     EXPECT_TRUE(stream.next());
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     irs::Or expected;
     auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleNumeric("a.b.c.numeric[42]");
-    filter.mutable_options()->term = term->value();
+    filter.mutable_options()->term = term->value;
 
     assertFilterSuccess(
         vocbase(),
@@ -1067,12 +1067,12 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::numeric_token_stream stream;
     stream.reset(42.5);
     EXPECT_TRUE(stream.next());
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     irs::Or expected;
     auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleNumeric("a.b[23].c");
-    filter.mutable_options()->term = term->value();
+    filter.mutable_options()->term = term->value;
 
     assertFilterSuccess(
         vocbase(),
@@ -1118,12 +1118,12 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::numeric_token_stream stream;
     stream.reset(42.5);
     EXPECT_TRUE(stream.next());
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     irs::Or expected;
     auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleNumeric("a.b.c.e[4].f[5].g[3].g.a");
-    filter.mutable_options()->term = term->value();
+    filter.mutable_options()->term = term->value;
 
     assertFilterSuccess(
         vocbase(),
@@ -2098,13 +2098,13 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::boolean_token_stream::value_false();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b.c");
-      filter.mutable_options()->term = irs::null_token_stream::value_null();
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
@@ -2145,13 +2145,13 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::boolean_token_stream::value_false();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b.c");
-      filter.mutable_options()->term = irs::null_token_stream::value_null();
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
@@ -2170,14 +2170,14 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
       filter.boost(1.5);
       *filter.mutable_field() = mangleBool("b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::boolean_token_stream::value_false();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
     {
       auto& filter = root.add<irs::by_term>();
       filter.boost(0.5);
       *filter.mutable_field() = mangleNull("a.b.c");
-      filter.mutable_options()->term = irs::null_token_stream::value_null();
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
@@ -2568,7 +2568,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b.c.e.f");
-      filter.mutable_options()->term = irs::boolean_token_stream::value_false();
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
     }
 
     assertFilterSuccess(
@@ -2589,7 +2589,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     irs::numeric_token_stream stream;
     stream.reset(3.);
     EXPECT_TRUE(stream.next());
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
@@ -2601,7 +2601,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleNumeric("a.b.c.e.f");
-      filter.mutable_options()->term = term->value();
+      filter.mutable_options()->term = term->value;
     }
 
     assertFilterSuccess(
@@ -2625,12 +2625,12 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b.c.e.f");
-      filter.mutable_options()->term = irs::boolean_token_stream::value_false();
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
     }
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b.c.e.f");
-      filter.mutable_options()->term = irs::null_token_stream::value_null();
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
@@ -3165,13 +3165,13 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::boolean_token_stream::value_false();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b.c");
-      filter.mutable_options()->term = irs::null_token_stream::value_null();
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
@@ -3217,13 +3217,13 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::boolean_token_stream::value_false();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b.c");
-      filter.mutable_options()->term = irs::null_token_stream::value_null();
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
@@ -3242,14 +3242,14 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       filter.boost(0.5);
       *filter.mutable_field() = mangleBool("b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::boolean_token_stream::value_false();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
     {
       auto& filter = root.add<irs::by_term>();
       filter.boost(1.5);
       *filter.mutable_field() = mangleNull("a.b.c");
-      filter.mutable_options()->term = irs::null_token_stream::value_null();
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
@@ -5197,7 +5197,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::boolean_token_stream::value_false();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
     {
@@ -5287,7 +5287,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::boolean_token_stream::value_false();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
     {
@@ -5317,7 +5317,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       filter.boost(1.5);
       *filter.mutable_field() = mangleBool("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::boolean_token_stream::value_false();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
     {
@@ -5347,7 +5347,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleNull("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::null_token_stream::value_null();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
     {
@@ -5412,7 +5412,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       filter.boost(1.5);
       *filter.mutable_field() = mangleNull("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::null_token_stream::value_null();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
     {
@@ -5687,7 +5687,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::boolean_token_stream::value_false();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
     {
@@ -5771,7 +5771,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleNull("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::null_token_stream::value_null();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
     {
@@ -5835,14 +5835,14 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c.e.f");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::boolean_token_stream::value_true();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
     {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c.e.f");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::boolean_token_stream::value_true();
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -5875,14 +5875,14 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c.e.f");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::boolean_token_stream::value_true();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
     {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c.e.f");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::boolean_token_stream::value_true();
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -5917,7 +5917,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c.e.f");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::boolean_token_stream::value_true();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
     {
@@ -5956,14 +5956,14 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleNull("a.b.c.e.f");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::null_token_stream::value_null();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
     {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleNull("a.b.c.e.f");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::null_token_stream::value_null();
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -5996,14 +5996,14 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleNull("a.b.c.e.f");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::null_token_stream::value_null();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
     {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleNull("a.b.c.e.f");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::null_token_stream::value_null();
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 

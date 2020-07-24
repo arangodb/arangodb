@@ -25,28 +25,30 @@
 #define ARANGODB_IRESEARCH__IRESEARCH_AGENCY_MOCK_H 1
 
 #include "Basics/debugging.h"
+#include "Cluster/AgencyCache.h"
 #include "Network/ConnectionPool.h"
 
 namespace arangodb::fuerte {
 inline namespace v1 {
-  class ConnectionBuilder;
+class ConnectionBuilder;
 }
 }
-
-namespace arangodb::consensus {
-class Store;
-}  // namespace arangodb::consensus
 
 struct AsyncAgencyStorePoolMock final : public arangodb::network::ConnectionPool {
 
-  explicit AsyncAgencyStorePoolMock(arangodb::consensus::Store* store, ConnectionPool::Config const& config)
-      : ConnectionPool(config), _store(store) {}
-      explicit AsyncAgencyStorePoolMock(arangodb::consensus::Store* store)
-      : ConnectionPool({}), _store(store) {}
+  explicit AsyncAgencyStorePoolMock(
+    arangodb::application_features::ApplicationServer& server, ConnectionPool::Config const& config)
+    : ConnectionPool(config), _server(server), _index(0) {}
 
-  arangodb::network::ConnectionPtr createConnection(arangodb::fuerte::ConnectionBuilder&) override;
+  explicit AsyncAgencyStorePoolMock(arangodb::application_features::ApplicationServer& server)
+    : ConnectionPool({}), _server(server), _index(0) {}
 
-  arangodb::consensus::Store* _store;
+  std::shared_ptr<arangodb::fuerte::Connection> createConnection(
+    arangodb::fuerte::ConnectionBuilder&) override;
+
+  arangodb::application_features::ApplicationServer& _server;
+  arangodb::consensus::index_t _index;
+
 };
 
 #endif

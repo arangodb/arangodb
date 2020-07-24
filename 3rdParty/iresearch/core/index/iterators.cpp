@@ -30,28 +30,16 @@
 
 NS_LOCAL
 
-irs::cost empty_cost() noexcept {
-  irs::cost cost;
-  cost.value(0);
-  return cost;
-}
-
-irs::attribute_view empty_doc_iterator_attributes() {
-  static irs::cost COST = empty_cost();
-  static irs::document DOC(irs::doc_limits::eof());
-
-  irs::attribute_view attrs(2); // document+cost
-  attrs.emplace(COST);
-  attrs.emplace(DOC);
-
-  return attrs;
-}
-
 //////////////////////////////////////////////////////////////////////////////
 /// @class empty_doc_iterator
 /// @brief represents an iterator with no documents 
 //////////////////////////////////////////////////////////////////////////////
 struct empty_doc_iterator final : irs::doc_iterator {
+  empty_doc_iterator() noexcept
+    : doc{irs::doc_limits::eof()} {
+    cost.value(0);
+  }
+
   virtual irs::doc_id_t value() const override {
     return irs::doc_limits::eof();
   }
@@ -59,11 +47,21 @@ struct empty_doc_iterator final : irs::doc_iterator {
   virtual irs::doc_id_t seek(irs::doc_id_t) override {
     return irs::doc_limits::eof();
   }
-  virtual const irs::attribute_view& attributes() const noexcept override {
-    static const irs::attribute_view INSTANCE = empty_doc_iterator_attributes();
-    return INSTANCE;
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    if (irs::type<irs::document>::id() == type) {
+      return &doc;
+    }
+
+    return irs::type<irs::cost>::id() == type
+      ? &cost
+      : nullptr;
   }
+
+  irs::cost cost;
+  irs::document doc{irs::doc_limits::eof()};
 }; // empty_doc_iterator
+
+empty_doc_iterator EMPTY_DOC_ITERATOR;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class empty_term_iterator
@@ -78,10 +76,12 @@ struct empty_term_iterator : irs::term_iterator {
   }
   virtual void read() noexcept final { }
   virtual bool next() noexcept final { return false; }
-  virtual const irs::attribute_view& attributes() const noexcept final {
-    return irs::attribute_view::empty_instance();
+  virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept final {
+    return nullptr;
   }
 }; // empty_term_iterator
+
+empty_term_iterator EMPTY_TERM_ITERATOR;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class empty_seek_term_iterator
@@ -96,8 +96,8 @@ struct empty_seek_term_iterator final : irs::seek_term_iterator {
   }
   virtual void read() noexcept final { }
   virtual bool next() noexcept final { return false; }
-  virtual const irs::attribute_view& attributes() const noexcept final {
-    return irs::attribute_view::empty_instance();
+  virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept final {
+    return nullptr;
   }
   virtual irs::SeekResult seek_ge(const irs::bytes_ref&) noexcept override {
     return irs::SeekResult::END;
@@ -112,6 +112,8 @@ struct empty_seek_term_iterator final : irs::seek_term_iterator {
     return nullptr;
   }
 }; // empty_term_iterator
+
+empty_seek_term_iterator EMPTY_SEEK_TERM_ITERATOR;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class empty_term_reader
@@ -130,8 +132,8 @@ struct empty_term_reader final : irs::singleton<empty_term_reader>, irs::term_re
     return irs::field_meta::EMPTY;
   }
 
-  virtual const irs::attribute_view& attributes() const noexcept override {
-    return irs::attribute_view::empty_instance();
+  virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept override {
+    return nullptr;
   }
 
   // total number of terms
@@ -151,6 +153,8 @@ struct empty_term_reader final : irs::singleton<empty_term_reader>, irs::term_re
   }
 }; // empty_term_reader
 
+empty_term_reader EMPTY_TERM_READER;
+
 //////////////////////////////////////////////////////////////////////////////
 /// @class empty_field_iterator
 /// @brief represents a reader with no fields
@@ -168,6 +172,8 @@ struct empty_field_iterator final : irs::field_iterator {
     return false;
   }
 }; // empty_field_iterator
+
+empty_field_iterator EMPTY_FIELD_ITERATOR;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class empty_column_iterator
@@ -187,7 +193,9 @@ struct empty_column_iterator final : irs::column_iterator {
     return false;
   }
 }; // empty_column_iterator
- 
+
+empty_column_iterator EMPTY_COLUMN_ITERATOR;
+
 NS_END // LOCAL
 
 NS_ROOT
@@ -197,9 +205,7 @@ NS_ROOT
 // ----------------------------------------------------------------------------
 
 term_iterator::ptr term_iterator::empty() {
-  static empty_term_iterator INSTANCE;
-
-  return memory::make_managed<irs::term_iterator, false>(&INSTANCE);
+  return memory::to_managed<irs::term_iterator, false>(&EMPTY_TERM_ITERATOR);
 }
 
 // ----------------------------------------------------------------------------
@@ -207,9 +213,7 @@ term_iterator::ptr term_iterator::empty() {
 // ----------------------------------------------------------------------------
 
 seek_term_iterator::ptr seek_term_iterator::empty() {
-  static empty_seek_term_iterator INSTANCE;
-
-  return memory::make_managed<irs::seek_term_iterator, false>(&INSTANCE);
+  return memory::to_managed<irs::seek_term_iterator, false>(&EMPTY_SEEK_TERM_ITERATOR);
 }
 
 // ----------------------------------------------------------------------------
@@ -217,13 +221,7 @@ seek_term_iterator::ptr seek_term_iterator::empty() {
 // ----------------------------------------------------------------------------
 
 doc_iterator::ptr doc_iterator::empty() {
-  static empty_doc_iterator INSTANCE;
-
-  // aliasing constructor
-  return std::shared_ptr<doc_iterator>(
-    std::shared_ptr<doc_iterator>(),
-    &INSTANCE
-  );
+  return memory::to_managed<doc_iterator, false>(&EMPTY_DOC_ITERATOR);
 }
 
 // ----------------------------------------------------------------------------
@@ -231,9 +229,7 @@ doc_iterator::ptr doc_iterator::empty() {
 // ----------------------------------------------------------------------------
 
 field_iterator::ptr field_iterator::empty() {
-  static empty_field_iterator INSTANCE;
-
-  return memory::make_managed<irs::field_iterator, false>(&INSTANCE);
+  return memory::to_managed<irs::field_iterator, false>(&EMPTY_FIELD_ITERATOR);
 }
 
 // ----------------------------------------------------------------------------
@@ -241,9 +237,7 @@ field_iterator::ptr field_iterator::empty() {
 // ----------------------------------------------------------------------------
 
 column_iterator::ptr column_iterator::empty() {
-  static empty_column_iterator INSTANCE;
-
-  return memory::make_managed<irs::column_iterator, false>(&INSTANCE);
+  return memory::to_managed<irs::column_iterator, false>(&EMPTY_COLUMN_ITERATOR);
 }
 
 NS_END // ROOT 

@@ -90,17 +90,23 @@ struct aggregated_stats_visitor : util::noncopyable {
                   const irs::term_reader& field,
                   uint32_t docs_count) const {
     it = field.iterator();
+    this->segment = &segment;
+    this->field = &field;
     state = &states.insert(segment);
     state->reader = &field;
     state->scored_states_estimation += docs_count;
   }
 
   void operator()(seek_term_iterator::cookie_ptr& cookie) const {
+    assert(it);
+
     if (!it->seek(irs::bytes_ref::NIL, *cookie)) {
       return;
     }
 
-    term_stats.collect(*segment, *field, 0, it->attributes());
+    assert(segment);
+    assert(field);
+    term_stats.collect(*segment, *field, 0, *it);
     state->scored_states.emplace_back(std::move(cookie), 0, boost);
   }
 
@@ -108,8 +114,8 @@ struct aggregated_stats_visitor : util::noncopyable {
   StatesType& states;
   mutable seek_term_iterator::ptr it;
   mutable typename StatesType::state_type* state{};
-  const sub_reader* segment{};
-  const term_reader* field{};
+  mutable const sub_reader* segment{};
+  mutable const term_reader* field{};
   boost_t boost{ irs::no_boost() };
 };
 
@@ -156,7 +162,7 @@ void visit(
   }
 
   if (terms->next()) {
-    auto& payload = terms->attributes().get<irs::payload>();
+    auto* payload = irs::get<irs::payload>(*terms);
 
     const byte_type* distance{&no_distance};
     if (payload && !payload->value.empty()) {
@@ -244,7 +250,7 @@ filter::prepared::ptr prepare_levenshtein_filter(
   auto* stats_buf = const_cast<byte_type*>(stats[0].data());
   term_stats.finish(stats_buf, 0, field_stats, index);
 
-  return memory::make_shared<multiterm_query>(
+  return memory::make_managed<multiterm_query>(
     std::move(states), std::move(stats),
     boost, sort::MergeType::MAX);
 }
@@ -257,7 +263,6 @@ NS_ROOT
 // --SECTION--                                   by_edit_distance implementation
 // -----------------------------------------------------------------------------
 
-DEFINE_FILTER_TYPE(by_edit_distance)
 DEFINE_FACTORY_DEFAULT(by_edit_distance)
 
 /*static*/ field_visitor by_edit_distance::visitor(const options_type::filter_options& opts) {

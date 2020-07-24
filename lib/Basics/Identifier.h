@@ -27,7 +27,7 @@
 
 #include <cstdint>
 #include <functional>
-#include <ostream>
+#include <iosfwd>
 
 namespace arangodb::basics {
 

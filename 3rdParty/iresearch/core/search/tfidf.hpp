@@ -29,7 +29,9 @@ NS_ROOT
 
 class tfidf_sort : public sort {
 public:
-  DECLARE_SORT_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "tfidf";
+  }
 
   static constexpr bool WITH_NORMS() noexcept {
     return false;

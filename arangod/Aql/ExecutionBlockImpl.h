@@ -207,7 +207,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   ///        2. SkipResult: Amount of documents skipped.
   ///        3. SharedAqlItemBlockPtr: The next data block.
   std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
-  
+
   virtual void collectExecStats(ExecutionStats& stats) const override {
     ExecutionBlock::collectExecStats(stats);
     stats += _blockStats; // additional stats;
@@ -235,7 +235,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   auto executeFastForward(typename Fetcher::DataRange& inputRange, AqlCall& clientCall)
       -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCallType>;
 
-  [[nodiscard]] std::unique_ptr<OutputAqlItemRow> createOutputRow(SharedAqlItemBlockPtr& newBlock,
+  [[nodiscard]] std::unique_ptr<OutputAqlItemRow> createOutputRow(SharedAqlItemBlockPtr&& newBlock,
                                                                   AqlCall&& call);
 
   [[nodiscard]] QueryContext const& getQuery() const;
@@ -244,8 +244,6 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   /// @brief request an AqlItemBlock from the memory manager
   [[nodiscard]] SharedAqlItemBlockPtr requestBlock(size_t nrItems, RegisterCount nrRegs);
-
-  [[nodiscard]] ExecutionState fetchShadowRowInternal();
 
   // Allocate an output block and install a call in it
   [[nodiscard]] auto allocateOutputBlock(AqlCall&& call, DataRange const& inputRange)
@@ -291,6 +289,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   auto countShadowRowProduced(AqlCallStack& stack, size_t depth) -> void;
 
  private:
+  RegisterInfos _registerInfos;
+
   /**
    * @brief Used to allow the row Fetcher to access selected methods of this
    *        ExecutionBlock object.
@@ -302,8 +302,6 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    *        memory management of AqlItemBlocks as needed by Executor.
    */
   Fetcher _rowFetcher;
-
-  RegisterInfos _registerInfos;
 
   /**
    * @brief This is the working party of this implementation
@@ -319,25 +317,25 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   QueryContext const& _query;
 
   InternalState _state;
+  
+  ExecState _execState;
 
   SkipResult _skipped{};
 
   DataRange _lastRange;
 
-  ExecState _execState;
-
   AqlCallType _upstreamRequest;
 
   std::optional<AqlCallType> _defaultUpstreamRequest{std::nullopt};
 
-  bool _hasMemoizedCall{false};
-
   AqlCall _clientRequest;
-  
+
   /// used to track the stats per executor
   typename Executor::Stats _blockStats;
 
   AqlCallStack _stackBeforeWaiting;
+  
+  bool _hasMemoizedCall{false};
 
   // Only used in passthrough variant.
   // We track if we have reference the range's block

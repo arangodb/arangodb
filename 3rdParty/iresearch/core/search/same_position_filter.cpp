@@ -111,8 +111,6 @@ class same_position_query final : public filter::prepared {
   typedef states_cache<terms_states_t> states_t;
   typedef std::vector<bstring> stats_t;
 
-  DECLARE_SHARED_PTR(same_position_query);
-
   explicit same_position_query(
       states_t&& states,
       stats_t&& stats,
@@ -127,7 +125,7 @@ class same_position_query final : public filter::prepared {
   virtual doc_iterator::ptr execute(
       const sub_reader& segment,
       const order::prepared& ord,
-      const attribute_view& /*ctx*/) const override {
+      const attribute_provider* /*ctx*/) const override {
     // get query state for the specified reader
     auto query_state = states_.find(segment);
     if (!query_state) {
@@ -144,6 +142,7 @@ class same_position_query final : public filter::prepared {
     same_position_iterator::positions_t positions;
     positions.reserve(itrs.size());
 
+    const bool no_score = ord.empty();
     auto term_stats = stats_.begin();
     for (auto& term_state : *query_state) {
       auto term = term_state.reader->iterator();
@@ -156,20 +155,28 @@ class same_position_query final : public filter::prepared {
 
       // get postings
       auto docs = term->postings(features);
-      auto& attrs = docs->attributes();
 
       // get needed postings attributes
-      auto& pos = attrs.get<position>();
+      auto* pos = irs::get_mutable<position>(docs.get());
+
       if (!pos) {
         // positions not found
         return doc_iterator::empty();
       }
+
       positions.emplace_back(std::ref(*pos));
 
-      // set score
-      auto& score = attrs.get<irs::score>();
-      if (score) {
-        score->prepare(ord, ord.prepare_scorers(segment, *term_state.reader, term_stats->c_str(), attrs, boost()));
+      if (!no_score) {
+        auto* score = irs::get_mutable<irs::score>(docs.get());
+
+        if (score) {
+          order::prepared::scorers scorers(
+            ord, segment, *term_state.reader,
+            term_stats->c_str(), score->realloc(ord),
+            *docs, boost());
+
+          irs::reset(*score, std::move(scorers));
+        }
       }
 
       // add iterator
@@ -192,11 +199,10 @@ NS_END
 
 NS_ROOT
 
-DEFINE_FILTER_TYPE(by_same_position)
 DEFINE_FACTORY_DEFAULT(by_same_position)
 
 /* static */ const flags& by_same_position::required() {
-  static flags features{ frequency::type(), position::type() };
+  static const flags features{ irs::type<frequency>::get(), irs::type<position>::get() };
   return features;
 }
 
@@ -204,7 +210,7 @@ filter::prepared::ptr by_same_position::prepare(
     const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& /*ctx*/) const {
+    const attribute_provider* /*ctx*/) const {
   auto& terms = options().terms;
   const auto size = terms.size();
 
@@ -263,7 +269,7 @@ filter::prepared::ptr by_same_position::prepare(
       }
 
       term->read(); // read term attributes
-      term_stats.collect(segment, *field, term_idx, term->attributes());
+      term_stats.collect(segment, *field, term_idx, *term);
       term_states.emplace_back();
 
       auto& state = term_states.back();
@@ -293,7 +299,7 @@ filter::prepared::ptr by_same_position::prepare(
     term_stats.finish(stats_buf, term_idx++, field_stats, index);
   }
 
-  return memory::make_shared<same_position_query>(
+  return memory::make_managed<same_position_query>(
     std::move(query_states),
     std::move(stats),
     this->boost() * boost);

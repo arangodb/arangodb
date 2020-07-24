@@ -53,6 +53,11 @@ class H1Connection final : public fuerte::GeneralConnection<ST> {
   /// @brief Return the number of requests that have not yet finished.
   size_t requestsLeft() const override;
 
+  // Switch off potential idle alarm (used by connection pool). Returns
+  // true if lease was successful and connection can be used afterwards.
+  // If false is retured the connection is broken beyond repair.
+  bool lease() override;
+
   /// All methods below here must only be called from the IO thread.
  protected:
   /// This is posted by `sendRequest` to the _io_context thread, the `_active`
@@ -146,6 +151,38 @@ class H1Connection final : public fuerte::GeneralConnection<ST> {
   // We use this to compute the timeout of the corresponding read if the
   // write was done.
 
+  std::atomic<int> _leased;
+    // This member is used to allow to lease a connection from the connection
+    // pool without the idle alarm going off when we believe to have
+    // leased the connection successfully. Here is the workflow:
+    // Normally, the value is 0. If the idle alarm goes off, it first
+    // compare-exchanges this value from 0 to -1, then shuts down the
+    // connection (setting the _state to Failed in the TLS case). After
+    // that, the value is set back to 0.
+    // The lease operation tries to compare-exchange the value from 0 to 1,
+    // and if this has worked, it checks again that the _state is not Failed.
+    // This means, that if a lease has happened successfully, the idle alarm
+    // does no longer shut down the connection.
+    // If `sendRequest` is called on the connection (typically after a lease),
+    // a compare-exchange operation from 1 to 2 is tried. The value 2 indicates
+    // that the next time the idle alarm is set (after write/read activity
+    // finishes), a compare-exchange to 0 happens, such that the idle alarm
+    // can happen again.
+    // All this has the net effect that from the moment of a successful lease
+    // until the next call to `sendRequest`, we are sure that the idle alarm
+    // does not go off.
+    // Note that if one does not lease the connection, the idle alarm can
+    // go off at any time and the next `sendRequest` might fail because of
+    // this.
+    // Furthermore, note that if one leases the connection and does not call
+    // `sendRequest`, then the idle alarm does no longer go off and the
+    // connection stays open indefinitely. This is misusage.
+    // Finally, note that if the idle alarm goes off between a lease and
+    // the following call to `sendRequest`, the connection might stay open
+    // indefinitely, until activity on the connection has ceased again
+    // and a new idle alarm is set. However, this will automatically happen
+    // if that `sendRequest` and the corresponding request finishes.
+
   // parser state
   std::string _lastHeaderField;
   std::string _lastHeaderValue;
@@ -161,6 +198,7 @@ class H1Connection final : public fuerte::GeneralConnection<ST> {
   bool _lastHeaderWasValue = false;
   bool _shouldKeepAlive = false;
   bool _messageComplete = false;
+  bool _timeoutOnReadWrite = false;   // indicates that a timeout has happened
 };
 }}}}  // namespace arangodb::fuerte::v1::http
 

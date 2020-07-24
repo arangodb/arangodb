@@ -140,7 +140,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
  protected:
   Result remove(transaction::Methods& trx, LocalDocumentId documentId,
-                LocalDocumentId expectedId, ManagedDocumentResult& previous,
+                TRI_voc_rid_t expectedId, ManagedDocumentResult& previous,
                 OperationOptions& options);
 
  private:
@@ -197,7 +197,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   }
   
   /// @brief track key in file
-  void blackListKey(RocksDBKey const& key) const;
+  void invalidateCacheEntry(RocksDBKey const& key) const;
   
   /// @brief can use non transactional range delete in write ahead log
   bool canUseRangeDeleteInWal() const;

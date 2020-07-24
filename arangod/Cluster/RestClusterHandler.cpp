@@ -27,6 +27,7 @@
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/Supervision.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -60,11 +61,14 @@ RestStatus RestClusterHandler::execute() {
     } else if (suffixes[0] == "agency-dump") {
       handleAgencyDump();
       return RestStatus::DONE;
+    } else if (suffixes[0] == "agency-cache") {
+      handleAgencyCache();
+      return RestStatus::DONE;
     }
   }
 
-  generateError(Result(TRI_ERROR_HTTP_NOT_FOUND,
-                       "expecting /_api/cluster/[endpoints,agency-dump]"));
+  generateError(
+    Result(TRI_ERROR_HTTP_NOT_FOUND, "expecting /_api/cluster/[endpoints,agency-dump,agency-cache]"));
 
   return RestStatus::DONE;
 }
@@ -97,6 +101,30 @@ void RestClusterHandler::handleAgencyDump() {
   generateResult(rest::ResponseCode::OK, body->slice());
 }
 
+void RestClusterHandler::handleAgencyCache() {
+
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  if (af->isActive() && !_request->user().empty()) {
+    auth::Level lvl;
+    if (af->userManager() != nullptr) {
+      lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system", true);
+    } else {
+      lvl = auth::Level::RW;
+    }
+    if (lvl < auth::Level::RW) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "you need admin rights to produce an agency dump");
+      return;
+    }
+  }
+
+  auto& ac = server().getFeature<ClusterFeature>().agencyCache();
+  auto acb = ac.dump();
+  
+  generateResult(rest::ResponseCode::OK, acb->slice());
+
+}
+
 /// @brief returns information about all coordinator endpoints
 void RestClusterHandler::handleCommandEndpoints() {
   ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
@@ -116,22 +144,23 @@ void RestClusterHandler::handleCommandEndpoints() {
 
     std::string const leaderPath = "Plan/AsyncReplication/Leader";
     std::string const healthPath = "Supervision/Health";
-    AgencyComm agency(server());
 
-    AgencyReadTransaction trx(std::vector<std::string>(
-        {AgencyCommHelper::path(healthPath), AgencyCommHelper::path(leaderPath)}));
-    AgencyCommResult result = agency.sendTransactionWithFailover(trx, 5.0);
+    auto& cache = server().getFeature<ClusterFeature>().agencyCache();
+    auto [acb, idx] = cache.read(std::vector<std::string>{
+        AgencyCommHelper::path(healthPath), AgencyCommHelper::path(leaderPath)});
+    auto result = acb->slice();
 
-    if (!result.successful()) {
-      generateError(ResponseCode::SERVER_ERROR, result.errorCode(), result.errorMessage());
+    if (!result.isArray()) {
+      generateError(ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                    "Failed to acquire endpoints from agency cache");
       return;
     }
 
     std::vector<std::string> path = AgencyCommHelper::slicePath(leaderPath);
-    VPackSlice slice = result.slice()[0].get(path);
+    VPackSlice slice = result[0].get(path);
     ServerID leaderId = slice.isString() ? slice.copyString() : "";
     path = AgencyCommHelper::slicePath(healthPath);
-    VPackSlice healthMap = result.slice()[0].get(path);
+    VPackSlice healthMap = result[0].get(path);
 
     if (leaderId.empty()) {
       generateError(Result(TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING,

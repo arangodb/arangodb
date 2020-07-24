@@ -27,6 +27,8 @@
 #include "Aql/ModificationExecutorAccumulator.h"
 #include "Aql/ModificationExecutorInfos.h"
 
+#include <velocypack/Builder.h>
+
 namespace arangodb {
 namespace aql {
 
@@ -44,6 +46,8 @@ class UpdateReplaceModifierCompletion {
 
  private:
   ModificationExecutorInfos& _infos;
+
+  arangodb::velocypack::Builder _keyDocBuilder;
 };
 
 }  // namespace aql

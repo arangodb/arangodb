@@ -398,7 +398,9 @@ void getDBProperties(arangodb::ManagedDirectory& directory, VPackBuilder& builde
   try {
     fileContentBuilder = directory.vpackFromJsonFile("dump.json");
   } catch (...) {
-    LOG_TOPIC("3a5a4", WARN, arangodb::Logger::RESTORE) << "could not read dump.json";
+    LOG_TOPIC("3a5a4", WARN, arangodb::Logger::RESTORE) 
+        << "could not read dump.json file: "
+        << directory.status().errorMessage();
     builder.add(slice);
     return;
   }
@@ -409,7 +411,8 @@ void getDBProperties(arangodb::ManagedDirectory& directory, VPackBuilder& builde
       slice = props;
     }
   } catch (...) {
-    LOG_TOPIC("3b6a4", INFO, arangodb::Logger::RESTORE) << "no properties object";
+    LOG_TOPIC("3b6a4", INFO, arangodb::Logger::RESTORE) 
+        << "no properties object found in dump.json file";
   }
   builder.add(slice);
 }
@@ -880,16 +883,37 @@ arangodb::Result processInputDirectory(
   using arangodb::basics::VelocyPackHelper;
   using arangodb::basics::FileUtils::listFiles;
 
-  // create a lookup table for collections
-  std::set<std::string> restrictColls, restrictViews;
-  restrictColls.insert(options.collections.begin(), options.collections.end());
-  restrictViews.insert(options.views.begin(), options.views.end());
+  auto fill = [](std::unordered_map<std::string, bool>& map, std::vector<std::string> const& requested) {
+    for (auto const& name : requested) {
+      map.emplace(name, false);
+    }
+  };
+
+  auto checkRequested = [](std::unordered_map<std::string, bool>& map, std::string const& name) {
+    if (map.empty()) {
+      // no restrictions, so restore everything
+      return true;
+    }
+    auto it = map.find(name);
+    if (it == map.end()) {
+      return false;
+    }
+    // mark collection as seen
+    (*it).second = true;
+    return true;
+  };
+
+  // create a lookup table for collections and views
+  std::unordered_map<std::string, bool> restrictColls, restrictViews;
+  fill(restrictColls, options.collections);
+  fill(restrictViews, options.views);
 
   try {
     std::vector<std::string> const files = listFiles(directory.path());
     std::string const collectionSuffix = std::string(".structure.json");
     std::string const viewsSuffix = std::string(".view.json");
-    std::vector<VPackBuilder> collections, views;
+    std::vector<VPackBuilder> collections;
+    std::vector<VPackBuilder> views;
 
     // Step 1 determine all collections to process
     {
@@ -908,16 +932,15 @@ arangodb::Result processInputDirectory(
           VPackSlice const fileContent = contentBuilder.slice();
           if (!fileContent.isObject()) {
             return {TRI_ERROR_INTERNAL, "could not read view file '" +
-                                            directory.pathToFile(file) + "'"};
+                    directory.pathToFile(file) + "': " + directory.status().errorMessage()};
           }
-
-          if (!restrictViews.empty()) {
-            std::string const name =
-                VelocyPackHelper::getStringValue(fileContent, StaticStrings::DataSourceName,
-                                                 "");
-            if (restrictViews.find(name) == restrictViews.end()) {
-              continue;
-            }
+        
+          std::string const name =
+              VelocyPackHelper::getStringValue(fileContent, StaticStrings::DataSourceName,
+                                               "");
+          if (!checkRequested(restrictViews, name)) {
+            // view name not in list
+            continue;
           }
 
           views.emplace_back(std::move(contentBuilder));
@@ -941,15 +964,15 @@ arangodb::Result processInputDirectory(
         if (!fileContent.isObject()) {
           return {TRI_ERROR_INTERNAL,
                   "could not read collection structure file '" +
-                      directory.pathToFile(file) + "'"};
+                      directory.pathToFile(file) + "': " + directory.status().errorMessage()};
         }
 
         VPackSlice const parameters = fileContent.get("parameters");
         VPackSlice const indexes = fileContent.get("indexes");
         if (!parameters.isObject() || !indexes.isArray()) {
-          return {TRI_ERROR_INTERNAL,
+          return {TRI_ERROR_BAD_PARAMETER,
                   "could not read collection structure file '" +
-                      directory.pathToFile(file) + "'"};
+                      directory.pathToFile(file) + "': file has wrong internal format"};
         }
         std::string const cname =
             VelocyPackHelper::getStringValue(parameters,
@@ -976,16 +999,70 @@ arangodb::Result processInputDirectory(
           }
         }
 
-        if (!restrictColls.empty() && restrictColls.find(cname) == restrictColls.end()) {
-          continue;  // collection name not in list
+        if (!checkRequested(restrictColls, cname)) {
+          // collection name not in list
+          continue;
         }
 
         if (overwriteName) {
           // TODO: we have a JSON object with sub-object "parameters" with
           // attribute "name". we only want to replace this. how?
         } else {
-          collections.emplace_back(std::move(fileContentBuilder));
+          VPackSlice s = fileContentBuilder.slice();
+          VPackSlice indexes = s.get("indexes");
+          VPackSlice parameters = s.get("parameters");
+          if ((indexes.isNone() || indexes.isEmptyArray()) &&
+              parameters.get("indexes").isArray()) {
+            // old format
+            VPackBuilder const parametersWithoutIndexes =
+              VPackCollection::remove(parameters, std::vector<std::string>{"indexes"});
+
+            VPackBuilder rewritten;
+            rewritten.openObject();
+            rewritten.add("indexes", parameters.get("indexes"));
+            rewritten.add("parameters", parametersWithoutIndexes.slice());
+            rewritten.close();
+          
+            collections.emplace_back(std::move(rewritten));
+          } else {
+            // new format
+            collections.emplace_back(std::move(fileContentBuilder));
+          }
         }
+      }
+    }
+
+    if (!options.collections.empty()) {
+      bool found = false;
+      for (auto const& it : restrictColls) {
+        if (!it.second) {
+          LOG_TOPIC("5163e", WARN, Logger::RESTORE)
+            << "Requested collection '" << it.first << "' not found in dump";
+        } else {
+          found = true;
+        }
+      }
+      if (!found) {
+        LOG_TOPIC("3ef18", FATAL, arangodb::Logger::RESTORE)
+            << "None of the requested collections were found in the dump";
+        FATAL_ERROR_EXIT();
+      }
+    }
+    
+    if (!options.views.empty()) {
+      bool found = false;
+      for (auto const& it : restrictViews) {
+        if (!it.second) {
+          LOG_TOPIC("810df", WARN, Logger::RESTORE)
+            << "Requested view '" << it.first << "' not found in dump";
+        } else {
+          found = true;
+        }
+      }
+      if (!found) {
+        LOG_TOPIC("14051", FATAL, arangodb::Logger::RESTORE)
+            << "None of the requested Views were found in the dump";
+        FATAL_ERROR_EXIT();
       }
     }
 
@@ -1010,8 +1087,8 @@ arangodb::Result processInputDirectory(
       if (params.isObject()) {
         name = params.get("name");
         // Only these two are relevant for FOXX.
-        if (name.isString() && (name.isEqualString("_apps") ||
-                                name.isEqualString("_appbundles"))) {
+        if (name.isString() && (name.isEqualString(arangodb::StaticStrings::AppsCollection) ||
+                                name.isEqualString(arangodb::StaticStrings::AppBundlesCollection))) {
           didModifyFoxxCollection = true;
         }
       }
@@ -1028,7 +1105,7 @@ arangodb::Result processInputDirectory(
         }
       }
 
-      if (name.isString() && name.stringRef() == "_users") {
+      if (name.isString() && name.stringRef() == arangodb::StaticStrings::UsersCollection) {
         // special treatment for _users collection - this must be the very last,
         // and run isolated from all previous data loading operations - the
         // reason is that loading into the users collection may change the
@@ -1170,7 +1247,7 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& httpClient,
   std::string const cname =
       arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
 
-  if (cname == "_users") {
+  if (cname == arangodb::StaticStrings::UsersCollection) {
     // special case: never restore data in the _users collection first as it could
     // potentially change user permissions. In that case index creation will fail.
     result = ::restoreIndexes(httpClient, jobData);
@@ -1480,8 +1557,8 @@ void RestoreFeature::start() {
   double const start = TRI_microtime();
 
   // set up the output directory, not much else
-  _directory =
-      std::make_unique<ManagedDirectory>(server(), _options.inputPath, false, false);
+  _directory = std::make_unique<ManagedDirectory>(server(), _options.inputPath,
+                                                  false, false, true);
   if (_directory->status().fail()) {
     switch (_directory->status().errorNumber()) {
       case TRI_ERROR_FILE_NOT_FOUND:
@@ -1628,7 +1705,8 @@ void RestoreFeature::start() {
       client.setDatabaseName(db.first);
       LOG_TOPIC("36075", INFO, Logger::RESTORE) << "Restoring database '" << db.first << "'";
       _directory = std::make_unique<ManagedDirectory>(
-          server(), basics::FileUtils::buildFilename(_options.inputPath, db.first), false, false);
+          server(), basics::FileUtils::buildFilename(_options.inputPath, db.first),
+          false, false, true);
 
       getDBProperties(*_directory, db.second);
       result = _clientManager.getConnectedClient(httpClient, _options.force,

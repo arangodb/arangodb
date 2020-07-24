@@ -64,13 +64,13 @@ constexpr std::chrono::seconds kDefaultTimeOutSecs(3600);
 
 ExecutionBlockImpl<RemoteExecutor>::ExecutionBlockImpl(
     ExecutionEngine* engine, RemoteNode const* node, RegisterInfos&& registerInfos,
-    std::string const& server, std::string const& ownName,
+    std::string const& server, std::string const& distributeId,
     std::string const& queryId, Api const api)
     : ExecutionBlock(engine, node),
       _registerInfos(std::move(registerInfos)),
       _query(engine->getQuery()),
       _server(server),
-      _ownName(ownName),
+      _distributeId(distributeId),
       _queryId(queryId),
       _isResponsibleForInitializeCursor(node->isResponsibleForInitializeCursor()),
       _lastError(TRI_ERROR_NO_ERROR),
@@ -79,8 +79,8 @@ ExecutionBlockImpl<RemoteExecutor>::ExecutionBlockImpl(
       _hasTriggeredShutdown(false),
       _apiToUse(api) {
   TRI_ASSERT(!queryId.empty());
-  TRI_ASSERT((arangodb::ServerState::instance()->isCoordinator() && ownName.empty()) ||
-             (!arangodb::ServerState::instance()->isCoordinator() && !ownName.empty()));
+  TRI_ASSERT((arangodb::ServerState::instance()->isCoordinator() && distributeId.empty()) ||
+             (!arangodb::ServerState::instance()->isCoordinator() && !distributeId.empty()));
 }
 
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecutor>::getSomeWithoutTrace(size_t atMost) {
@@ -357,8 +357,6 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
   }
 
   if (_lastError.fail()) {
-    //    _didReceiveShutdownRequest = true;
-
     TRI_ASSERT(_lastResponse == nullptr);
     Result res = std::move(_lastError);
     _lastError.reset();
@@ -445,11 +443,11 @@ auto ExecutionBlockImpl<RemoteExecutor>::executeViaOldApi(AqlCallStack stack)
       // However we can do a short-cut here to report DONE on hardLimit if we are on the top-level query.
       myCall.didProduce(block->size());
       if (myCall.getLimit() == 0) {
-        return {ExecutionState::DONE, SkipResult{}, block};
+        return {ExecutionState::DONE, SkipResult{}, std::move(block)};
       }
     }
 
-    return {state, SkipResult{}, block};
+    return {state, SkipResult{}, std::move(block)};
   } else if (AqlCall::IsFullCountCall(myCall)) {
     auto const [state, skipped] = skipSomeWithoutTrace(ExecutionBlock::SkipAllSize());
     if (state != ExecutionState::WAITING) {
@@ -471,7 +469,13 @@ auto ExecutionBlockImpl<RemoteExecutor>::execute(AqlCallStack stack)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   traceExecuteBegin(stack);
   auto res = executeWithoutTrace(stack);
-  traceExecuteEnd(res);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto const& [state, skipped, block] = res;
+  if (block != nullptr) {
+    block->validateShadowRowConsistency();
+  }
+#endif
+  traceExecuteEnd(res, server() + ":" + distributeId());
   return res;
 }
 
@@ -655,9 +659,9 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
 
   // Later, we probably want to set these sensibly:
   req->timeout(kDefaultTimeOutSecs);
-  if (!_ownName.empty()) {
-    req->header.addMeta("x-shard-id", _ownName);
-    req->header.addMeta("shard-id", _ownName);  // deprecated in 3.7, remove later
+  if (!_distributeId.empty()) {
+    req->header.addMeta("x-shard-id", _distributeId);
+    req->header.addMeta("shard-id", _distributeId);  // deprecated in 3.7, remove later
   }
 
   LOG_TOPIC("2713c", DEBUG, Logger::COMMUNICATION)

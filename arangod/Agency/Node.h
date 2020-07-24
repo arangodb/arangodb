@@ -25,7 +25,7 @@
 #define ARANGOD_CONSENSUS_NODE_H 1
 
 #include "AgencyCommon.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/velocypack-aliases.h>
@@ -83,7 +83,10 @@ class Store;
 /// assignment operator.
 /// toBuilder(Builder&) will create a _vecBuf, when needed as a means to
 /// optimization by avoiding to build it before necessary.
-class Node {
+class Node final {
+  /// @brief Access private methods
+  friend class Store;
+
  public:
   /// @brief Slash-segmented path
   typedef std::vector<std::string> PathType;
@@ -98,7 +101,7 @@ class Node {
   Node(Node const& other);
 
   /// @brief Move constructor
-  Node(Node&& other);
+  Node(Node&& other) noexcept;
 
   /// @brief Construct with name and introduce to tree under parent
   Node(std::string const& name, Node* parent);
@@ -107,7 +110,7 @@ class Node {
   Node(std::string const& name, Store* store);
 
   /// @brief Default dtor
-  virtual ~Node();
+  ~Node();
 
   /// @brief Get name
   std::string const& name() const;
@@ -119,7 +122,7 @@ class Node {
   Node& operator=(Node const& node);
 
   /// @brief Move operator
-  Node& operator=(Node&& node);
+  Node& operator=(Node&& node) noexcept;
 
   /// @brief Apply value slice to this node
   Node& operator=(arangodb::velocypack::Slice const&);
@@ -138,10 +141,6 @@ class Node {
 
   /// @brief Get node specified by path vector
   Node const& operator()(std::vector<std::string> const& pv) const;
-
-  /// @brief  Remove child by name
-  /// @return shared pointer to removed child
-  arangodb::ResultT<std::shared_ptr<Node>> removeChild(std::string const& key);
 
   /// @brief Get root node
   Node const& root() const;
@@ -183,39 +182,6 @@ class Node {
   /// @brief Get value type
   ValueType valueType() const;
 
-  /// @brief Get our container
-  Store& store();
-
-  /// @brief Get our container
-  Store const& store() const;
-
-  /// @brief Normalize node URIs
-  static std::string normalize(std::string const& key);
-
-  /// @brief Split path to path vector
-  static std::vector<std::string> split(const std::string& str, char separator);
-
-private:
-
-  /// @brief Get store if it exists:
-  Store* getStore();
-
-  /// @brief Hand out sharep ptr to a child
-  std::shared_ptr<Node> child(std::string const& key);
-
-  /// @brief Remove me from tree, if not root node, clear else.
-  /// @return If not root node, shared pointer copy to this node is returned
-  ///         to control life time by caller; else nullptr.
-  arangodb::ResultT<std::shared_ptr<Node>> deleteMe();
-
-  /// @brief Access private methods
-  friend class Store;
-
-  // @brief check lifetime expiry
-  bool lifetimeExpired() const;
-
-public:
-
   /// @brief Create JSON representation of this node and below
   std::string toJson() const;
 
@@ -251,12 +217,6 @@ public:
 
   /// @brief Is string
   bool isString() const;
-
-  /**
-   * @brief Get seconds this node still has to live. (Must be guarded by caller)
-   * @return  seconds to live (int64_t::max, if none set)
-   */
-  TimePoint const& timeToLive() const;
 
   /**
    * @brief Set expiry for this node
@@ -309,7 +269,6 @@ public:
   /// @return  second is true if url exists, first populated if second true
   std::pair<Slice, bool> hasAsArray(std::string const&) const;
 
-  //
   // These two operator() functions could be "protected" once
   //  unit tests updated.
   //
@@ -354,11 +313,8 @@ public:
 
   static auto getIntWithDefault(Slice slice, std::string_view key, std::int64_t def) -> std::int64_t;
 
- public:
   bool isReadLockable(const VPackStringRef& by) const;
-  bool isReadUnlockable(const VPackStringRef& by) const;
   bool isWriteLockable(const VPackStringRef& by) const;
-  bool isWriteUnlockable(const VPackStringRef& by) const;
 
   /// @brief Clear key value store
   void clear();
@@ -367,14 +323,32 @@ public:
   static Node const& dummyNode() {
     return _dummyNode;
   }
+ 
+ private:
+  
+  bool isReadUnlockable(const VPackStringRef& by) const;
+  bool isWriteUnlockable(const VPackStringRef& by) const;
+  
+  /// @brief  Remove child by name
+  /// @return shared pointer to removed child
+  arangodb::ResultT<std::shared_ptr<Node>> removeChild(std::string const& key);
 
- protected:
+  /// @brief Get root store if it exists:
+  Store* getRootStore() const;
+
+  /// @brief Remove me from tree, if not root node, clear else.
+  /// @return If not root node, shared pointer copy to this node is returned
+  ///         to control life time by caller; else nullptr.
+  arangodb::ResultT<std::shared_ptr<Node>> deleteMe();
+
+  // @brief check lifetime expiry
+  bool lifetimeExpired() const;
+
   /// @brief Add time to live entry
-  virtual bool addTimeToLive(
-    std::chrono::time_point<std::chrono::system_clock> const& tp);
+  bool addTimeToLive(std::chrono::time_point<std::chrono::system_clock> const& tp);
 
   /// @brief Remove time to live entry
-  virtual bool removeTimeToLive();
+  bool removeTimeToLive();
 
   void rebuildVecBuf() const;
 

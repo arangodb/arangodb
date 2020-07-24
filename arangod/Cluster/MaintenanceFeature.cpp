@@ -37,6 +37,7 @@
 #include "Basics/system-functions.h"
 #include "Cluster/Action.h"
 #include "Cluster/ActionDescription.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/CreateDatabase.h"
@@ -52,9 +53,6 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 using namespace arangodb::maintenance;
 
-const uint32_t MaintenanceFeature::minThreadLimit = 2;
-const uint32_t MaintenanceFeature::maxThreadLimit = 64;
-
 namespace {
 
 bool findNotDoneActions(std::shared_ptr<maintenance::Action> const& action) {
@@ -66,38 +64,27 @@ bool findNotDoneActions(std::shared_ptr<maintenance::Action> const& action) {
 MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Maintenance"),
       _forceActivation(false),
-      _maintenanceThreadsMax(2),
       _resignLeadershipOnShutdown(false),
-      _currentCounter(0) {
+      _maintenanceThreadsMax((std::max)(static_cast<uint32_t>(minThreadLimit),
+                                        static_cast<uint32_t>(NumberOfCores::getValue() / 4 + 1))),
+      _secondsActionsBlock(2),
+      _secondsActionsLinger(3600),
+      _isShuttingDown(false),
+      _nextActionId(1),
+      _pauseUntil(std::chrono::steady_clock::duration::zero()) {
   // the number of threads will be adjusted later. it's just that we want to
   // initialize all members properly
 
-  // this feature has to know the role of this server in its `start`. The role
+  // this feature has to know the role of this server in its `start` method. The role
   // is determined by `ClusterFeature::validateOptions`, hence the following
   // line of code is not required. For philosophical reasons we added it to the
   // ClusterPhase and let it start after `Cluster`.
   startsAfter<ClusterFeature>();
   startsAfter<MetricsFeature>();
 
-  init();
-}  // MaintenanceFeature::MaintenanceFeature
-
-void MaintenanceFeature::init() {
-  _isShuttingDown = false;
-  _nextActionId = 1;
-  _pauseUntil = std::chrono::steady_clock::duration::zero();
-
   setOptional(true);
-  requiresElevatedPrivileges(false);  // ??? this mean admin priv?
-
-  // these parameters might be updated by config and/or command line options
-
-  _maintenanceThreadsMax =
-      (std::max)(static_cast<uint32_t>(minThreadLimit),
-                 static_cast<uint32_t>(NumberOfCores::getValue() / 4 + 1));
-  _secondsActionsBlock = 2;
-  _secondsActionsLinger = 3600;
-}  // MaintenanceFeature::init
+  requiresElevatedPrivileges(false); 
+}
 
 void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
@@ -106,26 +93,34 @@ void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
       "--server.maintenance-threads",
       "maximum number of threads available for maintenance actions",
       new UInt32Parameter(&_maintenanceThreadsMax),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
-                                          arangodb::options::Flags::Dynamic));
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                   arangodb::options::Flags::OnDBServer,
+                                   arangodb::options::Flags::Hidden,
+                                   arangodb::options::Flags::Dynamic));
 
   options->addOption(
       "--server.maintenance-actions-block",
       "minimum number of seconds finished Actions block duplicates",
       new Int32Parameter(&_secondsActionsBlock),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                   arangodb::options::Flags::OnDBServer,
+                                   arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--server.maintenance-actions-linger",
       "minimum number of seconds finished Actions remain in deque",
       new Int32Parameter(&_secondsActionsLinger),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                   arangodb::options::Flags::OnDBServer,
+                                   arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--cluster.resign-leadership-on-shutdown",
       "create resign leader ship job for this dbsever on shutdown",
       new BooleanParameter(&_resignLeadershipOnShutdown),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                   arangodb::options::Flags::OnDBServer,
+                                   arangodb::options::Flags::Hidden));
 
 }  // MaintenanceFeature::collectOptions
 
@@ -134,17 +129,16 @@ void MaintenanceFeature::validateOptions(std::shared_ptr<ProgramOptions> options
     LOG_TOPIC("37726", WARN, Logger::MAINTENANCE)
         << "Need at least" << minThreadLimit << "maintenance-threads";
     _maintenanceThreadsMax = minThreadLimit;
-  } else if (_maintenanceThreadsMax >= maxThreadLimit) {
+  } else if (_maintenanceThreadsMax > maxThreadLimit) {
     LOG_TOPIC("8fb0e", WARN, Logger::MAINTENANCE)
         << "maintenance-threads limited to " << maxThreadLimit;
     _maintenanceThreadsMax = maxThreadLimit;
   }
 }
 
-/// do not start threads in prepare
-void MaintenanceFeature::prepare() {}  // MaintenanceFeature::prepare
-
 void MaintenanceFeature::initializeMetrics() {
+  TRI_ASSERT(ServerState::instance()->isDBServer() || _forceActivation);
+
   if (_phase1_runtime_msec.has_value()) {
     // Already initialized.
     // This actually is only necessary because of tests
@@ -168,13 +162,13 @@ void MaintenanceFeature::initializeMetrics() {
 
   _phase1_accum_runtime_msec =
       metricsFeature.counter(StaticStrings::MaintenancePhaseOneAccumRuntimeMs,
-                             0, "Accumulated runtime of phase one");
+                             0, "Accumulated runtime of phase one [ms]");
   _phase2_accum_runtime_msec =
       metricsFeature.counter(StaticStrings::MaintenancePhaseTwoAccumRuntimeMs,
-                             0, "Accumulated runtime of phase two");
+                             0, "Accumulated runtime of phase two [ms]");
   _agency_sync_total_accum_runtime_msec =
       metricsFeature.counter(StaticStrings::MaintenanceAgencySyncAccumRuntimeMs,
-                             0, "Accumulated runtime of agency sync phase");
+                             0, "Accumulated runtime of agency sync phase [ms]");
 
   _shards_out_of_sync = metricsFeature.gauge<uint64_t>(
       StaticStrings::ShardsOutOfSync, 0,
@@ -215,7 +209,7 @@ void MaintenanceFeature::initializeMetrics() {
                                  "Time spend execution the action [ms]"),
         metricsFeature.histogram(
             {StaticStrings::MaintenanceActionQueueTimeMs, action_label},
-            log_scale_t<uint64_t>(2, 82, 86400000, 12),
+            log_scale_t<uint64_t>(2, 82, 3600000, 12),
             "Time spend in the queue before execution [ms]"),
 
         metricsFeature.counter({StaticStrings::MaintenanceActionAccumRuntimeMs, action_label},
@@ -232,11 +226,16 @@ void MaintenanceFeature::initializeMetrics() {
 void MaintenanceFeature::start() {
   auto serverState = ServerState::instance();
 
-  // _forceActivation is set by the catch tests
+  // _forceActivation is set by the gtest unit tests
   if (!_forceActivation && (serverState->isAgent() || serverState->isSingleServer())) {
     LOG_TOPIC("deb1a", TRACE, Logger::MAINTENANCE)
         << "Disable maintenance-threads"
         << " for single-server or agents.";
+    return;
+  }
+  
+  if (serverState->isCoordinator()) {
+    // no need for maintenance on a coordinator
     return;
   }
 
@@ -245,7 +244,7 @@ void MaintenanceFeature::start() {
   // start threads
   for (uint32_t loop = 0; loop < _maintenanceThreadsMax; ++loop) {
     // First worker will be available only to fast track
-    std::unordered_set<std::string> labels{};
+    std::unordered_set<std::string> labels;
     if (loop == 0) {
       labels.emplace(ActionBase::FAST_TRACK);
     }
@@ -302,26 +301,29 @@ void MaintenanceFeature::beginShutdown() {
 
     auto endtime = startTime + timeout;
 
-    auto checkAgencyPathExists = [&am](std::string const& path, uint64_t jobId) -> bool {
-      try {
-        AgencyCommResult result =
-            am.getValues("Target/" + path + "/" + std::to_string(jobId));
-        if (result.successful()) {
-          VPackSlice value = result.slice()[0].get(
-              std::vector<std::string>{AgencyCommHelper::path(), "Target", path,
-                                       std::to_string(jobId)});
-          if (value.isObject() && value.hasKey("jobId") &&
-              value.get("jobId").isEqualString(std::to_string(jobId))) {
-            return true;
+    auto checkAgencyPathExists =
+      [cf = &server().getFeature<ClusterFeature>()](
+        std::string const& path, uint64_t jobId) -> bool {
+        try {
+          auto [acb, idx] =
+            cf->agencyCache().read(std::vector<std::string>{
+                AgencyCommHelper::path("Target/" + path + "/" + std::to_string(jobId))});
+          auto result = acb->slice();
+          if (!result.isNone()) {
+            VPackSlice value = result[0].get(
+              std::vector<std::string>{
+                AgencyCommHelper::path(), "Target", path, std::to_string(jobId)});
+            if (value.isObject() && value.hasKey("jobId") &&
+                value.get("jobId").isEqualString(std::to_string(jobId))) {
+              return true;
+            }
           }
-        }
-      } catch (...) {
-        LOG_TOPIC("deaf6", ERR, arangodb::Logger::CLUSTER)
+        } catch (...) {
+          LOG_TOPIC("deaf6", ERR, arangodb::Logger::CLUSTER)
             << "Exception when checking for job completion";
-      }
-
-      return false;
-    };
+        }
+        return false;
+      };
 
     // we can not test for application_features::ApplicationServer::isRetryOK() because it is never okay in shutdown
     while (clock::now() < endtime) {
@@ -350,16 +352,6 @@ void MaintenanceFeature::beginShutdown() {
 }  // MaintenanceFeature
 
 void MaintenanceFeature::stop() {
-  // There should be no new workers.
-  // Current workers could be stuck on the condition variable.
-  // Let's wake them up now.
-  {
-    // Only if we have flagged shutdown this operation is safe, all other threads potentially
-    // trying to get this mutex get into the shutdown case now, instead of getting into wait state.
-    TRI_ASSERT(_isShuttingDown);
-    std::unique_lock<std::mutex> guard(_currentCounterLock);
-    _currentCounterCondition.notify_all();
-  }
   for (auto const& itWorker : _activeWorkers) {
     CONDITION_LOCKER(cLock, _workerCompletion);
 
@@ -552,7 +544,7 @@ std::shared_ptr<Action> MaintenanceFeature::createAction(std::shared_ptr<ActionD
   // if a new action constructed successfully
   if (!newAction->ok()) {
     LOG_TOPIC("ef5cb", ERR, Logger::MAINTENANCE)
-        << "createAction:  unknown action name given, \"" << name.c_str()
+        << "createAction:  unknown action name given, \"" << name
         << "\", or other construction failure.";
   }
 
@@ -955,44 +947,3 @@ void MaintenanceFeature::proceed() {
   _pauseUntil = std::chrono::steady_clock::duration::zero();
 }
 
-uint64_t MaintenanceFeature::getCurrentCounter() const {
-  // It is guaranteed that getCurrentCounter is not executed
-  // concurrent to increase / wait.
-  // This guarantee is created by the following:
-  // 1) There is one inifinite loop that will call
-  //    PhaseOne and PhaseTwo in exactly this ordering.
-  //    It is guaranteed that only one thread at a time is
-  //    in this loop.
-  //    Between PhaseOne and PhaseTwo the increaseCurrentCounter is called
-  //    Within PhaseOne this getCurrentCounter is called, but never after.
-  //    so getCurrentCounter and increaseCurrentCounter are strictily serialized.
-  // 2) waitForLargerCurrentCounter can be called in concurrent threads at any time.
-  //    It is read-only, so it is safe to have it concurrent to getCurrentCounter
-  //    without any locking.
-  //    However we need locking for increase and waitFor in order to guarantee
-  //    it's functionallity.
-  // For now we actually do not need this guard, but as this is NOT performance
-  // critical we can simply get it, just to be save for later use.
-  std::unique_lock<std::mutex> guard(_currentCounterLock);
-  return _currentCounter;
-}
-
-void MaintenanceFeature::increaseCurrentCounter() {
-  std::unique_lock<std::mutex> guard(_currentCounterLock);
-  _currentCounter++;
-  _currentCounterCondition.notify_all();
-}
-
-void MaintenanceFeature::waitForLargerCurrentCounter(uint64_t old) {
-  std::unique_lock<std::mutex> guard(_currentCounterLock);
-  // Just to be sure we get not woken up for other reasons.
-  while (_currentCounter <= old) {
-    // We might miss a shutdown check here.
-    // This is ok, as we will not be able to do much anyways.
-    if (_isShuttingDown) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-    }
-    _currentCounterCondition.wait(guard);
-  }
-  TRI_ASSERT(_currentCounter > old);
-}

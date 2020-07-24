@@ -38,7 +38,7 @@ struct noop_field_collector final : sort::field_collector {
 struct noop_term_collector final : sort::term_collector {
   virtual void collect(const sub_reader&,
                        const term_reader&,
-                       const attribute_view&) override {
+                       const attribute_provider&) override {
   }
   virtual void reset() override { }
   virtual void collect(const bytes_ref&) override { }
@@ -145,7 +145,7 @@ term_collectors::term_collectors(const order::prepared& buckets, size_t size)
 
 void term_collectors::collect(
     const sub_reader& segment, const term_reader& field,
-    size_t term_idx, const attribute_view& attrs) const {
+    size_t term_idx, const attribute_provider& attrs) const {
   const size_t count = buckets_->size();
 
   switch (count) {

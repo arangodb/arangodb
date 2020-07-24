@@ -175,17 +175,20 @@ std::unique_ptr<BaseOptions> BaseOptions::createOptionsFromSlice(arangodb::aql::
 
 BaseOptions::BaseOptions(arangodb::aql::QueryContext& query)
     : _trx(query.newTrxContext()),
-      _expressionCtx(_trx, query, _regexCache),
+      _expressionCtx(_trx, query, _aqlFunctionsInternalCache),
       _query(query),
       _tmpVar(nullptr),
+      _parallelism(1),
       _produceVertices(true),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()) {}
 
 BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
     : _trx(other._query.newTrxContext()),
-      _expressionCtx(_trx, other._query, _regexCache),
+      _expressionCtx(_trx, other._query, _aqlFunctionsInternalCache),
       _query(other._query),
       _tmpVar(nullptr),
+      _collectionToShard(other._collectionToShard),
+      _parallelism(other._parallelism),
       _produceVertices(other._produceVertices),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()) {
   if (!allowAlreadyBuiltCopy) {
@@ -222,7 +225,13 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query,
     itLookup.next();
     itCollections.next();
   }
-
+      
+  // parallelism is optional
+  read = info.get("parallelism");
+  if (read.isInteger()) {
+    _parallelism = read.getNumber<size_t>();
+  }
+  
   TRI_ASSERT(_produceVertices);
   read = info.get("produceVertices");
   if (read.isBool() && !read.getBool()) {
@@ -258,25 +267,26 @@ void BaseOptions::setVariable(aql::Variable const* variable) {
 }
 
 void BaseOptions::addLookupInfo(aql::ExecutionPlan* plan, std::string const& collectionName,
-                                std::string const& attributeName, aql::AstNode* condition) {
-  injectLookupInfoInList(_baseLookupInfos, plan, collectionName, attributeName, condition);
+                                std::string const& attributeName,
+                                aql::AstNode* condition, bool onlyEdgeIndexes) {
+  injectLookupInfoInList(_baseLookupInfos, plan, collectionName, attributeName, condition, onlyEdgeIndexes);
 }
 
 void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
                                          aql::ExecutionPlan* plan,
                                          std::string const& collectionName,
                                          std::string const& attributeName,
-                                         aql::AstNode* condition) {
+                                         aql::AstNode* condition, bool onlyEdgeIndexes) {
   LookupInfo info;
   info.indexCondition = condition->clone(plan->getAst());
   auto coll = _query.collections().get(collectionName);
   if (!coll) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
-  
+
   bool res = aql::utils::getBestIndexHandleForFilterCondition(*coll, info.indexCondition,
                                                               _tmpVar, 1000, aql::IndexHint(),
-                                                              info.idxHandles[0]);
+                                                              info.idxHandles[0], onlyEdgeIndexes);
   // Right now we have an enforced edge index which should always fit.
   if (!res) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,

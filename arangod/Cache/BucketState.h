@@ -57,7 +57,7 @@ struct BucketState {
   //////////////////////////////////////////////////////////////////////////////
   enum class Flag : std::uint32_t {
     locked = 0x00000001,
-    blacklisted = 0x00000002,
+    banished = 0x00000002,
     disabled = 0x00000004,
     evictions = 0x00000008,
     migrated = 0x00000010,

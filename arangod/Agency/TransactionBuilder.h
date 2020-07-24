@@ -152,7 +152,7 @@ struct write_trx {
     _buffer.openObject();
     return std::move(_buffer);
   }
-  write_trx& operator=(write_trx&&) noexcept = default;
+  write_trx& operator=(write_trx&&) = default;
 
  private:
   friend T;
@@ -205,7 +205,7 @@ void add_to_builder(VPackBuilder* b, V const& v) {
 }
 
 template<>
-void add_to_builder(VPackBuilder* b, VPackSlice const& v) {
+inline void add_to_builder(VPackBuilder* b, VPackSlice const& v) {
   b->add(v);
 }
 

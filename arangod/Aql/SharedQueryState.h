@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2018-2020 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,9 +25,12 @@
 
 #include <atomic>
 #include <condition_variable>
-#include <functional>
+#include <function2.hpp>
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace aql {
 
 class SharedQueryState final : public std::enable_shared_from_this<SharedQueryState> {
@@ -35,15 +38,11 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   SharedQueryState(SharedQueryState const&) = delete;
   SharedQueryState& operator=(SharedQueryState const&) = delete;
 
-  SharedQueryState()
-    : _wakeupCb(nullptr), _numWakeups(0), _cbVersion(0), _valid(true) {}
-
+  explicit SharedQueryState(application_features::ApplicationServer& server);
+  SharedQueryState() = delete;
   ~SharedQueryState() = default;
 
   void invalidate();
-  bool isValid() const {
-    return _valid.load(std::memory_order_relaxed);
-  }
 
   /// @brief executeAndWakeup is to be called on the query object to
   /// continue execution in this query part, if the query got paused
@@ -60,21 +59,24 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   /// continues its execution where it left off.
   template <typename F>
   void executeAndWakeup(F&& cb) {
-    std::lock_guard<std::mutex> guard(_mutex);
+    std::unique_lock<std::mutex> guard(_mutex);
     if (!_valid) {
+      guard.unlock();
       _cv.notify_all();
       return;
     }
 
     if (std::forward<F>(cb)()) {
-      notifyWaiter();
+      notifyWaiter(guard);
     }
   }
   
   template <typename F>
   void executeLocked(F&& cb) {
-    std::lock_guard<std::mutex> guard(_mutex);
+    std::unique_lock<std::mutex> guard(_mutex);
     if (!_valid) {
+      guard.unlock();
+      _cv.notify_all();
       return;
     }
     std::forward<F>(cb)();
@@ -95,35 +97,43 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   template<typename F>
   bool asyncExecuteAndWakeup(F&& cb) {
     unsigned num = _numTasks.fetch_add(1);
-    if (num + 1 < _maxTasks) {
-      _numTasks.fetch_sub(1);
-      try {
-        std::forward<F>(cb)(false);
-      } catch(...) {}
+    if (num + 1 > _maxTasks) {
+      _numTasks.fetch_sub(1); // revert
+      std::forward<F>(cb)(false);
       return false;
     }
-    return queueAsyncTask([cb(std::forward<F>(cb)), self(shared_from_this())] {
-      if (self->_valid.load()) {
+    bool queued = queueAsyncTask([cb(std::forward<F>(cb)), self(shared_from_this())] {
+      if (self->_valid) {
         try {
           cb(true);
         } catch(...) {}
-        
-        std::lock_guard<std::mutex> guard(self->_mutex);
-        self->notifyWaiter();
+        std::unique_lock<std::mutex> guard(self->_mutex);
+        self->_numTasks.fetch_sub(1); // simon: intentionally under lock
+        self->notifyWaiter(guard);
+      } else {  // need to wakeup everybody
+        std::unique_lock<std::mutex> guard(self->_mutex);
+        self->_numTasks.fetch_sub(1); // simon: intentionally under lock
+        guard.unlock();
+        self->_cv.notify_all();
       }
-      
-      self->_numTasks.fetch_sub(1);
     });
+    
+    if (!queued) {
+      _numTasks.fetch_sub(1); // revert
+      std::forward<F>(cb)(false);
+    }
+    return queued;
   }
-
+  
  private:
   /// execute the _continueCallback. must hold _mutex
-  void notifyWaiter();
+  void notifyWaiter(std::unique_lock<std::mutex>& guard);
   void queueHandler();
   
-  bool queueAsyncTask(std::function<void()> const&);
+  bool queueAsyncTask(fu2::unique_function<void()>);
 
  private:
+  application_features::ApplicationServer& _server;
   mutable std::mutex _mutex;
   std::condition_variable _cv;
 
@@ -135,8 +145,7 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   unsigned _numWakeups; // number of times
   unsigned _cbVersion; // increased once callstack is done
   
-  // TODO: make configurable
-  const unsigned _maxTasks = 4;
+  const unsigned _maxTasks;
   std::atomic<unsigned> _numTasks;
   std::atomic<bool> _valid;
 };

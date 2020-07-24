@@ -125,16 +125,6 @@ class ExecutionBlock {
   
  protected:
   
-  // Trace the start of a getSome call
-   void traceGetSomeBegin(size_t atMost);
-
-   // Trace the end of a getSome call, potentially with result
-   void traceGetSomeEnd(ExecutionState state, SharedAqlItemBlockPtr const& result);
-
-   void traceSkipSomeBegin(size_t atMost);
-
-   void traceSkipSomeEnd(ExecutionState state, size_t skipped);
-  
   // Trace the start of a execute call
   void traceExecuteBegin(AqlCallStack const& stack,
                          std::string const& clientId = "");
@@ -150,9 +140,13 @@ class ExecutionBlock {
   /// @brief the Result returned during the shutdown phase. Is kept for multiple
   ///        waiting phases.
   Result _shutdownResult;
+
+  /// @brief the execution state of the dependency
+  ///        used to determine HASMORE or DONE better
+  ExecutionState _upstreamState;
   
   /// @brief profiling level
-  uint32_t _profile;
+  uint16_t _profile;
 
   /// @brief if this is set, we are done, this is reset to false by execute()
   bool _done;
@@ -171,10 +165,6 @@ class ExecutionBlock {
   std::vector<ExecutionBlock*>::iterator _dependencyPos;
   
   ExecutionNodeStats _execNodeStats;
-
-  /// @brief the execution state of the dependency
-  ///        used to determine HASMORE or DONE better
-  ExecutionState _upstreamState;
 };
 
 }  // namespace aql
