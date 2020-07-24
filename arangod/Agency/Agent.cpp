@@ -920,7 +920,7 @@ void Agent::lastAckedAgo(Builder& ret) const {
     ret.add(VPackValue("lastAcked"));
     VPackObjectBuilder b(&ret);
     for (auto const& keyVal : lastAckedIndex) {
-      auto list = lastSent.find(keyVal.first);
+      auto lsIt = lastSent.find(keyVal.first);
       // Note that it is possible that a server is already in lastAcked
       // but not yet in lastSent, since lastSent only has times of non-empty
       // appendEntriesRPC calls, but we also get lastAcked entries for the
@@ -931,8 +931,8 @@ void Agent::lastAckedAgo(Builder& ret) const {
         ret.add("lastAckedTime", VPackValue(dur2str(keyVal.first, keyVal.second.first)));
         ret.add("lastAckedIndex", VPackValue(keyVal.second.second));
         if (keyVal.first != id()) {
-          if (list != lastSent.end()) {
-            ret.add("lastAppend", VPackValue(dur2str(list->first, list->second)));
+          if (lsIt != lastSent.end()) {
+            ret.add("lastAppend", VPackValue(dur2str(lsIt->first, lsIt->second)));
           } else {
             ret.add("lastAppend", VPackValue(dur2str(keyVal.first, keyVal.second.first)));
             // This is just for the above mentioned case, which will very
