@@ -2043,8 +2043,29 @@ class ArgsArrayTraits<arangodb::aql::AstNode> {
  public:
   using ValueType = ScopedAqlValue;
 
-  static ScopedValueType scopedType(ValueType& v) {
+  static ScopedValueType scopedType(ValueType const& v) {
     return v.type();
+  }
+
+  static VPackSlice valueSlice(ValueType const& v) {
+    return v.slice();
+  }
+
+  static size_t numValueMembers(ValueType const& v) {
+    return v.size();
+  }
+
+  static bool isValueNumber(ValueType const& v) noexcept {
+    return v.isDouble();
+  }
+
+  static int64_t getValueInt64(ValueType const& v) {
+    TRI_ASSERT(v.isDouble());
+    return v.getInt64();
+  }
+
+  static bool getValueString(ValueType const& v, irs::string_ref& str) {
+    return v.getString(str);
   }
 
   static bool isDeterministic(arangodb::aql::AstNode const& arg) {
@@ -2088,84 +2109,11 @@ class ArgsArrayTraits<arangodb::aql::AstNode> {
 };
 
 template<>
-class ArgsArrayTraits<ScopedAqlValue> {
- public:
-  using ValueType = ScopedAqlValue;
-
-
-  static bool isDeterministic(ScopedAqlValue const& arg) {
-    return arg.isDeterministic();
-  }
-
-  static size_t numMembers(ScopedAqlValue const& arg) {
-    if (arg.isArray()) {
-      return arg.size();
-    }
-    return 1;
-  }
-
-  static arangodb::Result getMemberValue(ScopedAqlValue const& arg, size_t idx,
-                                         char const*, ValueType& value,
-                                         bool, QueryContext const&,
-                                         bool&) {
-    TRI_ASSERT(arg.isArray());
-    TRI_ASSERT(arg.size() > idx);
-    value = arg.at(idx);
-    return {};
-  }
-
-  template<typename T>
-  static arangodb::Result evaluateArg(T& out, ValueType& value, char const* funcName,
-    const ScopedAqlValue& args, size_t i, bool isFilter, QueryContext const& ctx) {
-    static_assert(
-      std::is_same<T, irs::string_ref>::value ||
-      std::is_same<T, int64_t>::value ||
-      std::is_same<T, double_t>::value ||
-      std::is_same<T, bool>::value);
-    if (!args.isArray() || args.size() <= i) {
-      return {
-        TRI_ERROR_BAD_PARAMETER,
-        "'"s.append(funcName).append("' AQL function: invalid argument index ")
-        .append(std::to_string(i))
-      };
-    }
-    value = args.at(i);
-    ScopedValueType expectedType = ScopedValueType::SCOPED_VALUE_TYPE_INVALID;
-    if constexpr (std::is_same<T, irs::string_ref>::value) {
-      expectedType = arangodb::iresearch::SCOPED_VALUE_TYPE_STRING;
-    } else if constexpr (std::is_same<T, int64_t>::value || std::is_same<T, double_t>::value) {
-      expectedType = arangodb::iresearch::SCOPED_VALUE_TYPE_DOUBLE;
-    } else if constexpr (std::is_same<T, bool>::value) {
-      expectedType = arangodb::iresearch::SCOPED_VALUE_TYPE_BOOL;
-    }
-
-    if (expectedType != value.type()) {
-      return error::typeMismatch(funcName, i + 1, expectedType, value.type());
-    }
-
-    if constexpr (std::is_same<T, irs::string_ref>::value) {
-      if (!value.getString(out)) {
-        return error::failedToParse(funcName, i + 1, expectedType);
-      }
-    } else if constexpr (std::is_same<T, int64_t>::value) {
-      out = value.getInt64();
-    } else if constexpr (std::is_same<T, double>::value) {
-      if (!value.getDouble(out)) {
-        return error::failedToParse(funcName, i + 1, expectedType);
-      }
-    } else if constexpr (std::is_same<T, bool>::value) {
-      out = value.getBoolean();
-    }
-    return {};
-  }
-};
-
-template<>
 class ArgsArrayTraits<VPackSlice> {
  public:
   using ValueType = VPackSlice;
 
-  static ScopedValueType scopedType(ValueType& v) {
+  static ScopedValueType scopedType(ValueType const& v) {
     if (v.isNumber()) {
       return SCOPED_VALUE_TYPE_DOUBLE;
     }
@@ -2184,6 +2132,32 @@ class ArgsArrayTraits<VPackSlice> {
         break; // Make Clang happy
     }
     return SCOPED_VALUE_TYPE_INVALID;
+  }
+
+  static VPackSlice const& valueSlice(ValueType const& v) noexcept {
+    return v;
+  }
+
+  static size_t numValueMembers(ValueType const& v) {
+    TRI_ASSERT(v.isArray());
+    return v.length();
+  }
+
+  static bool isValueNumber(ValueType const& v) noexcept {
+    return v.isNumber();
+  }
+
+  static int64_t getValueInt64(ValueType const& v) {
+    TRI_ASSERT(v.isNumber());
+    return v.getNumber<int64_t>();
+  }
+
+  static bool getValueString(ValueType const& v, irs::string_ref& str) {
+    if (v.isString()) {
+      str = ::getStringRef(v);
+      return true;
+    }
+    return false;
   }
 
   constexpr static bool isDeterministic(VPackSlice const&) {
@@ -2793,13 +2767,11 @@ arangodb::Result processPhraseArgObjectType(char const* funcName,
                                             size_t const funcArgumentPosition,
                                             irs::by_phrase* filter,
                                             QueryContext const& ctx,
-                                            ScopedAqlValue const& object,
+                                            VPackSlice const& object,
                                             size_t firstOffset,
                                             irs::analysis::analyzer* analyzer = nullptr) {
   TRI_ASSERT(object.isObject());
-  auto slice = object.slice();
-  TRI_ASSERT(slice.isObject());
-  VPackObjectIterator itr(slice);
+  VPackObjectIterator itr(object);
   if (ADB_LIKELY(itr.valid())) {
     auto key = itr.key();
     auto value = itr.value();
@@ -2861,17 +2833,17 @@ arangodb::Result processPhraseArgs(char const* funcName,
     }
     if (valueArg.isArray()) {
       // '[' <term0> [, <term1>, ...] ']'
+      auto const valueSize = ElementTraits::numValueMembers(valueArg);
       if (!expectingOffset || allowDefaultOffset) {
-        if (0 == valueArg.size()) {
+        if (0 == valueSize) {
           expectingOffset = true;
           // do not reset offset here as we should accumulate it
           continue; // just skip empty arrays. This is not error anymore as this case may arise while working with autocomplete
         }
         // array arg is processed with possible default 0 offsets - to be easily compatible with TOKENS function
         if (!isInArray) {
-          auto subRes = processPhraseArgs(funcName, phrase, ctx, filterCtx, valueArg, 0,
-                                          ArgsArrayTraits<typename ElementTraits::ValueType>::numMembers(valueArg),
-                                          analyzer, offset, true, true);
+          auto subRes = processPhraseArgs(funcName, phrase, ctx, filterCtx, ElementTraits::valueSlice(valueArg), 0,
+                                          valueSize, analyzer, offset, true, true);
           if (subRes.fail()) {
             return subRes;
           }
@@ -2879,7 +2851,8 @@ arangodb::Result processPhraseArgs(char const* funcName,
           offset = 0;
           continue;
         } else {
-          auto res = fromFuncPhraseTerms(funcName, idx, termsFuncName, phrase, ctx, valueArg, offset, analyzer);
+          auto res = fromFuncPhraseTerms(funcName, idx, termsFuncName, phrase, ctx, ElementTraits::valueSlice(valueArg),
+                                         offset, analyzer);
           if (res.fail()) {
             return res;
           }
@@ -2889,7 +2862,7 @@ arangodb::Result processPhraseArgs(char const* funcName,
         }
       }
     } else if (valueArg.isObject()) {
-      auto res = processPhraseArgObjectType(funcName, idx, phrase, ctx, valueArg, offset);
+      auto res = processPhraseArgObjectType(funcName, idx, phrase, ctx, ElementTraits::valueSlice(valueArg), offset);
       if (res.fail()) {
         return res;
       }
@@ -2897,11 +2870,11 @@ arangodb::Result processPhraseArgs(char const* funcName,
       expectingOffset = true;
       continue;
     }
-    if (valueArg.isDouble() && expectingOffset) {
-      offset += static_cast<uint64_t>(valueArg.getInt64());
+    if (ElementTraits::isValueNumber(valueArg) && expectingOffset) {
+      offset += static_cast<uint64_t>(ElementTraits::getValueInt64(valueArg));
       expectingOffset = false;
       continue; // got offset let`s go search for value
-    } else if ( (!valueArg.isString() || !valueArg.getString(value)) || // value is not a string at all
+    } else if ( (!valueArg.isString() || !ElementTraits::getValueString(valueArg, value)) || // value is not a string at all
       (expectingOffset && !allowDefaultOffset)) { // offset is expected mandatory but got value
       std::string expectedValue;
       if (expectingOffset && allowDefaultOffset) {
