@@ -44,8 +44,9 @@ void EdgeData::reset(VPackSlice const& doc) {
   _toId = doc.get("_to").copyString();
 }
 
-void MessageData::reset(std::string accumulatorName, VPackSlice const& value) {
+void MessageData::reset(std::string accumulatorName, VPackSlice const& value, std::string const& sender) {
   _accumulatorName = accumulatorName;
+  _sender = sender;
   _value.clear();
   _value.add(value);
 }

@@ -70,12 +70,13 @@ struct EdgeData {
 };
 
 struct MessageData {
-  void reset(std::string accumulatorName, VPackSlice const& value);
+  void reset(std::string accumulatorName, VPackSlice const& value, std::string const& sender);
 
   std::string _accumulatorName;
 
   // We copy the value :/ is this necessary?
   VPackBuilder _value;
+  std::string _sender;
 };
 
 struct VertexAccumulators : public Algorithm<VertexData, EdgeData, MessageData> {

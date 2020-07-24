@@ -48,11 +48,10 @@ struct VertexComputationEvalContext : PrimEvalContext {
     _vertexData._accumulators.at(std::string{accumId})->setBySlice(value);
   }
 
-  // Need edge
   void updateAccumulator(std::string_view accumId, std::string_view toId,
                          VPackSlice value) override {
     MessageData msg;
-    msg.reset(std::string{accumId}, value);
+    msg.reset(std::string{accumId}, value, getThisId());
 
     // FIXME: this is extremely stupid to do,
     //        once we have proper variables, we should
@@ -131,7 +130,7 @@ void VertexAccumulators::VertexComputation::compute(MessageIterator<MessageData>
     for (const MessageData* msg : incomingMessages) {
       vertexData()
           ._accumulators.at(msg->_accumulatorName)
-          ->updateBySlice(msg->_value.slice());
+          ->updateBySlice(msg->_value.slice(), msg->_sender);
     }
 
     VPackBuilder stepResultBuilder;

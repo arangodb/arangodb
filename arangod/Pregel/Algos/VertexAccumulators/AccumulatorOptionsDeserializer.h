@@ -76,6 +76,7 @@ struct VertexAccumulatorOptions {
   AccumulatorsDeclaration accumulatorsDeclaration;
   BindingDeclarations bindings;
   PhaseDeclarations phases;
+  uint64_t maxGSS;
 };
 
 std::ostream& operator<<(std::ostream&, AccumulatorOptions const&);

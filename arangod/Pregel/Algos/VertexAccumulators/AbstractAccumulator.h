@@ -51,7 +51,9 @@ struct AccumulatorBase {
 
   virtual void setBySlice(VPackSlice) = 0;
   virtual void updateBySlice(VPackSlice) = 0;
+  virtual void updateBySlice(VPackSlice, std::string_view) = 0;
   virtual void getIntoBuilder(VPackBuilder& builder) = 0;
+  virtual std::string const& getSender() const = 0;
 };
 
 template <typename T>
@@ -64,6 +66,7 @@ class Accumulator : public AccumulatorBase {
 
   virtual void set(data_type v) { _value = v; };
   virtual void update(data_type v) = 0;
+  virtual void update(data_type v, std::string_view sender) = 0;
 
   void setBySlice(VPackSlice s) override {
     if constexpr (std::is_arithmetic_v<T>) {
@@ -85,6 +88,19 @@ class Accumulator : public AccumulatorBase {
       std::abort();
     }
   }
+  void updateBySlice(VPackSlice s, std::string_view sender) override {
+    if constexpr (std::is_arithmetic_v<T>) {
+      this->update(s.getNumericValue<T>(), sender);
+    } else if constexpr (std::is_same_v<T, std::string>) {
+      this->update(s.copyString(), sender);
+    } else if constexpr (std::is_same_v<T, bool>) {
+      this->update(s.getBool(), sender);
+    } else if constexpr (std::is_same_v<T, VPackSlice>) {
+      this->update(s, sender);
+    } else {
+      std::abort();
+    }
+  }
   void getIntoBuilder(VPackBuilder& builder) override {
     if constexpr (std::is_same_v<T, VPackSlice>) {
       builder.add(_value);
@@ -94,9 +110,11 @@ class Accumulator : public AccumulatorBase {
   }
 
   data_type const& get() const { return _value; };
+  std::string const& getSender() const override { return _sender; };
 
  protected:
   data_type _value;
+  std::string _sender;
 };
 
 std::unique_ptr<AccumulatorBase> instantiateAccumulator(::AccumulatorOptions const& options);

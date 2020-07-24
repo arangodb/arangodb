@@ -95,6 +95,7 @@ using algorithm_phase_deserializer = utilities::constructing_deserializer<Algori
 constexpr const char resultField[] = "resultField";
 constexpr const char accumulatorsDeclaration[] = "accumulatorsDeclaration";
 constexpr const char bindings[] = "bindings";
+constexpr const char maxGSS[] = "maxGSS";
 
 template<typename K, typename V>
 using my_map = std::map<K, V>;
@@ -114,7 +115,8 @@ using vertex_accumulator_options_plan_old = parameter_list<
   factory_deserialized_parameter<accumulatorsDeclaration, accumulators_map_deserializer, true>,
   factory_deserialized_parameter<bindings, bindings_map_deserializer, /* required */ false>, // will be default constructed as empty map
   factory_builder_parameter<initProgram, true>,
-  factory_builder_parameter<updateProgram, true>>;
+  factory_builder_parameter<updateProgram, true>,
+  factory_simple_parameter<maxGSS, uint64_t, false, values::numeric_value<uint64_t, 500>>>;
 
 struct VertexAccumulatorOptionsOld {
   std::string resultField;
@@ -122,6 +124,7 @@ struct VertexAccumulatorOptionsOld {
   BindingDeclarations bindings;
   VPackBuilder initProgram;
   VPackBuilder updateProgram;
+  uint64_t maxGSS;
 };
 
 using vertex_accumulator_options_deserializer_old =
@@ -136,8 +139,8 @@ using vertex_accumulator_options_plan = parameter_list<
     factory_deserialized_parameter<resultField, values::value_deserializer<std::string>, true>,
     factory_deserialized_parameter<accumulatorsDeclaration, accumulators_map_deserializer, true>,
     factory_deserialized_parameter<bindings, bindings_map_deserializer, /* required */ false>, // will be default constructed as empty map
-    factory_deserialized_parameter<phases, phases_deseriaizer, true>
->;
+    factory_deserialized_parameter<phases, phases_deseriaizer, true>,
+    factory_simple_parameter<maxGSS, uint64_t, false, values::numeric_value<uint64_t, 500>>>;
 
 using vertex_accumulator_options_deserializer_new =
   utilities::constructing_deserializer<VertexAccumulatorOptions, vertex_accumulator_options_plan>;
@@ -155,7 +158,7 @@ struct VertexAccumulatorOptionsFactory {
     phase_list.emplace_back(AlgorithmPhase{"main", std::move(old_opt.updateProgram),
       std::move(old_opt.initProgram), VPackBuilder{}});
     return VertexAccumulatorOptions{std::move(old_opt.resultField), std::move(old_opt.accumulatorsDeclaration),
-      std::move(old_opt.bindings), std::move(phase_list)};
+        std::move(old_opt.bindings), std::move(phase_list), old_opt.maxGSS};
   }
 };
 

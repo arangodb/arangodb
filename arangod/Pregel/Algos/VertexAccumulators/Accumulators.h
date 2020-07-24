@@ -41,6 +41,12 @@ class MinAccumulator : public Accumulator<T> {
   void update(T v) override {
     this->_value = std::min(v, this->_value);
   }
+  void update(T v, std::string_view sender) override {
+    if (v < this->_value) {
+      this->_value = v;
+      this->_sender = sender;
+    }
+  }
 };
 
 template<typename T>
@@ -49,6 +55,12 @@ class MaxAccumulator : public Accumulator<T> {
   using Accumulator<T>::Accumulator;
   void update(T v) override {
     this->_value = std::max(v, this->_value);
+  }
+  void update(T v, std::string_view sender) override {
+    if (v > this->_value) {
+      this->_value = v;
+      this->_sender = sender;
+    }
   }
 };
 
@@ -59,6 +71,10 @@ class SumAccumulator : public Accumulator<T> {
   void update(T v) override {
     this->_value += v;
   }
+  void update(T v, std::string_view sender) override {
+    this->_value = v;
+    this->_sender = sender;
+  }
 };
 
 template<typename T>
@@ -67,6 +83,10 @@ class AndAccumulator : public Accumulator<T> {
   using Accumulator<T>::Accumulator;
   void update(T v) override {
     this->_value &= v;
+  }
+  void update(T v, std::string_view sender) override {
+    this->_value &= v;
+    this->_sender = sender;
   }
 };
 
@@ -77,6 +97,10 @@ class OrAccumulator : public Accumulator<T> {
   void update(T v) override {
     this->_value |= v;
   }
+  void update(T v, std::string_view sender) override {
+    this->_value |= v;
+    this->_sender = sender;
+  }
 };
 
 template<typename T>
@@ -85,6 +109,10 @@ class StoreAccumulator : public Accumulator<T> {
   using Accumulator<T>::Accumulator;
   void update(T v) override {
     this->_value = std::move(v);
+  }
+  void update(T v, std::string_view sender) override {
+    this->_value = std::move(v);
+    this->_sender = sender;
   }
 };
 
@@ -97,7 +125,10 @@ class StoreAccumulator<VPackSlice> : public Accumulator<VPackSlice> {
     _buffer.add(v);
     _value = _buffer.slice();
   }
-
+  void update(VPackSlice v, std::string_view sender) override {
+    this->update(v);
+    this->_sender = sender;
+  }
  private:
   VPackBuilder _buffer;
 };
@@ -107,6 +138,10 @@ class ListAccumulator : public Accumulator<T> {
   using Accumulator<T>::Accumulator;
   void update(T v) override {
     _list.emplace_back(std::move(v));
+  }
+  void update(T v, std::string_view sender) override {
+    this->update(v);
+    this->_sender = sender;
   }
  private:
   std::vector<T> _list;
@@ -118,7 +153,10 @@ class ListAccumulator<VPackSlice> : public Accumulator<VPackSlice> {
   void update(VPackSlice v) override {
     _list.emplace_back().add(v);
   }
-
+  void update(VPackSlice v, std::string_view sender) override {
+    this->update(v);
+    this->_sender = sender;
+  }
   void getIntoBuilder(VPackBuilder& builder) override {
     VPackArrayBuilder array(&builder);
     for (auto&& p : _list) {
