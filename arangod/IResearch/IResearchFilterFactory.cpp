@@ -2869,7 +2869,9 @@ arangodb::Result processPhraseArgs(char const* funcName,
         }
         // array arg is processed with possible default 0 offsets - to be easily compatible with TOKENS function
         if (!isInArray) {
-          auto subRes = processPhraseArgs(funcName, phrase, ctx, filterCtx, valueArg, 0, valueArg.size(), analyzer, offset, true, true);
+          auto subRes = processPhraseArgs(funcName, phrase, ctx, filterCtx, valueArg, 0,
+                                          ArgsArrayTraits< typename ElementTraits::ValueType>::numMembers(valueArg),
+                                          analyzer, offset, true, true);
           if (subRes.fail()) {
             return subRes;
           }
