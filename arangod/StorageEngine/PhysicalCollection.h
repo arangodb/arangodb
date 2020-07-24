@@ -89,9 +89,6 @@ class PhysicalCollection {
   /// to fetch current values!
   virtual IndexEstMap clusterIndexEstimates(bool allowUpdating, TransactionId tid);
 
-  /// @brief sets the current index selectivity estimates
-  virtual void setClusterIndexEstimates(IndexEstMap&& estimates);
-
   /// @brief flushes the current index selectivity estimates
   virtual void flushClusterIndexEstimates();
 

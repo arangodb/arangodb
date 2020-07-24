@@ -204,9 +204,6 @@ class LogicalCollection : public LogicalDataSource {
   IndexEstMap clusterIndexEstimates(bool allowUpdating,
                                     TransactionId tid = TransactionId::none());
 
-  /// @brief sets the current index selectivity estimates
-  void setClusterIndexEstimates(IndexEstMap&& estimates);
-
   /// @brief flushes the current index selectivity estimates
   void flushClusterIndexEstimates();
 

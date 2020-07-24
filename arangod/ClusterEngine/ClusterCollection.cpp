@@ -92,11 +92,6 @@ IndexEstMap ClusterCollection::clusterIndexEstimates(bool allowUpdating, Transac
   return _selectivityEstimates.get(allowUpdating, tid);
 }
 
-/// @brief sets the current index selectivity estimates
-void ClusterCollection::setClusterIndexEstimates(IndexEstMap&& estimates) {
-  _selectivityEstimates.set(std::move(estimates));
-}
-
 /// @brief flushes the current index selectivity estimates
 void ClusterCollection::flushClusterIndexEstimates() {
   _selectivityEstimates.flush();

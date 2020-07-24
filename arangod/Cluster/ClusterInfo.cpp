@@ -50,6 +50,7 @@
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
+#include "Indexes/Index.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/DatabaseFeature.h"
@@ -558,6 +559,93 @@ void ClusterInfo::loadClusterId() {
   }
 }
 
+/// @brief create a new collecion object from the data, using the cache if possible
+ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
+    bool isBuilding, AllCollections::const_iterator existingCollections,
+    std::string const& collectionId, arangodb::velocypack::Slice data,
+    TRI_vocbase_t& vocbase, uint64_t planVersion) const {
+
+  std::shared_ptr<LogicalCollection> collection;
+  uint64_t hash = 0;
+
+  if (!isBuilding && 
+      existingCollections != _plannedCollections.end()) {
+    // check if we already know this collection from a previous run...
+    auto existing = (*existingCollections).second.find(collectionId);
+    if (existing != (*existingCollections).second.end()) {
+      CollectionWithHash const& previous = (*existing).second;
+      // compare the hash values of what is in the cache with the hash of the collection
+      // a hash value of 0 means that the collection must not be read from the cache,
+      // potentially because it contains a link to a view (which would require more
+      // complex dependency management)
+      if (previous.hash != 0) {
+        // calculate hash value. we are using Slice::hash() here intentionally in contrast
+        // to the slower Slice::normalizedHash(), as the only source for the VelocyPack
+        // is the agency/agency cache, which will always create the data in the same way.
+        hash = data.hash();
+        // if for some reason the generated hash value is 0, too, we simply don't cache
+        // this collection. This is not a problem, as it will not affect correctness but
+        // will only lead to one collection less being cached.
+        if (previous.hash == hash) {
+          // hashes are identical. reuse the collection from cache
+          // this is very beneficial for performance, because we can avoid rebuilding the
+          // entire LogicalCollection object!
+          collection = previous.collection;
+        }
+      }
+    }
+  }
+
+  // collection may be a nullptr here if no such collection exists in the cache, or if the
+  // collection is in building stage
+  if (collection == nullptr) {
+    // no previous version of the collection exists, or its hash value has changed
+    collection = createCollectionObject(data, vocbase, planVersion);
+    TRI_ASSERT(collection != nullptr);
+
+    if (!isBuilding) { 
+      auto indexes = collection->getIndexes();
+      // if the collection has a link to a view, there are dependencies between collection
+      // objects and view objects. in this case, we need to disable the collection caching
+      // optimization
+      bool const hasViewLink = std::any_of(indexes.begin(), indexes.end(), [](auto const& index) {
+        return (index->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK);
+      });
+      if (hasViewLink) {
+        // we do have a view. set hash to 0, which will disable the caching optimization
+        hash = 0;
+      } else if (hash == 0) {
+        // not yet hashed. now calculate the hash value
+        hash = data.hash();
+      }
+    }
+  }
+
+  TRI_ASSERT(collection != nullptr);
+  TRI_ASSERT(!isBuilding || hash == 0);
+
+  return {hash, collection};
+}
+
+/// @brief helper function to build a new LogicalCollection object from the velocypack
+/// input
+/*static*/ std::shared_ptr<LogicalCollection> ClusterInfo::createCollectionObject(
+    arangodb::velocypack::Slice data, TRI_vocbase_t& vocbase, uint64_t planVersion) {
+#ifdef USE_ENTERPRISE
+  auto isSmart = data.get(StaticStrings::IsSmart);
+
+  if (isSmart.isTrue()) {
+    auto type = data.get(StaticStrings::DataSourceType);
+
+    if (type.isInteger() && type.getUInt() == TRI_COL_TYPE_EDGE) {
+      return std::make_shared<VirtualSmartEdgeCollection>(vocbase, data, planVersion); 
+    } 
+    return std::make_shared<SmartVertexCollection>(vocbase, data, planVersion); 
+  } 
+#endif
+  return std::make_shared<LogicalCollection>(vocbase, data, true, planVersion);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about our plan
 /// Usually one does not have to call this directly.
@@ -932,7 +1020,7 @@ void ClusterInfo::loadPlan() {
   //        "type": "traditional"
   //      },
   //      "name": "_graphs",
-  //      "numberOfSh ards": 1,
+  //      "numberOfShards": 1,
   //      "path": "",
   //      "replicationFactor": 2,
   //      "shardKeys": [
@@ -955,6 +1043,8 @@ void ClusterInfo::loadPlan() {
   auto planCollectionsSlice = planSlice.get("Collections");  // format above
 
   if (planCollectionsSlice.isObject()) {
+    READ_LOCKER(guard, _planProt.lock);
+
     swapCollections = true;  // mark for swap even if no databases present to ensure dangling datasources are removed
 
     bool const isCoordinator = ServerState::instance()->isCoordinator();
@@ -973,11 +1063,12 @@ void ClusterInfo::loadPlan() {
 
       DatabaseCollections databaseCollections;
       auto const databaseName = databasePairSlice.key.copyString();
-
+  
       // Skip databases that are still building.
       if (buildingDatabases.find(databaseName) != buildingDatabases.end()) {
         continue;
       }
+
       auto* vocbase = databaseFeature.lookupDatabase(databaseName);
 
       if (!vocbase) {
@@ -992,6 +1083,12 @@ void ClusterInfo::loadPlan() {
 
         continue;
       }
+         
+      // an iterator to all collections in the current database (from the previous round)
+      // we can safely keep this iterator around because we hold the read-lock on _planProt here.
+      // reusing the lookup positions helps avoiding redundant lookups into _plannedCollections
+      // for the same database
+      AllCollections::const_iterator existingCollections = _plannedCollections.find(databaseName);
 
       for (auto const& collectionPairSlice : velocypack::ObjectIterator(collectionsSlice)) {
         auto const& collectionSlice = collectionPairSlice.value;
@@ -1004,70 +1101,26 @@ void ClusterInfo::loadPlan() {
 
           continue;
         }
+          
+        bool const isBuilding = isCoordinator &&
+            arangodb::basics::VelocyPackHelper::getBooleanValue(collectionSlice,
+                                                                StaticStrings::AttrIsBuilding,
+                                                                false);
 
         auto const collectionId = collectionPairSlice.key.copyString();
-
+        
+        // check if we already know this collection (i.e. have it in our local cache).
+        // we do this to avoid rebuilding LogicalCollection objects from scratch in
+        // every iteration
+        // the cache check is very coarse-grained: it simply hashes the Plan VelocyPack
+        // data for the collection, and will only reuse a collection from the cache if 
+        // the hash is identical. 
+        CollectionWithHash cwh = buildCollection(isBuilding, existingCollections, collectionId, collectionSlice, *vocbase, newPlanVersion);
+        auto& newCollection = cwh.collection; 
+        TRI_ASSERT(newCollection != nullptr);
+     
         try {
-          std::shared_ptr<LogicalCollection> newCollection;
-
-#ifdef USE_ENTERPRISE
-          auto isSmart = collectionSlice.get(StaticStrings::IsSmart);
-
-          if (isSmart.isTrue()) {
-            auto type = collectionSlice.get(StaticStrings::DataSourceType);
-
-            if (type.isInteger() && type.getUInt() == TRI_COL_TYPE_EDGE) {
-              newCollection = std::make_shared<VirtualSmartEdgeCollection>(  // create collection
-                  *vocbase, collectionSlice, newPlanVersion  // args
-              );
-            } else {
-              newCollection = std::make_shared<SmartVertexCollection>(  // create collection
-                  *vocbase, collectionSlice, newPlanVersion  // args
-              );
-            }
-          } else
-#endif
-          {
-            newCollection = std::make_shared<LogicalCollection>(  // create collection
-                *vocbase, collectionSlice, true, newPlanVersion  // args
-            );
-          }
-
           auto& collectionName = newCollection->name();
-
-          bool isBuilding =
-              isCoordinator &&
-              arangodb::basics::VelocyPackHelper::getBooleanValue(collectionSlice,
-                                                                  StaticStrings::AttrIsBuilding,
-                                                                  false);
-          if (isCoordinator) {
-            // copying over index estimates from the old version of the
-            // collection into the new one
-            LOG_TOPIC("7a884", TRACE, Logger::CLUSTER)
-                << "copying index estimates";
-
-            // it is effectively safe to access _plannedCollections in
-            // read-only mode here, as the only places that modify
-            // _plannedCollections are the shutdown and this function
-            // itself, which is protected by a mutex
-            auto it = _plannedCollections.find(databaseName);
-            if (it != _plannedCollections.end()) {
-              auto it2 = (*it).second.find(collectionId);
-
-              if (it2 != (*it).second.end()) {
-                try {
-                  auto estimates = (*it2).second->clusterIndexEstimates(false);
-
-                  if (!estimates.empty()) {
-                    // already have an estimate... now copy it over
-                    newCollection->setClusterIndexEstimates(std::move(estimates));
-                  }
-                } catch (...) {
-                  // this may fail during unit tests, when mocks are used
-                }
-              }
-            }
-          }
 
           // NOTE: This is building has the following feature. A collection needs to be working on
           // all DBServers to allow replication to go on, also we require to have the shards planned.
@@ -1077,8 +1130,8 @@ void ClusterInfo::loadPlan() {
 
           if (!isBuilding) {
             // register with name as well as with id:
-            databaseCollections.try_emplace(collectionName, newCollection);
-            databaseCollections.try_emplace(collectionId, newCollection);
+            databaseCollections.try_emplace(collectionName, cwh);
+            databaseCollections.try_emplace(collectionId, cwh);
           }
 
           auto shardIDs = newCollection->shardIds();
@@ -1132,6 +1185,7 @@ void ClusterInfo::loadPlan() {
   if (ServerState::instance()->isCoordinator()) {
     auto systemDB = _server.getFeature<arangodb::SystemDatabaseFeature>().use();
     if (systemDB && systemDB->shardingPrototype() == ShardingPrototype::Undefined) {
+      // system database does not have a shardingPrototype set...
       // sharding prototype of _system database defaults to _users nowadays
       systemDB->setShardingPrototype(ShardingPrototype::Users);
       // but for "old" databases it may still be "_graphs". we need to find out!
@@ -1142,7 +1196,7 @@ void ClusterInfo::loadPlan() {
         auto it2 = (*it).second.find(StaticStrings::GraphCollection);
         if (it2 != (*it).second.end()) {
           // found!
-          if ((*it2).second->distributeShardsLike().empty()) {
+          if ((*it2).second.collection->distributeShardsLike().empty()) {
             // _graphs collection has no distributeShardsLike, so it is
             // the prototype!
             systemDB->setShardingPrototype(ShardingPrototype::Graphs);
@@ -1415,7 +1469,7 @@ std::shared_ptr<LogicalCollection> ClusterInfo::getCollectionNT(DatabaseID const
     DatabaseCollections::const_iterator it2 = (*it).second.find(collectionID);
 
     if (it2 != (*it).second.end()) {
-      return (*it2).second;
+      return (*it2).second.collection;
     }
   }
 
@@ -1440,7 +1494,7 @@ std::shared_ptr<LogicalDataSource> ClusterInfo::getCollectionOrViewNT(DatabaseID
       auto it2 = (*it).second.find(name);
 
       if (it2 != (*it).second.end()) {
-        return (*it2).second;
+        return (*it2).second.collection;
       }
     }
   }
@@ -1491,7 +1545,7 @@ std::vector<std::shared_ptr<LogicalCollection>> const ClusterInfo::getCollection
 
     if (c < '0' || c > '9') {
       // skip collections indexed by id
-      result.push_back((*it2).second);
+      result.push_back((*it2).second.collection);
     }
 
     ++it2;
@@ -4684,9 +4738,6 @@ std::unordered_map<ShardID, ServerID> ClusterInfo::getResponsibleServers(
 ////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(CollectionID const& collectionID) {
-
-
-
   int tries = 0;
   while (true) {
     {
