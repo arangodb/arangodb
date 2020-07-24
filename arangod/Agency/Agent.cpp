@@ -283,8 +283,8 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
 
     TRI_ASSERT(_lastAckedIndex.find(peerId) != _lastAckedIndex.end());
     // Reference here, the entry will be updated.
-    auto& [lastTime, lastIndex] = _lastAckedIndex.at(peerId);
-    std::chrono::duration<double> d = t - lastTime;
+    auto& last = _lastAckedIndex.at(peerId);
+    std::chrono::duration<double> d = t - last.first;
     auto secsSince = d.count();
     if (secsSince < 1.5e9 && peerId != id() &&
         secsSince > _config.minPing() * _config.timeoutMult()) {
@@ -296,9 +296,9 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
         << "Setting _lastAcked[" << peerId << "] to time "
         << std::chrono::duration_cast<std::chrono::microseconds>(t.time_since_epoch())
                .count();
-    lastTime = t;
-    if (index > lastIndex) {  // progress this follower?
-      lastIndex = index;
+    last.first = t;
+    if (index > last.second) {  // progress this follower?
+      last.second = index;
       if (toLog > 0) {  // We want to reset the wait time only if a package callback
         LOG_TOPIC("ba4d2", DEBUG, Logger::AGENCY)
             << "Got call back of " << toLog
@@ -328,8 +328,8 @@ void Agent::reportFailed(std::string const& slaveId, size_t toLog, bool sent) {
         << "Resetting _earliestPackage to now for id " << slaveId;
     _earliestPackage[slaveId] = steady_clock::now() + seconds(1);
     TRI_ASSERT(_lastAckedIndex.find(slaveId) != _lastAckedIndex.end());
-    auto& [unused, lastIndex] = _lastAckedIndex.at(slaveId);
-    lastIndex = 0;
+    auto& last = _lastAckedIndex.at(slaveId);
+    last.second = 0;
   } else {
     // answer to sendAppendEntries to empty request, when follower's highest
     // log index is 0. This is necessary so that a possibly restarted agent
@@ -339,8 +339,8 @@ void Agent::reportFailed(std::string const& slaveId, size_t toLog, bool sent) {
     if (sent) {
       MUTEX_LOCKER(guard, _tiLock);
       TRI_ASSERT(_lastAckedIndex.find(slaveId) != _lastAckedIndex.end());
-      auto& [unused, lastIndex] = _lastAckedIndex.at(slaveId);
-      lastIndex = 0;
+      auto& last = _lastAckedIndex.at(slaveId);
+      last.second = 0;
     }
   }
 }
@@ -919,22 +919,22 @@ void Agent::lastAckedAgo(Builder& ret) const {
   if (leading()) {
     ret.add(VPackValue("lastAcked"));
     VPackObjectBuilder b(&ret);
-    for (auto const& [key, pair] : lastAckedIndex) {
-      auto lsit = lastSent.find(key);
+    for (auto const& keyVal : lastAckedIndex) {
+      auto list = lastSent.find(keyVal.first);
       // Note that it is possible that a server is already in lastAcked
       // but not yet in lastSent, since lastSent only has times of non-empty
       // appendEntriesRPC calls, but we also get lastAcked entries for the
       // empty ones.
-      ret.add(VPackValue(key));
+      ret.add(VPackValue(keyVal.first));
       {
         VPackObjectBuilder o(&ret);
-        ret.add("lastAckedTime", VPackValue(dur2str(key, pair.first)));
-        ret.add("lastAckedIndex", VPackValue(pair.second));
-        if (key != id()) {
-          if (lsit != lastSent.end()) {
-            ret.add("lastAppend", VPackValue(dur2str(lsit->first, lsit->second)));
+        ret.add("lastAckedTime", VPackValue(dur2str(keyVal.first, keyVal.second.first)));
+        ret.add("lastAckedIndex", VPackValue(keyVal.second.second));
+        if (keyVal.first != id()) {
+          if (list != lastSent.end()) {
+            ret.add("lastAppend", VPackValue(dur2str(list->first, list->second)));
           } else {
-            ret.add("lastAppend", VPackValue(dur2str(key, pair.first)));
+            ret.add("lastAppend", VPackValue(dur2str(keyVal.first, keyVal.second.first)));
             // This is just for the above mentioned case, which will very
             // soon be rectified.
           }
