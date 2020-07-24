@@ -317,7 +317,7 @@ arangodb::Result getAnalyzerByName(
     : nullptr;
 
   if (sysVocbase) {
-    analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase, 
+    analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase,
                                    ctx.trx->state()->analyzersRevision());
 
     shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
@@ -2035,21 +2035,16 @@ arangodb::Result fromFuncMinMatch(
 
 template<typename ElementType>
 class ArgsArrayTraits {
-public:
+ public:
 };
 
 template<>
 class ArgsArrayTraits<arangodb::aql::AstNode> {
-public:
-
+ public:
   using ValueType = ScopedAqlValue;
 
   static ScopedValueType scopedType(ValueType& v) {
     return v.type();
-  }
-
-  static bool getString(ValueType const& arg, irs::string_ref& ref) {
-    return arg.getString(ref);
   }
 
   static arangodb::Result getMemberValue(arangodb::aql::AstNode const& arg, size_t idx,
@@ -2077,7 +2072,7 @@ public:
   }
 
   template<typename T, bool CheckDeterminism = false>
-  static arangodb::Result evaluateArg(T& out, ScopedAqlValue& value, char const* funcName,
+  static arangodb::Result evaluateArg(T& out, ValueType& value, char const* funcName,
                                       arangodb::aql::AstNode const& args, size_t i, bool isFilter,
                                       QueryContext const& ctx) {
     return ::evaluateArg<T, CheckDeterminism>(out, value, funcName, args, i, isFilter, ctx);
@@ -2095,7 +2090,7 @@ public:
 
 template<>
 class ArgsArrayTraits<ScopedAqlValue> {
-public:
+ public:
   using ValueType = ScopedAqlValue;
 
   static arangodb::Result getMemberValue(ScopedAqlValue const& arg, size_t idx,
@@ -2115,19 +2110,14 @@ public:
     return 1;
   }
 
-  template<typename T, bool CheckDeterminism = false>
-  static arangodb::Result evaluateArg(T& out, ScopedAqlValue& value, char const* funcName,
+  template<typename T>
+  static arangodb::Result evaluateArg(T& out, ValueType& value, char const* funcName,
     const ScopedAqlValue& args, size_t i, bool isFilter, QueryContext const& ctx) {
     static_assert(
       std::is_same<T, irs::string_ref>::value ||
       std::is_same<T, int64_t>::value ||
       std::is_same<T, double_t>::value ||
       std::is_same<T, bool>::value);
-    if constexpr (CheckDeterminism) {
-      if (!args.isDeterministic()) {
-        return error::nondeterministicArg(funcName, i);
-      }
-    }
     if (!args.isArray() || args.size() <= i) {
       return {
         TRI_ERROR_BAD_PARAMETER,
@@ -2172,7 +2162,7 @@ public:
 
 template<>
 class ArgsArrayTraits<VPackSlice> {
-public:
+ public:
   using ValueType = VPackSlice;
 
   static ScopedValueType scopedType(ValueType& v) {
@@ -2212,12 +2202,12 @@ public:
     return 1;
   }
 
-  static bool isDeterministic(VPackSlice const&) {
+  constexpr static bool isDeterministic(VPackSlice const&) {
     return true;
   }
 
-  template<typename T, bool CheckDeterminism = false>
-  static arangodb::Result evaluateArg(T& out, ScopedAqlValue&, char const* funcName, // FIXME: ScopedValue should hold the result - and control lifetime. Here arg controls lifetime of result in case of string_ref!
+  template<typename T>
+  static arangodb::Result evaluateArg(T& out, ValueType& value, char const* funcName,
     VPackSlice const& args, size_t i, bool isFilter, QueryContext const& ctx) {
     static_assert(
       std::is_same<T, irs::string_ref>::value ||
@@ -2225,48 +2215,41 @@ public:
       std::is_same<T, double_t>::value ||
       std::is_same<T, bool>::value);
 
-    if (!args.isArray()) { // array-like access but we have no array
-      return {
-        TRI_ERROR_BAD_PARAMETER,
-        "'"s.append(funcName).append("' AQL function: argument has invalid type '")
-        .append(args.typeName()).append("' expected 'array'")
-      };
-    }
-    if (args.isArray() && i >= args.length()) {
+    if (!args.isArray() || args.length() <= i) {
       return {
         TRI_ERROR_BAD_PARAMETER,
         "'"s.append(funcName).append("' AQL function: invalid argument index ")
         .append(std::to_string(i))
       };
     }
-    auto arg = args.at(i);
+    value = args.at(i);
     bool typeOk{ false };
     if constexpr (std::is_same<T, irs::string_ref>::value) {
-      typeOk = arg.isString();
+      typeOk = value.isString();
     } else if constexpr (std::is_same<T, int64_t>::value || std::is_same<T, double_t>::value) {
-      typeOk = arg.isNumber();
+      typeOk = value.isNumber();
     } else if constexpr (std::is_same<T, bool>::value) {
-      typeOk = arg.isBoolean();
+      typeOk = value.isBoolean();
     }
 
     if (!typeOk) {
       return {
         TRI_ERROR_BAD_PARAMETER,
         "'"s.append(funcName).append("' AQL function: argument at position '").append(std::to_string(i+1))
-        .append("' has invalid type '").append(arg.typeName()).append("'")
+        .append("' has invalid type '").append(value.typeName()).append("'")
       };
     }
 
     if constexpr (std::is_same<T, irs::string_ref>::value) {
-      out = getStringRef(arg);
+      out = getStringRef(value);
     } else if constexpr (std::is_same<T, int64_t>::value) {
-      out = arg.getInt();
+      out = value.getInt();
     } else if constexpr (std::is_same<T, double>::value) {
-      if (!arg.getDouble(out)) {
+      if (!value.getDouble(out)) {
         return error::failedToParse(funcName, i + 1, SCOPED_VALUE_TYPE_DOUBLE);
       }
     } else if constexpr (std::is_same<T, bool>::value) {
-      out = arg.getBoolean();
+      out = value.getBoolean();
     }
     return {};
   }
@@ -2303,7 +2286,7 @@ arangodb::Result oneArgumentfromFuncPhrase(char const* funcName,
   auto actualArg = elem.isArray() ? elem.at(0) : elem;
 
   if (!actualArg.isString()) {
-    return error::typeMismatch(subFuncName, funcArgumentPosition, SCOPED_VALUE_TYPE_STRING, 
+    return error::typeMismatch(subFuncName, funcArgumentPosition, SCOPED_VALUE_TYPE_STRING,
                                ArgsArrayTraits<VPackSlice>::scopedType(actualArg));
   }
   term = getStringRef(actualArg);
@@ -2386,7 +2369,7 @@ arangodb::Result getLevenshteinArguments(char const* funcName, bool isFilter,
                                          QueryContext const& ctx,
                                          ElementType const& args,
                                          arangodb::aql::AstNode const** field,
-                                         ScopedAqlValue& targetValue,
+                                         typename ElementTraits::ValueType& targetValue,
                                          irs::by_edit_distance_options& opts,
                                          std::string const& errorSuffix = std::string()) {
   if (!ElementTraits::isDeterministic(args)) {
@@ -2429,7 +2412,7 @@ arangodb::Result getLevenshteinArguments(char const* funcName, bool isFilter,
     };
   }
 
-  ScopedAqlValue tmpValue; // can reuse value for int64_t and bool
+  typename ElementTraits::ValueType tmpValue; // can reuse value for int64_t and bool
 
   // (2 - First) argument defines a max distance
   int64_t maxDistance = 0;
@@ -2522,7 +2505,7 @@ arangodb::Result fromFuncPhraseLevenshteinMatch(char const* funcName,
     };
   }
 
-  ScopedAqlValue targetValue;
+  VPackSlice targetValue;
   irs::by_edit_distance_options opts;
   auto res = getLevenshteinArguments<1>(subFuncName, filter != nullptr, ctx,
                                         array, nullptr, targetValue, opts,
@@ -2611,7 +2594,7 @@ arangodb::Result fromFuncPhraseTerms(char const* funcName,
   }
 
   irs::by_terms_options::search_terms terms;
-  ScopedAqlValue termValue;
+  typename ElementTraits::ValueType termValue;
   irs::string_ref term;
   for (size_t i = 0; i < argc; ++i) {
     auto res = ElementTraits::evaluateArg(term, termValue, subFuncName, array, i, filter != nullptr, ctx);
@@ -2643,7 +2626,7 @@ arangodb::Result fromFuncPhraseTerms(char const* funcName,
   return {};
 }
 
-template<size_t First, typename ElementType, 
+template<size_t First, typename ElementType,
          typename ElementTraits = ArgsArrayTraits<ElementType>>
 arangodb::Result getInRangeArguments(char const* funcName, bool isFilter,
                                      QueryContext const& ctx,
@@ -2680,9 +2663,9 @@ arangodb::Result getInRangeArguments(char const* funcName, bool isFilter,
     }
     TRI_ASSERT((*field)->isDeterministic());
   }
- 
+
   // (3 - First) argument defines inclusion of lower boundary
-  ScopedAqlValue includeValue;
+  typename ElementTraits::ValueType includeValue;
   auto res = ElementTraits::evaluateArg(minInclude, includeValue, funcName, args, 3 - First, isFilter, ctx);
   if (res.fail()) {
     return {
@@ -2776,7 +2759,7 @@ arangodb::Result fromFuncPhraseInRange(char const* funcName,
   irs::string_ref minStrValue = getStringRef(min);
 
   if (!max.isString()) {
-    res = error::typeMismatch(subFuncName, 2, arangodb::iresearch::SCOPED_VALUE_TYPE_STRING, 
+    res = error::typeMismatch(subFuncName, 2, arangodb::iresearch::SCOPED_VALUE_TYPE_STRING,
                               ArgsArrayTraits<VPackSlice>::scopedType(max));
     return {
       res.errorNumber(),
@@ -2866,12 +2849,12 @@ arangodb::Result processPhraseArgs(char const* funcName,
     {
       bool skippedEvaluation{ false };
       auto res = ElementTraits::getMemberValue(valueArgs, idx, funcName, valueArg,
-        phrase != nullptr, ctx, skippedEvaluation);
+                                               phrase != nullptr, ctx, skippedEvaluation);
       if (res.fail())
         return res;
       if (skippedEvaluation) {
         // non-const argument. we can`t decide on parse/optimize
-        // if it is ok. So just say it is ok for now and deal with it 
+        // if it is ok. So just say it is ok for now and deal with it
         // at execution
         return {};
       }
