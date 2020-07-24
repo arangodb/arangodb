@@ -37,6 +37,7 @@
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
 
+#include <velocypack/Collection.h>
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -85,7 +86,8 @@ CreateCollection::CreateCollection(MaintenanceFeature& feature, ActionDescriptio
     error << "properties slice must specify collection type. ";
   }
   TRI_ASSERT(properties().hasKey(StaticStrings::DataSourceType) &&
-             properties().get(StaticStrings::DataSourceType).isNumber());
+             properties().get(StaticStrings::DataSourceType).isNumber() &&
+             properties().get(PLAN_RAFT_INDEX).isNumber());
 
   uint32_t const type =
       properties().get(StaticStrings::DataSourceType).getNumber<uint32_t>();
@@ -103,6 +105,12 @@ CreateCollection::CreateCollection(MaintenanceFeature& feature, ActionDescriptio
 }
 
 CreateCollection::~CreateCollection() = default;
+
+static inline std::string collectionCurrentPath(std::string const& dbName,
+                                                std::string const& collectionId,
+                                                std::string const& shardId) {
+  return "Current/Collections/" + dbName + "/" + collectionId + "/" + shardId;
+}
 
 bool CreateCollection::first() {
   auto const& database = _description.get(DATABASE);
@@ -162,6 +170,9 @@ bool CreateCollection::first() {
           << "local collection " << database << "/" << shard
           << " successfully created";
 
+      int64_t raftIndex = props.get(PLAN_RAFT_INDEX).getNumber<int64_t>();
+      col->setRaftIndexAtCreation(raftIndex);
+
       if (leader.empty()) {
         std::vector<std::string> noFollowers;
         col->followers()->takeOverLeadership(noFollowers, nullptr);
@@ -191,6 +202,56 @@ bool CreateCollection::first() {
       LOG_TOPIC("63687", ERR, Logger::MAINTENANCE) << error.str();
 
       _result.reset(TRI_ERROR_FAILED, error.str());
+    } else if (leader.empty()) {
+      // Let's now immediately update the `Current` entry, this is only a best effort, if we somehow fail, phaseTwo will correct things eventually:
+
+      VPackBuilder ret;
+      VPackBuilder collInfo;
+      {
+        VPackObjectBuilder b(&collInfo);
+        col->properties(collInfo, LogicalDataSource::Serialization::Persistence);
+        // This is essentially needed for the indexes!
+      }
+      VPackSlice info = collInfo.slice();
+
+      {
+        VPackObjectBuilder r(&ret);
+        ret.add(StaticStrings::Error, VPackValue(false));
+        ret.add(StaticStrings::ErrorMessage, VPackValue(std::string()));
+        ret.add(StaticStrings::ErrorNum, VPackValue(0));
+        ret.add(VPackValue(INDEXES));
+        {
+          VPackArrayBuilder ixs(&ret);
+          if (info.get(INDEXES).isArray()) {
+            std::unordered_set<std::string> indexesDone;
+            // First the indexes as they are in the collection:
+            for (auto const& index : VPackArrayIterator(info.get(INDEXES))) {
+              std::string id = index.get(ID).copyString();
+              indexesDone.insert(id);
+              ret.add(arangodb::velocypack::Collection::remove(
+                          index, std::unordered_set<std::string>({SELECTIVITY_ESTIMATE}))
+                          .slice());
+            }
+          }
+        }
+        size_t numFollowers;
+        std::tie(numFollowers, std::ignore) = col->followers()->injectFollowerInfo(ret);
+        // Note that whenever theLeader was set explicitly since the collection
+        // object was created, we believe it. Otherwise, we do not accept
+        // that we are the leader. This is to circumvent the problem that
+        // after a restart we would implicitly be assumed to be the leader.
+        ret.add("theLeader", VPackValue(""));
+        ret.add("theLeaderTouched", VPackValue(true));
+      }
+
+      // Now do agency transaction to write this to /arango/Current/Collections/DBNAME/COLLID/SHARD
+      AgencyComm ac(feature().server());
+      AgencyOperation write{collectionCurrentPath(database, collection, shard),
+                            arangodb::AgencyValueOperationType::SET, ret.slice()};
+      AgencyOperation inc{"Current/Version", arangodb::AgencySimpleOperationType::INCREMENT_OP};
+      AgencyWriteTransaction trx{{write, inc}};
+      ac.sendTransactionWithFailover(trx, 3.0);
+      // Fire and forget with a small timeout!
     }
 
   } catch (std::exception const& e) {

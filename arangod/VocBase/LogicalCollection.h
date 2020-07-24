@@ -110,6 +110,14 @@ class LogicalCollection : public LogicalDataSource {
 
   std::string globallyUniqueId() const;
 
+  int64_t raftIndexAtCreation() const {
+    return _raftIndexAtCreation;
+  }
+
+  void setRaftIndexAtCreation(int64_t raftIndex) {
+    _raftIndexAtCreation = raftIndex;
+  }
+
   // For normal collections the realNames is just a vector of length 1
   // with its name. For smart edge collections (Enterprise Edition only)
   // this is different.
@@ -421,6 +429,11 @@ class LogicalCollection : public LogicalDataSource {
   // `_validators` must be used with atomic accessors only!!
   // We use relaxed access (load/store) as we only care about atomicity.
   std::shared_ptr<ValidatorVec> _validators;
+
+  // The following is used only in the cluster for shards, one can tell the
+  // collection object which raft index lead to its creation. This is used to
+  // tell in the maintenance that a shard belongs to a future plan version.
+  int64_t _raftIndexAtCreation;
 };
 
 }  // namespace arangodb

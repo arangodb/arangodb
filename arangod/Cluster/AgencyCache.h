@@ -97,7 +97,13 @@ public:
   /// @brief Used exclusively in unit tests
   consensus::Store& store();
 
-private:
+  /// @brief Register an event handler:
+  void registerEventHandler(std::string const& keyPrefix, std::function<void(int64_t, std::string const&, VPackSlice)>&& handler) {
+    std::lock_guard g(_eventsLock);
+    _eventHandlers.emplace(std::move(keyPrefix), std::move(handler));
+  }
+
+ private:
 
   /// @brief invoke all callbacks
   void invokeAllCallbacks() const;
@@ -108,8 +114,14 @@ private:
   /// @brief invoke given callbacks
   void invokeCallbackNoLock(uint64_t, std::string const& = std::string()) const;
 
+  /// @brief compute sorted list of keys of an agency transaction
+  std::map<std::string, VPackSlice> normalizeAndSortKeys(VPackSlice o);
+
   /// @brief handle callbacks for specific log document
-  void handleCallbacksNoLock(VPackSlice, std::unordered_set<uint64_t>&, std::vector<uint64_t>&);
+  void handleCallbacksNoLock(VPackSlice, std::map<std::string, VPackSlice> const&, std::unordered_set<uint64_t>&, std::vector<uint64_t>&);
+
+  /// @brief handle events for agency transactions
+  void handleEventsNoLock(int64_t, VPackSlice, std::map<std::string, VPackSlice> const&);
 
   /// @brief trigger all waiting call backs for index <= _commitIndex
   ///        caller must hold lock
@@ -134,6 +146,10 @@ private:
   /// @brief Waiting room for indexes during office hours
   mutable std::mutex _waitLock;
   std::multimap<consensus::index_t, futures::Promise<arangodb::Result>> _waiting;
+
+  /// @brief Events on agency transactions
+  mutable std::mutex _eventsLock;
+  std::multimap<std::string, std::function<void(int64_t, std::string const&, VPackSlice)>> _eventHandlers;
 };
 
 } // namespace

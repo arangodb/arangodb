@@ -376,7 +376,7 @@ std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> AgencyCache::
   {
     std::lock_guard g(_callbacksLock);
     for (auto const& trx : VPackArrayIterator(trxs->slice())) {
-      handleCallbacksNoLock(trx[0], uniq, toCall);
+      handleCallbacksNoLock(trx[0], normalizeAndSortKeys(trx[0]), uniq, toCall);
     }
   }
   invokeCallbacks(toCall);
