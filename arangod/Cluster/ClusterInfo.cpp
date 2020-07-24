@@ -531,7 +531,7 @@ void ClusterInfo::loadPlan() {
   }
 
   // Now contact the agency:
-  AgencyCommResult result = _agency.getValues(prefixPlanVersion)
+  AgencyCommResult result = _agency.getValues(prefixPlanVersion);
   if (!result.successful()) {
     LOG_TOPIC("989d6", DEBUG, Logger::CLUSTER)
         << "Error while loading " << prefixPlanVersion
