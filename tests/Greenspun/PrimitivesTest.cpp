@@ -214,12 +214,167 @@ TEST_CASE("Test [true?] primitive", "[true?]") {
  * Comparison operators
  */
 
-TEST_CASE("Test [eq?] primitive", "[equals]") {}
+TEST_CASE("Test [eq?] primitive", "[equals]") {
+  InitInterpreter();
+  MyEvalContext ctx;
+  VPackBuilder result;
+  auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
+  auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
+
+  SECTION("Test equality with ints") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["eq?", 2, 2]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(true == result.slice().getBoolean());
+  }
+
+  SECTION("Test non equality with ints") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["eq?", 3, 2]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(false == result.slice().getBoolean());
+  }
+
+  SECTION("Test equality with doubles") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["eq?", 2.2, 2.2]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(true == result.slice().getBoolean());
+  }
+
+  SECTION("Test non equality with doubles") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["eq?", 2.4, 2.2]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(false == result.slice().getBoolean());
+  }
+
+  SECTION("Test equality with bools") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["eq?", true, true]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(true == result.slice().getBoolean());
+  }
+
+  SECTION("Test non equality with bools") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["eq?", true, false]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(false == result.slice().getBoolean());
+  }
+  SECTION("Test equality with string") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["eq?", "hello", "hello"]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(true == result.slice().getBoolean());
+  }
+
+  SECTION("Test non equality with string") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["eq?", "hello", "world"]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(false == result.slice().getBoolean());
+  }
+}
+
 TEST_CASE("Test [gt?] primitive", "[greater]") {}
 TEST_CASE("Test [ge?] primitive", "[greater equal]") {}
 TEST_CASE("Test [le?] primitive", "[less equal]") {}
 TEST_CASE("Test [lt?] primitive", "[less]") {}
-TEST_CASE("Test [ne?] primitive", "[not equal]") {}
+TEST_CASE("Test [ne?] primitive", "[not equal]") {
+  InitInterpreter();
+  MyEvalContext ctx;
+  VPackBuilder result;
+  auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
+  auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
+
+  SECTION("Test equality with ints") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["ne?", 2, 2]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(false == result.slice().getBoolean());
+  }
+
+  SECTION("Test non equality with ints") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["ne?", 3, 2]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(true == result.slice().getBoolean());
+  }
+
+  SECTION("Test equality with doubles") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["ne?", 2.2, 2.2]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(false == result.slice().getBoolean());
+  }
+
+  SECTION("Test non equality with doubles") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["ne?", 2.4, 2.2]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(true == result.slice().getBoolean());
+  }
+
+  SECTION("Test equality with bools") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["ne?", true, true]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(false == result.slice().getBoolean());
+  }
+
+  SECTION("Test non equality with bools") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["ne?", true, false]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(true == result.slice().getBoolean());
+  }
+  SECTION("Test equality with string") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["ne?", "hello", "hello"]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(false == result.slice().getBoolean());
+  }
+
+  SECTION("Test non equality with string") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["ne?", "hello", "world"]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(true == result.slice().getBoolean());
+  }
+}
 
 /*
  * Debug operators
