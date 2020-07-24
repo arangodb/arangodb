@@ -108,8 +108,8 @@ struct TraverserOptions : public graph::BaseOptions {
 
   /// @brief Add a lookup info for specific depth
   void addDepthLookupInfo(aql::ExecutionPlan* plan, std::string const& collectionName,
-                          std::string const& attributeName,
-                          aql::AstNode* condition, uint64_t depth);
+                          std::string const& attributeName, aql::AstNode* condition,
+                          uint64_t depth, bool onlyEdgeIndexes = false);
 
   bool vertexHasFilter(uint64_t) const;
 
