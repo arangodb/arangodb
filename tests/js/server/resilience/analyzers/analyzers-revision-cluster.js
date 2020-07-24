@@ -395,6 +395,37 @@ function analyzersRevisionTestSuite () {
       	db._useDatabase("_system");
       	try { db._dropDatabase(dbName); } catch (e) {}
       }
+    },
+    testAnalyzersReadingRevisionsForUpdatedDatabase: function() {
+      if (!internal.debugCanUseFailAt()) {
+        return;
+      }
+      db._useDatabase("_system");
+      let dbName = "testDbName";
+      try { db._dropDatabase(dbName); } catch (e) {}
+      try {
+        analyzers.save("SystemTestAnalyzer", "identity");
+        db._createDatabase(dbName);
+        db._useDatabase(dbName);
+        internal.debugClearFailAt();
+        internal.debugSetFailAt('AlwaysSwapAnalyzersRevision');
+        // remove Analyzers part  to simulate freshly updated cluster
+        // where system already has created custom analyzers and revisions
+        // but other database have not
+        let preconditions = {};
+        let operations = {};
+        operations['/arango/Plan/Analyzers/' + dbName] = {'op': 'delete'};
+        global.ArangoAgency.write([[operations, preconditions]]);
+        global.ArangoAgency.increaseVersion("Plan/Version");
+        db._create("TriggerPlanReload");
+        db._query("RETURN TOKENS('Test', '::SystemTestAnalyzer') "); // check system revision is still read
+        internal.debugClearFailAt();
+      } finally {
+      	internal.debugClearFailAt();
+      	db._useDatabase("_system");
+        analyzers.remove("SystemTestAnalyzer", true);
+      	try { db._dropDatabase(dbName); } catch (e) {}
+      }
     }
   };
 }
