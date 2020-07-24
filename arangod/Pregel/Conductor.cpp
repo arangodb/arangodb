@@ -167,6 +167,8 @@ bool Conductor::_startGlobalStep() {
 
   // workers are done if all messages were processed and no active vertices
   // are left to process
+  bool done = _globalSuperstep > 0 && _statistics.noActiveVertices() &&
+              _statistics.allMessagesProcessed();
   bool proceed = true;
   if (_masterContext && _globalSuperstep > 0) {  // ask algorithm to evaluate aggregated values
     _masterContext->_globalSuperstep = _globalSuperstep - 1;
@@ -176,11 +178,19 @@ bool Conductor::_startGlobalStep() {
       LOG_TOPIC("0aa8e", DEBUG, Logger::PREGEL)
           << "Master context ended execution";
     }
+    if (proceed) {
+      switch (_masterContext->postGlobalSuperstep(done)) {
+        case MasterContext::ContinuationResult::CONTINUE:
+          done = false; break;
+        case MasterContext::ContinuationResult::ABORT:
+          proceed = false; break;
+        case MasterContext::ContinuationResult::DONT_CARE:
+          break;
+      }
+    }
   }
 
   // TODO make maximum configurable
-  bool done = _globalSuperstep > 0 && _statistics.noActiveVertices() &&
-              _statistics.allMessagesProcessed();
   if (!proceed || done || _globalSuperstep >= _maxSuperstep) {
     // tells workers to store / discard results
     if (_storeResults) {

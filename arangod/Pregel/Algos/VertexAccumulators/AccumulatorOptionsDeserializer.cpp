@@ -74,16 +74,32 @@ using accumulator_options_plan = parameter_list<
 using accumulator_options_deserializer =
     utilities::constructing_deserializer<AccumulatorOptions, accumulator_options_plan>;
 
-/* VertexAccumulatorOption */
+/* Algorithm Phase */
+
+constexpr const char name[] = "name";
+constexpr const char onHalt[] = "on-halt";
+constexpr const char initProgram[] = "initProgram";
+constexpr const char updateProgram[] = "updateProgram";
+
+using algorithm_phase_plan = parameter_list<
+    factory_deserialized_parameter<name, values::value_deserializer<std::string>, true>,
+    factory_builder_parameter<onHalt, false>,
+    factory_builder_parameter<initProgram, false>,
+    factory_builder_parameter<updateProgram, true>
+>;
+
+using algorithm_phase_deserializer = utilities::constructing_deserializer<AlgorithmPhase, algorithm_phase_plan>;
+
+/* VertexAccumulatorOption old */
 
 constexpr const char resultField[] = "resultField";
 constexpr const char accumulatorsDeclaration[] = "accumulatorsDeclaration";
 constexpr const char bindings[] = "bindings";
-constexpr const char initProgram[] = "initProgram";
-constexpr const char updateProgram[] = "updateProgram";
 
 template<typename K, typename V>
 using my_map = std::map<K, V>;
+template<typename V>
+using my_vector = std::vector<V>;
 
 template<typename D, template <typename> typename C>
 using non_empty_array_deserializer = validate<
@@ -91,16 +107,67 @@ using non_empty_array_deserializer = validate<
 
 using accumulators_map_deserializer = map_deserializer<accumulator_options_deserializer, my_map>;
 using bindings_map_deserializer = map_deserializer<values::vpack_builder_deserializer, my_map>;
+using phases_deseriaizer = non_empty_array_deserializer<algorithm_phase_deserializer, my_vector>;
 
-using vertex_accumulator_options_plan = parameter_list<
+using vertex_accumulator_options_plan_old = parameter_list<
   factory_deserialized_parameter<resultField, values::value_deserializer<std::string>, true>,
   factory_deserialized_parameter<accumulatorsDeclaration, accumulators_map_deserializer, true>,
   factory_deserialized_parameter<bindings, bindings_map_deserializer, /* required */ false>, // will be default constructed as empty map
   factory_builder_parameter<initProgram, true>,
   factory_builder_parameter<updateProgram, true>>;
 
-using vertex_accumulator_options_deserializer =
-    utilities::constructing_deserializer<VertexAccumulatorOptions, vertex_accumulator_options_plan>;
+struct VertexAccumulatorOptionsOld {
+  std::string resultField;
+  AccumulatorsDeclaration accumulatorsDeclaration;
+  BindingDeclarations bindings;
+  VPackBuilder initProgram;
+  VPackBuilder updateProgram;
+};
+
+using vertex_accumulator_options_deserializer_old =
+    utilities::constructing_deserializer<VertexAccumulatorOptionsOld, vertex_accumulator_options_plan_old>;
+
+
+/* Vertex Accumulator Options new */
+
+constexpr const char phases[] = "phases";
+
+using vertex_accumulator_options_plan = parameter_list<
+    factory_deserialized_parameter<resultField, values::value_deserializer<std::string>, true>,
+    factory_deserialized_parameter<accumulatorsDeclaration, accumulators_map_deserializer, true>,
+    factory_deserialized_parameter<bindings, bindings_map_deserializer, /* required */ false>, // will be default constructed as empty map
+    factory_deserialized_parameter<phases, phases_deseriaizer, true>
+>;
+
+using vertex_accumulator_options_deserializer_new =
+  utilities::constructing_deserializer<VertexAccumulatorOptions, vertex_accumulator_options_plan>;
+
+/*
+ * If the `updateProgram` field is given, use the old style.
+ * Otherwise use new style.
+ */
+
+struct VertexAccumulatorOptionsFactory {
+  using constructed_type = VertexAccumulatorOptions;
+  auto operator()(VertexAccumulatorOptions && opt) { return std::move(opt); }
+  auto operator()(VertexAccumulatorOptionsOld && old_opt) {
+    PhaseDeclarations phase_list;
+    phase_list.emplace_back(AlgorithmPhase{"main", std::move(old_opt.updateProgram),
+      std::move(old_opt.initProgram), VPackBuilder{}});
+    return VertexAccumulatorOptions{std::move(old_opt.resultField), std::move(old_opt.accumulatorsDeclaration),
+      std::move(old_opt.bindings), std::move(phase_list)};
+  }
+};
+
+using vertex_accumulator_options_deserializer_version_switch = conditional_deserializer_with_factory<
+    utilities::visiting_factory<VertexAccumulatorOptionsFactory>,
+    condition_deserializer_pair<has_key_condition<updateProgram>, vertex_accumulator_options_deserializer_old>,
+    conditional_default<vertex_accumulator_options_deserializer_new>
+>;
+
+
+
+
 
 /* clang-format on */
 
@@ -109,7 +176,7 @@ result<AccumulatorOptions, error> parseAccumulatorOptions(VPackSlice slice) {
 }
 
 result<VertexAccumulatorOptions, error> parseVertexAccumulatorOptions(VPackSlice slice) {
-  return deserialize<vertex_accumulator_options_deserializer>(slice);
+  return deserialize<vertex_accumulator_options_deserializer_version_switch>(slice);
 }
 
 std::ostream& operator<<(std::ostream& os, AccumulatorType const& type) {

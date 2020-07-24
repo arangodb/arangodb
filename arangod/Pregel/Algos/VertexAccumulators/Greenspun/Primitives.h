@@ -28,17 +28,25 @@
 #include "Interpreter.h"
 
 struct PrimEvalContext : EvalContext {
-  virtual std::string const& getThisId() const = 0;
-  virtual void getAccumulatorValue(std::string_view id, VPackBuilder& result) const = 0;
+  virtual std::string const& getThisId() const { std::abort(); };
+  virtual void getAccumulatorValue(std::string_view id, VPackBuilder& result) const {};
   virtual void updateAccumulator(std::string_view accumId,
-                                 std::string_view toId, VPackSlice value) = 0;
-  virtual void setAccumulator(std::string_view accumId, VPackSlice value) = 0;
+                                 std::string_view toId, VPackSlice value) {};
+  virtual void setAccumulator(std::string_view accumId, VPackSlice value) {};
 
-  virtual EvalResult enumerateEdges(std::function<EvalResult(VPackSlice edge)> cb) const = 0;
+  virtual EvalResult enumerateEdges(std::function<EvalResult(VPackSlice edge)> cb) const {
+    return EvalError("not impemented");
+  }
   virtual EvalResult getBindingValue(std::string_view id, VPackBuilder& result) const {
     return EvalError("not impemented");
   }
   virtual EvalResult getGlobalSuperstep(VPackBuilder& result) const {
+    return EvalError("not impemented");
+  }
+  virtual EvalResult gotoPhase(std::string_view nextPhase) const {
+    return EvalError("not impemented");
+  }
+  virtual EvalResult finishAlgorithm() const {
     return EvalError("not impemented");
   }
 };

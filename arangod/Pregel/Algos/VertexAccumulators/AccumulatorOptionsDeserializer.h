@@ -61,13 +61,21 @@ struct AccumulatorOptions {
 using AccumulatorsDeclaration = std::map<std::string, AccumulatorOptions>;
 using BindingDeclarations = std::map<std::string, VPackBuilder>;
 
+struct AlgorithmPhase {
+  std::string name;
+  VPackBuilder initProgram;
+  VPackBuilder updateProgram;
+  VPackBuilder onHalt;
+};
+
+using PhaseDeclarations = std::vector<AlgorithmPhase>;
+
 /* The Pregel Algorithm */
 struct VertexAccumulatorOptions {
   std::string resultField;
   AccumulatorsDeclaration accumulatorsDeclaration;
   BindingDeclarations bindings;
-  VPackBuilder initProgram;
-  VPackBuilder updateProgram;
+  PhaseDeclarations phases;
 };
 
 std::ostream& operator<<(std::ostream&, AccumulatorOptions const&);

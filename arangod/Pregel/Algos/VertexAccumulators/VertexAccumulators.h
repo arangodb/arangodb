@@ -136,10 +136,14 @@ struct VertexAccumulators : public Algorithm<VertexData, EdgeData, MessageData> 
 
   bool getBindParameter(std::string_view, VPackBuilder& into) const;
 
+  MasterContext* masterContext(VPackSlice userParams) const override;
+
+  IAggregator* aggregator(std::string const& name) const override;
+
+  VertexAccumulatorOptions const& options() const;
  private:
   void parseUserParams(VPackSlice userParams);
 
-  VertexAccumulatorOptions const& options() const;
 
  private:
   VertexAccumulatorOptions _options;

@@ -30,8 +30,8 @@
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 
-struct MyEvalContext : PrimEvalContext {
-  explicit MyEvalContext(VertexAccumulators::VertexComputation& computation, VertexData& vertexData)
+struct VertexComputationEvalContext : PrimEvalContext {
+  explicit VertexComputationEvalContext(VertexAccumulators::VertexComputation& computation, VertexData& vertexData)
       : _computation(computation), _vertexData(vertexData){};
 
   std::string const& getThisId() const override {
@@ -88,7 +88,7 @@ struct MyEvalContext : PrimEvalContext {
   }
 
   EvalResult getGlobalSuperstep(VPackBuilder &result) const override {
-    result.add(VPackValue(_computation.globalSuperstep()));
+    result.add(VPackValue(_computation.phaseGlobalSuperstep()));
     return {};
   }
 
@@ -100,12 +100,17 @@ VertexAccumulators::VertexComputation::VertexComputation(VertexAccumulators cons
     : _algorithm(algorithm) {}
 
 void VertexAccumulators::VertexComputation::compute(MessageIterator<MessageData> const& incomingMessages) {
-  auto evalContext = MyEvalContext(*this, vertexData());
+  auto evalContext = VertexComputationEvalContext(*this, vertexData());
 
-  if (globalSuperstep() == 0) {
+  auto phase_index = *getAggregatedValue<uint32_t>("phase");
+  auto phase = _algorithm.options().phases.at(phase_index);
+
+  LOG_DEVEL << "running phase " << phase.name << " superstep = " << phaseGlobalSuperstep() << " global superstep = " << globalSuperstep();
+
+  if (phaseGlobalSuperstep() == 0) {
     VPackBuilder initResultBuilder;
 
-    auto result = Evaluate(evalContext, _algorithm.options().initProgram.slice(),
+    auto result = Evaluate(evalContext, phase.initProgram.slice(),
                            initResultBuilder);
     if (!result) {
       LOG_DEVEL << "execution of initializer: " << result.error().toString() << " voting to halt.";
@@ -119,7 +124,7 @@ void VertexAccumulators::VertexComputation::compute(MessageIterator<MessageData>
           voteHalt();
         }
       } else {
-        LOG_DEVEL << "initProgram did not return a boolean value, but " << rs.toJson();
+        LOG_DEVEL << "initProgram of phase `" << phase.name << "` did not return a boolean value, but " << rs.toJson();
       }
     }
   } else {
@@ -131,7 +136,7 @@ void VertexAccumulators::VertexComputation::compute(MessageIterator<MessageData>
 
     VPackBuilder stepResultBuilder;
 
-    auto result = Evaluate(evalContext, _algorithm.options().updateProgram.slice(),
+    auto result = Evaluate(evalContext, phase.updateProgram.slice(),
                            stepResultBuilder);
     if (!result) {
       LOG_DEVEL << "execution of step: " << result.error().toString() << " voting to halt";
@@ -145,7 +150,7 @@ void VertexAccumulators::VertexComputation::compute(MessageIterator<MessageData>
           voteHalt();
         }
       } else {
-        LOG_DEVEL << "updateProgram did not return a boolean value, but " << rs.toJson();
+        LOG_DEVEL << "updateProgram of phase `\" << phase.name << \"` did not return a boolean value, but " << rs.toJson();
       }
     }
   }

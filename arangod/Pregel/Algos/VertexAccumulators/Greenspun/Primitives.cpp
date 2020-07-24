@@ -277,7 +277,7 @@ EvalResult Prim_IntToStr(PrimEvalContext& ctx, VPackSlice const params, VPackBui
   if (!value.isNumber<int64_t>()) {
     return EvalError("expected int, found: " + value.toJson());
   }
-  
+
   result.add(VPackValue(std::to_string(value.getNumericValue<int64_t>())));
   return {};
 }
@@ -343,6 +343,26 @@ EvalResult Prim_GlobalSuperstep(PrimEvalContext& ctx, VPackSlice const params, V
   return EvalError("expected no arguments");
 }
 
+EvalResult Prim_GoToPhase(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+    if (params.length() == 1) {
+        VPackSlice v = params.at(0);
+        if (v.isString()) {
+            return ctx.gotoPhase(v.stringView());
+        }
+    }
+
+    return EvalError("expect single string argument");
+}
+
+EvalResult Prim_Finish(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+    if (params.isEmptyArray()) {
+      return ctx.finishAlgorithm();
+    }
+
+    return EvalError("expect no arguments");
+}
+
+
 void RegisterPrimitives() {
   // Calculation operators
   primitives["banana"] = Prim_Banana;
@@ -376,11 +396,14 @@ void RegisterPrimitives() {
   primitives["var-ref"] = Prim_VarRef;
   primitives["bind-ref"] = Prim_BindRef;
   primitives["accum-ref"] = Prim_AccumRef;
-  
+
   primitives["this"] = Prim_This;
   //  primitives["doc"] = Prim_Doc;
   primitives["update"] = Prim_Update;
   primitives["set"] = Prim_Set;
   primitives["for"] = Prim_For;
   primitives["global-superstep"] = Prim_GlobalSuperstep;
+
+  primitives["goto"] = Prim_GoToPhase;
+  primitives["finish"] = Prim_Finish;
 }

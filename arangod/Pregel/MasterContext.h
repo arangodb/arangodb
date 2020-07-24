@@ -77,7 +77,7 @@ class MasterContext {
     b.close();
     _aggregators->setAggregatedValues(b.slice());
   }
-  
+
   template <typename T>
   inline T* getAggregator(std::string const& name) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -98,6 +98,12 @@ class MasterContext {
   /// @return true to continue the computation
   virtual bool postGlobalSuperstep() { return true; };
   virtual void postApplication() {}
+
+  enum class ContinuationResult {
+    CONTINUE, ABORT, DONT_CARE
+  };
+
+  virtual ContinuationResult postGlobalSuperstep(bool allVertexesVotedHalt) { return ContinuationResult::DONT_CARE; }
 
   /// Called when a worker send updated aggregator values.
   /// Only called in async mode, never called after a global superstep
