@@ -67,13 +67,6 @@ IndexEstMap PhysicalCollection::clusterIndexEstimates(bool allowUpdating,
       "cluster index estimates called for non-cluster collection");
 }
 
-/// @brief sets the current index selectivity estimates
-void PhysicalCollection::setClusterIndexEstimates(IndexEstMap&& estimates) {
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL,
-      "cluster index estimates called for non-cluster collection");
-}
-
 /// @brief flushes the current index selectivity estimates
 void PhysicalCollection::flushClusterIndexEstimates() {
   // default-implementation is a no-op. the operation is only useful for cluster

@@ -64,9 +64,6 @@ class ClusterCollection final : public PhysicalCollection {
   /// to fetch current values!
   IndexEstMap clusterIndexEstimates(bool allowUpdating, TRI_voc_tick_t tid) override;
 
-  /// @brief sets the current index selectivity estimates
-  void setClusterIndexEstimates(IndexEstMap&& estimates) override;
-
   /// @brief flushes the current index selectivity estimates
   void flushClusterIndexEstimates() override;
 
