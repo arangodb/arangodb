@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added startup option `--rocksdb.encryption-key-rotation` to activate/deactivate
+  the encryption key rotation REST API. The API is disabled by default.
+
 * Add internal caching for LogicalCollection objects inside ClusterInfo::loadPlan.
   This allows avoiding the recreation of LogicalCollection objects that did not
   change from one loadPlan run to the next. It reduces CPU usage considerably on
