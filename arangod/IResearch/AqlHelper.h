@@ -264,15 +264,6 @@ class ScopedAqlValue : private irs::util::noncopyable {
     rhs._destroy = false;
     rhs._executed = true;
   }
-  ScopedAqlValue& operator=(ScopedAqlValue const& rhs) = delete;
-
-  ScopedAqlValue& operator=(ScopedAqlValue&& rhs) noexcept {
-    std::swap(_value, rhs._value);
-    std::swap(_node, rhs._node);
-    std::swap(_type, rhs._type);
-    std::swap(_executed, rhs._executed);
-    return *this;
-  }
 
   void reset(aql::AstNode const& node = INVALID_NODE) noexcept {
     _node = &node;
@@ -283,10 +274,8 @@ class ScopedAqlValue : private irs::util::noncopyable {
   ~ScopedAqlValue() noexcept { destroy(); }
 
   bool isConstant() const { return _node->isConstant(); }
-  bool isDeterministic() const { return _node->isDeterministic(); }
   bool isObject() const noexcept { return _type == SCOPED_VALUE_TYPE_OBJECT; }
   bool isArray() const noexcept { return _type == SCOPED_VALUE_TYPE_ARRAY; }
-  bool isInvalid() const noexcept { return _type == SCOPED_VALUE_TYPE_INVALID; }
   bool isDouble() const noexcept { return _type == SCOPED_VALUE_TYPE_DOUBLE; }
   bool isString() const noexcept { return _type == SCOPED_VALUE_TYPE_STRING; }
   ////////////////////////////////////////////////////////////////////////////////
