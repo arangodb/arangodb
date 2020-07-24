@@ -61,7 +61,7 @@ DBServerAgencySync::DBServerAgencySync(ApplicationServer& server, HeartbeatThrea
   ClusterFeature& clusterFeature = server.getFeature<ClusterFeature>();
   if (ServerState::instance()->isDBServer()) {
     AgencyCache& agencyCache = clusterFeature.agencyCache();
-    auto cb = [serverState, &server, this](int64_t raftIndex, std::string const& key, VPackSlice value) {
+    auto cb = [serverState, &server](int64_t raftIndex, std::string const& key, VPackSlice value) {
       // Now let's detect a collection creation change under /arango/Plan/Collections,
       // we already know that the key has this prefix.
       auto serverId = serverState->getId();
