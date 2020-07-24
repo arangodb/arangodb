@@ -54,7 +54,8 @@ namespace arangodb {
 PhysicalCollection::PhysicalCollection(LogicalCollection& collection,
                                        arangodb::velocypack::Slice const& info)
     : _logicalCollection(collection),
-      _ci(collection.vocbase().server().hasFeature<ClusterFeature>()
+      _ci((collection.vocbase().server().hasFeature<ClusterFeature>() &&
+           collection.vocbase().server().isEnabled<ClusterFeature>())
               ? &collection.vocbase().server().getFeature<ClusterFeature>().clusterInfo()
               : nullptr),
       _isDBServer(ServerState::instance()->isDBServer()),
