@@ -476,6 +476,7 @@ void ClusterInfo::loadClusterId() {
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::string const prefixPlan = "Plan";
+static std::string const prefixPlanVersion = "Plan/Version";
 
 void ClusterInfo::loadPlan() {
   DatabaseFeature& databaseFeature = _server.getFeature<DatabaseFeature>();
@@ -530,11 +531,10 @@ void ClusterInfo::loadPlan() {
   }
 
   // Now contact the agency:
-  AgencyCommResult result = _agency.getValues(prefixPlan);
-
+  AgencyCommResult result = _agency.getValues(prefixPlanVersion)
   if (!result.successful()) {
-    LOG_TOPIC("989d5", DEBUG, Logger::CLUSTER)
-        << "Error while loading " << prefixPlan
+    LOG_TOPIC("989d6", DEBUG, Logger::CLUSTER)
+        << "Error while loading " << prefixPlanVersion
         << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode()
         << " errorMessage: " << result.errorMessage() << " body: " << result.body();
 
@@ -544,30 +544,19 @@ void ClusterInfo::loadPlan() {
   auto resultSlice = result.slice();
 
   if (!resultSlice.isArray() || resultSlice.length() != 1) {
-    LOG_TOPIC("e089b", DEBUG, Logger::CLUSTER)
-        << "Error while loading " << prefixPlan << " response structure is not an array of size 1"
+    LOG_TOPIC("e089c", DEBUG, Logger::CLUSTER)
+        << "Error while loading " << prefixPlanVersion << " response structure is not an array of size 1"
         << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode()
         << " errorMessage: " << result.errorMessage() << " body: " << result.body();
 
     return;
   }
 
-  auto slice = resultSlice[0].get(  // get slice
-      std::vector<std::string>({AgencyCommManager::path(), "Plan"})  // args
+  auto planVersionSlice = resultSlice[0].get(  // get slice
+      std::vector<std::string>({AgencyCommManager::path(), "Plan", "Version"})  // args
   );
 
-  auto planBuilder = std::make_shared<velocypack::Builder>(slice);
-  auto planSlice = planBuilder->slice();
-
-  if (!planSlice.isObject()) {
-    LOG_TOPIC("bc8e1", ERR, Logger::CLUSTER)
-        << "\"Plan\" is not an object in agency";
-
-    return;
-  }
-
   uint64_t newPlanVersion = 0;
-  auto planVersionSlice = planSlice.get("Version");
 
   if (planVersionSlice.isNumber()) {
     try {
@@ -594,6 +583,43 @@ void ClusterInfo::loadPlan() {
       _planProt.doneVersion = storedVersion;
       return;
     }
+  }
+
+  // Now read the actual Plan:
+  result = _agency.getValues(prefixPlan);
+
+  if (!result.successful()) {
+    LOG_TOPIC("989d5", DEBUG, Logger::CLUSTER)
+        << "Error while loading " << prefixPlan
+        << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode()
+        << " errorMessage: " << result.errorMessage() << " body: " << result.body();
+
+    return;
+  }
+
+  resultSlice = result.slice();
+
+  if (!resultSlice.isArray() || resultSlice.length() != 1) {
+    LOG_TOPIC("e089b", DEBUG, Logger::CLUSTER)
+        << "Error while loading " << prefixPlan << " response structure is not an array of size 1"
+        << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode()
+        << " errorMessage: " << result.errorMessage() << " body: " << result.body();
+
+    return;
+  }
+
+  auto slice = resultSlice[0].get(  // get slice
+      std::vector<std::string>({AgencyCommManager::path(), "Plan"})  // args
+  );
+
+  auto planBuilder = std::make_shared<velocypack::Builder>(slice);
+  auto planSlice = planBuilder->slice();
+
+  if (!planSlice.isObject()) {
+    LOG_TOPIC("bc8e1", ERR, Logger::CLUSTER)
+        << "\"Plan\" is not an object in agency";
+
+    return;
   }
 
   decltype(_plannedDatabases) newDatabases;
