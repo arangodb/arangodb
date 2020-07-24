@@ -215,7 +215,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
             };
             results[te] = {
               status: false,
-              message: 'server crashed'
+              message: 'server unavailable for testing.'
             };
           } else {
             if (results['SKIPPED'].message !== '') {
@@ -339,9 +339,13 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
         } else {
           serverDead = true;
           continueTesting = false;
+          let msg = '';
+          if (results[te].hasOwnProperty('message') && results[te].message.length > 0) {
+            msg = results[te].message + ' - ';
+          }
           results[te] = {
             status: false,
-            message: 'server is dead.'
+            message: 'server is dead: ' + msg + instanceInfo.message
           };
         }
         
