@@ -2047,6 +2047,14 @@ class ArgsArrayTraits<arangodb::aql::AstNode> {
     return v.type();
   }
 
+  static bool isDeterministic(arangodb::aql::AstNode const& arg) {
+    return arg.isDeterministic();
+  }
+
+  static auto numMembers(arangodb::aql::AstNode const& arg) {
+    return arg.numMembers();
+  }
+
   static arangodb::Result getMemberValue(arangodb::aql::AstNode const& arg, size_t idx,
                                          char const* funcName, ValueType& value,
                                          bool isFilter, QueryContext const& ctx,
@@ -2077,21 +2085,24 @@ class ArgsArrayTraits<arangodb::aql::AstNode> {
                                       QueryContext const& ctx) {
     return ::evaluateArg<T, CheckDeterminism>(out, value, funcName, args, i, isFilter, ctx);
   }
-
-  static auto numMembers(arangodb::aql::AstNode const& arg) {
-    return arg.numMembers();
-  }
-
-
-  static bool isDeterministic(arangodb::aql::AstNode const& arg) {
-    return arg.isDeterministic();
-  }
 };
 
 template<>
 class ArgsArrayTraits<ScopedAqlValue> {
  public:
   using ValueType = ScopedAqlValue;
+
+
+  static bool isDeterministic(ScopedAqlValue const& arg) {
+    return arg.isDeterministic();
+  }
+
+  static size_t numMembers(ScopedAqlValue const& arg) {
+    if (arg.isArray()) {
+      return arg.size();
+    }
+    return 1;
+  }
 
   static arangodb::Result getMemberValue(ScopedAqlValue const& arg, size_t idx,
                                          char const*, ValueType& value,
@@ -2101,13 +2112,6 @@ class ArgsArrayTraits<ScopedAqlValue> {
     TRI_ASSERT(arg.size() > idx);
     value = arg.at(idx);
     return {};
-  }
-
-  static size_t numMembers(ScopedAqlValue const& arg) {
-    if (arg.isArray()) {
-      return arg.size();
-    }
-    return 1;
   }
 
   template<typename T>
@@ -2154,10 +2158,6 @@ class ArgsArrayTraits<ScopedAqlValue> {
     }
     return {};
   }
-
-  static bool isDeterministic(ScopedAqlValue const& arg) {
-    return arg.isDeterministic();
-  }
 };
 
 template<>
@@ -2186,13 +2186,8 @@ class ArgsArrayTraits<VPackSlice> {
     return SCOPED_VALUE_TYPE_INVALID;
   }
 
-  static arangodb::Result getMemberValue(VPackSlice const& arg, size_t idx,
-                                         char const* funcName, ValueType& value,
-                                         bool, QueryContext const&, bool&) {
-    TRI_ASSERT(arg.isArray());
-    TRI_ASSERT(arg.length() > idx);
-    value = arg.at(idx);
-    return {};
+  constexpr static bool isDeterministic(VPackSlice const&) {
+    return true;
   }
 
   static size_t numMembers(VPackSlice const& arg) {
@@ -2202,8 +2197,13 @@ class ArgsArrayTraits<VPackSlice> {
     return 1;
   }
 
-  constexpr static bool isDeterministic(VPackSlice const&) {
-    return true;
+  static arangodb::Result getMemberValue(VPackSlice const& arg, size_t idx,
+                                         char const* funcName, ValueType& value,
+                                         bool, QueryContext const&, bool&) {
+    TRI_ASSERT(arg.isArray());
+    TRI_ASSERT(arg.length() > idx);
+    value = arg.at(idx);
+    return {};
   }
 
   template<typename T>
@@ -2781,7 +2781,7 @@ arangodb::Result fromFuncPhraseInRange(char const* funcName,
 
 constexpr char const* termsFuncName = "TERMS";
 
-std::map<std::string, ConversionPhraseHandler> const FCallSystemConversionPhraseScopedHandlers {
+std::map<std::string, ConversionPhraseHandler> const FCallSystemConversionPhraseHandlers {
   {"TERM", fromFuncPhraseTerm},
   {"STARTS_WITH", fromFuncPhraseStartsWith},
   {"WILDCARD", fromFuncPhraseLike}, // 'LIKE' is a key word
@@ -2812,8 +2812,8 @@ arangodb::Result processPhraseArgObjectType(char const* funcName,
     }
     auto name = key.copyString();
     arangodb::basics::StringUtils::toupperInPlace(name);
-    auto const entry = FCallSystemConversionPhraseScopedHandlers.find(name);
-    if (FCallSystemConversionPhraseScopedHandlers.cend() == entry) {
+    auto const entry = FCallSystemConversionPhraseHandlers.find(name);
+    if (FCallSystemConversionPhraseHandlers.cend() == entry) {
       return {
         TRI_ERROR_BAD_PARAMETER,
         "'"s.append(funcName).append("' AQL function: Unknown '")

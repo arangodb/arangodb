@@ -198,7 +198,7 @@ struct AqlValueTraits {
     underlying_t const typeIndex =
         value.isNull(false) + 2 * value.isBoolean() + 3 * value.isNumber() +
         4 * value.isString() + 5 * value.isArray() +
-        value.isRange() + 7 * value.isObject() ;  // isArray() returns `true` in case of range too
+        value.isRange() + 7 * value.isObject();  // isArray() returns `true` in case of range too
 
     return static_cast<ScopedValueType>(typeIndex);
   }
@@ -271,10 +271,6 @@ class ScopedAqlValue : private irs::util::noncopyable {
     std::swap(_node, rhs._node);
     std::swap(_type, rhs._type);
     std::swap(_executed, rhs._executed);
-    //rhs._node = &INVALID_NODE;
-    //rhs._type = SCOPED_VALUE_TYPE_INVALID;
-    //rhs._destroy = false;
-    //rhs._executed = true;
     return *this;
   }
 
@@ -285,9 +281,6 @@ class ScopedAqlValue : private irs::util::noncopyable {
   }
 
   ~ScopedAqlValue() noexcept { destroy(); }
-
-  // FIXME: Remove this kludge!
-  aql::AstNode const* getNode() const noexcept { return _node; }
 
   bool isConstant() const { return _node->isConstant(); }
   bool isDeterministic() const { return _node->isDeterministic(); }
@@ -348,6 +341,7 @@ class ScopedAqlValue : private irs::util::noncopyable {
   }
 
   VPackSlice slice() const {
+    TRI_ASSERT(_executed);
     return _node->isConstant() ? _node->computeValue() : _value.slice();
   }
 
