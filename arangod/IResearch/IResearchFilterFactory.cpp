@@ -2034,12 +2034,11 @@ arangodb::Result fromFuncMinMatch(
 }
 
 template<typename ElementType>
-class ArgsArrayTraits {
- public:
+class ArgsTraits {
 };
 
 template<>
-class ArgsArrayTraits<arangodb::aql::AstNode> {
+class ArgsTraits<arangodb::aql::AstNode> {
  public:
   using ValueType = ScopedAqlValue;
 
@@ -2109,7 +2108,7 @@ class ArgsArrayTraits<arangodb::aql::AstNode> {
 };
 
 template<>
-class ArgsArrayTraits<VPackSlice> {
+class ArgsTraits<VPackSlice> {
  public:
   using ValueType = VPackSlice;
 
@@ -2261,7 +2260,7 @@ arangodb::Result oneArgumentfromFuncPhrase(char const* funcName,
 
   if (!actualArg.isString()) {
     return error::typeMismatch(subFuncName, funcArgumentPosition, SCOPED_VALUE_TYPE_STRING,
-                               ArgsArrayTraits<VPackSlice>::scopedType(actualArg));
+                               ArgsTraits<VPackSlice>::scopedType(actualArg));
   }
   term = getStringRef(actualArg);
   return {};
@@ -2338,7 +2337,7 @@ arangodb::Result fromFuncPhraseLike(char const* funcName,
   return {};
 }
 
-template<size_t First, typename ElementType, typename ElementTraits = ArgsArrayTraits<ElementType>>
+template<size_t First, typename ElementType, typename ElementTraits = ArgsTraits<ElementType>>
 arangodb::Result getLevenshteinArguments(char const* funcName, bool isFilter,
                                          QueryContext const& ctx,
                                          ElementType const& args,
@@ -2531,7 +2530,7 @@ arangodb::Result fromFuncPhraseLevenshteinMatch(char const* funcName,
 
 
 // {<TERMS>: '[' <term0> [, <term1>, ...] ']'}
-template<typename ElementType, typename ElementTraits = ArgsArrayTraits<ElementType>>
+template<typename ElementType, typename ElementTraits = ArgsTraits<ElementType>>
 arangodb::Result fromFuncPhraseTerms(char const* funcName,
                                      size_t const funcArgumentPosition,
                                      char const* subFuncName,
@@ -2601,7 +2600,7 @@ arangodb::Result fromFuncPhraseTerms(char const* funcName,
 }
 
 template<size_t First, typename ElementType,
-         typename ElementTraits = ArgsArrayTraits<ElementType>>
+         typename ElementTraits = ArgsTraits<ElementType>>
 arangodb::Result getInRangeArguments(char const* funcName, bool isFilter,
                                      QueryContext const& ctx,
                                      ElementType const& args,
@@ -2724,7 +2723,7 @@ arangodb::Result fromFuncPhraseInRange(char const* funcName,
 
   if (!min.isString()) {
     res = error::typeMismatch(subFuncName, 1, arangodb::iresearch::SCOPED_VALUE_TYPE_STRING,
-                              ArgsArrayTraits<VPackSlice>::scopedType(min));
+                              ArgsTraits<VPackSlice>::scopedType(min));
     return {
       res.errorNumber(),
       res.errorMessage().append(errorSuffix)
@@ -2734,7 +2733,7 @@ arangodb::Result fromFuncPhraseInRange(char const* funcName,
 
   if (!max.isString()) {
     res = error::typeMismatch(subFuncName, 2, arangodb::iresearch::SCOPED_VALUE_TYPE_STRING,
-                              ArgsArrayTraits<VPackSlice>::scopedType(max));
+                              ArgsTraits<VPackSlice>::scopedType(max));
     return {
       res.errorNumber(),
       res.errorMessage().append(errorSuffix)
@@ -2803,7 +2802,7 @@ arangodb::Result processPhraseArgObjectType(char const* funcName,
   }
 }
 
-template<typename ElementType, typename ElementTraits = ArgsArrayTraits<ElementType>>
+template<typename ElementType, typename ElementTraits = ArgsTraits<ElementType>>
 arangodb::Result processPhraseArgs(char const* funcName,
                                    irs::by_phrase* phrase,
                                    QueryContext const& ctx,
