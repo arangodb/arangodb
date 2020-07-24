@@ -115,42 +115,69 @@ index_t AgencyCache::index() const {
   return _commitIndex;
 }
 
-void AgencyCache::handleCallbacksNoLock(VPackSlice slice, std::unordered_set<uint64_t>& uniq, std::vector<uint64_t>& toCall) {
-
-  if (!slice.isObject()) {
-    LOG_TOPIC("31514", DEBUG, Logger::CLUSTER) <<
-      "Cannot handle callback on non-object " << slice.toJson();
-    return;
+void AgencyCache::handleEventsNoLock(int64_t raftIndex, VPackSlice slice,
+                                     std::map<std::string, VPackSlice> const& sortedKeys) {
+  for (auto const& p : _eventHandlers) {
+    std::string const& k = p.first;
+    // Let's find out if any transaction key has k as prefix. Such a key would
+    // be >= than k.
+    auto i = sortedKeys.lower_bound(k);
+    // Now i points to the first element whose key is not less than k. That is,
+    // if there are keys which have k as prefix, they are lined up neatly at i.
+    // We only have to look as far as the keys have k as prefix:
+    while (i != sortedKeys.end()) {
+      std::string const& key = i->first;
+      if (key.compare(0, k.size(), k) != 0) {
+        break;
+      }
+      // Directly call event handler:
+      p.second(raftIndex, key, i->second);
+      ++i;
+    }
   }
+}
 
-  // Collect and normalize keys
-  std::vector<std::string> keys;
-  keys.reserve(slice.length());
-  for (auto const& i : VPackObjectIterator(slice)) {
-    keys.push_back(Store::normalize(i.key.copyString()));
-  }
+void AgencyCache::handleCallbacksNoLock(VPackSlice slice,
+                                        std::map<std::string, VPackSlice> const& sortedKeys,
+                                        std::unordered_set<uint64_t>& uniq,
+                                        std::vector<uint64_t>& toCall) {
 
-  std::sort(keys.begin(), keys.end());
   // Find callbacks, which are a prefix of some key:
   for (auto const& cb : _callbacks) {
     auto const& cbkey = cb.first;
-    auto it = std::lower_bound(keys.begin(), keys.end(), cbkey);
-    if (it != keys.end() && it->compare(0, cbkey.size(), cbkey) == 0) {
+    auto it = sortedKeys.lower_bound(cbkey);
+    if (it != sortedKeys.end() && it->first.compare(0, cbkey.size(), cbkey) == 0) {
       if (uniq.emplace(cb.second).second) {
         toCall.push_back(cb.second);
       }
     }
   }
   // Find keys, which are a prefix of a callback:
-  for (auto const& k : keys) {
-    auto it = _callbacks.lower_bound(k);
-    while (it != _callbacks.end() && it->first.compare(0, k.size(), k) == 0) {
+  for (auto const& k : sortedKeys) {
+    auto it = _callbacks.lower_bound(k.first);
+    while (it != _callbacks.end() && it->first.compare(0, k.first.size(), k.first) == 0) {
       if (uniq.emplace(it->second).second) {
         toCall.push_back(it->second);
       }
       ++it;
     }
   }
+}
+
+std::map<std::string, VPackSlice> AgencyCache::normalizeAndSortKeys(VPackSlice o) {
+  std::map<std::string, VPackSlice> keys;
+  if (!o.isObject()) {
+    LOG_TOPIC("31514", DEBUG, Logger::CLUSTER)
+    << "Cannot handle callback on non-object " << o.toJson();
+    return keys;
+  }
+  // Collect and normalize keys
+  for (auto const& i : VPackObjectIterator(o)) {
+    std::string tmp = i.key.copyString();
+    keys.emplace(Store::normalize(tmp), i.value);
+  }
+
+  return keys;
 }
 
 void AgencyCache::run() {
@@ -242,14 +269,22 @@ void AgencyCache::run() {
                     LOG_TOPIC("4579e", TRACE, Logger::CLUSTER) <<
                       "Applying to cache " << rs.get("log").toJson();
                     for (auto const& i : VPackArrayIterator(rs.get("log"))) {
+                      int64_t index = 0;
                       {
                         std::lock_guard g(_storeLock);
                         _readDB.applyTransaction(i); // apply logs
                         _commitIndex = i.get("index").getNumber<uint64_t>();
+                        index = _commitIndex;
                       }
+                      VPackSlice query = i.get("query");
+                      auto sortedKeys = normalizeAndSortKeys(query);
                       {
                         std::lock_guard g(_callbacksLock);
-                        handleCallbacksNoLock(i.get("query"), uniq, toCall);
+                        handleCallbacksNoLock(query, sortedKeys, uniq, toCall);
+                      }
+                      {
+                        std::lock_guard g(_eventsLock);
+                        handleEventsNoLock(index, query, sortedKeys);
                       }
                     }
                   }

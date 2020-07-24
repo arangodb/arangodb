@@ -76,10 +76,18 @@ static int indexOf(VPackSlice const& slice, std::string const& val) {
   return -1;
 }
 
-static std::shared_ptr<VPackBuilder> createProps(VPackSlice const& s) {
+static std::shared_ptr<VPackBuilder> createProps(VPackSlice const& s, int64_t raftIndex) {
   TRI_ASSERT(s.isObject());
-  return std::make_shared<VPackBuilder>(
-      arangodb::velocypack::Collection::remove(s, std::unordered_set<std::string>({ID, NAME})));
+  auto changes = std::make_shared<VPackBuilder>();
+  {
+    VPackObjectBuilder ob(changes.get());
+    changes->add(maintenance::ID, VPackSlice::nullSlice());
+    changes->add(maintenance::NAME, VPackSlice::nullSlice());
+    changes->add(maintenance::PLAN_RAFT_INDEX, VPackValue(raftIndex));
+  }
+  auto properties = std::make_shared<VPackBuilder>();
+  arangodb::velocypack::Collection::merge(*properties, s, changes->slice(), false, true);
+  return properties;
 }
 
 static std::shared_ptr<VPackBuilder> compareRelevantProps(VPackSlice const& first,
@@ -320,7 +328,7 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
   } else {  // Create the sucker, if not a previous error stops us
     if (errors.shards.find(dbname + "/" + colname + "/" + shname) ==
         errors.shards.end()) {
-      auto props = createProps(cprops);  // Only once might need often!
+      auto props = createProps(cprops, planIndex);  // Only once might need often!
       actions.emplace_back(
           ActionDescription({{NAME, CREATE_COLLECTION},
                              {COLLECTION, colname},
@@ -341,7 +349,7 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
                       VPackSlice const& cprops, VPackSlice const& shardMap,
                       std::unordered_set<std::string>& commonShrds,
                       std::unordered_set<std::string>& indis, std::string const& serverId,
-                      std::vector<ActionDescription>& actions) {
+                      std::vector<ActionDescription>& actions, int64_t planIndex) {
   std::unordered_set<std::string>::const_iterator it;
 
   std::string plannedLeader;
@@ -354,6 +362,22 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
         ActionDescription({{NAME, RESIGN_SHARD_LEADERSHIP}, {DATABASE, dbname}, {SHARD, colname}},
                           RESIGN_PRIORITY));
   } else {
+    VPackSlice planIndexOfShardSlice = cprops.get(RAFT_INDEX_AT_CREATION);
+    if (planIndexOfShardSlice.isInteger()) {
+      int64_t planIndexOfShard = planIndexOfShardSlice.getInt();
+      if (planIndexOfShard > planIndex) {
+        // This is a shard from the future, it was created in a raft index, which
+        // is greater than the raft index of the current Plan we are working on.
+        // This can happen, if the shard was created recently by an event triggered
+        // by the agency transaction as a performance optimization. In this case,
+        // we simply do not consider the shard here.
+        LOG_TOPIC("adf42", DEBUG, Logger::MAINTENANCE)
+            << "Shard from the future! Shard " << colname << " is exists locally (RAFT index "
+            << planIndexOfShard << ") but is not yet in our current Plan (RAFT index "
+            << planIndex << "). This is OK, for now we will not delete it.";
+        return;
+      }
+    }
     bool drop = false;
     // check if shard is in plan, if not drop it
     if (commonShrds.empty()) {
@@ -507,7 +531,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
       for (auto const& sh : VPackObjectIterator(db.value)) {  // for each local shard
         std::string shName = sh.key.copyString();
         handleLocalShard(dbname, shName, sh.value, shardMap.slice(),
-                         commonShrds, indis, serverId, actions);
+                         commonShrds, indis, serverId, actions, planIndex);
       }
     }
   }
@@ -552,8 +576,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
 }
 
 /// @brief handle plan for local databases
-arangodb::Result arangodb::maintenance::executePlan(VPackSlice const& plan,
-                                                    uint64_t planIndex,
+arangodb::Result arangodb::maintenance::executePlan(VPackSlice const& plan, uint64_t planIndex,
                                                     VPackSlice const& local,
                                                     std::string const& serverId,
                                                     MaintenanceFeature& feature,
@@ -660,8 +683,7 @@ arangodb::Result arangodb::maintenance::diffLocalCurrent(VPackSlice const& local
 }
 
 /// @brief Phase one: Compare plan and local and create descriptions
-arangodb::Result arangodb::maintenance::phaseOne(VPackSlice const& plan,
-                                                 uint64_t planIndex,
+arangodb::Result arangodb::maintenance::phaseOne(VPackSlice const& plan, uint64_t planIndex,
                                                  VPackSlice const& local,
                                                  std::string const& serverId,
                                                  MaintenanceFeature& feature,

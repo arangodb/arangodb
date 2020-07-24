@@ -23,9 +23,15 @@
 
 #include "DBServerAgencySync.h"
 
+#include <velocypack/Collection.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
+#include "Cluster/ActionDescription.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
@@ -49,7 +55,71 @@ using namespace arangodb::methods;
 using namespace arangodb::rest;
 
 DBServerAgencySync::DBServerAgencySync(ApplicationServer& server, HeartbeatThread* heartbeat)
-    : _server(server), _heartbeat(heartbeat) {}
+    : _server(server), _heartbeat(heartbeat) {
+
+  auto* serverState = ServerState::instance();
+  ClusterFeature& clusterFeature = server.getFeature<ClusterFeature>();
+  if (ServerState::instance()->isDBServer()) {
+    AgencyCache& agencyCache = clusterFeature.agencyCache();
+    auto cb = [serverState, &server](int64_t raftIndex, std::string const& key, VPackSlice value) {
+      // Now let's detect a collection creation change under /arango/Plan/Collections,
+      // we already know that the key has this prefix.
+      auto serverId = serverState->getId();
+      MaintenanceFeature& mfeature = server.getFeature<MaintenanceFeature>();
+      std::vector<std::string> parts = arangodb::basics::StringUtils::split(key, '/');
+      TRI_ASSERT(parts.size() >= 4 && parts[0] == "" && parts[1] == "arango" &&
+                 parts[2] == "Plan" && parts[3] == "Collections");
+      if (parts.size() == 6) {
+        std::string dbName{parts[4]};
+        std::string collId{parts[5]};
+        if (value.isObject() && value.hasKey("op") && value.hasKey("new")) {
+          VPackSlice op = value.get("op");
+          if (op.isString() && op.stringView() == "set") {
+            VPackSlice newVal = value.get("new");
+            if (newVal.hasKey("isBuilding") && newVal.get("isBuilding").isTrue() &&
+                newVal.hasKey("shards") && newVal.hasKey("name")) {
+              VPackSlice shards = newVal.get("shards");
+              VPackSlice colName = newVal.get("name");
+              for (auto const& p : VPackObjectIterator(shards)) {
+                VPackSlice servers = p.value;
+                if (servers.isArray() && servers.length() > 0) {
+                  VPackSlice leader = servers[0];
+                  if (leader.isString() && leader.stringView() == serverId) {
+                    // This is a new shard for which we shall be the leader, let's create an action for it:
+                    LOG_DEVEL
+                        << "We need to quickly create a maintenance action for "
+                        << "database " << dbName << " collection "
+                        << colName.stringView() << " shard " << p.key;
+                    auto changes = std::make_shared<VPackBuilder>();
+                    {
+                      VPackObjectBuilder ob(changes.get());
+                      changes->add(maintenance::ID, VPackSlice::nullSlice());
+                      changes->add(maintenance::NAME, VPackSlice::nullSlice());
+                      changes->add(maintenance::PLAN_RAFT_INDEX, VPackValue(raftIndex));
+                    }
+                    auto properties = std::make_shared<VPackBuilder>();
+                    arangodb::velocypack::Collection::merge(*properties, newVal,
+                                                            changes->slice(), false, true);
+                    maintenance::ActionDescription ad(
+                        {{maintenance::NAME, maintenance::CREATE_COLLECTION},
+                         {maintenance::COLLECTION, collId},
+                         {maintenance::SHARD, p.key.copyString()},
+                         {maintenance::DATABASE, dbName},
+                         {maintenance::SERVER_ID, serverId},
+                         {maintenance::THE_LEADER, std::string()}},
+                        maintenance::LEADER_PRIORITY, properties);
+                    mfeature.addAction(std::make_shared<maintenance::ActionDescription>(ad));
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    };
+    agencyCache.registerEventHandler("/arango/Plan/Collections", cb);
+  }
+}
 
 void DBServerAgencySync::work() {
   LOG_TOPIC("57898", TRACE, Logger::CLUSTER) << "starting plan update handler";
@@ -111,6 +181,7 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
         // after a restart we would implicitly be assumed to be the leader.
         collections.add("theLeader", VPackValue(theLeaderTouched ? theLeader : maintenance::LEADER_NOT_YET_KNOWN));
         collections.add("theLeaderTouched", VPackValue(theLeaderTouched));
+        collections.add(maintenance::RAFT_INDEX_AT_CREATION, VPackValue(collection->raftIndexAtCreation()));
 
         if (theLeader.empty() && theLeaderTouched) {
           // we are the leader ourselves

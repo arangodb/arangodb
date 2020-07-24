@@ -169,7 +169,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
       _smartJoinAttribute(
           ::readStringValue(info, StaticStrings::SmartJoinAttribute, "")),
 #endif
-      _physical(EngineSelectorFeature::ENGINE->createPhysicalCollection(*this, info)) {
+      _physical(EngineSelectorFeature::ENGINE->createPhysicalCollection(*this, info)),
+      _raftIndexAtCreation(0) {
 
   TRI_ASSERT(info.isObject());
 
