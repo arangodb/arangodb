@@ -94,7 +94,7 @@ std::string const kDataString = "data";
 
 arangodb::Result removeRevisions(arangodb::transaction::Methods& trx,
                                  arangodb::LogicalCollection& collection,
-                                 std::vector<std::size_t>& toRemove,
+                                 std::vector<arangodb::RevisionId>& toRemove,
                                  arangodb::InitialSyncerIncrementalSyncStats& stats) {
   using arangodb::PhysicalCollection;
   using arangodb::Result;
@@ -113,7 +113,7 @@ arangodb::Result removeRevisions(arangodb::transaction::Methods& trx,
   options.isRestore = true;
   options.waitForSync = false;
 
-  for (std::size_t rid : toRemove) {
+  for (arangodb::RevisionId const& rid : toRemove) {
     double t = TRI_microtime();
     auto r = physical->remove(trx, arangodb::LocalDocumentId::create(rid), mdr, options);
 
@@ -135,7 +135,8 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
                                 arangodb::DatabaseInitialSyncer::Configuration& config,
                                 arangodb::Syncer::SyncerState& state,
                                 arangodb::LogicalCollection& collection,
-                                std::string const& leader, std::vector<std::size_t>& toFetch,
+                                std::string const& leader,
+                                std::vector<arangodb::RevisionId>& toFetch,
                                 arangodb::InitialSyncerIncrementalSyncStats& stats) {
   using arangodb::PhysicalCollection;
   using arangodb::RestReplicationHandler;
@@ -196,8 +197,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
     {
       VPackArrayBuilder list(requestBuilder.get());
       for (std::size_t i = 0; i < 5000 && current + i < toFetch.size(); ++i) {
-        requestBuilder->add(arangodb::basics::HybridLogicalClock::encodeTimeStampToValuePair(
-            toFetch[current + i], ridBuffer));
+        requestBuilder->add(toFetch[current + i].toValuePair(ridBuffer));
       }
     }
     std::string request = requestBuilder->slice().toJson();
@@ -261,9 +261,8 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
       if (res.fail()) {
         if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
             res.errorMessage() > keySlice.copyString()) {
-          TRI_voc_rid_t rid =
-              arangodb::transaction::helpers::extractRevFromDocument(masterDoc);
-          if (physical->readDocument(&trx, arangodb::LocalDocumentId(rid), mdr)) {
+          arangodb::RevisionId rid = arangodb::RevisionId::fromSlice(masterDoc);
+          if (physical->readDocument(&trx, arangodb::LocalDocumentId(rid.id()), mdr)) {
             // already have exactly this revision no need to insert
             continue;
           }
@@ -1373,7 +1372,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
   std::unique_ptr<containers::RevisionTree> treeLocal =
       physical->revisionTree(*trx);
   physical->removeRevisionTreeBlocker(blockerId);
-  std::vector<std::pair<std::size_t, std::size_t>> ranges = treeMaster->diff(*treeLocal);
+  std::vector<std::pair<std::uint64_t, std::uint64_t>> ranges =
+      treeMaster->diff(*treeLocal);
   if (ranges.empty()) {
     // no differences, done!
     setProgress("no differences between two revision trees, ending");
@@ -1403,9 +1403,9 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
                       "&batchId=" + std::to_string(_config.batch.id);
     auto headers = replutils::createHeaders();
     std::unique_ptr<httpclient::SimpleHttpResult> response;
-    TRI_voc_rid_t requestResume = ranges[0].first;  // start with beginning
+    RevisionId requestResume{ranges[0].first};  // start with beginning
     TRI_ASSERT(requestResume >= coll->minRevision());
-    TRI_voc_rid_t iterResume = static_cast<TRI_voc_rid_t>(requestResume);
+    RevisionId iterResume = requestResume;
     std::size_t chunk = 0;
     std::unique_ptr<ReplicationIterator> iter =
         physical->getReplicationIterator(ReplicationIterator::Ordering::Revision, *trx);
@@ -1413,13 +1413,13 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
       return Result(TRI_ERROR_INTERNAL, "could not get replication iterator");
     }
 
-    std::vector<std::size_t> toFetch;
-    std::vector<std::size_t> toRemove;
+    std::vector<RevisionId> toFetch;
+    std::vector<RevisionId> toRemove;
     const uint64_t documentsFound = treeLocal->count();
     RevisionReplicationIterator& local =
         *static_cast<RevisionReplicationIterator*>(iter.get());
 
-    while (requestResume < std::numeric_limits<TRI_voc_rid_t>::max()) {
+    while (requestResume < RevisionId::max()) {
       if (isAborted()) {
         return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
       }
@@ -1429,9 +1429,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
         _config.barrier.extend(_config.connection);
       }
 
-      std::string batchUrl =
-          url + "&" + StaticStrings::RevisionTreeResume + "=" +
-          basics::HybridLogicalClock::encodeTimeStamp(requestResume);
+      std::string batchUrl = url + "&" + StaticStrings::RevisionTreeResume +
+                             "=" + requestResume.toString();
       std::string msg = "fetching collection revision ranges for collection '" +
                         coll->name() + "' from " + batchUrl;
       _config.progress.set(msg);
@@ -1470,9 +1469,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
                           _config.master.endpoint + batchUrl +
                           ": response field 'resume' is not a number");
       }
-      requestResume = resumeSlice.isNone()
-                          ? std::numeric_limits<TRI_voc_rid_t>::max()
-                          : basics::HybridLogicalClock::decodeTimeStamp(resumeSlice);
+      requestResume = resumeSlice.isNone() ? RevisionId::max()
+                                           : RevisionId::fromSlice(resumeSlice);
 
       VPackSlice const rangesSlice = slice.get("ranges");
       if (!rangesSlice.isArray()) {
@@ -1492,67 +1490,64 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
         }
         auto& currentRange = ranges[chunk];
         if (!local.hasMore() ||
-            local.revision() < static_cast<TRI_voc_rid_t>(currentRange.first)) {
-          local.seek(std::max(iterResume,
-                              static_cast<TRI_voc_rid_t>(currentRange.first)));
+            local.revision() < RevisionId{currentRange.first}) {
+          local.seek(std::max(iterResume, RevisionId{currentRange.first}));
         }
 
-        TRI_voc_rid_t removalBound =
+        RevisionId removalBound = masterSlice.isEmptyArray()
+                                      ? RevisionId{currentRange.second}.next()
+                                      : RevisionId::fromSlice(masterSlice.at(0));
+        TRI_ASSERT(RevisionId{currentRange.first} <= removalBound);
+        TRI_ASSERT(removalBound <= RevisionId{currentRange.second}.next());
+        RevisionId mixedBound =
             masterSlice.isEmptyArray()
-                ? currentRange.second + 1
-                : basics::HybridLogicalClock::decodeTimeStamp(masterSlice.at(0));
-        TRI_ASSERT(currentRange.first <= removalBound);
-        TRI_ASSERT(removalBound <= currentRange.second + 1);
-        std::size_t mixedBound = masterSlice.isEmptyArray()
-                                     ? currentRange.second
-                                     : basics::HybridLogicalClock::decodeTimeStamp(
-                                           masterSlice.at(masterSlice.length() - 1));
-        TRI_ASSERT(currentRange.first <= mixedBound);
-        TRI_ASSERT(mixedBound <= currentRange.second);
+                ? RevisionId{currentRange.second}
+                : RevisionId::fromSlice(masterSlice.at(masterSlice.length() - 1));
+        TRI_ASSERT(RevisionId{currentRange.first} <= mixedBound);
+        TRI_ASSERT(mixedBound <= RevisionId{currentRange.second});
 
         while (local.hasMore() && local.revision() < removalBound) {
           toRemove.emplace_back(local.revision());
-          iterResume = std::max(iterResume, local.revision() + 1);
+          iterResume = std::max(iterResume, local.revision().next());
           local.next();
         }
 
         std::size_t index = 0;
         while (local.hasMore() && local.revision() <= mixedBound) {
-          TRI_voc_rid_t masterRev =
-              basics::HybridLogicalClock::decodeTimeStamp(masterSlice.at(index));
+          RevisionId masterRev = RevisionId::fromSlice(masterSlice.at(index));
 
           if (local.revision() < masterRev) {
             toRemove.emplace_back(local.revision());
-            iterResume = std::max(iterResume, local.revision() + 1);
+            iterResume = std::max(iterResume, local.revision().next());
             local.next();
           } else if (masterRev < local.revision()) {
             toFetch.emplace_back(masterRev);
             ++index;
-            iterResume = std::max(iterResume, masterRev + 1);
+            iterResume = std::max(iterResume, masterRev.next());
           } else {
             TRI_ASSERT(local.revision() == masterRev);
             // match, no need to remove local or fetch from master
             ++index;
-            iterResume = std::max(iterResume, masterRev + 1);
+            iterResume = std::max(iterResume, masterRev.next());
             local.next();
           }
         }
         for (; index < masterSlice.length(); ++index) {
-          TRI_voc_rid_t masterRev =
-              basics::HybridLogicalClock::decodeTimeStamp(masterSlice.at(index));
+          RevisionId masterRev = RevisionId::fromSlice(masterSlice.at(index));
           // fetch any leftovers
           toFetch.emplace_back(masterRev);
-          iterResume = std::max(iterResume, masterRev + 1);
+          iterResume = std::max(iterResume, masterRev.next());
         }
 
         while (local.hasMore() &&
-               local.revision() <= std::min(requestResume - 1, static_cast<TRI_voc_rid_t>(currentRange.second))) {
+               local.revision() <= std::min(requestResume.previous(),
+                                            RevisionId{currentRange.second})) {
           toRemove.emplace_back(local.revision());
-          iterResume = std::max(iterResume, local.revision() + 1);
+          iterResume = std::max(iterResume, local.revision().next());
           local.next();
         }
 
-        if (requestResume > currentRange.second) {
+        if (requestResume > RevisionId{currentRange.second}) {
           ++chunk;
         }
       }
@@ -1607,7 +1602,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
     if (res.fail()) {
       return res;
     }
-    TRI_ASSERT(requestResume == std::numeric_limits<std::size_t>::max());
+    TRI_ASSERT(requestResume == RevisionId::max());
   }
 
   setProgress(

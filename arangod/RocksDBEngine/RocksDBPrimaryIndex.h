@@ -88,7 +88,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   /// in this case the caller must fetch the revision id from the actual
   /// document
   bool lookupRevision(transaction::Methods* trx, arangodb::velocypack::StringRef key,
-                      LocalDocumentId& id, TRI_voc_rid_t& revisionId) const;
+                      LocalDocumentId& id, RevisionId& revisionId) const;
 
   Index::FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
                                              arangodb::aql::AstNode const* node,

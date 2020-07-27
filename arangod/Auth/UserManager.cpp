@@ -297,7 +297,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
 
       // parse user including document _key
       auth::User created = auth::User::fromDocument(userDoc);
-      TRI_ASSERT(!created.key().empty() && created.rev() != 0);
+      TRI_ASSERT(!created.key().empty() && created.rev().isSet());
       TRI_ASSERT(created.username() == entry.username());
       TRI_ASSERT(created.isActive() == entry.isActive());
       TRI_ASSERT(created.passwordHash() == entry.passwordHash());
@@ -441,7 +441,7 @@ Result auth::UserManager::storeUser(bool replace, std::string const& username,
   }
 
   std::string oldKey;  // will only be populated during replace
-  TRI_voc_rid_t oldRev = 0;
+  RevisionId oldRev = RevisionId::none();
   if (replace) {
     auth::User const& oldEntry = it->second;
     oldKey = oldEntry.key();
@@ -482,7 +482,7 @@ Result auth::UserManager::enumerateUsers(std::function<bool(auth::User&)>&& func
         continue;
       }
       auth::User user = it.second;  // copy user object
-      TRI_ASSERT(!user.key().empty() && user.rev() != 0);
+      TRI_ASSERT(!user.key().empty() && user.rev().isSet());
       if (func(user)) {
         toUpdate.emplace_back(std::move(user));
       }
@@ -543,7 +543,7 @@ Result auth::UserManager::updateUser(std::string const& name, UserCallback&& fun
 
   LOG_TOPIC("574c5", DEBUG, Logger::AUTHENTICATION) << "Updating user " << name;
   auth::User user = it->second;  // make a copy
-  TRI_ASSERT(!user.key().empty() && user.rev() != 0);
+  TRI_ASSERT(!user.key().empty() && user.rev().isSet());
   Result r = func(user);
   if (r.fail()) {
     return r;

@@ -93,8 +93,8 @@ RocksDBLogValue RocksDBLogValue::CommitTransaction(TRI_voc_tick_t dbid, Transact
   return RocksDBLogValue(RocksDBLogType::CommitTransaction, dbid, tid.id());
 }
 
-RocksDBLogValue RocksDBLogValue::DocumentRemoveV2(TRI_voc_rid_t rid) {
-  return RocksDBLogValue(RocksDBLogType::DocumentRemoveV2, rid);
+RocksDBLogValue RocksDBLogValue::DocumentRemoveV2(RevisionId rid) {
+  return RocksDBLogValue(RocksDBLogType::DocumentRemoveV2, rid.id());
 }
 
 RocksDBLogValue RocksDBLogValue::SinglePut(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid) {
@@ -102,8 +102,8 @@ RocksDBLogValue RocksDBLogValue::SinglePut(TRI_voc_tick_t vocbaseId, TRI_voc_cid
 }
 
 RocksDBLogValue RocksDBLogValue::SingleRemoveV2(TRI_voc_tick_t vocbaseId,
-                                                TRI_voc_cid_t cid, TRI_voc_rid_t rid) {
-  return RocksDBLogValue(RocksDBLogType::SingleRemoveV2, vocbaseId, cid, rid);
+                                                TRI_voc_cid_t cid, RevisionId rid) {
+  return RocksDBLogValue(RocksDBLogType::SingleRemoveV2, vocbaseId, cid, rid.id());
 }
 
 RocksDBLogValue RocksDBLogValue::TrackedDocumentInsert(LocalDocumentId docId,
@@ -287,17 +287,18 @@ uint64_t RocksDBLogValue::objectId(rocksdb::Slice const& slice) {
 }
 
 /// For DocumentRemoveV2 and SingleRemoveV2
-TRI_voc_rid_t RocksDBLogValue::revisionId(rocksdb::Slice const& slice) {
+RevisionId RocksDBLogValue::revisionId(rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() >= sizeof(RocksDBLogType) + (sizeof(uint64_t)));
   RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
   if (type == RocksDBLogType::DocumentRemoveV2) {
-    return uint64FromPersistent(slice.data() + sizeof(RocksDBLogType));
+    return RevisionId::fromPersistent(slice.data() + sizeof(RocksDBLogType));
   } else if (type == RocksDBLogType::SingleRemoveV2) {
     TRI_ASSERT(slice.size() >= sizeof(RocksDBLogType) + (3 * sizeof(uint64_t)));
-    return uint64FromPersistent(slice.data() + sizeof(RocksDBLogType) + 2 * sizeof(uint64_t));
+    return RevisionId::fromPersistent(slice.data() + sizeof(RocksDBLogType) +
+                                      2 * sizeof(uint64_t));
   }
   TRI_ASSERT(false);  // invalid type
-  return 0;
+  return RevisionId::none();
 }
 
 VPackSlice RocksDBLogValue::indexSlice(rocksdb::Slice const& slice) {
