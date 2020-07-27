@@ -80,8 +80,8 @@ bool KShortestPathsFinder::startKShortestPathsTraversal(
 }
 
 bool KShortestPathsFinder::computeShortestPath(VertexRef const& start, VertexRef const& end,
-                                               std::unordered_set<VertexRef> const& forbiddenVertices,
-                                               std::unordered_set<Edge> const& forbiddenEdges,
+                                               VertexSet const& forbiddenVertices,
+                                               EdgeSet const& forbiddenEdges,
                                                Path& result) {
   _left.reset(start);
   _right.reset(end);
@@ -119,7 +119,7 @@ void KShortestPathsFinder::computeNeighbourhoodOfVertexCache(VertexRef vertex,
   auto& cache = lookup->second;  // want to update the cached vertex in place
 
   switch (direction) {
-    case BACKWARD:
+    case BACKWARD: 
       if (!cache._hasCachedInNeighbours) {
         computeNeighbourhoodOfVertex(vertex, direction, cache._inNeighbours);
         cache._hasCachedInNeighbours = true;
@@ -187,8 +187,8 @@ void KShortestPathsFinder::computeNeighbourhoodOfVertex(VertexRef vertex, Direct
 }
 
 void KShortestPathsFinder::advanceFrontier(Ball& source, Ball const& target,
-                                           std::unordered_set<VertexRef> const& forbiddenVertices,
-                                           std::unordered_set<Edge> const& forbiddenEdges,
+                                           VertexSet const& forbiddenVertices,
+                                           EdgeSet const& forbiddenEdges,
                                            VertexRef& join,
                                            std::optional<double>& currentBest) {
   VertexRef vr;
@@ -276,8 +276,8 @@ void KShortestPathsFinder::reconstructPath(Ball const& left, Ball const& right,
 }
 
 bool KShortestPathsFinder::computeNextShortestPath(Path& result) {
-  std::unordered_set<VertexRef> forbiddenVertices;
-  std::unordered_set<Edge> forbiddenEdges;
+  VertexSet forbiddenVertices;
+  EdgeSet forbiddenEdges;
   Path tmpPath, candidate;
   TRI_ASSERT(!_shortestPaths.empty());
   auto& lastShortestPath = _shortestPaths.back();
@@ -306,7 +306,7 @@ bool KShortestPathsFinder::computeNextShortestPath(Path& result) {
         }
       }
       if (eq && (i < p._edges.size())) {
-        forbiddenEdges.emplace(p._edges.at(i));
+        forbiddenEdges.emplace(p._edges[i]);
       }
     }
 

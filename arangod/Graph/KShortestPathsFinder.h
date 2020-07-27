@@ -25,7 +25,7 @@
 #define ARANGODB_GRAPH_CONSTANT_WEIGHT_K_SHORTEST_PATHS_FINDER_H 1
 
 #include "Aql/AqlValue.h"
-#include "Basics/VelocyPackHelper.h"
+#include "Containers/HashSet.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/ShortestPathFinder.h"
 #include "Graph/ShortestPathPriorityQueue.h"
@@ -55,6 +55,9 @@ class KShortestPathsFinder : public ShortestPathFinder {
   // Mainly for readability
   typedef arangodb::velocypack::StringRef VertexRef;
   typedef arangodb::graph::EdgeDocumentToken Edge;
+
+  typedef arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>, std::equal_to<VertexRef>> VertexSet;
+  typedef arangodb::containers::HashSet<Edge, std::hash<Edge>, std::equal_to<Edge>> EdgeSet;
   enum Direction { FORWARD, BACKWARD };
 
   // TODO: This could be merged with ShortestPathResult
@@ -202,8 +205,6 @@ class KShortestPathsFinder : public ShortestPathFinder {
     std::vector<Step> _outNeighbours;
     std::vector<Step> _inNeighbours;
 
-    std::vector<size_t> _paths;
-
     explicit FoundVertex(VertexRef const& vertex)
         : _vertex(vertex), _hasCachedOutNeighbours(false), _hasCachedInNeighbours(false) {}
   };
@@ -251,8 +252,9 @@ class KShortestPathsFinder : public ShortestPathFinder {
  private:
   // Compute the first shortest path
   bool computeShortestPath(VertexRef const& start, VertexRef const& end,
-                           std::unordered_set<VertexRef> const& forbiddenVertices,
-                           std::unordered_set<Edge> const& forbiddenEdges, Path& result);
+                           VertexSet const& forbiddenVertices,
+                           EdgeSet const& forbiddenEdges, 
+                           Path& result);
   bool computeNextShortestPath(Path& result);
 
   void reconstructPath(Ball const& left, Ball const& right,
@@ -267,8 +269,8 @@ class KShortestPathsFinder : public ShortestPathFinder {
                                     std::vector<Step>& steps);
 
   void advanceFrontier(Ball& source, Ball const& target,
-                       std::unordered_set<VertexRef> const& forbiddenVertices,
-                       std::unordered_set<Edge> const& forbiddenEdges,
+                       VertexSet const& forbiddenVertices,
+                       EdgeSet const& forbiddenEdges,
                        VertexRef& join, std::optional<double>& currentBest);
 
  private:
