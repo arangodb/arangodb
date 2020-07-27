@@ -51,6 +51,13 @@ function exec_sssp_test() {
   return pregel.start("sssp", "WikiVoteGraph", { "start": some_vertex });
 }
 
+function exec_scc_test() {
+  pe.create_circle("Circle", 2);
+
+  return pregel.start("scc", "Circle", {});
+}
+
 
 exports.exec_test_wiki_vote = exec_test_wiki_vote;
 exports.exec_test_line = exec_test_line;
+exports.exec_scc_test = exec_scc_test;

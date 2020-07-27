@@ -204,6 +204,63 @@ EvalResult SpecialMatch(EvalContext& ctx, ArrayIterator paramIterator, VPackBuil
   return {};
 }
 
+EvalResult SpecialForEach(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
+
+  // ["for-each", ["a", ["A", "B", "C"]], ["d", ["1", "2", "3"]], ["print", ["var-ref", "a"], ["var-ref", "d"]]]
+
+  if (!paramIterator.valid()) {
+    return EvalError("Expected at least one argument");
+  }
+
+  std::vector<std::pair<std::string_view, ArrayIterator>> iterators;
+
+  auto const readIteratorPair = [&](VPackSlice pair) -> EvalResult {
+    if (pair.length() != 2) {
+      return EvalError("Expected pair, found: " + pair.toJson());
+    }
+    auto&& [var, array] = unpackTuple<VPackSlice, VPackSlice>(pair);
+    if (!var.isString()) {
+      return EvalError("Expected string as first entry, found: " + var.toJson());
+    }
+    if (!array.isArray()) {
+      return EvalError("Expected array os second entry, found: " + array.toJson());
+    }
+    iterators.emplace_back(var.stringView(), ArrayIterator(array));
+    return {};
+  };
+
+  while (!paramIterator.isLast()) {
+    VPackSlice pair = *paramIterator;
+    paramIterator++;
+    if (auto res = readIteratorPair(pair); res.fail()){
+      return res.wrapError([&](EvalError &err) {
+        err.wrapMessage("at position " + std::to_string(paramIterator.index() - 1));
+      });
+    }
+  }
+
+  VPackSlice body = paramIterator.value();
+
+  auto const runIterators = [&](EvalContext& ctx, std::size_t index, auto next) -> EvalResult {
+    if (index == iterators.size()) {
+      VPackBuilder sink;
+      return Evaluate(ctx, body, sink);
+    } else {
+      auto pair = iterators.at(index);
+      for (auto&& x : pair.second) {
+        StackFrameGuard<true> guard(ctx);
+        ctx.setVariable(std::string{pair.first}, x);
+        if (auto res = next(ctx, index + 1, next); res.fail()) {
+          return res;
+        }
+      }
+      return {};
+    }
+  };
+  result.add(VPackSlice::noneSlice());
+  return runIterators(ctx, 0, runIterators);
+}
+
 EvalResult Call(EvalContext& ctx, VPackSlice const functionSlice,
                 ArrayIterator paramIterator, VPackBuilder& result) {
   VPackBuilder paramBuilder;
@@ -252,6 +309,8 @@ EvalResult Evaluate(EvalContext& ctx, VPackSlice const slice, VPackBuilder& resu
         return SpecialSeq(ctx, paramIterator, result);
       } else if (functionSlice.isEqualString("match")) {
         return SpecialMatch(ctx, paramIterator, result);
+      } else if (functionSlice.isEqualString("for-each")) {
+        return SpecialForEach(ctx, paramIterator, result);
       } else {
         return Call(ctx, functionSlice, paramIterator, result);
       }

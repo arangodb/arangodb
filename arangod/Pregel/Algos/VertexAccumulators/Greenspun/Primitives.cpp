@@ -125,7 +125,7 @@ EvalResult Prim_CmpHuh(PrimEvalContext& ctx, VPackSlice const params, VPackBuild
       }
     } else if (proto.isBool()) {
       if constexpr (!std::is_same_v<T, std::equal_to<>> && !std::is_same_v<T, std::not_equal_to<>>) {
-        return EvalError("There is no relation on booleans");
+        return EvalError("There is no order on booleans");
       }
       auto value = proto.getBool();
       for (; iter.valid(); iter++) {
@@ -137,7 +137,7 @@ EvalResult Prim_CmpHuh(PrimEvalContext& ctx, VPackSlice const params, VPackBuild
       }
     } else if (proto.isString()) {
       if constexpr (!std::is_same_v<T, std::equal_to<>> && !std::is_same_v<T, std::not_equal_to<>>) {
-        return EvalError("There is no relation on strings implemented");
+        return EvalError("There is no order on strings implemented");
       }
       auto value = proto.stringView();
       for (; iter.valid(); iter++) {
@@ -387,6 +387,7 @@ void RegisterPrimitives() {
   // Debug operators
   primitives["print"] = Prim_PrintLn;
 
+  // Utilities
   primitives["list-cat"] = Prim_ListCat;
   primitives["string-cat"] = Prim_StringCat;
   primitives["int-to-str"] = Prim_IntToStr;
