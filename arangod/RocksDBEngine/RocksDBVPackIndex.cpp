@@ -181,7 +181,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
         _index(index),
         _cmp(static_cast<RocksDBVPackComparator const*>(index->comparator())),
         _bounds(std::move(bounds)),
-        _fullEnumerationObjectId(0),
+        //_fullEnumerationObjectId(0),
         _mustSeek(true) {
     TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::vpack());
 
@@ -192,21 +192,21 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     if constexpr (reverse) {
       _rangeBound = _bounds.start();
       options.iterate_lower_bound = &_rangeBound;
-      VPackSlice s = VPackSlice(reinterpret_cast<uint8_t const*>(_rangeBound.data() + sizeof(uint64_t)));
+      /*VPackSlice s = VPackSlice(reinterpret_cast<uint8_t const*>(_rangeBound.data() + sizeof(uint64_t)));
       if (s.isArray() && s.length() == 1 && s.at(0).isMinKey()) {
         // lower bound is the min key. that means we can get away with a
         // cheap outOfBounds comparator
         _fullEnumerationObjectId = _index->objectId();
-      }
+      }*/
     } else {
       _rangeBound = _bounds.end();
       options.iterate_upper_bound = &_rangeBound;
-      VPackSlice s = VPackSlice(reinterpret_cast<uint8_t const*>(_rangeBound.data() + sizeof(uint64_t)));
+      /*VPackSlice s = VPackSlice(reinterpret_cast<uint8_t const*>(_rangeBound.data() + sizeof(uint64_t)));
       if (s.isArray() && s.length() == 1 && s.at(0).isMaxKey()) {
         // upper bound is the max key. that means we can get away with a
         // cheap outOfBounds comparator
         _fullEnumerationObjectId = _index->objectId();
-      }
+      }*/
     }
 
     TRI_ASSERT(options.prefix_same_as_start);
@@ -221,7 +221,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     TRI_ASSERT(_trx->state()->isRunning());
     seekIfRequired();
 
-    if (limit == 0 || !_iterator->Valid() || outOfRange()) {
+    if (limit == 0 || !_iterator->Valid()/* || outOfRange()*/) {
       // No limit no data, or we are actually done. The last call should have
       // returned false
       TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -252,7 +252,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     TRI_ASSERT(_trx->state()->isRunning());
     seekIfRequired();
 
-    if (limit == 0 || !_iterator->Valid() || outOfRange()) {
+    if (limit == 0 || !_iterator->Valid()/* || outOfRange()*/) {
       // No limit no data, or we are actually done. The last call should have
       // returned false
       TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -286,7 +286,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     TRI_ASSERT(_trx->state()->isRunning());
     seekIfRequired();
 
-    if (!_iterator->Valid() || outOfRange()) {
+    if (!_iterator->Valid()/* || outOfRange()*/) {
       // validate that Iterator is in a good shape and hasn't failed
       arangodb::rocksutils::checkIteratorStatus(_iterator.get());
       return;
@@ -318,7 +318,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   }
 
  private:
-  inline bool outOfRange() const {
+  /*inline bool outOfRange() const {
     if (_fullEnumerationObjectId) {
       // we are enumerating the entire index range for a collection,
       // so we can use a cheap comparator that only checks the index' objectId.
@@ -337,7 +337,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     } else {
       return (_cmp->Compare(_iterator->key(), _rangeBound) > 0);
     }
-  }
+  }*/
 
   void seekIfRequired() {
     if (_mustSeek) {
@@ -360,7 +360,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       _iterator->Next();
     }
 
-    return _iterator->Valid() && !outOfRange();
+    return _iterator->Valid()/* && !outOfRange()*/;
   }
 
   arangodb::RocksDBVPackIndex const* _index;
@@ -369,7 +369,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   RocksDBKeyBounds _bounds;
   // used for iterate_upper_bound iterate_lower_bound
   rocksdb::Slice _rangeBound;
-  uint64_t _fullEnumerationObjectId;
+  //uint64_t _fullEnumerationObjectId;
   bool _mustSeek;
 };
 
