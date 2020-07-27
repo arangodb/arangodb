@@ -2960,7 +2960,126 @@ TEST_F(IResearchViewVolatitlityTest, volatilityFilterList) {
   EXPECT_EQ(1, res.data->slice().length());
 }
 
+TEST_F(IResearchViewVolatitlityTest, volatilityFilterListNonVolatile) {
+  std::string const queryString = "FOR s IN 1..20 LET kk = NOEVAL(1) "
+                                  "FOR d IN testView1 SEARCH d.key == kk RETURN d";
+  auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
+  auto plan = prepared->plan();
+  ASSERT_NE(nullptr, plan);
+  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, { arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW }, true);
+  ASSERT_EQ(1, nodes.size());
+  for (auto const* n : nodes) {
+    arangodb::iresearch::IResearchViewNode const* view =
+      static_cast<arangodb::iresearch::IResearchViewNode const*>(n);
+    if (view->view()->name() == "testView1") {
+      ASSERT_FALSE(view->volatility().first);
+      ASSERT_FALSE(view->volatility().second);
+    } else {
+      ASSERT_TRUE(false); // unexpected node
+    }
+  }
+  // check volatility affects results
+  auto res = arangodb::tests::executeQuery(*vocbase, queryString);
 
+  EXPECT_TRUE(res.ok());
+  EXPECT_TRUE(res.data->slice().isArray());
+  EXPECT_EQ(20, res.data->slice().length());
+}
+
+TEST_F(IResearchViewVolatitlityTest, volatilityFilterQueryNonVolatile) {
+  std::string const queryString = "FOR s IN testView0 COLLECT WITH COUNT INTO c LET kk = NOEVAL(c) "
+                                  "FOR d IN testView1 SEARCH d.key == kk RETURN d";
+  auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
+  auto plan = prepared->plan();
+  ASSERT_NE(nullptr, plan);
+  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, { arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW }, true);
+  ASSERT_EQ(2, nodes.size());
+  for (auto const* n : nodes) {
+    arangodb::iresearch::IResearchViewNode const* view =
+      static_cast<arangodb::iresearch::IResearchViewNode const*>(n);
+    if (view->view()->name() == "testView1") {
+      ASSERT_TRUE(view->volatility().first);
+      ASSERT_FALSE(view->volatility().second);
+    } else if (view->view()->name() == "testView0") {
+      ASSERT_FALSE(view->volatility().first);
+      ASSERT_FALSE(view->volatility().second);
+    } else {
+      ASSERT_TRUE(false); // unexpected node
+    }
+  }
+  // check volatility affects results
+  auto res = arangodb::tests::executeQuery(*vocbase, queryString);
+
+  EXPECT_TRUE(res.ok());
+  EXPECT_TRUE(res.data->slice().isArray());
+  EXPECT_EQ(0, res.data->slice().length());
+}
+
+TEST_F(IResearchViewVolatitlityTest, volatilityFilterListSubquery) {
+  std::string const queryString = "FOR s IN 1..20 LET kk = (FOR v IN testView0 SEARCH v.key == 1 RETURN v.key)[0] "
+                                  "FOR d IN testView1 SEARCH d.key == kk RETURN d";
+  auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
+  auto plan = prepared->plan();
+  ASSERT_NE(nullptr, plan);
+  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, { arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW }, true);
+  ASSERT_EQ(2, nodes.size());
+  for (auto const* n : nodes) {
+    arangodb::iresearch::IResearchViewNode const* view =
+      static_cast<arangodb::iresearch::IResearchViewNode const*>(n);
+    if (view->view()->name() == "testView1") {
+      ASSERT_TRUE(view->volatility().first);
+      ASSERT_FALSE(view->volatility().second);
+    } else if (view->view()->name() == "testView0") {
+      ASSERT_FALSE(view->volatility().first);
+      ASSERT_FALSE(view->volatility().second);
+    } else {
+      ASSERT_TRUE(false); // unexpected node
+    }
+  }
+  // check volatility affects results
+  auto res = arangodb::tests::executeQuery(*vocbase, queryString);
+
+  EXPECT_TRUE(res.ok());
+  EXPECT_TRUE(res.data->slice().isArray());
+  EXPECT_EQ(20, res.data->slice().length());
+}
+
+TEST_F(IResearchViewVolatitlityTest, volatilitySortFilterListSubquery) {
+  std::string const queryString = "FOR s IN 1..20 LET kk = (FOR v IN testView0 SEARCH v.key == 1 RETURN v.key)[0] "
+                                  "FOR d IN testView1 SEARCH d.key == kk SORT BM25(d) RETURN d";
+  auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
+  auto plan = prepared->plan();
+  ASSERT_NE(nullptr, plan);
+  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, { arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW }, true);
+  ASSERT_EQ(2, nodes.size());
+  for (auto const* n : nodes) {
+    arangodb::iresearch::IResearchViewNode const* view =
+      static_cast<arangodb::iresearch::IResearchViewNode const*>(n);
+    if (view->view()->name() == "testView1") {
+      ASSERT_TRUE(view->volatility().first);
+      ASSERT_FALSE(view->volatility().second);
+    } else if (view->view()->name() == "testView0") {
+      ASSERT_FALSE(view->volatility().first);
+      ASSERT_FALSE(view->volatility().second);
+    } else {
+      ASSERT_TRUE(false); // unexpected node
+    }
+  }
+  // check volatility affects results
+  auto res = arangodb::tests::executeQuery(*vocbase, queryString);
+
+  EXPECT_TRUE(res.ok());
+  EXPECT_TRUE(res.data->slice().isArray());
+  EXPECT_EQ(20, res.data->slice().length());
+}
 
 class IResearchViewBlockTest
     : public ::testing::Test,

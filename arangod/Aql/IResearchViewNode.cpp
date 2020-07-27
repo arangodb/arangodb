@@ -449,47 +449,6 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view, aql::AstNod
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     other helpers
 // -----------------------------------------------------------------------------
-
-bool isSetterVolatile(aql::ExecutionPlan const& plan, 
-                      arangodb::aql::ExecutionNode& setter) {
-  if (!setter.isDeterministic()) {
-    // found nondeterministic setter
-    return true;
-  }
-  switch (setter.getType()) {
-    case aql::ExecutionNode::ENUMERATE_COLLECTION:
-    case aql::ExecutionNode::ENUMERATE_LIST:
-    case aql::ExecutionNode::SUBQUERY:
-    case aql::ExecutionNode::COLLECT:
-    case aql::ExecutionNode::TRAVERSAL:
-    case aql::ExecutionNode::INDEX:
-    case aql::ExecutionNode::SHORTEST_PATH:
-    case aql::ExecutionNode::K_SHORTEST_PATHS:
-    case aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
-      // we're in the loop with dependent context
-      return true;
-    case aql::ExecutionNode::CALCULATION:
-      {
-        arangodb::aql::VarSet calcArguments;
-        setter.getVariablesUsedHere(calcArguments);
-        for (auto const& a : calcArguments) {
-          auto subSetter = plan.getVarSetBy(a->id);
-          if (!subSetter) {
-            // unable to find setter
-            continue;
-          }
-          if (isSetterVolatile(plan, *subSetter)) {
-            return true;
-          }
-        }
-      }
-      break;
-    default:
-      break;
-  }
-  return false;
-}
-
 // in loop or non-deterministic
 bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
                      aql::Variable const& ref, aql::VarSet& vars) {
@@ -504,7 +463,23 @@ bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
       // unable to find setter
       continue;
     }
-    if (isSetterVolatile(plan, *setter)) {
+    switch (setter->getType()) {
+      case aql::ExecutionNode::ENUMERATE_COLLECTION:
+      case aql::ExecutionNode::ENUMERATE_LIST:
+      case aql::ExecutionNode::SUBQUERY:
+      case aql::ExecutionNode::SUBQUERY_END:
+      case aql::ExecutionNode::COLLECT:
+      case aql::ExecutionNode::TRAVERSAL:
+      case aql::ExecutionNode::INDEX:
+      case aql::ExecutionNode::SHORTEST_PATH:
+      case aql::ExecutionNode::K_SHORTEST_PATHS:
+      case aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
+        // we're in the loop with dependent context
+        return true;
+      default:
+        break;
+    }
+    if (!setter->isDeterministic() || setter->getLoop() != nullptr) {
       return true;
     }
   }
