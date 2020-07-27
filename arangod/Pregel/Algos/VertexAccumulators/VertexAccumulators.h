@@ -72,6 +72,9 @@ struct EdgeData {
 struct MessageData {
   void reset(std::string accumulatorName, VPackSlice const& value, std::string const& sender);
 
+  void fromVelocyPack(VPackSlice slice);
+  void toVelocyPack(VPackBuilder& b) const;
+
   std::string _accumulatorName;
 
   // We copy the value :/ is this necessary?

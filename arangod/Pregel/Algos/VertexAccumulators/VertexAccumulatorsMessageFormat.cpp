@@ -30,10 +30,10 @@ using namespace arangodb::pregel::algos;
 VertexAccumulators::MessageFormat::MessageFormat() {}
 
 void VertexAccumulators::MessageFormat::unwrapValue(VPackSlice s, message_type& message) const {
-  TRI_ASSERT(false);
+  message.fromVelocyPack(s);
 };
 
 void VertexAccumulators::MessageFormat::addValue(VPackBuilder& arrayBuilder, message_type const& message) const {
-  TRI_ASSERT(false);
+  message.toVelocyPack(arrayBuilder);
 };
 

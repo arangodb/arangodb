@@ -24,6 +24,8 @@
 
 #include "VertexAccumulators.h"
 
+#include "velocypack/velocypack-aliases.h"
+
 using namespace arangodb::pregel::algos;
 
 void VertexData::reset(AccumulatorsDeclaration const& accumulatorsDeclaration,
@@ -50,3 +52,25 @@ void MessageData::reset(std::string accumulatorName, VPackSlice const& value, st
   _value.clear();
   _value.add(value);
 }
+
+void MessageData::fromVelocyPack(VPackSlice slice) {
+  TRI_ASSERT(slice.isObject());
+
+  // TODO: UUUUGLLLAAAAYYy
+  _accumulatorName = slice.get("accumulatorName").copyString();
+  _sender = slice.get("sender").copyString();
+  _value.clear();
+  _value.add(slice.get("value"));
+}
+
+void MessageData::toVelocyPack(VPackBuilder& builder) const {
+  auto guard = VPackObjectBuilder{&builder};
+
+  builder.add(VPackValue("accumulatorName"));
+  builder.add(VPackValue(_accumulatorName));
+  builder.add(VPackValue("sender"));
+  builder.add(VPackValue(_sender));
+  builder.add(VPackValue("value"));
+  builder.add(_value.slice());
+}
+
