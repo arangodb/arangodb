@@ -382,7 +382,6 @@ TEST_CASE("Test [gt?] primitive", "[greater]") {
   }
 }
 
-
 TEST_CASE("Test [ge?] primitive", "[greater equal]") {
   InitInterpreter();
   MyEvalContext ctx;
@@ -463,8 +462,166 @@ TEST_CASE("Test [ge?] primitive", "[greater equal]") {
   }
 }
 
-TEST_CASE("Test [le?] primitive", "[less equal]") {}
-TEST_CASE("Test [lt?] primitive", "[less]") {}
+TEST_CASE("Test [le?] primitive", "[less equal]") {
+  InitInterpreter();
+  MyEvalContext ctx;
+  VPackBuilder result;
+  auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
+  auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
+
+  SECTION("Test equality with int greater") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["le?", 2, 1]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(false == result.slice().getBoolean());
+  }
+
+  SECTION("Test equality with int greater") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["le?", 2, 2]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(true == result.slice().getBoolean());
+  }
+
+  SECTION("Test equality with int lower") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["le?", 1, 2]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(true == result.slice().getBoolean());
+  }
+
+  SECTION("Test equality with double greater") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["le?", 2.4, 1.3]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(false == result.slice().getBoolean());
+  }
+
+  SECTION("Test equality with double greater") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["le?", 2.4, 2.4]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(true == result.slice().getBoolean());
+  }
+
+  SECTION("Test equality with double lower") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["le?", 1.1, 2.3]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(true == result.slice().getBoolean());
+  }
+
+  SECTION("Test equality with true first") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["le?", true, false]
+    )aql");
+
+    EvalResult res = Evaluate(ctx, program->slice(), result);
+    REQUIRE(res.fail());
+  }
+
+  SECTION("Test equality strings") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["le?", "astring", "bstring"]
+    )aql");
+
+    EvalResult res = Evaluate(ctx, program->slice(), result);
+    REQUIRE(res.fail());
+  }
+}
+
+TEST_CASE("Test [lt?] primitive", "[less]") {
+  InitInterpreter();
+  MyEvalContext ctx;
+  VPackBuilder result;
+  auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
+  auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
+
+  SECTION("Test equality with int greater") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["lt?", 2, 1]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(false == result.slice().getBoolean());
+  }
+
+  SECTION("Test equality with int greater") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["lt?", 2, 2]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(false == result.slice().getBoolean());
+  }
+
+  SECTION("Test equality with int lower") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["lt?", 1, 2]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(true == result.slice().getBoolean());
+  }
+
+  SECTION("Test equality with double greater") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["lt?", 2.4, 1.3]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(false == result.slice().getBoolean());
+  }
+
+  SECTION("Test equality with double greater") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["lt?", 2.4, 2.4]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(false == result.slice().getBoolean());
+  }
+
+  SECTION("Test equality with double lower") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["lt?", 1.1, 2.3]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(true == result.slice().getBoolean());
+  }
+
+  SECTION("Test equality with true first") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["lt?", true, false]
+    )aql");
+
+    EvalResult res = Evaluate(ctx, program->slice(), result);
+    REQUIRE(res.fail());
+  }
+
+  SECTION("Test equality strings") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["lt?", "astring", "bstring"]
+    )aql");
+
+    EvalResult res = Evaluate(ctx, program->slice(), result);
+    REQUIRE(res.fail());
+  }
+}
+
 TEST_CASE("Test [ne?] primitive", "[not equal]") {
   InitInterpreter();
   MyEvalContext ctx;
