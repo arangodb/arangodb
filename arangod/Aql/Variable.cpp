@@ -113,7 +113,8 @@ Variable* Variable::varFromVPack(Ast* ast, arangodb::velocypack::Slice const& ba
   return ast->variables()->createVariable(variable);
 }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 bool Variable::isEqualTo(Variable const& other) const {
   return (id == other.id) && (name == other.name);
 }
-
+#endif
