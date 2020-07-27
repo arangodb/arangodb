@@ -155,8 +155,8 @@ struct VertexAccumulatorOptionsFactory {
   auto operator()(VertexAccumulatorOptions && opt) { return std::move(opt); }
   auto operator()(VertexAccumulatorOptionsOld && old_opt) {
     PhaseDeclarations phase_list;
-    phase_list.emplace_back(AlgorithmPhase{"main", std::move(old_opt.updateProgram),
-      std::move(old_opt.initProgram), VPackBuilder{}});
+    phase_list.emplace_back(AlgorithmPhase{"main", std::move(old_opt.initProgram),
+      std::move(old_opt.updateProgram), VPackBuilder{}});
     return VertexAccumulatorOptions{std::move(old_opt.resultField), std::move(old_opt.accumulatorsDeclaration),
         std::move(old_opt.bindings), std::move(phase_list), old_opt.maxGSS};
   }
