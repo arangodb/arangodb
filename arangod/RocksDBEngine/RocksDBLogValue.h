@@ -34,6 +34,7 @@
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
+#include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 
@@ -69,12 +70,12 @@ class RocksDBLogValue {
 
   static RocksDBLogValue BeginTransaction(TRI_voc_tick_t vocbaseId, TransactionId tid);
   static RocksDBLogValue CommitTransaction(TRI_voc_tick_t vocbaseId, TransactionId tid);
-  static RocksDBLogValue DocumentRemoveV2(TRI_voc_rid_t rid);
+  static RocksDBLogValue DocumentRemoveV2(RevisionId rid);
 
   static RocksDBLogValue SinglePut(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid);
   static RocksDBLogValue SingleRemoveV2(TRI_voc_tick_t vocbaseId,
-                                        TRI_voc_cid_t cid, TRI_voc_rid_t rid);
-  
+                                        TRI_voc_cid_t cid, RevisionId rid);
+
   static RocksDBLogValue TrackedDocumentInsert(LocalDocumentId, velocypack::Slice const&);
   static RocksDBLogValue TrackedDocumentRemove(LocalDocumentId, velocypack::Slice const&);
 
@@ -93,7 +94,7 @@ class RocksDBLogValue {
   static uint64_t objectId(rocksdb::Slice const&);
 
   /// For DocumentRemoveV2 and SingleRemoveV2
-  static TRI_voc_rid_t revisionId(rocksdb::Slice const&);
+  static RevisionId revisionId(rocksdb::Slice const&);
 
   static velocypack::Slice indexSlice(rocksdb::Slice const&);
   static velocypack::Slice viewSlice(rocksdb::Slice const&);

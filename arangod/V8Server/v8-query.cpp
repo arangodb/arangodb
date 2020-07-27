@@ -332,8 +332,8 @@ static void JS_ChecksumCollection(v8::FunctionCallbackInfo<v8::Value> const& arg
   }
   
   uint64_t checksum;
-  TRI_voc_rid_t revId;
-  
+  RevisionId revId;
+
   Result r = methods::Collections::checksum(*col, withRevisions,
                                             withData, checksum, revId);
 
@@ -345,7 +345,8 @@ static void JS_ChecksumCollection(v8::FunctionCallbackInfo<v8::Value> const& arg
   obj->Set(context, TRI_V8_ASCII_STRING(isolate, "checksum"),
            TRI_V8_ASCII_STD_STRING(isolate, std::to_string(checksum))).FromMaybe(false);
   obj->Set(context, TRI_V8_ASCII_STRING(isolate, "revision"),
-           TRI_V8_ASCII_STD_STRING(isolate, TRI_RidToString(revId))).FromMaybe(false);
+           TRI_V8_ASCII_STD_STRING(isolate, revId.toString()))
+      .FromMaybe(false);
 
   TRI_V8_RETURN(obj);
   TRI_V8_TRY_CATCH_END
