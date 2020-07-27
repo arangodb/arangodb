@@ -1,6 +1,8 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
+* Slightly improved the performance of some k-shortest-path queries.
+
 * Added startup option `--rocksdb.encryption-key-rotation` to
   activate/deactivate the encryption key rotation REST API. The API is disabled
   by default.

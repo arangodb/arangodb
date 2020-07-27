@@ -146,7 +146,7 @@ void KShortestPathsFinder::computeNeighbourhoodOfVertex(VertexRef vertex, Direct
 
   // TODO: This is a bit of a hack
   if (_options.useWeight()) {
-    cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorIdx) -> void {
+    cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t /*cursorIdx*/) -> void {
       if (edge.isString()) {
         VPackSlice doc = _options.cache()->lookupToken(eid);
         double weight = _options.weightEdge(doc);
@@ -166,7 +166,7 @@ void KShortestPathsFinder::computeNeighbourhoodOfVertex(VertexRef vertex, Direct
       }
     });
   } else {
-    cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorIdx) -> void {
+    cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t /*cursorIdx*/) -> void {
       if (edge.isString()) {
         if (edge.compareString(vertex.data(), vertex.length()) != 0) {
           VertexRef id = _options.cache()->persistString(VertexRef(edge));
@@ -205,7 +205,7 @@ void KShortestPathsFinder::advanceFrontier(Ball& source, Ball const& target,
   computeNeighbourhoodOfVertexCache(vr, source._direction, neighbours);
   TRI_ASSERT(neighbours != nullptr);
 
-  for (auto& s : *neighbours) {
+  for (auto const& s : *neighbours) {
     if (forbiddenEdges.find(s._edge) == forbiddenEdges.end() &&
         forbiddenVertices.find(s._vertex) == forbiddenVertices.end()) {
       double weight = v->_weight + s._weight;
