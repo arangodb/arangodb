@@ -73,10 +73,9 @@ struct Variable {
   static Variable* varFromVPack(Ast* ast, arangodb::velocypack::Slice const& base,
                                 char const* variableName, bool optional = false);
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  bool isEqualTo(Variable const& other) const;
-#endif
 
+  bool isEqualTo(Variable const& other) const;
+  
   /// @brief variable id
   VariableId const id;
 
