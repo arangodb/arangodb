@@ -100,7 +100,7 @@ class MasterContext {
   virtual void postApplication() {}
 
   enum class ContinuationResult {
-    CONTINUE, ABORT, DONT_CARE
+    CONTINUE, ABORT, DONT_CARE, ACTIVATE_ALL
   };
 
   virtual ContinuationResult postGlobalSuperstep(bool allVertexesVotedHalt) { return ContinuationResult::DONT_CARE; }

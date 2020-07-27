@@ -62,6 +62,7 @@ std::string const Utils::userParametersKey = "userparams";
 std::string const Utils::asyncModeKey = "asyncMode";
 std::string const Utils::useMemoryMaps = "useMemoryMaps";
 std::string const Utils::parallelismKey = "parallelism";
+std::string const Utils::activateAllKey = "reset-all-active";
 
 std::string const Utils::globalSuperstepKey = "gss";
 std::string const Utils::vertexCountKey = "vertexCount";

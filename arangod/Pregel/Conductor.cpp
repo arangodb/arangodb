@@ -167,6 +167,7 @@ bool Conductor::_startGlobalStep() {
 
   // workers are done if all messages were processed and no active vertices
   // are left to process
+  bool activateAll = false;
   bool done = _globalSuperstep > 0 && _statistics.noActiveVertices() &&
               _statistics.allMessagesProcessed();
   bool proceed = true;
@@ -180,10 +181,15 @@ bool Conductor::_startGlobalStep() {
     }
     if (proceed) {
       switch (_masterContext->postGlobalSuperstep(done)) {
+        case MasterContext::ContinuationResult::ACTIVATE_ALL:
+          activateAll = true;
+          [[fallthrough]];
         case MasterContext::ContinuationResult::CONTINUE:
-          done = false; break;
+          done = false;
+          break;
         case MasterContext::ContinuationResult::ABORT:
-          proceed = false; break;
+          proceed = false;
+          break;
         case MasterContext::ContinuationResult::DONT_CARE:
           break;
       }
@@ -217,6 +223,7 @@ bool Conductor::_startGlobalStep() {
   b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
   b.add(Utils::vertexCountKey, VPackValue(_totalVerticesCount));
   b.add(Utils::edgeCountKey, VPackValue(_totalEdgesCount));
+  b.add(Utils::activateAllKey, VPackValue(activateAll));
   _aggregators->serializeValues(b);
   b.close();
   LOG_TOPIC("d98de", DEBUG, Logger::PREGEL) << b.toString();
