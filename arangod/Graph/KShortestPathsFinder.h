@@ -153,23 +153,26 @@ class KShortestPathsFinder : public ShortestPathFinder {
   // Dijkstra is run using two Balls, one around the start vertex, one around
   // the end vertex
   struct Ball {
+    Direction const _direction;
     VertexRef _center;
-    Direction _direction;
     Frontier _frontier;
     // The distance of the last node that has been fully expanded
     // from _center
     double _closest;
 
-    Ball() {}
-    Ball(VertexRef const& center, Direction direction)
-        : _center(center), _direction(direction), _closest(0) {
+    explicit Ball(Direction direction) 
+        : _direction(direction), _closest(0) {}
+ 
+    void reset(VertexRef center) { 
+      _center = center; 
+      _frontier.clear();
       _frontier.insert(center, std::make_unique<DijkstraInfo>(center));
     }
-    ~Ball() = default;
-    const VertexRef center() const { return _center; };
-    bool done(std::optional<double> const currentBest) {
+
+    VertexRef center() const { return _center; }
+    bool done(std::optional<double> const& currentBest) {
       return _frontier.empty() || (currentBest.has_value() && currentBest.value() < _closest);
-    };
+    }
   };
 
   //
@@ -237,7 +240,9 @@ class KShortestPathsFinder : public ShortestPathFinder {
   // get the next available path as a ShortestPathResult
   // TODO: this is only here to not break catch-tests and needs a cleaner solution.
   //       probably by making ShortestPathResult versatile enough and using that
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   bool getNextPathShortestPathResult(ShortestPathResult& path);
+#endif
   // get the next available path as a Path
   bool getNextPath(Path& path);
   TEST_VIRTUAL bool skipPath();
@@ -271,6 +276,9 @@ class KShortestPathsFinder : public ShortestPathFinder {
 
   VertexRef _start;
   VertexRef _end;
+    
+  Ball _left;
+  Ball _right;
 
   FoundVertexCache _vertexCache;
 
@@ -280,6 +288,9 @@ class KShortestPathsFinder : public ShortestPathFinder {
 
   std::unique_ptr<EdgeCursor> _forwardCursor;
   std::unique_ptr<EdgeCursor> _backwardCursor;
+
+  // a temporary object that is reused for building results
+  Path _tempPath;
 };
 
 }  // namespace graph

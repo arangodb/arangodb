@@ -42,7 +42,9 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 KShortestPathsFinder::KShortestPathsFinder(ShortestPathOptions& options)
-    : ShortestPathFinder(options) {
+    : ShortestPathFinder(options),
+      _left(FORWARD),
+      _right(BACKWARD) {
   // cppcheck-suppress *
   _forwardCursor = options.buildCursor(false);
   // cppcheck-suppress *
@@ -81,8 +83,8 @@ bool KShortestPathsFinder::computeShortestPath(VertexRef const& start, VertexRef
                                                std::unordered_set<VertexRef> const& forbiddenVertices,
                                                std::unordered_set<Edge> const& forbiddenEdges,
                                                Path& result) {
-  Ball left(start, FORWARD);
-  Ball right(end, BACKWARD);
+  _left.reset(start);
+  _right.reset(end);
   VertexRef join;
 
   result.clear();
@@ -91,24 +93,23 @@ bool KShortestPathsFinder::computeShortestPath(VertexRef const& start, VertexRef
 
   // We will not improve anymore if we have found a best path and the smallest
   // combined distance between left and right is bigger than that path
-  while (!left.done(currentBest) && !right.done(currentBest)) {
+  while (!_left.done(currentBest) && !_right.done(currentBest)) {
     _options.isQueryKilledCallback();
 
     // Choose the smaller frontier to expand.
-    if (!left.done(currentBest) && (left._frontier.size() < right._frontier.size())) {
-      advanceFrontier(left, right, forbiddenVertices, forbiddenEdges, join, currentBest);
+    if (!_left.done(currentBest) && (_left._frontier.size() < _right._frontier.size())) {
+      advanceFrontier(_left, _right, forbiddenVertices, forbiddenEdges, join, currentBest);
     } else {
-      advanceFrontier(right, left, forbiddenVertices, forbiddenEdges, join, currentBest);
+      advanceFrontier(_right, _left, forbiddenVertices, forbiddenEdges, join, currentBest);
     }
   }
 
   if (currentBest.has_value()) {
-    reconstructPath(left, right, join, result);
+    reconstructPath(_left, _right, join, result);
     return true;
-  } else {
-    // No path found
-    return false;
   }
+  // No path found
+  return false;
 }
 
 void KShortestPathsFinder::computeNeighbourhoodOfVertexCache(VertexRef vertex,
@@ -192,7 +193,6 @@ void KShortestPathsFinder::advanceFrontier(Ball& source, Ball const& target,
                                            std::optional<double>& currentBest) {
   VertexRef vr;
   DijkstraInfo *v, *w;
-  std::vector<Step>* neighbours;
 
   bool success = source._frontier.popMinimal(vr, v);
   TRI_ASSERT(v != nullptr);
@@ -201,6 +201,7 @@ void KShortestPathsFinder::advanceFrontier(Ball& source, Ball const& target,
     return;
   }
 
+  std::vector<Step>* neighbours;
   computeNeighbourhoodOfVertexCache(vr, source._direction, neighbours);
   TRI_ASSERT(neighbours != nullptr);
 
@@ -244,8 +245,7 @@ void KShortestPathsFinder::reconstructPath(Ball const& left, Ball const& right,
   TRI_ASSERT(!join.empty());
   result._vertices.emplace_back(join);
 
-  DijkstraInfo* it;
-  it = left._frontier.find(join);
+  DijkstraInfo* it = left._frontier.find(join);
   TRI_ASSERT(it != nullptr);
   double startToJoin = it->weight();
   result._weight = startToJoin;
@@ -371,54 +371,54 @@ bool KShortestPathsFinder::getNextPath(Path& result) {
   return !_traversalDone;
 }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 bool KShortestPathsFinder::getNextPathShortestPathResult(ShortestPathResult& result) {
-  Path path;
+  _tempPath.clear();
 
   result.clear();
-  if (getNextPath(path)) {
-    result._vertices = path._vertices;
-    result._edges = path._edges;
+  if (getNextPath(_tempPath)) {
+    result._vertices = _tempPath._vertices;
+    result._edges = _tempPath._edges;
     return true;
-  } else {
-    return false;
   }
+
+  return false;
 }
+#endif
 
 bool KShortestPathsFinder::getNextPathAql(arangodb::velocypack::Builder& result) {
-  Path path;
+  _tempPath.clear();
 
-  if (getNextPath(path)) {
+  if (getNextPath(_tempPath)) {
     result.clear();
     result.openObject();
 
-    result.add(VPackValue("edges"));
-    result.openArray();
-    for (auto const& it : path._edges) {
+    result.add("edges", VPackValue(VPackValueType::Array));
+    for (auto const& it : _tempPath._edges) {
       _options.cache()->insertEdgeIntoResult(it, result);
     }
     result.close();  // Array
 
-    result.add(VPackValue("vertices"));
-    result.openArray();
-    for (auto const& it : path._vertices) {
+    result.add("vertices", VPackValue(VPackValueType::Array));
+    for (auto const& it : _tempPath._vertices) {
       _options.cache()->insertVertexIntoResult(it, result);
     }
     result.close();  // Array
     if (_options.useWeight()) {
-      result.add("weight", VPackValue(path._weight));
+      result.add("weight", VPackValue(_tempPath._weight));
     } else {
       // If not using weight, weight is defined as 1 per edge
-      result.add("weight", VPackValue(path._edges.size()));
+      result.add("weight", VPackValue(_tempPath._edges.size()));
     }
     result.close();  // Object
     TRI_ASSERT(result.isClosed());
     return true;
-  } else {
-    return false;
   }
+  
+  return false;
 }
 
 bool KShortestPathsFinder::skipPath() {
-  Path path;
-  return getNextPath(path);
+  _tempPath.clear();
+  return getNextPath(_tempPath);
 }

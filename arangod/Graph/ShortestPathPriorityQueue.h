@@ -69,8 +69,15 @@ class ShortestPathPriorityQueue {
  public:
   ShortestPathPriorityQueue() : _popped(0), _isHeap(false), _maxWeight(0) {}
 
-  ~ShortestPathPriorityQueue() {
+  ~ShortestPathPriorityQueue() = default;
+
+  /// @brief clear the priority queue, so it can be reused
+  void clear() {
+    _popped = 0;
+    _lookup.clear();
+    _isHeap = false;
     _heap.clear();
+    _maxWeight = 0;
     _history.clear();
   }
 
