@@ -278,13 +278,12 @@ void KShortestPathsFinder::reconstructPath(Ball const& left, Ball const& right,
 bool KShortestPathsFinder::computeNextShortestPath(Path& result) {
   VertexSet forbiddenVertices;
   EdgeSet forbiddenEdges;
-  Path tmpPath, candidate;
   TRI_ASSERT(!_shortestPaths.empty());
   auto& lastShortestPath = _shortestPaths.back();
   bool available = false;
 
   for (size_t i = lastShortestPath._branchpoint; i + 1 < lastShortestPath.length(); ++i) {
-    auto& spur = lastShortestPath._vertices.at(i);
+    auto& spur = lastShortestPath._vertices[i];
 
     forbiddenVertices.clear();
     forbiddenEdges.clear();
@@ -298,37 +297,44 @@ bool KShortestPathsFinder::computeNextShortestPath(Path& result) {
     //       paths in a prefix/postfix tree
     // previous paths with same prefix must not be
     for (auto const& p : _shortestPaths) {
+      if (i >= p._edges.size()) {
+        continue;
+      }
       bool eq = true;
       for (size_t e = 0; e < i; ++e) {
-        if (!p._edges.at(e).equals(lastShortestPath._edges.at(e))) {
+        if (!p._edges[e].equals(lastShortestPath._edges.at(e))) {
           eq = false;
           break;
         }
       }
-      if (eq && (i < p._edges.size())) {
+      if (eq) {
         forbiddenEdges.emplace(p._edges[i]);
       }
     }
 
-    if (computeShortestPath(spur, _end, forbiddenVertices, forbiddenEdges, tmpPath)) {
-      candidate.clear();
-      candidate.append(lastShortestPath, 0, i);
-      candidate.append(tmpPath, 0, tmpPath.length() - 1);
-      candidate._branchpoint = i;
+    // abuse result variable for some intermediate calculations here...
+    // the "real" result is only calculated at the very end of this method
+    result.clear();
+    if (computeShortestPath(spur, _end, forbiddenVertices, forbiddenEdges, result)) {
+      _candidate.clear();
+      _candidate.append(lastShortestPath, 0, i);
+      _candidate.append(result, 0, result.length() - 1);
+      _candidate._branchpoint = i;
 
       auto it = find_if(_candidatePaths.begin(), _candidatePaths.end(),
-                        [candidate](Path const& v) {
-                          return v._weight >= candidate._weight;
+                        [this](Path const& v) {
+                          return v._weight >= _candidate._weight;
                         });
-      if (it == _candidatePaths.end() || !(*it == candidate)) {
-        _candidatePaths.emplace(it, candidate);
+      if (it == _candidatePaths.end() || !(*it == _candidate)) {
+        _candidatePaths.emplace(it, std::move(_candidate));
       }
     }
   }
+    
+  result.clear();
 
   if (!_candidatePaths.empty()) {
     auto const& p = _candidatePaths.front();
-    result.clear();
     result.append(p, 0, p.length() - 1);
     result._branchpoint = p._branchpoint;
     _candidatePaths.pop_front();

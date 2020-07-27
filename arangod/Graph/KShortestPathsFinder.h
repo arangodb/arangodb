@@ -293,6 +293,9 @@ class KShortestPathsFinder : public ShortestPathFinder {
 
   // a temporary object that is reused for building results
   Path _tempPath;
+
+  // a temporary object that is reused for building candidate results
+  Path _candidate;
 };
 
 }  // namespace graph
