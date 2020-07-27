@@ -65,7 +65,8 @@ function single_source_shortest_path_program(
 ) {
   return {
     resultField: resultField,
-    maxGSS: 1000,
+    // TODO: Karpott.
+    maxGSS: 10000,
     accumulatorsDeclaration: {
       distance: {
         accumulatorType: "min",
@@ -81,7 +82,7 @@ function single_source_shortest_path_program(
           ["eq?", ["this"], startVertexId],
           ["seq", ["set", "distance", 0], true],
         ],
-        [true, ["seq", ["set", "distance", 999999.5], false]],
+        [true, ["seq", ["set", "distance", 9223372036854776000], false]],
       ],
     ],
     updateProgram: [
@@ -93,7 +94,6 @@ function single_source_shortest_path_program(
         [
           "quote",
           "seq",
-          ["print", "I am ", ["this"], " and my weight is ", ["accum-ref", "distance"]],
           [
             "update",
             "distance",
