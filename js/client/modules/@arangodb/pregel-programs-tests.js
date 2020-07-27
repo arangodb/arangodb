@@ -22,14 +22,35 @@
 // / @author Copyright 2020, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
+const pr = require("@arangodb/pregel");
 const pp = require("@arangodb/pregel-programs");
 const pe = require("@arangodb/pregel-example-graphs");
 
-function exec_test() {
-  pe.create_wiki_vote_graph("WikiVoteGraph");
+function exec_test_wiki_vote() {
+  pe.create_wiki_vote_graph("WikiVoteGraph", 6);
   const some_vertex = db._query(`FOR d IN V FILTER d.id == "15" RETURN d._id`).toArray()[0];
 
   return pp.single_source_shortest_path("WikiVoteGraph", "SSSP", some_vertex, "cost");
 }
 
-exports.exec_test = exec_test;
+function exec_test_line() {
+  const collnames = pe.create_line_graph("LineGraph", 1000, 1);
+  const some_vertex = db._query(`FOR d IN @@V FILTER d.id == "15" RETURN d._id`, {"@V": collnames.vname}).toArray()[0];
+
+  require("internal").print("vertex: " + some_vertex);
+  
+  return pp.single_source_shortest_path("LineGraph", "SSSP", some_vertex, "cost");
+}
+
+/* TODO: Run the "native" SSSP, the VertexAccumulators SSSP, and AQL ShortestPath and compare the
+   results */
+function exec_sssp_test() {
+  pe.create_wiki_vote_graph("WikiVoteGraph", 1);
+
+  const some_vertex = db._query(`FOR d IN V FILTER d.id == "15" RETURN d._id`).toArray()[0];
+  return pregel.start("sssp", "WikiVoteGraph", { "start": some_vertex });
+}
+
+
+exports.exec_test_wiki_vote = exec_test_wiki_vote;
+exports.exec_test_line = exec_test_line;
