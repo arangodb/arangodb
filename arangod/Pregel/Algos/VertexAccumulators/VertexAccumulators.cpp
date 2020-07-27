@@ -198,7 +198,7 @@ struct VertexAccumulatorsMasterContext : MasterContext {
       LOG_DEVEL << "no on halt program for this phase, going to next phase " << phase_index;
       aggregate<uint32_t>("phase", phase_index);
       aggregate<uint32_t>("phase-first-step", globalSuperstep()+1);
-      return ContinuationResult::CONTINUE;
+      return ContinuationResult::ACTIVATE_ALL;
     }
     // the phase is done, evalute the onHalt program for this phase
     // and look at the return value.

@@ -281,6 +281,12 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice const& data) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Wrong GSS");
   }
 
+  if (data.get(Utils::activateAllKey).isTrue()) {
+    for (auto vertices = _graphStore->vertexIterator(); vertices.hasMore(); ++vertices) {
+      vertices->setActive(true);
+    }
+  }
+
   _workerAggregators->resetValues();
   _conductorAggregators->setAggregatedValues(data);
   // execute context
@@ -436,7 +442,7 @@ bool Worker<V, E, M>::_processVertices(size_t threadId,
     _messageStats.accumulate(stats);
     _activeCount += activeCount;
     _runningThreads--;
-    lastThread = _runningThreads == 0;  // should work like a join operation    
+    lastThread = _runningThreads == 0;  // should work like a join operation
   }
   return lastThread;
 }

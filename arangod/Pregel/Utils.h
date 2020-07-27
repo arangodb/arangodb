@@ -72,6 +72,7 @@ class Utils {
   static std::string const asyncModeKey;
   static std::string const useMemoryMaps;
   static std::string const parallelismKey;
+  static std::string const activateAllKey;
 
   /// Current global superstep
   static std::string const globalSuperstepKey;
