@@ -283,7 +283,7 @@ TEST_CASE("Test [eq?] primitive", "[equals]") {
     REQUIRE(true == result.slice().getBoolean());
   }
 
-  SECTION("Test non equality with string") {
+  SECTION("Test equality with string") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["eq?", "hello", "world"]
     )aql");
@@ -300,7 +300,7 @@ TEST_CASE("Test [gt?] primitive", "[greater]") {
   auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
   auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
 
-  SECTION("Test equality with int greater") {
+  SECTION("Test greater than with int greater") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["gt?", 2, 1]
     )aql");
@@ -309,7 +309,7 @@ TEST_CASE("Test [gt?] primitive", "[greater]") {
     REQUIRE(true == result.slice().getBoolean());
   }
 
-  SECTION("Test equality with int lower") {
+  SECTION("Test greater than with int lower") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["gt?", 1, 2]
     )aql");
@@ -318,7 +318,7 @@ TEST_CASE("Test [gt?] primitive", "[greater]") {
     REQUIRE(false == result.slice().getBoolean());
   }
 
-  SECTION("Test equality with double greater") {
+  SECTION("Test greater than with double greater") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["gt?", 2.4, 1.3]
     )aql");
@@ -327,7 +327,7 @@ TEST_CASE("Test [gt?] primitive", "[greater]") {
     REQUIRE(true == result.slice().getBoolean());
   }
 
-  SECTION("Test equality with double lower") {
+  SECTION("Test greater than with double lower") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["gt?", 1.1, 2.3]
     )aql");
@@ -336,7 +336,7 @@ TEST_CASE("Test [gt?] primitive", "[greater]") {
     REQUIRE(false == result.slice().getBoolean());
   }
 
-  SECTION("Test equality with true first") {
+  SECTION("Test greater than with true first") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["gt?", true, false]
     )aql");
@@ -345,7 +345,7 @@ TEST_CASE("Test [gt?] primitive", "[greater]") {
     REQUIRE(res.fail());
   }
 
-  SECTION("Test equality with true first") {
+  SECTION("Test greater than with true first") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["gt?", false, true]
     )aql");
@@ -354,7 +354,7 @@ TEST_CASE("Test [gt?] primitive", "[greater]") {
     REQUIRE(res.fail());
   }
 
-  SECTION("Test equality equal bool true") {
+  SECTION("Test greater than equal bool true") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["gt?", true, true]
     )aql");
@@ -363,7 +363,7 @@ TEST_CASE("Test [gt?] primitive", "[greater]") {
     REQUIRE(res.fail());
   }
 
-  SECTION("Test equality equal bool false") {
+  SECTION("Test greater than equal bool false") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["gt?", false, false]
     )aql");
@@ -372,7 +372,7 @@ TEST_CASE("Test [gt?] primitive", "[greater]") {
     REQUIRE(res.fail());
   }
 
-  SECTION("Test equality strings") {
+  SECTION("Test greater than strings") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["gt?", "astring", "bstring"]
     )aql");
@@ -389,7 +389,7 @@ TEST_CASE("Test [ge?] primitive", "[greater equal]") {
   auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
   auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
 
-  SECTION("Test equality with int greater") {
+  SECTION("Test greater equal with int greater") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["ge?", 2, 1]
     )aql");
@@ -398,7 +398,7 @@ TEST_CASE("Test [ge?] primitive", "[greater equal]") {
     REQUIRE(true == result.slice().getBoolean());
   }
 
-  SECTION("Test equality with int greater") {
+  SECTION("Test greater equal with int greater") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["ge?", 2, 2]
     )aql");
@@ -407,7 +407,7 @@ TEST_CASE("Test [ge?] primitive", "[greater equal]") {
     REQUIRE(true == result.slice().getBoolean());
   }
 
-  SECTION("Test equality with int lower") {
+  SECTION("Test greater equal with int lower") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["ge?", 1, 2]
     )aql");
@@ -416,7 +416,7 @@ TEST_CASE("Test [ge?] primitive", "[greater equal]") {
     REQUIRE(false == result.slice().getBoolean());
   }
 
-  SECTION("Test equality with double greater") {
+  SECTION("Test greater equal with double greater") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["ge?", 2.4, 1.3]
     )aql");
@@ -425,7 +425,7 @@ TEST_CASE("Test [ge?] primitive", "[greater equal]") {
     REQUIRE(true == result.slice().getBoolean());
   }
 
-  SECTION("Test equality with double greater") {
+  SECTION("Test greater equal with double greater") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["ge?", 2.4, 2.4]
     )aql");
@@ -434,7 +434,7 @@ TEST_CASE("Test [ge?] primitive", "[greater equal]") {
     REQUIRE(true == result.slice().getBoolean());
   }
 
-  SECTION("Test equality with double lower") {
+  SECTION("Test greater equal with double lower") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["ge?", 1.1, 2.3]
     )aql");
@@ -443,7 +443,7 @@ TEST_CASE("Test [ge?] primitive", "[greater equal]") {
     REQUIRE(false == result.slice().getBoolean());
   }
 
-  SECTION("Test equality with true first") {
+  SECTION("Test greater equal with true first") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["ge?", true, false]
     )aql");
@@ -452,7 +452,7 @@ TEST_CASE("Test [ge?] primitive", "[greater equal]") {
     REQUIRE(res.fail());
   }
 
-  SECTION("Test equality strings") {
+  SECTION("Test greater equal strings") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["ge?", "astring", "bstring"]
     )aql");
@@ -469,7 +469,7 @@ TEST_CASE("Test [le?] primitive", "[less equal]") {
   auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
   auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
 
-  SECTION("Test equality with int greater") {
+  SECTION("Test less equal with int greater") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["le?", 2, 1]
     )aql");
@@ -478,7 +478,7 @@ TEST_CASE("Test [le?] primitive", "[less equal]") {
     REQUIRE(false == result.slice().getBoolean());
   }
 
-  SECTION("Test equality with int greater") {
+  SECTION("Test less equal with int greater") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["le?", 2, 2]
     )aql");
@@ -487,7 +487,7 @@ TEST_CASE("Test [le?] primitive", "[less equal]") {
     REQUIRE(true == result.slice().getBoolean());
   }
 
-  SECTION("Test equality with int lower") {
+  SECTION("Test less equal with int lower") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["le?", 1, 2]
     )aql");
@@ -496,7 +496,7 @@ TEST_CASE("Test [le?] primitive", "[less equal]") {
     REQUIRE(true == result.slice().getBoolean());
   }
 
-  SECTION("Test equality with double greater") {
+  SECTION("Test less equal with double greater") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["le?", 2.4, 1.3]
     )aql");
@@ -505,7 +505,7 @@ TEST_CASE("Test [le?] primitive", "[less equal]") {
     REQUIRE(false == result.slice().getBoolean());
   }
 
-  SECTION("Test equality with double greater") {
+  SECTION("Test less equal with double greater") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["le?", 2.4, 2.4]
     )aql");
@@ -514,7 +514,7 @@ TEST_CASE("Test [le?] primitive", "[less equal]") {
     REQUIRE(true == result.slice().getBoolean());
   }
 
-  SECTION("Test equality with double lower") {
+  SECTION("Test less equal with double lower") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["le?", 1.1, 2.3]
     )aql");
@@ -523,7 +523,7 @@ TEST_CASE("Test [le?] primitive", "[less equal]") {
     REQUIRE(true == result.slice().getBoolean());
   }
 
-  SECTION("Test equality with true first") {
+  SECTION("Test less equal with true first") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["le?", true, false]
     )aql");
@@ -532,7 +532,7 @@ TEST_CASE("Test [le?] primitive", "[less equal]") {
     REQUIRE(res.fail());
   }
 
-  SECTION("Test equality strings") {
+  SECTION("Test less equal strings") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["le?", "astring", "bstring"]
     )aql");
@@ -549,7 +549,7 @@ TEST_CASE("Test [lt?] primitive", "[less]") {
   auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
   auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
 
-  SECTION("Test equality with int greater") {
+  SECTION("Test less than with int greater") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["lt?", 2, 1]
     )aql");
@@ -558,7 +558,7 @@ TEST_CASE("Test [lt?] primitive", "[less]") {
     REQUIRE(false == result.slice().getBoolean());
   }
 
-  SECTION("Test equality with int greater") {
+  SECTION("Test less than with int greater") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["lt?", 2, 2]
     )aql");
@@ -567,7 +567,7 @@ TEST_CASE("Test [lt?] primitive", "[less]") {
     REQUIRE(false == result.slice().getBoolean());
   }
 
-  SECTION("Test equality with int lower") {
+  SECTION("Test less than with int lower") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["lt?", 1, 2]
     )aql");
@@ -576,7 +576,7 @@ TEST_CASE("Test [lt?] primitive", "[less]") {
     REQUIRE(true == result.slice().getBoolean());
   }
 
-  SECTION("Test equality with double greater") {
+  SECTION("Test less than with double greater") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["lt?", 2.4, 1.3]
     )aql");
@@ -585,7 +585,7 @@ TEST_CASE("Test [lt?] primitive", "[less]") {
     REQUIRE(false == result.slice().getBoolean());
   }
 
-  SECTION("Test equality with double greater") {
+  SECTION("Test less than with double greater") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["lt?", 2.4, 2.4]
     )aql");
@@ -594,7 +594,7 @@ TEST_CASE("Test [lt?] primitive", "[less]") {
     REQUIRE(false == result.slice().getBoolean());
   }
 
-  SECTION("Test equality with double lower") {
+  SECTION("Test less than with double lower") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["lt?", 1.1, 2.3]
     )aql");
@@ -603,7 +603,7 @@ TEST_CASE("Test [lt?] primitive", "[less]") {
     REQUIRE(true == result.slice().getBoolean());
   }
 
-  SECTION("Test equality with true first") {
+  SECTION("Test less than with true first") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["lt?", true, false]
     )aql");
@@ -612,7 +612,7 @@ TEST_CASE("Test [lt?] primitive", "[less]") {
     REQUIRE(res.fail());
   }
 
-  SECTION("Test equality strings") {
+  SECTION("Test less than strings") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["lt?", "astring", "bstring"]
     )aql");
@@ -724,6 +724,7 @@ TEST_CASE("Test [int-to-str] primitive", "[int-to-str]") {
     )aql");
 
     Evaluate(ctx, program->slice(), result);
+    REQUIRE(result.slice().isString());
     REQUIRE("2" == result.slice().toString());
   }
 }
