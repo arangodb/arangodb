@@ -394,6 +394,7 @@ bool Worker<V, E, M>::_processVertices(size_t threadId,
         _readCache->getMessages(vertexEntry->shard(), vertexEntry->key());
     
     if (messages.size() > 0 || vertexEntry->active()) {
+      vertexEntry->setActive(true);
       vertexComputation->_vertexEntry = vertexEntry;
       vertexComputation->compute(messages);
       if (vertexEntry->active()) {
