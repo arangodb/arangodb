@@ -3,12 +3,12 @@
 
 #include <iostream>
 
+#include "./structs/EvalContext.h"
 #include "Pregel/Algos/VertexAccumulators/Greenspun/Interpreter.h"
 #include "Pregel/Algos/VertexAccumulators/Greenspun/Primitives.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
-#include "./structs/EvalContext.h"
 
 /*
  * Calculation operators
@@ -30,13 +30,13 @@ TEST_CASE("Test [+] primitive", "[addition]") {
     REQUIRE(2 == result.slice().getDouble());
   }
 
-  SECTION( "Test basic double addition" ) {
+  SECTION("Test basic double addition") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["+", 1.1, 2.1]
     )aql");
 
     Evaluate(ctx, program->slice(), result);
-    REQUIRE( 3.2 == result.slice().getDouble());
+    REQUIRE(3.2 == result.slice().getDouble());
   }
 }
 
@@ -706,7 +706,7 @@ TEST_CASE("Test [ne?] primitive", "[not equal]") {
  */
 
 TEST_CASE("Test [print] primitive", "[print]") {
-
+  // idk if that one here is necessary. Only a method for debug purpose.
 }
 
 TEST_CASE("Test [list-cat] primitive", "[list-cat]") {
@@ -725,7 +725,7 @@ TEST_CASE("Test [list-cat] primitive", "[list-cat]") {
     REQUIRE(result.slice().isArray());
     REQUIRE(result.slice().length() == 3);
     for (size_t i = 0; i < 3; i++) {
-      REQUIRE(result.slice().at(i).getInt() == (i+1));
+      REQUIRE(result.slice().at(i).getInt() == (i + 1));
     }
   }
 
@@ -738,12 +738,38 @@ TEST_CASE("Test [list-cat] primitive", "[list-cat]") {
     REQUIRE(result.slice().isArray());
     REQUIRE(result.slice().length() == 5);
     for (size_t i = 0; i < 5; i++) {
-      REQUIRE(result.slice().at(i).getInt() == (i+1));
+      REQUIRE(result.slice().at(i).getInt() == (i + 1));
     }
   }
 }
 
-TEST_CASE("Test [string-cat] primitive", "[string-cat]") {}
+TEST_CASE("Test [string-cat] primitive", "[string-cat]") {
+  InitInterpreter();
+  MyEvalContext ctx;
+  VPackBuilder result;
+  auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
+  auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
+
+  SECTION("Test string concat single param") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["string-cat", "hello"]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(result.slice().isString());
+    REQUIRE(result.slice().toString() == "hello");
+  }
+
+  SECTION("Test string concat single param") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["string-cat", "hello", "world"]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(result.slice().isString());
+    REQUIRE(result.slice().toString() == "helloworld");
+  }
+}
 
 TEST_CASE("Test [int-to-str] primitive", "[int-to-str]") {
   InitInterpreter();
@@ -768,7 +794,24 @@ TEST_CASE("Test [int-to-str] primitive", "[int-to-str]") {
  */
 
 TEST_CASE("Test [attrib] primitive", "[attrib]") {}
-TEST_CASE("Test [var-ref] primitive", "[var-ref]") {}
+
+TEST_CASE("Test [var-ref] primitive", "[var-ref]") {
+  InitInterpreter();
+  MyEvalContext ctx;
+  VPackBuilder result;
+  auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
+  auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
+
+  // TODO: add variables to ctx (vertexData)
+  SECTION("Test get non existing variable") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["var-ref", "peter"]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(result.slice().isNone());
+  }
+}
 TEST_CASE("Test [bind-ref] primitive", "[bind-ref]") {}
 TEST_CASE("Test [accum-ref] primitive", "[accumref]") {}
 
@@ -777,4 +820,3 @@ TEST_CASE("Test [update] primitive", "[update]") {}
 TEST_CASE("Test [set] primitive", "[set]") {}
 TEST_CASE("Test [for] primitive", "[for]") {}
 TEST_CASE("Test [global-superstep] primitive", "[global-superstep]") {}
-
