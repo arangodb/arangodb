@@ -29,7 +29,11 @@ using namespace arangodb::pregel::algos;
 // MessageFormat
 VertexAccumulators::MessageFormat::MessageFormat() {}
 
-void VertexAccumulators::MessageFormat::unwrapValue(VPackSlice s, message_type& message) const {};
+void VertexAccumulators::MessageFormat::unwrapValue(VPackSlice s, message_type& message) const {
+  TRI_ASSERT(false);
+};
 
-void VertexAccumulators::MessageFormat::addValue(VPackBuilder& arrayBuilder, message_type const& message) const {};
+void VertexAccumulators::MessageFormat::addValue(VPackBuilder& arrayBuilder, message_type const& message) const {
+  TRI_ASSERT(false);
+};
 
