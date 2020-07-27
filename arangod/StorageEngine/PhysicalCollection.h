@@ -41,6 +41,7 @@
 
 namespace arangodb {
 
+class ClusterInfo;
 class LocalDocumentId;
 class Index;
 class IndexIterator;
@@ -62,7 +63,7 @@ class PhysicalCollection {
   // creation happens atm in engine->createCollection
   virtual arangodb::Result updateProperties(arangodb::velocypack::Slice const& slice,
                                             bool doSync) = 0;
-  virtual TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const = 0;
+  virtual RevisionId revision(arangodb::transaction::Methods* trx) const = 0;
 
   /// @brief export properties
   virtual void getPropertiesVPack(velocypack::Builder&) const = 0;
@@ -157,10 +158,9 @@ class PhysicalCollection {
   ///        the collection and it is guaranteed that no one is using
   ///        it at that moment.
   virtual void deferDropCollection(std::function<bool(LogicalCollection&)> const& callback) = 0;
-  
-  virtual Result lookupKey(transaction::Methods*,
-                           arangodb::velocypack::StringRef,
-                           std::pair<LocalDocumentId, TRI_voc_rid_t>&) const = 0;
+
+  virtual Result lookupKey(transaction::Methods*, arangodb::velocypack::StringRef,
+                           std::pair<LocalDocumentId, RevisionId>&) const = 0;
 
   virtual Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
                       ManagedDocumentResult& result) = 0;
@@ -202,7 +202,7 @@ class PhysicalCollection {
   /// @brief new object for insert, value must have _key set correctly.
   Result newObjectForInsert(transaction::Methods* trx, velocypack::Slice const& value,
                             bool isEdgeCollection, velocypack::Builder& builder,
-                            bool isRestore, TRI_voc_rid_t& revisionId) const;
+                            bool isRestore, RevisionId& revisionId) const;
 
   virtual std::unique_ptr<containers::RevisionTree> revisionTree(
       transaction::Methods& trx);
@@ -213,7 +213,7 @@ class PhysicalCollection {
   virtual void placeRevisionTreeBlocker(TransactionId transactionId);
   virtual void removeRevisionTreeBlocker(TransactionId transactionId);
 
-  TRI_voc_rid_t newRevisionId() const;
+  RevisionId newRevisionId() const;
 
   virtual Result upgrade();
   virtual bool didPartialUpgrade();
@@ -232,25 +232,26 @@ class PhysicalCollection {
   /// @brief new object for remove, must have _key set
   void newObjectForRemove(transaction::Methods* trx, velocypack::Slice const& oldValue,
                           velocypack::Builder& builder, bool isRestore,
-                          TRI_voc_rid_t& revisionId) const;
+                          RevisionId& revisionId) const;
 
   /// @brief merge two objects for update
   Result mergeObjectsForUpdate(transaction::Methods* trx, velocypack::Slice const& oldValue,
                                velocypack::Slice const& newValue,
                                bool isEdgeCollection, bool mergeObjects,
                                bool keepNull, velocypack::Builder& builder,
-                               bool isRestore, TRI_voc_rid_t& revisionId) const;
+                               bool isRestore, RevisionId& revisionId) const;
 
   /// @brief new object for replace
   Result newObjectForReplace(transaction::Methods* trx, velocypack::Slice const& oldValue,
                              velocypack::Slice const& newValue,
                              bool isEdgeCollection, velocypack::Builder& builder,
-                             bool isRestore, TRI_voc_rid_t& revisionId) const;
+                             bool isRestore, RevisionId& revisionId) const;
 
-  bool checkRevision(transaction::Methods* trx, TRI_voc_rid_t expected,
-                     TRI_voc_rid_t found) const;
+  bool checkRevision(transaction::Methods* trx, RevisionId expected,
+                     RevisionId found) const;
 
   LogicalCollection& _logicalCollection;
+  ClusterInfo* _ci;
   bool const _isDBServer;
 
   mutable basics::ReadWriteLock _indexesLock;

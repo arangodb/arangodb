@@ -295,8 +295,10 @@ Result Collections::create(TRI_vocbase_t& vocbase,
                  arangodb::velocypack::Value(useRevs));
       bool isSmartChild =
           Helper::getBooleanValue(info.properties, StaticStrings::IsSmartChild, false);
-      TRI_voc_rid_t minRev = (isSystem || isSmartChild) ? 0 : TRI_HybridLogicalClock();
-      helper.add(arangodb::StaticStrings::MinRevision, arangodb::velocypack::Value(minRev));
+      RevisionId minRev =
+          (isSystem || isSmartChild) ? RevisionId::none() : RevisionId::create();
+      helper.add(arangodb::StaticStrings::MinRevision,
+                 arangodb::velocypack::Value(minRev.toString()));
     }
 
     if (ServerState::instance()->isCoordinator()) {
@@ -907,10 +909,10 @@ futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {
     return revisionOnCoordinator(feature, databaseName, cid);
   }
 
-  TRI_voc_rid_t rid = ctxt.coll()->revision(ctxt.trx(AccessMode::Type::READ, true, true));
+  RevisionId rid = ctxt.coll()->revision(ctxt.trx(AccessMode::Type::READ, true, true));
 
   VPackBuilder builder;
-  builder.add(VPackValue(rid));
+  builder.add(VPackValue(rid.toString()));
 
   return futures::makeFuture(OperationResult(Result(), builder.steal()));
 }
@@ -961,7 +963,7 @@ futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {
 
 arangodb::Result Collections::checksum(LogicalCollection& collection,
                                        bool withRevisions, bool withData,
-                                       uint64_t& checksum, TRI_voc_rid_t& revId) {
+                                       uint64_t& checksum, RevisionId& revId) {
   if (ServerState::instance()->isCoordinator()) {
     return Result(TRI_ERROR_NOT_IMPLEMENTED);
   }

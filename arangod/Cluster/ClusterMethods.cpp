@@ -901,15 +901,12 @@ futures::Future<OperationResult> revisionOnCoordinator(ClusterFeature& feature,
             if (r.isString()) {
               VPackValueLength len;
               char const* p = r.getString(len);
-              TRI_voc_rid_t cmp = TRI_StringToRid(p, len, false);
-
-              TRI_voc_rid_t rid = builder.slice().isNumber()
-                                      ? builder.slice().getNumber<TRI_voc_rid_t>()
-                                      : 0;
-              if (cmp != UINT64_MAX && cmp > rid) {
+              RevisionId cmp = RevisionId::fromString(p, len, false);
+              RevisionId rid = RevisionId::fromSlice(builder.slice());
+              if (cmp != RevisionId::max() && cmp > rid) {
                 // get the maximum value
                 builder.clear();
-                builder.add(VPackValue(cmp));
+                builder.add(VPackValue(cmp.id()));
               }
             }
           } else {

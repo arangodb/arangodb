@@ -193,7 +193,7 @@ void ClusterCollection::unload() {
   }
 }
 
-TRI_voc_rid_t ClusterCollection::revision(transaction::Methods* trx) const {
+RevisionId ClusterCollection::revision(transaction::Methods* trx) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -316,7 +316,7 @@ Result ClusterCollection::compact() {
 }
 
 Result ClusterCollection::lookupKey(transaction::Methods* /*trx*/, VPackStringRef /*key*/,
-                                    std::pair<LocalDocumentId, TRI_voc_rid_t>& /*result*/) const {
+                                    std::pair<LocalDocumentId, RevisionId>& /*result*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

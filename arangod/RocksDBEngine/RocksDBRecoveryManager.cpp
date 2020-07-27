@@ -130,7 +130,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   uint64_t _maxTick;
   uint64_t _maxHLC;
   /// @brief last document removed
-  TRI_voc_rid_t _lastRemovedDocRid = 0;
+  RevisionId _lastRemovedDocRid = RevisionId::none();
 
   rocksdb::SequenceNumber _startSequence;    /// start of batch sequence nr
   rocksdb::SequenceNumber& _currentSequence;  /// current sequence nr
@@ -318,8 +318,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         coll->meta().loadInitialNumberDocuments();
       }
       if (coll) {
-        std::vector<std::size_t> inserts;
-        std::vector<std::size_t> removes;
+        std::vector<std::uint64_t> inserts;
+        std::vector<std::uint64_t> removes;
         inserts.emplace_back(RocksDBKey::documentId(key).id());
         coll->bufferUpdates(_currentSequence, std::move(inserts), std::move(removes));
       }
@@ -366,18 +366,18 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         auto& cc = coll->meta().countUnsafe();
         cc._committedSeq = _currentSequence;
         cc._removed++;
-        if (_lastRemovedDocRid != 0) {
+        if (_lastRemovedDocRid.isSet()) {
           cc._revisionId = _lastRemovedDocRid;
         }
         coll->meta().loadInitialNumberDocuments();
       }
       if (coll) {
-        std::vector<std::size_t> inserts;
-        std::vector<std::size_t> removes;
+        std::vector<std::uint64_t> inserts;
+        std::vector<std::uint64_t> removes;
         removes.emplace_back(RocksDBKey::documentId(key).id());
         coll->bufferUpdates(_currentSequence, std::move(inserts), std::move(removes));
       }
-      _lastRemovedDocRid = 0;  // reset in any case
+      _lastRemovedDocRid = RevisionId::none();  // reset in any case
 
     } else {
       // We have to adjust the estimate with an insert
@@ -475,11 +475,11 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     switch (type) {
       case RocksDBLogType::DocumentRemoveV2:  // remove within a trx
       case RocksDBLogType::SingleRemoveV2:    // single remove
-        TRI_ASSERT(_lastRemovedDocRid == 0);
+        TRI_ASSERT(_lastRemovedDocRid.empty());
         _lastRemovedDocRid = RocksDBLogValue::revisionId(blob);
         break;
       default:
-        _lastRemovedDocRid = 0;  // reset in any other case
+        _lastRemovedDocRid = RevisionId::none();  // reset in any other case
         break;
     }
     RocksDBEngine* engine = rocksutils::globalRocksEngine();

@@ -136,7 +136,7 @@ struct Collections {
   
   static arangodb::Result checksum(LogicalCollection& collection,
                                    bool withRevisions, bool withData,
-                                   uint64_t& checksum, TRI_voc_rid_t& revId);
+                                   uint64_t& checksum, RevisionId& revId);
 
   /// @brief filters properties for collection creation
   static arangodb::velocypack::Builder filterInput(arangodb::velocypack::Slice slice);
