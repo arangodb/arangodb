@@ -709,8 +709,42 @@ TEST_CASE("Test [print] primitive", "[print]") {
 
 }
 
-TEST_CASE("Test [list-cat] primitive", "[list-cat]") {}
+TEST_CASE("Test [list-cat] primitive", "[list-cat]") {
+  InitInterpreter();
+  MyEvalContext ctx;
+  VPackBuilder result;
+  auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
+  auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
+
+  SECTION("Test list cat basic, single param") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["list-cat", ["quote", 1, 2, 3]]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(result.slice().isArray());
+    REQUIRE(result.slice().length() == 3);
+    for (size_t i = 0; i < 3; i++) {
+      REQUIRE(result.slice().at(i).getInt() == (i+1));
+    }
+  }
+
+  SECTION("Test list cat basic, single param") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["list-cat", ["quote", 1, 2, 3], ["quote", 4, 5]]
+    )aql");
+
+    Evaluate(ctx, program->slice(), result);
+    REQUIRE(result.slice().isArray());
+    REQUIRE(result.slice().length() == 5);
+    for (size_t i = 0; i < 5; i++) {
+      REQUIRE(result.slice().at(i).getInt() == (i+1));
+    }
+  }
+}
+
 TEST_CASE("Test [string-cat] primitive", "[string-cat]") {}
+
 TEST_CASE("Test [int-to-str] primitive", "[int-to-str]") {
   InitInterpreter();
   MyEvalContext ctx;
