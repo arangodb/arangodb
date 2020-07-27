@@ -1,10 +1,34 @@
 devel
 -----
 
+* Added startup option `--rocksdb.encryption-key-rotation` to activate/deactivate
+  the encryption key rotation REST API. The API is disabled by default.
+
+* Add internal caching for LogicalCollection objects inside ClusterInfo::loadPlan.
+  This allows avoiding the recreation of LogicalCollection objects that did not
+  change from one loadPlan run to the next. It reduces CPU usage considerably on
+  both Coordinators and DB-servers.
+
+* Fixed undefined behavior in AQL COLLECT with multiple group variables (issue
+  #12267).
+  If you are grouping on "large" values that occur multiple times in different
+  groups, and two different groups with the same large value are written to
+  different batches in the output then the memory could be invalid.
+  e.g. the following query is affected:
+  ```
+  FOR d IN documents
+  FOR batchSizeFiller IN 1..1001
+  COLLECT largeVal = d.largeValue, t = batchSizeFiller
+  RETURN 1
+  ```
 * Revive faster out-of-range comparator for secondary index scans that do a full 
   collection index scan for index types "hash", "skiplist", "persistent". 
 
 * Fixed internal issue #733: Primary sort compression in views now used properly.
+
+* Errors with error code 1200 (Arango conflict) will now get the HTTP response 
+  code 409 (Conflict) instead of 412 (Precondition failed), unless "if-match" header
+  was used in `_api/document` or `_api/gharial`.
 
 * Fix spurious lock timeout errors when restoring collections.
 

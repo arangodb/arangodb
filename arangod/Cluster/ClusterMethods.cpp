@@ -901,15 +901,12 @@ futures::Future<OperationResult> revisionOnCoordinator(ClusterFeature& feature,
             if (r.isString()) {
               VPackValueLength len;
               char const* p = r.getString(len);
-              TRI_voc_rid_t cmp = TRI_StringToRid(p, len, false);
-
-              TRI_voc_rid_t rid = builder.slice().isNumber()
-                                      ? builder.slice().getNumber<TRI_voc_rid_t>()
-                                      : 0;
-              if (cmp != UINT64_MAX && cmp > rid) {
+              RevisionId cmp = RevisionId::fromString(p, len, false);
+              RevisionId rid = RevisionId::fromSlice(builder.slice());
+              if (cmp != RevisionId::max() && cmp > rid) {
                 // get the maximum value
                 builder.clear();
-                builder.add(VPackValue(cmp));
+                builder.add(VPackValue(cmp.id()));
               }
             }
           } else {
@@ -1114,7 +1111,7 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
 Result selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string const& dbname,
                                          std::string const& collname,
                                          std::unordered_map<std::string, double>& result,
-                                         TRI_voc_tick_t tid) {
+                                         TransactionId tid) {
   // Set a few variables needed for our work:
   ClusterInfo& ci = feature.clusterInfo();
 
@@ -1141,8 +1138,8 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string co
   std::string requestsUrl;
   for (auto const& p : *shards) {
     network::Headers headers;
-    if (tid != 0) {
-      headers.try_emplace(StaticStrings::TransactionId, std::to_string(tid));
+    if (tid.isSet()) {
+      headers.try_emplace(StaticStrings::TransactionId, std::to_string(tid.id()));
     }
 
     reqOpts.param("collection", p.first);

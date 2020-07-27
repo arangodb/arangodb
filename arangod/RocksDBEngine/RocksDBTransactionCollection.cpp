@@ -167,7 +167,7 @@ void RocksDBTransactionCollection::releaseUsage() {
 
 /// @brief add an operation for a transaction collection
 void RocksDBTransactionCollection::addOperation(TRI_voc_document_operation_e operationType,
-                                                TRI_voc_rid_t revisionId) {
+                                                RevisionId revisionId) {
   switch (operationType) {
     case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
       break;
@@ -187,7 +187,7 @@ void RocksDBTransactionCollection::addOperation(TRI_voc_document_operation_e ope
   }
 }
 
-void RocksDBTransactionCollection::prepareTransaction(uint64_t trxId, uint64_t beginSeq) {
+void RocksDBTransactionCollection::prepareTransaction(TransactionId trxId, uint64_t beginSeq) {
   TRI_ASSERT(_collection != nullptr);
   if (hasOperations() || !_trackedOperations.empty() || !_trackedIndexOperations.empty()) {
     auto* coll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
@@ -196,7 +196,7 @@ void RocksDBTransactionCollection::prepareTransaction(uint64_t trxId, uint64_t b
   }
 }
 
-void RocksDBTransactionCollection::abortCommit(uint64_t trxId) {
+void RocksDBTransactionCollection::abortCommit(TransactionId trxId) {
   TRI_ASSERT(_collection != nullptr);
   if (hasOperations() || !_trackedOperations.empty() || !_trackedIndexOperations.empty()) {
     auto* coll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
@@ -204,7 +204,7 @@ void RocksDBTransactionCollection::abortCommit(uint64_t trxId) {
   }
 }
 
-void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t commitSeq) {
+void RocksDBTransactionCollection::commitCounts(TransactionId trxId, uint64_t commitSeq) {
   TRI_IF_FAILURE("DisableCommitCounts") {
     return;
   }
@@ -214,7 +214,7 @@ void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t co
   // Update the collection count
   int64_t const adj = _numInserts - _numRemoves;
   if (hasOperations()) {
-    TRI_ASSERT(_revision != 0 && commitSeq != 0);
+    TRI_ASSERT(_revision.isSet() && commitSeq != 0);
     rcoll->meta().adjustNumberDocuments(commitSeq, _revision, adj);
   }
 
@@ -253,15 +253,15 @@ void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t co
   _trackedIndexOperations.clear();
 }
 
-void RocksDBTransactionCollection::trackInsert(TRI_voc_rid_t rid) {
+void RocksDBTransactionCollection::trackInsert(RevisionId rid) {
   if (_collection->useSyncByRevision()) {
-    _trackedOperations.inserts.emplace_back(static_cast<std::size_t>(rid));
+    _trackedOperations.inserts.emplace_back(static_cast<std::uint64_t>(rid.id()));
   }
 }
 
-void RocksDBTransactionCollection::trackRemove(TRI_voc_rid_t rid) {
+void RocksDBTransactionCollection::trackRemove(RevisionId rid) {
   if (_collection->useSyncByRevision()) {
-    _trackedOperations.removals.emplace_back(static_cast<std::size_t>(rid));
+    _trackedOperations.removals.emplace_back(static_cast<std::uint64_t>(rid.id()));
   }
 }
 

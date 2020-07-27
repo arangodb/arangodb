@@ -33,6 +33,7 @@
 #include "Transaction/CountCache.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/Identifiers/IndexId.h"
+#include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/Validators.h"
 #include "VocBase/voc-types.h"
@@ -135,7 +136,7 @@ class LogicalCollection : public LogicalDataSource {
   uint64_t numberDocuments(transaction::Methods*, transaction::CountType type);
 
   // SECTION: Properties
-  TRI_voc_rid_t revision(transaction::Methods*) const;
+  RevisionId revision(transaction::Methods*) const;
   bool waitForSync() const { return _waitForSync; }
   void waitForSync(bool value) { _waitForSync = value; }
 #ifdef USE_ENTERPRISE
@@ -149,7 +150,7 @@ class LogicalCollection : public LogicalDataSource {
 #endif
   bool usesRevisionsAsDocumentIds() const;
   void setUsesRevisionsAsDocumentIds(bool);
-  TRI_voc_rid_t minRevision() const;
+  RevisionId minRevision() const;
   /// @brief is this a cluster-wide Plan (ClusterInfo) collection
   bool isAStub() const { return _isAStub; }
 
@@ -200,10 +201,8 @@ class LogicalCollection : public LogicalDataSource {
   /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
   /// to fetch current values!
   /// @param tid the optional transaction ID to use
-  IndexEstMap clusterIndexEstimates(bool allowUpdating, TRI_voc_tid_t tid = 0);
-
-  /// @brief sets the current index selectivity estimates
-  void setClusterIndexEstimates(IndexEstMap&& estimates);
+  IndexEstMap clusterIndexEstimates(bool allowUpdating,
+                                    TransactionId tid = TransactionId::none());
 
   /// @brief flushes the current index selectivity estimates
   void flushClusterIndexEstimates();
@@ -278,7 +277,7 @@ class LogicalCollection : public LogicalDataSource {
   Result compact();
 
   Result lookupKey(transaction::Methods* trx, velocypack::StringRef key,
-                   std::pair<LocalDocumentId, TRI_voc_rid_t>& result) const;
+                   std::pair<LocalDocumentId, RevisionId>& result) const;
 
   Result insert(transaction::Methods* trx, velocypack::Slice slice,
                 ManagedDocumentResult& result, OperationOptions& options);
@@ -394,7 +393,7 @@ class LogicalCollection : public LogicalDataSource {
   
   std::atomic<bool> _syncByRevision;
 
-  TRI_voc_rid_t const _minRevision;
+  RevisionId const _minRevision;
 
   std::string _smartJoinAttribute;
 

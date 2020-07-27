@@ -102,12 +102,12 @@ TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
       "\"z\":1, \"b\":2, \"a\":3, \"Z\":1, \"B\":2, \"A\": 3, \"_foo\":1, "
       "\"_bar\":2, \"_zoo\":3 }");
 
-  TRI_voc_rid_t revisionId = 0;
+  arangodb::RevisionId revisionId = arangodb::RevisionId::none();
   arangodb::velocypack::Builder builder;
   Result res = physical->newObjectForInsert(nullptr, doc->slice(), false,
                                             builder, false, revisionId);
   EXPECT_TRUE(res.ok());
-  EXPECT_TRUE(revisionId > 0);
+  EXPECT_TRUE(revisionId.isSet());
 
   auto slice = builder.slice();
 

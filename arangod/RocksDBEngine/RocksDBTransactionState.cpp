@@ -62,7 +62,7 @@
 using namespace arangodb;
 
 /// @brief transaction type
-RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                                                  transaction::Options const& options)
     : TransactionState(vocbase, tid, options),
       _rocksTransaction(nullptr),
@@ -426,7 +426,7 @@ Result RocksDBTransactionState::abortTransaction(transaction::Methods* activeTrx
   return result;
 }
 
-void RocksDBTransactionState::prepareOperation(TRI_voc_cid_t cid, TRI_voc_rid_t rid,
+void RocksDBTransactionState::prepareOperation(TRI_voc_cid_t cid, RevisionId rid,
                                                TRI_voc_document_operation_e operationType) {
   TRI_ASSERT(!isReadOnlyTransaction());
 
@@ -452,7 +452,7 @@ void RocksDBTransactionState::prepareOperation(TRI_voc_cid_t cid, TRI_voc_rid_t 
         break;
       }
       case TRI_VOC_DOCUMENT_OPERATION_REMOVE: {
-        TRI_ASSERT(rid != 0);
+        TRI_ASSERT(rid.isSet());
 
         auto logValue = RocksDBLogValue::SingleRemoveV2(_vocbase.id(), cid, rid);
 
@@ -500,7 +500,7 @@ void RocksDBTransactionState::rollbackOperation(TRI_voc_document_operation_e ope
 }
 
 /// @brief add an operation for a transaction collection
-Result RocksDBTransactionState::addOperation(TRI_voc_cid_t cid, TRI_voc_rid_t revisionId,
+Result RocksDBTransactionState::addOperation(TRI_voc_cid_t cid, RevisionId revisionId,
                                              TRI_voc_document_operation_e operationType,
                                              bool& hasPerformedIntermediateCommit) {
   size_t currentSize = _rocksTransaction->GetWriteBatch()->GetWriteBatch()->GetDataSize();
@@ -639,7 +639,7 @@ RocksDBTransactionCollection::TrackedOperations& RocksDBTransactionState::tracke
   return static_cast<RocksDBTransactionCollection*>(col)->trackedOperations();
 }
 
-void RocksDBTransactionState::trackInsert(TRI_voc_cid_t cid, TRI_voc_rid_t rid) {
+void RocksDBTransactionState::trackInsert(TRI_voc_cid_t cid, RevisionId rid) {
   auto col = findCollection(cid);
   if (col != nullptr) {
     static_cast<RocksDBTransactionCollection*>(col)->trackInsert(rid);
@@ -648,7 +648,7 @@ void RocksDBTransactionState::trackInsert(TRI_voc_cid_t cid, TRI_voc_rid_t rid) 
   }
 }
 
-void RocksDBTransactionState::trackRemove(TRI_voc_cid_t cid, TRI_voc_rid_t rid) {
+void RocksDBTransactionState::trackRemove(TRI_voc_cid_t cid, RevisionId rid) {
   auto col = findCollection(cid);
   if (col != nullptr) {
     static_cast<RocksDBTransactionCollection*>(col)->trackRemove(rid);

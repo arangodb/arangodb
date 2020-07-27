@@ -149,12 +149,12 @@ arangodb::Result applyCollectionDumpMarkerInternal(
       // document exists. if yes, we don't try an insert (which would fail anyway) but carry 
       // on with a replace.
       if (keySlice.isString()) {
-        std::pair<arangodb::LocalDocumentId, TRI_voc_rid_t> lookupResult;
+        std::pair<arangodb::LocalDocumentId, arangodb::RevisionId> lookupResult;
         if (coll->getPhysical()->lookupKey(&trx, keySlice.stringRef(), lookupResult).ok()) {
           // determine if we already have this revision or need to replace the
           // one we have
-          TRI_voc_rid_t rid = arangodb::transaction::helpers::extractRevFromDocument(slice);
-          if (rid != 0 && rid == lookupResult.second) {
+          arangodb::RevisionId rid = arangodb::RevisionId::fromSlice(slice);
+          if (rid.isSet() && rid == lookupResult.second) {
             // we already have exactly this document, don't replace, just
             // consider it already applied and bail
             return {};

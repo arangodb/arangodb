@@ -67,7 +67,7 @@ class RocksDBTransactionState final : public TransactionState {
   friend class RocksDBBatchedWithIndexMethods;
 
  public:
-  RocksDBTransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+  RocksDBTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                           transaction::Options const& options);
   ~RocksDBTransactionState();
 
@@ -95,7 +95,7 @@ class RocksDBTransactionState final : public TransactionState {
     return (_status == transaction::Status::ABORTED) && hasOperations();
   }
 
-  void prepareOperation(TRI_voc_cid_t cid, TRI_voc_rid_t rid,
+  void prepareOperation(TRI_voc_cid_t cid, RevisionId rid,
                         TRI_voc_document_operation_e operationType);
 
   /// @brief undo the effects of the previous prepareOperation call
@@ -104,7 +104,7 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief add an operation for a transaction collection
   /// sets hasPerformedIntermediateCommit to true if an intermediate commit was
   /// performed
-  Result addOperation(TRI_voc_cid_t collectionId, TRI_voc_rid_t revisionId,
+  Result addOperation(TRI_voc_cid_t collectionId, RevisionId revisionId,
                       TRI_voc_document_operation_e opType,
                       bool& hasPerformedIntermediateCommit);
 
@@ -145,11 +145,11 @@ class RocksDBTransactionState final : public TransactionState {
 
   /// @brief Track documents inserted to the collection
   ///        Used to update the revision tree for replication after commit
-  void trackInsert(TRI_voc_cid_t cid, TRI_voc_rid_t rid);
+  void trackInsert(TRI_voc_cid_t cid, RevisionId rid);
 
   /// @brief Track documents removed from the collection
   ///        Used to update the revision tree for replication after commit
-  void trackRemove(TRI_voc_cid_t cid, TRI_voc_rid_t rid);
+  void trackRemove(TRI_voc_cid_t cid, RevisionId rid);
 
   /// @brief Every index can track hashes inserted into this index
   ///        Used to update the estimate after the trx committed

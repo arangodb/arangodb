@@ -230,9 +230,10 @@ bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick, VPackSlice const
       if (tidSlice.isString() && tidSlice.getStringLength() > 0) {
         VPackValueLength len;
         char const* str = tidSlice.getStringUnchecked(len);
-        TRI_voc_tid_t tid = NumberUtils::atoi_zero<TRI_voc_tid_t>(str, str + len);
+        TransactionId tid{NumberUtils::atoi_zero<TransactionId::BaseType>(str, str + len)};
 
-        if (tid > 0 && _ongoingTransactions.find(tid) != _ongoingTransactions.end()) {
+        if (tid.isSet() &&
+            _ongoingTransactions.find(tid) != _ongoingTransactions.end()) {
           // must still use this marker as it belongs to a transaction we need
           // to finish
           tooOld = false;
@@ -424,12 +425,11 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
   // extract "tid"
   arangodb::velocypack::StringRef const transactionId =
       VelocyPackHelper::getStringRef(slice, "tid", VPackStringRef());
-  TRI_voc_tid_t tid = 0;
+  TransactionId tid = TransactionId::none();
   if (!transactionId.empty()) {
     // operation is part of a transaction
-    tid = NumberUtils::atoi_zero<TRI_voc_tid_t>(transactionId.data(),
-                                                transactionId.data() +
-                                                    transactionId.size());
+    tid = TransactionId{NumberUtils::atoi_zero<TransactionId::BaseType>(
+        transactionId.data(), transactionId.data() + transactionId.size())};
   }
 
   // in case this is a removal we need to build our marker
@@ -446,19 +446,19 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
     applySlice = _documentBuilder.slice();
   }
 
-  if (tid > 0) {  // part of a transaction
+  if (tid.isSet()) {  // part of a transaction
     auto it = _ongoingTransactions.find(tid);
 
     if (it == _ongoingTransactions.end()) {
       return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION,
-                    std::string("unexpected transaction ") + StringUtils::itoa(tid));
+                    std::string("unexpected transaction ") + StringUtils::itoa(tid.id()));
     }
 
     std::unique_ptr<ReplicationTransaction>& trx = (*it).second;
 
     if (trx == nullptr) {
       return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION,
-                    std::string("unexpected transaction ") + StringUtils::itoa(tid));
+                    std::string("unexpected transaction ") + StringUtils::itoa(tid.id()));
     }
 
     trx->addCollectionAtRuntime(coll->id(), coll->name(), AccessMode::Type::EXCLUSIVE);
@@ -605,8 +605,8 @@ Result TailingSyncer::startTransaction(VPackSlice const& slice) {
 
   // transaction id
   // note: this is the remote transaction id!
-  TRI_voc_tid_t tid =
-      NumberUtils::atoi_zero<TRI_voc_tid_t>(id.data(), id.data() + id.size());
+  TransactionId tid{
+      NumberUtils::atoi_zero<TransactionId::BaseType>(id.data(), id.data() + id.size())};
 
   auto it = _ongoingTransactions.find(tid);
 
@@ -615,7 +615,7 @@ Result TailingSyncer::startTransaction(VPackSlice const& slice) {
     _ongoingTransactions.erase(it);
   }
 
-  TRI_ASSERT(tid > 0);
+  TRI_ASSERT(tid.isSet());
 
   LOG_TOPIC("e39dc", TRACE, Logger::REPLICATION) << "starting replication transaction " << tid;
 
@@ -645,8 +645,8 @@ Result TailingSyncer::abortTransaction(VPackSlice const& slice) {
 
   // transaction id
   // note: this is the remote transaction id!
-  TRI_voc_tid_t const tid =
-      NumberUtils::atoi_zero<TRI_voc_tid_t>(id.data(), id.data() + id.size());
+  TransactionId const tid{
+      NumberUtils::atoi_zero<TransactionId::BaseType>(id.data(), id.data() + id.size())};
 
   auto it = _ongoingTransactions.find(tid);
 
@@ -655,7 +655,7 @@ Result TailingSyncer::abortTransaction(VPackSlice const& slice) {
     return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION);
   }
 
-  TRI_ASSERT(tid > 0);
+  TRI_ASSERT(tid.isSet());
 
   LOG_TOPIC("19551", TRACE, Logger::REPLICATION) << "aborting replication transaction " << tid;
 
@@ -675,8 +675,8 @@ Result TailingSyncer::commitTransaction(VPackSlice const& slice) {
 
   // transaction id
   // note: this is the remote transaction id!
-  TRI_voc_tid_t const tid =
-      NumberUtils::atoi_zero<TRI_voc_tid_t>(id.data(), id.data() + id.size());
+  TransactionId const tid{
+      NumberUtils::atoi_zero<TransactionId::BaseType>(id.data(), id.data() + id.size())};
 
   auto it = _ongoingTransactions.find(tid);
 
@@ -684,7 +684,7 @@ Result TailingSyncer::commitTransaction(VPackSlice const& slice) {
     return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION);
   }
 
-  TRI_ASSERT(tid > 0);
+  TRI_ASSERT(tid.isSet());
 
   LOG_TOPIC("fb331", TRACE, Logger::REPLICATION) << "committing replication transaction " << tid;
 
@@ -1757,7 +1757,9 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick, TRI_voc_tic
                         "array of ids");
     }
     auto ref = it.stringRef();
-    _ongoingTransactions.try_emplace(StringUtils::uint64(ref.data(), ref.size()), nullptr);
+    _ongoingTransactions.try_emplace(TransactionId{NumberUtils::atoi_zero<TransactionId::BaseType>(
+                                         ref.data(), ref.data() + ref.size())},
+                                     nullptr);
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -1819,7 +1821,7 @@ void TailingSyncer::fetchMasterLog(std::shared_ptr<Syncer::JobSynchronizer> shar
       // of transactions when we are in parallel mode, as the parallel
       // mode is only supported for the RocksDB engine
       for (auto& it : _ongoingTransactions) {
-        builder.add(VPackValue(StringUtils::itoa(it.first)));
+        builder.add(VPackValue(StringUtils::itoa(it.first.id())));
       }
     }
     builder.close();

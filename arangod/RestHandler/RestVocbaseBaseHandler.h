@@ -30,6 +30,7 @@
 #include "RestServer/VocbaseContext.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/vocbase.h"
 
 struct TRI_vocbase_t;
@@ -180,16 +181,12 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   /// @brief generates forbidden
   void generateForbidden();
 
-  /// @brief generates precondition failed, without transaction info
-  ///        DEPRECATED
-  void generatePreconditionFailed(std::string const&, std::string const& key,
-                                  TRI_voc_rid_t rev);
-
-  /// @brief generates precondition failed, without transaction info
-  void generatePreconditionFailed(arangodb::velocypack::Slice const& slice);
+  /// @brief generates conflict error
+  void generateConflictError(arangodb::OperationResult const&,
+                             bool precFailed = false);
 
   /// @brief generates not modified
-  void generateNotModified(TRI_voc_rid_t);
+  void generateNotModified(RevisionId);
 
   /// @brief generates first entry from a result set
   void generateDocument(arangodb::velocypack::Slice const& input, 
@@ -200,22 +197,18 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   /// is used by the others.
   void generateTransactionError(std::string const& collectionName,
                                 OperationResult const& result,
-                                std::string const& key, TRI_voc_rid_t = 0);
+                                std::string const& key = "",
+                                RevisionId rid = RevisionId::none());
 
   /// @brief generate an error message for a transaction error
-  void generateTransactionError(std::string const& collectionName, 
-                                Result const& res,
-                                std::string const& key, TRI_voc_rid_t rid = 0) {
+  void generateTransactionError(std::string const& collectionName,
+                                Result const& res, std::string const& key,
+                                RevisionId rid = RevisionId::none()) {
     generateTransactionError(collectionName, OperationResult(res), key, rid);
   }
-
-  /// @brief generate an error message for a transaction error
-  void generateTransactionError(OperationResult const& result) {
-    generateTransactionError("", result, "", 0);
-  }
-
+  
   /// @brief extracts the revision. "header" must be lowercase.
-  TRI_voc_rid_t extractRevision(char const* header, bool& isValid) const;
+  RevisionId extractRevision(char const* header, bool& isValid) const;
 
   /// @brief extracts a string parameter value
   void extractStringParameter(std::string const& name, std::string& ret) const;

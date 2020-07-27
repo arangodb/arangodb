@@ -123,13 +123,13 @@ class WalAccess {
 
     /// only include these transactions, up to
     /// (not including) firstRegularTick
-    std::unordered_set<TRI_voc_tid_t> transactionIds;
+    std::unordered_set<TransactionId> transactionIds;
     /// @brief starting from this tick ignore transactionIds
     TRI_voc_tick_t firstRegularTick = 0;
   };
 
   typedef std::function<void(TRI_vocbase_t*, velocypack::Slice const&)> MarkerCallback;
-  typedef std::function<void(TRI_voc_tid_t, TRI_voc_tid_t)> TransactionCallback;
+  typedef std::function<void(TransactionId, TransactionId)> TransactionCallback;
 
   /// {"tickMin":"123", "tickMax":"456",
   ///  "server":{"version":"3.2", "serverId":"abc"}}
@@ -150,8 +150,7 @@ class WalAccess {
                                            TransactionCallback const&) const = 0;
 
   virtual WalAccessResult tail(Filter const& filter, size_t chunkSize,
-                               TRI_voc_tid_t barrierId,
-                               MarkerCallback const&) const = 0;
+                               TransactionId barrierId, MarkerCallback const&) const = 0;
 };
 
 /// @brief helper class used to resolve vocbases

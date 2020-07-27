@@ -151,7 +151,7 @@ RestStatus RestCollectionHandler::handleCommandGet() {
     bool withData = _request->parsedValue("withData", false);
 
     uint64_t checksum;
-    TRI_voc_rid_t revId;
+    RevisionId revId;
     res = methods::Collections::checksum(*coll, withRevisions, withData,
                                          checksum, revId);
 
@@ -160,7 +160,7 @@ RestStatus RestCollectionHandler::handleCommandGet() {
         VPackObjectBuilder obj(&_builder, true);
 
         obj->add("checksum", VPackValue(std::to_string(checksum)));
-        obj->add("revision", VPackValue(TRI_RidToString(revId)));
+        obj->add("revision", VPackValue(revId.toString()));
 
         // We do not need a transaction here
         methods::Collections::Context ctxt(coll);
@@ -216,16 +216,14 @@ RestStatus RestCollectionHandler::handleCommandGet() {
     return waitForFuture(methods::Collections::revisionId(*_ctxt).thenValue(
         [this, coll](OperationResult&& res) {
           if (res.fail()) {
-            generateTransactionError(res);
+            generateTransactionError(coll->name(), res);
             return;
           }
 
-          TRI_voc_rid_t rid = res.slice().isNumber()
-                                  ? res.slice().getNumber<TRI_voc_rid_t>()
-                                  : 0;
+          RevisionId rid = RevisionId::fromSlice(res.slice());
           {
             VPackObjectBuilder obj(&_builder, true);
-            obj->add("revision", VPackValue(StringUtils::itoa(rid)));
+            obj->add("revision", VPackValue(StringUtils::itoa(rid.id())));
 
             // no need to use async variant
             collectionRepresentation(*_ctxt, /*showProperties*/ true,
@@ -501,7 +499,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
           // result stays valid!
           Result res = _activeTrx->finish(opres.result);
           if (opres.fail()) {
-            generateTransactionError(opres);
+            generateTransactionError(coll->name(), opres);
             return;
           }
 
