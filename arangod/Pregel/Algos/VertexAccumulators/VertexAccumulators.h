@@ -93,6 +93,7 @@ struct VertexAccumulators : public Algorithm<VertexData, EdgeData, MessageData> 
 
     std::string const _resultField;
 
+
     // We use these accumulatorDeclarations to setup VertexData in
     // copyVertexData
     std::map<std::string, AccumulatorOptions> _accumulatorDeclarations;

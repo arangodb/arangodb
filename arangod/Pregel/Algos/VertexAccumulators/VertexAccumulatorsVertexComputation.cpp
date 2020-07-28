@@ -56,6 +56,16 @@ struct VertexComputationEvalContext : PrimEvalContext {
     _vertexData._accumulators.at(std::string{accumId})->setBySlice(value);
   }
 
+  EvalResult getPregelId(VPackBuilder &result) const override {
+    auto id = _computation.pregelId();
+    {
+      VPackObjectBuilder ob(&result);
+      result.add("key", VPackValue(id.key));
+      result.add("shard", VPackValue(id.shard));
+    }
+    return {};
+  }
+
   void updateAccumulator(std::string_view accumId, std::string_view toId,
                          VPackSlice value) override {
     MessageData msg;
@@ -72,6 +82,27 @@ struct VertexComputationEvalContext : PrimEvalContext {
         return;
       }
     }
+  }
+
+  EvalResult updateAccumulatorById(std::string_view accumId, VPackSlice toVertex, VPackSlice value) override {
+    MessageData msg;
+    msg.reset(std::string{accumId}, value, getThisId());
+
+    const auto pregelIdFromSlice = [](VPackSlice slice) -> PregelID {
+      if (slice.isObject()) {
+        VPackSlice key = slice.get("key");
+        VPackSlice shard = slice.get("shard");
+        if (key.isString() && shard.isNumber<PregelShard>()) {
+          return PregelID(shard.getNumber<PregelShard>(), key.copyString());
+        }
+      }
+
+      return {};
+    };
+
+    PregelID id = pregelIdFromSlice(toVertex);
+    _computation.sendMessage(id, msg);
+    return {};
   }
 
   EvalResult enumerateEdges(std::function<EvalResult(VPackSlice edge)> cb) const override {

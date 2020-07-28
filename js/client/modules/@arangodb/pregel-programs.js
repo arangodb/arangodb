@@ -147,7 +147,7 @@ function strongly_connected_components_program(
             },
             activeInbound: {
                 accumulatorType: "list",
-                valueType: "strings",
+                valueType: "slice",
             },
         },
         phases: [
@@ -170,12 +170,12 @@ function strongly_connected_components_program(
                         "outbound",
                         ["quote", "edge"],
                         ["quote", "seq",
-                            ["print", ["vertex-unique-id"], "sending to vertex", ["attrib", "_to", ["var-ref", "edge"]], "with value", ["this"]],
+                            ["print", ["vertex-unique-id"], "sending to vertex", ["attrib", "_to", ["var-ref", "edge"]], "with value", ["pregel-id"]],
                             [
                                 "update",
                                 "activeInbound",
                                 ["attrib", "_to", ["var-ref", "edge"]],
-                                ["this"]
+                                ["pregel-id"]
                             ]
                         ]
                     ],
@@ -210,7 +210,7 @@ function strongly_connected_components_program(
                                 "outbound",
                                 ["quote", "edge"],
                                 ["quote", "seq",
-                                    ["print", ["vertex-unique-id"], "sending to vertex", ["attrib", "_to", ["var-ref", "edge"]], "with value", ["accum-ref", "forwardMin"]],
+                                    //["print", ["vertex-unique-id"], "sending to vertex", ["attrib", "_to", ["var-ref", "edge"]], "with value", ["accum-ref", "forwardMin"]],
                                     [
                                         "update",
                                         "forwardMin",
@@ -226,6 +226,7 @@ function strongly_connected_components_program(
             },
             {
                 name: "backward",
+                onHalt: ["goto", "broadcast"],
                 initProgram: ["if",
                     [
                         ["not", ["accum-ref", "isDisabled"]],
@@ -259,13 +260,14 @@ function strongly_connected_components_program(
                         [
                             "seq",
                             ["set", "isDisabled", true],
+                            ["print", "I am done, my SCC id is", ["accum-ref", "forwardMin"]],
                             [
                                 "for-each",
                                 ["vertex", ["accum-ref", "activeInbound"]],
                                 ["seq",
-                                    ["print", ["vertex-unique-id"], "sending to vertex", ["var-ref", "vertex"], "with value", ["accum-ref", "backwardMin"]],
+                                    //["print", ["vertex-unique-id"], "sending to vertex", ["var-ref", "vertex"], "with value", ["accum-ref", "backwardMin"]],
                                     [
-                                        "update",
+                                        "update-by-id",
                                         "backwardMin",
                                         ["var-ref", "vertex"],
                                         ["accum-ref", "backwardMin"]

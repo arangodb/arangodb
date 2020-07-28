@@ -209,10 +209,22 @@ EvalResult Prim_AccumRef(PrimEvalContext& ctx, VPackSlice const params, VPackBui
 
 EvalResult Prim_Update(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto&& [accumId, toId, value] =
-      unpackTuple<std::string_view, std::string_view, VPackSlice>(params);
+  unpackTuple<std::string_view, std::string_view, VPackSlice>(params);
 
   ctx.updateAccumulator(accumId, toId, value);
   return {};
+}
+
+EvalResult Prim_UpdateById(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+  auto&& [accumId, toId, value] =
+  unpackTuple<std::string_view, VPackSlice, VPackSlice>(params);
+
+  ctx.updateAccumulatorById(accumId, toId, value);
+  return {};
+}
+
+EvalResult Prim_PregelId(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+  return ctx.getPregelId(result);
 }
 
 EvalResult Prim_Set(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
@@ -413,6 +425,8 @@ void RegisterPrimitives() {
   primitives["vertex-unique-id"] = Prim_VertexUniqueId;
   //  primitives["doc"] = Prim_Doc;
   primitives["update"] = Prim_Update;
+  primitives["update-by-id"] = Prim_UpdateById;
+  primitives["pregel-id"] = Prim_PregelId;
   primitives["set"] = Prim_Set;
   primitives["for"] = Prim_For;
   primitives["global-superstep"] = Prim_GlobalSuperstep;
