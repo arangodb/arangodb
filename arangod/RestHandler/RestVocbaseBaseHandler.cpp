@@ -421,10 +421,9 @@ void RestVocbaseBaseHandler::generateConflictError(OperationResult const& opres,
 /// @brief generates not modified
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateNotModified(TRI_voc_rid_t rid) {
+void RestVocbaseBaseHandler::generateNotModified(RevisionId rid) {
   resetResponse(rest::ResponseCode::NOT_MODIFIED);
-  _response->setHeaderNC(StaticStrings::Etag,
-                         "\"" + TRI_RidToString(rid) + "\"");
+  _response->setHeaderNC(StaticStrings::Etag, "\"" + rid.toString() + "\"");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -467,7 +466,7 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input, bool gene
 void RestVocbaseBaseHandler::generateTransactionError(std::string const& collectionName,
                                                       OperationResult const& result,
                                                       std::string const& key,
-                                                      TRI_voc_rid_t rev) {
+                                                      RevisionId rev) {
   int code = result.errorNumber();
   switch (code) {
     case TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND:
@@ -495,7 +494,7 @@ void RestVocbaseBaseHandler::generateTransactionError(std::string const& collect
       if (result.buffer != nullptr && !result.slice().isNone()) {
         // This case happens if we come via the generateTransactionError that
         // has a proper OperationResult with a slice:
-        generateConflictError(result, /*precFailed*/ rev != 0);
+        generateConflictError(result, /*precFailed*/ rev.isSet());
       } else {
         // This case happens if we call this method directly with a dummy
         // OperationResult:
@@ -507,10 +506,10 @@ void RestVocbaseBaseHandler::generateTransactionError(std::string const& collect
         builder.add(StaticStrings::IdString,
                     VPackValue(assembleDocumentId(collectionName, key, false)));
         builder.add(StaticStrings::KeyString, VPackValue(key));
-        builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(rev)));
+        builder.add(StaticStrings::RevString, VPackValue(rev.toString()));
         builder.close();
       
-        generateConflictError(tmp, /*precFailed*/ rev != 0);
+        generateConflictError(tmp, /*precFailed*/ rev.isSet());
       }
       return;
 
@@ -523,7 +522,7 @@ void RestVocbaseBaseHandler::generateTransactionError(std::string const& collect
 /// @brief extracts the revision
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header, bool& isValid) const {
+RevisionId RestVocbaseBaseHandler::extractRevision(char const* header, bool& isValid) const {
   isValid = true;
   bool found;
   std::string const& etag = _request->header(header, found);
@@ -548,16 +547,16 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header, bool& 
       --e;
     }
 
-    TRI_voc_rid_t rid = 0;
+    RevisionId rid = RevisionId::none();
 
     bool isOld;
-    rid = TRI_StringToRid(s, e - s, isOld, false);
-    isValid = (rid != 0 && rid != UINT64_MAX);
+    rid = RevisionId::fromString(s, e - s, isOld, false);
+    isValid = (rid.isSet() && rid != RevisionId::max());
 
     return rid;
   }
 
-  return 0;
+  return RevisionId::none();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -137,22 +137,17 @@ CostEstimate SubqueryEndNode::estimateCost() const {
 
 bool SubqueryEndNode::isEqualTo(ExecutionNode const& other) const {
   TRI_ASSERT(_outVariable != nullptr);
-  if (other.getType() != getType()) {
+  if (other.getType() != ExecutionNode::SUBQUERY_END) {
     return false;
   }
-  try {
-    SubqueryEndNode const& p = dynamic_cast<SubqueryEndNode const&>(other);
-    TRI_ASSERT(p._outVariable != nullptr);
-    if (!CompareVariables(_outVariable, p._outVariable) ||
-        !CompareVariables(_inVariable, p._inVariable)) {
-      // One of the variables does not match
-      return false;
-    }
-    return ExecutionNode::isEqualTo(p);
-  } catch (const std::bad_cast&) {
-    TRI_ASSERT(false);
+  SubqueryEndNode const* p = ExecutionNode::castTo<SubqueryEndNode const*>(&other);
+  TRI_ASSERT(p->_outVariable != nullptr);
+  if (!CompareVariables(_outVariable, p->_outVariable) ||
+      !CompareVariables(_inVariable, p->_inVariable)) {
+    // One of the variables does not match
     return false;
   }
+  return ExecutionNode::isEqualTo(other);
 }
 
 // NOTE: A SubqueryEndNode should never be asked whether its a modification

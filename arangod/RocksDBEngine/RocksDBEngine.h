@@ -314,12 +314,14 @@ class RocksDBEngine final : public StorageEngine {
   void prepareEnterprise();
   void configureEnterpriseRocksDBOptions(rocksdb::Options& options, bool createdEngineDir);
   void validateJournalFiles() const;
-  
+ 
   Result readUserEncryptionSecrets(std::vector<enterprise::EncryptionSecret>& outlist) const;
 
   enterprise::RocksDBEngineEEData _eeData;
 
  public:
+  bool encryptionKeyRotationEnabled() const;
+
   bool isEncryptionEnabled() const;
   
   std::string const& getEncryptionKey();

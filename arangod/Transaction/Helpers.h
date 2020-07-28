@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Transaction/CountCache.h"
 #include "Utils/OperationResult.h"
+#include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
@@ -82,12 +83,12 @@ VPackSlice extractToFromDocument(VPackSlice);
 /// this is an optimized version used when loading collections, WAL
 /// collection and compaction
 void extractKeyAndRevFromDocument(VPackSlice slice, VPackSlice& keySlice,
-                                  TRI_voc_rid_t& revisionId);
+                                  RevisionId& revisionId);
 
 velocypack::StringRef extractCollectionFromId(velocypack::StringRef id);
 
 /// @brief extract _rev from a database document
-TRI_voc_rid_t extractRevFromDocument(VPackSlice slice);
+RevisionId extractRevFromDocument(VPackSlice slice);
 VPackSlice extractRevSliceFromDocument(VPackSlice slice);
 
 OperationResult buildCountResult(std::vector<std::pair<std::string, uint64_t>> const& count,
