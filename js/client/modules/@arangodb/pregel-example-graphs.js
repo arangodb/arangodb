@@ -3027,7 +3027,7 @@ function createWikiVoteGraph(graphName, numberOfShards) {
   } catch (e) {}
   graphModule._create(
     graphName,
-    [graphModule._relation("E", "V", "V")],
+    [graphModule._relation(ename, vname, vname)],
     [],
     { smartGraphAttribute: "id", numberOfShards: numberOfShards }
   );

@@ -48,6 +48,45 @@ function test_bind_parameter_program(bindParameter, value) {
     };
 }
 
+
+/* Computes the vertex degree */
+
+function vertex_degree_program(resultField) {
+  return {
+    resultField: resultField,
+    maxGSS: 2,
+    accumulatorsDeclaration: {
+      inDegree: {
+        accumulatorType: "sum",
+        valueType: "ints",
+        storeSender: false
+      }
+    },
+    initProgram: [ "for",
+                   "outbound",
+                   ["quote", "edge"],
+                   [
+                     "quote",
+                     "seq",
+                     [ "update",
+                       "inDegree",
+                       ["attrib", "_to", ["var-ref", "edge"]], 1],
+                   ],
+                 ],
+    updateProgram: [ false ]
+  };
+}
+
+function vertex_degree(
+  graphName,
+  resultField) {
+  return pregel.start(
+    "vertexaccumulators",
+    graphName,
+    vertex_degree_program(resultField)
+  );
+}
+
 /* Performs a single-source shortest path search (currently without path reconstruction)
    on all vertices in the graph starting from startVertex, using the cost stored
    in weightAttribute on each edge and storing the end result in resultField as an object
@@ -300,6 +339,8 @@ function strongly_connected_components(
         )
     );
 }
+
+exports.vertex_degree = vertex_degree;
 
 exports.single_source_shortest_path_program = single_source_shortest_path_program;
 exports.single_source_shortest_path = single_source_shortest_path;
