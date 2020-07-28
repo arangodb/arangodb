@@ -292,6 +292,56 @@ TEST_F(VPackDeserializerBasicTest, test06) {
   ASSERT_FALSE(result.ok());
 }
 
+/* clang-format off */
+static_assert(GTEST_HAS_TYPED_TEST, "We need typed tests for the following:");
+
+template <typename T>
+class VPackDeserializerArithmeticTest : public ::testing::Test {
+  struct value {
+    T v;
+  };
+
+public:
+
+  void checkWorks(T v) {
+    Builder b;
+    b.add(Value(v));
+
+    auto result = deserialize<values::value_deserializer<T>>(b.slice());
+
+    ASSERT_TRUE(result.ok());
+    ASSERT_EQ(result.get(), v);
+  }
+
+  void checkDoesNotWork() {
+    Builder b;
+    b.add(Value("BANANAS"));
+
+    auto result = deserialize<values::value_deserializer<T>>(b.slice());
+    ASSERT_TRUE(result.error());
+  }
+
+protected:
+  VPackDeserializerArithmeticTest() {}
+  ~VPackDeserializerArithmeticTest() {}
+};
+
+using TypesToTest = ::testing::Types<int, size_t, ssize_t, uint8_t, uint16_t, uint32_t, uint64_t, int8_t, int16_t, int32_t, int64_t>;
+
+TYPED_TEST_CASE(VPackDeserializerArithmeticTest, TypesToTest);
+
+TYPED_TEST(VPackDeserializerArithmeticTest, canRead) {
+  this->checkWorks(0);
+  this->checkWorks(5);
+  this->checkWorks(-5);
+};
+
+TYPED_TEST(VPackDeserializerArithmeticTest, cannotRead) {
+  this->checkDoesNotWork();
+}
+
+/* clang-format on */
+
 }  // namespace deserializer
 }  // namespace tests
 }  // namespace arangodb
