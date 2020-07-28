@@ -77,7 +77,7 @@ using accumulator_options_deserializer =
 /* Algorithm Phase */
 
 constexpr const char name[] = "name";
-constexpr const char onHalt[] = "on-halt";
+constexpr const char onHalt[] = "onHalt";
 constexpr const char initProgram[] = "initProgram";
 constexpr const char updateProgram[] = "updateProgram";
 
