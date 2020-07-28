@@ -45,7 +45,7 @@ size_t VertexAccumulators::GraphFormat::estimatedEdgeSize() const {
 void VertexAccumulators::GraphFormat::copyVertexData(std::string const& documentId,
                                                      arangodb::velocypack::Slice vertexDocument,
                                                      vertex_type& targetPtr) {
-  targetPtr.reset(_accumulatorDeclarations, documentId, vertexDocument);
+  targetPtr.reset(_accumulatorDeclarations, documentId, vertexDocument, _vertexIdRange++);
 }
 
 void VertexAccumulators::GraphFormat::copyEdgeData(arangodb::velocypack::Slice edgeDocument,

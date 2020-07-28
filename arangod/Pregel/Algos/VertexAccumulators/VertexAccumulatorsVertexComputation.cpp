@@ -38,6 +38,14 @@ struct VertexComputationEvalContext : PrimEvalContext {
     return _vertexData._documentId;
   }
 
+  std::size_t getVertexUniqueId() const override {
+    return _vertexData._vertexId;
+  }
+
+  void printCallback(const std::string &msg) const override {
+    LOG_DEVEL << msg;
+  }
+
   void getAccumulatorValue(std::string_view accumId, VPackBuilder& builder) const override {
     _vertexData._accumulators.at(std::string{accumId})->getIntoBuilder(builder);
   }
@@ -106,7 +114,9 @@ void VertexAccumulators::VertexComputation::compute(MessageIterator<MessageData>
 
   LOG_DEVEL << "running phase " << phase.name << " superstep = " << phaseGlobalSuperstep() << " global superstep = " << globalSuperstep();
 
-  if (phaseGlobalSuperstep() == 0) {
+  std::size_t phaseStep = phaseGlobalSuperstep();
+
+  if (phaseStep == 0) {
     VPackBuilder initResultBuilder;
 
     auto result = Evaluate(evalContext, phase.initProgram.slice(),
@@ -127,10 +137,17 @@ void VertexAccumulators::VertexComputation::compute(MessageIterator<MessageData>
       }
     }
   } else {
+    bool accumChanged = false;
     for (const MessageData* msg : incomingMessages) {
-      vertexData()
+      accumChanged |= vertexData()
           ._accumulators.at(msg->_accumulatorName)
-          ->updateBySlice(msg->_value.slice(), msg->_sender);
+          ->updateBySlice(msg->_value.slice(), msg->_sender) == AccumulatorBase::UpdateResult::CHANGED;
+    }
+
+    if (!accumChanged && phaseStep != 1) {
+      voteHalt();
+      LOG_DEVEL << "No accumulators changed, voting halt";
+      return;
     }
 
     VPackBuilder stepResultBuilder;
@@ -149,7 +166,7 @@ void VertexAccumulators::VertexComputation::compute(MessageIterator<MessageData>
           voteHalt();
         }
       } else {
-        LOG_DEVEL << "updateProgram of phase `\" << phase.name << \"` did not return a boolean value, but " << rs.toJson();
+        LOG_DEVEL << "updateProgram of phase `" << phase.name << "` did not return a boolean value, but " << rs.toJson();
       }
     }
   }

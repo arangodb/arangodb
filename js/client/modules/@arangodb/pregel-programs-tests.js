@@ -116,9 +116,9 @@ function exec_sssp_test() {
 }
 
 function exec_scc_test() {
-  pe.create_circle("Circle", 2);
+  pe.create_circle("Circle", 5);
 
-  return pregel.start("scc", "Circle", {});
+  return pp.strongly_connected_components("Circle", "scc");
 }
 
 exports.exec_test_wiki_vote = exec_test_wiki_vote;

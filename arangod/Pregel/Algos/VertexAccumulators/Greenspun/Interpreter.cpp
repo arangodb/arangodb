@@ -212,7 +212,15 @@ EvalResult SpecialForEach(EvalContext& ctx, ArrayIterator paramIterator, VPackBu
     return EvalError("Expected at least one argument");
   }
 
-  std::vector<std::pair<std::string_view, ArrayIterator>> iterators;
+  struct IteratorTriple {
+    std::string_view varName;
+    VPackBuilder value;
+    ArrayIterator iterator;
+
+    IteratorTriple(std::string_view name, VPackBuilder v) : varName(name), value(std::move(v)), iterator(value.slice()) {}
+  };
+
+  std::vector<IteratorTriple> iterators;
 
   auto const readIteratorPair = [&](VPackSlice pair) -> EvalResult {
     if (pair.length() != 2) {
@@ -225,7 +233,12 @@ EvalResult SpecialForEach(EvalContext& ctx, ArrayIterator paramIterator, VPackBu
     if (!array.isArray()) {
       return EvalError("Expected array os second entry, found: " + array.toJson());
     }
-    iterators.emplace_back(var.stringView(), ArrayIterator(array));
+    VPackBuilder listResult;
+    if (auto res = Evaluate(ctx, array, listResult); res.fail()) {
+      return res;
+    }
+
+    iterators.emplace_back(var.stringView(), std::move(listResult));
     return {};
   };
 
@@ -247,9 +260,9 @@ EvalResult SpecialForEach(EvalContext& ctx, ArrayIterator paramIterator, VPackBu
       return Evaluate(ctx, body, sink);
     } else {
       auto pair = iterators.at(index);
-      for (auto&& x : pair.second) {
+      for (auto&& x : pair.iterator) {
         StackFrameGuard<true> guard(ctx);
-        ctx.setVariable(std::string{pair.first}, x);
+        ctx.setVariable(std::string{pair.varName}, x);
         if (auto res = next(ctx, index + 1, next); res.fail()) {
           return res;
         }
@@ -280,8 +293,11 @@ EvalResult Call(EvalContext& ctx, VPackSlice const functionSlice,
 
 EvalResult Evaluate(EvalContext& ctx, VPackSlice const slice, VPackBuilder& result) {
   if (slice.isArray()) {
-    auto paramIterator = ArrayIterator(slice);
+    if (slice.isEmptyArray()) {
+      return EvalError("empty application");
+    }
 
+    auto paramIterator = ArrayIterator(slice);
     VPackBuilder functionBuilder;
     {
       StackFrameGuard<false> guard(ctx);

@@ -45,7 +45,7 @@ class VertexData {
   std::string toString() const { return "vertexAkkum"; };
 
   void reset(AccumulatorsDeclaration const& accumulatorsDeclaration,
-             std::string documentId, VPackSlice const& doc);
+             std::string documentId, VPackSlice const& doc, std::size_t vertexId);
 
   std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> _accumulators;
 
@@ -53,6 +53,7 @@ class VertexData {
   // FIXME: YOLO. we copy the whole document, which is
   //        probably super expensive.
   VPackBuilder _document;
+  std::size_t _vertexId;
 };
 
 std::ostream& operator<<(std::ostream&, VertexData const&);
@@ -108,6 +109,9 @@ struct VertexAccumulators : public Algorithm<VertexData, EdgeData, MessageData> 
                              const vertex_type* ptr, size_t size) const override;
     bool buildEdgeDocument(arangodb::velocypack::Builder& b,
                            const edge_type* ptr, size_t size) const override;
+
+   protected:
+    std::atomic<uint64_t> _vertexIdRange = 0;
   };
 
   struct MessageFormat : public message_format {

@@ -34,6 +34,8 @@ struct PrimEvalContext : EvalContext {
                                  std::string_view toId, VPackSlice value) {};
   virtual void setAccumulator(std::string_view accumId, VPackSlice value) {};
 
+  virtual std::size_t getVertexUniqueId() const { return 0; }
+
   virtual EvalResult enumerateEdges(std::function<EvalResult(VPackSlice edge)> cb) const {
     return EvalError("not impemented");
   }
@@ -49,6 +51,8 @@ struct PrimEvalContext : EvalContext {
   virtual EvalResult finishAlgorithm() const {
     return EvalError("not impemented");
   }
+
+  virtual void printCallback(std::string const& msg) const;
 };
 
 extern std::unordered_map<std::string, std::function<EvalResult(PrimEvalContext& ctx, VPackSlice const slice, VPackBuilder& result)>> primitives;

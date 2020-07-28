@@ -307,19 +307,22 @@ EvalResult Prim_Not(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder&
 }
 
 EvalResult Prim_PrintLn(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+  std::stringstream ss;
+
   for (auto&& p : VPackArrayIterator(params)) {
     if (p.isString()) {
-      std::cout << p.stringView();
+      ss << p.stringView();
     } else if (p.isNumber()) {
-      std::cout << p.getNumber<double>();
+      ss << p.getNumber<double>();
+    } else if (p.isBool()) {
+      ss << std::boolalpha << p.getBool();
     } else {
-      std::cout << p.toJson();
+      ss << p.toJson();
     }
-    std::cout << " ";
+    ss << " ";
   }
 
-  std::cout << std::endl;
-
+  ctx.printCallback(ss.str());
   result.add(VPackSlice::noneSlice());
   return {};
 }
@@ -362,6 +365,14 @@ EvalResult Prim_Finish(PrimEvalContext& ctx, VPackSlice const params, VPackBuild
     return EvalError("expect no arguments");
 }
 
+EvalResult Prim_VertexUniqueId(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+  if (params.isEmptyArray()) {
+    result.add(VPackValue(ctx.getVertexUniqueId()));
+    return {};
+  }
+
+  return EvalError("expect no arguments");
+}
 
 void RegisterPrimitives() {
   // Calculation operators
@@ -399,6 +410,7 @@ void RegisterPrimitives() {
   primitives["accum-ref"] = Prim_AccumRef;
 
   primitives["this"] = Prim_This;
+  primitives["vertex-unique-id"] = Prim_VertexUniqueId;
   //  primitives["doc"] = Prim_Doc;
   primitives["update"] = Prim_Update;
   primitives["set"] = Prim_Set;
@@ -407,4 +419,9 @@ void RegisterPrimitives() {
 
   primitives["goto"] = Prim_GoToPhase;
   primitives["finish"] = Prim_Finish;
+}
+
+
+void PrimEvalContext::printCallback(const std::string& msg) const {
+  std::cout << msg << std::endl;
 }

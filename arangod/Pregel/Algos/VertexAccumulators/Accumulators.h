@@ -28,6 +28,7 @@
 #define ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_ACCUMULATORS_H 1
 
 #include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
 #include "AbstractAccumulator.h"
 
 namespace arangodb {
@@ -41,11 +42,13 @@ class MinAccumulator : public Accumulator<T> {
   void update(T v) override {
     this->_value = std::min(v, this->_value);
   }
-  void update(T v, std::string_view sender) override {
+  auto update(T v, std::string_view sender) -> AccumulatorBase::UpdateResult override {
     if (v < this->_value) {
       this->_value = v;
       this->_sender = sender;
+      return AccumulatorBase::UpdateResult::CHANGED;
     }
+    return AccumulatorBase::UpdateResult::NO_CHANGE;
   }
 };
 
@@ -56,11 +59,13 @@ class MaxAccumulator : public Accumulator<T> {
   void update(T v) override {
     this->_value = std::max(v, this->_value);
   }
-  void update(T v, std::string_view sender) override {
+  auto update(T v, std::string_view sender) -> AccumulatorBase::UpdateResult override {
     if (v > this->_value) {
       this->_value = v;
       this->_sender = sender;
+      return AccumulatorBase::UpdateResult::CHANGED;
     }
+    return AccumulatorBase::UpdateResult::NO_CHANGE;
   }
 };
 
@@ -71,9 +76,12 @@ class SumAccumulator : public Accumulator<T> {
   void update(T v) override {
     this->_value += v;
   }
-  void update(T v, std::string_view sender) override {
-    this->_value = v;
+  auto update(T v, std::string_view sender) -> AccumulatorBase::UpdateResult override {
+    auto old = this->_value;
+    this->_value += v;
     this->_sender = sender;
+    return old == this->_value ? AccumulatorBase::UpdateResult::NO_CHANGE
+                               : AccumulatorBase::UpdateResult::CHANGED;
   }
 };
 
@@ -84,9 +92,12 @@ class AndAccumulator : public Accumulator<T> {
   void update(T v) override {
     this->_value &= v;
   }
-  void update(T v, std::string_view sender) override {
+  auto update(T v, std::string_view sender) -> AccumulatorBase::UpdateResult override {
+    auto old = this->_value;
     this->_value &= v;
     this->_sender = sender;
+    return old == this->_value ? AccumulatorBase::UpdateResult::NO_CHANGE
+                               : AccumulatorBase::UpdateResult::CHANGED;
   }
 };
 
@@ -97,9 +108,12 @@ class OrAccumulator : public Accumulator<T> {
   void update(T v) override {
     this->_value |= v;
   }
-  void update(T v, std::string_view sender) override {
+  auto update(T v, std::string_view sender) -> AccumulatorBase::UpdateResult override {
+    auto old = this->_value;
     this->_value |= v;
     this->_sender = sender;
+    return old == this->_value ? AccumulatorBase::UpdateResult::NO_CHANGE
+                               : AccumulatorBase::UpdateResult::CHANGED;
   }
 };
 
@@ -110,9 +124,10 @@ class StoreAccumulator : public Accumulator<T> {
   void update(T v) override {
     this->_value = std::move(v);
   }
-  void update(T v, std::string_view sender) override {
+  auto update(T v, std::string_view sender) -> AccumulatorBase::UpdateResult override {
     this->_value = std::move(v);
     this->_sender = sender;
+    return AccumulatorBase::UpdateResult::CHANGED;
   }
 };
 
@@ -125,9 +140,10 @@ class StoreAccumulator<VPackSlice> : public Accumulator<VPackSlice> {
     _buffer.add(v);
     _value = _buffer.slice();
   }
-  void update(VPackSlice v, std::string_view sender) override {
+  UpdateResult update(VPackSlice v, std::string_view sender) override {
     this->update(v);
     this->_sender = sender;
+    return UpdateResult::CHANGED;
   }
  private:
   VPackBuilder _buffer;
@@ -139,10 +155,30 @@ class ListAccumulator : public Accumulator<T> {
   void update(T v) override {
     _list.emplace_back(std::move(v));
   }
-  void update(T v, std::string_view sender) override {
+  AccumulatorBase::UpdateResult update(T v, std::string_view sender) override {
     this->update(v);
     this->_sender = sender;
+    return AccumulatorBase::UpdateResult::CHANGED;
   }
+  void getIntoBuilder(VPackBuilder& builder) override {
+    VPackArrayBuilder array(&builder);
+    for (auto&& p : _list) {
+      builder.add(VPackValue(p));
+    }
+  }
+  void setBySlice(VPackSlice s) override {
+    _list.clear();
+    if (s.isArray()) {
+      for (auto&& p : velocypack::ArrayIterator(s)) {
+        if constexpr (std::is_same_v<T, std::string>) {
+          _list.emplace_back(p.stringView());
+        } else {
+          std::abort();
+        }
+      }
+    }
+  }
+
  private:
   std::vector<T> _list;
 };
@@ -153,14 +189,23 @@ class ListAccumulator<VPackSlice> : public Accumulator<VPackSlice> {
   void update(VPackSlice v) override {
     _list.emplace_back().add(v);
   }
-  void update(VPackSlice v, std::string_view sender) override {
+  AccumulatorBase::UpdateResult update(VPackSlice v, std::string_view sender) override {
     this->update(v);
     this->_sender = sender;
+    return AccumulatorBase::UpdateResult::CHANGED;
   }
   void getIntoBuilder(VPackBuilder& builder) override {
     VPackArrayBuilder array(&builder);
     for (auto&& p : _list) {
       builder.add(p.slice());
+    }
+  }
+  void setBySlice(VPackSlice s) override {
+    _list.clear();
+    if (s.isArray()) {
+      for (auto&& p : velocypack::ArrayIterator(s)) {
+        _list.emplace_back().add(p);
+      }
     }
   }
  private:
