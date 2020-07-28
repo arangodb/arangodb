@@ -318,27 +318,28 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
       // 7 + 8-byte object ID of index + VPack array with index value(s) ....
       // prefix is the same for non-unique indexes
       // static slices with an array with one entry
-      uint8_t const minSlice[] = { 0x02, 0x03, 0x1e }; // [minSlice]
+      /*uint8_t const minSlice[] = { 0x02, 0x03, 0x1e }; // [minSlice]
       uint8_t const maxSlice[] = { 0x02, 0x03, 0x1f }; // [maxSlice]
       VPackSlice min(minSlice);
       VPackSlice max(maxSlice);
-      _internals.reserve(2 * sizeof(uint64_t) + min.byteSize() + max.byteSize());
+      _internals.reserve(2 * sizeof(uint64_t) + min.byteSize() + max.byteSize());*/
+      _internals.reserve(2 * sizeof(uint64_t));
 
       uint64ToPersistent(_internals.buffer(), first);
-      _internals.buffer().append((char const*)(min.begin()), min.byteSize());
+      //_internals.buffer().append((char const*)(min.begin()), min.byteSize());
 
       _internals.separate();
 
-      if (rocksDBEndianness == RocksDBEndianness::Big) {
+      /*if (rocksDBEndianness == RocksDBEndianness::Big) {
         // if we are in big-endian mode, we can cheat a bit...
         // for the upper bound we can use the object id + 1, which will always compare higher in a
-        // bytewise comparison
+        // bytewise comparison*/
         uint64ToPersistent(_internals.buffer(), first + 1);
-        _internals.buffer().append((char const*)(min.begin()), min.byteSize());
+        /*_internals.buffer().append((char const*)(min.begin()), min.byteSize());
       } else {
         uint64ToPersistent(_internals.buffer(), first);
         _internals.buffer().append((char const*)(max.begin()), max.byteSize());
-      }
+      }*/
       break;
     }
 
