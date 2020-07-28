@@ -88,8 +88,12 @@ void RestClusterHandler::handleAgencyDump() {
   }
 
   std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
-  ClusterInfo::instance()->agencyDump(body);
-  generateResult(rest::ResponseCode::OK, body->slice());
+  Result res = ClusterInfo::instance()->agencyDump(body);
+  if (res.ok()) {
+    generateResult(rest::ResponseCode::OK, body->slice());
+  } else {
+    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, res.errorNumber(), res.errorMessage());
+  }
 }
 
 /// @brief returns information about all coordinator endpoints

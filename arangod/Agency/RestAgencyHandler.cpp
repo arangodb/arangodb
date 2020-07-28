@@ -576,6 +576,25 @@ RestStatus RestAgencyHandler::handleConfig() {
 }
 
 RestStatus RestAgencyHandler::handleState() {
+  bool found;
+  std::string const& val_str = _request->value("redirectToLeader", found);
+  bool redirectToLeader = found && val_str == "true";
+
+  // Potentially look at leadership:
+  if (redirectToLeader) {
+    if (_agent->size() > 1) {
+      auto leader = _agent->leaderID();
+      if (leader == NO_LEADER) {
+        return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                             "No leader");
+      }
+      if (leader != _agent->id()) {
+        redirectRequest(leader);
+        return RestStatus::DONE;
+      }
+    }
+  }
+  // Go ahead, either as leader or, if allowed, as follower.
 
   VPackBuilder body;
   {
