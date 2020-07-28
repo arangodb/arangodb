@@ -2702,7 +2702,7 @@ std::pair<bool, bool> transaction::Methods::getBestIndexHandlesForFilterConditio
 bool transaction::Methods::getBestIndexHandleForFilterCondition(
     std::string const& collectionName, arangodb::aql::AstNode*& node,
     arangodb::aql::Variable const* reference, size_t itemsInCollection,
-    aql::IndexHint const& hint, IndexHandle& usedIndex) {
+    aql::IndexHint const& hint, IndexHandle& usedIndex, bool onlyEdgeIndexes) {
   // We can only start after DNF transformation and only a single AND
   TRI_ASSERT(node->type == arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND);
   if (node->numMembers() == 0) {
@@ -2714,7 +2714,17 @@ bool transaction::Methods::getBestIndexHandleForFilterCondition(
   arangodb::aql::AstNode* specializedCondition;  // unused
   bool isSparse;                                 // unused
   std::vector<IndexHandle> usedIndexes;
-  if (findIndexHandleForAndNode(indexesForCollection(collectionName), node,
+
+  auto indexes = indexesForCollection(collectionName);
+  if (onlyEdgeIndexes) {
+    indexes.erase(std::remove_if(indexes.begin(), indexes.end(),
+                                 [](auto&& idx) {
+                                   return idx->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX;
+                                 }),
+                  indexes.end());
+  }
+
+  if (findIndexHandleForAndNode(indexes, node,
                                 reference, sortCondition, itemsInCollection,
                                 hint, usedIndexes, specializedCondition, isSparse)
           .first) {
