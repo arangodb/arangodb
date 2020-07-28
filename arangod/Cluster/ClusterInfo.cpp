@@ -1621,22 +1621,19 @@ std::shared_ptr<LogicalView> ClusterInfo::getView(DatabaseID const& databaseID,
   if (std::this_thread::get_id() == _planLoader) {
     // we're loading plan, lookup inside immediately created planned views
     // already protected by _planProt.mutex, don't need to lock there
-    auto const view = lookupView(_newPlannedViews, databaseID, viewID);
+    return lookupView(_newPlannedViews, databaseID, viewID);
+  }
+
+  if (!_planProt.isValid) {
+    return nullptr;
+  }
+
+  {
+    READ_LOCKER(readLocker, _planProt.lock);
+    auto const view = lookupView(_plannedViews, databaseID, viewID);
+
     if (view) {
       return view;
-    }
-  } else {
-    if (!_planProt.isValid) {
-      return nullptr;
-    }
-
-    {
-      READ_LOCKER(readLocker, _planProt.lock);
-      auto const view = lookupView(_plannedViews, databaseID, viewID);
-
-      if (view) {
-        return view;
-      }
     }
   }
 
