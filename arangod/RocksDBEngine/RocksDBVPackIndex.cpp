@@ -931,6 +931,21 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::lookup(transaction::Methods* t
   TRI_ASSERT(searchValues.isArray());
   TRI_ASSERT(searchValues.length() <= _fields.size());
 
+  if (ADB_UNLIKELY(searchValues.length() == 0)) {
+    // full range search
+    RocksDBKeyBounds bounds = _unique ? RocksDBKeyBounds::UniqueVPackIndex(objectId())
+                                      : RocksDBKeyBounds::VPackIndex(objectId());
+
+    if (reverse) {
+      // reverse version
+      return std::make_unique<RocksDBVPackIndexIterator<true>>(&_collection, trx, this,
+                                                               std::move(bounds));
+    }
+    // forward version
+    return std::make_unique<RocksDBVPackIndexIterator<false>>(&_collection, trx, this,
+                                                              std::move(bounds));
+  }
+
   VPackBuilder leftSearch;
 
   VPackSlice lastNonEq;
