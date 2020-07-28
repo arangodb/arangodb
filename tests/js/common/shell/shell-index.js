@@ -750,7 +750,71 @@ function getIndexesSuite() {
       assertFalse(idx.unique);
       assertTrue(idx.sparse);
       assertEqual([ "value1", "value2" ], idx.fields);
-    }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: make sure forward iterators respect bounds in write transaction
+////////////////////////////////////////////////////////////////////////////////
+
+    testIteratorBoundsForward: function () {
+      collection.ensureIndex({ type: "persistent", fields: ["value1"] });
+      collection.ensureIndex({ type: "persistent", fields: ["value2"] });
+      var res = collection.getIndexes();
+      assertEqual(3, res.length);
+
+      const opts = {
+        collections: {
+          write: [cn]
+        }
+      };
+      const trx = internal.db._createTransaction(opts);
+
+      const c = trx.collection(cn);
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ value1: i, value2: (100 - i) });
+      }
+      c.save(docs);
+
+      const cur = trx.query('FOR doc IN @@c SORT doc.value1 ASC RETURN doc', { '@c': cn });
+
+      const half = cur.toArray();
+      assertEqual(half.length, 100);
+
+      trx.commit();
+    },
+    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: make sure reverse iterators respect bounds in write transaction
+////////////////////////////////////////////////////////////////////////////////
+
+    testIteratorBoundsReverse: function () {
+      collection.ensureIndex({ type: "persistent", fields: ["value1"] });
+      collection.ensureIndex({ type: "persistent", fields: ["value2"] });
+      var res = collection.getIndexes();
+      assertEqual(3, res.length);
+
+      const opts = {
+        collections: {
+          write: [cn]
+        }
+      };
+      const trx = internal.db._createTransaction(opts);
+
+      const c = trx.collection(cn);
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ value1: i, value2: (100 - i) });
+      }
+      c.save(docs);
+
+      const cur = trx.query('FOR doc IN @@c SORT doc.value2 DESC RETURN doc', { '@c': cn });
+
+      const half = cur.toArray();
+      assertEqual(half.length, 100);
+
+      trx.commit();
+    },
 
   };
 }
