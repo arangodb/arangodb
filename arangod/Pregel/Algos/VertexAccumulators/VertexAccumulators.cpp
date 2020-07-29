@@ -83,7 +83,7 @@ auto VertexAccumulators::createComputation(WorkerConfig const* config) const
 
 auto VertexAccumulators::inputFormat() const -> graph_format* {
   // TODO: The resultField needs to be configurable from the user's side
-  return new GraphFormat(_server, _options.resultField, _options.accumulatorsDeclaration);
+  return new GraphFormat(_server, _options.resultField, _options.vertexAccumulators);
 }
 
 void VertexAccumulators::parseUserParams(VPackSlice userParams) {
@@ -93,7 +93,7 @@ void VertexAccumulators::parseUserParams(VPackSlice userParams) {
     _options = std::move(result).get();
 
     LOG_VERTEXACC("", DEBUG) << "declared accumulators";
-    for (auto&& acc : _options.accumulatorsDeclaration) {
+    for (auto&& acc : _options.vertexAccumulators) {
       LOG_VERTEXACC("", DEBUG) << acc.first << " " << acc.second;
     }
   } else {
@@ -140,6 +140,29 @@ struct VertexAccumulatorsMasterContext : MasterContext {
       return {};
     }
 
+    EvalResult getAccumulatorValue(std::string_view id, VPackBuilder &result) const override {
+      std::string globalName = "[global]-";
+      globalName += id;
+      auto accum = masterContext.getAggregatedValue<VertexAccumulatorAggregator>(globalName);
+      if (accum != nullptr) {
+        accum->getAccumulator().getValueIntoBuilder(result);
+        return {};
+      }
+      return EvalError("global accumulator `" +  std::string{id} + "' not found");
+    }
+
+    EvalResult setAccumulator(std::string_view accumId, VPackSlice value) override {
+      std::string globalName = "[global]-";
+      globalName += accumId;
+      auto accum = masterContext.getAggregatedValue<VertexAccumulatorAggregator>(globalName);
+      if (accum != nullptr) {
+        accum->getAccumulator().updateByMessageSlice(value);
+        return {};
+      }
+
+      return EvalError("accumulator `" + std::string{accumId} + "` not found");
+    }
+
     VertexAccumulatorsMasterContext &masterContext;
   };
 
@@ -182,6 +205,9 @@ struct VertexAccumulatorsMasterContext : MasterContext {
       userSelectedNext = ContinuationResult::DONT_CARE;
       auto res = Evaluate(ctx, phase.onHalt.slice(), onHaltResult);
       if (res.fail()) {
+        LOG_TOPIC("ac23e", ERR, Logger::PREGEL)
+        << "onHalt program of phase `" + phase.name +
+           "` failed: " << res.error().toString();
         return ContinuationResult::ABORT;
       }
 
@@ -224,6 +250,12 @@ IAggregator* VertexAccumulators::aggregator(const std::string& name) const {
     return new OverwriteAggregator<uint32_t>(0, true);
   } else if (name == "phase-first-step") {
     return new OverwriteAggregator<uint64_t>(0, true);
+  } else if (arangodb::basics::StringUtils::isPrefix(name, "[global]-")) {
+    LOG_DEVEL << "search global accumulator " << name;
+    std::string realName = name.substr(9);
+    if (auto iter = _options.globalAccumulators.find(realName); iter != std::end(_options.globalAccumulators)) {
+      return new VertexAccumulatorAggregator(iter->second, false);
+    }
   }
   return nullptr;
 }

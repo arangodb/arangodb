@@ -49,14 +49,41 @@ struct VertexComputationEvalContext : PrimEvalContext {
     LOG_DEVEL << msg;
   }
 
-  void getAccumulatorValue(std::string_view accumId, VPackBuilder& builder) const override {
-    _vertexData._accumulators.at(std::string{accumId})->getValueIntoBuilder(builder);
+  EvalResult getAccumulatorValue(std::string_view accumId, VPackBuilder& builder) const override {
+    if (auto iter = _vertexData._accumulators.find(std::string{accumId});
+        iter != std::end(_vertexData._accumulators)) {
+      iter->second->getValueIntoBuilder(builder);
+      return {};
+    } else {
+      std::string globalName = "[global]-";
+      globalName += accumId;
+      auto accum = _computation.getAggregatedValue<VertexAccumulatorAggregator>(globalName);
+      if (accum != nullptr) {
+        accum->getAccumulator().getValueIntoBuilder(builder);
+        return {};
+      }
+    }
+
+    return EvalError("accumulator `" + std::string{accumId} + "` not found");
   }
 
-  void setAccumulator(std::string_view accumId, VPackSlice value) override {
+  EvalResult setAccumulator(std::string_view accumId, VPackSlice value) override {
     // FIXME: oh. my. god. in 2020. we copy string views.
-    // FIXME error handling (such as accumulator not found, etc)
-    _vertexData._accumulators.at(std::string{accumId})->setBySlice(value);
+    if (auto iter = _vertexData._accumulators.find(std::string{accumId});
+        iter != std::end(_vertexData._accumulators)) {
+      iter->second->setBySlice(value);
+      return {};
+    } else {
+      std::string globalName = "[global]-";
+      globalName += accumId;
+      auto accum = _computation.getAggregatedValue<VertexAccumulatorAggregator>(globalName);
+      if (accum != nullptr) {
+        accum->getAccumulator().updateByMessageSlice(value);
+        return {};
+      }
+    }
+
+    return EvalError("accumulator `" + std::string{accumId} + "` not found");
   }
 
   EvalResult getPregelId(VPackBuilder &result) const override {
@@ -69,27 +96,43 @@ struct VertexComputationEvalContext : PrimEvalContext {
     return {};
   }
 
-  void updateAccumulator(std::string_view accumId, std::string_view toId,
+  EvalResult updateAccumulator(std::string_view accumId, std::string_view toId,
                          VPackSlice value) override {
-    MessageData msg;
-    msg.reset(std::string{accumId}, value, getThisId());
+    auto const& accums = _computation.algorithm().options().vertexAccumulators;
+    if (auto i = accums.find(std::string{accumId}); i != accums.end()) {
+      MessageData msg;
+      msg.reset(std::string{accumId}, value, getThisId());
 
-    // FIXME: this is extremely stupid to do,
-    //        once we have proper variables, we should
-    //        carry Edge with us and use that directly
-    auto edgeIter = _computation.getEdges();
-    for (; edgeIter.hasMore(); ++edgeIter) {
-      auto edge = *edgeIter;
-      if (edge->data()._toId == toId) {
-        _computation.sendMessage(edge, msg);
-        return;
+      // FIXME: this is extremely stupid to do,
+      //        once we have proper variables, we should
+      //        carry Edge with us and use that directly
+      auto edgeIter = _computation.getEdges();
+      for (; edgeIter.hasMore(); ++edgeIter) {
+        auto edge = *edgeIter;
+        if (edge->data()._toId == toId) {
+          _computation.sendMessage(edge, msg);
+          return {};
+        }
       }
+
+    } else {
+      std::string globalName = "[global]-";
+      globalName += accumId;
+      _computation.aggregate<VPackSlice>(globalName, value);
+      return {};
     }
+
+    return EvalError("vertex accumulator `" + std::string{accumId} + "` not found");
   }
 
   EvalResult updateAccumulatorById(std::string_view accumId, VPackSlice toVertex, VPackSlice value) override {
     MessageData msg;
     msg.reset(std::string{accumId}, value, getThisId());
+
+    auto const& accums = _computation.algorithm().options().vertexAccumulators;
+    if (auto i = accums.find(std::string{accumId}); i == accums.end()) {
+      return EvalError("vertex accumulator `" + std::string{accumId} + "` not found");
+    }
 
     const auto pregelIdFromSlice = [](VPackSlice slice) -> PregelID {
       if (slice.isObject()) {

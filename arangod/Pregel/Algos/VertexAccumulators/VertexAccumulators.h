@@ -30,6 +30,7 @@
 #include "Pregel/Algorithm.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/VertexComputation.h"
+#include "Pregel/Aggregator.h"
 
 #include "Pregel/Algos/VertexAccumulators/AbstractAccumulator.h"
 #include "Pregel/Algos/VertexAccumulators/AccumulatorOptionsDeserializer.h"
@@ -70,6 +71,55 @@ struct EdgeData {
   std::string _toId;
 };
 
+struct VertexAccumulatorAggregator : IAggregator {
+  VertexAccumulatorAggregator(AccumulatorOptions const& opts, bool persists)
+      : fake(), accumulator(instantiateAccumulator(fake, opts)), permanent(persists) {}
+  virtual ~VertexAccumulatorAggregator() = default;
+
+  /// @brief Used when updating aggregator value locally
+  void aggregate(void const* valuePtr) override {
+      auto slice = reinterpret_cast<VertexAccumulatorAggregator const*>(valuePtr);
+      VPackBuilder builder;
+      slice->accumulator->getValueIntoBuilder(builder);
+      accumulator->updateByMessageSlice(builder.slice());
+  }
+
+  /// @brief Used when updating aggregator value from remote
+  void parseAggregate(arangodb::velocypack::Slice const& slice) override {
+    LOG_DEVEL << "parseAggregate = " << slice.toJson();
+    accumulator->setBySlice(slice);
+  }
+
+  void const* getAggregatedValue() const override {
+    return this; /* HACK HACK HACK! Return the aggregator itself instead of some value. */
+  }
+
+  /// @brief Value from superstep S-1 supplied by the conductor
+  void setAggregatedValue(arangodb::velocypack::Slice const& slice) override {
+    LOG_DEVEL << "setAggregatedValue " << slice.toJson();
+    accumulator->setBySlice(slice);
+  }
+  void serialize(std::string const& key,
+                         arangodb::velocypack::Builder& builder) const override {
+    LOG_DEVEL << "serialize into key " << key;
+    builder.add(VPackValue(key));
+    accumulator->getUpdateMessageIntoBuilder(builder);
+  }
+
+  void reset() override {
+    if (!permanent) {
+      accumulator->clear();
+    }
+  }
+  bool isConverging() const override { return false; };
+
+  [[nodiscard]] AccumulatorBase& getAccumulator() const { return *accumulator; }
+ private:
+  VertexData fake;
+  std::unique_ptr<AccumulatorBase> accumulator;
+  bool permanent;
+};
+
 struct MessageData {
   void reset(std::string accumulatorName, VPackSlice const& value, std::string const& sender);
 
@@ -89,14 +139,14 @@ struct VertexAccumulators : public Algorithm<VertexData, EdgeData, MessageData> 
     //        out of the deserializer, or just a view of it?
     explicit GraphFormat(application_features::ApplicationServer& server,
                          std::string const& resultField,
-                         std::map<std::string, AccumulatorOptions> const& accumulatorDeclarations);
+                         std::unordered_map<std::string, AccumulatorOptions> const& accumulatorDeclarations);
 
     std::string const _resultField;
 
 
     // We use these accumulatorDeclarations to setup VertexData in
     // copyVertexData
-    std::map<std::string, AccumulatorOptions> _accumulatorDeclarations;
+    std::unordered_map<std::string, AccumulatorOptions> _accumulatorDeclarations;
 
     size_t estimatedVertexSize() const override;
     size_t estimatedEdgeSize() const override;

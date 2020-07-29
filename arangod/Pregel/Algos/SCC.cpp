@@ -196,6 +196,8 @@ struct SCCMasterContext : public MasterContext {
       return;
     }
 
+
+
     uint32_t const* phase = getAggregatedValue<uint32_t>(kPhase);
     switch (*phase) {
       case SCCPhase::TRANSPOSE:

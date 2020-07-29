@@ -30,7 +30,7 @@ using the attribute `cost` on every outgoing edge.
 arangosh> const pp = require("@arangodb/pregel-programs");
 arangosh> var pexec = pp.execute("WikiVoteGraph",
   { "resultField": "SSSP",
-    "accumulatorsDeclaration": {
+    "vertexAccumulators": {
       "distance": { "accumulatorType": "min",
                     "valueType": "ints",
                     "storeSender": true } },

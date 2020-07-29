@@ -153,7 +153,7 @@ EvalResult SpecialSeq(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilde
     });
     if (auto res = Evaluate(ctx, *paramIterator, usedBuilder); res.fail()) {
       return res.wrapError([&](EvalError &err) {
-        err.wrapMessage("at position " + std::to_string(paramIterator.index()));
+        err.wrapMessage("in sequence at position " + std::to_string(paramIterator.index()));
       });
     }
   }
