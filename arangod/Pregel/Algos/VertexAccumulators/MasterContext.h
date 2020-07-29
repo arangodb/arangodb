@@ -32,6 +32,8 @@
 #include <Pregel/Algos/VertexAccumulators/Greenspun/Primitives.h>
 #include <Pregel/Algos/VertexAccumulators/VertexAccumulators.h>
 
+#include "AccumulatorAggregator.h"
+
 namespace arangodb {
 namespace pregel {
 namespace algos {
@@ -59,6 +61,32 @@ struct MasterContext : ::arangodb::pregel::MasterContext {
       result.add(VPackValue(masterContext.vertexCount()));
       return {};
     }
+
+    EvalResult getAccumulatorValue(std::string_view id, VPackBuilder& result) const override {
+      std::string globalName = "[global]-";
+      globalName += id;
+      auto accum = masterContext.getAggregatedValue<VertexAccumulatorAggregator>(globalName);
+      if (accum != nullptr) {
+        accum->getAccumulator().getValueIntoBuilder(result);
+        return {};
+      }
+      return EvalError("global accumulator `" +  std::string{id} + "' not found");
+    }
+
+
+    EvalResult setAccumulator(std::string_view accumId, VPackSlice value) override {
+      std::string globalName = "[global]-";
+      globalName += accumId;
+      auto accum = masterContext.getAggregatedValue<VertexAccumulatorAggregator>(globalName);
+      if (accum != nullptr) {
+        accum->getAccumulator().updateByMessageSlice(value);
+        return {};
+      }
+
+      return EvalError("accumulator `" + std::string{accumId} + "` not found");
+    }
+
+
 
     MasterContext& masterContext;
   };

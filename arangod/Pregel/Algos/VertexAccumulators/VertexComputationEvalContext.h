@@ -51,11 +51,11 @@ class VertexComputationEvalContext : public PrimEvalContext {
 
   /* what's done when print is called */
   void printCallback(const std::string& msg) const override;
-  void getAccumulatorValue(std::string_view accumId, VPackBuilder& builder) const override;
-  void setAccumulator(std::string_view accumId, VPackSlice value) override;
+  EvalResult getAccumulatorValue(std::string_view accumId, VPackBuilder& builder) const override;
+  EvalResult setAccumulator(std::string_view accumId, VPackSlice value) override;
 
   EvalResult getPregelId(VPackBuilder& result) const override;
-  void updateAccumulator(std::string_view accumId, std::string_view toId,
+  EvalResult updateAccumulator(std::string_view accumId, std::string_view toId,
                          VPackSlice value) override;
   EvalResult updateAccumulatorById(std::string_view accumId, VPackSlice toVertex,
                                    VPackSlice value) override;

@@ -216,6 +216,7 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/Algos/VertexAccumulators/EdgeData.cpp
   Pregel/Algos/VertexAccumulators/MessageData.cpp
   Pregel/Algos/VertexAccumulators/MasterContext.cpp
+  Pregel/Algos/VertexAccumulators/AccumulatorAggregator.cpp
   Pregel/Algos/WCC.cpp
   Pregel/Conductor.cpp
   Pregel/GraphStore.cpp

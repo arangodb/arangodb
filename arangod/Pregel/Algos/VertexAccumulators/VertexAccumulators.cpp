@@ -87,7 +87,7 @@ auto VertexAccumulators::createComputation(WorkerConfig const* config) const
 
 auto VertexAccumulators::inputFormat() const -> graph_format* {
   // TODO: The resultField needs to be configurable from the u
-  return new GraphFormat(_server, _options.resultField, _options.accumulatorsDeclaration);
+  return new GraphFormat(_server, _options.resultField, _options.vertexAccumulators);
 }
 
 message_format* VertexAccumulators::messageFormat() const {
@@ -105,7 +105,7 @@ void VertexAccumulators::parseUserParams(VPackSlice userParams) {
     _options = std::move(result).get();
 
     LOG_VERTEXACC("", DEBUG) << "declared accumulators";
-    for (auto&& acc : _options.accumulatorsDeclaration) {
+    for (auto&& acc : _options.vertexAccumulators) {
       LOG_VERTEXACC("", DEBUG) << acc.first << " " << acc.second;
     }
   } else {

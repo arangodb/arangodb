@@ -32,7 +32,7 @@ namespace accumulators {
 // Graph Format
 GraphFormat::GraphFormat(application_features::ApplicationServer& server,
                          std::string const& resultField,
-                         std::map<std::string, AccumulatorOptions> const& accumulatorDeclarations)
+                         AccumulatorsDeclaration const& accumulatorDeclarations)
     : graph_format(server),
       _resultField(resultField),
       _accumulatorDeclarations(accumulatorDeclarations){};
@@ -55,6 +55,7 @@ bool GraphFormat::buildVertexDocument(arangodb::velocypack::Builder& b,
                                       const vertex_type* ptr, size_t size) const {
   VPackObjectBuilder guard(&b, _resultField);
   for (auto&& acc : ptr->_accumulators) {
+    b.add(VPackValue(acc.first));
     acc.second->getValueIntoBuilder(b);
   }
   return true;

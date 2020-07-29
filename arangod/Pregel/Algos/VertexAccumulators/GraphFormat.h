@@ -39,13 +39,13 @@ struct GraphFormat final : public graph_format {
   //        out of the deserializer, or just a view of it?
   explicit GraphFormat(application_features::ApplicationServer& server,
                        std::string const& resultField,
-                       std::map<std::string, AccumulatorOptions> const& accumulatorDeclarations);
+                       AccumulatorsDeclaration const& accumulatorDeclarations);
 
   std::string const _resultField;
 
   // We use these accumulatorDeclarations to setup VertexData in
   // copyVertexData
-  std::map<std::string, AccumulatorOptions> _accumulatorDeclarations;
+  AccumulatorsDeclaration _accumulatorDeclarations;
 
   size_t estimatedVertexSize() const override;
   size_t estimatedEdgeSize() const override;

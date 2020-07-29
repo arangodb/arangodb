@@ -69,8 +69,8 @@ struct AccumulatorOptions {
 
 // An accumulator declaration consists of a unique name
 // and a struct of options
-using AccumulatorsDeclaration = std::map<std::string, AccumulatorOptions>;
-using BindingDeclarations = std::map<std::string, VPackBuilder>;
+using AccumulatorsDeclaration = std::unordered_map<std::string, AccumulatorOptions>;
+using BindingDeclarations = std::unordered_map<std::string, VPackBuilder>;
 
 struct AlgorithmPhase {
   std::string name;
@@ -84,7 +84,8 @@ using PhaseDeclarations = std::vector<AlgorithmPhase>;
 /* The Pregel Algorithm */
 struct VertexAccumulatorOptions {
   std::string resultField;
-  AccumulatorsDeclaration accumulatorsDeclaration;
+  AccumulatorsDeclaration vertexAccumulators;
+  AccumulatorsDeclaration globalAccumulators;
   BindingDeclarations bindings;
   PhaseDeclarations phases;
   uint64_t maxGSS;

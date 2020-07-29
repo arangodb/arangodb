@@ -27,6 +27,7 @@
 #include "VertexComputationEvalContext.h"
 
 #include "VertexComputation.h"
+#include "AccumulatorAggregator.h"
 
 using namespace arangodb::pregel;
 
@@ -55,13 +56,42 @@ void VertexComputationEvalContext::printCallback(const std::string& msg) const {
   LOG_DEVEL << msg;
 }
 
-void VertexComputationEvalContext::getAccumulatorValue(std::string_view accumId,
-                                                       VPackBuilder& builder) const {
-  vertexData().accumulatorByName(accumId)->getValueIntoBuilder(builder);
+EvalResult VertexComputationEvalContext::getAccumulatorValue(std::string_view accumId,
+                                                             VPackBuilder& builder) const {
+  if (auto iter = vertexData()._accumulators.find(std::string{accumId});
+      iter != std::end(vertexData()._accumulators)) {
+    iter->second->getValueIntoBuilder(builder);
+    return {};
+  } else {
+    std::string globalName = "[global]-";
+    globalName += accumId;
+    auto accum = _computation.getAggregatedValue<VertexAccumulatorAggregator>(globalName);
+    if (accum != nullptr) {
+      accum->getAccumulator().getValueIntoBuilder(builder);
+      return {};
+    }
+  }
+  return EvalError("accumulator `" + std::string{accumId} + "` not found");
 }
 
-void VertexComputationEvalContext::setAccumulator(std::string_view accumId, VPackSlice value) {
-  vertexData().accumulatorByName(accumId)->setBySlice(value);
+EvalResult VertexComputationEvalContext::setAccumulator(std::string_view accumId,
+                                                        VPackSlice value) {
+  // FIXME: oh. my. god. in 2020. we copy string views.
+  if (auto iter = vertexData()._accumulators.find(std::string{accumId});
+      iter != std::end(vertexData()._accumulators)) {
+    iter->second->setBySlice(value);
+    return {};
+  } else {
+    std::string globalName = "[global]-";
+    globalName += accumId;
+    auto accum = _computation.getAggregatedValue<VertexAccumulatorAggregator>(globalName);
+    if (accum != nullptr) {
+      accum->getAccumulator().updateByMessageSlice(value);
+      return {};
+    }
+  }
+
+  return EvalError("accumulator `" + std::string{accumId} + "` not found");
 }
 
 EvalResult VertexComputationEvalContext::getPregelId(VPackBuilder& result) const {
@@ -74,23 +104,34 @@ EvalResult VertexComputationEvalContext::getPregelId(VPackBuilder& result) const
   return {};
 }
 
-void VertexComputationEvalContext::updateAccumulator(std::string_view accumId,
-                                                     std::string_view toId,
-                                                     VPackSlice value) {
-  MessageData msg;
-  msg.reset(std::string{accumId}, value, getThisId());
+EvalResult VertexComputationEvalContext::updateAccumulator(std::string_view accumId,
+                                                           std::string_view toId,
+                                                           VPackSlice value) {
+  auto const& accums = _computation.algorithm().options().vertexAccumulators;
+  if (auto i = accums.find(std::string{accumId}); i != accums.end()) {
+    MessageData msg;
+    msg.reset(std::string{accumId}, value, getThisId());
 
-  // FIXME: this is extremely stupid to do,
-  //        once we have proper variables, we should
-  //        carry Edge with us and use that directly
-  auto edgeIter = _computation.getEdges();
-  for (; edgeIter.hasMore(); ++edgeIter) {
-    auto edge = *edgeIter;
-    if (edge->data()._toId == toId) {
-      _computation.sendMessage(edge, msg);
-      return;
+    // FIXME: this is extremely stupid to do,
+    //        once we have proper variables, we should
+    //        carry Edge with us and use that directly
+    auto edgeIter = _computation.getEdges();
+    for (; edgeIter.hasMore(); ++edgeIter) {
+      auto edge = *edgeIter;
+      if (edge->data()._toId == toId) {
+        _computation.sendMessage(edge, msg);
+        return {};
+      }
     }
+
+  } else {
+    std::string globalName = "[global]-";
+    globalName += accumId;
+    _computation.aggregate<VPackSlice>(globalName, value);
+    return {};
   }
+
+  return EvalError("vertex accumulator `" + std::string{accumId} + "` not found");
 }
 
 EvalResult VertexComputationEvalContext::updateAccumulatorById(std::string_view accumId,
