@@ -266,6 +266,20 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   [[nodiscard]] auto lastRangeHasDataRow() const noexcept -> bool;
 
+  // State to determine what to do next based on the given user call and stack.
+  [[nodiscard]] auto handleCheckCallState(AqlCallStack const& stack,
+                                          AqlCall const& clientCall) const -> ExecState;
+
+
+
+  // Now perform Skip operation(s) on this executor.
+  [[nodiscard]] auto handleSkipState(arangodb::aql::AqlCall& clientCall)
+      -> std::pair<ExecState, ExecutorState>;
+
+  // non-spliced subquery variant, can return WAITING in intermediate state.
+  [[nodiscard]] auto handleSkipStateSubquery(arangodb::aql::AqlCall& clientCall)
+      -> std::pair<ExecState, ExecutionState>;
+
   void resetExecutor();
 
   // Forwarding of ShadowRows if the executor has SideEffects.

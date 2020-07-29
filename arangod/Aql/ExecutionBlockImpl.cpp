@@ -1337,88 +1337,42 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
     TRI_ASSERT(clientCall.getSkipCount() == 0);
     switch (_execState) {
       case ExecState::CHECKCALL: {
-        LOG_QUERY("cfe46", DEBUG)
-            << printTypeInfo() << " determine next action on call " << clientCall;
-
-        if constexpr (executorHasSideEffects<Executor>) {
-          // If the executor has sideEffects, and we need to skip the results we would
-          // produce here because we actually skip the subquery, we instead do a
-          // hardLimit 0 (aka FastForward) call instead to the local Executor
-          if (stack.needToSkipSubquery()) {
-            _execState = ExecState::FASTFORWARD;
-            break;
-          }
-        }
-        _execState = nextState(clientCall);
+        _execState = handleCheckCallState(stack, clientCall);
+        TRI_ASSERT(_execState == ExecState::FASTFORWARD || _execState == ExecState::SKIP ||
+                   _execState == ExecState::PRODUCE || _execState == ExecState::DONE);
         break;
       }
       case ExecState::SKIP: {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        auto const offsetBefore = clientCall.getOffset();
-        TRI_ASSERT(offsetBefore > 0);
-        bool const canPassFullcount =
-            clientCall.getLimit() == 0 && clientCall.needsFullCount();
-#endif
-        LOG_QUERY("1f786", DEBUG) << printTypeInfo() << " call skipRows " << clientCall;
-
-        ExecutorState state = ExecutorState::HASMORE;
-        typename Executor::Stats stats;
-        size_t skippedLocal = 0;
-        AqlCallType call{};
         if constexpr (is_one_of_v<Executor, SubqueryExecutor<true>>) {
-          TRI_DEFER(clientCall.resetSkipCount());
+          // Special handling for non-spliced subqueries.
           // NOTE: The subquery Executor will by itself call EXECUTE on it's
           // subquery. This can return waiting => we can get a WAITING state
           // here. We can only get the waiting state for Subquery executors.
           ExecutionState subqueryState = ExecutionState::HASMORE;
-          std::tie(subqueryState, stats, skippedLocal, call) =
-              _executor.skipRowsRange(_lastRange, clientCall);
-          if (subqueryState == ExecutionState::WAITING) {
-            TRI_ASSERT(skippedLocal == 0);
-            return {subqueryState, SkipResult{}, nullptr};
-          } else if (subqueryState == ExecutionState::DONE) {
-            state = ExecutorState::DONE;
-          } else {
-            state = ExecutorState::HASMORE;
+          std::tie(_execState, subqueryState) = handleSkipStateSubquery(clientCall);
+          // Translate ExecutionState => ExecutorState
+          // Ordered by lieklyhood.
+          switch (subqueryState) {
+            case ExecutionState::HASMORE: {
+              localExecutorState = ExecutorState::HASMORE;
+              break;
+            }
+            case ExecutionState::DONE: {
+              localExecutorState = ExecutorState::DONE;
+              break;
+            }
+            case ExecutionState::WAITING: {
+              TRI_ASSERT(_execState == ExecState::SKIP);
+              // Need to return here, will wake up again in this state
+              return {subqueryState, SkipResult{}, nullptr};
+            }
           }
         } else {
-          // Execute skipSome
-          std::tie(state, stats, skippedLocal, call) =
-              executeSkipRowsRange(_lastRange, clientCall);
+          std::tie(_execState, localExecutorState) = handleSkipState(clientCall);
         }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        // Assertion: We did skip 'skippedLocal' documents here.
-        // This means that they have to be removed from
-        // clientCall.getOffset() This has to be done by the Executor
-        // calling call.didSkip() accordingly. The LIMIT executor with a
-        // LIMIT of 0 can also bypass fullCount here, even if callLimit > 0
-        if (canPassFullcount || std::is_same_v<Executor, LimitExecutor>) {
-          // In this case we can first skip. But straight after continue with fullCount, so we might skip more
-          TRI_ASSERT(clientCall.getOffset() + skippedLocal >= offsetBefore);
-          if (clientCall.getOffset() + skippedLocal > offsetBefore) {
-            // First need to count down offset.
-            TRI_ASSERT(clientCall.getOffset() == 0);
-          }
-        } else {
-          TRI_ASSERT(clientCall.getOffset() + skippedLocal == offsetBefore);
-        }
-#endif
-        localExecutorState = state;
-        _skipped.didSkip(skippedLocal);
-        _blockStats += stats;
-        // The execute might have modified the client call.
-        if (state == ExecutorState::DONE) {
-          _execState = ExecState::FASTFORWARD;
-        } else if (clientCall.getOffset() > 0) {
-          TRI_ASSERT(_upstreamState != ExecutionState::DONE);
-          // We need to request more
-          _upstreamRequest = call;
-          _execState = ExecState::UPSTREAM;
-        } else {
-          // We are done with skipping. Skip is not allowed to request more
-          _execState = ExecState::CHECKCALL;
-        }
+        TRI_ASSERT(_execState == ExecState::FASTFORWARD || _execState == ExecState::UPSTREAM ||
+                   _execState == ExecState::CHECKCALL);
         break;
       }
       case ExecState::PRODUCE: {
@@ -1796,6 +1750,129 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
               (outputBlock != nullptr && outputBlock->numEntries() > 0)));
   return {_upstreamState, skipped, std::move(outputBlock)};
 }
+
+template <class Executor>
+auto ExecutionBlockImpl<Executor>::handleCheckCallState(AqlCallStack const& stack,
+AqlCall const& clientCall) const -> ExecState {
+  LOG_QUERY("cfe46", DEBUG)
+      << printTypeInfo() << " determine next action on call " << clientCall;
+
+  if constexpr (executorHasSideEffects<Executor>) {
+    // If the executor has sideEffects, and we need to skip the results we would
+    // produce here because we actually skip the subquery, we instead do a
+    // hardLimit 0 (aka FastForward) call instead to the local Executor
+    if (stack.needToSkipSubquery()) {
+      return ExecState::FASTFORWARD;
+    }
+  }
+  return nextState(clientCall);
+}
+
+template <class Executor>
+auto ExecutionBlockImpl<Executor>::handleSkipState(arangodb::aql::AqlCall& clientCall) -> std::pair<ExecState, ExecutorState> {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto const offsetBefore = clientCall.getOffset();
+  TRI_ASSERT(offsetBefore > 0);
+  bool const canPassFullcount = clientCall.getLimit() == 0 && clientCall.needsFullCount();
+#endif
+  LOG_QUERY("1f786", DEBUG) << printTypeInfo() << " call skipRows " << clientCall;
+
+  ExecutorState state = ExecutorState::HASMORE;
+  typename Executor::Stats stats;
+  size_t skippedLocal = 0;
+  AqlCallType call{};
+  // Execute skipSome
+  std::tie(state, stats, skippedLocal, call) =
+      executeSkipRowsRange(_lastRange, clientCall);
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // Assertion: We did skip 'skippedLocal' documents here.
+  // This means that they have to be removed from
+  // clientCall.getOffset() This has to be done by the Executor
+  // calling call.didSkip() accordingly. The LIMIT executor with a
+  // LIMIT of 0 can also bypass fullCount here, even if callLimit > 0
+  if (canPassFullcount || std::is_same_v<Executor, LimitExecutor>) {
+    // In this case we can first skip. But straight after continue with fullCount, so we might skip more
+    TRI_ASSERT(clientCall.getOffset() + skippedLocal >= offsetBefore);
+    if (clientCall.getOffset() + skippedLocal > offsetBefore) {
+      // First need to count down offset.
+      TRI_ASSERT(clientCall.getOffset() == 0);
+    }
+  } else {
+    TRI_ASSERT(clientCall.getOffset() + skippedLocal == offsetBefore);
+  }
+#endif
+  _skipped.didSkip(skippedLocal);
+  _blockStats += stats;
+  // The execute might have modified the client call.
+  if (state == ExecutorState::DONE) {
+    return {ExecState::FASTFORWARD, state};
+  } else if (clientCall.getOffset() > 0) {
+    TRI_ASSERT(_upstreamState != ExecutionState::DONE);
+    // We need to request more
+    _upstreamRequest = call;
+    return {ExecState::UPSTREAM, state};
+  }
+  // We are done with skipping. Skip is not allowed to request more
+  return {ExecState::CHECKCALL, state};
+}
+
+template <>
+auto ExecutionBlockImpl<SubqueryExecutor<true>>::handleSkipStateSubquery(arangodb::aql::AqlCall& clientCall) -> std::pair<ExecState, ExecutionState> {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto const offsetBefore = clientCall.getOffset();
+  TRI_ASSERT(offsetBefore > 0);
+  bool const canPassFullcount = clientCall.getLimit() == 0 && clientCall.needsFullCount();
+#endif
+  LOG_QUERY("1f787", DEBUG) << printTypeInfo() << " call skipRows " << clientCall;
+
+  ExecutionState state = ExecutionState::HASMORE;
+  typename SubqueryExecutor<true>::Stats stats;
+  size_t skippedLocal = 0;
+  AqlCallType call{};
+  {
+    TRI_DEFER(clientCall.resetSkipCount());
+
+    std::tie(state, stats, skippedLocal, call) =
+        _executor.skipRowsRange(_lastRange, clientCall);
+    if (state == ExecutionState::WAITING) {
+      TRI_ASSERT(skippedLocal == 0);
+      return {ExecState::SKIP, state};
+    }
+  }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // Assertion: We did skip 'skippedLocal' documents here.
+  // This means that they have to be removed from
+  // clientCall.getOffset() This has to be done by the Executor
+  // calling call.didSkip() accordingly. The LIMIT executor with a
+  // LIMIT of 0 can also bypass fullCount here, even if callLimit > 0
+  if (canPassFullcount) {
+    // In this case we can first skip. But straight after continue with fullCount, so we might skip more
+    TRI_ASSERT(clientCall.getOffset() + skippedLocal >= offsetBefore);
+    if (clientCall.getOffset() + skippedLocal > offsetBefore) {
+      // First need to count down offset.
+      TRI_ASSERT(clientCall.getOffset() == 0);
+    }
+  } else {
+    TRI_ASSERT(clientCall.getOffset() + skippedLocal == offsetBefore);
+  }
+#endif
+  _skipped.didSkip(skippedLocal);
+  _blockStats += stats;
+  // The execute might have modified the client call.
+  if (state == ExecutionState::DONE) {
+    return {ExecState::FASTFORWARD, state};
+  } else if (clientCall.getOffset() > 0) {
+    TRI_ASSERT(_upstreamState != ExecutionState::DONE);
+    // We need to request more
+    _upstreamRequest = call;
+    return {ExecState::UPSTREAM, state};
+  }
+  // We are done with skipping. Skip is not allowed to request more
+  return {ExecState::CHECKCALL, state};
+}
+
 
 template <class Executor>
 void ExecutionBlockImpl<Executor>::resetExecutor() {
