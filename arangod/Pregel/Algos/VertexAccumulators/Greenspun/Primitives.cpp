@@ -203,24 +203,21 @@ EvalResult Prim_This(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder
 
 EvalResult Prim_AccumRef(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto&& [accumId] = unpackTuple<std::string_view>(params);
-  ctx.getAccumulatorValue(accumId, result);
-  return {};
+  return ctx.getAccumulatorValue(accumId, result);
 }
 
 EvalResult Prim_Update(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto&& [accumId, toId, value] =
   unpackTuple<std::string_view, std::string_view, VPackSlice>(params);
 
-  ctx.updateAccumulator(accumId, toId, value);
-  return {};
+  return ctx.updateAccumulator(accumId, toId, value);
 }
 
 EvalResult Prim_UpdateById(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto&& [accumId, toId, value] =
   unpackTuple<std::string_view, VPackSlice, VPackSlice>(params);
 
-  ctx.updateAccumulatorById(accumId, toId, value);
-  return {};
+  return ctx.updateAccumulatorById(accumId, toId, value);
 }
 
 EvalResult Prim_PregelId(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
@@ -229,8 +226,7 @@ EvalResult Prim_PregelId(PrimEvalContext& ctx, VPackSlice const params, VPackBui
 
 EvalResult Prim_Set(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto&& [accumId, value] = unpackTuple<std::string_view, VPackSlice>(params);
-  ctx.setAccumulator(accumId, value);
-  return {};
+  return ctx.setAccumulator(accumId, value);
 }
 
 EvalResult Prim_For(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {

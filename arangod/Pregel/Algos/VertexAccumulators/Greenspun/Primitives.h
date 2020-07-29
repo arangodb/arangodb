@@ -30,12 +30,12 @@
 struct PrimEvalContext : EvalContext {
   virtual std::string const& getThisId() const { std::abort(); };
   virtual EvalResult getPregelId(VPackBuilder& result) const { return EvalError("not implemented"); }
-  virtual void getAccumulatorValue(std::string_view id, VPackBuilder& result) const {};
-  virtual void updateAccumulator(std::string_view accumId,
-                                 std::string_view toId, VPackSlice value) {};
+  virtual EvalResult getAccumulatorValue(std::string_view id, VPackBuilder& result) const { return EvalError("not implemented"); };
+  virtual EvalResult updateAccumulator(std::string_view accumId,
+                                 std::string_view toId, VPackSlice value) { return EvalError("not implemented"); };
   virtual EvalResult updateAccumulatorById(std::string_view accumId,
                                  VPackSlice toVertex, VPackSlice value) { return EvalError("not implemented"); };
-  virtual void setAccumulator(std::string_view accumId, VPackSlice value) {};
+  virtual EvalResult setAccumulator(std::string_view accumId, VPackSlice value) { return EvalError("not implemented"); };
 
   virtual std::size_t getVertexUniqueId() const { return 0; }
 

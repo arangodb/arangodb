@@ -171,7 +171,13 @@ function strongly_connected_components_program(
         resultField: resultField,
         // TODO: Karpott.
         maxGSS: 50,
-        accumulatorsDeclaration: {
+        globalAccumulators: {
+            converged: {
+                accumulatorType: "or",
+                valueType: "bool",
+            },
+        },
+        vertexAccumulators: {
             forwardMin: {
                 accumulatorType: "min",
                 valueType: "ints",
@@ -201,6 +207,11 @@ function strongly_connected_components_program(
                     ["set", "isDisabled", false],
                     false
                 ],
+                onHalt: [
+                    "seq",
+                    ["set", "converged", false],
+                    ["goto", "broadcast"],
+                ],
                 updateProgram: false,
             },
             {
@@ -229,7 +240,7 @@ function strongly_connected_components_program(
                             ]
                         ]
                     ],
-                    true
+                    false
                 ],
                 updateProgram: false,
             },
@@ -275,7 +286,21 @@ function strongly_connected_components_program(
             },
             {
                 name: "backward",
-                onHalt: ["goto", "broadcast"],
+                onHalt: [
+                    "seq",
+                    ["print", "converged has value", ["accum-ref", "converged"]],
+                    [
+                        "if",
+                        [
+                            ["accum-ref", "converged"],
+                            ["seq",
+                                ["set", "converged", false],
+                                ["goto", "broadcast"]
+                            ]
+                        ],
+                        [true, ["finish"]]
+                    ]
+                ],
                 initProgram: ["if",
                     [
                         ["accum-ref", "isDisabled"],
@@ -310,6 +335,7 @@ function strongly_connected_components_program(
                         [
                             "seq",
                             ["set", "isDisabled", true],
+                            ["update", "converged", "", true],
                             ["set", "mySCC", ["accum-ref", "forwardMin"]],
                             ["print", "I am done, my SCC id is", ["accum-ref", "forwardMin"]],
                             [
