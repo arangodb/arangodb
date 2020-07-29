@@ -30,7 +30,7 @@
 #include <Pregel/MasterContext.h>
 
 #include <Pregel/Algos/AIR/Greenspun/Primitives.h>
-#include <Pregel/Algos/AIR/VertexAccumulators.h>
+#include <Pregel/Algos/AIR/AIR.h>
 
 #include "AccumulatorAggregator.h"
 

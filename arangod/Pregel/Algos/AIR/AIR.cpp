@@ -22,7 +22,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "VertexAccumulators.h"
+#include "AIR.h"
 
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"

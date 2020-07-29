@@ -29,7 +29,7 @@
 
 #include <Pregel/Algos/AIR/Greenspun/Primitives.h>
 
-#include "VertexAccumulators.h"
+#include "AIR.h"
 
 namespace arangodb {
 namespace pregel {

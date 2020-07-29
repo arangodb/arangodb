@@ -24,8 +24,8 @@
 
 #include "VertexComputation.h"
 
+#include <Pregel/Algos/AIR/AIR.h>
 #include <Pregel/Algos/AIR/Greenspun/Interpreter.h>
-#include <Pregel/Algos/AIR/VertexAccumulators.h>
 #include <Pregel/Graph.h>
 
 #include "Greenspun/Primitives.h"

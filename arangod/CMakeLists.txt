@@ -186,11 +186,11 @@ set(LIB_ARANGO_GRAPH_SOURCES
 set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/AggregatorHandler.cpp
   Pregel/AlgoRegistry.cpp
+  Pregel/Algos/AIR/AIR.cpp
   Pregel/Algos/AIR/AbstractAccumulator.cpp
   Pregel/Algos/AIR/AccumulatorOptionsDeserializer.cpp
   Pregel/Algos/AIR/Greenspun/Interpreter.cpp
   Pregel/Algos/AIR/Greenspun/Primitives.cpp
-  Pregel/Algos/AIR/VertexAccumulators.cpp
   Pregel/Algos/AIR/MessageData.cpp
   Pregel/Algos/AIR/VertexData.cpp
   Pregel/Algos/AIR/EdgeData.cpp

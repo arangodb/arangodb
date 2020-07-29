@@ -29,7 +29,7 @@
 
 #include <Pregel/Aggregator.h>
 
-#include "VertexAccumulators.h"
+#include "AIR.h"
 
 namespace arangodb {
 namespace pregel {

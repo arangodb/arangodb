@@ -21,7 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Pregel/AlgoRegistry.h"
-#include "Pregel/Algos/AIR/VertexAccumulators.h"
+#include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/Algos/AsyncSCC.h"
 #include "Pregel/Algos/ConnectedComponents.h"
 #include "Pregel/Algos/DMID/DMID.h"

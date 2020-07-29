@@ -27,7 +27,7 @@
 #ifndef ARANGODB_PREGEL_ALGOS_ACCUMULATORS_VERTEXCOMPUTATION_H
 #define ARANGODB_PREGEL_ALGOS_ACCUMULATORS_VERTEXCOMPUTATION_H 1
 
-#include "VertexAccumulators.h"
+#include "AIR.h"
 #include "VertexComputationEvalContext.h"
 
 namespace arangodb {

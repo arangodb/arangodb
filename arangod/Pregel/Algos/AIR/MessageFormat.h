@@ -27,7 +27,7 @@
 #ifndef ARANGODB_PREGEL_ALGOS_ACCUMULATORS_MESSAGEFORMAT_H
 #define ARANGODB_PREGEL_ALGOS_ACCUMULATORS_MESSAGEFORMAT_H 1
 
-#include "VertexAccumulators.h"
+#include "AIR.h"
 
 namespace arangodb {
 namespace pregel {

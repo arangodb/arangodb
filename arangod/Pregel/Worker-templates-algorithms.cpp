@@ -20,7 +20,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Pregel/Algos/AIR/VertexAccumulators.h"
+#include "Pregel/Algos/AIR/AIR.h"
 
 #include "Pregel/Worker.cpp"
 

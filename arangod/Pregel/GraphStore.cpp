@@ -30,7 +30,7 @@
 #include "Pregel/PregelFeature.h"
 #include "Pregel/TypedBuffer.h"
 #include "Pregel/Utils.h"
-#include "Pregel/Algos/AIR/VertexAccumulators.h"
+#include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/WorkerConfig.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
