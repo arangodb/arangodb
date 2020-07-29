@@ -49,9 +49,9 @@
 
 #include <set>
 
-#define LOG_VERTEXACC(logId, level) LOG_DEVEL << "[VertexAccumulators] "
+#define LOG_VERTEXACC(logId, level) LOG_DEVEL << "[AIR] "
 
-// LOG_TOPIC(logId, level, Logger::QUERIES) << "[VertexAccumulators] "
+// LOG_TOPIC(logId, level, Logger::QUERIES) << "[AIR] "
 
 using namespace arangodb;
 using namespace arangodb::pregel;
