@@ -427,6 +427,7 @@ void RegisterPrimitives() {
   primitives["var-ref"] = Prim_VarRef;
   primitives["bind-ref"] = Prim_BindRef;
   primitives["accum-ref"] = Prim_AccumRef;
+  primitives["vertex-count"] = Prim_VertexCount;
 
   primitives["this"] = Prim_This;
   primitives["vertex-unique-id"] = Prim_VertexUniqueId;
