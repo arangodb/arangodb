@@ -89,7 +89,7 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
     std::tie(builder, idx) = _cache.read(std::vector<std::string>{AgencyCommHelper::path(key)});
     result = builder->slice();
     if (!result.isArray()) {
-      if (!_server().isStopping()) {
+      if (!_server.isStopping()) {
         // only log errors if we are not already shutting down...
         // in case of shutdown this error is somewhat expected
         LOG_TOPIC("ec320", ERR, arangodb::Logger::CLUSTER)
@@ -171,7 +171,7 @@ bool AgencyCallback::execute(std::shared_ptr<VPackBuilder> newData) {
 bool AgencyCallback::executeByCallbackOrTimeout(double maxTimeout) {
   // One needs to acquire the mutex of the condition variable
   // before entering this function!
-  if (!_server().isStopping()) {
+  if (!_server.isStopping()) {
     if (_wasSignaled) {
       // ok, we have been signaled already, so there is no need to wait at all
       // directly refetch the values
