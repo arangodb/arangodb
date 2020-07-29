@@ -33,6 +33,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Agency/AgencyComm.h"
+#include "Agency/AgencyCommon.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
@@ -348,16 +349,21 @@ class ClusterInfo final {
 #endif
 
  private:
-  struct CollectionWithHash {
+  struct ViewWithHash {
+    std::shared_ptr<LogicalView> view;
     uint64_t hash;
-    std::shared_ptr<LogicalCollection> collection;
   };
+  struct CollectionWithHash {
+    std::shared_ptr<LogicalCollection> collection;
+    uint64_t hash;
+  };
+
   typedef std::unordered_map<CollectionID, CollectionWithHash> DatabaseCollections;
   typedef std::unordered_map<DatabaseID, DatabaseCollections> AllCollections;
   typedef std::unordered_map<CollectionID, std::shared_ptr<CollectionInfoCurrent>> DatabaseCollectionsCurrent;
   typedef std::unordered_map<DatabaseID, DatabaseCollectionsCurrent> AllCollectionsCurrent;
 
-  typedef std::unordered_map<ViewID, std::shared_ptr<LogicalView>> DatabaseViews;
+  typedef std::unordered_map<ViewID, ViewWithHash> DatabaseViews;
   typedef std::unordered_map<DatabaseID, DatabaseViews> AllViews;
 
   class SyncerThread final : public arangodb::Thread {
@@ -988,9 +994,14 @@ public:
 
   /// @brief create a new collecion object from the data, using the cache if possible
   CollectionWithHash buildCollection(
-    bool isBuilding, AllCollections::const_iterator existingCollections,
+    bool isBuilding, AllCollections::iterator existingCollections,
     std::string const& collectionId, arangodb::velocypack::Slice data,
-    TRI_vocbase_t& vocbase, uint64_t planVersion) const;
+    TRI_vocbase_t& vocbase, uint64_t planVersion);
+
+  /// @brief create a new view object from the data, using the cache if possible
+  ViewWithHash buildView(
+    std::string const& viewId, AllViews::iterator existingViews,
+    arangodb::velocypack::Slice data, TRI_vocbase_t& vocbase, uint64_t planVersion);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about our plan
@@ -998,6 +1009,10 @@ public:
   //////////////////////////////////////////////////////////////////////////////
 
   void loadPlan();
+
+  /// @brief the work horse for loadPlan, and doing all the actual work. this
+  /// method must only be called while to _planProt.mutex is held
+  consensus::index_t loadPlanInner();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about current state
