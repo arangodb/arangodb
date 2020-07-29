@@ -78,8 +78,10 @@ struct VertexAccumulatorAggregator : IAggregator {
 
   /// @brief Used when updating aggregator value locally
   void aggregate(void const* valuePtr) override {
-      auto slice = *reinterpret_cast<VPackSlice const*>(valuePtr);
-      accumulator->updateByMessageSlice(slice);
+      auto slice = reinterpret_cast<VertexAccumulatorAggregator const*>(valuePtr);
+      VPackBuilder builder;
+      slice->accumulator->getValueIntoBuilder(builder);
+      accumulator->updateByMessageSlice(builder.slice());
   }
 
   /// @brief Used when updating aggregator value from remote

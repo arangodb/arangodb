@@ -27,6 +27,7 @@
 #ifndef ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_ABSTRACT_ACCUMULATOR_H
 #define ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_ABSTRACT_ACCUMULATOR_H 1
 #include <numeric>
+#include <iostream>
 
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-aliases.h"
@@ -109,6 +110,7 @@ class Accumulator : public AccumulatorBase {
   }
 
   UpdateResult updateByMessageSlice(VPackSlice s) override {
+    std::cout << "updateByMessageSlice = " << s.toJson();
     if constexpr (std::is_same_v<T, bool>) {
       return this->update(s.getBool());
     } else if constexpr (std::is_arithmetic_v<T>) {
