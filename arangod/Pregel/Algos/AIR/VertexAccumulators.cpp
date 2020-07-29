@@ -36,16 +36,17 @@
 
 #include "Logger/Logger.h"
 
-#include "Pregel/Algos/VertexAccumulators/GraphFormat.h"
-#include "Pregel/Algos/VertexAccumulators/MasterContext.h"
-#include "Pregel/Algos/VertexAccumulators/MessageFormat.h"
-#include "Pregel/Algos/VertexAccumulators/VertexComputation.h"
+#include "Pregel/Algos/AIR/GraphFormat.h"
+#include "Pregel/Algos/AIR/MasterContext.h"
+#include "Pregel/Algos/AIR/MessageFormat.h"
+#include "Pregel/Algos/AIR/VertexComputation.h"
 
-#include "Pregel/Algos/VertexAccumulators/AccumulatorOptionsDeserializer.h"
+#include "Pregel/Algos/AIR/AccumulatorOptionsDeserializer.h"
 
-#include "Pregel/Algos/VertexAccumulators/Greenspun/Interpreter.h"
+#include "Pregel/Algos/AIR/Greenspun/Interpreter.h"
 
-#include <Pregel/Algos/VertexAccumulators/Greenspun/Primitives.h>
+#include <Pregel/Algos/AIR/Greenspun/Primitives.h>
+
 #include <set>
 
 #define LOG_VERTEXACC(logId, level) LOG_DEVEL << "[VertexAccumulators] "

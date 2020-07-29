@@ -21,7 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Pregel/OutgoingCache.h"
-#include "Pregel/Algos/VertexAccumulators/VertexAccumulators.h"
+#include "Pregel/Algos/AIR/VertexAccumulators.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/Utils.h"

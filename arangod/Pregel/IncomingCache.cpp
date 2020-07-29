@@ -22,7 +22,7 @@
 
 #include "IncomingCache.h"
 #include "Pregel/CommonFormats.h"
-#include "Pregel/Algos/VertexAccumulators/VertexAccumulators.h"
+#include "Pregel/Algos/AIR/VertexAccumulators.h"
 #include "Pregel/Utils.h"
 #include "Pregel/WorkerConfig.h"
 

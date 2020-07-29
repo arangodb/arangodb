@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Pregel/AlgoRegistry.h"
+#include "Pregel/Algos/AIR/VertexAccumulators.h"
 #include "Pregel/Algos/AsyncSCC.h"
 #include "Pregel/Algos/ConnectedComponents.h"
 #include "Pregel/Algos/DMID/DMID.h"
@@ -35,7 +36,6 @@
 #include "Pregel/Algos/SSSP.h"
 #include "Pregel/Algos/ShortestPath.h"
 #include "Pregel/Algos/WCC.h"
-#include "Pregel/Algos/VertexAccumulators/VertexAccumulators.h"
 #include "Pregel/Utils.h"
 
 #include "Logger/LogMacros.h"

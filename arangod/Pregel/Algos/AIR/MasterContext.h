@@ -29,8 +29,8 @@
 
 #include <Pregel/MasterContext.h>
 
-#include <Pregel/Algos/VertexAccumulators/Greenspun/Primitives.h>
-#include <Pregel/Algos/VertexAccumulators/VertexAccumulators.h>
+#include <Pregel/Algos/AIR/Greenspun/Primitives.h>
+#include <Pregel/Algos/AIR/VertexAccumulators.h>
 
 #include "AccumulatorAggregator.h"
 

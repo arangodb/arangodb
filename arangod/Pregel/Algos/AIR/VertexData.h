@@ -27,9 +27,9 @@
 #ifndef ARANGODB_PREGEL_ALGOS_ACCUMULATORS_VERTEXDATA_H
 #define ARANGODB_PREGEL_ALGOS_ACCUMULATORS_VERTEXDATA_H 1
 
-#include "Pregel/Algos/VertexAccumulators/AbstractAccumulator.h"
-#include "Pregel/Algos/VertexAccumulators/AccumulatorOptionsDeserializer.h"
-#include "Pregel/Algos/VertexAccumulators/Accumulators.h"
+#include "Pregel/Algos/AIR/AbstractAccumulator.h"
+#include "Pregel/Algos/AIR/AccumulatorOptionsDeserializer.h"
+#include "Pregel/Algos/AIR/Accumulators.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>

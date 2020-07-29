@@ -24,7 +24,7 @@
 
 #include "VertexData.h"
 
-#include <Pregel/Algos/VertexAccumulators/AbstractAccumulator.h>
+#include <Pregel/Algos/AIR/AbstractAccumulator.h>
 
 #include "velocypack/velocypack-aliases.h"
 

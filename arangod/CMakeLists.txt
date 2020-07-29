@@ -186,6 +186,23 @@ set(LIB_ARANGO_GRAPH_SOURCES
 set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/AggregatorHandler.cpp
   Pregel/AlgoRegistry.cpp
+  Pregel/Algos/AIR/AbstractAccumulator.cpp
+  Pregel/Algos/AIR/AccumulatorOptionsDeserializer.cpp
+  Pregel/Algos/AIR/Greenspun/Interpreter.cpp
+  Pregel/Algos/AIR/Greenspun/Primitives.cpp
+  Pregel/Algos/AIR/VertexAccumulators.cpp
+  Pregel/Algos/AIR/MessageData.cpp
+  Pregel/Algos/AIR/VertexData.cpp
+  Pregel/Algos/AIR/EdgeData.cpp
+  Pregel/Algos/AIR/GraphFormat.cpp
+  Pregel/Algos/AIR/MessageFormat.cpp
+  Pregel/Algos/AIR/VertexComputation.cpp
+  Pregel/Algos/AIR/VertexComputationEvalContext.cpp
+  Pregel/Algos/AIR/VertexData.cpp
+  Pregel/Algos/AIR/EdgeData.cpp
+  Pregel/Algos/AIR/MessageData.cpp
+  Pregel/Algos/AIR/MasterContext.cpp
+  Pregel/Algos/AIR/AccumulatorAggregator.cpp
   Pregel/Algos/AsyncSCC.cpp
   Pregel/Algos/ConnectedComponents.cpp
   Pregel/Algos/DMID/DMID.cpp
@@ -200,23 +217,6 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/Algos/SLPA.cpp
   Pregel/Algos/SSSP.cpp
   Pregel/Algos/ShortestPath.cpp
-  Pregel/Algos/VertexAccumulators/AbstractAccumulator.cpp
-  Pregel/Algos/VertexAccumulators/AccumulatorOptionsDeserializer.cpp
-  Pregel/Algos/VertexAccumulators/Greenspun/Interpreter.cpp
-  Pregel/Algos/VertexAccumulators/Greenspun/Primitives.cpp
-  Pregel/Algos/VertexAccumulators/VertexAccumulators.cpp
-  Pregel/Algos/VertexAccumulators/MessageData.cpp
-  Pregel/Algos/VertexAccumulators/VertexData.cpp
-  Pregel/Algos/VertexAccumulators/EdgeData.cpp
-  Pregel/Algos/VertexAccumulators/GraphFormat.cpp
-  Pregel/Algos/VertexAccumulators/MessageFormat.cpp
-  Pregel/Algos/VertexAccumulators/VertexComputation.cpp
-  Pregel/Algos/VertexAccumulators/VertexComputationEvalContext.cpp
-  Pregel/Algos/VertexAccumulators/VertexData.cpp
-  Pregel/Algos/VertexAccumulators/EdgeData.cpp
-  Pregel/Algos/VertexAccumulators/MessageData.cpp
-  Pregel/Algos/VertexAccumulators/MasterContext.cpp
-  Pregel/Algos/VertexAccumulators/AccumulatorAggregator.cpp
   Pregel/Algos/WCC.cpp
   Pregel/Conductor.cpp
   Pregel/GraphStore.cpp

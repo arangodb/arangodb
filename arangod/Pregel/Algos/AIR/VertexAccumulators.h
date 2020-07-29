@@ -32,9 +32,9 @@
 #include "Pregel/MessageFormat.h"
 #include "Pregel/VertexComputation.h"
 
-#include "Pregel/Algos/VertexAccumulators/AbstractAccumulator.h"
-#include "Pregel/Algos/VertexAccumulators/AccumulatorOptionsDeserializer.h"
-#include "Pregel/Algos/VertexAccumulators/Accumulators.h"
+#include "Pregel/Algos/AIR/AbstractAccumulator.h"
+#include "Pregel/Algos/AIR/AccumulatorOptionsDeserializer.h"
+#include "Pregel/Algos/AIR/Accumulators.h"
 
 #include "EdgeData.h"
 #include "MessageData.h"

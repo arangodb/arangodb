@@ -27,7 +27,7 @@
 #ifndef ARANGODB_PREGEL_ALGOS_VERTEX_COMPUTATION_EVALCONTEXT_H
 #define ARANGODB_PREGEL_ALGOS_VERTEX_COMPUTATION_EVALCONTEXT_H 1
 
-#include <Pregel/Algos/VertexAccumulators/Greenspun/Primitives.h>
+#include <Pregel/Algos/AIR/Greenspun/Primitives.h>
 
 #include "VertexAccumulators.h"
 
