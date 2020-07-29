@@ -387,9 +387,15 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, bool s
       _internals.separate();
 
       if (second) {
+        // in case of reverse iteration, this is our starting point, so it must
+        // be in the same prefix, otherwise we'll get no results; so here we
+        // use the same objectId and the max vpack slice to make sure we find
+        // everything
         uint64ToPersistent(_internals.buffer(), first);
         _internals.buffer().append((char const*)(max.begin()), max.byteSize());
       } else {
+        // in case of forward iteration, we can use the next objectId as a quick
+        // termination case, as it will be in the next prefix
         uint64ToPersistent(_internals.buffer(), first + 1);
       }
       break;
