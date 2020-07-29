@@ -340,12 +340,87 @@ function strongly_connected_components(
     );
 }
 
+function page_rank_program(
+    resultField,
+    startVertexId,
+    weightAttribute
+) {
+    return {
+        resultField: resultField,
+        // TODO: Karpott.
+        maxGSS: 10000,
+        accumulatorsDeclaration: {
+            rank: {
+                accumulatorType: "sum",
+                valueType: "doubles",
+                storeSender: false
+            },
+        },
+        initProgram: [
+            [
+                "seq",
+                [
+                    "for",
+                    "outbound",
+                    ["quote", "edge"],
+                    [
+                        "quote",
+                        "seq",
+                        [
+                            "update",
+                            "rank",
+                            ["attrib", "_to", ["var-ref", "edge"]],
+                            ["/", ["/", 1, ["vertex-count"]], ["attrib", numOutgoingEdges, ["var-ref", "edge"]]],
+                        ],
+                    ],
+                ],
+                true
+            ]
+        ],
+        updateProgram: [
+            "seq",
+            [
+                "for",
+                "outbound",
+                ["quote", "edge"],
+                [
+                    "quote",
+                    "seq",
+                    [
+                        "update",
+                        "rank",
+                        ["attrib", "_to", ["var-ref", "edge"]],
+                        ["/", ["accum-ref", "rank"], ["attrib", numOutgoingEdges, ["var-ref", "edge"]]],
+                    ],
+                ],
+            ],
+            ["set", "rank", 0],
+            true
+        ],
+    };
+}
+
+function page_rank(
+    graphName,
+    resultField
+) {
+    return pregel.start(
+        "vertexaccumulators",
+        graphName,
+        page_rank_program(
+            resultField
+        )
+    );
+}
+
 exports.vertex_degree = vertex_degree;
 
 exports.single_source_shortest_path_program = single_source_shortest_path_program;
 exports.single_source_shortest_path = single_source_shortest_path;
 exports.strongly_connected_components_program = strongly_connected_components_program;
 exports.strongly_connected_components = strongly_connected_components;
+exports.page_rank_program = page_rank_program;
+exports.page_rank = page_rank;
 exports.test_bind_parameter_program = test_bind_parameter_program;
 
 exports.execute = execute_program;
