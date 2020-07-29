@@ -4355,7 +4355,7 @@ function transactionIteratorSuite() {
     testIteratorBoundsForward: function () {
       c.ensureIndex({ type: "persistent", fields: ["value1"] });
       c.ensureIndex({ type: "persistent", fields: ["value2"] });
-      var res = c.getIndexes();
+      let res = c.getIndexes();
       assertEqual(3, res.length);
 
       const opts = {
