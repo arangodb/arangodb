@@ -1,6 +1,9 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
+* Always fetch data for /_api/cluster/agency-dump from leader of the agency.
+  Add option "redirectToLeader=true" to internal /_api/agency/state API.
+
 * Make sure cluster statistics in web UI work in case a coordinator is down.
 
 * Fixed undefined behavior in AQL COLLECT with multiple group variables (issue
