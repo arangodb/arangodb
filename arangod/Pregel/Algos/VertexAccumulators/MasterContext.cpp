@@ -22,14 +22,15 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <Logger/Logger.h>
 #include <Logger/LogMacros.h>
+#include <Logger/Logger.h>
 
 #include "MasterContext.h"
 
 namespace arangodb::pregel::algos::accumulators {
 
-MasterContext::MasterContext(VertexAccumulators const* algorithm) : _algo(algorithm) {}
+MasterContext::MasterContext(VertexAccumulators const* algorithm)
+    : _algo(algorithm) {}
 
 bool MasterContext::gotoPhase(std::string_view nextPhase) {
   auto const& phases = _algo->options().phases;
@@ -50,7 +51,7 @@ void MasterContext::finish() {
   userSelectedNext = ContinuationResult::ABORT;
 }
 
-  MasterContext::ContinuationResult MasterContext::postGlobalSuperstep(bool allVertexesVotedHalt) {
+MasterContext::ContinuationResult MasterContext::postGlobalSuperstep(bool allVertexesVotedHalt) {
   if (!allVertexesVotedHalt) {
     return ContinuationResult::DONT_CARE;
   }
@@ -95,4 +96,4 @@ void MasterContext::finish() {
   return ContinuationResult::ABORT;
 }
 
-}
+}  // namespace arangodb::pregel::algos::accumulators

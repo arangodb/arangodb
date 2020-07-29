@@ -143,4 +143,9 @@ EvalResult VertexComputationEvalContext::getGlobalSuperstep(VPackBuilder& result
   return {};
 }
 
+EvalResult VertexComputationEvalContext::getVertexCount(VPackBuilder& result) const {
+  result.add(VPackValue(computation().context()->vertexCount()));
+  return {};
+}
+
 }  // namespace arangodb::pregel::algos::accumulators

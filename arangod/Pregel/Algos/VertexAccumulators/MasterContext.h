@@ -55,6 +55,11 @@ struct MasterContext : ::arangodb::pregel::MasterContext {
       return {};
     }
 
+    EvalResult getVertexCount(VPackBuilder& result) const override {
+      result.add(VPackValue(masterContext.vertexCount()));
+      return {};
+    }
+
     MasterContext& masterContext;
   };
 

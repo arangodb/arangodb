@@ -63,6 +63,8 @@ class VertexComputationEvalContext : public PrimEvalContext {
   EvalResult getBindingValue(std::string_view id, VPackBuilder& result) const override;
   EvalResult getGlobalSuperstep(VPackBuilder& result) const override;
 
+  EvalResult getVertexCount(VPackBuilder& result) const override;
+
  private:
 
   VertexComputation& computation() const;
