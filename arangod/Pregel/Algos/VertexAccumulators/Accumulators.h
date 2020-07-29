@@ -39,13 +39,9 @@ template<typename T>
 class MinAccumulator : public Accumulator<T> {
  public:
   using Accumulator<T>::Accumulator;
-  void update(T v) override {
-    this->_value = std::min(v, this->_value);
-  }
-  auto update(T v, std::string_view sender) -> AccumulatorBase::UpdateResult override {
+  auto update(T v) -> AccumulatorBase::UpdateResult override {
     if (v < this->_value) {
       this->_value = v;
-      this->_sender = sender;
       return AccumulatorBase::UpdateResult::CHANGED;
     }
     return AccumulatorBase::UpdateResult::NO_CHANGE;
@@ -56,13 +52,9 @@ template<typename T>
 class MaxAccumulator : public Accumulator<T> {
  public:
   using Accumulator<T>::Accumulator;
-  void update(T v) override {
-    this->_value = std::max(v, this->_value);
-  }
-  auto update(T v, std::string_view sender) -> AccumulatorBase::UpdateResult override {
+  auto update(T v) -> AccumulatorBase::UpdateResult override {
     if (v > this->_value) {
       this->_value = v;
-      this->_sender = sender;
       return AccumulatorBase::UpdateResult::CHANGED;
     }
     return AccumulatorBase::UpdateResult::NO_CHANGE;
@@ -73,13 +65,9 @@ template<typename T>
 class SumAccumulator : public Accumulator<T> {
  public:
   using Accumulator<T>::Accumulator;
-  void update(T v) override {
-    this->_value += v;
-  }
-  auto update(T v, std::string_view sender) -> AccumulatorBase::UpdateResult override {
+  auto update(T v) -> AccumulatorBase::UpdateResult override {
     auto old = this->_value;
     this->_value += v;
-    this->_sender = sender;
     return old == this->_value ? AccumulatorBase::UpdateResult::NO_CHANGE
                                : AccumulatorBase::UpdateResult::CHANGED;
   }
@@ -89,13 +77,9 @@ template<typename T>
 class AndAccumulator : public Accumulator<T> {
  public:
   using Accumulator<T>::Accumulator;
-  void update(T v) override {
-    this->_value &= v;
-  }
-  auto update(T v, std::string_view sender) -> AccumulatorBase::UpdateResult override {
+  auto update(T v) -> AccumulatorBase::UpdateResult override {
     auto old = this->_value;
     this->_value &= v;
-    this->_sender = sender;
     return old == this->_value ? AccumulatorBase::UpdateResult::NO_CHANGE
                                : AccumulatorBase::UpdateResult::CHANGED;
   }
@@ -105,13 +89,9 @@ template<typename T>
 class OrAccumulator : public Accumulator<T> {
  public:
   using Accumulator<T>::Accumulator;
-  void update(T v) override {
-    this->_value |= v;
-  }
-  auto update(T v, std::string_view sender) -> AccumulatorBase::UpdateResult override {
+  auto update(T v) -> AccumulatorBase::UpdateResult override {
     auto old = this->_value;
     this->_value |= v;
-    this->_sender = sender;
     return old == this->_value ? AccumulatorBase::UpdateResult::NO_CHANGE
                                : AccumulatorBase::UpdateResult::CHANGED;
   }
@@ -121,12 +101,8 @@ template<typename T>
 class StoreAccumulator : public Accumulator<T> {
  public:
   using Accumulator<T>::Accumulator;
-  void update(T v) override {
+  auto update(T v) -> AccumulatorBase::UpdateResult override {
     this->_value = std::move(v);
-  }
-  auto update(T v, std::string_view sender) -> AccumulatorBase::UpdateResult override {
-    this->_value = std::move(v);
-    this->_sender = sender;
     return AccumulatorBase::UpdateResult::CHANGED;
   }
 };
@@ -135,14 +111,13 @@ template<>
 class StoreAccumulator<VPackSlice> : public Accumulator<VPackSlice> {
  public:
   using Accumulator<VPackSlice>::Accumulator;
-  void update(VPackSlice v) override {
+  void set(VPackSlice&& v) override {
     _buffer.clear();
     _buffer.add(v);
     _value = _buffer.slice();
   }
-  UpdateResult update(VPackSlice v, std::string_view sender) override {
-    this->update(v);
-    this->_sender = sender;
+  auto update(VPackSlice v) -> AccumulatorBase::UpdateResult override {
+    this->set(std::move(v));
     return UpdateResult::CHANGED;
   }
  private:
@@ -152,15 +127,11 @@ class StoreAccumulator<VPackSlice> : public Accumulator<VPackSlice> {
 template<typename T>
 class ListAccumulator : public Accumulator<T> {
   using Accumulator<T>::Accumulator;
-  void update(T v) override {
+  AccumulatorBase::UpdateResult update(T v) override {
     _list.emplace_back(std::move(v));
-  }
-  AccumulatorBase::UpdateResult update(T v, std::string_view sender) override {
-    this->update(v);
-    this->_sender = sender;
     return AccumulatorBase::UpdateResult::CHANGED;
   }
-  void getIntoBuilder(VPackBuilder& builder) override {
+  void getValueIntoBuilder(VPackBuilder& builder) override {
     VPackArrayBuilder array(&builder);
     for (auto&& p : _list) {
       builder.add(VPackValue(p));
@@ -186,15 +157,11 @@ class ListAccumulator : public Accumulator<T> {
 template<>
 class ListAccumulator<VPackSlice> : public Accumulator<VPackSlice> {
   using Accumulator<VPackSlice>::Accumulator;
-  void update(VPackSlice v) override {
+  AccumulatorBase::UpdateResult update(VPackSlice v) override {
     _list.emplace_back().add(v);
-  }
-  AccumulatorBase::UpdateResult update(VPackSlice v, std::string_view sender) override {
-    this->update(v);
-    this->_sender = sender;
     return AccumulatorBase::UpdateResult::CHANGED;
   }
-  void getIntoBuilder(VPackBuilder& builder) override {
+  void getValueIntoBuilder(VPackBuilder& builder) override {
     VPackArrayBuilder array(&builder);
     for (auto&& p : _list) {
       builder.add(p.slice());

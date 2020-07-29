@@ -34,20 +34,23 @@ struct VertexComputationEvalContext : PrimEvalContext {
   explicit VertexComputationEvalContext(VertexAccumulators::VertexComputation& computation, VertexData& vertexData)
       : _computation(computation), _vertexData(vertexData){};
 
+  /* This is the _id of the vertex document */
   std::string const& getThisId() const override {
     return _vertexData._documentId;
   }
 
+  /* What is this used for? */
   std::size_t getVertexUniqueId() const override {
     return _vertexData._vertexId;
   }
 
+  /* what's done when print is called */
   void printCallback(const std::string &msg) const override {
     LOG_DEVEL << msg;
   }
 
   void getAccumulatorValue(std::string_view accumId, VPackBuilder& builder) const override {
-    _vertexData._accumulators.at(std::string{accumId})->getIntoBuilder(builder);
+    _vertexData._accumulators.at(std::string{accumId})->getValueIntoBuilder(builder);
   }
 
   void setAccumulator(std::string_view accumId, VPackSlice value) override {
@@ -172,7 +175,7 @@ void VertexAccumulators::VertexComputation::compute(MessageIterator<MessageData>
     for (const MessageData* msg : incomingMessages) {
       accumChanged |= vertexData()
           ._accumulators.at(msg->_accumulatorName)
-          ->updateBySlice(msg->_value.slice(), msg->_sender) == AccumulatorBase::UpdateResult::CHANGED;
+          ->updateByMessageSlice(msg->_value.slice()) == AccumulatorBase::UpdateResult::CHANGED;
     }
 
     if (!accumChanged && phaseStep != 1) {

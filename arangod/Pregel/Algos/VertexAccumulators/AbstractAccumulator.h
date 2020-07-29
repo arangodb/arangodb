@@ -55,11 +55,27 @@ struct AccumulatorBase {
     NO_CHANGE,
   };
 
+  // Resets the accumulator to a well-known value
+  virtual void clear() = 0;
+
+  // Set the accumulator's value by slice; it is the
+  // responsibility of the particular accumulator
+  // implementation to interpret the slice
   virtual void setBySlice(VPackSlice) = 0;
-  virtual void updateBySlice(VPackSlice) = 0;
-  virtual auto updateBySlice(VPackSlice, std::string_view) -> UpdateResult = 0;
-  virtual void getIntoBuilder(VPackBuilder& builder) = 0;
-  virtual std::string const& getSender() const = 0;
+
+  // Update the accumulator's value by a message slice
+  // The accumulator can assume that the slice was builder
+  // by getIntoMessageSlice
+  virtual auto updateByMessageSlice(VPackSlice) -> UpdateResult = 0;
+
+  // Write all information that is needed to send an update
+  // The slice built here must be interpretable by
+  // updateByMessageSlice
+  virtual void getUpdateMessageIntoBuilder(VPackBuilder& builder) = 0;
+
+  // Get the value into a builder. The formatting of this result
+  // is entirely up to the accumulators implementation
+  virtual void getValueIntoBuilder(VPackBuilder& builder) = 0;
 
   VertexData const& _owner;
 };
@@ -72,9 +88,14 @@ class Accumulator : public AccumulatorBase {
   explicit Accumulator(VertexData const& owner, AccumulatorOptions const&) : AccumulatorBase(owner) {};
   ~Accumulator() override = default;
 
-  virtual void set(data_type v) { _value = v; };
-  virtual void update(data_type v) = 0;
-  virtual auto update(data_type v, std::string_view sender) -> UpdateResult = 0;
+
+  // Needed to implement set by slice and clear
+  virtual void set(data_type&& v) { _value = v; };
+
+  virtual void clear() override { this->set(T{}); };
+
+  // Needed to implement updates by slice
+  virtual UpdateResult update(data_type v) = 0;
 
   void setBySlice(VPackSlice s) override {
     // TODO proper error handling here!
@@ -86,44 +107,32 @@ class Accumulator : public AccumulatorBase {
       std::abort();
     }
   }
-  void updateBySlice(VPackSlice s) override {
-    // TODO proper error handling here!
+
+  UpdateResult updateByMessageSlice(VPackSlice s) override {
     if constexpr (std::is_arithmetic_v<T>) {
-      this->update(s.getNumericValue<T>());
+      return this->update(s.getNumericValue<T>());
     } else if constexpr (std::is_same_v<T, std::string>) {
-      this->update(s.copyString());
+      return this->update(s.copyString());
     } else if constexpr (std::is_same_v<T, bool>) {
-      this->update(s.getBool());
+      return this->update(s.getBool());
     } else if constexpr (std::is_same_v<T, VPackSlice>) {
-      this->update(s);
+      return this->update(s);
     } else {
       std::abort();
     }
   }
-  UpdateResult updateBySlice(VPackSlice s, std::string_view sender) override {
-    if constexpr (std::is_arithmetic_v<T>) {
-      return this->update(s.getNumericValue<T>(), sender);
-    } else if constexpr (std::is_same_v<T, std::string>) {
-      return this->update(s.copyString(), sender);
-    } else if constexpr (std::is_same_v<T, bool>) {
-      return this->update(s.getBool(), sender);
-    } else if constexpr (std::is_same_v<T, VPackSlice>) {
-      return this->update(s, sender);
-    } else {
-      std::abort();
-    }
+
+  void getUpdateMessageIntoBuilder(VPackBuilder& builder) override {
+    getValueIntoBuilder(builder);
   }
-  void getIntoBuilder(VPackBuilder& builder) override {
+
+  void getValueIntoBuilder(VPackBuilder& builder) override {
     if constexpr (std::is_same_v<T, VPackSlice>) {
       builder.add(_value);
     } else {
       builder.add(VPackValue(_value));
     }
   }
-
-  data_type const& get() const { return _value; };
-  std::string const& getSender() const override { return _sender; };
-
  protected:
   data_type _value;
   std::string _sender;

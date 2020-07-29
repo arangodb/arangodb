@@ -58,11 +58,7 @@ bool VertexAccumulators::GraphFormat::buildVertexDocument(arangodb::velocypack::
                                                           size_t size) const {
   VPackObjectBuilder guard(&b, _resultField);
   for (auto&& acc : ptr->_accumulators) {
-    VPackObjectBuilder bodyBuilder(&b, acc.first);
-    b.add(VPackValue("value"));
-    acc.second->getIntoBuilder(b);
-    b.add(VPackValue("sender"));
-    b.add(VPackValue(acc.second->getSender()));
+    acc.second->getValueIntoBuilder(b);
   }
   return true;
 }
