@@ -4,6 +4,17 @@ devel
 * Always fetch data for /_api/cluster/agency-dump from leader of the agency.
   Add option "redirectToLeader=true" to internal /_api/agency/state API.
 
+* Fixed issue #12297: ArangoDB 3.6.5 Swagger Error?
+  This issue caused the Swagger UI for displaying the APIs of user-defined Foxx
+  services to remain invisible in the web UI, because of a JavaScript exception.
+  This PR fixes the JavaScript exception, so the services API is displayed
+  again properly.
+
+* Fixed issue #12248: Web UI on 3.6.5: 404 error on adding new index.
+  This issue caused "404: not found" errors when creating indexes via the web
+  UI. The indexes were created successfully despite the error message popping
+  up. This fix removes the misleading unconditional error message.
+
 * Slightly improved the performance of some k-shortest-path queries.
 
 * Added startup option `--rocksdb.encryption-key-rotation` to activate/deactivate
