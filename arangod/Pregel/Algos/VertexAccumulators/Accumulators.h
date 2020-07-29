@@ -34,8 +34,9 @@
 namespace arangodb {
 namespace pregel {
 namespace algos {
+namespace accumulators {
 
-template<typename T>
+template <typename T>
 class MinAccumulator : public Accumulator<T> {
  public:
   using Accumulator<T>::Accumulator;
@@ -48,7 +49,7 @@ class MinAccumulator : public Accumulator<T> {
   }
 };
 
-template<typename T>
+template <typename T>
 class MaxAccumulator : public Accumulator<T> {
  public:
   using Accumulator<T>::Accumulator;
@@ -61,7 +62,7 @@ class MaxAccumulator : public Accumulator<T> {
   }
 };
 
-template<typename T>
+template <typename T>
 class SumAccumulator : public Accumulator<T> {
  public:
   using Accumulator<T>::Accumulator;
@@ -73,7 +74,7 @@ class SumAccumulator : public Accumulator<T> {
   }
 };
 
-template<typename T>
+template <typename T>
 class AndAccumulator : public Accumulator<T> {
  public:
   using Accumulator<T>::Accumulator;
@@ -85,7 +86,7 @@ class AndAccumulator : public Accumulator<T> {
   }
 };
 
-template<typename T>
+template <typename T>
 class OrAccumulator : public Accumulator<T> {
  public:
   using Accumulator<T>::Accumulator;
@@ -97,7 +98,7 @@ class OrAccumulator : public Accumulator<T> {
   }
 };
 
-template<typename T>
+template <typename T>
 class StoreAccumulator : public Accumulator<T> {
  public:
   using Accumulator<T>::Accumulator;
@@ -107,7 +108,7 @@ class StoreAccumulator : public Accumulator<T> {
   }
 };
 
-template<>
+template <>
 class StoreAccumulator<VPackSlice> : public Accumulator<VPackSlice> {
  public:
   using Accumulator<VPackSlice>::Accumulator;
@@ -120,11 +121,12 @@ class StoreAccumulator<VPackSlice> : public Accumulator<VPackSlice> {
     this->set(std::move(v));
     return UpdateResult::CHANGED;
   }
+
  private:
   VPackBuilder _buffer;
 };
 
-template<typename T>
+template <typename T>
 class ListAccumulator : public Accumulator<T> {
   using Accumulator<T>::Accumulator;
   AccumulatorBase::UpdateResult update(T v) override {
@@ -154,7 +156,7 @@ class ListAccumulator : public Accumulator<T> {
   std::vector<T> _list;
 };
 
-template<>
+template <>
 class ListAccumulator<VPackSlice> : public Accumulator<VPackSlice> {
   using Accumulator<VPackSlice>::Accumulator;
   AccumulatorBase::UpdateResult update(VPackSlice v) override {
@@ -175,10 +177,12 @@ class ListAccumulator<VPackSlice> : public Accumulator<VPackSlice> {
       }
     }
   }
+
  private:
   std::vector<VPackBuilder> _list;
 };
 
+}  // namespace accumulators
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb

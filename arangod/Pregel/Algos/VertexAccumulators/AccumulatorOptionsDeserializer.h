@@ -27,16 +27,27 @@
 #ifndef ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATOR_OPTIONS_DESERIALIZER_H
 #define ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATOR_OPTIONS_DESERIALIZER_H 1
 
-#include <string>
-#include <map>
-#include <velocypack/Slice.h>
 #include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+#include <map>
+#include <string>
 
 #include <VPackDeserializer/deserializer.h>
 
+namespace arangodb {
+namespace pregel {
+namespace algos {
+namespace accumulators {
+
 enum class AccumulatorType {
-  MIN, MAX, SUM, AND, OR, STORE, LIST,
+  MIN,
+  MAX,
+  SUM,
+  AND,
+  OR,
+  STORE,
+  LIST,
 };
 
 std::ostream& operator<<(std::ostream&, AccumulatorType const&);
@@ -85,4 +96,8 @@ std::ostream& operator<<(std::ostream&, AccumulatorValueType const&);
 deserializer_result<AccumulatorOptions> parseAccumulatorOptions(VPackSlice slice);
 deserializer_result<VertexAccumulatorOptions> parseVertexAccumulatorOptions(VPackSlice slice);
 
+}  // namespace accumulators
+}  // namespace algos
+}  // namespace pregel
+}  // namespace arangodb
 #endif

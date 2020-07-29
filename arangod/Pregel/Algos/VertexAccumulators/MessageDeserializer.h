@@ -1,4 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
+///
 /// DISCLAIMER
 ///
 /// Copyright 2020 ArangoDB GmbH, Cologne, Germany
@@ -20,20 +21,20 @@
 /// @author Heiko Kernbach
 /// @author Lars Maier
 /// @author Markus Pfeiffer
+///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "VertexAccumulators.h"
+#ifndef ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATOR_OPTIONS_DESERIALIZER_H
+#define ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATOR_OPTIONS_DESERIALIZER_H 1
 
-using namespace arangodb::pregel::algos;
+#include <string>
+#include <map>
+#include <velocypack/Slice.h>
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
-// MessageFormat
-VertexAccumulators::MessageFormat::MessageFormat() {}
+#include <VPackDeserializer/deserializer.h>
 
-void VertexAccumulators::MessageFormat::unwrapValue(VPackSlice s, message_type& message) const {
-  message.fromVelocyPack(s);
-};
 
-void VertexAccumulators::MessageFormat::addValue(VPackBuilder& arrayBuilder, message_type const& message) const {
-  message.toVelocyPack(arrayBuilder);
-};
 
+#endif

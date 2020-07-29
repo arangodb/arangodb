@@ -36,14 +36,14 @@
 namespace arangodb {
 namespace pregel {
 namespace algos {
-
+namespace accumulators {
 class VertexData;
 
 template <typename T>
 class Accumulator;
 
 struct AccumulatorBase {
-  AccumulatorBase(VertexData const& owner) : _owner(owner) {};
+  AccumulatorBase(VertexData const& owner) : _owner(owner){};
   virtual ~AccumulatorBase() = default;
   template <typename T>
   Accumulator<T>* castAccumulatorType() {
@@ -85,9 +85,9 @@ class Accumulator : public AccumulatorBase {
  public:
   using data_type = T;
 
-  explicit Accumulator(VertexData const& owner, AccumulatorOptions const&) : AccumulatorBase(owner) {};
+  explicit Accumulator(VertexData const& owner, AccumulatorOptions const&)
+      : AccumulatorBase(owner){};
   ~Accumulator() override = default;
-
 
   // Needed to implement set by slice and clear
   virtual void set(data_type&& v) { _value = v; };
@@ -133,13 +133,16 @@ class Accumulator : public AccumulatorBase {
       builder.add(VPackValue(_value));
     }
   }
+
  protected:
   data_type _value;
   std::string _sender;
 };
 
-std::unique_ptr<AccumulatorBase> instantiateAccumulator(VertexData const& owner, ::AccumulatorOptions const& options);
+std::unique_ptr<AccumulatorBase> instantiateAccumulator(VertexData const& owner,
+                                                        AccumulatorOptions const& options);
 
+}  // namespace accumulators
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb

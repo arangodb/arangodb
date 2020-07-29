@@ -22,30 +22,12 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "VertexAccumulators.h"
+#include "Basics/debugging.h"
+#include "MessageData.h"
 
 #include "velocypack/velocypack-aliases.h"
 
-using namespace arangodb::pregel::algos;
-
-void VertexData::reset(AccumulatorsDeclaration const& accumulatorsDeclaration,
-                       std::string documentId, VPackSlice const& doc, std::size_t vertexId) {
-  _documentId = documentId;
-  _document.clear();
-  _document.add(doc);
-  _vertexId = vertexId;
-
-  for (auto&& acc : accumulatorsDeclaration) {
-    _accumulators.emplace(acc.first, instantiateAccumulator(*this, acc.second));
-  }
-}
-
-void EdgeData::reset(VPackSlice const& doc) {
-  _document.clear();
-  _document.add(doc);
-
-  _toId = doc.get("_to").copyString();
-}
+using namespace arangodb::pregel::algos::accumulators;
 
 void MessageData::reset(std::string accumulatorName, VPackSlice const& value, std::string const& sender) {
   _accumulatorName = accumulatorName;

@@ -22,40 +22,37 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "VertexAccumulators.h"
+#include "GraphFormat.h"
 
-using namespace arangodb::pregel::algos;
+namespace arangodb {
+namespace pregel {
+namespace algos {
+namespace accumulators {
 
 // Graph Format
-VertexAccumulators::GraphFormat::GraphFormat(
-    application_features::ApplicationServer& server, std::string const& resultField,
-    std::map<std::string, AccumulatorOptions> const& accumulatorDeclarations)
+GraphFormat::GraphFormat(application_features::ApplicationServer& server,
+                         std::string const& resultField,
+                         std::map<std::string, AccumulatorOptions> const& accumulatorDeclarations)
     : graph_format(server),
       _resultField(resultField),
       _accumulatorDeclarations(accumulatorDeclarations){};
 
-size_t VertexAccumulators::GraphFormat::estimatedVertexSize() const {
-  return sizeof(vertex_type);
-}
-size_t VertexAccumulators::GraphFormat::estimatedEdgeSize() const {
-  return sizeof(edge_type);
-}
+size_t GraphFormat::estimatedVertexSize() const { return sizeof(vertex_type); }
+size_t GraphFormat::estimatedEdgeSize() const { return sizeof(edge_type); }
 
 // Extract vertex data from vertex document into target
-void VertexAccumulators::GraphFormat::copyVertexData(std::string const& documentId,
-                                                     arangodb::velocypack::Slice vertexDocument,
-                                                     vertex_type& targetPtr) {
+void GraphFormat::copyVertexData(std::string const& documentId,
+                                 arangodb::velocypack::Slice vertexDocument,
+                                 vertex_type& targetPtr) {
   targetPtr.reset(_accumulatorDeclarations, documentId, vertexDocument, _vertexIdRange++);
 }
 
-void VertexAccumulators::GraphFormat::copyEdgeData(arangodb::velocypack::Slice edgeDocument,
-                                                   edge_type& targetPtr) {
+void GraphFormat::copyEdgeData(arangodb::velocypack::Slice edgeDocument, edge_type& targetPtr) {
   targetPtr.reset(edgeDocument);
 }
 
-bool VertexAccumulators::GraphFormat::buildVertexDocument(arangodb::velocypack::Builder& b,
-                                                          const vertex_type* ptr,
-                                                          size_t size) const {
+bool GraphFormat::buildVertexDocument(arangodb::velocypack::Builder& b,
+                                      const vertex_type* ptr, size_t size) const {
   VPackObjectBuilder guard(&b, _resultField);
   for (auto&& acc : ptr->_accumulators) {
     acc.second->getValueIntoBuilder(b);
@@ -63,10 +60,14 @@ bool VertexAccumulators::GraphFormat::buildVertexDocument(arangodb::velocypack::
   return true;
 }
 
-bool VertexAccumulators::GraphFormat::buildEdgeDocument(arangodb::velocypack::Builder& b,
-                                                        const edge_type* ptr,
-                                                        size_t size) const {
+bool GraphFormat::buildEdgeDocument(arangodb::velocypack::Builder& b,
+                                    const edge_type* ptr, size_t size) const {
   // FIXME
   // std::abort();
   return false;
 }
+
+}  // namespace accumulators
+}  // namespace algos
+}  // namespace pregel
+}  // namespace arangodb

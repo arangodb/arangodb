@@ -205,10 +205,17 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/Algos/VertexAccumulators/Greenspun/Interpreter.cpp
   Pregel/Algos/VertexAccumulators/Greenspun/Primitives.cpp
   Pregel/Algos/VertexAccumulators/VertexAccumulators.cpp
-  Pregel/Algos/VertexAccumulators/VertexAccumulatorsData.cpp
-  Pregel/Algos/VertexAccumulators/VertexAccumulatorsGraphFormat.cpp
-  Pregel/Algos/VertexAccumulators/VertexAccumulatorsMessageFormat.cpp
-  Pregel/Algos/VertexAccumulators/VertexAccumulatorsVertexComputation.cpp
+  Pregel/Algos/VertexAccumulators/MessageData.cpp
+  Pregel/Algos/VertexAccumulators/VertexData.cpp
+  Pregel/Algos/VertexAccumulators/EdgeData.cpp
+  Pregel/Algos/VertexAccumulators/GraphFormat.cpp
+  Pregel/Algos/VertexAccumulators/MessageFormat.cpp
+  Pregel/Algos/VertexAccumulators/VertexComputation.cpp
+  Pregel/Algos/VertexAccumulators/VertexComputationEvalContext.cpp
+  Pregel/Algos/VertexAccumulators/VertexData.cpp
+  Pregel/Algos/VertexAccumulators/EdgeData.cpp
+  Pregel/Algos/VertexAccumulators/MessageData.cpp
+  Pregel/Algos/VertexAccumulators/MasterContext.cpp
   Pregel/Algos/WCC.cpp
   Pregel/Conductor.cpp
   Pregel/GraphStore.cpp

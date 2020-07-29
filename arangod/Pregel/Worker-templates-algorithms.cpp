@@ -35,6 +35,6 @@ template class arangodb::pregel::Worker<SLPAValue, int8_t, uint64_t>;
 
 
 
-using namespace arangodb::pregel::algos;
+using namespace arangodb::pregel::algos::accumulators;
 template class arangodb::pregel::Worker<VertexData, EdgeData, MessageData>;
 

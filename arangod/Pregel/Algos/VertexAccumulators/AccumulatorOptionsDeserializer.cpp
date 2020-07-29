@@ -28,6 +28,11 @@
 
 using namespace arangodb::velocypack::deserializer;
 
+namespace arangodb {
+namespace pregel {
+namespace algos {
+namespace accumulators {
+
 /* clang-format off */
 
 constexpr const char accumulatorType_max[] = "max";
@@ -168,10 +173,6 @@ using vertex_accumulator_options_deserializer_version_switch = conditional_deser
     conditional_default<vertex_accumulator_options_deserializer_new>
 >;
 
-
-
-
-
 /* clang-format on */
 
 result<AccumulatorOptions, error> parseAccumulatorOptions(VPackSlice slice) {
@@ -236,3 +237,8 @@ std::ostream& operator<<(std::ostream& os, AccumulatorOptions const& opt) {
   os << valueType << ": " << opt.valueType;
   return os;
 }
+
+}  // namespace accumulators
+}  // namespace algos
+}  // namespace pregel
+}  // namespace arangodb

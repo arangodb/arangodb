@@ -29,107 +29,35 @@
 
 #include "Pregel/Algorithm.h"
 #include "Pregel/CommonFormats.h"
+#include "Pregel/MessageFormat.h"
 #include "Pregel/VertexComputation.h"
 
 #include "Pregel/Algos/VertexAccumulators/AbstractAccumulator.h"
 #include "Pregel/Algos/VertexAccumulators/AccumulatorOptionsDeserializer.h"
 #include "Pregel/Algos/VertexAccumulators/Accumulators.h"
 
+#include "EdgeData.h"
+#include "MessageData.h"
+#include "VertexData.h"
+
+using namespace arangodb::pregel;
+
 namespace arangodb {
 namespace pregel {
 namespace algos {
+namespace accumulators {
 
-// Vertex data has to be default constructible m(
-class VertexData {
- public:
-  std::string toString() const { return "vertexAkkum"; };
+using vertex_type = VertexData;
+using edge_type = EdgeData;
+using message_type = MessageData;
 
-  void reset(AccumulatorsDeclaration const& accumulatorsDeclaration,
-             std::string documentId, VPackSlice const& doc, std::size_t vertexId);
+using graph_format = GraphFormat<vertex_type, edge_type>;
+using algorithm = Algorithm<vertex_type, edge_type, message_type>;
+using message_format = MessageFormat<message_type>;
+using vertex_computation = VertexComputation<vertex_type, edge_type, message_type>;
+using message_combiner = MessageCombiner<message_type>;
 
-  std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> _accumulators;
-
-  std::string _documentId;
-  // FIXME: YOLO. we copy the whole document, which is
-  //        probably super expensive.
-  VPackBuilder _document;
-  std::size_t _vertexId;
-};
-
-std::ostream& operator<<(std::ostream&, VertexData const&);
-
-struct EdgeData {
-  void reset(VPackSlice const& doc);
-  // FIXME: YOLO. we copy the whole document, which is
-  //        probably super expensive.
-  // FIXME. VERDAMMT.
-  VPackBuilder _document;
-
-  // At the moment it's only important that message is sent
-  // to the correct neighbour
-  std::string _toId;
-};
-
-struct MessageData {
-  void reset(std::string accumulatorName, VPackSlice const& value, std::string const& sender);
-
-  void fromVelocyPack(VPackSlice slice);
-  void toVelocyPack(VPackBuilder& b) const;
-
-  std::string _accumulatorName;
-
-  // We copy the value :/ is this necessary?
-  VPackBuilder _value;
-  std::string _sender;
-};
-
-struct VertexAccumulators : public Algorithm<VertexData, EdgeData, MessageData> {
-  struct GraphFormat final : public graph_format {
-    // FIXME: passing of options? Maybe a struct? The complete struct that comes
-    //        out of the deserializer, or just a view of it?
-    explicit GraphFormat(application_features::ApplicationServer& server,
-                         std::string const& resultField,
-                         std::map<std::string, AccumulatorOptions> const& accumulatorDeclarations);
-
-    std::string const _resultField;
-
-
-    // We use these accumulatorDeclarations to setup VertexData in
-    // copyVertexData
-    std::map<std::string, AccumulatorOptions> _accumulatorDeclarations;
-
-    size_t estimatedVertexSize() const override;
-    size_t estimatedEdgeSize() const override;
-
-    void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                        vertex_type& targetPtr) override;
-
-    void copyEdgeData(arangodb::velocypack::Slice document, edge_type& targetPtr) override;
-
-    bool buildVertexDocument(arangodb::velocypack::Builder& b,
-                             const vertex_type* ptr, size_t size) const override;
-    bool buildEdgeDocument(arangodb::velocypack::Builder& b,
-                           const edge_type* ptr, size_t size) const override;
-
-   protected:
-    std::atomic<uint64_t> _vertexIdRange = 0;
-  };
-
-  struct MessageFormat : public message_format {
-    MessageFormat();
-
-    void unwrapValue(VPackSlice s, message_type& message) const override;
-    void addValue(VPackBuilder& arrayBuilder, message_type const& message) const override;
-  };
-
-  struct VertexComputation : public vertex_computation {
-    explicit VertexComputation(VertexAccumulators const& algorithm);
-    void compute(MessageIterator<message_type> const& messages) override;
-    VertexAccumulators const& algorithm() const { return _algorithm; }
-   private:
-    VertexAccumulators const& _algorithm;
-  };
-
+struct VertexAccumulators : public algorithm {
  public:
   explicit VertexAccumulators(application_features::ApplicationServer& server,
                               VPackSlice userParams);
@@ -139,24 +67,26 @@ struct VertexAccumulators : public Algorithm<VertexData, EdgeData, MessageData> 
 
   graph_format* inputFormat() const override;
 
-  message_format* messageFormat() const override { return new MessageFormat(); }
-  message_combiner* messageCombiner() const override { return nullptr; }
+  message_format* messageFormat() const override;
+  message_combiner* messageCombiner() const override;
   vertex_computation* createComputation(WorkerConfig const*) const override;
 
   bool getBindParameter(std::string_view, VPackBuilder& into) const;
 
-  MasterContext* masterContext(VPackSlice userParams) const override;
+  ::arangodb::pregel::MasterContext* masterContext(VPackSlice userParams) const override;
 
   IAggregator* aggregator(std::string const& name) const override;
 
   VertexAccumulatorOptions const& options() const;
+
  private:
   void parseUserParams(VPackSlice userParams);
-
 
  private:
   VertexAccumulatorOptions _options;
 };
+
+}  // namespace accumulators
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb

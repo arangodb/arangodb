@@ -359,7 +359,7 @@ template class arangodb::pregel::InCache<HLLCounter>;
 template class arangodb::pregel::ArrayInCache<HLLCounter>;
 template class arangodb::pregel::CombiningInCache<HLLCounter>;
 
-using namespace arangodb::pregel::algos;
+using namespace arangodb::pregel::algos::accumulators;
 template class arangodb::pregel::InCache<MessageData>;
 template class arangodb::pregel::ArrayInCache<MessageData>;
 template class arangodb::pregel::CombiningInCache<MessageData>;

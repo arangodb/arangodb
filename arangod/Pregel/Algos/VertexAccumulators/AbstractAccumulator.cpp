@@ -28,7 +28,7 @@
 #include "AbstractAccumulator.h"
 #include "Accumulators.h"
 
-using namespace arangodb::pregel::algos;
+namespace arangodb::pregel::algos::accumulators {
 
 
 template<typename... Ts>
@@ -77,8 +77,10 @@ struct accum_mapping<accum_value_pair<accums, values, Rs>...> {
 
 template<auto V, typename T>
 struct value_type_pair {};
+
 template<typename...>
 struct value_type_mapping;
+
 template<typename E, typename Type, E Value, typename... Types, E... Values>
 struct value_type_mapping<value_type_pair<Value, Type>, value_type_pair<Values, Types>...> {
   template<typename T>
@@ -128,7 +130,7 @@ using my_type_mapping = value_type_mapping<
 >;
 
 
-std::unique_ptr<AccumulatorBase> arangodb::pregel::algos::instantiateAccumulator(VertexData const& owner, ::AccumulatorOptions const& options) {
+std::unique_ptr<AccumulatorBase> instantiateAccumulator(VertexData const& owner, AccumulatorOptions const& options) {
   auto ptr = my_type_mapping::invoke(options.valueType, [&](auto type_tag) -> std::unique_ptr<AccumulatorBase> {
     using used_type = decltype(type_tag);
     if constexpr (used_type::found) {
@@ -143,4 +145,5 @@ std::unique_ptr<AccumulatorBase> arangodb::pregel::algos::instantiateAccumulator
   }
 
   return ptr;
+}
 }
