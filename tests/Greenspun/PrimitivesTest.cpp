@@ -4,8 +4,8 @@
 #include <iostream>
 
 #include "./structs/EvalContext.h"
-#include "Pregel/Algos/VertexAccumulators/Greenspun/Interpreter.h"
-#include "Pregel/Algos/VertexAccumulators/Greenspun/Primitives.h"
+#include "Pregel/Algos/AIR/Greenspun/Interpreter.h"
+#include "Pregel/Algos/AIR/Greenspun/Primitives.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"

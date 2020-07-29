@@ -9,7 +9,7 @@ LINENOISE_OBJ_DIR := obj/linenoise
 LINENOISE_SRC_FILES := $(wildcard $(LINENOISE_SRC_DIR)/*.cpp)
 LINENOISE_OBJ_FILES := $(patsubst $(LINENOISE_SRC_DIR)/%.cpp,$(LINENOISE_OBJ_DIR)/%.o,$(LINENOISE_SRC_FILES))
 
-EVALUATOR_SRC_DIR := ../../arangod/Pregel/Algos/VertexAccumulators/Greenspun/
+EVALUATOR_SRC_DIR := ../../arangod/Pregel/Algos/AIR/Greenspun/
 EVALUATOR_OBJ_DIR := obj
 EVALUATOR_SRC_FILES := $(wildcard $(EVALUATOR_SRC_DIR)/*.cpp)
 EVALUATOR_OBJ_FILES := $(patsubst $(EVALUATOR_SRC_DIR)/%.cpp,$(EVALUATOR_OBJ_DIR)/%.o,$(EVALUATOR_SRC_FILES))

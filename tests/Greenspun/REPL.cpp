@@ -1,7 +1,7 @@
 #include <iostream>
 
-#include "Pregel/Algos/VertexAccumulators/Greenspun/Interpreter.h"
-#include "Pregel/Algos/VertexAccumulators/Greenspun/Primitives.h"
+#include "Pregel/Algos/AIR/Greenspun/Interpreter.h"
+#include "Pregel/Algos/AIR/Greenspun/Primitives.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
@@ -27,17 +27,17 @@ struct MyEvalContext : PrimEvalContext {
   std::string thisId = "V/1";
   std::string const& getThisId() const override { return thisId; }
 
-  void getAccumulatorValue(std::string_view id, VPackBuilder& result) const override {
+  EvalResult getAccumulatorValue(std::string_view id, VPackBuilder& result) const override {
     std::cerr << "accumulotor value on " << id << " requested ";
   }
 
-  void updateAccumulator(std::string_view accumId, std::string_view vertexId,
+  EvalResult updateAccumulator(std::string_view accumId, std::string_view vertexId,
                          VPackSlice value) override {
     std::cerr << "update called on " << accumId << " " << vertexId << " "
               << value.toJson() << std::endl;
   }
 
-  void setAccumulator(std::string_view accumId, VPackSlice value) override {
+  EvalResult setAccumulator(std::string_view accumId, VPackSlice value) override {
     std::cerr << "set called on " << accumId << " with value " << value.toJson()
               << std::endl;
   }
