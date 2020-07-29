@@ -1,6 +1,11 @@
 devel
 -----
 
+* Fixed issue #12248: Web UI on 3.6.5: 404 error on adding new index.
+  This issue caused "404: not found" errors when creating indexes via the web
+  UI. The indexes were created successfully despite the error message popping
+  up. This fix removes the misleading unconditional error message.
+
 * Slightly improved the performance of some k-shortest-path queries.
 
 * Added startup option `--rocksdb.encryption-key-rotation` to activate/deactivate
