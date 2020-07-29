@@ -31,6 +31,7 @@
 #include <memory>
 
 #include "Agency/AgencyComm.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionVariable.h"
 
 namespace arangodb {
@@ -132,7 +133,8 @@ class AgencyCallback {
   //////////////////////////////////////////////////////////////////////////////
 
  private:
-  AgencyComm _agency;
+  application_features::ApplicationServer& _server;
+  std::unique_ptr<AgencyComm> _agency;
   std::function<bool(velocypack::Slice const&)> const _cb;
   std::shared_ptr<velocypack::Builder> _lastData;
   bool const _needsValue;

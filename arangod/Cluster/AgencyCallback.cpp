@@ -28,7 +28,6 @@
 
 #include <velocypack/velocypack-aliases.h>
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -44,7 +43,7 @@ AgencyCallback::AgencyCallback(application_features::ApplicationServer& server, 
                                std::function<bool(VPackSlice const&)> const& cb,
                                bool needsValue, bool needsInitialValue)
     : key(key),
-      _agency(server),
+      _server(server),
       _cb(cb),
       _needsValue(needsValue),
       _wasSignaled(false),
@@ -56,6 +55,9 @@ AgencyCallback::AgencyCallback(application_features::ApplicationServer& server, 
 
 void AgencyCallback::local(bool b) {
   _local = b;
+  if (!b) {
+    _agency = std::make_unique<AgencyComm>(_server);
+  }
 }
 
 bool AgencyCallback::local() const {
@@ -83,11 +85,11 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
     "Refetching and update for " << AgencyCommHelper::path(key);
   
   if (_local) {
-    auto& _cache = _agency.server().getFeature<ClusterFeature>().agencyCache();
+    auto& _cache = _server.getFeature<ClusterFeature>().agencyCache();
     std::tie(builder, idx) = _cache.read(std::vector<std::string>{AgencyCommHelper::path(key)});
     result = builder->slice();
     if (!result.isArray()) {
-      if (!_agency.server().isStopping()) {
+      if (!_server().isStopping()) {
         // only log errors if we are not already shutting down...
         // in case of shutdown this error is somewhat expected
         LOG_TOPIC("ec320", ERR, arangodb::Logger::CLUSTER)
@@ -96,9 +98,10 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
       return;
     }
   } else {
-    tmp = _agency.getValues(key);
+    TRI_ASSERT(_agency.get() != nullptr);
+    tmp = _agency->getValues(key);
     if (!tmp.successful()) {
-      if (!_agency.server().isStopping()) {
+      if (!_server.isStopping()) {
         // only log errors if we are not already shutting down...
         // in case of shutdown this error is somewhat expected
         LOG_TOPIC("fb402", ERR, arangodb::Logger::CLUSTER)
@@ -168,7 +171,7 @@ bool AgencyCallback::execute(std::shared_ptr<VPackBuilder> newData) {
 bool AgencyCallback::executeByCallbackOrTimeout(double maxTimeout) {
   // One needs to acquire the mutex of the condition variable
   // before entering this function!
-  if (!_agency.server().isStopping()) {
+  if (!_server().isStopping()) {
     if (_wasSignaled) {
       // ok, we have been signaled already, so there is no need to wait at all
       // directly refetch the values
