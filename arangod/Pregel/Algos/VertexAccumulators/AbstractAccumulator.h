@@ -36,13 +36,14 @@
 namespace arangodb {
 namespace pregel {
 namespace algos {
-// FIXME:
-// maybe template/parameter with update operation?
+
+class VertexData;
 
 template <typename T>
 class Accumulator;
 
 struct AccumulatorBase {
+  AccumulatorBase(VertexData const& owner) : _owner(owner) {};
   virtual ~AccumulatorBase() = default;
   template <typename T>
   Accumulator<T>* castAccumulatorType() {
@@ -59,6 +60,8 @@ struct AccumulatorBase {
   virtual auto updateBySlice(VPackSlice, std::string_view) -> UpdateResult = 0;
   virtual void getIntoBuilder(VPackBuilder& builder) = 0;
   virtual std::string const& getSender() const = 0;
+
+  VertexData const& _owner;
 };
 
 template <typename T>
@@ -66,7 +69,7 @@ class Accumulator : public AccumulatorBase {
  public:
   using data_type = T;
 
-  explicit Accumulator(AccumulatorOptions const&){};
+  explicit Accumulator(VertexData const& owner, AccumulatorOptions const&) : AccumulatorBase(owner) {};
   ~Accumulator() override = default;
 
   virtual void set(data_type v) { _value = v; };
@@ -126,7 +129,7 @@ class Accumulator : public AccumulatorBase {
   std::string _sender;
 };
 
-std::unique_ptr<AccumulatorBase> instantiateAccumulator(::AccumulatorOptions const& options);
+std::unique_ptr<AccumulatorBase> instantiateAccumulator(VertexData const& owner, ::AccumulatorOptions const& options);
 
 }  // namespace algos
 }  // namespace pregel

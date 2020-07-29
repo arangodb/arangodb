@@ -128,11 +128,11 @@ using my_type_mapping = value_type_mapping<
 >;
 
 
-std::unique_ptr<AccumulatorBase> arangodb::pregel::algos::instantiateAccumulator(::AccumulatorOptions const& options) {
+std::unique_ptr<AccumulatorBase> arangodb::pregel::algos::instantiateAccumulator(VertexData const& owner, ::AccumulatorOptions const& options) {
   auto ptr = my_type_mapping::invoke(options.valueType, [&](auto type_tag) -> std::unique_ptr<AccumulatorBase> {
     using used_type = decltype(type_tag);
     if constexpr (used_type::found) {
-      return my_accum_mapping::make_unique<typename used_type::type, AccumulatorBase>(options.type, options);
+        return my_accum_mapping::make_unique<typename used_type::type, AccumulatorBase>(options.type, owner, options);
     }
 
     return nullptr;

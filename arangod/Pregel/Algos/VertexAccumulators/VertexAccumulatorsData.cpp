@@ -36,7 +36,7 @@ void VertexData::reset(AccumulatorsDeclaration const& accumulatorsDeclaration,
   _vertexId = vertexId;
 
   for (auto&& acc : accumulatorsDeclaration) {
-    _accumulators.emplace(acc.first, instantiateAccumulator(acc.second));
+    _accumulators.emplace(acc.first, instantiateAccumulator(*this, acc.second));
   }
 }
 
