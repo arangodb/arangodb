@@ -414,7 +414,7 @@ class AgencyCommResult {
 
   [[nodiscard]] VPackBuilder toVelocyPack() const;
 
-  [[nodiscard]] std::optional<std::pair<int, std::string_view>> parseBodyError() const;
+  [[nodiscard]] std::pair<std::optional<int>, std::optional<std::string_view>> parseBodyError() const;
 
  public:
   std::string _location = "";

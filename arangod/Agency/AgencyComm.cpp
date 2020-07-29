@@ -439,29 +439,30 @@ std::string AgencyCommResult::errorMessage() const {
   return asResult().errorMessage();
 }
 
-std::optional<std::pair<int, std::string_view>> AgencyCommResult::parseBodyError() const {
-  auto result = std::optional<std::pair<int, std::string_view>>{};
-  try {
-    if (!_body.empty()) {
-      std::shared_ptr<VPackBuilder> bodyBuilder = VPackParser::fromJson(_body);
-      VPackSlice body = bodyBuilder->slice();
-      if (body.isObject()) {
-        // get "errorCode" attribute
+std::pair<std::optional<int>, std::optional<std::string_view>> AgencyCommResult::parseBodyError() const {
+  auto result = std::pair<std::optional<int>, std::optional<std::string_view>>{};
+
+  if (!_body.empty()) {
+    std::shared_ptr<VPackBuilder> bodyBuilder = VPackParser::fromJson(_body);
+    VPackSlice body = bodyBuilder->slice();
+    if (body.isObject()) {
+      // Try to extract the "errorCode" attribute.
+      try {
         auto const errorCode = body.get(StaticStrings::ErrorCode).getNumber<int>();
         // Save error code if possible, set default error message first
-        result = std::make_pair(errorCode, std::string_view(TRI_errno_string(errorCode)));
-        // Now try to extract the message, too; but it's fine if that fails, we
-        // already have the default one.
-        if (auto const errMsg = body.get(StaticStrings::ErrorMessage); errMsg.isString()) {
-          auto const strRef = errMsg.stringRef();
-          result->second = {strRef.begin(), strRef.size()};
-        } else if (auto const errMsg = body.get("message"); errMsg.isString()) {
-          auto const strRef = errMsg.stringRef();
-          result->second = {strRef.begin(), strRef.size()};
-        }
+        result.first = errorCode;
+      } catch (VPackException const&) {
+      }
+
+      // Now try to extract the message.
+      if (auto const errMsg = body.get(StaticStrings::ErrorMessage); errMsg.isString()) {
+        auto const strRef = errMsg.stringRef();
+        result.second = {strRef.begin(), strRef.size()};
+      } else if (auto const errMsg = body.get("message"); errMsg.isString()) {
+        auto const strRef = errMsg.stringRef();
+        result.second = {strRef.begin(), strRef.size()};
       }
     }
-  } catch (VPackException const&) {
   }
 
   return result;
@@ -527,18 +528,30 @@ VPackBuilder AgencyCommResult::toVelocyPack() const {
 Result AgencyCommResult::asResult() const {
   if (successful()) {
     return Result{};
-  } else if (auto const err = parseBodyError(); err.has_value()) {
-    return Result{err->first, std::string{err->second}};
-  } else if (_statusCode > 0) {
-    if (!_message.empty()) {
-      return Result{_statusCode, _message};
-    } else if (!_connected) {
-      return Result{_statusCode, "unable to connect to agency"};
-    } else {
-      return Result{_statusCode};
-    }
   } else {
-    return Result{TRI_ERROR_INTERNAL};
+    auto const err = parseBodyError();
+    auto const errorCode = std::invoke([&]() -> int {
+      if (err.first) {
+        return *err.first;
+      } else if (_statusCode > 0) {
+        return _statusCode;
+      } else {
+        return TRI_ERROR_INTERNAL;
+      }
+    });
+    auto const errorMessage = std::invoke([&]() -> std::string_view {
+      if (err.second) {
+        return *err.second;
+      } else if (!_message.empty()) {
+        return _message;
+      } else if (!_connected) {
+        return "unable to connect to agency";
+      } else {
+        return TRI_errno_string(errorCode);
+      }
+    });
+
+    return Result(errorCode, errorMessage);
   }
 }
 
