@@ -170,7 +170,7 @@ function strongly_connected_components_program(
     return {
         resultField: resultField,
         // TODO: Karpott.
-        maxGSS: 10000,
+        maxGSS: 50,
         accumulatorsDeclaration: {
             forwardMin: {
                 accumulatorType: "min",
@@ -183,6 +183,10 @@ function strongly_connected_components_program(
             isDisabled: {
                 accumulatorType: "store",
                 valueType: "bool",
+            },
+            mySCC: {
+                accumulatorType: "store",
+                valueType: "ints",
             },
             activeInbound: {
                 accumulatorType: "list",
@@ -204,17 +208,24 @@ function strongly_connected_components_program(
                 initProgram: [
                     "seq",
                     ["set", "activeInbound", ["quote"]],
+                    //["print", "isDisabled =", ["accum-ref", "isDisabled"]],
                     [
-                        "for",
-                        "outbound",
-                        ["quote", "edge"],
-                        ["quote", "seq",
-                            ["print", ["vertex-unique-id"], "sending to vertex", ["attrib", "_to", ["var-ref", "edge"]], "with value", ["pregel-id"]],
+                        "if",
+                        [
+                            ["not", ["accum-ref", "isDisabled"]],
                             [
-                                "update",
-                                "activeInbound",
-                                ["attrib", "_to", ["var-ref", "edge"]],
-                                ["pregel-id"]
+                                "for",
+                                "outbound",
+                                ["quote", "edge"],
+                                ["quote", "seq",
+                                    //["print", ["vertex-unique-id"], "sending to vertex", ["attrib", "_to", ["var-ref", "edge"]], "with value", ["pregel-id"]],
+                                    [
+                                        "update",
+                                        "activeInbound",
+                                        ["attrib", "_to", ["var-ref", "edge"]],
+                                        ["pregel-id"]
+                                    ]
+                                ]
                             ]
                         ]
                     ],
@@ -226,7 +237,7 @@ function strongly_connected_components_program(
                 name: "forward",
                 initProgram: ["if",
                     [
-                        ["not", ["accum-ref", "isDisabled"]],
+                        ["accum-ref", "isDisabled"],
                         false
                     ],
                     [
@@ -236,14 +247,13 @@ function strongly_connected_components_program(
                 ],
                 updateProgram: ["if",
                     [
-                        ["not", ["accum-ref", "isDisabled"]],
+                        ["accum-ref", "isDisabled"],
                         false
                     ],
                     [
                         true, // else
                         [
                             "seq",
-                            ["print", "update program at", ["vertex-unique-id"]],
                             [
                                 "for",
                                 "outbound",
@@ -268,13 +278,14 @@ function strongly_connected_components_program(
                 onHalt: ["goto", "broadcast"],
                 initProgram: ["if",
                     [
-                        ["not", ["accum-ref", "isDisabled"]],
+                        ["accum-ref", "isDisabled"],
                         false
                     ],
                     [
                         ["eq?", ["vertex-unique-id"], ["accum-ref", "forwardMin"]],
                         [
                             "seq",
+                            ["print", ["vertex-unique-id"], "I am root of a SCC!"],
                             ["set", "backwardMin", ["accum-ref", "forwardMin"]],
                             true
                         ]
@@ -283,7 +294,7 @@ function strongly_connected_components_program(
                         true,
                         [
                             "seq",
-                            ["print", ["vertex-unique-id"], "I am not root of a SCC"],
+                            ["print", ["vertex-unique-id"], "I am _not_ root of a SCC"],
                             ["set", "backwardMin", 99999],
                             false
                         ]
@@ -291,7 +302,7 @@ function strongly_connected_components_program(
                 ],
                 updateProgram: ["if",
                     [
-                        ["not", ["accum-ref", "isDisabled"]],
+                        ["accum-ref", "isDisabled"],
                         false
                     ],
                     [
@@ -299,6 +310,7 @@ function strongly_connected_components_program(
                         [
                             "seq",
                             ["set", "isDisabled", true],
+                            ["set", "mySCC", ["accum-ref", "forwardMin"]],
                             ["print", "I am done, my SCC id is", ["accum-ref", "forwardMin"]],
                             [
                                 "for-each",

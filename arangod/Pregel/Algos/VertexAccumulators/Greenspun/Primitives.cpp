@@ -314,7 +314,7 @@ EvalResult Prim_Not(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder&
   if (params.length() != 1) {
     return EvalError("expected a single argument");
   }
-  result.add(VPackValue(ValueConsideredTrue(params.at(0))));
+  result.add(VPackValue(ValueConsideredFalse(params.at(0))));
   return {};
 }
 

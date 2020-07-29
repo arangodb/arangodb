@@ -152,8 +152,8 @@ struct VertexAccumulatorsMasterContext : MasterContext {
     }
     LOG_DEVEL << "goto phase " << nextPhase;
     aggregate<uint32_t>("phase", iter - phases.begin());
-    aggregate<uint32_t>("phase-first-step", globalSuperstep()+1);
-    userSelectedNext = ContinuationResult::CONTINUE;
+    aggregate<uint64_t>("phase-first-step", globalSuperstep()+1);
+    userSelectedNext = ContinuationResult::ACTIVATE_ALL;
     return true;
   }
 
