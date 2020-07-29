@@ -71,12 +71,12 @@ RocksDBKeyBounds RocksDBKeyBounds::EdgeIndexVertex(uint64_t indexId,
   return RocksDBKeyBounds(RocksDBEntryType::EdgeIndexValue, indexId, vertexId);
 }
 
-RocksDBKeyBounds RocksDBKeyBounds::VPackIndex(uint64_t indexId) {
-  return RocksDBKeyBounds(RocksDBEntryType::VPackIndexValue, indexId);
+RocksDBKeyBounds RocksDBKeyBounds::VPackIndex(uint64_t indexId, bool reverse) {
+  return RocksDBKeyBounds(RocksDBEntryType::VPackIndexValue, indexId, reverse);
 }
 
-RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId) {
-  return RocksDBKeyBounds(RocksDBEntryType::UniqueVPackIndexValue, indexId);
+RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId, bool reverse) {
+  return RocksDBKeyBounds(RocksDBEntryType::UniqueVPackIndexValue, indexId, reverse);
 }
 
 RocksDBKeyBounds RocksDBKeyBounds::FulltextIndex(uint64_t indexId) {
@@ -312,36 +312,6 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type) : _type(type) {
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
     : _type(type) {
   switch (_type) {
-    case RocksDBEntryType::VPackIndexValue:
-    case RocksDBEntryType::UniqueVPackIndexValue: {
-      // Unique VPack index values are stored as follows:
-      // 7 + 8-byte object ID of index + VPack array with index value(s) ....
-      // prefix is the same for non-unique indexes
-      // static slices with an array with one entry
-      uint8_t const minSlice[] = { 0x02, 0x03, 0x1e }; // [minSlice]
-      uint8_t const maxSlice[] = { 0x02, 0x03, 0x1f }; // [maxSlice]
-      VPackSlice min(minSlice);
-      VPackSlice max(maxSlice);
-      _internals.reserve(2 * sizeof(uint64_t) + min.byteSize() + max.byteSize());
-
-      uint64ToPersistent(_internals.buffer(), first);
-      _internals.buffer().append((char const*)(min.begin()), min.byteSize());
-
-      _internals.separate();
-
-      if (rocksDBEndianness == RocksDBEndianness::Big) {
-        // if we are in big-endian mode, we can cheat a bit...
-        // for the upper bound we can use the object id + 1, which will always compare higher in a
-        // bytewise comparison
-        uint64ToPersistent(_internals.buffer(), first + 1);
-        _internals.buffer().append((char const*)(min.begin()), min.byteSize());
-      } else {
-        uint64ToPersistent(_internals.buffer(), first);
-        _internals.buffer().append((char const*)(max.begin()), max.byteSize());
-      }
-      break;
-    }
-
     case RocksDBEntryType::Collection:
     case RocksDBEntryType::View: {
       // Collections are stored as follows:
@@ -395,6 +365,38 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
         if (type == RocksDBEntryType::EdgeIndexValue) {
           _internals.push_back(_stringSeparator);
         }
+      }
+      break;
+    }
+
+    default:
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
+}
+
+RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, bool second)
+    : _type(type) {
+  switch (_type) {
+    case RocksDBEntryType::VPackIndexValue:
+    case RocksDBEntryType::UniqueVPackIndexValue: {
+      uint8_t const maxSlice[] = {0x02, 0x03, 0x1f};
+      VPackSlice max(maxSlice);
+
+      _internals.reserve(2 * sizeof(uint64_t) + (second ? max.byteSize() : 0));
+      uint64ToPersistent(_internals.buffer(), first);
+      _internals.separate();
+
+      if (second) {
+        // in case of reverse iteration, this is our starting point, so it must
+        // be in the same prefix, otherwise we'll get no results; so here we
+        // use the same objectId and the max vpack slice to make sure we find
+        // everything
+        uint64ToPersistent(_internals.buffer(), first);
+        _internals.buffer().append((char const*)(max.begin()), max.byteSize());
+      } else {
+        // in case of forward iteration, we can use the next objectId as a quick
+        // termination case, as it will be in the next prefix
+        uint64ToPersistent(_internals.buffer(), first + 1);
       }
       break;
     }
