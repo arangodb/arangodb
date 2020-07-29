@@ -145,7 +145,7 @@ TEST_CASE("Test [not] primitive - unary", "[not]") {
     )aql");
 
     Evaluate(ctx, program->slice(), result);
-    REQUIRE(true == result.slice().getBoolean());
+    REQUIRE(false == result.slice().getBoolean());
   }
 
   SECTION("Test false boolean") {
@@ -154,7 +154,7 @@ TEST_CASE("Test [not] primitive - unary", "[not]") {
     )aql");
 
     Evaluate(ctx, program->slice(), result);
-    REQUIRE(false == result.slice().getBoolean());
+    REQUIRE(true == result.slice().getBoolean());
   }
 }
 
