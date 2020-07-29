@@ -429,31 +429,31 @@ std::string AgencyCommResult::errorMessage() const {
   return asResult().errorMessage();
 }
 
-boost::optional<std::pair<int, velocypack::StringRef>> AgencyCommResult::parseBodyError() const {
-  auto result = boost::optional<std::pair<int, velocypack::StringRef>>{};
-  try {
-    if (!_body.empty()) {
-      std::shared_ptr<VPackBuilder> bodyBuilder = VPackParser::fromJson(_body);
-      VPackSlice body = bodyBuilder->slice();
-      if (body.isObject()) {
-        // get "errorCode" attribute
+std::pair<boost::optional<int>, boost::optional<std::string_view>> AgencyCommResult::parseBodyError() const {
+  auto result = std::pair<boost::optional<int>, boost::optional<std::string_view>>{};
+
+  if (!_body.empty()) {
+    std::shared_ptr<VPackBuilder> bodyBuilder = VPackParser::fromJson(_body);
+    VPackSlice body = bodyBuilder->slice();
+    if (body.isObject()) {
+      // Try to extract the "errorCode" attribute.
+      try {
         auto const errorCode = body.get(StaticStrings::ErrorCode).getNumber<int>();
         // Save error code if possible, set default error message first
-        result = std::make_pair(errorCode, velocypack::StringRef(TRI_errno_string(errorCode)));
-        // Now try to extract the message, too; but it's fine if that fails, we
-        // already have the default one.
-        auto errMsg = body.get(StaticStrings::ErrorMessage);
+        result.first = errorCode;
+      } catch (VPackException const&) {
+      }
+
+      auto errMsg = body.get(StaticStrings::ErrorMessage);
+      if (errMsg.isString()) {
+        result->second = errMsg.stringRef();
+      } else {
+        errMsg = body.get("message");
         if (errMsg.isString()) {
           result->second = errMsg.stringRef();
-        } else {
-          errMsg = body.get("message");
-          if (errMsg.isString()) {
-            result->second = errMsg.stringRef();
-          }
         }
       }
     }
-  } catch (VPackException const&) {
   }
 
   return result;
@@ -521,19 +521,28 @@ Result AgencyCommResult::asResult() const {
     return Result{};
   } else {
     auto const err = parseBodyError();
-    if (err.has_value()) {
-      return Result{err->first, err->second.toString()};
-    } else if (_statusCode > 0) {
-      if (!_message.empty()) {
-        return Result{_statusCode, _message};
-      } else if (!_connected) {
-        return Result{_statusCode, "unable to connect to agency"};
+    auto const errorCode = std::invoke([&]() -> int {
+      if (err.first) {
+        return *err.first;
+      } else if (_statusCode > 0) {
+        return _statusCode;
       } else {
-        return Result{_statusCode};
+        return TRI_ERROR_INTERNAL;
       }
-    } else {
-      return Result{TRI_ERROR_INTERNAL};
-    }
+    });
+    auto const errorMessage = std::invoke([&]() -> std::string_view {
+      if (err.second) {
+        return *err.second;
+      } else if (!_message.empty()) {
+        return _message;
+      } else if (!_connected) {
+        return "unable to connect to agency";
+      } else {
+        return TRI_errno_string(errorCode);
+      }
+    });
+
+    return Result(errorCode, errorMessage);
   }
 }
 
