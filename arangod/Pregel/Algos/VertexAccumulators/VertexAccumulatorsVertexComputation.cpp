@@ -133,6 +133,11 @@ struct VertexComputationEvalContext : PrimEvalContext {
     return {};
   }
 
+  EvalResult getVertexCount(VPackBuilder &result) override {
+    result.add(VPackValue(_computation.context()->vertexCount()));
+    return {};
+  }
+
   VertexAccumulators::VertexComputation& _computation;
   VertexData& _vertexData;
 };

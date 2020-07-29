@@ -318,6 +318,13 @@ EvalResult Prim_Not(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder&
   return {};
 }
 
+EvalResult Prim_VertexCount(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+  if (!params.isEmptyArray()) {
+    return EvalError("expected no argument");
+  }
+  return ctx.getVertexCount(result);
+}
+
 EvalResult Prim_PrintLn(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   std::stringstream ss;
 

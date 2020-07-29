@@ -135,6 +135,11 @@ struct VertexAccumulatorsMasterContext : MasterContext {
       return {};
     }
 
+    EvalResult getVertexCount(VPackBuilder& result) override {
+      result.add(VPackValue(masterContext.vertexCount()));
+      return {};
+    }
+
     VertexAccumulatorsMasterContext &masterContext;
   };
 
