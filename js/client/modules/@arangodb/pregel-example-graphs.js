@@ -101,6 +101,64 @@ function createLineGraph(graphName, numberOfVertices, numberOfShards) {
   return { vname: vname, ename: ename };
 }
 
+function createPageRankGraph(graphName, numberOfVertices, numberOfShards) {
+  const vname = graphName + "_V";
+  const ename = graphName + "_E";
+  try {
+    graphModule._drop(graphName, true);
+  } catch (e) {}
+  graphModule._create(
+      graphName,
+      [graphModule._relation(ename, vname, vname)],
+      [],
+      { smartGraphAttribute: "id", numberOfShards: numberOfShards }
+  );
+
+  var vs = [];
+  var vids;
+
+  // vertices data
+  let vertices = ['A', 'B', 'C', 'D','E']
+  vertices.forEach(function(v) {
+    vs.push({
+      name: v
+    });
+  });
+  vids = db._collection(vname).save(vs);
+
+  let storeEdge = function (from, to, customSeed) {
+    db._collection(ename).save({
+      _from: from,
+      _to: to,
+      customSeed: customSeed
+    });
+  }
+  // A = 0, B = 1, C = 2, D = 3, E = 4
+
+  // A -> B
+  storeEdge(vids[0]._id, vids[1]._id, 1);
+
+  // A -> C
+  storeEdge(vids[0]._id, vids[3]._id, 1);
+
+  // B -> C
+  storeEdge(vids[1]._id, vids[2]._id, 1);
+
+  // C -> E
+  storeEdge(vids[2]._id, vids[4]._id, 1);
+
+  // D -> B
+  storeEdge(vids[3]._id, vids[1]._id, 1);
+
+  // D -> C
+  storeEdge(vids[3]._id, vids[2]._id, 1);
+
+  // E -> E
+  storeEdge(vids[4]._id, vids[4]._id, 1);
+
+  return { vname: vname, ename: ename };
+}
+
 function createWikiVoteGraph(graphName, numberOfShards) {
   const vname = graphName + "_V";
   const ename = graphName + "_E";
@@ -3056,4 +3114,5 @@ function createWikiVoteGraph(graphName, numberOfShards) {
 
 exports.create_wiki_vote_graph = createWikiVoteGraph;
 exports.create_line_graph = createLineGraph;
+exports.create_page_rank_graph = createPageRankGraph();
 exports.create_circle = createCircle;

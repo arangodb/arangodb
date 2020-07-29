@@ -59,6 +59,14 @@ function exec_test_line() {
   );
 }
 
+function exec_test_page_rank() {
+  const collnames = pe.create_page_rank_graph("PageRankGraph", 10000, 6);
+
+  return pp.page_rank(
+      "PageRankGraph",
+      "pageRank"
+  );
+}
 
 function wait_for_pregel(pid) {
   while(true) {
@@ -124,5 +132,6 @@ function exec_scc_test() {
 
 exports.exec_test_wiki_vote = exec_test_wiki_vote;
 exports.exec_test_line = exec_test_line;
+exports.exec_test_page_rank = exec_test_page_rank;
 exports.exec_scc_test = exec_scc_test;
 exports.exec_sssp_test = exec_sssp_test;
