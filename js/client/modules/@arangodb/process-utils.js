@@ -28,10 +28,10 @@
 /* Modules: */
 const _ = require('lodash');
 const fs = require('fs');
-const rp = require('@arangodb/result-processing');
+const rp = require('@arangodb/testutils/result-processing');
 const yaml = require('js-yaml');
 const internal = require('internal');
-const crashUtils = require('@arangodb/crash-utils');
+const crashUtils = require('@arangodb/testutils/crash-utils');
 const crypto = require('@arangodb/crypto');
 const ArangoError = require('@arangodb').ArangoError;
 
@@ -1662,7 +1662,7 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
     internal.env.INSTANCEINFO = JSON.stringify(instanceInfo);
     internal.env.OPTIONS = JSON.stringify(options);
     let args = makeArgsArangosh(options);
-    args['javascript.execute'] = fs.join('js', 'client', 'modules', '@arangodb', 'clusterstats.js');
+    args['javascript.execute'] = fs.join('js', 'client', 'modules', '@arangodb', 'testutils', 'clusterstats.js');
     const argv = toArgv(args);
     instanceInfo.clusterHealthMonitor = executeExternal(ARANGOSH_BIN, argv);
     instanceInfo.clusterHealthMonitorFile = fs.join(instanceInfo.rootDir, 'stats.jsonl');

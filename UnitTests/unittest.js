@@ -4,7 +4,7 @@
 
 const _ = require('lodash');
 const internal = require('internal');
-const rp = require('@arangodb/result-processing');
+const rp = require('@arangodb/testutils/result-processing');
 
 const unitTest = require('@arangodb/testing').unitTest;
 const optionsDefaults = require('@arangodb/testing').optionsDefaults;
