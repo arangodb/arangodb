@@ -563,7 +563,7 @@ TEST_F(RocksDBKeyBoundsTestLittleEndian, test_hash_index) {
   EXPECT_EQ(memcmp(bounds.start().data(), prefixBegin.data(), prefixBegin.size()), 0);
   EXPECT_EQ(memcmp(bounds.end().data(), prefixEnd.data(), prefixEnd.size()), 0);
   EXPECT_EQ(prefixBegin.data()[prefixBegin.size() - 1], '\0');
-  EXPECT_EQ(prefixEnd.data()[prefixBegin.size() - 1], '\0');
+  EXPECT_EQ(prefixEnd.data()[prefixEnd.size() - 1], '\0');
 
   // prefix is just object id
   auto cmp = std::make_unique<RocksDBVPackComparator>();
@@ -588,7 +588,7 @@ TEST_F(RocksDBKeyBoundsTestLittleEndian, test_hash_index) {
   EXPECT_EQ(memcmp(bounds.start().data(), prefixBegin.data(), prefixBegin.size()), 0);
   EXPECT_EQ(memcmp(bounds.end().data(), prefixEnd.data(), prefixEnd.size()), 0);
   EXPECT_EQ(prefixBegin.data()[prefixBegin.size() - 1], '\0');
-  EXPECT_EQ(prefixEnd.data()[prefixBegin.size() - 1], '\0');
+  EXPECT_EQ(prefixEnd.data()[prefixEnd.size() - 1], '\0');
 
   EXPECT_EQ(cmp->Compare(prefixBegin, prefixEnd), 0);
   EXPECT_LT(cmp->Compare(prefixBegin, key1.string()), 0);
@@ -710,8 +710,8 @@ TEST_F(RocksDBKeyBoundsTestBigEndian, test_hash_index) {
   EXPECT_EQ(prefixEnd.data()[0], '\0');
   EXPECT_EQ(prefixBegin.data()[prefixBegin.size() - 2], '\x00');
   EXPECT_EQ(prefixBegin.data()[prefixBegin.size() - 1], '\x01');
-  EXPECT_EQ(prefixEnd.data()[prefixBegin.size() - 2], '\x00');
-  EXPECT_EQ(prefixEnd.data()[prefixBegin.size() - 1], '\x02');
+  EXPECT_EQ(prefixEnd.data()[prefixEnd.size() - 2], '\x00');
+  EXPECT_EQ(prefixEnd.data()[prefixEnd.size() - 1], '\x02');
 
   // prefix is just object id
   auto cmp = std::make_unique<RocksDBVPackComparator>();
@@ -739,8 +739,8 @@ TEST_F(RocksDBKeyBoundsTestBigEndian, test_hash_index) {
   EXPECT_EQ(prefixEnd.data()[0], '\0');
   EXPECT_EQ(prefixBegin.data()[prefixBegin.size() - 2], '\x00');
   EXPECT_EQ(prefixBegin.data()[prefixBegin.size() - 1], '\x01');
-  EXPECT_EQ(prefixEnd.data()[prefixBegin.size() - 2], '\x00');
-  EXPECT_EQ(prefixEnd.data()[prefixBegin.size() - 1], '\x02');
+  EXPECT_EQ(prefixEnd.data()[prefixEnd.size() - 2], '\x00');
+  EXPECT_EQ(prefixEnd.data()[prefixEnd.size() - 1], '\x01');
 
   EXPECT_EQ(cmp->Compare(prefixBegin, prefixEnd), 0);
   EXPECT_LT(cmp->Compare(prefixBegin, key1.string()), 0);
