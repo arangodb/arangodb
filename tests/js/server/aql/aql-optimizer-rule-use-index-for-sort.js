@@ -280,6 +280,8 @@ function optimizerRuleTestSuite() {
         QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
         QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort).json;
       
+        require('internal').print(JSON.stringify(QResults[0]));
+        require('internal').print(JSON.stringify(QResults[1]));
         assertTrue(isEqual(QResults[0], QResults[1]), "result " + i + " is equal?");
 
         allresults = getQueryMultiplePlansAndExecutions(query, {});

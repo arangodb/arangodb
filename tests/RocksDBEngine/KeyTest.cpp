@@ -262,7 +262,7 @@ TEST_F(RocksDBKeyTestLittleEndian, test_edge_index) {
   EXPECT_EQ(memcmp(s1.data(), prefix.data(), prefix.size()), 0);
 
   rocksdb::Comparator const* cmp = rocksdb::BytewiseComparator();
-  EXPECT_TRUE(cmp->Compare(key1.string(), key2.string()) < 0);
+  EXPECT_LT(cmp->Compare(key1.string(), key2.string()), 0);
 }
 
 /// @brief test RocksDBKey class
@@ -483,7 +483,7 @@ TEST_F(RocksDBKeyTestBigEndian, test_edge_index) {
   EXPECT_EQ(memcmp(s1.data(), prefix.data(), prefix.size()), 0);
 
   rocksdb::Comparator const* cmp = rocksdb::BytewiseComparator();
-  EXPECT_TRUE(cmp->Compare(key1.string(), key2.string()) < 0);
+  EXPECT_LT(cmp->Compare(key1.string(), key2.string()), 0);
 }
 
 /// @brief test RocksDBKeyBounds class
@@ -516,22 +516,22 @@ TEST_F(RocksDBKeyBoundsTestLittleEndian, test_edge_index) {
 
   // check our assumptions about bound construction
   rocksdb::Comparator const* cmp = rocksdb::BytewiseComparator();
-  EXPECT_TRUE(cmp->Compare(prefixBegin, prefixEnd) < 0);
-  EXPECT_TRUE(cmp->Compare(prefixBegin, key1.string()) < 0);
-  EXPECT_TRUE(cmp->Compare(prefixEnd, key1.string()) > 0);
+  EXPECT_LT(cmp->Compare(prefixBegin, prefixEnd), 0);
+  EXPECT_LT(cmp->Compare(prefixBegin, key1.string()), 0);
+  EXPECT_GT(cmp->Compare(prefixEnd, key1.string()), 0);
 
   RocksDBKey key2;
   key2.constructEdgeIndexValue(1, arangodb::velocypack::StringRef("c/1000"),
                                LocalDocumentId(33));
-  EXPECT_TRUE(cmp->Compare(prefixBegin, key2.string()) < 0);
-  EXPECT_TRUE(cmp->Compare(prefixEnd, key2.string()) > 0);
+  EXPECT_LT(cmp->Compare(prefixBegin, key2.string()), 0);
+  EXPECT_GT(cmp->Compare(prefixEnd, key2.string()), 0);
 
   // test higher prefix
   RocksDBKey key3;
   key3.constructEdgeIndexValue(1, arangodb::velocypack::StringRef("c/1000"),
                                LocalDocumentId(33));
-  EXPECT_TRUE(cmp->Compare(prefixBegin, key3.string()) < 0);
-  EXPECT_TRUE(cmp->Compare(prefixEnd, key3.string()) > 0);
+  EXPECT_LT(cmp->Compare(prefixBegin, key3.string()), 0);
+  EXPECT_GT(cmp->Compare(prefixEnd, key3.string()), 0);
 }
 
 /// @brief test hash index with prefix over indexed slice
@@ -553,7 +553,7 @@ TEST_F(RocksDBKeyBoundsTestLittleEndian, test_hash_index) {
   EXPECT_TRUE(pe->InDomain(key1.string()));
 
   // check the correct key bounds comparisons
-  RocksDBKeyBounds bounds = RocksDBKeyBounds::VPackIndex(1);
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::VPackIndex(1, false);
   EXPECT_TRUE(pe->InDomain(bounds.start()));
   EXPECT_TRUE(pe->InDomain(bounds.end()));
   rocksdb::Slice prefixBegin = pe->Transform(bounds.start());
@@ -567,15 +567,38 @@ TEST_F(RocksDBKeyBoundsTestLittleEndian, test_hash_index) {
 
   // prefix is just object id
   auto cmp = std::make_unique<RocksDBVPackComparator>();
+  EXPECT_LT(cmp->Compare(prefixBegin, prefixEnd), 0);
+  EXPECT_LT(cmp->Compare(prefixBegin, key1.string()), 0);
+  EXPECT_GT(cmp->Compare(prefixEnd, key1.string()), 0);
+
+  EXPECT_LT(cmp->Compare(key1.string(), key2.string()), 0);
+  EXPECT_LT(cmp->Compare(key2.string(), key3.string()), 0);
+  EXPECT_LT(cmp->Compare(key1.string(), key3.string()), 0);
+
+  EXPECT_LT(cmp->Compare(prefixEnd, key3.string()), 0);
+
+  // check again with reverse iteration bounds
+  bounds = RocksDBKeyBounds::VPackIndex(1, true);
+  EXPECT_TRUE(pe->InDomain(bounds.start()));
+  EXPECT_TRUE(pe->InDomain(bounds.end()));
+  prefixBegin = pe->Transform(bounds.start());
+  prefixEnd = pe->Transform(bounds.end());
+  EXPECT_TRUE(pe->InDomain(prefixBegin));
+  EXPECT_TRUE(pe->InDomain(prefixEnd));
+  EXPECT_EQ(memcmp(bounds.start().data(), prefixBegin.data(), prefixBegin.size()), 0);
+  EXPECT_EQ(memcmp(bounds.end().data(), prefixEnd.data(), prefixEnd.size()), 0);
+  EXPECT_EQ(prefixBegin.data()[prefixBegin.size() - 1], '\0');
+  EXPECT_EQ(prefixEnd.data()[prefixBegin.size() - 1], '\0');
+
   EXPECT_EQ(cmp->Compare(prefixBegin, prefixEnd), 0);
-  EXPECT_TRUE(cmp->Compare(prefixBegin, key1.string()) < 0);
-  EXPECT_TRUE(cmp->Compare(prefixEnd, key1.string()) < 0);
+  EXPECT_LT(cmp->Compare(prefixBegin, key1.string()), 0);
+  EXPECT_LT(cmp->Compare(prefixEnd, key1.string()), 0);
 
-  EXPECT_TRUE(cmp->Compare(key1.string(), key2.string()) < 0);
-  EXPECT_TRUE(cmp->Compare(key2.string(), key3.string()) < 0);
-  EXPECT_TRUE(cmp->Compare(key1.string(), key3.string()) < 0);
+  EXPECT_LT(cmp->Compare(key1.string(), key2.string()), 0);
+  EXPECT_LT(cmp->Compare(key2.string(), key3.string()), 0);
+  EXPECT_LT(cmp->Compare(key1.string(), key3.string()), 0);
 
-  EXPECT_TRUE(cmp->Compare(prefixEnd, key3.string()) < 0);
+  EXPECT_LT(cmp->Compare(prefixEnd, key3.string()), 0);
 
   VPackBuilder a;
   a(VPackValue(VPackValueType::Array))(VPackValue(1))();
@@ -591,20 +614,20 @@ TEST_F(RocksDBKeyBoundsTestLittleEndian, test_hash_index) {
   key7.constructVPackIndexValue(1, c.slice(), LocalDocumentId(12));
 
   bounds = RocksDBKeyBounds::VPackIndex(1, a.slice(), c.slice());
-  EXPECT_TRUE(cmp->Compare(bounds.start(), key4.string()) < 0);
-  EXPECT_TRUE(cmp->Compare(key4.string(), bounds.end()) < 0);
-  EXPECT_TRUE(cmp->Compare(bounds.start(), key5.string()) < 0);
-  EXPECT_TRUE(cmp->Compare(key5.string(), bounds.end()) < 0);
-  EXPECT_TRUE(cmp->Compare(bounds.start(), key6.string()) < 0);
-  EXPECT_TRUE(cmp->Compare(key6.string(), bounds.end()) < 0);
-  EXPECT_TRUE(cmp->Compare(bounds.start(), key7.string()) < 0);
-  EXPECT_TRUE(cmp->Compare(key7.string(), bounds.end()) < 0);
+  EXPECT_LT(cmp->Compare(bounds.start(), key4.string()), 0);
+  EXPECT_LT(cmp->Compare(key4.string(), bounds.end()), 0);
+  EXPECT_LT(cmp->Compare(bounds.start(), key5.string()), 0);
+  EXPECT_LT(cmp->Compare(key5.string(), bounds.end()), 0);
+  EXPECT_LT(cmp->Compare(bounds.start(), key6.string()), 0);
+  EXPECT_LT(cmp->Compare(key6.string(), bounds.end()), 0);
+  EXPECT_LT(cmp->Compare(bounds.start(), key7.string()), 0);
+  EXPECT_LT(cmp->Compare(key7.string(), bounds.end()), 0);
 
-  EXPECT_TRUE(cmp->Compare(key4.string(), key5.string()) < 0);
-  EXPECT_TRUE(cmp->Compare(key5.string(), key6.string()) < 0);
-  EXPECT_TRUE(cmp->Compare(key4.string(), key6.string()) < 0);
-  EXPECT_TRUE(cmp->Compare(key6.string(), key7.string()) < 0);
-  EXPECT_TRUE(cmp->Compare(key4.string(), key7.string()) < 0);
+  EXPECT_LT(cmp->Compare(key4.string(), key5.string()), 0);
+  EXPECT_LT(cmp->Compare(key5.string(), key6.string()), 0);
+  EXPECT_LT(cmp->Compare(key4.string(), key6.string()), 0);
+  EXPECT_LT(cmp->Compare(key6.string(), key7.string()), 0);
+  EXPECT_LT(cmp->Compare(key4.string(), key7.string()), 0);
 }
 
 /// @brief test RocksDBKeyBounds class
@@ -637,22 +660,22 @@ TEST_F(RocksDBKeyBoundsTestBigEndian, test_edge_index) {
 
   // check our assumptions about bound construction
   rocksdb::Comparator const* cmp = rocksdb::BytewiseComparator();
-  EXPECT_TRUE(cmp->Compare(prefixBegin, prefixEnd) < 0);
-  EXPECT_TRUE(cmp->Compare(prefixBegin, key1.string()) < 0);
-  EXPECT_TRUE(cmp->Compare(prefixEnd, key1.string()) > 0);
+  EXPECT_LT(cmp->Compare(prefixBegin, prefixEnd), 0);
+  EXPECT_LT(cmp->Compare(prefixBegin, key1.string()), 0);
+  EXPECT_GT(cmp->Compare(prefixEnd, key1.string()), 0);
 
   RocksDBKey key2;
   key2.constructEdgeIndexValue(1, arangodb::velocypack::StringRef("c/1000"),
                                LocalDocumentId(33));
-  EXPECT_TRUE(cmp->Compare(prefixBegin, key2.string()) < 0);
-  EXPECT_TRUE(cmp->Compare(prefixEnd, key2.string()) > 0);
+  EXPECT_LT(cmp->Compare(prefixBegin, key2.string()), 0);
+  EXPECT_GT(cmp->Compare(prefixEnd, key2.string()), 0);
 
   // test higher prefix
   RocksDBKey key3;
   key3.constructEdgeIndexValue(1, arangodb::velocypack::StringRef("c/1000"),
                                LocalDocumentId(33));
-  EXPECT_TRUE(cmp->Compare(prefixBegin, key3.string()) < 0);
-  EXPECT_TRUE(cmp->Compare(prefixEnd, key3.string()) > 0);
+  EXPECT_LT(cmp->Compare(prefixBegin, key3.string()), 0);
+  EXPECT_GT(cmp->Compare(prefixEnd, key3.string()), 0);
 }
 
 /// @brief test hash index with prefix over indexed slice
@@ -674,7 +697,7 @@ TEST_F(RocksDBKeyBoundsTestBigEndian, test_hash_index) {
   EXPECT_TRUE(pe->InDomain(key1.string()));
 
   // check the correct key bounds comparisons
-  RocksDBKeyBounds bounds = RocksDBKeyBounds::VPackIndex(1);
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::VPackIndex(1, false);
   EXPECT_TRUE(pe->InDomain(bounds.start()));
   EXPECT_TRUE(pe->InDomain(bounds.end()));
   rocksdb::Slice prefixBegin = pe->Transform(bounds.start());
@@ -692,15 +715,42 @@ TEST_F(RocksDBKeyBoundsTestBigEndian, test_hash_index) {
 
   // prefix is just object id
   auto cmp = std::make_unique<RocksDBVPackComparator>();
-  EXPECT_TRUE(cmp->Compare(prefixBegin, prefixEnd) < 0);
-  EXPECT_TRUE(cmp->Compare(prefixBegin, key1.string()) < 0);
-  EXPECT_TRUE(cmp->Compare(prefixEnd, key1.string()) > 0);
+  EXPECT_LT(cmp->Compare(prefixBegin, prefixEnd), 0);
+  EXPECT_LT(cmp->Compare(prefixBegin, key1.string()), 0);
+  EXPECT_GT(cmp->Compare(prefixEnd, key1.string()), 0);
 
-  EXPECT_TRUE(cmp->Compare(key1.string(), key2.string()) < 0);
-  EXPECT_TRUE(cmp->Compare(key2.string(), key3.string()) < 0);
-  EXPECT_TRUE(cmp->Compare(key1.string(), key3.string()) < 0);
+  EXPECT_LT(cmp->Compare(key1.string(), key2.string()), 0);
+  EXPECT_LT(cmp->Compare(key2.string(), key3.string()), 0);
+  EXPECT_LT(cmp->Compare(key1.string(), key3.string()), 0);
 
-  EXPECT_TRUE(cmp->Compare(prefixEnd, key3.string()) < 0);
+  EXPECT_LT(cmp->Compare(prefixEnd, key3.string()), 0);
+
+  // check again with reverse full iteration bounds
+  bounds = RocksDBKeyBounds::VPackIndex(1, true);
+  EXPECT_TRUE(pe->InDomain(bounds.start()));
+  EXPECT_TRUE(pe->InDomain(bounds.end()));
+  prefixBegin = pe->Transform(bounds.start());
+  prefixEnd = pe->Transform(bounds.end());
+  EXPECT_TRUE(pe->InDomain(prefixBegin));
+  EXPECT_TRUE(pe->InDomain(prefixEnd));
+  EXPECT_EQ(memcmp(bounds.start().data(), prefixBegin.data(), prefixBegin.size()), 0);
+  EXPECT_EQ(memcmp(bounds.end().data(), prefixEnd.data(), prefixEnd.size()), 0);
+  EXPECT_EQ(prefixBegin.data()[0], '\0');
+  EXPECT_EQ(prefixEnd.data()[0], '\0');
+  EXPECT_EQ(prefixBegin.data()[prefixBegin.size() - 2], '\x00');
+  EXPECT_EQ(prefixBegin.data()[prefixBegin.size() - 1], '\x01');
+  EXPECT_EQ(prefixEnd.data()[prefixBegin.size() - 2], '\x00');
+  EXPECT_EQ(prefixEnd.data()[prefixBegin.size() - 1], '\x02');
+
+  EXPECT_EQ(cmp->Compare(prefixBegin, prefixEnd), 0);
+  EXPECT_LT(cmp->Compare(prefixBegin, key1.string()), 0);
+  EXPECT_LT(cmp->Compare(prefixEnd, key1.string()), 0);
+
+  EXPECT_LT(cmp->Compare(key1.string(), key2.string()), 0);
+  EXPECT_LT(cmp->Compare(key2.string(), key3.string()), 0);
+  EXPECT_LT(cmp->Compare(key1.string(), key3.string()), 0);
+
+  EXPECT_LT(cmp->Compare(prefixEnd, key3.string()), 0);
 
   VPackBuilder a;
   a(VPackValue(VPackValueType::Array))(VPackValue(1))();
@@ -716,18 +766,18 @@ TEST_F(RocksDBKeyBoundsTestBigEndian, test_hash_index) {
   key7.constructVPackIndexValue(1, c.slice(), LocalDocumentId(12));
 
   bounds = RocksDBKeyBounds::VPackIndex(1, a.slice(), c.slice());
-  EXPECT_TRUE(cmp->Compare(bounds.start(), key4.string()) < 0);
-  EXPECT_TRUE(cmp->Compare(key4.string(), bounds.end()) < 0);
-  EXPECT_TRUE(cmp->Compare(bounds.start(), key5.string()) < 0);
-  EXPECT_TRUE(cmp->Compare(key5.string(), bounds.end()) < 0);
-  EXPECT_TRUE(cmp->Compare(bounds.start(), key6.string()) < 0);
-  EXPECT_TRUE(cmp->Compare(key6.string(), bounds.end()) < 0);
-  EXPECT_TRUE(cmp->Compare(bounds.start(), key7.string()) < 0);
-  EXPECT_TRUE(cmp->Compare(key7.string(), bounds.end()) < 0);
+  EXPECT_LT(cmp->Compare(bounds.start(), key4.string()), 0);
+  EXPECT_LT(cmp->Compare(key4.string(), bounds.end()), 0);
+  EXPECT_LT(cmp->Compare(bounds.start(), key5.string()), 0);
+  EXPECT_LT(cmp->Compare(key5.string(), bounds.end()), 0);
+  EXPECT_LT(cmp->Compare(bounds.start(), key6.string()), 0);
+  EXPECT_LT(cmp->Compare(key6.string(), bounds.end()), 0);
+  EXPECT_LT(cmp->Compare(bounds.start(), key7.string()), 0);
+  EXPECT_LT(cmp->Compare(key7.string(), bounds.end()), 0);
 
-  EXPECT_TRUE(cmp->Compare(key4.string(), key5.string()) < 0);
-  EXPECT_TRUE(cmp->Compare(key5.string(), key6.string()) < 0);
-  EXPECT_TRUE(cmp->Compare(key4.string(), key6.string()) < 0);
-  EXPECT_TRUE(cmp->Compare(key6.string(), key7.string()) < 0);
-  EXPECT_TRUE(cmp->Compare(key4.string(), key7.string()) < 0);
+  EXPECT_LT(cmp->Compare(key4.string(), key5.string()), 0);
+  EXPECT_LT(cmp->Compare(key5.string(), key6.string()), 0);
+  EXPECT_LT(cmp->Compare(key4.string(), key6.string()), 0);
+  EXPECT_LT(cmp->Compare(key6.string(), key7.string()), 0);
+  EXPECT_LT(cmp->Compare(key4.string(), key7.string()), 0);
 }

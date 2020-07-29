@@ -933,8 +933,9 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::lookup(transaction::Methods* t
 
   if (ADB_UNLIKELY(searchValues.length() == 0)) {
     // full range search
-    RocksDBKeyBounds bounds = _unique ? RocksDBKeyBounds::UniqueVPackIndex(objectId())
-                                      : RocksDBKeyBounds::VPackIndex(objectId());
+    RocksDBKeyBounds bounds =
+        _unique ? RocksDBKeyBounds::UniqueVPackIndex(objectId(), reverse)
+                : RocksDBKeyBounds::VPackIndex(objectId(), reverse);
 
     if (reverse) {
       // reverse version
