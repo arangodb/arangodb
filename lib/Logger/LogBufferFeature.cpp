@@ -188,8 +188,10 @@ LogBufferFeature::LogBufferFeature(application_features::ApplicationServer& serv
   startsAfter<LoggerFeature>();
   
 #ifdef _WIN32
-  LogAppender::addGlobalAppender(std::make_shared<LogAppenderDebugOutput>());
-  LogAppender::addGlobalAppender(std::make_shared<LogAppenderEventLog>());
+  LogAppender::addGlobalAppender(Logger::defaultLogGroup(),
+                                 std::make_shared<LogAppenderDebugOutput>());
+  LogAppender::addGlobalAppender(Logger::defaultLogGroup(),
+                                 std::make_shared<LogAppenderEventLog>());
 #endif
 }
   
