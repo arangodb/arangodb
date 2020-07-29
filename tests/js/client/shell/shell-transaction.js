@@ -4345,13 +4345,7 @@ function transactionIteratorSuite() {
     },
 
     tearDown: function () {
-
-      if (c !== null) {
-        c.drop();
-      }
-
-      c = null;
-      internal.wait(0);
+      db._drop(cn);
     },
 
     ////////////////////////////////////////////////////////////////////////////////
