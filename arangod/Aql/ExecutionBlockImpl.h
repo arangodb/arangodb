@@ -47,6 +47,9 @@ class SingleRowFetcher;
 template <class Fetcher>
 class IdExecutor;
 
+template <bool isModificationSubquery>
+class SubqueryExecutor;
+
 struct AqlCall;
 class AqlItemBlock;
 class ExecutionEngine;
@@ -270,14 +273,23 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   [[nodiscard]] auto handleCheckCallState(AqlCallStack const& stack,
                                           AqlCall const& clientCall) const -> ExecState;
 
-
-
   // Now perform Skip operation(s) on this executor.
-  [[nodiscard]] auto handleSkipState(arangodb::aql::AqlCall& clientCall)
+  [[nodiscard]] auto handleSkipState(AqlCall& clientCall)
       -> std::pair<ExecState, ExecutorState>;
 
+  // Now perform Skip operation(s) on this executor.
   // non-spliced subquery variant, can return WAITING in intermediate state.
-  [[nodiscard]] auto handleSkipStateSubquery(arangodb::aql::AqlCall& clientCall)
+  template <class exec = Executor, typename = std::enable_if_t<is_one_of_v<exec, SubqueryExecutor<true>>>>
+  [[nodiscard]] auto handleSkipStateSubquery(AqlCall& clientCall)
+      -> std::pair<ExecState, ExecutionState>;
+
+  // Now perform Produce operation(s) on this executor.
+  [[nodiscard]] auto handleProduceState(AqlCallStack const& stack, AqlCall& clientCall)
+      -> std::pair<ExecState, ExecutorState>;
+
+  // Now perform Produce operation(s) on this executor.
+  // non-spliced subquery variant, can return WAITING in intermediate state
+  [[nodiscard]] auto handleProduceStateSubquery(AqlCallStack const& stack, AqlCall& clientCall)
       -> std::pair<ExecState, ExecutionState>;
 
   void resetExecutor();

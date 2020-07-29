@@ -1376,79 +1376,36 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         break;
       }
       case ExecState::PRODUCE: {
-        // Make sure there's a block allocated and set
-        // the call
-        TRI_ASSERT(clientCall.getLimit() > 0);
-        TRI_ASSERT(clientCall.getSkipCount() == 0);
-
-        LOG_QUERY("1f786", DEBUG) << printTypeInfo() << " call produceRows " << clientCall;
-        if (outputIsFull()) {
-          // We need to be able to write data
-          // But maybe the existing block is full here
-          // Then we need to wake up again.
-          // However the client might decide on a different
-          // call, so we do not record this position
-          _execState = ExecState::DONE;
-          break;
-        }
-        if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
-          TRI_ASSERT(!stack.empty());
-          AqlCall const& subqueryCall = stack.peek();
-          AqlCall copyCall = subqueryCall;
-          ensureOutputBlock(std::move(copyCall), _lastRange);
-        } else {
-          ensureOutputBlock(std::move(clientCall), _lastRange);
-        }
-        TRI_ASSERT(_outputItemRow);
-        TRI_ASSERT(!_executorReturnedDone);
-        ExecutorState state = ExecutorState::HASMORE;
-        typename Executor::Stats stats;
-        auto call = AqlCallType{};
         if constexpr (is_one_of_v<Executor, SubqueryExecutor<true>, SubqueryExecutor<false>>) {
+          // Special handling for non-spliced subqueries.
           // NOTE: The subquery Executor will by itself call EXECUTE on it's
           // subquery. This can return waiting => we can get a WAITING state
-          // here. We can only get the waiting state for SUbquery executors.
+          // here. We can only get the waiting state for Subquery executors.
           ExecutionState subqueryState = ExecutionState::HASMORE;
-          std::tie(subqueryState, stats, call) =
-              _executor.produceRows(_lastRange, *_outputItemRow);
-          if (subqueryState == ExecutionState::WAITING) {
-            return {subqueryState, SkipResult{}, nullptr};
-          } else if (subqueryState == ExecutionState::DONE) {
-            state = ExecutorState::DONE;
-          } else {
-            state = ExecutorState::HASMORE;
+          std::tie(_execState, subqueryState) = handleProduceStateSubquery(stack, clientCall);
+          // Translate ExecutionState => ExecutorState
+          // Ordered by lieklyhood.
+          switch (subqueryState) {
+            case ExecutionState::HASMORE: {
+              localExecutorState = ExecutorState::HASMORE;
+              break;
+            }
+            case ExecutionState::DONE: {
+              localExecutorState = ExecutorState::DONE;
+              break;
+            }
+            case ExecutionState::WAITING: {
+              TRI_ASSERT(_execState == ExecState::SKIP);
+              // Need to return here, will wake up again in this state
+              return {subqueryState, SkipResult{}, nullptr};
+            }
           }
         } else {
-          // Execute getSome
-          std::tie(state, stats, call) = executeProduceRows(_lastRange, *_outputItemRow);
+          std::tie(_execState, localExecutorState) = handleProduceState(stack, clientCall);
         }
-        _executorReturnedDone = state == ExecutorState::DONE;
-        _blockStats += stats;
-        localExecutorState = state;
-
-        if constexpr (!std::is_same_v<Executor, SubqueryEndExecutor>) {
-          // But only do this if we are not subquery.
-          clientCall = _outputItemRow->getClientCall();
-        }
-
-        if (state == ExecutorState::DONE) {
-          _execState = ExecState::FASTFORWARD;
-        } else if ((Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable ||
-                    clientCall.getLimit() > 0) &&
-                   outputIsFull()) {
-          // In pass through variant we need to stop whenever the block is full.
-          // In all other branches only if the client Still needs more data.
-          _execState = ExecState::DONE;
-          break;
-        } else if (clientCall.getLimit() > 0 && executorNeedsCall(call)) {
-          TRI_ASSERT(_upstreamState != ExecutionState::DONE);
-          // We need to request more
-          _upstreamRequest = call;
-          _execState = ExecState::UPSTREAM;
-        } else {
-          // We are done with producing. Produce is not allowed to request more
-          _execState = ExecState::CHECKCALL;
-        }
+        TRI_ASSERT(_execState == ExecState::FASTFORWARD || _execState == ExecState::UPSTREAM ||
+                   _execState == ExecState::CHECKCALL || _execState == ExecState::DONE);
+        _executorReturnedDone = localExecutorState == ExecutorState::DONE;
         break;
       }
       case ExecState::FASTFORWARD: {
@@ -1818,6 +1775,7 @@ auto ExecutionBlockImpl<Executor>::handleSkipState(arangodb::aql::AqlCall& clien
 }
 
 template <>
+template <>
 auto ExecutionBlockImpl<SubqueryExecutor<true>>::handleSkipStateSubquery(arangodb::aql::AqlCall& clientCall) -> std::pair<ExecState, ExecutionState> {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto const offsetBefore = clientCall.getOffset();
@@ -1873,6 +1831,133 @@ auto ExecutionBlockImpl<SubqueryExecutor<true>>::handleSkipStateSubquery(arangod
   return {ExecState::CHECKCALL, state};
 }
 
+template <class Executor>
+auto ExecutionBlockImpl<Executor>::handleProduceState(AqlCallStack const& stack,
+                                                      AqlCall& clientCall)
+    -> std::pair<ExecState, ExecutorState> {
+  if constexpr (is_one_of_v<Executor, SubqueryExecutor<true>, SubqueryExecutor<false>>) {
+    // This is forbidden no Subquery can be used here.
+    TRI_ASSERT(false);
+  } else {
+    // Make sure there's a block allocated and set
+    // the call
+    TRI_ASSERT(clientCall.getLimit() > 0);
+    TRI_ASSERT(clientCall.getSkipCount() == 0);
+
+    LOG_QUERY("1f786", DEBUG) << printTypeInfo() << " call produceRows " << clientCall;
+    if (outputIsFull()) {
+      // We need to be able to write data
+      // But maybe the existing block is full here
+      // Then we need to wake up again.
+      // However the client might decide on a different
+      // call, so we do not record this position
+      return {ExecState::DONE, ExecutorState::HASMORE};
+    }
+    if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
+      TRI_ASSERT(!stack.empty());
+      AqlCall const& subqueryCall = stack.peek();
+      AqlCall copyCall = subqueryCall;
+      ensureOutputBlock(std::move(copyCall), _lastRange);
+    } else {
+      ensureOutputBlock(std::move(clientCall), _lastRange);
+    }
+    TRI_ASSERT(_outputItemRow);
+    TRI_ASSERT(!_executorReturnedDone);
+    ExecutorState state = ExecutorState::HASMORE;
+    typename Executor::Stats stats;
+    auto call = AqlCallType{};
+    // Execute produceRows
+    std::tie(state, stats, call) = executeProduceRows(_lastRange, *_outputItemRow);
+    
+    _executorReturnedDone = state == ExecutorState::DONE;
+    _blockStats += stats;
+
+    if constexpr (!std::is_same_v<Executor, SubqueryEndExecutor>) {
+      // But only do this if we are not subquery.
+      clientCall = _outputItemRow->getClientCall();
+    }
+
+    if (state == ExecutorState::DONE) {
+      return {ExecState::FASTFORWARD, state};
+    } else if ((Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable ||
+                clientCall.getLimit() > 0) &&
+               outputIsFull()) {
+      // In pass through variant we need to stop whenever the block is full.
+      // In all other branches only if the client Still needs more data.
+      return {ExecState::DONE, state};
+    } else if (clientCall.getLimit() > 0 && executorNeedsCall(call)) {
+      TRI_ASSERT(_upstreamState != ExecutionState::DONE);
+      // We need to request more
+      _upstreamRequest = call;
+      return {ExecState::UPSTREAM, state};
+    } else {
+      // We are done with producing. Produce is not allowed to request more
+      return {ExecState::CHECKCALL, state};
+    }
+  }
+}
+
+template <class Executor>
+auto ExecutionBlockImpl<Executor>::handleProduceStateSubquery(AqlCallStack const& stack,
+                                                              AqlCall& clientCall)
+    -> std::pair<ExecState, ExecutionState> {
+  if constexpr (!is_one_of_v<Executor, SubqueryExecutor<true>, SubqueryExecutor<false>>) {
+    // This is forbidden only Subquery can be used here.
+    TRI_ASSERT(false);
+  } else {
+    // Make sure there's a block allocated and set
+    // the call
+    TRI_ASSERT(clientCall.getLimit() > 0);
+    TRI_ASSERT(clientCall.getSkipCount() == 0);
+
+    LOG_QUERY("1f787", DEBUG) << printTypeInfo() << " call produceRows " << clientCall;
+    if (outputIsFull()) {
+      // We need to be able to write data
+      // But maybe the existing block is full here
+      // Then we need to wake up again.
+      // However the client might decide on a different
+      // call, so we do not record this position
+      return {ExecState::DONE, ExecutionState::HASMORE};
+    }
+    ensureOutputBlock(std::move(clientCall), _lastRange);
+
+    TRI_ASSERT(_outputItemRow);
+    TRI_ASSERT(!_executorReturnedDone);
+    ExecutionState state = ExecutionState::HASMORE;
+    typename Executor::Stats stats;
+    auto call = AqlCallType{};
+      std::tie(state, stats, call) =
+          _executor.produceRows(_lastRange, *_outputItemRow);
+    if (state == ExecutionState::WAITING) {
+      return {ExecState::SKIP, state};
+    }
+
+    _blockStats += stats;
+
+    if constexpr (!std::is_same_v<Executor, SubqueryEndExecutor>) {
+      // But only do this if we are not subquery.
+      clientCall = _outputItemRow->getClientCall();
+    }
+
+    if (state == ExecutionState::DONE) {
+      return {ExecState::FASTFORWARD, state};
+    } else if ((Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable ||
+                clientCall.getLimit() > 0) &&
+              outputIsFull()) {
+      // In pass through variant we need to stop whenever the block is full.
+      // In all other branches only if the client Still needs more data.
+      return {ExecState::DONE, state};
+    } else if (clientCall.getLimit() > 0 && executorNeedsCall(call)) {
+      TRI_ASSERT(_upstreamState != ExecutionState::DONE);
+      // We need to request more
+      _upstreamRequest = call;
+      return {ExecState::UPSTREAM, state};
+    } else {
+      // We are done with producing. Produce is not allowed to request more
+      return {ExecState::CHECKCALL, state};
+    }
+  }
+}
 
 template <class Executor>
 void ExecutionBlockImpl<Executor>::resetExecutor() {
