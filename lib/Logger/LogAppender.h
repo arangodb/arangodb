@@ -29,6 +29,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <typeindex>
 #include <utility>
 #include <vector>
 
@@ -37,23 +38,28 @@
 #include "Logger/LogLevel.h"
 
 namespace arangodb {
+class LogGroup;
 class LogTopic;
 struct LogMessage;
 class Mutex;
 
 class LogAppender {
  public:
-  static void addAppender(std::string const& definition);
-  
-  static void addGlobalAppender(std::shared_ptr<LogAppender>);
-  
-  static std::shared_ptr<LogAppender> buildAppender(std::string const& output);
+  static void addAppender(LogGroup const&, std::string const& definition);
 
-  static void logGlobal(LogMessage const&);
-  static void log(LogMessage const&);
+  static void addGlobalAppender(LogGroup const&, std::shared_ptr<LogAppender>);
+
+  static std::shared_ptr<LogAppender> buildAppender(LogGroup const&,
+                                                    std::string const& output);
+
+  static void logGlobal(LogGroup const&, LogMessage const&);
+  static void log(LogGroup const&, LogMessage const&);
 
   static void reopen();
   static void shutdown();
+
+  static bool haveAppenders(LogGroup const&);
+  static bool haveAppenders(LogGroup const&, size_t topicId);
 
  public:
   LogAppender() = default;
@@ -77,9 +83,9 @@ class LogAppender {
  
  private:
   static Mutex _appendersLock;
-  static std::vector<std::shared_ptr<LogAppender>> _globalAppenders;
-  static std::map<size_t, std::vector<std::shared_ptr<LogAppender>>> _topics2appenders;
-  static std::map<std::string, std::shared_ptr<LogAppender>> _definition2appenders;
+  static std::unordered_map<std::type_index, std::vector<std::shared_ptr<LogAppender>>> _globalAppenders;
+  static std::unordered_map<std::type_index, std::map<size_t, std::vector<std::shared_ptr<LogAppender>>>> _topics2appenders;
+  static std::unordered_map<std::type_index, std::map<std::string, std::shared_ptr<LogAppender>>> _definition2appenders;
   static bool _allowStdLogging;
 };
 }  // namespace arangodb

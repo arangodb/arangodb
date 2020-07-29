@@ -61,6 +61,7 @@
 
 #include <stddef.h>
 #include <atomic>
+#include <functional>
 #include <memory>
 #include <string>
 #include <utility>
@@ -77,6 +78,7 @@ namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
+class LogGroup;
 class LogThread;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -244,6 +246,7 @@ class Logger {
   };
 
  public:
+  static LogGroup& defaultLogGroup();
   static LogLevel logLevel();
   static std::vector<std::pair<std::string, LogLevel>> logLevelTopics();
   static void setLogLevel(LogLevel);
@@ -279,6 +282,10 @@ class Logger {
 
   static void log(char const* logid, char const* function, char const* file, int line,
                   LogLevel level, size_t topicId, std::string const& message);
+
+  static void append(LogGroup&, std::unique_ptr<LogMessage>& msg,
+                     std::function<void(std::unique_ptr<LogMessage>&)> inactive =
+                         [](std::unique_ptr<LogMessage>&) -> void {});
 
   static bool isEnabled(LogLevel level) {
     return (int)level <= (int)_level.load(std::memory_order_relaxed);

@@ -207,7 +207,7 @@ void LogBufferFeature::prepare() {
     // in the ctor, we would waste a lot of memory in case we don't need the in-memory
     // appender. this is the case for simple command such as `--help` etc.
     _inMemoryAppender = std::make_shared<LogAppenderRingBuffer>();
-    LogAppender::addGlobalAppender(_inMemoryAppender);
+    LogAppender::addGlobalAppender(Logger::defaultLogGroup(), _inMemoryAppender);
   }
 }
 
