@@ -29,7 +29,7 @@ const pregel = require("@arangodb/pregel");
 
 /* TODO parametrise with bindings?  */
 function execute_program(graphName, program) {
-    return pregel.start("vertexaccumulators", graphName, program);
+    return pregel.start("air", graphName, program);
 }
 
 function test_bind_parameter_program(bindParameter, value) {
@@ -81,7 +81,7 @@ function vertex_degree(
   graphName,
   resultField) {
   return pregel.start(
-    "vertexaccumulators",
+    "air",
     graphName,
     vertex_degree_program(resultField)
   );
@@ -154,7 +154,7 @@ function single_source_shortest_path(
     weightAttribute
 ) {
     return pregel.start(
-        "vertexaccumulators",
+        "air",
         graphName,
         single_source_shortest_path_program(
             resultField,
@@ -332,7 +332,7 @@ function strongly_connected_components(
     resultField
 ) {
     return pregel.start(
-        "vertexaccumulators",
+        "air",
         graphName,
         strongly_connected_components_program(
             resultField
@@ -405,7 +405,7 @@ function page_rank(
     resultField
 ) {
     return pregel.start(
-        "vertexaccumulators",
+        "air",
         graphName,
         page_rank_program(
             resultField

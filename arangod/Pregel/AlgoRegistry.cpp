@@ -77,7 +77,7 @@ IAlgorithm* AlgoRegistry::createAlgorithm(application_features::ApplicationServe
     return new algos::DMID(server, userParams);
   } else if (algorithm == "wcc") {
     return new algos::WCC(server, userParams);
-  } else if (algorithm == "vertexaccumulators") {
+  } else if (algorithm == "air") {
     return new algos::accumulators::VertexAccumulators(server, userParams);
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -136,7 +136,7 @@ template <typename V, typename E, typename M>
     return createWorker(vocbase, new algos::DMID(server, userParams), body);
   } else if (algorithm == "wcc") {
     return createWorker(vocbase, new algos::WCC(server, userParams), body);
-  } else if (algorithm == "vertexaccumulators") {
+  } else if (algorithm == "air") {
     return createWorker(vocbase, new algos::accumulators::VertexAccumulators(server, userParams), body);
   }
 
