@@ -1,6 +1,9 @@
 v3.6.6 (XXXX-XX-XX)
 -------------------
 
+* Always fetch data for /_api/cluster/agency-dump from leader of the agency.
+  Add option "redirectToLeader=true" to internal /_api/agency/state API.
+
 * Revive faster out-of-range comparator for secondary index scans that do a full
   collection index scan for index types "hash", "skiplist", "persistent".
 
