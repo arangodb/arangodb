@@ -1754,6 +1754,7 @@ auto ExecutionBlockImpl<Executor>::handleProduceStateSubquery(AqlCallStack const
   if constexpr (!is_one_of_v<Executor, SubqueryExecutor<true>, SubqueryExecutor<false>>) {
     // This is forbidden only Subquery can be used here.
     TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
   } else {
     if (outputIsFull()) {
       // We need to be able to write data
