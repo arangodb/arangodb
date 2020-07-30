@@ -73,7 +73,13 @@ struct EdgeData {
 
 struct VertexAccumulatorAggregator : IAggregator {
   VertexAccumulatorAggregator(AccumulatorOptions const& opts, bool persists)
-      : fake(), accumulator(instantiateAccumulator(fake, opts)), permanent(persists) {}
+      : fake(), accumulator(instantiateAccumulator(fake, opts)), permanent(persists) {
+    if (accumulator == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_NOT_IMPLEMENTED,
+          "this combination of accumulator and value type is not supported");
+    }
+  }
   virtual ~VertexAccumulatorAggregator() = default;
 
   /// @brief Used when updating aggregator value locally

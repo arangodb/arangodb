@@ -36,6 +36,12 @@ void VertexData::reset(AccumulatorsDeclaration const& accumulatorsDeclaration,
   _vertexId = vertexId;
 
   for (auto&& acc : accumulatorsDeclaration) {
+    auto accum = instantiateAccumulator(*this, acc.second);
+    if (accum == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_NOT_IMPLEMENTED,
+          "this combination of accumulator and value type is not supported");
+    }
     _accumulators.emplace(acc.first, instantiateAccumulator(*this, acc.second));
   }
 }
