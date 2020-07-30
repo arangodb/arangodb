@@ -25,12 +25,12 @@
 #define ARANGODB_LOGGER_LOG_APPENDER_H 1
 
 #include <stddef.h>
+#include <array>
 #include <functional>
 #include <map>
 #include <memory>
 #include <string>
 #include <typeindex>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
