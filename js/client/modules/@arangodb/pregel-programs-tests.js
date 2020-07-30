@@ -121,7 +121,14 @@ function exec_scc_test() {
   return pp.strongly_connected_components("Circle", "scc");
 }
 
+function exec_air_tests() {
+  exec_scc_test();
+}
+
 exports.exec_test_wiki_vote = exec_test_wiki_vote;
 exports.exec_test_line = exec_test_line;
 exports.exec_scc_test = exec_scc_test;
 exports.exec_sssp_test = exec_sssp_test;
+
+
+exports.exec_air_tests = exec_air_tests;

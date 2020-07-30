@@ -70,7 +70,7 @@ VertexAccumulators::VertexAccumulators(application_features::ApplicationServer& 
   LOG_VERTEXACC("", DEBUG) << "algorithm constructor entry";
 
   LOG_VERTEXACC("", DEBUG) << "initializing Greenspun interpreter";
-  InitInterpreter();
+  greenspun::InitInterpreter();
 
   LOG_VERTEXACC("", DEBUG) << "parsing user parameters";
   parseUserParams(userParams);

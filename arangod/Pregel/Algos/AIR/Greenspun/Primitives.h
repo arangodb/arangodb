@@ -27,16 +27,28 @@
 
 #include "Interpreter.h"
 
+namespace arangodb {
+namespace greenspun {
+
 struct PrimEvalContext : EvalContext {
   virtual std::string const& getThisId() const { std::abort(); };
-  virtual EvalResult getPregelId(VPackBuilder& result) const { return EvalError("not implemented"); }
-  virtual EvalResult getAccumulatorValue(std::string_view id, VPackBuilder& result) const { return EvalError("not implemented"); }
+  virtual EvalResult getPregelId(VPackBuilder& result) const {
+    return EvalError("not implemented");
+  }
+  virtual EvalResult getAccumulatorValue(std::string_view id, VPackBuilder& result) const {
+    return EvalError("not implemented");
+  }
   virtual EvalResult updateAccumulator(std::string_view accumId,
-                                       std::string_view toId, VPackSlice value)  { return EvalError("not implemented"); };
+                                       std::string_view toId, VPackSlice value) {
+    return EvalError("not implemented");
+  };
   virtual EvalResult updateAccumulatorById(std::string_view accumId,
-                                 VPackSlice toVertex, VPackSlice value) { return EvalError("not implemented"); };
-  virtual EvalResult setAccumulator(std::string_view accumId, VPackSlice value)
-  { return EvalError("not implemented"); };
+                                           VPackSlice toVertex, VPackSlice value) {
+    return EvalError("not implemented");
+  };
+  virtual EvalResult setAccumulator(std::string_view accumId, VPackSlice value) {
+    return EvalError("not implemented");
+  };
 
   virtual std::size_t getVertexUniqueId() const { return 0; }
 
@@ -56,11 +68,18 @@ struct PrimEvalContext : EvalContext {
     return EvalError("not impemented");
   }
 
-  virtual EvalResult getVertexCount(VPackBuilder& result) const { return EvalError("not implemented"); }
+  virtual EvalResult getVertexCount(VPackBuilder& result) const {
+    return EvalError("not implemented");
+  }
+  virtual EvalResult getEdgeCount(VPackBuilder& result) const {
+    return EvalError("not implemented");
+  }
   virtual void printCallback(std::string const& msg) const;
 };
 
 extern std::unordered_map<std::string, std::function<EvalResult(PrimEvalContext& ctx, VPackSlice const slice, VPackBuilder& result)>> primitives;
 void RegisterPrimitives();
+}  // namespace greenspun
+}  // namespace arangodb
 
 #endif

@@ -31,6 +31,9 @@
 #include "Interpreter.h"
 #include "Primitives.h"
 
+namespace arangodb {
+namespace greenspun {
+
 using PrimitiveFunction = std::function<EvalResult(PrimEvalContext& ctx, VPackSlice const slice, VPackBuilder& result)>;
 std::unordered_map<std::string, PrimitiveFunction> primitives;
 
@@ -443,3 +446,7 @@ void RegisterPrimitives() {
 void PrimEvalContext::printCallback(const std::string& msg) const {
   std::cout << msg << std::endl;
 }
+
+}
+}
+

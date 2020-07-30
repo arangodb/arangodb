@@ -34,8 +34,10 @@
 
 using namespace arangodb::velocypack;
 
-void InitInterpreter() { RegisterPrimitives(); }
+namespace arangodb {
+namespace greenspun {
 
+void InitInterpreter() { RegisterPrimitives(); }
 
 EvalResult Apply(EvalContext& ctx, std::string const& function,
                  VPackSlice const params, VPackBuilder& result) {
@@ -53,7 +55,8 @@ EvalResult SpecialIf(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder
   for (auto iter = paramIterator; iter.valid(); iter++) {
     auto pair = *iter;
     if (!pair.isArray() || pair.length() != 2) {
-      return EvalError("in case " + std::to_string(iter.index()) + ", expected pair, found: " + pair.toJson());
+      return EvalError("in case " + std::to_string(iter.index()) +
+                       ", expected pair, found: " + pair.toJson());
     }
 
     auto&& [cond, body] = unpackTuple<VPackSlice, VPackSlice>(*iter);
@@ -86,7 +89,6 @@ EvalResult SpecialQuote(EvalContext& ctx, ArrayIterator paramIterator, VPackBuil
 }
 
 EvalResult SpecialCons(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
-
   auto&& [head, list] = unpackTuple<VPackSlice, VPackSlice>(paramIterator);
   if (paramIterator.valid()) {
     return EvalError("Excess elements in cons call");
@@ -106,7 +108,7 @@ EvalResult SpecialAnd(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilde
   for (; paramIterator.valid(); paramIterator++) {
     VPackBuilder value;
     if (auto res = Evaluate(ctx, *paramIterator, value); res.fail()) {
-      return res.wrapError([&](EvalError &err) {
+      return res.wrapError([&](EvalError& err) {
         err.wrapMessage("in case " + std::to_string(paramIterator.index()));
       });
     }
@@ -125,7 +127,7 @@ EvalResult SpecialOr(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder
   for (; paramIterator.valid(); paramIterator++) {
     VPackBuilder value;
     if (auto res = Evaluate(ctx, *paramIterator, value); res.fail()) {
-      return res.wrapError([&](EvalError &err) {
+      return res.wrapError([&](EvalError& err) {
         err.wrapMessage("in case " + std::to_string(paramIterator.index()));
       });
     }
@@ -152,7 +154,7 @@ EvalResult SpecialSeq(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilde
       return store;
     });
     if (auto res = Evaluate(ctx, *paramIterator, usedBuilder); res.fail()) {
-      return res.wrapError([&](EvalError &err) {
+      return res.wrapError([&](EvalError& err) {
         err.wrapMessage("at position " + std::to_string(paramIterator.index()));
       });
     }
@@ -178,7 +180,8 @@ EvalResult SpecialMatch(EvalContext& ctx, ArrayIterator paramIterator, VPackBuil
   for (; paramIterator.valid(); paramIterator++) {
     auto pair = *paramIterator;
     if (!pair.isArray() || pair.length() != 2) {
-      return EvalError("in case " + std::to_string(paramIterator.index()) + ", expected pair, found: " + pair.toJson());
+      return EvalError("in case " + std::to_string(paramIterator.index()) +
+                       ", expected pair, found: " + pair.toJson());
     }
     auto&& [cmp, body] = unpackTuple<VPackSlice, VPackSlice>(pair);
     VPackBuilder cmpValue;
@@ -194,7 +197,7 @@ EvalResult SpecialMatch(EvalContext& ctx, ArrayIterator paramIterator, VPackBuil
     }
 
     if (pattern == cmpValue.slice().getNumber<double>()) {
-      return Evaluate(ctx, body, result).wrapError([&](EvalError &err) {
+      return Evaluate(ctx, body, result).wrapError([&](EvalError& err) {
         err.wrapMessage("in case " + std::to_string(paramIterator.index() - 1));
       });
     }
@@ -205,7 +208,6 @@ EvalResult SpecialMatch(EvalContext& ctx, ArrayIterator paramIterator, VPackBuil
 }
 
 EvalResult SpecialForEach(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
-
   // ["for-each", ["a", ["A", "B", "C"]], ["d", ["1", "2", "3"]], ["print", ["var-ref", "a"], ["var-ref", "d"]]]
 
   if (!paramIterator.valid()) {
@@ -217,7 +219,8 @@ EvalResult SpecialForEach(EvalContext& ctx, ArrayIterator paramIterator, VPackBu
     VPackBuilder value;
     ArrayIterator iterator;
 
-    IteratorTriple(std::string_view name, VPackBuilder v) : varName(name), value(std::move(v)), iterator(value.slice()) {}
+    IteratorTriple(std::string_view name, VPackBuilder v)
+        : varName(name), value(std::move(v)), iterator(value.slice()) {}
   };
 
   std::vector<IteratorTriple> iterators;
@@ -245,8 +248,8 @@ EvalResult SpecialForEach(EvalContext& ctx, ArrayIterator paramIterator, VPackBu
   while (!paramIterator.isLast()) {
     VPackSlice pair = *paramIterator;
     paramIterator++;
-    if (auto res = readIteratorPair(pair); res.fail()){
-      return res.wrapError([&](EvalError &err) {
+    if (auto res = readIteratorPair(pair); res.fail()) {
+      return res.wrapError([&](EvalError& err) {
         err.wrapMessage("at position " + std::to_string(paramIterator.index() - 1));
       });
     }
@@ -339,13 +342,10 @@ EvalResult Evaluate(EvalContext& ctx, VPackSlice const slice, VPackBuilder& resu
   }
 }
 
-
-
 EvalContext::EvalContext() noexcept {
   // Top level variables
   pushStack();
 }
-
 
 EvalResult EvalContext::getVariable(const std::string& name, VPackBuilder& result) {
   for (auto scope = variables.rbegin(); scope != variables.rend(); ++scope) {
@@ -405,7 +405,6 @@ std::string EvalError::toString() const {
   return ss.str();
 }
 
-
 bool ValueConsideredFalse(VPackSlice const value) {
   return value.isFalse() || value.isNone();
 }
@@ -413,3 +412,6 @@ bool ValueConsideredFalse(VPackSlice const value) {
 bool ValueConsideredTrue(VPackSlice const value) {
   return !ValueConsideredFalse(value);
 }
+
+}  // namespace greenspun
+}  // namespace arangodb

@@ -41,28 +41,28 @@ namespace accumulators {
 
 struct MasterContext : ::arangodb::pregel::MasterContext {
 
-  struct VertexAccumulatorPhaseEvalContext : PrimEvalContext {
+  struct VertexAccumulatorPhaseEvalContext : greenspun::PrimEvalContext {
     VertexAccumulatorPhaseEvalContext(MasterContext& mc)
         : PrimEvalContext(), masterContext(mc) {}
 
-    EvalResult gotoPhase(std::string_view nextPhase) const override {
+    greenspun::EvalResult gotoPhase(std::string_view nextPhase) const override {
       if (masterContext.gotoPhase(nextPhase)) {
         return {};
       }
-      return EvalError("Unknown phase `" + std::string{nextPhase} + "`");
+      return greenspun::EvalError("Unknown phase `" + std::string{nextPhase} + "`");
     }
 
-    EvalResult finishAlgorithm() const override {
+    greenspun::EvalResult finishAlgorithm() const override {
       masterContext.finish();
       return {};
     }
 
-    EvalResult getVertexCount(VPackBuilder& result) const override {
+    greenspun::EvalResult getVertexCount(VPackBuilder& result) const override {
       result.add(VPackValue(masterContext.vertexCount()));
       return {};
     }
 
-    EvalResult getAccumulatorValue(std::string_view id, VPackBuilder& result) const override {
+    greenspun::EvalResult getAccumulatorValue(std::string_view id, VPackBuilder& result) const override {
       std::string globalName = "[global]-";
       globalName += id;
       auto accum = masterContext.getAggregatedValue<VertexAccumulatorAggregator>(globalName);
@@ -70,11 +70,11 @@ struct MasterContext : ::arangodb::pregel::MasterContext {
         accum->getAccumulator().getValueIntoBuilder(result);
         return {};
       }
-      return EvalError("global accumulator `" +  std::string{id} + "' not found");
+      return greenspun::EvalError("global accumulator `" +  std::string{id} + "' not found");
     }
 
 
-    EvalResult setAccumulator(std::string_view accumId, VPackSlice value) override {
+    greenspun::EvalResult setAccumulator(std::string_view accumId, VPackSlice value) override {
       std::string globalName = "[global]-";
       globalName += accumId;
       auto accum = masterContext.getAggregatedValue<VertexAccumulatorAggregator>(globalName);
@@ -83,7 +83,7 @@ struct MasterContext : ::arangodb::pregel::MasterContext {
         return {};
       }
 
-      return EvalError("accumulator `" + std::string{accumId} + "` not found");
+      return greenspun::EvalError("accumulator `" + std::string{accumId} + "` not found");
     }
 
 

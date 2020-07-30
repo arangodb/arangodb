@@ -171,7 +171,8 @@ function strongly_connected_components_program(
         resultField: resultField,
         // TODO: Karpott.
         maxGSS: 10000,
-        accumulatorsDeclaration: {
+        globalAccumulators: {},
+        vertexAccumulators: {
             forwardMin: {
                 accumulatorType: "min",
                 valueType: "ints",

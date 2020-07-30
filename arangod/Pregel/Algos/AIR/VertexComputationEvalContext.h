@@ -39,7 +39,7 @@ namespace accumulators {
 class VertexComputation;
 class VertexData;
 
-class VertexComputationEvalContext : public PrimEvalContext {
+class VertexComputationEvalContext : public greenspun::PrimEvalContext {
  public:
   explicit VertexComputationEvalContext(VertexComputation& computation);
 
@@ -51,19 +51,22 @@ class VertexComputationEvalContext : public PrimEvalContext {
 
   /* what's done when print is called */
   void printCallback(const std::string& msg) const override;
-  EvalResult getAccumulatorValue(std::string_view accumId, VPackBuilder& builder) const override;
-  EvalResult setAccumulator(std::string_view accumId, VPackSlice value) override;
+  greenspun::EvalResult getAccumulatorValue(std::string_view accumId, VPackBuilder& builder) const override;
+  greenspun::EvalResult setAccumulator(std::string_view accumId, VPackSlice value) override;
 
-  EvalResult getPregelId(VPackBuilder& result) const override;
-  EvalResult updateAccumulator(std::string_view accumId, std::string_view toId,
+  greenspun::EvalResult getPregelId(VPackBuilder& result) const override;
+  greenspun::EvalResult updateAccumulator(std::string_view accumId, std::string_view toId,
                          VPackSlice value) override;
-  EvalResult updateAccumulatorById(std::string_view accumId, VPackSlice toVertex,
+  greenspun::EvalResult updateAccumulatorById(std::string_view accumId, VPackSlice toVertex,
                                    VPackSlice value) override;
-  EvalResult enumerateEdges(std::function<EvalResult(VPackSlice edge)> cb) const override;
-  EvalResult getBindingValue(std::string_view id, VPackBuilder& result) const override;
-  EvalResult getGlobalSuperstep(VPackBuilder& result) const override;
 
-  EvalResult getVertexCount(VPackBuilder& result) const override;
+  greenspun::EvalResult enumerateEdges(std::function<greenspun::EvalResult(VPackSlice edge)> cb) const override;
+
+  greenspun::EvalResult getBindingValue(std::string_view id, VPackBuilder& result) const override;
+  greenspun::EvalResult getGlobalSuperstep(VPackBuilder& result) const override;
+
+  greenspun::EvalResult getVertexCount(VPackBuilder& result) const override;
+  greenspun::EvalResult getEdgeCount(VPackBuilder& result) const override;
 
  private:
 

@@ -30,6 +30,7 @@
 #include "AccumulatorAggregator.h"
 
 using namespace arangodb::pregel;
+using namespace arangodb::greenspun;
 
 namespace arangodb::pregel::algos::accumulators {
 
@@ -188,5 +189,11 @@ EvalResult VertexComputationEvalContext::getVertexCount(VPackBuilder& result) co
   result.add(VPackValue(computation().context()->vertexCount()));
   return {};
 }
+
+EvalResult VertexComputationEvalContext::getEdgeCount(VPackBuilder& result) const {
+  result.add(VPackValue(computation().getEdgeCount()));
+  return {};
+}
+
 
 }  // namespace arangodb::pregel::algos::accumulators
