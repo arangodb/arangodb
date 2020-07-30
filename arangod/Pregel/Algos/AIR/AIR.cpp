@@ -49,7 +49,7 @@
 
 #include <set>
 
-#define LOG_VERTEXACC(logId, level) LOG_DEVEL << "[AIR] "
+#define LOG_VERTEXACC(logId, level) LOG_DEVEL << "[" << pregel_algorithm_name << "] "
 
 // LOG_TOPIC(logId, level, Logger::QUERIES) << "[AIR] "
 
@@ -66,7 +66,7 @@ const& vertexData) { os << vertexData.toString(); return os;
 
 VertexAccumulators::VertexAccumulators(application_features::ApplicationServer& server,
                                        VPackSlice userParams)
-    : Algorithm(server, "VertexAccumulators") {
+    : Algorithm(server, pregel_algorithm_name) {
   LOG_VERTEXACC("", DEBUG) << "algorithm constructor entry";
 
   LOG_VERTEXACC("", DEBUG) << "initializing Greenspun interpreter";

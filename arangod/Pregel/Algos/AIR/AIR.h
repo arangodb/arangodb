@@ -47,6 +47,8 @@ namespace pregel {
 namespace algos {
 namespace accumulators {
 
+constexpr const char pregel_algorithm_name[] = "air";
+
 using vertex_type = VertexData;
 using edge_type = EdgeData;
 using message_type = MessageData;

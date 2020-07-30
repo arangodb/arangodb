@@ -77,7 +77,7 @@ IAlgorithm* AlgoRegistry::createAlgorithm(application_features::ApplicationServe
     return new algos::DMID(server, userParams);
   } else if (algorithm == "wcc") {
     return new algos::WCC(server, userParams);
-  } else if (algorithm == "air") {
+  } else if (algorithm == algos::accumulators::pregel_algorithm_name) {
     return new algos::accumulators::VertexAccumulators(server, userParams);
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -107,7 +107,7 @@ template <typename V, typename E, typename M>
   std::transform(algorithm.begin(), algorithm.end(), algorithm.begin(), ::tolower);
 
   auto& server = vocbase.server();
-  LOG_DEVEL << " algorithm: " << algorithm;
+  LOG_DEVEL << " worker algorithm: " << algorithm;
   if (algorithm == "sssp") {
     return createWorker(vocbase, new algos::SSSPAlgorithm(server, userParams), body);
   } else if (algorithm == "pagerank") {
@@ -136,7 +136,7 @@ template <typename V, typename E, typename M>
     return createWorker(vocbase, new algos::DMID(server, userParams), body);
   } else if (algorithm == "wcc") {
     return createWorker(vocbase, new algos::WCC(server, userParams), body);
-  } else if (algorithm == "air") {
+  } else if (algorithm == algos::accumulators::pregel_algorithm_name) {
     return createWorker(vocbase, new algos::accumulators::VertexAccumulators(server, userParams), body);
   }
 
