@@ -405,7 +405,6 @@ function page_rank_program(
                 ],
                 updateProgram: [
                     "seq",
-                    ["print", "TempRank: ", ["accum-ref", "tmpRank"]],
                     [
                         "accum-set!", "rank", [
                             "+",
@@ -415,7 +414,6 @@ function page_rank_program(
                             ["*", dampingFactor, ["accum-ref", "tmpRank"]]
                         ]
                     ],
-                    ["print", "Rank: ", ["accum-ref", "rank"]],
                     [
                         "accum-set!", "tmpRank", 0
                     ],
