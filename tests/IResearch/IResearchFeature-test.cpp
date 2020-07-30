@@ -845,7 +845,7 @@ class IResearchFeatureTestCoordinator
 TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
   // test coordinator
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"1\", \"name\": \"testCollection\", \"shards\":{} }");
+      "{ \"id\": \"41\", \"name\": \"testCollection\", \"shards\":{} }");
   auto linkJson = arangodb::velocypack::Parser::fromJson(
       "{ \"view\": \"testView\", \"type\": \"arangosearch\", "
       "\"includeAllFields\": true }");
@@ -854,7 +854,7 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
       "\"version\": 0 }");
   auto versionJson = arangodb::velocypack::Parser::fromJson(
       "{ \"version\": 0, \"tasks\": {} }");
-  auto collectionId = std::to_string(1);
+  auto collectionId = std::to_string(41);
   auto viewId = std::to_string(42);
 
   // add the UpgradeFeature, but make sure it is not prepared
