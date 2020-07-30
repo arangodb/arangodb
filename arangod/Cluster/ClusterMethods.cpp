@@ -3817,7 +3817,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
     }
     std::vector<ServerID> dbServers = ci.getCurrentDBServers();
     std::vector<ServerID> lockedServers;
-    double lockWait(1);
+    double lockWait(timeout);  // for now, we allow to wait for locks for the full time
     while (cc != nullptr && steady_clock::now() < end) {
       result = lockDBServerTransactions(backupId, dbServers, lockWait, lockedServers);
       if (!result.ok()) {
@@ -3833,7 +3833,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
         break;
       }
       if (lockWait < 3600.0) {
-        lockWait *= 1.5;
+        lockWait *= 2.0;
       }
       std::this_thread::sleep_for(milliseconds(300));
     }
