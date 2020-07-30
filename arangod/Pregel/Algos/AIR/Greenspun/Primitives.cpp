@@ -209,6 +209,11 @@ EvalResult Prim_AccumRef(PrimEvalContext& ctx, VPackSlice const params, VPackBui
   return ctx.getAccumulatorValue(accumId, result);
 }
 
+EvalResult Prim_AccumSet(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+  auto&& [accumId, value] = unpackTuple<std::string_view, VPackSlice>(params);
+  return ctx.setAccumulator(accumId, value);
+}
+
 EvalResult Prim_Update(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto&& [accumId, toId, value] =
   unpackTuple<std::string_view, std::string_view, VPackSlice>(params);
@@ -435,6 +440,7 @@ void RegisterPrimitives() {
   primitives["var-ref"] = Prim_VarRef;
   primitives["bind-ref"] = Prim_BindRef;
   primitives["accum-ref"] = Prim_AccumRef;
+  primitives["accum-set!"] = Prim_AccumSet;
 
   primitives["this"] = Prim_This;
   primitives["vertex-unique-id"] = Prim_VertexUniqueId;
