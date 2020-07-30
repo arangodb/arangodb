@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix a race problem in the unit tests w.r.t. PlanSyncer.
+
 * Always fetch data for /_api/cluster/agency-dump from leader of the agency.
   Add option "redirectToLeader=true" to internal /_api/agency/state API.
 
