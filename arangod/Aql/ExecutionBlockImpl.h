@@ -308,6 +308,9 @@ class ExecutionBlockImpl final : public ExecutionBlock {
                                          AqlCall& clientCall)
       -> std::pair<ExecState, ExecutionState>;
 
+  [[nodiscard]] auto handleNextSubqueryState(AqlCallStack& stack,
+                                             AqlCallList const& clientCallList) -> ExecState;
+
   void resetExecutor();
 
   // Forwarding of ShadowRows if the executor has SideEffects.

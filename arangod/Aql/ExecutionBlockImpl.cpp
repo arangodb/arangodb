@@ -1511,32 +1511,14 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         // For this executor the input of the next run will be injected and it can continue to work.
         LOG_QUERY("0ca35", DEBUG)
             << printTypeInfo() << " ShadowRows moved, continue with next subquery.";
-        if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
-          auto currentSubqueryCall = stack.peek();
-          if (currentSubqueryCall.getLimit() == 0 && currentSubqueryCall.hasSoftLimit()) {
-            // SoftLimitReached.
-            // We cannot continue.
-            _execState = ExecState::DONE;
-            break;
-          }
-          // Otherwise just check like the other blocks
-        }
-        if (!stack.hasAllValidCalls()) {
-          // We can only continue if we still have a valid call
-          // on all levels
-          _execState = ExecState::DONE;
-          break;
-        }
 
-        if (clientCallList.hasMoreCalls()) {
-          // Update to next call and start all over.
+        _execState = handleNextSubqueryState(stack, clientCallList);
+        TRI_ASSERT(_execState == ExecState::DONE || _execState == ExecState::CHECKCALL);
+
+        if (_execState == ExecState::CHECKCALL) {
+          TRI_ASSERT(clientCallList.hasMoreCalls());
           clientCall = clientCallList.popNextCall();
-          _execState = ExecState::CHECKCALL;
-        } else {
-          // We cannot continue, so we are done
-          _execState = ExecState::DONE;
         }
-
         break;
       }
       default:
@@ -2015,6 +1997,32 @@ auto ExecutionBlockImpl<Executor>::handleUpstreamState(AqlCallStack& stack, AqlC
     return {ExecState::SHADOWROWS, upstreamState};
   }
   return {ExecState::CHECKCALL, upstreamState};
+}
+
+template <class Executor>
+auto ExecutionBlockImpl<Executor>::handleNextSubqueryState(AqlCallStack& stack, AqlCallList const& clientCallList) -> ExecState {
+  if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
+    auto currentSubqueryCall = stack.peek();
+    if (currentSubqueryCall.getLimit() == 0 && currentSubqueryCall.hasSoftLimit()) {
+      // SoftLimitReached.
+      // We cannot continue.
+      return ExecState::DONE;
+    }
+    // Otherwise just check like the other blocks
+  }
+  if (!stack.hasAllValidCalls()) {
+    // We can only continue if we still have a valid call
+    // on all levels
+    return ExecState::DONE;
+  }
+
+  if (clientCallList.hasMoreCalls()) {
+    // Update to next call and start all over.
+    return ExecState::CHECKCALL;
+  } else {
+    // We cannot continue, so we are done
+    return ExecState::DONE;
+  }
 }
 
 template <class Executor>
