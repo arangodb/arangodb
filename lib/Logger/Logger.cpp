@@ -571,7 +571,7 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
 }
 
 void Logger::append(LogGroup& group, std::unique_ptr<LogMessage>& msg,
-                    std::function<void(std::unique_ptr<LogMessage>&)> inactive) {
+                    std::function<void(std::unique_ptr<LogMessage>&)> const& inactive) {
   // first log to all "global" appenders, which are the in-memory ring buffer logger plus
   // some Windows-specifc appenders for the debug output windows and the Windows event log.
   // note that these loggers do not require any configuration so we can always and safely invoke them.
