@@ -1,6 +1,9 @@
 v3.6.6 (XXXX-XX-XX)
 -------------------
 
+* Fixed a blockage on hotbackup when writes are happening concurrently, since
+  followers could no longer replicate leader transactions.
+
 * Revive faster out-of-range comparator for secondary index scans that do a full
   collection index scan for index types "hash", "skiplist", "persistent".
 
