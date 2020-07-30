@@ -1412,74 +1412,36 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         LOG_QUERY("96e2c", DEBUG)
             << printTypeInfo() << " all produced, fast forward to end up (sub-)query.";
 
-        AqlCall callCopy = clientCall;
-        TRI_DEFER(clientCall.resetSkipCount());
-        if constexpr (executorHasSideEffects<Executor>) {
-          if (stack.needToSkipSubquery()) {
-            // Fast Forward call.
-            callCopy = AqlCall{0, false, 0, AqlCall::LimitType::HARD};
-          }
-        }
-
-        ExecutorState state = ExecutorState::HASMORE;
-        typename Executor::Stats stats;
-        size_t skippedLocal = 0;
-        AqlCallType call{};
-
         if constexpr (is_one_of_v<Executor, SubqueryExecutor<true>>) {
+          // Special handling for non-spliced subqueries.
           // NOTE: The subquery Executor will by itself call EXECUTE on it's
           // subquery. This can return waiting => we can get a WAITING state
           // here. We can only get the waiting state for Subquery executors.
           ExecutionState subqueryState = ExecutionState::HASMORE;
-
-          AqlCall dummy;
-          dummy.hardLimit = 0u;
-          dummy.fullCount = true;
-          std::tie(subqueryState, stats, skippedLocal, call) =
-              _executor.skipRowsRange(_lastRange, dummy);
-          if (subqueryState == ExecutionState::WAITING) {
-            TRI_ASSERT(skippedLocal == 0);
-            return {subqueryState, SkipResult{}, nullptr};
-          } else if (subqueryState == ExecutionState::DONE) {
-            state = ExecutorState::DONE;
-          } else {
-            state = ExecutorState::HASMORE;
-          }
-
-          // We forget that we skipped
-          skippedLocal = 0;
-        } else {
-          // Execute skipSome
-          std::tie(state, stats, skippedLocal, call) =
-              executeFastForward(_lastRange, callCopy);
-        }
-
-        if constexpr (executorHasSideEffects<Executor>) {
-          if (!stack.needToSkipSubquery()) {
-            // We need to modify the original call.
-            clientCall = callCopy;
-          }
-          // else: We are bypassing the results.
-          // Do not count them here.
-        } else {
-          clientCall = callCopy;
-        }
-
-        _skipped.didSkip(skippedLocal);
-        _blockStats += stats;
-        localExecutorState = state;
-
-        if (state == ExecutorState::DONE) {
-          if (!_lastRange.hasValidRow()) {
-            _execState = ExecState::DONE;
-          } else {
-            _execState = ExecState::SHADOWROWS;
+          std::tie(_execState, subqueryState) = handleFastForwardStateSubquery(stack, clientCall);
+          // Translate ExecutionState => ExecutorState
+          // Ordered by likelyhood.
+          switch (subqueryState) {
+            case ExecutionState::HASMORE: {
+              localExecutorState = ExecutorState::HASMORE;
+              break;
+            }
+            case ExecutionState::DONE: {
+              localExecutorState = ExecutorState::DONE;
+              break;
+            }
+            case ExecutionState::WAITING: {
+              TRI_ASSERT(_execState == ExecState::SKIP);
+              // Need to return here, will wake up again in this state
+              return {subqueryState, SkipResult{}, nullptr};
+            }
           }
         } else {
-          // We need to request more
-          _upstreamRequest = call;
-          _execState = ExecState::UPSTREAM;
+          std::tie(_execState, localExecutorState) = handleFastForwardState(stack, clientCall);
         }
+
+        TRI_ASSERT(_execState == ExecState::SHADOWROWS || _execState == ExecState::UPSTREAM ||
+                   _execState == ExecState::DONE);
         break;
       }
       case ExecState::UPSTREAM: {
@@ -1926,8 +1888,7 @@ auto ExecutionBlockImpl<Executor>::handleProduceStateSubquery(AqlCallStack const
     ExecutionState state = ExecutionState::HASMORE;
     typename Executor::Stats stats;
     auto call = AqlCallType{};
-      std::tie(state, stats, call) =
-          _executor.produceRows(_lastRange, *_outputItemRow);
+    std::tie(state, stats, call) = _executor.produceRows(_lastRange, *_outputItemRow);
     if (state == ExecutionState::WAITING) {
       return {ExecState::SKIP, state};
     }
@@ -1943,7 +1904,7 @@ auto ExecutionBlockImpl<Executor>::handleProduceStateSubquery(AqlCallStack const
       return {ExecState::FASTFORWARD, state};
     } else if ((Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable ||
                 clientCall.getLimit() > 0) &&
-              outputIsFull()) {
+               outputIsFull()) {
       // In pass through variant we need to stop whenever the block is full.
       // In all other branches only if the client Still needs more data.
       return {ExecState::DONE, state};
@@ -1957,6 +1918,108 @@ auto ExecutionBlockImpl<Executor>::handleProduceStateSubquery(AqlCallStack const
       return {ExecState::CHECKCALL, state};
     }
   }
+}
+
+template <class Executor>
+auto ExecutionBlockImpl<Executor>::handleFastForwardState(AqlCallStack const& stack,
+                                                          AqlCall& clientCall)
+    -> std::pair<ExecState, ExecutorState> {
+  AqlCall callCopy = clientCall;
+  TRI_DEFER(clientCall.resetSkipCount());
+  if constexpr (executorHasSideEffects<Executor>) {
+    if (stack.needToSkipSubquery()) {
+      // Fast Forward call.
+      callCopy = AqlCall{0, false, 0, AqlCall::LimitType::HARD};
+    }
+  }
+
+  ExecutorState state = ExecutorState::HASMORE;
+  typename Executor::Stats stats;
+  size_t skippedLocal = 0;
+  AqlCallType call{};
+
+  // Execute skipSome
+  std::tie(state, stats, skippedLocal, call) = executeFastForward(_lastRange, callCopy);
+
+  if constexpr (executorHasSideEffects<Executor>) {
+    if (!stack.needToSkipSubquery()) {
+      // We need to modify the original call.
+      clientCall = callCopy;
+    }
+    // else: We are bypassing the results.
+    // Do not count them here.
+  } else {
+    clientCall = callCopy;
+  }
+
+  _skipped.didSkip(skippedLocal);
+  _blockStats += stats;
+
+  if (state == ExecutorState::DONE) {
+    if (!_lastRange.hasValidRow()) {
+      return {ExecState::DONE, state};
+    } else {
+      return {ExecState::SHADOWROWS, state};
+    }
+  }
+  // We need to request more
+  _upstreamRequest = call;
+  return {ExecState::UPSTREAM, state};
+}
+
+template <>
+template <>
+auto ExecutionBlockImpl<SubqueryExecutor<true>>::handleFastForwardStateSubquery(
+    AqlCallStack const& stack, AqlCall& clientCall)
+    -> std::pair<ExecState, ExecutionState> {
+  AqlCall callCopy = clientCall;
+  TRI_DEFER(clientCall.resetSkipCount());
+  if (stack.needToSkipSubquery()) {
+    // Fast Forward call.
+    callCopy = AqlCall{0, false, 0, AqlCall::LimitType::HARD};
+  }
+
+  typename SubqueryExecutor<true>::Stats stats;
+  size_t skippedLocal = 0;
+  AqlCallType call{};
+
+  // NOTE: The subquery Executor will by itself call EXECUTE on it's
+  // subquery. This can return waiting => we can get a WAITING state
+  // here. We can only get the waiting state for Subquery executors.
+  ExecutionState state = ExecutionState::HASMORE;
+
+  AqlCall dummy;
+  dummy.hardLimit = 0u;
+  dummy.fullCount = true;
+  std::tie(state, stats, skippedLocal, call) = _executor.skipRowsRange(_lastRange, dummy);
+  if (state == ExecutionState::WAITING) {
+    TRI_ASSERT(skippedLocal == 0);
+    return {ExecState::SKIP, state};
+  }
+
+  // We forget that we skipped
+  skippedLocal = 0;
+
+  if (!stack.needToSkipSubquery()) {
+    // We need to modify the original call.
+    clientCall = callCopy;
+  }
+  // else: We are bypassing the results.
+  // Do not count them here.
+
+  _skipped.didSkip(skippedLocal);
+  _blockStats += stats;
+
+  if (state == ExecutionState::DONE) {
+    if (!_lastRange.hasValidRow()) {
+      return {ExecState::DONE, state};
+    } else {
+      return {ExecState::SHADOWROWS, state};
+    }
+  }
+  // We need to request more
+  _upstreamRequest = call;
+  return {ExecState::UPSTREAM, state};
 }
 
 template <class Executor>
