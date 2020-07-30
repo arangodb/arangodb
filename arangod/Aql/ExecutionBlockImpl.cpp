@@ -1337,12 +1337,22 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
     TRI_ASSERT(clientCall.getSkipCount() == 0);
     switch (_execState) {
       case ExecState::CHECKCALL: {
+        LOG_QUERY("cfe46", DEBUG)
+            << printTypeInfo() << " determine next action on call " << clientCall;
+
         _execState = handleCheckCallState(stack, clientCall);
         TRI_ASSERT(_execState == ExecState::FASTFORWARD || _execState == ExecState::SKIP ||
                    _execState == ExecState::PRODUCE || _execState == ExecState::DONE);
         break;
       }
       case ExecState::SKIP: {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        auto const offsetBefore = clientCall.getOffset();
+        TRI_ASSERT(offsetBefore > 0);
+        bool const canPassFullcount =
+            clientCall.getLimit() == 0 && clientCall.needsFullCount();
+#endif
+        LOG_QUERY("1f786", DEBUG) << printTypeInfo() << " call skipRows " << clientCall;
         if constexpr (is_one_of_v<Executor, SubqueryExecutor<true>>) {
           // Special handling for non-spliced subqueries.
           // NOTE: The subquery Executor will by itself call EXECUTE on it's
@@ -1376,6 +1386,20 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         break;
       }
       case ExecState::PRODUCE: {
+        LOG_QUERY("1f786", DEBUG) << printTypeInfo() << " call produceRows " << clientCall;
+        // Make sure there's a block allocated and set
+        // the call
+        TRI_ASSERT(clientCall.getLimit() > 0);
+        TRI_ASSERT(clientCall.getSkipCount() == 0);
+        if (outputIsFull()) {
+          // We need to be able to write data
+          // But maybe the existing block is full here
+          // Then we need to wake up again.
+          // However the client might decide on a different
+          // call, so we do not record this position
+          return {ExecState::DONE, ExecutorState::HASMORE};
+        }
+
         if constexpr (is_one_of_v<Executor, SubqueryExecutor<true>, SubqueryExecutor<false>>) {
           // Special handling for non-spliced subqueries.
           // NOTE: The subquery Executor will by itself call EXECUTE on it's
@@ -1673,9 +1697,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
 template <class Executor>
 auto ExecutionBlockImpl<Executor>::handleCheckCallState(AqlCallStack const& stack,
 AqlCall const& clientCall) const -> ExecState {
-  LOG_QUERY("cfe46", DEBUG)
-      << printTypeInfo() << " determine next action on call " << clientCall;
-
   if constexpr (executorHasSideEffects<Executor>) {
     // If the executor has sideEffects, and we need to skip the results we would
     // produce here because we actually skip the subquery, we instead do a
@@ -1689,13 +1710,6 @@ AqlCall const& clientCall) const -> ExecState {
 
 template <class Executor>
 auto ExecutionBlockImpl<Executor>::handleSkipState(arangodb::aql::AqlCall& clientCall) -> std::pair<ExecState, ExecutorState> {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto const offsetBefore = clientCall.getOffset();
-  TRI_ASSERT(offsetBefore > 0);
-  bool const canPassFullcount = clientCall.getLimit() == 0 && clientCall.needsFullCount();
-#endif
-  LOG_QUERY("1f786", DEBUG) << printTypeInfo() << " call skipRows " << clientCall;
-
   ExecutorState state = ExecutorState::HASMORE;
   typename Executor::Stats stats;
   size_t skippedLocal = 0;
@@ -1739,13 +1753,6 @@ auto ExecutionBlockImpl<Executor>::handleSkipState(arangodb::aql::AqlCall& clien
 template <>
 template <>
 auto ExecutionBlockImpl<SubqueryExecutor<true>>::handleSkipStateSubquery(arangodb::aql::AqlCall& clientCall) -> std::pair<ExecState, ExecutionState> {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto const offsetBefore = clientCall.getOffset();
-  TRI_ASSERT(offsetBefore > 0);
-  bool const canPassFullcount = clientCall.getLimit() == 0 && clientCall.needsFullCount();
-#endif
-  LOG_QUERY("1f787", DEBUG) << printTypeInfo() << " call skipRows " << clientCall;
-
   ExecutionState state = ExecutionState::HASMORE;
   typename SubqueryExecutor<true>::Stats stats;
   size_t skippedLocal = 0;
@@ -1801,20 +1808,6 @@ auto ExecutionBlockImpl<Executor>::handleProduceState(AqlCallStack const& stack,
     // This is forbidden no Subquery can be used here.
     TRI_ASSERT(false);
   } else {
-    // Make sure there's a block allocated and set
-    // the call
-    TRI_ASSERT(clientCall.getLimit() > 0);
-    TRI_ASSERT(clientCall.getSkipCount() == 0);
-
-    LOG_QUERY("1f786", DEBUG) << printTypeInfo() << " call produceRows " << clientCall;
-    if (outputIsFull()) {
-      // We need to be able to write data
-      // But maybe the existing block is full here
-      // Then we need to wake up again.
-      // However the client might decide on a different
-      // call, so we do not record this position
-      return {ExecState::DONE, ExecutorState::HASMORE};
-    }
     if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
       TRI_ASSERT(!stack.empty());
       AqlCall const& subqueryCall = stack.peek();
@@ -1867,20 +1860,6 @@ auto ExecutionBlockImpl<Executor>::handleProduceStateSubquery(AqlCallStack const
     // This is forbidden only Subquery can be used here.
     TRI_ASSERT(false);
   } else {
-    // Make sure there's a block allocated and set
-    // the call
-    TRI_ASSERT(clientCall.getLimit() > 0);
-    TRI_ASSERT(clientCall.getSkipCount() == 0);
-
-    LOG_QUERY("1f787", DEBUG) << printTypeInfo() << " call produceRows " << clientCall;
-    if (outputIsFull()) {
-      // We need to be able to write data
-      // But maybe the existing block is full here
-      // Then we need to wake up again.
-      // However the client might decide on a different
-      // call, so we do not record this position
-      return {ExecState::DONE, ExecutionState::HASMORE};
-    }
     ensureOutputBlock(std::move(clientCall), _lastRange);
 
     TRI_ASSERT(_outputItemRow);
