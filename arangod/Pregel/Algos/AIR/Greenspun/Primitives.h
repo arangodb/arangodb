@@ -71,7 +71,7 @@ struct PrimEvalContext : EvalContext {
   virtual EvalResult getVertexCount(VPackBuilder& result) const {
     return EvalError("not implemented");
   }
-  virtual EvalResult getEdgeCount(VPackBuilder& result) const {
+  virtual EvalResult getOutgoingEdgesCount(VPackBuilder& result) const {
     return EvalError("not implemented");
   }
   virtual void printCallback(std::string const& msg) const;

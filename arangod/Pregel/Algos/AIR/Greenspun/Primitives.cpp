@@ -324,6 +324,15 @@ EvalResult Prim_VertexCount(PrimEvalContext& ctx, VPackSlice const params, VPack
   return ctx.getVertexCount(result);
 }
 
+EvalResult Prim_OutgoingEdgesCount(PrimEvalContext& ctx, VPackSlice const params,
+                                   VPackBuilder& result) {
+  if (!params.isEmptyArray()) {
+    return EvalError("expected no argument");
+  }
+  return ctx.getOutgoingEdgesCount(result);
+}
+
+
 EvalResult Prim_PrintLn(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   std::stringstream ss;
 
@@ -437,6 +446,7 @@ void RegisterPrimitives() {
   primitives["for"] = Prim_For;
   primitives["global-superstep"] = Prim_GlobalSuperstep;
   primitives["vertex-count"] = Prim_VertexCount;
+  primitives["this-number-outbound-edges"] = Prim_OutgoingEdgesCount;
 
   primitives["goto"] = Prim_GoToPhase;
   primitives["finish"] = Prim_Finish;

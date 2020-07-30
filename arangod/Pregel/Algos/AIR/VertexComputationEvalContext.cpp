@@ -190,7 +190,7 @@ EvalResult VertexComputationEvalContext::getVertexCount(VPackBuilder& result) co
   return {};
 }
 
-EvalResult VertexComputationEvalContext::getEdgeCount(VPackBuilder& result) const {
+EvalResult VertexComputationEvalContext::getOutgoingEdgesCount(VPackBuilder& result) const {
   result.add(VPackValue(computation().getEdgeCount()));
   return {};
 }
