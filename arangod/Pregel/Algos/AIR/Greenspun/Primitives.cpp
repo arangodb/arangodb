@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <Basics/VelocyPackHelper.h>
+#include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -30,6 +31,7 @@
 
 #include "Interpreter.h"
 #include "Primitives.h"
+#include "PrimEvalContext.h"
 
 namespace arangodb {
 namespace greenspun {
@@ -450,11 +452,6 @@ void RegisterPrimitives() {
 
   primitives["goto"] = Prim_GoToPhase;
   primitives["finish"] = Prim_Finish;
-}
-
-
-void PrimEvalContext::printCallback(const std::string& msg) const {
-  std::cout << msg << std::endl;
 }
 
 }

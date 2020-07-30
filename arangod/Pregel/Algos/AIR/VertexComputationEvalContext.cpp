@@ -158,6 +158,15 @@ EvalResult VertexComputationEvalContext::updateAccumulatorById(std::string_view 
   return {};
 }
 
+
+EvalResult VertexComputationEvalContext::sendToAllNeighbors(std::string_view accumId, VPackSlice value){
+  MessageData msg;
+  msg.reset(std::string{accumId}, value, getThisId());
+
+  _computation.sendMessageToAllNeighbours(msg);
+  return {};
+}
+
 EvalResult VertexComputationEvalContext::enumerateEdges(
     std::function<EvalResult(VPackSlice edge)> cb) const {
   RangeIterator<Edge<EdgeData>> edgeIter = _computation.getEdges();

@@ -25,57 +25,15 @@
 #ifndef ARANGODB_PREGEL_GREENSPUN_PRIMITIVES_H
 #define ARANGODB_PREGEL_GREENSPUN_PRIMITIVES_H 1
 
-#include "Interpreter.h"
+
+#include "PrimEvalContext.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace greenspun {
-
-struct PrimEvalContext : EvalContext {
-  virtual std::string const& getThisId() const { std::abort(); };
-  virtual EvalResult getPregelId(VPackBuilder& result) const {
-    return EvalError("not implemented");
-  }
-  virtual EvalResult getAccumulatorValue(std::string_view id, VPackBuilder& result) const {
-    return EvalError("not implemented");
-  }
-  virtual EvalResult updateAccumulator(std::string_view accumId,
-                                       std::string_view toId, VPackSlice value) {
-    return EvalError("not implemented");
-  };
-  virtual EvalResult updateAccumulatorById(std::string_view accumId,
-                                           VPackSlice toVertex, VPackSlice value) {
-    return EvalError("not implemented");
-  };
-  virtual EvalResult setAccumulator(std::string_view accumId, VPackSlice value) {
-    return EvalError("not implemented");
-  };
-
-  virtual std::size_t getVertexUniqueId() const { return 0; }
-
-  virtual EvalResult enumerateEdges(std::function<EvalResult(VPackSlice edge)> cb) const {
-    return EvalError("not impemented");
-  }
-  virtual EvalResult getBindingValue(std::string_view id, VPackBuilder& result) const {
-    return EvalError("not impemented");
-  }
-  virtual EvalResult getGlobalSuperstep(VPackBuilder& result) const {
-    return EvalError("not impemented");
-  }
-  virtual EvalResult gotoPhase(std::string_view nextPhase) const {
-    return EvalError("not impemented");
-  }
-  virtual EvalResult finishAlgorithm() const {
-    return EvalError("not impemented");
-  }
-
-  virtual EvalResult getVertexCount(VPackBuilder& result) const {
-    return EvalError("not implemented");
-  }
-  virtual EvalResult getOutgoingEdgesCount(VPackBuilder& result) const {
-    return EvalError("not implemented");
-  }
-  virtual void printCallback(std::string const& msg) const;
-};
 
 extern std::unordered_map<std::string, std::function<EvalResult(PrimEvalContext& ctx, VPackSlice const slice, VPackBuilder& result)>> primitives;
 void RegisterPrimitives();
