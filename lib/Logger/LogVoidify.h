@@ -18,25 +18,23 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dan Larkin-York
+/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOG_GROUP_H
-#define ARANGODB_LOGGER_LOG_GROUP_H 1
+#ifndef ARANGODB_LOGGER_LOG_VOIDIFY_H
+#define ARANGODB_LOGGER_LOG_VOIDIFY_H 1
 
-#include <cstddef>
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper class for macros
+////////////////////////////////////////////////////////////////////////////////
 
 namespace arangodb {
+class LoggerStreamBase;
 
-class LogGroup {
+class LogVoidify {
  public:
-  // @brief Number of log groups; must increase this when a new group is added
-  static constexpr std::size_t Count = 2;
-  virtual ~LogGroup() = default;
-
-  /// @brief Must return a UNIQUE identifier amongst all LogGroup derivatives
-  /// and must be less than Count
-  virtual std::size_t id() const = 0;
+  LogVoidify() {}
+  void operator&(LoggerStreamBase const&) {}
 };
 
 }  // namespace arangodb

@@ -45,11 +45,11 @@ using namespace arangodb::basics;
 
 arangodb::Mutex LogAppender::_appendersLock;
 
-std::unordered_map<std::type_index, std::vector<std::shared_ptr<LogAppender>>> LogAppender::_globalAppenders;
+std::array<std::vector<std::shared_ptr<LogAppender>>, LogGroup::Count> LogAppender::_globalAppenders;
 
-std::unordered_map<std::type_index, std::map<size_t, std::vector<std::shared_ptr<LogAppender>>>> LogAppender::_topics2appenders;
+std::array<std::map<size_t, std::vector<std::shared_ptr<LogAppender>>>, LogGroup::Count> LogAppender::_topics2appenders;
 
-std::unordered_map<std::type_index, std::map<std::string, std::shared_ptr<LogAppender>>> LogAppender::_definition2appenders;
+std::array<std::map<std::string, std::shared_ptr<LogAppender>>, LogGroup::Count> LogAppender::_definition2appenders;
 
 bool LogAppender::_allowStdLogging = true;
 
@@ -207,9 +207,11 @@ void LogAppender::shutdown() {
 #endif
   LogAppenderFile::closeAll();
 
-  _globalAppenders.clear();
-  _topics2appenders.clear();
-  _definition2appenders.clear();
+  for (std::size_t i = 0; i < LogGroup::Count; ++i) {
+    _globalAppenders[i].clear();
+    _topics2appenders[i].clear();
+    _definition2appenders[i].clear();
+  }
 }
 
 void LogAppender::reopen() {
@@ -273,19 +275,8 @@ Result LogAppender::parseDefinition(std::string const& definition,
   return Result();
 }
 
-bool LogAppender::haveAppenders(LogGroup const& group) {
-  auto& appenders = _topics2appenders[group.id()];
-  bool haveSome = false;
-  for (auto& list : appenders) {
-    if (!list.second.empty()) {
-      haveSome = true;
-      break;
-    }
-  }
-  return haveSome;
-}
-
 bool LogAppender::haveAppenders(LogGroup const& group, size_t topicId) {
   return !_topics2appenders[group.id()][topicId].empty() ||
-         !_topics2appenders[group.id()][LogTopic::MAX_LOG_TOPICS].empty();
+         !_topics2appenders[group.id()][LogTopic::MAX_LOG_TOPICS].empty() ||
+         !_globalAppenders[group.id()].empty();
 }

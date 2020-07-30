@@ -58,8 +58,9 @@
 #ifndef ARANGODB_LOGGER_LOG_MACROS_H
 #define ARANGODB_LOGGER_LOG_MACROS_H 1
 
-#include "Logger.h"
-#include "LoggerStream.h"
+#include "Logger/LogVoidify.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message for a topic
@@ -106,21 +107,5 @@
 
 #define LOG_DEVEL_IF(cond) \
   LOG_TOPIC_IF("xxxxx", LOG_DEVEL_LEVEL, ::arangodb::Logger::FIXME, (cond)) << "###### "
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief helper class for macros
-////////////////////////////////////////////////////////////////////////////////
-
-namespace arangodb {
-
-class LoggerStream;
-
-class LogVoidify {
- public:
-  LogVoidify() {}
-  void operator&(LoggerStream const&) {}
-};
-
-}  // namespace arangodb
 
 #endif

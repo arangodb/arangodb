@@ -73,9 +73,7 @@ static std::string const UNKNOWN = "UNKNOWN";
 std::string const LogThreadName("Logging");
 
 class DefaultLogGroup : public LogGroup {
-  std::type_index id() const {
-    return std::type_index(typeid(DefaultLogGroup));
-  }
+  std::size_t id() const { return 0; }
 };
 DefaultLogGroup defaultLogGroupInstance;
 

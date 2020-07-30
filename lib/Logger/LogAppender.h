@@ -36,10 +36,10 @@
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
+#include "Logger/LogGroup.h"
 #include "Logger/LogLevel.h"
 
 namespace arangodb {
-class LogGroup;
 class LogTopic;
 struct LogMessage;
 class Mutex;
@@ -59,7 +59,6 @@ class LogAppender {
   static void reopen();
   static void shutdown();
 
-  static bool haveAppenders(LogGroup const&);
   static bool haveAppenders(LogGroup const&, size_t topicId);
 
  public:
@@ -84,9 +83,9 @@ class LogAppender {
  
  private:
   static Mutex _appendersLock;
-  static std::unordered_map<std::type_index, std::vector<std::shared_ptr<LogAppender>>> _globalAppenders;
-  static std::unordered_map<std::type_index, std::map<size_t, std::vector<std::shared_ptr<LogAppender>>>> _topics2appenders;
-  static std::unordered_map<std::type_index, std::map<std::string, std::shared_ptr<LogAppender>>> _definition2appenders;
+  static std::array<std::vector<std::shared_ptr<LogAppender>>, LogGroup::Count> _globalAppenders;
+  static std::array<std::map<size_t, std::vector<std::shared_ptr<LogAppender>>>, LogGroup::Count> _topics2appenders;
+  static std::array<std::map<std::string, std::shared_ptr<LogAppender>>, LogGroup::Count> _definition2appenders;
   static bool _allowStdLogging;
 };
 }  // namespace arangodb
