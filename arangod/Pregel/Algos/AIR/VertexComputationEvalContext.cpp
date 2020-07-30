@@ -26,8 +26,9 @@
 
 #include "VertexComputationEvalContext.h"
 
-#include "VertexComputation.h"
 #include "AccumulatorAggregator.h"
+#include "Greenspun/Primitives.h"
+#include "VertexComputation.h"
 
 using namespace arangodb::pregel;
 using namespace arangodb::greenspun;
@@ -35,7 +36,20 @@ using namespace arangodb::greenspun;
 namespace arangodb::pregel::algos::accumulators {
 
 VertexComputationEvalContext::VertexComputationEvalContext(VertexComputation& computation)
-    : _computation(computation){};
+    : _computation(computation) {
+
+  RegisterFunction("bananensplit-xxx",
+                   [this](PrimEvalContext& ctx, VPackSlice const params,
+                          VPackBuilder& result) -> EvalResult {
+                     if (params.isEmptyArray()) {
+                       result.add(VPackValue(this->vertexData()._vertexId));
+                       return {};
+                     }
+
+                     return EvalError("expect no arguments");
+                   });
+
+};
 
 VertexComputation& VertexComputationEvalContext::computation() const {
   return _computation;
@@ -132,7 +146,8 @@ EvalResult VertexComputationEvalContext::updateAccumulator(std::string_view accu
     return {};
   }
 
-  return EvalError("vertex accumulator `" + std::string{accumId} + "` not found");
+  return EvalError("vertex accumulator `" + std::string{accumId} +
+                   "` not found");
 }
 
 EvalResult VertexComputationEvalContext::updateAccumulatorById(std::string_view accumId,
@@ -158,8 +173,8 @@ EvalResult VertexComputationEvalContext::updateAccumulatorById(std::string_view 
   return {};
 }
 
-
-EvalResult VertexComputationEvalContext::sendToAllNeighbors(std::string_view accumId, VPackSlice value){
+EvalResult VertexComputationEvalContext::sendToAllNeighbors(std::string_view accumId,
+                                                            VPackSlice value) {
   MessageData msg;
   msg.reset(std::string{accumId}, value, getThisId());
 
@@ -203,6 +218,5 @@ EvalResult VertexComputationEvalContext::getOutgoingEdgesCount(VPackBuilder& res
   result.add(VPackValue(computation().getEdgeCount()));
   return {};
 }
-
 
 }  // namespace arangodb::pregel::algos::accumulators

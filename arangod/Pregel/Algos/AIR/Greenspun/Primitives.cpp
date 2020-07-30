@@ -36,9 +36,24 @@
 namespace arangodb {
 namespace greenspun {
 
-using PrimitiveFunction =
-    std::function<EvalResult(PrimEvalContext& ctx, VPackSlice const slice, VPackBuilder& result)>;
 std::unordered_map<std::string, PrimitiveFunction> primitives;
+
+
+EvalResult Prim_Banana_Squared(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+  auto tmp = double{0};
+  for (auto p : VPackArrayIterator(params)) {
+    if (p.isNumber<double>()) {
+      tmp += p.getNumericValue<double>();
+    } else {
+      return EvalError("expected double, found: " + p.toJson());
+    }
+  }
+  result.add(VPackValue(tmp));
+  return {};
+}
+
+
+
 
 EvalResult Prim_Banana(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto tmp = double{0};
@@ -470,6 +485,10 @@ void RegisterPrimitives() {
 
   primitives["goto"] = Prim_GoToPhase;
   primitives["finish"] = Prim_Finish;
+}
+
+void RegisterFunction(std::string_view name, PrimitiveFunction&& f) {
+  primitives[std::string{name}] = f;
 }
 
 }  // namespace greenspun
