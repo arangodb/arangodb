@@ -181,6 +181,11 @@ struct VertexComputationEvalContext : PrimEvalContext {
     return {};
   }
 
+  EvalResult getOutgoingEdgesCount(VPackBuilder &result) override {
+    result.add(VPackValue(_computation.getEdgeCount()));
+    return {};
+  }
+
   VertexAccumulators::VertexComputation& _computation;
   VertexData& _vertexData;
 };

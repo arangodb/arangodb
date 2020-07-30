@@ -57,6 +57,7 @@ struct PrimEvalContext : EvalContext {
 
   virtual void printCallback(std::string const& msg) const;
   virtual EvalResult getVertexCount(VPackBuilder& result) { return EvalError("not implemented"); }
+  virtual EvalResult getOutgoingEdgesCount(VPackBuilder& result) { return EvalError("not implemented"); }
 };
 
 extern std::unordered_map<std::string, std::function<EvalResult(PrimEvalContext& ctx, VPackSlice const slice, VPackBuilder& result)>> primitives;
