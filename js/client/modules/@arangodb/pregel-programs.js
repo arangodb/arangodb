@@ -32,6 +32,31 @@ function execute_program(graphName, program) {
     return pregel.start("air", graphName, program);
 }
 
+function banana_program(resultField) {
+  return {
+    resultField: resultField,
+    maxGSS: 2,
+    globalAccumulators: {},
+    vertexAccumulators: {
+      inDegree: {
+        accumulatorType: "sum",
+        valueType: "ints",
+        storeSender: false
+      }
+    },
+    phases: [ { name: "init",
+                initProgram: [
+                    "seq",
+                    ["print", ["bananensplit-xxx"]],
+                    false
+                ],
+                updateProgram: false,
+            }, ]
+  };
+}
+
+
+
 function test_bind_parameter_program(bindParameter, value) {
     return {
         resultField: "bindParameterTest",
@@ -424,4 +449,5 @@ exports.page_rank_program = page_rank_program;
 exports.page_rank = page_rank;
 exports.test_bind_parameter_program = test_bind_parameter_program;
 
+exports.banana_program = banana_program;
 exports.execute = execute_program;

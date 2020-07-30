@@ -49,13 +49,14 @@ struct EvalContext {
   EvalResult setVariable(std::string name, VPackSlice value);
   EvalResult getVariable(std::string const& name, VPackBuilder& result);
 
+
   size_t depth{0};
 
   using function_type =
       std::function<EvalResult(EvalContext& ctx, VPackSlice const slice, VPackBuilder& result)>;
 
-  void registerFunction(std::string_view name, function_type& f);
-
+  EvalResult setFunction(std::string name, function_type&& f);
+  EvalResult unsetFunction(std::string name);
  private:
   std::vector<std::unordered_map<std::string, VPackSlice>> variables;
   std::unordered_map<std::string, function_type> functions;
