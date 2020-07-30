@@ -150,7 +150,7 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
 void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed,
                                     bool isReadOnlyTransaction) {
   // always perform an unlock when we leave this function
-  auto guard = scopeGuard([this, &isReadOnlyTransaction]() {
+  auto guard = scopeGuard([this, transactionId, &isReadOnlyTransaction]() {
     if (!isReadOnlyTransaction && !isFollowerTransactionId(transactionId)) {
       _rwLock.unlockRead();
     }
