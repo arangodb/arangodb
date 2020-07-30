@@ -23,18 +23,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <Basics/VelocyPackHelper.h>
+#include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <iostream>
 
 #include "Interpreter.h"
+#include "PrimEvalContext.h"
 #include "Primitives.h"
 
 namespace arangodb {
 namespace greenspun {
 
-using PrimitiveFunction = std::function<EvalResult(PrimEvalContext& ctx, VPackSlice const slice, VPackBuilder& result)>;
+using PrimitiveFunction =
+    std::function<EvalResult(PrimEvalContext& ctx, VPackSlice const slice, VPackBuilder& result)>;
 std::unordered_map<std::string, PrimitiveFunction> primitives;
 
 EvalResult Prim_Banana(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
@@ -127,7 +130,8 @@ EvalResult Prim_CmpHuh(PrimEvalContext& ctx, VPackSlice const params, VPackBuild
         }
       }
     } else if (proto.isBool()) {
-      if constexpr (!std::is_same_v<T, std::equal_to<>> && !std::is_same_v<T, std::not_equal_to<>>) {
+      if constexpr (!std::is_same_v<T, std::equal_to<>> &&
+                    !std::is_same_v<T, std::not_equal_to<>>) {
         return EvalError("There is no order on booleans");
       }
       auto value = proto.getBool();
@@ -139,7 +143,8 @@ EvalResult Prim_CmpHuh(PrimEvalContext& ctx, VPackSlice const params, VPackBuild
         }
       }
     } else if (proto.isString()) {
-      if constexpr (!std::is_same_v<T, std::equal_to<>> && !std::is_same_v<T, std::not_equal_to<>>) {
+      if constexpr (!std::is_same_v<T, std::equal_to<>> &&
+                    !std::is_same_v<T, std::not_equal_to<>>) {
         return EvalError("There is no order on strings implemented");
       }
       auto value = proto.stringView();
@@ -216,16 +221,24 @@ EvalResult Prim_AccumSet(PrimEvalContext& ctx, VPackSlice const params, VPackBui
 
 EvalResult Prim_Update(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   auto&& [accumId, toId, value] =
-  unpackTuple<std::string_view, std::string_view, VPackSlice>(params);
+      unpackTuple<std::string_view, std::string_view, VPackSlice>(params);
 
   return ctx.updateAccumulator(accumId, toId, value);
 }
 
-EvalResult Prim_UpdateById(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_UpdateById(PrimEvalContext& ctx, VPackSlice const params,
+                           VPackBuilder& result) {
   auto&& [accumId, toId, value] =
-  unpackTuple<std::string_view, VPackSlice, VPackSlice>(params);
+      unpackTuple<std::string_view, VPackSlice, VPackSlice>(params);
 
   return ctx.updateAccumulatorById(accumId, toId, value);
+}
+
+EvalResult Prim_SendToAllNeighbors(PrimEvalContext& ctx, VPackSlice const params,
+                                   VPackBuilder& result) {
+  auto&& [accumId, value] = unpackTuple<std::string_view, VPackSlice>(params);
+
+  return ctx.sendToAllNeighbors(accumId, value);
 }
 
 EvalResult Prim_PregelId(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
@@ -281,9 +294,7 @@ EvalResult Prim_ListCat(PrimEvalContext& ctx, VPackSlice const params, VPackBuil
 }
 
 // TODO: Only for debugging purpose. Can be removed later again.
-void print(std::string msg) {
-  std::cout << " >> LOG: " <<  msg << std::endl;
-}
+void print(std::string msg) { std::cout << " >> LOG: " << msg << std::endl; }
 
 EvalResult Prim_IntToStr(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   if (params.length() != 1) {
@@ -322,7 +333,8 @@ EvalResult Prim_Not(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder&
   return {};
 }
 
-EvalResult Prim_VertexCount(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_VertexCount(PrimEvalContext& ctx, VPackSlice const params,
+                            VPackBuilder& result) {
   if (!params.isEmptyArray()) {
     return EvalError("expected no argument");
   }
@@ -336,7 +348,6 @@ EvalResult Prim_OutgoingEdgesCount(PrimEvalContext& ctx, VPackSlice const params
   }
   return ctx.getOutgoingEdgesCount(result);
 }
-
 
 EvalResult Prim_PrintLn(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
   std::stringstream ss;
@@ -370,7 +381,8 @@ EvalResult Prim_BindRef(PrimEvalContext& ctx, VPackSlice const params, VPackBuil
   return EvalError("expected a single string argument");
 }
 
-EvalResult Prim_GlobalSuperstep(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_GlobalSuperstep(PrimEvalContext& ctx, VPackSlice const params,
+                                VPackBuilder& result) {
   if (params.isEmptyArray()) {
     return ctx.getGlobalSuperstep(result);
   }
@@ -379,25 +391,26 @@ EvalResult Prim_GlobalSuperstep(PrimEvalContext& ctx, VPackSlice const params, V
 }
 
 EvalResult Prim_GoToPhase(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
-    if (params.length() == 1) {
-        VPackSlice v = params.at(0);
-        if (v.isString()) {
-            return ctx.gotoPhase(v.stringView());
-        }
+  if (params.length() == 1) {
+    VPackSlice v = params.at(0);
+    if (v.isString()) {
+      return ctx.gotoPhase(v.stringView());
     }
+  }
 
-    return EvalError("expect single string argument");
+  return EvalError("expect single string argument");
 }
 
 EvalResult Prim_Finish(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
-    if (params.isEmptyArray()) {
-      return ctx.finishAlgorithm();
-    }
+  if (params.isEmptyArray()) {
+    return ctx.finishAlgorithm();
+  }
 
-    return EvalError("expect no arguments");
+  return EvalError("expect no arguments");
 }
 
-EvalResult Prim_VertexUniqueId(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_VertexUniqueId(PrimEvalContext& ctx, VPackSlice const params,
+                               VPackBuilder& result) {
   if (params.isEmptyArray()) {
     result.add(VPackValue(ctx.getVertexUniqueId()));
     return {};
@@ -453,16 +466,11 @@ void RegisterPrimitives() {
   primitives["global-superstep"] = Prim_GlobalSuperstep;
   primitives["vertex-count"] = Prim_VertexCount;
   primitives["this-number-outbound-edges"] = Prim_OutgoingEdgesCount;
+  primitives["send-to-all-neighbors"] = Prim_SendToAllNeighbors;
 
   primitives["goto"] = Prim_GoToPhase;
   primitives["finish"] = Prim_Finish;
 }
 
-
-void PrimEvalContext::printCallback(const std::string& msg) const {
-  std::cout << msg << std::endl;
-}
-
-}
-}
-
+}  // namespace greenspun
+}  // namespace arangodb

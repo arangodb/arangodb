@@ -27,7 +27,7 @@
 #ifndef ARANGODB_PREGEL_ALGOS_VERTEX_COMPUTATION_EVALCONTEXT_H
 #define ARANGODB_PREGEL_ALGOS_VERTEX_COMPUTATION_EVALCONTEXT_H 1
 
-#include <Pregel/Algos/AIR/Greenspun/Primitives.h>
+#include <Pregel/Algos/AIR/Greenspun/PrimEvalContext.h>
 
 #include "AIR.h"
 
@@ -59,6 +59,7 @@ class VertexComputationEvalContext : public greenspun::PrimEvalContext {
                          VPackSlice value) override;
   greenspun::EvalResult updateAccumulatorById(std::string_view accumId, VPackSlice toVertex,
                                    VPackSlice value) override;
+  greenspun::EvalResult sendToAllNeighbors(std::string_view accumId, VPackSlice value) override;
 
   greenspun::EvalResult enumerateEdges(std::function<greenspun::EvalResult(VPackSlice edge)> cb) const override;
 

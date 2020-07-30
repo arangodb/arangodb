@@ -24,7 +24,9 @@
 
 // #include "Basics/debugging.h"
 #include "Interpreter.h"
+#include "PrimEvalContext.h"
 #include "Primitives.h"
+
 
 #include <iostream>
 #include <sstream>
