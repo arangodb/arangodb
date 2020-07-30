@@ -1346,12 +1346,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         break;
       }
       case ExecState::SKIP: {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        auto const offsetBefore = clientCall.getOffset();
-        TRI_ASSERT(offsetBefore > 0);
-        bool const canPassFullcount =
-            clientCall.getLimit() == 0 && clientCall.needsFullCount();
-#endif
         LOG_QUERY("1f786", DEBUG) << printTypeInfo() << " call skipRows " << clientCall;
         if constexpr (is_one_of_v<Executor, SubqueryExecutor<true>>) {
           // Special handling for non-spliced subqueries.
@@ -1391,14 +1385,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         // the call
         TRI_ASSERT(clientCall.getLimit() > 0);
         TRI_ASSERT(clientCall.getSkipCount() == 0);
-        if (outputIsFull()) {
-          // We need to be able to write data
-          // But maybe the existing block is full here
-          // Then we need to wake up again.
-          // However the client might decide on a different
-          // call, so we do not record this position
-          return {ExecState::DONE, ExecutorState::HASMORE};
-        }
 
         if constexpr (is_one_of_v<Executor, SubqueryExecutor<true>, SubqueryExecutor<false>>) {
           // Special handling for non-spliced subqueries.
@@ -1474,20 +1460,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         // If this triggers the executors produceRows function has returned
         // HASMORE even if it knew that upstream has no further rows.
         TRI_ASSERT(_upstreamState != ExecutionState::DONE);
-        // We need to make sure _lastRange is all used for single-dependency
-        // executors.
-        TRI_ASSERT(isMultiDepExecutor<Executor> || !lastRangeHasDataRow());
-        TRI_ASSERT(!_lastRange.hasShadowRow());
-        SkipResult skippedLocal;
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        auto subqueryLevelBefore = stack.subqueryLevel();
-#endif
-        std::tie(_upstreamState, skippedLocal, _lastRange) =
-            executeFetcher(stack, _upstreamRequest, clientCallList.hasMoreCalls());
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        TRI_ASSERT(subqueryLevelBefore == stack.subqueryLevel());
-#endif
-
+        std::tie(_execState, _upstreamState) = handleUpstreamState(stack, clientCallList, clientCall);
         if (_upstreamState == ExecutionState::WAITING) {
           // We need to persist the old call before we return.
           // We might have some local accounting to this call.
@@ -1497,80 +1470,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           // We do not return anything in WAITING state, also NOT skipped.
           return {_upstreamState, SkipResult{}, nullptr};
         }
-
-        if (!skippedLocal.nothingSkipped()) {
-          if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
-            // In SubqueryStart the stack is exactly the same size as the skip result
-            // from above, the call we work on is inside the subquery.
-            // The stack is exactly what we send upstream, no added call on top.
-            TRI_ASSERT(skippedLocal.subqueryDepth() == stack.subqueryLevel());
-            for (size_t i = 0; i < stack.subqueryLevel(); ++i) {
-              auto skippedSub = skippedLocal.getSkipOnSubqueryLevel(i);
-              if (skippedSub > 0) {
-                auto& call = stack.modifyCallAtDepth(i);
-                call.didSkip(skippedSub);
-                call.resetSkipCount();
-              }
-            }
-          } else {
-            // In all other executors the stack is 1 depth smaller then what
-            // we request from upstream. The top-most entry will be added
-            // by the executor and is not part of the stack here.
-            // However the returned skipped information is complete including
-            // the local call.
-            TRI_ASSERT(skippedLocal.subqueryDepth() == stack.subqueryLevel() + 1);
-
-            for (size_t i = 0; i < stack.subqueryLevel(); ++i) {
-              auto skippedSub = skippedLocal.getSkipOnSubqueryLevel(i + 1);
-              if (skippedSub > 0) {
-                auto& call = stack.modifyCallAtDepth(i);
-                call.didSkip(skippedSub);
-                call.resetSkipCount();
-              }
-            }
-          }
-        }
-
-        if constexpr (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
-          // We have a new range, passthrough can use this range.
-          _hasUsedDataRangeBlock = false;
-        }
-
-        if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
-          // We need to pop the last subquery from the returned skip
-          // We have not asked for a subquery skip.
-          TRI_ASSERT(skippedLocal.getSkipCount() == 0);
-          skippedLocal.decrementSubquery();
-        }
-        if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::FETCHER) {
-          // We skipped through passthrough, so count that a skip was solved.
-          _skipped.merge(skippedLocal, false);
-          clientCall.didSkip(skippedLocal.getSkipCount());
-          clientCall.resetSkipCount();
-        } else if constexpr (is_one_of_v<Executor, SubqueryStartExecutor, SubqueryEndExecutor>) {
-          // Subquery needs to include the topLevel Skip.
-          // But does not need to apply the count to clientCall.
-          _skipped.merge(skippedLocal, false);
-   
-        } else {
-          _skipped.merge(skippedLocal, true);
-        }
-        if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
-          // For the subqueryStart, we need to increment the SkipLevel by one
-          // as we may trigger this multiple times, check if we need to do it.
-          while (_skipped.subqueryDepth() <= skippedLocal.subqueryDepth()) {
-            // In fact, we only need to increase by 1
-            // the lower levels have been merged above
-            TRI_ASSERT(_skipped.subqueryDepth() == skippedLocal.subqueryDepth());
-            _skipped.incrementSubquery();
-          }
-        }
-
-        if (_lastRange.hasShadowRow() && !_lastRange.peekShadowRow().isRelevant()) {
-          _execState = ExecState::SHADOWROWS;
-        } else {
-          _execState = ExecState::CHECKCALL;
-        }
+        TRI_ASSERT(_execState == ExecState::SHADOWROWS || _execState == ExecState::CHECKCALL);
         break;
       }
       case ExecState::SHADOWROWS: {
@@ -1578,11 +1478,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         TRI_ASSERT(_lastRange.hasValidRow());
         LOG_QUERY("7c63c", DEBUG)
             << printTypeInfo() << " (sub-)query completed. Move ShadowRows.";
-
-        // TODO: Check if we can have the situation that we are between two shadow rows here.
-        // E.g. LastRow is relevant shadowRow. NextRow is non-relevant shadowRow.
-        // NOTE: I do not think this is an issue, as the Executor will always say that it cannot do anything with
-        // an empty input. Only exception might be COLLECT COUNT.
 
         if (outputIsFull()) {
           // We need to be able to write data
@@ -1710,6 +1605,11 @@ AqlCall const& clientCall) const -> ExecState {
 
 template <class Executor>
 auto ExecutionBlockImpl<Executor>::handleSkipState(arangodb::aql::AqlCall& clientCall) -> std::pair<ExecState, ExecutorState> {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto const offsetBefore = clientCall.getOffset();
+  TRI_ASSERT(offsetBefore > 0);
+  bool const canPassFullcount = clientCall.getLimit() == 0 && clientCall.needsFullCount();
+#endif
   ExecutorState state = ExecutorState::HASMORE;
   typename Executor::Stats stats;
   size_t skippedLocal = 0;
@@ -1753,6 +1653,11 @@ auto ExecutionBlockImpl<Executor>::handleSkipState(arangodb::aql::AqlCall& clien
 template <>
 template <>
 auto ExecutionBlockImpl<SubqueryExecutor<true>>::handleSkipStateSubquery(arangodb::aql::AqlCall& clientCall) -> std::pair<ExecState, ExecutionState> {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto const offsetBefore = clientCall.getOffset();
+  TRI_ASSERT(offsetBefore > 0);
+  bool const canPassFullcount = clientCall.getLimit() == 0 && clientCall.needsFullCount();
+#endif
   ExecutionState state = ExecutionState::HASMORE;
   typename SubqueryExecutor<true>::Stats stats;
   size_t skippedLocal = 0;
@@ -1808,6 +1713,14 @@ auto ExecutionBlockImpl<Executor>::handleProduceState(AqlCallStack const& stack,
     // This is forbidden no Subquery can be used here.
     TRI_ASSERT(false);
   } else {
+    if (outputIsFull()) {
+      // We need to be able to write data
+      // But maybe the existing block is full here
+      // Then we need to wake up again.
+      // However the client might decide on a different
+      // call, so we do not record this position
+      return {ExecState::DONE, ExecutorState::HASMORE};
+    }
     if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
       TRI_ASSERT(!stack.empty());
       AqlCall const& subqueryCall = stack.peek();
@@ -1860,6 +1773,14 @@ auto ExecutionBlockImpl<Executor>::handleProduceStateSubquery(AqlCallStack const
     // This is forbidden only Subquery can be used here.
     TRI_ASSERT(false);
   } else {
+    if (outputIsFull()) {
+      // We need to be able to write data
+      // But maybe the existing block is full here
+      // Then we need to wake up again.
+      // However the client might decide on a different
+      // call, so we do not record this position
+      return {ExecState::DONE, ExecutionState::HASMORE};
+    }
     ensureOutputBlock(std::move(clientCall), _lastRange);
 
     TRI_ASSERT(_outputItemRow);
@@ -1999,6 +1920,101 @@ auto ExecutionBlockImpl<SubqueryExecutor<true>>::handleFastForwardStateSubquery(
   // We need to request more
   _upstreamRequest = call;
   return {ExecState::UPSTREAM, state};
+}
+
+template <class Executor>
+auto ExecutionBlockImpl<Executor>::handleUpstreamState(AqlCallStack& stack, AqlCallList const& clientCallList, AqlCall& clientCall) -> std::pair<ExecState, ExecutionState> {
+  // We need to make sure _lastRange is all used for single-dependency
+  // executors.
+  TRI_ASSERT(isMultiDepExecutor<Executor> || !lastRangeHasDataRow());
+  TRI_ASSERT(!_lastRange.hasShadowRow());
+  SkipResult skippedLocal;
+  ExecutionState upstreamState = ExecutionState::HASMORE;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto subqueryLevelBefore = stack.subqueryLevel();
+#endif
+  std::tie(upstreamState, skippedLocal, _lastRange) =
+      executeFetcher(stack, _upstreamRequest, clientCallList.hasMoreCalls());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(subqueryLevelBefore == stack.subqueryLevel());
+#endif
+
+  if (_upstreamState == ExecutionState::WAITING) {
+    return {ExecState::UPSTREAM, upstreamState};
+  }
+
+  if (!skippedLocal.nothingSkipped()) {
+    if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
+      // In SubqueryStart the stack is exactly the same size as the skip result
+      // from above, the call we work on is inside the subquery.
+      // The stack is exactly what we send upstream, no added call on top.
+      TRI_ASSERT(skippedLocal.subqueryDepth() == stack.subqueryLevel());
+      for (size_t i = 0; i < stack.subqueryLevel(); ++i) {
+        auto skippedSub = skippedLocal.getSkipOnSubqueryLevel(i);
+        if (skippedSub > 0) {
+          auto& call = stack.modifyCallAtDepth(i);
+          call.didSkip(skippedSub);
+          call.resetSkipCount();
+        }
+      }
+    } else {
+      // In all other executors the stack is 1 depth smaller then what
+      // we request from upstream. The top-most entry will be added
+      // by the executor and is not part of the stack here.
+      // However the returned skipped information is complete including
+      // the local call.
+      TRI_ASSERT(skippedLocal.subqueryDepth() == stack.subqueryLevel() + 1);
+
+      for (size_t i = 0; i < stack.subqueryLevel(); ++i) {
+        auto skippedSub = skippedLocal.getSkipOnSubqueryLevel(i + 1);
+        if (skippedSub > 0) {
+          auto& call = stack.modifyCallAtDepth(i);
+          call.didSkip(skippedSub);
+          call.resetSkipCount();
+        }
+      }
+    }
+  }
+
+  if constexpr (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
+    // We have a new range, passthrough can use this range.
+    _hasUsedDataRangeBlock = false;
+  }
+
+  if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
+    // We need to pop the last subquery from the returned skip
+    // We have not asked for a subquery skip.
+    TRI_ASSERT(skippedLocal.getSkipCount() == 0);
+    skippedLocal.decrementSubquery();
+  }
+  if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::FETCHER) {
+    // We skipped through passthrough, so count that a skip was solved.
+    _skipped.merge(skippedLocal, false);
+    clientCall.didSkip(skippedLocal.getSkipCount());
+    clientCall.resetSkipCount();
+  } else if constexpr (is_one_of_v<Executor, SubqueryStartExecutor, SubqueryEndExecutor>) {
+    // Subquery needs to include the topLevel Skip.
+    // But does not need to apply the count to clientCall.
+    _skipped.merge(skippedLocal, false);
+
+  } else {
+    _skipped.merge(skippedLocal, true);
+  }
+  if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
+    // For the subqueryStart, we need to increment the SkipLevel by one
+    // as we may trigger this multiple times, check if we need to do it.
+    while (_skipped.subqueryDepth() <= skippedLocal.subqueryDepth()) {
+      // In fact, we only need to increase by 1
+      // the lower levels have been merged above
+      TRI_ASSERT(_skipped.subqueryDepth() == skippedLocal.subqueryDepth());
+      _skipped.incrementSubquery();
+    }
+  }
+
+  if (_lastRange.hasShadowRow() && !_lastRange.peekShadowRow().isRelevant()) {
+    return {ExecState::SHADOWROWS, upstreamState};
+  }
+  return {ExecState::CHECKCALL, upstreamState};
 }
 
 template <class Executor>

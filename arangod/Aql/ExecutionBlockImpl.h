@@ -302,6 +302,12 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   template <class exec = Executor, typename = std::enable_if_t<is_one_of_v<exec, SubqueryExecutor<true>>>>
   [[nodiscard]] auto handleFastForwardStateSubquery(AqlCallStack const& stack, AqlCall& clientCall)
       -> std::pair<ExecState, ExecutionState>;
+
+  // Now performan an upstream request
+  [[nodiscard]] auto handleUpstreamState(AqlCallStack& stack, AqlCallList const& clientCallList,
+                                         AqlCall& clientCall)
+      -> std::pair<ExecState, ExecutionState>;
+
   void resetExecutor();
 
   // Forwarding of ShadowRows if the executor has SideEffects.
