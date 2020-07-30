@@ -59,6 +59,17 @@ function exec_test_line() {
   );
 }
 
+function exec_test_page_rank() {
+  pe.create_page_rank_graph("PageRankGraph", 6);
+
+  let native_pid = pp.page_rank(
+      "PageRankGraph",
+      "pageRankResult"
+  );
+  const native_status = wait_for_pregel(native_pid);
+  internal.print("  done, returned with status: ");
+  internal.print(JSON.stringify(native_status, null, 4));
+}
 
 function wait_for_pregel(pid) {
   while(true) {
@@ -127,6 +138,7 @@ function exec_air_tests() {
 
 exports.exec_test_wiki_vote = exec_test_wiki_vote;
 exports.exec_test_line = exec_test_line;
+exports.exec_test_page_rank = exec_test_page_rank;
 exports.exec_scc_test = exec_scc_test;
 exports.exec_sssp_test = exec_sssp_test;
 

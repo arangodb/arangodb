@@ -52,39 +52,39 @@ function test_bind_parameter_program(bindParameter, value) {
 /* Computes the vertex degree */
 
 function vertex_degree_program(resultField) {
-  return {
-    resultField: resultField,
-    maxGSS: 2,
-    accumulatorsDeclaration: {
-      inDegree: {
-        accumulatorType: "sum",
-        valueType: "ints",
-        storeSender: false
-      }
-    },
-    initProgram: [ "for",
-                   "outbound",
-                   ["quote", "edge"],
-                   [
-                     "quote",
-                     "seq",
-                     [ "update",
-                       "inDegree",
-                       ["attrib", "_to", ["var-ref", "edge"]], 1],
-                   ],
-                 ],
-    updateProgram: [ false ]
-  };
+    return {
+        resultField: resultField,
+        maxGSS: 2,
+        accumulatorsDeclaration: {
+            inDegree: {
+                accumulatorType: "sum",
+                valueType: "ints",
+                storeSender: false
+            }
+        },
+        initProgram: ["for",
+            "outbound",
+            ["quote", "edge"],
+            [
+                "quote",
+                "seq",
+                ["update",
+                    "inDegree",
+                    ["attrib", "_to", ["var-ref", "edge"]], 1],
+            ],
+        ],
+        updateProgram: [false]
+    };
 }
 
 function vertex_degree(
-  graphName,
-  resultField) {
-  return pregel.start(
-    "air",
     graphName,
-    vertex_degree_program(resultField)
-  );
+    resultField) {
+    return pregel.start(
+        "air",
+        graphName,
+        vertex_degree_program(resultField)
+    );
 }
 
 /* Performs a single-source shortest path search (currently without path reconstruction)
@@ -342,62 +342,82 @@ function strongly_connected_components(
 }
 
 function page_rank_program(
-    resultField,
-    startVertexId,
-    weightAttribute
+    resultField
 ) {
     return {
         resultField: resultField,
         // TODO: Karpott.
         maxGSS: 10000,
-        accumulatorsDeclaration: {
+        globalAccumulators: {},
+        vertexAccumulators: {
             rank: {
                 accumulatorType: "sum",
                 valueType: "doubles",
                 storeSender: false
-            },
+            }
         },
-        initProgram: [
-            [
-                "seq",
-                [
-                    "for",
-                    "outbound",
-                    ["quote", "edge"],
-                    [
-                        "quote",
-                        "seq",
-                        [
-                            "update",
-                            "rank",
-                            ["attrib", "_to", ["var-ref", "edge"]],
-                            ["/", ["/", 1, ["vertex-count"]], ["attrib", numOutgoingEdges, ["var-ref", "edge"]]],
-                        ],
-                    ],
-                ],
-                true
-            ]
-        ],
-        updateProgram: [
-            "seq",
-            [
-                "for",
-                "outbound",
-                ["quote", "edge"],
-                [
-                    "quote",
+        phases: [
+            {
+                name: "main",
+                initProgram: [
                     "seq",
                     [
-                        "update",
-                        "rank",
-                        ["attrib", "_to", ["var-ref", "edge"]],
-                        ["/", ["accum-ref", "rank"], ["attrib", numOutgoingEdges, ["var-ref", "edge"]]],
+                        "send-to-all-neighbors", "rank", ["/", 1, ["*", ["vertex-count"], ["this-number-outbound-edges"]]]
                     ],
-                ],
-            ],
-            ["set", "rank", 0],
-            true
-        ],
+                    [
+                        "accum-set!", "rank", 0
+                    ]
+                ]
+                    /*[
+
+                        "seq",
+                        ["set", ["/", 1, ["vertex-count"]]],
+                        true
+                    ]*/
+                    /*[
+                        "seq",
+                        [
+                            "for",
+                            "outbound",
+                            ["quote", "edge"],
+                            [
+                                "quote",
+                                "seq",
+                                [
+                                    "update",
+                                    "rank",
+                                    ["attrib", "_to", ["var-ref", "edge"]],
+                                    ["set", ["/", 1, ["vertex-count"]]]
+                                    // ["/", ["/", 1, ["vertex-count"]], ["this-number-outbound-edges"]],
+                                ],
+                            ],
+                        ],
+                        true
+                    ]*/
+                //]
+                ,updateProgram: false
+                    /*[
+                    "seq",
+                    [
+                        "for",
+                        "outbound",
+                        ["quote", "edge"],
+                        [
+                            "quote",
+                            "seq",
+                            [
+                                "update",
+                                "rank",
+                                ["attrib", "_to", ["var-ref", "edge"]],
+                                ["/", ["accum-ref", "rank"], ["this-number-outbound-edges"]],
+                            ],
+                        ],
+                    ],
+                    ["set", "rank", 0],
+                    true
+                ]*/
+            }
+        ]
     };
 }
 
