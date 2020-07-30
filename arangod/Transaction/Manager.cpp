@@ -122,6 +122,7 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
                                   std::unique_ptr<TransactionData> data,
                                   bool isReadOnlyTransaction) {
   if (!isReadOnlyTransaction && !isFollowerTransactionId(transactionId)) {
+    LOG_DEVEL << "Blabla: Acquiring read lock for tid " << transactionId;
     _rwLock.readLock();
   }
 
@@ -152,6 +153,7 @@ void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFail
   // always perform an unlock when we leave this function
   auto guard = scopeGuard([this, transactionId, &isReadOnlyTransaction]() {
     if (!isReadOnlyTransaction && !isFollowerTransactionId(transactionId)) {
+      LOG_DEVEL << "Blabla: Releasing read lock for tid " << transactionId;
       _rwLock.unlockRead();
     }
   });

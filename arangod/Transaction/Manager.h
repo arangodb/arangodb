@@ -27,6 +27,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/ReadWriteSpinLock.h"
 #include "Basics/Result.h"
+#include "Logger/LogMacros.h"
 #include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
@@ -173,9 +174,13 @@ class Manager final {
     std::unique_lock<std::mutex> guard(_mutex);
     bool ret = false;
     if (!_writeLockHeld) {
+      LOG_DEVEL << "Blabla: Trying to get write lock...";
       ret = _rwLock.writeLock(timeout);
       if (ret) {
+        LOG_DEVEL << "Blabla: Got write lock...";
         _writeLockHeld = true;
+      } else {
+        LOG_DEVEL << "Blabla: Did not get write lock.";
       }
     }
     return ret;
