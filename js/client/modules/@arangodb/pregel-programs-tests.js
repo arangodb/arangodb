@@ -64,7 +64,8 @@ function exec_test_page_rank() {
 
   let native_pid = pp.page_rank(
       "PageRankGraph",
-      "pageRankResult"
+      "pageRankResult",
+      0.85
   );
   const native_status = wait_for_pregel(native_pid);
   internal.print("  done, returned with status: ");

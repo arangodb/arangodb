@@ -367,15 +367,21 @@ function strongly_connected_components(
 }
 
 function page_rank_program(
-    resultField
+    resultField,
+    dampingFactor
 ) {
     return {
         resultField: resultField,
         // TODO: Karpott.
-        maxGSS: 10000,
+        maxGSS: 5,
         globalAccumulators: {},
         vertexAccumulators: {
             rank: {
+                accumulatorType: "sum",
+                valueType: "doubles",
+                storeSender: false
+            },
+            tmpRank: {
                 accumulatorType: "sum",
                 valueType: "doubles",
                 storeSender: false
@@ -387,60 +393,37 @@ function page_rank_program(
                 initProgram: [
                     "seq",
                     [
-                        "send-to-all-neighbors", "rank", ["/", 1, ["*", ["vertex-count"], ["this-number-outbound-edges"]]]
+                        "accum-set!", "rank", ["/", 1, ["vertex-count"]]
                     ],
                     [
-                        "accum-set!", "rank", 0
-                    ]
-                ]
-                    /*[
-
-                        "seq",
-                        ["set", ["/", 1, ["vertex-count"]]],
-                        true
-                    ]*/
-                    /*[
-                        "seq",
-                        [
-                            "for",
-                            "outbound",
-                            ["quote", "edge"],
-                            [
-                                "quote",
-                                "seq",
-                                [
-                                    "update",
-                                    "rank",
-                                    ["attrib", "_to", ["var-ref", "edge"]],
-                                    ["set", ["/", 1, ["vertex-count"]]]
-                                    // ["/", ["/", 1, ["vertex-count"]], ["this-number-outbound-edges"]],
-                                ],
-                            ],
-                        ],
-                        true
-                    ]*/
-                //]
-                ,updateProgram: false
-                    /*[
-                    "seq",
-                    [
-                        "for",
-                        "outbound",
-                        ["quote", "edge"],
-                        [
-                            "quote",
-                            "seq",
-                            [
-                                "update",
-                                "rank",
-                                ["attrib", "_to", ["var-ref", "edge"]],
-                                ["/", ["accum-ref", "rank"], ["this-number-outbound-edges"]],
-                            ],
-                        ],
+                        "accum-set!", "tmpRank", 0
                     ],
-                    ["set", "rank", 0],
+                    [
+                        "send-to-all-neighbors", "tmpRank", ["/", ["accum-ref", "rank"], ["this-number-outbound-edges"]]
+                    ],
                     true
-                ]*/
+                ],
+                updateProgram: [
+                    "seq",
+                    ["print", "TempRank: ", ["accum-ref", "tmpRank"]],
+                    [
+                        "accum-set!", "rank", [
+                            "+",
+                            [
+                                "/", ["-", 1, dampingFactor], ["vertex-count"]
+                            ],
+                            ["*", dampingFactor, ["accum-ref", "tmpRank"]]
+                        ]
+                    ],
+                    ["print", "Rank: ", ["accum-ref", "rank"]],
+                    [
+                        "accum-set!", "tmpRank", 0
+                    ],
+                    [
+                        "send-to-all-neighbors", "tmpRank", ["/", ["accum-ref", "rank"], ["this-number-outbound-edges"]]
+                    ],
+                    true
+                ]
             }
         ]
     };
@@ -448,13 +431,14 @@ function page_rank_program(
 
 function page_rank(
     graphName,
-    resultField
+    resultField,
+    dampingFactor
 ) {
     return pregel.start(
         "air",
         graphName,
         page_rank_program(
-            resultField
+            resultField, dampingFactor
         )
     );
 }
