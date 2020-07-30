@@ -118,7 +118,7 @@ function createPageRankGraph(graphName, numberOfVertices, numberOfShards) {
   var vids;
 
   // vertices data
-  let vertices = ['A', 'B', 'C', 'D','E']
+  let vertices = ['A', 'B', 'C', 'D', 'E']
   vertices.forEach(function(v) {
     vs.push({
       name: v
@@ -139,7 +139,7 @@ function createPageRankGraph(graphName, numberOfVertices, numberOfShards) {
   storeEdge(vids[0]._id, vids[1]._id, 1);
 
   // A -> C
-  storeEdge(vids[0]._id, vids[3]._id, 1);
+  storeEdge(vids[0]._id, vids[2]._id, 1);
 
   // B -> C
   storeEdge(vids[1]._id, vids[2]._id, 1);
@@ -152,6 +152,9 @@ function createPageRankGraph(graphName, numberOfVertices, numberOfShards) {
 
   // D -> C
   storeEdge(vids[3]._id, vids[2]._id, 1);
+
+  // D -> E
+  storeEdge(vids[3]._id, vids[4]._id, 1);
 
   // E -> E
   storeEdge(vids[4]._id, vids[4]._id, 1);
