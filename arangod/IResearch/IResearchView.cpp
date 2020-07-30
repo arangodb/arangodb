@@ -935,6 +935,12 @@ IResearchView::Snapshot const* IResearchView::snapshot(
   return ctx;
 }
 
+void IResearchView::unlinkAll() noexcept {
+  WriteMutex mutex(_mutex);  // '_links' can be asynchronously read
+  SCOPED_LOCK(mutex);
+  _links.clear();
+}
+
 arangodb::Result IResearchView::unlink(TRI_voc_cid_t cid) noexcept {
   try {
     WriteMutex mutex(_mutex);  // '_links' can be asynchronously read

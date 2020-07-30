@@ -157,7 +157,13 @@ class IResearchView final: public arangodb::LogicalView {
   Snapshot const* snapshot(transaction::Methods& trx, SnapshotMode mode = SnapshotMode::Find,
                            ::arangodb::containers::HashSet<TRI_voc_cid_t> const* shards = nullptr,
                            void const* key = nullptr) const;
-
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief clears the persisted list of tracked collection IDs
+  /// @return always succeeds
+  //////////////////////////////////////////////////////////////////////////////
+  void unlinkAll() noexcept;
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unlink remove 'cid' from the persisted list of tracked collection
   ///        IDs

@@ -51,6 +51,9 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Indexes/Index.h"
+#include "IResearch/IResearchLink.h"
+#include "IResearch/IResearchView.h"
+#include "IResearch/IResearchViewCoordinator.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/DatabaseFeature.h"
@@ -85,9 +88,6 @@ namespace {
 
 static std::string const prefixCurrent = "Current";
 static std::string const prefixPlan = "Plan";
-
-static constexpr bool cacheCollectionsWithLinks = false;
-static constexpr bool cacheViews = false;
 
 static inline arangodb::AgencyOperation increaseVersion() {
   return arangodb::AgencyOperation{"Plan/Version",
@@ -569,31 +569,37 @@ ClusterInfo::ViewWithHash ClusterInfo::buildView(
     std::string const& viewId, AllViews::iterator existingViews,
     arangodb::velocypack::Slice data, TRI_vocbase_t& vocbase, uint64_t planVersion) {
 
-  uint64_t hash = 0;
+  // calculate hash value. we are using Slice::hash() here intentionally in contrast
+  // to the slower Slice::normalizedHash(), as the only source for the VelocyPack
+  // is the agency/agency cache, which will always create the data in the same way.
+  uint64_t hash = data.hash();
 
-  if constexpr (cacheViews) {
-    // calculate hash value. we are using Slice::hash() here intentionally in contrast
-    // to the slower Slice::normalizedHash(), as the only source for the VelocyPack
-    // is the agency/agency cache, which will always create the data in the same way.
-    hash = data.hash();
+  if (existingViews != _plannedViews.end()) {
+    auto it = (*existingViews).second.find(viewId);
+    if (it != (*existingViews).second.end()) {
+      // view already exists. now check if its hash value has changed
+      ViewWithHash& existing = (*it).second;
 
-    if (existingViews != _plannedViews.end()) {
-      auto it = (*existingViews).second.find(viewId);
-      if (it != (*existingViews).second.end()) {
-        // view already exists. now check if its hash value has changed
-        ViewWithHash const& existing = (*it).second;
-
-        if (hash == existing.hash) {
-          // same view is already cached
-          return existing;
+      if (hash == existing.hash) {
+        // same view is already cached...
+        // now clear all its links, because if a collection with links is changed, it
+        // will recreate all the links. this will cause duplicate entry errors later.
+        if (ServerState::instance()->isCoordinator()) {
+          auto& view = arangodb::LogicalView::cast<arangodb::iresearch::IResearchViewCoordinator>(*existing.view);
+          view.unlinkAll();
+        } else {
+          auto& view = arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(*existing.view);
+          view.unlinkAll();
         }
-        (*existingViews).second.erase(it);
-        (*existingViews).second.erase(existing.view->name());
-        (*existingViews).second.erase(existing.view->guid());
+        return existing;
       }
+/*
+      // remove outdated view from struct 
+      (*existingViews).second.erase(it);
+      (*existingViews).second.erase(existing.view->name());
+      (*existingViews).second.erase(existing.view->guid());
+*/
     }
-  } else {
-    hash = 0;
   }
   
   // if we get here, we haven't seen this view before, or the view has changed!
@@ -653,23 +659,45 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
     if (existing != (*existingCollections).second.end()) {
       CollectionWithHash const& previous = (*existing).second;
   
-      if constexpr (cacheCollectionsWithLinks) {
-        if (previous.hash == hash) {
-          // hashes are identical. reuse the collection from cache
-          // this is very beneficial for performance, because we can avoid rebuilding the
-          // entire LogicalCollection object!
-          collection = previous.collection;
-        }
-      } else {
-        // compare the hash values of what is in the cache with the hash of the collection.
-        // a hash value of 0 means that the collection must not be read from the cache,
-        // potentially because it contains a link to a view (which would require more
-        // complex dependency management)
-        if (previous.hash != 0 && previous.hash == hash) {
-          // hashes are identical. reuse the collection from cache
-          // this is very beneficial for performance, because we can avoid rebuilding the
-          // entire LogicalCollection object!
-          collection = previous.collection;
+      if (previous.hash == hash) {
+        // hashes are identical. reuse the collection from cache
+        // this is very beneficial for performance, because we can avoid rebuilding the
+        // entire LogicalCollection object!
+        collection = previous.collection;
+
+        // on a coordinator, once we fetch the collection from the cache, we need to check
+        // if it has links to views. if so, we need to inform the view about it. the reason
+        // is that when a view was fetched from the cache, all its links are cleared.
+        auto indexes = collection->getIndexes();
+        // if the collection has a link to a view, there are dependencies between collection
+        // objects and view objects. in this case, we need to disable the collection caching
+        // optimization
+        for (auto const& index : indexes) {
+          if (index->type() != Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+            continue;
+          }
+
+          // relink IResearchLink to the view
+          auto* link = dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
+          TRI_ASSERT(link != nullptr);
+          if (link != nullptr) {
+            auto it = _newPlannedViews.find(vocbase.name());
+
+            if (it != _newPlannedViews.end()) {
+              auto it2 = (*it).second.find(link->viewGuid());
+
+              if (it2 != (*it).second.end()) {
+                auto& logicalView = (*it2).second.view;
+                if (ServerState::instance()->isCoordinator()) {
+                  auto& view = arangodb::LogicalView::cast<arangodb::iresearch::IResearchViewCoordinator>(*logicalView);
+                  view.link(*link); 
+                } else {
+                  auto& view = arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(*logicalView);
+                  view.link(link->self()); 
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -678,25 +706,9 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
   // collection may be a nullptr here if no such collection exists in the cache, or if the
   // collection is in building stage
   if (collection == nullptr) {
-    // no previous version of the collection exists, or its hash value has changed
+    // no previous version of the collection exists, or its hash value has changed.
+    // note that if the collection has links to views, these will also be created here.
     collection = createCollectionObject(data, vocbase, planVersion);
-    TRI_ASSERT(collection != nullptr);
-
-    if constexpr (!cacheCollectionsWithLinks) {
-      if (!isBuilding) {
-        auto indexes = collection->getIndexes();
-        // if the collection has a link to a view, there are dependencies between collection
-        // objects and view objects. in this case, we need to disable the collection caching
-        // optimization
-        bool const hasViewLink = std::any_of(indexes.begin(), indexes.end(), [](auto const& index) {
-          return (index->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK);
-        });
-        if (hasViewLink) {
-          // we do have a view. set hash to 0, which will disable the caching optimization
-          hash = 0;
-        }
-      } 
-    }
   }
 
   TRI_ASSERT(collection != nullptr);

@@ -71,6 +71,12 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
   using LogicalDataSource::properties;
   virtual arangodb::Result properties(velocypack::Slice const& properties,
                                       bool partialUpdate) override;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief clears the persisted list of tracked collection IDs
+  /// @return always succeeds
+  //////////////////////////////////////////////////////////////////////////////
+  void unlinkAll() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unlink remove 'cid' from the persisted list of tracked collection

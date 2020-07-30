@@ -1763,11 +1763,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
   auto oldView = view;
   view = ci.getView(vocbase->name(), viewId);   // get new version of the view
-  EXPECT_TRUE(view != oldView);                 // different objects
+  EXPECT_EQ(view, oldView);                 // same objects
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(42 == view->id());
@@ -2055,11 +2054,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
   oldView = view;
   view = ci.getView(vocbase->name(), viewId);   // get new version of the view
-  EXPECT_TRUE(view != oldView);                 // different objects
+  EXPECT_EQ(view, oldView);                 // same objects
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(42 == view->id());
@@ -2406,11 +2404,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
   auto oldView = view;
   view = ci.getView(vocbase->name(), viewId);   // get new version of the view
-  EXPECT_TRUE(view != oldView);                 // different objects
+  EXPECT_EQ(view, oldView);                 // same objects
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(42 == view->id());
@@ -2621,11 +2618,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
   oldView = view;
   view = ci.getView(vocbase->name(), viewId);   // get new version of the view
-  EXPECT_TRUE(view != oldView);                 // different objects
+  EXPECT_EQ(view, oldView);                 // same objects
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(42 == view->id());
@@ -3106,11 +3102,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
   auto oldView = view;
   view = ci.getView(vocbase->name(), viewId);   // get new version of the view
-  EXPECT_TRUE(view != oldView);                 // different objects
+  EXPECT_EQ(view, oldView);                 // same objects
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(42 == view->id());
@@ -3338,11 +3333,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
   oldView = view;
   view = ci.getView(vocbase->name(), viewId);   // get new version of the view
-  EXPECT_TRUE(view != oldView);                 // different objects
+  EXPECT_EQ(view, oldView);                 // same objects
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(42 == view->id());
@@ -3483,11 +3477,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
   oldView = view;
   view = ci.getView(vocbase->name(), viewId);   // get new version of the view
-  EXPECT_TRUE(view != oldView);                 // different objects
+  EXPECT_EQ(view, oldView);                 // same objects
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(42 == view->id());
@@ -3759,11 +3752,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
   auto oldView = view;
   view = ci.getView(vocbase->name(), viewId);   // get new version of the view
-  EXPECT_TRUE(view != oldView);                 // different objects
+  EXPECT_EQ(view, oldView);                 // same objects
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(42 == view->id());
@@ -4067,11 +4059,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
   oldView = view;
   view = ci.getView(vocbase->name(), viewId);   // get new version of the view
-  EXPECT_TRUE(view != oldView);                 // different objects
+  EXPECT_EQ(view, oldView);                 // same objects
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(42 == view->id());
@@ -4201,11 +4192,10 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     auto oldView = view;
     view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(
         ci.getView(vocbase->name(), viewId));   // get new version of the view
-    EXPECT_TRUE(view != oldView);               // different objects
+    EXPECT_EQ(view, oldView);               // same objects
     ASSERT_TRUE(nullptr != view);
     ASSERT_TRUE(nullptr !=
                 std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-    EXPECT_TRUE(planVersion == view->planVersion());
     EXPECT_TRUE("testView" == view->name());
     EXPECT_TRUE(false == view->deleted());
     EXPECT_TRUE(42 == view->id());
@@ -4343,11 +4333,10 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     oldView = view;
     view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(
         ci.getView(vocbase->name(), viewId));   // get new version of the view
-    EXPECT_TRUE(view != oldView);               // different objects
+    EXPECT_EQ(view, oldView);               // same object
     ASSERT_TRUE(nullptr != view);
     ASSERT_TRUE(nullptr !=
                 std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-    EXPECT_TRUE(planVersion == view->planVersion());
     EXPECT_TRUE("testView" == view->name());
     EXPECT_TRUE(false == view->deleted());
     EXPECT_TRUE(42 == view->id());

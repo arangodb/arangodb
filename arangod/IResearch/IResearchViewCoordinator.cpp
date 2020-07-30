@@ -328,6 +328,12 @@ Result IResearchViewCoordinator::renameImpl(std::string const& oldName) {
   return LogicalViewHelperClusterInfo::rename(*this, oldName);
 }
 
+void IResearchViewCoordinator::unlinkAll() noexcept {
+  WriteMutex mutex(_mutex);  // '_links' can be asynchronously read
+  SCOPED_LOCK(mutex);
+  _collections.clear();
+}
+
 Result IResearchViewCoordinator::unlink(TRI_voc_cid_t) noexcept {
   return Result();  // NOOP since no internal store
 }
