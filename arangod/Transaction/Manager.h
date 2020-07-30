@@ -177,7 +177,7 @@ class Manager final {
       LOG_DEVEL << "Blabla: Trying to get write lock...";
       ret = _rwLock.writeLock(timeout);
       if (ret) {
-        LOG_DEVEL << "Blabla: Got write lock...";
+        LOG_DEVEL << "Blabla: Got write lock.";
         _writeLockHeld = true;
       } else {
         LOG_DEVEL << "Blabla: Did not get write lock.";
@@ -190,6 +190,7 @@ class Manager final {
   void releaseTransactions() {
     std::unique_lock<std::mutex> guard(_mutex);
     if (_writeLockHeld) {
+      LOG_DEVEL << "Blabla: Releasing write lock.";
       _rwLock.unlockWrite();
       _writeLockHeld = false;
     }
