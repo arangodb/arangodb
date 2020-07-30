@@ -33,7 +33,7 @@ namespace deserializer::utilities {
 template <typename T>
 struct identity_factory {
   using constructed_type = T;
-  T operator()(T t) const { return std::move(t); }
+  T operator()(T t) const { return t; }
 };
 
 template <typename P>
