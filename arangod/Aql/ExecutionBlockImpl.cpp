@@ -299,7 +299,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::shutdown(int err
 
 template <class Executor>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
-ExecutionBlockImpl<Executor>::execute(AqlCallStack stack) {
+ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
   traceExecuteBegin(stack);
   // silence tests -- we need to introduce new failure tests for fetchers
   TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
@@ -312,7 +312,7 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack stack) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   initOnce();
-  auto res = executeWithoutTrace(std::move(stack));
+  auto res = executeWithoutTrace(stack);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto const& [state, skipped, block] = res;
   if (block != nullptr) {
@@ -1227,7 +1227,9 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
  */
 template <class Executor>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
-ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
+ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& oldStack) {
+  // TODO:MCHACKI fix copy of stack
+  AqlCallStack stack = oldStack;
   // We can only work on a Stack that has valid calls for all levels.
   TRI_ASSERT(stack.hasAllValidCalls());
   AqlCallList clientCallList = stack.popCall();

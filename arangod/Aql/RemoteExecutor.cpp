@@ -419,8 +419,10 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
-auto ExecutionBlockImpl<RemoteExecutor>::executeViaOldApi(AqlCallStack stack)
+auto ExecutionBlockImpl<RemoteExecutor>::executeViaOldApi(AqlCallStack const& oldStack)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
+  // TODO:MCHACKI fix copy of stack
+  AqlCallStack stack = oldStack;
   // Use the old getSome/SkipSome API.
   auto myCallList = stack.popCall();
   auto myCall = myCallList.popNextCall();
@@ -465,7 +467,7 @@ auto ExecutionBlockImpl<RemoteExecutor>::executeViaOldApi(AqlCallStack stack)
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
 }
 
-auto ExecutionBlockImpl<RemoteExecutor>::execute(AqlCallStack stack)
+auto ExecutionBlockImpl<RemoteExecutor>::execute(AqlCallStack const& stack)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   traceExecuteBegin(stack);
   auto res = executeWithoutTrace(stack);
@@ -479,7 +481,7 @@ auto ExecutionBlockImpl<RemoteExecutor>::execute(AqlCallStack stack)
   return res;
 }
 
-auto ExecutionBlockImpl<RemoteExecutor>::executeWithoutTrace(AqlCallStack stack)
+auto ExecutionBlockImpl<RemoteExecutor>::executeWithoutTrace(AqlCallStack const& stack)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   if (ADB_UNLIKELY(api() == Api::GET_SOME)) {
     return executeViaOldApi(stack);
@@ -488,7 +490,7 @@ auto ExecutionBlockImpl<RemoteExecutor>::executeWithoutTrace(AqlCallStack stack)
   return executeViaNewApi(stack);
 }
 
-auto ExecutionBlockImpl<RemoteExecutor>::executeViaNewApi(AqlCallStack callStack)
+auto ExecutionBlockImpl<RemoteExecutor>::executeViaNewApi(AqlCallStack const& callStack)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   // silence tests -- we need to introduce new failure tests for fetchers
   TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {

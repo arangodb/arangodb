@@ -162,14 +162,14 @@ size_t BlocksWithClientsImpl<Executor>::getClientId(std::string const& shardId) 
 
 template <class Executor>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
-BlocksWithClientsImpl<Executor>::execute(AqlCallStack stack) {
+BlocksWithClientsImpl<Executor>::execute(AqlCallStack const& stack) {
   // This will not be implemented here!
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 template <class Executor>
-auto BlocksWithClientsImpl<Executor>::executeForClient(AqlCallStack stack,
+auto BlocksWithClientsImpl<Executor>::executeForClient(AqlCallStack const& stack,
                                                        std::string const& clientId)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
  
