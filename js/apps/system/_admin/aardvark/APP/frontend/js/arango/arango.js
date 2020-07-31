@@ -737,7 +737,11 @@
         contentType: 'application/json',
         processData: false,
         success: function (data) {
-          if (data && data.error) {
+          // deleting a job that is not there anymore is intentionally not considered 
+          // an error here. this is because in some other places we collect job data,
+          // which automatically leads to server-side deletion of the job. so just
+          // swallow 404 errors here, silently...
+          if (data && data.error && data.errorNum !== 404) {
             if (data.errorNum && data.errorMessage) {
               arangoHelper.arangoError('Error ' + data.errorNum, data.errorMessage);
             } else {
