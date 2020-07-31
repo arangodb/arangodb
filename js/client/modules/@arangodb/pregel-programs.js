@@ -79,31 +79,32 @@ function vertex_degree_program(resultField) {
     return {
         resultField: resultField,
         maxGSS: 2,
-      globalAccumulators: {},
-        vertexAccumulators: {
-            inDegree: {
-                accumulatorType: "sum",
-                valueType: "ints",
-                storeSender: false
-            }
+      vertexAccumulators: {
+          outDegree: {
+            accumulatorType: "sum",
+            valueType: "ints",
+            storeSender: false
+          },
+          inDegree: {
+            accumulatorType: "sum",
+            valueType: "ints",
+            storeSender: false
+          }
         },
-      phases: [
-        { name: "main",
-          initProgram: ["seq",
-                        ["print", ["outbound-edges"]],
-                        ["for",
-                         "outbound",
-                         ["quote", "edge"],
-                         [
-                           "quote",
-                           "seq",
-                           ["update",
-                            "inDegree",
-                            ["attrib", "_to", ["var-ref", "edge"]], 1],
-            ] ] ],
-           updateProgram: false
-        }  ],
-    };
+      phases: [ {
+        name: "main",
+        initProgram: [ "seq",
+                       // Set our out degree
+                       ["accum-set!", "outDegree", ["this-number-outbound-edges"]],
+                       // Init in degree to 0
+                       ["accum-set!", "inDegree", 0],
+                       ["send-to-all-neighbors", "inDegree", 1]
+                     ],
+        // Update program has to run once to accumulate the
+        // inDegrees that have been sent out in initProgram
+        updateProgram: [ "seq",
+                         false ]
+      } ] };
 }
 
 function vertex_degree(
