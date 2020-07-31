@@ -100,12 +100,12 @@ class RocksDBKeyBounds {
   /// @brief Bounds for all index-entries belonging to a specified non-unique
   /// index (hash, skiplist and permanent)
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds VPackIndex(uint64_t indexId);
+  static RocksDBKeyBounds VPackIndex(uint64_t indexId, bool reverse);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all entries belonging to a specified unique index
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds UniqueVPackIndex(uint64_t indexId);
+  static RocksDBKeyBounds UniqueVPackIndex(uint64_t indexId, bool reverse);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all entries of a fulltext index
@@ -218,6 +218,7 @@ class RocksDBKeyBounds {
   RocksDBKeyBounds();
   explicit RocksDBKeyBounds(RocksDBEntryType type);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first);
+  RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, bool second);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, arangodb::velocypack::StringRef const& second);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, VPackSlice const& second);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
