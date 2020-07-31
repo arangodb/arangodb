@@ -71,7 +71,7 @@ class SingleRowFetcher {
    *   size_t => Amount of documents skipped
    *   DataRange => Resulting data
    */
-  std::tuple<ExecutionState, SkipResult, DataRange> execute(AqlCallStack& stack);
+  std::tuple<ExecutionState, SkipResult, DataRange> execute(AqlCallStack const& stack);
 
   void setDistributeId(std::string const& id);
 

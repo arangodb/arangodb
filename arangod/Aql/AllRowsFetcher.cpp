@@ -32,7 +32,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-std::tuple<ExecutionState, SkipResult, AqlItemBlockInputMatrix> AllRowsFetcher::execute(AqlCallStack& stack) {
+std::tuple<ExecutionState, SkipResult, AqlItemBlockInputMatrix> AllRowsFetcher::execute(AqlCallStack const& stack) {
   TRI_ASSERT(stack.peek().getOffset() == 0);
   TRI_ASSERT(!stack.peek().needsFullCount());
   // We allow a 0 hardLimit for bypassing

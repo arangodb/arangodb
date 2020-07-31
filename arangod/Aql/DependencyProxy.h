@@ -74,11 +74,10 @@ class DependencyProxy {
 
   TEST_VIRTUAL ~DependencyProxy() = default;
 
-  // TODO Implement and document properly!
-  TEST_VIRTUAL std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack& stack);
+  TEST_VIRTUAL std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack const& stack);
 
   TEST_VIRTUAL std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> executeForDependency(
-      size_t dependency, AqlCallStack& stack);
+      size_t dependency, AqlCallStack const& stack);
 
   // This is only TEST_VIRTUAL, so we ignore this lint warning:
   // NOLINTNEXTLINE google-default-arguments

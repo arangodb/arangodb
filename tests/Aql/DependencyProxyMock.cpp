@@ -133,7 +133,7 @@ DependencyProxyMock<passBlocksThrough>& DependencyProxyMock<passBlocksThrough>::
 
 template <BlockPassthrough passBlocksThrough>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
-DependencyProxyMock<passBlocksThrough>::execute(AqlCallStack& stack) {
+DependencyProxyMock<passBlocksThrough>::execute(AqlCallStack const& stack) {
   TRI_ASSERT(_block != nullptr);
   SkipResult res{};
   return {arangodb::aql::ExecutionState::DONE, res, _block};

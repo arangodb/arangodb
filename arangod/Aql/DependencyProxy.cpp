@@ -33,7 +33,7 @@ using namespace arangodb::aql;
 
 template <BlockPassthrough blockPassthrough>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
-DependencyProxy<blockPassthrough>::execute(AqlCallStack& stack) {
+DependencyProxy<blockPassthrough>::execute(AqlCallStack const& stack) {
   ExecutionState state = ExecutionState::HASMORE;
   SkipResult skipped;
   SharedAqlItemBlockPtr block = nullptr;
@@ -54,7 +54,7 @@ DependencyProxy<blockPassthrough>::execute(AqlCallStack& stack) {
 template <BlockPassthrough blockPassthrough>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 DependencyProxy<blockPassthrough>::executeForDependency(size_t dependency,
-                                                        AqlCallStack& stack) {
+                                                        AqlCallStack const& stack) {
   ExecutionState state = ExecutionState::HASMORE;
   SkipResult skipped;
   SharedAqlItemBlockPtr block = nullptr;
