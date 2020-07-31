@@ -1923,7 +1923,7 @@ auto ExecutionBlockImpl<Executor>::handleUpstreamState(AqlCallStack& stack, AqlC
   TRI_ASSERT(subqueryLevelBefore == stack.subqueryLevel());
 #endif
 
-  if (_upstreamState == ExecutionState::WAITING) {
+  if (upstreamState == ExecutionState::WAITING) {
     return {ExecState::UPSTREAM, upstreamState};
   }
 
