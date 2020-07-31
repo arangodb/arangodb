@@ -73,15 +73,19 @@ function exec_test_page_rank() {
 }
 
 function wait_for_pregel(pid) {
+  var waited = 0;
   while(true) {
     var status = pr.status(pid);
 
     if (status.state === "done") {
       return status;
     } else {
-      //      internal.print("not done yet, waiting some more");
+      waited++;
+      if (waited % 10 === 0) {
+        internal.print("waited" + waited * 10 + "seconds, not done yet, waiting some more");
+      }
     }
-    internal.sleep(3);
+    internal.sleep(1);
   }
 }
 
@@ -137,6 +141,8 @@ function exec_scc_test() {
 function exec_air_tests() {
   exec_scc_test();
 }
+
+exports.wait_for_pregel = wait_for_pregel;
 
 exports.exec_test_wiki_vote = exec_test_wiki_vote;
 exports.exec_test_line = exec_test_line;
