@@ -87,8 +87,6 @@ class DependencyProxy {
 
   void setDistributeId(std::string const& distId) { _distributeId = distId; }
 
-  [[nodiscard]] velocypack::Options const* velocypackOptions() const noexcept;
-
  protected:
   [[nodiscard]] AqlItemBlockManager& itemBlockManager();
   [[nodiscard]] AqlItemBlockManager const& itemBlockManager() const;
@@ -107,17 +105,8 @@ class DependencyProxy {
   RegisterCount const _nrInputRegisters;
   std::string _distributeId;
 
-  // A queue would suffice, but for the clear() call in reset().
-  std::deque<std::pair<ExecutionState, SharedAqlItemBlockPtr>> _blockQueue;
-  // only used in case of allowBlockPassthrough:
-  std::deque<std::pair<ExecutionState, SharedAqlItemBlockPtr>> _blockPassThroughQueue;
   // only modified in case of multiple dependencies + Passthrough otherwise always 0
   size_t _currentDependency;
-  size_t _skipped;
-  velocypack::Options const* const _vpackOptions;
-
-  // @deprecated
-  AqlCallStack _injectedStack;
 };
 
 }  // namespace arangodb::aql

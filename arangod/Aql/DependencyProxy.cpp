@@ -98,15 +98,8 @@ DependencyProxy<blockPassthrough>::DependencyProxy(
       _inputRegisters(inputRegisters),
       _nrInputRegisters(nrInputRegisters),
       _distributeId(),
-      _blockQueue(),
-      _blockPassThroughQueue(),
-      _currentDependency(0),
-      _skipped(0),
-      _vpackOptions(options),
-      _injectedStack(AqlCallList{AqlCall{}}) {
-  // Make the default stack usable, for tests only.
-  // This needs to be removed soon.
-  _injectedStack.popCall();
+      _currentDependency(0) {
+
 }
 
 template <BlockPassthrough blockPassthrough>
@@ -121,12 +114,7 @@ size_t DependencyProxy<blockPassthrough>::numberDependencies() const {
 
 template <BlockPassthrough blockPassthrough>
 void DependencyProxy<blockPassthrough>::reset() {
-  _blockQueue.clear();
-  _blockPassThroughQueue.clear();
   _currentDependency = 0;
-  // We shouldn't be in a half-skipped state when reset is called
-  TRI_ASSERT(_skipped == 0);
-  _skipped = 0;
 }
 
 template <BlockPassthrough blockPassthrough>
@@ -157,12 +145,6 @@ bool DependencyProxy<blockPassthrough>::advanceDependency() {
   }
   _currentDependency++;
   return true;
-}
-
-template <BlockPassthrough allowBlockPassthrough>
-velocypack::Options const* DependencyProxy<allowBlockPassthrough>::velocypackOptions() const
-    noexcept {
-  return _vpackOptions;
 }
 
 template class ::arangodb::aql::DependencyProxy<BlockPassthrough::Enable>;
