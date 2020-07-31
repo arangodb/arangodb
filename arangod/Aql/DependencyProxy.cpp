@@ -90,16 +90,12 @@ DependencyProxy<blockPassthrough>::executeForDependency(size_t dependency,
 
 template <BlockPassthrough blockPassthrough>
 DependencyProxy<blockPassthrough>::DependencyProxy(
-    std::vector<ExecutionBlock*> const& dependencies, AqlItemBlockManager& itemBlockManager,
-    RegIdSet const& inputRegisters,
-    RegisterCount nrInputRegisters, velocypack::Options const* const options)
+    std::vector<ExecutionBlock*> const& dependencies,
+    RegisterCount nrInputRegisters)
     : _dependencies(dependencies),
-      _itemBlockManager(itemBlockManager),
-      _inputRegisters(inputRegisters),
       _nrInputRegisters(nrInputRegisters),
       _distributeId(),
       _currentDependency(0) {
-
 }
 
 template <BlockPassthrough blockPassthrough>
@@ -115,16 +111,6 @@ size_t DependencyProxy<blockPassthrough>::numberDependencies() const {
 template <BlockPassthrough blockPassthrough>
 void DependencyProxy<blockPassthrough>::reset() {
   _currentDependency = 0;
-}
-
-template <BlockPassthrough blockPassthrough>
-AqlItemBlockManager& DependencyProxy<blockPassthrough>::itemBlockManager() {
-  return _itemBlockManager;
-}
-
-template <BlockPassthrough blockPassthrough>
-AqlItemBlockManager const& DependencyProxy<blockPassthrough>::itemBlockManager() const {
-  return _itemBlockManager;
 }
 
 template <BlockPassthrough blockPassthrough>
