@@ -79,27 +79,7 @@ class DependencyProxy {
   TEST_VIRTUAL std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> executeForDependency(
       size_t dependency, AqlCallStack const& stack);
 
-  // This is only TEST_VIRTUAL, so we ignore this lint warning:
-  // NOLINTNEXTLINE google-default-arguments
-  [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlock(
-      size_t atMost = ExecutionBlock::DefaultBatchSize);
-
-  // This fetches a block from the given dependency.
-  // NOTE: It is not allowed to be used in conjunction with prefetching
-  // of blocks and will work around the blockQueue
-  // This is only TEST_VIRTUAL, so we ignore this lint warning:
-  // NOLINTNEXTLINE google-default-arguments
-  [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForDependency(
-      size_t dependency, size_t atMost = ExecutionBlock::DefaultBatchSize);
-
   [[nodiscard]] TEST_VIRTUAL RegisterCount getNrInputRegisters() const;
-
-  // Tries to fetch a block from upstream and push it, wrapped, onto
-  // _blockQueue. If it succeeds, it returns HASMORE (the returned state
-  // regards the _blockQueue). If it doesn't it's either because
-  //  - upstream returned WAITING - then so does prefetchBlock().
-  //  - or upstream returned a nullptr with DONE - then so does prefetchBlock().
-  [[nodiscard]] ExecutionState prefetchBlock(size_t atMost = ExecutionBlock::DefaultBatchSize);
 
   [[nodiscard]] TEST_VIRTUAL size_t numberDependencies() const;
 
