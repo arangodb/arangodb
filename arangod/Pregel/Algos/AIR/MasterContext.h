@@ -65,11 +65,13 @@ struct MasterContext : ::arangodb::pregel::MasterContext {
     greenspun::EvalResult getAccumulatorValue(std::string_view id, VPackBuilder& result) const override {
       std::string globalName = "[global]-";
       globalName += id;
-      auto accum = masterContext.getAggregatedValue<VertexAccumulatorAggregator>(globalName);
+
+      auto accum = masterContext.getAggregator<VertexAccumulatorAggregator>(globalName);
       if (accum != nullptr) {
         accum->getAccumulator().getValueIntoBuilder(result);
         return {};
       }
+
       return greenspun::EvalError("global accumulator `" +  std::string{id} + "' not found");
     }
 
@@ -77,16 +79,18 @@ struct MasterContext : ::arangodb::pregel::MasterContext {
     greenspun::EvalResult setAccumulator(std::string_view accumId, VPackSlice value) override {
       std::string globalName = "[global]-";
       globalName += accumId;
-      auto accum = masterContext.getAggregatedValue<VertexAccumulatorAggregator>(globalName);
+      auto accum = masterContext.getAggregator<VertexAccumulatorAggregator>(globalName);
       if (accum != nullptr) {
-        accum->getAccumulator().updateByMessageSlice(value);
+        accum->getAccumulator().setBySlice(value);
         return {};
       }
 
       return greenspun::EvalError("accumulator `" + std::string{accumId} + "` not found");
     }
 
-
+    void printCallback(std::string const& msg) const override {
+      LOG_DEVEL << msg;
+    }
 
     MasterContext& masterContext;
   };

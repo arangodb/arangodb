@@ -82,7 +82,7 @@ void VertexComputation::compute(MessageIterator<MessageData> const& incomingMess
   auto phase_index = *getAggregatedValue<uint32_t>("phase");
   auto phase = _algorithm.options().phases.at(phase_index);
 
-  LOG_DEVEL << "running phase " << phase.name << " superstep = " << phaseGlobalSuperstep() << " global superstep = " << globalSuperstep();
+  LOG_DEVEL << "running phase " << phase.name << " superstep = " << phaseGlobalSuperstep() << " global superstep = " << globalSuperstep() << " at vertex " << vertexData()._vertexId;
 
   std::size_t phaseStep = phaseGlobalSuperstep();
 

@@ -41,8 +41,8 @@ bool MasterContext::gotoPhase(std::string_view nextPhase) {
   }
   LOG_DEVEL << "goto phase " << nextPhase;
   aggregate<uint32_t>("phase", iter - phases.begin());
-  aggregate<uint32_t>("phase-first-step", globalSuperstep() + 1);
-  userSelectedNext = ContinuationResult::CONTINUE;
+  aggregate<uint64_t>("phase-first-step", globalSuperstep() + 1);
+  userSelectedNext = ContinuationResult::ACTIVATE_ALL;
   return true;
 }
 
@@ -63,8 +63,12 @@ MasterContext::ContinuationResult MasterContext::postGlobalSuperstep(bool allVer
     VPackBuilder onHaltResult;
     VertexAccumulatorPhaseEvalContext ctx{*this};
     userSelectedNext = ContinuationResult::DONT_CARE;
+    LOG_DEVEL << "evaluating user defined program: " << phase.onHalt.slice().toJson();
     auto res = Evaluate(ctx, phase.onHalt.slice(), onHaltResult);
     if (res.fail()) {
+      LOG_TOPIC("ac23e", ERR, Logger::PREGEL)
+                     << "onHalt program of phase `" << phase.name <<
+                        "` returned and error: " << res.error().toString();
       return ContinuationResult::ABORT;
     }
 

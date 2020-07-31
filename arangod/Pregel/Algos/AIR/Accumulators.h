@@ -26,7 +26,7 @@
 
 #ifndef ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_ACCUMULATORS_H
 #define ARANGODB_PREGEL_ALGOS_VERTEX_ACCUMULATORS_ACCUMULATORS_H 1
-
+#include <iostream>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include "AbstractAccumulator.h"
@@ -91,8 +91,10 @@ class OrAccumulator : public Accumulator<T> {
  public:
   using Accumulator<T>::Accumulator;
   auto update(T v) -> AccumulatorBase::UpdateResult override {
+    std::cout << "update or with " << v << std::endl;
     auto old = this->_value;
     this->_value |= v;
+    std::cout << "new value is " << this->_value << std::endl;
     return old == this->_value ? AccumulatorBase::UpdateResult::NO_CHANGE
                                : AccumulatorBase::UpdateResult::CHANGED;
   }
@@ -120,6 +122,13 @@ class StoreAccumulator<VPackSlice> : public Accumulator<VPackSlice> {
   auto update(VPackSlice v) -> AccumulatorBase::UpdateResult override {
     this->set(std::move(v));
     return UpdateResult::CHANGED;
+  }
+
+  void setValueFromPointer(const void * ptr) override {
+    auto slice = *reinterpret_cast<VPackSlice const*>(ptr);
+    _buffer.clear();
+    _buffer.add(slice);
+    _value = _buffer.slice();
   }
 
  private:
@@ -152,6 +161,10 @@ class ListAccumulator : public Accumulator<T> {
     }
   }
 
+  const void* getValuePointer() const override {
+    return &_list;
+  }
+
  private:
   std::vector<T> _list;
 };
@@ -178,6 +191,9 @@ class ListAccumulator<VPackSlice> : public Accumulator<VPackSlice> {
     }
   }
 
+  const void* getValuePointer() const override {
+    return &_list;
+  }
  private:
   std::vector<VPackBuilder> _list;
 };
