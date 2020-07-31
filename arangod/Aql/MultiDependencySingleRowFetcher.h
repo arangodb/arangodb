@@ -78,7 +78,7 @@ class MultiDependencySingleRowFetcher {
     DependencyInfo();
     ~DependencyInfo() = default;
     /**
-     * @brief Holds state returned by the last fetchBlock() call.
+     * @brief Holds state returned by the last execute() call.
      *        This is similar to ExecutionBlock::_upstreamState, but can also be
      *        WAITING.
      *        Part of the Fetcher, and may be moved if the Fetcher
@@ -150,12 +150,6 @@ class MultiDependencySingleRowFetcher {
       -> std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange>;
 
   /**
-   * @brief Delegates to ExecutionBlock::fetchBlock()
-   */
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForDependency(size_t dependency,
-                                                                           size_t atMost);
-
-  /**
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()
    */
   RegisterCount getNrInputRegisters() const;
@@ -164,7 +158,6 @@ class MultiDependencySingleRowFetcher {
 
   bool isDone(DependencyInfo const& info) const;
 
-  bool fetchBlockIfNecessary(const size_t dependency, const size_t atMost);
 
   AqlCallStack adjustStackWithSkipReport(AqlCallStack const& stack, const size_t dependency);
 
