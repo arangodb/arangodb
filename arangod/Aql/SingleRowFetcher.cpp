@@ -44,23 +44,6 @@ SingleRowFetcher<passBlocksThrough>::SingleRowFetcher(DependencyProxy<passBlocks
       _currentShadowRow{CreateInvalidShadowRowHint{}} {}
 
 template <BlockPassthrough passBlocksThrough>
-std::pair<ExecutionState, SharedAqlItemBlockPtr> SingleRowFetcher<passBlocksThrough>::fetchBlock(size_t atMost) {
-  if (_upstreamState == ExecutionState::DONE) {
-    return {_upstreamState, nullptr};
-  }
-  atMost = (std::min)(atMost, ExecutionBlock::DefaultBatchSize);
-  // There are still some blocks left that ask their parent even after they got
-  // DONE the last time, and I don't currently have time to track them down.
-  // Thus the following assert is commented out.
-  // TRI_ASSERT(_upstreamState != ExecutionState::DONE);
-  auto res = _dependencyProxy->fetchBlock(atMost);
-
-  _upstreamState = res.first;
-
-  return res;
-}
-
-template <BlockPassthrough passBlocksThrough>
 SingleRowFetcher<passBlocksThrough>::SingleRowFetcher()
     : _dependencyProxy(nullptr),
       _upstreamState(ExecutionState::HASMORE),
@@ -96,24 +79,6 @@ SingleRowFetcher<passBlocksThrough>::execute(AqlCallStack& stack) {
           AqlItemBlockInputRange{ExecutorState::DONE, skipped.getSkipCount(), block, start}};
 }
 
-template <BlockPassthrough passBlocksThrough>
-bool SingleRowFetcher<passBlocksThrough>::fetchBlockIfNecessary(size_t atMost) {
-  // Fetch a new block iff necessary
-  if (!indexIsValid()) {
-    // This returns the AqlItemBlock to the ItemBlockManager before fetching a
-    // new one, so we might reuse it immediately!
-    _currentBlock = nullptr;
-
-    auto [state, newBlock] = fetchBlock(atMost);
-    if (state == ExecutionState::WAITING) {
-      return false;
-    }
-
-    _currentBlock = std::move(newBlock);
-    _rowIndex = 0;
-  }
-  return true;
-}
 
 template <BlockPassthrough passBlocksThrough>
 bool SingleRowFetcher<passBlocksThrough>::indexIsValid() const {

@@ -115,13 +115,6 @@ class SingleRowFetcher {
 
  private:
   /**
-   * @brief Delegates to ExecutionBlock::fetchBlock()
-   */
-  [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlock(size_t atMost);
-
-  [[nodiscard]] bool fetchBlockIfNecessary(size_t atMost);
-
-  /**
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()
    */
   [[nodiscard]] RegisterCount getNrInputRegisters() const;
