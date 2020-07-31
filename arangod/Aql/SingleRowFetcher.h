@@ -75,9 +75,6 @@ class SingleRowFetcher {
 
   void setDistributeId(std::string const& id);
 
-  //@deprecated
-  auto useStack(AqlCallStack const& stack) -> void;
-
  private:
   DependencyProxy<blockPassthrough>* _dependencyProxy;
 

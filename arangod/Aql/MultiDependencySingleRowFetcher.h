@@ -119,9 +119,6 @@ class MultiDependencySingleRowFetcher {
 
   size_t numberDependencies();
 
-  //@deprecated
-  auto useStack(AqlCallStack const& stack) -> void;
-
   [[nodiscard]] auto execute(AqlCallStack const&, AqlCallSet const&)
       -> std::tuple<ExecutionState, SkipResult, std::vector<std::pair<size_t, AqlItemBlockInputRange>>>;
 

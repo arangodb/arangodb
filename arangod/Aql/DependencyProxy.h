@@ -109,9 +109,6 @@ class DependencyProxy {
 
   [[nodiscard]] velocypack::Options const* velocypackOptions() const noexcept;
 
-  //@deprecated
-  auto useStack(AqlCallStack stack) -> void { _injectedStack = stack; }
-
  protected:
   [[nodiscard]] AqlItemBlockManager& itemBlockManager();
   [[nodiscard]] AqlItemBlockManager const& itemBlockManager() const;

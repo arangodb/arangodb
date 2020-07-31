@@ -167,11 +167,6 @@ bool MultiDependencySingleRowFetcher::fetchBlockIfNecessary(size_t const depende
   return true;
 }
 
-//@deprecated
-auto MultiDependencySingleRowFetcher::useStack(AqlCallStack const& stack) -> void {
-  _dependencyProxy->useStack(stack);
-}
-
 auto MultiDependencySingleRowFetcher::executeForDependency(size_t const dependency,
                                                            AqlCallStack& stack)
     -> std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange> {
