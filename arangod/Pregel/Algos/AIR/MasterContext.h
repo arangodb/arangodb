@@ -40,67 +40,24 @@ namespace algos {
 namespace accumulators {
 
 struct MasterContext : ::arangodb::pregel::MasterContext {
-
-  struct VertexAccumulatorPhaseEvalContext : greenspun::PrimEvalContext {
-    VertexAccumulatorPhaseEvalContext(MasterContext& mc)
-        : PrimEvalContext(), masterContext(mc) {}
-
-    greenspun::EvalResult gotoPhase(std::string_view nextPhase) const override {
-      if (masterContext.gotoPhase(nextPhase)) {
-        return {};
-      }
-      return greenspun::EvalError("Unknown phase `" + std::string{nextPhase} + "`");
-    }
-
-    greenspun::EvalResult finishAlgorithm() const override {
-      masterContext.finish();
-      return {};
-    }
-
-    greenspun::EvalResult getVertexCount(VPackBuilder& result) const override {
-      result.add(VPackValue(masterContext.vertexCount()));
-      return {};
-    }
-
-    greenspun::EvalResult getAccumulatorValue(std::string_view id, VPackBuilder& result) const override {
-      std::string globalName = "[global]-";
-      globalName += id;
-      auto accum = masterContext.getAggregatedValue<VertexAccumulatorAggregator>(globalName);
-      if (accum != nullptr) {
-        accum->getAccumulator().getValueIntoBuilder(result);
-        return {};
-      }
-      return greenspun::EvalError("global accumulator `" +  std::string{id} + "' not found");
-    }
-
-
-    greenspun::EvalResult setAccumulator(std::string_view accumId, VPackSlice value) override {
-      std::string globalName = "[global]-";
-      globalName += accumId;
-      auto accum = masterContext.getAggregatedValue<VertexAccumulatorAggregator>(globalName);
-      if (accum != nullptr) {
-        accum->getAccumulator().updateByMessageSlice(value);
-        return {};
-      }
-
-      return greenspun::EvalError("accumulator `" + std::string{accumId} + "` not found");
-    }
-
-
-
-    MasterContext& masterContext;
-  };
-
   MasterContext(VertexAccumulators const* algorithm);
+
+  greenspun::EvalResult air_GotoPhase(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result);
+  greenspun::EvalResult air_Finish(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result);
+  greenspun::EvalResult air_VertexCount(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result);
+  greenspun::EvalResult air_AccumRef(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result);
+  greenspun::EvalResult air_AccumSet(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result);
 
   ContinuationResult userSelectedNext = ContinuationResult::DONT_CARE;
 
   bool gotoPhase(std::string_view nextPhase);
   void finish();
+
   ContinuationResult postGlobalSuperstep(bool allVertexesVotedHalt) override;
 
 private:
   VertexAccumulators const* _algo;
+  greenspun::Machine _airMachine;
 };
 
 }  // namespace accumulators

@@ -28,7 +28,8 @@
 #define ARANGODB_PREGEL_ALGOS_ACCUMULATORS_VERTEXCOMPUTATION_H 1
 
 #include "AIR.h"
-#include "VertexComputationEvalContext.h"
+
+#include "Greenspun/Interpreter.h"
 
 namespace arangodb {
 namespace pregel {
@@ -36,17 +37,33 @@ namespace algos {
 namespace accumulators {
 
 class VertexComputation : public vertex_computation {
-public:
+ public:
   explicit VertexComputation(VertexAccumulators const& algorithm);
   void compute(MessageIterator<message_type> const& messages) override;
   VertexAccumulators const& algorithm() const;
 
-private:
+ private:
   bool processIncomingMessages(MessageIterator<MessageData> const& incomingMessages);
-  void runProgram(VertexComputationEvalContext& ctx, VPackSlice program);
+  void runProgram(greenspun::Machine& ctx, VPackSlice program);
+
+  void registerLocalFunctions();
+
+  // Local functions
+  greenspun::EvalResult air_accumRef(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result);
+  greenspun::EvalResult air_accumSet(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result);
+  greenspun::EvalResult air_accumClear(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result);
+
+  greenspun::EvalResult air_sendToAccum(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result);
+  greenspun::EvalResult air_sendToAllNeighbours(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result);
+
+  greenspun::EvalResult air_outboundEdges(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result);
+  greenspun::EvalResult air_neigbours(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result);
+  greenspun::EvalResult air_numberOutboundEdges(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result);
+  greenspun::EvalResult air_numberOfVertices(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result);
 
  private:
   VertexAccumulators const& _algorithm;
+  greenspun::Machine _airMachine;
 };
 
 }  // namespace accumulators

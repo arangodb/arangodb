@@ -3,7 +3,6 @@
 
 #include <iostream>
 
-#include "./structs/EvalContext.h"
 #include "Pregel/Algos/AIR/Greenspun/Interpreter.h"
 #include "Pregel/Algos/AIR/Greenspun/Primitives.h"
 #include "velocypack/Builder.h"
@@ -14,9 +13,11 @@
  * Calculation operators
  */
 
+using namespace arangodb::greenspun;
+
 TEST_CASE("Test [+] primitive", "[addition]") {
-  InitInterpreter();
-  MyEvalContext ctx;
+  Machine m;
+  InitMachine(m);
   VPackBuilder result;
   auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
   auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
@@ -26,7 +27,7 @@ TEST_CASE("Test [+] primitive", "[addition]") {
       ["+", 1, 1]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(2 == result.slice().getDouble());
   }
 
@@ -35,14 +36,14 @@ TEST_CASE("Test [+] primitive", "[addition]") {
       ["+", 1.1, 2.1]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(3.2 == result.slice().getDouble());
   }
 }
 
 TEST_CASE("Test [-] primitive", "[subtraction]") {
-  InitInterpreter();
-  MyEvalContext ctx;
+  Machine m;
+  InitMachine(m);
   VPackBuilder result;
   auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
   auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
@@ -52,7 +53,7 @@ TEST_CASE("Test [-] primitive", "[subtraction]") {
       ["-", 1, 1]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(0 == result.slice().getDouble());
   }
 
@@ -61,7 +62,7 @@ TEST_CASE("Test [-] primitive", "[subtraction]") {
       ["-", 4.4, 1.2]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     // TODO: also do more precise double comparison here
     REQUIRE(3.2 == result.slice().getDouble());
   }
@@ -71,14 +72,14 @@ TEST_CASE("Test [-] primitive", "[subtraction]") {
       ["-", 2, 4]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(-2 == result.slice().getDouble());
   }
 }
 
 TEST_CASE("Test [*] primitive", "[multiplication]") {
-  InitInterpreter();
-  MyEvalContext ctx;
+  Machine m;
+  InitMachine(m);
   VPackBuilder result;
   auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
   auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
@@ -88,7 +89,7 @@ TEST_CASE("Test [*] primitive", "[multiplication]") {
       ["*", 2, 2]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(4 == result.slice().getDouble());
   }
 
@@ -97,14 +98,14 @@ TEST_CASE("Test [*] primitive", "[multiplication]") {
       ["*", 2, 0]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(0 == result.slice().getDouble());
   }
 }
 
 TEST_CASE("Test [/] primitive", "[division]") {
-  InitInterpreter();
-  MyEvalContext ctx;
+  Machine m;
+  InitMachine(m);
   VPackBuilder result;
   auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
   auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
@@ -114,7 +115,7 @@ TEST_CASE("Test [/] primitive", "[division]") {
       ["/", 2, 2]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(1 == result.slice().getDouble());
   }
 
@@ -123,7 +124,7 @@ TEST_CASE("Test [/] primitive", "[division]") {
       ["/", 2, 0]
     )aql");
 
-    EvalResult res = Evaluate(ctx, program->slice(), result);
+    EvalResult res = Evaluate(m, program->slice(), result);
     REQUIRE(res.fail());
   }
 }
@@ -133,8 +134,8 @@ TEST_CASE("Test [/] primitive", "[division]") {
  */
 
 TEST_CASE("Test [not] primitive - unary", "[not]") {
-  InitInterpreter();
-  MyEvalContext ctx;
+  Machine m;
+  InitMachine(m);
   VPackBuilder result;
   auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
   auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
@@ -144,7 +145,7 @@ TEST_CASE("Test [not] primitive - unary", "[not]") {
       ["not", true]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(false == result.slice().getBoolean());
   }
 
@@ -153,14 +154,14 @@ TEST_CASE("Test [not] primitive - unary", "[not]") {
       ["not", false]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(true == result.slice().getBoolean());
   }
 }
 
 TEST_CASE("Test [false?] primitive", "[false?]") {
-  InitInterpreter();
-  MyEvalContext ctx;
+  Machine m;
+  InitMachine(m);
   VPackBuilder result;
   auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
   auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
@@ -170,7 +171,7 @@ TEST_CASE("Test [false?] primitive", "[false?]") {
       ["false?", true]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(false == result.slice().getBoolean());
   }
 
@@ -179,14 +180,14 @@ TEST_CASE("Test [false?] primitive", "[false?]") {
       ["false?", false]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(true == result.slice().getBoolean());
   }
 }
 
 TEST_CASE("Test [true?] primitive", "[true?]") {
-  InitInterpreter();
-  MyEvalContext ctx;
+  Machine m;
+  InitMachine(m);
   VPackBuilder result;
   auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
   auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
@@ -196,7 +197,7 @@ TEST_CASE("Test [true?] primitive", "[true?]") {
       ["true?", true]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(true == result.slice().getBoolean());
   }
 
@@ -205,7 +206,7 @@ TEST_CASE("Test [true?] primitive", "[true?]") {
       ["true?", false]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(false == result.slice().getBoolean());
   }
 }
@@ -215,8 +216,8 @@ TEST_CASE("Test [true?] primitive", "[true?]") {
  */
 
 TEST_CASE("Test [eq?] primitive", "[equals]") {
-  InitInterpreter();
-  MyEvalContext ctx;
+  Machine m;
+  InitMachine(m);
   VPackBuilder result;
   auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
   auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
@@ -226,7 +227,7 @@ TEST_CASE("Test [eq?] primitive", "[equals]") {
       ["eq?", 2, 2]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(true == result.slice().getBoolean());
   }
 
@@ -235,7 +236,7 @@ TEST_CASE("Test [eq?] primitive", "[equals]") {
       ["eq?", 3, 2]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(false == result.slice().getBoolean());
   }
 
@@ -244,7 +245,7 @@ TEST_CASE("Test [eq?] primitive", "[equals]") {
       ["eq?", 2.2, 2.2]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(true == result.slice().getBoolean());
   }
 
@@ -253,7 +254,7 @@ TEST_CASE("Test [eq?] primitive", "[equals]") {
       ["eq?", 2.4, 2.2]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(false == result.slice().getBoolean());
   }
 
@@ -262,7 +263,7 @@ TEST_CASE("Test [eq?] primitive", "[equals]") {
       ["eq?", true, true]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(true == result.slice().getBoolean());
   }
 
@@ -271,7 +272,7 @@ TEST_CASE("Test [eq?] primitive", "[equals]") {
       ["eq?", true, false]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(false == result.slice().getBoolean());
   }
   SECTION("Test equality with string") {
@@ -279,7 +280,7 @@ TEST_CASE("Test [eq?] primitive", "[equals]") {
       ["eq?", "hello", "hello"]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(true == result.slice().getBoolean());
   }
 
@@ -288,14 +289,14 @@ TEST_CASE("Test [eq?] primitive", "[equals]") {
       ["eq?", "hello", "world"]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(false == result.slice().getBoolean());
   }
 }
 
 TEST_CASE("Test [gt?] primitive", "[greater]") {
-  InitInterpreter();
-  MyEvalContext ctx;
+  Machine m;
+  InitMachine(m);
   VPackBuilder result;
   auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
   auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
@@ -305,7 +306,7 @@ TEST_CASE("Test [gt?] primitive", "[greater]") {
       ["gt?", 2, 1]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(true == result.slice().getBoolean());
   }
 
@@ -314,7 +315,7 @@ TEST_CASE("Test [gt?] primitive", "[greater]") {
       ["gt?", 1, 2]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(false == result.slice().getBoolean());
   }
 
@@ -323,7 +324,7 @@ TEST_CASE("Test [gt?] primitive", "[greater]") {
       ["gt?", 2.4, 1.3]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(true == result.slice().getBoolean());
   }
 
@@ -332,7 +333,7 @@ TEST_CASE("Test [gt?] primitive", "[greater]") {
       ["gt?", 1.1, 2.3]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(false == result.slice().getBoolean());
   }
 
@@ -341,7 +342,7 @@ TEST_CASE("Test [gt?] primitive", "[greater]") {
       ["gt?", true, false]
     )aql");
 
-    EvalResult res = Evaluate(ctx, program->slice(), result);
+    EvalResult res = Evaluate(m, program->slice(), result);
     REQUIRE(res.fail());
   }
 
@@ -350,7 +351,7 @@ TEST_CASE("Test [gt?] primitive", "[greater]") {
       ["gt?", false, true]
     )aql");
 
-    EvalResult res = Evaluate(ctx, program->slice(), result);
+    EvalResult res = Evaluate(m, program->slice(), result);
     REQUIRE(res.fail());
   }
 
@@ -359,7 +360,7 @@ TEST_CASE("Test [gt?] primitive", "[greater]") {
       ["gt?", true, true]
     )aql");
 
-    EvalResult res = Evaluate(ctx, program->slice(), result);
+    EvalResult res = Evaluate(m, program->slice(), result);
     REQUIRE(res.fail());
   }
 
@@ -368,7 +369,7 @@ TEST_CASE("Test [gt?] primitive", "[greater]") {
       ["gt?", false, false]
     )aql");
 
-    EvalResult res = Evaluate(ctx, program->slice(), result);
+    EvalResult res = Evaluate(m, program->slice(), result);
     REQUIRE(res.fail());
   }
 
@@ -377,14 +378,14 @@ TEST_CASE("Test [gt?] primitive", "[greater]") {
       ["gt?", "astring", "bstring"]
     )aql");
 
-    EvalResult res = Evaluate(ctx, program->slice(), result);
+    EvalResult res = Evaluate(m, program->slice(), result);
     REQUIRE(res.fail());
   }
 }
 
 TEST_CASE("Test [ge?] primitive", "[greater equal]") {
-  InitInterpreter();
-  MyEvalContext ctx;
+  Machine m;
+  InitMachine(m);
   VPackBuilder result;
   auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
   auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
@@ -394,7 +395,7 @@ TEST_CASE("Test [ge?] primitive", "[greater equal]") {
       ["ge?", 2, 1]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(true == result.slice().getBoolean());
   }
 
@@ -403,7 +404,7 @@ TEST_CASE("Test [ge?] primitive", "[greater equal]") {
       ["ge?", 2, 2]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(true == result.slice().getBoolean());
   }
 
@@ -412,7 +413,7 @@ TEST_CASE("Test [ge?] primitive", "[greater equal]") {
       ["ge?", 1, 2]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(false == result.slice().getBoolean());
   }
 
@@ -421,7 +422,7 @@ TEST_CASE("Test [ge?] primitive", "[greater equal]") {
       ["ge?", 2.4, 1.3]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(true == result.slice().getBoolean());
   }
 
@@ -430,7 +431,7 @@ TEST_CASE("Test [ge?] primitive", "[greater equal]") {
       ["ge?", 2.4, 2.4]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(true == result.slice().getBoolean());
   }
 
@@ -439,7 +440,7 @@ TEST_CASE("Test [ge?] primitive", "[greater equal]") {
       ["ge?", 1.1, 2.3]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(false == result.slice().getBoolean());
   }
 
@@ -448,7 +449,7 @@ TEST_CASE("Test [ge?] primitive", "[greater equal]") {
       ["ge?", true, false]
     )aql");
 
-    EvalResult res = Evaluate(ctx, program->slice(), result);
+    EvalResult res = Evaluate(m, program->slice(), result);
     REQUIRE(res.fail());
   }
 
@@ -457,14 +458,14 @@ TEST_CASE("Test [ge?] primitive", "[greater equal]") {
       ["ge?", "astring", "bstring"]
     )aql");
 
-    EvalResult res = Evaluate(ctx, program->slice(), result);
+    EvalResult res = Evaluate(m, program->slice(), result);
     REQUIRE(res.fail());
   }
 }
 
 TEST_CASE("Test [le?] primitive", "[less equal]") {
-  InitInterpreter();
-  MyEvalContext ctx;
+  Machine m;
+  InitMachine(m);
   VPackBuilder result;
   auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
   auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
@@ -474,7 +475,7 @@ TEST_CASE("Test [le?] primitive", "[less equal]") {
       ["le?", 2, 1]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(false == result.slice().getBoolean());
   }
 
@@ -483,7 +484,7 @@ TEST_CASE("Test [le?] primitive", "[less equal]") {
       ["le?", 2, 2]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(true == result.slice().getBoolean());
   }
 
@@ -492,7 +493,7 @@ TEST_CASE("Test [le?] primitive", "[less equal]") {
       ["le?", 1, 2]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(true == result.slice().getBoolean());
   }
 
@@ -501,7 +502,7 @@ TEST_CASE("Test [le?] primitive", "[less equal]") {
       ["le?", 2.4, 1.3]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(false == result.slice().getBoolean());
   }
 
@@ -510,7 +511,7 @@ TEST_CASE("Test [le?] primitive", "[less equal]") {
       ["le?", 2.4, 2.4]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(true == result.slice().getBoolean());
   }
 
@@ -519,7 +520,7 @@ TEST_CASE("Test [le?] primitive", "[less equal]") {
       ["le?", 1.1, 2.3]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(true == result.slice().getBoolean());
   }
 
@@ -528,7 +529,7 @@ TEST_CASE("Test [le?] primitive", "[less equal]") {
       ["le?", true, false]
     )aql");
 
-    EvalResult res = Evaluate(ctx, program->slice(), result);
+    EvalResult res = Evaluate(m, program->slice(), result);
     REQUIRE(res.fail());
   }
 
@@ -537,14 +538,14 @@ TEST_CASE("Test [le?] primitive", "[less equal]") {
       ["le?", "astring", "bstring"]
     )aql");
 
-    EvalResult res = Evaluate(ctx, program->slice(), result);
+    EvalResult res = Evaluate(m, program->slice(), result);
     REQUIRE(res.fail());
   }
 }
 
 TEST_CASE("Test [lt?] primitive", "[less]") {
-  InitInterpreter();
-  MyEvalContext ctx;
+  Machine m;
+  InitMachine(m);
   VPackBuilder result;
   auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
   auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
@@ -554,7 +555,7 @@ TEST_CASE("Test [lt?] primitive", "[less]") {
       ["lt?", 2, 1]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(false == result.slice().getBoolean());
   }
 
@@ -563,7 +564,7 @@ TEST_CASE("Test [lt?] primitive", "[less]") {
       ["lt?", 2, 2]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(false == result.slice().getBoolean());
   }
 
@@ -572,7 +573,7 @@ TEST_CASE("Test [lt?] primitive", "[less]") {
       ["lt?", 1, 2]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(true == result.slice().getBoolean());
   }
 
@@ -581,7 +582,7 @@ TEST_CASE("Test [lt?] primitive", "[less]") {
       ["lt?", 2.4, 1.3]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(false == result.slice().getBoolean());
   }
 
@@ -590,7 +591,7 @@ TEST_CASE("Test [lt?] primitive", "[less]") {
       ["lt?", 2.4, 2.4]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(false == result.slice().getBoolean());
   }
 
@@ -599,7 +600,7 @@ TEST_CASE("Test [lt?] primitive", "[less]") {
       ["lt?", 1.1, 2.3]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(true == result.slice().getBoolean());
   }
 
@@ -608,7 +609,7 @@ TEST_CASE("Test [lt?] primitive", "[less]") {
       ["lt?", true, false]
     )aql");
 
-    EvalResult res = Evaluate(ctx, program->slice(), result);
+    EvalResult res = Evaluate(m, program->slice(), result);
     REQUIRE(res.fail());
   }
 
@@ -617,14 +618,14 @@ TEST_CASE("Test [lt?] primitive", "[less]") {
       ["lt?", "astring", "bstring"]
     )aql");
 
-    EvalResult res = Evaluate(ctx, program->slice(), result);
+    EvalResult res = Evaluate(m, program->slice(), result);
     REQUIRE(res.fail());
   }
 }
 
 TEST_CASE("Test [ne?] primitive", "[not equal]") {
-  InitInterpreter();
-  MyEvalContext ctx;
+  Machine m;
+  InitMachine(m);
   VPackBuilder result;
   auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
   auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
@@ -634,7 +635,7 @@ TEST_CASE("Test [ne?] primitive", "[not equal]") {
       ["ne?", 2, 2]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(false == result.slice().getBoolean());
   }
 
@@ -643,7 +644,7 @@ TEST_CASE("Test [ne?] primitive", "[not equal]") {
       ["ne?", 3, 2]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(true == result.slice().getBoolean());
   }
 
@@ -652,7 +653,7 @@ TEST_CASE("Test [ne?] primitive", "[not equal]") {
       ["ne?", 2.2, 2.2]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(false == result.slice().getBoolean());
   }
 
@@ -661,7 +662,7 @@ TEST_CASE("Test [ne?] primitive", "[not equal]") {
       ["ne?", 2.4, 2.2]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(true == result.slice().getBoolean());
   }
 
@@ -670,7 +671,7 @@ TEST_CASE("Test [ne?] primitive", "[not equal]") {
       ["ne?", true, true]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(false == result.slice().getBoolean());
   }
 
@@ -679,7 +680,7 @@ TEST_CASE("Test [ne?] primitive", "[not equal]") {
       ["ne?", true, false]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(true == result.slice().getBoolean());
   }
   SECTION("Test equality with string") {
@@ -687,7 +688,7 @@ TEST_CASE("Test [ne?] primitive", "[not equal]") {
       ["ne?", "hello", "hello"]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(false == result.slice().getBoolean());
   }
 
@@ -696,7 +697,7 @@ TEST_CASE("Test [ne?] primitive", "[not equal]") {
       ["ne?", "hello", "world"]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(true == result.slice().getBoolean());
   }
 }
@@ -710,8 +711,8 @@ TEST_CASE("Test [print] primitive", "[print]") {
 }
 
 TEST_CASE("Test [list-cat] primitive", "[list-cat]") {
-  InitInterpreter();
-  MyEvalContext ctx;
+  Machine m;
+  InitMachine(m);
   VPackBuilder result;
   auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
   auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
@@ -721,7 +722,7 @@ TEST_CASE("Test [list-cat] primitive", "[list-cat]") {
       ["list-cat", ["quote", 1, 2, 3]]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(result.slice().isArray());
     REQUIRE(result.slice().length() == 3);
     for (size_t i = 0; i < 3; i++) {
@@ -734,7 +735,7 @@ TEST_CASE("Test [list-cat] primitive", "[list-cat]") {
       ["list-cat", ["quote", 1, 2, 3], ["quote", 4, 5]]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(result.slice().isArray());
     REQUIRE(result.slice().length() == 5);
     for (size_t i = 0; i < 5; i++) {
@@ -744,8 +745,8 @@ TEST_CASE("Test [list-cat] primitive", "[list-cat]") {
 }
 
 TEST_CASE("Test [string-cat] primitive", "[string-cat]") {
-  InitInterpreter();
-  MyEvalContext ctx;
+  Machine m;
+  InitMachine(m);
   VPackBuilder result;
   auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
   auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
@@ -755,7 +756,7 @@ TEST_CASE("Test [string-cat] primitive", "[string-cat]") {
       ["string-cat", "hello"]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(result.slice().isString());
     REQUIRE(result.slice().toString() == "hello");
   }
@@ -765,15 +766,15 @@ TEST_CASE("Test [string-cat] primitive", "[string-cat]") {
       ["string-cat", "hello", "world"]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(result.slice().isString());
     REQUIRE(result.slice().toString() == "helloworld");
   }
 }
 
 TEST_CASE("Test [int-to-str] primitive", "[int-to-str]") {
-  InitInterpreter();
-  MyEvalContext ctx;
+  Machine m;
+  InitMachine(m);
   VPackBuilder result;
   auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
   auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
@@ -783,7 +784,7 @@ TEST_CASE("Test [int-to-str] primitive", "[int-to-str]") {
       ["int-to-str", 2]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(result.slice().isString());
     REQUIRE("2" == result.slice().toString());
   }
@@ -796,19 +797,19 @@ TEST_CASE("Test [int-to-str] primitive", "[int-to-str]") {
 TEST_CASE("Test [attrib] primitive", "[attrib]") {}
 
 TEST_CASE("Test [var-ref] primitive", "[var-ref]") {
-  InitInterpreter();
-  MyEvalContext ctx;
+  Machine m;
+  InitMachine(m);
   VPackBuilder result;
   auto v = arangodb::velocypack::Parser::fromJson(R"aql("aNodeId")aql");
   auto S = arangodb::velocypack::Parser::fromJson(R"aql("anotherNodeId")aql");
 
-  // TODO: add variables to ctx (vertexData)
+  // TODO: add variables to m (vertexData)
   SECTION("Test get non existing variable") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["var-ref", "peter"]
     )aql");
 
-    Evaluate(ctx, program->slice(), result);
+    Evaluate(m, program->slice(), result);
     REQUIRE(result.slice().isNone());
   }
 }

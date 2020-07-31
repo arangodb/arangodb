@@ -30,7 +30,81 @@
 namespace arangodb::pregel::algos::accumulators {
 
 MasterContext::MasterContext(VertexAccumulators const* algorithm)
-    : _algo(algorithm) {}
+    : _algo(algorithm) {
+  InitMachine(_airMachine);
+
+  _airMachine.setFunction("goto-phase",
+                          std::bind(&MasterContext::air_GotoPhase, this, std::placeholders::_1,
+                                    std::placeholders::_2, std::placeholders::_3));
+}
+
+greenspun::EvalResult MasterContext::air_GotoPhase(greenspun::Machine& ctx,
+                                                   VPackSlice const params,
+                                                   VPackBuilder& result) {
+  if (params.length() == 1) {
+    VPackSlice v = params.at(0);
+    if (v.isString()) {
+      if (!gotoPhase(v.stringView())) {
+        return greenspun::EvalError("Unknown phase `" +
+                                    std::string{v.stringView()} + "`");
+      };
+    }
+  }
+
+  return greenspun::EvalError("expect single string argument");
+}
+
+greenspun::EvalResult MasterContext::air_Finish(greenspun::Machine& ctx,
+                                                VPackSlice const params,
+                                                VPackBuilder& result) {
+  if (params.isEmptyArray()) {
+    finish();
+    return {};
+  }
+
+  return greenspun::EvalError("expect no arguments");
+}
+
+greenspun::EvalResult MasterContext::air_VertexCount(greenspun::Machine& ctx,
+                                                     VPackSlice const params,
+                                                     VPackBuilder& result) {
+  if (!params.isEmptyArray()) {
+    return greenspun::EvalError("expected no argument");
+  }
+  result.add(VPackValue(vertexCount()));
+  return {};
+}
+
+greenspun::EvalResult MasterContext::air_AccumRef(greenspun::Machine& ctx,
+                                                  VPackSlice const params,
+                                                  VPackBuilder& result) {
+  auto&& [accumId] = unpackTuple<std::string_view>(params);
+  std::string globalName = "[global]-";
+  globalName += accumId;
+  auto accum = getAggregatedValue<VertexAccumulatorAggregator>(globalName);
+  if (accum != nullptr) {
+    accum->getAccumulator().getValueIntoBuilder(result);
+    return {};
+  }
+  return greenspun::EvalError("global accumulator `" + std::string{accumId} +
+                              "' not found");
+}
+
+greenspun::EvalResult MasterContext::air_AccumSet(greenspun::Machine& ctx,
+                                                  VPackSlice const params,
+                                                  VPackBuilder& result) {
+  auto&& [accumId, value] = unpackTuple<std::string_view, VPackSlice>(params);
+  std::string globalName = "[global]-";
+  globalName += accumId;
+  auto accum = getAggregatedValue<VertexAccumulatorAggregator>(globalName);
+  if (accum != nullptr) {
+    accum->getAccumulator().updateByMessageSlice(value);
+    return {};
+  }
+
+  return greenspun::EvalError("accumulator `" + std::string{accumId} +
+                              "` not found");
+}
 
 bool MasterContext::gotoPhase(std::string_view nextPhase) {
   auto const& phases = _algo->options().phases;
@@ -61,9 +135,9 @@ MasterContext::ContinuationResult MasterContext::postGlobalSuperstep(bool allVer
 
   if (!phase.onHalt.isEmpty()) {
     VPackBuilder onHaltResult;
-    VertexAccumulatorPhaseEvalContext ctx{*this};
+
     userSelectedNext = ContinuationResult::DONT_CARE;
-    auto res = Evaluate(ctx, phase.onHalt.slice(), onHaltResult);
+    auto res = greenspun::Evaluate(_airMachine, phase.onHalt.slice(), onHaltResult);
     if (res.fail()) {
       return ContinuationResult::ABORT;
     }

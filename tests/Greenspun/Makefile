@@ -23,7 +23,7 @@ LDFLAGS :=
 CPPFLAGS :=
 CXXFLAGS := -g -std=c++17 -I ../../3rdParty/velocypack/include -I ../../3rdParty/linenoise-ng/include -I ../../lib -I ../../arangod
 
-default: dirs eval repl
+default: dirs primitives repl
 
 dirs:
 	mkdir -p $(VELOCYPACK_OBJ_DIR)
@@ -31,7 +31,7 @@ dirs:
 	mkdir -p $(EVALUATOR_OBJ_DIR)
 
 
-eval: $(VELOCYPACK_OBJ_FILES) $(EVALUATOR_OBJ_FILES) obj/xxhash.o obj/PrimitivesTest.o
+primitives: $(VELOCYPACK_OBJ_FILES) $(EVALUATOR_OBJ_FILES) obj/xxhash.o obj/PrimitivesTest.o
 	g++ $(LDFLAGS) -o $@ $^
 
 test: $(VELOCYPACK_OBJ_FILES) $(EVALUATOR_OBJ_FILES) obj/xxhash.o obj/GreenspunTest.o

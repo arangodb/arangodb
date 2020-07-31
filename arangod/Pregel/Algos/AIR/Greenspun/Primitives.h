@@ -25,7 +25,7 @@
 #ifndef ARANGODB_PREGEL_GREENSPUN_PRIMITIVES_H
 #define ARANGODB_PREGEL_GREENSPUN_PRIMITIVES_H 1
 
-#include "PrimEvalContext.h"
+#include "Interpreter.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -34,12 +34,8 @@
 namespace arangodb {
 namespace greenspun {
 
-using PrimitiveFunction =
-    std::function<EvalResult(PrimEvalContext& ctx, VPackSlice const slice, VPackBuilder& result)>;
-
-extern std::unordered_map<std::string, std::function<EvalResult(PrimEvalContext& ctx, VPackSlice const slice, VPackBuilder& result)>> primitives;
-void RegisterPrimitives();
-void RegisterFunction(std::string_view name, PrimitiveFunction&& f);
+void RegisterFunction(Machine& ctx, std::string_view name, Machine::function_type&& f);
+void RegisterAllPrimitives(Machine& ctx);
 
 }  // namespace greenspun
 }  // namespace arangodb
