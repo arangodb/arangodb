@@ -143,11 +143,5 @@ void SingleRowFetcher<blockPassthrough>::setDistributeId(std::string const& id) 
   _dependencyProxy->setDistributeId(id);
 }
 
-//@deprecated
-template <BlockPassthrough blockPassthrough>
-auto SingleRowFetcher<blockPassthrough>::useStack(AqlCallStack const& stack) -> void {
-  _dependencyProxy->useStack(stack);
-}
-
 template class ::arangodb::aql::SingleRowFetcher<BlockPassthrough::Disable>;
 template class ::arangodb::aql::SingleRowFetcher<BlockPassthrough::Enable>;

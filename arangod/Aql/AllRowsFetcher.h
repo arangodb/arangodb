@@ -106,9 +106,6 @@ class AllRowsFetcher {
   // only for ModificationNodes
   ExecutionState upstreamState();
 
-  //@deprecated
-  auto useStack(AqlCallStack const& stack) -> void;
-
  private:
   DependencyProxy<BlockPassthrough::Disable>* _dependencyProxy;
 

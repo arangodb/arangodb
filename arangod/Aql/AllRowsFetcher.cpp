@@ -143,8 +143,3 @@ ExecutionState AllRowsFetcher::upstreamState() {
   }
   return ExecutionState::HASMORE;
 }
-
-//@deprecated
-auto AllRowsFetcher::useStack(AqlCallStack const& stack) -> void {
-  _dependencyProxy->useStack(stack);
-}
