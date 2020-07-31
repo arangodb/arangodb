@@ -188,8 +188,10 @@ LogBufferFeature::LogBufferFeature(application_features::ApplicationServer& serv
   startsAfter<LoggerFeature>();
   
 #ifdef _WIN32
-  LogAppender::addGlobalAppender(std::make_shared<LogAppenderDebugOutput>());
-  LogAppender::addGlobalAppender(std::make_shared<LogAppenderEventLog>());
+  LogAppender::addGlobalAppender(Logger::defaultLogGroup(),
+                                 std::make_shared<LogAppenderDebugOutput>());
+  LogAppender::addGlobalAppender(Logger::defaultLogGroup(),
+                                 std::make_shared<LogAppenderEventLog>());
 #endif
 }
   
@@ -207,7 +209,7 @@ void LogBufferFeature::prepare() {
     // in the ctor, we would waste a lot of memory in case we don't need the in-memory
     // appender. this is the case for simple command such as `--help` etc.
     _inMemoryAppender = std::make_shared<LogAppenderRingBuffer>();
-    LogAppender::addGlobalAppender(_inMemoryAppender);
+    LogAppender::addGlobalAppender(Logger::defaultLogGroup(), _inMemoryAppender);
   }
 }
 
