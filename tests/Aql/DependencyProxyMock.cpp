@@ -51,23 +51,6 @@ DependencyProxyMock<passBlocksThrough>::DependencyProxyMock(
       _monitor(monitor),
       _itemBlockManager(&_monitor, SerializationFormat::SHADOWROWS) {}
 
-template <BlockPassthrough passBlocksThrough>
-std::pair<ExecutionState, SharedAqlItemBlockPtr>
-// NOLINTNEXTLINE google-default-arguments
-DependencyProxyMock<passBlocksThrough>::fetchBlock(size_t) {
-  _numFetchBlockCalls++;
-
-  if (_itemsToReturn.empty()) {
-    return {ExecutionState::DONE, nullptr};
-  }
-
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> returnValue =
-      std::move(_itemsToReturn.front());
-  _itemsToReturn.pop();
-
-  return returnValue;
-}
-
 /* * * * * * * * * * * * *
  * Test helper functions
  * * * * * * * * * * * * */
@@ -162,13 +145,6 @@ MultiDependencyProxyMock<passBlocksThrough>::MultiDependencyProxyMock(
   for (size_t i = 0; i < nrDeps; ++i) {
     _dependencyMocks.emplace_back(std::make_unique<DependencyProxyMock<passBlocksThrough>>(monitor, inputRegisters, nrRegisters));
   }
-}
-
-template <BlockPassthrough passBlocksThrough>
-std::pair<arangodb::aql::ExecutionState, SharedAqlItemBlockPtr>
-MultiDependencyProxyMock<passBlocksThrough>::fetchBlockForDependency(size_t dependency,
-                                                                     size_t atMost) {
-  return getDependencyMock(dependency).fetchBlock(atMost);
 }
 
 template <BlockPassthrough passBlocksThrough>
