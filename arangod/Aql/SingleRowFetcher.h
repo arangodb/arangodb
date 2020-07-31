@@ -79,7 +79,7 @@ class SingleRowFetcher {
   DependencyProxy<blockPassthrough>* _dependencyProxy;
 
   /**
-   * @brief Holds state returned by the last fetchBlock() call.
+   * @brief Holds state returned by the last execute() call.
    *        This is similar to ExecutionBlock::_upstreamState, but can also be
    *        WAITING.
    *        Part of the Fetcher, and may be moved if the Fetcher implementations
