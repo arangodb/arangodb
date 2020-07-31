@@ -118,22 +118,6 @@ class AllRowsFetcher {
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()
    */
   RegisterCount getNrInputRegisters() const;
-
-  /**
-   * @brief Delegates to ExecutionBlock::fetchBlock()
-   */
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlock();
-
-  /**
-   * @brief intermediate function to fetch data from
-   *        upstream and does upstream state checking
-   */
-  ExecutionState fetchData();
-
-  /**
-   * @brief Fetch blocks from upstream until done
-   */
-  ExecutionState fetchUntilDone();
 };
 
 }  // namespace aql
