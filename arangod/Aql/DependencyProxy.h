@@ -54,10 +54,6 @@ class DependencyProxy {
    *                     pass a reference to an empty vector, but as soon as
    *                     the DependencyProxy is used, the condition must be
    *                     satisfied.
-   * @param itemBlockManager All blocks fetched via dependencies[0]->getSome()
-   *                         will later be returned to this AqlItemBlockManager.
-   * @param inputRegisters Set of registers the current ExecutionBlock is
-   *                       allowed to read.
    * @param nrInputRegisters Total number of registers of the AqlItemBlocks
    *                         here. Called nrInputRegisters to discern between
    *                         the widths of input and output blocks.
@@ -68,9 +64,7 @@ class DependencyProxy {
    * DependencyProxyMock) to create them *after* the parent class was constructed.
    */
   DependencyProxy(std::vector<ExecutionBlock*> const& dependencies,
-                  AqlItemBlockManager& itemBlockManager,
-                  RegIdSet const& inputRegisters,
-                  RegisterCount nrInputRegisters, velocypack::Options const*);
+                  RegisterCount nrInputRegisters);
 
   TEST_VIRTUAL ~DependencyProxy() = default;
 
@@ -79,7 +73,7 @@ class DependencyProxy {
   TEST_VIRTUAL std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> executeForDependency(
       size_t dependency, AqlCallStack const& stack);
 
-  [[nodiscard]] TEST_VIRTUAL RegisterCount getNrInputRegisters() const;
+  [[nodiscard]] RegisterCount getNrInputRegisters() const;
 
   [[nodiscard]] TEST_VIRTUAL size_t numberDependencies() const;
 
@@ -88,9 +82,6 @@ class DependencyProxy {
   void setDistributeId(std::string const& distId) { _distributeId = distId; }
 
  protected:
-  [[nodiscard]] AqlItemBlockManager& itemBlockManager();
-  [[nodiscard]] AqlItemBlockManager const& itemBlockManager() const;
-
   [[nodiscard]] ExecutionBlock& upstreamBlock();
 
   [[nodiscard]] ExecutionBlock& upstreamBlockForDependency(size_t index);
@@ -100,8 +91,6 @@ class DependencyProxy {
 
  private:
   std::vector<ExecutionBlock*> const& _dependencies;
-  AqlItemBlockManager& _itemBlockManager;
-  RegIdSet const& _inputRegisters;
   RegisterCount const _nrInputRegisters;
   std::string _distributeId;
 
