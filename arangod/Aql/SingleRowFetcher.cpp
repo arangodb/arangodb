@@ -37,19 +37,11 @@ using namespace arangodb::aql;
 
 template <BlockPassthrough passBlocksThrough>
 SingleRowFetcher<passBlocksThrough>::SingleRowFetcher(DependencyProxy<passBlocksThrough>& executionBlock)
-    : _dependencyProxy(&executionBlock),
-      _upstreamState(ExecutionState::HASMORE),
-      _rowIndex(0),
-      _currentRow{CreateInvalidInputRowHint{}},
-      _currentShadowRow{CreateInvalidShadowRowHint{}} {}
+    : _dependencyProxy(&executionBlock){}
 
 template <BlockPassthrough passBlocksThrough>
 SingleRowFetcher<passBlocksThrough>::SingleRowFetcher()
-    : _dependencyProxy(nullptr),
-      _upstreamState(ExecutionState::HASMORE),
-      _rowIndex(0),
-      _currentRow{CreateInvalidInputRowHint{}},
-      _currentShadowRow{CreateInvalidShadowRowHint{}} {}
+    : _dependencyProxy(nullptr) {}
 
 template <BlockPassthrough passBlocksThrough>
 std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange>
@@ -80,28 +72,6 @@ SingleRowFetcher<passBlocksThrough>::execute(AqlCallStack& stack) {
 }
 
 
-template <BlockPassthrough passBlocksThrough>
-bool SingleRowFetcher<passBlocksThrough>::indexIsValid() const {
-  return _currentBlock != nullptr && _rowIndex < _currentBlock->size();
-}
-
-template <BlockPassthrough passBlocksThrough>
-ExecutionState SingleRowFetcher<passBlocksThrough>::returnState(bool isShadowRow) const {
-  if (!indexIsValid()) {
-    // We are locally done, return the upstream state
-    return _upstreamState;
-  }
-  if (!isShadowRow && _currentBlock->isShadowRow(_rowIndex)) {
-    // Next row is a shadow row
-    return ExecutionState::DONE;
-  }
-  return ExecutionState::HASMORE;
-}
-
-template <BlockPassthrough blockPassthrough>
-RegisterCount SingleRowFetcher<blockPassthrough>::getNrInputRegisters() const {
-  return _dependencyProxy->getNrInputRegisters();
-}
 
 template <BlockPassthrough blockPassthrough>
 void SingleRowFetcher<blockPassthrough>::setDistributeId(std::string const& id) {
