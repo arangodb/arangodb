@@ -31,6 +31,7 @@
 #include <unordered_map>
 
 #include "Basics/Result.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/ServerId.h"
 #include "VocBase/ticks.h"
 
@@ -107,7 +108,7 @@ struct ProgressInfo {
   /// @brief progress message
   std::string message{"not started"};
   /// @brief collections synced
-  std::map<TRI_voc_cid_t, std::string> processedCollections{};  // TODO worker safety
+  std::map<DataSourceId, std::string> processedCollections{};  // TODO worker safety
 
   // @brief constructor to optionally provide a setter/handler for messages
   explicit ProgressInfo(Setter);

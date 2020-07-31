@@ -151,9 +151,9 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
                                      )
     : LogicalDataSource(
           LogicalCollection::category(),
-          ::readType(info, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN),
-          vocbase, Helper::extractIdValue(info), ::readGloballyUniqueId(info),
-          Helper::stringUInt64(info.get(StaticStrings::DataSourcePlanId)),
+          ::readType(info, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN), vocbase,
+          DataSourceId{Helper::extractIdValue(info)}, ::readGloballyUniqueId(info),
+          DataSourceId{Helper::stringUInt64(info.get(StaticStrings::DataSourcePlanId))},
           ::readStringValue(info, StaticStrings::DataSourceName, ""), planVersion,
           TRI_vocbase_t::IsSystemName(
               ::readStringValue(info, StaticStrings::DataSourceName, "")) &&
@@ -209,7 +209,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
   TRI_ASSERT(!guid().empty());
 
   // update server's tick value
-  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id()));
+  TRI_UpdateTickServer(id().id());
 
   // add keyOptions from slice
   VPackSlice keyOpts = info.get("keyOptions");
@@ -679,8 +679,8 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
       CollectionNameResolver resolver(vocbase());
 
       result.add(StaticStrings::DistributeShardsLike,
-                 VPackValue(resolver.getCollectionNameCluster(static_cast<TRI_voc_cid_t>(
-                     basics::StringUtils::uint64(distributeShardsLike())))));
+                 VPackValue(resolver.getCollectionNameCluster(DataSourceId{
+                     basics::StringUtils::uint64(distributeShardsLike())})));
     }
   }
 
@@ -713,7 +713,7 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   TRI_ASSERT(result.isOpenObject());
 
   // Collection Meta Information
-  result.add("cid", VPackValue(std::to_string(id())));
+  result.add("cid", VPackValue(std::to_string(id().id())));
   result.add(StaticStrings::DataSourceType, VPackValue(static_cast<int>(_type)));
   result.add("status", VPackValue(_status));
   result.add("statusString", VPackValue(::translateStatus(_status)));
@@ -782,7 +782,8 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   if (!forPersistence) {
     // with 'forPersistence' added by LogicalDataSource::toVelocyPack
     // FIXME TODO is this needed in !forPersistence???
-    result.add(StaticStrings::DataSourcePlanId, VPackValue(std::to_string(planId())));
+    result.add(StaticStrings::DataSourcePlanId,
+               VPackValue(std::to_string(planId().id())));
   }
 
   _sharding->toVelocyPack(result, Serialization::List != context);
@@ -969,7 +970,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
     // We need to inform the cluster as well
     auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
     return ci.setCollectionPropertiesCoordinator(vocbase().name(),
-                                                 std::to_string(id()), this);
+                                                 std::to_string(id().id()), this);
   }
 
   engine.changeCollection(vocbase(), *this, doSync);

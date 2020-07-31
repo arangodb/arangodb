@@ -139,8 +139,11 @@ TEST_F(IResearchQueryExistsTest, test) {
       "}}"
     );
     EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
-    std::set<TRI_voc_cid_t> cids;
-    impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
+    std::set<arangodb::DataSourceId> cids;
+    impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
+      cids.emplace(cid);
+      return true;
+    });
     EXPECT_EQ(2, cids.size());
     EXPECT_TRUE(arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").result.ok()); // commit
   }
@@ -1394,8 +1397,11 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
       "}}"
     );
     EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
-    std::set<TRI_voc_cid_t> cids;
-    impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
+    std::set<arangodb::DataSourceId> cids;
+    impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
+      cids.emplace(cid);
+      return true;
+    });
     EXPECT_EQ(2, cids.size());
     EXPECT_TRUE(arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").result.ok()); // commit
   }

@@ -470,12 +470,13 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
       return rocksutils::convertStatus(s);
     } else if (s.IsNotFound()) {
       LOG_TOPIC("ecdbc", WARN, Logger::ENGINES)
-          << "no revision tree found for collection with id '" << coll.id()
+          << "no revision tree found for collection with id '" << coll.id().id()
           << "', rebuilding";
       Result res = rcoll->rebuildRevisionTree();
       if (res.fail()) {
         LOG_TOPIC("ecdbd", WARN, Logger::ENGINES)
-            << "failed to rebuild revision tree for collection '" << coll.id() << "'";
+            << "failed to rebuild revision tree for collection '"
+            << coll.id().id() << "'";
       }
     } else {
       auto tree = containers::RevisionTree::fromBuffer(
@@ -491,11 +492,12 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
       } else {
         LOG_TOPIC("dcd99", ERR, Logger::ENGINES)
             << "unsupported revision tree format in collection "
-            << "with id '" << coll.id() << "', rebuilding";
+            << "with id '" << coll.id().id() << "', rebuilding";
         Result res = rcoll->rebuildRevisionTree();
         if (res.fail()) {
           LOG_TOPIC("ecdbf", WARN, Logger::ENGINES)
-              << "failed to rebuild revision tree for collection '" << coll.id() << "'";
+              << "failed to rebuild revision tree for collection '"
+              << coll.id().id() << "'";
         }
       }
     }

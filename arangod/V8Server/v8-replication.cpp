@@ -255,13 +255,13 @@ static void SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
                 TRI_V8_ASCII_STRING(isolate, "lastLogTick"),
                 TRI_V8UInt64String<TRI_voc_tick_t>(isolate, syncer->getLastLogTick())).FromMaybe(false);
 
-    std::map<TRI_voc_cid_t, std::string>::const_iterator it;
-    std::map<TRI_voc_cid_t, std::string> const& c = syncer->getProcessedCollections();
+    std::map<DataSourceId, std::string>::const_iterator it;
+    std::map<DataSourceId, std::string> const& c = syncer->getProcessedCollections();
 
     uint32_t j = 0;
     v8::Handle<v8::Array> collections = v8::Array::New(isolate);
     for (it = c.begin(); it != c.end(); ++it) {
-      std::string const cidString = StringUtils::itoa((*it).first);
+      std::string const cidString = StringUtils::itoa((*it).first.id());
 
       v8::Handle<v8::Object> ci = v8::Object::New(isolate);
       ci->Set(context, TRI_V8_ASCII_STRING(isolate, "id"), TRI_V8_STD_STRING(isolate, cidString)).FromMaybe(false);

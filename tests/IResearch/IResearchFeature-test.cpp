@@ -108,7 +108,7 @@ class IResearchFeatureTest
     dataPath += std::to_string(view.vocbase().id());
     dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
     dataPath += "-";
-    dataPath += std::to_string(view.id());
+    dataPath += std::to_string(view.id().id());
     return dataPath;
   };
 
@@ -121,7 +121,7 @@ class IResearchFeatureTest
     dataPath += std::to_string(link.collection().vocbase().id());
     dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
     dataPath += "-";
-    dataPath += std::to_string(link.collection().id());
+    dataPath += std::to_string(link.collection().id().id());
     dataPath += "_";
     dataPath += std::to_string(link.id().id());
     return dataPath;
@@ -895,10 +895,11 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
   arangodb::velocypack::Builder tmp;
 
   auto const currentCollectionPath = "/Current/Collections/" + vocbase->name() +
-    "/" + std::to_string(logicalCollection->id());
+                                     "/" +
+                                     std::to_string(logicalCollection->id().id());
   {
     ASSERT_TRUE(logicalView0);
-    auto const viewId = std::to_string(logicalView0->planId());
+    auto const viewId = std::to_string(logicalView0->planId().id());
     EXPECT_TRUE("42" == viewId);
     
     // simulate heartbeat thread (create index in current)
@@ -936,7 +937,7 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
   // simulate heartbeat thread (create index in current)
   {
     auto const path = "/Current/Collections/" + vocbase->name() + "/" +
-                      std::to_string(logicalCollection->id());
+                      std::to_string(logicalCollection->id().id());
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"2\" } "
         "] } }");
@@ -1032,7 +1033,7 @@ class IResearchFeatureTestDBServer
     dataPath += std::to_string(view.vocbase().id());
     dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
     dataPath += "-";
-    dataPath += std::to_string(view.id());
+    dataPath += std::to_string(view.id().id());
     return dataPath;
   };
 
@@ -1045,7 +1046,7 @@ class IResearchFeatureTestDBServer
     dataPath += std::to_string(link.collection().vocbase().id());
     dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
     dataPath += "-";
-    dataPath += std::to_string(link.collection().id());
+    dataPath += std::to_string(link.collection().id().id());
     dataPath += "_";
     dataPath += std::to_string(link.id().id());
     return dataPath;

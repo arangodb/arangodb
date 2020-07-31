@@ -71,7 +71,7 @@ class CollectionWatcher {
     : _agencyCallbackRegistry(agencyCallbackRegistry), _present(true) {
 
     std::string databaseName = collection.vocbase().name();
-    std::string collectionID = std::to_string(collection.id());
+    std::string collectionID = std::to_string(collection.id().id());
     std::string where = "Plan/Collections/" + databaseName + "/" + collectionID;
 
     _agencyCallback = std::make_shared<AgencyCallback>(

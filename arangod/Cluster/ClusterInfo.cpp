@@ -150,7 +150,7 @@ class PlanCollectionReader {
   PlanCollectionReader(PlanCollectionReader const&) = delete;
   explicit PlanCollectionReader(LogicalCollection const& collection) {
     std::string databaseName = collection.vocbase().name();
-    std::string collectionID = std::to_string(collection.id());
+    std::string collectionID = std::to_string(collection.id().id());
     std::vector<std::string> path{
       AgencyCommHelper::path("Plan/Collections/" + databaseName + "/" + collectionID)};
 
@@ -3675,7 +3675,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
   // by a mutex. We use the mutex of the condition variable in the
   // AgencyCallback for this.
   std::string databaseName = collection.vocbase().name();
-  std::string collectionID = std::to_string(collection.id());
+  std::string collectionID = std::to_string(collection.id().id());
 
   std::string where = "Current/Collections/" + databaseName + "/" + collectionID;
   auto agencyCallback =
@@ -4755,7 +4755,7 @@ std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(CollectionID con
     {
       // Get the sharding keys and the number of shards:
       READ_LOCKER(readLocker, _planProt.lock);
-      // _shards is a map-type <CollectionId, shared_ptr<vector<string>>>
+      // _shards is a map-type <DataSourceId, shared_ptr<vector<string>>>
       auto it = _shards.find(collectionID);
 
       if (it != _shards.end()) {
