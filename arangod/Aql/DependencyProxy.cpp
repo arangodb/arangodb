@@ -33,14 +33,15 @@ using namespace arangodb::aql;
 
 template <BlockPassthrough blockPassthrough>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
-DependencyProxy<blockPassthrough>::execute(AqlCallStack const& stack) {
+DependencyProxy<blockPassthrough>::execute(AqlCallStack const& stack, AqlCallList clientCall) {
   ExecutionState state = ExecutionState::HASMORE;
   SkipResult skipped;
   SharedAqlItemBlockPtr block = nullptr;
   // Note: upstreamBlock will return next dependency
   // if we need to loop here
   do {
-    std::tie(state, skipped, block) = executeForDependency(_currentDependency, stack);
+    // TODO:MCHACKI need to copy here as we do not know when advance will kick in
+    std::tie(state, skipped, block) = executeForDependency(_currentDependency, stack, clientCall);
 
     if (state == ExecutionState::DONE) {
       if (!advanceDependency()) {
@@ -54,7 +55,8 @@ DependencyProxy<blockPassthrough>::execute(AqlCallStack const& stack) {
 template <BlockPassthrough blockPassthrough>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 DependencyProxy<blockPassthrough>::executeForDependency(size_t dependency,
-                                                        AqlCallStack const& stack) {
+                                                        AqlCallStack const& stack,
+                                                        AqlCallList clientCall) {
   ExecutionState state = ExecutionState::HASMORE;
   SkipResult skipped;
   SharedAqlItemBlockPtr block = nullptr;
@@ -72,10 +74,10 @@ DependencyProxy<blockPassthrough>::executeForDependency(size_t dependency,
                                      "that is not able to provide it.");
     }
     std::tie(state, skipped, block) =
-        upstreamWithClient->executeForClient(stack, _distributeId);
+        upstreamWithClient->executeForClient(stack, std::move(clientCall), _distributeId);
   } else {
     std::tie(state, skipped, block) =
-        upstreamBlockForDependency(dependency).execute(stack);
+        upstreamBlockForDependency(dependency).execute(stack, std::move(clientCall));
   }
   TRI_IF_FAILURE("ExecutionBlock::getBlock") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

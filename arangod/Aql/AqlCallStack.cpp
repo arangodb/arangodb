@@ -34,8 +34,15 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-AqlCallStack::AqlCallStack(AqlCallList call, bool compatibilityMode3_6)
-    : _operations{{std::move(call)}}, _compatibilityMode3_6(compatibilityMode3_6) {}
+AqlCallStack AqlCallStack::EmptyStack{false};
+
+
+AqlCallStack const& AqlCallStack::emptyStack() {
+  return AqlCallStack::EmptyStack;
+}
+
+AqlCallStack::AqlCallStack(bool compatibilityMode3_6)
+    : _operations{}, _compatibilityMode3_6(compatibilityMode3_6) {}
 
 AqlCallStack::AqlCallStack(AqlCallStack const& other, AqlCallList call)
     : _operations{other._operations}, _compatibilityMode3_6{other._compatibilityMode3_6} {

@@ -67,7 +67,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   std::pair<ExecutionState, Result> shutdown(int errorCode) override;
 
-  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack const& stack) override;
+  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack const& stack, AqlCallList clientCall) override;
 
   [[nodiscard]] auto api() const noexcept -> Api;
 
@@ -88,7 +88,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   std::pair<ExecutionState, size_t> skipSomeWithoutTrace(size_t atMost);
 
-  auto executeWithoutTrace(AqlCallStack const& stack)
+  auto executeWithoutTrace(AqlCallStack stack, AqlCallList clientCall)
       -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
 
   auto executeViaOldApi(AqlCallStack const& stack)

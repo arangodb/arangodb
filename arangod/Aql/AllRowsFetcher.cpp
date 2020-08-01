@@ -32,13 +32,13 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-std::tuple<ExecutionState, SkipResult, AqlItemBlockInputMatrix> AllRowsFetcher::execute(AqlCallStack const& stack) {
-  TRI_ASSERT(stack.peek().getOffset() == 0);
-  TRI_ASSERT(!stack.peek().needsFullCount());
+std::tuple<ExecutionState, SkipResult, AqlItemBlockInputMatrix> AllRowsFetcher::execute(AqlCallStack const& stack, AqlCallList clientCall) {
+  TRI_ASSERT(clientCall.peekNextCall().getOffset() == 0);
+  TRI_ASSERT(!clientCall.peekNextCall().needsFullCount());
   // We allow a 0 hardLimit for bypassing
   // bot otherwise we do not allow any limit
-  TRI_ASSERT(!stack.peek().hasHardLimit() || stack.peek().getLimit() == 0);
-  TRI_ASSERT(!stack.peek().hasSoftLimit());
+  TRI_ASSERT(!clientCall.peekNextCall().hasHardLimit() || clientCall.peekNextCall().getLimit() == 0);
+  TRI_ASSERT(!clientCall.peekNextCall().hasSoftLimit());
 
   if (_aqlItemMatrix == nullptr) {
     _aqlItemMatrix = std::make_unique<AqlItemMatrix>(getNrInputRegisters());
@@ -46,7 +46,7 @@ std::tuple<ExecutionState, SkipResult, AqlItemBlockInputMatrix> AllRowsFetcher::
   // We can only execute More if we are not Stopped yet.
   TRI_ASSERT(!_aqlItemMatrix->stoppedOnShadowRow());
   while (true) {
-    auto [state, skipped, block] = _dependencyProxy->execute(stack);
+    auto [state, skipped, block] = _dependencyProxy->execute(stack, clientCall);
     TRI_ASSERT(skipped.getSkipCount() == 0);
 
     // we will either build a complete fetched AqlItemBlockInputMatrix or return an empty one

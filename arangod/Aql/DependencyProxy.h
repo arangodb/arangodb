@@ -68,10 +68,11 @@ class DependencyProxy {
 
   TEST_VIRTUAL ~DependencyProxy() = default;
 
-  TEST_VIRTUAL std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack const& stack);
+  TEST_VIRTUAL std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(
+      AqlCallStack const& stack, AqlCallList clientCall);
 
   TEST_VIRTUAL std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> executeForDependency(
-      size_t dependency, AqlCallStack const& stack);
+      size_t dependency, AqlCallStack const& stack, AqlCallList clientCall);
 
   [[nodiscard]] RegisterCount getNrInputRegisters() const;
 

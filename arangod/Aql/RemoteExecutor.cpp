@@ -467,10 +467,10 @@ auto ExecutionBlockImpl<RemoteExecutor>::executeViaOldApi(AqlCallStack const& ol
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
 }
 
-auto ExecutionBlockImpl<RemoteExecutor>::execute(AqlCallStack const& stack)
+auto ExecutionBlockImpl<RemoteExecutor>::execute(AqlCallStack const& stack, AqlCallList clientCall)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
-  traceExecuteBegin(stack);
-  auto res = executeWithoutTrace(stack);
+  traceExecuteBegin(stack, clientCall);
+  auto res = executeWithoutTrace(stack, std::move(clientCall));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto const& [state, skipped, block] = res;
   if (block != nullptr) {
@@ -481,8 +481,10 @@ auto ExecutionBlockImpl<RemoteExecutor>::execute(AqlCallStack const& stack)
   return res;
 }
 
-auto ExecutionBlockImpl<RemoteExecutor>::executeWithoutTrace(AqlCallStack const& stack)
+// TODO:MCHACKI We can avoid the copy here, by pushing it further down and modifying the ToVPack methods.
+auto ExecutionBlockImpl<RemoteExecutor>::executeWithoutTrace(AqlCallStack stack, AqlCallList clientCall)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
+  stack.pushCall(std::move(clientCall));
   if (ADB_UNLIKELY(api() == Api::GET_SOME)) {
     return executeViaOldApi(stack);
   }

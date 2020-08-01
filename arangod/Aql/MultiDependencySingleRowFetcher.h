@@ -141,12 +141,12 @@ class MultiDependencySingleRowFetcher {
   /// @brief Only needed for parallel executors; could be omitted otherwise
   ///        It's size is >0 after init() is called, and this is currently used
   ///        in initOnce() to make sure that init() is called exactly once.
-  std::vector<std::optional<AqlCallStack>> _callsInFlight;
+  std::vector<std::optional<std::pair<AqlCallStack, AqlCallList>>> _callsInFlight;
 
   bool _didReturnSubquerySkips{false};
 
  private:
-  [[nodiscard]] auto executeForDependency(size_t dependency, AqlCallStack& stack)
+  [[nodiscard]] auto executeForDependency(size_t dependency, AqlCallStack const& stack, AqlCallList clientCall)
       -> std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange>;
 
   /**

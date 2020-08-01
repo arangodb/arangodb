@@ -157,7 +157,7 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
       _lastRange{ExecutorState::HASMORE},
       _upstreamRequest{},
       _clientRequest{},
-      _stackBeforeWaiting{AqlCallList{AqlCall{}}},
+      _stackBeforeWaiting{},
       _hasUsedDataRangeBlock{false} {
   // Break the stack before waiting.
   // We should not use this here.
@@ -296,8 +296,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::shutdown(int err
 
 template <class Executor>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
-ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
-  traceExecuteBegin(stack);
+ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack, AqlCallList clientCall) {
+  traceExecuteBegin(stack, clientCall);
   // silence tests -- we need to introduce new failure tests for fetchers
   TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -309,7 +309,7 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   initOnce();
-  auto res = executeWithoutTrace(stack);
+  auto res = executeWithoutTrace(stack, std::move(clientCall));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto const& [state, skipped, block] = res;
   if (block != nullptr) {
@@ -745,8 +745,7 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack,
     // NOTE: The Executor needs to discard shadowRows, and do the accouting.
     static_assert(std::is_same_v<AqlCall, std::decay_t<decltype(aqlCall)>>);
     auto fetchAllStack = stack.createEquivalentFetchAllShadowRowsStack();
-    fetchAllStack.pushCall(createUpstreamCall(aqlCall, wasCalledWithContinueCall));
-    auto res = _rowFetcher.execute(fetchAllStack);
+    auto res = _rowFetcher.execute(fetchAllStack, createUpstreamCall(aqlCall, wasCalledWithContinueCall));
     // Just make sure we did not Skip anything
     TRI_ASSERT(std::get<SkipResult>(res).nothingSkipped());
     return res;
@@ -755,11 +754,12 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack,
     // which belongs to the subquery enclosed by this
     // SubqueryStart and the partnered SubqueryEnd by *not*
     // pushing the upstream request.
-    if constexpr (!std::is_same_v<Executor, SubqueryStartExecutor>) {
-      stack.pushCall(createUpstreamCall(std::move(aqlCall), wasCalledWithContinueCall));
+    if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
+      // TODO:MCHACKI fixme, the subquery executor needs different Stack handling
+      TRI_ASSERT(false);
     }
 
-    auto const result = _rowFetcher.execute(stack);
+    auto const result = _rowFetcher.execute(stack, std::move(createUpstreamCall(std::move(aqlCall), wasCalledWithContinueCall)));
 
     if constexpr (!std::is_same_v<Executor, SubqueryStartExecutor>) {
       // As the stack is copied into the fetcher, we need to pop off our call
@@ -1224,12 +1224,11 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
  */
 template <class Executor>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
-ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& oldStack) {
-  // TODO:MCHACKI fix copy of stack
+ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& oldStack, AqlCallList clientCallList) {
+  // TODO:MCHACKI fix this stack copy.
   AqlCallStack stack = oldStack;
   // We can only work on a Stack that has valid calls for all levels.
   TRI_ASSERT(stack.hasAllValidCalls());
-  AqlCallList clientCallList = stack.popCall();
   AqlCall clientCall;
   if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
     // In subqeryEndExecutor we actually manage two calls.

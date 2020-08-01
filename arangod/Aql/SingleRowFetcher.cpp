@@ -45,8 +45,8 @@ SingleRowFetcher<passBlocksThrough>::SingleRowFetcher()
 
 template <BlockPassthrough passBlocksThrough>
 std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange>
-SingleRowFetcher<passBlocksThrough>::execute(AqlCallStack const& stack) {
-  auto [state, skipped, block] = _dependencyProxy->execute(stack);
+SingleRowFetcher<passBlocksThrough>::execute(AqlCallStack const& stack, AqlCallList clientCall) {
+  auto [state, skipped, block] = _dependencyProxy->execute(stack, std::move(clientCall));
   if (state == ExecutionState::WAITING) {
     // On waiting we have nothing to return
     return {state, SkipResult{}, AqlItemBlockInputRange{ExecutorState::HASMORE}};
@@ -60,9 +60,9 @@ SingleRowFetcher<passBlocksThrough>::execute(AqlCallStack const& stack) {
             AqlItemBlockInputRange{ExecutorState::DONE, skipped.getSkipCount()}};
   }
 
+  TRI_ASSERT(block != nullptr);
   auto [start, end] = block->getRelevantRange();
   if (state == ExecutionState::HASMORE) {
-    TRI_ASSERT(block != nullptr);
     return {state, skipped,
             AqlItemBlockInputRange{ExecutorState::HASMORE,
                                    skipped.getSkipCount(), block, start}};

@@ -128,15 +128,17 @@ bool MultiDependencySingleRowFetcher::isDone(
 }
 
 auto MultiDependencySingleRowFetcher::executeForDependency(size_t const dependency,
-                                                           AqlCallStack& stack)
+                                                           AqlCallStack const& stack,
+                                                           AqlCallList clientCall)
     -> std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange> {
-  auto [state, skipped, block] = _dependencyProxy->executeForDependency(dependency, stack);
+      // TODO:MCHACKI canwe move here?
+  auto [state, skipped, block] = _dependencyProxy->executeForDependency(dependency, stack, clientCall);
 
   if (state == ExecutionState::WAITING) {
     TRI_ASSERT(skipped.nothingSkipped());
     return {state, SkipResult{}, AqlItemBlockInputRange{ExecutorState::HASMORE}};
   }
-
+//TODO:MCHACKI is this still ok?
   reportSkipForDependency(stack, skipped, dependency);
 
   ExecutorState execState =
@@ -187,8 +189,7 @@ auto MultiDependencySingleRowFetcher::execute(AqlCallStack const& stack,
       if (!maybeCallInFlight.has_value()) {
         auto depStack = adjustStackWithSkipReport(stack, dependency);
 
-        depStack.pushCall(aqlCallSet.calls[depCallIdx].call);
-        maybeCallInFlight = depStack;
+        maybeCallInFlight = std::make_pair(depStack, aqlCallSet.calls[depCallIdx].call);
       }
       ++depCallIdx;
       if (depCallIdx < aqlCallSet.calls.size()) {
@@ -200,8 +201,8 @@ auto MultiDependencySingleRowFetcher::execute(AqlCallStack const& stack,
     if (maybeCallInFlight.has_value()) {
       // We either need to make a new call, or check whether we got a result
       // for a call in flight.
-      auto& callInFlight = maybeCallInFlight.value();
-      auto [state, skipped, range] = executeForDependency(dependency, callInFlight);
+      auto& [stackInFlight, clientCallInFlight] = maybeCallInFlight.value();
+      auto [state, skipped, range] = executeForDependency(dependency, stackInFlight, clientCallInFlight);
       askedAtLeastOneDep = true;
       if (state != ExecutionState::WAITING) {
         // Got a result, call is no longer in flight

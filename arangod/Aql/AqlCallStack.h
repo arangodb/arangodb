@@ -49,9 +49,16 @@ namespace aql {
  *        subqueries to the Executors that need to produce data for them.
  */
 class AqlCallStack {
+ private:
+  // Singleton member for the empty stack used as base in every query.
+  static AqlCallStack EmptyStack;
+
  public:
+  // Get a reference to the above singleton.
+  static AqlCallStack const& emptyStack();
+
   // Initial
-  explicit AqlCallStack(AqlCallList call, bool compatibilityMode3_6 = false);
+  explicit AqlCallStack(bool compatibilityMode3_6 = false);
   // Used in subquery
   AqlCallStack(AqlCallStack const& other, AqlCallList call);
   // Used to pass between blocks
