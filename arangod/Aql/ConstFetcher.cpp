@@ -29,6 +29,8 @@
 #include "Basics/voc-errors.h"
 #include "Containers/SmallVector.h"
 
+#include <algorithm>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -59,12 +61,12 @@ auto ConstFetcher::execute(AqlCallStack& stack)
   // to is one after the last data row to be returned
 
   if (_blockForPassThrough->hasShadowRows()) {
-    auto const& shadowIndexes = _blockForPassThrough->getShadowRowIndexes();
-    auto shadowRow = shadowIndexes.lower_bound(_rowIndex);
-    if (shadowRow != shadowIndexes.end()) {
+    auto [shadowRowsBegin, shadowRowsEnd] = _blockForPassThrough->getShadowRowIndexes();
+    auto shadowRow = std::lower_bound(shadowRowsBegin, shadowRowsEnd, _rowIndex);
+    if (shadowRow != shadowRowsEnd) {
       size_t fromShadowRow = *shadowRow;
       size_t toShadowRow = *shadowRow + 1;
-      for (++shadowRow; shadowRow != shadowIndexes.end(); ++shadowRow) {
+      for (++shadowRow; shadowRow != shadowRowsEnd; ++shadowRow) {
         if (*shadowRow == toShadowRow) {
           ShadowAqlItemRow srow{_blockForPassThrough, toShadowRow};
           TRI_ASSERT(srow.isInitialized());

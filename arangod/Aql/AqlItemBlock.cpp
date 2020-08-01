@@ -919,7 +919,9 @@ void AqlItemBlock::copySubqueryDepthFromOtherBlock(size_t targetRow,
 // e.g. If a block always follows this pattern:
 // ((Data* Shadow(0))* Shadow(1))* ...
 void AqlItemBlock::validateShadowRowConsistency() const {
-  for (auto const& r : getShadowRowIndexes()) {
+  auto [it, shadowRowsEnd] = getShadowRowIndexes();
+  while (it != shadowRowsEnd) {
+    auto r = (*it);
     TRI_ASSERT(r < size());
     // The block can start with any ShadowRow
     // of any depth, we do not know the history.
@@ -937,6 +939,7 @@ void AqlItemBlock::validateShadowRowConsistency() const {
         TRI_ASSERT(depth - 1 <= compDepth);
       }
     }
+    ++it;
   }
 }
 #endif
@@ -1094,9 +1097,9 @@ std::tuple<size_t, size_t> AqlItemBlock::getRelevantRange() const {
   // The next Executor.
   // So we can hardcode to return 0 -> firstShadowRow || endOfBlock
   if (hasShadowRows()) {
-    auto const& shadows = getShadowRowIndexes();
-    TRI_ASSERT(!shadows.empty());
-    return {0, *shadows.begin()};
+    TRI_ASSERT(!_shadowRows.empty());
+    auto [shadowRowsBegin, shadowRowsEnd] = getShadowRowIndexes();
+    return {0, *shadowRowsBegin};
   }
   return {0, size()};
 }
@@ -1116,7 +1119,6 @@ size_t AqlItemBlock::getShadowRowDepth(size_t row) const {
 }
 
 void AqlItemBlock::makeShadowRow(size_t row, size_t depth) {
-  //TRI_ASSERT(!isShadowRow(row));
   _shadowRows.make(row, depth);
   TRI_ASSERT(isShadowRow(row));
 }
@@ -1127,14 +1129,19 @@ void AqlItemBlock::makeDataRow(size_t row) {
   TRI_ASSERT(!isShadowRow(row));
 }
 
-/// @brief Return the indexes of shadowRows within this block.
-std::set<size_t> const& AqlItemBlock::getShadowRowIndexes() const noexcept {
+/// @brief Return the indexes of ShadowRows within this block
+std::pair<AqlItemBlock::ShadowRowIterator, AqlItemBlock::ShadowRowIterator> AqlItemBlock::getShadowRowIndexes() const noexcept {
   return _shadowRows.getIndexes();
 }
 
-/// @brief Quick test if we have any ShadowRows within this block;
+/// @brief Quick test if we have any ShadowRows within this block
 bool AqlItemBlock::hasShadowRows() const noexcept {
   return !_shadowRows.empty();
+}
+
+/// @brief Returns the number of ShadowRows
+size_t AqlItemBlock::numShadowRows() const noexcept {
+  return _shadowRows.size();
 }
 
 AqlItemBlockManager& AqlItemBlock::aqlItemBlockManager() noexcept {
@@ -1193,6 +1200,10 @@ bool AqlItemBlock::ShadowRows::empty() const noexcept {
   return _indexes.empty();
 }
 
+size_t AqlItemBlock::ShadowRows::size() const noexcept {
+  return _indexes.size();
+}
+
 bool AqlItemBlock::ShadowRows::is(size_t row) const noexcept {
   return _depths.size() > row && _depths[row] > 0;
 }
@@ -1209,8 +1220,8 @@ size_t AqlItemBlock::ShadowRows::getDepth(size_t row) const noexcept {
 }
 
 /// @brief Return the indexes of shadowRows within this block.
-std::set<size_t> const& AqlItemBlock::ShadowRows::getIndexes() const noexcept {
-  return _indexes;
+std::pair<AqlItemBlock::ShadowRowIterator, AqlItemBlock::ShadowRowIterator> AqlItemBlock::ShadowRows::getIndexes() const noexcept {
+  return {_indexes.begin(), _indexes.end()};
 }
 
 void AqlItemBlock::ShadowRows::clear() noexcept {
@@ -1233,23 +1244,39 @@ void AqlItemBlock::ShadowRows::make(size_t row, size_t depth) {
   }
 
   if (_depths.size() <= row) {
+    // allocate enough space for all rows at once. the goal here
+    // is to minmize the number of allocations.
     _depths.resize(_nrItems);
   }
   TRI_ASSERT(row < _depths.size());
   _depths[row] = static_cast<decltype(_depths)::value_type>(depth + 1); 
-  _indexes.emplace(row);
+
+  // shadow row indexes _must_ be sequentially ordered!
+  TRI_ASSERT(_indexes.empty() || _indexes.back() <= row);
+  if (_indexes.empty()) {
+    // allocate some space for a few elements
+    _indexes.reserve(std::min<size_t>(_nrItems, 16));
+  } else if (_indexes.back() == row) {
+    // don't insert the same value twice...
+    return;
+  }
+  _indexes.push_back(row);
 }
 
 void AqlItemBlock::ShadowRows::clear(size_t row) {
   if (_depths.size() > row) {
     _depths[row] = 0;
   }
-  _indexes.erase(row);
+
+  if (!_indexes.empty()) {
+    TRI_ASSERT(_indexes.back() == row);
+    _indexes.pop_back();
+  }
 }
   
 void AqlItemBlock::ShadowRows::clearFrom(size_t lower) {
   if (_depths.size() > lower) {
     std::fill(_depths.begin() + lower, _depths.end(), 0);
   }
-  _indexes.erase(_indexes.lower_bound(lower), _indexes.end());
+  _indexes.erase(std::lower_bound(_indexes.begin(), _indexes.end(), lower), _indexes.end());
 }

@@ -77,20 +77,24 @@ class AqlItemBlockTest : public ::testing::Test {
                               std::vector<size_t> indexes) {
     if (indexes.empty()) {
       EXPECT_FALSE(testee->hasShadowRows());
+      EXPECT_EQ(testee->numShadowRows(), 0);
     } else {
       EXPECT_TRUE(testee->hasShadowRows());
+      EXPECT_GT(testee->numShadowRows(), 0);
     }
 
-    EXPECT_EQ(testee->getShadowRowIndexes().size(), indexes.size());
+    auto [sb, se] = testee->getShadowRowIndexes();
+    EXPECT_EQ(std::distance(sb, se), indexes.size());
     for (auto const& it : indexes) {
-      EXPECT_NE(testee->getShadowRowIndexes().find(it),
-                testee->getShadowRowIndexes().end());
+      EXPECT_NE(std::find(sb, se, it), se);
     }
     size_t old = 0;
     // Set is ordered increasingly
-    for (auto const& it : testee->getShadowRowIndexes()) {
-      ASSERT_LE(old, it);
-      old = it;
+    auto it = sb;
+    while (it != se) {
+      ASSERT_LE(old, *it);
+      old = *it;
+      ++it;
     }
   }
 };
@@ -192,14 +196,13 @@ TEST_F(AqlItemBlockTest, test_block_contains_shadow_rows) {
 
   // No shadow Rows included
   assertShadowRowIndexes(block, {});
+  
+  // add another shadow row
+  block->makeShadowRow(1, 0);
+  assertShadowRowIndexes(block, {1});
 
   // add a shadow row
   block->makeShadowRow(2, 0);
-  assertShadowRowIndexes(block, {2});
-
-  // add another shadow row
-  block->makeShadowRow(1, 0);
-
   assertShadowRowIndexes(block, {1, 2});
 }
 

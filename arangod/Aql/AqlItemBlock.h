@@ -29,7 +29,6 @@
 #include "Containers/SmallVector.h"
 
 #include <limits>
-#include <set>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -64,55 +63,7 @@ class AqlItemBlock {
   // needed for testing only
   friend class BlockCollector;
   friend class SharedAqlItemBlockPtr;
-
-  /// @brief a helper class that manages the storage of shadow rows
-  /// in an AqlItemBlock
-  class ShadowRows {
-   public:
-    /// @brief create a shadow row manager for at most nrItems rows
-    explicit ShadowRows(size_t nrItems);
-
-    /// @brief whether or not there are any shadow rows
-    bool empty() const noexcept;
-    
-    /// @brief whether or not the row is a shadow row
-    bool is(size_t row) const noexcept;
-    
-    /// @brief get the shadow row depth for row
-    size_t getDepth(size_t row) const noexcept;
-
-    /// @brief clear all shadow rows
-    void clear() noexcept;
-    
-    /// @brief resize the container to at most nrItems items
-    void resize(size_t nrItems);
-    
-    /// @brief make a shadow row
-    void make(size_t row, size_t depth);
-    
-    /// @brief make a data row
-    void clear(size_t row);
-    
-    /// @brief clear all shadow rows from row to the end
-    void clearFrom(size_t row);
-    
-    /// @brief return the indexes of shadowRows
-    std::set<size_t> const& getIndexes() const noexcept;
-
-   private:
-    /// @brief A list of indexes with all shadowRows within
-    /// this ItemBlock. Used to easier split data based on them.
-    std::set<size_t> _indexes;
-
-    /// @brief all shadow row depths. a value of 0 means "no shadow row",
-    /// values of 1 and higher indicate the actual shadow row depths plus one.
-    /// the vector is lazily allocated and only populated when needed
-    std::vector<uint16_t> _depths;
-
-    /// @brief maximum size of _depths
-    size_t _nrItems;
-  };
-
+  
  public:
   AqlItemBlock() = delete;
   AqlItemBlock(AqlItemBlock const&) = delete;
@@ -158,21 +109,14 @@ class AqlItemBlock {
     uint32_t refCount;
     uint32_t memoryUsage;
   };
+  
+  using ShadowRowIterator = std::vector<size_t>::const_iterator;
 
  protected:
   /// @brief destroy the block
   /// Should only ever be deleted by AqlItemManager::returnBlock, so the
   /// destructor is protected.
   ~AqlItemBlock();
-
- private:
-  void destroy() noexcept;
-
-  ResourceMonitor& resourceMonitor() noexcept;
-
-  void increaseMemoryUsage(size_t value);
-
-  void decreaseMemoryUsage(size_t value) noexcept;
 
  public:
   /// @brief getValue, get the value of a register
@@ -350,11 +294,14 @@ class AqlItemBlock {
   /// @brief Transform the given row into a DataRow.
   void makeDataRow(size_t row);
   
-  /// @brief Return the indexes of shadowRows within this block.
-  std::set<size_t> const& getShadowRowIndexes() const noexcept;
+  /// @brief Return the indexes of ShadowRows within this block.
+  std::pair<ShadowRowIterator, ShadowRowIterator> getShadowRowIndexes() const noexcept;
 
   /// @brief Quick test if we have any ShadowRows within this block;
   bool hasShadowRows() const noexcept;
+
+  /// @brief return the number of ShadowRows
+  size_t numShadowRows() const noexcept;
 
   /// @brief Moves all values *from* source *to* this block.
   /// Returns the row index of the last written row plus one (may equal size()).
@@ -377,6 +324,14 @@ class AqlItemBlock {
   size_t decrRefCount() const noexcept;
 
  private:
+  void destroy() noexcept;
+
+  ResourceMonitor& resourceMonitor() noexcept;
+
+  void increaseMemoryUsage(size_t value);
+
+  void decreaseMemoryUsage(size_t value) noexcept;
+
   void copySubqueryDepthFromOtherBlock(size_t targetRow, AqlItemBlock const& source,
                                        size_t sourceRow, bool forceShadowRow);
 
@@ -417,6 +372,57 @@ class AqlItemBlock {
   /// after getRelevantRange function will be called, which will return a tuple
   /// of the old _rowIndex and the newly calculated _rowIndex - 1
   size_t _rowIndex;
+  
+  /// @brief a helper class that manages the storage of shadow rows
+  /// in an AqlItemBlock
+  class ShadowRows {
+   public:
+    /// @brief create a shadow row manager for at most nrItems rows
+    explicit ShadowRows(size_t nrItems);
+
+    /// @brief whether or not there are any shadow rows
+    bool empty() const noexcept;
+
+    /// @brief return the number of shadow rows
+    size_t size() const noexcept;
+    
+    /// @brief whether or not the row is a shadow row
+    bool is(size_t row) const noexcept;
+    
+    /// @brief get the shadow row depth for row
+    size_t getDepth(size_t row) const noexcept;
+
+    /// @brief clear all shadow rows
+    void clear() noexcept;
+    
+    /// @brief resize the container to at most nrItems items
+    void resize(size_t nrItems);
+    
+    /// @brief make a shadow row
+    void make(size_t row, size_t depth);
+    
+    /// @brief make a data row
+    void clear(size_t row);
+    
+    /// @brief clear all shadow rows from row to the end
+    void clearFrom(size_t row);
+    
+    /// @brief return the indexes of ShadowRows
+    std::pair<ShadowRowIterator, ShadowRowIterator> getIndexes() const noexcept;
+
+   private:
+    /// @brief A list of indexes with all ShadowRows within
+    /// this ItemBlock. Used to easier split data based on them.
+    std::vector<size_t> _indexes;
+
+    /// @brief all shadow row depths. a value of 0 means "no shadow row",
+    /// values of 1 and higher indicate the actual shadow row depths plus one.
+    /// the vector is lazily allocated and only populated when needed
+    std::vector<uint16_t> _depths;
+
+    /// @brief maximum size of _depths
+    size_t _nrItems;
+  };
 
   ShadowRows _shadowRows;
 };

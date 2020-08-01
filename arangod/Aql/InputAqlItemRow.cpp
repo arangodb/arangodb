@@ -33,6 +33,7 @@
 #include <velocypack/velocypack-aliases.h>
 #include <boost/container/flat_set.hpp>
 
+#include <algorithm>
 #include <utility>
 
 using namespace arangodb;
@@ -209,24 +210,21 @@ bool InputAqlItemRow::isFirstDataRowInBlock() const noexcept {
   TRI_ASSERT(isInitialized());
   TRI_ASSERT(_baseIndex < block().size());
 
-  auto const& shadowRowIndexes = block().getShadowRowIndexes();
+  auto [shadowRowsBegin, shadowRowsEnd] = block().getShadowRowIndexes();
 
   // Count the number of shadow rows before this row.
   size_t const numShadowRowsBeforeCurrentRow = [&]() {
-    auto const& begin = shadowRowIndexes.cbegin();
-    auto const& end = shadowRowIndexes.cend();
-
     // this is the last shadow row after _baseIndex, i.e.
     // nextShadowRowIt := min { it \in shadowRowIndexes | _baseIndex <= it }
-    auto const nextShadowRowIt = shadowRowIndexes.lower_bound(_baseIndex);
+    auto const nextShadowRowIt = std::lower_bound(shadowRowsBegin, shadowRowsEnd, _baseIndex);
     // But, as _baseIndex must not be a shadow row, it's actually
     // nextShadowRowIt = min { it \in shadowRowIndexes | _baseIndex < it }
     // so the same as shadowRowIndexes.upper_bound(_baseIndex)
-    TRI_ASSERT(nextShadowRowIt == end || _baseIndex < *nextShadowRowIt);
+    TRI_ASSERT(nextShadowRowIt == shadowRowsEnd || _baseIndex < *nextShadowRowIt);
 
-    return std::distance(begin, nextShadowRowIt);
+    return std::distance(shadowRowsBegin, nextShadowRowIt);
   }();
-  TRI_ASSERT(numShadowRowsBeforeCurrentRow <= shadowRowIndexes.size());
+  TRI_ASSERT(numShadowRowsBeforeCurrentRow <= static_cast<size_t>(std::distance(shadowRowsBegin, shadowRowsEnd)));
 
   return numShadowRowsBeforeCurrentRow == _baseIndex;
 }
@@ -235,21 +233,19 @@ bool InputAqlItemRow::blockHasMoreDataRowsAfterThis() const noexcept {
   TRI_ASSERT(isInitialized());
   TRI_ASSERT(_baseIndex < block().size());
 
-  auto const& shadowRowIndexes = block().getShadowRowIndexes();
+  auto [shadowRowsBegin, shadowRowsEnd] = block().getShadowRowIndexes();
 
   // Count the number of shadow rows after this row.
   size_t const numShadowRowsAfterCurrentRow = [&]() {
-    auto const& end = shadowRowIndexes.cend();
-
     // this is the last shadow row after _baseIndex, i.e.
     // nextShadowRowIt := min { it \in shadowRowIndexes | _baseIndex <= it }
-    auto const nextShadowRowIt = shadowRowIndexes.lower_bound(_baseIndex);
+    auto const nextShadowRowIt = std::lower_bound(shadowRowsBegin, shadowRowsEnd, _baseIndex);
     // But, as _baseIndex must not be a shadow row, it's actually
     // nextShadowRowIt = min { it \in shadowRowIndexes | _baseIndex < it }
     // so the same as shadowRowIndexes.upper_bound(_baseIndex)
-    TRI_ASSERT(nextShadowRowIt == end || _baseIndex < *nextShadowRowIt);
+    TRI_ASSERT(nextShadowRowIt == shadowRowsEnd || _baseIndex < *nextShadowRowIt);
 
-    return std::distance(nextShadowRowIt, end);
+    return std::distance(nextShadowRowIt, shadowRowsEnd);
   }();
 
   // block().size() is strictly greater than baseIndex
