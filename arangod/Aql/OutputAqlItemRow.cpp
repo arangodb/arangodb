@@ -355,14 +355,14 @@ void OutputAqlItemRow::createShadowRow(InputAqlItemRow const& sourceRow) {
   // We can only add shadow rows if source and this are different blocks
   TRI_ASSERT(!sourceRow.internalBlockIs(_block, _baseIndex));
 #endif
-  block().makeShadowRow(_baseIndex);
+  block().makeShadowRow(_baseIndex, 0); // TODO
   doCopyOrMoveRow<InputAqlItemRow const, CopyOrMove::COPY, AdaptRowDepth::IncreaseDepth>(sourceRow, true);
 }
 
 void OutputAqlItemRow::increaseShadowRowDepth(ShadowAqlItemRow& sourceRow) {
   size_t newDepth = sourceRow.getDepth() + 1;
   doCopyOrMoveRow<ShadowAqlItemRow, CopyOrMove::MOVE, AdaptRowDepth::IncreaseDepth>(sourceRow, false);
-  block().setShadowRowDepth(_baseIndex, AqlValue{AqlValueHintUInt{newDepth}});
+  block().makeShadowRow(_baseIndex, newDepth);
   // We need to fake produced state
   _numValuesWritten = numRegistersToWrite();
   TRI_ASSERT(produced());
@@ -371,8 +371,8 @@ void OutputAqlItemRow::increaseShadowRowDepth(ShadowAqlItemRow& sourceRow) {
 void OutputAqlItemRow::decreaseShadowRowDepth(ShadowAqlItemRow& sourceRow) {
   doCopyOrMoveRow<ShadowAqlItemRow, CopyOrMove::MOVE, AdaptRowDepth::DecreaseDepth>(sourceRow, false);
   TRI_ASSERT(!sourceRow.isRelevant());
-  block().setShadowRowDepth(_baseIndex,
-                            AqlValue{AqlValueHintUInt{sourceRow.getDepth() - 1}});
+  TRI_ASSERT(sourceRow.getDepth() > 0);
+  block().makeShadowRow(_baseIndex, sourceRow.getDepth() - 1);
   // We need to fake produced state
   _numValuesWritten = numRegistersToWrite();
   TRI_ASSERT(produced());
@@ -403,7 +403,7 @@ void OutputAqlItemRow::adjustShadowRowDepth<InputAqlItemRow>(InputAqlItemRow con
 
 template <>
 void OutputAqlItemRow::adjustShadowRowDepth<ShadowAqlItemRow>(ShadowAqlItemRow const& sourceRow) {
-  block().setShadowRowDepth(_baseIndex, sourceRow.getShadowDepthValue());
+  block().makeShadowRow(_baseIndex, sourceRow.getShadowDepthValue());
 }
 
 template <class T>

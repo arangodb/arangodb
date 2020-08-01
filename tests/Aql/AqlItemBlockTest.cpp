@@ -50,11 +50,11 @@ class AqlItemBlockTest : public ::testing::Test {
               "d",
               {
                   "a": "b",
-                  "this": "is to large to be inlined"
+                  "this": "is too large to be inlined"
               },
               {
                   "c": "d",
-                  "this": "is to large to be inlined"
+                  "this": "is too large to be inlined"
               }
           ]
       )")};
@@ -194,11 +194,11 @@ TEST_F(AqlItemBlockTest, test_block_contains_shadow_rows) {
   assertShadowRowIndexes(block, {});
 
   // add a shadow row
-  block->makeShadowRow(2);
+  block->makeShadowRow(2, 0);
   assertShadowRowIndexes(block, {2});
 
   // add another shadow row
-  block->makeShadowRow(1);
+  block->makeShadowRow(1, 0);
 
   assertShadowRowIndexes(block, {1, 2});
 }
@@ -308,14 +308,14 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_shadowrows) {
 
   block->emplaceValue(1, 0, dummyData(0));
   block->emplaceValue(1, 1, dummyData(1));
-  block->setShadowRowDepth(1, AqlValue(AqlValueHintInt(0)));
+  block->makeShadowRow(1, 0);
 
   block->emplaceValue(2, 0, dummyData(2));
   block->emplaceValue(2, 1, dummyData(4));
 
   block->emplaceValue(3, 0, dummyData(2));
   block->emplaceValue(3, 1, dummyData(4));
-  block->setShadowRowDepth(3, AqlValue(AqlValueHintInt(0)));
+  block->makeShadowRow(3, 0);
 
   assertShadowRowIndexes(block, {1, 3});
 
@@ -524,11 +524,11 @@ class AqlItemBlockClassicTest : public ::testing::Test {
               "d",
               {
                   "a": "b",
-                  "this": "is to large to be inlined"
+                  "this": "is too large to be inlined"
               },
               {
                   "c": "d",
-                  "this": "is to large to be inlined"
+                  "this": "is too large to be inlined"
               }
           ]
       )")};
@@ -650,14 +650,14 @@ TEST_F(AqlItemBlockClassicTest, test_serialization_deserialization_shadowrows) {
 
   block->emplaceValue(1, 0, dummyData(0));
   block->emplaceValue(1, 1, dummyData(1));
-  block->setShadowRowDepth(1, AqlValue(AqlValueHintInt(0)));
+  block->makeShadowRow(1, 0);
 
   block->emplaceValue(2, 0, dummyData(2));
   block->emplaceValue(2, 1, dummyData(4));
 
   block->emplaceValue(3, 0, dummyData(2));
   block->emplaceValue(3, 1, dummyData(4));
-  block->setShadowRowDepth(3, AqlValue(AqlValueHintInt(0)));
+  block->makeShadowRow(3, 0);
 
   VPackBuilder result;
   result.openObject();

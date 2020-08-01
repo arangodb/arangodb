@@ -26,8 +26,8 @@
 #include "Aql/DependencyProxy.h"
 #include "Aql/ShadowAqlItemRow.h"
 #include "Aql/SkipResult.h"
-#include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
+#include "Containers/SmallVector.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -48,8 +48,12 @@ auto ConstFetcher::execute(AqlCallStack& stack)
     // we are done, nothing to move arround here.
     return {ExecutionState::DONE, skipped, AqlItemBlockInputRange{ExecutorState::DONE}};
   }
-  std::vector<std::pair<size_t, size_t>> sliceIndexes;
+
+  arangodb::containers::SmallVector<std::pair<size_t, size_t>>::allocator_type::arena_type arena;
+  arangodb::containers::SmallVector<std::pair<size_t, size_t>> sliceIndexes{arena};
+
   sliceIndexes.emplace_back(_rowIndex, _blockForPassThrough->size());
+
   // Modifiable first slice indexes.
   // from is the first data row to be returned
   // to is one after the last data row to be returned
@@ -212,7 +216,7 @@ auto ConstFetcher::numRowsLeft() const noexcept -> size_t {
   return _currentBlock->size() - _rowIndex;
 }
 
-auto ConstFetcher::canUseFullBlock(std::vector<std::pair<size_t, size_t>> const& ranges) const
+auto ConstFetcher::canUseFullBlock(arangodb::containers::SmallVector<std::pair<size_t, size_t>> const& ranges) const
     noexcept -> bool {
   TRI_ASSERT(!ranges.empty());
   if (ranges.front().first != 0) {
