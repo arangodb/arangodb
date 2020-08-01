@@ -49,6 +49,9 @@ class MinAccumulator : public Accumulator<T> {
     }
     return AccumulatorBase::UpdateResult::NO_CHANGE;
   }
+  auto clear() -> void override {
+    this->set(std::numeric_limits<T>::max());
+  }
 };
 
 template <typename T>
@@ -62,6 +65,9 @@ class MaxAccumulator : public Accumulator<T> {
     }
     return AccumulatorBase::UpdateResult::NO_CHANGE;
   }
+  auto clear() -> void override {
+    this->set(std::numeric_limits<T>::min());
+  }
 };
 
 template <typename T>
@@ -74,6 +80,9 @@ class SumAccumulator : public Accumulator<T> {
     return old == this->_value ? AccumulatorBase::UpdateResult::NO_CHANGE
                                : AccumulatorBase::UpdateResult::CHANGED;
   }
+  auto clear() -> void override {
+    this->set(T{0});
+  }
 };
 
 template <typename T>
@@ -85,6 +94,9 @@ class AndAccumulator : public Accumulator<T> {
     this->_value &= v;
     return old == this->_value ? AccumulatorBase::UpdateResult::NO_CHANGE
                                : AccumulatorBase::UpdateResult::CHANGED;
+  }
+  auto clear() -> void override {
+    this->set(true);
   }
 };
 
@@ -99,6 +111,9 @@ class OrAccumulator : public Accumulator<T> {
     std::cout << "new value is " << this->_value << std::endl;
     return old == this->_value ? AccumulatorBase::UpdateResult::NO_CHANGE
                                : AccumulatorBase::UpdateResult::CHANGED;
+  }
+  auto clear() -> void override {
+    this->set(false);
   }
 };
 
@@ -125,6 +140,9 @@ class StoreAccumulator<VPackSlice> : public Accumulator<VPackSlice> {
     this->set(std::move(v));
     return UpdateResult::CHANGED;
   }
+  auto clear() -> void override {
+    _buffer.clear();
+  }
 
   void setValueFromPointer(const void * ptr) override {
     auto slice = *reinterpret_cast<VPackSlice const*>(ptr);
@@ -143,6 +161,9 @@ class ListAccumulator : public Accumulator<T> {
   AccumulatorBase::UpdateResult update(T v) override {
     _list.emplace_back(std::move(v));
     return AccumulatorBase::UpdateResult::CHANGED;
+  }
+  auto clear() -> void override {
+    _list.clear();
   }
   void getValueIntoBuilder(VPackBuilder& builder) override {
     VPackArrayBuilder array(&builder);
@@ -176,6 +197,9 @@ class ListAccumulator<VPackSlice> : public Accumulator<VPackSlice> {
   AccumulatorBase::UpdateResult update(VPackSlice v) override {
     _list.emplace_back().add(v);
     return AccumulatorBase::UpdateResult::CHANGED;
+  }
+  auto clear() -> void override {
+    _list.clear();
   }
   void getValueIntoBuilder(VPackBuilder& builder) override {
     VPackArrayBuilder array(&builder);
