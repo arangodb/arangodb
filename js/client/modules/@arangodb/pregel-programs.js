@@ -224,7 +224,7 @@ function strongly_connected_components_program(
                 name: "init",
                 initProgram: [
                     "seq",
-                    ["set", "isDisabled", false],
+                    ["accum-set!", "isDisabled", false],
                     false
                 ],
                 updateProgram: false,
@@ -233,18 +233,17 @@ function strongly_connected_components_program(
                 name: "broadcast",
                 initProgram: [
                     "seq",
-                    ["set", "activeInbound", ["quote"]],
+                    ["accum-set!", "activeInbound", ["quote"]],
                     [
-                        "for",
-                        "outbound",
-                        ["quote", "edge"],
-                        ["quote", "seq",
-                            ["print", ["vertex-unique-id"], "sending to vertex", ["attrib", "_to", ["var-ref", "edge"]], "with value", ["pregel-id"]],
+                      "for-each",
+                      ["edge", ["this-outbound-edges"]],
+                      ["seq",
+                       ["print", ["this-unique-id"], "sending to vertex", ["attrib-ref", "to-pregel-id", ["var-ref", "edge"]], "with value", ["this-pregel-id"]],
                             [
-                                "update",
+                                "send-to-accum",
                                 "activeInbound",
-                                ["attrib", "_to", ["var-ref", "edge"]],
-                                ["pregel-id"]
+                                ["attrib-ref", "to-pregel-id", ["var-ref", "edge"]],
+                                ["this-pregel-id"]
                             ]
                         ]
                     ],
@@ -261,7 +260,7 @@ function strongly_connected_components_program(
                     ],
                     [
                         true, // else
-                        ["seq", ["set", "forwardMin", ["vertex-unique-id"]], true]
+                        ["seq", ["accum-set!", "forwardMin", ["this-unique-id"]], true]
                     ]
                 ],
                 updateProgram: ["if",
@@ -273,19 +272,16 @@ function strongly_connected_components_program(
                         true, // else
                         [
                             "seq",
-                            ["print", "update program at", ["vertex-unique-id"]],
+                            ["print", "update program at", ["this-unique-id"]],
                             [
-                                "for",
-                                "outbound",
-                                ["quote", "edge"],
-                                ["quote", "seq",
-                                    //["print", ["vertex-unique-id"], "sending to vertex", ["attrib", "_to", ["var-ref", "edge"]], "with value", ["accum-ref", "forwardMin"]],
-                                    [
-                                        "update",
-                                        "forwardMin",
-                                        ["attrib", "_to", ["var-ref", "edge"]],
-                                        ["accum-ref", "forwardMin"]
-                                    ]
+                              "for",
+                              ["edge", ["this-outbound-edges"]],
+                              ["seq",
+                               //["print", ["vertex-unique-id"], "sending to vertex", ["attrib", "_to", ["var-ref", "edge"]], "with value", ["accum-ref", "forwardMin"]],
+                               [ "send-to-accum",
+                                 "forwardMin",
+                                 ["attrib-ref", "to-pregel-id", ["var-ref", "edge"]],
+                                 ["accum-ref", "forwardMin"] ]
                                 ]
                             ],
                             false
@@ -295,17 +291,17 @@ function strongly_connected_components_program(
             },
             {
                 name: "backward",
-                onHalt: ["goto", "broadcast"],
+                onHalt: ["goto-phase", "broadcast"],
                 initProgram: ["if",
                     [
                         ["not", ["accum-ref", "isDisabled"]],
                         false
                     ],
                     [
-                        ["eq?", ["vertex-unique-id"], ["accum-ref", "forwardMin"]],
+                        ["eq?", ["this-unique-id"], ["accum-ref", "forwardMin"]],
                         [
                             "seq",
-                            ["set", "backwardMin", ["accum-ref", "forwardMin"]],
+                            ["accum-set!", "backwardMin", ["accum-ref", "forwardMin"]],
                             true
                         ]
                     ],
@@ -313,8 +309,8 @@ function strongly_connected_components_program(
                         true,
                         [
                             "seq",
-                            ["print", ["vertex-unique-id"], "I am not root of a SCC"],
-                            ["set", "backwardMin", 99999],
+                            ["print", ["this-unique-id"], "I am not root of a SCC"],
+                            ["accum-set!", "backwardMin", 99999], //TODO: this shold be "clear"?
                             false
                         ]
                     ]
@@ -328,7 +324,7 @@ function strongly_connected_components_program(
                         ["eq?", ["accum-ref", "backwardMin"], ["accum-ref", "forwardMin"]],
                         [
                             "seq",
-                            ["set", "isDisabled", true],
+                            ["accum-set!", "isDisabled", true],
                             ["print", "I am done, my SCC id is", ["accum-ref", "forwardMin"]],
                             [
                                 "for-each",
@@ -336,7 +332,7 @@ function strongly_connected_components_program(
                                 ["seq",
                                     //["print", ["vertex-unique-id"], "sending to vertex", ["var-ref", "vertex"], "with value", ["accum-ref", "backwardMin"]],
                                     [
-                                        "update-by-id",
+                                        "send-to-accum",
                                         "backwardMin",
                                         ["var-ref", "vertex"],
                                         ["accum-ref", "backwardMin"]
