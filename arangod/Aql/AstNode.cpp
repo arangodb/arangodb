@@ -2883,6 +2883,7 @@ void AstNode::setDoubleValue(double v) {
 }
 
 char const* AstNode::getStringValue() const { return value.value._string; }
+
 size_t AstNode::getStringLength() const {
   return static_cast<size_t>(value.length);
 }
