@@ -159,9 +159,6 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
       _clientRequest{},
       _stackBeforeWaiting{},
       _hasUsedDataRangeBlock{false} {
-  // Break the stack before waiting.
-  // We should not use this here.
-  _stackBeforeWaiting.popCall();
 }
 
 template <class Executor>
@@ -755,23 +752,16 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(AqlCallStack& stack,
     // SubqueryStart and the partnered SubqueryEnd by *not*
     // pushing the upstream request.
     if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
-      // TODO:MCHACKI fixme, the subquery executor needs different Stack handling
-      TRI_ASSERT(false);
-    }
-
-    auto const result = _rowFetcher.execute(stack, std::move(createUpstreamCall(std::move(aqlCall), wasCalledWithContinueCall)));
-
-    if constexpr (!std::is_same_v<Executor, SubqueryStartExecutor>) {
-      // As the stack is copied into the fetcher, we need to pop off our call
-      // again. If we use other datastructures or moving we may hand over
-      // ownership of the stack here instead and no popCall is necessary.
-      std::ignore = stack.popCall();
+      // The SubqueryStart executor does not forward the upstream call of the executor.
+      // But the top of the Stack
+      // TODO:MCHACKI Check if this still works in all cases, or if we need to take ownership of this call ealier.
+      // TODO:MCHACKI we can do this better if we combine clone and pop in one method.
+      AqlCallStack baseStack = stack;
+      auto clientCall = baseStack.popCall();
+      return _rowFetcher.execute(baseStack, std::move(clientCall));
     } else {
-      // Do not pop the call, we did not put it on.
-      // However we need it for accounting later.
+      return _rowFetcher.execute(stack, std::move(createUpstreamCall(std::move(aqlCall), wasCalledWithContinueCall)));
     }
-
-    return result;
   }
 }
 
