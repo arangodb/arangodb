@@ -88,7 +88,7 @@ AqlItemBlock::AqlItemBlock(AqlItemBlockManager& manager, size_t nrItems, Registe
   TRI_ASSERT(nrRegs <= RegisterPlan::MaxRegisterId);
   increaseMemoryUsage(sizeof(AqlValue) * numEntries());
   try {
-    _data.resize(nrItems * _nrRegs);
+    _data.resize(numEntries());
   } catch (...) {
     decreaseMemoryUsage(sizeof(AqlValue) * numEntries());
     throw;
@@ -111,7 +111,7 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
   // Initialize the data vector:
   increaseMemoryUsage(sizeof(AqlValue) * numEntries());
   try {
-    _data.resize(_nrItems * _nrRegs);
+    _data.resize(numEntries());
   } catch (...) {
     decreaseMemoryUsage(sizeof(AqlValue) * numEntries());
     throw;
@@ -124,7 +124,7 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
   VPackArrayIterator rawIterator(raw);
 
   std::vector<AqlValue> madeHere;
-  madeHere.reserve(static_cast<size_t>(rawIterator.size()));
+  madeHere.reserve(2 + static_cast<size_t>(rawIterator.size()));
   madeHere.emplace_back();  // an empty AqlValue
   madeHere.emplace_back();  // another empty AqlValue, indices start w. 2
 
@@ -577,7 +577,6 @@ auto AqlItemBlock::slice(arangodb::containers::SmallVector<std::pair<size_t, siz
   size_t targetRow = 0;
   for (auto const& [from, to] : ranges) {
     for (size_t row = from; row < to; row++, targetRow++) {
-      // Note this loop is special, it will also Copy over the SubqueryDepth data in reg 0
       for (RegisterId col = 0; col < _nrRegs; col++) {
         ::copyValueOver(cache, _data[getAddress(row, col)], targetRow, col, res);
       }
