@@ -44,12 +44,12 @@ VertexComputation::VertexComputation(VertexAccumulators const& algorithm)
 }
 
 void VertexComputation::registerLocalFunctions() {
-  _airMachine.setFunction("accum-ref",    // " name:id -> value:any ",
+  _airMachine.setFunction("accum-ref",  // " name:id -> value:any ",
                           std::bind(&VertexComputation::air_accumRef, this,
                                     std::placeholders::_1, std::placeholders::_2,
                                     std::placeholders::_3));
 
-  _airMachine.setFunction("accum-set!",   // " name:id -> value:any -> void ",
+  _airMachine.setFunction("accum-set!",  // " name:id -> value:any -> void ",
                           std::bind(&VertexComputation::air_accumSet, this,
                                     std::placeholders::_1, std::placeholders::_2,
                                     std::placeholders::_3));
@@ -59,24 +59,22 @@ void VertexComputation::registerLocalFunctions() {
                                     std::placeholders::_1, std::placeholders::_2,
                                     std::placeholders::_3));
 
-  _airMachine.setFunction("bind-ref",     // " name:id -> value:any ",
+  _airMachine.setFunction("bind-ref",  // " name:id -> value:any ",
                           std::bind(&VertexComputation::air_accumClear, this,
                                     std::placeholders::_1, std::placeholders::_2,
                                     std::placeholders::_3));
 
-
-
-  _airMachine.setFunction("send-to-accum", // " name:id -> to-vertex:pid -> value:any -> void ",
+  _airMachine.setFunction("send-to-accum",  // " name:id -> to-vertex:pid -> value:any -> void ",
                           std::bind(&VertexComputation::air_sendToAccum, this,
                                     std::placeholders::_1, std::placeholders::_2,
                                     std::placeholders::_3));
 
-  _airMachine.setFunction("send-to-all-neighbours", // " name:id -> value:any -> void ",
+  _airMachine.setFunction("send-to-all-neighbours",  // " name:id -> value:any -> void ",
                           std::bind(&VertexComputation::air_sendToAccum, this,
                                     std::placeholders::_1, std::placeholders::_2,
                                     std::placeholders::_3));
 
-  _airMachine.setFunction("outbound-edges", // " name:id -> value:any -> void ",
+  _airMachine.setFunction("outbound-edges",  // " name:id -> value:any -> void ",
                           std::bind(&VertexComputation::air_outboundEdges, this,
                                     std::placeholders::_1, std::placeholders::_2,
                                     std::placeholders::_3));
@@ -94,7 +92,9 @@ greenspun::EvalResult VertexComputation::air_accumRef(greenspun::Machine& ctx,
   } else {
     std::string globalName = "[global]-";
     globalName += accumId;
-    auto accum = getAggregatedValue<VertexAccumulatorAggregator>(globalName);
+    auto accum =
+        dynamic_cast<VertexAccumulatorAggregator const*>(getReadAggregator(globalName));
+
     if (accum != nullptr) {
       accum->getAccumulator().getValueIntoBuilder(result);
       return {};
@@ -118,7 +118,7 @@ greenspun::EvalResult VertexComputation::air_accumSet(greenspun::Machine& ctx,
     globalName += accumId;
     auto accum = dynamic_cast<VertexAccumulatorAggregator*>(getWriteAggregator(globalName));
     if (accum != nullptr) {
-      LOG_DEVEL << "VertexComputationEvalContext::setAccumulator " << accumId
+      LOG_DEVEL << "VertexComputation::air_accumSet " << accumId
                 << " with value " << value.toJson();
       accum->getAccumulator().setBySlice(value);
       return {};
@@ -154,27 +154,44 @@ greenspun::EvalResult VertexComputation::air_accumClear(greenspun::Machine& ctx,
 greenspun::EvalResult VertexComputation::air_sendToAccum(greenspun::Machine& ctx,
                                                          VPackSlice const params,
                                                          VPackBuilder& result) {
-  auto&& [destination, accumId, value] = unpackTuple<VPackSlice, std::string, VPackSlice>(params);
+  auto&& [destination, accumId, value] =
+      unpackTuple<VPackSlice, std::string, VPackSlice>(params);
 
-  const auto pregelIdFromSlice = [](VPackSlice slice) -> PregelID {
-    if (slice.isObject()) {
-      VPackSlice key = slice.get("key");
-      VPackSlice shard = slice.get("shard");
-      if (key.isString() && shard.isNumber<PregelShard>()) {
-        return PregelID(shard.getNumber<PregelShard>(), key.copyString());
+  auto const& accums = algorithm().options().vertexAccumulators;
+
+  if (auto i = accums.find(std::string{accumId}); i != accums.end()) {
+    const auto pregelIdFromSlice = [](VPackSlice slice) -> PregelID {
+      if (slice.isObject()) {
+        VPackSlice key = slice.get("key");
+        VPackSlice shard = slice.get("shard");
+        if (key.isString() && shard.isNumber<PregelShard>()) {
+          return PregelID(shard.getNumber<PregelShard>(), key.copyString());
+        }
       }
-    }
 
+      return {};
+    };
+
+    PregelID id = pregelIdFromSlice(destination);
+
+    MessageData msg;
+    msg.reset(accumId, value, vertexData()._documentId);
+
+    sendMessage(id, msg);
     return {};
-  };
-
-  PregelID id = pregelIdFromSlice(destination);
-
-  MessageData msg;
-  msg.reset(accumId, value, vertexData()._documentId);
-
-  sendMessage(id, msg);
-  return {};
+  } else {
+    std::string globalName = "[global]-";
+    globalName += accumId;
+    auto accum = dynamic_cast<VertexAccumulatorAggregator*>(
+      getWriteAggregator(globalName));
+    if (accum != nullptr) {
+      LOG_DEVEL << "update global accum " << accumId << " with value " << value.toJson();
+      accum->getAccumulator().updateByMessageSlice(value);
+      return {};
+    }
+  }
+  return greenspun::EvalError("vertex accumulator `" + std::string{accumId} +
+                   "` not found");
 }
 
 greenspun::EvalResult VertexComputation::air_sendToAllNeighbours(
@@ -197,11 +214,13 @@ greenspun::EvalResult VertexComputation::air_outboundEdges(greenspun::Machine& c
   for (; edgeIter.hasMore(); ++edgeIter) {
     VPackObjectBuilder objGuard(&result);
     result.add(VPackValue("to-pregel-id"));
-    { VPackObjectBuilder pidGuard(&result);
+    {
+      VPackObjectBuilder pidGuard(&result);
       result.add(VPackValue("shard"));
       result.add(VPackValue((*edgeIter)->targetShard()));
       result.add(VPackValue("key"));
-      result.add(VPackValue((*edgeIter)->toKey().toString())); }
+      result.add(VPackValue((*edgeIter)->toKey().toString()));
+    }
 
     result.add(VPackValue("document"));
     VPackSlice edgeDoc = (*edgeIter)->data()._document.slice();
@@ -292,7 +311,8 @@ void VertexComputation::compute(MessageIterator<MessageData> const& incomingMess
 
   LOG_DEVEL << "running phase " << phase.name
             << " superstep = " << phaseGlobalSuperstep()
-            << " global superstep = " << globalSuperstep();
+            << " global superstep = " << globalSuperstep() << " at vertex "
+            << vertexData()._vertexId;
 
   std::size_t phaseStep = phaseGlobalSuperstep();
 

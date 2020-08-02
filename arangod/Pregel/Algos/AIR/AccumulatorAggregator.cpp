@@ -30,14 +30,15 @@ namespace arangodb::pregel::algos::accumulators {
 
 VertexAccumulatorAggregator::VertexAccumulatorAggregator(AccumulatorOptions const& opts,
                                                          bool persists)
-    : fake(), accumulator(instantiateAccumulator(fake, opts)), permanent(persists) {}
+  : fake(), accumulator(instantiateAccumulator(fake, opts)), permanent(persists) {
+  if (accumulator == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Failed to create global vertex accumulator.");
+  }
+}
 
 /// @brief Used when updating aggregator value locally
 void VertexAccumulatorAggregator::aggregate(void const* valuePtr)  {
-  auto slice = reinterpret_cast<VertexAccumulatorAggregator const*>(valuePtr);
-  VPackBuilder builder;
-  slice->accumulator->getValueIntoBuilder(builder);
-  accumulator->updateByMessageSlice(builder.slice());
+  accumulator->setValueFromPointer(valuePtr);
 }
 
 /// @brief Used when updating aggregator value from remote
@@ -47,7 +48,8 @@ void VertexAccumulatorAggregator::parseAggregate(arangodb::velocypack::Slice con
 }
 
 void const* VertexAccumulatorAggregator::getAggregatedValue() const  {
-  return this; /* HACK HACK HACK! Return the aggregator itself instead of some value. */
+  LOG_DEVEL << "VertexAccumulatorAggregator::getAggregatedValue";
+  return accumulator->getValuePointer();
 }
 
 /// @brief Value from superstep S-1 supplied by the conductor
@@ -58,12 +60,15 @@ void VertexAccumulatorAggregator::setAggregatedValue(arangodb::velocypack::Slice
 
 void VertexAccumulatorAggregator::serialize(std::string const& key,
                                             arangodb::velocypack::Builder& builder) const  {
-  LOG_DEVEL << "serialize into key " << key;
+  VPackBuilder local;
+  accumulator->getUpdateMessageIntoBuilder(local);
+  LOG_DEVEL << "serialize into key " << key << " with value " << local.toJson();
   builder.add(VPackValue(key));
-  accumulator->getUpdateMessageIntoBuilder(builder);
+  builder.add(local.slice());
 }
 
 void VertexAccumulatorAggregator::reset()  {
+  LOG_DEVEL << "VertexAccumulatorAggregator::reset called " << permanent;
   if (!permanent) {
     accumulator->clear();
   }

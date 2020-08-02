@@ -81,7 +81,7 @@ greenspun::EvalResult MasterContext::air_AccumRef(greenspun::Machine& ctx,
   auto&& [accumId] = unpackTuple<std::string_view>(params);
   std::string globalName = "[global]-";
   globalName += accumId;
-  auto accum = getAggregatedValue<VertexAccumulatorAggregator>(globalName);
+  auto accum = getAggregator<VertexAccumulatorAggregator>(globalName);
   if (accum != nullptr) {
     accum->getAccumulator().getValueIntoBuilder(result);
     return {};
@@ -96,9 +96,9 @@ greenspun::EvalResult MasterContext::air_AccumSet(greenspun::Machine& ctx,
   auto&& [accumId, value] = unpackTuple<std::string_view, VPackSlice>(params);
   std::string globalName = "[global]-";
   globalName += accumId;
-  auto accum = getAggregatedValue<VertexAccumulatorAggregator>(globalName);
+  auto accum = getAggregator<VertexAccumulatorAggregator>(globalName);
   if (accum != nullptr) {
-    accum->getAccumulator().updateByMessageSlice(value);
+    accum->getAccumulator().setBySlice(value);
     return {};
   }
 
@@ -115,8 +115,8 @@ bool MasterContext::gotoPhase(std::string_view nextPhase) {
   }
   LOG_DEVEL << "goto phase " << nextPhase;
   aggregate<uint32_t>("phase", iter - phases.begin());
-  aggregate<uint32_t>("phase-first-step", globalSuperstep() + 1);
-  userSelectedNext = ContinuationResult::CONTINUE;
+  aggregate<uint64_t>("phase-first-step", globalSuperstep() + 1);
+  userSelectedNext = ContinuationResult::ACTIVATE_ALL;
   return true;
 }
 
@@ -137,8 +137,12 @@ MasterContext::ContinuationResult MasterContext::postGlobalSuperstep(bool allVer
     VPackBuilder onHaltResult;
 
     userSelectedNext = ContinuationResult::DONT_CARE;
+    LOG_DEVEL << "evaluating user defined program: " << phase.onHalt.slice().toJson();
     auto res = greenspun::Evaluate(_airMachine, phase.onHalt.slice(), onHaltResult);
     if (res.fail()) {
+      LOG_TOPIC("ac23e", ERR, Logger::PREGEL)
+        << "onHalt program of phase `" << phase.name <<
+        "` returned and error: " << res.error().toString();
       return ContinuationResult::ABORT;
     }
 

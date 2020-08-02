@@ -117,8 +117,8 @@ using phases_deseriaizer = non_empty_array_deserializer<algorithm_phase_deserial
 
 using vertex_accumulator_options_plan = parameter_list<
     factory_deserialized_parameter<resultField, values::value_deserializer<std::string>, true>,
-    factory_deserialized_parameter<vertexAccumulators, accumulators_map_deserializer, true>,
-    factory_deserialized_parameter<globalAccumulators, accumulators_map_deserializer, true>,
+    factory_deserialized_parameter<vertexAccumulators, accumulators_map_deserializer, false>,
+    factory_deserialized_parameter<globalAccumulators, accumulators_map_deserializer, false>,
     factory_deserialized_parameter<bindings, bindings_map_deserializer, /* required */ false>, // will be default constructed as empty map
     factory_deserialized_parameter<phases, phases_deseriaizer, true>,
     factory_simple_parameter<maxGSS, uint64_t, false, values::numeric_value<uint64_t, 500>>>;

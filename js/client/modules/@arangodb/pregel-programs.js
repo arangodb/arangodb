@@ -191,6 +191,7 @@ function single_source_shortest_path(
     );
 }
 
+
 function strongly_connected_components_program(
     resultField,
 ) {
@@ -353,7 +354,6 @@ function strongly_connected_components_program(
         ]
     };
 }
-
 
 function strongly_connected_components(
     graphName,

@@ -77,6 +77,11 @@ struct AccumulatorBase {
   // is entirely up to the accumulators implementation
   virtual void getValueIntoBuilder(VPackBuilder& builder) = 0;
 
+  // Returns a pointer to the value of this accumulator.
+  virtual const void* getValuePointer() const = 0;
+  // Set the value from a value pointer.
+  virtual void setValueFromPointer(const void*) = 0;
+
   VertexData const& _owner;
 };
 
@@ -132,6 +137,14 @@ class Accumulator : public AccumulatorBase {
     } else {
       builder.add(VPackValue(_value));
     }
+  }
+
+  const void * getValuePointer() const override {
+    return &_value;
+  }
+
+  void setValueFromPointer(const void * ptr) override {
+    _value = *reinterpret_cast<data_type const*>(ptr);
   }
 
  protected:
