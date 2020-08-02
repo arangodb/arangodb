@@ -113,16 +113,6 @@ VertexAccumulatorOptions const& VertexAccumulators::options() const {
   return _options;
 }
 
-bool VertexAccumulators::getBindParameter(std::string_view name, VPackBuilder& into) const {
-  std::string nameStr(name);  // TODO remove this in c++20 (then this method will be noexcept)
-  if (auto iter = options().bindings.find(nameStr); iter != std::end(options().bindings)) {
-    into.add(iter->second.slice());
-    return true;
-  }
-
-  return false;
-}
-
 ::arangodb::pregel::MasterContext* VertexAccumulators::masterContext(VPackSlice userParams) const {
   return new MasterContext(this);
 }

@@ -172,7 +172,25 @@ EvalResult Prim_VarRef(Machine& ctx, VPackSlice const params, VPackBuilder& resu
   return EvalError("expecting a single string parameter, found " + params.toJson());
 }
 
-EvalResult Prim_Attrib(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_VarSet(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  if (!params.isArray() && params.length() != 2) {
+    return EvalError("expected exactly two parameters");
+  }
+
+  auto&& [key, slice] = unpackTuple<VPackSlice, VPackSlice>(params);
+  if (!slice.isObject()) {
+    return EvalError("expect second parameter to be an object");
+  }
+
+  if (key.isString()) {
+    return ctx.setVariable(key.copyString(), slice);
+  } else {
+    return EvalError("expect first parameter to be a string");
+  }
+  return {};
+}
+
+EvalResult Prim_AttribRef(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (!params.isArray() && params.length() != 2) {
     return EvalError("expected exactly two parameters");
   }
@@ -196,6 +214,12 @@ EvalResult Prim_Attrib(Machine& ctx, VPackSlice const params, VPackBuilder& resu
   } else {
     return EvalError("key is neither array nor string");
   }
+  return {};
+}
+
+EvalResult Prim_AttribSet(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  // TODO: implement me
+  std::abort();
   return {};
 }
 
@@ -324,13 +348,14 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("int-to-str", Prim_IntToStr);
 
   // Access operators
-  ctx.setFunction("attrib-ref", Prim_Attrib);
-  ctx.setFunction("attrib-set!", Prim_Attrib);
+  ctx.setFunction("attrib-ref", Prim_AttribRef);
+  ctx.setFunction("attrib-set!", Prim_AttribSet);
 
   ctx.setFunction("var-ref", Prim_VarRef);
-//   ctx.setFunction("var-set!", Prim_VarSet);
+  ctx.setFunction("var-set!", Prim_VarSet);
 
-//  ctx.setFunction("bind-ref", Prim_BindRef);
+  // TODO: We can register bind parameters as variables
+  ctx.setFunction("bind-ref", Prim_VarRef);
 }
 
 }  // namespace greenspun

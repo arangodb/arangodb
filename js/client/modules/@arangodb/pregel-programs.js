@@ -75,30 +75,34 @@ function test_bind_parameter_program(bindParameter, value) {
 
 
 /* Computes the vertex degree */
-
 function vertex_degree_program(resultField) {
     return {
         resultField: resultField,
         maxGSS: 2,
-        accumulatorsDeclaration: {
+      globalAccumulators: {},
+        vertexAccumulators: {
             inDegree: {
                 accumulatorType: "sum",
                 valueType: "ints",
                 storeSender: false
             }
         },
-        initProgram: ["for",
-            "outbound",
-            ["quote", "edge"],
-            [
-                "quote",
-                "seq",
-                ["update",
-                    "inDegree",
-                    ["attrib", "_to", ["var-ref", "edge"]], 1],
-            ],
-        ],
-        updateProgram: [false]
+      phases: [
+        { name: "main",
+          initProgram: ["seq",
+                        ["print", ["outbound-edges"]],
+                        ["for",
+                         "outbound",
+                         ["quote", "edge"],
+                         [
+                           "quote",
+                           "seq",
+                           ["update",
+                            "inDegree",
+                            ["attrib", "_to", ["var-ref", "edge"]], 1],
+            ] ] ],
+           updateProgram: false
+        }  ],
     };
 }
 
@@ -144,26 +148,24 @@ function single_source_shortest_path_program(
             [
                 "if",
                 [
-                    ["eq?", ["this"], startVertexId],
-                    ["seq", ["set", "distance", 0], true],
+                    ["eq?", ["this-id"], startVertexId],
+                    ["seq", ["accum-set!", "distance", 0], true],
                 ],
                 [true, ["seq", ["set", "distance", 9223372036854776000], false]],
             ],
         ],
-        updateProgram: [
-            "seq",
-            [
-                "for",
-                "outbound",
-                ["quote", "edge"],
-                [
-                    "quote",
-                    "seq",
-                    [
-                        "update",
-                        "distance",
-                        ["attrib", "_to", ["var-ref", "edge"]],
-                        ["+", ["accum-ref", "distance"], ["attrib", weightAttribute, ["var-ref", "edge"]]],
+        updateProgram: [ "seq",
+            [ "for-each",
+              [ "edge", ["this-outbound-edges"]],
+              ["seq",
+               [ "print", "sending ",
+                 ["+", ["accum-ref", "distance"],
+                  ["attrib-ref", ["quote", "doc", weightAttribute], ["var-ref", "edge"]],
+                  " to ", ["var-ref", "edge"]]],
+               ["send-to-accum", "distance",
+                 ["attrib-ref", "to-pregel-id", ["var-ref", "edge"]],
+                    ["+", ["accum-ref", "distance"],
+                     ["attrib-ref", ["quote", "doc", weightAttribute], ["var-ref", "edge"]]],
                     ],
                 ],
             ],

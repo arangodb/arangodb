@@ -73,8 +73,6 @@ struct VertexAccumulators : public algorithm {
   message_combiner* messageCombiner() const override;
   vertex_computation* createComputation(WorkerConfig const*) const override;
 
-  bool getBindParameter(std::string_view, VPackBuilder& into) const;
-
   ::arangodb::pregel::MasterContext* masterContext(VPackSlice userParams) const override;
 
   IAggregator* aggregator(std::string const& name) const override;
