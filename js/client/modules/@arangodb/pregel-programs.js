@@ -29,7 +29,7 @@ const pregel = require("@arangodb/pregel");
 
 /* TODO parametrise with bindings?  */
 function execute_program(graphName, program) {
-    return pregel.start("air", graphName, program);
+  return pregel.start("air", graphName, program);
 }
 
 function banana_program(resultField) {
@@ -41,80 +41,73 @@ function banana_program(resultField) {
       inDegree: {
         accumulatorType: "sum",
         valueType: "ints",
-        storeSender: false
-      }
+        storeSender: false,
+      },
     },
-    phases: [ { name: "init",
-                initProgram: [
-                    "seq",
-                    ["print", ["bananensplit-xxx"]],
-                    false
-                ],
-                updateProgram: false,
-            }, ]
+    phases: [
+      {
+        name: "init",
+        initProgram: ["seq", ["print", ["bananensplit-xxx"]], false],
+        updateProgram: false,
+      },
+    ],
   };
 }
 
-
-
 function test_bind_parameter_program(bindParameter, value) {
-    return {
-        resultField: "bindParameterTest",
-        accumulatorsDeclaration: {
-            distance: {
-                accumulatorType: "min",
-                valueType: "doubles",
-                storeSender: true,
-            },
-        },
-        bindings: {"bind-test-name": "Hello, world"},
-        initProgram: ["seq", ["print", ["bind-ref", "bind-test-name"]]],
-        updateProgram: ["seq", ["print", "hallo"]],
-    };
+  return {
+    resultField: "bindParameterTest",
+    accumulatorsDeclaration: {
+      distance: {
+        accumulatorType: "min",
+        valueType: "doubles",
+        storeSender: true,
+      },
+    },
+    bindings: { "bind-test-name": "Hello, world" },
+    initProgram: ["seq", ["print", ["bind-ref", "bind-test-name"]]],
+    updateProgram: ["seq", ["print", "hallo"]],
+  };
 }
-
 
 /* Computes the vertex degree */
 function vertex_degree_program(resultField) {
-    return {
-        resultField: resultField,
-        maxGSS: 2,
-      vertexAccumulators: {
-          outDegree: {
-            accumulatorType: "sum",
-            valueType: "ints",
-            storeSender: false
-          },
-          inDegree: {
-            accumulatorType: "sum",
-            valueType: "ints",
-            storeSender: false
-          }
-        },
-      phases: [ {
+  return {
+    resultField: resultField,
+    maxGSS: 2,
+    vertexAccumulators: {
+      outDegree: {
+        accumulatorType: "sum",
+        valueType: "ints",
+        storeSender: false,
+      },
+      inDegree: {
+        accumulatorType: "sum",
+        valueType: "ints",
+        storeSender: false,
+      },
+    },
+    phases: [
+      {
         name: "main",
-        initProgram: [ "seq",
-                       // Set our out degree
-                       ["accum-set!", "outDegree", ["this-number-outbound-edges"]],
-                       // Init in degree to 0
-                       ["accum-set!", "inDegree", 0],
-                       ["send-to-all-neighbors", "inDegree", 1]
-                     ],
+        initProgram: [
+          "seq",
+          // Set our out degree
+          ["accum-set!", "outDegree", ["this-number-outbound-edges"]],
+          // Init in degree to 0
+          ["accum-set!", "inDegree", 0],
+          ["send-to-all-neighbors", "inDegree", 1],
+        ],
         // Update program has to run once to accumulate the
         // inDegrees that have been sent out in initProgram
-        updateProgram: [ "seq",
-                         false ]
-      } ] };
+        updateProgram: ["seq", false],
+      },
+    ],
+  };
 }
 
-function vertex_degree(
-    graphName,
-    resultField) {
-    return pregel.start(
-        "air",
-        graphName,
-        vertex_degree_program(resultField)
-    );
+function vertex_degree(graphName, resultField) {
+  return pregel.start("air", graphName, vertex_degree_program(resultField));
 }
 
 /* Performs a single-source shortest path search (currently without path reconstruction)
@@ -129,315 +122,321 @@ function vertex_degree(
 
 */
 function single_source_shortest_path_program(
-    resultField,
-    startVertexId,
-    weightAttribute
+  resultField,
+  startVertexId,
+  weightAttribute
 ) {
-    return {
-        resultField: resultField,
-        // TODO: Karpott.
-        maxGSS: 10000,
-        accumulatorsDeclaration: {
-            distance: {
-                accumulatorType: "min",
-                valueType: "doubles",
-                storeSender: true,
-            },
-        },
+  return {
+    resultField: resultField,
+    // TODO: Karpott.
+    maxGSS: 10000,
+    accumulatorsDeclaration: {
+      distance: {
+        accumulatorType: "min",
+        valueType: "doubles",
+        storeSender: true,
+      },
+    },
+    phases: [
+      {
+        name: "main",
         initProgram: [
-            "seq",
+          "seq",
+          [
+            "if",
             [
-                "if",
+              ["eq?", ["this-id"], startVertexId],
+              ["seq", ["accum-set!", "distance", 0], true],
+            ],
+            [true, ["seq", ["set", "distance", 9223372036854776000], false]],
+          ],
+        ],
+        updateProgram: [
+          "seq",
+          [
+            "for-each",
+            ["edge", ["this-outbound-edges"]],
+            [
+              "seq",
+              [
+                "print",
+                "sending ",
                 [
-                    ["eq?", ["this-id"], startVertexId],
-                    ["seq", ["accum-set!", "distance", 0], true],
+                  "+",
+                  ["accum-ref", "distance"],
+                  [
+                    "attrib-ref",
+                    ["quote", "doc", weightAttribute],
+                    ["var-ref", "edge"],
+                  ],
+                  " to ",
+                  ["var-ref", "edge"],
                 ],
-                [true, ["seq", ["set", "distance", 9223372036854776000], false]],
-            ],
-        ],
-        updateProgram: [ "seq",
-            [ "for-each",
-              [ "edge", ["this-outbound-edges"]],
-              ["seq",
-               [ "print", "sending ",
-                 ["+", ["accum-ref", "distance"],
-                  ["attrib-ref", ["quote", "doc", weightAttribute], ["var-ref", "edge"]],
-                  " to ", ["var-ref", "edge"]]],
-               ["send-to-accum", "distance",
-                 ["attrib-ref", "to-pregel-id", ["var-ref", "edge"]],
-                    ["+", ["accum-ref", "distance"],
-                     ["attrib-ref", ["quote", "doc", weightAttribute], ["var-ref", "edge"]]],
-                    ],
+              ],
+              [
+                "send-to-accum",
+                "distance",
+                ["attrib-ref", "to-pregel-id", ["var-ref", "edge"]],
+                [
+                  "+",
+                  ["accum-ref", "distance"],
+                  [
+                    "attrib-ref",
+                    ["quote", "document", weightAttribute],
+                    ["var-ref", "edge"],
+                  ],
                 ],
+              ],
             ],
-            false,
+          ],
+          false,
         ],
-    };
+      },
+    ],
+  };
 }
 
 function single_source_shortest_path(
+  graphName,
+  resultField,
+  startVertexId,
+  weightAttribute
+) {
+  return pregel.start(
+    "air",
     graphName,
-    resultField,
-    startVertexId,
-    weightAttribute
-) {
-    return pregel.start(
-        "air",
-        graphName,
-        single_source_shortest_path_program(
-            resultField,
-            startVertexId,
-            weightAttribute
-        )
-    );
+    single_source_shortest_path_program(
+      resultField,
+      startVertexId,
+      weightAttribute
+    )
+  );
 }
 
-
-function strongly_connected_components_program(
-    resultField,
-) {
-    return {
-        resultField: resultField,
-        // TODO: Karpott.
-        maxGSS: 10000,
-        globalAccumulators: {},
-        vertexAccumulators: {
-            forwardMin: {
-                accumulatorType: "min",
-                valueType: "ints",
-            },
-            backwardMin: {
-                accumulatorType: "min",
-                valueType: "ints",
-            },
-            isDisabled: {
-                accumulatorType: "store",
-                valueType: "bool",
-            },
-            activeInbound: {
-                accumulatorType: "list",
-                valueType: "slice",
-            },
-        },
-        phases: [
-            {
-                name: "init",
-                initProgram: [
-                    "seq",
-                    ["accum-set!", "isDisabled", false],
-                    false
+function strongly_connected_components_program(resultField) {
+  return {
+    resultField: resultField,
+    // TODO: Karpott.
+    maxGSS: 10000,
+    globalAccumulators: {},
+    vertexAccumulators: {
+      forwardMin: {
+        accumulatorType: "min",
+        valueType: "ints",
+      },
+      backwardMin: {
+        accumulatorType: "min",
+        valueType: "ints",
+      },
+      isDisabled: {
+        accumulatorType: "store",
+        valueType: "bool",
+      },
+      activeInbound: {
+        accumulatorType: "list",
+        valueType: "slice",
+      },
+    },
+    phases: [
+      {
+        name: "init",
+        initProgram: ["seq", ["accum-set!", "isDisabled", false], false],
+        updateProgram: false,
+      },
+      {
+        name: "broadcast",
+        initProgram: [
+          "seq",
+          ["accum-set!", "activeInbound", ["quote"]],
+          [
+            "for-each",
+            ["edge", ["this-outbound-edges"]],
+            [
+              "seq",
+              [
+                "print",
+                ["this-unique-id"],
+                "sending to vertex",
+                ["attrib-ref", "to-pregel-id", ["var-ref", "edge"]],
+                "with value",
+                ["this-pregel-id"],
+              ],
+              [
+                "send-to-accum",
+                "activeInbound",
+                ["attrib-ref", "to-pregel-id", ["var-ref", "edge"]],
+                ["this-pregel-id"],
+              ],
+            ],
+          ],
+          true,
+        ],
+        updateProgram: false,
+      },
+      {
+        name: "forward",
+        initProgram: [
+          "if",
+          [["not", ["accum-ref", "isDisabled"]], false],
+          [
+            true, // else
+            ["seq", ["accum-set!", "forwardMin", ["this-unique-id"]], true],
+          ],
+        ],
+        updateProgram: [
+          "if",
+          [["not", ["accum-ref", "isDisabled"]], false],
+          [
+            true, // else
+            [
+              "seq",
+              ["print", "update program at", ["this-unique-id"]],
+              [
+                "for",
+                ["edge", ["this-outbound-edges"]],
+                [
+                  "seq",
+                  //["print", ["vertex-unique-id"], "sending to vertex", ["attrib", "_to", ["var-ref", "edge"]], "with value", ["accum-ref", "forwardMin"]],
+                  [
+                    "send-to-accum",
+                    "forwardMin",
+                    ["attrib-ref", "to-pregel-id", ["var-ref", "edge"]],
+                    ["accum-ref", "forwardMin"],
+                  ],
                 ],
-                updateProgram: false,
-            },
-            {
-                name: "broadcast",
-                initProgram: [
-                    "seq",
-                    ["accum-set!", "activeInbound", ["quote"]],
-                    [
-                      "for-each",
-                      ["edge", ["this-outbound-edges"]],
-                      ["seq",
-                       ["print", ["this-unique-id"], "sending to vertex", ["attrib-ref", "to-pregel-id", ["var-ref", "edge"]], "with value", ["this-pregel-id"]],
-                            [
-                                "send-to-accum",
-                                "activeInbound",
-                                ["attrib-ref", "to-pregel-id", ["var-ref", "edge"]],
-                                ["this-pregel-id"]
-                            ]
-                        ]
-                    ],
-                    true
+              ],
+              false,
+            ],
+          ],
+        ],
+      },
+      {
+        name: "backward",
+        onHalt: ["goto-phase", "broadcast"],
+        initProgram: [
+          "if",
+          [["not", ["accum-ref", "isDisabled"]], false],
+          [
+            ["eq?", ["this-unique-id"], ["accum-ref", "forwardMin"]],
+            [
+              "seq",
+              ["accum-set!", "backwardMin", ["accum-ref", "forwardMin"]],
+              true,
+            ],
+          ],
+          [
+            true,
+            [
+              "seq",
+              ["print", ["this-unique-id"], "I am not root of a SCC"],
+              ["accum-set!", "backwardMin", 99999], //TODO: this shold be "clear"?
+              false,
+            ],
+          ],
+        ],
+        updateProgram: [
+          "if",
+          [["not", ["accum-ref", "isDisabled"]], false],
+          [
+            ["eq?", ["accum-ref", "backwardMin"], ["accum-ref", "forwardMin"]],
+            [
+              "seq",
+              ["accum-set!", "isDisabled", true],
+              ["print", "I am done, my SCC id is", ["accum-ref", "forwardMin"]],
+              [
+                "for-each",
+                ["vertex", ["accum-ref", "activeInbound"]],
+                [
+                  "seq",
+                  //["print", ["vertex-unique-id"], "sending to vertex", ["var-ref", "vertex"], "with value", ["accum-ref", "backwardMin"]],
+                  [
+                    "send-to-accum",
+                    "backwardMin",
+                    ["var-ref", "vertex"],
+                    ["accum-ref", "backwardMin"],
+                  ],
                 ],
-                updateProgram: false,
-            },
-            {
-                name: "forward",
-                initProgram: ["if",
-                    [
-                        ["not", ["accum-ref", "isDisabled"]],
-                        false
-                    ],
-                    [
-                        true, // else
-                        ["seq", ["accum-set!", "forwardMin", ["this-unique-id"]], true]
-                    ]
-                ],
-                updateProgram: ["if",
-                    [
-                        ["not", ["accum-ref", "isDisabled"]],
-                        false
-                    ],
-                    [
-                        true, // else
-                        [
-                            "seq",
-                            ["print", "update program at", ["this-unique-id"]],
-                            [
-                              "for",
-                              ["edge", ["this-outbound-edges"]],
-                              ["seq",
-                               //["print", ["vertex-unique-id"], "sending to vertex", ["attrib", "_to", ["var-ref", "edge"]], "with value", ["accum-ref", "forwardMin"]],
-                               [ "send-to-accum",
-                                 "forwardMin",
-                                 ["attrib-ref", "to-pregel-id", ["var-ref", "edge"]],
-                                 ["accum-ref", "forwardMin"] ]
-                                ]
-                            ],
-                            false
-                        ]
-                    ]
-                ]
-            },
-            {
-                name: "backward",
-                onHalt: ["goto-phase", "broadcast"],
-                initProgram: ["if",
-                    [
-                        ["not", ["accum-ref", "isDisabled"]],
-                        false
-                    ],
-                    [
-                        ["eq?", ["this-unique-id"], ["accum-ref", "forwardMin"]],
-                        [
-                            "seq",
-                            ["accum-set!", "backwardMin", ["accum-ref", "forwardMin"]],
-                            true
-                        ]
-                    ],
-                    [
-                        true,
-                        [
-                            "seq",
-                            ["print", ["this-unique-id"], "I am not root of a SCC"],
-                            ["accum-set!", "backwardMin", 99999], //TODO: this shold be "clear"?
-                            false
-                        ]
-                    ]
-                ],
-                updateProgram: ["if",
-                    [
-                        ["not", ["accum-ref", "isDisabled"]],
-                        false
-                    ],
-                    [
-                        ["eq?", ["accum-ref", "backwardMin"], ["accum-ref", "forwardMin"]],
-                        [
-                            "seq",
-                            ["accum-set!", "isDisabled", true],
-                            ["print", "I am done, my SCC id is", ["accum-ref", "forwardMin"]],
-                            [
-                                "for-each",
-                                ["vertex", ["accum-ref", "activeInbound"]],
-                                ["seq",
-                                    //["print", ["vertex-unique-id"], "sending to vertex", ["var-ref", "vertex"], "with value", ["accum-ref", "backwardMin"]],
-                                    [
-                                        "send-to-accum",
-                                        "backwardMin",
-                                        ["var-ref", "vertex"],
-                                        ["accum-ref", "backwardMin"]
-                                    ]
-                                ]
-                            ],
-                            false,
-                        ]
-                    ],
-                    [
-                        true,
-                        ["seq", ["print", "Was woken up, but min_f != min_b"], false]
-                    ]
-                ],
-            }
-        ]
-    };
+              ],
+              false,
+            ],
+          ],
+          [true, ["seq", ["print", "Was woken up, but min_f != min_b"], false]],
+        ],
+      },
+    ],
+  };
 }
 
-function strongly_connected_components(
+function strongly_connected_components(graphName, resultField) {
+  return pregel.start(
+    "air",
     graphName,
-    resultField
-) {
-    return pregel.start(
-        "air",
-        graphName,
-        strongly_connected_components_program(
-            resultField
-        )
-    );
+    strongly_connected_components_program(resultField)
+  );
 }
 
-function page_rank_program(
-    resultField,
-    dampingFactor
-) {
-    return {
-        resultField: resultField,
-        // TODO: Karpott.
-        maxGSS: 5,
-        globalAccumulators: {},
-        vertexAccumulators: {
-            rank: {
-                accumulatorType: "sum",
-                valueType: "doubles",
-                storeSender: false
-            },
-            tmpRank: {
-                accumulatorType: "sum",
-                valueType: "doubles",
-                storeSender: false
-            }
-        },
-        phases: [
-            {
-                name: "main",
-                initProgram: [
-                    "seq",
-                    [
-                        "accum-set!", "rank", ["/", 1, ["vertex-count"]]
-                    ],
-                    [
-                        "accum-set!", "tmpRank", 0
-                    ],
-                    [
-                        "send-to-all-neighbors", "tmpRank", ["/", ["accum-ref", "rank"], ["this-number-outbound-edges"]]
-                    ],
-                    true
-                ],
-                updateProgram: [
-                    "seq",
-                    [
-                        "accum-set!", "rank", [
-                            "+",
-                            [
-                                "/", ["-", 1, dampingFactor], ["vertex-count"]
-                            ],
-                            ["*", dampingFactor, ["accum-ref", "tmpRank"]]
-                        ]
-                    ],
-                    [
-                        "accum-set!", "tmpRank", 0
-                    ],
-                    [
-                        "send-to-all-neighbors", "tmpRank", ["/", ["accum-ref", "rank"], ["this-number-outbound-edges"]]
-                    ],
-                    true
-                ]
-            }
-        ]
-    };
+function page_rank_program(resultField, dampingFactor) {
+  return {
+    resultField: resultField,
+    // TODO: Karpott.
+    maxGSS: 5,
+    globalAccumulators: {},
+    vertexAccumulators: {
+      rank: {
+        accumulatorType: "sum",
+        valueType: "doubles",
+        storeSender: false,
+      },
+      tmpRank: {
+        accumulatorType: "sum",
+        valueType: "doubles",
+        storeSender: false,
+      },
+    },
+    phases: [
+      {
+        name: "main",
+        initProgram: [
+          "seq",
+          ["accum-set!", "rank", ["/", 1, ["vertex-count"]]],
+          ["accum-set!", "tmpRank", 0],
+          [
+            "send-to-all-neighbors",
+            "tmpRank",
+            ["/", ["accum-ref", "rank"], ["this-number-outbound-edges"]],
+          ],
+          true,
+        ],
+        updateProgram: [
+          "seq",
+          [
+            "accum-set!",
+            "rank",
+            [
+              "+",
+              ["/", ["-", 1, dampingFactor], ["vertex-count"]],
+              ["*", dampingFactor, ["accum-ref", "tmpRank"]],
+            ],
+          ],
+          ["accum-set!", "tmpRank", 0],
+          [
+            "send-to-all-neighbors",
+            "tmpRank",
+            ["/", ["accum-ref", "rank"], ["this-number-outbound-edges"]],
+          ],
+          true,
+        ],
+      },
+    ],
+  };
 }
 
-function page_rank(
+function page_rank(graphName, resultField, dampingFactor) {
+  return pregel.start(
+    "air",
     graphName,
-    resultField,
-    dampingFactor
-) {
-    return pregel.start(
-        "air",
-        graphName,
-        page_rank_program(
-            resultField, dampingFactor
-        )
-    );
+    page_rank_program(resultField, dampingFactor)
+  );
 }
 
 exports.vertex_degree = vertex_degree;
