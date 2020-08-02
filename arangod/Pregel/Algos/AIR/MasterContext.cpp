@@ -36,6 +36,11 @@ MasterContext::MasterContext(VertexAccumulators const* algorithm)
   _airMachine.setFunction("goto-phase",
                           std::bind(&MasterContext::air_GotoPhase, this, std::placeholders::_1,
                                     std::placeholders::_2, std::placeholders::_3));
+
+  _airMachine.setFunction("finish",
+                          std::bind(&MasterContext::air_Finish, this, std::placeholders::_1,
+                                    std::placeholders::_2, std::placeholders::_3));
+
 }
 
 greenspun::EvalResult MasterContext::air_GotoPhase(greenspun::Machine& ctx,
