@@ -50,7 +50,7 @@ class DependencyProxyMock : public ::arangodb::aql::DependencyProxy<passBlocksTh
   inline size_t numberDependencies() const override { return 1; }
 
   std::tuple<arangodb::aql::ExecutionState, arangodb::aql::SkipResult, arangodb::aql::SharedAqlItemBlockPtr> execute(
-      arangodb::aql::AqlCallStack const& stack) override;
+      arangodb::aql::AqlCallStack const& stack, arangodb::aql::AqlCallList clientCall) override;
 
  private:
   using FetchBlockReturnItem =
