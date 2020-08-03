@@ -41,7 +41,8 @@ determine the target shard for documents. _(cluster only)_
 
 @RESTSTRUCT{replicationFactor,collection_info,integer,optional,}
 contains how many copies of each shard are kept on different DBServers.
-_(cluster only)_
+It is an integer number in the range of 1-10 or the string `"satellite"`
+for a SatelliteCollection (Enterprise Edition only). _(cluster only)_
 
 @RESTSTRUCT{writeConcern,collection_info,integer,optional,}
 determines how many copies of each shard are required to be
@@ -55,14 +56,15 @@ the sharding strategy selected for the collection.
 One of 'hash' or 'enterprise-hash-smart-edge'. _(cluster only)_
 
 @RESTSTRUCT{isSmart,collection_info,boolean,optional,}
-Whether the collection is used in a SmartGraph. _(cluster only)_
+Whether the collection is used in a SmartGraph (Enterprise Edition only).
+_(cluster only)_
 
 @RESTSTRUCT{smartGraphAttribute,collection_info,string,optional,}
-Attribute that is used in smart graphs. _(cluster only)_
+Attribute that is used in SmartGraphs (Enterprise Edition only). _(cluster only)_
 
 @RESTSTRUCT{smartJoinAttribute,collection_info,string,optional,}
 Determines an attribute of the collection that must contain the shard key value
-of the referred-to SmartJoin collection. _(cluster only)_
+of the referred-to SmartJoin collection (Enterprise Edition only). _(cluster only)_
 
 @RESTSTRUCT{indexBuckets,collection_info,integer,optional,}
 the number of index buckets
