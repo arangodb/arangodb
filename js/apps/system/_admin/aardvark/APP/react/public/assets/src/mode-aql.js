@@ -104,7 +104,7 @@ var AqlHighlightRules = function() {
         "date_add|date_subtract|date_diff|date_compare|date_format|fail|passthru|sleep|not_null|" +
         "first_list|first_document|parse_identifier|current_user|current_database|" +
         "collections|document|decode_rev|union|union_distinct|intersection|flatten|is_same_collection|check_document|" +
-        "ltrim|rtrim|find_first|find_last|split|substitute|ip4_to_number|ip4_from_number|is_ip4|md5|sha1|crc32|fnv64|hash|random_token|to_base64|" +
+        "ltrim|rtrim|find_first|find_last|split|substitute|ipv4_to_number|ipv4_from_number|is_ipv4|md5|sha1|crc32|fnv64|hash|random_token|to_base64|" +
         "to_hex|encode_uri_component|soundex|assert|warn|is_key|sorted|sorted_unique|count_distinct|" +
         "levenshtein_distance|levenshtein_match|regex_matches|regex_split|ngram_match|ngram_similarity|ngram_positional_similarity|uuid|" +
         "tokens|exists|starts_with|phrase|min_match|boost|analyzer|" +
@@ -170,4 +170,3 @@ oop.inherits(AqlHighlightRules, TextHighlightRules);
 
 exports.AqlHighlightRules = AqlHighlightRules;
 });
-
