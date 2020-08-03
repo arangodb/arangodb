@@ -226,7 +226,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> executeWithoutTrace(AqlCallStack const& stack, AqlCallList clientCall);
 
   std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange> executeFetcher(
-      AqlCallStack& stack, AqlCallType const& aqlCall, bool wasCalledWithContinueCall);
+      AqlCallStack const& stack, AqlCallType const& aqlCall, bool wasCalledWithContinueCall);
 
   std::tuple<ExecutorState, typename Executor::Stats, AqlCallType> executeProduceRows(
       typename Fetcher::DataRange& input, OutputAqlItemRow& output);
@@ -284,28 +284,28 @@ class ExecutionBlockImpl final : public ExecutionBlock {
       -> std::pair<ExecState, ExecutionState>;
 
   // Now perform Produce operation(s) on this executor.
-  [[nodiscard]] auto handleProduceState(AqlCallStack const& stack, AqlCall& clientCall)
+  [[nodiscard]] auto handleProduceState(AqlCall& clientCall)
       -> std::pair<ExecState, ExecutorState>;
 
   // Now perform Produce operation(s) on this executor.
   // non-spliced subquery variant, can return WAITING in intermediate state
-  [[nodiscard]] auto handleProduceStateSubquery(AqlCallStack const& stack, AqlCall& clientCall)
+  [[nodiscard]] auto handleProduceStateSubquery(AqlCall& clientCall)
       -> std::pair<ExecState, ExecutionState>;
 
 
   // Now perform fast Forward operation(s) on this executor.
-  [[nodiscard]] auto handleFastForwardState(AqlCallStack const& stack, AqlCall& clientCall)
+  [[nodiscard]] auto handleFastForwardState(AqlCall& clientCall)
       -> std::pair<ExecState, ExecutorState>;
 
   // Now perform fast Forward operation(s) on this executor.
   // non-spliced subquery variant, can return WAITING in intermediate state.
   template <class exec = Executor, typename = std::enable_if_t<is_one_of_v<exec, SubqueryExecutor<true>>>>
-  [[nodiscard]] auto handleFastForwardStateSubquery(AqlCallStack const& stack, AqlCall& clientCall)
+  [[nodiscard]] auto handleFastForwardStateSubquery(AqlCall& clientCall)
       -> std::pair<ExecState, ExecutionState>;
 
   // Now performan an upstream request
-  [[nodiscard]] auto handleUpstreamState(AqlCallStack& stack, AqlCallList const& clientCallList,
-                                         AqlCall& clientCall)
+  [[nodiscard]] auto handleUpstreamState(AqlCallStack const& stack, AqlCall& clientCall,
+                                         AqlCallType const& upstreamCall, bool wasCalledWithContinueCall)
       -> std::pair<ExecState, ExecutionState>;
 
   [[nodiscard]] auto handleNextSubqueryState(AqlCallStack& stack,
@@ -390,6 +390,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   bool _executorReturnedDone = false;
 
   bool _initialized = false;
+
+  // std::optional<AqlCallStack> _modifiableStack;
 };
 
 }  // namespace arangodb::aql
