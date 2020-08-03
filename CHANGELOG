@@ -1,6 +1,8 @@
 v3.6.6 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue #12349: arangosh compact Arangoerror 404.
+
 * Always fetch data for /_api/cluster/agency-dump from leader of the agency.
   Add option "redirectToLeader=true" to internal /_api/agency/state API.
 
