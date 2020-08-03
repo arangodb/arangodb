@@ -197,7 +197,7 @@ TEST_F(AqlItemBlockTest, test_block_contains_shadow_rows) {
   // No shadow Rows included
   assertShadowRowIndexes(block, {});
   
-  // add another shadow row
+  // add a shadow row
   block->makeShadowRow(1, 0);
   assertShadowRowIndexes(block, {1});
 
