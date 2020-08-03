@@ -1210,12 +1210,12 @@ void ClusterInfo::loadPlan() {
     _shardToName.swap(newShardToName);
   }
 
-    if (swapViews) {
-      _plannedViews.swap(_newPlannedViews);
-    }
-    if (swapAnalyzers) {
-      _dbAnalyzersRevision.swap(newDbAnalyzersRevision);
-    }
+  if (swapViews) {
+    _plannedViews.swap(_newPlannedViews);
+  }
+  if (swapAnalyzers) {
+    _dbAnalyzersRevision.swap(newDbAnalyzersRevision);
+  }
 
   if (planValid) {
     _planProt.isValid = true;
