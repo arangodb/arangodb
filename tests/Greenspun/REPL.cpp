@@ -240,7 +240,7 @@ int main(int argc, char** argv) {
       auto program = arangodb::velocypack::Parser::fromJson(line);
 
       VPackBuilder result;
-      auto res = greenspun::Evaluate(m, program->slice(), result).wrapError([](greenspun::EvalError& err) {
+      auto res = greenspun::Evaluate(m, program->slice(), result).mapError([](greenspun::EvalError& err) {
         err.wrapMessage("at top-level");
       });
       if (res.fail()) {

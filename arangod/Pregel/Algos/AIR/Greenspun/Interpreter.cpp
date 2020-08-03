@@ -57,14 +57,14 @@ EvalResult SpecialIf(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& re
       StackFrameGuard<false> guard(ctx);
       auto res = Evaluate(ctx, cond, condResult);
       if (!res) {
-        return res.wrapError([&](EvalError& err) {
+        return res.mapError([&](EvalError& err) {
           err.wrapMessage("in condition " + std::to_string(iter.index()));
         });
       }
     }
     if (!condResult.slice().isFalse()) {
       StackFrameGuard<false> guard(ctx);
-      return Evaluate(ctx, body, result).wrapError([&](EvalError& err) {
+      return Evaluate(ctx, body, result).mapError([&](EvalError& err) {
         err.wrapMessage("in case " + std::to_string(iter.index()));
       });
     }
@@ -100,7 +100,7 @@ EvalResult SpecialAnd(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& r
   for (; paramIterator.valid(); paramIterator++) {
     VPackBuilder value;
     if (auto res = Evaluate(ctx, *paramIterator, value); res.fail()) {
-      return res.wrapError([&](EvalError& err) {
+      return res.mapError([&](EvalError& err) {
         err.wrapMessage("in case " + std::to_string(paramIterator.index()));
       });
     }
@@ -119,7 +119,7 @@ EvalResult SpecialOr(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& re
   for (; paramIterator.valid(); paramIterator++) {
     VPackBuilder value;
     if (auto res = Evaluate(ctx, *paramIterator, value); res.fail()) {
-      return res.wrapError([&](EvalError& err) {
+      return res.mapError([&](EvalError& err) {
         err.wrapMessage("in case " + std::to_string(paramIterator.index()));
       });
     }
@@ -146,7 +146,7 @@ EvalResult SpecialSeq(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& r
       return store;
     });
     if (auto res = Evaluate(ctx, *paramIterator, usedBuilder); res.fail()) {
-      return res.wrapError([&](EvalError& err) {
+      return res.mapError([&](EvalError& err) {
         err.wrapMessage("at position " + std::to_string(paramIterator.index()));
       });
     }
@@ -178,7 +178,7 @@ EvalResult SpecialMatch(Machine& ctx, ArrayIterator paramIterator, VPackBuilder&
     auto&& [cmp, body] = unpackTuple<VPackSlice, VPackSlice>(pair);
     VPackBuilder cmpValue;
     if (auto res = Evaluate(ctx, cmp, cmpValue); !res) {
-      return res.wrapError([&](EvalError& err) {
+      return res.mapError([&](EvalError& err) {
         err.wrapMessage("in condition " + std::to_string(paramIterator.index() - 1));
       });
     }
@@ -189,7 +189,7 @@ EvalResult SpecialMatch(Machine& ctx, ArrayIterator paramIterator, VPackBuilder&
     }
 
     if (pattern == cmpValue.slice().getNumber<double>()) {
-      return Evaluate(ctx, body, result).wrapError([&](EvalError& err) {
+      return Evaluate(ctx, body, result).mapError([&](EvalError& err) {
         err.wrapMessage("in case " + std::to_string(paramIterator.index() - 1));
       });
     }
@@ -241,7 +241,7 @@ EvalResult SpecialForEach(Machine& ctx, ArrayIterator paramIterator, VPackBuilde
     VPackSlice pair = *paramIterator;
     paramIterator++;
     if (auto res = readIteratorPair(pair); res.fail()) {
-      return res.wrapError([&](EvalError& err) {
+      return res.mapError([&](EvalError& err) {
         err.wrapMessage("at position " + std::to_string(paramIterator.index() - 1));
       });
     }
@@ -277,7 +277,7 @@ EvalResult Call(Machine& ctx, VPackSlice const functionSlice,
     for (; paramIterator.valid(); ++paramIterator) {
       StackFrameGuard<false> guard(ctx);
       if (auto res = Evaluate(ctx, *paramIterator, paramBuilder); !res) {
-        return res.wrapError([&](EvalError& err) {
+        return res.mapError([&](EvalError& err) {
           err.wrapParameter(functionSlice.copyString(), paramIterator.index());
         });
       }
@@ -298,7 +298,7 @@ EvalResult Evaluate(Machine& ctx, VPackSlice const slice, VPackBuilder& result) 
       StackFrameGuard<false> guard(ctx);
       auto err = Evaluate(ctx, *paramIterator, functionBuilder);
       if (err.fail()) {
-        return err.wrapError(
+        return err.mapError(
             [&](EvalError& err) { err.wrapMessage("in function expression"); });
       }
     }
@@ -367,13 +367,13 @@ void Machine::popStack() {
   variables.pop_back();
 }
 
-EvalResult Machine::setFunction(std::string_view name, function_type&& f) {
+EvalResult Machine::setFunction(std::string_view name, function_type f) {
   auto sname = std::string{name};
 
   if (functions.find(sname) != functions.end()) {
     return EvalError("function `" + sname + "` already registered");
   }
-  functions[sname] = f;
+  functions[sname] = std::move(f);
   return {};
 }
 
@@ -393,7 +393,7 @@ EvalResult Machine::applyFunction(std::string function, VPackSlice const params,
 
   auto f = functions.find(function);
   if (f != functions.end()) {
-    return f->second(*this, params, result).wrapError([&](EvalError& err) {
+    return f->second(*this, params, result).mapError([&](EvalError& err) {
       err.wrapCall(function, params);
     });
   } else {

@@ -31,6 +31,7 @@
 #include "AccumulatorAggregator.h"
 
 #include "Greenspun/Primitives.h"
+#include "Greenspun/Extractor.h"
 
 using namespace arangodb::pregel;
 
@@ -44,46 +45,38 @@ VertexComputation::VertexComputation(VertexAccumulators const& algorithm)
 }
 
 void VertexComputation::registerLocalFunctions() {
-  _airMachine.setFunction("accum-ref",  // " name:id -> value:any ",
-                          std::bind(&VertexComputation::air_accumRef, this,
-                                    std::placeholders::_1, std::placeholders::_2,
-                                    std::placeholders::_3));
+  _airMachine.setFunctionMember("accum-ref",  // " name:id -> value:any ",
+                                &VertexComputation::air_accumRef, this);
 
-  _airMachine.setFunction("accum-set!",  // " name:id -> value:any -> void ",
-                          std::bind(&VertexComputation::air_accumSet, this,
-                                    std::placeholders::_1, std::placeholders::_2,
-                                    std::placeholders::_3));
+  _airMachine.setFunctionMember("accum-set!",  // " name:id -> value:any -> void ",
+                          &VertexComputation::air_accumSet, this);
 
-  _airMachine.setFunction("accum-clear!",  // " name:id -> void ",
-                          std::bind(&VertexComputation::air_accumClear, this,
-                                    std::placeholders::_1, std::placeholders::_2,
-                                    std::placeholders::_3));
+  _airMachine.setFunctionMember("accum-clear!",  // " name:id -> void ",
+                          &VertexComputation::air_accumClear, this);
 
-  _airMachine.setFunction("bind-ref",  // " name:id -> value:any ",
-                          std::bind(&VertexComputation::air_accumClear, this,
-                                    std::placeholders::_1, std::placeholders::_2,
-                                    std::placeholders::_3));
+  _airMachine.setFunctionMember("bind-ref",  // " name:id -> value:any ",
+                          &VertexComputation::air_accumClear, this);
 
-  _airMachine.setFunction("send-to-accum",  // " name:id -> to-vertex:pid -> value:any -> void ",
-                          std::bind(&VertexComputation::air_sendToAccum, this,
-                                    std::placeholders::_1, std::placeholders::_2,
-                                    std::placeholders::_3));
+  _airMachine.setFunctionMember("send-to-accum",  // " name:id -> to-vertex:pid -> value:any -> void ",
+                          &VertexComputation::air_sendToAccum, this);
 
-  _airMachine.setFunction("send-to-all-neighbours",  // " name:id -> value:any -> void ",
-                          std::bind(&VertexComputation::air_sendToAccum, this,
-                                    std::placeholders::_1, std::placeholders::_2,
-                                    std::placeholders::_3));
+  _airMachine.setFunctionMember("send-to-all-neighbours",  // " name:id -> value:any -> void ",
+                          &VertexComputation::air_sendToAccum, this);
 
-  _airMachine.setFunction("outbound-edges",  // " name:id -> value:any -> void ",
-                          std::bind(&VertexComputation::air_outboundEdges, this,
-                                    std::placeholders::_1, std::placeholders::_2,
-                                    std::placeholders::_3));
+  _airMachine.setFunctionMember("outbound-edges",  // " name:id -> value:any -> void ",
+                          &VertexComputation::air_outboundEdges, this);
 }
 
 greenspun::EvalResult VertexComputation::air_accumRef(greenspun::Machine& ctx,
                                                       VPackSlice const params,
                                                       VPackBuilder& result) {
-  auto&& [accumId] = unpackTuple<std::string>(params);
+  auto res = greenspun::extract<std::string>(params);
+  if (res.fail()) {
+    return std::move(res).error();
+  }
+
+  auto&& [accumId] = res.value();
+
 
   if (auto iter = vertexData()._accumulators.find(accumId);
       iter != std::end(vertexData()._accumulators)) {
@@ -107,7 +100,12 @@ greenspun::EvalResult VertexComputation::air_accumRef(greenspun::Machine& ctx,
 greenspun::EvalResult VertexComputation::air_accumSet(greenspun::Machine& ctx,
                                                       VPackSlice const params,
                                                       VPackBuilder& result) {
-  auto&& [accumId, value] = unpackTuple<std::string, VPackSlice>(params);
+  auto res = greenspun::extract<std::string, VPackSlice>(params);
+  if (res.fail()) {
+    return res.error();
+  }
+
+  auto&& [accumId, value] = res.value();
 
   if (auto iter = vertexData()._accumulators.find(std::string{accumId});
       iter != std::end(vertexData()._accumulators)) {
@@ -132,7 +130,11 @@ greenspun::EvalResult VertexComputation::air_accumSet(greenspun::Machine& ctx,
 greenspun::EvalResult VertexComputation::air_accumClear(greenspun::Machine& ctx,
                                                         VPackSlice const params,
                                                         VPackBuilder& result) {
-  auto&& [accumId] = unpackTuple<std::string>(params);
+  auto res = greenspun::extract<std::string>(params);
+  if (res.fail()) {
+    return res.error();
+  }
+  auto&& [accumId] = res.value();
 
   if (auto iter = vertexData()._accumulators.find(accumId);
       iter != std::end(vertexData()._accumulators)) {
@@ -154,9 +156,11 @@ greenspun::EvalResult VertexComputation::air_accumClear(greenspun::Machine& ctx,
 greenspun::EvalResult VertexComputation::air_sendToAccum(greenspun::Machine& ctx,
                                                          VPackSlice const params,
                                                          VPackBuilder& result) {
-  auto&& [destination, accumId, value] =
-      unpackTuple<VPackSlice, std::string, VPackSlice>(params);
-
+  auto res = greenspun::extract<VPackSlice, std::string, VPackSlice>(params);
+  if (res.fail()) {
+    return res.error();
+  }
+  auto&& [destination, accumId, value] = res.value();
   auto const& accums = algorithm().options().vertexAccumulators;
 
   if (auto i = accums.find(std::string{accumId}); i != accums.end()) {
@@ -196,7 +200,11 @@ greenspun::EvalResult VertexComputation::air_sendToAccum(greenspun::Machine& ctx
 
 greenspun::EvalResult VertexComputation::air_sendToAllNeighbours(
     greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  auto&& [accumId, value] = unpackTuple<std::string, VPackSlice>(params);
+  auto res = greenspun::extract<std::string, VPackSlice>(params);
+  if (res.fail()) {
+    return res.error();
+  }
+  auto&& [accumId, value] = res.value();
   MessageData msg;
   msg.reset(accumId, value, vertexData()._documentId);
   sendMessageToAllNeighbours(msg);
@@ -206,6 +214,10 @@ greenspun::EvalResult VertexComputation::air_sendToAllNeighbours(
 greenspun::EvalResult VertexComputation::air_outboundEdges(greenspun::Machine& ctx,
                                                            VPackSlice const params,
                                                            VPackBuilder& result) {
+  auto res = greenspun::extract<>(params);
+  if (res.fail()) {
+    return res.error();
+  }
   RangeIterator<Edge<EdgeData>> edgeIter = getEdges();
   VPackArrayBuilder edgesGuard(&result);
 
@@ -235,12 +247,15 @@ greenspun::EvalResult VertexComputation::air_neigbours(greenspun::Machine& ctx,
                                                        VPackBuilder& result) {
   // FIXME: Implement
   LOG_DEVEL << "air_neighbours is not implemented yet";
-  std::abort();
-  return {};
+  return greenspun::EvalError("not implemented");
 }
 
 greenspun::EvalResult VertexComputation::air_numberOutboundEdges(
     greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  auto res = greenspun::extract<>(params);
+  if (res.fail()) {
+    return res.error();
+  }
   result.add(VPackValue(getEdgeCount()));
   return {};
 }
@@ -248,6 +263,10 @@ greenspun::EvalResult VertexComputation::air_numberOutboundEdges(
 greenspun::EvalResult VertexComputation::air_numberOfVertices(greenspun::Machine& ctx,
                                                               VPackSlice const params,
                                                               VPackBuilder& result) {
+  auto res = greenspun::extract<>(params);
+  if (res.fail()) {
+    return res.error();
+  }
   // FIXME: is this the total number of vertices?
   result.add(VPackValue(context()->vertexCount()));
   return {};
@@ -256,8 +275,12 @@ greenspun::EvalResult VertexComputation::air_numberOfVertices(greenspun::Machine
 greenspun::EvalResult VertexComputation::air_bindRef(greenspun::Machine& ctx,
                                                      VPackSlice const params,
                                                      VPackBuilder& result) {
+  auto res = greenspun::extract<std::string>(params);
+  if (res.fail()) {
+    return res.error();
+  }
   auto const& bindings = algorithm().options().bindings;
-  auto&& [bindId] = unpackTuple<std::string>(params);
+  auto&& [bindId] = res.value();
 
   if (auto iter = bindings.find(bindId); iter != std::end(bindings)) {
     result.add(iter->second.slice());

@@ -84,31 +84,56 @@ struct EvalError {
   std::string message;
 };
 
-struct EvalResult {
-  bool ok() const { return !_error.has_value(); }
-  bool fail() const { return _error.has_value(); }
+template<typename T>
+struct EvalResultT {
+  bool ok() const { return hasValue(); }
+  bool fail() const { return !ok(); }
+
+  bool hasError() const { return _value.index() == 1; }
+  bool hasValue() const { return _value.index() == 0; }
+
   operator bool() const { return ok(); }
 
-  EvalResult() = default;
-  EvalResult(EvalError error) : _error(error) {}
-  EvalResult(EvalResult const&) = default;
-  EvalResult(EvalResult&&) = default;
-  EvalResult& operator=(EvalResult const&) = default;
-  EvalResult& operator=(EvalResult&&) = default;
+  EvalResultT() = default;
+  EvalResultT(EvalError error) : _value(std::in_place_index<1>, std::move(error)) {}
+  EvalResultT(EvalResultT const&) = default;
+  EvalResultT(EvalResultT&&) noexcept = default;
+  EvalResultT& operator=(EvalResultT const&) = default;
+  EvalResultT& operator=(EvalResultT&&) noexcept = default;
+
+  EvalResultT(T s) : _value(std::in_place_index<0>, std::move(s)) {}
+
 
   template <typename F>
-  EvalResult& wrapError(F&& f) {
-    if (_error) {
-      std::forward<F>(f)(_error.value());
+  EvalResultT mapError(F&& f) {
+    if (hasError()) {
+      std::forward<F>(f)(error());
     }
     return *this;
   }
 
-  EvalError& error() { return _error.value(); }
-  EvalError const& error() const { return _error.value(); }
+  template<typename F>
+  auto map(F&& f) && -> EvalResultT<std::invoke_result_t<F, T&&>> {
+    if (hasValue()) {
+      return {f(value())};
+    } else if(hasError()) {
+      return error();
+    } else {
+      return EvalError("valueless by exception");
+    }
+  }
 
-  std::optional<EvalError> _error;
+  T& value() & { return std::get<0>(_value); }
+  T const& value() const& { return std::get<0>(_value); }
+  T&& value() && { return std::get<0>(std::move(_value)); }
+  EvalError& error() & { return std::get<1>(_value); }
+  EvalError const& error() const& { return std::get<1>(_value); }
+  EvalError&& error() && { return std::get<1>(std::move(_value)); }
+
+  std::variant<T, EvalError> _value;
 };
+
+using EvalResult = EvalResultT<std::monostate>;
 
 }  // namespace greenspun
 }  // namespace arangodb

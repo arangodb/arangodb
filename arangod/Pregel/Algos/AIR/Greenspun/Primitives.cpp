@@ -29,6 +29,7 @@
 
 #include <iostream>
 
+#include "Extractor.h"
 #include "Interpreter.h"
 #include "Primitives.h"
 
@@ -314,6 +315,15 @@ EvalResult Prim_PrintLn(Machine& ctx, VPackSlice const params, VPackBuilder& res
   return {};
 }
 
+EvalResult Prim_ParamTest(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  auto res = extract<std::string, bool, uint64_t>(params);
+  if (res.fail()) {
+    return res.error();
+  }
+  result.add(VPackSlice::trueSlice());
+  return {};
+}
+
 void RegisterFunction(Machine& ctx, std::string_view name, Machine::function_type&& f) {
   ctx.setFunction(name, std::move(f));
 }
@@ -356,6 +366,7 @@ void RegisterAllPrimitives(Machine& ctx) {
 
   // TODO: We can register bind parameters as variables
   ctx.setFunction("bind-ref", Prim_VarRef);
+  ctx.setFunction("param-test", Prim_ParamTest);
 }
 
 }  // namespace greenspun

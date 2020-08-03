@@ -49,14 +49,22 @@ auto unpackTuple(VPackArrayIterator& iter, std::index_sequence<Is...>) {
 }  // namespace detail
 /// @brief unpacks an array as tuple. Use like this: auto&& [a, b, c] = unpack<size_t, std::string, double>(slice);
 template <typename... Ts>
-static std::tuple<Ts...> unpackTuple(VPackSlice slice) {
+std::tuple<Ts...> unpackTuple(VPackSlice slice) {
   VPackArrayIterator iter(slice);
   return detail::unpackTuple<Ts...>(iter, std::index_sequence_for<Ts...>{});
 }
 template <typename... Ts>
-static std::tuple<Ts...> unpackTuple(VPackArrayIterator& iter) {
+std::tuple<Ts...> unpackTuple(VPackArrayIterator& iter) {
   return detail::unpackTuple<Ts...>(iter, std::index_sequence_for<Ts...>{});
 }
+
+template<class T, typename R, typename... Args>
+auto bind_member(R(T::* fn)(Args...), T* ptr) {
+  return [fn, ptr](Args&&... args) {
+    return (ptr->*fn)(std::forward<Args>(args)...);
+  };
+}
+
 
 
 #endif  // ARANGODB3_TEMPLATE_STUFF_H

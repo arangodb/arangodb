@@ -52,10 +52,21 @@ struct Machine {
   using function_type =
       std::function<EvalResult(Machine& ctx, VPackSlice const slice, VPackBuilder& result)>;
 
-  EvalResult setFunction(std::string_view name, function_type&& f);
+  EvalResult setFunction(std::string_view name, function_type f);
+
+
   EvalResult unsetFunction(std::string_view name);
 
   EvalResult applyFunction(std::string name, VPackSlice const slice, VPackBuilder& result);
+
+  template<typename T>
+  using member_function_type =
+    std::function<EvalResult(T*, Machine& ctx, VPackSlice const slice, VPackBuilder& result)>;
+
+  template<typename T, typename F>
+  EvalResult setFunctionMember(std::string_view name, F&& f, T* ptr) {
+    return setFunction(name, bind_member(f, ptr));
+  }
 
  private:
   std::vector<std::unordered_map<std::string, VPackSlice>> variables;
