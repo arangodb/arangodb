@@ -245,10 +245,10 @@ static void SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
                                          syncer->progress() + "'");
     }
 
-    if (keepBarrier) {
+    if (keepBarrier) {  // TODO: keep just for API compatibility
       result->Set(context,
                   TRI_V8_ASCII_STRING(isolate, "barrierId"),
-                  TRI_V8UInt64String<TRI_voc_tick_t>(isolate, syncer->stealBarrier())).FromMaybe(false);
+                  TRI_V8UInt64String<TRI_voc_tick_t>(isolate, 0)).FromMaybe(false);
     }
 
     result->Set(context,
@@ -369,7 +369,7 @@ static void JS_SynchronizeReplicationFinalize(v8::FunctionCallbackInfo<v8::Value
 
   DatabaseGuard guard(database);
 
-  DatabaseTailingSyncer syncer(guard.database(), configuration, fromTick, true, 0);
+  DatabaseTailingSyncer syncer(guard.database(), configuration, fromTick, /*useTick*/true);
 
   if (TRI_HasProperty(context, isolate, object, "leaderId")) {
     syncer.setLeaderId(TRI_ObjectToString(
@@ -545,7 +545,7 @@ static void StartApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& a
 
   ReplicationApplier* applier = getContinuousApplier(isolate, applierType);
 
-  applier->startTailing(initialTick, useTick, barrierId);
+  applier->startTailing(initialTick, useTick);
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END

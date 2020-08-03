@@ -999,7 +999,7 @@ void HeartbeatThread::runSingleServer() {
             applier->reconfigure(config);
 
             // reads ticks from configuration, check again next time
-            applier->startTailing(0, false, 0);
+            applier->startTailing(/*initialTick*/0, /*useTick*/false);
             continue;
           }
         }
