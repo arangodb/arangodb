@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed issue #12349: arangosh compact Arangoerror 404.
+
 * Wait until restore task queue is idle before shutting down.
 
 * Fix a race problem in the unit tests w.r.t. PlanSyncer.
