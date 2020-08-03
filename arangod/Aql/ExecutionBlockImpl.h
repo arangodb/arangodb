@@ -50,6 +50,8 @@ class IdExecutor;
 template <bool isModificationSubquery>
 class SubqueryExecutor;
 
+class SubqueryStartExecutor;
+
 struct AqlCall;
 class AqlItemBlock;
 class ExecutionEngine;
@@ -263,7 +265,10 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   // Executor is done, we need to handle ShadowRows of subqueries.
   // In most executors they are simply copied, in subquery executors
   // there needs to be actions applied here.
-  [[nodiscard]] auto shadowRowForwarding(AqlCallStack& stack) -> ExecState;
+  [[nodiscard]] auto shadowRowForwarding() -> ExecState;
+
+  template <class exec = Executor, typename = std::enable_if_t<is_one_of_v<exec, SubqueryStartExecutor>>>
+  [[nodiscard]] auto shadowRowForwardingSubqueryStart(AqlCallStack const& stack, AqlCall& subqueryCall) -> ExecState;
 
   [[nodiscard]] auto outputIsFull() const noexcept -> bool;
 
@@ -308,7 +313,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
                                          AqlCallType const& upstreamCall, bool wasCalledWithContinueCall)
       -> std::pair<ExecState, ExecutionState>;
 
-  [[nodiscard]] auto handleNextSubqueryState(AqlCallStack& stack,
+  [[nodiscard]] auto handleNextSubqueryState(AqlCallStack const& stack,
                                              AqlCallList const& clientCallList) -> ExecState;
 
   void resetExecutor();

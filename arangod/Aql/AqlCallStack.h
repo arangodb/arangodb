@@ -148,6 +148,7 @@ class AqlCallStack {
    * @return AqlCall& reference to the call, can be modified.
    */
   auto getCallAtDepth(size_t depth) const -> AqlCall const&;
+  auto getCallListAtDepth(size_t depth) const-> AqlCallList const&;
 
   /**
    * @brief Get a reference to the top most call.

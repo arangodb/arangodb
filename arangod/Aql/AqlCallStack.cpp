@@ -223,6 +223,11 @@ auto AqlCallStack::modifyCallListAtDepth(size_t depth) -> AqlCallList& {
   return _operations.at(_operations.size() - 1 - depth);
 }
 
+auto AqlCallStack::getCallListAtDepth(size_t depth) const -> AqlCallList const& {
+  TRI_ASSERT(_operations.size() > depth);
+  return _operations.at(_operations.size() - 1 - depth);
+}
+
 auto AqlCallStack::getCallAtDepth(size_t depth) const -> AqlCall const& {
   // depth 0 is back of vector
   TRI_ASSERT(_operations.size() > depth);
