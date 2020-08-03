@@ -1,6 +1,8 @@
 devel
 -----
 
+* Improve performance of internal cluster Plan and Current reload operations. 
+
 * Fixed issue #12349: arangosh compact Arangoerror 404.
 
 * Wait until restore task queue is idle before shutting down.
