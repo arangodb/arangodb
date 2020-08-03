@@ -4632,7 +4632,6 @@ AqlValue Functions::Ip4FromNumber(ExpressionContext* expressionContext, transact
 
   uint64_t number = static_cast<uint64_t>(input);
 
-  inet_ntop
   // in theory, we only need a 15 bytes buffer here, as the maximum result
   // string is "255.255.255.255"
   char result[32]; 
