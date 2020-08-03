@@ -125,7 +125,7 @@ TEST_P(SubqueryStartExecutorTest, empty_input_does_not_add_shadow_rows) {
       .expectOutput({0}, {})
       .expectSkipped(0, 0)
       .setCallStack(queryStack(AqlCall{}))
-      .setCall(queryCall(AqlCall{}))
+      .setCallList(queryCall(AqlCall{}))
       .setInputSplitType(GetSplit())
       .run();
 }
@@ -139,7 +139,7 @@ TEST_P(SubqueryStartExecutorTest, adds_a_shadowrow_after_single_input) {
       .expectSkipped(0, 0)
       .expectOutput({0}, {{R"("a")"}, {R"("a")"}}, {{1, 0}})
       .setCallStack(queryStack(AqlCall{}))
-      .setCall(queryCall(AqlCall{}))
+      .setCallList(queryCall(AqlCall{}))
       .setInputSplitType(GetSplit())
       .run();
 }
@@ -154,7 +154,7 @@ TEST_P(SubqueryStartExecutorTest, adds_a_shadowrow_after_every_input_line_in_sin
       .expectOutput({0}, {{R"("a")"}, {R"("a")"}, {R"("b")"}, {R"("b")"}, {R"("c")"}, {R"("c")"}},
                     {{1, 0}, {3, 0}, {5, 0}})
       .setCallStack(queryStack(AqlCall{}))
-      .setCall(queryCall(AqlCall{}))
+      .setCallList(queryCall(AqlCall{}))
       .setInputSplitType(GetSplit())
       .run();
 }
@@ -171,7 +171,7 @@ TEST_P(SubqueryStartExecutorTest, adds_a_shadowrow_after_every_input_line) {
       .expectOutput({0}, {{R"("a")"}, {R"("a")"}, {R"("b")"}, {R"("b")"}, {R"("c")"}, {R"("c")"}},
                     {{1, 0}, {3, 0}, {5, 0}})
       .setCallStack(queryStack(AqlCall{}))
-      .setCall(queryCall(AqlCall{}))
+      .setCallList(queryCall(AqlCall{}))
       .setInputSplitType(GetSplit())
       .run(true);
 }
@@ -195,7 +195,7 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_does_not_fit_in_current_block) {
         .expectSkipped(0, 0)
         .expectOutput({0}, {{R"("a")"}}, {})
         .setCallStack(queryStack(AqlCall{}))
-        .setCall(queryCall(AqlCall{}))
+        .setCallList(queryCall(AqlCall{}))
         .setInputSplitType(GetSplit())
         .run();
   }
@@ -211,7 +211,7 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_does_not_fit_in_current_block) {
         .expectSkipped(0, 0)
         .expectOutput({0}, {{R"("a")"}, {R"("a")"}}, {{1, 0}})
         .setCallStack(queryStack(AqlCall{}))
-        .setCall(queryCall(AqlCall{}))
+        .setCallList(queryCall(AqlCall{}))
         .setInputSplitType(GetSplit())
         .run(true);
   }
@@ -227,7 +227,7 @@ TEST_P(SubqueryStartExecutorTest, skip_in_subquery) {
       .expectOutput({0}, {{R"("a")"}}, {{0, 0}})
       .expectSkipped(0, 1)
       .setCallStack(queryStack(AqlCall{}))
-      .setCall(queryCall(AqlCall{10, false}))
+      .setCallList(queryCall(AqlCall{10, false}))
       .setInputSplitType(GetSplit())
       .run();
 }
@@ -242,7 +242,7 @@ TEST_P(SubqueryStartExecutorTest, fullCount_in_subquery) {
       .expectOutput({0}, {{R"("a")"}}, {{0, 0}})
       .expectSkipped(0, 1)
       .setCallStack(queryStack(AqlCall{}))
-      .setCall(queryCall(AqlCall{0, true, 0, AqlCall::LimitType::HARD}))
+      .setCallList(queryCall(AqlCall{0, true, 0, AqlCall::LimitType::HARD}))
       .setInputSplitType(GetSplit())
       .run();
 }
@@ -264,7 +264,7 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding) {
       .expectedState(ExecutionState::DONE)
       .expectOutput({0}, {{R"("a")"}, {R"("a")"}, {R"("a")"}}, {{1, 0}, {2, 1}})
       .setCallStack(stack)
-      .setCall(queryCall(AqlCall{})
+      .setCallList(queryCall(AqlCall{}))
       .setInputSplitType(GetSplit())
       .run();
 }
@@ -285,7 +285,7 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_single_call)
       .expectedState(ExecutionState::HASMORE)
       .expectOutput({0}, {{R"("a")"}, {R"("a")"}, {R"("a")"}}, {{1, 0}, {2, 1}})
       .setCallStack(stack)
-      .setCall(queryCall(AqlCall{})
+      .setCallList(queryCall(AqlCall{}))
       .setInputSplitType(GetSplit())
       .run();
 }
@@ -311,7 +311,7 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_many_request
           {{R"("a")"}, {R"("a")"}, {R"("a")"}, {R"("b")"}, {R"("b")"}, {R"("b")"}, {R"("c")"}, {R"("c")"}, {R"("c")"}},
           {{1, 0}, {2, 1}, {4, 0}, {5, 1}, {7, 0}, {8, 1}})
       .setCallStack(stack)
-      .setCall(queryCall(AqlCall{})
+      .setCallList(queryCall(AqlCall{}))
       .setInputSplitType(GetSplit())
       .run(true);
 }
@@ -344,7 +344,7 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_not_enough_s
         .expectedState(ExecutionState::HASMORE)
         .expectOutput({0}, {{R"("a")"}, {R"("a")"}}, {{1, 0}})
         .setCallStack(stack)
-        .setCall(queryCall(AqlCall{})
+        .setCallList(queryCall(AqlCall{}))
         .setInputSplitType(GetSplit())
         .run();
   }
@@ -372,7 +372,7 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_not_enough_s
             {{R"("a")"}, {R"("a")"}, {R"("a")"}, {R"("b")"}, {R"("b")"}, {R"("b")"}, {R"("c")"}, {R"("c")"}, {R"("c")"}},
             {{1, 0}, {2, 1}, {4, 0}, {5, 1}, {7, 0}, {8, 1}})
         .setCallStack(stack)
-        .setCall(queryCall(AqlCall{})
+        .setCallList(queryCall(AqlCall{}))
         .setInputSplitType(GetSplit())
         .run(true);
   }
@@ -388,7 +388,7 @@ TEST_P(SubqueryStartExecutorTest, skip_in_outer_subquery) {
         .expectOutput({0}, {{R"("b")"}, {R"("b")"}}, {{1, 0}})
         .expectSkipped(1, 0)
         .setCallStack(queryStack(AqlCall{1, false, AqlCall::Infinity{}}))
-        .setCall(queryCall(AqlCall{})
+        .setCallList(queryCall(AqlCall{}))
         .setInputSplitType(GetSplit())
         .run();
   } else {
@@ -406,7 +406,7 @@ TEST_P(SubqueryStartExecutorTest, DISABLED_skip_only_in_outer_subquery) {
         .expectOutput({0}, {})
         .expectSkipped(1, 0)
         .setCallStack(queryStack(AqlCall{1, false}))
-        .setCall(queryCall(AqlCall{})
+        .setCallList(queryCall(AqlCall{}))
         .setInputSplitType(GetSplit())
         .run();
   } else {
@@ -424,7 +424,7 @@ TEST_P(SubqueryStartExecutorTest, fullCount_in_outer_subquery) {
         .expectOutput({0}, {})
         .expectSkipped(6, 0)
         .setCallStack(queryStack(AqlCall{0, true, 0, AqlCall::LimitType::HARD}))
-        .setCall(queryCall(AqlCall{})
+        .setCallList(queryCall(AqlCall{}))
         .setInputSplitType(GetSplit())
         .run();
   } else {
@@ -443,7 +443,7 @@ TEST_P(SubqueryStartExecutorTest, fastForward_in_inner_subquery) {
                       {{0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}})
         .expectSkipped(0, 0)
         .setCallStack(queryStack(AqlCall{0, false, AqlCall::Infinity{}}))
-        .setCall(queryCall(AqlCall{0, false, 0, AqlCall::LimitType::HARD})
+        .setCallList(queryCall(AqlCall{0, false, 0, AqlCall::LimitType::HARD}))
         .setInputSplitType(GetSplit())
         .run();
   } else {
@@ -461,7 +461,7 @@ TEST_P(SubqueryStartExecutorTest, skip_out_skip_in) {
         .expectOutput({0}, {{R"("c")"}}, {{0, 0}})
         .expectSkipped(2, 1)
         .setCallStack(queryStack(AqlCall{2, false, AqlCall::Infinity{}}))
-        .setCall(queryCall(AqlCall{10, false, AqlCall::Infinity{}})
+        .setCallList(queryCall(AqlCall{10, false, AqlCall::Infinity{}}))
         .setInputSplitType(GetSplit())
         .run();
   } else {
@@ -479,7 +479,7 @@ TEST_P(SubqueryStartExecutorTest, fullbypass_in_outer_subquery) {
         .expectOutput({0}, {})
         .expectSkipped(0, 0)
         .setCallStack(queryStack(AqlCall{0, false, 0, AqlCall::LimitType::HARD}))
-        .setCall(queryCall(AqlCall{})
+        .setCallList(queryCall(AqlCall{}))
         .setInputSplitType(GetSplit())
         .run();
   } else {

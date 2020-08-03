@@ -122,6 +122,12 @@ struct ExecutorTestHelper {
     return *this;
   }
 
+  auto setCallList(AqlCallList c) -> ExecutorTestHelper& {
+    _clientCall = c;
+    return *this;
+  }
+
+
   auto setInputValue(MatrixBuilder<inputColumns> in) -> ExecutorTestHelper& {
     _input = std::move(in);
     return *this;

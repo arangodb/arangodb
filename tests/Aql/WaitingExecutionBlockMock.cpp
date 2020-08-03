@@ -113,8 +113,8 @@ std::pair<arangodb::aql::ExecutionState, Result> WaitingExecutionBlockMock::shut
 }
 
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::execute(AqlCallStack const& stack, arangodb::aql::AqlCallList clientCall) {
-  traceExecuteBegin(stack);
-  auto res = executeWithoutTrace(stack);
+  traceExecuteBegin(stack, clientCall);
+  auto res = executeWithoutTrace(stack, std::move(clientCall));
   traceExecuteEnd(res);
   return res;
 }
@@ -170,12 +170,12 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> WaitingExecutionBl
         // We do not have anything to do for this call
         // But let us only do this on top-level queries
 
-        auto call = stack.peek();
+        auto const& call = clientCall.peekNextCall();
         if (call.hasHardLimit() && call.getLimit() == 0) {
           // We are in fullCount/fastForward phase now.
           while (state == ExecutionState::HASMORE) {
             auto [nextState, nextSkipped, nextResult] =
-                _blockData.execute(stack, ExecutionState::DONE);
+                _blockData.execute(stack, clientCall, ExecutionState::DONE);
             state = nextState;
             // We are disallowed to have any result here.
             TRI_ASSERT(nextResult == nullptr);
