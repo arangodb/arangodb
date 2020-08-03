@@ -1,3 +1,9 @@
+v3.7.1 (XXXX-XX-XX)
+-------------------
+
+* Fixed issue #12349: arangosh compact Arangoerror 404.
+
+
 v3.7.1-rc.1 (2020-07-24)
 ------------------------
 
