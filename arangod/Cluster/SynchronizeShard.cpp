@@ -855,7 +855,6 @@ bool SynchronizeShard::first() {
       }
 
       SyncerId syncerId = syncRes.get();
-      NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
 
       VPackSlice collections = sy.get(COLLECTIONS);
       if (collections.length() == 0 || collections[0].get("name").copyString() != shard) {
