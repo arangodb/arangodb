@@ -1209,7 +1209,7 @@ bool AqlItemBlock::ShadowRows::is(size_t row) const noexcept {
 
 size_t AqlItemBlock::ShadowRows::getDepth(size_t row) const noexcept {
   TRI_ASSERT(_depths.size() > row);
-  if (_depths.size() <= row) {
+  if (ADB_UNLIKELY(_depths.size() <= row)) {
     // should not happen
     return 0;
   }
