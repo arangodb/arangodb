@@ -862,7 +862,7 @@ TEST_P(CommonGatherExecutorTest, skip_main_query_sub_1) {
     EXPECT_EQ(skipped.getSkipOnSubqueryLevel(1), 1);
     assertResultValid(block, result);
     // we skipped 1 count it.
-    stack.modifyCallAtDepth(1).offset -= 1;
+    stack.modifyCallAtDepth(0).offset -= 1;
     EXPECT_EQ(state, ExecutionState::HASMORE);
   }
   {
@@ -944,8 +944,8 @@ TEST_P(CommonGatherExecutorTest, skip_over_subquery) {
     assertResultValid(block, result);
 
     // Fix the stack for the next call
-    stack.modifyCallAtDepth(1).didSkip(offset);
-    stack.modifyCallAtDepth(1).resetSkipCount();
+    stack.modifyCallAtDepth(0).didSkip(offset);
+    stack.modifyCallAtDepth(0).resetSkipCount();
   }
 
   {

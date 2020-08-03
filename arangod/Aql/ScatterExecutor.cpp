@@ -86,7 +86,7 @@ auto ScatterExecutor::ClientBlockData::execute(AqlCallStack const& callStack, Aq
   TRI_ASSERT(_executor != nullptr);
 
   // Make sure we actually have data before you call execute
-  TRI_ASSERT(hasDataFor(callStack.peek()));
+  TRI_ASSERT(hasDataFor(clientCall.peekNextCall()));
   if (!_executorHasMore) {
     auto const& [block, skipResult] = _queue.front();
     // This cast is guaranteed, we create this a couple lines above and only

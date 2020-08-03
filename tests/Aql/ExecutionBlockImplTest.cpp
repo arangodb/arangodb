@@ -90,12 +90,14 @@ class SharedExecutionBlockImplTest {
   }
 
   std::pair<AqlCallStack, AqlCallList> buildStack(AqlCall call) {
-    return {AqlCallStack::emptyStack(), AqlCallList{call}};
+    return buildStack({}, call);
   }
 
-  std::pair<AqlCallStack, AqlCallList> buildStack(AqlCall subqueryCall, AqlCall call) {
+  std::pair<AqlCallStack, AqlCallList> buildStack(std::vector<AqlCall> subqueryCalls, AqlCall call) {
     AqlCallStack stack{};
-    stack.pushCall(AqlCallList{subqueryCall});
+    for (auto const& c : subqueryCalls) {
+      stack.pushCall(AqlCallList{c});
+    }
     return {std::move(stack), AqlCallList{call}};
   }
 
@@ -1866,7 +1868,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, only_relevant_shadowRows) {
     // We always take a new call. We do not want the call to be modified cross
     // subqueries, this would not be done by Executors.
     auto const& call = getCall();
-    auto [stack, clientCall] = buildStack(AqlCall{}, call);
+    auto [stack, clientCall] = buildStack({AqlCall{}}, call);
     // We cannot group shadowRows within a single call.
     // So we end up with 3 results, each 1 shadowRow, no matter what the call is
     auto [state, skipped, block] = testee->execute(stack, clientCall);
@@ -1929,7 +1931,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, input_and_relevant_shadowRow) {
   auto testee = forwardBlock(getAsserter, skipAsserter, producer.get(), outReg);
 
   auto const& call = getCall();
-  auto [stack, clientCall] = buildStack(AqlCall{}, call);
+  auto [stack, clientCall] = buildStack({AqlCall{}}, call);
   if (doesWaiting()) {
     auto const [state, skipped, block] = testee->execute(stack, clientCall);
     EXPECT_EQ(state, ExecutionState::WAITING);
@@ -1985,8 +1987,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, input_and_non_relevant_shadowRo
   auto testee = forwardBlock(getAsserter, skipAsserter, producer.get(), outReg);
 
   auto const& call = getCall();
-  auto [stack, clientCall] = buildStack(AqlCall{}, AqlCall{});
-  stack.pushCall(AqlCallList{call});
+  auto [stack, clientCall] = buildStack({AqlCall{}, AqlCall{}}, call);
   if (doesWaiting()) {
     auto const [state, skipped, block] = testee->execute(stack, clientCall);
     EXPECT_EQ(state, ExecutionState::WAITING);
@@ -2060,8 +2061,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, multiple_subqueries) {
     }
     subqueryData->close();
     auto call = getCall();
-    auto [stack, clientCall] = buildStack(AqlCall{}, call);
-    stack.pushCall(AqlCallList{AqlCall{}});
+    auto [stack, clientCall] = buildStack({AqlCall{}, AqlCall{}}, call);
     if (doesWaiting()) {
       auto const [state, skipped, block] = testee->execute(stack, clientCall);
       EXPECT_EQ(state, ExecutionState::WAITING);
@@ -2083,8 +2083,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, multiple_subqueries) {
         forwardCall.hardLimit = 0u;
         forwardCall.fullCount = false;
 
-        auto [forwardStack, clientCall] = buildStack(AqlCall{}, forwardCall);
-        forwardStack.pushCall(AqlCallList{AqlCall{}});
+        auto [forwardStack, clientCall] = buildStack({AqlCall{}, AqlCall{}}, forwardCall);
 
         auto const [forwardState, forwardSkipped, forwardBlock] =
             testee->execute(forwardStack, clientCall);
@@ -2234,8 +2233,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
   auto testee = forwardBlock(getAsserter, skipAsserter, producerDepth1.get(), outReg);
 
   if (doesWaiting()) {
-    auto [stack, clientCall] = buildStack(AqlCall{}, AqlCall{});
-    stack.pushCall(AqlCallList{getCall()});
+    auto [stack, clientCall] = buildStack({AqlCall{}, AqlCall{}}, getCall());
     // we only wait exactly once, only one block upstream that is not sliced.
     auto const& [state, skipped, block] = testee->execute(stack, clientCall);
     EXPECT_EQ(state, ExecutionState::WAITING);
@@ -2246,8 +2244,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
   bool skip = call.getOffset() > 0 || (call.getLimit() == 0 && call.needsFullCount());
   {
     // First subquery
-    auto [stack, clientCall] = buildStack(AqlCall{}, AqlCall{});
-    stack.pushCall(AqlCallList{getCall()});
+    auto [stack, clientCall] = buildStack({AqlCall{}, AqlCall{}}, getCall());
     auto const& [state, skipped, block] = testee->execute(stack, clientCall);
     EXPECT_EQ(state, ExecutionState::HASMORE);
     ASSERT_NE(block, nullptr);
@@ -2286,8 +2283,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
 
   {
     // Second subquery
-    auto [stack, clientCall] = buildStack(AqlCall{}, AqlCall{});
-    stack.pushCall(AqlCallList{getCall()});
+    auto [stack, clientCall] = buildStack({AqlCall{}, AqlCall{}}, getCall());
     auto const& [state, skipped, block] = testee->execute(stack, clientCall);
     EXPECT_EQ(state, ExecutionState::HASMORE);
     ASSERT_NE(block, nullptr);
@@ -2313,8 +2309,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
 
   {
     // Third subquery
-    auto [stack, clientCall] = buildStack(AqlCall{}, AqlCall{});
-    stack.pushCall(AqlCallList{getCall()});
+    auto [stack, clientCall] = buildStack({AqlCall{}, AqlCall{}}, getCall());
     auto const& [state, skipped, block] = testee->execute(stack, clientCall);
     EXPECT_EQ(state, ExecutionState::DONE);
     ASSERT_NE(block, nullptr);
