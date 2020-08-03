@@ -1,6 +1,12 @@
 devel
 -----
 
+* Improve performance of internal cluster Plan and Current reload operations. 
+
+* Fixed issue #12349: arangosh compact Arangoerror 404.
+
+* Wait until restore task queue is idle before shutting down.
+
 * Fix a race problem in the unit tests w.r.t. PlanSyncer.
 
 * Always fetch data for /_api/cluster/agency-dump from leader of the agency.

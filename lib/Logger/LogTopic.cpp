@@ -222,4 +222,5 @@ LogTopic::LogTopic(std::string const& name, LogLevel level)
   }
 
   Topics::instance().emplace(name, this);
+  TRI_ASSERT(_id < MAX_LOG_TOPICS);
 }
