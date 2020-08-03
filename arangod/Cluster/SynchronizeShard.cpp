@@ -856,10 +856,8 @@ bool SynchronizeShard::first() {
 
       SyncerId syncerId = syncRes.get();
       NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
-      network::ConnectionPool* pool = nf.pool();
 
       VPackSlice collections = sy.get(COLLECTIONS);
-
       if (collections.length() == 0 || collections[0].get("name").copyString() != shard) {
         std::stringstream error;
         error << "shard " << shard << " seems to be gone from leader, this "

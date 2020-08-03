@@ -538,11 +538,6 @@ static void StartApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& a
     useTick = true;
   }
 
-  TRI_voc_tick_t barrierId = 0;
-  if (args.Length() >= 2) {
-    barrierId = TRI_ObjectToUInt64(isolate, args[1], true);
-  }
-
   ReplicationApplier* applier = getContinuousApplier(isolate, applierType);
 
   applier->startTailing(initialTick, useTick);
