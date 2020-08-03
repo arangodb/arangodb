@@ -37,6 +37,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
+#include "Basics/ResultT.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/Thread.h"
 #include "Basics/VelocyPackHelper.h"
@@ -44,6 +45,7 @@
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/RebootTracker.h"
 #include "Futures/Future.h"
+#include "Network/types.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/VocbaseInfo.h"
@@ -346,7 +348,11 @@ class ClusterInfo final {
 #endif
 
  private:
-  typedef std::unordered_map<CollectionID, std::shared_ptr<LogicalCollection>> DatabaseCollections;
+  struct CollectionWithHash {
+    uint64_t hash;
+    std::shared_ptr<LogicalCollection> collection;
+  };
+  typedef std::unordered_map<CollectionID, CollectionWithHash> DatabaseCollections;
   typedef std::unordered_map<DatabaseID, DatabaseCollections> AllCollections;
   typedef std::unordered_map<CollectionID, std::shared_ptr<CollectionInfoCurrent>> DatabaseCollectionsCurrent;
   typedef std::unordered_map<DatabaseID, DatabaseCollectionsCurrent> AllCollectionsCurrent;
@@ -438,6 +444,11 @@ public:
    */
   void startSyncers();
 
+  /**
+   * @brief wait for syncers' full stop
+   */
+  void waitForSyncersToStop();
+
   /// @brief produces an agency dump and logs it
   void logAgencyDump() const;
 
@@ -470,18 +481,40 @@ public:
   arangodb::Result agencyReplan(VPackSlice const plan);
 
   /**
-   * @brief Wait for plan cache to be at Raft index
-   * @param    Plan to adapt to
+   * @brief Wait for Plan cache to be at the given Raft index
+   * @param    Plan Raft index to wait for
    * @return       Operation's result
    */
-  futures::Future<Result> waitForPlan(uint64_t index);
+  futures::Future<Result> waitForPlan(uint64_t raftIndex);
 
   /**
-   * @brief Wait for plan cache to be at Raft index
-   * @param    Plan to adapt to
+   * @brief Wait for Plan cache to be at the given Plan version
+   * @param    Plan version to wait for
    * @return       Operation's result
    */
-  futures::Future<Result> waitForCurrent(uint64_t index);
+  [[nodiscard]] futures::Future<Result> waitForPlanVersion(uint64_t planVersion);
+
+  /**
+  * @brief Fetch the current Plan version and wait for the cache to catch up to
+  *        it, if necessary.
+  * @param The timeout is for fetching the Plan version only. Waiting for the
+  *        Plan version afterwards will never timeout.
+  */
+  [[nodiscard]] futures::Future<Result> fetchAndWaitForPlanVersion(network::Timeout);
+
+  /**
+   * @brief Wait for Current cache to be at the given Raft index
+   * @param    Current Raft index to wait for
+   * @return       Operation's result
+   */
+  futures::Future<Result> waitForCurrent(uint64_t raftIndex);
+
+  /**
+   * @brief Wait for Current cache to be at the given Raft index
+   * @param    Current version to wait for
+   * @return       Operation's result
+   */
+  [[nodiscard]] futures::Future<Result> waitForCurrentVersion(uint64_t currentVersion);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief flush the caches (used for testing only)
@@ -561,6 +594,15 @@ public:
   //////////////////////////////////////////////////////////////////////////////
   AnalyzersRevision::Ptr getAnalyzersRevision(DatabaseID const& databaseID,
                                                           bool forceLoadPlan = false);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Reads analyzers revisions needed for querying specified database.
+  ///        Could trigger plan load if database is not found in plan.
+  /// @param databaseID database to query
+  /// @return extracted revisions
+  //////////////////////////////////////////////////////////////////////////////
+  QueryAnalyzerRevisions getQueryAnalyzersRevision(
+      DatabaseID const& databaseID);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection in current. This returns information about
@@ -826,7 +868,7 @@ public:
   /// @brief lookup a full coordinator ID by short ID
   //////////////////////////////////////////////////////////////////////////////
 
-  ServerID getCoordinatorByShortID(ServerShortID);
+  ServerID getCoordinatorByShortID(ServerShortID const& shortId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidate planned
@@ -937,6 +979,19 @@ public:
 
   application_features::ApplicationServer& server() const;
 
+ private:
+
+  /// @brief helper function to build a new LogicalCollection object from the velocypack
+  /// input
+  static std::shared_ptr<LogicalCollection> createCollectionObject(
+      arangodb::velocypack::Slice data, TRI_vocbase_t& vocbase, uint64_t planVersion);
+
+  /// @brief create a new collecion object from the data, using the cache if possible
+  CollectionWithHash buildCollection(
+    bool isBuilding, AllCollections::const_iterator existingCollections,
+    std::string const& collectionId, arangodb::velocypack::Slice data,
+    TRI_vocbase_t& vocbase, uint64_t planVersion) const;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about our plan
   /// Usually one does not have to call this directly.
@@ -951,8 +1006,6 @@ public:
 
   void loadCurrent();
 
-
- private:
   void buildIsBuildingSlice(CreateDatabaseInfo const& database,
                               VPackBuilder& builder);
 
@@ -1165,13 +1218,36 @@ public:
 
   mutable std::mutex _waitPlanLock;
   std::multimap<uint64_t, futures::Promise<arangodb::Result>> _waitPlan;
+  mutable std::mutex _waitPlanVersionLock;
+  std::multimap<uint64_t, futures::Promise<arangodb::Result>> _waitPlanVersion;
   mutable std::mutex _waitCurrentLock;
   std::multimap<uint64_t, futures::Promise<arangodb::Result>> _waitCurrent;
+  mutable std::mutex _waitCurrentVersionLock;
+  std::multimap<uint64_t, futures::Promise<arangodb::Result>> _waitCurrentVersion;
 
+  /// @brief histogram for loadPlan runtime
   Histogram<log_scale_t<float>>& _lpTimer;
+  
+  /// @brief total time for loadPlan runtime
+  Counter& _lpTotal;
+  
+  /// @brief histogram for loadCurrent runtime
   Histogram<log_scale_t<float>>& _lcTimer;
+  
+  /// @brief total time for loadCurrent runtime
+  Counter& _lcTotal;
     
 };
+
+namespace cluster {
+
+// Note that while a network error will just return a failed `ResultT`, there
+// are still possible exceptions.
+futures::Future<ResultT<uint64_t>> fetchPlanVersion(network::Timeout timeout);
+futures::Future<ResultT<uint64_t>> fetchCurrentVersion(network::Timeout timeout);
+
+}  // namespace cluster
+
 }  // end namespace arangodb
 
 #endif

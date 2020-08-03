@@ -392,7 +392,7 @@ std::string transaction::Methods::extractIdString(VPackSlice slice) {
 /// added to the builder in the argument as a single object.
 void transaction::Methods::buildDocumentIdentity(
     LogicalCollection* collection, VPackBuilder& builder, TRI_voc_cid_t cid,
-    arangodb::velocypack::StringRef const& key, TRI_voc_rid_t rid, TRI_voc_rid_t oldRid,
+    arangodb::velocypack::StringRef const& key, RevisionId rid, RevisionId oldRid,
     ManagedDocumentResult const* oldDoc, ManagedDocumentResult const* newDoc) {
   StringLeaser leased(_transactionContext.get());
   std::string& temp(*leased.get());
@@ -427,10 +427,10 @@ void transaction::Methods::buildDocumentIdentity(
               VPackValuePair(key.data(), key.length(), VPackValueType::String));
 
   char ridBuffer[21];
-  builder.add(StaticStrings::RevString, TRI_RidToValuePair(rid, &ridBuffer[0]));
+  builder.add(StaticStrings::RevString, rid.toValuePair(&ridBuffer[0]));
 
-  if (oldRid != 0) {
-    builder.add("_oldRev", VPackValue(TRI_RidToString(oldRid)));
+  if (oldRid.isSet()) {
+    builder.add("_oldRev", VPackValue(oldRid.toString()));
   }
   if (oldDoc != nullptr) {
     builder.add(VPackValue(StaticStrings::Old));
@@ -561,7 +561,7 @@ Future<Result> transaction::Methods::finishAsync(Result const& res) {
 }
 
 /// @brief return the transaction id
-TRI_voc_tid_t transaction::Methods::tid() const {
+TransactionId transaction::Methods::tid() const {
   TRI_ASSERT(_state != nullptr);
   return _state->id();
 }
@@ -821,8 +821,7 @@ Future<OperationResult> transaction::Methods::documentCoordinator(
     }
   }
 
-  ClusterInfo& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
-  auto colptr = ci.getCollectionNT(vocbase().name(), collectionName);
+  auto colptr = resolver()->getCollectionStructCluster(collectionName);
   if (colptr == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
@@ -847,9 +846,9 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
       return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
     }
 
-    TRI_voc_rid_t expectedRevision = 0;
+    RevisionId expectedRevision = RevisionId::none();
     if (!options.ignoreRevs && value.isObject()) {
-      expectedRevision = TRI_ExtractRevisionId(value);
+      expectedRevision = RevisionId::fromSlice(value);
     }
 
     result.clear();
@@ -860,14 +859,14 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
       return res;
     }
 
-    if (expectedRevision != 0) {
-      TRI_voc_rid_t foundRevision =
+    if (expectedRevision.isSet()) {
+      RevisionId foundRevision =
           transaction::helpers::extractRevFromDocument(VPackSlice(result.vpack()));
       if (expectedRevision != foundRevision) {
         if (!isMultiple) {
           // still return
           buildDocumentIdentity(collection.get(), resultBuilder, cid, key,
-                                foundRevision, 0, nullptr, nullptr);
+                                foundRevision, RevisionId::none(), nullptr, nullptr);
         }
         return TRI_ERROR_ARANGO_CONFLICT;
       }
@@ -945,8 +944,7 @@ Future<OperationResult> transaction::Methods::insertAsync(std::string const& cna
 Future<OperationResult> transaction::Methods::insertCoordinator(std::string const& collectionName,
                                                                 VPackSlice const value,
                                                                 OperationOptions const& options) {
-  auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
-  auto colptr = ci.getCollectionNT(vocbase().name(), collectionName);
+  auto colptr = resolver()->getCollectionStructCluster(collectionName);
   if (colptr == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
@@ -1043,7 +1041,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     prevDocResult.clear();
 
     LocalDocumentId oldDocumentId;
-    TRI_voc_rid_t oldRevisionId = 0;
+    RevisionId oldRevisionId = RevisionId::none();
     VPackSlice key;
 
     Result res;
@@ -1052,11 +1050,11 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
         options.overwriteMode != OperationOptions::OverwriteMode::Conflict) {
       key = value.get(StaticStrings::KeyString);
       if (key.isString()) {
-        std::pair<LocalDocumentId, TRI_voc_rid_t> lookupResult;
+        std::pair<LocalDocumentId, RevisionId> lookupResult;
         res = collection->lookupKey(this, key.stringRef(), lookupResult);
         if (res.ok()) {
           TRI_ASSERT(lookupResult.first.isSet());
-          TRI_ASSERT(lookupResult.second != 0);
+          TRI_ASSERT(lookupResult.second.isSet());
           oldDocumentId = lookupResult.first;
           oldRevisionId = lookupResult.second;
         }
@@ -1078,8 +1076,8 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
 
       if (options.overwriteMode == OperationOptions::OverwriteMode::Ignore) {
         // in case of unique constraint violation: ignore and do nothing (no write!)
-        buildDocumentIdentity(collection.get(), resultBuilder, cid, key.stringRef(), oldRevisionId,
-                              0, nullptr, nullptr);
+        buildDocumentIdentity(collection.get(), resultBuilder, cid, key.stringRef(),
+                              oldRevisionId, RevisionId::none(), nullptr, nullptr);
         return res;
       }
       if (options.overwriteMode == OperationOptions::OverwriteMode::Update) {
@@ -1094,18 +1092,20 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "internal overwriteMode state");
       }
 
-      TRI_ASSERT(res.fail() || prevDocResult.revisionId() != 0);
+      TRI_ASSERT(res.fail() || prevDocResult.revisionId().isSet());
       didReplace = true;
     }
 
     if (res.fail()) {
       // Error reporting in the babies case is done outside of here,
-      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies && prevDocResult.revisionId() != 0) {
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies &&
+          prevDocResult.revisionId().isSet()) {
         TRI_ASSERT(didReplace);
 
         arangodb::velocypack::StringRef key = value.get(StaticStrings::KeyString).stringRef();
-        buildDocumentIdentity(collection.get(), resultBuilder, cid, key, prevDocResult.revisionId(),
-                              0, nullptr, nullptr);
+        buildDocumentIdentity(collection.get(), resultBuilder, cid, key,
+                              prevDocResult.revisionId(), RevisionId::none(),
+                              nullptr, nullptr);
       }
       return res;
     }
@@ -1226,8 +1226,7 @@ Future<OperationResult> transaction::Methods::modifyCoordinator(
     }
   }
 
-  ClusterInfo& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
-  auto colptr = ci.getCollectionNT(vocbase().name(), cname);
+  auto colptr = resolver()->getCollectionStructCluster(cname);
   if (colptr == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
@@ -1371,10 +1370,10 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
 
     if (res.fail()) {
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies) {
-        TRI_ASSERT(previous.revisionId() != 0);
+        TRI_ASSERT(previous.revisionId().isSet());
         arangodb::velocypack::StringRef key(newVal.get(StaticStrings::KeyString));
         buildDocumentIdentity(collection.get(), resultBuilder, cid, key,
-                              previous.revisionId(), 0,
+                              previous.revisionId(), RevisionId::none(),
                               options.returnOld ? &previous : nullptr, nullptr);
       }
       return res;
@@ -1383,7 +1382,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     if (!options.silent) {
       TRI_ASSERT(!options.returnOld || !previous.empty());
       TRI_ASSERT(!options.returnNew || !result.empty());
-      TRI_ASSERT(result.revisionId() != 0 && previous.revisionId() != 0);
+      TRI_ASSERT(result.revisionId().isSet() && previous.revisionId().isSet());
 
       arangodb::velocypack::StringRef key(newVal.get(StaticStrings::KeyString));
       buildDocumentIdentity(collection.get(), resultBuilder, cid, key,
@@ -1494,8 +1493,7 @@ Future<OperationResult> transaction::Methods::removeAsync(std::string const& cna
 Future<OperationResult> transaction::Methods::removeCoordinator(std::string const& cname,
                                                                 VPackSlice const value,
                                                                 OperationOptions const& options) {
-  ClusterInfo& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
-  auto colptr = ci.getCollectionNT(vocbase().name(), cname);
+  auto colptr = resolver()->getCollectionStructCluster(cname);
   if (colptr == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
@@ -1596,9 +1594,9 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
 
     if (res.fail()) {
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies) {
-        TRI_ASSERT(previous.revisionId() != 0);
+        TRI_ASSERT(previous.revisionId().isSet());
         buildDocumentIdentity(collection.get(), resultBuilder, cid, key,
-                              previous.revisionId(), 0,
+                              previous.revisionId(), RevisionId::none(),
                               options.returnOld ? &previous : nullptr, nullptr);
       }
       return res;
@@ -1606,9 +1604,9 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
 
     if (!options.silent) {
       TRI_ASSERT(!options.returnOld || !previous.empty());
-      TRI_ASSERT(previous.revisionId() != 0);
+      TRI_ASSERT(previous.revisionId().isSet());
       buildDocumentIdentity(collection.get(), resultBuilder, cid, key,
-                            previous.revisionId(), 0,
+                            previous.revisionId(), RevisionId::none(),
                             options.returnOld ? &previous : nullptr, nullptr);
     }
 
@@ -1884,16 +1882,13 @@ futures::Future<OperationResult> transaction::Methods::countAsync(std::string co
 /// @brief count the number of documents in a collection
 futures::Future<OperationResult> transaction::Methods::countCoordinator(
     std::string const& collectionName, transaction::CountType type) {
-  auto& feature = vocbase().server().getFeature<ClusterFeature>();
-  ClusterInfo& ci = feature.clusterInfo();
-
   // First determine the collection ID from the name:
-  auto collinfo = ci.getCollectionNT(vocbase().name(), collectionName);
-  if (collinfo == nullptr) {
+  auto colptr = resolver()->getCollectionStructCluster(collectionName);
+  if (colptr == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
 
-  return countCoordinatorHelper(collinfo, collectionName, type);
+  return countCoordinatorHelper(colptr, collectionName, type);
 }
 
 #endif

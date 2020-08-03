@@ -117,7 +117,7 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
 Result selectivityEstimatesOnCoordinator(ClusterFeature&, std::string const& dbname,
                                          std::string const& collname,
                                          std::unordered_map<std::string, double>& result,
-                                         TRI_voc_tick_t tid = 0);
+                                         TransactionId tid = TransactionId::none());
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a document in a coordinator
@@ -301,6 +301,9 @@ arangodb::Result matchBackupServersSlice(VPackSlice const planServers,
 arangodb::Result applyDBServerMatchesToPlan(VPackSlice const plan,
                                             std::map<ServerID, ServerID> const& matches,
                                             VPackBuilder& newPlan);
+
+/// @brief get the engine stats from all DB servers
+arangodb::Result getEngineStatsFromDBServers(ClusterFeature&, VPackBuilder& report);
 
 class ClusterMethods {
  public:

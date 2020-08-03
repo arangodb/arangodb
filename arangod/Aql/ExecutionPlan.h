@@ -30,6 +30,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ModificationOptions.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Containers/HashSet.h"
@@ -81,9 +82,11 @@ class ExecutionPlan {
 //  ExecutionPlan* clone(Query const&);
 
   /// @brief export to VelocyPack
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(Ast*, bool verbose) const;
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(Ast*, bool verbose,
+                                                              ExplainRegisterPlan) const;
 
-  void toVelocyPack(arangodb::velocypack::Builder&, Ast*, bool verbose) const;
+  void toVelocyPack(arangodb::velocypack::Builder&, Ast*, bool verbose,
+                    ExplainRegisterPlan) const;
 
   /// @brief check if the plan is empty
   inline bool empty() const { return (_root == nullptr); }
@@ -182,11 +185,13 @@ class ExecutionPlan {
 
   /// @brief find nodes of certain types
   void findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
-                       std::vector<ExecutionNode::NodeType> const&, bool enterSubqueries);
-  
+                       std::initializer_list<ExecutionNode::NodeType> const&,
+                       bool enterSubqueries);
+
   /// @brief find unique nodes of certain types
   void findUniqueNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
-                             std::vector<ExecutionNode::NodeType> const&, bool enterSubqueries);
+                             std::initializer_list<ExecutionNode::NodeType> const&,
+                             bool enterSubqueries);
 
   /// @brief find all end nodes in a plan
   void findEndNodes(::arangodb::containers::SmallVector<ExecutionNode*>& result,
@@ -205,7 +210,7 @@ class ExecutionPlan {
   void clearVarUsageComputed() { _varUsageComputed = false; }
 
   /// @brief static analysis
-  void planRegisters() { _root->planRegisters(); }
+  void planRegisters(ExplainRegisterPlan = ExplainRegisterPlan::No);
 
   /// @brief find all variables that are populated with data from collections
   void findCollectionAccessVariables();
@@ -267,7 +272,7 @@ class ExecutionPlan {
   ExecutionNode* fromSlice(velocypack::Slice const& slice);
 
   /// @brief whether or not the plan contains at least one node of this type
-  bool contains(ExecutionNode::NodeType type) const;
+  bool contains(ExecutionNode::NodeType) const;
 
   /// @brief increase the node counter for the type
   void increaseCounter(ExecutionNode::NodeType type) noexcept;
@@ -275,6 +280,12 @@ class ExecutionPlan {
   bool fullCount() const noexcept;
 
  private:
+  template <WalkerUniqueness U>
+  /// @brief find nodes of certain types
+  void findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
+                       std::initializer_list<ExecutionNode::NodeType> const&,
+                       bool enterSubqueries);
+
   /// @brief creates a calculation node
   ExecutionNode* createCalculation(Variable*, AstNode const*, ExecutionNode*);
 

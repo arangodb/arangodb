@@ -40,8 +40,8 @@
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 
+#include "Agency/AgencyPaths.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "Cluster/AgencyPaths.h"
 #include "Cluster/ClusterFeature.h"
 #include "Network/ConnectionPool.h"
 #include "Network/Methods.h"
@@ -124,6 +124,9 @@ struct AsyncAgencyCommPoolMock final : public network::ConnectionPool {
 
     void cancel() override {}
     void start() override {}
+    bool lease() override {
+      return true;
+    }
 
     AsyncAgencyCommPoolMock* _mock;
     std::string _endpoint;

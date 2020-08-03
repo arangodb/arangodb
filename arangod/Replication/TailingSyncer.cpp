@@ -34,6 +34,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/Logger.h"
 #include "Replication/InitialSyncer.h"
 #include "Replication/ReplicationApplier.h"
@@ -105,7 +106,7 @@ std::string const TailingSyncer::WalAccessUrl = "/_api/wal";
 
 TailingSyncer::TailingSyncer(ReplicationApplier* applier,
                              ReplicationApplierConfiguration const& configuration,
-                             TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId)
+                             TRI_voc_tick_t initialTick, bool useTick)
     : Syncer(configuration),
       _applier(applier),
       _hasWrittenState(false),
@@ -115,12 +116,7 @@ TailingSyncer::TailingSyncer(ReplicationApplier* applier,
       _requireFromPresent(configuration._requireFromPresent),
       _ignoreRenameCreateDrop(false),
       _ignoreDatabaseMarkers(true),
-      _workInParallel(false) {
-  if (barrierId > 0) {
-    _state.barrier.id = barrierId;
-    _state.barrier.updateTime = TRI_microtime();
-  }
-}
+      _workInParallel(false) {}
 
 TailingSyncer::~TailingSyncer() { abortOngoingTransactions(); }
 
@@ -229,9 +225,10 @@ bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick, VPackSlice const
       if (tidSlice.isString() && tidSlice.getStringLength() > 0) {
         VPackValueLength len;
         char const* str = tidSlice.getStringUnchecked(len);
-        TRI_voc_tid_t tid = NumberUtils::atoi_zero<TRI_voc_tid_t>(str, str + len);
+        TransactionId tid{NumberUtils::atoi_zero<TransactionId::BaseType>(str, str + len)};
 
-        if (tid > 0 && _ongoingTransactions.find(tid) != _ongoingTransactions.end()) {
+        if (tid.isSet() &&
+            _ongoingTransactions.find(tid) != _ongoingTransactions.end()) {
           // must still use this marker as it belongs to a transaction we need
           // to finish
           tooOld = false;
@@ -391,10 +388,10 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
   if (coll == nullptr) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
-
   bool const isSystem = coll->system();
-  bool const isUsers = coll->name() == TRI_COL_NAME_USERS; 
-
+  bool const isUsers = coll->name() == StaticStrings::UsersCollection;
+  bool const isAnalyzers = coll->name() == StaticStrings::AnalyzersCollection;
+  
   // extract "data"
   VPackSlice const data = slice.get(::dataRef);
 
@@ -423,12 +420,11 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
   // extract "tid"
   arangodb::velocypack::StringRef const transactionId =
       VelocyPackHelper::getStringRef(slice, "tid", VPackStringRef());
-  TRI_voc_tid_t tid = 0;
+  TransactionId tid = TransactionId::none();
   if (!transactionId.empty()) {
     // operation is part of a transaction
-    tid = NumberUtils::atoi_zero<TRI_voc_tid_t>(transactionId.data(),
-                                                transactionId.data() +
-                                                    transactionId.size());
+    tid = TransactionId{NumberUtils::atoi_zero<TransactionId::BaseType>(
+        transactionId.data(), transactionId.data() + transactionId.size())};
   }
 
   // in case this is a removal we need to build our marker
@@ -445,19 +441,19 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
     applySlice = _documentBuilder.slice();
   }
 
-  if (tid > 0) {  // part of a transaction
+  if (tid.isSet()) {  // part of a transaction
     auto it = _ongoingTransactions.find(tid);
 
     if (it == _ongoingTransactions.end()) {
       return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION,
-                    std::string("unexpected transaction ") + StringUtils::itoa(tid));
+                    std::string("unexpected transaction ") + StringUtils::itoa(tid.id()));
     }
 
     std::unique_ptr<ReplicationTransaction>& trx = (*it).second;
 
     if (trx == nullptr) {
       return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION,
-                    std::string("unexpected transaction ") + StringUtils::itoa(tid));
+                    std::string("unexpected transaction ") + StringUtils::itoa(tid.id()));
     }
 
     trx->addCollectionAtRuntime(coll->id(), coll->name(), AccessMode::Type::EXCLUSIVE);
@@ -468,8 +464,12 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
       // ignore unique constraint violations for system collections
       r.reset();
     }
-    if (r.ok() && isUsers) {
-      _usersModified = true;
+    if (r.ok()) {
+      if (isUsers) {
+        _usersModified = true;
+      } else if (isAnalyzers) {
+        _analyzersModified.insert(vocbase);
+      }
     }
 
     return r;  // done
@@ -537,9 +537,12 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
     // fix error handling here when function returns result
     if (res.ok()) {
       res = trx.commit();
-
-      if (res.ok() && isUsers) {
-        _usersModified = true;
+      if (res.ok()) {
+        if (isUsers) {
+          _usersModified = true;
+        } else if (isAnalyzers) {
+          _analyzersModified.insert(vocbase);
+        }
       }
     }
 
@@ -597,8 +600,8 @@ Result TailingSyncer::startTransaction(VPackSlice const& slice) {
 
   // transaction id
   // note: this is the remote transaction id!
-  TRI_voc_tid_t tid =
-      NumberUtils::atoi_zero<TRI_voc_tid_t>(id.data(), id.data() + id.size());
+  TransactionId tid{
+      NumberUtils::atoi_zero<TransactionId::BaseType>(id.data(), id.data() + id.size())};
 
   auto it = _ongoingTransactions.find(tid);
 
@@ -607,7 +610,7 @@ Result TailingSyncer::startTransaction(VPackSlice const& slice) {
     _ongoingTransactions.erase(it);
   }
 
-  TRI_ASSERT(tid > 0);
+  TRI_ASSERT(tid.isSet());
 
   LOG_TOPIC("e39dc", TRACE, Logger::REPLICATION) << "starting replication transaction " << tid;
 
@@ -637,8 +640,8 @@ Result TailingSyncer::abortTransaction(VPackSlice const& slice) {
 
   // transaction id
   // note: this is the remote transaction id!
-  TRI_voc_tid_t const tid =
-      NumberUtils::atoi_zero<TRI_voc_tid_t>(id.data(), id.data() + id.size());
+  TransactionId const tid{
+      NumberUtils::atoi_zero<TransactionId::BaseType>(id.data(), id.data() + id.size())};
 
   auto it = _ongoingTransactions.find(tid);
 
@@ -647,7 +650,7 @@ Result TailingSyncer::abortTransaction(VPackSlice const& slice) {
     return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION);
   }
 
-  TRI_ASSERT(tid > 0);
+  TRI_ASSERT(tid.isSet());
 
   LOG_TOPIC("19551", TRACE, Logger::REPLICATION) << "aborting replication transaction " << tid;
 
@@ -667,8 +670,8 @@ Result TailingSyncer::commitTransaction(VPackSlice const& slice) {
 
   // transaction id
   // note: this is the remote transaction id!
-  TRI_voc_tid_t const tid =
-      NumberUtils::atoi_zero<TRI_voc_tid_t>(id.data(), id.data() + id.size());
+  TransactionId const tid{
+      NumberUtils::atoi_zero<TransactionId::BaseType>(id.data(), id.data() + id.size())};
 
   auto it = _ongoingTransactions.find(tid);
 
@@ -676,7 +679,7 @@ Result TailingSyncer::commitTransaction(VPackSlice const& slice) {
     return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION);
   }
 
-  TRI_ASSERT(tid > 0);
+  TRI_ASSERT(tid.isSet());
 
   LOG_TOPIC("fb331", TRACE, Logger::REPLICATION) << "committing replication transaction " << tid;
 
@@ -1048,11 +1051,29 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstR
                                ApplyStats& applyStats, uint64_t& ignoreCount) {
   // reload users if they were modified
   _usersModified = false;
+  _analyzersModified.clear();
   auto reloader = [this]() {
     if (_usersModified) {
       // reload users after initial dump
       reloadUsers();
       _usersModified = false;
+    }
+    if (!_analyzersModified.empty()) {
+      TRI_ASSERT(*_analyzersModified.begin());
+      auto& begin = *_analyzersModified.begin();
+      auto& server = begin->server();
+      if (server.hasFeature<iresearch::IResearchAnalyzerFeature>()) {
+        auto& analyzersFeature = server.getFeature<iresearch::IResearchAnalyzerFeature>();
+        for (auto* vocbase : _analyzersModified) {
+          TRI_ASSERT(vocbase);
+          // we need to trigger cache invalidation
+          // because single server has no revisions
+          // and never reloads cache from db by itself
+          // so new analyzers will be not usable on slave
+          analyzersFeature.invalidate(*vocbase);
+        }
+      }
+      _analyzersModified.clear();
     }
   };
   TRI_DEFER(reloader());
@@ -1202,8 +1223,6 @@ Result TailingSyncer::runInternal() {
 
   setAborted(false);
 
-  TRI_DEFER(
-      if (!_state.isChildSyncer) { _state.barrier.remove(_state.connection); });
   uint64_t shortTermFailsInRow = 0;
 
 retry:
@@ -1731,7 +1750,9 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick, TRI_voc_tic
                         "array of ids");
     }
     auto ref = it.stringRef();
-    _ongoingTransactions.try_emplace(StringUtils::uint64(ref.data(), ref.size()), nullptr);
+    _ongoingTransactions.try_emplace(TransactionId{NumberUtils::atoi_zero<TransactionId::BaseType>(
+                                         ref.data(), ref.data() + ref.size())},
+                                     nullptr);
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -1764,7 +1785,6 @@ void TailingSyncer::fetchMasterLog(std::shared_ptr<Syncer::JobSynchronizer> shar
     std::string const url =
         tailingBaseUrl("tail") +
         "chunkSize=" + StringUtils::itoa(_state.applier._chunkSize) +
-        "&barrier=" + StringUtils::itoa(_state.barrier.id) +
         "&from=" + StringUtils::itoa(fetchTick) +
         "&lastScanned=" + StringUtils::itoa(lastScannedTick) +
         (firstRegularTick > fetchTick ? "&firstRegular=" + StringUtils::itoa(firstRegularTick)
@@ -1777,7 +1797,6 @@ void TailingSyncer::fetchMasterLog(std::shared_ptr<Syncer::JobSynchronizer> shar
     setProgress(std::string("fetching master log from tick ") + StringUtils::itoa(fetchTick) +
                 ", last scanned tick " + StringUtils::itoa(lastScannedTick) +
                 ", first regular tick " + StringUtils::itoa(firstRegularTick) +
-                ", barrier: " + StringUtils::itoa(_state.barrier.id) +
                 ", open transactions: " + std::to_string(_ongoingTransactions.size()) +
                 ", chunk size " + std::to_string(_state.applier._chunkSize));
 
@@ -1793,7 +1812,7 @@ void TailingSyncer::fetchMasterLog(std::shared_ptr<Syncer::JobSynchronizer> shar
       // of transactions when we are in parallel mode, as the parallel
       // mode is only supported for the RocksDB engine
       for (auto& it : _ongoingTransactions) {
-        builder.add(VPackValue(StringUtils::itoa(it.first)));
+        builder.add(VPackValue(StringUtils::itoa(it.first.id())));
       }
     }
     builder.close();

@@ -81,11 +81,17 @@ void GeneralCommTask<T>::close(asio_ns::error_code const& ec) {
 template <SocketType T>
 void GeneralCommTask<T>::setTimeout(std::chrono::milliseconds millis) {
   _protocol->timer.expires_after(millis);
-  _protocol->timer.async_wait([self = CommTask::weak_from_this()](asio_ns::error_code ec) {
+  _protocol->timer.async_wait([self = CommTask::weak_from_this(), oldRequestCount = getRequestCount()](asio_ns::error_code ec) {
     std::shared_ptr<CommTask> s;
     if (ec || !(s = self.lock())) {  // was canceled / deallocated
       return;
     }
+
+    if (s->getRequestCount() != oldRequestCount) {
+      return;
+    }
+
+    s->setKeepAliveTimeoutReached();
     LOG_TOPIC("5c1e0", INFO, Logger::REQUESTS)
         << "keep alive timeout, closing stream!";
     static_cast<GeneralCommTask<T>&>(*s).close(ec);

@@ -34,10 +34,10 @@
 #include "Agency/JobContext.h"
 #include "Agency/RemoveFollower.h"
 #include "Agency/Store.h"
+#include "AgencyPaths.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
-#include "Cluster/AgencyPaths.h"
 #include "Cluster/ServerState.h"
 #include "Random/RandomGenerator.h"
 
@@ -2209,9 +2209,15 @@ void Supervision::enforceReplication() {
         }
       }
 
-      bool clone = col.has(StaticStrings::DistributeShardsLike);
+      bool const clone = col.has(StaticStrings::DistributeShardsLike);
+      bool const isBuilding = std::invoke([&col] {
+        auto pair = col.hasAsBool(StaticStrings::AttrIsBuilding);
+        // Return true if the attribute exists, is a bool, and that bool is
+        // true. Return false otherwise.
+        return pair.first && pair.second;
+      });
 
-      if (!clone) {
+      if (!clone && !isBuilding) {
         for (auto const& shard_ : col.hasAsChildren("shards").first) {  // Pl shards
           auto const& shard = *(shard_.second);
           VPackBuilder onlyFollowers;
@@ -2446,7 +2452,7 @@ static std::string const syncLatest = "/Sync/LatestID";
 void Supervision::getUniqueIds() {
   _lock.assertLockedByCurrentThread();
 
-  size_t n = 10000;
+  int64_t n = 10000;
 
   std::string path = _agencyPrefix + "/Sync/LatestID";
   auto builder = std::make_shared<Builder>();

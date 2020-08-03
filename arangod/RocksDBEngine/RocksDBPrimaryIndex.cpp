@@ -291,6 +291,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
         _index(index),
         _cmp(index->comparator()),
         _allowCoveringIndexOptimization(allowCoveringIndexOptimization),
+        _mustSeek(true),
         _bounds(std::move(bounds)) {
     TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::primary());
 
@@ -308,11 +309,6 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
 
     TRI_ASSERT(options.prefix_same_as_start);
     _iterator = mthds->NewIterator(options, index->columnFamily());
-    if constexpr (reverse) {
-      _iterator->SeekForPrev(_bounds.end());
-    } else {
-      _iterator->Seek(_bounds.start());
-    }
   }
 
  public:
@@ -323,6 +319,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
   /// @brief Get the next limit many elements in the index
   bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
     TRI_ASSERT(_trx->state()->isRunning());
+    seekIfRequired();
 
     if (limit == 0 || !_iterator->Valid() || outOfRange()) {
       // No limit no data, or we are actually done. The last call should have
@@ -353,6 +350,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
   
   bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
     TRI_ASSERT(_allowCoveringIndexOptimization);
+    seekIfRequired();
 
     if (limit == 0 || !_iterator->Valid() || outOfRange()) {
       // No limit no data, or we are actually done. The last call should have
@@ -382,11 +380,13 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
         return false;
       }
     }
+
     return true;
   }
 
   void skipImpl(uint64_t count, uint64_t& skipped) override {
     TRI_ASSERT(_trx->state()->isRunning());
+    seekIfRequired();
 
     if (!_iterator->Valid() || outOfRange()) {
       return;
@@ -412,12 +412,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
   /// @brief Reset the cursor
   void resetImpl() override {
     TRI_ASSERT(_trx->state()->isRunning());
-
-    if constexpr (reverse) {
-      _iterator->SeekForPrev(_bounds.end());
-    } else {
-      _iterator->Seek(_bounds.start());
-    }
+    _mustSeek = true;
   }
 
   /// @brief we provide a method to provide the index attribute values
@@ -434,10 +429,22 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
     }
   }
 
+  void seekIfRequired() {
+    if (_mustSeek) {
+      if constexpr (reverse) {
+        _iterator->SeekForPrev(_bounds.end());
+      } else {
+        _iterator->Seek(_bounds.start());
+      }
+      _mustSeek = false;
+    }
+  }
+
   arangodb::RocksDBPrimaryIndex const* _index;
   rocksdb::Comparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   bool const _allowCoveringIndexOptimization;
+  bool _mustSeek;
   RocksDBKeyBounds _bounds;
   // used for iterate_upper_bound iterate_lower_bound
   rocksdb::Slice _rangeBound;
@@ -549,9 +556,9 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 bool RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
                                          arangodb::velocypack::StringRef keyRef,
                                          LocalDocumentId& documentId,
-                                         TRI_voc_rid_t& revisionId) const {
+                                         RevisionId& revisionId) const {
   documentId = LocalDocumentId::none();
-  revisionId = 0;
+  revisionId = RevisionId::none();
 
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(objectId(), keyRef);
@@ -578,7 +585,7 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
                                    OperationOptions& options) {
   Index::OperationMode mode = options.indexOperationMode;
   VPackSlice keySlice;
-  TRI_voc_rid_t revision;
+  RevisionId revision;
   transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revision);
 
   TRI_ASSERT(keySlice.isString());
@@ -606,11 +613,11 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
   }
 
   if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    // blacklist new index entry to avoid caching without committing first
-    blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
+    // invalidate new index cache entry to avoid caching without committing first
+    invalidateCacheEntry(key->string().data(), static_cast<uint32_t>(key->string().size()));
   }
 
-  TRI_ASSERT(revision != 0);
+  TRI_ASSERT(revision.isSet());
   auto value = RocksDBValue::PrimaryIndexValue(documentId, revision);
   rocksdb::Status s = mthd->Put(_cf, key.ref(), value.string(), /*assume_tracked*/ true);
   if (!s.ok()) {
@@ -633,11 +640,11 @@ Result RocksDBPrimaryIndex::update(transaction::Methods& trx, RocksDBMethods* mt
 
   key->constructPrimaryIndexValue(objectId(), arangodb::velocypack::StringRef(keySlice));
 
-  TRI_voc_rid_t revision = transaction::helpers::extractRevFromDocument(newDoc);
+  RevisionId revision = transaction::helpers::extractRevFromDocument(newDoc);
   auto value = RocksDBValue::PrimaryIndexValue(newDocumentId, revision);
 
-  // blacklist new index entry to avoid caching without committing first
-  blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
+  // invalidate new index cache entry to avoid caching without committing first
+  invalidateCacheEntry(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
   rocksdb::Status s = mthd->Put(_cf, key.ref(), value.string(), /*assume_tracked*/ false);
   if (!s.ok()) {
@@ -659,7 +666,7 @@ Result RocksDBPrimaryIndex::remove(transaction::Methods& trx, RocksDBMethods* mt
   RocksDBKeyLeaser key(&trx);
   key->constructPrimaryIndexValue(objectId(), arangodb::velocypack::StringRef(keySlice));
 
-  blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
+  invalidateCacheEntry(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
   // acquire rocksdb transaction
   auto* mthds = RocksDBTransactionState::toMethods(&trx);

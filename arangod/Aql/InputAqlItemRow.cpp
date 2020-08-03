@@ -39,8 +39,8 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-bool InputAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other) const {
-  return _block == other;
+bool InputAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other, size_t index) const {
+  return _block == other && _baseIndex == index;
 }
 #endif
 
@@ -171,6 +171,7 @@ bool InputAqlItemRow::isSameBlockAndIndex(InputAqlItemRow const& other) const no
   return this->_block == other._block && this->_baseIndex == other._baseIndex;
 }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 bool InputAqlItemRow::equates(InputAqlItemRow const& other,
                               velocypack::Options const* const options) const noexcept {
   if (!isInitialized() || !other.isInitialized()) {
@@ -191,6 +192,7 @@ bool InputAqlItemRow::equates(InputAqlItemRow const& other,
 
   return true;
 }
+#endif
 
 bool InputAqlItemRow::isInitialized() const noexcept {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -227,12 +229,6 @@ bool InputAqlItemRow::isFirstDataRowInBlock() const noexcept {
   TRI_ASSERT(numShadowRowsBeforeCurrentRow <= shadowRowIndexes.size());
 
   return numShadowRowsBeforeCurrentRow == _baseIndex;
-}
-
-bool InputAqlItemRow::isLastRowInBlock() const noexcept {
-  TRI_ASSERT(isInitialized());
-  TRI_ASSERT(_baseIndex < block().size());
-  return _baseIndex + 1 == block().size();
 }
 
 bool InputAqlItemRow::blockHasMoreDataRowsAfterThis() const noexcept {

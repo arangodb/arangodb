@@ -649,16 +649,13 @@ void ExecutionNode::cloneRegisterPlan(ExecutionNode* dependency) {
 }
 
 bool ExecutionNode::isEqualTo(ExecutionNode const& other) const {
-  std::function<bool(ExecutionNode* const, ExecutionNode* const)> comparator =
-      [](ExecutionNode* const l, ExecutionNode* const r) {
-        return l->isEqualTo(*r);
-      };
-
   return ((this->getType() == other.getType()) && (_id == other._id) &&
           (_depth == other._depth) &&
           (isInSplicedSubquery() == other.isInSplicedSubquery()) &&
           (std::equal(_dependencies.begin(), _dependencies.end(),
-                      other._dependencies.begin(), comparator)));
+                      other._dependencies.begin(), [](ExecutionNode* const l, ExecutionNode* const r) {
+            return l->isEqualTo(*r);
+          })));
 }
 
 /// @brief invalidate the cost estimation for the node and its dependencies
@@ -683,11 +680,10 @@ CostEstimate ExecutionNode::getCost() const {
 
 /// @brief functionality to walk an execution plan recursively
 bool ExecutionNode::walk(WalkerWorkerBase<ExecutionNode>& worker) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (worker.done(this)) {
     return false;
   }
-#endif
+
   if (worker.before(this)) {
     return true;
   }
@@ -835,7 +831,9 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
     nodes.add("estimatedNrItems", VPackValue(estimate.estimatedNrItems));
   }
 
-  if (flags & ExecutionNode::SERIALIZE_DETAILS) {
+  // SERIALIZE_REGISTER_INFORMATION => SERIALIZE_DETAILS
+  TRI_ASSERT(!ExecutionNode::SERIALIZE_REGISTER_INFORMATION || ExecutionNode::SERIALIZE_DETAILS);
+  if (flags & (ExecutionNode::SERIALIZE_DETAILS | ExecutionNode::SERIALIZE_REGISTER_INFORMATION)) {
     nodes.add("depth", VPackValue(_depth));
 
     if (_registerPlan) {
@@ -888,6 +886,55 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
       }
     }
 
+    if (flags & ExecutionNode::SERIALIZE_REGISTER_INFORMATION) {
+      nodes.add(VPackValue("unusedRegsStack"));
+      auto const& unusedRegsStack = _registerPlan->unusedRegsByNode.at(id());
+      {
+        VPackArrayBuilder guard(&nodes);
+        TRI_ASSERT(!unusedRegsStack.empty());
+        for (auto const& stackEntry : unusedRegsStack) {
+          VPackArrayBuilder stackEntryGuard(&nodes);
+          for (auto const& reg : stackEntry) {
+            nodes.add(VPackValue(reg));
+          }
+        }
+      }
+
+      nodes.add(VPackValue("regVarMapStack"));
+      auto const& regVarMapStack = _registerPlan->regVarMapStackByNode.at(id());
+      {
+        VPackArrayBuilder guard(&nodes);
+        TRI_ASSERT(!regVarMapStack.empty());
+        for (auto const& stackEntry : regVarMapStack) {
+          VPackObjectBuilder stackEntryGuard(&nodes);
+          for (auto const& reg : stackEntry) {
+            using std::to_string;
+            nodes.add(VPackValue(to_string(reg.first)));
+            reg.second->toVelocyPack(nodes);
+          }
+        }
+      }
+
+      nodes.add(VPackValue("varsSetHere"));
+      {
+        VPackArrayBuilder guard(&nodes);
+        auto const& varsSetHere = getVariablesSetHere();
+        for (auto const& oneVar : varsSetHere) {
+          oneVar->toVelocyPack(nodes);
+        }
+      }
+
+      nodes.add(VPackValue("varsUsedHere"));
+      {
+        VPackArrayBuilder guard(&nodes);
+        auto varsUsedHere = VarSet{};
+        getVariablesUsedHere(varsUsedHere);
+        for (auto const& oneVar : varsUsedHere) {
+          oneVar->toVelocyPack(nodes);
+        }
+      }
+    }
+
     nodes.add("isInSplicedSubquery", VPackValue(_isInSplicedSubquery));
   }
   TRI_ASSERT(nodes.isOpenObject());
@@ -895,7 +942,7 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
 
 /// @brief static analysis debugger
 #if 0
-struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode> {
+struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   RegisterPlanningDebugger()
     : indent(0) {
   }
@@ -941,7 +988,7 @@ struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode> {
 #endif
 
 /// @brief planRegisters
-void ExecutionNode::planRegisters(ExecutionNode* super) {
+void ExecutionNode::planRegisters(ExecutionNode* super, ExplainRegisterPlan explainRegisterPlan) {
   // The super is only for the case of subqueries.
   std::shared_ptr<RegisterPlan> v;
 
@@ -951,13 +998,13 @@ void ExecutionNode::planRegisters(ExecutionNode* super) {
     v = std::make_shared<RegisterPlan>(*(super->_registerPlan), super->_depth);
   }
 
-  RegisterPlanWalker walker(v);
+  auto walker = RegisterPlanWalker{v, explainRegisterPlan};
   walk(walker);
 
   // Now handle the subqueries:
   for (auto& s : v->subQueryNodes) {
     auto sq = ExecutionNode::castTo<SubqueryNode*>(s);
-    sq->getSubquery()->planRegisters(s);
+    sq->getSubquery()->planRegisters(s, explainRegisterPlan);
   }
   walker.reset();
 }
@@ -1946,7 +1993,7 @@ void SubqueryNode::invalidateCost() {
 }
 
 bool SubqueryNode::isConst() {
-  if (isModificationSubquery() || !isDeterministic()) {
+  if (isModificationNode() || !isDeterministic()) {
     return false;
   }
 
@@ -1990,22 +2037,24 @@ bool SubqueryNode::mayAccessCollections() {
 
   // if the subquery contains any of these nodes, it may access data from
   // a collection
-  std::vector<ExecutionNode::NodeType> const types = {ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
-                                                      ExecutionNode::ENUMERATE_COLLECTION,
-                                                      ExecutionNode::INDEX,
-                                                      ExecutionNode::INSERT,
-                                                      ExecutionNode::UPDATE,
-                                                      ExecutionNode::REPLACE,
-                                                      ExecutionNode::REMOVE,
-                                                      ExecutionNode::UPSERT,
-                                                      ExecutionNode::TRAVERSAL,
-                                                      ExecutionNode::SHORTEST_PATH,
-                                                      ExecutionNode::K_SHORTEST_PATHS};
+  std::initializer_list<ExecutionNode::NodeType> const types = {
+      ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
+      ExecutionNode::ENUMERATE_COLLECTION,
+      ExecutionNode::INDEX,
+      ExecutionNode::INSERT,
+      ExecutionNode::UPDATE,
+      ExecutionNode::REPLACE,
+      ExecutionNode::REMOVE,
+      ExecutionNode::UPSERT,
+      ExecutionNode::TRAVERSAL,
+      ExecutionNode::SHORTEST_PATH,
+      ExecutionNode::K_SHORTEST_PATHS};
 
   ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
 
-  UniqueNodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, nodes, true);
+  NodeFinder<std::initializer_list<ExecutionNode::NodeType>, WalkerUniqueness::Unique> finder(
+      types, nodes, true);
   _subquery->walk(finder);
 
   if (!nodes.empty()) {
@@ -2039,7 +2088,7 @@ std::unique_ptr<ExecutionBlock> SubqueryNode::createBlock(
   // The const_cast has been taken from previous implementation.
   auto executorInfos =
       SubqueryExecutorInfos(*subquery, outReg, const_cast<SubqueryNode*>(this)->isConst());
-  if (isModificationSubquery()) {
+  if (isModificationNode()) {
     return std::make_unique<ExecutionBlockImpl<SubqueryExecutor<true>>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
   } else {
@@ -2062,7 +2111,7 @@ ExecutionNode* SubqueryNode::clone(ExecutionPlan* plan, bool withDependencies,
 }
 
 /// @brief whether or not the subquery is a data-modification operation
-bool SubqueryNode::isModificationSubquery() const {
+bool SubqueryNode::isModificationNode() const {
   std::vector<ExecutionNode*> stack({_subquery});
 
   while (!stack.empty()) {
@@ -2096,7 +2145,8 @@ CostEstimate SubqueryNode::estimateCost() const {
 }
 
 /// @brief helper struct to find all (outer) variables used in a SubqueryNode
-struct SubqueryVarUsageFinder final : public UniqueWalkerWorker<ExecutionNode> {
+struct SubqueryVarUsageFinder final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::Unique> {
   VarSet _usedLater;
   VarSet _valid;
 
@@ -2149,7 +2199,8 @@ void SubqueryNode::getVariablesUsedHere(VarSet& vars) const {
 }
 
 /// @brief is the node determistic?
-struct DeterministicFinder final : public UniqueWalkerWorker<ExecutionNode> {
+struct DeterministicFinder final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::Unique> {
   bool _isDeterministic = true;
 
   DeterministicFinder() : _isDeterministic(true) {}

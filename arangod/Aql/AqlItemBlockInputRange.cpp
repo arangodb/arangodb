@@ -53,6 +53,11 @@ SharedAqlItemBlockPtr AqlItemBlockInputRange::getBlock() const noexcept {
   return _block;
 }
 
+bool AqlItemBlockInputRange::hasValidRow() const noexcept {
+  // covers both data rows & shadow rows
+  return isIndexValid(_rowIndex);
+}
+
 bool AqlItemBlockInputRange::hasDataRow() const noexcept {
   return isIndexValid(_rowIndex) && !isShadowRowAtIndex(_rowIndex);
 }
@@ -87,6 +92,13 @@ std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::nextDataRow(Ha
   // must calculate nextState() before the increase of _rowIndex here.
   auto state = nextState<LookAhead::NEXT, RowType::DATA>();
   return std::make_pair(state, InputAqlItemRow{_block, _rowIndex++});
+}
+
+/// @brief moves the row index one forward if we are at a row right now
+void AqlItemBlockInputRange::advanceDataRow() noexcept {
+  if (hasDataRow()) {
+    ++_rowIndex;
+  }
 }
 
 ExecutorState AqlItemBlockInputRange::upstreamState() const noexcept {

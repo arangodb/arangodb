@@ -34,8 +34,8 @@
 
 #include "Agency/AgencyComm.h"
 
-#include "Cluster/PathComponent.h"
-#include "Cluster/ResultT.h"
+#include "Agency/PathComponent.h"
+#include "Basics/ResultT.h"
 #include "Futures/Future.h"
 #include "Network/Methods.h"
 
@@ -70,7 +70,7 @@ struct AsyncAgencyCommResult {
 
   Result asResult() {
     if (!ok()) {
-      return Result{int(error), arangodb::fuerte::to_string(error)};
+      return Result{int(error), to_string(error)};
     } else if (200 <= statusCode() && statusCode() <= 299) {
       return Result{};
     } else {

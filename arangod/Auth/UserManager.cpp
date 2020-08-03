@@ -270,7 +270,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
   // will ask us again for permissions and we get a deadlock
   ExecContextSuperuserScope scope;
   auto ctx = transaction::StandaloneContext::Create(*vocbase);
-  SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS, AccessMode::Type::WRITE);
+  SingleCollectionTransaction trx(ctx, StaticStrings::UsersCollection, AccessMode::Type::WRITE);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -284,8 +284,8 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
     opts.mergeObjects = false;
 
     OperationResult opres =
-        replace ? trx.replace(TRI_COL_NAME_USERS, data.slice(), opts)
-                : trx.insert(TRI_COL_NAME_USERS, data.slice(), opts);
+        replace ? trx.replace(StaticStrings::UsersCollection, data.slice(), opts)
+                : trx.insert(StaticStrings::UsersCollection, data.slice(), opts);
 
     res = trx.finish(opres.result);
 
@@ -297,7 +297,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
 
       // parse user including document _key
       auth::User created = auth::User::fromDocument(userDoc);
-      TRI_ASSERT(!created.key().empty() && created.rev() != 0);
+      TRI_ASSERT(!created.key().empty() && created.rev().isSet());
       TRI_ASSERT(created.username() == entry.username());
       TRI_ASSERT(created.isActive() == entry.isActive());
       TRI_ASSERT(created.passwordHash() == entry.passwordHash());
@@ -441,7 +441,7 @@ Result auth::UserManager::storeUser(bool replace, std::string const& username,
   }
 
   std::string oldKey;  // will only be populated during replace
-  TRI_voc_rid_t oldRev = 0;
+  RevisionId oldRev = RevisionId::none();
   if (replace) {
     auth::User const& oldEntry = it->second;
     oldKey = oldEntry.key();
@@ -482,7 +482,7 @@ Result auth::UserManager::enumerateUsers(std::function<bool(auth::User&)>&& func
         continue;
       }
       auth::User user = it.second;  // copy user object
-      TRI_ASSERT(!user.key().empty() && user.rev() != 0);
+      TRI_ASSERT(!user.key().empty() && user.rev().isSet());
       if (func(user)) {
         toUpdate.emplace_back(std::move(user));
       }
@@ -543,7 +543,7 @@ Result auth::UserManager::updateUser(std::string const& name, UserCallback&& fun
 
   LOG_TOPIC("574c5", DEBUG, Logger::AUTHENTICATION) << "Updating user " << name;
   auth::User user = it->second;  // make a copy
-  TRI_ASSERT(!user.key().empty() && user.rev() != 0);
+  TRI_ASSERT(!user.key().empty() && user.rev().isSet());
   Result r = func(user);
   if (r.fail()) {
     return r;
@@ -623,7 +623,7 @@ static Result RemoveUserInternal(application_features::ApplicationServer& server
   // will ask us again for permissions and we get a deadlock
   ExecContextSuperuserScope scope;
   auto ctx = transaction::StandaloneContext::Create(*vocbase);
-  SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS, AccessMode::Type::WRITE);
+  SingleCollectionTransaction trx(ctx, StaticStrings::UsersCollection, AccessMode::Type::WRITE);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -631,7 +631,7 @@ static Result RemoveUserInternal(application_features::ApplicationServer& server
 
   if (res.ok()) {
     OperationResult result =
-        trx.remove(TRI_COL_NAME_USERS, builder.slice(), OperationOptions());
+        trx.remove(StaticStrings::UsersCollection, builder.slice(), OperationOptions());
     res = trx.finish(result.result);
   }
 
@@ -797,6 +797,7 @@ auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
   return level;
 }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 /// Only used for testing
 void auth::UserManager::setAuthInfo(auth::UserMap const& newMap) {
   MUTEX_LOCKER(guard, _loadFromDBLock);      // must be first
@@ -804,3 +805,4 @@ void auth::UserManager::setAuthInfo(auth::UserMap const& newMap) {
   _userCache = newMap;
   _internalVersion.store(_globalVersion.load());
 }
+#endif

@@ -41,7 +41,7 @@ using namespace arangodb::aql;
 
 namespace {
 std::unique_ptr<VPackBuilder> merge(VPackSlice document, std::string const& key,
-                                    TRI_voc_rid_t revision) {
+                                    RevisionId revision) {
   auto builder = std::make_unique<VPackBuilder>();
   {
     VPackObjectBuilder guard(builder.get());
@@ -50,11 +50,11 @@ std::unique_ptr<VPackBuilder> merge(VPackSlice document, std::string const& key,
 
     if (keyInBody.isNone() || keyInBody.isNull() ||
         (keyInBody.isString() && keyInBody.copyString() != key) ||
-        ((revision != 0) && (TRI_ExtractRevisionId(document) != revision))) {
+        ((revision.isSet()) && (RevisionId::fromSlice(document) != revision))) {
       // We need to rewrite the document with the given revision and key:
       builder->add(StaticStrings::KeyString, VPackValue(key));
-      if (revision != 0) {
-        builder->add(StaticStrings::RevString, VPackValue(TRI_RidToString(revision)));
+      if (revision.isSet()) {
+        builder->add(StaticStrings::RevString, VPackValue(revision.toString()));
       }
     }
   }
@@ -136,7 +136,7 @@ auto SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
 
   std::unique_ptr<VPackBuilder> mergedBuilder = nullptr;
   if (!_info._key.empty()) {
-    mergedBuilder = merge(inSlice, _info._key, 0);
+    mergedBuilder = merge(inSlice, _info._key, RevisionId::none());
     inSlice = mergedBuilder->slice();
   }
 
@@ -146,7 +146,7 @@ auto SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
     if (options.returnOld && !options.isOverwriteModeUpdateReplace()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN,
-          "OLD is only available when using INSERT with the overwrite option");
+          "OLD is only available when using INSERT with overwriteModes 'update' or 'replace'");
     }
     result = _trx.insert(_info._aqlCollection->name(), inSlice, _info._options);
     possibleWrites = 1;

@@ -167,10 +167,6 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
                         std::string const& keysId, uint64_t chunkId,
                         std::string const& lowString, std::string const& highString,
                         std::vector<std::string> const& markers) {
-  // first thing we do is extend the barrier's lifetime
-  if (!syncer._state.isChildSyncer) {
-    syncer._state.barrier.extend(syncer._state.connection);
-  }
 
   std::string const baseUrl = replutils::ReplicationUrl + "/keys";
   TRI_voc_tick_t const chunkSize = 5000;
@@ -321,13 +317,13 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
       toFetch.emplace_back(i);
     } else {
       // see if key exists
-      TRI_voc_rid_t currentRevisionId = 0;
+      RevisionId currentRevisionId = RevisionId::none();
       if (!physical->lookupRevision(trx, keySlice, currentRevisionId)) {
         // key not found locally
         toFetch.emplace_back(i);
       } else {
         // key found locally. now compare revisions
-        if (!pair.at(1).isEqualString(TRI_RidToString(currentRevisionId))) {
+        if (!pair.at(1).isEqualString(currentRevisionId.toString())) {
           // key found, but revision id differs
           toFetch.emplace_back(i);
         }
@@ -364,10 +360,6 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
   if (toFetch.empty()) {
     // nothing to do
     return Result();
-  }
-
-  if (!syncer._state.isChildSyncer) {
-    syncer._state.barrier.extend(syncer._state.connection);
   }
 
   LOG_TOPIC("48f94", TRACE, Logger::REPLICATION)
@@ -481,7 +473,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
         return res;
       };
 
-      std::pair<LocalDocumentId, TRI_voc_rid_t> lookupResult;
+      std::pair<LocalDocumentId, RevisionId> lookupResult;
       if (physical->lookupKey(trx, keySlice.stringRef(), lookupResult).is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
         // key does not yet exist
         // INSERT
@@ -572,7 +564,6 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
   if (!syncer._state.isChildSyncer) {
     syncer._batch.extend(syncer._state.connection, syncer._progress, syncer._state.syncerId);
-    syncer._state.barrier.extend(syncer._state.connection);
   }
 
   TRI_voc_tick_t const chunkSize = 5000;
@@ -685,7 +676,6 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     auto resetChunk = [&]() -> void {
       if (!syncer._state.isChildSyncer) {
         syncer._batch.extend(syncer._state.connection, syncer._progress, syncer._state.syncerId);
-        syncer._state.barrier.extend(syncer._state.connection);
       }
 
       syncer.setProgress(std::string("processing keys chunk ") + std::to_string(currentChunkId) +
@@ -727,11 +717,11 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     // tempBuilder is reused inside compareChunk
     VPackBuilder tempBuilder;
 
-    std::function<void(std::string, std::uint64_t)> compareChunk =
+    std::function<void(std::string, RevisionId)> compareChunk =
         [&trx, &physical, &options, &foundLowKey, &markers, &localHash,
          &hashString, &syncer, &currentChunkId, &numChunks, &keysId,
          &resetChunk, &compareChunk, &lowKey, &highKey, &tempBuilder,
-         &stats](std::string const& docKey, std::uint64_t docRev) {
+         &stats](std::string const& docKey, RevisionId docRev) {
           int cmp1 = docKey.compare(lowKey);
 
           if (cmp1 < 0) {
@@ -774,7 +764,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
               tempBuilder.clear();
               // use a temporary char buffer for building to rid string
               char ridBuffer[21];
-              tempBuilder.add(TRI_RidToValuePair(docRev, &ridBuffer[0]));
+              tempBuilder.add(docRev.toValuePair(&ridBuffer[0]));
               localHash ^= tempBuilder.slice().hashString();  // revision as string
 
               if (cmp2 == 0) {  // found highKey
@@ -818,13 +808,13 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
         [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
           ++documentsFound;
           std::string docKey = RocksDBKey::primaryKey(rocksKey).toString();
-          TRI_voc_rid_t docRev;
+          RevisionId docRev;
           if (!RocksDBValue::revisionId(rocksValue, docRev)) {
             // for collections that do not have the revisionId in the value
             auto documentId = RocksDBValue::documentId(rocksValue);  // we want probably to do this instead
             col->readDocumentWithCallback(&trx, documentId,
                                           [&docRev](LocalDocumentId const&, VPackSlice doc) {
-                                            docRev = TRI_ExtractRevisionId(doc);
+                                            docRev = RevisionId::fromSlice(doc);
                                             return true;
                                           });
           }
@@ -871,7 +861,8 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
                        static_cast<int64_t>(numberDocumentsDueToCounter);
         auto seq = rocksutils::latestSequenceNumber();
         static_cast<RocksDBCollection*>(trx.documentCollection()->getPhysical())
-            ->meta().adjustNumberDocuments(seq, /*revId*/0, diff);
+            ->meta()
+            .adjustNumberDocuments(seq, RevisionId::none(), diff);
       }
     }
 

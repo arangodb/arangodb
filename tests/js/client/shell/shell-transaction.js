@@ -728,12 +728,12 @@ function transactionInvocationSuite () {
         // wait until job has started...
         let tries = 0;
         while (++tries < 60) {
+          require("internal").wait(0.5, false);
           result = arango.PUT_RAW("/_api/job/" + jobId, {});
 
           if (result.code === 204) {
             break;
           }
-          require("internal").wait(0.5, false);
         }
         
         let trx = db._transactions();
@@ -751,6 +751,10 @@ function transactionInvocationSuite () {
             break;
           }
           require("internal").wait(0.5, false);
+
+          // timing issues may occur when canceling transactions
+          result = arango.DELETE("/_api/transaction/write");
+          assertEqual(result.code, 200);
         }
         assertTrue(result.code === 410 || result.code === 404);
       } finally {
@@ -4328,6 +4332,89 @@ function transactionTTLStreamSuite () {
   };
 }
 
+function transactionIteratorSuite() {
+  'use strict';
+  var cn = 'UnitTestsTransaction';
+  var c = null;
+
+  return {
+
+    setUp: function () {
+      db._drop(cn);
+      c = db._create(cn, { numberOfShards: 4 });
+    },
+
+    tearDown: function () {
+      db._drop(cn);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test: make sure forward iterators respect bounds in write transaction
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testIteratorBoundsForward: function () {
+      c.ensureIndex({ type: "persistent", fields: ["value1"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2"] });
+      let res = c.getIndexes();
+      assertEqual(3, res.length);
+
+      const opts = {
+        collections: {
+          write: [cn]
+        }
+      };
+      const trx = internal.db._createTransaction(opts);
+
+      const tc = trx.collection(cn);
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ value1: i, value2: (100 - i) });
+      }
+      tc.save(docs);
+
+      const cur = trx.query('FOR doc IN @@c SORT doc.value1 ASC RETURN doc', { '@c': cn });
+
+      const half = cur.toArray();
+      assertEqual(half.length, 100);
+
+      trx.commit();
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test: make sure reverse iterators respect bounds in write transaction
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testIteratorBoundsReverse: function () {
+      c.ensureIndex({ type: "persistent", fields: ["value1"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2"] });
+      let res = c.getIndexes();
+      assertEqual(3, res.length);
+
+      const opts = {
+        collections: {
+          write: [cn]
+        }
+      };
+      const trx = internal.db._createTransaction(opts);
+
+      const tc = trx.collection(cn);
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ value1: i, value2: (100 - i) });
+      }
+      tc.save(docs);
+
+      const cur = trx.query('FOR doc IN @@c SORT doc.value2 DESC RETURN doc', { '@c': cn });
+
+      const half = cur.toArray();
+      assertEqual(half.length, 100);
+
+      trx.commit();
+    },
+
+  };
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief executes the test suites
 // //////////////////////////////////////////////////////////////////////////////
@@ -4343,5 +4430,6 @@ jsunity.run(transactionCrossCollectionSuite);
 jsunity.run(transactionTraversalSuite);
 jsunity.run(transactionAQLStreamSuite);
 jsunity.run(transactionTTLStreamSuite);
+jsunity.run(transactionIteratorSuite);
 
 return jsunity.done();

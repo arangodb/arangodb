@@ -38,10 +38,9 @@ using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 
 GlobalTailingSyncer::GlobalTailingSyncer(ReplicationApplierConfiguration const& configuration,
-                                         TRI_voc_tick_t initialTick,
-                                         bool useTick, TRI_voc_tick_t barrierId)
+                                         TRI_voc_tick_t initialTick, bool useTick)
     : TailingSyncer(ReplicationFeature::INSTANCE->globalReplicationApplier(),
-                    configuration, initialTick, useTick, barrierId),
+                    configuration, initialTick, useTick),
       _queriedTranslations(false) {
   _ignoreDatabaseMarkers = false;
   _state.databaseName = StaticStrings::SystemDatabase;

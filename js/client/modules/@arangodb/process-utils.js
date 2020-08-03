@@ -443,11 +443,10 @@ function getCleanupDBDirectories () {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief adds authorization headers
+// / @brief loads the JWT secret from the various ways possible
 // //////////////////////////////////////////////////////////////////////////////
 
-function makeAuthorizationHeaders (options) {
-
+function getJwtSecret(options) {
   let jwtSecret;
   if (options['server.jwt-secret-folder']) {
     let files = fs.list(options['server.jwt-secret-folder']);
@@ -458,6 +457,15 @@ function makeAuthorizationHeaders (options) {
   } else {
     jwtSecret = options['server.jwt-secret'];
   }
+  return jwtSecret;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief adds authorization headers
+// //////////////////////////////////////////////////////////////////////////////
+
+function makeAuthorizationHeaders (options) {
+  const jwtSecret = getJwtSecret(options);
 
   if (jwtSecret) {
     let jwt = crypto.jwtEncode(jwtSecret,
@@ -1074,7 +1082,12 @@ function checkArangoAlive (arangod, options) {
   const ret = res.status === 'RUNNING' && crashUtils.checkMonitorAlive(ARANGOD_BIN, arangod, options, res);
 
   if (!ret) {
-    print(Date() + ' ArangoD with PID ' + arangod.pid + ' gone:');
+    if (!arangod.hasOwnProperty('message')) {
+      arangod.message = '';
+    }
+    let msg = ' ArangoD of role [' + arangod.role + '] with PID ' + arangod.pid + ' is gone';
+    print(Date() + msg + ':');
+    arangod.message += (arangod.message.length === 0) ? '\n' : '' + msg + ' ';
     if (!arangod.hasOwnProperty('exitStatus')) {
       arangod.exitStatus = res;
     }
@@ -1088,9 +1101,13 @@ function checkArangoAlive (arangod, options) {
       )
        ) {
       arangod.exitStatus = res;
-      analyzeServerCrash(arangod, options, 'health Check  - ' + res.signal);
+      msg = 'health Check Signal(' + res.signal + ') ';
+      analyzeServerCrash(arangod, options, msg);
       serverCrashedLocal = true;
-      print(Date() + " checkArangoAlive: Marking crashy - " + JSON.stringify(arangod));
+      arangod.message += msg;
+      msg = " checkArangoAlive: Marking crashy";
+      arangod.message += msg;
+      print(Date() + msg + ' - ' + JSON.stringify(arangod));
     }
   }
 
@@ -1123,7 +1140,11 @@ function checkInstanceAlive (instanceInfo, options) {
   }
   
   let rc = instanceInfo.arangods.reduce((previous, arangod) => {
-    return previous && checkArangoAlive(arangod, options);
+    let ret = checkArangoAlive(arangod, options);
+    if (!ret) {
+      instanceInfo.message += arangod.message;
+    }
+    return previous && ret;
   }, true);
   if (rc && options.cluster && instanceInfo.arangods.length > 1) {
     try {
@@ -2031,6 +2052,7 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
   let rootDir = fs.join(tmpDir || fs.getTempPath(), testname);
 
   let instanceInfo = {
+    message: '',
     rootDir,
     arangods: [],
     protocol: protocol
@@ -2165,6 +2187,7 @@ exports.arangod = {
 
 exports.findFreePort = findFreePort;
 exports.coverageEnvironment = coverageEnvironment;
+exports.getJwtSecret = getJwtSecret;
 
 exports.executeArangod = executeArangod;
 exports.executeAndWait = executeAndWait;

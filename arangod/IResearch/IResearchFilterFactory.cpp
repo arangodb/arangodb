@@ -317,7 +317,8 @@ arangodb::Result getAnalyzerByName(
     : nullptr;
 
   if (sysVocbase) {
-    analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase, ctx.trx->state()->analyzersRevision());
+    analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase, 
+                                   ctx.trx->state()->analyzersRevision());
 
     shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
       analyzerId, ctx.trx->vocbase(), *sysVocbase, false);  // args
@@ -2660,7 +2661,7 @@ arangodb::Result processPhraseArgs(
     FilterContext const& filterCtx,
     arangodb::aql::AstNode const& valueArgs,
     size_t valueArgsBegin, size_t valueArgsEnd,
-    irs::analysis::analyzer::ptr& analyzer,
+    irs::analysis::analyzer* analyzer,
     size_t offset,
     bool allowDefaultOffset,
     bool isInArray) {
@@ -2674,7 +2675,7 @@ arangodb::Result processPhraseArgs(
     if (currentArg->isArray()) {
       // '[' <term0> [, <term1>, ...] ']'
       if (isInArray) {
-        auto res = fromFuncPhraseTerms(funcName, idx, termsFuncName, phrase, ctx, *currentArg, offset, &*analyzer);
+        auto res = fromFuncPhraseTerms(funcName, idx, termsFuncName, phrase, ctx, *currentArg, offset, analyzer);
         if (res.fail()) {
           return res;
         }
@@ -2862,7 +2863,7 @@ arangodb::Result fromFuncPhrase(
   }
   // on top level we require explicit offsets - to be backward compatible and be able to distinguish last argument as analyzer or value
   // Also we allow recursion inside array to support older syntax (one array arg) and add ability to pass several arrays as args
-  return processPhraseArgs(funcName, phrase, ctx, filterCtx, *valueArgs, valueArgsBegin, valueArgsEnd, analyzer, 0, false, false);
+  return processPhraseArgs(funcName, phrase, ctx, filterCtx, *valueArgs, valueArgsBegin, valueArgsEnd, analyzer.get(), 0, false, false);
 }
 
 // NGRAM_MATCH (attribute, target, threshold [, analyzer])
@@ -3460,6 +3461,13 @@ namespace iresearch {
     irs::boolean_filter* filter,
     QueryContext const& ctx,
     arangodb::aql::AstNode const& node) {
+  if (node.willUseV8()) {
+    return {
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "using V8 dependent function is not allowed in SEARCH statement"
+    };
+  }
+
   // The analyzer is referenced in the FilterContext and used during the
   // following ::filter() call, so may not be a temporary.
   FieldMeta::Analyzer analyzer = FieldMeta::Analyzer();

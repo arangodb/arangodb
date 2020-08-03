@@ -23,17 +23,13 @@
 
 #include "SkipResult.h"
 
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
-
-SkipResult::SkipResult() {}
-
-SkipResult::SkipResult(SkipResult const& other) : _skipped{other._skipped} {}
 
 auto SkipResult::getSkipCount() const noexcept -> size_t {
   TRI_ASSERT(!_skipped.empty());
@@ -53,7 +49,7 @@ auto SkipResult::didSkipSubquery(size_t skipped, size_t depth) -> void {
   localSkip += skipped;
 }
 
-auto SkipResult::getSkipOnSubqueryLevel(size_t depth) -> size_t {
+auto SkipResult::getSkipOnSubqueryLevel(size_t depth) const -> size_t {
   TRI_ASSERT(!_skipped.empty());
   TRI_ASSERT(_skipped.size() > depth);
   return _skipped.at(_skipped.size() - 1 - depth);
@@ -76,14 +72,14 @@ auto SkipResult::toVelocyPack(VPackBuilder& builder) const noexcept -> void {
 auto SkipResult::fromVelocyPack(VPackSlice slice) -> arangodb::ResultT<SkipResult> {
   if (!slice.isArray()) {
     auto message = std::string{
-        "When deserializating AqlExecuteResult: When reading skipped: "
+        "When deserializing AqlExecuteResult: When reading skipped: "
         "Unexpected type "};
     message += slice.typeName();
     return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
   }
   if (slice.isEmptyArray()) {
     auto message = std::string{
-        "When deserializating AqlExecuteResult: When reading skipped: "
+        "When deserializing AqlExecuteResult: When reading skipped: "
         "Got an empty list of skipped values."};
     return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
   }
@@ -94,7 +90,7 @@ auto SkipResult::fromVelocyPack(VPackSlice slice) -> arangodb::ResultT<SkipResul
       auto val = it.value();
       if (!val.isInteger()) {
         auto message = std::string{
-            "When deserializating AqlExecuteResult: When reading skipped: "
+            "When deserializing AqlExecuteResult: When reading skipped: "
             "Unexpected type "};
         message += slice.typeName();
         return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
@@ -108,32 +104,38 @@ auto SkipResult::fromVelocyPack(VPackSlice slice) -> arangodb::ResultT<SkipResul
     return {res};
   } catch (velocypack::Exception const& ex) {
     auto message = std::string{
-        "When deserializating AqlExecuteResult: When reading skipped: "};
+        "When deserializing AqlExecuteResult: When reading skipped: "};
     message += ex.what();
     return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
   }
 }
 
-auto SkipResult::incrementSubquery() -> void { _skipped.emplace_back(0); }
+auto SkipResult::incrementSubquery() -> void { 
+  _skipped.emplace_back(0); 
+}
+
 auto SkipResult::decrementSubquery() -> void {
   TRI_ASSERT(!_skipped.empty());
   _skipped.pop_back();
   TRI_ASSERT(!_skipped.empty());
 }
+
 auto SkipResult::subqueryDepth() const noexcept -> size_t {
   TRI_ASSERT(!_skipped.empty());
   return _skipped.size();
 }
 
 auto SkipResult::reset() -> void {
-  for (size_t i = 0; i < _skipped.size(); ++i) {
+  size_t const n = _skipped.size();
+  for (size_t i = 0; i < n; ++i) {
     _skipped[i] = 0;
   }
 }
 
 auto SkipResult::merge(SkipResult const& other, bool excludeTopLevel) noexcept -> void {
-  _skipped.reserve(other.subqueryDepth());
-  while (other.subqueryDepth() > subqueryDepth()) {
+  size_t const otherDepth = other.subqueryDepth();
+  _skipped.reserve(otherDepth);
+  while (otherDepth > subqueryDepth()) {
     incrementSubquery();
   }
   TRI_ASSERT(other._skipped.size() <= _skipped.size());
@@ -147,8 +149,9 @@ auto SkipResult::merge(SkipResult const& other, bool excludeTopLevel) noexcept -
 }
 
 auto SkipResult::mergeOnlyTopLevel(SkipResult const& other) noexcept -> void {
-  _skipped.reserve(other.subqueryDepth());
-  while (other.subqueryDepth() > subqueryDepth()) {
+  size_t const otherDepth = other.subqueryDepth();
+  _skipped.reserve(otherDepth);
+  while (otherDepth > subqueryDepth()) {
     incrementSubquery();
   }
   _skipped.back() += other._skipped.back();

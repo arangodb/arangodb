@@ -324,7 +324,7 @@ filter::prepared::ptr prepare_automaton_filter(
   std::vector<bstring> stats;
   collector.score(index, order, stats);
 
-  return memory::make_shared<multiterm_query>(
+  return memory::make_managed<multiterm_query>(
     std::move(states), std::move(stats),
     boost, sort::MergeType::AGGREGATE);
 }

@@ -63,9 +63,8 @@
 class IResearchViewDBServerTest : public ::testing::Test {
  protected:
   arangodb::tests::mocks::MockDBServer server;
-  arangodb::consensus::Store& _agencyStore;
 
-  IResearchViewDBServerTest() : server(), _agencyStore(server.getAgencyStore()) {
+  IResearchViewDBServerTest() : server() {
     }
 
   void createTestDatabase(TRI_vocbase_t*& vocbase, std::string const name = "testDatabase") {
@@ -253,7 +252,7 @@ TEST_F(IResearchViewDBServerTest, test_drop_database) {
   beforeCount = 0;  // reset before call to StorageEngine::createView(...)
   auto res = logicalWiew->properties(viewUpdateJson->slice(), true);
   ASSERT_TRUE(res.ok());
-  EXPECT_EQ(17, beforeCount);  // +1 for StorageEngineMock::createIndex(...) and then for various other activities
+  EXPECT_EQ(1, beforeCount);  // +1 for StorageEngineMock::createIndex(...) and then for various other activities
 }
 
 TEST_F(IResearchViewDBServerTest, test_ensure) {

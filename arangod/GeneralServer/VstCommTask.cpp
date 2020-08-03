@@ -278,8 +278,8 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
     LOG_TOPIC("b5073", ERR, Logger::REQUESTS)
     << "\"vst-request-header\",\"" << (void*)this << "/"
     << messageId << "\"" << " is unsupported";
-    this->addSimpleResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
-                            messageId, VPackBuffer<uint8_t>());
+    this->sendSimpleResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
+                             messageId, VPackBuffer<uint8_t>());
   }
   return true;
 }
@@ -294,7 +294,8 @@ static void DTraceVstCommTaskSendResponse(size_t) {}
 #endif
 
 template<SocketType T>
-void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes, RequestStatistics::Item stat) {
+void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
+                                  RequestStatistics::Item stat) {
   using namespace fuerte;
 
   DTraceVstCommTaskSendResponse((size_t) this);
@@ -444,12 +445,12 @@ void VstCommTask<T>::handleVstAuthRequest(VPackSlice header, uint64_t mId) {
 
   if (_authenticated || !this->_auth->isActive()) {
     // simon: drivers expect a response for their auth request
-    this->addErrorResponse(ResponseCode::OK, rest::ContentType::VPACK, mId,
-                           TRI_ERROR_NO_ERROR, "auth successful");
+    this->sendErrorResponse(ResponseCode::OK, rest::ContentType::VPACK, mId,
+                            TRI_ERROR_NO_ERROR, "auth successful");
   } else {
     _authToken = auth::TokenCache::Entry::Unauthenticated();
-    this->addErrorResponse(rest::ResponseCode::UNAUTHORIZED, rest::ContentType::VPACK,
-                           mId, TRI_ERROR_HTTP_UNAUTHORIZED);
+    this->sendErrorResponse(rest::ResponseCode::UNAUTHORIZED, rest::ContentType::VPACK,
+                            mId, TRI_ERROR_HTTP_UNAUTHORIZED);
   }
 }
 

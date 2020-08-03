@@ -109,21 +109,9 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
   }
 
   if (!_state.isChildSyncer) {
-    // create a WAL logfile barrier that prevents WAL logfile collection
-    r = _state.barrier.create(_state.connection, _state.master.lastLogTick);
-    if (r.fail()) {
-      return r;
-    }
-  }
-
-  LOG_TOPIC("0bf0e", DEBUG, Logger::REPLICATION) << "created logfile barrier";
-  TRI_DEFER(
-      if (!_state.isChildSyncer) { _state.barrier.remove(_state.connection); });
-
-  if (!_state.isChildSyncer) {
     // start batch is required for the inventory request
     LOG_TOPIC("0da14", DEBUG, Logger::REPLICATION) << "sending start batch";
-    r = _batch.start(_state.connection, _progress, _state.syncerId);
+    r = _batch.start(_state.connection, _progress, _state.master, _state.syncerId);
     if (r.fail()) {
       return r;
     }
@@ -201,8 +189,7 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
       configurationCopy._database = nameSlice.copyString();
 
       auto syncer = std::make_shared<DatabaseInitialSyncer>(*vocbase, configurationCopy);
-      syncer->useAsChildSyncer(_state.master, _state.syncerId, _state.barrier.id,
-                               _state.barrier.updateTime, _batch.id, _batch.updateTime);
+      syncer->useAsChildSyncer(_state.master, _state.syncerId, _batch.id, _batch.updateTime);
 
       // run the syncer with the supplied inventory collections
       r = syncer->runWithInventory(incremental, dbInventory);
@@ -211,12 +198,10 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
       }
 
       // we need to pass on the update times to the next syncer
-      _state.barrier.updateTime = syncer->barrierUpdateTime();
       _batch.updateTime = syncer->batchUpdateTime();
 
       if (!_state.isChildSyncer) {
         _batch.extend(_state.connection, _progress, _state.syncerId);
-        _state.barrier.extend(_state.connection);
       }
     }
   } catch (...) {
@@ -322,7 +307,6 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
 
     if (!_state.isChildSyncer) {
       _batch.extend(_state.connection, _progress, _state.syncerId);
-      _state.barrier.extend(_state.connection);
     }
   }
 
@@ -345,7 +329,6 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
 
     if (!_state.isChildSyncer) {
       _batch.extend(_state.connection, _progress, _state.syncerId);
-      _state.barrier.extend(_state.connection);
     }
   }
 
@@ -360,7 +343,7 @@ Result GlobalInitialSyncer::getInventory(VPackBuilder& builder) {
     return Result(TRI_ERROR_SHUTTING_DOWN);
   }
 
-  auto r = _batch.start(_state.connection, _progress, _state.syncerId);
+  auto r = _batch.start(_state.connection, _progress, _state.master, _state.syncerId);
   if (r.fail()) {
     return r;
   }

@@ -23,10 +23,29 @@
 
 #include "VocBase/Identifiers/LocalDocumentId.h"
 
+#include "VocBase/Identifiers/RevisionId.h"
+
 namespace arangodb {
+
+LocalDocumentId::LocalDocumentId(RevisionId const& id) noexcept
+    : Identifier(id.id()) {}
 
 bool LocalDocumentId::isSet() const noexcept { return id() != 0; }
 
 bool LocalDocumentId::empty() const noexcept { return !isSet(); }
+
+/// @brief create a new document id
+LocalDocumentId LocalDocumentId::create() {
+  return LocalDocumentId(TRI_HybridLogicalClock());
+}
+
+/// @brief create a document id from an existing revision id
+LocalDocumentId LocalDocumentId::create(RevisionId const& rid) {
+  return LocalDocumentId{rid.id()};
+}
+
+void LocalDocumentId::track(LocalDocumentId const& id) {
+  TRI_HybridLogicalClock(id.id());
+}
 
 }  // namespace arangodb

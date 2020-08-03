@@ -115,9 +115,13 @@ LogicalDataSource::Category const* injectDataSourceInQuery(
   if (dataSource->category() == LogicalCollection::category()) {
     // it's a collection!
     // add datasource to query
-    ast.query().collections().add(nameRef.toString(), accessType, aql::Collection::Hint::Collection);
+    aql::Collection::Hint hint = aql::Collection::Hint::Collection;
+    if (ServerState::instance()->isDBServer()) {
+      hint = aql::Collection::Hint::Shard;
+    }
+    ast.query().collections().add(nameRef.toString(), accessType, hint);
     if (nameRef != name) {
-      ast.query().collections().add(name, accessType, aql::Collection::Hint::Collection);  // Add collection by ID as well
+      ast.query().collections().add(name, accessType, hint);  // Add collection by ID as well
     }
   } else if (dataSource->category() == LogicalView::category()) {
     // it's a view!
@@ -3883,12 +3887,14 @@ void Ast::extractCollectionsFromGraph(AstNode const* graphNode) {
   if (graphNode->type == NODE_TYPE_VALUE) {
     TRI_ASSERT(graphNode->isStringValue());
     std::string graphName = graphNode->getString();
-    auto graph = _query.lookupGraphByName(graphName);
-    if (graph == nullptr) {
-      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_GRAPH_NOT_FOUND, graphName.c_str());
+    auto graphLookupRes = _query.lookupGraphByName(graphName);
+    if (graphLookupRes.fail()) {
+      THROW_ARANGO_EXCEPTION(graphLookupRes.result());
     }
-    TRI_ASSERT(graph != nullptr);
 
+    TRI_ASSERT(graphLookupRes.ok());
+
+    auto const& graph = graphLookupRes.get();
     for (const auto& n : graph->vertexCollections()) {
       _query.collections().add(n, AccessMode::Type::READ, Collection::Hint::Collection);
     }

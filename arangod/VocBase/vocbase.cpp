@@ -59,8 +59,6 @@
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/ReplicationClients.h"
 #include "RestServer/DatabaseFeature.h"
@@ -68,6 +66,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/ClusterUtils.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
@@ -609,9 +608,13 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
     TRI_ASSERT(!writeLocker.isLocked());
     TRI_ASSERT(!locker.isLocked());
 
-    if (timeout >= 0.0 && TRI_microtime() > endTime) {
+    if (timeout > 0.0 && TRI_microtime() > endTime) {
       events::DropCollection(name(), colName, TRI_ERROR_LOCK_TIMEOUT);
       return TRI_ERROR_LOCK_TIMEOUT;
+    }
+
+    if (_server.isStopping()) {
+      return TRI_ERROR_SHUTTING_DOWN;
     }
   
     engine->prepareDropCollection(*this, *collection);
@@ -1173,6 +1176,13 @@ arangodb::Result TRI_vocbase_t::dropCollection(TRI_voc_cid_t cid,
     events::DropCollection(dbName, collection->name(), TRI_ERROR_FORBIDDEN);
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
   }
+  
+  if (ServerState::instance()->isDBServer()) {  // maybe unconditionally ?
+    // hack to avoid busy looping on DBServers
+    try {
+      transaction::cluster::abortTransactions(*collection);
+    } catch (...) { /* ignore */ }
+  }
 
   while (true) {
     DropState state = DROP_EXIT;
@@ -1198,6 +1208,10 @@ arangodb::Result TRI_vocbase_t::dropCollection(TRI_voc_cid_t cid,
     if (state == DROP_PERFORM || state == DROP_EXIT) {
       events::DropCollection(dbName, collection->name(), res);
       return res;
+    }
+
+    if (_server.isStopping()) {
+      return TRI_ERROR_SHUTTING_DOWN;
     }
 
     // try again in next iteration
@@ -1634,7 +1648,7 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
   TRI_ASSERT(_info.valid());
 
   QueryRegistryFeature& feature = _info.server().getFeature<QueryRegistryFeature>();
-  _queries.reset(new arangodb::aql::QueryList(feature, this));
+  _queries.reset(new arangodb::aql::QueryList(feature));
   _cursorRepository.reset(new arangodb::CursorRepository(*this));
   _replicationClients.reset(new arangodb::ReplicationClientsProgressTracker());
 
@@ -1652,9 +1666,12 @@ TRI_vocbase_t::~TRI_vocbase_t() {
   }
 
   // do a final cleanup of collections
-  for (auto& it : _collections) {
-    WRITE_LOCKER_EVENTUAL(locker, it->statusLock());
-    it->close();  // required to release indexes
+  for (std::shared_ptr<arangodb::LogicalCollection>& coll : _collections) {
+    try {  // simon: this status lock is terrible software design
+      transaction::cluster::abortTransactions(*coll);
+    } catch (...) { /* ignore */ }
+    WRITE_LOCKER_EVENTUAL(locker, coll->statusLock());
+    coll->close();  // required to release indexes
   }
 
   _collections.clear();  // clear vector before deallocating TRI_vocbase_t members
@@ -1716,7 +1733,7 @@ bool TRI_vocbase_t::IsAllowedName(bool allowSystem,
     }
   }
 
-  return (length > 0 && length <= TRI_COL_NAME_LENGTH);
+  return (length > 0 && length <= LogicalCollection::maxNameLength);
 }
 
 /// @brief determine whether a collection name is a system collection name
@@ -1883,23 +1900,6 @@ bool TRI_vocbase_t::visitDataSources(dataSourceVisitor const& visitor, bool lock
   return true;
 }
 
-/// @brief extract the _rev attribute from a slice
-TRI_voc_rid_t TRI_ExtractRevisionId(VPackSlice slice) {
-  slice = slice.resolveExternal();
-  TRI_ASSERT(slice.isObject());
-
-  VPackSlice r(slice.get(StaticStrings::RevString));
-  if (r.isString()) {
-    VPackValueLength l;
-    char const* p = r.getStringUnchecked(l);
-    return TRI_StringToRid(p, l, false);
-  }
-  if (r.isInteger()) {
-    return r.getNumber<TRI_voc_rid_t>();
-  }
-  return 0;
-}
-
 /// @brief sanitize an object, given as slice, builder must contain an
 /// open object which will remain open
 /// the result is the object excluding _id, _key and _rev
@@ -1934,66 +1934,6 @@ void TRI_SanitizeObjectWithEdges(VPackSlice const slice, VPackBuilder& builder) 
     }
     it.next();
   }
-}
-
-/// @brief Convert a revision ID to a string
-constexpr static TRI_voc_rid_t tickLimit =
-    static_cast<TRI_voc_rid_t>(2016ULL - 1970ULL) * 1000ULL * 60ULL * 60ULL * 24ULL * 365ULL;
-
-std::string TRI_RidToString(TRI_voc_rid_t rid) {
-  if (rid <= tickLimit) {
-    return arangodb::basics::StringUtils::itoa(rid);
-  }
-  return HybridLogicalClock::encodeTimeStamp(rid);
-}
-
-/// encodes the uint64_t timestamp into the provided result buffer
-/// the result buffer must be at least 11 chars long
-/// the length of the encoded value and the start position into
-/// the result buffer are returned by the function
-std::pair<size_t, size_t> TRI_RidToString(TRI_voc_rid_t rid, char* result) {
-  if (rid <= tickLimit) {
-    std::pair<size_t, size_t> pos{0, 0};
-    pos.second = arangodb::basics::StringUtils::itoa(rid, result);
-    return pos;
-  }
-  return HybridLogicalClock::encodeTimeStamp(rid, result);
-}
-
-/// encodes the uint64_t timestamp into a temporary velocypack ValuePair,
-/// using the specific temporary result buffer
-/// the result buffer must be at least 11 chars long
-arangodb::velocypack::ValuePair TRI_RidToValuePair(TRI_voc_rid_t rid, char* result) {
-  auto positions = TRI_RidToString(rid, result);
-  return arangodb::velocypack::ValuePair(&result[0] + positions.first, positions.second,
-                                         velocypack::ValueType::String);
-}
-
-/// @brief Convert a string into a revision ID, no check variant
-TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool warn) {
-  bool isOld;
-  return TRI_StringToRid(p, len, isOld, warn);
-}
-
-/// @brief Convert a string into a revision ID, returns 0 if format invalid
-TRI_voc_rid_t TRI_StringToRid(std::string const& ridStr, bool& isOld, bool warn) {
-  return TRI_StringToRid(ridStr.c_str(), ridStr.size(), isOld, warn);
-}
-
-/// @brief Convert a string into a revision ID, returns 0 if format invalid
-TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool& isOld, bool warn) {
-  if (len > 0 && *p >= '1' && *p <= '9') {
-    auto r = NumberUtils::atoi_positive_unchecked<TRI_voc_rid_t>(p, p + len);
-    if (warn && r > tickLimit) {
-      // An old tick value that could be confused with a time stamp
-      LOG_TOPIC("66a3a", WARN, arangodb::Logger::FIXME)
-          << "Saw old _rev value that could be confused with a time stamp!";
-    }
-    isOld = true;
-    return r;
-  }
-  isOld = false;
-  return HybridLogicalClock::decodeTimeStamp(p, len);
 }
 
 // -----------------------------------------------------------------------------

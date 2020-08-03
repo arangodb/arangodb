@@ -24,6 +24,7 @@
 
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/debugging.h"
 #include "Basics/tri-strings.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LoggerFeature.h"
@@ -181,28 +182,42 @@ class LogAppenderEventLog final : public LogAppender {
 #endif
 
 LogBufferFeature::LogBufferFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "LogBuffer") {
+    : ApplicationFeature(server, "LogBuffer"),
+      _useInMemoryAppender(true) {
   setOptional(true);
   startsAfter<LoggerFeature>();
   
 #ifdef _WIN32
-  LogAppender::addGlobalAppender(std::make_shared<LogAppenderDebugOutput>());
-  LogAppender::addGlobalAppender(std::make_shared<LogAppenderEventLog>());
+  LogAppender::addGlobalAppender(Logger::defaultLogGroup(),
+                                 std::make_shared<LogAppenderDebugOutput>());
+  LogAppender::addGlobalAppender(Logger::defaultLogGroup(),
+                                 std::make_shared<LogAppenderEventLog>());
 #endif
+}
+  
+void LogBufferFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
+  options
+      ->addOption("--log.in-memory", "use in-memory log appender, which can be queried via API and web UI",
+                  new BooleanParameter(&_useInMemoryAppender),
+                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                  .setIntroducedIn(30701);
 }
 
 void LogBufferFeature::prepare() {
-  // only create the in-memory appender when we really need it. if we created it
-  // in the ctor, we would waste a lot of memory in case we don't need the in-memory
-  // appender. this is the case for simple command such as `--help` etc.
-  _inMemoryAppender = std::make_shared<LogAppenderRingBuffer>();
-  LogAppender::addGlobalAppender(_inMemoryAppender);
+  if (_useInMemoryAppender) {
+    // only create the in-memory appender when we really need it. if we created it
+    // in the ctor, we would waste a lot of memory in case we don't need the in-memory
+    // appender. this is the case for simple command such as `--help` etc.
+    _inMemoryAppender = std::make_shared<LogAppenderRingBuffer>();
+    LogAppender::addGlobalAppender(Logger::defaultLogGroup(), _inMemoryAppender);
+  }
 }
 
 std::vector<LogBuffer> LogBufferFeature::entries(LogLevel level, uint64_t start, bool upToLevel) {
   if (_inMemoryAppender == nullptr) {
     return std::vector<LogBuffer>();
   }
+  TRI_ASSERT(_useInMemoryAppender);
   return static_cast<LogAppenderRingBuffer*>(_inMemoryAppender.get())->entries(level, start, upToLevel);
 }
 

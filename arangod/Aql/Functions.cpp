@@ -272,7 +272,7 @@ AqlValue timeAqlValue(ExpressionContext* expressionContext, char const* AFN,
   auto day_time = make_time(tp - sys_days(ymd));
 
   auto y = static_cast<int>(ymd.year());
-  // quick sanity check here for dates outside the allowed range
+  // quick basic check here for dates outside the allowed range
   if (y < 0 || y > 9999) {
     arangodb::aql::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
     return AqlValue(AqlValueHintNull());
@@ -1131,8 +1131,13 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, transaction::Met
   // JavaScript function (this includes user-defined functions)
   {
     ISOLATE;
-    v8::HandleScope scope(isolate);
+    TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
     auto context = TRI_IGETC;
+
+
+    auto old = v8g->_expressionContext;
+    v8g->_expressionContext = expressionContext;
+    TRI_DEFER(v8g->_expressionContext = old);
 
     VPackOptions const* options = trx->transactionContext()->getVPackOptions();
     std::string jsName;
@@ -3051,11 +3056,11 @@ AqlValue Functions::Split(ExpressionContext* expressionContext, transaction::Met
 
   if (parameters.size() == 1) {
     // pre-documented edge-case: if we only have the first parameter, return it.
-    VPackBuilder result;
-    result.openArray();
-    result.add(aqlValueToSplit.slice());
-    result.close();
-    return AqlValue(result);
+    transaction::BuilderLeaser builder(trx);
+    builder->openArray();
+    builder->add(aqlValueToSplit.slice());
+    builder->close();
+    return AqlValue(builder->slice());
   }
 
   // Get ready for ICU
@@ -3076,14 +3081,14 @@ AqlValue Functions::Split(ExpressionContext* expressionContext, transaction::Met
     return AqlValue(AqlValueHintNull());
   }
 
-  VPackBuilder result;
-  result.openArray();
+  transaction::BuilderLeaser result(trx);
+  result->openArray();
   if (!isEmptyExpression && (buffer->length() == 0)) {
     // Edge case: splitting an empty string by non-empty expression produces an
     // empty string again.
-    result.add(VPackValue(""));
-    result.close();
-    return AqlValue(result);
+    result->add(VPackValue(""));
+    result->close();
+    return AqlValue(result->slice());
   }
 
   std::string utf8;
@@ -3121,7 +3126,7 @@ AqlValue Functions::Split(ExpressionContext* expressionContext, transaction::Met
         continue;
       }
       uResults[i].toUTF8String(utf8);
-      result.add(VPackValue(utf8));
+      result->add(VPackValue(utf8));
       utf8.clear();
       i++;
       totalCount++;
@@ -3141,8 +3146,8 @@ AqlValue Functions::Split(ExpressionContext* expressionContext, transaction::Met
     }
   }
 
-  result.close();
-  return AqlValue(result);
+  result->close();
+  return AqlValue(result->slice());
 }
 
 /// @brief function REGEX_MATCHES
@@ -3154,11 +3159,11 @@ AqlValue Functions::RegexMatches(ExpressionContext* expressionContext,
   AqlValue const& aqlValueToMatch = extractFunctionParameterValue(parameters, 0);
 
   if (parameters.size() == 1) {
-    VPackBuilder result;
-    result.openArray();
-    result.add(aqlValueToMatch.slice());
-    result.close();
-    return AqlValue(result);
+    transaction::BuilderLeaser builder(trx);
+    builder->openArray();
+    builder->add(aqlValueToMatch.slice());
+    builder->close();
+    return AqlValue(builder->slice());
   }
 
   bool const caseInsensitive = ::getBooleanParameter(trx, parameters, 2, false);
@@ -3186,15 +3191,15 @@ AqlValue Functions::RegexMatches(ExpressionContext* expressionContext,
   icu::UnicodeString valueToMatch(buffer->c_str(),
                                   static_cast<uint32_t>(buffer->length()));
 
-  VPackBuilder result;
-  result.openArray();
+  transaction::BuilderLeaser result(trx);
+  result->openArray();
 
   if (!isEmptyExpression && (buffer->length() == 0)) {
     // Edge case: splitting an empty string by non-empty expression produces an
     // empty string again.
-    result.add(VPackValue(""));
-    result.close();
-    return AqlValue(result);
+    result->add(VPackValue(""));
+    result->close();
+    return AqlValue(result->slice());
   }
 
   UErrorCode status = U_ZERO_ERROR;
@@ -3213,12 +3218,12 @@ AqlValue Functions::RegexMatches(ExpressionContext* expressionContext,
     } else {
       std::string s;
       match.toUTF8String(s);
-      result.add(VPackValue(s));
+      result->add(VPackValue(s));
     }
   }
 
-  result.close();
-  return AqlValue(result);
+  result->close();
+  return AqlValue(result->slice());
 }
 
 /// @brief function REGEX_SPLIT
@@ -3249,11 +3254,11 @@ AqlValue Functions::RegexSplit(ExpressionContext* expressionContext,
 
   if (parameters.size() == 1) {
     // pre-documented edge-case: if we only have the first parameter, return it.
-    VPackBuilder result;
-    result.openArray();
-    result.add(aqlValueToSplit.slice());
-    result.close();
-    return AqlValue(result);
+    transaction::BuilderLeaser builder(trx);
+    builder->openArray();
+    builder->add(aqlValueToSplit.slice());
+    builder->close();
+    return AqlValue(builder->slice());
   }
 
   bool const caseInsensitive = ::getBooleanParameter(trx, parameters, 2, false);
@@ -3280,14 +3285,14 @@ AqlValue Functions::RegexSplit(ExpressionContext* expressionContext,
   ::appendAsString(trx, adapter, value);
   icu::UnicodeString valueToSplit(buffer->c_str(), static_cast<int32_t>(buffer->length()));
 
-  VPackBuilder result;
-  result.openArray();
+  transaction::BuilderLeaser result(trx);
+  result->openArray();
   if (!isEmptyExpression && (buffer->length() == 0)) {
     // Edge case: splitting an empty string by non-empty expression produces an
     // empty string again.
-    result.add(VPackValue(""));
-    result.close();
-    return AqlValue(result);
+    result->add(VPackValue(""));
+    result->close();
+    return AqlValue(result->slice());
   }
 
   std::string utf8;
@@ -3325,7 +3330,7 @@ AqlValue Functions::RegexSplit(ExpressionContext* expressionContext,
         continue;
       }
       uResults[i].toUTF8String(utf8);
-      result.add(VPackValue(utf8));
+      result->add(VPackValue(utf8));
       utf8.clear();
       i++;
       totalCount++;
@@ -3345,8 +3350,8 @@ AqlValue Functions::RegexSplit(ExpressionContext* expressionContext,
     }
   }
 
-  result.close();
-  return AqlValue(result);
+  result->close();
+  return AqlValue(result->slice());
 }
 
 /// @brief function REGEX_TEST
@@ -4279,33 +4284,33 @@ AqlValue Functions::Attributes(ExpressionContext* expressionContext,
     std::set<std::string, arangodb::basics::VelocyPackHelper::AttributeSorterUTF8> keys;
 
     VPackCollection::keys(slice, keys);
-    VPackBuilder result;
-    result.openArray();
+    transaction::BuilderLeaser builder(trx);
+    builder->openArray();
     for (auto const& it : keys) {
       TRI_ASSERT(!it.empty());
       if (removeInternal && !it.empty() && it.at(0) == '_') {
         continue;
       }
-      result.add(VPackValue(it));
+      builder->add(VPackValue(it));
     }
-    result.close();
+    builder->close();
 
-    return AqlValue(result);
+    return AqlValue(builder->slice());
   }
 
   std::unordered_set<std::string> keys;
   VPackCollection::keys(slice, keys);
 
-  VPackBuilder result;
-  result.openArray();
+  transaction::BuilderLeaser builder(trx);
+  builder->openArray();
   for (auto const& it : keys) {
     if (removeInternal && !it.empty() && it.at(0) == '_') {
       continue;
     }
-    result.add(VPackValue(it));
+    builder->add(VPackValue(it));
   }
-  result.close();
-  return AqlValue(result);
+  builder->close();
+  return AqlValue(builder->slice());
 }
 
 /// @brief function VALUES
@@ -5520,7 +5525,7 @@ AqlValue Functions::IsInPolygon(ExpressionContext* expressionContext,
 /// @brief geo constructors
 
 /// @brief function GEO_POINT
-AqlValue Functions::GeoPoint(ExpressionContext* expressionContext, transaction::Methods*,
+AqlValue Functions::GeoPoint(ExpressionContext* expressionContext, transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
@@ -5552,17 +5557,16 @@ AqlValue Functions::GeoPoint(ExpressionContext* expressionContext, transaction::
     return AqlValue(arangodb::velocypack::Slice::nullSlice());
   }
 
-  VPackBuilder b;
+  transaction::BuilderLeaser builder(trx);
+  builder->openObject();
+  builder->add("type", VPackValue("Point"));
+  builder->add("coordinates", VPackValue(VPackValueType::Array));
+  builder->add(VPackValue(lon1Value));
+  builder->add(VPackValue(lat1Value));
+  builder->close();
+  builder->close();
 
-  b.add(VPackValue(VPackValueType::Object));
-  b.add("type", VPackValue("Point"));
-  b.add("coordinates", VPackValue(VPackValueType::Array));
-  b.add(VPackValue(lon1Value));
-  b.add(VPackValue(lat1Value));
-  b.close();
-  b.close();
-
-  return AqlValue(b);
+  return AqlValue(builder->slice());
 }
 
 /// @brief function GEO_MULTIPOINT
@@ -5589,20 +5593,20 @@ AqlValue Functions::GeoMultiPoint(ExpressionContext* expressionContext,
     return AqlValue(arangodb::velocypack::Slice::nullSlice());
   }
 
-  VPackBuilder b;
+  transaction::BuilderLeaser builder(trx);
 
-  b.add(VPackValue(VPackValueType::Object));
-  b.add("type", VPackValue("MultiPoint"));
-  b.add("coordinates", VPackValue(VPackValueType::Array));
+  builder->openObject();
+  builder->add("type", VPackValue("MultiPoint"));
+  builder->add("coordinates", VPackValue(VPackValueType::Array));
 
   AqlValueMaterializer materializer(trx);
   VPackSlice s = materializer.slice(geoArray, false);
   for (VPackSlice v : VPackArrayIterator(s)) {
     if (v.isArray()) {
-      b.openArray();
+      builder->openArray();
       for (auto const& coord : VPackArrayIterator(v)) {
         if (coord.isNumber()) {
-          b.add(VPackValue(coord.getNumber<double>()));
+          builder->add(VPackValue(coord.getNumber<double>()));
         } else {
           registerWarning(expressionContext, "GEO_MULTIPOINT",
                           Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
@@ -5610,7 +5614,7 @@ AqlValue Functions::GeoMultiPoint(ExpressionContext* expressionContext,
           return AqlValue(arangodb::velocypack::Slice::nullSlice());
         }
       }
-      b.close();
+      builder->close();
     } else {
       registerWarning(expressionContext, "GEO_MULTIPOINT",
                       Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
@@ -5619,10 +5623,10 @@ AqlValue Functions::GeoMultiPoint(ExpressionContext* expressionContext,
     }
   }
 
-  b.close();
-  b.close();
+  builder->close();
+  builder->close();
 
-  return AqlValue(b);
+  return AqlValue(builder->slice());
 }
 
 /// @brief function GEO_POLYGON
@@ -5643,24 +5647,24 @@ AqlValue Functions::GeoPolygon(ExpressionContext* expressionContext,
     return AqlValue(arangodb::velocypack::Slice::nullSlice());
   }
 
-  VPackBuilder b;
-  b.openObject();
-  b.add("type", VPackValue("Polygon"));
-  b.add("coordinates", VPackValue(VPackValueType::Array));
+  transaction::BuilderLeaser builder(trx);
+  builder->openObject();
+  builder->add("type", VPackValue("Polygon"));
+  builder->add("coordinates", VPackValue(VPackValueType::Array));
 
   AqlValueMaterializer materializer(trx);
   VPackSlice s = materializer.slice(geoArray, false);
 
-  Result res = ::parseGeoPolygon(s, b);
+  Result res = ::parseGeoPolygon(s, *builder.get());
   if (res.fail()) {
     registerWarning(expressionContext, "GEO_POLYGON", res);
     return AqlValue(arangodb::velocypack::Slice::nullSlice());
   }
 
-  b.close();  // coordinates
-  b.close();  // object
+  builder->close();  // coordinates
+  builder->close();  // object
 
-  return AqlValue(b);
+  return AqlValue(builder->slice());
 }
 
 /// @brief function GEO_MULTIPOLYGON
@@ -5705,10 +5709,10 @@ AqlValue Functions::GeoMultiPolygon(ExpressionContext* expressionContext,
     return AqlValue(arangodb::velocypack::Slice::nullSlice());
   }
 
-  VPackBuilder b;
-  b.openObject();
-  b.add("type", VPackValue("MultiPolygon"));
-  b.add("coordinates", VPackValue(VPackValueType::Array));
+  transaction::BuilderLeaser builder(trx);
+  builder->openObject();
+  builder->add("type", VPackValue("MultiPolygon"));
+  builder->add("coordinates", VPackValue(VPackValueType::Array));
 
   for (auto const& arrayOfPolygons : VPackArrayIterator(s)) {
     if (!arrayOfPolygons.isArray()) {
@@ -5718,21 +5722,21 @@ AqlValue Functions::GeoMultiPolygon(ExpressionContext* expressionContext,
                  "a MultiPolygon needs at least two Polygons inside."));
       return AqlValue(arangodb::velocypack::Slice::nullSlice());
     }
-    b.openArray();  // arrayOfPolygons
+    builder->openArray();  // arrayOfPolygons
     for (VPackSlice v : VPackArrayIterator(arrayOfPolygons)) {
-      Result res = ::parseGeoPolygon(v, b);
+      Result res = ::parseGeoPolygon(v, *builder.get());
       if (res.fail()) {
         registerWarning(expressionContext, "GEO_MULTIPOLYGON", res);
         return AqlValue(arangodb::velocypack::Slice::nullSlice());
       }
     }
-    b.close();  // arrayOfPolygons close
+    builder->close();  // arrayOfPolygons close
   }
 
-  b.close();
-  b.close();
+  builder->close();
+  builder->close();
 
-  return AqlValue(b);
+  return AqlValue(builder->slice());
 }
 
 /// @brief function GEO_LINESTRING
@@ -5759,20 +5763,20 @@ AqlValue Functions::GeoLinestring(ExpressionContext* expressionContext,
     return AqlValue(arangodb::velocypack::Slice::nullSlice());
   }
 
-  VPackBuilder b;
+  transaction::BuilderLeaser builder(trx);
 
-  b.add(VPackValue(VPackValueType::Object));
-  b.add("type", VPackValue("LineString"));
-  b.add("coordinates", VPackValue(VPackValueType::Array));
+  builder->add(VPackValue(VPackValueType::Object));
+  builder->add("type", VPackValue("LineString"));
+  builder->add("coordinates", VPackValue(VPackValueType::Array));
 
   AqlValueMaterializer materializer(trx);
   VPackSlice s = materializer.slice(geoArray, false);
   for (VPackSlice v : VPackArrayIterator(s)) {
     if (v.isArray()) {
-      b.openArray();
+      builder->openArray();
       for (auto const& coord : VPackArrayIterator(v)) {
         if (coord.isNumber()) {
-          b.add(VPackValue(coord.getNumber<double>()));
+          builder->add(VPackValue(coord.getNumber<double>()));
         } else {
           registerWarning(expressionContext, "GEO_LINESTRING",
                           Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
@@ -5780,7 +5784,7 @@ AqlValue Functions::GeoLinestring(ExpressionContext* expressionContext,
           return AqlValue(arangodb::velocypack::Slice::nullSlice());
         }
       }
-      b.close();
+      builder->close();
     } else {
       registerWarning(expressionContext, "GEO_LINESTRING",
                       Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
@@ -5789,10 +5793,10 @@ AqlValue Functions::GeoLinestring(ExpressionContext* expressionContext,
     }
   }
 
-  b.close();
-  b.close();
+  builder->close();
+  builder->close();
 
-  return AqlValue(b);
+  return AqlValue(builder->slice());
 }
 
 /// @brief function GEO_MULTILINESTRING
@@ -5820,24 +5824,24 @@ AqlValue Functions::GeoMultiLinestring(ExpressionContext* expressionContext,
     return AqlValue(arangodb::velocypack::Slice::nullSlice());
   }
 
-  VPackBuilder b;
+  transaction::BuilderLeaser builder(trx);
 
-  b.add(VPackValue(VPackValueType::Object));
-  b.add("type", VPackValue("MultiLineString"));
-  b.add("coordinates", VPackValue(VPackValueType::Array));
+  builder->add(VPackValue(VPackValueType::Object));
+  builder->add("type", VPackValue("MultiLineString"));
+  builder->add("coordinates", VPackValue(VPackValueType::Array));
 
   AqlValueMaterializer materializer(trx);
   VPackSlice s = materializer.slice(geoArray, false);
   for (VPackSlice v : VPackArrayIterator(s)) {
     if (v.isArray()) {
       if (v.length() > 1) {
-        b.openArray();
+        builder->openArray();
         for (auto const& inner : VPackArrayIterator(v)) {
           if (inner.isArray()) {
-            b.openArray();
+            builder->openArray();
             for (auto const& coord : VPackArrayIterator(inner)) {
               if (coord.isNumber()) {
-                b.add(VPackValue(coord.getNumber<double>()));
+                builder->add(VPackValue(coord.getNumber<double>()));
               } else {
                 registerWarning(expressionContext, "GEO_MULTILINESTRING",
                                 Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
@@ -5845,7 +5849,7 @@ AqlValue Functions::GeoMultiLinestring(ExpressionContext* expressionContext,
                 return AqlValue(arangodb::velocypack::Slice::nullSlice());
               }
             }
-            b.close();
+            builder->close();
           } else {
             registerWarning(expressionContext, "GEO_MULTILINESTRING",
                             Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
@@ -5853,7 +5857,7 @@ AqlValue Functions::GeoMultiLinestring(ExpressionContext* expressionContext,
             return AqlValue(arangodb::velocypack::Slice::nullSlice());
           }
         }
-        b.close();
+        builder->close();
       } else {
         registerWarning(expressionContext, "GEO_MULTILINESTRING",
                         Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
@@ -5868,10 +5872,10 @@ AqlValue Functions::GeoMultiLinestring(ExpressionContext* expressionContext,
     }
   }
 
-  b.close();
-  b.close();
+  builder->close();
+  builder->close();
 
-  return AqlValue(b);
+  return AqlValue(builder->slice());
 }
 
 /// @brief function FLATTEN
@@ -5998,7 +6002,7 @@ AqlValue Functions::JsonParse(ExpressionContext* expressionContext,
 
   try {
     std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
-    return AqlValue(*builder);
+    return AqlValue(builder->slice());
   } catch (...) {
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
@@ -7669,12 +7673,6 @@ AqlValue Functions::SchemaGet(ExpressionContext* expressionContext,
                               transaction::Methods* trx,
                               VPackFunctionParameters const& parameters) {
   // SCHEMA_GET(collectionName) -> schema object
-  static char const* AFN = "SCHEMA_GET";
-
-  if (parameters.size() != 1) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, AFN);
-  }
-
   std::string const collectionName = ::extractCollectionName(trx, parameters, 0);
 
   if (collectionName.empty()) {
@@ -7702,7 +7700,7 @@ AqlValue Functions::SchemaGet(ExpressionContext* expressionContext,
 
   if (!ruleSlice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "validation object of collection " +
+                                   "schema definition for collection " +
                                        collectionName + " has no rule object");
   }
 
@@ -7716,14 +7714,19 @@ AqlValue Functions::SchemaValidate(ExpressionContext* expressionContext,
   static char const* AFN = "SCHEMA_VALIDATE";
   auto const* vpackOptions = trx->transactionContext()->getVPackOptions();
 
-  if (parameters.size() != 2) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, AFN);
-  }
-
   AqlValue const& docValue = extractFunctionParameterValue(parameters, 0);
   AqlValue const& schemaValue = extractFunctionParameterValue(parameters, 1);
 
-  if (schemaValue.isNull(false)) {
+  if (!docValue.isObject()) {
+    registerWarning(expressionContext, AFN,
+                    Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                           "expecting document object"));
+    return AqlValue(AqlValueHintNull());
+  }
+
+  if (schemaValue.isNull(false) || 
+      (schemaValue.isObject() && schemaValue.length() == 0)) {
+    // schema is null or {}
     transaction::BuilderLeaser resultBuilder(trx);
     {
       VPackObjectBuilder guard(resultBuilder.builder());
@@ -7739,10 +7742,10 @@ AqlValue Functions::SchemaValidate(ExpressionContext* expressionContext,
   }
   auto* validator = expressionContext->buildValidator(schemaValue.slice());
 
-  //store and restore validation level this is cheaper than modifying the VPack
+  // store and restore validation level this is cheaper than modifying the VPack
   auto storedLevel = validator->level();
 
-  //override level so the validation will be executed no matter what
+  // override level so the validation will be executed no matter what
   validator->setLevel(ValidationLevel::Strict);
 
   Result res;

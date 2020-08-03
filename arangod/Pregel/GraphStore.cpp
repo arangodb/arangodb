@@ -180,6 +180,8 @@ void GraphStore<V, E>::loadDocument(WorkerConfig* config, std::string const& doc
 template <typename V, typename E>
 void GraphStore<V, E>::loadDocument(WorkerConfig* config, PregelShard sourceShard,
                                     VPackStringRef const& _key) {
+  // Apparently this code has not been implemented yet; find out whether it's
+  // needed at all or remove
   TRI_ASSERT(false);
 }
 
@@ -438,7 +440,8 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
       TRI_ASSERT(edgeSlice.isString());
       
       VPackStringRef toValue(edgeSlice);
-      allocateSpace(toValue.size());
+      size_t space = toValue.size();
+      allocateSpace(space);
       Edge<E>* edge = edgeBuff->appendElement();
       buildEdge(edge, toValue);
       return true;
@@ -606,6 +609,8 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
 }
 
 template class arangodb::pregel::GraphStore<int64_t, int64_t>;
+template class arangodb::pregel::GraphStore<uint64_t, uint64_t>;
+template class arangodb::pregel::GraphStore<uint64_t, uint8_t>;
 template class arangodb::pregel::GraphStore<float, float>;
 template class arangodb::pregel::GraphStore<double, float>;
 template class arangodb::pregel::GraphStore<double, double>;

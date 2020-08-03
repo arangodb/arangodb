@@ -31,7 +31,7 @@
 #include "Aql/VariableGenerator.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 #include "Graph/Graph.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -93,10 +93,11 @@ class GraphManager {
   /// @brief find or create collections by EdgeDefinitions
   ////////////////////////////////////////////////////////////////////////////////
   OperationResult findOrCreateCollectionsByEdgeDefinitions(
-      std::map<std::string, EdgeDefinition> const& edgeDefinitions,
+      Graph const& graph, std::map<std::string, EdgeDefinition> const& edgeDefinitions,
       bool waitForSync, VPackSlice options);
 
-  OperationResult findOrCreateCollectionsByEdgeDefinition(EdgeDefinition const& edgeDefinition,
+  OperationResult findOrCreateCollectionsByEdgeDefinition(Graph const& graph,
+                                                          EdgeDefinition const& edgeDefinition,
                                                           bool waitForSync,
                                                           VPackSlice options);
 

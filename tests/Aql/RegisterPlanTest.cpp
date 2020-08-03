@@ -137,7 +137,7 @@ struct ExecutionNodeMock {
 
   auto getRegsToKeep() -> RegIdSetStack const& { return _regsToKeep; }
 
-  auto walk(WalkerWorker<ExecutionNodeMock>& worker) -> bool {
+  auto walk(WalkerWorker<ExecutionNodeMock, WalkerUniqueness::NonUnique>& worker) -> bool {
     if (worker.before(this)) {
       return true;
     }
@@ -512,6 +512,65 @@ TEST_F(RegisterPlanTest, variable_usage_with_spliced_subquery) {
     EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark}, VarSet{tina}}), nodes[4].getVarsUsedLaterStack());
     // SUBQUERY_END
     EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark}}), nodes[5].getVarsUsedLaterStack());
+    // CALCULATION
+    EXPECT_EQ((VarSetStack{VarSet{jesse}}), nodes[6].getVarsUsedLaterStack());
+    // RETURN
+    EXPECT_EQ((VarSetStack{VarSet{}}), nodes[7].getVarsUsedLaterStack());
+  }
+
+  {  // Check varsValid
+    // SINGLETON
+    EXPECT_EQ((VarSetStack{VarSet{}}), nodes[0].getVarsValidStack());
+    // ENUMERATE_COLLECTION
+    EXPECT_EQ((VarSetStack{VarSet{mark}}), nodes[1].getVarsValidStack());
+    // CALCULATION
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra}}), nodes[2].getVarsValidStack());
+    // SUBQUERY_START
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra}, VarSet{mark, debra}}), nodes[3].getVarsValidStack());
+    // CALCULATION
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra}, VarSet{mark, debra, tina}}),
+              nodes[4].getVarsValidStack());
+    // SUBQUERY_END
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra, mary}}), nodes[5].getVarsValidStack());
+    // CALCULATION
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra, mary, jesse}}), nodes[6].getVarsValidStack());
+    // RETURN
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra, mary, jesse}}), nodes[7].getVarsValidStack());
+  }
+}
+
+TEST_F(RegisterPlanTest, variable_usage_with_spliced_subquery2) {
+  auto&& [vars, ptrs] = generateVars<5>();
+  auto [mark, debra, tina, mary, jesse] = ptrs;
+  std::vector<ExecutionNodeMock> nodes{
+      ExecutionNodeMock{ExecutionNode::SINGLETON, {}, {}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, {}, {mark}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, {mark}, {debra}},
+      ExecutionNodeMock{ExecutionNode::SUBQUERY_START, {}, {}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, {mark}, {tina}},
+      ExecutionNodeMock{ExecutionNode::SUBQUERY_END, {tina}, {mary}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, {mary, debra}, {jesse}},
+      ExecutionNodeMock{ExecutionNode::RETURN, {jesse}, {}}};
+  getVarUsage(nodes);
+
+  {  // Check varsUsedLater
+
+    // SINGLETON
+    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark, tina, debra}}),
+              nodes[0].getVarsUsedLaterStack());
+    // ENUMERATE_COLLECTION
+    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark, tina, debra}}),
+              nodes[1].getVarsUsedLaterStack());
+    // CALCULATION
+    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark, tina, debra}}),
+              nodes[2].getVarsUsedLaterStack());
+    // SUBQUERY_START
+    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, debra}, VarSet{mark, tina}}),
+              nodes[3].getVarsUsedLaterStack());
+    // CALCULATION
+    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, debra}, VarSet{tina}}), nodes[4].getVarsUsedLaterStack());
+    // SUBQUERY_END
+    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, debra}}), nodes[5].getVarsUsedLaterStack());
     // CALCULATION
     EXPECT_EQ((VarSetStack{VarSet{jesse}}), nodes[6].getVarsUsedLaterStack());
     // RETURN

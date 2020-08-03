@@ -65,29 +65,6 @@ RestAqlHandler::RestAqlHandler(application_features::ApplicationServer& server,
   TRI_ASSERT(_queryRegistry != nullptr);
 }
 
-std::pair<double, std::shared_ptr<VPackBuilder>> RestAqlHandler::getPatchedOptionsWithTTL(
-    VPackSlice const& optionsSlice) const {
-  auto options = std::make_shared<VPackBuilder>();
-  double ttl = _queryRegistry->defaultTTL();
-  {
-    VPackObjectBuilder guard(options.get());
-    TRI_ASSERT(optionsSlice.isObject());
-    for (auto pair : VPackObjectIterator(optionsSlice)) {
-      if (pair.key.isEqualString("ttl")) {
-        ttl = VelocyPackHelper::getNumericValue<double>(optionsSlice, "ttl", ttl);
-        ttl = _request->parsedValue<double>("ttl", ttl);
-        if (ttl <= 0) {
-          ttl = _queryRegistry->defaultTTL();
-        }
-        options->add("ttl", VPackValue(ttl));
-      } else {
-        options->add(pair.key.stringRef(), pair.value);
-      }
-    }
-  }
-  return std::make_pair(ttl, options);
-}
-
 // POST method for /_api/aql/setup (internal)
 // Only available on DBServers in the Cluster.
 // This route sets-up all the query engines required
@@ -200,11 +177,14 @@ void RestAqlHandler::setupClusterQuery() {
   //   "WRITE"} ], initialize: false, nodes: <one of snippets[*].value>,
   //   variables: <variables slice>
   // }
+  
+  QueryOptions options(optionsSlice);
+  if (options.ttl <= 0) { // patch TTL value
+    options.ttl = _queryRegistry->defaultTTL();
+  }
 
-  std::shared_ptr<VPackBuilder> options;
-  double ttl;
-  std::tie(ttl, options) = getPatchedOptionsWithTTL(optionsSlice);
-
+  // TODO: technically we could change the code in prepareClusterQuery to parse
+  //       the collection info directly
   // Build the collection information
   VPackBuilder collectionBuilder;
   collectionBuilder.openArray();
@@ -238,9 +218,11 @@ void RestAqlHandler::setupClusterQuery() {
   }
   collectionBuilder.close();
   
+  
   // simon: making this write breaks queries where DOCUMENT function
   // is used in a coordinator-snippet above a DBServer-snippet
   AccessMode::Type access = AccessMode::Type::READ;
+  const double ttl = options.ttl;
   // creates a StandaloneContext or a leased context
   auto q = std::make_unique<ClusterQuery>(createTransactionContext(access),
                                           std::move(options));
@@ -253,9 +235,14 @@ void RestAqlHandler::setupClusterQuery() {
 
   answerBuilder.add(StaticStrings::AqlRemoteResult, VPackValue(VPackValueType::Object));
   answerBuilder.add("queryId", VPackValue(q->id()));
-  auto analyzersRevision = VelocyPackHelper::getNumericValue<AnalyzersRevision::Revision>(
-      querySlice, StaticStrings::ArangoSearchAnalyzersRevision,
-      AnalyzersRevision::MIN);
+  QueryAnalyzerRevisions analyzersRevision;
+  auto revisionRes = analyzersRevision.fromVelocyPack(querySlice);
+  if(ADB_UNLIKELY(revisionRes.fail())) {
+    LOG_TOPIC("b2a37", ERR, arangodb::Logger::AQL)
+      << "Failed to read ArangoSearch analyzers revision " << revisionRes.errorMessage();
+    generateError(revisionRes);
+    return;
+  }
   q->prepareClusterQuery(format, querySlice, collectionBuilder.slice(),
                          variablesSlice, snippetsSlice,
                          traverserSlice, answerBuilder, analyzersRevision);

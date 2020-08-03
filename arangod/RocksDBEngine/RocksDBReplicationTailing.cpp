@@ -267,7 +267,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
       case RocksDBLogType::BeginTransaction: {
         resetTransientState();  // finish ongoing trx
         TRI_voc_tick_t dbid = RocksDBLogValue::databaseId(blob);
-        TRI_voc_tid_t tid = RocksDBLogValue::transactionId(blob);
+        TransactionId tid = RocksDBLogValue::transactionId(blob);
         if (shouldHandleDB(dbid)) {
           _state = TRANSACTION;
           _currentTrxId = tid;
@@ -275,7 +275,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
           _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
           _builder.add("type", VPackValue(convertLogType(type)));
           _builder.add("database", VPackValue(std::to_string(dbid)));
-          _builder.add("tid", VPackValue(std::to_string(tid)));
+          _builder.add("tid", VPackValue(std::to_string(tid.id())));
           _builder.close();
           updateLastEmittedTick(_currentSequence);
         }
@@ -284,7 +284,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
       case RocksDBLogType::CommitTransaction: {  // ideally optional
         if (_state == TRANSACTION) {
           TRI_voc_tick_t dbid = RocksDBLogValue::databaseId(blob);
-          TRI_voc_tid_t tid = RocksDBLogValue::transactionId(blob);
+          TransactionId tid = RocksDBLogValue::transactionId(blob);
           TRI_ASSERT(_currentTrxId == tid && _vocbase->id() == dbid);
           if (shouldHandleDB(dbid) && _currentTrxId == tid) {
             writeCommitMarker();
@@ -313,7 +313,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
       }
       case RocksDBLogType::DocumentRemoveV2: {  // remove within a trx
         if (_state == TRANSACTION) {
-          TRI_ASSERT(_removedDocRid == 0);
+          TRI_ASSERT(_removedDocRid.empty());
           _removedDocRid = RocksDBLogValue::revisionId(blob);
         } else {
           resetTransientState();
@@ -396,9 +396,9 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
         resetTransientState();
         return rocksdb::Status();
       }
-      TRI_ASSERT(_state != SINGLE_PUT || _currentTrxId == 0);
-      TRI_ASSERT(_removedDocRid == 0);
-      _removedDocRid = 0;
+      TRI_ASSERT(_state != SINGLE_PUT || _currentTrxId.empty());
+      TRI_ASSERT(_removedDocRid.empty());
+      _removedDocRid = RevisionId::none();
 
       uint64_t objectId = RocksDBKey::objectId(key);
       auto dbCollPair = rocksutils::mapObjectToCollection(objectId);
@@ -416,7 +416,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
         marker->add("tick", VPackValue(std::to_string(_currentSequence)));
         marker->add("type", VPackValue(REPLICATION_MARKER_DOCUMENT));
         marker->add("database", VPackValue(std::to_string(dbid)));
-        marker->add("tid", VPackValue(std::to_string(_currentTrxId)));
+        marker->add("tid", VPackValue(std::to_string(_currentTrxId.id())));
         marker->add("cid", VPackValue(std::to_string(cid)));
         marker->add("cname", VPackValue(col->name()));
         marker->add("data", RocksDBValue::data(value));
@@ -443,14 +443,14 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
       resetTransientState();
       return;
     }
-    TRI_ASSERT(_state != SINGLE_REMOVE || _currentTrxId == 0);
+    TRI_ASSERT(_state != SINGLE_REMOVE || _currentTrxId.empty());
 
     uint64_t objectId = RocksDBKey::objectId(key);
     auto triple = rocksutils::mapObjectToIndex(objectId);
     TRI_voc_tick_t const dbid = std::get<0>(triple);
     TRI_voc_cid_t const cid = std::get<1>(triple);
     if (!shouldHandleCollection(dbid, cid)) {
-      _removedDocRid = 0;  // ignore rid too
+      _removedDocRid = RevisionId::none();  // ignore rid too
       return;              // no reset here
     }
     TRI_ASSERT(_vocbase->id() == dbid);
@@ -465,14 +465,14 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
       marker->add("database", VPackValue(std::to_string(dbid)));
       marker->add("cid", VPackValue(std::to_string(cid)));
       marker->add("cname", VPackValue(coll->name()));
-      marker->add("tid", VPackValue(std::to_string(_currentTrxId)));
+      marker->add("tid", VPackValue(std::to_string(_currentTrxId.id())));
       VPackObjectBuilder data(&_builder, "data", true);
       data->add(StaticStrings::KeyString,
                 VPackValuePair(docKey.data(), docKey.size(), VPackValueType::String));
-      data->add(StaticStrings::RevString, VPackValue(TRI_RidToString(_removedDocRid)));
+      data->add(StaticStrings::RevString, VPackValue(_removedDocRid.toString()));
     }
     updateLastEmittedTick(_currentSequence);
-    _removedDocRid = 0;  // always reset
+    _removedDocRid = RevisionId::none();  // always reset
     if (_state == SINGLE_REMOVE) {
       resetTransientState();
     }
@@ -503,8 +503,8 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
     _startOfBatch = true;
     // reset all states
     _state = INVALID;
-    _currentTrxId = 0;
-    _removedDocRid = 0;
+    _currentTrxId = TransactionId::none();
+    _removedDocRid = RevisionId::none();
     _oldCollectionName.clear();
   }
 
@@ -516,7 +516,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
     _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
     _builder.add("type", VPackValue(static_cast<uint64_t>(REPLICATION_TRANSACTION_COMMIT)));
     _builder.add("database", VPackValue(std::to_string(_vocbase->id())));
-    _builder.add("tid", VPackValue(std::to_string(_currentTrxId)));
+    _builder.add("tid", VPackValue(std::to_string(_currentTrxId.id())));
     _builder.close();
     updateLastEmittedTick(_currentSequence);
     _state = INVALID;  // for safety
@@ -528,13 +528,13 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
   void resetTransientState() {
     // reset all states
     _state = INVALID;
-    _currentTrxId = 0;
-    _removedDocRid = 0;
+    _currentTrxId = TransactionId::none();
+    _removedDocRid = RevisionId::none();
     _oldCollectionName.clear();
   }
 
   uint64_t endBatch() {
-    TRI_ASSERT(_removedDocRid == 0);
+    TRI_ASSERT(_removedDocRid.empty());
     TRI_ASSERT(_oldCollectionName.empty());
     resetTransientState();
     return _currentSequence;
@@ -625,8 +625,8 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
 
   // Various state machine flags
   State _state = INVALID;
-  TRI_voc_tick_t _currentTrxId = 0;
-  TRI_voc_rid_t _removedDocRid = 0;
+  TransactionId _currentTrxId = TransactionId::none();
+  RevisionId _removedDocRid = RevisionId::none();
   std::string _oldCollectionName;
 };
 

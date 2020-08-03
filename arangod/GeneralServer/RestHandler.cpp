@@ -168,8 +168,17 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   network::RequestOptions options;
   options.database = dbname;
   options.timeout = network::Timeout(900);
-  // if the type is unset JSON is used
-  options.contentType = rest::contentTypeToString(_request->contentType());
+  
+  if (useVst && _request->contentType() == rest::ContentType::UNSET) {
+    // request is using VST, but doesn't have a Content-Type header set.
+    // it is likely VelocyPack content, so let's assume that here.
+    // should fix issue BTS-133.
+    options.contentType = rest::contentTypeToString(rest::ContentType::VPACK);
+  } else {
+    // if the type is unset JSON is used
+    options.contentType = rest::contentTypeToString(_request->contentType());
+  }
+
   options.acceptType = rest::contentTypeToString(_request->contentTypeResponse());
     
   for (auto const& i : _request->values()) {
@@ -182,7 +191,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   VPackStringRef resPayload = _request->rawPayload();
   VPackBuffer<uint8_t> payload(resPayload.size());
   payload.append(resPayload.data(), resPayload.size());
-
+ 
   auto future = network::sendRequest(pool, "server:" + serverId, requestType,
                                      _request->requestPath(),
                                      std::move(payload), options, std::move(headers));
@@ -478,7 +487,7 @@ void RestHandler::executeEngine(bool isContinue) {
 }
 
 void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
-                                std::string const& message) {
+                                std::string_view const message) {
   resetResponse(code);
 
   if (_request->requestType() != rest::RequestType::HEAD) {
@@ -500,7 +509,7 @@ void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
         _response->setContentType(_request->contentTypeResponse());
       }
       _response->setPayload(std::move(buffer), options,
-                            /*resolveExternals*/false);
+                            /*resolveExternals*/ false);
     } catch (...) {
       // exception while generating error
     }

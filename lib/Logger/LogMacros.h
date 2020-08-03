@@ -58,8 +58,9 @@
 #ifndef ARANGODB_LOGGER_LOG_MACROS_H
 #define ARANGODB_LOGGER_LOG_MACROS_H 1
 
-#include "Logger.h"
-#include "LoggerStream.h"
+#include "Logger/LogVoidify.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message for a topic
@@ -68,28 +69,27 @@
 #define ARANGO_INTERNAL_LOG_HELPER(id)                        \
   ::arangodb::Logger::LINE(__LINE__)                          \
   << ::arangodb::Logger::FILE(__FILE__)                       \
-  << ::arangodb::Logger::FUNCTION(__FUNCTION__)               
+  << ::arangodb::Logger::FUNCTION(__FUNCTION__)               \
+  << ::arangodb::Logger::LOGID((id))
 
-#define LOG_TOPIC(id, level, logger)                                        \
-  !::arangodb::Logger::isEnabled((::arangodb::LogLevel::level), (logger))   \
+#define LOG_TOPIC(id, level, topic)                                         \
+  !::arangodb::Logger::isEnabled((::arangodb::LogLevel::level), (topic))    \
     ? (void)nullptr                                                         \
     : ::arangodb::LogVoidify() & (::arangodb::LoggerStream()                \
-      << (::arangodb::LogLevel::level)                                      \
-      << ( ::arangodb::Logger::getShowIds() ? "[" id "] " : "" ))           \
-      << (logger)                                                           \
+      << (::arangodb::LogLevel::level))                                     \
+      << (topic)                                                            \
       << ARANGO_INTERNAL_LOG_HELPER(id)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message for a topic given that a condition is true
 ////////////////////////////////////////////////////////////////////////////////
 
-#define LOG_TOPIC_IF(id, level, logger, cond)                                           \
-  !(::arangodb::Logger::isEnabled((::arangodb::LogLevel::level), (logger)) && (cond))   \
+#define LOG_TOPIC_IF(id, level, topic, cond)                                            \
+  !(::arangodb::Logger::isEnabled((::arangodb::LogLevel::level), (topic)) && (cond))    \
     ? (void)nullptr                                                                     \
     : ::arangodb::LogVoidify() & (::arangodb::LoggerStream()                            \
-      << (::arangodb::LogLevel::level)                                                  \
-      << ( ::arangodb::Logger::getShowIds() ? "[" id "] " : "" ))                       \
-      << (logger)                                                                       \
+      << (::arangodb::LogLevel::level))                                                 \
+      << (topic)                                                                        \
       << ARANGO_INTERNAL_LOG_HELPER(id)
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -107,21 +107,5 @@
 
 #define LOG_DEVEL_IF(cond) \
   LOG_TOPIC_IF("xxxxx", LOG_DEVEL_LEVEL, ::arangodb::Logger::FIXME, (cond)) << "###### "
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief helper class for macros
-////////////////////////////////////////////////////////////////////////////////
-
-namespace arangodb {
-
-class LoggerStream;
-
-class LogVoidify {
- public:
-  LogVoidify() {}
-  void operator&(LoggerStream const&) {}
-};
-
-}  // namespace arangodb
 
 #endif

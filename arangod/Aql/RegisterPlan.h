@@ -60,10 +60,33 @@ struct VarInfo {
 template <typename T>
 struct RegisterPlanT;
 
+
+using RegVarMap = std::unordered_map<RegisterId, Variable const*>;
+using RegVarMapStack = std::vector<RegVarMap>;
+
+/// There are still some improvements that can be done to the RegisterPlanWalker
+/// to produce better plans.
+/// The most important point is that registersToClear are currently used to find
+/// unused registers that can be reused. That is correct, but does not include
+/// all cases that can be reused. For example:
+///  - A register that is written in one node and never used later will not be
+///    found.
+///  - When a spliced subquery starts (at a SubqueryStartNode), two things are
+///    missed:
+///    1) registers that are used after the subquery, but not inside, will not
+///       be marked as unused registers inside the subquery.
+///    2) registers that are used inside the subquery, but not after it, are not
+///       marked as unused registers outside the subquery (i.e. on the stack
+///       level below it). It would of course suffice when this would be done
+///       at the SubqueryEndNode.
 template <typename T>
-struct RegisterPlanWalkerT final : public WalkerWorker<T> {
-  explicit RegisterPlanWalkerT(std::shared_ptr<RegisterPlanT<T>> plan)
-      : plan(std::move(plan)) {}
+struct RegisterPlanWalkerT final : public WalkerWorker<T, WalkerUniqueness::NonUnique> {
+  using RegisterPlan = RegisterPlanT<T>;
+
+  explicit RegisterPlanWalkerT(std::shared_ptr<RegisterPlan> plan,
+                               ExplainRegisterPlan explainRegisterPlan = ExplainRegisterPlan::No)
+      : plan(std::move(plan)),
+        explain(explainRegisterPlan == ExplainRegisterPlan::Yes) {}
   virtual ~RegisterPlanWalkerT() noexcept = default;
 
   void after(T* eb) final;
@@ -75,8 +98,11 @@ struct RegisterPlanWalkerT final : public WalkerWorker<T> {
 
   RegIdOrderedSetStack unusedRegisters{{}};
   RegIdSetStack regsToKeepStack{{}};
-  std::shared_ptr<RegisterPlanT<T>> plan;
+  std::shared_ptr<RegisterPlan> plan;
+  bool explain = false;
   RegCountStack previousSubqueryNrRegs{};
+
+  RegVarMapStack regVarMappingStack{{}};
 };
 
 template <typename T>
@@ -101,6 +127,11 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
   /// this is used for assertions
   static constexpr RegisterId MaxRegisterId = RegisterId{1000};
 
+  /// @brief Only used when the register plan is being explained
+  std::map<ExecutionNodeId, RegIdOrderedSetStack> unusedRegsByNode;
+  /// @brief Only used when the reister plan is being explained
+  std::map<ExecutionNodeId, RegVarMapStack> regVarMapStackByNode;
+
  public:
   RegisterPlanT();
   RegisterPlanT(arangodb::velocypack::Slice slice, unsigned int depth);
@@ -110,7 +141,7 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
 
   std::shared_ptr<RegisterPlanT> clone();
 
-  void registerVariable(Variable const* v, std::set<RegisterId>& unusedRegisters);
+  RegisterId registerVariable(Variable const* v, std::set<RegisterId>& unusedRegisters);
   void increaseDepth();
   auto addRegister() -> RegisterId;
   void addSubqueryNode(T* subquery);

@@ -36,6 +36,7 @@
 #include "Transaction/Status.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -215,7 +216,7 @@ class Methods {
   Future<Result> finishAsync(Result const& res);
 
   /// @brief return the transaction id
-  TRI_voc_tid_t tid() const;
+  TransactionId tid() const;
 
   /// @brief return a collection name
   std::string name(TRI_voc_cid_t cid) const;
@@ -402,8 +403,8 @@ class Methods {
   // SHOULD THE OPTIONS BE CONST?
   void buildDocumentIdentity(arangodb::LogicalCollection* collection,
                              velocypack::Builder& builder, TRI_voc_cid_t cid,
-                             arangodb::velocypack::StringRef const& key, TRI_voc_rid_t rid,
-                             TRI_voc_rid_t oldRid, ManagedDocumentResult const* oldDoc,
+                             arangodb::velocypack::StringRef const& key, RevisionId rid,
+                             RevisionId oldRid, ManagedDocumentResult const* oldDoc,
                              ManagedDocumentResult const* newDoc);
 
   Future<OperationResult> documentCoordinator(std::string const& collectionName,

@@ -658,6 +658,11 @@ constexpr int TRI_ERROR_REPLICATION_WRONG_CHECKSUM                              
 /// Will be raised when a shard is not empty and the follower tries a shortcut
 constexpr int TRI_ERROR_REPLICATION_SHARD_NONEMPTY                              = 1417;
 
+/// 1448: ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED
+/// "creating collection failed due to precondition"
+/// Will be raised when updating the plan on collection creatio failed.
+constexpr int TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED           = 1448;
+
 /// 1449: ERROR_CLUSTER_SERVER_UNKNOWN
 /// "got a request from an unkown server"
 /// Will be raised on some occasions when one server gets a request from
@@ -1160,13 +1165,13 @@ constexpr int TRI_ERROR_CURSOR_NOT_FOUND                                        
 constexpr int TRI_ERROR_CURSOR_BUSY                                             = 1601;
 
 /// 1620: ERROR_VALIDATION_FAILED
-/// "validation failed"
-/// Will be raised when a document does not pass validation.
+/// "schema validation failed"
+/// Will be raised when a document does not pass schema validation.
 constexpr int TRI_ERROR_VALIDATION_FAILED                                       = 1620;
 
 /// 1621: ERROR_VALIDATION_BAD_PARAMETER
-/// "invalid validation parameter"
-/// Will be raised when the validator description is invalid.
+/// "invalid schema validation parameter"
+/// Will be raised when the schema description is invalid.
 constexpr int TRI_ERROR_VALIDATION_BAD_PARAMETER                                = 1621;
 
 /// 1650: ERROR_TRANSACTION_INTERNAL

@@ -23,12 +23,100 @@
 #include "ClusterTypes.h"
 #include "Basics/debugging.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/voc-errors.h"
 
-std::ostream& operator<< (std::ostream& o, arangodb::RebootId const& r) {
+#include <iostream>
+
+std::ostream& operator<<(std::ostream& o, arangodb::RebootId const& r) {
+  return r.print(o);
+}
+
+std::ostream& operator<<(std::ostream& o, 
+  arangodb::QueryAnalyzerRevisions const& r) {
   return r.print(o);
 }
 
 namespace arangodb {
+
+void QueryAnalyzerRevisions::toVelocyPack(VPackBuilder& builder) const {
+  VPackObjectBuilder scope(&builder, StaticStrings::ArangoSearchAnalyzersRevision);
+  if (currentDbRevision != AnalyzersRevision::MIN) {
+    scope->add(StaticStrings::ArangoSearchCurrentAnalyzersRevision,
+               VPackValue(currentDbRevision));
+  }
+  if (systemDbRevision != AnalyzersRevision::MIN) {
+    scope->add(StaticStrings::ArangoSearchSystemAnalyzersRevision,
+               VPackValue(systemDbRevision));
+  }
+}
+
+Result QueryAnalyzerRevisions::fromVelocyPack(velocypack::Slice slice) {
+  auto revisions = slice.get(StaticStrings::ArangoSearchAnalyzersRevision);
+  if (revisions.isObject()) {
+    auto current = revisions.get(StaticStrings::ArangoSearchCurrentAnalyzersRevision);
+    if (!current.isNone()) {
+      if (current.isNumber()) {
+        currentDbRevision = current.getNumber<AnalyzersRevision::Revision>();
+      } else {
+        std::string error{ "Invalid " };
+        error.append(StaticStrings::ArangoSearchAnalyzersRevision);
+        error += ".";
+        error += StaticStrings::ArangoSearchCurrentAnalyzersRevision;
+        error += " attribute value. Number expected got ";
+        error += current.typeName();
+        return Result(TRI_ERROR_INTERNAL, error);
+      }
+    } else {
+      currentDbRevision = AnalyzersRevision::MIN;
+    }
+    auto sys = revisions.get(StaticStrings::ArangoSearchSystemAnalyzersRevision);
+    if (!sys.isNone()) {
+      if (sys.isNumber()) {
+        systemDbRevision = sys.getNumber<AnalyzersRevision::Revision>();
+      } else {
+        std::string error{ "Invalid " };
+        error.append(StaticStrings::ArangoSearchAnalyzersRevision);
+        error += ".";
+        error += StaticStrings::ArangoSearchSystemAnalyzersRevision;
+        error += " attribute value. Number expected got ";
+        error += sys.typeName();
+        return Result(TRI_ERROR_INTERNAL, error);
+      }
+    } else {
+      systemDbRevision = AnalyzersRevision::MIN;
+    }
+  } else if (revisions.isNone()) {
+    // query without analyzers revision
+    currentDbRevision = AnalyzersRevision::MIN;
+    systemDbRevision = AnalyzersRevision::MIN;
+  } else {
+    std::string error;
+    error = "Invalid ";
+    error.append(StaticStrings::ArangoSearchAnalyzersRevision);
+    error += " attribute value. Object expected got ";
+    error += revisions.typeName();
+    return Result(TRI_ERROR_INTERNAL, error);
+  }
+  return {};
+}
+
+AnalyzersRevision::Revision QueryAnalyzerRevisions::getVocbaseRevision(
+  DatabaseID const& vocbase) const noexcept {
+  return vocbase == StaticStrings::SystemDatabase ? systemDbRevision : currentDbRevision;
+}
+
+std::ostream& QueryAnalyzerRevisions::print(std::ostream& o) const {
+  o << "[Current:" << currentDbRevision << " System:" << systemDbRevision << "]";
+  return o;
+}
+
+QueryAnalyzerRevisions QueryAnalyzerRevisions::QUERY_LATEST(AnalyzersRevision::LATEST,
+                                                            AnalyzersRevision::LATEST);
+
+std::ostream& RebootId::print(std::ostream& o) const {
+  o << _value;
+  return o;
+}
 
 AnalyzersRevision::Ptr AnalyzersRevision::getEmptyRevision() {
   static auto ptr =  std::shared_ptr<AnalyzersRevision::Ptr::element_type>(
@@ -79,7 +167,7 @@ AnalyzersRevision::Ptr AnalyzersRevision::fromVelocyPack(VPackSlice const& slice
     auto const* cID = coordinatorSlice.getString(length);
     coordinatorID = ServerID(cID, length);
   }
-  
+
   uint64_t rebootID = 0;
   if (slice.hasKey(StaticStrings::AttrCoordinatorRebootId)) {
     auto const rebootIDSlice = slice.get(StaticStrings::AttrCoordinatorRebootId);
@@ -90,7 +178,7 @@ AnalyzersRevision::Ptr AnalyzersRevision::fromVelocyPack(VPackSlice const& slice
     rebootID = rebootIDSlice.getNumber<uint64_t>();
   }
   return std::shared_ptr<AnalyzersRevision::Ptr::element_type>(
-      new AnalyzersRevision(revisionSlice.getNumber<AnalyzersRevision::Revision>(), 
+      new AnalyzersRevision(revisionSlice.getNumber<AnalyzersRevision::Revision>(),
                             buildingRevisionSlice.getNumber<AnalyzersRevision::Revision>(),
                             std::move(coordinatorID), rebootID));
 }

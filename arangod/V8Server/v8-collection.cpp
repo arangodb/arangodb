@@ -1842,9 +1842,8 @@ static void JS_RevisionVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& arg
     TRI_V8_THROW_EXCEPTION(res.result);
   }
 
-  TRI_voc_rid_t rid =
-      res.slice().isNumber() ? res.slice().getNumber<TRI_voc_rid_t>() : 0;
-  std::string ridString = TRI_RidToString(rid);
+  RevisionId rid = RevisionId::fromSlice(res.slice());
+  std::string ridString = rid.toString();
   TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, ridString));
   TRI_V8_TRY_CATCH_END
 }

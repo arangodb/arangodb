@@ -71,7 +71,7 @@ RegisterInfos::RegisterInfos(RegIdSet readableInputRegisters, RegIdSet writeable
   }
   for (RegisterId const regToClear : _registersToClear) {
     // sic: It's possible that a current output register is immediately cleared!
-    TRI_ASSERT(regToClear < nrInputRegisters);
+    TRI_ASSERT(regToClear < nrOutputRegisters);
     TRI_ASSERT(_registersToKeep.back().find(regToClear) ==
                _registersToKeep.back().end());
   }

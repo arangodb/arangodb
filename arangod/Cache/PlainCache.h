@@ -93,7 +93,7 @@ class PlainCache final : public Cache {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Does nothing; convenience method inheritance compliance
   //////////////////////////////////////////////////////////////////////////////
-  Result blacklist(void const* key, std::uint32_t keySize) override;
+  Result banish(void const* key, std::uint32_t keySize) override;
 
  private:
   // friend class manager and tasks

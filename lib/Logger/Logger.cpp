@@ -42,6 +42,7 @@
 #include "Basics/voc-errors.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogAppenderFile.h"
+#include "Logger/LogGroup.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogThread.h"
 
@@ -52,6 +53,9 @@
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
+
+#include <velocypack/Dumper.h>
+#include <velocypack/Sink.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -67,6 +71,12 @@ static std::string const TRACE = "TRACE";
 static std::string const UNKNOWN = "UNKNOWN";
 
 std::string const LogThreadName("Logging");
+
+class DefaultLogGroup : public LogGroup {
+  std::size_t id() const { return 0; }
+};
+DefaultLogGroup defaultLogGroupInstance;
+
 }  // namespace
 
 Mutex Logger::_initializeMutex;
@@ -78,6 +88,7 @@ LogTimeFormats::TimeFormat Logger::_timeFormat(LogTimeFormats::TimeFormat::UTCDa
 bool Logger::_showIds(false);
 bool Logger::_showLineNumber(false);
 bool Logger::_shortenFilenames(true);
+bool Logger::_showProcessIdentifier(true);
 bool Logger::_showThreadIdentifier(false);
 bool Logger::_showThreadName(false);
 bool Logger::_threaded(false);
@@ -86,11 +97,14 @@ bool Logger::_useEscaped(true);
 bool Logger::_keepLogRotate(false);
 bool Logger::_logRequestParameters(true);
 bool Logger::_showRole(false);
+bool Logger::_useJson(false);
 char Logger::_role('\0');
 TRI_pid_t Logger::_cachedPid(0);
 std::string Logger::_outputPrefix("");
 
 std::unique_ptr<LogThread> Logger::_loggingThread(nullptr);
+
+LogGroup& Logger::defaultLogGroup() { return ::defaultLogGroupInstance; }
 
 LogLevel Logger::logLevel() { return _level.load(std::memory_order_relaxed); }
 
@@ -201,6 +215,16 @@ void Logger::setShortenFilenames(bool shorten) {
 }
 
 // NOTE: this function should not be called if the logging is active.
+void Logger::setShowProcessIdentifier(bool show) {
+  if (_active) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
+  }
+
+  _showProcessIdentifier = show;
+}
+
+// NOTE: this function should not be called if the logging is active.
 void Logger::setShowThreadIdentifier(bool show) {
   if (_active) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -280,7 +304,17 @@ void Logger::setLogRequestParameters(bool log) {
   _logRequestParameters = log;
 }
 
-std::string const& Logger::translateLogLevel(LogLevel level) {
+// NOTE: this function should not be called if the logging is active.
+void Logger::setUseJson(bool value) {
+  if (_active) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
+  }
+
+  _useJson = value;
+}
+
+std::string const& Logger::translateLogLevel(LogLevel level) noexcept {
   switch (level) {
     case LogLevel::ERR:
       return ERR;
@@ -301,21 +335,9 @@ std::string const& Logger::translateLogLevel(LogLevel level) {
   return UNKNOWN;
 }
 
-void Logger::log(char const* function, char const* file, int line,
-                 LogLevel level, size_t topicId, std::string const& message) {
-  std::string out;
-  out.reserve(64 + message.size());
-
-  LogTimeFormats::writeTime(out, _timeFormat);
-  out.push_back(' ');
-
-  // output prefix
-  if (!_outputPrefix.empty()) {
-    out.append(_outputPrefix);
-    out.push_back(' ');
-  }
-
-  // append the process / thread identifier
+void Logger::log(char const* logid, char const* function, char const* file, int line,
+                 LogLevel level, size_t topicId, std::string const& message) try {
+  TRI_ASSERT(logid != nullptr);
 
   // we only determine our pid once, as currentProcessId() will
   // likely do a syscall.
@@ -325,87 +347,248 @@ void Logger::log(char const* function, char const* file, int line,
   if (_cachedPid == 0) {
     _cachedPid = Thread::currentProcessId();
   }
-  TRI_ASSERT(_cachedPid != 0);
-  out.push_back('[');
-  StringUtils::itoa(uint64_t(_cachedPid), out);
 
-  if (_showThreadIdentifier) {
-    out.push_back('-');
-    StringUtils::itoa(uint64_t(Thread::currentThreadNumber()), out);
-  }
+  std::string out;
+  out.reserve(256 + message.size());
 
-  // log thread name
-  if (_showThreadName) {
-    char const* threadName = Thread::currentThreadName();
-    if (threadName == nullptr) {
-      threadName = "main";
+  size_t offset = 0;
+
+  if (Logger::_useJson) {
+    // construct JSON output
+    arangodb::velocypack::StringSink sink(&out);
+    arangodb::velocypack::Dumper dumper(&sink);
+
+    out.push_back('{');
+
+    // current date/time
+    {
+      out.append("\"time\":");
+      if (LogTimeFormats::isStringFormat(_timeFormat)) {
+        out.push_back('"');
+      }
+      // value of date/time is always safe to print
+      LogTimeFormats::writeTime(out, _timeFormat);
+      if (LogTimeFormats::isStringFormat(_timeFormat)) {
+        out.push_back('"');
+      }
     }
 
-    out.push_back('-');
-    out.append(threadName);
-  }
+    // prefix
+    if (!_outputPrefix.empty()) {
+      out.append(",\"prefix\":");
+      dumper.appendString(_outputPrefix.data(), _outputPrefix.size());
+    }
 
-  out.append("] ", 2);
+    // pid
+    if (_showProcessIdentifier) {
+      out.append(",\"pid\":");
+      StringUtils::itoa(uint64_t(_cachedPid), out);
+    }
 
-  if (_showRole && _role != '\0') {
-    out.push_back(_role);
-    out.push_back(' ');
-  }
+    // tid
+    if (_showThreadIdentifier) {
+      out.append(",\"tid\":");
+      StringUtils::itoa(uint64_t(Thread::currentThreadNumber), out);
+    }
 
-  // log level
-  out.append(Logger::translateLogLevel(level));
-  out.push_back(' ');
+    // thread name
+    if (_showThreadName) {
+      char const* threadName = Thread::currentThreadName();
+      if (threadName == nullptr) {
+        threadName = "main";
+      }
 
-  // check if we must display the line number
-  if (_showLineNumber && file != nullptr && function != nullptr) {
-    char const* filename = file;
+      out.append(",\"thread\":");
+      dumper.appendString(threadName, strlen(threadName));
+    }
 
-    if (_shortenFilenames) {
-      // shorten file names from `/home/.../file.cpp` to just `file.cpp`
+    // role
+    if (_showRole) {
+      out.append(",\"role\":\"");
+      if (_role != '\0') {
+        // value of _role is always safe to print
+        out.push_back(_role);
+      }
+      out.push_back('"');
+    }
+
+    // log level
+    {
+      out.append(",\"level\":");
+      auto const& ll = Logger::translateLogLevel(level);
+      // value of level is always safe to print
+      dumper.appendString(ll.data(), ll.size());
+    }
+
+    // file and line
+    if (_showLineNumber && file != nullptr) {
+      char const* filename = file;
       char const* shortened = strrchr(filename, TRI_DIR_SEPARATOR_CHAR);
       if (shortened != nullptr) {
         filename = shortened + 1;
       }
+
+      out.append(",\"file\":");
+      dumper.appendString(filename, strlen(filename));
     }
-    out.push_back('[');
-    out.append(function);
-    out.push_back('@');
-    out.append(filename);
-    out.push_back(':');
-    StringUtils::itoa(uint64_t(line), out);
-    out.append("] ", 2);
+
+    if (_showLineNumber) {
+      out.append(",\"line\":");
+      StringUtils::itoa(uint64_t(line), out);
+    }
+
+    if (_showLineNumber && function != nullptr) {
+      out.append(",\"function\":");
+      dumper.appendString(function, strlen(function));
+    }
+
+    // the topic
+    {
+      out.append(",\"topic\":");
+      std::string topic = LogTopic::lookup(topicId);
+      // value of topic is always safe to print
+      dumper.appendString(topic.data(), topic.size());
+    }
+
+    // the logid
+    if (::arangodb::Logger::getShowIds()) {
+      out.append(",\"id\":");
+      // value of id is always safe to print
+      dumper.appendString(logid, strlen(logid));
+    }
+
+    // the message itself
+    {
+      out.append(",\"message\":");
+      dumper.appendString(message.c_str(), message.size());
+    }
+
+    out.push_back('}');
+  } else {
+    // human readable format
+    LogTimeFormats::writeTime(out, _timeFormat);
+    out.push_back(' ');
+
+    // output prefix
+    if (!_outputPrefix.empty()) {
+      out.append(_outputPrefix);
+      out.push_back(' ');
+    }
+
+    // [pid-tid-threadname], all components are optional
+    bool haveProcessOutput = false;
+    if (_showProcessIdentifier) {
+      // append the process / thread identifier
+      TRI_ASSERT(_cachedPid != 0);
+      out.push_back('[');
+      StringUtils::itoa(uint64_t(_cachedPid), out);
+      haveProcessOutput = true;
+    }
+
+    if (_showThreadIdentifier) {
+      out.push_back(haveProcessOutput ? '-' : '[');
+      StringUtils::itoa(uint64_t(Thread::currentThreadNumber()), out);
+      haveProcessOutput = true;
+    }
+
+    // log thread name
+    if (_showThreadName) {
+      char const* threadName = Thread::currentThreadName();
+      if (threadName == nullptr) {
+        threadName = "main";
+      }
+
+      out.push_back(haveProcessOutput ? '-' : '[');
+      out.append(threadName);
+      haveProcessOutput = true;
+    }
+
+    if (haveProcessOutput) {
+      out.append("] ", 2);
+    }
+
+    if (_showRole && _role != '\0') {
+      out.push_back(_role);
+      out.push_back(' ');
+    }
+
+    // log level
+    out.append(Logger::translateLogLevel(level));
+    out.push_back(' ');
+
+    // check if we must display the line number
+    if (_showLineNumber && file != nullptr && function != nullptr) {
+      char const* filename = file;
+
+      if (_shortenFilenames) {
+        // shorten file names from `/home/.../file.cpp` to just `file.cpp`
+        char const* shortened = strrchr(filename, TRI_DIR_SEPARATOR_CHAR);
+        if (shortened != nullptr) {
+          filename = shortened + 1;
+        }
+      }
+      out.push_back('[');
+      out.append(function);
+      out.push_back('@');
+      out.append(filename);
+      out.push_back(':');
+      StringUtils::itoa(uint64_t(line), out);
+      out.append("] ", 2);
+    }
+
+    // the offset is used by the in-memory logger, and it cuts off everything from the start
+    // of the concatenated log string until the offset. only what's after the offset gets
+    // displayed in the web UI
+    offset = out.size();
+
+    if (::arangodb::Logger::getShowIds()) {
+      out.push_back('[');
+      out.append(logid);
+      out.append("] ", 2);
+    }
+
+    {
+      out.push_back('{');
+      out.append(LogTopic::lookup(topicId));
+      out.append("} ", 2);
+    }
+
+    // generate the complete message
+    out.append(message);
   }
 
-  // generate the complete message
-  out.append(message);
- 
-  size_t offset = out.size() - message.size();
   auto msg = std::make_unique<LogMessage>(function, file, line, level, topicId, std::move(out), offset);
 
+  append(defaultLogGroup(), msg, [level, topicId](std::unique_ptr<LogMessage>& msg) -> void {
+    LogAppenderStdStream::writeLogMessage(STDERR_FILENO, (isatty(STDERR_FILENO) == 1),
+                                          level, topicId, msg->_message.data(),
+                                          msg->_message.size(), true);
+  });
+} catch (...) {
+  // logging itself must never cause an exeption to escape
+}
+
+void Logger::append(LogGroup& group, std::unique_ptr<LogMessage>& msg,
+                    std::function<void(std::unique_ptr<LogMessage>&)> const& inactive) {
   // first log to all "global" appenders, which are the in-memory ring buffer logger plus
   // some Windows-specifc appenders for the debug output windows and the Windows event log.
   // note that these loggers do not require any configuration so we can always and safely invoke them.
-  try {
-    LogAppender::logGlobal(*msg);
+  LogAppender::logGlobal(group, *msg);
 
-    if (!_active.load(std::memory_order_relaxed)) {
-      // logging is still turned off. now use hard-coded to-stderr logging
-      LogAppenderStdStream::writeLogMessage(STDERR_FILENO, (isatty(STDERR_FILENO) == 1),
-                                            level, topicId, msg->_message.data(), msg->_message.size(), true);
-    } else {
-      // now either queue or output the message
-      bool handled = false;
-      if (_threaded) {
-        handled = _loggingThread->log(msg);
-      }
-
-      if (!handled) {
-        TRI_ASSERT(msg != nullptr);
-        LogAppender::log(*msg);
-      }
+  if (!_active.load(std::memory_order_relaxed)) {
+    // logging is still turned off. now use hard-coded to-stderr logging
+    inactive(msg);
+  } else {
+    // now either queue or output the message
+    bool handled = false;
+    if (_threaded) {
+      handled = _loggingThread->log(group, msg);
     }
-  } catch (...) {
-    // logging itself must never cause an exeption to escape
+
+    if (!handled) {
+      TRI_ASSERT(msg != nullptr);
+      LogAppender::log(group, *msg);
+    }
   }
 }
 

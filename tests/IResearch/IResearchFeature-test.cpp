@@ -96,7 +96,8 @@ class IResearchFeatureTest
     server.startFeatures();
   }
 
-  ~IResearchFeatureTest() {}
+  ~IResearchFeatureTest() {
+  }
 
   // version 0 data-source path
   irs::utf8_path getPersistedPath0(arangodb::LogicalView const& view) {
@@ -731,7 +732,6 @@ class IResearchFeatureTestCoordinator
   arangodb::tests::mocks::MockV8Server server;
 
  private:
-  arangodb::consensus::Store* _agencyStore;
   arangodb::ServerState::RoleEnum _serverRoleBefore;
   std::unique_ptr<AsyncAgencyStorePoolMock> _pool;
 
@@ -740,7 +740,6 @@ class IResearchFeatureTestCoordinator
       : server(false),
         _serverRoleBefore(arangodb::ServerState::instance()->getRole()) {
     server.getFeature<arangodb::ClusterFeature>().allocateMembers();
-    _agencyStore = &server.getFeature<arangodb::ClusterFeature>().agencyCache().store();
 
     arangodb::tests::init();
 
@@ -760,29 +759,29 @@ class IResearchFeatureTestCoordinator
     poolConfig.minOpenConnections = 1;
     poolConfig.maxOpenConnections = 3;
     poolConfig.verifyHosts = false;
-    _pool = std::make_unique<AsyncAgencyStorePoolMock>(_agencyStore, poolConfig);
+    _pool = std::make_unique<AsyncAgencyStorePoolMock>(server.server(), poolConfig);
     arangodb::AsyncAgencyCommManager::initialize(server.server());
     arangodb::AsyncAgencyCommManager::INSTANCE->pool(_pool.get());
     arangodb::AsyncAgencyCommManager::INSTANCE->addEndpoint("tcp://localhost:4001");
     arangodb::AgencyComm(server.server()).ensureStructureInitialized();  // initialize agency
+    poolConfig.clusterInfo->startSyncers();
   }
 
   ~IResearchFeatureTestCoordinator() {
+    server.getFeature<arangodb::ClusterFeature>().clusterInfo().shutdownSyncers();
     arangodb::ServerState::instance()->setRole(_serverRoleBefore);
   }
 
-  void agencyTrx(std::string const& key, std::string const& value) {
+  arangodb::consensus::index_t agencyTrx(std::string const& key, std::string const& value) {
     // Build an agency transaction:
-    VPackBuilder b;
-    {
-      VPackArrayBuilder guard(&b);
-      {
-        VPackObjectBuilder guard2(&b);
-        auto b2 = VPackParser::fromJson(value);
-        b.add(key, b2->slice());
-      }
-    }
-    server.getFeature<arangodb::ClusterFeature>().agencyCache().set(b.slice());
+    auto b2 = VPackParser::fromJson(value);
+    auto b = std::make_shared<VPackBuilder>();
+    { VPackArrayBuilder trxs(b.get());
+      { VPackArrayBuilder trx(b.get());
+        { VPackObjectBuilder op(b.get());
+          b->add(key, b2->slice()); }}}
+    return std::get<1>(
+      server.getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(b));
   }
 
   void agencyCreateDatabase(std::string const& name) {
@@ -795,8 +794,10 @@ class IResearchFeatureTestCoordinator
     agencyTrx("/arango/Current/Databases/" + name, st);
     st = ts.specialize(current_colls_string);
     agencyTrx("/arango/Current/Collections/" + name, st);
-    agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})=");
-    agencyTrx("/arango/Plan/Current", R"=({"op":"increment"})=");
+    server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForPlan(
+      agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})=")).wait();
+    server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForCurrent(
+      agencyTrx("/arango/Current/Version", R"=({"op":"increment"})=")).wait();
   }
 
   void agencyDropDatabase(std::string const& name) {
@@ -805,8 +806,10 @@ class IResearchFeatureTestCoordinator
     agencyTrx("/arango/Plan/Collections/" + name, st);
     agencyTrx("/arango/Current/Databases/" + name, st);
     agencyTrx("/arango/Current/Collections/" + name, st);
-    agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})=");
-    agencyTrx("/arango/Plan/Current", R"=({"op":"increment"})=");
+    server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForPlan(
+      agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})=")).wait();
+    server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForCurrent(
+      agencyTrx("/arango/Current/Version", R"=({"op":"increment"})=")).wait();
   }
 
   VPackBuilder agencyCreateIndex(
@@ -842,7 +845,7 @@ class IResearchFeatureTestCoordinator
 TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
   // test coordinator
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"1\", \"name\": \"testCollection\", \"shards\":{} }");
+      "{ \"id\": \"41\", \"name\": \"testCollection\", \"shards\":{} }");
   auto linkJson = arangodb::velocypack::Parser::fromJson(
       "{ \"view\": \"testView\", \"type\": \"arangosearch\", "
       "\"includeAllFields\": true }");
@@ -851,7 +854,7 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
       "\"version\": 0 }");
   auto versionJson = arangodb::velocypack::Parser::fromJson(
       "{ \"version\": 0, \"tasks\": {} }");
-  auto collectionId = std::to_string(1);
+  auto collectionId = std::to_string(41);
   auto viewId = std::to_string(42);
 
   // add the UpgradeFeature, but make sure it is not prepared
@@ -877,10 +880,10 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
 
   agencyCreateDatabase(vocbase->name());
 
-  ASSERT_TRUE((ci.createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
-                                              collectionJson->slice(), 0.0, false, nullptr)
-                   .ok()));
-
+  ASSERT_TRUE(
+    ci.createCollectionCoordinator(
+      vocbase->name(), collectionId, 0, 1, 1, false, collectionJson->slice(), 0.0, false, nullptr)
+    .ok());
   auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
   ASSERT_FALSE(!logicalCollection);
   EXPECT_TRUE(
@@ -941,11 +944,12 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
                     .setValue(path, value->slice(), 0.0)
                     .successful());
 
-    VPackBuilder b;
-    { VPackArrayBuilder oo(&b);
-      VPackObjectBuilder o(&b);
-      b.add(path, value->slice()); }
-    server.getFeature<arangodb::ClusterFeature>().agencyCache().set(b.slice());
+    auto b = std::make_shared<VPackBuilder>();
+    { VPackArrayBuilder trxs(b.get());
+      { VPackArrayBuilder trx(b.get());
+        { VPackObjectBuilder op(b.get());
+          b->add(path, value->slice()); }}}
+    server.getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(b);
       
   }
   EXPECT_TRUE(arangodb::methods::Upgrade::clusterBootstrap(*vocbase).ok());  // run upgrade
@@ -975,14 +979,13 @@ class IResearchFeatureTestDBServer
   arangodb::tests::mocks::MockV8Server server;
 
  private:
-  arangodb::consensus::Store _agencyStore;
+
   arangodb::ServerState::RoleEnum _serverRoleBefore;
   std::unique_ptr<AsyncAgencyStorePoolMock> _pool;
 
  protected:
   IResearchFeatureTestDBServer()
       : server(false),
-        _agencyStore(server.server(), nullptr, "arango"),
         _serverRoleBefore(arangodb::ServerState::instance()->getRole()),
         _pool(nullptr) {
 
@@ -1006,15 +1009,17 @@ class IResearchFeatureTestDBServer
     poolConfig.minOpenConnections = 1;
     poolConfig.maxOpenConnections = 3;
     poolConfig.verifyHosts = false;
-    _pool = std::make_unique<AsyncAgencyStorePoolMock>(&_agencyStore, poolConfig);
+    _pool = std::make_unique<AsyncAgencyStorePoolMock>(server.server(), poolConfig);
     arangodb::AsyncAgencyCommManager::initialize(server.server());
     arangodb::AsyncAgencyCommManager::INSTANCE->addEndpoint("tcp://localhost:4000/");
     arangodb::AsyncAgencyCommManager::INSTANCE->pool(_pool.get());
 
     arangodb::AgencyComm(server.server()).ensureStructureInitialized();  // initialize agency
+    poolConfig.clusterInfo->startSyncers();
   }
 
   ~IResearchFeatureTestDBServer() {
+    server.getFeature<arangodb::ClusterFeature>().clusterInfo().shutdownSyncers();
     arangodb::ServerState::instance()->setRole(_serverRoleBefore);
   }
 
@@ -1080,11 +1085,13 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
-  VPackBuilder bogus;
-  { VPackArrayBuilder guard(&bogus);
-    { VPackObjectBuilder guard2(&bogus);
-      bogus.add("a", VPackValue(12)); }}
-  server.server().getFeature<arangodb::ClusterFeature>().agencyCache().set(bogus.slice());
+  auto bogus = std::make_shared<VPackBuilder>();
+  { VPackArrayBuilder trxs(bogus.get());
+    { VPackArrayBuilder trx(bogus.get());
+      { VPackObjectBuilder op(bogus.get());
+        bogus->add("a", VPackValue(12)); }}}
+  server.server().getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(
+    bogus);
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
@@ -1160,11 +1167,13 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
       &server.getFeature<arangodb::EngineSelectorFeature>().engine());
   engine.views.clear();
 
-  VPackBuilder bogus;
-  { VPackArrayBuilder guard(&bogus);
-    { VPackObjectBuilder guard2(&bogus);
-      bogus.add("a", VPackValue(12)); }}
-  server.server().getFeature<arangodb::ClusterFeature>().agencyCache().set(bogus.slice());
+  auto bogus = std::make_shared<VPackBuilder>();
+  { VPackArrayBuilder trxs(bogus.get());
+    { VPackArrayBuilder trx(bogus.get());
+      { VPackObjectBuilder op(bogus.get());
+        bogus->add("a", VPackValue(12)); }}}
+  server.server().getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(
+    bogus);
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));

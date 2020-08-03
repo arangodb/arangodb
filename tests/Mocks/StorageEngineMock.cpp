@@ -1099,7 +1099,7 @@ arangodb::Result PhysicalCollectionMock::insert(
   arangodb::velocypack::Builder builder;
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
 
-  TRI_voc_rid_t revisionId;
+  arangodb::RevisionId revisionId;
   auto res = newObjectForInsert(trx, newSlice, isEdgeCollection, builder,
                                 options.isRestore, revisionId);
 
@@ -1164,20 +1164,20 @@ arangodb::Result PhysicalCollectionMock::insert(
 
 arangodb::Result PhysicalCollectionMock::lookupKey(
     arangodb::transaction::Methods*, arangodb::velocypack::StringRef key,
-    std::pair<arangodb::LocalDocumentId, TRI_voc_rid_t>& result) const {
+    std::pair<arangodb::LocalDocumentId, arangodb::RevisionId>& result) const {
   before();
     
   auto it = _documents.find(arangodb::velocypack::StringRef{key});
   if (it != _documents.end()) {
     if (_documents.find(arangodb::velocypack::StringRef{key}) != _documents.end()) {
       result.first = it->second.docId();
-      result.second = result.first.id();
+      result.second = arangodb::RevisionId::fromSlice(it->second.data());
       return arangodb::Result();
     }
   }
 
   result.first = arangodb::LocalDocumentId::none();
-  result.second = 0;
+  result.second = arangodb::RevisionId::none();
   return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
 }
 
@@ -1294,7 +1294,8 @@ arangodb::Result PhysicalCollectionMock::remove(
   if (old != _documents.end()) {
     previous.setManaged(old->second.vptr());
     _graveyard.emplace_back(old->second.rawData());
-    TRI_ASSERT(previous.revisionId() == TRI_ExtractRevisionId(old->second.data()));
+    TRI_ASSERT(previous.revisionId() ==
+               arangodb::RevisionId::fromSlice(old->second.data()));
     _documents.erase(keyRef);
     return arangodb::Result(TRI_ERROR_NO_ERROR);  // assume document was removed
   }
@@ -1315,10 +1316,10 @@ arangodb::Result PhysicalCollectionMock::replace(
   return updateInternal(trx, newSlice, result, options, previous, false);
 }
 
-TRI_voc_rid_t PhysicalCollectionMock::revision(arangodb::transaction::Methods*) const {
+arangodb::RevisionId PhysicalCollectionMock::revision(arangodb::transaction::Methods*) const {
   before();
   TRI_ASSERT(false);
-  return 0;
+  return arangodb::RevisionId::none();
 }
 
 arangodb::Result PhysicalCollectionMock::truncate(arangodb::transaction::Methods& trx,
@@ -1347,19 +1348,18 @@ arangodb::Result PhysicalCollectionMock::updateInternal(
   if (it != _documents.end()) {
     auto doc = it->second.data();
     if (!options.ignoreRevs) {
-      TRI_voc_rid_t expectedRev = 0;
+      arangodb::RevisionId expectedRev = arangodb::RevisionId::none();
       if (newSlice.isObject()) {
-        expectedRev = TRI_ExtractRevisionId(newSlice);
+        expectedRev = arangodb::RevisionId::fromSlice(newSlice);
       }
       TRI_ASSERT(doc.isObject());
-      TRI_voc_rid_t oldRev = TRI_ExtractRevisionId(doc);
-      int res = checkRevision(trx, expectedRev, oldRev);
-      if (res != TRI_ERROR_NO_ERROR) {
-        return arangodb::Result(res);
+      arangodb::RevisionId oldRev = arangodb::RevisionId::fromSlice(doc);
+      if (!checkRevision(trx, expectedRev, oldRev)) {
+        return arangodb::Result(TRI_ERROR_ARANGO_CONFLICT, "_rev values mismatch");
       }
     }
     arangodb::velocypack::Builder builder;
-    TRI_voc_rid_t revisionId = 0;  // unused
+    arangodb::RevisionId revisionId = arangodb::RevisionId::none();  // unused
     auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
     if (isUpdate) {
       arangodb::Result res =
@@ -1379,7 +1379,7 @@ arangodb::Result PhysicalCollectionMock::updateInternal(
     auto nextBuffer = builder.steal();
     // Set previous
     previous.setManaged(it->second.vptr());
-    TRI_ASSERT(previous.revisionId() == TRI_ExtractRevisionId(doc));
+    TRI_ASSERT(previous.revisionId() == arangodb::RevisionId::fromSlice(doc));
 
     // swap with new data
     // Replace the existing Buffer and nextBuffer
@@ -1513,7 +1513,8 @@ std::unique_ptr<arangodb::transaction::Manager> StorageEngineMock::createTransac
 }
 
 std::shared_ptr<arangodb::TransactionState> StorageEngineMock::createTransactionState(
-    TRI_vocbase_t& vocbase, TRI_voc_tid_t tid, arangodb::transaction::Options const& options) {
+    TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
+    arangodb::transaction::Options const& options) {
   return std::make_shared<TransactionStateMock>(vocbase, tid, options);
 }
 
@@ -1812,7 +1813,7 @@ size_t TransactionStateMock::beginTransactionCount;
 size_t TransactionStateMock::commitTransactionCount;
 
 // ensure each transaction state has a unique ID
-TransactionStateMock::TransactionStateMock(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+TransactionStateMock::TransactionStateMock(TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
                                            arangodb::transaction::Options const& options)
     : TransactionState(vocbase, tid, options) {}
 
@@ -1821,7 +1822,7 @@ arangodb::Result TransactionStateMock::abortTransaction(arangodb::transaction::M
   updateStatus(arangodb::transaction::Status::ABORTED);
 //  releaseUsage();
   // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
-  const_cast<TRI_voc_tid_t&>(_id) = 0;
+  const_cast<arangodb::TransactionId&>(_id) = arangodb::TransactionId::none();
 
   return arangodb::Result();
 }
@@ -1839,7 +1840,7 @@ arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::H
   if (!res.ok()) {
     updateStatus(arangodb::transaction::Status::ABORTED);
     // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
-    const_cast<TRI_voc_tid_t&>(_id) = 0;
+    const_cast<arangodb::TransactionId&>(_id) = arangodb::TransactionId::none();
     return res;
   }
   updateStatus(arangodb::transaction::Status::RUNNING);
@@ -1850,8 +1851,8 @@ arangodb::Result TransactionStateMock::commitTransaction(arangodb::transaction::
   ++commitTransactionCount;
   updateStatus(arangodb::transaction::Status::COMMITTED);
   // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
-  const_cast<TRI_voc_tid_t&>(_id) = 0;
-//  releaseUsage();
+  const_cast<arangodb::TransactionId&>(_id) = arangodb::TransactionId::none();
+  //  releaseUsage();
 
   return arangodb::Result();
 }

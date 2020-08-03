@@ -51,6 +51,7 @@
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Methods/Indexes.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -148,8 +149,18 @@ arangodb::Result applyCollectionDumpMarkerInternal(
       // document exists. if yes, we don't try an insert (which would fail anyway) but carry 
       // on with a replace.
       if (keySlice.isString()) {
-        std::pair<arangodb::LocalDocumentId, TRI_voc_rid_t> lookupResult;
+        std::pair<arangodb::LocalDocumentId, arangodb::RevisionId> lookupResult;
         if (coll->getPhysical()->lookupKey(&trx, keySlice.stringRef(), lookupResult).ok()) {
+          // determine if we already have this revision or need to replace the
+          // one we have
+          arangodb::RevisionId rid = arangodb::RevisionId::fromSlice(slice);
+          if (rid.isSet() && rid == lookupResult.second) {
+            // we already have exactly this document, don't replace, just
+            // consider it already applied and bail
+            return {};
+          }
+
+          // need to replace the one we have
           useReplace = true;
           opRes.result.reset(TRI_ERROR_NO_ERROR, keySlice.copyString());
         }
@@ -479,11 +490,7 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
   _state.master.endpoint = _state.applier._endpoint;
 }
 
-Syncer::~Syncer() {
-  if (!_state.isChildSyncer) {
-    _state.barrier.remove(_state.connection);
-  }
-}
+Syncer::~Syncer() = default;
 
 /// @brief request location rewriter (injects database name)
 std::string Syncer::rewriteLocation(void* data, std::string const& location) {
@@ -498,14 +505,6 @@ std::string Syncer::rewriteLocation(void* data, std::string const& location) {
     return "/_db/" + s->_state.databaseName + location;
   }
   return "/_db/" + s->_state.databaseName + "/" + location;
-}
-
-/// @brief steal the barrier id from the syncer
-TRI_voc_tick_t Syncer::stealBarrier() {
-  auto id = _state.barrier.id;
-  _state.barrier.id = 0;
-  _state.barrier.updateTime = 0;
-  return id;
 }
 
 void Syncer::setAborted(bool value) { _state.connection.setAborted(value); }

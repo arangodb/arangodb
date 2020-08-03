@@ -141,7 +141,7 @@ CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authTok
 
   // Step 1: In the shutdown phase we simply return 503:
   if (_server.server().isStopping()) {
-    addErrorResponse(ResponseCode::SERVICE_UNAVAILABLE, req.contentTypeResponse(),
+    sendErrorResponse(ResponseCode::SERVICE_UNAVAILABLE, req.contentTypeResponse(),
                      req.messageId(), TRI_ERROR_SHUTTING_DOWN);
     return Flow::Abort;
   }
@@ -169,8 +169,8 @@ CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authTok
            !::startsWith(path, "/_api/aql"))) {
         LOG_TOPIC("63f47", TRACE, arangodb::Logger::FIXME)
             << "Maintenance mode: refused path: " << path;
-        addErrorResponse(ResponseCode::SERVICE_UNAVAILABLE, req.contentTypeResponse(),
-                         req.messageId(), TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
+        sendErrorResponse(ResponseCode::SERVICE_UNAVAILABLE, req.contentTypeResponse(),
+                          req.messageId(), TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
                          "service unavailable due to startup or maintenance mode");
         return Flow::Abort;
       }
@@ -185,11 +185,11 @@ CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authTok
     }
     [[fallthrough]];
     case ServerState::Mode::TRYAGAIN: {
+      // the following paths are allowed on followers
       if (!::startsWith(path, "/_admin/shutdown") &&
           !::startsWith(path, "/_admin/cluster/health") &&
           !::startsWith(path, "/_admin/log") &&
-          !::startsWith(path, "/_admin/server/role") &&
-          !::startsWith(path, "/_admin/server/availability") &&
+          !::startsWith(path, "/_admin/server/") &&
           !::startsWith(path, "/_admin/status") &&
           !::startsWith(path, "/_admin/statistics") &&
           !::startsWith(path, "/_api/agency/agency-callbacks") &&
@@ -231,13 +231,13 @@ CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authTok
         }
       }
       if (lvl == auth::Level::NONE) {
-        addErrorResponse(rest::ResponseCode::UNAUTHORIZED, req.contentTypeResponse(),
-                         req.messageId(), TRI_ERROR_FORBIDDEN);
+        sendErrorResponse(rest::ResponseCode::UNAUTHORIZED, req.contentTypeResponse(),
+                          req.messageId(), TRI_ERROR_FORBIDDEN);
         return Flow::Abort;
       }
     }
-    addErrorResponse(rest::ResponseCode::NOT_FOUND, req.contentTypeResponse(),
-                     req.messageId(), TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    sendErrorResponse(rest::ResponseCode::NOT_FOUND, req.contentTypeResponse(),
+                      req.messageId(), TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     return Flow::Abort;
   }
   TRI_ASSERT(req.requestContext() != nullptr);
@@ -247,9 +247,9 @@ CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authTok
   // users API to allow logins
   if (CommTask::canAccessPath(authToken, req) != Flow::Continue) {
     events::NotAuthorized(req);
-    addErrorResponse(rest::ResponseCode::UNAUTHORIZED, req.contentTypeResponse(),
-                     req.messageId(), TRI_ERROR_FORBIDDEN,
-                     "not authorized to execute this request");
+    sendErrorResponse(rest::ResponseCode::UNAUTHORIZED, req.contentTypeResponse(),
+                      req.messageId(), TRI_ERROR_FORBIDDEN,
+                      "not authorized to execute this request");
     return Flow::Abort;
   }
 
@@ -336,16 +336,15 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   rest::ContentType const respType = request->contentTypeResponse();
   // create a handler, this takes ownership of request and response
   auto& server = _server.server();
-  std::shared_ptr<RestHandler> handler(
-      GeneralServerFeature::HANDLER_FACTORY->createHandler(server, std::move(request),
-                                                           std::move(response)));
+  auto handler = GeneralServerFeature::HANDLER_FACTORY->createHandler(server, std::move(request),
+                                                                      std::move(response));
 
   // give up, if we cannot find a handler
   if (handler == nullptr) {
     LOG_TOPIC("90d3a", TRACE, arangodb::Logger::FIXME)
         << "no handler is known, giving up";
-    addSimpleResponse(rest::ResponseCode::NOT_FOUND, respType, messageId,
-                      VPackBuffer<uint8_t>());
+    sendSimpleResponse(rest::ResponseCode::NOT_FOUND, respType, messageId,
+                       VPackBuffer<uint8_t>());
     return;
   }
 
@@ -354,7 +353,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   auto res = handler->forwardRequest(forwarded);
   if (forwarded) {
     statistics(messageId).SET_SUPERUSER();
-    std::move(res).thenFinal([self = shared_from_this(), handler = std::move(handler), messageId](
+    std::move(res).thenFinal([self(shared_from_this()), handler(std::move(handler)), messageId](
                                  futures::Try<Result> && /*ignored*/) -> void {
       self->sendResponse(handler->stealResponse(), self->stealStatistics(messageId));
     });
@@ -391,8 +390,8 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
       }
       sendResponse(std::move(resp), RequestStatistics::Item());
     } else {
-      addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                       respType, messageId, TRI_ERROR_QUEUE_FULL);
+      sendErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                        respType, messageId, TRI_ERROR_QUEUE_FULL);
     }
   } else {
     // synchronous request
@@ -436,16 +435,16 @@ RequestStatistics::Item CommTask::stealStatistics(uint64_t id) {
 }
 
 /// @brief send error response including response body
-void CommTask::addSimpleResponse(rest::ResponseCode code,
-                                 rest::ContentType respType, uint64_t mid,
-                                 velocypack::Buffer<uint8_t>&& buffer) {
+void CommTask::sendSimpleResponse(rest::ResponseCode code,
+                                  rest::ContentType respType, uint64_t mid,
+                                  velocypack::Buffer<uint8_t>&& buffer) {
   try {
     auto resp = createResponse(code, mid);
     resp->setContentType(respType);
     if (!buffer.empty()) {
       resp->setPayload(std::move(buffer), VPackOptions::Defaults);
     }
-    sendResponse(std::move(resp), this->stealStatistics(1UL));
+    sendResponse(std::move(resp), this->stealStatistics(mid));
   } catch (...) {
     LOG_TOPIC("fc831", WARN, Logger::REQUESTS)
         << "addSimpleResponse received an exception, closing connection";
@@ -454,9 +453,9 @@ void CommTask::addSimpleResponse(rest::ResponseCode code,
 }
 
 /// @brief send response including error response body
-void CommTask::addErrorResponse(rest::ResponseCode code,
-                                rest::ContentType respType, uint64_t messageId,
-                                int errorNum, char const* errorMessage /* = nullptr */) {
+void CommTask::sendErrorResponse(rest::ResponseCode code,
+                                 rest::ContentType respType, uint64_t messageId,
+                                 int errorNum, char const* errorMessage /* = nullptr */) {
 
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
@@ -473,7 +472,7 @@ void CommTask::addErrorResponse(rest::ResponseCode code,
   builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
   builder.close();
 
-  addSimpleResponse(code, respType, messageId, std::move(buffer));
+  sendSimpleResponse(code, respType, messageId, std::move(buffer));
 }
 
 // -----------------------------------------------------------------------------
@@ -511,8 +510,8 @@ bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   bool ok = SchedulerFeature::SCHEDULER->queue(lane, std::move(cb));
 
   if (!ok) {
-    addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                     respType, mid, TRI_ERROR_QUEUE_FULL);
+    sendErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                      respType, mid, TRI_ERROR_QUEUE_FULL);
   }
 
   return ok;
@@ -643,7 +642,7 @@ bool CommTask::allowCorsCredentials(std::string const& origin) const {
   }  // else handle origin headers
 
   // if the request asks to allow credentials, we'll check against the
-  // configured whitelist of origins
+  // configured allowed list of origins
   std::vector<std::string> const& accessControlAllowOrigins =
       GeneralServerFeature::accessControlAllowOrigins();
 
@@ -734,7 +733,7 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req) {
 
   LOG_TOPIC_IF("c4536", DEBUG, arangodb::Logger::REQUESTS,
                Logger::logRequestParameters())
-      << "\"authorization-header\",\"" << (void*)this << "\",\"" << authStr << "\"";
+      << "\"authorization-header\",\"" << (void*)this << "\",SENSITIVE_DETAILS_HIDDEN";
 
   try {
     AuthenticationMethod authMethod = AuthenticationMethod::NONE;

@@ -39,8 +39,9 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Basics/voc-errors.h"
-#include "VocBase/voc-types.h"
+#include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/VocbaseInfo.h"
+#include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
 
@@ -64,12 +65,6 @@ class LogicalView;
 class ReplicationClientsProgressTracker;
 class StorageEngine;
 }  // namespace arangodb
-
-/// @brief predefined collection name for users
-constexpr auto TRI_COL_NAME_USERS = "_users";
-
-/// @brief maximal name length
-constexpr size_t TRI_COL_NAME_LENGTH = 256;
 
 /// @brief document handle separator as character
 constexpr char TRI_DOCUMENT_HANDLE_SEPARATOR_CHR = '/';
@@ -161,7 +156,7 @@ struct TRI_vocbase_t {
   std::unique_ptr<arangodb::ReplicationClientsProgressTracker> _replicationClients;
 
  public:
-  arangodb::basics::DeadlockDetector<TRI_voc_tid_t, arangodb::LogicalCollection> _deadlockDetector;
+  arangodb::basics::DeadlockDetector<arangodb::TransactionId, arangodb::LogicalCollection> _deadlockDetector;
   arangodb::basics::ReadWriteLock _inventoryLock;  // object lock needed when
                                                    // replication is assessing
                                                    // the state of the vocbase
@@ -375,9 +370,6 @@ struct TRI_vocbase_t {
   /// This function is called when a view is dropped.
   bool unregisterView(arangodb::LogicalView const& view);
 };
-
-/// @brief extract the _rev attribute from a slice
-TRI_voc_rid_t TRI_ExtractRevisionId(arangodb::velocypack::Slice const slice);
 
 /// @brief sanitize an object, given as slice, builder must contain an
 /// open object which will remain open

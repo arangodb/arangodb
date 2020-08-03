@@ -98,8 +98,6 @@ using RegisterPlanWalker = RegisterPlanWalkerT<ExecutionNode>;
 template<typename T> struct RegisterPlanT;
 using RegisterPlan = RegisterPlanT<ExecutionNode>;
 struct Variable;
-template <class T>
-class WalkerWorker;
 
 /// @brief sort element, consisting of variable, sort direction, and a possible
 /// attribute path to dig into the document
@@ -363,6 +361,8 @@ class ExecutionNode {
   static constexpr unsigned SERIALIZE_DETAILS = 1 << 2;
   /// include additional function info for explain
   static constexpr unsigned SERIALIZE_FUNCTIONS = 1 << 3;
+  /// include addition information of the register plan for explain
+  static constexpr unsigned SERIALIZE_REGISTER_INFORMATION = 1 << 4;
 
   /// @brief toVelocyPack, export an ExecutionNode to VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder&, unsigned flags, bool keepTopLevelOpen) const;
@@ -442,7 +442,7 @@ class ExecutionNode {
   ExecutionPlan* plan();
 
   /// @brief static analysis
-  void planRegisters(ExecutionNode* super = nullptr);
+  void planRegisters(ExecutionNode* super = nullptr, ExplainRegisterPlan = ExplainRegisterPlan::No);
 
   /// @brief get RegisterPlan
   std::shared_ptr<RegisterPlan> getRegisterPlan() const;
@@ -833,8 +833,10 @@ class SubqueryNode : public ExecutionNode {
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
 
-  /// @brief whether or not the subquery is a data-modification operation
-  bool isModificationSubquery() const;
+  /// @brief this is true iff the subquery contains a data-modification operation
+  ///        NOTE that this is tested recursively, that is, if this subquery contains
+  ///        a subquery that contains a modification operation, this is true too.
+  bool isModificationNode() const override;
 
   /// @brief getter for subquery
   ExecutionNode* getSubquery() const;
