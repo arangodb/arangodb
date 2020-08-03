@@ -8,7 +8,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,14 +25,16 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrei Lobov
-/// @author Copyright 2019, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2020, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require("jsunity");
 let db = require("@arangodb").db;
 let isCluster = require("internal").isCluster();
+const isEnterprise = require("internal").isEnterprise();
 
-function lateDocumentMaterializationArangoSearchRuleTestSuite () {
+function lateDocumentMaterializationOneShardArangoSearchRuleTestSuite () {
+  const dn = "UnitTestsOneShardDB";
   const ruleName = "late-document-materialization-arangosearch";
   const cn = "UnitTestsCollection";
   const cn1 = "UnitTestsCollection1";
@@ -40,13 +42,12 @@ function lateDocumentMaterializationArangoSearchRuleTestSuite () {
   const svn = "SortedTestsView";
   return {
     setUpAll : function () {
-      db._dropView(vn);
-      db._dropView(svn);
-      db._drop(cn);
-      db._drop(cn1);
-      
-      let c = db._create(cn, { numberOfShards: 3 });
-      let c2 = db._create(cn1, { numberOfShards: 3 });
+      db._useDatabase("_system");
+      try { db._dropDatabase(dn); } catch {}
+      db._createDatabase(dn, {replicationFactor: 1, writeConcern: 1, sharding: "single" });
+      db._useDatabase(dn);
+      let c = db._create(cn, { numberOfShards: 1 });
+      let c2 = db._create(cn1, { numberOfShards: 1 });
       
       db._createView(vn, "arangosearch", { 
         links: { 
@@ -78,10 +79,8 @@ function lateDocumentMaterializationArangoSearchRuleTestSuite () {
     },
 
     tearDownAll : function () {
-      try { db._dropView(vn); } catch(e) {}
-      try { db._dropView(svn); } catch(e) {}
-      try { db._drop(cn); } catch(e) {}
-      try { db._drop(cn1); } catch(e) {}
+      db._useDatabase("_system");
+      db._dropDatabase(dn);
     }, 
     testIssue10845() {
       // this tests a regression described in https://github.com/arangodb/arangodb/issues/10845#issuecomment-575723029:
@@ -192,10 +191,8 @@ function lateDocumentMaterializationArangoSearchRuleTestSuite () {
           // there should be no materializer before (e.g. double materialization)
           assertFalse(materializeNodeFound);
           materializeNodeFound = true;
-          // the other sort node should be limited but not have a materializer
-          // BM25 node on single and TFIDF on cluster as for cluster
-          // only first sort will be on DBServers
-          assertEqual(nodeDependency.limit, isCluster ? 10 : 4);
+          // all sorts should go to DBServer with OneShard
+          assertEqual(nodeDependency.limit, 4);
         }
         nodeDependency = node; // as we walk the plan this will be next node dependency
       });
@@ -227,20 +224,15 @@ function lateDocumentMaterializationArangoSearchRuleTestSuite () {
     testQueryResultsWithBetweenCalc() {
       let query = "FOR d IN " + svn  + " SEARCH d.value IN [1,2, 11, 12] SORT BM25(d) LET c = NOOPT(CONCAT(d._key, '-C')) LIMIT 10  RETURN c";
       let plan = AQL_EXPLAIN(query).plan;
-      if (!isCluster) {
-        assertNotEqual(-1, plan.rules.indexOf(ruleName));
-        let result = AQL_EXECUTE(query);
-        assertEqual(4, result.json.length);
-        let expected = new Set(['c1-C', 'c2-C', 'c_1-C', 'c_2-C']);
-        result.json.forEach(function(doc) {
-          assertTrue(expected.has(doc));
-          expected.delete(doc);
-        });
-        assertEqual(0, expected.size);
-      } else {
-        // on cluster this will not be applied as calculation node will be moved up
-        assertEqual(-1, plan.rules.indexOf(ruleName));
-      }
+      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      let result = AQL_EXECUTE(query);
+      assertEqual(4, result.json.length);
+      let expected = new Set(['c1-C', 'c2-C', 'c_1-C', 'c_2-C']);
+      result.json.forEach(function(doc) {
+        assertTrue(expected.has(doc));
+        expected.delete(doc);
+      });
+      assertEqual(0, expected.size);
     },
     testQueryResultsSkipSome() {
       let query = "FOR d IN " + vn  + " SEARCH PHRASE(d.str, 'cat', 'text_en')  SORT TFIDF(d) DESC LIMIT 4, 1 RETURN d";
@@ -296,12 +288,10 @@ function lateDocumentMaterializationArangoSearchRuleTestSuite () {
       // sort by TFIDF node`s limit must be appended with materializer (identified by limit value = 3)
       // as last SORT needs materialized document
       // and SORT by BM25 is not lowest possible variant
-      // However in cluster only first sort suitable, as later sorts depend 
-      // on all db servers results and performed on coordinator
       plan.nodes.forEach(function(node) {
         if( node.type === "MaterializeNode") {
           assertFalse(materializeNodeFound); // no double materialization
-          assertEqual(nodeDependency.limit, isCluster ? 6 : 3);
+          assertEqual(nodeDependency.limit, 3);
           materializeNodeFound = true;
         }
         nodeDependency = node;
@@ -318,15 +308,13 @@ function lateDocumentMaterializationArangoSearchRuleTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let materializeNodeFound = false;
-      // sort by TFIDF node`s limit must be appended with materializer (identified by limit value = 3)
+      // sort by TFIDF node`s must be appended with materializer (identified by limit value = 4)
       // as SORT by BM25 is not lowest possible variant
-      // However in cluster only first sort suitable, as later sorts depend 
-      // on all db servers results and performed on coordinator
       let nodeDependency = null;
       plan.nodes.forEach(function(node) {
         if( node.type === "MaterializeNode") {
           assertFalse(materializeNodeFound);
-          assertEqual(nodeDependency.limit, isCluster ? 6 : 3);
+          assertEqual(nodeDependency.limit, 3);
           materializeNodeFound = true;
         }
         nodeDependency = node;
@@ -342,7 +330,7 @@ function lateDocumentMaterializationArangoSearchRuleTestSuite () {
       plan.nodes.forEach(function(node) {
         if( node.type === "MaterializeNode") {
           assertFalse(materializeNodeFound);
-          assertEqual(nodeDependency.limit, isCluster ? 11 : 5);
+          assertEqual(nodeDependency.limit, 5);
           materializeNodeFound = true;
         }
         nodeDependency = node;
@@ -360,6 +348,6 @@ function lateDocumentMaterializationArangoSearchRuleTestSuite () {
   };
 }
 
-jsunity.run(lateDocumentMaterializationArangoSearchRuleTestSuite);
+jsunity.run(lateDocumentMaterializationOneShardArangoSearchRuleTestSuite);
 
 return jsunity.done();
