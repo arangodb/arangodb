@@ -258,9 +258,6 @@ struct AqlValue final {
   /// @brief hashes the value
   uint64_t hash(uint64_t seed = 0xdeadbeef) const;
 
-  /// @brief whether or not the value is a shadow row depth entry
-  bool isShadowRowDepthValue() const noexcept;
-
   /// @brief whether or not the value contains a none value
   bool isNone() const noexcept;
 

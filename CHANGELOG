@@ -1,3 +1,10 @@
+v3.7.1 (XXXX-XX-XX)
+-------------------
+
+* Improve performance of many non-subquery AQL queries, by optimizing away
+  some storage overhead for subquery context data.
+
+
 v3.7.1-rc.1 (2020-07-24)
 ------------------------
 

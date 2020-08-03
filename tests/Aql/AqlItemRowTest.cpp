@@ -330,9 +330,9 @@ TYPED_TEST(AqlItemRowsCommonEqTest, row_eq_operators) {
   SharedAqlItemBlockPtr otherBlock =
       buildBlock<1>(this->itemBlockManager, {{{0}}});
   if (std::is_same<RowType, ShadowAqlItemRow>::value) {
-    block->setShadowRowDepth(0, AqlValue{AqlValueHintUInt{0}});
-    block->setShadowRowDepth(1, AqlValue{AqlValueHintUInt{0}});
-    otherBlock->setShadowRowDepth(0, AqlValue{AqlValueHintUInt{0}});
+    block->makeShadowRow(0, 0);
+    block->makeShadowRow(1, 0);
+    otherBlock->makeShadowRow(0, 0);
   }
 
   RowType const invalidRow = createInvalidRow<RowType>();
@@ -368,9 +368,9 @@ TYPED_TEST(AqlItemRowsCommonEqTest, row_equivalence) {
   SharedAqlItemBlockPtr otherBlock =
       buildBlock<1>(this->itemBlockManager, {{{1}}});
   if (std::is_same<RowType, ShadowAqlItemRow>::value) {
-    block->setShadowRowDepth(0, AqlValue{AqlValueHintUInt{0}});
-    block->setShadowRowDepth(1, AqlValue{AqlValueHintUInt{0}});
-    otherBlock->setShadowRowDepth(0, AqlValue{AqlValueHintUInt{0}});
+    block->makeShadowRow(0, 0);
+    block->makeShadowRow(1, 0);
+    otherBlock->makeShadowRow(0, 0);
   }
 
   RowType const invalidRow = createInvalidRow<RowType>();
@@ -415,9 +415,9 @@ TEST_F(AqlShadowRowsEqTest, shadow_row_depth_equivalence) {
       buildBlock<1>(this->itemBlockManager, {{{0}}, {{0}}});
   SharedAqlItemBlockPtr otherBlock =
       buildBlock<1>(this->itemBlockManager, {{{0}}});
-  block->setShadowRowDepth(0, AqlValue{AqlValueHintUInt{0}});
-  block->setShadowRowDepth(1, AqlValue{AqlValueHintUInt{1}});
-  otherBlock->setShadowRowDepth(0, AqlValue{AqlValueHintUInt{1}});
+  block->makeShadowRow(0, 0);
+  block->makeShadowRow(1, 1);
+  otherBlock->makeShadowRow(0, 1);
 
   // same rows must be considered equivalent
   EXPECT_TRUE((ShadowAqlItemRow{block, 0}.equates(ShadowAqlItemRow{block, 0}, options)));

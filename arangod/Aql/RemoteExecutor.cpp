@@ -273,7 +273,6 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
       errorNumber = errorSlice.getNumericValue<int>();
     }
 
-    std::string errorMessage;
     errorSlice = slice.get(StaticStrings::ErrorMessage);
     if (errorSlice.isString()) {
       return {ExecutionState::DONE, {errorNumber, errorSlice.copyString()}};
