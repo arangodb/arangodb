@@ -1556,7 +1556,7 @@ static bool CreateCollection(SimpleHttpClient* client, std::string const& name,
     if (statusCode == 200 || statusCode == 201 || statusCode == 202) {
       failed = false;
     } else {
-      LOG_TOPIC("567b2", WARN, Logger::FIXME) 
+      LOG_TOPIC("567b3", WARN, Logger::FIXME) 
         << "error when creating collection: " << result->getHttpReturnMessage() 
         << " for payload '" << payload << "': " << result->getBody();
     }
