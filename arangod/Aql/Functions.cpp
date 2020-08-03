@@ -4612,10 +4612,10 @@ AqlValue Functions::RandomToken(ExpressionContext*, transaction::Methods*,
   return AqlValue(generator.random(static_cast<size_t>(length)));
 }
 
-/// @brief function IP4_FROM_NUMBER
-AqlValue Functions::Ip4FromNumber(ExpressionContext* expressionContext, transaction::Methods*,
-                                  VPackFunctionParameters const& parameters) {
-  static char const* AFN = "IP4_FROM_NUMBER";
+/// @brief function IPV4_FROM_NUMBER
+AqlValue Functions::IpV4FromNumber(ExpressionContext* expressionContext, transaction::Methods*,
+                                   VPackFunctionParameters const& parameters) {
+  static char const* AFN = "IPV4_FROM_NUMBER";
 
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -4656,10 +4656,10 @@ AqlValue Functions::Ip4FromNumber(ExpressionContext* expressionContext, transact
   return AqlValue(&result[0], p - &result[0]);
 }
 
-/// @brief function IP4_TO_NUMBER
-AqlValue Functions::Ip4ToNumber(ExpressionContext* expressionContext, transaction::Methods* trx,
-                                  VPackFunctionParameters const& parameters) {
-  static char const* AFN = "IP4_TO_NUMBER";
+/// @brief function IPV4_TO_NUMBER
+AqlValue Functions::IpV4ToNumber(ExpressionContext* expressionContext, transaction::Methods* trx,
+                                 VPackFunctionParameters const& parameters) {
+  static char const* AFN = "IPV4_TO_NUMBER";
 
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -4701,9 +4701,9 @@ AqlValue Functions::Ip4ToNumber(ExpressionContext* expressionContext, transactio
   return AqlValue(AqlValueHintNull());
 }
 
-/// @brief function IS_IP4
-AqlValue Functions::IsIp4(ExpressionContext* expressionContext, transaction::Methods* trx,
-                          VPackFunctionParameters const& parameters) {
+/// @brief function IS_IPV4
+AqlValue Functions::IsIpV4(ExpressionContext* expressionContext, transaction::Methods* trx,
+                           VPackFunctionParameters const& parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
   if (!value.isString()) {

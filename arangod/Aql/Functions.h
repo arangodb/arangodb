@@ -284,12 +284,12 @@ struct Functions {
                               transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue RandomToken(arangodb::aql::ExpressionContext*,
                               transaction::Methods*, VPackFunctionParameters const&);
-  static AqlValue Ip4FromNumber(arangodb::aql::ExpressionContext*, transaction::Methods*,
-                                VPackFunctionParameters const&);
-  static AqlValue Ip4ToNumber(arangodb::aql::ExpressionContext*, transaction::Methods*,
-                              VPackFunctionParameters const&);
-  static AqlValue IsIp4(arangodb::aql::ExpressionContext*, transaction::Methods*,
-                        VPackFunctionParameters const&);
+  static AqlValue IpV4FromNumber(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                                 VPackFunctionParameters const&);
+  static AqlValue IpV4ToNumber(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                               VPackFunctionParameters const&);
+  static AqlValue IsIpV4(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                         VPackFunctionParameters const&);
   static AqlValue Md5(arangodb::aql::ExpressionContext*, transaction::Methods*,
                       VPackFunctionParameters const&);
   static AqlValue Sha1(arangodb::aql::ExpressionContext*, transaction::Methods*,

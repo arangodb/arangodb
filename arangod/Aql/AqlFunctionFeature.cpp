@@ -165,7 +165,7 @@ void AqlFunctionFeature::addTypeCheckFunctions() {
   addAlias("IS_DOCUMENT", "IS_OBJECT");
 
   add({"IS_DATESTRING", ".", flags, &Functions::IsDatestring});
-  add({"IS_IP4", ".", flags, &Functions::IsIp4});
+  add({"IS_IPV4", ".", flags, &Functions::IsIpV4});
   add({"IS_KEY", ".", flags, &Functions::IsKey});
   add({"TYPENAME", ".", flags, &Functions::Typename});
 }
@@ -209,8 +209,8 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"FIND_LAST", ".,.|.,.", flags, &Functions::FindLast});
   add({"SPLIT", ".|.,.", flags, &Functions::Split});
   add({"SUBSTITUTE", ".,.|.,.", flags, &Functions::Substitute});
-  add({"IP4_TO_NUMBER", ".", flags, &Functions::Ip4ToNumber});
-  add({"IP4_FROM_NUMBER", ".", flags, &Functions::Ip4FromNumber});
+  add({"IPV4_TO_NUMBER", ".", flags, &Functions::IpV4ToNumber});
+  add({"IPV4_FROM_NUMBER", ".", flags, &Functions::IpV4FromNumber});
   add({"MD5", ".", flags, &Functions::Md5});
   add({"SHA1", ".", flags, &Functions::Sha1});
   add({"SHA512", ".", flags, &Functions::Sha512});
