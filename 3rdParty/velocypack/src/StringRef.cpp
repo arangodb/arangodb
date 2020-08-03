@@ -105,7 +105,7 @@ std::size_t StringRef::find(char c, std::size_t offset) const noexcept {
   
 std::size_t StringRef::rfind(char c, std::size_t offset) const noexcept {
   std::size_t length;
-  if (offset == std::string::npos || offset >= _length + 1) {
+  if (offset >= _length + 1) {
     length = _length; 
   } else {
     length = offset + 1;
