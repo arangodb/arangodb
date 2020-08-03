@@ -71,6 +71,8 @@ class GeoConstructorTest : public ::testing::Test {
         params{arena} {
     fakeit::When(Method(trxMock, transactionContextPtr)).AlwaysReturn(&context);
     fakeit::When(Method(contextMock, getVPackOptions)).AlwaysReturn(&velocypack::Options::Defaults);
+    fakeit::When(Method(contextMock, leaseBuilder)).AlwaysDo([]() { return new arangodb::velocypack::Builder(); });
+    fakeit::When(Method(contextMock, returnBuilder)).AlwaysDo([](arangodb::velocypack::Builder* b) { delete b; });
   }
 };
 
