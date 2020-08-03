@@ -1,3 +1,12 @@
+v3.7.1 (XXXX-XX-XX)
+-------------------
+
+* Added AQL functions `IS_IPV4`, `IPV4_TO_NUMBER`, `IPV4_FROM_NUMBER` for IPv4
+  address checks and conversions.
+
+* Added AQL function `PRODUCT` to calculate the product of an array.
+
+
 v3.7.1-rc.1 (2020-07-24)
 ------------------------
 
