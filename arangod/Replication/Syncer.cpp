@@ -490,11 +490,7 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
   _state.master.endpoint = _state.applier._endpoint;
 }
 
-Syncer::~Syncer() {
-  if (!_state.isChildSyncer) {
-    _state.barrier.remove(_state.connection);
-  }
-}
+Syncer::~Syncer() = default;
 
 /// @brief request location rewriter (injects database name)
 std::string Syncer::rewriteLocation(void* data, std::string const& location) {
@@ -509,14 +505,6 @@ std::string Syncer::rewriteLocation(void* data, std::string const& location) {
     return "/_db/" + s->_state.databaseName + location;
   }
   return "/_db/" + s->_state.databaseName + "/" + location;
-}
-
-/// @brief steal the barrier id from the syncer
-TRI_voc_tick_t Syncer::stealBarrier() {
-  auto id = _state.barrier.id;
-  _state.barrier.id = 0;
-  _state.barrier.updateTime = 0;
-  return id;
 }
 
 void Syncer::setAborted(bool value) { _state.connection.setAborted(value); }

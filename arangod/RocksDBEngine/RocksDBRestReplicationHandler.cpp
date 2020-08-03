@@ -165,6 +165,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
 }
 
 // handled by the batch for rocksdb
+// TODO: remove after release of 3.8
 void RocksDBRestReplicationHandler::handleCommandBarrier() {
   auto const type = _request->requestType();
   if (type == rest::RequestType::POST) {
