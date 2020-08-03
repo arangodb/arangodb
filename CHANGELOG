@@ -7,6 +7,11 @@ v3.6.6 (XXXX-XX-XX)
   This PR fixes the JavaScript exception, so the services API is displayed
   again properly.
 
+* Fixed issue #12248: Web UI on 3.6.5: 404 error on adding new index.
+  This issue caused "404: not found" errors when creating indexes via the web
+  UI. The indexes were created successfully despite the error message popping
+  up. This fix removes the misleading unconditional error message.
+
 * Revive faster out-of-range comparator for secondary index scans that do a full
   collection index scan for index types "hash", "skiplist", "persistent".
 
