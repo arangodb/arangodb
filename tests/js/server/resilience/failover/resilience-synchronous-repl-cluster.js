@@ -56,10 +56,11 @@ function SynchronousReplicationSuite () {
   var cinfo;
   var ccinfo;
   var shards;
+  var failedState = { leader: null, follower: null };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief find out servers for the system collections
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief find out servers for the system collections
+  ////////////////////////////////////////////////////////////////////////////////
 
   function findCollectionServers(database, collection) {
     var cinfo = global.ArangoClusterInfo.getCollectionInfo(database, collection);
@@ -67,9 +68,9 @@ function SynchronousReplicationSuite () {
     return cinfo.shards[shard];
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wait for synchronous replication
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief wait for synchronous replication
+  ////////////////////////////////////////////////////////////////////////////////
 
   function waitForSynchronousReplication(database) {
     console.info("Waiting for synchronous replication to settle...");
@@ -87,7 +88,7 @@ function SynchronousReplicationSuite () {
       if (replicas.every(x => x > 1)) {
         console.info("Replication up and running!");
         return true;
-      }  
+      }
       wait(0.5);
       global.ArangoClusterInfo.flush();
     }
@@ -95,66 +96,70 @@ function SynchronousReplicationSuite () {
     return false;
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail the follower
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief fail the follower
+  ////////////////////////////////////////////////////////////////////////////////
 
-  function failFollower() {
-    var follower = cinfo.shards[shards[0]][1];
+  function failFollower(failAt = null, follower = null) {
+    if (follower == null) follower = cinfo.shards[shards[0]][1];
     var endpoint = global.ArangoClusterInfo.getServerEndpoint(follower);
     // Now look for instanceInfo:
     var pos = _.findIndex(global.instanceInfo.arangods,
-                          x => x.endpoint === endpoint);
+      x => x.endpoint === endpoint);
     assertTrue(pos >= 0);
     assertTrue(suspendExternal(global.instanceInfo.arangods[pos].pid));
     console.info("Have failed follower", follower);
+    failedState.follower = { failAt: (failAt ? failAt : null), failedServer: follower };
     return pos;
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief heal the follower
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief heal the follower
+  ////////////////////////////////////////////////////////////////////////////////
 
-  function healFollower() {
-    var follower = cinfo.shards[shards[0]][1];
+  function healFollower(failAt = null, follower = null) {
+    if (follower == null) follower = cinfo.shards[shards[0]][1];
     var endpoint = global.ArangoClusterInfo.getServerEndpoint(follower);
     // Now look for instanceInfo:
     var pos = _.findIndex(global.instanceInfo.arangods,
-                          x => x.endpoint === endpoint);
+      x => x.endpoint === endpoint);
     assertTrue(pos >= 0);
     assertTrue(continueExternal(global.instanceInfo.arangods[pos].pid));
     console.info("Have healed follower", follower);
+    failedState.follower = null;
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail the leader
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief fail the leader
+  ////////////////////////////////////////////////////////////////////////////////
 
-  function failLeader() {
-    var leader = cinfo.shards[shards[0]][0];
+  function failLeader(failAt = null, leader = null) {
+    if (leader == null) leader = cinfo.shards[shards[0]][0];
     var endpoint = global.ArangoClusterInfo.getServerEndpoint(leader);
     // Now look for instanceInfo:
     var pos = _.findIndex(global.instanceInfo.arangods,
-                          x => x.endpoint === endpoint);
+      x => x.endpoint === endpoint);
     assertTrue(pos >= 0);
     assertTrue(suspendExternal(global.instanceInfo.arangods[pos].pid));
     console.info("Have failed leader", leader);
+    failedState.leader = { failAt: (failAt ? failAt : null), failedServer: leader };
     return leader;
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief heal the follower
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief heal the leader
+  ////////////////////////////////////////////////////////////////////////////////
 
-  function healLeader() {
-    var leader = cinfo.shards[shards[0]][0];
+  function healLeader(failAt = null, leader = null) {
+    if (leader == null) leader = cinfo.shards[shards[0]][0];
     var endpoint = global.ArangoClusterInfo.getServerEndpoint(leader);
     // Now look for instanceInfo:
     var pos = _.findIndex(global.instanceInfo.arangods,
-                          x => x.endpoint === endpoint);
+      x => x.endpoint === endpoint);
     assertTrue(pos >= 0);
     assertTrue(continueExternal(global.instanceInfo.arangods[pos].pid));
     console.info("Have healed leader", leader);
+    failedState.leader = null;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -326,13 +331,15 @@ function SynchronousReplicationSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       var systemCollServers = findCollectionServers("_system", "_graphs");
       console.info("System collections use servers:", systemCollServers);
       while (true) {
         db._drop(cn);
-        c = db._create(cn, {numberOfShards: 1, replicationFactor: 2,
-                            avoidServers: systemCollServers});
+        c = db._create(cn, {
+          numberOfShards: 1, replicationFactor: 2,
+          avoidServers: systemCollServers
+        });
         var servers = findCollectionServers("_system", cn);
         console.info("Test collections uses servers:", servers);
         if (_.intersection(systemCollServers, servers).length === 0) {
@@ -344,11 +351,13 @@ function SynchronousReplicationSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief tear down
+    ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
+      if(failedState.leader != null) healLeader(failedState.leader.failAt, failedState.leader.failedServer);
+      if(failedState.follower != null) healFollower(failedState.follower.failAt, failedState.follower.failedServer);
       db._drop(cn);
       //global.ArangoAgency.set('Target/FailedServers', {});
     },
