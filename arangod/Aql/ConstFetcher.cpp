@@ -61,13 +61,12 @@ auto ConstFetcher::execute(AqlCallStack& stack)
   // to is one after the last data row to be returned
 
   if (_blockForPassThrough->hasShadowRows()) {
-    auto [shadowRowsBegin, shadowRowsEnd] = _blockForPassThrough->getShadowRowIndexes();
-    auto shadowRow = std::lower_bound(shadowRowsBegin, shadowRowsEnd, _rowIndex);
-    if (shadowRow != shadowRowsEnd) {
-      size_t fromShadowRow = *shadowRow;
-      size_t toShadowRow = *shadowRow + 1;
-      for (++shadowRow; shadowRow != shadowRowsEnd; ++shadowRow) {
-        if (*shadowRow == toShadowRow) {
+    auto [shadowRowsBegin, shadowRowsEnd] = _blockForPassThrough->getShadowRowIndexesFrom(_rowIndex);
+    if (shadowRowsBegin != shadowRowsEnd) {
+      size_t fromShadowRow = *shadowRowsBegin;
+      size_t toShadowRow = *shadowRowsBegin + 1;
+      for (++shadowRowsBegin; shadowRowsBegin != shadowRowsEnd; ++shadowRowsBegin) {
+        if (*shadowRowsBegin == toShadowRow) {
           ShadowAqlItemRow srow{_blockForPassThrough, toShadowRow};
           TRI_ASSERT(srow.isInitialized());
           if (srow.isRelevant()) {

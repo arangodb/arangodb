@@ -208,7 +208,7 @@ auto AqlItemBlockInputRange::countShadowRows() const noexcept -> std::size_t {
   if (_block == nullptr) {
     return 0;
   }
-  auto [shadowRowsBegin, shadowRowsEnd] = getBlock()->getShadowRowIndexes();
+  auto [shadowRowsBegin, shadowRowsEnd] = getBlock()->getShadowRowIndexesFrom(0);
   return std::count_if(std::lower_bound(shadowRowsBegin, shadowRowsEnd, _rowIndex), shadowRowsEnd,
                        [&](auto r) -> bool { return r >= _rowIndex; });
 }

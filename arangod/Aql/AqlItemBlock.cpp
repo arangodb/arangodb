@@ -918,7 +918,7 @@ void AqlItemBlock::copySubqueryDepthFromOtherBlock(size_t targetRow,
 // e.g. If a block always follows this pattern:
 // ((Data* Shadow(0))* Shadow(1))* ...
 void AqlItemBlock::validateShadowRowConsistency() const {
-  auto [it, shadowRowsEnd] = getShadowRowIndexes();
+  auto [it, shadowRowsEnd] = getShadowRowIndexesFrom(0);
   while (it != shadowRowsEnd) {
     auto r = (*it);
     TRI_ASSERT(r < size());
@@ -1097,7 +1097,7 @@ std::tuple<size_t, size_t> AqlItemBlock::getRelevantRange() const {
   // So we can hardcode to return 0 -> firstShadowRow || endOfBlock
   if (hasShadowRows()) {
     TRI_ASSERT(!_shadowRows.empty());
-    auto [shadowRowsBegin, shadowRowsEnd] = getShadowRowIndexes();
+    auto [shadowRowsBegin, shadowRowsEnd] = getShadowRowIndexesFrom(0);
     return {0, *shadowRowsBegin};
   }
   return {0, size()};
@@ -1129,8 +1129,8 @@ void AqlItemBlock::makeDataRow(size_t row) {
 }
 
 /// @brief Return the indexes of ShadowRows within this block
-std::pair<AqlItemBlock::ShadowRowIterator, AqlItemBlock::ShadowRowIterator> AqlItemBlock::getShadowRowIndexes() const noexcept {
-  return _shadowRows.getIndexes();
+std::pair<AqlItemBlock::ShadowRowIterator, AqlItemBlock::ShadowRowIterator> AqlItemBlock::getShadowRowIndexesFrom(size_t lower) const noexcept {
+  return _shadowRows.getIndexesFrom(lower);
 }
 
 /// @brief Quick test if we have any ShadowRows within this block
@@ -1219,8 +1219,11 @@ size_t AqlItemBlock::ShadowRows::getDepth(size_t row) const noexcept {
 }
 
 /// @brief Return the indexes of shadowRows within this block.
-std::pair<AqlItemBlock::ShadowRowIterator, AqlItemBlock::ShadowRowIterator> AqlItemBlock::ShadowRows::getIndexes() const noexcept {
-  return {_indexes.begin(), _indexes.end()};
+std::pair<AqlItemBlock::ShadowRowIterator, AqlItemBlock::ShadowRowIterator> AqlItemBlock::ShadowRows::getIndexesFrom(size_t lower) const noexcept {
+  if (lower == 0 || _indexes.empty()) {
+    return {_indexes.begin(), _indexes.end()};
+  }
+  return {std::lower_bound(_indexes.begin(), _indexes.end(), lower), _indexes.end()};
 }
 
 void AqlItemBlock::ShadowRows::clear() noexcept {
@@ -1241,6 +1244,9 @@ void AqlItemBlock::ShadowRows::make(size_t row, size_t depth) {
   if (ADB_UNLIKELY(depth >= std::numeric_limits<decltype(_depths)::value_type>::max() - 1)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid subquery depth");
   }
+  if (ADB_UNLIKELY(row > std::numeric_limits<decltype(_indexes)::value_type>::max())) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid subquery row");
+  }
 
   if (_depths.size() <= row) {
     // allocate enough space for all rows at once. the goal here
@@ -1259,7 +1265,7 @@ void AqlItemBlock::ShadowRows::make(size_t row, size_t depth) {
     // don't insert the same value twice...
     return;
   }
-  _indexes.push_back(row);
+  _indexes.push_back(static_cast<decltype(_indexes)::value_type>(row));
 }
 
 void AqlItemBlock::ShadowRows::clear(size_t row) {

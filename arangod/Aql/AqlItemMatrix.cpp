@@ -114,7 +114,7 @@ void AqlItemMatrix::addBlock(SharedAqlItemBlockPtr blockPtr) {
 
   // ShadowRow handling
   if (blockPtr->hasShadowRows()) {
-    auto [shadowRowsBegin, shadowRowsEnd] = blockPtr->getShadowRowIndexes();
+    auto [shadowRowsBegin, shadowRowsEnd] = blockPtr->getShadowRowIndexesFrom(0);
     TRI_ASSERT(shadowRowsBegin != shadowRowsEnd);
     // Let us stop on the first
     _stopIndexInLastBlock = *shadowRowsBegin;
@@ -138,14 +138,13 @@ ShadowAqlItemRow AqlItemMatrix::popShadowRow() {
   ShadowAqlItemRow shadowRow{_blocks.back(), _stopIndexInLastBlock};
 
   // We need to move forward the next shadow row.
-  auto [shadowRowsBegin, shadowRowsEnd] = blockPtr->getShadowRowIndexes();
-  auto next = std::lower_bound(shadowRowsBegin, shadowRowsEnd, _stopIndexInLastBlock);
+  auto [shadowRowsBegin, shadowRowsEnd] = blockPtr->getShadowRowIndexesFrom(_stopIndexInLastBlock);
   _startIndexInFirstBlock = _stopIndexInLastBlock + 1;
 
-  next++;
+  shadowRowsBegin++;
 
-  if (next != shadowRowsEnd) {
-    _stopIndexInLastBlock = *next;
+  if (shadowRowsBegin != shadowRowsEnd) {
+    _stopIndexInLastBlock = *shadowRowsBegin;
     TRI_ASSERT(stoppedOnShadowRow());
     // We move always forward
     TRI_ASSERT(_stopIndexInLastBlock >= _startIndexInFirstBlock);
@@ -198,8 +197,7 @@ AqlItemMatrix::AqlItemMatrix(RegisterCount nrRegs)
     return 0;
   }
   auto const& block = _blocks.back();
-  auto [shadowRowsBegin, shadowRowsEnd] = block->getShadowRowIndexes();
-  shadowRowsBegin = std::lower_bound(shadowRowsBegin, shadowRowsEnd, _stopIndexInLastBlock);
+  auto [shadowRowsBegin, shadowRowsEnd] = block->getShadowRowIndexesFrom(_stopIndexInLastBlock);
   return std::count_if(shadowRowsBegin, shadowRowsEnd,
                        [&](auto r) -> bool { return r >= _stopIndexInLastBlock; });
 }

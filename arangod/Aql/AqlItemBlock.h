@@ -110,7 +110,7 @@ class AqlItemBlock {
     uint32_t memoryUsage;
   };
   
-  using ShadowRowIterator = std::vector<size_t>::const_iterator;
+  using ShadowRowIterator = std::vector<uint32_t>::const_iterator;
 
  protected:
   /// @brief destroy the block
@@ -294,8 +294,8 @@ class AqlItemBlock {
   /// @brief Transform the given row into a DataRow.
   void makeDataRow(size_t row);
   
-  /// @brief Return the indexes of ShadowRows within this block.
-  std::pair<ShadowRowIterator, ShadowRowIterator> getShadowRowIndexes() const noexcept;
+  /// @brief Return the indexes of ShadowRows within this block, starting at lower.
+  std::pair<ShadowRowIterator, ShadowRowIterator> getShadowRowIndexesFrom(size_t lower) const noexcept;
 
   /// @brief Quick test if we have any ShadowRows within this block;
   bool hasShadowRows() const noexcept;
@@ -407,13 +407,13 @@ class AqlItemBlock {
     /// @brief clear all shadow rows from row to the end
     void clearFrom(size_t row);
     
-    /// @brief return the indexes of ShadowRows
-    std::pair<ShadowRowIterator, ShadowRowIterator> getIndexes() const noexcept;
+    /// @brief return the indexes of ShadowRows, starting at lower
+    std::pair<ShadowRowIterator, ShadowRowIterator> getIndexesFrom(size_t lower) const noexcept;
 
    private:
     /// @brief A list of indexes with all ShadowRows within
     /// this ItemBlock. Used to easier split data based on them.
-    std::vector<size_t> _indexes;
+    std::vector<uint32_t> _indexes;
 
     /// @brief all shadow row depths. a value of 0 means "no shadow row",
     /// values of 1 and higher indicate the actual shadow row depths plus one.

@@ -83,7 +83,7 @@ class AqlItemBlockTest : public ::testing::Test {
       EXPECT_GT(testee->numShadowRows(), 0);
     }
 
-    auto [sb, se] = testee->getShadowRowIndexes();
+    auto [sb, se] = testee->getShadowRowIndexesFrom(0);
     EXPECT_EQ(std::distance(sb, se), indexes.size());
     for (auto const& it : indexes) {
       EXPECT_NE(std::find(sb, se, it), se);
