@@ -211,14 +211,14 @@ bool InputAqlItemRow::isFirstDataRowInBlock() const noexcept {
   auto [shadowRowsBegin, shadowRowsEnd] = block().getShadowRowIndexesFrom(0);
 
   // Count the number of shadow rows before this row.
-  size_t const numShadowRowsBeforeCurrentRow = [&]() {
+  size_t const numShadowRowsBeforeCurrentRow = [this, shadowRowsBegin = shadowRowsBegin]() {
     // this is the last shadow row after _baseIndex, i.e.
     // nextShadowRowIt := min { it \in shadowRowIndexes | _baseIndex <= it }
     auto [offsetBegin, offsetEnd] = block().getShadowRowIndexesFrom(_baseIndex);
     // But, as _baseIndex must not be a shadow row, it's actually
     // nextShadowRowIt = min { it \in shadowRowIndexes | _baseIndex < it }
     // so the same as shadowRowIndexes.upper_bound(_baseIndex)
-    TRI_ASSERT(offsetBegin == shadowRowsEnd || _baseIndex < *offsetBegin);
+    TRI_ASSERT(offsetBegin == offsetEnd || _baseIndex < *offsetBegin);
 
     return std::distance(shadowRowsBegin, offsetBegin);
   }();
@@ -238,7 +238,7 @@ bool InputAqlItemRow::blockHasMoreDataRowsAfterThis() const noexcept {
   TRI_ASSERT(_baseIndex < block().size());
 
   // Count the number of shadow rows after this row.
-  size_t const numShadowRowsAfterCurrentRow = [&]() {
+  size_t const numShadowRowsAfterCurrentRow = [this]() {
     // this is the last shadow row after _baseIndex, i.e.
     // shadowRowsBegin := min { it \in shadowRowIndexes | _baseIndex <= it }
     auto [shadowRowsBegin, shadowRowsEnd] = block().getShadowRowIndexesFrom(_baseIndex);
