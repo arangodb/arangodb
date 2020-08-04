@@ -97,8 +97,8 @@ class ShadowAqlItemRow {
 
   [[nodiscard]] AqlValue stealAndEraseValue(RegisterId registerId);
 
-  /// @brief get the depthValue of the shadow row as AqlValue
-  [[nodiscard]] AqlValue const& getShadowDepthValue() const;
+  /// @brief get the depthValue of the shadow row
+  [[nodiscard]] size_t getShadowDepthValue() const;
 
   /// @brief get the depthValue of the shadow row as int64_t >= 0
   ///        NOTE: Innermost query will have depth 0. Outermost query wil have highest depth.
