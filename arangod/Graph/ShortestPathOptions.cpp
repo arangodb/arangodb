@@ -39,10 +39,12 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::graph;
 using namespace arangodb::traverser;
+using VPackHelper = arangodb::basics::VelocyPackHelper;
 
 ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query)
     : BaseOptions(query),
-      direction("outbound"),
+      minDepth(1),
+      maxDepth(1),
       weightAttribute(""),
       defaultWeight(1),
       bidirectional(true),
@@ -56,6 +58,8 @@ ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query, VPackSlice co
   TRI_ASSERT(type.isString());
   TRI_ASSERT(type.isEqualString("shortestPath"));
 #endif
+  minDepth = VPackHelper::getNumericValue<uint64_t>(info, "minDepth", 1);
+  maxDepth = VPackHelper::getNumericValue<uint64_t>(info, "maxDepth", 1);
   weightAttribute =
       VelocyPackHelper::getStringValue(info, "weightAttribute", "");
   defaultWeight =
@@ -65,7 +69,6 @@ ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query, VPackSlice co
 ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query,
                                          VPackSlice info, VPackSlice collections)
     : BaseOptions(query, info, collections),
-      direction("outbound"),
       weightAttribute(""),
       defaultWeight(1),
       bidirectional(true),
@@ -76,6 +79,8 @@ ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query,
   TRI_ASSERT(type.isString());
   TRI_ASSERT(type.isEqualString("shortestPath"));
 #endif
+  minDepth = VPackHelper::getNumericValue<uint64_t>(info, "minDepth", 1);
+  maxDepth = VPackHelper::getNumericValue<uint64_t>(info, "maxDepth", 1);
   weightAttribute =
       VelocyPackHelper::getStringValue(info, "weightAttribute", "");
   defaultWeight =
@@ -113,28 +118,12 @@ void ShortestPathOptions::buildEngineInfo(VPackBuilder& result) const {
   result.close();
 }
 
-void ShortestPathOptions::setStart(std::string const& id) {
-  start = id;
-  startBuilder.clear();
-  startBuilder.add(VPackValue(id));
-}
-
-void ShortestPathOptions::setEnd(std::string const& id) {
-  end = id;
-  endBuilder.clear();
-  endBuilder.add(VPackValue(id));
-}
-
-VPackSlice ShortestPathOptions::getStart() const {
-  return startBuilder.slice();
-}
-
-VPackSlice ShortestPathOptions::getEnd() const { return endBuilder.slice(); }
-
 bool ShortestPathOptions::useWeight() const { return !weightAttribute.empty(); }
 
 void ShortestPathOptions::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder guard(&builder);
+  builder.add("minDepth", VPackValue(minDepth));
+  builder.add("maxDepth", VPackValue(maxDepth));
   builder.add("weightAttribute", VPackValue(weightAttribute));
   builder.add("defaultWeight", VPackValue(defaultWeight));
   builder.add("type", VPackValue("shortestPath"));
@@ -222,7 +211,7 @@ void ShortestPathOptions::isQueryKilledCallback() const {
 }
 
 auto ShortestPathOptions::estimateDepth() const noexcept -> uint64_t {
-  // We vertainly have no clue how the depth actually is.
+  // We certainly have no clue how the depth actually is.
   // So we return a "random" number here.
   // By the six degrees of seperation rule, which defines most vertices in a naturally created graph
   // are 6 steps away from each other, 7 seems to be a quite good worst-case estimate.
@@ -232,13 +221,12 @@ auto ShortestPathOptions::estimateDepth() const noexcept -> uint64_t {
 ShortestPathOptions::ShortestPathOptions(ShortestPathOptions const& other,
                                          bool const allowAlreadyBuiltCopy)
     : BaseOptions(other, allowAlreadyBuiltCopy),
+      minDepth(other.minDepth),
+      maxDepth(other.maxDepth),
       start{other.start},
-      direction{other.direction},
+      end{other.end},
       weightAttribute{other.weightAttribute},
       defaultWeight{other.defaultWeight},
       bidirectional{other.bidirectional},
       multiThreaded{other.multiThreaded},
-      end{other.end},
-      startBuilder{other.startBuilder},
-      endBuilder{other.endBuilder},
       _reverseLookupInfos{other._reverseLookupInfos} {}

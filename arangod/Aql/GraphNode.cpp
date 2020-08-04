@@ -83,10 +83,14 @@ TRI_edge_direction_e uint64ToDirection(uint64_t dirNum) {
 }
 
 TRI_edge_direction_e parseDirection(AstNode const* node) {
-  TRI_ASSERT(node->isIntValue());
-  auto dirNum = node->getIntValue();
-
-  return uint64ToDirection(dirNum);
+  TRI_ASSERT(node->isIntValue() || node->type == NODE_TYPE_DIRECTION);
+  AstNode const* dirNode = node;
+  if (node->type == NODE_TYPE_DIRECTION) {
+    TRI_ASSERT(node->numMembers() == 2);
+    dirNode = node->getMember(0);
+  }
+  TRI_ASSERT(dirNode->isIntValue());
+  return uint64ToDirection(dirNode->getIntValue());
 }
 
 }
@@ -103,10 +107,10 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
       _tmpIdNode(_plan->getAst()->createNodeValueString("", 0)),
       _defaultDirection(parseDirection(direction)),
-      _options(std::move(options)),
       _optionsBuilt(false),
       _isSmart(false),
-      _isDisjoint(false) {
+      _isDisjoint(false),
+      _options(std::move(options)) {
   // Direction is already the correct Integer.
   // Is not inserted by user but by enum.
 
@@ -308,9 +312,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       _optionsBuilt(false),
       _isSmart(arangodb::basics::VelocyPackHelper::getBooleanValue(base, "isSmart", false)),
       _isDisjoint(arangodb::basics::VelocyPackHelper::getBooleanValue(base, "isDisjoint", false)) {
-  auto thread_local const isDBServer = ServerState::instance()->isDBServer();
 
-  if (!isDBServer) {
+  if (!ServerState::instance()->isDBServer()) {
     // Graph Information. Do we need to reload the graph here?
     std::string graphName;
     if (base.get("graph").isString()) {
@@ -461,11 +464,11 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* voc
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
       _tmpIdNode(_plan->getAst()->createNodeValueString("", 0)),
       _defaultDirection(defaultDirection),
-      _directions(std::move(directions)),
-      _options(std::move(options)),
       _optionsBuilt(false),
       _isSmart(false),
-      _isDisjoint(false) {
+      _isDisjoint(false),
+      _directions(std::move(directions)),
+      _options(std::move(options)) {
   setGraphInfoAndCopyColls(edgeColls, vertexColls);
 }
 
@@ -494,11 +497,11 @@ GraphNode::GraphNode(ExecutionPlan& plan, GraphNode const& other,
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
       _tmpIdNode(_plan->getAst()->createNodeValueString("", 0)),
       _defaultDirection(other._defaultDirection),
-      _directions(other._directions),
-      _options(std::move(options)),
       _optionsBuilt(false),
       _isSmart(other.isSmart()),
       _isDisjoint(other.isDisjoint()),
+      _directions(other._directions),
+      _options(std::move(options)),
       _collectionToShard(other._collectionToShard) {
   setGraphInfoAndCopyColls(other.edgeColls(), other.vertexColls());
 }

@@ -77,15 +77,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query)
 
 TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
                                    VPackSlice obj)
-    : BaseOptions(query),
-      _baseVertexExpression(nullptr),
-      _traverser(nullptr),
-      minDepth(1),
-      maxDepth(1),
-      useBreadthFirst(false),
-      useNeighbors(false),
-      uniqueVertices(UniquenessLevel::NONE),
-      uniqueEdges(UniquenessLevel::PATH) {
+    : TraverserOptions(query) {
   TRI_ASSERT(obj.isObject());
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

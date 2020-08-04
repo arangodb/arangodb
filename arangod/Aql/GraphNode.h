@@ -222,6 +222,16 @@ class GraphNode : public ExecutionNode {
 
   /// @brief The default direction given in the query
   TRI_edge_direction_e const _defaultDirection;
+  
+  /// @brief Flag if the options have been built.
+  /// Afterwards this class is not copyable anymore.
+  bool _optionsBuilt;
+
+  /// @brief flag, if graph is smart (Enterprise Edition only!)
+  bool _isSmart;
+
+  /// @brief flag, if graph is smart *and* disjoint (Enterprise Edition only!)
+  bool _isDisjoint;
 
   /// @brief The directions edges are followed
   std::vector<TRI_edge_direction_e> _directions;
@@ -229,18 +239,8 @@ class GraphNode : public ExecutionNode {
   /// @brief Options for traversals
   std::unique_ptr<graph::BaseOptions> _options;
 
-  /// @brief Flag if the options have been built.
-  /// Afterwards this class is not copyable anymore.
-  bool _optionsBuilt;
-
   /// @brief The list of traverser engines grouped by server.
   std::unordered_map<ServerID, aql::EngineId> _engines;
-
-  /// @brief flag, if graph is smart (Enterprise Edition only!)
-  bool _isSmart;
-
-  /// @brief flag, if graph is smart *and* disjoint (Enterprise Edition only!)
-  bool _isDisjoint;
 
   /// @brief list of shards involved, required for one-shard-databases
   std::map<std::string, std::string> _collectionToShard;

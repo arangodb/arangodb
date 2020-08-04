@@ -175,6 +175,10 @@ class Parser;
   return T_K_SHORTEST_PATHS;
 }
 
+(?i:K_PATHS) {
+  return T_K_PATHS;
+}
+
 (?i:OUTBOUND) {
   return T_OUTBOUND;
 }

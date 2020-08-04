@@ -42,6 +42,7 @@
 #include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
 #include "Containers/HashSet.h"
+#include "Graph/ShortestPathType.h"
 #include "VocBase/AccessMode.h"
 
 namespace arangodb {
@@ -56,7 +57,6 @@ class Slice;
 }
 
 namespace aql {
-
 class BindParameters;
 class QueryContext;
 class AqlFunctionsInternalCache;
@@ -356,7 +356,7 @@ class Ast {
   AstNode* createNodeShortestPath(AstNode const*, AstNode const*);
 
   /// @brief create an AST k-shortest paths node
-  AstNode* createNodeKShortestPaths(AstNode const*, AstNode const*);
+  AstNode* createNodeKShortestPaths(arangodb::graph::ShortestPathType::Type type, AstNode const*, AstNode const*);
 
   /// @brief create an AST function call node
   AstNode* createNodeFunctionCall(char const* functionName, AstNode const* arguments);
