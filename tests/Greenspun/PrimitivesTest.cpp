@@ -3,9 +3,10 @@
 
 #include <iostream>
 
-#include "./structs/EvalContext.h"
+
 #include "Pregel/Algos/AIR/Greenspun/Interpreter.h"
 #include "Pregel/Algos/AIR/Greenspun/Primitives.h"
+#include "Pregel/Algos/AIR/Greenspun/PrimEvalContext.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
@@ -13,6 +14,11 @@
 /*
  * Calculation operators
  */
+
+using namespace arangodb::greenspun;
+
+#include "./structs/EvalContext.h"
+
 
 TEST_CASE("Test [+] primitive", "[addition]") {
   InitInterpreter();
@@ -820,3 +826,120 @@ TEST_CASE("Test [update] primitive", "[update]") {}
 TEST_CASE("Test [set] primitive", "[set]") {}
 TEST_CASE("Test [for] primitive", "[for]") {}
 TEST_CASE("Test [global-superstep] primitive", "[global-superstep]") {}
+
+
+TEST_CASE("Test [lambda] primitive", "[lambda]") {
+  InitInterpreter();
+  MyEvalContext ctx;
+  VPackBuilder result;
+
+  SECTION("constant lambda") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      [["lambda", ["quote"], ["quote"], 12]]
+    )aql");
+
+    auto res = Evaluate(ctx, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    INFO(result.slice().toJson());
+    REQUIRE(result.slice().getNumericValue<double>() == 12);
+  }
+
+  SECTION("constant lambda with expression") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      [["lambda", ["quote"], ["quote"], ["+", 10, 2]]]
+    )aql");
+
+    auto res = Evaluate(ctx, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    INFO(result.slice().toJson());
+    REQUIRE(result.slice().getNumericValue<double>() == 12);
+  }
+
+  SECTION("lambda single parameter") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      [["lambda", ["quote"], ["quote", "x"], ["quote", "var-ref", "x"]], 12]
+    )aql");
+
+    auto res = Evaluate(ctx, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    INFO(result.slice().toJson());
+    REQUIRE(result.slice().getNumericValue<double>() == 12);
+  }
+
+  SECTION("lambda multiple parameter") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      [["lambda", ["quote"], ["quote", "a", "b"],
+        ["quote", "+",
+          ["var-ref", "a"],
+          ["var-ref", "b"]]
+      ], 10, 2]
+    )aql");
+
+    auto res = Evaluate(ctx, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    INFO(result.slice().toJson());
+    REQUIRE(result.slice().getNumericValue<double>() == 12);
+  }
+
+  SECTION("lambda single capture") {
+
+    auto v = arangodb::velocypack::Parser::fromJson(R"aql(12)aql");
+    ctx.setVariable("a", v->slice());
+
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      [
+        ["lambda", ["quote", "a"], ["quote"], ["quote", "var-ref", "a"]]
+      ]
+    )aql");
+
+    auto res = Evaluate(ctx, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    INFO(result.slice().toJson());
+    REQUIRE(result.slice().getNumericValue<double>() == 12);
+  }
+
+  SECTION("lambda single capture, single param") {
+
+    auto v = arangodb::velocypack::Parser::fromJson(R"aql(8)aql");
+    ctx.setVariable("a", v->slice());
+
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      [
+        ["lambda", ["quote", "a"], ["quote", "b"], ["quote", "+", ["var-ref", "a"], ["var-ref", "b"]]],
+        4
+      ]
+    )aql");
+
+    auto res = Evaluate(ctx, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    INFO(result.slice().toJson());
+    REQUIRE(result.slice().getNumericValue<double>() == 12);
+  }
+
+  SECTION("lambda does not see vars that are not captured") {
+
+    auto v = arangodb::velocypack::Parser::fromJson(R"aql(8)aql");
+    ctx.setVariable("a", v->slice());
+
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      [
+        ["lambda", ["quote"], ["quote"], ["quote", "var-ref", "a"]]
+      ]
+    )aql");
+
+    auto res = Evaluate(ctx, program->slice(), result);
+    REQUIRE(res.fail());
+  }
+}

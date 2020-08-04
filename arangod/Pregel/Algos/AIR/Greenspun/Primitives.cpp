@@ -466,6 +466,57 @@ EvalResult Prim_Error(PrimEvalContext& ctx, VPackSlice const params,
   return EvalError(paramsToString(params));
 }
 
+EvalResult Prim_Lambda(PrimEvalContext& ctx, VPackSlice const paramsList,
+                     VPackBuilder& result) {
+  VPackArrayIterator paramIterator(paramsList);
+  if (!paramIterator.valid()) {
+    return EvalError("lambda requires two arguments: a list of argument names and a body");
+  }
+
+  auto captures = *paramIterator++;
+  if (captures.isArray()) {
+    for (auto&& name : VPackArrayIterator(captures)) {
+      if (!name.isString()) {
+        return EvalError("in capture list: expected name, found: " + name.toJson());
+      }
+    }
+  }
+
+  auto params = *paramIterator++;
+  if (params.isArray()) {
+    for (auto&& name : VPackArrayIterator(params)) {
+      if (!name.isString()) {
+        return EvalError("in parameter list: expected name, found: " + name.toJson());
+      }
+    }
+  }
+
+  if (!paramIterator.valid()) {
+    return EvalError("missing body");
+  }
+
+  auto body = *paramIterator++;
+  if (paramIterator.valid()) {
+    return EvalError("to many arguments to lambda constructor");
+  }
+
+  {
+    VPackObjectBuilder ob(&result);
+    result.add("_params", params);
+    result.add("_call", body);
+    {
+      VPackObjectBuilder cob(&result, "_captures");
+      for (auto&& name : VPackArrayIterator (captures)) {
+        result.add(name);
+        if (auto res = ctx.getVariable(name.copyString(), result); res.fail()) {
+          return res;
+        }
+      }
+    }
+  }
+  return {};
+}
+
 void RegisterPrimitives() {
   // Calculation operators
   primitives["banana"] = Prim_Banana;
@@ -497,6 +548,8 @@ void RegisterPrimitives() {
   primitives["list-cat"] = Prim_ListCat;
   primitives["string-cat"] = Prim_StringCat;
   primitives["int-to-str"] = Prim_IntToStr;
+
+  primitives["lambda"] = Prim_Lambda;
 
   // Access operators
   primitives["attrib"] = Prim_Attrib;
