@@ -32,7 +32,6 @@
 (function() {
   var db = require("@arangodb").db;
   const analyzers = require("@arangodb/analyzers");
-  const ERRORS = require("@arangodb").errors;
 
   return function (isCluster, newDbName, dbArgs) {
     const ruleName = "late-document-materialization-arangosearch";

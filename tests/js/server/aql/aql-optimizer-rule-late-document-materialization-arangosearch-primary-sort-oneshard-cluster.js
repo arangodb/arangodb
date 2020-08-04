@@ -8,7 +8,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,24 +24,23 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
-/// @author Copyright 2020, ArangoDB GmbH, Cologne, Germany
+/// @author Yuriy Popov
+/// @author Copyright 2019, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const base = require("fs").join(require('internal').pathForTesting('server'),
-             'aql', 'aql-optimizer-rule-late-document-materialization-arangosearch.inc');
+             'aql', 'aql-optimizer-rule-late-document-materialization-arangosearch-primary-sort.inc');
 const ArangoResearchLateMaterializationTestSuite = require("internal").load(base);
 const isCluster = require("internal").isCluster();
 const isEnterprise = require("internal").isEnterprise();
 
-function lateDocumentMaterializationOneShardArangoSearchRuleTestSuite () {
+function lateDocumentMaterializationArangoSearchPrimarySortOneShardRuleTestSuite () {
   let suite = {};
-  if (isEnterprise && isCluster) {
+  if (isCluster && isEnterprise) {
     deriveTestSuite(
-      // force isCluster to false as OneShard should behave like single!
-      ArangoResearchLateMaterializationTestSuite(false, "UnitTestsOneShardDB", {replicationFactor: 1, writeConcern: 1, sharding: "single" }),
+      ArangoResearchLateMaterializationTestSuite(false, "OneShardUnitTestsDB", {replicationFactor: 1, writeConcern: 1, sharding: "single" }),
       suite,
       "_OneShard"
     );
@@ -49,6 +48,6 @@ function lateDocumentMaterializationOneShardArangoSearchRuleTestSuite () {
   return suite;
 }
 
-jsunity.run(lateDocumentMaterializationOneShardArangoSearchRuleTestSuite);
+jsunity.run(lateDocumentMaterializationArangoSearchPrimarySortOneShardRuleTestSuite);
 
 return jsunity.done();
