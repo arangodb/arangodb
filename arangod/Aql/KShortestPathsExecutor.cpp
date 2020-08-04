@@ -209,11 +209,11 @@ auto KShortestPathsExecutor::fetchPaths(AqlItemBlockInputRange& input) -> bool {
 }
 
 auto KShortestPathsExecutor::doOutputPath(OutputAqlItemRow& output) -> void {
-  auto tmp = transaction::BuilderLeaser{_finder.options().trx()};
+  transaction::BuilderLeaser tmp{_finder.options().trx()};
   tmp->clear();
 
   if (_finder.getNextPathAql(*tmp.builder())) {
-    AqlValue path{*tmp.builder()};
+    AqlValue path{tmp->slice()};
     AqlValueGuard guard{path, true};
     output.moveValueInto(_infos.getOutputRegister(), _inputRow, guard);
     output.advanceRow();

@@ -1,9 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Library to build up VPack documents.
-///
 /// DISCLAIMER
 ///
-/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,26 +18,25 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Jan Steemann
-/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
+/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <ostream>
+#ifndef ARANGODB_LOGGER_LOG_VOIDIFY_H
+#define ARANGODB_LOGGER_LOG_VOIDIFY_H 1
 
-#include "velocypack/velocypack-common.h"
-#include "velocypack/Exception.h"
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper class for macros
+////////////////////////////////////////////////////////////////////////////////
 
-using namespace arangodb::velocypack;
+namespace arangodb {
+class LoggerStreamBase;
 
-Exception::Exception(ExceptionType type, char const* msg) noexcept
-    : _type(type), _msg(msg) {}
+class LogVoidify {
+ public:
+  LogVoidify() {}
+  void operator&(LoggerStreamBase const&) {}
+};
 
-std::ostream& operator<<(std::ostream& stream, Exception const* ex) {
-  stream << "[Exception " << ex->what() << "]";
-  return stream;
-}
+}  // namespace arangodb
 
-std::ostream& operator<<(std::ostream& stream, Exception const& ex) {
-  return operator<<(stream, &ex);
-}
+#endif

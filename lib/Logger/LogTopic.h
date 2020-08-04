@@ -37,7 +37,7 @@ class LogTopic {
   LogTopic& operator=(LogTopic const&) = delete;
 
  public:
-  static size_t const MAX_LOG_TOPICS = 64;
+  static constexpr size_t MAX_LOG_TOPICS = 64;
 
  public:
   static std::vector<std::pair<std::string, LogLevel>> logLevelTopics();

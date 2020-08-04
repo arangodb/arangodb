@@ -121,25 +121,6 @@ struct ProgressInfo {
   Setter _setter;
 };
 
-struct BarrierInfo {
-  static constexpr double DefaultTimeout = 900.0;
-  /// @brief WAL barrier id
-  uint64_t id{0};
-  /// @brief ttl for WAL barrier
-  int ttl{static_cast<int>(DefaultTimeout)};
-  /// @brief WAL barrier last update time
-  double updateTime{0.0};
-
-  /// @brief send a "create barrier" command
-  Result create(Connection&, TRI_voc_tick_t);
-
-  /// @brief send an "extend barrier" command
-  Result extend(Connection&, TRI_voc_tick_t = 0);  // TODO worker safety
-
-  /// @brief send remove barrier command
-  Result remove(Connection&) noexcept;
-};
-
 struct MasterInfo {
   std::string endpoint;
   std::string engine;  // storage engine (optional)

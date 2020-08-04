@@ -69,11 +69,11 @@ class AqlShadowItemRowTest : public ::testing::Test {
     outputBlock = itemBlockManager.requestBlock(targetNumberOfRows, numRegisters);
     // We do not add or remove anything, just move
     auto outputRegisters = RegIdSet{};
-    int64_t maxShadowRowDepth = 0;
+    size_t maxShadowRowDepth = 0;
     for (size_t rowIdx = 0; rowIdx < inputBlock->size(); ++rowIdx) {
       if (inputBlock->isShadowRow(rowIdx)) {
         maxShadowRowDepth =
-            std::max(maxShadowRowDepth, inputBlock->getShadowRowDepth(rowIdx).toInt64() + 1);
+            std::max(maxShadowRowDepth, inputBlock->getShadowRowDepth(rowIdx) + 1);
       }
     }
 
@@ -123,11 +123,11 @@ class AqlShadowItemRowTest : public ::testing::Test {
                                        numRegisters + 1));
     // We do not add or remove anything, just move
     auto outputRegisters = RegIdSet{static_cast<RegisterId>(numRegisters)};
-    int64_t maxShadowRowDepth = 0;
+    size_t maxShadowRowDepth = 0;
     for (size_t rowIdx = 0; rowIdx < inputBlock->size(); ++rowIdx) {
       if (inputBlock->isShadowRow(rowIdx)) {
         maxShadowRowDepth =
-            std::max(maxShadowRowDepth, inputBlock->getShadowRowDepth(rowIdx).toInt64() + 1);
+            std::max(maxShadowRowDepth, inputBlock->getShadowRowDepth(rowIdx) + 1);
       }
     }
 

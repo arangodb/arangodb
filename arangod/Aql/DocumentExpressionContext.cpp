@@ -30,7 +30,7 @@ using namespace arangodb::aql;
 DocumentExpressionContext::DocumentExpressionContext(arangodb::transaction::Methods& trx,
                                                      QueryContext& query,
                                                      AqlFunctionsInternalCache& cache,
-                                                     arangodb::velocypack::Slice document)
+                                                     arangodb::velocypack::Slice document) noexcept
     : QueryExpressionContext(trx, query, cache), _document(document) {}
 
 AqlValue DocumentExpressionContext::getVariableValue(Variable const*, bool doCopy,

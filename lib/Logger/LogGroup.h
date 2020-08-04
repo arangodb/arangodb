@@ -1,9 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Library to build up VPack documents.
-///
 /// DISCLAIMER
 ///
-/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,26 +18,27 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Jan Steemann
-/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <ostream>
+#ifndef ARANGODB_LOGGER_LOG_GROUP_H
+#define ARANGODB_LOGGER_LOG_GROUP_H 1
 
-#include "velocypack/velocypack-common.h"
-#include "velocypack/Exception.h"
+#include <cstddef>
 
-using namespace arangodb::velocypack;
+namespace arangodb {
 
-Exception::Exception(ExceptionType type, char const* msg) noexcept
-    : _type(type), _msg(msg) {}
+class LogGroup {
+ public:
+  // @brief Number of log groups; must increase this when a new group is added
+  static constexpr std::size_t Count = 2;
+  virtual ~LogGroup() = default;
 
-std::ostream& operator<<(std::ostream& stream, Exception const* ex) {
-  stream << "[Exception " << ex->what() << "]";
-  return stream;
-}
+  /// @brief Must return a UNIQUE identifier amongst all LogGroup derivatives
+  /// and must be less than Count
+  virtual std::size_t id() const = 0;
+};
 
-std::ostream& operator<<(std::ostream& stream, Exception const& ex) {
-  return operator<<(stream, &ex);
-}
+}  // namespace arangodb
+
+#endif

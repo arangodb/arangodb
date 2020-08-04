@@ -774,7 +774,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
 // iterates over WAL starting at 'from' and returns up to 'chunkSize' documents
 // from the corresponding database
 WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
-                                       TransactionId, MarkerCallback const& func) const {
+                                       MarkerCallback const& func) const {
   TRI_ASSERT(filter.transactionIds.empty());  // not supported in any way
 
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();

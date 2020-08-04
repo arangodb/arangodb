@@ -117,7 +117,7 @@ struct TestDate {
   }
 
   void buildParams(VPackFunctionParameters& input) const {
-    input.emplace_back(*_date);
+    input.emplace_back(_date->slice());
   }
 
   void validateResult(AqlValue const& result) const {

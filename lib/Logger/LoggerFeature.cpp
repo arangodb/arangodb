@@ -373,14 +373,15 @@ void LoggerFeature::prepare() {
 
   for (auto const& definition : _output) {
     if (_supervisor && StringUtils::isPrefix(definition, "file://")) {
-      LogAppender::addAppender(definition + ".supervisor");
+      LogAppender::addAppender(Logger::defaultLogGroup(),
+                               definition + ".supervisor");
     } else {
-      LogAppender::addAppender(definition);
+      LogAppender::addAppender(Logger::defaultLogGroup(), definition);
     }
   }
 
   if (_foregroundTty) {
-    LogAppender::addAppender("-");
+    LogAppender::addAppender(Logger::defaultLogGroup(), "-");
   }
 
   if (_forceDirect || _supervisor) {
