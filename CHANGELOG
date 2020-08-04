@@ -1,6 +1,9 @@
 devel
 -----
 
+* Improve performance of many non-subquery AQL queries, by optimizing away
+  some storage overhead for subquery context data.
+
 * Improve performance of internal cluster Plan and Current reload operations. 
 
 * Fixed issue #12349: arangosh compact Arangoerror 404.

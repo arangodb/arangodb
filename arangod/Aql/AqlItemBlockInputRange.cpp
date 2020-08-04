@@ -25,6 +25,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
+#include <algorithm>
 #include <numeric>
 
 using namespace arangodb;
@@ -207,9 +208,8 @@ auto AqlItemBlockInputRange::countShadowRows() const noexcept -> std::size_t {
   if (_block == nullptr) {
     return 0;
   }
-  auto const& block = getBlock();
-  auto const& rows = block->getShadowRowIndexes();
-  return std::count_if(rows.begin(), rows.end(),
+  auto [shadowRowsBegin, shadowRowsEnd] = getBlock()->getShadowRowIndexesFrom(0);
+  return std::count_if(std::lower_bound(shadowRowsBegin, shadowRowsEnd, _rowIndex), shadowRowsEnd,
                        [&](auto r) -> bool { return r >= _rowIndex; });
 }
 
