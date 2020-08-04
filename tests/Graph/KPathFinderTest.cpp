@@ -24,8 +24,11 @@
 
 #include "GraphTestTools.h"
 
+#include "Basics/StringUtils.h"
 #include "Graph/KPathFinder.h"
 #include "Graph/ShortestPathOptions.h"
+
+using namespace arangodb::velocypack;
 
 namespace arangodb {
 namespace tests {
@@ -60,14 +63,22 @@ class KPathFinderTest : public ::testing::Test {
 
     finder = std::make_unique<KPathFinder>(*spo);
   }
+
+  auto vId(size_t nr) -> std::string {
+      return "v/" + basics::StringUtils::itoa(nr);
+  }
 };
 
 TEST_F(KPathFinderTest, no_path_exists) {
     VPackBuilder result;
-    finder->reset();
+    // No path between those
+    auto source = vId(91);
+    auto target = vId(99);
+    finder->reset(StringRef(source), StringRef(target));
+
     EXPECT_TRUE(finder->hasMore());
     {
-      auto hasPath = finder->getNextPathAql(result);
+      auto hasPath = finder->getNextPath(result);
       EXPECT_FALSE(hasPath);
       EXPECT_TRUE(result.isEmpty());
       EXPECT_FALSE(finder->hasMore());
@@ -75,7 +86,7 @@ TEST_F(KPathFinderTest, no_path_exists) {
     
     {
       // Try again to make sure we stay at non-existing
-      auto hasPath = finder->getNextPathAql(result);
+      auto hasPath = finder->getNextPath(result);
       EXPECT_FALSE(hasPath);
       EXPECT_TRUE(result.isEmpty());
       EXPECT_FALSE(finder->hasMore());

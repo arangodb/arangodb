@@ -23,11 +23,12 @@
 #ifndef ARANGODB_GRAPH_K_PATHS_FINDER_H
 #define ARANGODB_GRAPH_K_PATHS_FINDER_H 1
 
+#include <velocypack/StringRef.h>
+
 namespace arangodb {
 
 namespace velocypack {
 class Builder;
-class StringRef;
 }  // namespace velocypack
 
 namespace graph {
@@ -38,19 +39,57 @@ class KPathFinder {
  private:
   using VertexRef = arangodb::velocypack::StringRef;
   // We have two balls, one arround source, one around target, and try to find intersections of the balls
-  struct Ball {
-    void reset();
+  class Ball {
+   public:
+    Ball();
+    ~Ball();
+    void reset(VertexRef center);
+
+   private:
+    VertexRef _center;
   };
 
  public:
   explicit KPathFinder(ShortestPathOptions& options);
   ~KPathFinder();
 
+/**
+ * @brief Quick test of the finder can proof there is no more data available.
+ *        It can respond with true, even though there is no path left. 
+ * @return true There is a chance that there is more data available
+ * @return false There will be no further path.
+ */
   bool hasMore() const;
 
-  void reset();
+  /**
+   * @brief Reset to new source and target vertices.
+   * This API uss string references, this class will not take responsibility
+   * for the referenced data. It is callers responsibility to retain the
+   * underlying data and make sure the StringRefs stay valid until next
+   * call of reset.
+   *
+   * @param source The source vertex to start the paths
+   * @param target The target vertex to end the paths
+   */
+  void reset(VertexRef source, VertexRef target);
+
+
   // get the next available path serialized in the builder
-  bool getNextPathAql(arangodb::velocypack::Builder& result);
+
+  /**
+   * @brief Get the next path, if available written into the result build.
+   * The given builder will be not be cleared, this function requires a
+   * prepared builder to write into.
+   *
+   * @param result Input and output, this needs to be an open builder,
+   * where the path can be placed into.
+   * Can be empty, or an openArray, or the value of an object.
+   * Guarantee: Every returned path matches the conditions handed in via options.
+   * No path is returned twice, it is intended that paths overlap.
+   * @return true Found and written a path, result is modified.
+   * @return false No path found, result has not been changed.
+   */
+  bool getNextPath(arangodb::velocypack::Builder& result);
 
  private:
   Ball _left{};

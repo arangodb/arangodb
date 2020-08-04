@@ -27,21 +27,26 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-void KPathFinder::Ball::reset() {}
+KPathFinder::Ball::Ball() {}
+KPathFinder::Ball::~Ball() = default;
+
+void KPathFinder::Ball::reset(VertexRef center) {
+  _center = center;
+}
 
 KPathFinder::KPathFinder(ShortestPathOptions& options) {}
-KPathFinder::~KPathFinder() {}
+KPathFinder::~KPathFinder() = default;
 
-void KPathFinder::reset() {
-  _left.reset();
-  _right.reset();
+void KPathFinder::reset(VertexRef source, VertexRef target) {
+  _left.reset(source);
+  _right.reset(target);
   _done = false;
 }
 
 bool KPathFinder::hasMore() const { return !_done; }
 
 // get the next available path serialized in the builder
-bool KPathFinder::getNextPathAql(arangodb::velocypack::Builder& result) {
+bool KPathFinder::getNextPath(arangodb::velocypack::Builder& result) {
   _done = true;
   return false;
 }
