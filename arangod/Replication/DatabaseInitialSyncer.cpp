@@ -300,10 +300,10 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
 namespace arangodb {
 
 DatabaseInitialSyncer::Configuration::Configuration(
-    ReplicationApplierConfiguration const& a, replutils::BarrierInfo& bar,
+    ReplicationApplierConfiguration const& a,
     replutils::BatchInfo& bat, replutils::Connection& c, bool f, replutils::MasterInfo& m,
     replutils::ProgressInfo& p, SyncerState& s, TRI_vocbase_t& v)
-    : applier{a}, barrier{bar}, batch{bat}, connection{c}, flushed{f}, master{m}, progress{p}, state{s}, vocbase{v} {}
+    : applier{a}, batch{bat}, connection{c}, flushed{f}, master{m}, progress{p}, state{s}, vocbase{v} {}
 
 bool DatabaseInitialSyncer::Configuration::isChild() const {
   return state.isChildSyncer;
@@ -313,7 +313,7 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t& vocbase,
                                              ReplicationApplierConfiguration const& configuration)
     : InitialSyncer(configuration,
                     [this](std::string const& msg) -> void { setProgress(msg); }),
-      _config{_state.applier,    _state.barrier, _batch,
+      _config{_state.applier, _batch,
               _state.connection, false,          _state.master,
               _progress,         _state,         vocbase} {
   _state.vocbases.try_emplace(vocbase.name(), vocbase);
@@ -378,11 +378,6 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
 
 
     if (!_config.isChild()) {
-      // create a WAL logfile barrier that prevents WAL logfile collection
-      r = _config.barrier.create(_config.connection, _config.master.lastLogTick);
-      if (r.fail()) {
-        return r;
-      }
 
       // enable patching of collection count for ShardSynchronization Job
       std::string patchCount = StaticStrings::Empty;
@@ -699,7 +694,6 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
 
     if (!_config.isChild()) {
       batchExtend();
-      _config.barrier.extend(_config.connection);
     }
 
     // assemble URL to call
@@ -768,7 +762,6 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
       while (true) {
         if (!_config.isChild()) {
           batchExtend();
-          _config.barrier.extend(_config.connection);
         }
 
         std::string const jobUrl = "/_api/job/" + jobId;
@@ -1044,7 +1037,6 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
 
   if (!_config.isChild()) {
     batchExtend();
-    _config.barrier.extend(_config.connection);
   }
 
   std::string const baseUrl = replutils::ReplicationUrl + "/keys";
@@ -1089,7 +1081,6 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
   while (true) {
     if (!_config.isChild()) {
       batchExtend();
-      _config.barrier.extend(_config.connection);
     }
 
     std::string const jobUrl = "/_api/job/" + jobId;
@@ -1238,7 +1229,6 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
 
   if (!_config.isChild()) {
     batchExtend();
-    _config.barrier.extend(_config.connection);
   }
 
   std::unique_ptr<containers::RevisionTree> treeMaster;
@@ -1426,7 +1416,6 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
 
       if (!_config.isChild()) {
         batchExtend();
-        _config.barrier.extend(_config.connection);
       }
 
       std::string batchUrl = url + "&" + StaticStrings::RevisionTreeResume +
@@ -1558,10 +1547,6 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
       }
       toRemove.clear();
 
-      if (!_state.isChildSyncer) {
-        _state.barrier.extend(_state.connection);
-      }
-
       res = ::fetchRevisions(*trx, _config, _state, *coll, leaderColl, toFetch,
                              /*removed,*/ stats);
       if (res.fail()) {
@@ -1675,7 +1660,6 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
   if (!_config.isChild()) {
     batchExtend();
-    _config.barrier.extend(_config.connection);
   }
 
   std::string const masterName =
@@ -1884,7 +1868,6 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     if (numIdx > 0) {
       if (!_config.isChild()) {
         batchExtend();
-        _config.barrier.extend(_config.connection);
       }
 
       _config.progress.set("creating " + std::to_string(numIdx) +

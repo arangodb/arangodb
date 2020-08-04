@@ -167,10 +167,6 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
                         std::string const& keysId, uint64_t chunkId,
                         std::string const& lowString, std::string const& highString,
                         std::vector<std::string> const& markers) {
-  // first thing we do is extend the barrier's lifetime
-  if (!syncer._state.isChildSyncer) {
-    syncer._state.barrier.extend(syncer._state.connection);
-  }
 
   std::string const baseUrl = replutils::ReplicationUrl + "/keys";
   TRI_voc_tick_t const chunkSize = 5000;
@@ -364,10 +360,6 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
   if (toFetch.empty()) {
     // nothing to do
     return Result();
-  }
-
-  if (!syncer._state.isChildSyncer) {
-    syncer._state.barrier.extend(syncer._state.connection);
   }
 
   LOG_TOPIC("48f94", TRACE, Logger::REPLICATION)
@@ -572,7 +564,6 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
   if (!syncer._state.isChildSyncer) {
     syncer._batch.extend(syncer._state.connection, syncer._progress, syncer._state.syncerId);
-    syncer._state.barrier.extend(syncer._state.connection);
   }
 
   TRI_voc_tick_t const chunkSize = 5000;
@@ -685,7 +676,6 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     auto resetChunk = [&]() -> void {
       if (!syncer._state.isChildSyncer) {
         syncer._batch.extend(syncer._state.connection, syncer._progress, syncer._state.syncerId);
-        syncer._state.barrier.extend(syncer._state.connection);
       }
 
       syncer.setProgress(std::string("processing keys chunk ") + std::to_string(currentChunkId) +

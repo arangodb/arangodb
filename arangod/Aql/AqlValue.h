@@ -218,9 +218,6 @@ struct AqlValue final {
   // construct from pointer, copying the data behind the pointer
   explicit AqlValue(AqlValueHintCopy const& v);
 
-  // construct from Builder, copying contents
-  explicit AqlValue(arangodb::velocypack::Builder const& builder);
-
   // construct from Slice, copying contents
   explicit AqlValue(arangodb::velocypack::Slice const& slice);
 
@@ -402,7 +399,7 @@ class AqlValueGuard {
   AqlValueGuard& operator=(AqlValueGuard&&) = delete;
 
   AqlValueGuard(AqlValue& value, bool destroy) noexcept;
-  ~AqlValueGuard();
+  ~AqlValueGuard() noexcept;
 
   void steal() noexcept;
   AqlValue& value() noexcept;

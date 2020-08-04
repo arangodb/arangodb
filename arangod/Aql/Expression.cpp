@@ -738,7 +738,7 @@ AqlValue Expression::executeSimpleExpressionObject(AstNode const* node,
 
   mustDestroy = true;  // AqlValue contains builder contains dynamic data
 
-  return AqlValue(*builder.get());
+  return AqlValue(builder->slice());
 }
 
 /// @brief execute an expression of type SIMPLE with VALUE
@@ -1502,7 +1502,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node,
     builder.close();
 
     mustDestroy = true;  // builder = dynamic data
-    value = AqlValue(builder);
+    value = AqlValue(builder.slice());
   } else {
     bool localMustDestroy;
     AqlValue a = executeSimpleExpression(node->getMember(0), trx, localMustDestroy, false);
@@ -1594,7 +1594,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node,
 
   builder.close();
   mustDestroy = true;
-  return AqlValue(builder);  // builder = dynamic data
+  return AqlValue(builder.slice());  // builder = dynamic data
 }
 
 /// @brief execute an expression of type SIMPLE with ITERATOR

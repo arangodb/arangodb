@@ -2248,12 +2248,6 @@ void RestReplicationHandler::handleCommandSync() {
   auto tickString = std::to_string(syncer->getLastLogTick());
   result.add("lastLogTick", VPackValue(tickString));
 
-  bool const keepBarrier = VelocyPackHelper::getBooleanValue(body, "keepBarrier", false);
-  if (keepBarrier) {
-    auto barrierId = std::to_string(syncer->stealBarrier());
-    result.add("barrierId", VPackValue(barrierId));
-  }
-
   result.close();  // base
   generateResult(rest::ResponseCode::OK, result.slice());
 }
@@ -2335,14 +2329,7 @@ void RestReplicationHandler::handleCommandApplierStart() {
     useTick = true;
   }
 
-  TRI_voc_tick_t barrierId = 0;
-  std::string const& value2 = _request->value("barrierId", found);
-  if (found) {
-    // query parameter "barrierId" specified
-    barrierId = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value2));
-  }
-
-  applier->startTailing(initialTick, useTick, barrierId);
+  applier->startTailing(initialTick, useTick);
   handleCommandApplierGetState();
 }
 
