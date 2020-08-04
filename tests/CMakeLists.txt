@@ -150,6 +150,7 @@ set(ARANGODB_TESTS_SOURCES
   Graph/ClusterTraverserCacheTest.cpp
   Graph/ConstantWeightShortestPathFinder.cpp
   Graph/GraphTestTools.cpp
+  Graph/KPathFinderTest.cpp
   Graph/KShortestPathsFinder.cpp
   HotBackup/HotBackupCoordinatorTest.cpp
   IResearch/common.cpp
