@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "Pregel/Algos/AIR/Greenspun/Primitives.h"
+#include "Pregel/Algos/AIR/Greenspun/PrimEvalContext.h"
 
 struct MyEvalContext : PrimEvalContext {
   std::string const& getThisId() const override { std::abort(); }

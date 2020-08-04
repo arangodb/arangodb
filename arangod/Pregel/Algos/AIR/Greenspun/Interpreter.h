@@ -40,13 +40,18 @@
 namespace arangodb {
 namespace greenspun {
 
+struct StackFrame {
+  std::unordered_map<std::string, VPackSlice> bindings;
+  bool noParentScope = false;
+};
+
 struct EvalContext {
   EvalContext() noexcept;
   virtual ~EvalContext() = default;
   // Variables go here.
-  void pushStack();
+  void pushStack(bool noParentScope = false);
   void popStack();
-  EvalResult setVariable(std::string name, VPackSlice value);
+  EvalResult setVariable(std::string const& name, VPackSlice value);
   EvalResult getVariable(std::string const& name, VPackBuilder& result);
 
 
@@ -58,16 +63,16 @@ struct EvalContext {
   EvalResult setFunction(std::string name, function_type&& f);
   EvalResult unsetFunction(std::string name);
  private:
-  std::vector<std::unordered_map<std::string, VPackSlice>> variables;
+  std::vector<StackFrame> variables;
   std::unordered_map<std::string, function_type> functions;
 };
 
-template <bool isNewScope>
+template <bool isNewScope, bool noParentScope = false>
 struct StackFrameGuard {
   StackFrameGuard(EvalContext& ctx) : _ctx(ctx) {
     ctx.depth += 1;
     if constexpr (isNewScope) {
-      ctx.pushStack();
+      ctx.pushStack(noParentScope);
     }
   }
 

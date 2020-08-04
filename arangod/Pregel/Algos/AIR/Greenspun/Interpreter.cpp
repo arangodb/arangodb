@@ -36,8 +36,7 @@
 
 using namespace arangodb::velocypack;
 
-namespace arangodb {
-namespace greenspun {
+namespace arangodb::greenspun {
 
 void InitInterpreter() { RegisterPrimitives(); }
 
@@ -296,6 +295,47 @@ EvalResult Call(EvalContext& ctx, VPackSlice const functionSlice,
   return Apply(ctx, functionSlice.copyString(), paramBuilder.slice(), result);
 }
 
+EvalResult LambdaCall(EvalContext& ctx, VPackSlice paramNames, VPackSlice captures,
+                      ArrayIterator paramIterator, VPackSlice body, VPackBuilder& result) {
+  VPackBuilder paramBuilder;
+  {
+    VPackArrayBuilder builder(&paramBuilder);
+    for (; paramIterator.valid(); ++paramIterator) {
+      StackFrameGuard<false> guard(ctx);
+      if (auto res = Evaluate(ctx, *paramIterator, paramBuilder); !res) {
+        return res.wrapError([&](EvalError& err) {
+          err.wrapParameter("<lambda>" + captures.toJson() + paramNames.toJson(), paramIterator.index());
+        });
+      }
+    }
+  }
+
+  StackFrameGuard<true, true> captureFrameGuard(ctx);
+  for (auto&& pair : ObjectIterator(captures)) {
+    ctx.setVariable(pair.key.copyString(), pair.value);
+  }
+
+  StackFrameGuard<true, false> parameterFrameGuard(ctx);
+  VPackArrayIterator builderIter(paramBuilder.slice());
+  for (auto&& paramName : ArrayIterator(paramNames)) {
+    if (!paramName.isString()) {
+      return EvalError("bad lambda format: expected parameter name (string), found: " + paramName.toJson());
+    }
+
+    if (!builderIter.valid()) {
+      return EvalError("lambda expects " + std::to_string(paramNames.length()) +
+                       " parameters " + paramNames.toJson() + ", found " +
+                       std::to_string(builderIter.index() - 1));
+    }
+
+    ctx.setVariable(paramName.copyString(), *builderIter);
+    builderIter++;
+  }
+  return Evaluate(ctx, body, result).wrapError([&](EvalError &err) {
+    err.wrapCall("<lambda>" + captures.toJson() + paramNames.toJson(), paramBuilder.slice());
+  });
+}
+
 EvalResult Evaluate(EvalContext& ctx, VPackSlice const slice, VPackBuilder& result) {
   if (slice.isArray()) {
     if (slice.isEmptyArray()) {
@@ -335,13 +375,26 @@ EvalResult Evaluate(EvalContext& ctx, VPackSlice const slice, VPackBuilder& resu
       } else {
         return Call(ctx, functionSlice, paramIterator, result);
       }
-    } else {
-      return EvalError("function is not a string, found " + functionSlice.toJson());
+    } else if (functionSlice.isObject()) {
+      auto body = functionSlice.get("_call");
+      if (!body.isNone()) {
+        auto params = functionSlice.get("_params");
+        if (!params.isArray()) {
+          return EvalError("lambda params have to be an array, found: " + params.toJson());
+        }
+        auto captures = functionSlice.get("_captures");
+        if (!captures.isObject()) {
+          return EvalError("lambda captures have to be an object, found: " + params.toJson());
+        }
+        return LambdaCall(ctx, params, captures, paramIterator, body, result);
+      }
     }
-  } else {
+    return EvalError("function is not a string, found " + functionSlice.toJson());
+
+  }
+
     result.add(slice);
     return {};
-  }
 }
 
 EvalContext::EvalContext() noexcept {
@@ -351,10 +404,13 @@ EvalContext::EvalContext() noexcept {
 
 EvalResult EvalContext::getVariable(const std::string& name, VPackBuilder& result) {
   for (auto scope = variables.rbegin(); scope != variables.rend(); ++scope) {
-    auto iter = scope->find(name);
-    if (iter != std::end(*scope)) {
+    auto iter = scope->bindings.find(name);
+    if (iter != std::end(scope->bindings)) {
       result.add(iter->second);
       return {};
+    }
+    if (scope->noParentScope) {
+      break;
     }
   }
   // TODO: variable not found error.
@@ -362,13 +418,13 @@ EvalResult EvalContext::getVariable(const std::string& name, VPackBuilder& resul
   return EvalError("variable `" + name + "` not found");
 }
 
-EvalResult EvalContext::setVariable(std::string name, VPackSlice value) {
+EvalResult EvalContext::setVariable(std::string const& name, VPackSlice value) {
   TRI_ASSERT(!variables.empty());
-  variables.back().emplace(std::move(name), value);
+  variables.back().bindings.operator[](name) = value; // insert or create
   return {};
 }
 
-void EvalContext::pushStack() { variables.emplace_back(); }
+void EvalContext::pushStack(bool noParentScope) { variables.emplace_back().noParentScope = noParentScope; }
 
 void EvalContext::popStack() {
   // Top level variables must not be popped
@@ -415,5 +471,4 @@ bool ValueConsideredTrue(VPackSlice const value) {
   return !ValueConsideredFalse(value);
 }
 
-}  // namespace greenspun
 }  // namespace arangodb
