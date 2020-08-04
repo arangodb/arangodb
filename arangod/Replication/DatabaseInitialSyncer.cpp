@@ -299,6 +299,38 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
 
 namespace arangodb {
 
+/// @brief helper struct to prevent multiple starts of the replication
+/// in the same database. used for single-server replication only.
+struct MultiStartPreventer {
+  MultiStartPreventer(MultiStartPreventer const&) = delete;
+  MultiStartPreventer& operator=(MultiStartPreventer const&) = delete;
+
+  MultiStartPreventer(TRI_vocbase_t& vocbase, bool preventStart)
+      : vocbase(vocbase), preventedStart(false) {
+    if (preventStart) {
+      TRI_ASSERT(!ServerState::instance()->isClusterRole());
+
+      auto res = vocbase.replicationApplier()->preventStart();
+      if (res.fail()) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+      preventedStart = true;
+    }
+  }
+
+  ~MultiStartPreventer() {
+    if (preventedStart) {
+      // reallow starting
+      TRI_ASSERT(!ServerState::instance()->isClusterRole());
+      vocbase.replicationApplier()->allowStart();
+    }
+  }
+
+  TRI_vocbase_t& vocbase;
+  bool preventedStart;
+};
+
+
 DatabaseInitialSyncer::Configuration::Configuration(
     ReplicationApplierConfiguration const& a,
     replutils::BatchInfo& bat, replutils::Connection& c, bool f, replutils::MasterInfo& m,
@@ -315,7 +347,8 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t& vocbase,
                     [this](std::string const& msg) -> void { setProgress(msg); }),
       _config{_state.applier, _batch,
               _state.connection, false,          _state.master,
-              _progress,         _state,         vocbase} {
+              _progress,         _state,         vocbase},
+      _isClusterRole(ServerState::instance()->isClusterRole()) {
   _state.vocbases.try_emplace(vocbase.name(), vocbase);
 
   if (configuration._database.empty()) {
@@ -329,26 +362,20 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
     return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
   }
 
-  auto res = vocbase().replicationApplier()->preventStart();
-
-  if (res.fail()) {
-    return res;
-  }
-
-  TRI_DEFER(vocbase().replicationApplier()->allowStart());
-
-  setAborted(false);
-
   double const startTime = TRI_microtime();
 
   try {
+    bool const preventMultiStart = !_isClusterRole;
+    MultiStartPreventer p(vocbase(), preventMultiStart);
+      
+    setAborted(false);
+
     _config.progress.set("fetching master state");
 
     LOG_TOPIC("0a10d", DEBUG, Logger::REPLICATION)
         << "client: getting master state to dump " << vocbase().name();
-    Result r;
-    
-    r = sendFlush();
+
+    Result r = sendFlush();
     if (r.fail()) {
       return r;
     }
@@ -491,10 +518,12 @@ void DatabaseInitialSyncer::setProgress(std::string const& msg) {
     LOG_TOPIC("d15ed", DEBUG, Logger::REPLICATION) << msg;
   }
 
-  auto* applier = _config.vocbase.replicationApplier();
+  if (!_isClusterRole) {
+    auto* applier = _config.vocbase.replicationApplier();
 
-  if (applier != nullptr) {
-    applier->setProgress(msg);
+    if (applier != nullptr) {
+      applier->setProgress(msg);
+    }
   }
 }
 
