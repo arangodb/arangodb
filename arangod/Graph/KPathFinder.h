@@ -53,8 +53,9 @@ class KPathFinder {
   bool getNextPathAql(arangodb::velocypack::Builder& result);
 
  private:
-  Ball _left;
-  Ball _right;
+  Ball _left{};
+  Ball _right{};
+  bool _done{false};
 };
 
 }  // namespace graph

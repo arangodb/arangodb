@@ -29,17 +29,19 @@ using namespace arangodb::graph;
 
 void KPathFinder::Ball::reset() {}
 
-KPathFinder::KPathFinder(ShortestPathOptions& options) : _left{}, _right{} {}
+KPathFinder::KPathFinder(ShortestPathOptions& options) {}
 KPathFinder::~KPathFinder() {}
 
 void KPathFinder::reset() {
   _left.reset();
   _right.reset();
+  _done = false;
 }
 
-bool KPathFinder::hasMore() const { return false; }
+bool KPathFinder::hasMore() const { return !_done; }
 
 // get the next available path serialized in the builder
 bool KPathFinder::getNextPathAql(arangodb::velocypack::Builder& result) {
+  _done = true;
   return false;
 }
