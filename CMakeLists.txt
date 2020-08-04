@@ -4,6 +4,8 @@
 # General
 # ------------------------------------------------------------------------------
 
+# My another comment
+
 cmake_minimum_required(VERSION 3.9)
 message(STATUS "CMake version: ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}.${CMAKE_PATCH_VERSION}")
 
