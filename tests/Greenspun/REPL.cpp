@@ -2,6 +2,8 @@
 
 #include "Pregel/Algos/AIR/Greenspun/Interpreter.h"
 #include "Pregel/Algos/AIR/Greenspun/Primitives.h"
+#include "Pregel/Algos/AIR/Greenspun/PrimEvalContext.h"
+#include "Pregel/Algos/AIR/Greenspun/EvalResult.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
@@ -22,6 +24,8 @@ int compare(arangodb::velocypack::Slice, arangodb::velocypack::Slice, bool,
 }
 
 }  // namespace arangodb::basics::VelocyPackHelper
+
+using namespace arangodb::greenspun;
 
 struct MyEvalContext : PrimEvalContext {
   std::string thisId = "V/1";

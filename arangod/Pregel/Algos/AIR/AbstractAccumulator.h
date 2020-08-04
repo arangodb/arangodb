@@ -97,7 +97,7 @@ class Accumulator : public AccumulatorBase {
   // Needed to implement set by slice and clear
   virtual void set(data_type&& v) { _value = v; };
 
-  virtual void clear() override { this->set(T{}); };
+  void clear() override { this->set(T{}); }
 
   // Needed to implement updates by slice
   virtual UpdateResult update(data_type v) = 0;

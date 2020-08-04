@@ -434,6 +434,29 @@ EvalResult Prim_VertexUniqueId(PrimEvalContext& ctx, VPackSlice const params,
   return EvalError("expect no arguments");
 }
 
+EvalResult Prim_List(PrimEvalContext& ctx, VPackSlice const params,
+                     VPackBuilder& result) {
+  VPackArrayBuilder ab(&result);
+  result.add(VPackArrayIterator(params));
+  return {};
+}
+
+EvalResult Prim_Dict(PrimEvalContext& ctx, VPackSlice const params,
+                     VPackBuilder& result) {
+  VPackObjectBuilder ob(&result);
+  for (auto&& pair : VPackArrayIterator(params)) {
+    if (pair.length() == 2) {
+      if (pair.at(0).isString()) {
+        result.add(pair.at(0).stringRef(), pair.at(1));
+        continue;
+      }
+    }
+
+    return EvalError("expected pairs of string and slice");
+  }
+  return {};
+}
+
 void RegisterPrimitives() {
   // Calculation operators
   primitives["banana"] = Prim_Banana;
@@ -459,6 +482,8 @@ void RegisterPrimitives() {
   primitives["print"] = Prim_PrintLn;
 
   // Utilities
+  primitives["list"] = Prim_List;
+  primitives["dict"] = Prim_Dict;
   primitives["list-cat"] = Prim_ListCat;
   primitives["string-cat"] = Prim_StringCat;
   primitives["int-to-str"] = Prim_IntToStr;

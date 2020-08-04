@@ -133,7 +133,7 @@ function exec_sssp_test() {
 
 function exec_scc_test() {
   pe.create_circle("Circle", 5);
-  pe.create_line_graph("LineGraph", 100, 6);
+  pe.create_line_graph("LineGraph", 5, 6);
 
   return pp.strongly_connected_components("LineGraph", "scc");
 }

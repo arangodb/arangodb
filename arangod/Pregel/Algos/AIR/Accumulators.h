@@ -103,10 +103,8 @@ class OrAccumulator : public Accumulator<T> {
  public:
   using Accumulator<T>::Accumulator;
   auto update(T v) -> AccumulatorBase::UpdateResult override {
-    std::cout << "update or with " << v << std::endl;
     auto old = this->_value;
     this->_value |= v;
-    std::cout << "new value is " << this->_value << std::endl;
     return old == this->_value ? AccumulatorBase::UpdateResult::NO_CHANGE
                                : AccumulatorBase::UpdateResult::CHANGED;
   }
@@ -140,6 +138,7 @@ class StoreAccumulator<VPackSlice> : public Accumulator<VPackSlice> {
   }
   auto clear() -> void override {
     _buffer.clear();
+    _value = _buffer.slice();
   }
 
   void setValueFromPointer(const void * ptr) override {

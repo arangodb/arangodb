@@ -115,8 +115,8 @@ using my_accum_mapping = accum_mapping<
     accum_value_pair<MinAccumulator, AccumulatorType::MIN, integral_restriction>,
     accum_value_pair<MaxAccumulator, AccumulatorType::MAX, integral_restriction>,
     accum_value_pair<SumAccumulator, AccumulatorType::SUM, integral_restriction>,
-    accum_value_pair<OrAccumulator, AccumulatorType::AND, bool_restriction>,
-    accum_value_pair<AndAccumulator, AccumulatorType::OR, bool_restriction>,
+    accum_value_pair<AndAccumulator, AccumulatorType::AND, bool_restriction>,
+    accum_value_pair<OrAccumulator, AccumulatorType::OR, bool_restriction>,
     accum_value_pair<StoreAccumulator, AccumulatorType::STORE, no_restriction>,
     accum_value_pair<ListAccumulator, AccumulatorType::LIST, no_restriction>
 >;

@@ -264,7 +264,7 @@ function strongly_connected_components_program(
                                         "update",
                                         "activeInbound",
                                         ["attrib", "_to", ["var-ref", "edge"]],
-                                        ["pregel-id"]
+                                        ["dict", ["list", "pid", ["pregel-id"]], ["list", "unique-id", ["vertex-unique-id"]]]
                                     ]
                                 ]
                             ]
@@ -358,7 +358,7 @@ function strongly_connected_components_program(
                 updateProgram: ["if",
                     [
                         ["accum-ref", "isDisabled"],
-                        false
+                        ["seq", ["print", "I am disabled"], false]
                     ],
                     [
                         ["eq?", ["accum-ref", "backwardMin"], ["accum-ref", "forwardMin"]],
@@ -376,7 +376,7 @@ function strongly_connected_components_program(
                                     [
                                         "update-by-id",
                                         "backwardMin",
-                                        ["var-ref", "vertex"],
+                                        ["attrib", "pid", ["var-ref", "vertex"]],
                                         ["accum-ref", "backwardMin"]
                                     ]
                                 ]

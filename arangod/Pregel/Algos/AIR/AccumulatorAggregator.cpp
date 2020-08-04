@@ -43,40 +43,41 @@ void VertexAccumulatorAggregator::aggregate(void const* valuePtr)  {
 
 /// @brief Used when updating aggregator value from remote
 void VertexAccumulatorAggregator::parseAggregate(arangodb::velocypack::Slice const& slice)  {
-  LOG_DEVEL << "parseAggregate = " << slice.toJson();
+  LOG_DEVEL << accumulator.get()  << "parseAggregate = " << slice.toJson();
   accumulator->setBySlice(slice);
 }
 
 void const* VertexAccumulatorAggregator::getAggregatedValue() const {
-  LOG_DEVEL << "VertexAccumulatorAggregator::getAggregatedValue";
+  LOG_DEVEL << accumulator.get() << "VertexAccumulatorAggregator::getAggregatedValue";
   return accumulator->getValuePointer();
 }
 
 /// @brief Value from superstep S-1 supplied by the conductor
 void VertexAccumulatorAggregator::setAggregatedValue(arangodb::velocypack::Slice const& slice)  {
-  LOG_DEVEL << "setAggregatedValue " << slice.toJson();
+  LOG_DEVEL << accumulator.get() << "setAggregatedValue " << slice.toJson();
   accumulator->setBySlice(slice);
 }
 
 void VertexAccumulatorAggregator::serialize(std::string const& key,
                                             arangodb::velocypack::Builder& builder) const  {
   VPackBuilder local;
-  accumulator->getUpdateMessageIntoBuilder(local);
-  LOG_DEVEL << "serialize into key " << key << " with value " << local.toJson();
+  accumulator->getValueIntoBuilder(local);
+  LOG_DEVEL << accumulator.get() << "serialize into key " << key << " with value " << local.toJson();
   builder.add(VPackValue(key));
   builder.add(local.slice());
 }
 
 void VertexAccumulatorAggregator::reset()  {
-  LOG_DEVEL << "VertexAccumulatorAggregator::reset called " << permanent;
+  LOG_DEVEL << accumulator.get() << "VertexAccumulatorAggregator::reset called " << permanent;
   if (!permanent) {
+    LOG_DEVEL << "calling clear on accumulator";
     accumulator->clear();
   }
 }
 
 bool VertexAccumulatorAggregator::isConverging() const  {
   return false;
-};
+}
 
 [[nodiscard]] AccumulatorBase& VertexAccumulatorAggregator::getAccumulator() const {
   return *accumulator;
