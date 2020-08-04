@@ -61,6 +61,26 @@ class KPathFinderTest : public ::testing::Test {
     finder = std::make_unique<KPathFinder>(*spo);
   }
 };
+
+TEST_F(KPathFinderTest, no_path_exists) {
+    VPackBuilder result;
+    finder->reset();
+    EXPECT_TRUE(finder->hasMore());
+    {
+      auto hasPath = finder->getNextPathAql(result);
+      EXPECT_FALSE(hasPath);
+      EXPECT_TRUE(result.isEmpty());
+      EXPECT_FALSE(finder->hasMore());
+    }
+    
+    {
+      // Try again to make sure we stay at non-existing
+      auto hasPath = finder->getNextPathAql(result);
+      EXPECT_FALSE(hasPath);
+      EXPECT_TRUE(result.isEmpty());
+      EXPECT_FALSE(finder->hasMore());
+    }
+}
 }
 }
 }

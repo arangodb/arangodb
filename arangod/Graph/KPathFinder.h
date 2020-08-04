@@ -46,6 +46,8 @@ class KPathFinder {
   explicit KPathFinder(ShortestPathOptions& options);
   ~KPathFinder();
 
+  bool hasMore() const;
+
   void reset();
   // get the next available path serialized in the builder
   bool getNextPathAql(arangodb::velocypack::Builder& result);

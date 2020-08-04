@@ -37,6 +37,8 @@ void KPathFinder::reset() {
   _right.reset();
 }
 
+bool KPathFinder::hasMore() const { return false; }
+
 // get the next available path serialized in the builder
 bool KPathFinder::getNextPathAql(arangodb::velocypack::Builder& result) {
   return false;
