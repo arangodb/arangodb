@@ -298,10 +298,10 @@ void OptimizerRulesFeature::addRules() {
   registerRule("handle-arangosearch-views", arangodb::iresearch::handleViewsRule,
                OptimizerRule::handleArangoSearchViewsRule, OptimizerRule::makeFlags());
 
-  // remove calculations that are never necessary	
-  registerRule("remove-unnecessary-calculations-2", removeUnnecessaryCalculationsRule,	
-    OptimizerRule::removeUnnecessaryCalculationsRule2,	
-    OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+  // remove calculations that are never necessary
+  registerRule("remove-unnecessary-calculations-2", removeUnnecessaryCalculationsRule,
+               OptimizerRule::removeUnnecessaryCalculationsRule2,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // optimize unneccessary filters already applied by the traversal. Only ever
   // does something if previous rules remove all filters using the path variable
@@ -377,7 +377,7 @@ void OptimizerRulesFeature::addRules() {
   // remove calculations that are never necessary
   registerRule("remove-unnecessary-calculations-3", removeUnnecessaryCalculationsRule,
                OptimizerRule::removeUnnecessaryCalculationsRule3,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled, 
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::DisabledByDefault));
 
   registerRule("remove-unnecessary-remote-scatter", removeUnnecessaryRemoteScatterRule,
@@ -419,7 +419,7 @@ void OptimizerRulesFeature::addRules() {
   registerRule("move-filters-into-enumerate", moveFiltersIntoEnumerateRule,
                OptimizerRule::moveFiltersIntoEnumerateRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-  
+
   registerRule("optimize-count", optimizeCountRule,
                OptimizerRule::optimizeCountRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
@@ -450,7 +450,7 @@ void OptimizerRulesFeature::addRules() {
                arangodb::iresearch::lateDocumentMaterializationArangoSearchRule,
                OptimizerRule::lateDocumentMaterializationArangoSearchRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-  
+
   // add the storage-engine specific rules
   addStorageEngineRules();
 
@@ -466,7 +466,7 @@ void OptimizerRulesFeature::addRules() {
   // SubqueryEndNode and would likely be more complicated to write.
   registerRule("splice-subqueries", spliceSubqueriesRule, OptimizerRule::spliceSubqueriesRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-  
+
   // finally sort all rules by their level
   std::sort(
       _rules.begin(), _rules.end(),
