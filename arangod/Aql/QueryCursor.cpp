@@ -199,14 +199,14 @@ QueryStreamCursor::~QueryStreamCursor() {
   }
   // cursor is canceled or timed-out
   cleanupStateCallback();
+  // remove the continue handler we may have registered in the query
+  _query->sharedState()->resetWakeupHandler();
 
-  _queryResults.clear();
-
-  // now remove the continue handler we may have registered in the query
-  _query->sharedState()->invalidate();
+  while (!_queryResults.empty()) {
+    _queryResults.pop_front();
+  }
 
   // Query destructor will cleanup plan and abort transaction
-  _query.reset();
 }
 
 void QueryStreamCursor::kill() {
@@ -308,6 +308,8 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
                   TRI_errno_string(TRI_ERROR_INTERNAL) +
                       QueryExecutionState::toStringWithPrefix(_query->state()));
   }
+  
+  return Result();
 }
 
 /// Set wakeup callback on streaming cursor
