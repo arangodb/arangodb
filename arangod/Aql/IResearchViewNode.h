@@ -68,7 +68,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @brief node options
   struct Options {
     /// @brief a list of data source CIDs to restrict a query
-    ::arangodb::containers::HashSet<TRI_voc_cid_t> sources;
+    ::arangodb::containers::HashSet<DataSourceId> sources;
 
     /// @brief use the list of sources to restrict a query
     bool restrictSources{false};

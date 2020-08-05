@@ -3323,8 +3323,8 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
         "\"identity\" ], \"includeAllFields\": true }"
         "}}");
     EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
-    std::set<TRI_voc_cid_t> cids;
-    impl->visitCollections([&cids](TRI_voc_cid_t cid) -> bool {
+    std::set<arangodb::DataSourceId> cids;
+    impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
       cids.emplace(cid);
       return true;
     });
@@ -4249,8 +4249,8 @@ TEST_F(IResearchQueryPhraseTest, test) {
         "true }"
         "}}");
     EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
-    std::set<TRI_voc_cid_t> cids;
-    impl->visitCollections([&cids](TRI_voc_cid_t cid) -> bool {
+    std::set<arangodb::DataSourceId> cids;
+    impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
       cids.emplace(cid);
       return true;
     });

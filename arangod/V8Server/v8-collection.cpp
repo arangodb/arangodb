@@ -88,8 +88,7 @@ std::shared_ptr<arangodb::LogicalCollection> GetCollectionFromArgument(
 
   // number
   if (val->IsNumber() || val->IsNumberObject()) {
-    uint64_t cid = TRI_ObjectToUInt64(isolate, val, true);
-
+    arangodb::DataSourceId cid{TRI_ObjectToUInt64(isolate, val, true)};
     return vocbase.lookupCollection(cid);
   }
 
@@ -1120,10 +1119,12 @@ static void JS_PlanIdVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args)
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    TRI_V8_RETURN(TRI_V8UInt64String<TRI_voc_cid_t>(isolate, collection->id()));
+    TRI_V8_RETURN(
+        TRI_V8UInt64String<DataSourceId::BaseType>(isolate, collection->id().id()));
   }
 
-  TRI_V8_RETURN(TRI_V8UInt64String<TRI_voc_cid_t>(isolate, collection->planId()));
+  TRI_V8_RETURN(
+      TRI_V8UInt64String<DataSourceId::BaseType>(isolate, collection->planId().id()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2134,7 +2135,7 @@ static void JS_StatusVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args)
                   .server()
                   .getFeature<arangodb::ClusterFeature>()
                   .clusterInfo()
-                  .getCollectionNT(databaseName, std::to_string(collection->id()));
+                  .getCollectionNT(databaseName, std::to_string(collection->id().id()));
     if (ci != nullptr) {
       TRI_V8_RETURN(v8::Number::New(isolate, (int)ci->status()));
     } else {
@@ -2218,7 +2219,7 @@ static void JS_TypeVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
                   .server()
                   .getFeature<ClusterFeature>()
                   .clusterInfo()
-                  .getCollectionNT(databaseName, std::to_string(collection->id()));
+                  .getCollectionNT(databaseName, std::to_string(collection->id().id()));
     if (ci != nullptr) {
       TRI_V8_RETURN(v8::Number::New(isolate, (int)ci->type()));
     } else {

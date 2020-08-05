@@ -74,7 +74,7 @@ LogicalView::LogicalView(TRI_vocbase_t& vocbase, VPackSlice const& definition, u
   }
 
   // update server's tick value
-  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id()));
+  TRI_UpdateTickServer(id().id());
 }
 
 Result LogicalView::appendVelocyPack(velocypack::Builder& builder,
@@ -271,7 +271,7 @@ Result LogicalView::rename(std::string&& newName) {
 
     builder.close();
     res = engine.createViewCoordinator(  // create view
-        vocbase.name(), std::to_string(impl->id()), builder.slice()  // args
+        vocbase.name(), std::to_string(impl->id().id()), builder.slice()  // args
     );
 
     if (!res.ok()) {
@@ -279,7 +279,7 @@ Result LogicalView::rename(std::string&& newName) {
     }
 
     view = engine.getView(vocbase.name(),
-                          std::to_string(impl->id()));  // refresh view from Agency
+                          std::to_string(impl->id().id()));  // refresh view from Agency
 
     if (view) {
       view->open();  // open view to match the behavior in
@@ -307,8 +307,8 @@ Result LogicalView::rename(std::string&& newName) {
     }
     auto& engine = view.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
-    return engine.dropViewCoordinator(                    // drop view
-        view.vocbase().name(), std::to_string(view.id())  // args
+    return engine.dropViewCoordinator(                         // drop view
+        view.vocbase().name(), std::to_string(view.id().id())  // args
     );
   } catch (basics::Exception const& e) {
     return Result(e.code());  // noexcept constructor
@@ -348,7 +348,7 @@ Result LogicalView::rename(std::string&& newName) {
     builder.close();
 
     return engine.setViewPropertiesCoordinator(view.vocbase().name(),
-                                               std::to_string(view.id()),
+                                               std::to_string(view.id().id()),
                                                builder.slice());
   } catch (basics::Exception const& e) {
     return Result(e.code());  // noexcept constructor

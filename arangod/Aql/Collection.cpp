@@ -90,7 +90,7 @@ void Collection::setExclusiveAccess() {
 }
 
 /// @brief get the collection id
-TRI_voc_cid_t Collection::id() const { return getCollection()->id(); }
+DataSourceId Collection::id() const { return getCollection()->id(); }
 
 /// @brief collection type
 TRI_col_type_e Collection::type() const { return getCollection()->type(); }
@@ -143,7 +143,7 @@ std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
     for (auto const& n : names) {
       auto collectionInfo = clusterInfo.getCollection(_vocbase->name(), n);
       auto list = clusterInfo.getShardList(
-          arangodb::basics::StringUtils::itoa(collectionInfo->id()));
+          arangodb::basics::StringUtils::itoa(collectionInfo->id().id()));
       for (auto const& x : *list) {
         res->push_back(x);
       }
@@ -151,7 +151,7 @@ std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
     return res;
   }
 
-  return clusterInfo.getShardList(arangodb::basics::StringUtils::itoa(id()));
+  return clusterInfo.getShardList(arangodb::basics::StringUtils::itoa(id().id()));
 }
 
 /// @brief returns the filtered list of shard ids of a collection

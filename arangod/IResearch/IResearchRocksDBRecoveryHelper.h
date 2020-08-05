@@ -32,6 +32,7 @@
 
 #include "Basics/Identifier.h"
 #include "RocksDBEngine/RocksDBRecoveryHelper.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 
@@ -46,10 +47,10 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
  public:
   struct IndexId {
     TRI_voc_tick_t db;
-    TRI_voc_cid_t cid;
+    DataSourceId cid;
     arangodb::IndexId iid;
 
-    IndexId(TRI_voc_tick_t db, TRI_voc_cid_t cid, arangodb::IndexId iid) noexcept
+    IndexId(TRI_voc_tick_t db, DataSourceId cid, arangodb::IndexId iid) noexcept
         : db(db), cid(cid), iid(iid) {}
 
     bool operator<(IndexId const& rhs) const noexcept {
