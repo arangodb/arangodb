@@ -181,6 +181,23 @@
           expectedKeys.delete(doc._key);
         });
         assertEqual(0, expectedKeys.size);
+      },
+      testQueryLateMaterializationForSortedView() {
+        let query = "FOR d IN " + vn + " SEARCH d.obj.f != 15 SORT d.obj.a.a1 ASC LIMIT 10 SORT d.obj.c LIMIT 2  RETURN d";
+        let plan = AQL_EXPLAIN(query).plan;
+        print(plan);
+        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        assertEqual(2, plan.nodes.filter(obj => {
+          return obj.type === "EnumerateViewNode";
+        })[0].viewValuesVars.length);
+        let result = AQL_EXECUTE(query);
+        assertEqual(2, result.json.length);
+        let expectedKeys = new Set(['c0', 'c1']);
+        result.json.forEach(function(doc) {
+          assertTrue(expectedKeys.has(doc._key));
+          expectedKeys.delete(doc._key);
+        });
+        assertEqual(0, expectedKeys.size);
       }
     };
   };
