@@ -201,15 +201,14 @@ QueryStreamCursor::QueryStreamCursor(TRI_vocbase_t& vocbase, std::string const& 
 QueryStreamCursor::~QueryStreamCursor() {
   if (_query) {  // cursor is canceled or timed-out
     cleanupStateCallback();
+    // remove the continue handler we may have registered in the query
+    _query->sharedState()->resetWakeupHandler();
 
     while (!_queryResults.empty()) {
       _queryResults.pop_front();
     }
 
-    // now remove the continue handler we may have registered in the query
-    _query->sharedState()->invalidate();
     // Query destructor will cleanup plan and abort transaction
-    _query.reset();
   }
 }
 
