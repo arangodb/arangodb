@@ -160,7 +160,7 @@ auto KPathFinder::Ball::matchResultsInShell(VertexIdentifier const& match,
 
 auto KPathFinder::Ball::computeNeighbourhoodOfNextVertex(Ball const& other,
                                                          ResultList& results) -> void {
-  TRI_ASSERT(_searchIndex < _interior.size());
+  TRI_ASSERT(!doneWithDepth());
   auto const& vertex = _interior[_searchIndex].id;
   _cursor->rearm(vertex, 0);
   _cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t /*cursorIdx*/) -> void {
@@ -212,13 +212,13 @@ auto KPathFinder::getNextPath(VPackBuilder& result) -> bool {
       if (ADB_UNLIKELY(_left.doneWithDepth())) {
         startNextDepth();
       } else {
-        _left.search();
+        _left.computeNeighbourhoodOfNextVertex(_right, _results);
       }
     } else {
       if (ADB_UNLIKELY(_right.doneWithDepth())) {
         startNextDepth();
       } else {
-        _right.search();
+        _right.computeNeighbourhoodOfNextVertex(_left, _results);
       }
     }
   }

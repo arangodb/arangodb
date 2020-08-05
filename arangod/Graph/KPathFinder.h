@@ -88,13 +88,9 @@ class KPathFinder {
     auto shellSize() const -> size_t;
     auto doneWithDepth() const -> bool;
 
-    // TODO DUMMY
-    auto search() -> void {_searchIndex = std::numeric_limits<size_t>::max(); }
     auto buildPath(VertexIdentifier const& vertexInShell, PathResult& path) -> void;
 
     auto matchResultsInShell(VertexIdentifier const& match, ResultList& results) const -> void;
-
-   private:
     auto computeNeighbourhoodOfNextVertex(Ball const& other, ResultList& results) -> void;
 
    private:
