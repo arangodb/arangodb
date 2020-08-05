@@ -378,7 +378,8 @@ void OptimizerRulesFeature::addRules() {
   registerRule("remove-unnecessary-calculations-3", removeUnnecessaryCalculationsRule,
                OptimizerRule::removeUnnecessaryCalculationsRule3,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                                        OptimizerRule::Flags::DisabledByDefault));
+                                        OptimizerRule::Flags::DisabledByDefault,
+                                        OptimizerRule::Flags::Hidden));
 
   registerRule("remove-unnecessary-remote-scatter", removeUnnecessaryRemoteScatterRule,
                OptimizerRule::removeUnnecessaryRemoteScatterRule,
