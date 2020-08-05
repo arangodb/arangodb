@@ -127,8 +127,8 @@ uint64_t checkDepthValue(AstNode const* node) {
 }
 
 std::pair<uint64_t, uint64_t> getMinMaxDepths(AstNode const* steps) {
-  uint64_t minDepth;
-  uint64_t maxDepth;
+  uint64_t minDepth = 0;
+  uint64_t maxDepth = 0;
   bool invalidDepth = false;
 
   if (steps->isNumericValue()) {
