@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,28 +18,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifndef ARANGOD_TRANSACTION_CLUSTER_UTILS_H
-#define ARANGOD_TRANSACTION_CLUSTER_UTILS_H 1
 
 #include "VocBase/Identifiers/DataSourceId.h"
 
 namespace arangodb {
-class ClusterInfo;
-class LogicalCollection;
 
-namespace transaction {
-namespace cluster {
-  
-void abortTransactions(LogicalCollection& coll);
-void abortLeaderTransactionsOnShard(DataSourceId cid);
-void abortFollowerTransactionsOnShard(DataSourceId cid);
-void abortTransactionsWithFailedServers(ClusterInfo&);
+bool DataSourceId::isSet() const noexcept { return id() != 0; }
 
-}  // namespace cluster
-}  // namespace transaction
+bool DataSourceId::empty() const noexcept { return !isSet(); }
+
 }  // namespace arangodb
-
-#endif

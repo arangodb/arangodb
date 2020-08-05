@@ -322,14 +322,14 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   CollectionNameResolver resolver(vocbase);
   auto lockCols = [&](std::vector<std::string> const& cols, AccessMode::Type mode) {
     for (auto const& cname : cols) {
-      TRI_voc_cid_t cid = 0;
+      DataSourceId cid = DataSourceId::none();
       if (state->isCoordinator()) {
         cid = resolver.getCollectionIdCluster(cname);
       } else {  // only support local collections / shards
         cid = resolver.getCollectionIdLocal(cname);
       }
 
-      if (cid == 0) {
+      if (cid.empty()) {
         // not found
         res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   std::string(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) +

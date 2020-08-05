@@ -38,9 +38,6 @@
 /// @brief tick type (56bit)
 typedef uint64_t TRI_voc_tick_t;
 
-/// @brief collection identifier type
-typedef uint64_t TRI_voc_cid_t;
-
 /// @brief enum for write operations
 enum TRI_voc_document_operation_e : uint8_t {
   TRI_VOC_DOCUMENT_OPERATION_UNKNOWN = 0,

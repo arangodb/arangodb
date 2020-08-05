@@ -391,10 +391,10 @@ Result PhysicalCollection::newObjectForInsert(transaction::Methods*,
     // _statisticsRaw and _statistics15 (which are the only system
     // collections)
     // must not be treated as shards but as local collections
-    encoding::storeNumber<uint64_t>(p, _logicalCollection.planId(), sizeof(uint64_t));
+    encoding::storeNumber<uint64_t>(p, _logicalCollection.planId().id(), sizeof(uint64_t));
   } else {
     // local server
-    encoding::storeNumber<uint64_t>(p, _logicalCollection.id(), sizeof(uint64_t));
+    encoding::storeNumber<uint64_t>(p, _logicalCollection.id().id(), sizeof(uint64_t));
   }
 
   // _from and _to

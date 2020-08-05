@@ -488,7 +488,7 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
       LOG_TOPIC("d1e53", WARN, arangodb::Logger::ENGINES)
           << "failed to begin transaction to rebuild revision tree "
              "for collection '"
-          << _logicalCollection.id() << "'";
+          << _logicalCollection.id().id() << "'";
       return res;
     }
     auto* state = RocksDBTransactionState::toState(&trx);
@@ -499,7 +499,7 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
       LOG_TOPIC("d1e54", WARN, arangodb::Logger::ENGINES)
           << "failed to retrieve replication iterator to rebuild revision tree "
              "for collection '"
-          << _logicalCollection.id() << "'";
+          << _logicalCollection.id().id() << "'";
       return Result(TRI_ERROR_INTERNAL);
     }
     RevisionReplicationIterator& it =

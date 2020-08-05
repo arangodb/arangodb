@@ -31,6 +31,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Meta/utility.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/voc-types.h"
 
@@ -53,7 +54,7 @@ namespace arangodb {
 class LogicalView : public LogicalDataSource {
  public:
   typedef std::shared_ptr<LogicalView> ptr;
-  typedef std::function<bool(TRI_voc_cid_t)> CollectionVisitor;
+  typedef std::function<bool(DataSourceId)> CollectionVisitor;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief casts a specified 'LogicalView' to a provided Target type

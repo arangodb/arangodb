@@ -343,10 +343,10 @@ TEST_F(IResearchLinkTest, test_init) {
 
     // no collections in view before
     {
-      std::unordered_set<TRI_voc_cid_t> expected;
-      std::set<TRI_voc_cid_t> actual;
+      std::unordered_set<arangodb::DataSourceId> expected;
+      std::set<arangodb::DataSourceId> actual;
 
-      EXPECT_TRUE((logicalView->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+      EXPECT_TRUE((logicalView->visitCollections([&actual](arangodb::DataSourceId cid) -> bool {
         actual.emplace(cid);
         return true;
       })));
@@ -364,10 +364,10 @@ TEST_F(IResearchLinkTest, test_init) {
 
     // collection in view after
     {
-      std::unordered_set<TRI_voc_cid_t> expected = {100};
-      std::set<TRI_voc_cid_t> actual;
+      std::unordered_set<arangodb::DataSourceId> expected = {arangodb::DataSourceId{100}};
+      std::set<arangodb::DataSourceId> actual;
 
-      EXPECT_TRUE((logicalView->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+      EXPECT_TRUE((logicalView->visitCollections([&actual](arangodb::DataSourceId cid) -> bool {
         actual.emplace(cid);
         return true;
       })));
@@ -383,10 +383,10 @@ TEST_F(IResearchLinkTest, test_init) {
 
     // collection in view on destruct
     {
-      std::unordered_set<TRI_voc_cid_t> expected = {100};
-      std::set<TRI_voc_cid_t> actual;
+      std::unordered_set<arangodb::DataSourceId> expected = {arangodb::DataSourceId{100}};
+      std::set<arangodb::DataSourceId> actual;
 
-      EXPECT_TRUE((logicalView->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+      EXPECT_TRUE((logicalView->visitCollections([&actual](arangodb::DataSourceId cid) -> bool {
         actual.emplace(cid);
         return true;
       })));
@@ -416,10 +416,10 @@ TEST_F(IResearchLinkTest, test_init) {
 
     // collection in view before
     {
-      std::unordered_set<TRI_voc_cid_t> expected = {101};
-      std::set<TRI_voc_cid_t> actual;
+      std::unordered_set<arangodb::DataSourceId> expected = {arangodb::DataSourceId{101}};
+      std::set<arangodb::DataSourceId> actual;
 
-      EXPECT_TRUE((logicalView->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+      EXPECT_TRUE((logicalView->visitCollections([&actual](arangodb::DataSourceId cid) -> bool {
         actual.emplace(cid);
         return true;
       })));
@@ -436,10 +436,10 @@ TEST_F(IResearchLinkTest, test_init) {
 
     // collection in view after
     {
-      std::unordered_set<TRI_voc_cid_t> expected = {101};
-      std::set<TRI_voc_cid_t> actual;
+      std::unordered_set<arangodb::DataSourceId> expected = {arangodb::DataSourceId{101}};
+      std::set<arangodb::DataSourceId> actual;
 
-      EXPECT_TRUE((logicalView->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+      EXPECT_TRUE((logicalView->visitCollections([&actual](arangodb::DataSourceId cid) -> bool {
         actual.emplace(cid);
         return true;
       })));
@@ -455,10 +455,10 @@ TEST_F(IResearchLinkTest, test_init) {
 
     // collection still in view on destruct
     {
-      std::unordered_set<TRI_voc_cid_t> expected = {101};
-      std::set<TRI_voc_cid_t> actual;
+      std::unordered_set<arangodb::DataSourceId> expected = {arangodb::DataSourceId{101}};
+      std::set<arangodb::DataSourceId> actual;
 
-      EXPECT_TRUE((logicalView->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+      EXPECT_TRUE((logicalView->visitCollections([&actual](arangodb::DataSourceId cid) -> bool {
         actual.emplace(cid);
         return true;
       })));
@@ -527,10 +527,10 @@ TEST_F(IResearchLinkTest, test_drop) {
 
     // collection in view before
     {
-      std::unordered_set<TRI_voc_cid_t> expected = {100};
-      std::set<TRI_voc_cid_t> actual;
+      std::unordered_set<arangodb::DataSourceId> expected = {arangodb::DataSourceId{100}};
+      std::set<arangodb::DataSourceId> actual;
 
-      EXPECT_TRUE((logicalView->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+      EXPECT_TRUE((logicalView->visitCollections([&actual](arangodb::DataSourceId cid) -> bool {
         actual.emplace(cid);
         return true;
       })));
@@ -550,10 +550,10 @@ TEST_F(IResearchLinkTest, test_drop) {
 
     // collection not in view after
     {
-      std::unordered_set<TRI_voc_cid_t> expected;
-      std::set<TRI_voc_cid_t> actual;
+      std::unordered_set<arangodb::DataSourceId> expected;
+      std::set<arangodb::DataSourceId> actual;
 
-      EXPECT_TRUE((logicalView->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+      EXPECT_TRUE((logicalView->visitCollections([&actual](arangodb::DataSourceId cid) -> bool {
         actual.emplace(cid);
         return true;
       })));
@@ -570,10 +570,10 @@ TEST_F(IResearchLinkTest, test_drop) {
 
     // collection in view before (new link)
     {
-      std::unordered_set<TRI_voc_cid_t> expected = {100};
-      std::set<TRI_voc_cid_t> actual;
+      std::unordered_set<arangodb::DataSourceId> expected = {arangodb::DataSourceId{100}};
+      std::set<arangodb::DataSourceId> actual;
 
-      EXPECT_TRUE((logicalView->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+      EXPECT_TRUE((logicalView->visitCollections([&actual](arangodb::DataSourceId cid) -> bool {
         actual.emplace(cid);
         return true;
       })));
@@ -589,10 +589,10 @@ TEST_F(IResearchLinkTest, test_drop) {
 
     // collection in view after (new link) subsequent destroy does not touch view
     {
-      std::unordered_set<TRI_voc_cid_t> expected = {100};
-      std::set<TRI_voc_cid_t> actual;
+      std::unordered_set<arangodb::DataSourceId> expected = {arangodb::DataSourceId{100}};
+      std::set<arangodb::DataSourceId> actual;
 
-      EXPECT_TRUE((logicalView->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+      EXPECT_TRUE((logicalView->visitCollections([&actual](arangodb::DataSourceId cid) -> bool {
         actual.emplace(cid);
         return true;
       })));
@@ -626,10 +626,10 @@ TEST_F(IResearchLinkTest, test_unload) {
 
     // collection in view before
     {
-      std::unordered_set<TRI_voc_cid_t> expected = {100};
-      std::set<TRI_voc_cid_t> actual;
+      std::unordered_set<arangodb::DataSourceId> expected = {arangodb::DataSourceId{100}};
+      std::set<arangodb::DataSourceId> actual;
 
-      EXPECT_TRUE((logicalView->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+      EXPECT_TRUE((logicalView->visitCollections([&actual](arangodb::DataSourceId cid) -> bool {
         actual.emplace(cid);
         return true;
       })));
@@ -649,10 +649,10 @@ TEST_F(IResearchLinkTest, test_unload) {
 
     // collection in view after unload
     {
-      std::unordered_set<TRI_voc_cid_t> expected = {100};
-      std::set<TRI_voc_cid_t> actual;
+      std::unordered_set<arangodb::DataSourceId> expected = {arangodb::DataSourceId{100}};
+      std::set<arangodb::DataSourceId> actual;
 
-      EXPECT_TRUE((logicalView->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+      EXPECT_TRUE((logicalView->visitCollections([&actual](arangodb::DataSourceId cid) -> bool {
         actual.emplace(cid);
         return true;
       })));
@@ -668,10 +668,10 @@ TEST_F(IResearchLinkTest, test_unload) {
 
     // collection in view after destruct, subsequent destroy does not touch view
     {
-      std::unordered_set<TRI_voc_cid_t> expected = {100};
-      std::set<TRI_voc_cid_t> actual;
+      std::unordered_set<arangodb::DataSourceId> expected = {arangodb::DataSourceId{100}};
+      std::set<arangodb::DataSourceId> actual;
 
-      EXPECT_TRUE((logicalView->visitCollections([&actual](TRI_voc_cid_t cid) -> bool {
+      EXPECT_TRUE((logicalView->visitCollections([&actual](arangodb::DataSourceId cid) -> bool {
         actual.emplace(cid);
         return true;
       })));
@@ -713,11 +713,11 @@ TEST_F(IResearchLinkTest, test_write_index_creation) {
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
 
   dataPath =
-    ((((irs::utf8_path() /= testFilesystemPath) /=
-      std::string("databases")) /=
-      (std::string("database-") + std::to_string(vocbase.id()))) /=
-      (std::string("arangosearch-") + std::to_string(logicalCollection->id()) + "_42"))
-    .utf8();
+      ((((irs::utf8_path() /= testFilesystemPath) /=
+         std::string("databases")) /=
+        (std::string("database-") + std::to_string(vocbase.id()))) /=
+       (std::string("arangosearch-") + std::to_string(logicalCollection->id().id()) + "_42"))
+          .utf8();
   irs::fs_directory directory(dataPath);
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
@@ -779,7 +779,7 @@ TEST_F(IResearchLinkTest, test_write) {
       ((((irs::utf8_path() /= testFilesystemPath) /=
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
-       (std::string("arangosearch-") + std::to_string(logicalCollection->id()) + "_42"))
+       (std::string("arangosearch-") + std::to_string(logicalCollection->id().id()) + "_42"))
           .utf8();
   irs::fs_directory directory(dataPath);
   bool created;
@@ -882,11 +882,11 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
 
   dataPath =
-    ((((irs::utf8_path() /= testFilesystemPath) /=
-      std::string("databases")) /=
-      (std::string("database-") + std::to_string(vocbase.id()))) /=
-      (std::string("arangosearch-") + std::to_string(logicalCollection->id()) + "_42"))
-    .utf8();
+      ((((irs::utf8_path() /= testFilesystemPath) /=
+         std::string("databases")) /=
+        (std::string("database-") + std::to_string(vocbase.id()))) /=
+       (std::string("arangosearch-") + std::to_string(logicalCollection->id().id()) + "_42"))
+          .utf8();
   irs::fs_directory directory(dataPath);
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
@@ -977,11 +977,11 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole_wit
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
 
   dataPath =
-    ((((irs::utf8_path() /= testFilesystemPath) /=
-      std::string("databases")) /=
-      (std::string("database-") + std::to_string(vocbase.id()))) /=
-      (std::string("arangosearch-") + std::to_string(logicalCollection->id()) + "_42"))
-    .utf8();
+      ((((irs::utf8_path() /= testFilesystemPath) /=
+         std::string("databases")) /=
+        (std::string("database-") + std::to_string(vocbase.id()))) /=
+       (std::string("arangosearch-") + std::to_string(logicalCollection->id().id()) + "_42"))
+          .utf8();
   irs::fs_directory directory(dataPath);
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
@@ -1079,11 +1079,11 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
 
   dataPath =
-    ((((irs::utf8_path() /= testFilesystemPath) /=
-      std::string("databases")) /=
-      (std::string("database-") + std::to_string(vocbase.id()))) /=
-      (std::string("arangosearch-") + std::to_string(logicalCollection->id()) + "_42"))
-    .utf8();
+      ((((irs::utf8_path() /= testFilesystemPath) /=
+         std::string("databases")) /=
+        (std::string("database-") + std::to_string(vocbase.id()))) /=
+       (std::string("arangosearch-") + std::to_string(logicalCollection->id().id()) + "_42"))
+          .utf8();
   irs::fs_directory directory(dataPath);
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
@@ -1179,11 +1179,11 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
 
   dataPath =
-    ((((irs::utf8_path() /= testFilesystemPath) /=
-      std::string("databases")) /=
-      (std::string("database-") + std::to_string(vocbase.id()))) /=
-      (std::string("arangosearch-") + std::to_string(logicalCollection->id()) + "_42"))
-    .utf8();
+      ((((irs::utf8_path() /= testFilesystemPath) /=
+         std::string("databases")) /=
+        (std::string("database-") + std::to_string(vocbase.id()))) /=
+       (std::string("arangosearch-") + std::to_string(logicalCollection->id().id()) + "_42"))
+          .utf8();
   irs::fs_directory directory(dataPath);
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
@@ -1288,11 +1288,11 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed_wi
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
 
   dataPath =
-    ((((irs::utf8_path() /= testFilesystemPath) /=
-      std::string("databases")) /=
-      (std::string("database-") + std::to_string(vocbase.id()))) /=
-      (std::string("arangosearch-") + std::to_string(logicalCollection->id()) + "_42"))
-    .utf8();
+      ((((irs::utf8_path() /= testFilesystemPath) /=
+         std::string("databases")) /=
+        (std::string("database-") + std::to_string(vocbase.id()))) /=
+       (std::string("arangosearch-") + std::to_string(logicalCollection->id().id()) + "_42"))
+          .utf8();
   irs::fs_directory directory(dataPath);
   directory.attributes().emplace<iresearch::mock::test_encryption>(enc_block_size);
   bool created;

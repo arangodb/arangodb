@@ -727,7 +727,7 @@ static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
     }
 
     std::string errorKey =
-        database + "/" + std::to_string(collection->planId()) + "/" + shard;
+        database + "/" + std::to_string(collection->planId().id()) + "/" + shard;
     {
       VPackObjectBuilder r(&ret);
       auto it = allErrors.shards.find(errorKey);
