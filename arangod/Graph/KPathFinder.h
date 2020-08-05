@@ -23,6 +23,8 @@
 #ifndef ARANGODB_GRAPH_K_PATHS_FINDER_H
 #define ARANGODB_GRAPH_K_PATHS_FINDER_H 1
 
+#include "Graph/EdgeDocumentToken.h"
+
 #include <velocypack/StringRef.h>
 
 #include <deque>
@@ -37,19 +39,37 @@ class Builder;
 
 namespace graph {
 
+class EdgeCursor;
+class TraverserCache;
+
 struct ShortestPathOptions;
 
 class KPathFinder {
  private:
+  enum Direction {FORWARD, BACKWARD};
+ 
   using VertexRef = arangodb::velocypack::StringRef;
 
   struct VertexIdentifier {
     VertexRef id;
     size_t predecessor;
+    EdgeDocumentToken edge;
 
     // Make the set work on the VertexRef attribute only
     bool operator<(VertexIdentifier const& other) const;
 //    bool operator<(VertexRef const& other) const;
+  };
+
+  class PathResult {
+   public:
+    auto clear() -> void;
+    auto appendVertex(VertexRef v) -> void;
+    auto prependVertex(VertexRef v) -> void;
+    auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void;
+
+   private:
+    std::deque<VertexRef> _vertices;
+    std::deque<EdgeDocumentToken> _edges;
   };
 
   using Shell = std::set<VertexIdentifier>;
@@ -59,15 +79,23 @@ class KPathFinder {
   // We have two balls, one arround source, one around target, and try to find intersections of the balls
   class Ball {
    public:
-    Ball();
+    Ball(Direction dir, ShortestPathOptions& options);
     ~Ball();
     auto reset(VertexRef center) -> void;
     auto startNextDepth() -> void;
     auto noPathLeft() const -> bool;
     auto getDepth() const -> size_t;
     auto shellSize() const -> size_t;
-    auto buildPath(VertexIdentifier vertexInShell, std::vector<VertexIdentifier>& path)
-        -> void;
+    auto doneWithDepth() const -> bool;
+
+    // TODO DUMMY
+    auto search() -> void {_searchIndex = std::numeric_limits<size_t>::max(); }
+    auto buildPath(VertexIdentifier const& vertexInShell, PathResult& path) -> void;
+
+    auto matchResultsInShell(VertexIdentifier const& match, ResultList& results) const -> void;
+
+   private:
+    auto computeNeighbourhoodOfNextVertex(Ball const& other, ResultList& results) -> void;
 
    private:
     VertexRef _center;
@@ -75,6 +103,11 @@ class KPathFinder {
     Interior _interior{};
     size_t _depth{0};
     size_t _searchIndex{std::numeric_limits<size_t>::max()};
+    Direction _direction;
+    std::unique_ptr<EdgeCursor> _cursor;
+    // We do not take responsibility for the Cache
+    TraverserCache* _cache;
+
   };
 
  public:
@@ -101,8 +134,6 @@ class KPathFinder {
    */
   void reset(VertexRef source, VertexRef target);
 
-  // get the next available path serialized in the builder
-
   /**
    * @brief Get the next path, if available written into the result build.
    * The given builder will be not be cleared, this function requires a
@@ -120,12 +151,16 @@ class KPathFinder {
 
 private:
  auto searchDone() const -> bool;
+ auto startNextDepth() -> void;
 
 private:
  ShortestPathOptions& _opts;
- Ball _left{};
- Ball _right{};
+ Ball _left;
+ Ball _right;
+ bool _searchLeft{true};
  ResultList _results{};
+
+ PathResult _resultPath;
 };
 
 }  // namespace graph
