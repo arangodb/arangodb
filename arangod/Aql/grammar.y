@@ -29,6 +29,7 @@
 #include "Aql/types.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
+#include "Graph/ShortestPathType.h"
 #include "Transaction/Context.h"
 #include "VocBase/AccessMode.h"
 %}
@@ -65,6 +66,43 @@ void Aqlerror(YYLTYPE* locp,
 }
 
 namespace {
+
+AstNode* buildShortestPathInfo(Parser* parser,
+                               char const* seperator,
+                               AstNode* direction,
+                               AstNode* startNode,
+                               AstNode* endNode,
+                               AstNode* graph,
+                               AstNode* options,
+                               YYLTYPE const& yyloc) {
+  if (!TRI_CaseEqualString(seperator, "TO")) {
+    parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'TO'", seperator, yyloc.first_line, yyloc.first_column);
+  }
+  auto infoNode = parser->ast()->createNodeArray();
+  infoNode->addMember(direction);
+  infoNode->addMember(startNode);
+  infoNode->addMember(endNode);
+  infoNode->addMember(graph);
+  
+  auto opts = parser->ast()->createNodeOptions(options);
+  TRI_ASSERT(opts != nullptr);
+  infoNode->addMember(opts);
+  return infoNode;
+}
+
+void checkOutVariables(Parser* parser,
+                       AstNode const* variableNamesNode,
+                       size_t minVariables, size_t maxVariables,
+                       char const* errorMessage,
+                       YYLTYPE const& yyloc) {
+  TRI_ASSERT(variableNamesNode != nullptr);
+  TRI_ASSERT(variableNamesNode->type == NODE_TYPE_ARRAY);
+  if (variableNamesNode->numMembers() < minVariables ||
+      variableNamesNode->numMembers() > maxVariables) {
+    parser->registerParseError(TRI_ERROR_QUERY_PARSE, errorMessage, yyloc.first_line, yyloc.first_column);
+  }
+}
+
 /// @brief check if any of the variables used in the INTO expression were
 /// introduced by the COLLECT itself, in which case it would fail
 void checkIntoVariables(Parser* parser, AstNode const* expression,
@@ -237,6 +275,7 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %token T_GRAPH "GRAPH keyword"
 %token T_SHORTEST_PATH "SHORTEST_PATH keyword"
 %token T_K_SHORTEST_PATHS "K_SHORTEST_PATHS keyword"
+%token T_K_PATHS "K_PATHS keyword"
 %token T_DISTINCT "DISTINCT modifier"
 
 %token T_REMOVE "REMOVE command"
@@ -358,6 +397,7 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %type <node> traversal_graph_info;
 %type <node> shortest_path_graph_info;
 %type <node> k_shortest_paths_graph_info;
+%type <node> k_paths_graph_info;
 %type <node> optional_array_elements;
 %type <node> array_elements_list;
 %type <node> array_element;
@@ -592,61 +632,27 @@ traversal_graph_info:
 
 shortest_path_graph_info:
     graph_direction T_SHORTEST_PATH expression T_STRING expression graph_subject options {
-      if (!TRI_CaseEqualString($4.value, "TO")) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'TO'", $4.value, yylloc.first_line, yylloc.first_column);
-      }
-      auto infoNode = parser->ast()->createNodeArray();
-      auto dirNode = parser->ast()->createNodeValueInt($1);
-      // Direction
-      infoNode->addMember(dirNode);
-      // Source
-      infoNode->addMember($3);
-      // Target
-      infoNode->addMember($5);
-      // Graph
-      infoNode->addMember($6);
-      // Opts
-      auto opts = parser->ast()->createNodeOptions($7);
-      TRI_ASSERT(opts != nullptr);
-      infoNode->addMember(opts);
-      $$ = infoNode;
+      $$ = ::buildShortestPathInfo(parser, $4.value, parser->ast()->createNodeDirection($1, 1), $3, $5, $6, $7, yyloc);
     }
   ;
 
 k_shortest_paths_graph_info:
-    graph_direction T_K_SHORTEST_PATHS expression T_STRING expression graph_subject options {
-      if (!TRI_CaseEqualString($4.value, "TO")) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'TO'", $4.value, yylloc.first_line, yylloc.first_column);
-      }
-      auto infoNode = parser->ast()->createNodeArray();
-      auto dirNode = parser->ast()->createNodeValueInt($1);
-      // Direction
-      infoNode->addMember(dirNode);
-      // Source
-      infoNode->addMember($3);
-      // Target
-      infoNode->addMember($5);
-      // Graph
-      infoNode->addMember($6);
-      // Opts
-      auto opts = parser->ast()->createNodeOptions($7);
-      TRI_ASSERT(opts != nullptr);
-      infoNode->addMember(opts);
-      $$ = infoNode;
+    graph_direction_steps T_K_SHORTEST_PATHS expression T_STRING expression graph_subject options {
+      $$ = ::buildShortestPathInfo(parser, $4.value, $1, $3, $5, $6, $7, yyloc);
+    }
+  ;
+
+k_paths_graph_info:
+    graph_direction_steps T_K_PATHS expression T_STRING expression graph_subject options {
+      $$ = ::buildShortestPathInfo(parser, $4.value, $1, $3, $5, $6, $7, yyloc);
     }
   ;
 
 for_statement:
     T_FOR for_output_variables T_IN expression {
-      // first open a new scope (after expression is evaluated)
-      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
       AstNode* variablesNode = static_cast<AstNode*>($2);
-      TRI_ASSERT(variablesNode != nullptr);
-      TRI_ASSERT(variablesNode->type == NODE_TYPE_ARRAY);
-      if (variablesNode->numMembers() != 1) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "Collections and Views only have one return variable", yylloc.first_line, yylloc.first_column);
-      }
-
+      ::checkOutVariables(parser, variablesNode, 1, 1, "Collections and Views only have return variable", yyloc);
+      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
       // now create an out variable for the FOR statement
       // this prepares us to handle the optional SEARCH condition, which may
       // or may not refer to the FOR's variable
@@ -696,15 +702,10 @@ for_statement:
       parser->ast()->addOperation(node);
     }
   | T_FOR for_output_variables T_IN traversal_graph_info {
-      // first open a new scope (after expression is evaluated)
-      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
       // Traversal
       auto variableNamesNode = static_cast<AstNode*>($2);
-      TRI_ASSERT(variableNamesNode != nullptr);
-      TRI_ASSERT(variableNamesNode->type == NODE_TYPE_ARRAY);
-      if (variableNamesNode->numMembers() > 3) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "Traversals only have one, two or three return variables", yylloc.first_line, yylloc.first_column);
-      }
+      ::checkOutVariables(parser, variableNamesNode, 1, 3, "Traversals only have one, two or three return variables", yyloc);
+      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
       auto variablesNode = ::transformOutputVariables(parser, variableNamesNode);
       auto graphInfoNode = static_cast<AstNode*>($4);
       TRI_ASSERT(graphInfoNode != nullptr);
@@ -728,42 +729,41 @@ for_statement:
       parser->ast()->addOperation(node);
     }
   | T_FOR for_output_variables T_IN shortest_path_graph_info {
-      // first open a new scope (after expression is evaluated)
-      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
       // Shortest Path
       auto variableNamesNode = static_cast<AstNode*>($2);
-      TRI_ASSERT(variableNamesNode != nullptr);
-      TRI_ASSERT(variableNamesNode->type == NODE_TYPE_ARRAY);
-      if (variableNamesNode->numMembers() > 2) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "ShortestPath only has one or two return variables", yylloc.first_line, yylloc.first_column);
-      }
+      ::checkOutVariables(parser, variableNamesNode, 1, 2, "SHORTEST_PATH only has one or two return variables", yyloc);
+      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
       auto variablesNode = ::transformOutputVariables(parser, variableNamesNode);
       auto graphInfoNode = static_cast<AstNode*>($4);
       TRI_ASSERT(graphInfoNode != nullptr);
       TRI_ASSERT(graphInfoNode->type == NODE_TYPE_ARRAY);
       auto node = parser->ast()->createNodeShortestPath(variablesNode, graphInfoNode);
       parser->ast()->addOperation(node);
-
     }
   | T_FOR for_output_variables T_IN k_shortest_paths_graph_info {
-      // first open a new scope (after expression is evaluated)
-      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
       // K Shortest Paths
       auto variableNamesNode = static_cast<AstNode*>($2);
-      TRI_ASSERT(variableNamesNode != nullptr);
-      TRI_ASSERT(variableNamesNode->type == NODE_TYPE_ARRAY);
-      if (variableNamesNode->numMembers() > 1) {
-          parser->registerParseError(TRI_ERROR_QUERY_PARSE, "k Shortest Paths only has one return variable", yylloc.first_line, yylloc.first_column);
-      }
+      ::checkOutVariables(parser, variableNamesNode, 1, 1, "K_SHORTEST_PATHS only has one return variable", yyloc);
+      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
       auto variablesNode = ::transformOutputVariables(parser, variableNamesNode);
       auto graphInfoNode = static_cast<AstNode*>($4);
       TRI_ASSERT(graphInfoNode != nullptr);
       TRI_ASSERT(graphInfoNode->type == NODE_TYPE_ARRAY);
-      auto node = parser->ast()->createNodeKShortestPaths(variablesNode, graphInfoNode);
+      auto node = parser->ast()->createNodeKShortestPaths(arangodb::graph::ShortestPathType::Type::KShortestPaths, variablesNode, graphInfoNode);
       parser->ast()->addOperation(node);
-
     }
-
+  | T_FOR for_output_variables T_IN k_paths_graph_info {
+      // K Paths
+      auto variableNamesNode = static_cast<AstNode*>($2);
+      ::checkOutVariables(parser, variableNamesNode, 1, 1, "K_PATHS only has one return variable", yyloc);
+      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
+      auto variablesNode = ::transformOutputVariables(parser, variableNamesNode);
+      auto graphInfoNode = static_cast<AstNode*>($4);
+      TRI_ASSERT(graphInfoNode != nullptr);
+      TRI_ASSERT(graphInfoNode->type == NODE_TYPE_ARRAY);
+      auto node = parser->ast()->createNodeKShortestPaths(arangodb::graph::ShortestPathType::Type::KPaths, variablesNode, graphInfoNode);
+      parser->ast()->addOperation(node);
+    }
   ;
 
 filter_statement:

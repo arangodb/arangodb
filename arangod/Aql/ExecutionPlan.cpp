@@ -56,6 +56,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Containers/SmallVector.h"
 #include "Graph/ShortestPathOptions.h"
+#include "Graph/ShortestPathType.h"
 #include "Graph/TraverserOptions.h"
 #include "Logger/LoggerStream.h"
 #include "Utils/OperationOptions.h"
@@ -103,7 +104,7 @@ struct NodeCounter final : public WalkerWorker<ExecutionNode, WalkerUniqueness::
 };
 #endif
 
-uint64_t checkTraversalDepthValue(AstNode const* node) {
+uint64_t checkDepthValue(AstNode const* node) {
   if (!node->isNumericValue()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
                                    "invalid traversal depth");
@@ -123,6 +124,35 @@ uint64_t checkTraversalDepthValue(AstNode const* node) {
                                    "invalid traversal depth");
   }
   return static_cast<uint64_t>(v);
+}
+
+std::pair<uint64_t, uint64_t> getMinMaxDepths(AstNode const* steps) {
+  uint64_t minDepth;
+  uint64_t maxDepth;
+  bool invalidDepth = false;
+
+  if (steps->isNumericValue()) {
+    // Check if a double value is integer
+    minDepth = checkDepthValue(steps);
+    maxDepth = checkDepthValue(steps);
+  } else if (steps->type == NODE_TYPE_RANGE) {
+    // Range depth
+    minDepth = checkDepthValue(steps->getMember(0));
+    maxDepth = checkDepthValue(steps->getMember(1));
+  } else {
+    invalidDepth = true;
+  }
+    
+  if (maxDepth < minDepth) {
+    invalidDepth = true;
+  }
+
+  if (invalidDepth) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                   "invalid traversal depth");
+  }
+
+  return {minDepth, maxDepth};
 }
 
 void parseGraphCollectionRestriction(std::vector<std::string>& collections,
@@ -153,37 +183,17 @@ void parseGraphCollectionRestriction(std::vector<std::string>& collections,
 std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
                                                            AstNode const* direction,
                                                            AstNode const* optionsNode) {
-  aql::QueryContext& query = ast->query();
-  auto options = std::make_unique<traverser::TraverserOptions>(query);
-
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
   TRI_ASSERT(direction->numMembers() == 2);
 
-  auto steps = direction->getMember(1);
+  // will throw on invalid depths
+  auto [minDepth, maxDepth] = getMinMaxDepths(direction->getMember(1));
 
-  bool invalidDepth = false;
-
-  if (steps->isNumericValue()) {
-    // Check if a double value is integer
-    options->minDepth = checkTraversalDepthValue(steps);
-    options->maxDepth = options->minDepth;
-  } else if (steps->type == NODE_TYPE_RANGE) {
-    // Range depth
-    options->minDepth = checkTraversalDepthValue(steps->getMember(0));
-    options->maxDepth = checkTraversalDepthValue(steps->getMember(1));
-
-    if (options->maxDepth < options->minDepth) {
-      invalidDepth = true;
-    }
-  } else {
-    invalidDepth = true;
-  }
-
-  if (invalidDepth) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                   "invalid traversal depth");
-  }
+  aql::QueryContext& query = ast->query();
+  auto options = std::make_unique<traverser::TraverserOptions>(query);
+  options->minDepth = minDepth;
+  options->maxDepth = maxDepth;
 
   if (optionsNode != nullptr && optionsNode->type == NODE_TYPE_OBJECT) {
     size_t n = optionsNode->numMembers();
@@ -244,15 +254,26 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
   return options;
 }
 
-std::unique_ptr<graph::BaseOptions> createShortestPathOptions(arangodb::aql::QueryContext& query,
-                                                              AstNode const* node) {
-  auto options = std::make_unique<graph::ShortestPathOptions>(query);
+std::unique_ptr<graph::BaseOptions> createShortestPathOptions(Ast* ast,
+                                                              AstNode const* direction,
+                                                              AstNode const* optionsNode) {
+  TRI_ASSERT(direction != nullptr);
+  TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
+  TRI_ASSERT(direction->numMembers() == 2);
 
-  if (node != nullptr && node->type == NODE_TYPE_OBJECT) {
-    size_t n = node->numMembers();
+  // will throw on invalid depths
+  auto [minDepth, maxDepth] = getMinMaxDepths(direction->getMember(1));
+
+  aql::QueryContext& query = ast->query();
+  auto options = std::make_unique<graph::ShortestPathOptions>(query);
+  options->minDepth = minDepth;
+  options->maxDepth = maxDepth;
+
+  if (optionsNode != nullptr && optionsNode->type == NODE_TYPE_OBJECT) {
+    size_t n = optionsNode->numMembers();
 
     for (size_t i = 0; i < n; ++i) {
-      auto member = node->getMemberUnchecked(i);
+      auto member = optionsNode->getMemberUnchecked(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
         auto const name = member->getStringRef();
@@ -1208,12 +1229,11 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
   // The members 5-6, where 6 is optional, are used
   // as out variables.
   AstNode const* direction = node->getMember(0);
-  TRI_ASSERT(direction->isIntValue());
   AstNode const* start = parseTraversalVertexNode(previous, node->getMember(1));
   AstNode const* target = parseTraversalVertexNode(previous, node->getMember(2));
   AstNode const* graph = node->getMember(3);
 
-  auto options = createShortestPathOptions(_ast->query(), node->getMember(4));
+  auto options = createShortestPathOptions(getAst(), direction, node->getMember(4));
 
   // First create the node
   auto spNode = new ShortestPathNode(this, nextId(), &(_ast->query().vocbase()), direction,
@@ -1239,30 +1259,30 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
   return addDependency(previous, en);
 }
 
-/// @brief create an execution plan element from an AST for SHORTEST_PATH node
+/// @brief create an execution plan element from an AST for K_SHORTEST_PATH node
 ExecutionNode* ExecutionPlan::fromNodeKShortestPaths(ExecutionNode* previous,
                                                      AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_K_SHORTEST_PATHS);
-  TRI_ASSERT(node->numMembers() >= 6);
-  TRI_ASSERT(node->numMembers() <= 7);
+  TRI_ASSERT(node->numMembers() == 7);
 
-  // the first 4 members are used by shortest_path internally.
-  // The members 5-6, where 6 is optional, are used
-  // as out variables.
-  AstNode const* direction = node->getMember(0);
-  TRI_ASSERT(direction->isIntValue());
-  AstNode const* start = parseTraversalVertexNode(previous, node->getMember(1));
-  AstNode const* target = parseTraversalVertexNode(previous, node->getMember(2));
-  AstNode const* graph = node->getMember(3);
+  auto const type = static_cast<arangodb::graph::ShortestPathType::Type>(node->getMember(0)->getIntValue());
+  TRI_ASSERT(type == arangodb::graph::ShortestPathType::Type::KShortestPaths || 
+             type == arangodb::graph::ShortestPathType::Type::KPaths); 
 
-  // FIXME: here goes the parameters with k etc
-  auto options = createShortestPathOptions(getAst()->query(), node->getMember(4));
+  // the first 5 members are used by shortest_path internally.
+  // The members 6 is the out variable
+  AstNode const* direction = node->getMember(1);
+  AstNode const* start = parseTraversalVertexNode(previous, node->getMember(2));
+  AstNode const* target = parseTraversalVertexNode(previous, node->getMember(3));
+  AstNode const* graph = node->getMember(4);
+  
+  auto options = createShortestPathOptions(getAst(), direction, node->getMember(5));
 
   // First create the node
-  auto spNode = new KShortestPathsNode(this, nextId(), &(_ast->query().vocbase()), direction,
+  auto spNode = new KShortestPathsNode(this, nextId(), &(_ast->query().vocbase()), type, direction,
                                        start, target, graph, std::move(options));
 
-  auto variable = node->getMember(5);
+  auto variable = node->getMember(6);
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
   auto v = static_cast<Variable*>(variable->getData());
   TRI_ASSERT(v != nullptr);

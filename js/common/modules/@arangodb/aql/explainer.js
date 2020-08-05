@@ -1492,7 +1492,17 @@ function processQuery(query, explain, planIndex) {
           parts.push(variableName(node.pathOutVariable) + '  ' + annotation('/* path */'));
         }
         let defaultDirection = node.defaultDirection;
-        rc = `${keyword("FOR")} ${parts.join(", ")} ${keyword("IN")} ${keyword(translate[defaultDirection])} ${keyword("K_SHORTEST_PATHS")} `;
+        let shortestPathType = node.shortestPathType || 'K_SHORTEST_PATHS';
+        let depth = '';
+        if (shortestPathType === 'K_PATHS') {
+          if (node.hasOwnProperty("options")) {
+            depth = value(node.options.minDepth + '..' + node.options.maxDepth);
+          } else {
+            depth = value('1..1');
+          }
+          depth += '  ' + annotation('/* min..maxPathDepth */') + ' ';
+        }
+        rc = `${keyword("FOR")} ${parts.join(", ")} ${keyword("IN")} ${depth}${keyword(translate[defaultDirection])} ${keyword(shortestPathType)} `;
         if (node.hasOwnProperty('startVertexId')) {
           rc += `'${value(node.startVertexId)}'`;
         } else {

@@ -173,6 +173,7 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/ShortestPathFinder.cpp
   Graph/ShortestPathOptions.cpp
   Graph/ShortestPathResult.cpp
+  Graph/ShortestPathType.cpp
   Graph/SingleServerEdgeCursor.cpp
   Graph/SingleServerTraverser.cpp
   Graph/Traverser.cpp
