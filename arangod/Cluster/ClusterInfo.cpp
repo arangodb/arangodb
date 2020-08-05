@@ -700,6 +700,8 @@ void ClusterInfo::loadPlan() {
     if (diff > std::chrono::milliseconds(500)) {
       LOG_TOPIC("66666", WARN, Logger::CLUSTER) << "Loading the new plan took: " << std::chrono::duration<double>(diff).count() << "s";
     }
+#else 
+    (void) start;
 #endif
   });
 
