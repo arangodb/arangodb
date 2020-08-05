@@ -38,8 +38,8 @@
 #include "Agency/State.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
+#include "Aql/ClusterQuery.h"
 #include "Aql/ExpressionContext.h"
-#include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryList.h"
@@ -727,7 +727,7 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
  
   TRI_ASSERT(!ServerState::instance()->isDBServer());
   VPackBuilder ignoreResponse;
-  query.prepareClusterQuery(aql::SerializationFormat::SHADOWROWS, VPackSlice::emptyObjectSlice(),
+  query.prepareClusterQuery(VPackSlice::emptyObjectSlice(),
                             collections, variables,
                             snippetBuilder.slice(), VPackSlice::noneSlice(), ignoreResponse,
                             analyzersRevision);

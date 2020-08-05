@@ -107,7 +107,8 @@ class QueryStreamCursor final : public arangodb::Cursor {
   // _queryResults and sets _queryResultPos appropriately. Relies on the caller
   // to have fetched more than batchSize() result rows (if possible) in order to
   // set hasMore reliably.
-  Result writeResult(velocypack::Builder& builder);
+  ExecutionState writeResult(arangodb::velocypack::Builder& builder);
+  ExecutionState finalizeQuery(arangodb::velocypack::Builder& builder);
 
   ExecutionState prepareDump();
 
@@ -124,6 +125,8 @@ class QueryStreamCursor final : public arangodb::Cursor {
   int64_t _exportCount;  // used by RocksDBRestExportHandler (<0 is not used)
   /// used when cursor is owned by V8 transaction
   transaction::Methods::StatusChangeCallback _stateChangeCb;
+  
+  bool _enteredFinalize;
 };
 
 }  // namespace aql

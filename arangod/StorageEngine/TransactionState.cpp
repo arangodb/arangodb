@@ -206,19 +206,6 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
 
   return res;
 }
-
-/// @brief run a callback on all collections
-void TransactionState::allCollections(                     // iterate
-    std::function<bool(TransactionCollection&)> const& cb  // callback to invoke
-) {
-  for (auto& trxCollection : _collections) {
-    TRI_ASSERT(trxCollection);  // ensured by addCollection(...)
-    if (!cb(*trxCollection)) {
-      // abort early
-      return;
-    }
-  }
-}
   
 /// @brief use all participating collections of a transaction
 Result TransactionState::useCollections() {

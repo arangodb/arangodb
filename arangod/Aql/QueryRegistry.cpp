@@ -24,8 +24,8 @@
 #include "QueryRegistry.h"
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/ClusterQuery.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/Query.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
@@ -70,16 +70,16 @@ void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl)
     }
 
     try {
-      for (auto& pair : p->_query->snippets()) {
-        if (pair.first != 0) { // skip the root snippet
-          auto result = _engines.try_emplace(pair.first, EngineInfo(pair.second.get(), p.get()));
+      for (auto& engine : p->_query->snippets()) {
+        if (engine->engineId() != 0) { // skip the root snippet
+          auto result = _engines.try_emplace(engine->engineId(), EngineInfo(engine.get(), p.get()));
           TRI_ASSERT(result.second);
           TRI_ASSERT(result.first->second._type == EngineType::Execution);
           p->_numEngines++;
         }
       }
-      for (auto& pair : p->_query->traversers()) {
-        auto result = _engines.try_emplace(pair.first, EngineInfo(pair.second.get(), p.get()));
+      for (auto& engine : p->_query->traversers()) {
+        auto result = _engines.try_emplace(engine->engineId(), EngineInfo(engine.get(), p.get()));
         TRI_ASSERT(result.second);
         TRI_ASSERT(result.first->second._type == EngineType::Graph);
         p->_numEngines++;
@@ -93,11 +93,11 @@ void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl)
     
     } catch (...) {
       // revert engine registration
-      for (auto& pair : p->_query->snippets()) {
-        _engines.erase(pair.first);
+      for (auto& engine : p->_query->snippets()) {
+        _engines.erase(engine->engineId());
       }
-      for (auto& pair : p->_query->traversers()) {
-        _engines.erase(pair.first);
+      for (auto& engine : p->_query->traversers()) {
+        _engines.erase(engine->engineId());
       }
       // no need to revert last insert
       throw;
@@ -225,12 +225,12 @@ std::unique_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& voc
     m->second.erase(q);
     
     // remove engines
-    for (auto const& pair : queryInfo->_query->snippets()) {
+    for (auto const& engine : queryInfo->_query->snippets()) {
 #ifndef ARANGODB_ENABLE_MAINTAINER_MODE
       _engines.erase(pair.first);
 #else
       
-      auto it = _engines.find(pair.first);
+      auto it = _engines.find(engine->engineId());
       if (it != _engines.end()) {
         TRI_ASSERT(it->second._queryInfo != nullptr);
         TRI_ASSERT(!it->second._isOpen);
@@ -238,8 +238,8 @@ std::unique_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& voc
       }
 #endif
     }
-    for (auto& pair : queryInfo->_query->traversers()) {
-      _engines.erase(pair.first);
+    for (auto& engine : queryInfo->_query->traversers()) {
+      _engines.erase(engine->engineId());
     }
 
     if (m->second.empty()) {
@@ -424,9 +424,9 @@ void QueryRegistry::registerSnippets(SnippetList const& snippets) {
   if (_disallowInserts) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
-  for (auto& pair : snippets) {
-    if (pair.first != 0) { // skip the root snippet
-      auto result = _engines.try_emplace(pair.first, EngineInfo(pair.second.get(), nullptr));
+  for (auto& engine : snippets) {
+    if (engine->engineId() != 0) { // skip the root snippet
+      auto result = _engines.try_emplace(engine->engineId(), EngineInfo(engine.get(), nullptr));
       TRI_ASSERT(result.second);
     }
   }
@@ -438,15 +438,15 @@ void QueryRegistry::unregisterSnippets(SnippetList const& snippets) noexcept {
   while(true) {
     WRITE_LOCKER(guard, _lock);
     size_t remain = snippets.size();
-    for (auto& pair : snippets) {
-      auto it = _engines.find(pair.first);
+    for (auto& engine : snippets) {
+      auto it = _engines.find(engine->engineId());
       if (it == _engines.end()) {
         remain--;
         continue;
       }
       if (it->second._isOpen) { // engine still in use
         LOG_TOPIC("33cfb", WARN, arangodb::Logger::AQL)
-          << "engine snippet '" << pair.first << "' is still in use";
+          << "engine snippet '" << it->first << "' is still in use";
         continue;
       }
       _engines.erase(it);

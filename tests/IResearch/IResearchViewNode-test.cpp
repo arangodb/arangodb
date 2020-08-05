@@ -2528,7 +2528,7 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
 //  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
   // dummy engine
-  arangodb::aql::ExecutionEngine engine(query, query.itemBlockManager(), arangodb::aql::SerializationFormat::SHADOWROWS);
+  arangodb::aql::ExecutionEngine engine(0, query, query.itemBlockManager(), arangodb::aql::SerializationFormat::SHADOWROWS);
   arangodb::aql::ExecutionPlan plan(query.ast());
 
   arangodb::aql::Variable const outVariable("variable", 0, false);
@@ -2621,7 +2621,7 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
   //  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
   // dummy engine
-  arangodb::aql::ExecutionEngine engine(query, query.itemBlockManager(), arangodb::aql::SerializationFormat::SHADOWROWS);
+  arangodb::aql::ExecutionEngine engine(0, query, query.itemBlockManager(), arangodb::aql::SerializationFormat::SHADOWROWS);
   arangodb::aql::ExecutionPlan plan(query.ast());
 
   // dummy engine
@@ -2671,7 +2671,7 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinatorLateMaterialize) {
   query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
   // dummy engine
-  arangodb::aql::ExecutionEngine engine(query, query.itemBlockManager(), arangodb::aql::SerializationFormat::SHADOWROWS);
+  arangodb::aql::ExecutionEngine engine(0, query, query.itemBlockManager(), arangodb::aql::SerializationFormat::SHADOWROWS);
   arangodb::aql::SingletonNode singleton(query.plan(), arangodb::aql::ExecutionNodeId{0});
   arangodb::aql::Variable const outVariable("variable", 0, false);
   arangodb::aql::Variable const outNmColPtr("variable100", 100, false);

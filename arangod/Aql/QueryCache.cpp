@@ -31,6 +31,7 @@
 #include "Basics/conversions.h"
 #include "Basics/fasthash.h"
 #include "Basics/system-functions.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/vocbase.h"
 
@@ -159,6 +160,24 @@ void QueryCacheResultEntry::toVelocyPack(VPackBuilder& builder) const {
   builder.close();
 
   builder.close();
+}
+
+bool QueryCacheResultEntry::currentUserHasPermissions() const {
+  ExecContext const& exec = ExecContext::current();
+
+  // got a result from the query cache
+  if (!exec.isSuperuser()) {
+    for (auto& dataSource : _dataSources) {
+      auto const& dataSourceName = dataSource.second;
+
+      if (!exec.canUseCollection(dataSourceName, auth::Level::RO)) {
+        // cannot use query cache result because of permissions
+        return false;
+      }
+    }
+  }
+  
+  return true;
 }
 
 /// @brief create a database-specific cache

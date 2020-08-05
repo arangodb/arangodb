@@ -182,8 +182,11 @@ class ServerState {
   }
 
   /// @brief check whether the server is a single or coordinator
-  bool isSingleServerOrCoordinator() {
-    RoleEnum role = loadRole();
+  bool isSingleServerOrCoordinator() const {
+    return isSingleServerOrCoordinator(loadRole());
+  }
+  
+  static bool isSingleServerOrCoordinator(ServerState::RoleEnum role) {
     return isCoordinator(role) || isSingleServer(role);
   }
 

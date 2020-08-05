@@ -261,7 +261,7 @@ void EngineInfoContainerDBServerServerBased::closeSnippet(QueryId inputSnippet) 
 //   the DBServers will clean up their snippets after a TTL.
 Result EngineInfoContainerDBServerServerBased::buildEngines(
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
-    MapRemoteToSnippet& snippetIds, std::map<std::string, QueryId>& serverToQueryId,
+    MapRemoteToSnippet& snippetIds, aql::ServerQueryIdList& serverToQueryId,
     std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases) {
   // This needs to be a set with a defined order, it is important, that we contact
   // the database servers only in this specific order to avoid cluster-wide deadlock situations.
@@ -295,7 +295,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   options.skipScheduler = true;  // hack to speed up future.get()
   options.param("ttl", std::to_string(_query.queryOptions().ttl));
 
-  for (auto const& server : dbServers) {
+  for (ServerID const& server : dbServers) {
     std::string const serverDest = "server:" + server;
 
     LOG_TOPIC("4bbe6", DEBUG, arangodb::Logger::AQL)
@@ -379,8 +379,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     if (!result.ok()) {
       return result;
     }
-    auto insert = serverToQueryId.try_emplace(serverDest, globalId);
-    TRI_ASSERT(insert.second);
+    serverToQueryId.emplace_back(serverDest, globalId);
   }
   cleanupGuard.cancel();
   return TRI_ERROR_NO_ERROR;

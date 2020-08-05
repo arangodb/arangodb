@@ -135,7 +135,7 @@ class EngineInfoContainerDBServerServerBased {
   //   simon: in v3.7 we get a global QueryId for all snippets on a server
   Result buildEngines(std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
                       MapRemoteToSnippet& snippetIds,
-                      std::map<std::string, QueryId>& ServerToQueryId,
+                      aql::ServerQueryIdList& serverQueryIds,
                       std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases);
 
   /**
