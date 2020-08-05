@@ -356,6 +356,30 @@
         });
         assertEqual(0, expected.size);
       },
+      testNoDanglingCalculationNode() {
+        let query = "FOR d IN " + svn  + " SEARCH d.value > 9 SORT d.str ASC LIMIT 5  RETURN d";
+        let plan = AQL_EXPLAIN(query).plan;
+        assertEqual(-1, plan.rules.indexOf(ruleName));
+        let materializeNodeFound = false;
+        plan.nodes.forEach(function(node) {
+          // should be no redundand calculation nodes for single or oneshard server
+          if (!isCluster) {
+            assertNotEqual(node.type, "CalculationNode");
+          }
+          if( node.type === "MaterializeNode") {
+            materializeNodeFound = true;
+          }
+        });
+        assertFalse(materializeNodeFound);
+        let result = AQL_EXECUTE(query);
+        assertEqual(4, result.json.length);
+        let expected = new Set(['c_0', 'c_1', 'c_2', 'c_3']);
+        result.json.forEach(function(doc) {
+          assertTrue(expected.has(doc._key));
+          expected.delete(doc._key);
+        });
+        assertEqual(0, expected.size);
+      },
     };
   };
 }());
