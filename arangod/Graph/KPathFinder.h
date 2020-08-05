@@ -25,6 +25,9 @@
 
 #include <velocypack/StringRef.h>
 
+#include <set>
+#include <vector>
+
 namespace arangodb {
 
 namespace velocypack {
@@ -38,27 +41,46 @@ struct ShortestPathOptions;
 class KPathFinder {
  private:
   using VertexRef = arangodb::velocypack::StringRef;
+
+  struct VertexIdentifier {
+    VertexRef id;
+    size_t predecessor;
+
+    // Make the set work on the VertexRef attribute only
+    bool operator<(VertexIdentifier const& other);
+    bool operator<(VertexRef const& other);
+  };
+
+  using Shell = std::set<VertexIdentifier>;
+  using Interior = std::vector<VertexIdentifier>;
+
   // We have two balls, one arround source, one around target, and try to find intersections of the balls
   class Ball {
    public:
     Ball();
     ~Ball();
-    void reset(VertexRef center);
+    auto reset(VertexRef center) -> void;
+    auto startNextDepth() -> void;
+    auto nextVertex() -> VertexRef;
+    auto buildPath(VertexIdentifier vertexInShell, std::vector<VertexIdentifier>& path)
+        -> void;
 
    private:
     VertexRef _center;
+    Shell _shell;
+    Interior _interior;
   };
 
  public:
   explicit KPathFinder(ShortestPathOptions& options);
   ~KPathFinder();
 
-/**
- * @brief Quick test of the finder can proof there is no more data available.
- *        It can respond with true, even though there is no path left. 
- * @return true There is a chance that there is more data available
- * @return false There will be no further path.
- */
+  /**
+   * @brief Quick test of the finder can proof there is no more data available.
+   *        It can respond with true, even though there is no path left.
+   * @return true There is a chance that there is more data available
+   * @return false There will be no further path.
+   */
   bool hasMore() const;
 
   /**
@@ -73,7 +95,6 @@ class KPathFinder {
    */
   void reset(VertexRef source, VertexRef target);
 
-
   // get the next available path serialized in the builder
 
   /**
@@ -84,8 +105,8 @@ class KPathFinder {
    * @param result Input and output, this needs to be an open builder,
    * where the path can be placed into.
    * Can be empty, or an openArray, or the value of an object.
-   * Guarantee: Every returned path matches the conditions handed in via options.
-   * No path is returned twice, it is intended that paths overlap.
+   * Guarantee: Every returned path matches the conditions handed in via
+   * options. No path is returned twice, it is intended that paths overlap.
    * @return true Found and written a path, result is modified.
    * @return false No path found, result has not been changed.
    */
