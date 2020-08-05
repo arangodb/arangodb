@@ -28,12 +28,15 @@
 #include "Graph/KPathFinder.h"
 #include "Graph/ShortestPathOptions.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::velocypack;
 
 namespace arangodb {
 namespace tests {
 namespace graph {
-
 
 class KPathFinderTest : public ::testing::Test {
  protected:
@@ -65,33 +68,113 @@ class KPathFinderTest : public ::testing::Test {
   }
 
   auto vId(size_t nr) -> std::string {
-      return "v/" + basics::StringUtils::itoa(nr);
+    return "v/" + basics::StringUtils::itoa(nr);
+  }
+
+  auto pathStructureValid(VPackSlice path, size_t depth) -> void {
+    ASSERT_TRUE(path.isObject());
+    {
+      // Check Vertices
+      ASSERT_TRUE(path.hasKey(StaticStrings::GraphQueryVertices));
+      auto vertices = path.get(StaticStrings::GraphQueryVertices);
+      ASSERT_TRUE(vertices.isArray());
+      ASSERT_EQ(vertices.length(), depth + 1);
+      for (auto const& v : VPackArrayIterator(vertices)) {
+        EXPECT_TRUE(v.isObject());
+      }
+    }
+    {
+      // Check Edges
+      ASSERT_TRUE(path.hasKey(StaticStrings::GraphQueryEdges));
+      auto edges = path.get(StaticStrings::GraphQueryEdges);
+      ASSERT_TRUE(edges.isArray());
+      ASSERT_EQ(edges.length(), depth);
+      for (auto const& e : VPackArrayIterator(edges)) {
+        EXPECT_TRUE(e.isObject());
+      }
+    }
+  }
+
+  auto verticesToString(VPackSlice path) -> std::string {
+    TRI_ASSERT(path.isObject());
+    TRI_ASSERT(path.hasKey(StaticStrings::GraphQueryVertices));
+    auto vertices = path.get(StaticStrings::GraphQueryVertices);
+
+    std::string res;
+    for (auto const& v : VPackArrayIterator(vertices)) {
+      res += v.get(StaticStrings::KeyString).copyString();
+    }
+    return res;
+  }
+
+  auto edgesToString(VPackSlice path) -> std::string {
+    TRI_ASSERT(path.isObject());
+    TRI_ASSERT(path.hasKey(StaticStrings::GraphQueryEdges));
+    auto edges = path.get(StaticStrings::GraphQueryEdges);
+
+    std::string res;
+    for (auto const& e : VPackArrayIterator(edges)) {
+      res += e.get(StaticStrings::KeyString).copyString();
+    }
+    return res;
   }
 };
 
 TEST_F(KPathFinderTest, no_path_exists) {
-    VPackBuilder result;
-    // No path between those
-    auto source = vId(91);
-    auto target = vId(99);
-    finder->reset(StringRef(source), StringRef(target));
+  VPackBuilder result;
+  // No path between those
+  auto source = vId(91);
+  auto target = vId(99);
+  finder->reset(StringRef(source), StringRef(target));
 
-    EXPECT_TRUE(finder->hasMore());
-    {
-      auto hasPath = finder->getNextPath(result);
-      EXPECT_FALSE(hasPath);
-      EXPECT_TRUE(result.isEmpty());
-      EXPECT_FALSE(finder->hasMore());
-    }
-    
-    {
-      // Try again to make sure we stay at non-existing
-      auto hasPath = finder->getNextPath(result);
-      EXPECT_FALSE(hasPath);
-      EXPECT_TRUE(result.isEmpty());
-      EXPECT_FALSE(finder->hasMore());
-    }
+  EXPECT_TRUE(finder->hasMore());
+  {
+    auto hasPath = finder->getNextPath(result);
+    EXPECT_FALSE(hasPath);
+    EXPECT_TRUE(result.isEmpty());
+    EXPECT_FALSE(finder->hasMore());
+  }
+
+  {
+    // Try again to make sure we stay at non-existing
+    auto hasPath = finder->getNextPath(result);
+    EXPECT_FALSE(hasPath);
+    EXPECT_TRUE(result.isEmpty());
+    EXPECT_FALSE(finder->hasMore());
+  }
 }
+
+TEST_F(KPathFinderTest, path_depth_0) {
+  VPackBuilder result;
+  // Search 0 depth
+  spo->minDepth = 0;
+  spo->maxDepth = 0;
+
+  // Source and target identical
+  auto source = vId(91);
+  auto target = vId(91);
+
+  finder->reset(StringRef(source), StringRef(target));
+
+  EXPECT_TRUE(finder->hasMore());
+  {
+    auto hasPath = finder->getNextPath(result);
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 0);
+    LOG_DEVEL << result.toString();
+
+    EXPECT_FALSE(finder->hasMore());
+  }
+
+  {
+    // Try again to make sure we stay at non-existing
+    auto hasPath = finder->getNextPath(result);
+    EXPECT_FALSE(hasPath);
+    EXPECT_TRUE(result.isEmpty());
+    EXPECT_FALSE(finder->hasMore());
+  }
 }
-}
-}
+
+}  // namespace graph
+}  // namespace tests
+}  // namespace arangodb
