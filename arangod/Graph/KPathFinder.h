@@ -25,6 +25,7 @@
 
 #include <velocypack/StringRef.h>
 
+#include <deque>
 #include <set>
 #include <vector>
 
@@ -47,12 +48,13 @@ class KPathFinder {
     size_t predecessor;
 
     // Make the set work on the VertexRef attribute only
-    bool operator<(VertexIdentifier const& other);
-    bool operator<(VertexRef const& other);
+    bool operator<(VertexIdentifier const& other) const;
+//    bool operator<(VertexRef const& other) const;
   };
 
   using Shell = std::set<VertexIdentifier>;
   using Interior = std::vector<VertexIdentifier>;
+  using ResultList = std::deque<std::pair<VertexIdentifier, VertexIdentifier>>;
 
   // We have two balls, one arround source, one around target, and try to find intersections of the balls
   class Ball {
@@ -61,14 +63,18 @@ class KPathFinder {
     ~Ball();
     auto reset(VertexRef center) -> void;
     auto startNextDepth() -> void;
-    auto nextVertex() -> VertexRef;
+    auto noPathLeft() const -> bool;
+    auto getDepth() const -> size_t;
+    auto shellSize() const -> size_t;
     auto buildPath(VertexIdentifier vertexInShell, std::vector<VertexIdentifier>& path)
         -> void;
 
    private:
     VertexRef _center;
-    Shell _shell;
-    Interior _interior;
+    Shell _shell{};
+    Interior _interior{};
+    size_t _depth{0};
+    size_t _searchIndex{std::numeric_limits<size_t>::max()};
   };
 
  public:
@@ -112,10 +118,14 @@ class KPathFinder {
    */
   bool getNextPath(arangodb::velocypack::Builder& result);
 
- private:
-  Ball _left{};
-  Ball _right{};
-  bool _done{false};
+private:
+ auto searchDone() const -> bool;
+
+private:
+ ShortestPathOptions& _opts;
+ Ball _left{};
+ Ball _right{};
+ ResultList _results{};
 };
 
 }  // namespace graph
