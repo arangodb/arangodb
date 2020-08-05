@@ -211,6 +211,10 @@ struct OptimizerRule {
     // move filters and sort conditions into views and remove them
     handleArangoSearchViewsRule,
 
+    // remove calculations that are redundant
+    // needs to run after filter removal
+    removeUnnecessaryCalculationsRule2,
+
     // remove now obsolete path variables
     removeTraversalPathVariable,
 
@@ -282,7 +286,7 @@ struct OptimizerRule {
 
     // remove calculations that are redundant
     // needs to run after filter removal
-    removeUnnecessaryCalculationsRule2,
+    removeUnnecessaryCalculationsRule3,
 
     // try to get rid of a RemoteNode->ScatterNode combination which has
     // only a SingletonNode and possibly some CalculationNodes as dependencies

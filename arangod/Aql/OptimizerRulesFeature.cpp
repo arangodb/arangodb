@@ -298,6 +298,11 @@ void OptimizerRulesFeature::addRules() {
   registerRule("handle-arangosearch-views", arangodb::iresearch::handleViewsRule,
                OptimizerRule::handleArangoSearchViewsRule, OptimizerRule::makeFlags());
 
+  // remove calculations that are never necessary	
+  registerRule("remove-unnecessary-calculations-2", removeUnnecessaryCalculationsRule,	
+    OptimizerRule::removeUnnecessaryCalculationsRule2,	
+    OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+
   // optimize unneccessary filters already applied by the traversal. Only ever
   // does something if previous rules remove all filters using the path variable
   registerRule("remove-redundant-path-var", removeTraversalPathVariable,
@@ -370,8 +375,8 @@ void OptimizerRulesFeature::addRules() {
                                         OptimizerRule::Flags::ClusterOnly));
 
   // remove calculations that are never necessary
-  registerRule("remove-unnecessary-calculations-2", removeUnnecessaryCalculationsRule,
-               OptimizerRule::removeUnnecessaryCalculationsRule2,
+  registerRule("remove-unnecessary-calculations-3", removeUnnecessaryCalculationsRule,
+               OptimizerRule::removeUnnecessaryCalculationsRule3,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   registerRule("remove-unnecessary-remote-scatter", removeUnnecessaryRemoteScatterRule,
