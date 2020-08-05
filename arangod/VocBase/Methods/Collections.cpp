@@ -301,7 +301,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
                  arangodb::velocypack::Value(minRev.toString()));
     }
 
-    if (ServerState::instance()->isCoordinator()) {
+    if (!ServerState::instance()->isSingleServer()) {
       auto replicationFactorSlice = info.properties.get(StaticStrings::ReplicationFactor);
       if (replicationFactorSlice.isNone()) {
         auto factor = vocbase.replicationFactor();
