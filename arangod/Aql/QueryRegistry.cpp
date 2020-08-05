@@ -227,7 +227,7 @@ std::unique_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& voc
     // remove engines
     for (auto const& engine : queryInfo->_query->snippets()) {
 #ifndef ARANGODB_ENABLE_MAINTAINER_MODE
-      _engines.erase(pair.first);
+      _engines.erase(engine->engineId());
 #else
       
       auto it = _engines.find(engine->engineId());

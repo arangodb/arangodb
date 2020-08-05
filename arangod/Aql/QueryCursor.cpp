@@ -207,6 +207,7 @@ QueryStreamCursor::~QueryStreamCursor() {
   }
 
   // Query destructor will cleanup plan and abort transaction
+  _query.reset();
 }
 
 void QueryStreamCursor::kill() {
