@@ -942,4 +942,82 @@ TEST_CASE("Test [lambda] primitive", "[lambda]") {
     auto res = Evaluate(ctx, program->slice(), result);
     REQUIRE(res.fail());
   }
+
+/*  SECTION("lambda returning lambda") {
+
+    auto v = arangodb::velocypack::Parser::fromJson(R"aql(8)aql");
+    ctx.setVariable("a", v->slice());
+
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+[
+  [
+    [
+      [
+        "lambda",
+        [
+          "quote",
+          "a"
+        ],
+        [
+          "quote"
+        ],
+        [
+          "quote",
+          "lambda",
+          [
+            "quote"
+          ],
+          [
+            "quote",
+            "x"
+          ],
+          [
+            "quote",
+            [
+              "+",
+              [
+                "var-ref",
+                "a"
+              ],
+              [
+                "var-ref",
+                "b"
+              ]
+            ]
+          ]
+        ]
+      ]
+    ]
+  ],
+  4
+]
+    )aql");
+
+    auto res = Evaluate(ctx, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    INFO(result.slice().toJson());
+    REQUIRE(result.slice().getNumericValue<double>() == 12);
+  }*/
+
+  SECTION("lambda call evaluates parameter") {
+
+    auto v = arangodb::velocypack::Parser::fromJson(R"aql(8)aql");
+    ctx.setVariable("a", v->slice());
+
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      [
+        ["lambda", ["quote"], ["quote", "x"], ["quote", "var-ref", "x"]],
+        ["+", 10, 2]
+      ]
+    )aql");
+
+    auto res = Evaluate(ctx, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    INFO(result.slice().toJson());
+    REQUIRE(result.slice().getNumericValue<double>() == 12);
+  }
 }
