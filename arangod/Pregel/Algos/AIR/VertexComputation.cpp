@@ -75,8 +75,9 @@ greenspun::EvalResult VertexComputation::runProgram(VertexComputationEvalContext
       LOG_DEVEL << "program did not return a boolean value, but " << rs.toJson();
     }
   }
-  return result.wrapError(
-      [](greenspun::EvalError& err) { err.wrapMessage("at top-level"); });
+  return result.wrapError([](greenspun::EvalError &err) {
+    err.wrapMessage("at top-level");
+  });
 }
 
 void VertexComputation::compute(MessageIterator<MessageData> const& incomingMessages) {
