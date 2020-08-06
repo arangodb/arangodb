@@ -1,7 +1,7 @@
 devel
 -----
 
-* Hard-code returned "planVersion" attribute of collections to the value of 1.
+* Hard-code returned "planVersion" attribute of collections to a value of 1.
   Before 3.7, the most recent Plan version from the agency was returned inside
   "planVersion".
   In 3.7, the attribute contained the Plan version that was in use when the 
