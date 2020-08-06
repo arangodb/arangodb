@@ -35,14 +35,17 @@ using namespace arangodb::graph;
 auto KPathFinder::PathResult::clear() -> void {
   _vertices.clear();
   _edges.clear();
+  _uniqueVertices.clear();
 }
 
 auto KPathFinder::PathResult::appendVertex(VertexRef v) -> void {
   _vertices.push_back(v);
+  _uniqueVertices.emplace(v);
 }
 
 auto KPathFinder::PathResult::prependVertex(VertexRef v) -> void {
   _vertices.push_front(v);
+  _uniqueVertices.emplace(v);
 }
 
 auto KPathFinder::PathResult::appendEdge(EdgeDocumentToken e) -> void {
@@ -53,13 +56,14 @@ auto KPathFinder::PathResult::prependEdge(EdgeDocumentToken e) -> void {
   _edges.push_front(e);
 }
 
-auto KPathFinder::PathResult::toVelocyPack(TraverserCache& cache, arangodb::velocypack::Builder& builder) -> void {
+auto KPathFinder::PathResult::toVelocyPack(TraverserCache& cache,
+                                           arangodb::velocypack::Builder& builder) -> void {
   VPackObjectBuilder path{&builder};
   {
     builder.add(VPackValue(StaticStrings::GraphQueryVertices));
     VPackArrayBuilder vertices{&builder};
     for (auto const& v : _vertices) {
-            cache.insertVertexIntoResult(v, builder);
+      cache.insertVertexIntoResult(v, builder);
     }
   }
 
@@ -70,6 +74,10 @@ auto KPathFinder::PathResult::toVelocyPack(TraverserCache& cache, arangodb::velo
       cache.insertEdgeIntoResult(e, builder);
     }
   }
+}
+
+auto KPathFinder::PathResult::isValid() const -> bool {
+  return _uniqueVertices.size() == _vertices.size();
 }
 
 bool KPathFinder::VertexIdentifier::operator<(VertexIdentifier const& other) const {
@@ -92,7 +100,6 @@ void KPathFinder::Ball::clear() {
   _depth = 0;
   _searchIndex = std::numeric_limits<size_t>::max();
 }
-
 
 void KPathFinder::Ball::reset(VertexRef center) {
   _center = center;
@@ -213,14 +220,13 @@ void KPathFinder::reset(VertexRef source, VertexRef target) {
 
   // Special Case depth == 0
   if (options().minDepth == 0 && source == target) {
-    _results.emplace_back(std::make_pair(VertexIdentifier{source, 0, EdgeDocumentToken{}},
-                                         VertexIdentifier{target, 0, EdgeDocumentToken{}}));
+    _results.emplace_back(
+        std::make_pair(VertexIdentifier{source, 0, EdgeDocumentToken{}},
+                       VertexIdentifier{target, 0, EdgeDocumentToken{}}));
   }
 }
 
-void KPathFinder::clear() {
-  _results.clear();
-}
+void KPathFinder::clear() { _results.clear(); }
 
 bool KPathFinder::shortestPath(arangodb::velocypack::Slice const&,
                                arangodb::velocypack::Slice const&,
@@ -235,66 +241,76 @@ auto KPathFinder::isDone() const -> bool {
 
 // get the next available path serialized in the builder
 auto KPathFinder::getNextPath(VPackBuilder& result) -> bool {
-
-  while (_results.empty() && !searchDone()) {
-    if (_searchLeft) {
-      if (ADB_UNLIKELY(_left.doneWithDepth())) {
-        startNextDepth();
+  while (!isDone()) {
+    while (_results.empty() && !searchDone()) {
+      if (_searchLeft) {
+        if (ADB_UNLIKELY(_left.doneWithDepth())) {
+          startNextDepth();
+        } else {
+          _left.computeNeighbourhoodOfNextVertex(_right, _results);
+        }
       } else {
-        _left.computeNeighbourhoodOfNextVertex(_right, _results);
-      }
-    } else {
-      if (ADB_UNLIKELY(_right.doneWithDepth())) {
-        startNextDepth();
-      } else {
-        _right.computeNeighbourhoodOfNextVertex(_left, _results);
+        if (ADB_UNLIKELY(_right.doneWithDepth())) {
+          startNextDepth();
+        } else {
+          _right.computeNeighbourhoodOfNextVertex(_left, _results);
+        }
       }
     }
-  }
 
-  if (!_results.empty()) {
-    auto [leftVertex, rightVertex] = _results.back();
+    while (!_results.empty()) {
+      auto [leftVertex, rightVertex] = _results.back();
 
-    _resultPath.clear();
-    _left.buildPath(leftVertex, _resultPath);
-    _right.buildPath(rightVertex, _resultPath);
-    TRI_ASSERT(options().cache() != nullptr);
-    _resultPath.toVelocyPack(*options().cache(), result);
+      _resultPath.clear();
+      _left.buildPath(leftVertex, _resultPath);
+      _right.buildPath(rightVertex, _resultPath);
 
-    // result done
-    _results.pop_back();
-    return true;
+      // result done
+      _results.pop_back();
+      if (_resultPath.isValid()) {
+        TRI_ASSERT(options().cache() != nullptr);
+        _resultPath.toVelocyPack(*options().cache(), result);
+        return true;
+      }
+    }
   }
   return false;
 }
 
 // get the next available path serialized in the builder
 auto KPathFinder::skipPath() -> bool {
-
-  while (_results.empty() && !searchDone()) {
-    if (_searchLeft) {
-      if (ADB_UNLIKELY(_left.doneWithDepth())) {
-        startNextDepth();
+  while (!isDone()) {
+    while (_results.empty() && !searchDone()) {
+      if (_searchLeft) {
+        if (ADB_UNLIKELY(_left.doneWithDepth())) {
+          startNextDepth();
+        } else {
+          _left.computeNeighbourhoodOfNextVertex(_right, _results);
+        }
       } else {
-        _left.computeNeighbourhoodOfNextVertex(_right, _results);
+        if (ADB_UNLIKELY(_right.doneWithDepth())) {
+          startNextDepth();
+        } else {
+          _right.computeNeighbourhoodOfNextVertex(_left, _results);
+        }
       }
-    } else {
-      if (ADB_UNLIKELY(_right.doneWithDepth())) {
-        startNextDepth();
-      } else {
-        _right.computeNeighbourhoodOfNextVertex(_left, _results);
+    }
+    while (!_results.empty()) {
+      auto [leftVertex, rightVertex] = _results.back();
+
+      _resultPath.clear();
+      _left.buildPath(leftVertex, _resultPath);
+      _right.buildPath(rightVertex, _resultPath);
+
+      // result done
+      _results.pop_back();
+      if (_resultPath.isValid()) {
+        return true;
       }
     }
   }
-
-  if (!_results.empty()) {
-    // result done
-    _results.pop_back();
-    return true;
-  }
   return false;
 }
-
 
 auto KPathFinder::startNextDepth() -> void {
   if (_right.shellSize() < _left.shellSize()) {

@@ -71,9 +71,13 @@ class KPathFinder : public ShortestPathFinder {
     auto toVelocyPack(arangodb::graph::TraverserCache& cache,
                       arangodb::velocypack::Builder& builder) -> void;
 
+    // Check uniqueness
+    auto isValid() const -> bool;
+
    private:
     std::deque<VertexRef> _vertices;
     std::deque<EdgeDocumentToken> _edges;
+    std::unordered_set<VertexRef> _uniqueVertices;
   };
 
   using Shell = std::set<VertexIdentifier>;

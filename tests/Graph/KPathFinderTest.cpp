@@ -68,7 +68,18 @@ class KPathFinderTest : public ::testing::Test {
                            {12, 13},
                            {13, 11},
                            {13, 14},
-                           {14, 11}});
+                           {14, 11},
+                           /* loop path */
+                           {20, 21},
+                           {21, 20},
+                           {21, 21},
+                           {21, 22},
+                           /* triangle loop */
+                           {30, 31},
+                           {31, 32},
+                           {32, 33},
+                           {33, 31},
+                           {32, 34}});
 
     query = gdb.getQuery("RETURN 1", std::vector<std::string>{"v", "e"});
   }
@@ -418,6 +429,69 @@ TEST_F(KPathFinderTest, path_depth_2_to_3) {
     EXPECT_TRUE(hasPath);
     pathStructureValid(result.slice(), 3);
     pathEquals(result.slice(), {10, 12, 13, 11});
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    // Try again to make sure we stay at non-existing
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_FALSE(hasPath);
+    EXPECT_TRUE(result.isEmpty());
+    EXPECT_TRUE(finder.isDone());
+  }
+}
+
+
+TEST_F(KPathFinderTest, path_loop) {
+  VPackBuilder result;
+  auto& finder = pathFinder(1, 10);
+
+  // Source and target are direkt neighbors, there is only one path between them
+  auto source = vId(20);
+  auto target = vId(22);
+
+  finder.reset(StringRef(source), StringRef(target));
+
+  EXPECT_FALSE(finder.isDone());
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 2);
+    pathEquals(result.slice(), {20, 21, 22});
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    // Try again to make sure we stay at non-existing
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_FALSE(hasPath);
+    EXPECT_TRUE(result.isEmpty());
+    EXPECT_TRUE(finder.isDone());
+  }
+}
+
+TEST_F(KPathFinderTest, triangle_loop) {
+  VPackBuilder result;
+  auto& finder = pathFinder(1, 10);
+
+  // Source and target are direkt neighbors, there is only one path between them
+  auto source = vId(30);
+  auto target = vId(34);
+
+  finder.reset(StringRef(source), StringRef(target));
+
+  EXPECT_FALSE(finder.isDone());
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 3);
+    pathEquals(result.slice(), {30, 31, 32, 34});
 
     EXPECT_FALSE(finder.isDone());
   }
