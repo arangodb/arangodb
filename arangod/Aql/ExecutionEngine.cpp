@@ -503,16 +503,8 @@ struct DistributedQueryInstanciator final
       }
     }
     
-//    for (auto& engine : snippets) {
-//      if (engine->engineId() != 0) { // only the root snippet executes a shutdown on the Coordinator
-//        engine->setShutdown(ExecutionEngine::ShutdownState::Done);
-//      }
-//    }
-    
     TRI_ASSERT(snippets[0]->engineId() == 0);
-//    snippets[0]->snippetMapping(std::move(snippetIds), std::move(serverToQueryId));
     _query.executionStats().setAliases(std::move(nodeAliases));
-//    TRI_ASSERT(snippets[0]->shutdownState() != ExecutionEngine::ShutdownState::Done);
     
     return res;
   }
@@ -617,67 +609,6 @@ std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
   TRI_ASSERT(block == nullptr);
   return {state, skipped.getSkipCount()};
 }
-
-//Result ExecutionEngine::shutdownSync(int errorCode) noexcept try {
-//  if (_root == nullptr || shutdownState() == ShutdownState::Done) {
-//    return Result();
-//  }
-//
-//  Result res{TRI_ERROR_INTERNAL, "unable to shutdown query"};
-//  ExecutionState state = ExecutionState::WAITING;
-//  try {
-//    TRI_IF_FAILURE("ExecutionEngine::shutdownSync") {
-//      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-//    }
-//
-//    std::shared_ptr<SharedQueryState> sharedState = _sharedState;
-//    TRI_ASSERT(sharedState != nullptr);
-//    sharedState->resetWakeupHandler();
-//    while (state == ExecutionState::WAITING) {
-//      std::tie(state, res) = shutdown(errorCode);
-//      if (state == ExecutionState::WAITING) {
-//        sharedState->waitForAsyncWakeup();
-//      }
-//    }
-//  } catch (basics::Exception const& ex) {
-//    res.reset(ex.code(), std::string("unable to shutdown query: ") + ex.what());
-//  } catch (std::exception const& ex) {
-//    res.reset(TRI_ERROR_INTERNAL, std::string("unable to shutdown query: ") + ex.what());
-//  } catch (...) {
-//    res.reset(TRI_ERROR_INTERNAL);
-//  }
-//
-//  return res;
-//
-//} catch (...) {
-//  // nothing we can do here...
-//  return Result(TRI_ERROR_INTERNAL, "unable to shutdown query");
-//}
-//
-/// @brief shutdown, will be called exactly once for the whole query
-//std::pair<ExecutionState, Result> ExecutionEngine::shutdown(int errorCode) {
-//  auto st = _shutdownState.load(std::memory_order_relaxed);
-//  if (_root == nullptr || st == ShutdownState::Done) {
-//    return {ExecutionState::DONE, _shutdownResult};
-//  }
-//
-//  TRI_ASSERT(_sharedState != nullptr);
-//
-//  if (ShutdownState::NotShutdown == st) {
-//    if (_shutdownState.compare_exchange_strong(st, ShutdownState::ShutdownSent, std::memory_order_relaxed)) {
-//      // enter shutdown phase, forget previous wakeups
-//      _sharedState->resetNumWakeups();
-//      return shutdownDBServerQueries(errorCode);
-//    }
-//    TRI_ASSERT(st == ShutdownState::ShutdownSent);
-//  }
-//
-//  if (st == ShutdownState::ShutdownSent) {
-//    return {ExecutionState::WAITING, {}};
-//  }
-//
-//  return {ExecutionState::DONE, _shutdownResult};
-//}
 
 // @brief create an execution engine from a plan
 void ExecutionEngine::instantiateFromPlan(Query& query,

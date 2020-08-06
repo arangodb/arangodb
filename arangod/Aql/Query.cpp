@@ -707,13 +707,20 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
 }
 
 ExecutionState Query::finalize(VPackBuilder& extras) {
+  if (_profile != nullptr &&
+      _shutdownState.load(std::memory_order_relaxed) == ShutdownState::None) {
+    // the following call removes the query from the list of currently
+    // running queries. so whoever fetches that list will not see a Query that
+    // is about to shut down/be destroyed
+    _profile->unregisterFromQueryList();
+  }
+  
   auto state = cleanupPlanAndEngine(TRI_ERROR_NO_ERROR, /*sync*/false);
   if (state == ExecutionState::WAITING) {
     return state;
   }
   
   extras.openObject(/*unindexed*/true);
-
   _warnings.toVelocyPack(extras);
   
   if (!_snippets.empty()) {
@@ -743,12 +750,12 @@ ExecutionState Query::finalize(VPackBuilder& extras) {
   // we do this because "executionTime" should include the whole span of the
   // execution and we have to set it at the very end
   double const rt = now - _startTime;
-  try {
-    basics::VelocyPackHelper::patchDouble(extras.slice().get("stats").get("executionTime"), rt);
-  } catch (...) {
-    // if the query has failed, the slice may not
-    // contain a proper "stats" object once we get here.
-  }
+//  try {
+//    basics::VelocyPackHelper::patchDouble(extras.slice().get("stats").get("executionTime"), rt);
+//  } catch (...) {
+//    // if the query has failed, the slice may not
+//    // contain a proper "stats" object once we get here.
+//  }
 
   LOG_TOPIC("95996", DEBUG, Logger::QUERIES) << rt 
                                              << " Query::finalize:returning"
@@ -869,8 +876,7 @@ QueryResult Query::explain() {
 
     result.extra = std::make_shared<VPackBuilder>();
     {
-
-      VPackObjectBuilder guard(result.extra.get(), true);
+      VPackObjectBuilder guard(result.extra.get(), /*unindexed*/true);
       _warnings.toVelocyPack(*result.extra);
       result.extra->add(VPackValue("stats"));
       opt._stats.toVelocyPack(*result.extra);
@@ -1233,7 +1239,7 @@ futures::Future<Result> finishDBServerParts(Query& query, int errorCode) {
 } // namespace
 
 aql::ExecutionState Query::cleanupTrxAndEngines(int errorCode) {
-  ShutdownState exp = _shutdownState.load(std::memory_order_acquire);
+  ShutdownState exp = _shutdownState.load(std::memory_order_relaxed);
   if (exp == ShutdownState::Done) {
     return ExecutionState::DONE;
   } else if (exp == ShutdownState::InProgress) {
@@ -1241,18 +1247,15 @@ aql::ExecutionState Query::cleanupTrxAndEngines(int errorCode) {
   }
   
   TRI_ASSERT (exp == ShutdownState::None);
-  if (!_shutdownState.compare_exchange_strong(exp, ShutdownState::InProgress)) {
+  if (!_shutdownState.compare_exchange_strong(exp, ShutdownState::InProgress,
+                                              std::memory_order_relaxed)) {
     return ExecutionState::WAITING; // someone else got here
   }
   
-  // the following call removes the query from the list of currently
-  // running queries. so whoever fetches that list will not see a Query that
-  // is about to shut down/be destroyed
-  if (_profile != nullptr) {
-    _profile->unregisterFromQueryList();
-  }
-  
   enterState(QueryExecutionState::ValueType::FINALIZATION);
+  
+  // simon: do not unregister _profile here, since kill() will be called
+  //        under the same QueryList lock
   
   // The above condition is not true if we have already waited.
   LOG_TOPIC("fc22c", DEBUG, Logger::QUERIES)
@@ -1276,7 +1279,7 @@ aql::ExecutionState Query::cleanupTrxAndEngines(int errorCode) {
       << " this: " << (uintptr_t)this;
 
   if (_serverQueryIds.empty()) {
-    _shutdownState.store(ShutdownState::Done);
+    _shutdownState.store(ShutdownState::Done, std::memory_order_relaxed);
     return ExecutionState::DONE;
   }
   
@@ -1287,7 +1290,7 @@ aql::ExecutionState Query::cleanupTrxAndEngines(int errorCode) {
     LOG_TOPIC_IF("fd31e", INFO, Logger::QUERIES, r.fail())
       << "received error from DBServer on query finalization: '" << r.errorMessage() << "'";
     _sharedState->executeAndWakeup([&] {
-      _shutdownState.store(ShutdownState::Done);
+      _shutdownState.store(ShutdownState::Done, std::memory_order_relaxed);
       return true;
     });
   });

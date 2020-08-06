@@ -296,7 +296,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   options.param("ttl", std::to_string(_query.queryOptions().ttl));
 
   for (ServerID const& server : dbServers) {
-    std::string const serverDest = "server:" + server;
+    std::string serverDest = "server:" + server;
 
     LOG_TOPIC("4bbe6", DEBUG, arangodb::Logger::AQL)
         << "Building Engine Info for " << server;
@@ -379,7 +379,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     if (!result.ok()) {
       return result;
     }
-    serverToQueryId.emplace_back(serverDest, globalId);
+    serverToQueryId.emplace_back(std::move(serverDest), globalId);
   }
   cleanupGuard.cancel();
   return TRI_ERROR_NO_ERROR;

@@ -152,8 +152,9 @@ QueryStreamCursor::QueryStreamCursor(std::unique_ptr<arangodb::aql::Query> q,
     : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, /*hasCount*/ false),
       _query(std::move(q)),
       _queryResultPos(0),
+      _numBufferedRows(0),
       _exportCount(-1),
-      _enteredFinalize(false) {
+      _finalization(false) {
 
   _query->prepareQuery(SerializationFormat::SHADOWROWS);
   TRI_ASSERT(_query->state() == aql::QueryExecutionState::ValueType::EXECUTION);
@@ -219,21 +220,17 @@ void QueryStreamCursor::kill() {
 std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder) {
   TRI_ASSERT(batchSize() > 0);
   LOG_TOPIC("9af59", TRACE, Logger::QUERIES)
-      << "executing query " << _id << ": '"
-      << _query->queryString().extract(1024) << "'";
+    << "executing query " << _id << ": '"
+    << _query->queryString().extract(1024) << "'";
 
   try {
     ExecutionState state = prepareDump();
-
     if (state == ExecutionState::WAITING) {
       return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
     }
 
-    if ((state = writeResult(builder)) == ExecutionState::WAITING) {
-      return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
-    }
-    
-    return {state, TRI_ERROR_NO_ERROR};
+    // writeResult will perform async finalize
+    return {writeResult(builder), TRI_ERROR_NO_ERROR};
   } catch (arangodb::basics::Exception const& ex) {
     this->setDeleted();
     return {ExecutionState::DONE,
@@ -338,13 +335,21 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
   options.escapeUnicode = true;
   builder.options = &options;
   
-  if (_enteredFinalize) {
-    return finalizeQuery(builder);  // will commit transaction
-  }
-  
   // reserve some space in Builder to avoid frequent reallocs
   builder.reserve(16 * 1024);
   
+  const bool isDone = _numBufferedRows <= batchSize();
+  if (isDone) {  // only able to add 'extra' after all stats are collected
+    TRI_ASSERT(_finalization);
+    // cleanup callback, to avoid calling ourself
+    cleanupStateCallback();
+    builder.add(VPackValue("extra"));
+    // finalize(..) will commit transaction
+    if (_query->finalize(builder) == ExecutionState::WAITING) {
+      return ExecutionState::WAITING;
+    }
+  }
+
   builder.add("result", VPackValue(VPackValueType::Array, true));
 
   aql::ExecutionEngine* engine = _query->rootEngine();
@@ -373,6 +378,7 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
       _queryResultPos = 0;
     }
   }
+  _numBufferedRows -= rowsWritten;
 
   TRI_ASSERT(_queryResults.empty() || _queryResultPos < _queryResults.front()->size());
 
@@ -392,28 +398,13 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
   }
   builder.add("cached", VPackValue(false));
 
+  TRI_ASSERT(hasMore || _numBufferedRows == 0);
+  TRI_ASSERT(isDone == !hasMore);
   if (!hasMore) {
-    // cleanup before transaction is committed
-    cleanupStateCallback();
-
-    builder.add(VPackValue("extra"));
-    return finalizeQuery(builder);  // will commit transaction
+    _query.reset();
+    this->setDeleted();
   }
 
-  return ExecutionState::DONE;
-}
-
-ExecutionState QueryStreamCursor::finalizeQuery(VPackBuilder& builder) {
-  _enteredFinalize = true;
-  
-  ExecutionState state = _query->finalize(builder);  // will commit transaction
-  if (state == ExecutionState::WAITING) {
-    return state;
-  }
-  _query.reset();
-  TRI_ASSERT(_queryResults.empty());
-  this->setDeleted();
-  
   return ExecutionState::DONE;
 }
 
@@ -423,7 +414,7 @@ std::shared_ptr<transaction::Context> QueryStreamCursor::context() const {
 }
 
 ExecutionState QueryStreamCursor::prepareDump() {
-  if (_enteredFinalize) {
+  if (_finalization) {
     TRI_ASSERT(_query->state() > QueryExecutionState::ValueType::EXECUTION);
     return ExecutionState::DONE;
   }
@@ -431,16 +422,16 @@ ExecutionState QueryStreamCursor::prepareDump() {
   aql::ExecutionEngine* engine = _query->rootEngine();
   TRI_ASSERT(engine != nullptr);
 
-  size_t numBufferedRows = 0;
+  _numBufferedRows = 0;
   for (auto const& it : _queryResults) {
-    numBufferedRows += it->size();
+    _numBufferedRows += it->size();
   }
-  numBufferedRows -= _queryResultPos;
+  _numBufferedRows -= _queryResultPos;
 
   ExecutionState state = ExecutionState::HASMORE;
   // We want to fill a result of batchSize if possible and have at least
   // one row left (or be definitively DONE) to set "hasMore" reliably.
-  while (state != ExecutionState::DONE && numBufferedRows <= batchSize()) {
+  while (state != ExecutionState::DONE && _numBufferedRows <= batchSize()) {
     SharedAqlItemBlockPtr resultBlock;
     std::tie(state, resultBlock) = engine->getSome(batchSize());
     if (state == ExecutionState::WAITING) {
@@ -450,7 +441,7 @@ ExecutionState QueryStreamCursor::prepareDump() {
     TRI_ASSERT(resultBlock != nullptr || state == ExecutionState::DONE);
 
     if (resultBlock != nullptr) {
-      numBufferedRows += resultBlock->size();
+      _numBufferedRows += resultBlock->size();
       _queryResults.push_back(std::move(resultBlock));
     }
   }
@@ -459,9 +450,9 @@ ExecutionState QueryStreamCursor::prepareDump() {
     if (_query) {
       _query->exitV8Context();
     }
-  } else {
-    // TODO add all results to the builder before going to sleep
   }
+  // remember not to call getSome() again
+  _finalization = (state == ExecutionState::DONE);
 
   return state;
 }
@@ -469,8 +460,7 @@ ExecutionState QueryStreamCursor::prepareDump() {
 void QueryStreamCursor::cleanupStateCallback() {
   TRI_ASSERT(_query);
   transaction::Methods trx(_ctx);
-  TRI_ASSERT(trx.status() == transaction::Status::RUNNING);
-  if (_stateChangeCb) {
+  if (_stateChangeCb && trx.status() == transaction::Status::RUNNING) {
     trx.removeStatusChangeCallback(&_stateChangeCb);
   }
 }
