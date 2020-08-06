@@ -1,10 +1,14 @@
-v3.7.1-rc.1 (XXXX-XX-XX)
-------------------------
+v3.7.1 (2020-08-06)
+-------------------
 
 * Fixed issue #12248: Web UI on 3.6.5: 404 error on adding new index.
   This issue caused "404: not found" errors when creating indexes via the web
   UI. The indexes were created successfully despite the error message popping
   up. This fix removes the misleading unconditional error message.
+
+
+v3.7.1-rc.1 (2020-07-24)
+------------------------
 
 * Added startup option `--rocksdb.encryption-key-rotation` to
   activate/deactivate the encryption key rotation REST API. The API is disabled
