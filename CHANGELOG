@@ -1,6 +1,8 @@
 devel
 -----
 
+* Slightly improve the performance of cluster DDL maintenance operations.
+
 * Improve performance of many non-subquery AQL queries, by optimizing away
   some storage overhead for subquery context data.
 
