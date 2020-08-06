@@ -285,7 +285,10 @@ struct OptimizerRule {
     distributeSortToClusterRule,
 
     // remove calculations that are redundant
-    // needs to run after filter removal
+    // this is hidden and disabled by default version
+    // used to cleanup calculation nodes after conditionally
+    // removed nodes. Currently used by OneShard rule to handle
+    // removals of sort nodes for arangosearch views.
     removeUnnecessaryCalculationsRule3,
 
     // try to get rid of a RemoteNode->ScatterNode combination which has
