@@ -712,8 +712,7 @@ ExecutionState Query::finalize(VPackBuilder& extras) {
     return state;
   }
   
-  TRI_ASSERT(!extras.isOpenObject());
-  extras.openObject();
+  extras.openObject(/*unindexed*/true);
 
   _warnings.toVelocyPack(extras);
   
