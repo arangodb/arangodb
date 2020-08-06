@@ -2034,8 +2034,7 @@ arangodb::Result fromFuncMinMatch(
 }
 
 template<typename ElementType>
-class ArgsTraits {
-};
+class ArgsTraits;
 
 template<>
 class ArgsTraits<arangodb::aql::AstNode> {
@@ -2133,7 +2132,7 @@ class ArgsTraits<VPackSlice> {
     return SCOPED_VALUE_TYPE_INVALID;
   }
 
-  static VPackSlice const& valueSlice(ValueType const& v) noexcept {
+  static ValueType valueSlice(ValueType v) noexcept {
     return v;
   }
 
@@ -2159,7 +2158,7 @@ class ArgsTraits<VPackSlice> {
     return false;
   }
 
-  constexpr static bool isDeterministic(VPackSlice const&) {
+  constexpr static bool isDeterministic(VPackSlice) {
     return true;
   }
 
@@ -2170,7 +2169,7 @@ class ArgsTraits<VPackSlice> {
     return 1;
   }
 
-  static arangodb::Result getMemberValue(VPackSlice const& arg, size_t idx,
+  static arangodb::Result getMemberValue(VPackSlice arg, size_t idx,
                                          char const* funcName, ValueType& value,
                                          bool, QueryContext const&, bool&) {
     TRI_ASSERT(arg.isArray());
@@ -2181,7 +2180,7 @@ class ArgsTraits<VPackSlice> {
 
   template<typename T>
   static arangodb::Result evaluateArg(T& out, ValueType& value, char const* funcName,
-    VPackSlice const& args, size_t i, bool isFilter, QueryContext const& ctx) {
+    VPackSlice args, size_t i, bool isFilter, QueryContext const& ctx) {
     static_assert(
       std::is_same<T, irs::string_ref>::value ||
       std::is_same<T, int64_t>::value ||
@@ -2234,7 +2233,7 @@ typedef std::function<
                    char const*,
                    irs::by_phrase*,
                    QueryContext const&,
-                   VPackSlice const&,
+                   VPackSlice,
                    size_t,
                    irs::analysis::analyzer*)
 > ConversionPhraseHandler;
@@ -2247,7 +2246,7 @@ std::string getSubFuncErrorSuffix(char const* funcName, size_t const funcArgumen
 arangodb::Result oneArgumentfromFuncPhrase(char const* funcName,
                                            size_t const funcArgumentPosition,
                                            char const* subFuncName,
-                                           VPackSlice const& elem,
+                                           VPackSlice elem,
                                            irs::string_ref& term) {
   if (elem.isArray() && elem.length() != 1) {
     auto res = error::invalidArgsCount<error::ExactValue<1>>(subFuncName);
@@ -2272,7 +2271,7 @@ arangodb::Result fromFuncPhraseTerm(char const* funcName,
                                     char const* subFuncName,
                                     irs::by_phrase* filter,
                                     QueryContext const& ctx,
-                                    VPackSlice const& elem,
+                                    VPackSlice elem,
                                     size_t firstOffset,
                                     irs::analysis::analyzer* /*analyzer*/ = nullptr) {
   irs::string_ref term;
@@ -2297,7 +2296,7 @@ arangodb::Result fromFuncPhraseStartsWith(char const* funcName,
                                           char const* subFuncName,
                                           irs::by_phrase* filter,
                                           QueryContext const& ctx,
-                                          VPackSlice const& elem,
+                                          VPackSlice elem,
                                           size_t firstOffset,
                                           irs::analysis::analyzer* /*analyzer*/ = nullptr) {
   irs::string_ref term;
@@ -2320,7 +2319,7 @@ arangodb::Result fromFuncPhraseLike(char const* funcName,
                                     char const* subFuncName,
                                     irs::by_phrase* filter,
                                     QueryContext const& ctx,
-                                    VPackSlice const& elem,
+                                    VPackSlice elem,
                                     size_t firstOffset,
                                     irs::analysis::analyzer* /*analyzer*/ = nullptr) {
   irs::string_ref term;
@@ -2465,7 +2464,7 @@ arangodb::Result fromFuncPhraseLevenshteinMatch(char const* funcName,
                                                 char const* subFuncName,
                                                 irs::by_phrase* filter,
                                                 QueryContext const& ctx,
-                                                VPackSlice const& array,
+                                                VPackSlice array,
                                                 size_t firstOffset,
                                                 irs::analysis::analyzer* /*analyzer*/ = nullptr) {
   if (!array.isArray()) {
@@ -2696,7 +2695,7 @@ arangodb::Result fromFuncPhraseInRange(char const* funcName,
                                        char const* subFuncName,
                                        irs::by_phrase* filter,
                                        QueryContext const& ctx,
-                                       VPackSlice const& array,
+                                       VPackSlice array,
                                        size_t firstOffset,
                                        irs::analysis::analyzer* /*analyzer*/ = nullptr) {
   if (!array.isArray()) {
@@ -2729,7 +2728,7 @@ arangodb::Result fromFuncPhraseInRange(char const* funcName,
       res.errorMessage().append(errorSuffix)
     };
   }
-  irs::string_ref minStrValue = getStringRef(min);
+  irs::string_ref const minStrValue = getStringRef(min);
 
   if (!max.isString()) {
     res = error::typeMismatch(subFuncName, 2, arangodb::iresearch::SCOPED_VALUE_TYPE_STRING,
@@ -2739,7 +2738,7 @@ arangodb::Result fromFuncPhraseInRange(char const* funcName,
       res.errorMessage().append(errorSuffix)
     };
   }
-  irs::string_ref maxStrValue = getStringRef(max);
+irs::string_ref const maxStrValue = getStringRef(max);
 
   if (filter) {
     auto& opts = filter->mutable_options()->push_back<irs::by_range_options>(firstOffset);
@@ -2766,7 +2765,7 @@ arangodb::Result processPhraseArgObjectType(char const* funcName,
                                             size_t const funcArgumentPosition,
                                             irs::by_phrase* filter,
                                             QueryContext const& ctx,
-                                            VPackSlice const& object,
+                                            VPackSlice object,
                                             size_t firstOffset,
                                             irs::analysis::analyzer* analyzer = nullptr) {
   TRI_ASSERT(object.isObject());
