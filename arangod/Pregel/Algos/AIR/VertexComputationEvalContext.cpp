@@ -70,6 +70,7 @@ void VertexComputationEvalContext::printCallback(const std::string& msg) const {
   _computation.getReportManager()
           .report(ReportLevel::INFO)
           .with("pregel-id", _computation.pregelId())
+          .with("vertex", vertexData()._documentId)
       << msg;
 }
 
