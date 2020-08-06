@@ -75,9 +75,8 @@ greenspun::EvalResult VertexComputation::runProgram(VertexComputationEvalContext
       LOG_DEVEL << "program did not return a boolean value, but " << rs.toJson();
     }
   }
-  return result.wrapError([](greenspun::EvalError &err) {
-    err.wrapMessage("at top-level");
-  });
+  return result.wrapError(
+      [](greenspun::EvalError& err) { err.wrapMessage("at top-level"); });
 }
 
 void VertexComputation::compute(MessageIterator<MessageData> const& incomingMessages) {
@@ -98,6 +97,7 @@ void VertexComputation::compute(MessageIterator<MessageData> const& incomingMess
       getReportManager()
               .report(ReportLevel::ERROR)
               .with("pregel-id", pregelId())
+              .with("vertex", vertexData()._documentId)
               .with("phase", phase.name)
               .with("global-superstep", globalSuperstep())
               .with("phase-step", phaseGlobalSuperstep())
@@ -116,6 +116,7 @@ void VertexComputation::compute(MessageIterator<MessageData> const& incomingMess
       getReportManager()
               .report(ReportLevel::ERROR)
               .with("pregel-id", pregelId())
+              .with("vertex", vertexData()._documentId)
               .with("phase", phase.name)
               .with("global-superstep", globalSuperstep())
               .with("phase-step", phaseGlobalSuperstep())
