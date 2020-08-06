@@ -104,7 +104,7 @@ class MasterContext {
   ReportManager& getReportManager() { return *_reports; }
 
   enum class ContinuationResult {
-    CONTINUE, ABORT, DONT_CARE, ACTIVATE_ALL
+    CONTINUE, ABORT, DONT_CARE, ACTIVATE_ALL, ERROR_ABORT,
   };
 
   virtual ContinuationResult postGlobalSuperstep(bool allVertexesVotedHalt) { return ContinuationResult::DONT_CARE; }

@@ -55,10 +55,10 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::basics;
 
-const char* arangodb::pregel::ExecutionStateNames[7] = {"none",      "running",
+const char* arangodb::pregel::ExecutionStateNames[8] = {"none",      "running",
                                                         "storing",   "done",
                                                         "canceled",  "in error",
-                                                        "recovering"};
+                                                        "recovering", "fatal error"};
 
 Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
                      std::vector<CollectionID> const& vertexCollections,
@@ -189,6 +189,9 @@ bool Conductor::_startGlobalStep() {
         case MasterContext::ContinuationResult::CONTINUE:
           done = false;
           break;
+        case MasterContext::ContinuationResult::ERROR_ABORT:
+          _inErrorAbort = true;
+          [[fallthrough]];
         case MasterContext::ContinuationResult::ABORT:
           proceed = false;
           break;
@@ -205,7 +208,7 @@ bool Conductor::_startGlobalStep() {
       _state = ExecutionState::STORING;
       _finalizeWorkers();
     } else {  // just stop the timer
-      _state = ExecutionState::DONE;
+      _state = _inErrorAbort ? ExecutionState::FATAL_ERROR : ExecutionState::DONE;
       _endTimeSecs = TRI_microtime();
       LOG_TOPIC("9e82c", INFO, Logger::PREGEL)
           << "Done execution took" << totalRuntimeSecs() << " s";
@@ -727,7 +730,7 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
   // do not swap an error state to done
   bool didStore = false;
   if (_state == ExecutionState::STORING) {
-    _state = ExecutionState::DONE;
+    _state = _inErrorAbort ? ExecutionState::FATAL_ERROR : ExecutionState::DONE;
     didStore = true;
   }
   _endTimeSecs = TRI_microtime();  // offically done
@@ -776,7 +779,7 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
 void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
   MUTEX_LOCKER(guard, _callbackMutex);
 
-  if (_state != ExecutionState::DONE) {
+  if (_state != ExecutionState::DONE && _state != ExecutionState::FATAL_ERROR) {
     return;
   }
 
