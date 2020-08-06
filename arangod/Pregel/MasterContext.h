@@ -26,6 +26,7 @@
 #include <velocypack/Slice.h>
 #include "Basics/Common.h"
 #include "Pregel/AggregatorHandler.h"
+#include "Reports.h"
 
 namespace arangodb {
 namespace pregel {
@@ -41,6 +42,7 @@ class MasterContext {
   // Should cause the master to tell everyone to enter the next phase
   bool _enterNextGSS = false;
   AggregatorHandler* _aggregators = nullptr;
+  ReportManager* _reports;
 
  public:
   MasterContext() {}
@@ -98,6 +100,8 @@ class MasterContext {
   /// @return true to continue the computation
   virtual bool postGlobalSuperstep() { return true; };
   virtual void postApplication() {}
+
+  ReportManager& getReportManager() { return *_reports; }
 
   enum class ContinuationResult {
     CONTINUE, ABORT, DONT_CARE, ACTIVATE_ALL

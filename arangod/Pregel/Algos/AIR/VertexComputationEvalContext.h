@@ -69,6 +69,8 @@ class VertexComputationEvalContext : public greenspun::PrimEvalContext {
   greenspun::EvalResult getVertexCount(VPackBuilder& result) const override;
   greenspun::EvalResult getOutgoingEdgesCount(VPackBuilder& result) const override;
 
+
+
  private:
 
   VertexComputation& computation() const;

@@ -363,8 +363,8 @@ EvalResult Prim_OutgoingEdgesCount(PrimEvalContext& ctx, VPackSlice const params
   }
   return ctx.getOutgoingEdgesCount(result);
 }
-
-EvalResult Prim_PrintLn(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+namespace {
+std::string paramsToString(VPackSlice const params) {
   std::stringstream ss;
 
   for (auto&& p : VPackArrayIterator(params)) {
@@ -379,8 +379,12 @@ EvalResult Prim_PrintLn(PrimEvalContext& ctx, VPackSlice const params, VPackBuil
     }
     ss << " ";
   }
+  return ss.str();
+}
+}
 
-  ctx.printCallback(ss.str());
+EvalResult Prim_PrintLn(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+  ctx.printCallback(paramsToString(params));
   result.add(VPackSlice::noneSlice());
   return {};
 }
@@ -457,6 +461,11 @@ EvalResult Prim_Dict(PrimEvalContext& ctx, VPackSlice const params,
   return {};
 }
 
+EvalResult Prim_Error(PrimEvalContext& ctx, VPackSlice const params,
+                      VPackBuilder& result) {
+  return EvalError(paramsToString(params));
+}
+
 void RegisterPrimitives() {
   // Calculation operators
   primitives["banana"] = Prim_Banana;
@@ -480,6 +489,7 @@ void RegisterPrimitives() {
 
   // Debug operators
   primitives["print"] = Prim_PrintLn;
+  primitives["error"] = Prim_Error;
 
   // Utilities
   primitives["list"] = Prim_List;

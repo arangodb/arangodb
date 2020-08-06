@@ -59,21 +59,26 @@ MasterContext::ContinuationResult MasterContext::postGlobalSuperstep(bool allVer
   auto phase_index = *getAggregatedValue<uint32_t>("phase");
   auto phase = _algo->options().phases.at(phase_index);
 
+  if (getReportManager().getNumErrors() > 0) {
+    getReportManager().report(ReportLevel::INFO).with("phase", phase.name)
+        << "stopping because of previous errors";
+    return ContinuationResult::ABORT;
+  }
+
   if (!phase.onHalt.isEmpty()) {
     VPackBuilder onHaltResult;
     VertexAccumulatorPhaseEvalContext ctx{*this};
     userSelectedNext = ContinuationResult::DONT_CARE;
-    LOG_DEVEL << "evaluating user defined program: " << phase.onHalt.slice().toJson();
     auto res = Evaluate(ctx, phase.onHalt.slice(), onHaltResult);
     if (res.fail()) {
-      LOG_TOPIC("ac23e", ERR, Logger::PREGEL)
-                     << "onHalt program of phase `" << phase.name <<
-                        "` returned and error: " << res.error().toString();
+      getReportManager().report(ReportLevel::ERROR).with("phase", phase.name)
+          << "onHalt program of phase `" << phase.name
+          << "` returned and error: " << res.error().toString();
       return ContinuationResult::ABORT;
     }
 
     if (userSelectedNext == ContinuationResult::DONT_CARE) {
-      LOG_TOPIC("ac23e", ERR, Logger::PREGEL)
+      getReportManager().report(ReportLevel::ERROR).with("phase", phase.name)
           << "onHalt program of phase `" + phase.name +
                  "` did not specify how to continue";
       return ContinuationResult::ABORT;

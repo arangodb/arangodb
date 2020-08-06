@@ -37,7 +37,6 @@ namespace arangodb::pregel::algos::accumulators {
 
 VertexComputationEvalContext::VertexComputationEvalContext(VertexComputation& computation)
     : _computation(computation) {
-
   RegisterFunction("bananensplit-xxx",
                    [this](PrimEvalContext& ctx, VPackSlice const params,
                           VPackBuilder& result) -> EvalResult {
@@ -48,7 +47,6 @@ VertexComputationEvalContext::VertexComputationEvalContext(VertexComputation& co
 
                      return EvalError("expect no arguments");
                    });
-
 };
 
 VertexComputation& VertexComputationEvalContext::computation() const {
@@ -69,6 +67,10 @@ std::size_t VertexComputationEvalContext::getVertexUniqueId() const {
 
 void VertexComputationEvalContext::printCallback(const std::string& msg) const {
   LOG_DEVEL << msg;
+  _computation.getReportManager()
+          .report(ReportLevel::INFO)
+          .with("pregel-id", _computation.pregelId())
+      << msg;
 }
 
 EvalResult VertexComputationEvalContext::getAccumulatorValue(std::string_view accumId,
@@ -80,7 +82,8 @@ EvalResult VertexComputationEvalContext::getAccumulatorValue(std::string_view ac
   } else {
     std::string globalName = "[global]-";
     globalName += accumId;
-    auto accum = dynamic_cast<VertexAccumulatorAggregator const*>(_computation.getReadAggregator(globalName));
+    auto accum = dynamic_cast<VertexAccumulatorAggregator const*>(
+        _computation.getReadAggregator(globalName));
     if (accum != nullptr) {
       accum->getAccumulator().getValueIntoBuilder(builder);
       return {};
@@ -99,9 +102,11 @@ EvalResult VertexComputationEvalContext::setAccumulator(std::string_view accumId
   } else {
     std::string globalName = "[global]-";
     globalName += accumId;
-    auto accum = dynamic_cast<VertexAccumulatorAggregator*>(_computation.getWriteAggregator(globalName));
+    auto accum = dynamic_cast<VertexAccumulatorAggregator*>(
+        _computation.getWriteAggregator(globalName));
     if (accum != nullptr) {
-      LOG_DEVEL << "VertexComputationEvalContext::setAccumulator " << accumId << " with value " << value.toJson();
+      LOG_DEVEL << "VertexComputationEvalContext::setAccumulator " << accumId
+                << " with value " << value.toJson();
       accum->getAccumulator().setBySlice(value);
       return {};
     }
@@ -143,7 +148,8 @@ EvalResult VertexComputationEvalContext::updateAccumulator(std::string_view accu
   } else {
     std::string globalName = "[global]-";
     globalName += accumId;
-    auto accum = dynamic_cast<VertexAccumulatorAggregator*>(_computation.getWriteAggregator(globalName));
+    auto accum = dynamic_cast<VertexAccumulatorAggregator*>(
+        _computation.getWriteAggregator(globalName));
     if (accum != nullptr) {
       LOG_DEVEL << "update global accum " << accumId << " with value " << value.toJson();
       accum->getAccumulator().updateByMessageSlice(value);

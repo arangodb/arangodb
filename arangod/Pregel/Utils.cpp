@@ -80,6 +80,7 @@ std::string const Utils::enterNextGSSKey = "nextGSS";
 
 std::string const Utils::compensate = "compensate";
 std::string const Utils::rollback = "rollback";
+std::string const Utils::reportsKey = "reports";
 
 std::string Utils::baseUrl(std::string const& prefix) {
   return Utils::apiPrefix + prefix + "/";

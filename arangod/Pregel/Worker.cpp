@@ -326,7 +326,7 @@ void Worker<V, E, M>::_startProcessing() {
   TRI_ASSERT(_runningThreads >= 1);
   TRI_ASSERT(_runningThreads <= _config.parallelism());
   size_t numT = _runningThreads;
-  
+
   auto self = shared_from_this();
   for (size_t i = 0; i < numT; i++) {
     bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [self, this, i, numT, numSegments] {
@@ -337,7 +337,7 @@ void Worker<V, E, M>::_startProcessing() {
       size_t startI = i * (numSegments / numT);
       size_t endI = (i+1) * (numSegments / numT);
       TRI_ASSERT(endI <= numSegments);
-      
+
       auto vertices = _graphStore->vertexIterator(startI, endI);
       // should work like a join operation
       if (_processVertices(i, vertices) && _state == WorkerState::COMPUTING) {
@@ -349,7 +349,7 @@ void Worker<V, E, M>::_startProcessing() {
                                      "No thread available to start processing");
     }
   }
-  
+
   // TRI_ASSERT(_runningThreads == i);
   LOG_TOPIC("425c3", DEBUG, Logger::PREGEL) << "Using " << numT << " Threads";
 }
@@ -370,6 +370,7 @@ bool Worker<V, E, M>::_processVertices(size_t threadId,
   double start = TRI_microtime();
 
   // thread local caches
+  ReportManager reports;
   InCache<M>* inCache = _inCaches[threadId];
   OutCache<M>* outCache = _outCaches[threadId];
   outCache->setBatchSize(_messageBatchSize);
@@ -388,6 +389,7 @@ bool Worker<V, E, M>::_processVertices(size_t threadId,
   _initializeVertexContext(vertexComputation.get());
   vertexComputation->_writeAggregators = &workerAggregator;
   vertexComputation->_cache = outCache;
+  vertexComputation->_reports = &reports;
   if (!_config.asynchronousMode()) {
     // Should cause enterNextGlobalSuperstep to do nothing
     vertexComputation->_enterNextGSS = true;
@@ -398,7 +400,7 @@ bool Worker<V, E, M>::_processVertices(size_t threadId,
     Vertex<V,E>* vertexEntry = *vertexIterator;
     MessageIterator<M> messages =
         _readCache->getMessages(vertexEntry->shard(), vertexEntry->key());
-    
+
     if (messages.size() > 0 || vertexEntry->active()) {
       vertexComputation->_vertexEntry = vertexEntry;
       vertexComputation->compute(messages);
@@ -442,6 +444,7 @@ bool Worker<V, E, M>::_processVertices(size_t threadId,
     _messageStats.accumulate(stats);
     _activeCount += activeCount;
     _runningThreads--;
+    _reports.append(std::move(reports));
     lastThread = _runningThreads == 0;  // should work like a join operation
   }
   return lastThread;
@@ -475,6 +478,9 @@ void Worker<V, E, M>::_finishedProcessing() {
     _state = WorkerState::IDLE;
 
     package.openObject();
+    package.add(VPackValue(Utils::reportsKey));
+    _reports.intoBuilder(package);
+    _reports.clear();
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
     package.add(Utils::executionNumberKey, VPackValue(_config.executionNumber()));
     package.add(Utils::globalSuperstepKey, VPackValue(_config.globalSuperstep()));
@@ -571,7 +577,7 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     cb();
     return;
   }
-  
+
   auto self = shared_from_this();
   auto cleanup = [self, this, cb] {
     VPackBuilder body;
@@ -582,7 +588,7 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     _callConductor(Utils::finishedWorkerFinalizationPath, body);
     cb();
   };
-  
+
   _state = WorkerState::DONE;
   VPackSlice store = body.get(Utils::storeResultsKey);
   if (store.isBool() && store.getBool() == true) {
@@ -599,7 +605,7 @@ template <typename V, typename E, typename M>
 void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
   MUTEX_LOCKER(guard, _commandMutex);
   TRI_ASSERT(b.isEmpty());
-  
+
 //  std::vector<ShardID> const& shards = _config.globalShardIDs();
   std::string tmp;
 
@@ -607,12 +613,12 @@ void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
   auto it = _graphStore->vertexIterator();
   for (; it.hasMore(); ++it) {
     Vertex<V,E> const* vertexEntry = *it;
-    
+
     TRI_ASSERT(vertexEntry->shard() < _config.globalShardIDs().size());
     ShardID const& shardId = _config.globalShardIDs()[vertexEntry->shard()];
-    
+
     b.openObject(/*unindexed*/true);
-    
+
     if (withId) {
       std::string const& cname = _config.shardIDToCollectionName(shardId);
       if (!cname.empty()) {
@@ -623,11 +629,11 @@ void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
         b.add(StaticStrings::IdString, VPackValue(tmp));
       }
     }
-    
+
     b.add(StaticStrings::KeyString, VPackValuePair(vertexEntry->key().data(),
                                                    vertexEntry->key().size(),
                                                    VPackValueType::String));
-    
+
     V const& data = vertexEntry->data();
     // bool store =
     _graphStore->graphFormat()->buildVertexDocument(b, &data, sizeof(V));
@@ -753,20 +759,20 @@ void Worker<V, E, M>::_callConductor(std::string const& path, VPackBuilder const
   } else {
 
     std::string baseUrl = Utils::baseUrl(Utils::conductorPrefix);
-    
+
     VPackBuffer<uint8_t> buffer;
     buffer.append(message.data(), message.size());
-    
+
     application_features::ApplicationServer& server = _config.vocbase()->server();
     auto const& nf = server.getFeature<arangodb::NetworkFeature>();
     network::ConnectionPool* pool = nf.pool();
-    
+
     network::RequestOptions reqOpts;
     reqOpts.database = _config.database();
-    
+
     network::sendRequest(pool, "server:" + _config.coordinatorId(),
                          fuerte::RestVerb::Post, baseUrl + path, std::move(buffer), reqOpts);
-    
+
   }
 }
 
@@ -781,15 +787,15 @@ void Worker<V, E, M>::_callConductorWithResponse(std::string const& path,
     handle(response.slice());
   } else {
     std::string baseUrl = Utils::baseUrl(Utils::conductorPrefix);
-    
+
     application_features::ApplicationServer& server = _config.vocbase()->server();
     auto const& nf = server.getFeature<arangodb::NetworkFeature>();
     network::ConnectionPool* pool = nf.pool();
-    
+
     VPackBuffer<uint8_t> buffer;
     buffer.append(message.data(), message.size());
-    
-    
+
+
     network::RequestOptions reqOpts;
     reqOpts.database = _config.database();
     reqOpts.skipScheduler = true;
@@ -797,7 +803,7 @@ void Worker<V, E, M>::_callConductorWithResponse(std::string const& path,
     network::Response r = network::sendRequest(pool, "server:" + _config.coordinatorId(),
                                                fuerte::RestVerb::Post,
                                                baseUrl + path, std::move(buffer), reqOpts).get();
-    
+
     if (handle) {
       handle(r.slice());
     }
