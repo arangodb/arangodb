@@ -130,7 +130,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   uint64_t _maxTick;
   uint64_t _maxHLC;
   /// @brief last document removed
-  TRI_voc_rid_t _lastRemovedDocRid = 0;
+  RevisionId _lastRemovedDocRid = RevisionId::none();
 
   rocksdb::SequenceNumber _startSequence;    /// start of batch sequence nr
   rocksdb::SequenceNumber& _currentSequence;  /// current sequence nr
@@ -184,7 +184,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     RocksDBEngine* engine = rocksutils::globalRocksEngine();
     // now adjust the counter in collections which are already loaded
     RocksDBEngine::CollectionPair dbColPair = engine->mapObjectToCollection(objectId);
-    if (dbColPair.second == 0 || dbColPair.first == 0) {
+    if (dbColPair.second.empty() || dbColPair.first == 0) {
       // collection with this objectID not known.Skip.
       return nullptr;
     }
@@ -201,7 +201,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   RocksDBIndex* findIndex(uint64_t objectId) {
     RocksDBEngine* engine = rocksutils::globalRocksEngine();
     RocksDBEngine::IndexTriple triple = engine->mapObjectToIndex(objectId);
-    if (std::get<0>(triple) == 0 && std::get<1>(triple) == 0) {
+    if (std::get<0>(triple) == 0 && std::get<1>(triple).empty()) {
       return nullptr;
     }
 
@@ -271,7 +271,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       auto const type = RocksDBKey::type(key);
 
       if (type == RocksDBEntryType::Collection) {
-        storeMaxTick(RocksDBKey::collectionId(key));
+        storeMaxTick(RocksDBKey::collectionId(key).id());
         auto slice = RocksDBValue::data(value);
         storeMaxTick(basics::VelocyPackHelper::stringUInt64(slice, "objectId"));
         VPackSlice indexes = slice.get("indexes");
@@ -283,7 +283,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       } else if (type == RocksDBEntryType::Database) {
         storeMaxTick(RocksDBKey::databaseId(key));
       } else if (type == RocksDBEntryType::View) {
-        storeMaxTick(std::max(RocksDBKey::databaseId(key), RocksDBKey::viewId(key)));
+        storeMaxTick(
+            std::max(RocksDBKey::databaseId(key), RocksDBKey::viewId(key).id()));
       }
     }
   }
@@ -318,8 +319,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         coll->meta().loadInitialNumberDocuments();
       }
       if (coll) {
-        std::vector<std::size_t> inserts;
-        std::vector<std::size_t> removes;
+        std::vector<std::uint64_t> inserts;
+        std::vector<std::uint64_t> removes;
         inserts.emplace_back(RocksDBKey::documentId(key).id());
         coll->bufferUpdates(_currentSequence, std::move(inserts), std::move(removes));
       }
@@ -366,18 +367,18 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         auto& cc = coll->meta().countUnsafe();
         cc._committedSeq = _currentSequence;
         cc._removed++;
-        if (_lastRemovedDocRid != 0) {
+        if (_lastRemovedDocRid.isSet()) {
           cc._revisionId = _lastRemovedDocRid;
         }
         coll->meta().loadInitialNumberDocuments();
       }
       if (coll) {
-        std::vector<std::size_t> inserts;
-        std::vector<std::size_t> removes;
+        std::vector<std::uint64_t> inserts;
+        std::vector<std::uint64_t> removes;
         removes.emplace_back(RocksDBKey::documentId(key).id());
         coll->bufferUpdates(_currentSequence, std::move(inserts), std::move(removes));
       }
-      _lastRemovedDocRid = 0;  // reset in any case
+      _lastRemovedDocRid = RevisionId::none();  // reset in any case
 
     } else {
       // We have to adjust the estimate with an insert
@@ -475,11 +476,11 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     switch (type) {
       case RocksDBLogType::DocumentRemoveV2:  // remove within a trx
       case RocksDBLogType::SingleRemoveV2:    // single remove
-        TRI_ASSERT(_lastRemovedDocRid == 0);
+        TRI_ASSERT(_lastRemovedDocRid.empty());
         _lastRemovedDocRid = RocksDBLogValue::revisionId(blob);
         break;
       default:
-        _lastRemovedDocRid = 0;  // reset in any other case
+        _lastRemovedDocRid = RevisionId::none();  // reset in any other case
         break;
     }
     RocksDBEngine* engine = rocksutils::globalRocksEngine();

@@ -281,7 +281,7 @@ irs::utf8_path getPersistedPath(arangodb::DatabasePathFeature const& dbPathFeatu
   dataPath += std::to_string(link.collection().vocbase().id());
   dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
   dataPath += "-";
-  dataPath += std::to_string(link.collection().id());  // has to be 'id' since this can be a per-shard collection
+  dataPath += std::to_string(link.collection().id().id());  // has to be 'id' since this can be a per-shard collection
   dataPath += "_";
   dataPath += std::to_string(link.id().id());
 

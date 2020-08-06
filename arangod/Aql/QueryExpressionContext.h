@@ -36,7 +36,7 @@ class QueryExpressionContext : public ExpressionContext {
  public:
   explicit QueryExpressionContext(transaction::Methods& trx,
                                   QueryContext& query,
-                                  AqlFunctionsInternalCache& cache)
+                                  AqlFunctionsInternalCache& cache) noexcept
       : ExpressionContext(),
         _trx(trx), _query(query), _aqlFunctionsInternalCache(cache) {}
 

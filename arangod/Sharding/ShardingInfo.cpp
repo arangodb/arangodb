@@ -310,8 +310,8 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids) const 
       CollectionNameResolver resolver(_collection->vocbase());
 
       result.add(StaticStrings::DistributeShardsLike,
-                 VPackValue(resolver.getCollectionNameCluster(static_cast<TRI_voc_cid_t>(
-                     basics::StringUtils::uint64(distributeShardsLike())))));
+                 VPackValue(resolver.getCollectionNameCluster(DataSourceId{
+                     basics::StringUtils::uint64(distributeShardsLike())})));
     } else {
       result.add(StaticStrings::DistributeShardsLike, VPackValue(distributeShardsLike()));
     }

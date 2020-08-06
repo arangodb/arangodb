@@ -31,6 +31,7 @@
 #include <unordered_map>
 
 #include "Basics/Result.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/ServerId.h"
 #include "VocBase/ticks.h"
 
@@ -107,7 +108,7 @@ struct ProgressInfo {
   /// @brief progress message
   std::string message{"not started"};
   /// @brief collections synced
-  std::map<TRI_voc_cid_t, std::string> processedCollections{};  // TODO worker safety
+  std::map<DataSourceId, std::string> processedCollections{};  // TODO worker safety
 
   // @brief constructor to optionally provide a setter/handler for messages
   explicit ProgressInfo(Setter);
@@ -119,25 +120,6 @@ struct ProgressInfo {
  private:
   std::mutex _mutex;
   Setter _setter;
-};
-
-struct BarrierInfo {
-  static constexpr double DefaultTimeout = 900.0;
-  /// @brief WAL barrier id
-  uint64_t id{0};
-  /// @brief ttl for WAL barrier
-  int ttl{static_cast<int>(DefaultTimeout)};
-  /// @brief WAL barrier last update time
-  double updateTime{0.0};
-
-  /// @brief send a "create barrier" command
-  Result create(Connection&, TRI_voc_tick_t);
-
-  /// @brief send an "extend barrier" command
-  Result extend(Connection&, TRI_voc_tick_t = 0);  // TODO worker safety
-
-  /// @brief send remove barrier command
-  Result remove(Connection&) noexcept;
 };
 
 struct MasterInfo {

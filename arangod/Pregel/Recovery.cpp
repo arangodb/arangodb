@@ -66,7 +66,7 @@ void RecoveryManager::monitorCollections(DatabaseID const& database,
 
   for (CollectionID const& collname : collections) {
     std::shared_ptr<LogicalCollection> coll = _ci.getCollection(database, collname);
-    CollectionID cid = std::to_string(coll->id());
+    CollectionID cid = std::to_string(coll->id().id());
     std::shared_ptr<std::vector<ShardID>> shards = _ci.getShardList(cid);
 
     if (!shards) {

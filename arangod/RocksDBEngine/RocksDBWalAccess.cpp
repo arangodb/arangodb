@@ -119,7 +119,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
     if (_responseSize > _maxResponseSize) {
       // it should only be possible to be in the middle of a huge batch,
       // if and only if we are in one big transaction. We may not stop
-      if (_state == TRANSACTION && _removedDocRid == 0) {
+      if (_state == TRANSACTION && _removedDocRid.empty()) {
         // this will make us process one more marker still
         _stopOnNext = true;
       }
@@ -200,7 +200,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
       case RocksDBLogType::CollectionTruncate: {
         resetTransientState();  // finish ongoing trx
         TRI_voc_tick_t dbid = RocksDBLogValue::databaseId(blob);
-        TRI_voc_cid_t cid = RocksDBLogValue::collectionId(blob);
+        DataSourceId cid = RocksDBLogValue::collectionId(blob);
         if (shouldHandleCollection(dbid, cid)) {  // will check vocbase
           TRI_vocbase_t* vocbase = loadVocbase(dbid);
           if (vocbase != nullptr) {
@@ -223,7 +223,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
         resetTransientState();  // finish ongoing trx
 
         TRI_voc_tick_t dbid = RocksDBLogValue::databaseId(blob);
-        TRI_voc_cid_t cid = RocksDBLogValue::collectionId(blob);
+        DataSourceId cid = RocksDBLogValue::collectionId(blob);
         // only print markers from this collection if it is set
         if (shouldHandleCollection(dbid, cid)) {  // will check vocbase
           TRI_vocbase_t* vocbase = loadVocbase(dbid);
@@ -253,7 +253,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
         resetTransientState();  // finish ongoing trx
 
         TRI_voc_tick_t dbid = RocksDBLogValue::databaseId(blob);
-        TRI_voc_cid_t cid = RocksDBLogValue::collectionId(blob);
+        DataSourceId cid = RocksDBLogValue::collectionId(blob);
         IndexId iid = RocksDBLogValue::indexId(blob);
 
         // only print markers from this collection if it is set
@@ -293,7 +293,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
       case RocksDBLogType::ViewDrop: {
         resetTransientState();  // finish ongoing trx
         TRI_voc_tick_t dbid = RocksDBLogValue::databaseId(blob);
-        TRI_voc_cid_t vid = RocksDBLogValue::viewId(blob);
+        DataSourceId vid = RocksDBLogValue::viewId(blob);
         if (shouldHandleView(dbid, vid)) {
           TRI_vocbase_t* vocbase = loadVocbase(dbid);
           if (vocbase != nullptr) {
@@ -362,7 +362,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
       case RocksDBLogType::SinglePut: {
         resetTransientState();  // finish ongoing trx
         TRI_voc_tick_t dbid = RocksDBLogValue::databaseId(blob);
-        TRI_voc_cid_t cid = RocksDBLogValue::collectionId(blob);
+        DataSourceId cid = RocksDBLogValue::collectionId(blob);
         if (shouldHandleCollection(dbid, cid)) {
           _state = SINGLE_PUT;
         }
@@ -371,7 +371,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
       case RocksDBLogType::SingleRemove: {  // deprecated
         resetTransientState();              // finish ongoing trx
         TRI_voc_tick_t dbid = RocksDBLogValue::databaseId(blob);
-        TRI_voc_cid_t cid = RocksDBLogValue::collectionId(blob);
+        DataSourceId cid = RocksDBLogValue::collectionId(blob);
         if (shouldHandleCollection(dbid, cid)) {
           _state = SINGLE_REMOVE;  // revisionId is unknown
         }
@@ -379,7 +379,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
       }
       case RocksDBLogType::DocumentRemoveV2: {  // remove within a trx
         if (_state == TRANSACTION) {
-          TRI_ASSERT(_removedDocRid == 0);
+          TRI_ASSERT(_removedDocRid.empty());
           _removedDocRid = RocksDBLogValue::revisionId(blob);
         } else {
           resetTransientState();
@@ -389,7 +389,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
       case RocksDBLogType::SingleRemoveV2: {
         resetTransientState();  // finish ongoing trx
         TRI_voc_tick_t dbid = RocksDBLogValue::databaseId(blob);
-        TRI_voc_cid_t cid = RocksDBLogValue::collectionId(blob);
+        DataSourceId cid = RocksDBLogValue::collectionId(blob);
         if (shouldHandleCollection(dbid, cid)) {
           _state = SINGLE_REMOVE;
           _removedDocRid = RocksDBLogValue::revisionId(blob);
@@ -458,7 +458,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
         }  // ignore Put in any other case
       } else if (RocksDBKey::type(key) == RocksDBEntryType::Collection) {
         TRI_voc_tick_t dbid = RocksDBKey::databaseId(key);
-        TRI_voc_cid_t cid = RocksDBKey::collectionId(key);
+        DataSourceId cid = RocksDBKey::collectionId(key);
 
         if (shouldHandleCollection(dbid, cid) &&
             (_state == COLLECTION_CREATE || _state == COLLECTION_RENAME ||
@@ -494,7 +494,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
         }
       } else if (RocksDBKey::type(key) == RocksDBEntryType::View) {
         TRI_voc_tick_t dbid = RocksDBKey::databaseId(key);
-        TRI_voc_cid_t vid = RocksDBKey::viewId(key);
+        DataSourceId vid = RocksDBKey::viewId(key);
 
         if (shouldHandleView(dbid, vid) && (_state == VIEW_CREATE || _state == VIEW_CHANGE)) {
           TRI_vocbase_t* vocbase = loadVocbase(dbid);
@@ -531,13 +531,13 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
       }
       TRI_ASSERT(_state != SINGLE_PUT || _currentTrxId.empty());
       TRI_ASSERT(_state != TRANSACTION || _trxDbId != 0);
-      TRI_ASSERT(_removedDocRid == 0);
-      _removedDocRid = 0;
+      TRI_ASSERT(_removedDocRid.empty());
+      _removedDocRid = RevisionId::none();
 
       uint64_t objectId = RocksDBKey::objectId(key);
       auto dbCollPair = rocksutils::mapObjectToCollection(objectId);
       TRI_voc_tick_t const dbid = dbCollPair.first;
-      TRI_voc_cid_t const cid = dbCollPair.second;
+      DataSourceId const cid = dbCollPair.second;
 
       if (!shouldHandleCollection(dbid, cid)) {
         return rocksdb::Status();  // no reset here
@@ -590,10 +590,10 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
     uint64_t objectId = RocksDBKey::objectId(key);
     auto triple = rocksutils::mapObjectToIndex(objectId);
     TRI_voc_tick_t const dbid = std::get<0>(triple);
-    TRI_voc_cid_t const cid = std::get<1>(triple);
+    DataSourceId const cid = std::get<1>(triple);
 
     if (!shouldHandleCollection(dbid, cid)) {
-      _removedDocRid = 0;  // ignore rid too
+      _removedDocRid = RevisionId::none();  // ignore rid too
       return;              // no reset here
     }
 
@@ -615,11 +615,11 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
       VPackObjectBuilder data(&_builder, "data", true);
       data->add(StaticStrings::KeyString,
                 VPackValuePair(docKey.data(), docKey.size(), VPackValueType::String));
-      data->add(StaticStrings::RevString, VPackValue(TRI_RidToString(_removedDocRid)));
+      data->add(StaticStrings::RevString, VPackValue(_removedDocRid.toString()));
     }
 
     printMarker(vocbase);
-    _removedDocRid = 0;  // always reset
+    _removedDocRid = RevisionId::none();  // always reset
 
     if (_state == SINGLE_REMOVE) {
       resetTransientState();
@@ -676,14 +676,14 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
     _state = INVALID;
     _currentTrxId = TransactionId::none();
     _trxDbId = 0;
-    _removedDocRid = 0;
+    _removedDocRid = RevisionId::none();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     _checkTick = true;
 #endif
   }
 
   uint64_t endBatch() {
-    TRI_ASSERT(_removedDocRid == 0 || _stopOnNext);
+    TRI_ASSERT(_removedDocRid.empty() || _stopOnNext);
     resetTransientState();
     return _currentSequence;
   }
@@ -735,7 +735,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
     _state = INVALID;
     _currentTrxId = TransactionId::none();
     _trxDbId = 0;
-    _removedDocRid = 0;
+    _removedDocRid = RevisionId::none();
   }
 
   // tick function that is called before each new WAL entry
@@ -764,7 +764,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
   State _state = INVALID;
   TransactionId _currentTrxId = TransactionId::none();
   TRI_voc_tick_t _trxDbId = 0;  // remove eventually
-  TRI_voc_rid_t _removedDocRid = 0;
+  RevisionId _removedDocRid = RevisionId::none();
   bool _stopOnNext = false;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool _checkTick = true;
@@ -774,7 +774,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
 // iterates over WAL starting at 'from' and returns up to 'chunkSize' documents
 // from the corresponding database
 WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
-                                       TransactionId, MarkerCallback const& func) const {
+                                       MarkerCallback const& func) const {
   TRI_ASSERT(filter.transactionIds.empty());  // not supported in any way
 
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();

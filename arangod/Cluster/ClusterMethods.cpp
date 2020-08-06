@@ -701,8 +701,8 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
   if (!other->distributeShardsLike().empty()) {
     CollectionNameResolver resolver(col->vocbase());
     std::string name = other->distributeShardsLike();
-    TRI_voc_cid_t cid = arangodb::basics::StringUtils::uint64(name);
-    if (cid > 0) {
+    DataSourceId cid{arangodb::basics::StringUtils::uint64(name)};
+    if (cid.isSet()) {
       name = resolver.getCollectionNameCluster(cid);
     }
     std::string const errorMessage = "Cannot distribute shards like '" + other->name() +
@@ -714,7 +714,7 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
       std::make_shared<std::unordered_map<std::string, std::vector<std::string>>>();
 
   // We need to replace the distribute with the cid.
-  auto cidString = arangodb::basics::StringUtils::itoa(other.get()->id());
+  auto cidString = arangodb::basics::StringUtils::itoa(other.get()->id().id());
   col->distributeShardsLike(cidString, other->shardingInfo());
 
   if (col->isSmart() && col->type() == TRI_COL_TYPE_EDGE) {
@@ -901,15 +901,12 @@ futures::Future<OperationResult> revisionOnCoordinator(ClusterFeature& feature,
             if (r.isString()) {
               VPackValueLength len;
               char const* p = r.getString(len);
-              TRI_voc_rid_t cmp = TRI_StringToRid(p, len, false);
-
-              TRI_voc_rid_t rid = builder.slice().isNumber()
-                                      ? builder.slice().getNumber<TRI_voc_rid_t>()
-                                      : 0;
-              if (cmp != UINT64_MAX && cmp > rid) {
+              RevisionId cmp = RevisionId::fromString(p, len, false);
+              RevisionId rid = RevisionId::fromSlice(builder.slice());
+              if (cmp != RevisionId::max() && cmp > rid) {
                 // get the maximum value
                 builder.clear();
-                builder.add(VPackValue(cmp));
+                builder.add(VPackValue(cmp.id()));
               }
             }
           } else {
@@ -1230,7 +1227,7 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
                                                     LogicalCollection& coll,
                                                     VPackSlice const slice,
                                                     arangodb::OperationOptions const& options) {
-  const std::string collid = std::to_string(coll.id());
+  const std::string collid = std::to_string(coll.id().id());
 
   // create vars used in this function
   bool const useMultiple = slice.isArray();  // insert more than one document
@@ -1579,7 +1576,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
                                                  OperationOptions const& options) {
   // Set a few variables needed for our work:
 
-  const std::string collid = std::to_string(coll.id());
+  const std::string collid = std::to_string(coll.id().id());
   std::shared_ptr<ShardMap> shardIds = coll.shardIds();
 
   // If _key is the one and only sharding attribute, we can do this quickly,
@@ -2467,9 +2464,9 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
 
       auto const serverState = ServerState::instance();
       infos.emplace_back(ClusterCollectionCreationInfo{
-          std::to_string(col->id()), col->numberOfShards(), col->replicationFactor(),
-          col->writeConcern(), waitForSyncReplication, velocy.slice(),
-          serverState->getId(), serverState->getRebootId()});
+          std::to_string(col->id().id()), col->numberOfShards(),
+          col->replicationFactor(), col->writeConcern(), waitForSyncReplication,
+          velocy.slice(), serverState->getId(), serverState->getRebootId()});
       vpackData.emplace_back(velocy.steal());
     } // for col : collections
 

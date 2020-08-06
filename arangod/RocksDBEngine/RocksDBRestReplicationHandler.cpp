@@ -165,6 +165,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
 }
 
 // handled by the batch for rocksdb
+// TODO: remove after release of 3.8
 void RocksDBRestReplicationHandler::handleCommandBarrier() {
   auto const type = _request->requestType();
   if (type == rest::RequestType::POST) {
@@ -224,7 +225,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   // extract collection
-  TRI_voc_cid_t cid = 0;
+  DataSourceId cid = DataSourceId::none();
   std::string const& value6 = _request->value("collection", found);
   if (found) {
     auto c = _vocbase.lookupCollection(value6);
@@ -429,7 +430,7 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
 
   // bind collection to context - will initialize iterator
   Result res;
-  TRI_voc_cid_t cid;
+  DataSourceId cid;
   uint64_t numDocs;
   std::tie(res, cid, numDocs) = ctx->bindCollectionIncremental(_vocbase, collection);
 
@@ -441,7 +442,7 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   // keysId = <batchId>-<cid>
   std::string keysId = StringUtils::itoa(ctx->id());
   keysId.push_back('-');
-  keysId.append(StringUtils::itoa(cid));
+  keysId.append(StringUtils::itoa(cid.id()));
 
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
@@ -451,13 +452,13 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   generateResult(rest::ResponseCode::OK, result.slice());
 }
 
-static std::pair<uint64_t, TRI_voc_cid_t> extractBatchAndCid(std::string const& input) {
+static std::pair<uint64_t, DataSourceId> extractBatchAndCid(std::string const& input) {
   auto pos = input.find('-');
   if (pos != std::string::npos && input.size() > pos + 1 && pos > 1) {
     return std::make_pair(StringUtils::uint64(input.c_str(), pos),
-                          StringUtils::uint64(input.substr(pos + 1)));
+                          DataSourceId{StringUtils::uint64(input.substr(pos + 1))});
   }
-  return std::make_pair(0, 0);
+  return std::make_pair(0, DataSourceId::none());
 }
 
 /// @brief returns all key ranges
@@ -484,7 +485,7 @@ void RocksDBRestReplicationHandler::handleCommandGetKeys() {
   // first suffix needs to be the key id
   std::string const& keysId = suffixes[1];  // <batchId>-<cid>
   uint64_t batchId;
-  TRI_voc_cid_t cid;
+  DataSourceId cid;
   std::tie(batchId, cid) = extractBatchAndCid(keysId);
 
   // get context
@@ -546,7 +547,7 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
   // first suffix needs to be the key id
   std::string const& keysId = suffixes[1];  // <batchId>-<cid>
   uint64_t batchId;
-  TRI_voc_cid_t cid;
+  DataSourceId cid;
   std::tie(batchId, cid) = extractBatchAndCid(keysId);
 
   RocksDBReplicationContext* ctx = _manager->find(batchId);
@@ -614,7 +615,7 @@ void RocksDBRestReplicationHandler::handleCommandRemoveKeys() {
   // first suffix needs to be the key id
   std::string const& keysId = suffixes[1];  // <batchId>-<cid>
   uint64_t batchId;
-  TRI_voc_cid_t cid;
+  DataSourceId cid;
   std::tie(batchId, cid) = extractBatchAndCid(keysId);
 
   RocksDBReplicationContext* ctx = _manager->find(batchId);

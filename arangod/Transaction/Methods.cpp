@@ -365,7 +365,7 @@ CollectionNameResolver const* transaction::Methods::resolver() const {
 }
 
 /// @brief return the transaction collection for a document collection
-TransactionCollection* transaction::Methods::trxCollection(TRI_voc_cid_t cid,
+TransactionCollection* transaction::Methods::trxCollection(DataSourceId cid,
                                                            AccessMode::Type type) const {
   TRI_ASSERT(_state != nullptr);
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING ||
@@ -391,8 +391,8 @@ std::string transaction::Methods::extractIdString(VPackSlice slice) {
 /// @brief build a VPack object with _id, _key and _rev, the result is
 /// added to the builder in the argument as a single object.
 void transaction::Methods::buildDocumentIdentity(
-    LogicalCollection* collection, VPackBuilder& builder, TRI_voc_cid_t cid,
-    arangodb::velocypack::StringRef const& key, TRI_voc_rid_t rid, TRI_voc_rid_t oldRid,
+    LogicalCollection* collection, VPackBuilder& builder, DataSourceId cid,
+    arangodb::velocypack::StringRef const& key, RevisionId rid, RevisionId oldRid,
     ManagedDocumentResult const* oldDoc, ManagedDocumentResult const* newDoc) {
   StringLeaser leased(_transactionContext.get());
   std::string& temp(*leased.get());
@@ -427,10 +427,10 @@ void transaction::Methods::buildDocumentIdentity(
               VPackValuePair(key.data(), key.length(), VPackValueType::String));
 
   char ridBuffer[21];
-  builder.add(StaticStrings::RevString, TRI_RidToValuePair(rid, &ridBuffer[0]));
+  builder.add(StaticStrings::RevString, rid.toValuePair(&ridBuffer[0]));
 
-  if (oldRid != 0) {
-    builder.add("_oldRev", VPackValue(TRI_RidToString(oldRid)));
+  if (oldRid.isSet()) {
+    builder.add("_oldRev", VPackValue(oldRid.toString()));
   }
   if (oldDoc != nullptr) {
     builder.add(VPackValue(StaticStrings::Old));
@@ -566,7 +566,7 @@ TransactionId transaction::Methods::tid() const {
   return _state->id();
 }
 
-std::string transaction::Methods::name(TRI_voc_cid_t cid) const {
+std::string transaction::Methods::name(DataSourceId cid) const {
   auto c = trxCollection(cid);
   if (c == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -591,8 +591,7 @@ OperationResult transaction::Methods::anyCoordinator(std::string const&) {
 
 /// @brief fetches documents in a collection in random order, local
 OperationResult transaction::Methods::anyLocal(std::string const& collectionName) {
-
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
+  DataSourceId cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   TransactionCollection* trxColl = trxCollection(cid);
   if (trxColl == nullptr) {
     throwCollectionNotFound(collectionName.c_str());
@@ -614,9 +613,9 @@ OperationResult transaction::Methods::anyLocal(std::string const& collectionName
   return OperationResult(Result(), resultBuilder.steal());
 }
 
-TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(TRI_voc_cid_t cid,
-                                                           std::string const& cname,
-                                                           AccessMode::Type type) {
+DataSourceId transaction::Methods::addCollectionAtRuntime(DataSourceId cid,
+                                                          std::string const& cname,
+                                                          AccessMode::Type type) {
   auto collection = trxCollection(cid);
 
   if (collection == nullptr) {
@@ -656,8 +655,8 @@ TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(TRI_voc_cid_t cid,
 }
 
 /// @brief add a collection to the transaction for read, at runtime
-TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(std::string const& collectionName,
-                                                           AccessMode::Type type) {
+DataSourceId transaction::Methods::addCollectionAtRuntime(std::string const& collectionName,
+                                                          AccessMode::Type type) {
   if (collectionName == _collectionCache.name && !collectionName.empty()) {
     return _collectionCache.cid;
   }
@@ -665,7 +664,7 @@ TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(std::string const& co
   TRI_ASSERT(!_state->isCoordinator());
   auto cid = resolver()->getCollectionIdLocal(collectionName);
 
-  if (cid == 0) {
+  if (cid.empty()) {
     throwCollectionNotFound(collectionName.c_str());
   }
   addCollectionAtRuntime(cid, collectionName, type);
@@ -719,7 +718,7 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
     return Result();
   }
 
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
+  DataSourceId cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   auto const& collection = trxCollection(cid)->collection();
 
   arangodb::velocypack::StringRef key(transaction::helpers::extractKeyPart(value));
@@ -758,7 +757,7 @@ Result transaction::Methods::documentFastPathLocal(std::string const& collection
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
+  DataSourceId cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   TransactionCollection* trxColl = trxCollection(cid);
   TRI_ASSERT(trxColl != nullptr);
   std::shared_ptr<LogicalCollection> const& collection = trxColl->collection();
@@ -834,7 +833,7 @@ Future<OperationResult> transaction::Methods::documentCoordinator(
 Future<OperationResult> transaction::Methods::documentLocal(std::string const& collectionName,
                                                             VPackSlice const value,
                                                             OperationOptions& options) {
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
+  DataSourceId cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
 
   VPackBuilder resultBuilder;
@@ -846,9 +845,9 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
       return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
     }
 
-    TRI_voc_rid_t expectedRevision = 0;
+    RevisionId expectedRevision = RevisionId::none();
     if (!options.ignoreRevs && value.isObject()) {
-      expectedRevision = TRI_ExtractRevisionId(value);
+      expectedRevision = RevisionId::fromSlice(value);
     }
 
     result.clear();
@@ -859,14 +858,14 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
       return res;
     }
 
-    if (expectedRevision != 0) {
-      TRI_voc_rid_t foundRevision =
+    if (expectedRevision.isSet()) {
+      RevisionId foundRevision =
           transaction::helpers::extractRevFromDocument(VPackSlice(result.vpack()));
       if (expectedRevision != foundRevision) {
         if (!isMultiple) {
           // still return
           buildDocumentIdentity(collection.get(), resultBuilder, cid, key,
-                                foundRevision, 0, nullptr, nullptr);
+                                foundRevision, RevisionId::none(), nullptr, nullptr);
         }
         return TRI_ERROR_ARANGO_CONFLICT;
       }
@@ -977,7 +976,7 @@ static double chooseTimeout(size_t count, size_t totalBytes) {
 Future<OperationResult> transaction::Methods::insertLocal(std::string const& cname,
                                                           VPackSlice const value,
                                                           OperationOptions& options) {
-  TRI_voc_cid_t cid = addCollectionAtRuntime(cname, AccessMode::Type::WRITE);
+  DataSourceId cid = addCollectionAtRuntime(cname, AccessMode::Type::WRITE);
   std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
 
   std::shared_ptr<std::vector<ServerID> const> followers;
@@ -1041,7 +1040,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     prevDocResult.clear();
 
     LocalDocumentId oldDocumentId;
-    TRI_voc_rid_t oldRevisionId = 0;
+    RevisionId oldRevisionId = RevisionId::none();
     VPackSlice key;
 
     Result res;
@@ -1050,11 +1049,11 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
         options.overwriteMode != OperationOptions::OverwriteMode::Conflict) {
       key = value.get(StaticStrings::KeyString);
       if (key.isString()) {
-        std::pair<LocalDocumentId, TRI_voc_rid_t> lookupResult;
+        std::pair<LocalDocumentId, RevisionId> lookupResult;
         res = collection->lookupKey(this, key.stringRef(), lookupResult);
         if (res.ok()) {
           TRI_ASSERT(lookupResult.first.isSet());
-          TRI_ASSERT(lookupResult.second != 0);
+          TRI_ASSERT(lookupResult.second.isSet());
           oldDocumentId = lookupResult.first;
           oldRevisionId = lookupResult.second;
         }
@@ -1076,8 +1075,8 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
 
       if (options.overwriteMode == OperationOptions::OverwriteMode::Ignore) {
         // in case of unique constraint violation: ignore and do nothing (no write!)
-        buildDocumentIdentity(collection.get(), resultBuilder, cid, key.stringRef(), oldRevisionId,
-                              0, nullptr, nullptr);
+        buildDocumentIdentity(collection.get(), resultBuilder, cid, key.stringRef(),
+                              oldRevisionId, RevisionId::none(), nullptr, nullptr);
         return res;
       }
       if (options.overwriteMode == OperationOptions::OverwriteMode::Update) {
@@ -1092,18 +1091,20 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "internal overwriteMode state");
       }
 
-      TRI_ASSERT(res.fail() || prevDocResult.revisionId() != 0);
+      TRI_ASSERT(res.fail() || prevDocResult.revisionId().isSet());
       didReplace = true;
     }
 
     if (res.fail()) {
       // Error reporting in the babies case is done outside of here,
-      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies && prevDocResult.revisionId() != 0) {
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies &&
+          prevDocResult.revisionId().isSet()) {
         TRI_ASSERT(didReplace);
 
         arangodb::velocypack::StringRef key = value.get(StaticStrings::KeyString).stringRef();
-        buildDocumentIdentity(collection.get(), resultBuilder, cid, key, prevDocResult.revisionId(),
-                              0, nullptr, nullptr);
+        buildDocumentIdentity(collection.get(), resultBuilder, cid, key,
+                              prevDocResult.revisionId(), RevisionId::none(),
+                              nullptr, nullptr);
       }
       return res;
     }
@@ -1275,7 +1276,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
                                                           VPackSlice const newValue,
                                                           OperationOptions& options,
                                                           TRI_voc_document_operation_e operation) {
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
+  DataSourceId cid = addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
   auto* trxColl = trxCollection(cid);
   TRI_ASSERT(trxColl->isLocked(AccessMode::Type::WRITE));
   auto const& collection = trxColl->collection();
@@ -1368,10 +1369,10 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
 
     if (res.fail()) {
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies) {
-        TRI_ASSERT(previous.revisionId() != 0);
+        TRI_ASSERT(previous.revisionId().isSet());
         arangodb::velocypack::StringRef key(newVal.get(StaticStrings::KeyString));
         buildDocumentIdentity(collection.get(), resultBuilder, cid, key,
-                              previous.revisionId(), 0,
+                              previous.revisionId(), RevisionId::none(),
                               options.returnOld ? &previous : nullptr, nullptr);
       }
       return res;
@@ -1380,7 +1381,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     if (!options.silent) {
       TRI_ASSERT(!options.returnOld || !previous.empty());
       TRI_ASSERT(!options.returnNew || !result.empty());
-      TRI_ASSERT(result.revisionId() != 0 && previous.revisionId() != 0);
+      TRI_ASSERT(result.revisionId().isSet() && previous.revisionId().isSet());
 
       arangodb::velocypack::StringRef key(newVal.get(StaticStrings::KeyString));
       buildDocumentIdentity(collection.get(), resultBuilder, cid, key,
@@ -1505,7 +1506,7 @@ Future<OperationResult> transaction::Methods::removeCoordinator(std::string cons
 Future<OperationResult> transaction::Methods::removeLocal(std::string const& collectionName,
                                                           VPackSlice const value,
                                                           OperationOptions& options) {
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
+  DataSourceId cid = addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
   auto* trxColl = trxCollection(cid);
   TRI_ASSERT(trxColl->isLocked(AccessMode::Type::WRITE));
   auto const& collection = trxColl->collection();
@@ -1592,9 +1593,9 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
 
     if (res.fail()) {
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies) {
-        TRI_ASSERT(previous.revisionId() != 0);
+        TRI_ASSERT(previous.revisionId().isSet());
         buildDocumentIdentity(collection.get(), resultBuilder, cid, key,
-                              previous.revisionId(), 0,
+                              previous.revisionId(), RevisionId::none(),
                               options.returnOld ? &previous : nullptr, nullptr);
       }
       return res;
@@ -1602,9 +1603,9 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
 
     if (!options.silent) {
       TRI_ASSERT(!options.returnOld || !previous.empty());
-      TRI_ASSERT(previous.revisionId() != 0);
+      TRI_ASSERT(previous.revisionId().isSet());
       buildDocumentIdentity(collection.get(), resultBuilder, cid, key,
-                            previous.revisionId(), 0,
+                            previous.revisionId(), RevisionId::none(),
                             options.returnOld ? &previous : nullptr, nullptr);
     }
 
@@ -1687,7 +1688,7 @@ OperationResult transaction::Methods::allCoordinator(std::string const& collecti
 OperationResult transaction::Methods::allLocal(std::string const& collectionName,
                                                uint64_t skip, uint64_t limit,
                                                OperationOptions& options) {
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
+  DataSourceId cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   TRI_ASSERT(trxCollection(cid)->isLocked(AccessMode::Type::READ));
 
   VPackBuilder resultBuilder;
@@ -1734,7 +1735,7 @@ Future<OperationResult> transaction::Methods::truncateCoordinator(std::string co
 /// @brief remove all documents in a collection, local
 Future<OperationResult> transaction::Methods::truncateLocal(std::string const& collectionName,
                                                             OperationOptions& options) {
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
+  DataSourceId cid = addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
   auto const& collection = trxCollection(cid)->collection();
 
   std::shared_ptr<std::vector<ServerID> const> followers;
@@ -1945,8 +1946,7 @@ futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
 /// @brief count the number of documents in a collection
 OperationResult transaction::Methods::countLocal(std::string const& collectionName,
                                                  transaction::CountType type) {
-
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
+  DataSourceId cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   auto const& collection = trxCollection(cid)->collection();
 
 //  Result lockResult = lockRecursive(cid, AccessMode::Type::READ);
@@ -2011,7 +2011,7 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScan(std::string const
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
   }
 
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
+  DataSourceId cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   TransactionCollection* trxColl = trxCollection(cid);
   if (trxColl == nullptr) {
     throwCollectionNotFound(collectionName.c_str());
@@ -2044,7 +2044,7 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScan(std::string const
 }
 
 /// @brief return the collection
-arangodb::LogicalCollection* transaction::Methods::documentCollection(TRI_voc_cid_t cid) const {
+arangodb::LogicalCollection* transaction::Methods::documentCollection(DataSourceId cid) const {
   TRI_ASSERT(_state != nullptr);
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
@@ -2076,7 +2076,7 @@ arangodb::LogicalCollection* transaction::Methods::documentCollection(std::strin
 }
 
 /// @brief add a collection by id, with the name supplied
-Result transaction::Methods::addCollection(TRI_voc_cid_t cid, std::string const& cname,
+Result transaction::Methods::addCollection(DataSourceId cid, std::string const& cname,
                                            AccessMode::Type type) {
   if (_state == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -2099,14 +2099,14 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, std::string const&
         "cannot add collection to a previously started top-level transaction");
   }
 
-  if (cid == 0) {
+  if (cid.empty()) {
     // invalid cid
     throwCollectionNotFound(cname.c_str());
   }
 
   const bool lockUsage = !_mainTransaction;
 
-  auto addCollectionCallback = [this, &cname, type, lockUsage](TRI_voc_cid_t cid) -> void {
+  auto addCollectionCallback = [this, &cname, type, lockUsage](DataSourceId cid) -> void {
     auto res = _state->addCollection(cid, cname, type, lockUsage);
 
     if (res.fail()) {
@@ -2170,7 +2170,7 @@ bool transaction::Methods::isLocked(LogicalCollection* document, AccessMode::Typ
 
 #if 0
 /// @brief read- or write-lock a collection
-Result transaction::Methods::lockRecursive(TRI_voc_cid_t cid, AccessMode::Type type) {
+Result transaction::Methods::lockRecursive(DataSourceId cid, AccessMode::Type type) {
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     return Result(TRI_ERROR_TRANSACTION_INTERNAL,
                   "transaction not running on lock");
@@ -2181,7 +2181,7 @@ Result transaction::Methods::lockRecursive(TRI_voc_cid_t cid, AccessMode::Type t
 }
 
 /// @brief read- or write-unlock a collection
-Result transaction::Methods::unlockRecursive(TRI_voc_cid_t cid, AccessMode::Type type) {
+Result transaction::Methods::unlockRecursive(DataSourceId cid, AccessMode::Type type) {
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     return Result(TRI_ERROR_TRANSACTION_INTERNAL,
                   "transaction not running on unlock");

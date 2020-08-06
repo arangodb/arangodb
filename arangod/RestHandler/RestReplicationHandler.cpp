@@ -129,7 +129,7 @@ static Result checkPlanLeaderDirect(std::shared_ptr<LogicalCollection> const& co
   std::vector<std::string> agencyPath = {"Plan",
                                          "Collections",
                                          col->vocbase().name(),
-                                         std::to_string(col->planId()),
+                                         std::to_string(col->planId().id()),
                                          "shards",
                                          col->name()};
 
@@ -853,7 +853,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
     std::shared_ptr<ShardMap> shardMap = c->shardIds();
     // shardMap is an unordered_map from ShardId (string) to a vector of
     // servers (strings), wrapped in a shared_ptr
-    auto cic = ci.getCollectionCurrent(dbName, basics::StringUtils::itoa(c->id()));
+    auto cic = ci.getCollectionCurrent(dbName, basics::StringUtils::itoa(c->id().id()));
     // Check all shards:
     bool isReady = true;
     bool allInSync = true;
@@ -1715,8 +1715,8 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
 
           if (generateNewRevisionIds && arangodb::velocypack::StringRef(it.key) ==
                                             StaticStrings::RevString) {
-            TRI_voc_rid_t newRid = physical->newRevisionId();
-            builder.add(TRI_RidToValuePair(newRid, ridBuffer));
+            RevisionId newRid = physical->newRevisionId();
+            builder.add(newRid.toValuePair(ridBuffer));
           } else {
             builder.add(it.value);
           }
@@ -2236,7 +2236,7 @@ void RestReplicationHandler::handleCommandSync() {
   result.add(VPackValue(VPackValueType::Object));
   result.add("collections", VPackValue(VPackValueType::Array));
   for (auto const& it : syncer->getProcessedCollections()) {
-    std::string const cidString = StringUtils::itoa(it.first);
+    std::string const cidString = StringUtils::itoa(it.first.id());
     // Insert a collection
     result.add(VPackValue(VPackValueType::Object));
     result.add("id", VPackValue(cidString));
@@ -2247,12 +2247,6 @@ void RestReplicationHandler::handleCommandSync() {
 
   auto tickString = std::to_string(syncer->getLastLogTick());
   result.add("lastLogTick", VPackValue(tickString));
-
-  bool const keepBarrier = VelocyPackHelper::getBooleanValue(body, "keepBarrier", false);
-  if (keepBarrier) {
-    auto barrierId = std::to_string(syncer->stealBarrier());
-    result.add("barrierId", VPackValue(barrierId));
-  }
 
   result.close();  // base
   generateResult(rest::ResponseCode::OK, result.slice());
@@ -2335,14 +2329,7 @@ void RestReplicationHandler::handleCommandApplierStart() {
     useTick = true;
   }
 
-  TRI_voc_tick_t barrierId = 0;
-  std::string const& value2 = _request->value("barrierId", found);
-  if (found) {
-    // query parameter "barrierId" specified
-    barrierId = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value2));
-  }
-
-  applier->startTailing(initialTick, useTick, barrierId);
+  applier->startTailing(initialTick, useTick);
   handleCommandApplierGetState();
 }
 
@@ -3028,7 +3015,7 @@ bool RestReplicationHandler::prepareRevisionOperation(RevisionOperationContext& 
   // get resume
   std::string const& resumeString = _request->value("resume", found);
   if (found) {
-    ctx.resume = basics::HybridLogicalClock::decodeTimeStamp(resumeString);
+    ctx.resume = RevisionId::fromString(resumeString);
   }
 
   // print request
@@ -3131,7 +3118,7 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
   bool badFormat = !body.isArray();
   if (!badFormat) {
     std::size_t i = 0;
-    std::uint64_t previousRight = 0;
+    RevisionId previousRight = RevisionId::none();
     for (VPackSlice entry : VPackArrayIterator(body)) {
       if (!entry.isArray() || entry.length() != 2) {
         badFormat = true;
@@ -3143,10 +3130,10 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
         badFormat = true;
         break;
       }
-      TRI_voc_rid_t left = basics::HybridLogicalClock::decodeTimeStamp(first);
-      TRI_voc_rid_t right = basics::HybridLogicalClock::decodeTimeStamp(second);
-      if (left == std::numeric_limits<TRI_voc_rid_t>::max() ||
-          right == std::numeric_limits<TRI_voc_rid_t>::max() || left >= right ||
+      RevisionId left = RevisionId::fromSlice(first);
+      RevisionId right = RevisionId::fromSlice(second);
+      if (left == RevisionId::max() ||
+          right == RevisionId::max() || left >= right ||
           left < previousRight) {
         badFormat = true;
         break;
@@ -3173,14 +3160,14 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
   VPackBuilder response;
   {
     VPackObjectBuilder obj(&response);
-    TRI_voc_rid_t resumeNext = ctx.resume;
+    RevisionId resumeNext = ctx.resume;
     VPackSlice range;
-    TRI_voc_rid_t left;
-    TRI_voc_rid_t right;
+    RevisionId left;
+    RevisionId right;
     auto setRange = [&body, &range, &left, &right](std::size_t index) -> void {
       range = body.at(index);
-      left = basics::HybridLogicalClock::decodeTimeStamp(range.at(0));
-      right = basics::HybridLogicalClock::decodeTimeStamp(range.at(1));
+      left = RevisionId::fromSlice(range.at(0));
+      right = RevisionId::fromSlice(range.at(1));
     };
     setRange(current);
 
@@ -3200,13 +3187,13 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
           TRI_ASSERT(!subOpen);
           response.openArray();
           subOpen = true;
-          resumeNext = std::max(ctx.resume + 1, left);
+          resumeNext = std::max(ctx.resume.next(), left);
         }
 
         if (it.hasMore() && it.revision() >= left && it.revision() <= right) {
-          response.add(basics::HybridLogicalClock::encodeTimeStampToValuePair(it.revision(), ridBuffer));
+          response.add(it.revision().toValuePair(ridBuffer));
           ++total;
-          resumeNext = it.revision() + 1;
+          resumeNext = it.revision().next();
           it.next();
         }
 
@@ -3216,7 +3203,7 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
           subOpen = false;
           response.close();
           TRI_ASSERT(response.isOpenArray());
-          resumeNext = right + 1;
+          resumeNext = right.next();
           ++current;
           if (current < body.length()) {
             setRange(current);
@@ -3239,8 +3226,7 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
     if (body.length() >= 1) {
       setRange(body.length() - 1);
       if (body.length() > 0 && resumeNext <= right) {
-        response.add(StaticStrings::RevisionTreeResume,
-                     basics::HybridLogicalClock::encodeTimeStampToValuePair(resumeNext, ridBuffer));
+        response.add(StaticStrings::RevisionTreeResume, resumeNext.toValuePair(ridBuffer));
       }
     }
   }
@@ -3273,8 +3259,8 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
         badFormat = true;
         break;
       }
-      std::uint64_t entryNum = basics::HybridLogicalClock::decodeTimeStamp(entry);
-      if (entryNum == std::numeric_limits<std::uint64_t>::max()) {
+      RevisionId rev = RevisionId::fromSlice(entry);
+      if (rev == RevisionId::max()) {
         badFormat = true;
         break;
       }
@@ -3297,7 +3283,7 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
     VPackArrayBuilder docs(&response);
 
     for (VPackSlice entry : VPackArrayIterator(body)) {
-      TRI_voc_rid_t rev = basics::HybridLogicalClock::decodeTimeStamp(entry);
+      RevisionId rev = RevisionId::fromSlice(entry);
       if (it.hasMore() && it.revision() < rev) {
         it.seek(rev);
       }
@@ -3393,13 +3379,13 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   /* Temporary ASSERTS to prove correctness of new constructor */
   TRI_ASSERT(col->system() == (name[0] == '_'));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_voc_cid_t planId = 0;
+  DataSourceId planId = DataSourceId::none();
   VPackSlice const planIdSlice = slice.get("planId");
   if (planIdSlice.isNumber()) {
-    planId = static_cast<TRI_voc_cid_t>(planIdSlice.getNumericValue<uint64_t>());
+    planId = DataSourceId{planIdSlice.getNumericValue<DataSourceId::BaseType>()};
   } else if (planIdSlice.isString()) {
     std::string tmp = planIdSlice.copyString();
-    planId = static_cast<TRI_voc_cid_t>(StringUtils::uint64(tmp));
+    planId = DataSourceId{StringUtils::uint64(tmp)};
   } else if (planIdSlice.isNone()) {
     // There is no plan ID it has to be equal to collection id
     planId = col->id();

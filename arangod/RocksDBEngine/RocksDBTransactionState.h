@@ -35,6 +35,7 @@
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 
@@ -95,7 +96,7 @@ class RocksDBTransactionState final : public TransactionState {
     return (_status == transaction::Status::ABORTED) && hasOperations();
   }
 
-  void prepareOperation(TRI_voc_cid_t cid, TRI_voc_rid_t rid,
+  void prepareOperation(DataSourceId cid, RevisionId rid,
                         TRI_voc_document_operation_e operationType);
 
   /// @brief undo the effects of the previous prepareOperation call
@@ -104,7 +105,7 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief add an operation for a transaction collection
   /// sets hasPerformedIntermediateCommit to true if an intermediate commit was
   /// performed
-  Result addOperation(TRI_voc_cid_t collectionId, TRI_voc_rid_t revisionId,
+  Result addOperation(DataSourceId collectionId, RevisionId revisionId,
                       TRI_voc_document_operation_e opType,
                       bool& hasPerformedIntermediateCommit);
 
@@ -141,23 +142,23 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief in parallel mode. READ-ONLY transactions
   bool inParallelMode() const { return _parallel; }
 
-  RocksDBTransactionCollection::TrackedOperations& trackedOperations(TRI_voc_cid_t cid);
+  RocksDBTransactionCollection::TrackedOperations& trackedOperations(DataSourceId cid);
 
   /// @brief Track documents inserted to the collection
   ///        Used to update the revision tree for replication after commit
-  void trackInsert(TRI_voc_cid_t cid, TRI_voc_rid_t rid);
+  void trackInsert(DataSourceId cid, RevisionId rid);
 
   /// @brief Track documents removed from the collection
   ///        Used to update the revision tree for replication after commit
-  void trackRemove(TRI_voc_cid_t cid, TRI_voc_rid_t rid);
+  void trackRemove(DataSourceId cid, RevisionId rid);
 
   /// @brief Every index can track hashes inserted into this index
   ///        Used to update the estimate after the trx committed
-  void trackIndexInsert(TRI_voc_cid_t cid, IndexId idxObjectId, uint64_t hash);
+  void trackIndexInsert(DataSourceId cid, IndexId idxObjectId, uint64_t hash);
 
   /// @brief Every index can track hashes removed from this index
   ///        Used to update the estimate after the trx committed
-  void trackIndexRemove(TRI_voc_cid_t cid, IndexId idxObjectId, uint64_t hash);
+  void trackIndexRemove(DataSourceId cid, IndexId idxObjectId, uint64_t hash);
 
   bool isOnlyExclusiveTransaction() const;
 

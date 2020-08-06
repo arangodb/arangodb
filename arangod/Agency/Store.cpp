@@ -1042,7 +1042,9 @@ void Store::removeTTL(std::string const& uri) {
   }
 }
 
-std::string Store::normalize(std::string const& path) {
+std::string Store::normalize(char const* key, size_t length) {
+  VPackStringRef const path(key, length);
+
   std::string normalized;
   normalized.reserve(path.size() + 1);
   size_t offset = 0;
