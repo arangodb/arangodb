@@ -24,9 +24,9 @@
 
 using namespace arangodb::pregel;
 
-ReportBuilder::~ReportBuilder() {
+ReportBuilder::~ReportBuilder() try {
   manager.append(Report{ss.str(), level, std::move(annotations)});
-}
+} catch(...) { /* ignore message */ }
 
 ReportBuilder::ReportBuilder(ReportManager& manager, ReportLevel lvl)
     : level(lvl), manager(manager) {}
