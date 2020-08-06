@@ -24,18 +24,18 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
+/// @author Yuriy Popov
 /// @author Copyright 2019, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const base = require("fs").join(require('internal').pathForTesting('server'),
-             'aql', 'aql-optimizer-rule-late-document-materialization-arangosearch.inc');
+             'aql', 'aql-optimizer-rule-late-document-materialization-arangosearch-primary-sort.inc');
 const ArangoResearchLateMaterializationTestSuite = require("internal").load(base);
 const isCluster = require("internal").isCluster();
 
-function lateDocumentMaterializationArangoSearchRuleTestSuite () {
+function lateDocumentMaterializationArangoSearchPrimarySortRuleTestSuite () {
   let suite = {};
   deriveTestSuite(
     ArangoResearchLateMaterializationTestSuite(isCluster, "UnitTestsDB", {}),
@@ -45,6 +45,6 @@ function lateDocumentMaterializationArangoSearchRuleTestSuite () {
   return suite;
 }
 
-jsunity.run(lateDocumentMaterializationArangoSearchRuleTestSuite);
+jsunity.run(lateDocumentMaterializationArangoSearchPrimarySortRuleTestSuite);
 
 return jsunity.done();
