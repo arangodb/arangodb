@@ -415,7 +415,6 @@ std::shared_ptr<transaction::Context> QueryStreamCursor::context() const {
 
 ExecutionState QueryStreamCursor::prepareDump() {
   if (_finalization) {
-    TRI_ASSERT(_query->state() > QueryExecutionState::ValueType::EXECUTION);
     return ExecutionState::DONE;
   }
   
