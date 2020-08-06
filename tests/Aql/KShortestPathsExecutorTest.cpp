@@ -61,7 +61,7 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-using Vertex = KShortestPathsExecutorInfos::InputVertex;
+using Vertex = GraphNode::InputVertex;
 using RegisterSet = RegIdSet;
 using Path = std::vector<std::string>;
 using PathSequence = std::vector<Path>;
@@ -187,7 +187,7 @@ class KShortestPathsExecutorTest
   ShortestPathOptions options;
 
   RegisterInfos registerInfos;
-  KShortestPathsExecutorInfos executorInfos;
+  KShortestPathsExecutorInfos<KShortestPathsFinder> executorInfos;
 
   FakeKShortestPathsFinder& finder;
 
@@ -197,7 +197,7 @@ class KShortestPathsExecutorTest
   std::shared_ptr<Builder> fakeUnusedBlock;
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher;
 
-  KShortestPathsExecutor testee;
+  KShortestPathsExecutor<KShortestPathsFinder> testee;
   OutputAqlItemRow output;
 
   KShortestPathsExecutorTest()
@@ -317,7 +317,7 @@ class KShortestPathsExecutorTest
     }
   }
 
-  void TestExecutor(RegisterInfos& registerInfos, KShortestPathsExecutorInfos& executorInfos,
+  void TestExecutor(RegisterInfos& registerInfos, KShortestPathsExecutorInfos<KShortestPathsFinder>& executorInfos,
                     AqlItemBlockInputRange& input) {
     // This will fetch everything now, unless we give a small enough atMost
 

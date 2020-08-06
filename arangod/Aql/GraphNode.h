@@ -58,6 +58,21 @@ namespace aql {
 class ExecutionEngine;
 
 class GraphNode : public ExecutionNode {
+ public:
+  struct InputVertex {
+    enum class Type { CONSTANT, REGISTER };
+    Type type;
+    // TODO make the following two a union instead
+    RegisterId reg;
+    std::string value;
+
+    // cppcheck-suppress passedByValue
+    explicit InputVertex(std::string value)
+        : type(Type::CONSTANT), reg(0), value(std::move(value)) {}
+    explicit InputVertex(RegisterId reg)
+        : type(Type::REGISTER), reg(reg), value("") {}
+  };
+
  protected:
   /// @brief constructor with a vocbase and a collection name
   GraphNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,

@@ -27,6 +27,8 @@
 #include "Graph/TraverserCache.h"
 #include "Transaction/Helpers.h"
 
+#include "Logger/LogMacros.h"
+
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -35,11 +37,11 @@ using namespace arangodb::graph;
 auto KPathFinder::PathResult::clear() -> void { _vertices.clear(); }
 
 auto KPathFinder::PathResult::appendVertex(VertexRef v) -> void {
-  _vertices.push_front(v);
+  _vertices.push_back(v);
 }
 
 auto KPathFinder::PathResult::prependVertex(VertexRef v) -> void {
-  _vertices.push_back(v);
+  _vertices.push_front(v);
 }
 
 auto KPathFinder::PathResult::toVelocyPack(arangodb::velocypack::Builder& builder) -> void {
@@ -79,6 +81,14 @@ KPathFinder::Ball::Ball(Direction dir, ShortestPathOptions& opts)
 
 KPathFinder::Ball::~Ball() = default;
 
+void KPathFinder::Ball::clear() {
+  _shell.clear();
+  _interior.clear();
+  _depth = 0;
+  _searchIndex = std::numeric_limits<size_t>::max();
+}
+
+
 void KPathFinder::Ball::reset(VertexRef center) {
   _center = center;
   _shell.clear();
@@ -116,13 +126,17 @@ auto KPathFinder::Ball::buildPath(VertexIdentifier const& vertexInShell,
   VertexIdentifier const* myVertex = &vertexInShell;
   if (_direction == Direction::FORWARD) {
     // TRI_ASSERT(path.empty());
-    while (myVertex->predecessor != 0 && myVertex->id != _center) {
+    LOG_DEVEL << "BuildResult " << myVertex->id << " / " << myVertex->predecessor << "Forward";
+    while (myVertex->predecessor != 0 || myVertex->id != _center) {
+      LOG_DEVEL << "Adding " << myVertex->id;
       path.prependVertex(myVertex->id);
       TRI_ASSERT(_interior.size() > myVertex->predecessor);
       myVertex = &_interior[myVertex->predecessor];
     }
+    LOG_DEVEL << "Adding Center " << _center;
     path.prependVertex(_center);
   } else {
+    LOG_DEVEL << "BuildResult " << myVertex->id << "BACKWARD";
     // For backward we just need to attach ourself
     // So everything until here should be done.
     // TRI_ASSERT(!path.empty());
@@ -133,11 +147,13 @@ auto KPathFinder::Ball::buildPath(VertexIdentifier const& vertexInShell,
     // TODO push this edge
     TRI_ASSERT(_interior.size() > myVertex->predecessor);
     myVertex = &_interior[myVertex->predecessor];
-    while (myVertex->predecessor != 0 && myVertex->id != _center) {
+    while (myVertex->predecessor != 0 || myVertex->id != _center) {
+      LOG_DEVEL << "Adding " << myVertex->id;
       path.appendVertex(myVertex->id);
       TRI_ASSERT(_interior.size() > myVertex->predecessor);
       myVertex = &_interior[myVertex->predecessor];
     }
+    LOG_DEVEL << "Adding Center " << _center;
     path.appendVertex(_center);
   }
 }
@@ -184,7 +200,7 @@ auto KPathFinder::Ball::computeNeighbourhoodOfNextVertex(Ball const& other,
 }
 
 KPathFinder::KPathFinder(ShortestPathOptions& options)
-    : _opts(options), _left{Direction::FORWARD, options}, _right{Direction::BACKWARD, options} {}
+    : ShortestPathFinder(options), _left{Direction::FORWARD, options}, _right{Direction::BACKWARD, options} {}
 
 KPathFinder::~KPathFinder() = default;
 
@@ -194,14 +210,25 @@ void KPathFinder::reset(VertexRef source, VertexRef target) {
   _right.reset(target);
 
   // Special Case depth == 0
-  if (_opts.minDepth == 0 && source == target) {
+  if (options().minDepth == 0 && source == target) {
     _results.emplace_back(std::make_pair(VertexIdentifier{source, 0, EdgeDocumentToken{}},
                                          VertexIdentifier{target, 0, EdgeDocumentToken{}}));
   }
 }
 
-auto KPathFinder::hasMore() const -> bool {
-  return !_results.empty() || !searchDone();
+void KPathFinder::clear() {
+  _results.clear();
+}
+
+bool KPathFinder::shortestPath(arangodb::velocypack::Slice const&,
+                               arangodb::velocypack::Slice const&,
+                               arangodb::graph::ShortestPathResult&) {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+auto KPathFinder::isDone() const -> bool {
+  return _results.empty() && searchDone();
 }
 
 // get the next available path serialized in the builder
@@ -238,6 +265,34 @@ auto KPathFinder::getNextPath(VPackBuilder& result) -> bool {
   return false;
 }
 
+// get the next available path serialized in the builder
+auto KPathFinder::skipPath() -> bool {
+
+  while (_results.empty() && !searchDone()) {
+    if (_searchLeft) {
+      if (ADB_UNLIKELY(_left.doneWithDepth())) {
+        startNextDepth();
+      } else {
+        _left.computeNeighbourhoodOfNextVertex(_right, _results);
+      }
+    } else {
+      if (ADB_UNLIKELY(_right.doneWithDepth())) {
+        startNextDepth();
+      } else {
+        _right.computeNeighbourhoodOfNextVertex(_left, _results);
+      }
+    }
+  }
+
+  if (!_results.empty()) {
+    // result done
+    _results.pop_back();
+    return true;
+  }
+  return false;
+}
+
+
 auto KPathFinder::startNextDepth() -> void {
   if (_right.shellSize() < _left.shellSize()) {
     _searchLeft = false;
@@ -250,5 +305,5 @@ auto KPathFinder::startNextDepth() -> void {
 
 auto KPathFinder::searchDone() const -> bool {
   return _left.noPathLeft() || _right.noPathLeft() ||
-         _left.getDepth() + _right.getDepth() > _opts.maxDepth;
+         _left.getDepth() + _right.getDepth() > options().maxDepth;
 }

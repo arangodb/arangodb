@@ -36,6 +36,7 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Graph/AttributeWeightShortestPathFinder.h"
+#include "Graph/KPathFinder.h"
 #include "Graph/KShortestPathsFinder.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
@@ -77,9 +78,10 @@ static void parseNodeInput(AstNode const* node, std::string& id,
                                          "_id string or an object with _id.");
   }
 }
-static KShortestPathsExecutorInfos::InputVertex prepareVertexInput(KShortestPathsNode const* node,
-                                                                   bool isTarget) {
-  using InputVertex = KShortestPathsExecutorInfos::InputVertex;
+
+static GraphNode::InputVertex prepareVertexInput(
+    KShortestPathsNode const* node, bool isTarget) {
+  using InputVertex = GraphNode::InputVertex;
   if (isTarget) {
     if (node->usesTargetInVariable()) {
       auto it = node->getRegisterPlan()->varInfo.find(node->targetInVariable().id);
@@ -318,23 +320,28 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
 
   auto opts = static_cast<ShortestPathOptions*>(options());
 
-  if (shortestPathType() == arangodb::graph::ShortestPathType::Type::KPaths) {
-    LOG_DEVEL << "mchacki likes this and creates a KPathsExecutor here. minDepth: " << opts->minDepth << ", maxDepth: " << opts->maxDepth;
-  }
-
-  KShortestPathsExecutorInfos::InputVertex sourceInput = ::prepareVertexInput(this, false);
-  KShortestPathsExecutorInfos::InputVertex targetInput = ::prepareVertexInput(this, true);
+  GraphNode::InputVertex sourceInput = ::prepareVertexInput(this, false);
+  GraphNode::InputVertex targetInput = ::prepareVertexInput(this, true);
 
 #ifdef USE_ENTERPRISE
   waitForSatelliteIfRequired(&engine);
 #endif
 
-  auto finder = std::make_unique<graph::KShortestPathsFinder>(*opts);
-  auto executorInfos =
-      KShortestPathsExecutorInfos(outputRegister, std::move(finder),
-                                  std::move(sourceInput), std::move(targetInput));
-  return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor>>(
-      &engine, this, std::move(registerInfos), std::move(executorInfos));
+  if (shortestPathType() == arangodb::graph::ShortestPathType::Type::KPaths) {
+    auto finder = std::make_unique<graph::KPathFinder>(*opts);
+    auto executorInfos =
+        KShortestPathsExecutorInfos(outputRegister, std::move(finder),
+                                    std::move(sourceInput), std::move(targetInput));
+    return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<graph::KPathFinder>>>(
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
+  } else {
+    auto finder = std::make_unique<graph::KShortestPathsFinder>(*opts);
+    auto executorInfos =
+        KShortestPathsExecutorInfos(outputRegister, std::move(finder),
+                                    std::move(sourceInput), std::move(targetInput));
+    return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<graph::KShortestPathsFinder>>>(
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
+  }
 }
 
 ExecutionNode* KShortestPathsNode::clone(ExecutionPlan* plan, bool withDependencies,

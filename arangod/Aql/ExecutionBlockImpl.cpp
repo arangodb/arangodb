@@ -407,7 +407,19 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<ShortestPathExecutor>::shut
 }
 
 template <>
-std::pair<ExecutionState, Result> ExecutionBlockImpl<KShortestPathsExecutor>::shutdown(int errorCode) {
+std::pair<ExecutionState, Result> ExecutionBlockImpl<KShortestPathsExecutor<graph::KShortestPathsFinder>>::shutdown(int errorCode) {
+  ExecutionState state;
+  Result result;
+
+  std::tie(state, result) = ExecutionBlock::shutdown(errorCode);
+  if (state == ExecutionState::WAITING) {
+    return {state, result};
+  }
+  return this->executor().shutdown(errorCode);
+}
+
+template <>
+std::pair<ExecutionState, Result> ExecutionBlockImpl<KShortestPathsExecutor<graph::KPathFinder>>::shutdown(int errorCode) {
   ExecutionState state;
   Result result;
 
@@ -628,7 +640,8 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
   static_assert(
       useExecutor ==
           (is_one_of_v<
-              Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor, KShortestPathsExecutor, ParallelUnsortedGatherExecutor,
+              Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor,
+              KShortestPathsExecutor<graph::KPathFinder>, KShortestPathsExecutor<graph::KShortestPathsFinder>, ParallelUnsortedGatherExecutor,
               IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, IdExecutor<ConstFetcher>,
               HashedCollectExecutor, IndexExecutor, EnumerateCollectionExecutor, DistinctCollectExecutor,
               ConstrainedSortExecutor, CountCollectExecutor, SubqueryExecutor<true>,
@@ -1970,7 +1983,8 @@ template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecu
 template class ::arangodb::aql::ExecutionBlockImpl<NoResultsExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ShortestPathExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<KShortestPathsExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<KShortestPathsExecutor<arangodb::graph::KShortestPathsFinder>>;
+template class ::arangodb::aql::ExecutionBlockImpl<KShortestPathsExecutor<arangodb::graph::KPathFinder>>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortedCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SubqueryEndExecutor>;

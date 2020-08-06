@@ -125,13 +125,13 @@ TEST_F(KPathFinderTest, no_path_exists) {
   auto target = vId(99);
   finder->reset(StringRef(source), StringRef(target));
 
-  EXPECT_TRUE(finder->hasMore());
+  EXPECT_FALSE(finder->isDone());
   {
     result.clear();
     auto hasPath = finder->getNextPath(result);
     EXPECT_FALSE(hasPath);
     EXPECT_TRUE(result.isEmpty());
-    EXPECT_FALSE(finder->hasMore());
+    EXPECT_TRUE(finder->isDone());
   }
 
   {
@@ -140,7 +140,7 @@ TEST_F(KPathFinderTest, no_path_exists) {
     auto hasPath = finder->getNextPath(result);
     EXPECT_FALSE(hasPath);
     EXPECT_TRUE(result.isEmpty());
-    EXPECT_FALSE(finder->hasMore());
+    EXPECT_TRUE(finder->isDone());
   }
 }
 
@@ -156,7 +156,7 @@ TEST_F(KPathFinderTest, path_depth_0) {
 
   finder->reset(StringRef(source), StringRef(target));
 
-  EXPECT_TRUE(finder->hasMore());
+  EXPECT_FALSE(finder->isDone());
   {
     result.clear();
     auto hasPath = finder->getNextPath(result);
@@ -164,7 +164,7 @@ TEST_F(KPathFinderTest, path_depth_0) {
     pathStructureValid(result.slice(), 0);
     LOG_DEVEL << result.toString();
 
-    EXPECT_TRUE(finder->hasMore());
+    EXPECT_FALSE(finder->isDone());
   }
 
   {
@@ -173,7 +173,7 @@ TEST_F(KPathFinderTest, path_depth_0) {
     auto hasPath = finder->getNextPath(result);
     EXPECT_FALSE(hasPath);
     EXPECT_TRUE(result.isEmpty());
-    EXPECT_FALSE(finder->hasMore());
+    EXPECT_TRUE(finder->isDone());
   }
 }
 
@@ -189,7 +189,7 @@ TEST_F(KPathFinderTest, path_depth_1) {
 
   finder->reset(StringRef(source), StringRef(target));
 
-  EXPECT_TRUE(finder->hasMore());
+  EXPECT_FALSE(finder->isDone());
   {
     result.clear();
     auto hasPath = finder->getNextPath(result);
@@ -197,7 +197,7 @@ TEST_F(KPathFinderTest, path_depth_1) {
     pathStructureValid(result.slice(), 1);
     LOG_DEVEL << result.toString();
 
-    EXPECT_TRUE(finder->hasMore());
+    EXPECT_FALSE(finder->isDone());
   }
 
   {
@@ -206,7 +206,7 @@ TEST_F(KPathFinderTest, path_depth_1) {
     auto hasPath = finder->getNextPath(result);
     EXPECT_FALSE(hasPath);
     EXPECT_TRUE(result.isEmpty());
-    EXPECT_FALSE(finder->hasMore());
+    EXPECT_TRUE(finder->isDone());
   }
 }
 
@@ -222,7 +222,7 @@ TEST_F(KPathFinderTest, path_depth_2) {
 
   finder->reset(StringRef(source), StringRef(target));
 
-  EXPECT_TRUE(finder->hasMore());
+  EXPECT_FALSE(finder->isDone());
   {
     result.clear();
     auto hasPath = finder->getNextPath(result);
@@ -230,7 +230,7 @@ TEST_F(KPathFinderTest, path_depth_2) {
     pathStructureValid(result.slice(), 2);
     LOG_DEVEL << result.toString();
 
-    EXPECT_TRUE(finder->hasMore());
+    EXPECT_FALSE(finder->isDone());
   }
 
   {
@@ -239,7 +239,7 @@ TEST_F(KPathFinderTest, path_depth_2) {
     auto hasPath = finder->getNextPath(result);
     EXPECT_FALSE(hasPath);
     EXPECT_TRUE(result.isEmpty());
-    EXPECT_FALSE(finder->hasMore());
+    EXPECT_TRUE(finder->isDone());
   }
 }
 
@@ -255,7 +255,7 @@ TEST_F(KPathFinderTest, path_depth_3) {
 
   finder->reset(StringRef(source), StringRef(target));
 
-  EXPECT_TRUE(finder->hasMore());
+  EXPECT_FALSE(finder->isDone());
   {
     result.clear();
     auto hasPath = finder->getNextPath(result);
@@ -263,7 +263,7 @@ TEST_F(KPathFinderTest, path_depth_3) {
     pathStructureValid(result.slice(), 3);
     LOG_DEVEL << result.toString();
 
-    EXPECT_TRUE(finder->hasMore());
+    EXPECT_FALSE(finder->isDone());
   }
 
   {
@@ -272,7 +272,7 @@ TEST_F(KPathFinderTest, path_depth_3) {
     auto hasPath = finder->getNextPath(result);
     EXPECT_FALSE(hasPath);
     EXPECT_TRUE(result.isEmpty());
-    EXPECT_FALSE(finder->hasMore());
+    EXPECT_TRUE(finder->isDone());
   }
 }
 
@@ -288,7 +288,7 @@ TEST_F(KPathFinderTest, path_depth_1_to_2) {
 
   finder->reset(StringRef(source), StringRef(target));
 
-  EXPECT_TRUE(finder->hasMore());
+  EXPECT_FALSE(finder->isDone());
   {
     result.clear();
     auto hasPath = finder->getNextPath(result);
@@ -296,7 +296,7 @@ TEST_F(KPathFinderTest, path_depth_1_to_2) {
     pathStructureValid(result.slice(), 1);
     LOG_DEVEL << result.toString();
 
-    EXPECT_TRUE(finder->hasMore());
+    EXPECT_FALSE(finder->isDone());
   }
 
   {
@@ -306,7 +306,7 @@ TEST_F(KPathFinderTest, path_depth_1_to_2) {
     pathStructureValid(result.slice(), 2);
     LOG_DEVEL << result.toString();
 
-    EXPECT_TRUE(finder->hasMore());
+    EXPECT_FALSE(finder->isDone());
   }
 
 
@@ -316,7 +316,58 @@ TEST_F(KPathFinderTest, path_depth_1_to_2) {
     auto hasPath = finder->getNextPath(result);
     EXPECT_FALSE(hasPath);
     EXPECT_TRUE(result.isEmpty());
-    EXPECT_FALSE(finder->hasMore());
+    EXPECT_TRUE(finder->isDone());
+  }
+}
+
+TEST_F(KPathFinderTest, path_diamond) {
+  VPackBuilder result;
+  // Search 0 depth
+  spo->minDepth = 2;
+  spo->maxDepth = 2;
+
+  // Source and target are direkt neighbors, there is only one path between them
+  auto source = vId(5);
+  auto target = vId(9);
+
+  finder->reset(StringRef(source), StringRef(target));
+
+  EXPECT_FALSE(finder->isDone());
+  {
+    result.clear();
+    auto hasPath = finder->getNextPath(result);
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 2);
+    LOG_DEVEL << result.toString();
+
+    EXPECT_FALSE(finder->isDone());
+  }
+  {
+    result.clear();
+    auto hasPath = finder->getNextPath(result);
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 2);
+    LOG_DEVEL << result.toString();
+
+    EXPECT_FALSE(finder->isDone());
+  }
+  {
+    result.clear();
+    auto hasPath = finder->getNextPath(result);
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 2);
+    LOG_DEVEL << result.toString();
+
+    EXPECT_FALSE(finder->isDone());
+  }
+
+  {
+    result.clear();
+    // Try again to make sure we stay at non-existing
+    auto hasPath = finder->getNextPath(result);
+    EXPECT_FALSE(hasPath);
+    EXPECT_TRUE(result.isEmpty());
+    EXPECT_TRUE(finder->isDone());
   }
 }
 

@@ -24,6 +24,7 @@
 #define ARANGODB_GRAPH_K_PATHS_FINDER_H 1
 
 #include "Graph/EdgeDocumentToken.h"
+#include "Graph/ShortestPathFinder.h"
 
 #include <velocypack/StringRef.h>
 
@@ -44,7 +45,7 @@ class TraverserCache;
 
 struct ShortestPathOptions;
 
-class KPathFinder {
+class KPathFinder : public ShortestPathFinder {
  private:
   enum Direction {FORWARD, BACKWARD};
  
@@ -81,6 +82,7 @@ class KPathFinder {
    public:
     Ball(Direction dir, ShortestPathOptions& options);
     ~Ball();
+    auto clear() -> void;
     auto reset(VertexRef center) -> void;
     auto startNextDepth() -> void;
     auto noPathLeft() const -> bool;
@@ -110,13 +112,19 @@ class KPathFinder {
   explicit KPathFinder(ShortestPathOptions& options);
   ~KPathFinder();
 
+  void clear() override;
+
+  // Not implemented here.
+  bool shortestPath(arangodb::velocypack::Slice const&, arangodb::velocypack::Slice const&,
+                    arangodb::graph::ShortestPathResult&) override;
+
   /**
    * @brief Quick test of the finder can proof there is no more data available.
-   *        It can respond with true, even though there is no path left.
-   * @return true There is a chance that there is more data available
-   * @return false There will be no further path.
+   *        It can respond with false, even though there is no path left.
+   * @return true There will be no further path.
+   * @return false There is a chance that there is more data available.
    */
-  bool hasMore() const;
+  bool isDone() const;
 
   /**
    * @brief Reset to new source and target vertices.
@@ -129,6 +137,7 @@ class KPathFinder {
    * @param target The target vertex to end the paths
    */
   void reset(VertexRef source, VertexRef target);
+
 
   /**
    * @brief Get the next path, if available written into the result build.
@@ -145,12 +154,21 @@ class KPathFinder {
    */
   bool getNextPath(arangodb::velocypack::Builder& result);
 
+  /**
+   * @brief Skip the next Path, like getNextPath, but does not return the path.
+   *
+   * @return true Found and skipped a path.
+   * @return false No path found.
+   */
+
+  bool skipPath();
+
+
 private:
  auto searchDone() const -> bool;
  auto startNextDepth() -> void;
 
 private:
- ShortestPathOptions& _opts;
  Ball _left;
  Ball _right;
  bool _searchLeft{true};
