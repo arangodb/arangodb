@@ -154,6 +154,7 @@ class Accumulator : public AccumulatorBase {
 
 std::unique_ptr<AccumulatorBase> instantiateAccumulator(VertexData const& owner,
                                                         AccumulatorOptions const& options);
+bool isValidAccumulatorOptions(AccumulatorOptions const& options);
 
 }  // namespace accumulators
 }  // namespace algos
