@@ -37,7 +37,7 @@ class TransactionState;
 /// @brief collection used in a transaction
 class ClusterTransactionCollection final : public TransactionCollection {
  public:
-  ClusterTransactionCollection(TransactionState* trx, TRI_voc_cid_t cid,
+  ClusterTransactionCollection(TransactionState* trx, DataSourceId cid,
                                AccessMode::Type accessType);
   ~ClusterTransactionCollection();
 

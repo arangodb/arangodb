@@ -86,7 +86,7 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
 #ifdef USE_ENTERPRISE
     if (query.trxForOptimization().isInaccessibleCollection(col->id())) {
       _inaccessible.insert(col->name());
-      _inaccessible.insert(std::to_string(col->id()));
+      _inaccessible.insert(std::to_string(col->id().id()));
     }
 #endif
     _edgeCollections.emplace_back(
@@ -102,7 +102,7 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
 #ifdef USE_ENTERPRISE
     if (query.trxForOptimization().isInaccessibleCollection(col->id())) {
       _inaccessible.insert(col->name());
-      _inaccessible.insert(std::to_string(col->id()));
+      _inaccessible.insert(std::to_string(col->id().id()));
     }
 #endif
     auto shards = getAllLocalShards(shardMapping, server, col->shardIds(restrictToShards));
@@ -566,7 +566,7 @@ void EngineInfoContainerDBServerServerBased::addOptionsPart(arangodb::velocypack
         for (ShardID const& sid : _shardLocking.getShardsForCollection(server, coll)) {
           opts.inaccessibleCollections.insert(sid);
         }
-        opts.inaccessibleCollections.insert(std::to_string(coll->id()));
+        opts.inaccessibleCollections.insert(std::to_string(coll->id().id()));
       }
     }
     opts.toVelocyPack(builder, true);

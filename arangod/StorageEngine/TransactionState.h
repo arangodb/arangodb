@@ -26,14 +26,15 @@
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
-#include "Cluster/ServerState.h"
 #include "Cluster/ClusterTypes.h"
+#include "Cluster/ServerState.h"
 #include "Containers/HashSet.h"
 #include "Containers/SmallVector.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 
@@ -125,15 +126,14 @@ class TransactionState {
   }
 
   /// @brief return the collection from a transaction
-  TransactionCollection* collection(TRI_voc_cid_t cid,
-                                    AccessMode::Type accessType) const;
-  
+  TransactionCollection* collection(DataSourceId cid, AccessMode::Type accessType) const;
+
   /// @brief return the collection from a transaction
   TransactionCollection* collection(std::string const& name,
                                     AccessMode::Type accessType) const;
 
   /// @brief add a collection to a transaction
-  Result addCollection(TRI_voc_cid_t cid, std::string const& cname,
+  Result addCollection(DataSourceId cid, std::string const& cname,
                        AccessMode::Type accessType, bool lockUsage);
 
   /// @brief use all participating collections of a transaction
@@ -175,7 +175,7 @@ class TransactionState {
 
   virtual bool hasFailedOperations() const = 0;
 
-  TransactionCollection* findCollection(TRI_voc_cid_t cid) const;
+  TransactionCollection* findCollection(DataSourceId cid) const;
 
   /// @brief make a exclusive transaction, only valid before begin
   void setExclusiveAccessType();
@@ -227,14 +227,14 @@ class TransactionState {
   }
   
   #ifdef USE_ENTERPRISE
-    void addInaccessibleCollection(TRI_voc_cid_t cid, std::string const& cname);
-    bool isInaccessibleCollection(TRI_voc_cid_t cid);
-    bool isInaccessibleCollection(std::string const& cname);
+  void addInaccessibleCollection(DataSourceId cid, std::string const& cname);
+  bool isInaccessibleCollection(DataSourceId cid);
+  bool isInaccessibleCollection(std::string const& cname);
   #endif
 
  protected:
   /// @brief find a collection in the transaction's list of collections
-  TransactionCollection* findCollection(TRI_voc_cid_t cid, size_t& position) const;
+  TransactionCollection* findCollection(DataSourceId cid, size_t& position) const;
 
   /// @brief clear the query cache for all collections that were modified by
   /// the transaction
@@ -242,9 +242,9 @@ class TransactionState {
 
  private:
   /// @brief check if current user can access this collection
-  Result checkCollectionPermission(TRI_voc_cid_t cid, std::string const& cname,
+  Result checkCollectionPermission(DataSourceId cid, std::string const& cname,
                                    AccessMode::Type);
-  
+
  protected:
   TRI_vocbase_t& _vocbase;  /// @brief vocbase for this transaction
   TransactionId const _id;  /// @brief local trx id

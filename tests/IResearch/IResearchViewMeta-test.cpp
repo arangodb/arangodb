@@ -95,7 +95,7 @@ TEST_F(IResearchViewMetaTest, test_inheritDefaults) {
   arangodb::iresearch::IResearchViewMetaState metaState;
   std::string tmpString;
 
-  defaultsState._collections.insert(42);
+  defaultsState._collections.insert(arangodb::DataSourceId{42});
   defaults._cleanupIntervalStep = 654;
   defaults._commitIntervalMsec = 321;
   defaults._consolidationIntervalMsec = 456;
@@ -124,7 +124,7 @@ TEST_F(IResearchViewMetaTest, test_inheritDefaults) {
     EXPECT_TRUE(meta.init(json->slice(), tmpString, defaults));
     EXPECT_TRUE(metaState.init(json->slice(), tmpString, defaultsState));
     EXPECT_EQ(1, metaState._collections.size());
-    EXPECT_EQ(42, *(metaState._collections.begin()));
+    EXPECT_EQ(42, metaState._collections.begin()->id());
     EXPECT_EQ(654, meta._cleanupIntervalStep);
     EXPECT_EQ(321, meta._commitIntervalMsec);
     EXPECT_EQ(456, meta._consolidationIntervalMsec);
@@ -176,7 +176,8 @@ TEST_F(IResearchViewMetaTest, test_readDefaults) {
 } 
 
 TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
-  std::unordered_set<TRI_voc_cid_t> expectedCollections = {42};
+  std::unordered_set<arangodb::DataSourceId> expectedCollections = {
+      arangodb::DataSourceId{42}};
   arangodb::iresearch::IResearchViewMeta meta;
   arangodb::iresearch::IResearchViewMetaState metaState;
 
@@ -484,7 +485,7 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
   }
 
   EXPECT_TRUE(true == expectedCollections.empty());
-  EXPECT_TRUE((42 == *(metaState._collections.begin())));
+  EXPECT_TRUE((42 == metaState._collections.begin()->id()));
   EXPECT_TRUE(654 == meta._cleanupIntervalStep);
   EXPECT_TRUE((321 == meta._commitIntervalMsec));
   EXPECT_TRUE(456 == meta._consolidationIntervalMsec);
@@ -641,9 +642,9 @@ TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
   arangodb::iresearch::IResearchViewMetaState metaState;
 
   // test all parameters set to custom values
-  metaState._collections.insert(42);
-  metaState._collections.insert(52);
-  metaState._collections.insert(62);
+  metaState._collections.insert(arangodb::DataSourceId{42});
+  metaState._collections.insert(arangodb::DataSourceId{52});
+  metaState._collections.insert(arangodb::DataSourceId{62});
   meta._cleanupIntervalStep = 654;
   meta._commitIntervalMsec = 321;
   meta._consolidationIntervalMsec = 456;
@@ -673,7 +674,8 @@ TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
   meta._storedValues.fromVelocyPack(storedValuesJSON->slice(), error);
   EXPECT_TRUE(error.empty());
 
-  std::unordered_set<TRI_voc_cid_t> expectedCollections = {42, 52, 62};
+  std::unordered_set<arangodb::DataSourceId> expectedCollections = {
+      arangodb::DataSourceId{42}, arangodb::DataSourceId{52}, arangodb::DataSourceId{62}};
   arangodb::velocypack::Builder builder;
   arangodb::velocypack::Slice tmpSlice;
   arangodb::velocypack::Slice tmpSlice2;
@@ -691,7 +693,8 @@ TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
 
   for (arangodb::velocypack::ArrayIterator itr(tmpSlice); itr.valid(); ++itr) {
     auto value = itr.value();
-    EXPECT_TRUE((true == value.isUInt() && 1 == expectedCollections.erase(value.getUInt())));
+    EXPECT_TRUE((true == value.isUInt() &&
+                 1 == expectedCollections.erase(arangodb::DataSourceId{value.getUInt()})));
   }
 
   EXPECT_TRUE(true == expectedCollections.empty());

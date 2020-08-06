@@ -533,7 +533,7 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
         VPackArrayBuilder a(sy.get());
         for (auto const& i : syncer->getProcessedCollections()) {
           VPackObjectBuilder e(sy.get());
-          sy->add(ID, VPackValue(i.first));
+          sy->add(ID, VPackValue(i.first.id()));
           sy->add(NAME, VPackValue(i.second));
         }
       }
@@ -689,7 +689,7 @@ bool SynchronizeShard::first() {
       return false;
     }
 
-    std::string const cid = std::to_string(ci->id());
+    std::string const cid = std::to_string(ci->id().id());
     std::shared_ptr<CollectionInfoCurrent> cic =
         clusterInfo.getCollectionCurrent(database, cid);
     std::vector<std::string> current = cic->servers(shard);

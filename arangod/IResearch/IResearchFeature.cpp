@@ -364,7 +364,7 @@ bool upgradeSingleServerArangoSearchView0_1(
     dataPath += std::to_string(vocbase.id());
     dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
     dataPath += "-";
-    dataPath += std::to_string(view->id());
+    dataPath += std::to_string(view->id().id());
 
     res = view->drop();  // drop view (including all links)
 

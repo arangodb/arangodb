@@ -1665,9 +1665,9 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
   std::string const masterName =
       basics::VelocyPackHelper::getStringValue(parameters, "name", "");
 
-  TRI_voc_cid_t const masterCid = basics::VelocyPackHelper::extractIdValue(parameters);
+  DataSourceId const masterCid{basics::VelocyPackHelper::extractIdValue(parameters)};
 
-  if (masterCid == 0) {
+  if (masterCid.empty()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "collection id is missing in response");
   }
@@ -1686,7 +1686,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
   std::string const typeString = (type.getNumber<int>() == 3 ? "edge" : "document");
 
   std::string const collectionMsg = "collection '" + masterName + "', type " +
-                                    typeString + ", id " + itoa(masterCid);
+                                    typeString + ", id " + itoa(masterCid.id());
 
   // phase handling
   if (phase == PHASE_VALIDATE) {
@@ -1836,7 +1836,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
                         " not found on slave. Collection info " + parameters.toJson());
     }
 
-    std::string const& masterColl = !masterUuid.empty() ? masterUuid : itoa(masterCid);
+    std::string const& masterColl =
+        !masterUuid.empty() ? masterUuid : itoa(masterCid.id());
     auto res = incremental && getSize(*col) > 0
                    ? fetchCollectionSync(col, masterColl, _config.master.lastLogTick)
                    : fetchCollectionDump(col, masterColl, _config.master.lastLogTick);
