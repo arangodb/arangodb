@@ -33,6 +33,7 @@
 #include "Aql/Query.h"
 #include "Aql/Range.h"
 #include "Aql/V8Executor.h"
+#include "Basics/Endian.h"
 #include "Basics/Exceptions.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/Mutex.h"
@@ -102,6 +103,12 @@
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 #include <algorithm>
+
+#ifdef _WIN32
+#include "Basics/win-utils.h"
+#else
+#include <arpa/inet.h>
+#endif
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -4489,6 +4496,37 @@ AqlValue Functions::Average(ExpressionContext* expressionContext, transaction::M
   return AqlValue(AqlValueHintNull());
 }
 
+/// @brief function PRODUCT
+AqlValue Functions::Product(ExpressionContext* expressionContext, transaction::Methods* trx,
+                            VPackFunctionParameters const& parameters) {
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+
+  if (!value.isArray()) {
+    // not an array
+    registerWarning(expressionContext, "PRODUCT", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value, false);
+  double product = 1.0;
+  for (VPackSlice it : VPackArrayIterator(slice)) {
+    if (it.isNull()) {
+      continue;
+    }
+    if (!it.isNumber()) {
+      return AqlValue(AqlValueHintNull());
+    }
+    double const number = it.getNumericValue<double>();
+
+    if (!std::isnan(number) && number != HUGE_VAL && number != -HUGE_VAL) {
+      product *= number;
+    }
+  }
+
+  return ::numberValue(product, false);
+}
+
 /// @brief function SLEEP
 AqlValue Functions::Sleep(ExpressionContext* expressionContext, transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
@@ -4572,6 +4610,136 @@ AqlValue Functions::RandomToken(ExpressionContext*, transaction::Methods*,
   UniformCharacter generator(
       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
   return AqlValue(generator.random(static_cast<size_t>(length)));
+}
+
+/// @brief function IPV4_FROM_NUMBER
+AqlValue Functions::IpV4FromNumber(ExpressionContext* expressionContext, transaction::Methods*,
+                                   VPackFunctionParameters const& parameters) {
+  static char const* AFN = "IPV4_FROM_NUMBER";
+
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+
+  if (!value.isNumber()) {
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(AqlValueHintNull());
+  }
+  
+  int64_t input = value.toInt64();
+  if (input < 0 || static_cast<uint64_t>(input) > UINT32_MAX) {
+    registerInvalidArgumentWarning(expressionContext, AFN);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  uint64_t number = static_cast<uint64_t>(input);
+
+  // in theory, we only need a 15 bytes buffer here, as the maximum result
+  // string is "255.255.255.255"
+  char result[32]; 
+
+  char* p = &result[0];
+  // first part
+  uint64_t digit = (number & 0xff000000ULL) >> 24ULL; 
+  p += basics::StringUtils::itoa(digit, p);
+  *p++ = '.';
+  // second part
+  digit = (number & 0x00ff0000ULL) >> 16ULL; 
+  p += basics::StringUtils::itoa(digit, p);
+  *p++ = '.';
+  // third part
+  digit = (number & 0x0000ff00ULL) >> 8ULL; 
+  p += basics::StringUtils::itoa(digit, p);
+  *p++ = '.';
+  // fourth part
+  digit = (number & 0x0000ffULL); 
+  p += basics::StringUtils::itoa(digit, p);
+
+  return AqlValue(&result[0], p - &result[0]);
+}
+
+/// @brief function IPV4_TO_NUMBER
+AqlValue Functions::IpV4ToNumber(ExpressionContext* expressionContext, transaction::Methods* trx,
+                                 VPackFunctionParameters const& parameters) {
+  static char const* AFN = "IPV4_TO_NUMBER";
+
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+
+  if (!value.isString()) {
+    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value, false);
+
+  // parse the input string
+  TRI_ASSERT(slice.isString());
+  VPackValueLength l;
+  char const* p = slice.getString(l);
+
+  if (l >= 7 && l <= 15) {
+    // min value is 0.0.0.0 (length = 7)
+    // max value is 255.255.255.255 (length = 15)
+    char buffer[16];
+    memcpy(&buffer[0], p, l);
+    // null-terminate the buffer
+    buffer[l] = '\0';
+
+    struct in_addr addr;
+    memset(&addr, 0, sizeof(struct in_addr));
+#if _WIN32
+    int result = InetPton(AF_INET, &buffer[0], &addr);
+#else
+    int result = inet_pton(AF_INET, &buffer[0], &addr);
+#endif
+    
+    if (result == 1) {
+      return AqlValue(AqlValueHintUInt(basics::hostToBig(*reinterpret_cast<uint32_t*>(&addr))));
+    }
+  }
+
+  registerInvalidArgumentWarning(expressionContext, AFN);
+  return AqlValue(AqlValueHintNull());
+}
+
+/// @brief function IS_IPV4
+AqlValue Functions::IsIpV4(ExpressionContext* expressionContext, transaction::Methods* trx,
+                           VPackFunctionParameters const& parameters) {
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+
+  if (!value.isString()) {
+    return AqlValue(AqlValueHintBool(false));
+  }
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value, false);
+  
+  // parse the input string
+  TRI_ASSERT(slice.isString());
+  VPackValueLength l;
+  char const* p = slice.getString(l);
+
+  if (l >= 7 && l <= 15) {
+    // min value is 0.0.0.0 (length = 7)
+    // max value is 255.255.255.255 (length = 15)
+    char buffer[16];
+    memcpy(&buffer[0], p, l);
+    // null-terminate the buffer
+    buffer[l] = '\0';
+
+    struct in_addr addr;
+    memset(&addr, 0, sizeof(struct in_addr));
+#if _WIN32
+    int result = InetPton(AF_INET, &buffer[0], &addr);
+#else
+    int result = inet_pton(AF_INET, &buffer[0], &addr);
+#endif
+    
+    if (result == 1) {
+      return AqlValue(AqlValueHintBool(true));
+    }
+  }
+      
+  return AqlValue(AqlValueHintBool(false));
 }
 
 /// @brief function MD5
