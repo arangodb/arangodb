@@ -507,22 +507,19 @@ class MaintenanceTestActionPhaseOne : public ::testing::Test {
 };
 
 TEST_F(MaintenanceTestActionPhaseOne, in_sync_should_have_0_effects) {
-  std::vector<ActionDescription> actions;
+  std::vector<std::shared_ptr<ActionDescription>> actions;
 
   for (auto const& node : localNodes) {
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
                                          node.second.toBuilder().slice(),
                                          node.first, errors, *feature, actions);
 
-    if (actions.size() != 0) {
-      std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
-    }
     ASSERT_EQ(actions.size(), 0);
   }
 }
 
 TEST_F(MaintenanceTestActionPhaseOne, local_databases_one_more_empty_database_should_be_dropped) {
-  std::vector<ActionDescription> actions;
+  std::vector<std::shared_ptr<ActionDescription>> actions;
 
   localNodes.begin()->second("db3") = arangodb::velocypack::Slice::emptyObjectSlice();
 
@@ -530,17 +527,14 @@ TEST_F(MaintenanceTestActionPhaseOne, local_databases_one_more_empty_database_sh
                                        localNodes.begin()->second.toBuilder().slice(),
                                        localNodes.begin()->first, errors, *feature, actions);
 
-  if (actions.size() != 1) {
-    std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
-  }
   ASSERT_EQ(actions.size(), 1);
-  ASSERT_EQ(actions.front().name(), "DropDatabase");
-  ASSERT_EQ(actions.front().get("database"), "db3");
+  ASSERT_EQ(actions.front()->name(), "DropDatabase");
+  ASSERT_EQ(actions.front()->get("database"), "db3");
 }
 
 TEST_F(MaintenanceTestActionPhaseOne,
        local_databases_one_more_non_empty_database_should_be_dropped) {
-  std::vector<ActionDescription> actions;
+  std::vector<std::shared_ptr<ActionDescription>> actions;
   localNodes.begin()->second("db3/col") = arangodb::velocypack::Slice::emptyObjectSlice();
 
   arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
@@ -548,8 +542,8 @@ TEST_F(MaintenanceTestActionPhaseOne,
                                        localNodes.begin()->first, errors, *feature, actions);
 
   ASSERT_EQ(actions.size(), 1);
-  ASSERT_EQ(actions.front().name(), "DropDatabase");
-  ASSERT_EQ(actions.front().get("database"), "db3");
+  ASSERT_EQ(actions[0]->name(), "DropDatabase");
+  ASSERT_EQ(actions[0]->get("database"), "db3");
 }
 
 TEST_F(MaintenanceTestActionPhaseOne,
@@ -561,7 +555,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
   createPlanCollection(dbname, colname, 1, 3, plan);
 
   for (auto node : localNodes) {
-    std::vector<ActionDescription> actions;
+    std::vector<std::shared_ptr<ActionDescription>> actions;
 
     node.second("db3") = arangodb::velocypack::Slice::emptyObjectSlice();
 
@@ -569,12 +563,9 @@ TEST_F(MaintenanceTestActionPhaseOne,
                                          node.second.toBuilder().slice(),
                                          node.first, errors, *feature, actions);
 
-    if (actions.size() != 1) {
-      std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
-    }
     ASSERT_EQ(actions.size(), 1);
     for (auto const& action : actions) {
-      ASSERT_EQ(action.name(), "CreateCollection");
+      ASSERT_EQ(action->name(), "CreateCollection");
     }
   }
 }
@@ -589,7 +580,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
   createPlanCollection(dbname, colname2, 1, 3, plan);
 
   for (auto node : localNodes) {
-    std::vector<ActionDescription> actions;
+    std::vector<std::shared_ptr<ActionDescription>> actions;
 
     node.second("db3") = arangodb::velocypack::Slice::emptyObjectSlice();
 
@@ -597,12 +588,9 @@ TEST_F(MaintenanceTestActionPhaseOne,
                                          node.second.toBuilder().slice(),
                                          node.first, errors, *feature, actions);
 
-    if (actions.size() != 2) {
-      std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
-    }
     ASSERT_EQ(actions.size(), 2);
     for (auto const& action : actions) {
-      ASSERT_EQ(action.name(), "CreateCollection");
+      ASSERT_EQ(action->name(), "CreateCollection");
     }
   }
 }
@@ -615,7 +603,7 @@ TEST_F(MaintenanceTestActionPhaseOne, add_an_index_to_queues) {
   createPlanIndex("_system", cid, "hash", {"someField"}, false, false, false, plan);
 
   for (auto node : localNodes) {
-    std::vector<ActionDescription> actions;
+    std::vector<std::shared_ptr<ActionDescription>> actions;
 
     auto local = node.second;
 
@@ -630,12 +618,9 @@ TEST_F(MaintenanceTestActionPhaseOne, add_an_index_to_queues) {
       }
     }
 
-    if (actions.size() != n) {
-      std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
-    }
     ASSERT_EQ(actions.size(), n);
     for (auto const& action : actions) {
-      ASSERT_EQ(action.name(), "EnsureIndex");
+      ASSERT_EQ(action->name(), "EnsureIndex");
     }
   }
 }
@@ -651,7 +636,7 @@ TEST_F(MaintenanceTestActionPhaseOne, remove_an_index_from_plan) {
   plan({"Collections", dbname, cid, indexes}).handle<POP>(arangodb::velocypack::Slice::emptyObjectSlice());
 
   for (auto node : localNodes) {
-    std::vector<ActionDescription> actions;
+    std::vector<std::shared_ptr<ActionDescription>> actions;
 
     auto local = node.second;
 
@@ -666,12 +651,9 @@ TEST_F(MaintenanceTestActionPhaseOne, remove_an_index_from_plan) {
       }
     }
 
-    if (actions.size() != n) {
-      std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
-    }
     ASSERT_EQ(actions.size(), n);
     for (auto const& action : actions) {
-      ASSERT_EQ(action.name(), "DropIndex");
+      ASSERT_EQ(action->name(), "DropIndex");
     }
   }
 }
@@ -680,21 +662,18 @@ TEST_F(MaintenanceTestActionPhaseOne, add_one_collection_to_local) {
   plan = originalPlan;
 
   for (auto node : localNodes) {
-    std::vector<ActionDescription> actions;
+    std::vector<std::shared_ptr<ActionDescription>> actions;
     createLocalCollection("_system", "1111111", node.second);
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
                                          node.second.toBuilder().slice(),
                                          node.first, errors, *feature, actions);
 
-    if (actions.size() != 1) {
-      std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
-    }
     ASSERT_EQ(actions.size(), 1);
     for (auto const& action : actions) {
-      ASSERT_EQ(action.name(), "DropCollection");
-      ASSERT_EQ(action.get("database"), "_system");
-      ASSERT_EQ(action.get("collection"), "s1111112");
+      ASSERT_EQ(action->name(), "DropCollection");
+      ASSERT_EQ(action->get("database"), "_system");
+      ASSERT_EQ(action->get("collection"), "s1111112");
     }
   }
 }
@@ -705,7 +684,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
   v.add(VPackValue(true));
 
   for (auto node : localNodes) {
-    std::vector<ActionDescription> actions;
+    std::vector<std::shared_ptr<ActionDescription>> actions;
     std::string dbname = "_system";
     std::string prop = arangodb::maintenance::WAIT_FOR_SYNC;
 
@@ -741,7 +720,7 @@ TEST_F(MaintenanceTestActionPhaseOne, have_theleader_set_to_empty) {
   v.add(VPackValue(std::string()));
 
   for (auto node : localNodes) {
-    std::vector<ActionDescription> actions;
+    std::vector<std::shared_ptr<ActionDescription>> actions;
 
     auto& collection = *node.second("foo").children().begin()->second;
     auto& leader = collection("theLeader");
@@ -757,15 +736,12 @@ TEST_F(MaintenanceTestActionPhaseOne, have_theleader_set_to_empty) {
                                          node.first, errors, *feature, actions);
 
     if (check) {
-      if (actions.size() != 1) {
-        std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
-      }
       ASSERT_EQ(actions.size(), 1);
       for (auto const& action : actions) {
-        ASSERT_EQ(action.name(), "TakeoverShardLeadership");
-        ASSERT_TRUE(action.has("shard"));
-        ASSERT_EQ(action.get("shard"), collection("name").getString());
-        ASSERT_TRUE(action.get("localLeader").empty());
+        ASSERT_EQ(action->name(), "TakeoverShardLeadership");
+        ASSERT_TRUE(action->has("shard"));
+        ASSERT_EQ(action->get("shard"), collection("name").getString());
+        ASSERT_TRUE(action->get("localLeader").empty());
       }
     }
   }
@@ -778,7 +754,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
   createPlanDatabase("db3", plan);
 
   for (auto& node : localNodes) {
-    std::vector<ActionDescription> actions;
+    std::vector<std::shared_ptr<ActionDescription>> actions;
     node.second("db3") = node.second("_system");
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
@@ -787,7 +763,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
 
     ASSERT_EQ(actions.size(), node.second("db3").children().size());
     for (auto const& action : actions) {
-      ASSERT_EQ(action.name(), "DropCollection");
+      ASSERT_EQ(action->name(), "DropCollection");
     }
   }
 }
@@ -800,7 +776,7 @@ TEST_F(MaintenanceTestActionPhaseOne, resign_leadership) {
   auto& shards = plan({"Collections", dbname, cid, "shards"}).children();
 
   for (auto const& node : localNodes) {
-    std::vector<ActionDescription> actions;
+    std::vector<std::shared_ptr<ActionDescription>> actions;
 
     std::string shname;
 
@@ -830,13 +806,10 @@ TEST_F(MaintenanceTestActionPhaseOne, resign_leadership) {
                                          node.second.toBuilder().slice(),
                                          node.first, errors, *feature, actions);
 
-    if (actions.size() != 1) {
-      std::cout << actions << std::endl;
-    }
     ASSERT_EQ(actions.size(), 1);
-    ASSERT_EQ(actions[0].name(), "ResignShardLeadership");
-    ASSERT_EQ(actions[0].get(DATABASE), dbname);
-    ASSERT_EQ(actions[0].get(SHARD), shname);
+    ASSERT_EQ(actions[0]->name(), "ResignShardLeadership");
+    ASSERT_EQ(actions[0]->get(DATABASE), dbname);
+    ASSERT_EQ(actions[0]->get(SHARD), shname);
   }
 }
 
@@ -854,7 +827,7 @@ TEST_F(MaintenanceTestActionPhaseOne, removed_follower_in_plan_must_be_dropped) 
   firstShard->second->handle<POP>(arangodb::velocypack::Slice::emptyObjectSlice());
 
   for (auto const& node : localNodes) {
-    std::vector<ActionDescription> actions;
+    std::vector<std::shared_ptr<ActionDescription>> actions;
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
                                          node.second.toBuilder().slice(),
@@ -863,16 +836,16 @@ TEST_F(MaintenanceTestActionPhaseOne, removed_follower_in_plan_must_be_dropped) 
     if (node.first == followerName) {
       // Must see an action dropping the shard
       ASSERT_EQ(actions.size(), 1);
-      ASSERT_EQ(actions.front().name(), "DropCollection");
-      ASSERT_EQ(actions.front().get(DATABASE), dbname);
-      ASSERT_EQ(actions.front().get(COLLECTION), shname);
+      ASSERT_EQ(actions[0]->name(), "DropCollection");
+      ASSERT_EQ(actions[0]->get(DATABASE), dbname);
+      ASSERT_EQ(actions[0]->get(COLLECTION), shname);
     } else if (node.first == leaderName) {
       // Must see an UpdateCollection action to drop the follower
       ASSERT_EQ(actions.size(), 1);
-      ASSERT_EQ(actions.front().name(), "UpdateCollection");
-      ASSERT_EQ(actions.front().get(DATABASE), dbname);
-      ASSERT_EQ(actions.front().get(SHARD), shname);
-      ASSERT_EQ(actions.front().get(FOLLOWERS_TO_DROP), followerName);
+      ASSERT_EQ(actions[0]->name(), "UpdateCollection");
+      ASSERT_EQ(actions[0]->get(DATABASE), dbname);
+      ASSERT_EQ(actions[0]->get(SHARD), shname);
+      ASSERT_EQ(actions[0]->get(FOLLOWERS_TO_DROP), followerName);
     } else {
       // No actions required
       ASSERT_EQ(actions.size(), 0);
