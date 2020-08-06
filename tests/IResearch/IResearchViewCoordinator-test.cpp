@@ -127,11 +127,10 @@ TEST_F(IResearchViewCoordinatorTest, test_rename) {
   Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, testDBInfo(server.server()));
   arangodb::LogicalView::ptr view;
   ASSERT_TRUE(
-      (arangodb::LogicalView::instantiate(view, vocbase, json->slice(), 0).ok()));
+      (arangodb::LogicalView::instantiate(view, vocbase, json->slice()).ok()));
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  EXPECT_TRUE(0 == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(1 == view->id().id());
@@ -232,11 +231,10 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE(
-        (arangodb::LogicalView::instantiate(view, vocbase, json->slice(), 0).ok()));
+        (arangodb::LogicalView::instantiate(view, vocbase, json->slice()).ok()));
     EXPECT_TRUE((nullptr != view));
     EXPECT_TRUE((nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(
                                 view)));
-    EXPECT_TRUE((0 == view->planVersion()));
     EXPECT_TRUE(("testView" == view->name()));
     EXPECT_TRUE((false == view->deleted()));
     EXPECT_TRUE((1 == view->id().id()));
@@ -534,7 +532,6 @@ TEST_F(IResearchViewCoordinatorTest, test_create_drop_view) {
     ASSERT_TRUE(nullptr != view);
     ASSERT_TRUE(nullptr !=
                 std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-    EXPECT_TRUE(planVersion == view->planVersion());
     EXPECT_TRUE("testView" == view->name());
     EXPECT_TRUE(false == view->deleted());
     EXPECT_TRUE(viewId == std::to_string(view->id().id()));
@@ -577,7 +574,6 @@ TEST_F(IResearchViewCoordinatorTest, test_create_drop_view) {
     ASSERT_TRUE(nullptr != view);
     ASSERT_TRUE(nullptr !=
                 std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-    EXPECT_TRUE(planVersion == view->planVersion());
     EXPECT_TRUE("testView" == view->name());
     EXPECT_TRUE(false == view->deleted());
     EXPECT_TRUE(42 == view->id().id());
@@ -844,7 +840,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
     ASSERT_TRUE(nullptr != view);
     ASSERT_TRUE(nullptr !=
                 std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-    EXPECT_TRUE(planVersion == view->planVersion());
     EXPECT_TRUE("testView" == view->name());
     EXPECT_TRUE(false == view->deleted());
     EXPECT_TRUE(viewId == std::to_string(view->id().id()));
@@ -881,7 +876,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
       ASSERT_TRUE(nullptr != fullyUpdatedView);
       ASSERT_TRUE(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(
                                  fullyUpdatedView));
-      EXPECT_TRUE(planVersion == fullyUpdatedView->planVersion());
       EXPECT_TRUE("testView" == fullyUpdatedView->name());
       EXPECT_TRUE(false == fullyUpdatedView->deleted());
       EXPECT_TRUE(viewId == std::to_string(fullyUpdatedView->id().id()));
@@ -934,7 +928,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
       ASSERT_TRUE(nullptr != partiallyUpdatedView);
       ASSERT_TRUE(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(
                                  partiallyUpdatedView));
-      EXPECT_TRUE(planVersion == partiallyUpdatedView->planVersion());
       EXPECT_TRUE("testView" == partiallyUpdatedView->name());
       EXPECT_TRUE(false == partiallyUpdatedView->deleted());
       EXPECT_TRUE(viewId == std::to_string(partiallyUpdatedView->id().id()));
@@ -1505,7 +1498,6 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
   EXPECT_NE(nullptr, view);
   EXPECT_NE(nullptr,
             std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  EXPECT_EQ(planVersion, view->planVersion());
   EXPECT_EQ("testView", view->name());
   EXPECT_FALSE(view->deleted());
   EXPECT_EQ(viewId, std::to_string(view->id().id()));
@@ -1603,7 +1595,6 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
     EXPECT_NE(nullptr, fullyUpdatedView);
     EXPECT_NE(nullptr, std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(
                            fullyUpdatedView));
-    EXPECT_EQ(planVersion, fullyUpdatedView->planVersion());
     EXPECT_EQ("testView", fullyUpdatedView->name());
     EXPECT_FALSE(fullyUpdatedView->deleted());
     EXPECT_EQ(viewId, std::to_string(fullyUpdatedView->id().id()));
@@ -1775,7 +1766,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(42 == view->id().id());
@@ -2070,7 +2060,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(42 == view->id().id());
@@ -2429,7 +2418,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(42 == view->id().id());
@@ -2646,7 +2634,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(42 == view->id().id());
@@ -3140,7 +3127,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(42 == view->id().id());
@@ -3374,7 +3360,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(42 == view->id().id());
@@ -3520,7 +3505,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(42 == view->id().id());
@@ -3803,7 +3787,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(42 == view->id().id());
@@ -4114,7 +4097,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  EXPECT_TRUE(planVersion == view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(42 == view->id().id());
@@ -4252,7 +4234,6 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     ASSERT_TRUE(nullptr != view);
     ASSERT_TRUE(nullptr !=
                 std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-    EXPECT_TRUE(planVersion == view->planVersion());
     EXPECT_TRUE("testView" == view->name());
     EXPECT_TRUE(false == view->deleted());
     EXPECT_TRUE(42 == view->id().id());
@@ -4395,7 +4376,6 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     ASSERT_TRUE(nullptr != view);
     ASSERT_TRUE(nullptr !=
                 std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-    EXPECT_TRUE(planVersion == view->planVersion());
     EXPECT_TRUE("testView" == view->name());
     EXPECT_TRUE(false == view->deleted());
     EXPECT_TRUE(42 == view->id().id());
@@ -6028,7 +6008,6 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     ASSERT_TRUE(nullptr != view);
     ASSERT_TRUE(nullptr !=
                 std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-    EXPECT_TRUE(planVersion == view->planVersion());
     EXPECT_TRUE("testView" == view->name());
     EXPECT_TRUE(false == view->deleted());
     EXPECT_TRUE(viewId == std::to_string(view->id().id()));
