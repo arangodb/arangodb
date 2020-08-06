@@ -33,6 +33,8 @@ namespace pregel {
 namespace algos {
 namespace accumulators {
 
+bool isValidAccumulatorOptions(const AccumulatorOptions& options);
+
 /* clang-format off */
 
 constexpr const char accumulatorType_max[] = "max";
@@ -76,8 +78,23 @@ using accumulator_options_plan = parameter_list<
     factory_deserialized_parameter<valueType, accumulator_value_type_deserializer, true>,
     factory_simple_parameter<storeSender, bool, false>>;
 
-using accumulator_options_deserializer =
+using accumulator_options_deserializer_base =
     utilities::constructing_deserializer<AccumulatorOptions, accumulator_options_plan>;
+
+/* clang-format on */
+
+struct accumulator_options_validator {
+  std::optional<deserialize_error> operator()(AccumulatorOptions const& opts) {
+    if (isValidAccumulatorOptions(opts)) {
+      return {};
+    }
+    return deserialize_error{"bad combination of accumulator and value type"};
+  }
+};
+
+/* clang-format off */
+
+using accumulator_options_deserializer = validator::validate<accumulator_options_deserializer_base, accumulator_options_validator>;
 
 /* Algorithm Phase */
 

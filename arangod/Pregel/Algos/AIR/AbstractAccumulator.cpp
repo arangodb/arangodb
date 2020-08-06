@@ -71,6 +71,18 @@ struct accum_mapping<accum_value_pair<accums, values, Rs>...> {
 
     return result;
   }
+
+  template <typename T>
+  static bool is_valid(E type) {
+    return ([&] {
+      if (type == values) {
+        if constexpr (Rs::template contains<T>) {
+          return true;
+        }
+      }
+      return false;
+    }() || ...);
+  }
 };
 
 
@@ -145,4 +157,16 @@ std::unique_ptr<AccumulatorBase> instantiateAccumulator(VertexData const& owner,
   }
   return ptr;
 }
+
+bool isValidAccumulatorOptions(const AccumulatorOptions& options) {
+  return my_type_mapping::invoke(options.valueType, [&](auto type_tag) -> bool {
+    using used_type = decltype(type_tag);
+    if constexpr (used_type::found) {
+      return my_accum_mapping::is_valid<typename used_type::type>(options.type);
+    }
+
+    return false;
+  });
+}
+
 }
