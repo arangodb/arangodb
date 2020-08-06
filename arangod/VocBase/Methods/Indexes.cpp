@@ -665,7 +665,7 @@ arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& 
 #else
     auto& ci = collection->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
     res = ci.dropIndexCoordinator(  // drop index
-        collection->vocbase().name(), std::to_string(collection->id()), iid, 0.0  // args
+        collection->vocbase().name(), std::to_string(collection->id().id()), iid, 0.0  // args
     );
 #endif
     events::DropIndex(collection->vocbase().name(), collection->name(),

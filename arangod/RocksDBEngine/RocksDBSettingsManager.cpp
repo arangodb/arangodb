@@ -172,7 +172,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   scratch.reserve(10485760);  // reserve 10MB of scratch space to work with
   for (auto const& pair : mappings) {
     TRI_voc_tick_t dbid = pair.first;
-    TRI_voc_cid_t cid = pair.second;
+    DataSourceId cid = pair.second;
     TRI_vocbase_t* vocbase = dbfeature->useDatabase(dbid);
     if (!vocbase) {
       continue;

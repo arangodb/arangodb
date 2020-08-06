@@ -1313,8 +1313,8 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
     // simulate heartbeat thread
     // We need this call BEFORE creation of collection if at all
     {
-      auto const colPath =
-          "/Current/Collections/_system/" + std::to_string(logicalCollection->id());
+      auto const colPath = "/Current/Collections/_system/" +
+                           std::to_string(logicalCollection->id().id());
       auto const colValue =
           VPackParser::fromJson(
               "{ \"same-as-dummy-shard-id\": { \"indexes\": [ { \"id\": \"43\" "
@@ -1324,7 +1324,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
                       .successful());
       auto const dummyPath = "/Plan/Collections";
       auto const dummyValue = VPackParser::fromJson(
-          "{ \"_system\": { \"" + std::to_string(logicalCollection->id()) +
+          "{ \"_system\": { \"" + std::to_string(logicalCollection->id().id()) +
           "\": { \"name\": \"testCollection\", "
           "\"shards\": { \"same-as-dummy-shard-id\": [ "
           "\"same-as-dummy-shard-server\" ] } } } }");

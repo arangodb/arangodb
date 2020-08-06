@@ -79,9 +79,10 @@ bool addView(arangodb::LogicalView const& view, arangodb::aql::QueryContext& que
   auto& collections = query.collections();
 
   // linked collections
-  auto visitor = [&collections](TRI_voc_cid_t cid) {
-    collections.add(arangodb::basics::StringUtils::itoa(cid),
-                    arangodb::AccessMode::Type::READ, arangodb::aql::Collection::Hint::Collection);
+  auto visitor = [&collections](arangodb::DataSourceId cid) {
+    collections.add(arangodb::basics::StringUtils::itoa(cid.id()),
+                    arangodb::AccessMode::Type::READ,
+                    arangodb::aql::Collection::Hint::Collection);
     return true;
   };
 

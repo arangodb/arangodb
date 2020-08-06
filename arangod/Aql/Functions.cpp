@@ -4548,7 +4548,7 @@ AqlValue Functions::Collections(ExpressionContext* expressionContext,
     }
 
     builder->openObject();
-    builder->add("_id", VPackValue(std::to_string(coll->id())));
+    builder->add("_id", VPackValue(std::to_string(coll->id().id())));
     builder->add("name", VPackValue(coll->name()));
     builder->close();
   }
