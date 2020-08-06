@@ -2195,35 +2195,31 @@ class ArgsTraits<VPackSlice> {
       };
     }
     value = args.at(i);
-    bool typeOk{ false };
     if constexpr (std::is_same<T, irs::string_ref>::value) {
-      typeOk = value.isString();
-    } else if constexpr (std::is_same<T, int64_t>::value || std::is_same<T, double_t>::value) {
-      typeOk = value.isNumber();
-    } else if constexpr (std::is_same<T, bool>::value) {
-      typeOk = value.isBoolean();
-    }
-
-    if (!typeOk) {
-      return {
-        TRI_ERROR_BAD_PARAMETER,
-        "'"s.append(funcName).append("' AQL function: argument at position '").append(std::to_string(i+1))
-        .append("' has invalid type '").append(value.typeName()).append("'")
-      };
-    }
-
-    if constexpr (std::is_same<T, irs::string_ref>::value) {
-      out = getStringRef(value);
+      if (value.isString()) {
+        out = getStringRef(value);
+        return {};
+      }
     } else if constexpr (std::is_same<T, int64_t>::value) {
-      out = value.getInt();
+      if (value.isNumber()) {
+        out = value.getInt();
+        return {};
+      }
     } else if constexpr (std::is_same<T, double>::value) {
-      if (!value.getDouble(out)) {
-        return error::failedToParse(funcName, i + 1, SCOPED_VALUE_TYPE_DOUBLE);
+      if (value.getDouble(out)) {
+        return {};
       }
     } else if constexpr (std::is_same<T, bool>::value) {
-      out = value.getBoolean();
+      if (value.isBoolean()) {
+        out = value.getBoolean();
+        return {};
+      }
     }
-    return {};
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "'"s.append(funcName).append("' AQL function: argument at position '").append(std::to_string(i+1))
+      .append("' has invalid type '").append(value.typeName()).append("'")
+    };
   }
 };
 
