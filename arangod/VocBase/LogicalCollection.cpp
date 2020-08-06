@@ -115,11 +115,6 @@ std::string readGloballyUniqueId(arangodb::velocypack::Slice info) {
   return arangodb::StaticStrings::Empty;
 }
 
-std::string readStringValue(arangodb::velocypack::Slice info,
-                            std::string const& name, std::string const& def) {
-  return info.isObject() ? Helper::getStringValue(info, name, def) : def;
-}
-
 arangodb::LogicalDataSource::Type const& readType(arangodb::velocypack::Slice info,
                                                   std::string const& key,
                                                   TRI_col_type_e def) {
@@ -154,9 +149,9 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
           ::readType(info, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN),
           vocbase, Helper::extractIdValue(info), ::readGloballyUniqueId(info),
           Helper::stringUInt64(info.get(StaticStrings::DataSourcePlanId)),
-          ::readStringValue(info, StaticStrings::DataSourceName, ""), planVersion,
+          Helper::getStringValue(info, StaticStrings::DataSourceName, ""), planVersion,
           TRI_vocbase_t::IsSystemName(
-              ::readStringValue(info, StaticStrings::DataSourceName, "")) &&
+              Helper::getStringValue(info, StaticStrings::DataSourceName, "")) &&
               Helper::getBooleanValue(info, StaticStrings::DataSourceSystem, false),
           Helper::getBooleanValue(info, StaticStrings::DataSourceDeleted, false)),
       _version(static_cast<Version>(Helper::getNumericValue<uint32_t>(
@@ -182,7 +177,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
                        : RevisionId::fromSlice(info.get(StaticStrings::MinRevision))),
 #ifdef USE_ENTERPRISE
       _smartJoinAttribute(
-          ::readStringValue(info, StaticStrings::SmartJoinAttribute, "")),
+          Helper::getStringValue(info, StaticStrings::SmartJoinAttribute, "")),
 #endif
       _physical(EngineSelectorFeature::ENGINE->createPhysicalCollection(*this, info)) {
 
