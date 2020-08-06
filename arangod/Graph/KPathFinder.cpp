@@ -27,14 +27,15 @@
 #include "Graph/TraverserCache.h"
 #include "Transaction/Helpers.h"
 
-#include "Logger/LogMacros.h"
-
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::graph;
 
-auto KPathFinder::PathResult::clear() -> void { _vertices.clear(); }
+auto KPathFinder::PathResult::clear() -> void {
+  _vertices.clear();
+  _edges.clear();
+}
 
 auto KPathFinder::PathResult::appendVertex(VertexRef v) -> void {
   _vertices.push_back(v);
@@ -78,7 +79,7 @@ bool KPathFinder::VertexIdentifier::operator<(VertexIdentifier const& other) con
 }
 
 KPathFinder::Ball::Ball(Direction dir, ShortestPathOptions& opts)
-    : _direction(dir), _cache(opts.cache()) {
+    : _direction(dir), _cache(opts.cache()), _minDepth{opts.minDepth} {
   TRI_ASSERT(_cache != nullptr);
   _cursor = opts.buildCursor(dir == Direction::BACKWARD);
 }
@@ -128,19 +129,14 @@ auto KPathFinder::Ball::buildPath(VertexIdentifier const& vertexInShell,
                                   PathResult& path) -> void {
   VertexIdentifier const* myVertex = &vertexInShell;
   if (_direction == Direction::FORWARD) {
-    // TRI_ASSERT(path.empty());
-    LOG_DEVEL << "BuildResult " << myVertex->id << " / " << myVertex->predecessor << "Forward";
     while (myVertex->predecessor != 0 || myVertex->id != _center) {
-      LOG_DEVEL << "Adding " << myVertex->id;
       path.prependVertex(myVertex->id);
       path.prependEdge(myVertex->edge);
       TRI_ASSERT(_interior.size() > myVertex->predecessor);
       myVertex = &_interior[myVertex->predecessor];
     }
-    LOG_DEVEL << "Adding Center " << _center;
     path.prependVertex(_center);
   } else {
-    LOG_DEVEL << "BuildResult " << myVertex->id << "BACKWARD";
     // For backward we just need to attach ourself
     // So everything until here should be done.
     // TRI_ASSERT(!path.empty());
@@ -153,13 +149,11 @@ auto KPathFinder::Ball::buildPath(VertexIdentifier const& vertexInShell,
     path.appendEdge(myVertex->edge);
     myVertex = &_interior[myVertex->predecessor];
     while (myVertex->predecessor != 0 || myVertex->id != _center) {
-      LOG_DEVEL << "Adding " << myVertex->id;
       path.appendVertex(myVertex->id);
       path.appendEdge(myVertex->edge);
       TRI_ASSERT(_interior.size() > myVertex->predecessor);
       myVertex = &_interior[myVertex->predecessor];
     }
-    LOG_DEVEL << "Adding Center " << _center;
     path.appendVertex(_center);
   }
 }
@@ -199,7 +193,9 @@ auto KPathFinder::Ball::computeNeighbourhoodOfNextVertex(Ball const& other,
     })());
 
     VertexIdentifier match{id, _searchIndex, std::move(eid)};
-    other.matchResultsInShell(match, results);
+    if (getDepth() + other.getDepth() >= _minDepth) {
+      other.matchResultsInShell(match, results);
+    }
     _shell.emplace(std::move(match));
   });
   ++_searchIndex;

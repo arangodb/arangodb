@@ -108,6 +108,7 @@ class KPathFinder : public ShortestPathFinder {
     std::unique_ptr<EdgeCursor> _cursor;
     // We do not take responsibility for the Cache
     TraverserCache* _cache;
+    size_t _minDepth{0};
 
   };
 
