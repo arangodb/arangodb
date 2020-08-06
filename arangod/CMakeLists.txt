@@ -233,7 +233,7 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/WorkerConfig.cpp
   RestHandler/RestControlPregelHandler.cpp
   RestHandler/RestPregelHandler.cpp
-)
+        Pregel/Reports.cpp Pregel/Reports.h)
 
 set(LIB_ARANGO_AQL_SOURCES
   Aql/Aggregator.cpp

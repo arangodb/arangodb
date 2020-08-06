@@ -24,6 +24,7 @@
 #define ARANGODB_PREGEL_GRAPH_STRUCTURE_H 1
 
 #include <velocypack/StringRef.h>
+#include <velocypack/Slice.h>
 
 #include <cstdint>
 #include <functional>
@@ -58,6 +59,20 @@ struct PregelID {
   }
 
   bool isValid() const { return shard != InvalidPregelShard && !key.empty(); }
+
+  using VPackSlice = arangodb::velocypack::Slice;
+
+  static PregelID fromSlice(VPackSlice slice) {
+    if (slice.isObject()) {
+      VPackSlice key = slice.get("key");
+      VPackSlice shard = slice.get("shard");
+      if (key.isString() && shard.isNumber<PregelShard>()) {
+        return PregelID(shard.getNumber<PregelShard>(), key.copyString());
+      }
+    }
+
+    return {};
+  }
 };
 
 template <typename V, typename E>

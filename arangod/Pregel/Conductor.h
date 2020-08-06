@@ -32,6 +32,7 @@
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Statistics.h"
+#include "Reports.h"
 #include "Scheduler/Scheduler.h"
 #include "Utils/DatabaseGuard.h"
 
@@ -53,6 +54,10 @@ class PregelFeature;
 class MasterContext;
 class AggregatorHandler;
 struct IAlgorithm;
+
+struct Error {
+  std::string message;
+};
 
 class Conductor {
   friend class PregelFeature;
@@ -86,6 +91,7 @@ class Conductor {
 
   /// persistent tracking of active vertices, send messages, runtimes
   StatsManager _statistics;
+  ReportManager _reports;
   /// Current number of vertices
   uint64_t _totalVerticesCount = 0;
   uint64_t _totalEdgesCount = 0;

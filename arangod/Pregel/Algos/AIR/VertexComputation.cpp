@@ -48,13 +48,15 @@ bool VertexComputation::processIncomingMessages(MessageIterator<MessageData> con
     auto accumName = msg->_accumulatorName;
     auto&& accum = vertexData().accumulatorByName(accumName);
 
-    accumChanged |= accum->updateByMessageSlice(msg->_value.slice()) == AccumulatorBase::UpdateResult::CHANGED;
+    accumChanged |= accum->updateByMessageSlice(msg->_value.slice()) ==
+                    AccumulatorBase::UpdateResult::CHANGED;
   }
 
   return accumChanged;
 }
 
-void VertexComputation::runProgram(VertexComputationEvalContext& ctx, VPackSlice program) {
+greenspun::EvalResult VertexComputation::runProgram(VertexComputationEvalContext& ctx,
+                                                    VPackSlice program) {
   VPackBuilder resultBuilder;
 
   auto result = Evaluate(ctx, program, resultBuilder);
@@ -73,21 +75,35 @@ void VertexComputation::runProgram(VertexComputationEvalContext& ctx, VPackSlice
       LOG_DEVEL << "program did not return a boolean value, but " << rs.toJson();
     }
   }
+  return result.wrapError([](greenspun::EvalError &err) {
+    err.wrapMessage("at top-level");
+  });
 }
 
 void VertexComputation::compute(MessageIterator<MessageData> const& incomingMessages) {
-
   auto evalContext = VertexComputationEvalContext(*this);
 
   auto phase_index = *getAggregatedValue<uint32_t>("phase");
   auto phase = _algorithm.options().phases.at(phase_index);
 
-  LOG_DEVEL << "running phase " << phase.name << " superstep = " << phaseGlobalSuperstep() << " global superstep = " << globalSuperstep() << " at vertex " << vertexData()._vertexId;
+  LOG_DEVEL << "running phase " << phase.name
+            << " superstep = " << phaseGlobalSuperstep()
+            << " global superstep = " << globalSuperstep() << " at vertex "
+            << vertexData()._vertexId;
 
   std::size_t phaseStep = phaseGlobalSuperstep();
 
   if (phaseStep == 0) {
-    runProgram(evalContext, phase.initProgram.slice());
+    if (auto res = runProgram(evalContext, phase.initProgram.slice()); res.fail()) {
+      getReportManager()
+              .report(ReportLevel::ERROR)
+              .with("pregel-id", pregelId())
+              .with("phase", phase.name)
+              .with("global-superstep", globalSuperstep())
+              .with("phase-step", phaseGlobalSuperstep())
+          << "in phase `" << phase.name
+          << "` init-program failed: " << res.error().toString();
+    }
   } else {
     auto accumChanged = processIncomingMessages(incomingMessages);
     if (!accumChanged && phaseStep != 1) {
@@ -96,8 +112,17 @@ void VertexComputation::compute(MessageIterator<MessageData> const& incomingMess
       return;
     }
 
-    runProgram(evalContext, phase.updateProgram.slice());
+    if (auto res = runProgram(evalContext, phase.updateProgram.slice()); res.fail()) {
+      getReportManager()
+              .report(ReportLevel::ERROR)
+              .with("pregel-id", pregelId())
+              .with("phase", phase.name)
+              .with("global-superstep", globalSuperstep())
+              .with("phase-step", phaseGlobalSuperstep())
+          << "in phase `" << phase.name
+          << "` update-program failed: " << res.error().toString();
+    }
   }
 }
 
-}
+}  // namespace arangodb::pregel::algos::accumulators

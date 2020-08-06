@@ -43,7 +43,7 @@ public:
 
 private:
   bool processIncomingMessages(MessageIterator<MessageData> const& incomingMessages);
-  void runProgram(VertexComputationEvalContext& ctx, VPackSlice program);
+  greenspun::EvalResult runProgram(VertexComputationEvalContext& ctx, VPackSlice program);
 
  private:
   VertexAccumulators const& _algorithm;

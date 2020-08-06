@@ -119,6 +119,7 @@ class Utils {
 
   static std::string const compensate;
   static std::string const rollback;
+  static std::string const reportsKey;
 
   // pass the db name and either "worker" or "conductor" as target.
   static std::string baseUrl(std::string const& target);

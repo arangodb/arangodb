@@ -175,6 +175,7 @@ bool Conductor::_startGlobalStep() {
   if (_masterContext && _globalSuperstep > 0) {  // ask algorithm to evaluate aggregated values
     _masterContext->_globalSuperstep = _globalSuperstep - 1;
     _masterContext->_enterNextGSS = false;
+    _masterContext->_reports = &_reports;
     proceed = _masterContext->postGlobalSuperstep();
     if (!proceed) {
       LOG_TOPIC("0aa8e", DEBUG, Logger::PREGEL)
@@ -288,6 +289,10 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
     LOG_TOPIC("dc904", WARN, Logger::PREGEL)
         << "Conductor did received a callback from the wrong superstep";
     return VPackBuilder();
+  }
+
+  if (auto reports = data.get("reports"); reports.isArray()) {
+    _reports.appendFromSlice(reports);
   }
 
   // track message counts to decide when to halt or add global barriers.
@@ -804,6 +809,8 @@ VPackBuilder Conductor::toVelocyPack() const {
   result.add("totalRuntime", VPackValue(totalRuntimeSecs()));
   _aggregators->serializeValues(result);
   _statistics.serializeValues(result);
+  result.add(VPackValue("reports"));
+  _reports.intoBuilder(result);
   if (_state != ExecutionState::RUNNING) {
     result.add("vertexCount", VPackValue(_totalVerticesCount));
     result.add("edgeCount", VPackValue(_totalEdgesCount));

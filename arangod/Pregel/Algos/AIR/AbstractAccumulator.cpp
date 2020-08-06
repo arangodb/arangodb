@@ -140,11 +140,9 @@ std::unique_ptr<AccumulatorBase> instantiateAccumulator(VertexData const& owner,
     return nullptr;
   });
 
-  if (!ptr) {
-    std::abort();
+  if (ptr) {
+    ptr->clear();
   }
-
-  ptr->clear();
   return ptr;
 }
 }

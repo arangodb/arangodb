@@ -111,8 +111,7 @@ void VertexAccumulators::parseUserParams(VPackSlice userParams) {
     }
   } else {
     // What do we do on error? std::terminate()
-    LOG_VERTEXACC("", DEBUG) << result.error().as_string();
-    std::abort();
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, result.error().as_string());
   }
 }
 
