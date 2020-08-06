@@ -44,26 +44,30 @@ auto KPathFinder::PathResult::prependVertex(VertexRef v) -> void {
   _vertices.push_front(v);
 }
 
-auto KPathFinder::PathResult::toVelocyPack(arangodb::velocypack::Builder& builder) -> void {
+auto KPathFinder::PathResult::appendEdge(EdgeDocumentToken e) -> void {
+  _edges.push_back(e);
+}
+
+auto KPathFinder::PathResult::prependEdge(EdgeDocumentToken e) -> void {
+  _edges.push_front(e);
+}
+
+auto KPathFinder::PathResult::toVelocyPack(TraverserCache& cache, arangodb::velocypack::Builder& builder) -> void {
   VPackObjectBuilder path{&builder};
   {
     builder.add(VPackValue(StaticStrings::GraphQueryVertices));
     VPackArrayBuilder vertices{&builder};
     for (auto const& v : _vertices) {
-      VPackObjectBuilder doc{&builder};
-      builder.add(StaticStrings::KeyString, VPackValue(v.toString()));
+            cache.insertVertexIntoResult(v, builder);
     }
   }
 
   {
     builder.add(VPackValue(StaticStrings::GraphQueryEdges));
     VPackArrayBuilder edges(&builder);
-#if 0
-    for (auto const& v : _edges) {
-      VPackObjectBuilder doc;
-      builder.add(StaticStrings::KeyString, VPackValue(v));
+    for (auto const& e : _edges) {
+      cache.insertEdgeIntoResult(e, builder);
     }
-#endif
   }
 }
 
@@ -122,7 +126,6 @@ auto KPathFinder::Ball::shellSize() const -> size_t { return _shell.size(); }
 
 auto KPathFinder::Ball::buildPath(VertexIdentifier const& vertexInShell,
                                   PathResult& path) -> void {
-  // TODO edge rewiring
   VertexIdentifier const* myVertex = &vertexInShell;
   if (_direction == Direction::FORWARD) {
     // TRI_ASSERT(path.empty());
@@ -130,6 +133,7 @@ auto KPathFinder::Ball::buildPath(VertexIdentifier const& vertexInShell,
     while (myVertex->predecessor != 0 || myVertex->id != _center) {
       LOG_DEVEL << "Adding " << myVertex->id;
       path.prependVertex(myVertex->id);
+      path.prependEdge(myVertex->edge);
       TRI_ASSERT(_interior.size() > myVertex->predecessor);
       myVertex = &_interior[myVertex->predecessor];
     }
@@ -146,10 +150,12 @@ auto KPathFinder::Ball::buildPath(VertexIdentifier const& vertexInShell,
     }
     // TODO push this edge
     TRI_ASSERT(_interior.size() > myVertex->predecessor);
+    path.appendEdge(myVertex->edge);
     myVertex = &_interior[myVertex->predecessor];
     while (myVertex->predecessor != 0 || myVertex->id != _center) {
       LOG_DEVEL << "Adding " << myVertex->id;
       path.appendVertex(myVertex->id);
+      path.appendEdge(myVertex->edge);
       TRI_ASSERT(_interior.size() > myVertex->predecessor);
       myVertex = &_interior[myVertex->predecessor];
     }
@@ -256,7 +262,8 @@ auto KPathFinder::getNextPath(VPackBuilder& result) -> bool {
     _resultPath.clear();
     _left.buildPath(leftVertex, _resultPath);
     _right.buildPath(rightVertex, _resultPath);
-    _resultPath.toVelocyPack(result);
+    TRI_ASSERT(options().cache() != nullptr);
+    _resultPath.toVelocyPack(*options().cache(), result);
 
     // result done
     _results.pop_back();

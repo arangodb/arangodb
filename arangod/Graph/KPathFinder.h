@@ -66,7 +66,10 @@ class KPathFinder : public ShortestPathFinder {
     auto clear() -> void;
     auto appendVertex(VertexRef v) -> void;
     auto prependVertex(VertexRef v) -> void;
-    auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void;
+    auto appendEdge(EdgeDocumentToken v) -> void;
+    auto prependEdge(EdgeDocumentToken v) -> void;
+    auto toVelocyPack(arangodb::graph::TraverserCache& cache,
+                      arangodb::velocypack::Builder& builder) -> void;
 
    private:
     std::deque<VertexRef> _vertices;

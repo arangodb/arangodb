@@ -162,7 +162,7 @@ TEST_F(KPathFinderTest, path_depth_0) {
     auto hasPath = finder->getNextPath(result);
     EXPECT_TRUE(hasPath);
     pathStructureValid(result.slice(), 0);
-    LOG_DEVEL << result.toString();
+    LOG_DEVEL << result.toJson();
 
     EXPECT_FALSE(finder->isDone());
   }
@@ -195,7 +195,7 @@ TEST_F(KPathFinderTest, path_depth_1) {
     auto hasPath = finder->getNextPath(result);
     EXPECT_TRUE(hasPath);
     pathStructureValid(result.slice(), 1);
-    LOG_DEVEL << result.toString();
+    LOG_DEVEL << result.toJson();
 
     EXPECT_FALSE(finder->isDone());
   }
@@ -228,7 +228,7 @@ TEST_F(KPathFinderTest, path_depth_2) {
     auto hasPath = finder->getNextPath(result);
     EXPECT_TRUE(hasPath);
     pathStructureValid(result.slice(), 2);
-    LOG_DEVEL << result.toString();
+    LOG_DEVEL << result.toJson();
 
     EXPECT_FALSE(finder->isDone());
   }
@@ -261,7 +261,7 @@ TEST_F(KPathFinderTest, path_depth_3) {
     auto hasPath = finder->getNextPath(result);
     EXPECT_TRUE(hasPath);
     pathStructureValid(result.slice(), 3);
-    LOG_DEVEL << result.toString();
+    LOG_DEVEL << result.toJson();
 
     EXPECT_FALSE(finder->isDone());
   }
@@ -294,7 +294,7 @@ TEST_F(KPathFinderTest, path_depth_1_to_2) {
     auto hasPath = finder->getNextPath(result);
     EXPECT_TRUE(hasPath);
     pathStructureValid(result.slice(), 1);
-    LOG_DEVEL << result.toString();
+    LOG_DEVEL << result.toJson();
 
     EXPECT_FALSE(finder->isDone());
   }
@@ -304,7 +304,7 @@ TEST_F(KPathFinderTest, path_depth_1_to_2) {
     auto hasPath = finder->getNextPath(result);
     EXPECT_TRUE(hasPath);
     pathStructureValid(result.slice(), 2);
-    LOG_DEVEL << result.toString();
+    LOG_DEVEL << result.toJson();
 
     EXPECT_FALSE(finder->isDone());
   }
@@ -338,7 +338,7 @@ TEST_F(KPathFinderTest, path_diamond) {
     auto hasPath = finder->getNextPath(result);
     EXPECT_TRUE(hasPath);
     pathStructureValid(result.slice(), 2);
-    LOG_DEVEL << result.toString();
+    LOG_DEVEL << result.toJson();
 
     EXPECT_FALSE(finder->isDone());
   }
@@ -347,7 +347,7 @@ TEST_F(KPathFinderTest, path_diamond) {
     auto hasPath = finder->getNextPath(result);
     EXPECT_TRUE(hasPath);
     pathStructureValid(result.slice(), 2);
-    LOG_DEVEL << result.toString();
+    LOG_DEVEL << result.toJson();
 
     EXPECT_FALSE(finder->isDone());
   }
@@ -356,7 +356,7 @@ TEST_F(KPathFinderTest, path_diamond) {
     auto hasPath = finder->getNextPath(result);
     EXPECT_TRUE(hasPath);
     pathStructureValid(result.slice(), 2);
-    LOG_DEVEL << result.toString();
+    LOG_DEVEL << result.toJson();
 
     EXPECT_FALSE(finder->isDone());
   }
