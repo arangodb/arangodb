@@ -46,9 +46,10 @@ enum ExecutionState {
   DONE,         // after everyting is done
   CANCELED,     // after an terminal error or manual canceling
   IN_ERROR,     // after an error which should allow recovery
-  RECOVERING    // during recovery
+  RECOVERING,   // during recovery
+  FATAL_ERROR,  // execution can not continue because of errors
 };
-extern const char* ExecutionStateNames[7];
+extern const char* ExecutionStateNames[8];
 
 class PregelFeature;
 class MasterContext;
@@ -88,6 +89,7 @@ class Conductor {
   bool _asyncMode = false;
   bool _useMemoryMaps = false;
   bool _storeResults = false;
+  bool _inErrorAbort = false;
 
   /// persistent tracking of active vertices, send messages, runtimes
   StatsManager _statistics;

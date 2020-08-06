@@ -62,7 +62,7 @@ MasterContext::ContinuationResult MasterContext::postGlobalSuperstep(bool allVer
   if (getReportManager().getNumErrors() > 0) {
     getReportManager().report(ReportLevel::INFO).with("phase", phase.name)
         << "stopping because of previous errors";
-    return ContinuationResult::ABORT;
+    return ContinuationResult::ERROR_ABORT;
   }
 
   if (!phase.onHalt.isEmpty()) {
