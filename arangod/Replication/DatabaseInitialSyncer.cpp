@@ -375,11 +375,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
     LOG_TOPIC("0a10d", DEBUG, Logger::REPLICATION)
         << "client: getting master state to dump " << vocbase().name();
 
-    Result r = sendFlush();
-    if (r.fail()) {
-      return r;
-    }
-
+    Result r;
     if (!_config.isChild()) {
       r = _config.master.getState(_config.connection, _config.isChild());
 
@@ -525,46 +521,6 @@ void DatabaseInitialSyncer::setProgress(std::string const& msg) {
       applier->setProgress(msg);
     }
   }
-}
-
-/// @brief send a WAL flush command
-Result DatabaseInitialSyncer::sendFlush() {
-  if (isAborted()) {
-    return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
-  }
-
-  if (_state.master.engine == "rocksdb") {
-    // no WAL flush required for RocksDB. this is only relevant for MMFiles
-    return Result();
-  }
-
-  std::string const url = "/_admin/wal/flush";
-
-  VPackBuilder builder;
-  builder.openObject();
-  builder.add("waitForSync", VPackValue(true));
-  builder.add("waitForCollector", VPackValue(true));
-  builder.add("maxWaitTime", VPackValue(300.0));
-  builder.close();
-
-  VPackSlice bodySlice = builder.slice();
-  std::string const body = bodySlice.toJson();
-
-  // send request
-  _config.progress.set("sending WAL flush command to url " + url);
-
-  std::unique_ptr<httpclient::SimpleHttpResult> response;
-  _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
-    response.reset(client->retryRequest(rest::RequestType::PUT, url,
-                                        body.c_str(), body.size()));
-  });
-
-  if (replutils::hasFailed(response.get())) {
-    return replutils::buildHttpError(response.get(), url, _config.connection);
-  }
-
-  _config.flushed = true;
-  return Result();
 }
 
 /// @brief handle a single dump marker
