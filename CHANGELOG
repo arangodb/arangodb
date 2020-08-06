@@ -1,5 +1,7 @@
-v3.7.1-rc.1 (2020-07-24)
-------------------------
+v3.7.2 (XXXX-XX-XX)
+
+* Fixed OASIS-278 issue: Added proper sort/calc nodes cleanup for late materialzation
+  after OneShard optimization
 
 * Added startup option `--rocksdb.encryption-key-rotation` to
   activate/deactivate the encryption key rotation REST API. The API is disabled
