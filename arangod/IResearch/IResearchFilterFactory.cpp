@@ -2162,7 +2162,7 @@ class ArgsTraits<VPackSlice> {
     return true;
   }
 
-  static size_t numMembers(VPackSlice const& arg) {
+  static size_t numMembers(VPackSlice arg) {
     if (arg.isArray()) {
       return arg.length();
     }
