@@ -299,18 +299,50 @@ Result Collections::create(TRI_vocbase_t& vocbase,
       helper.add(arangodb::StaticStrings::MinRevision, arangodb::velocypack::Value(minRev));
     }*/
 
-    if (!ServerState::instance()->isSingleServer()) {
+    // If the PlanId is not set, we either are on a single server, or this is
+    // a local collection in a cluster; which means, it is neither a user-facing
+    // collection (as seen on a Coordinator), nor a shard (on a DBServer).
+    bool const isLocalCollection =
+        (!ServerState::instance()->isCoordinator() &&
+         Helper::stringUInt64(info.properties.get(StaticStrings::DataSourcePlanId)) == 0);
+
+    bool const isSystemName = TRI_vocbase_t::IsSystemName(info.name);
+
+    // All collections on a single server should be local collections.
+    // A Coordinator should never have local collections.
+    // On an Agent, all collections should be both local and system collections.
+    // On a DBServer, the only local collections should be system collections
+    // (like _statisticsRaw). Non-local (system or not) collections are shards,
+    // so don't have system-names, even if they are system collections!
+    switch(ServerState::instance()->getRole()) {
+      case ServerState::ROLE_SINGLE:
+        TRI_ASSERT(isLocalCollection);
+        break;
+      case ServerState::ROLE_DBSERVER:
+        TRI_ASSERT(isLocalCollection == isSystemName);
+        break;
+      case ServerState::ROLE_COORDINATOR:
+        TRI_ASSERT(!isLocalCollection);
+        break;
+      case ServerState::ROLE_AGENT:
+        TRI_ASSERT(isLocalCollection && isSystemName);
+        break;
+      case ServerState::ROLE_UNDEFINED:
+        TRI_ASSERT(false);
+    }
+
+    if (!isLocalCollection) {
       auto replicationFactorSlice = info.properties.get(StaticStrings::ReplicationFactor);
       if (replicationFactorSlice.isNone()) {
         auto factor = vocbase.replicationFactor();
-        if (factor > 0 && isSystem) {
+        if (factor > 0 && isSystemName) {
           auto& cl = vocbase.server().getFeature<ClusterFeature>();
           factor = std::max(vocbase.replicationFactor(), cl.systemReplicationFactor());
         }
         helper.add(StaticStrings::ReplicationFactor, VPackValue(factor));
       }
 
-      if (!isSystem) {
+      if (!isSystemName) {
         // system-collections will be sharded normally. only user collections will get
         // the forced sharding
         if (vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
@@ -594,7 +626,7 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
       "allowUserKeys", "cid",    "count",  "deleted", "id",   "indexes", "name",
       "path",          "planId", "shards", "status",  "type", "version"};
 
-  if (!ServerState::instance()->isCoordinator()) {
+  if (!ServerState::instance()->isRunningInCluster()) {
     // These are only relevant for cluster
     ignoreKeys.insert({StaticStrings::DistributeShardsLike, StaticStrings::IsSmart,
                        StaticStrings::NumberOfShards, StaticStrings::ReplicationFactor,
