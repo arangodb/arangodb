@@ -86,10 +86,10 @@ bool Scheduler::start() {
 void Scheduler::shutdown() {
   TRI_ASSERT(isStopping());
 
-  {
-    std::unique_lock<std::mutex> guard(_cronQueueMutex);
-    _croncv.notify_one();
-  }
+  std::unique_lock<std::mutex> guard(_cronQueueMutex);
+  guard.unlock();
+
+  _croncv.notify_one();
   _cronThread.reset();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -164,6 +164,7 @@ std::pair<bool, Scheduler::WorkHandle> Scheduler::queueDelay(
     _cronQueue.emplace(clock::now() + delay, item);
 
     if (delay < std::chrono::milliseconds(50)) {
+      guard.unlock();
       // wakeup thread
       _croncv.notify_one();
     }
