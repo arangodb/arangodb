@@ -151,7 +151,6 @@ auto KPathFinder::Ball::buildPath(VertexIdentifier const& vertexInShell,
       // already reached the center
       return;
     }
-    // TODO push this edge
     TRI_ASSERT(_interior.size() > myVertex->predecessor);
     path.appendEdge(myVertex->edge);
     myVertex = &_interior[myVertex->predecessor];

@@ -80,7 +80,7 @@ class KPathFinder : public ShortestPathFinder {
     std::unordered_set<VertexRef> _uniqueVertices;
   };
 
-  using Shell = std::set<VertexIdentifier>;
+  using Shell = std::multiset<VertexIdentifier>;
   using Interior = std::vector<VertexIdentifier>;
   using ResultList = std::deque<std::pair<VertexIdentifier, VertexIdentifier>>;
 
