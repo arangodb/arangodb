@@ -146,8 +146,10 @@ void waitImpl(Future<T>& f) {
   Promise<T> p;
   Future<T> ret = p.getFuture();
   f.thenFinal([p(std::move(p)), &cv, &m](Try<T>&& t) mutable {
-    std::lock_guard<std::mutex> guard(m);
-    p.setTry(std::move(t));
+    {
+      std::lock_guard<std::mutex> guard(m);
+      p.setTry(std::move(t));
+    }
     cv.notify_one();
   });
   std::unique_lock<std::mutex> lock(m);
@@ -168,8 +170,10 @@ void waitImpl(Future<T>& f, std::chrono::time_point<Clock, Duration> const& tp) 
   Promise<T> p;
   Future<T> ret = p.getFuture();
   f.thenFinal([p(std::move(p)), &cv, &m](Try<T>&& t) mutable {
-    std::lock_guard<std::mutex> guard(m);
-    p.setTry(std::move(t));
+    {
+      std::lock_guard<std::mutex> guard(m);
+      p.setTry(std::move(t));
+    }
     cv.notify_one();
   });
   std::unique_lock<std::mutex> lock(m);

@@ -560,6 +560,19 @@
 
         assertEqual(result3.length, 1);
         assertEqual(result3[0].name, 'full');
+        
+        var result6v = db._query("LET phraseStruct = NOOPT([' fox',  ' jumps']) "
+                               + "FOR doc IN UnitTestsView SEARCH ANALYZER(PHRASE(doc.text,  'quick ', 0, 'brown', 0, phraseStruct), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+        assertEqual(result6v.length, 1);
+        assertEqual(result6v[0].name, 'full');
+      
+            
+        var result6v2 = db._query("LET phraseStruct = NOOPT(['quick ', 0, 'brown', 0, [' fox',  ' jumps']]) "
+                               + "FOR doc IN UnitTestsView SEARCH ANALYZER(PHRASE(doc.text, phraseStruct), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+        assertEqual(result6v2.length, 1);
+        assertEqual(result6v2[0].name, 'full');
       },
 
       testExistsFilter : function () {
