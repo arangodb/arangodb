@@ -27,7 +27,6 @@
 #include "PrimEvalContext.h"
 #include "Primitives.h"
 
-
 #include <iostream>
 #include <sstream>
 
@@ -304,7 +303,8 @@ EvalResult LambdaCall(EvalContext& ctx, VPackSlice paramNames, VPackSlice captur
       StackFrameGuard<false> guard(ctx);
       if (auto res = Evaluate(ctx, *paramIterator, paramBuilder); !res) {
         return res.wrapError([&](EvalError& err) {
-          err.wrapParameter("<lambda>" + captures.toJson() + paramNames.toJson(), paramIterator.index());
+          err.wrapParameter("<lambda>" + captures.toJson() + paramNames.toJson(),
+                            paramIterator.index());
         });
       }
     }
@@ -319,7 +319,9 @@ EvalResult LambdaCall(EvalContext& ctx, VPackSlice paramNames, VPackSlice captur
   VPackArrayIterator builderIter(paramBuilder.slice());
   for (auto&& paramName : ArrayIterator(paramNames)) {
     if (!paramName.isString()) {
-      return EvalError("bad lambda format: expected parameter name (string), found: " + paramName.toJson());
+      return EvalError(
+          "bad lambda format: expected parameter name (string), found: " +
+          paramName.toJson());
     }
 
     if (!builderIter.valid()) {
@@ -331,8 +333,56 @@ EvalResult LambdaCall(EvalContext& ctx, VPackSlice paramNames, VPackSlice captur
     ctx.setVariable(paramName.copyString(), *builderIter);
     builderIter++;
   }
-  return Evaluate(ctx, body, result).wrapError([&](EvalError &err) {
-    err.wrapCall("<lambda>" + captures.toJson() + paramNames.toJson(), paramBuilder.slice());
+  return Evaluate(ctx, body, result).wrapError([&](EvalError& err) {
+    err.wrapCall("<lambda>" + captures.toJson() + paramNames.toJson(),
+                 paramBuilder.slice());
+  });
+}
+
+EvalResult SpecialLet(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
+  std::vector<VPackBuilder> store;
+
+  if (!paramIterator.valid()) {
+    return EvalError("Expected at least one argument");
+  }
+
+  auto bindings = *paramIterator++;
+  if (!bindings.isArray()) {
+    return EvalError("Expected list of bindings, found: " + bindings.toJson());
+  }
+
+  StackFrameGuard<true> guard(ctx);
+
+  for (VPackArrayIterator iter(bindings); iter.valid(); iter++) {
+    auto&& pair = *iter;
+    if (pair.isArray() && pair.length() == 2) {
+      auto nameSlice = pair.at(0);
+      auto valueSlice = pair.at(1);
+      if (!nameSlice.isString()) {
+        return EvalError("expected string as bind name at position " +
+                         std::to_string(iter.index()) + ", found: " + nameSlice.toJson());
+      }
+
+      auto& builder = store.emplace_back();
+      if (auto res = Evaluate(ctx, valueSlice, builder); res.fail()) {
+        return res.wrapError([&](EvalError& err) {
+          err.wrapMessage("when evaluating value for binding `" + nameSlice.copyString() +
+                          "` at position " + std::to_string(iter.index()));
+        });
+      }
+
+      if (auto res = ctx.setVariable(nameSlice.copyString(), builder.slice()); res.fail()) {
+        return res;
+      }
+    } else {
+      return EvalError("expected pair at position " + std::to_string(iter.index()) +
+                       " at list of bindings, found: " + pair.toJson());
+    }
+  }
+
+  // Now do a seq evaluation of the remaining parameter
+  return SpecialSeq(ctx, paramIterator, result).wrapError([](EvalError& err) {
+    err.wrapMessage("in evaluation of let-statement");
   });
 }
 
@@ -372,6 +422,8 @@ EvalResult Evaluate(EvalContext& ctx, VPackSlice const slice, VPackBuilder& resu
         return SpecialMatch(ctx, paramIterator, result);
       } else if (functionSlice.isEqualString("for-each")) {
         return SpecialForEach(ctx, paramIterator, result);
+      } else if (functionSlice.isEqualString("let")) {
+        return SpecialLet(ctx, paramIterator, result);
       } else {
         return Call(ctx, functionSlice, paramIterator, result);
       }
@@ -384,17 +436,17 @@ EvalResult Evaluate(EvalContext& ctx, VPackSlice const slice, VPackBuilder& resu
         }
         auto captures = functionSlice.get("_captures");
         if (!captures.isObject()) {
-          return EvalError("lambda captures have to be an object, found: " + params.toJson());
+          return EvalError("lambda captures have to be an object, found: " +
+                           params.toJson());
         }
         return LambdaCall(ctx, params, captures, paramIterator, body, result);
       }
     }
     return EvalError("function is not a string, found " + functionSlice.toJson());
-
   }
 
-    result.add(slice);
-    return {};
+  result.add(slice);
+  return {};
 }
 
 EvalContext::EvalContext() noexcept {
@@ -420,11 +472,13 @@ EvalResult EvalContext::getVariable(const std::string& name, VPackBuilder& resul
 
 EvalResult EvalContext::setVariable(std::string const& name, VPackSlice value) {
   TRI_ASSERT(!variables.empty());
-  variables.back().bindings.operator[](name) = value; // insert or create
+  variables.back().bindings.operator[](name) = value;  // insert or create
   return {};
 }
 
-void EvalContext::pushStack(bool noParentScope) { variables.emplace_back().noParentScope = noParentScope; }
+void EvalContext::pushStack(bool noParentScope) {
+  variables.emplace_back().noParentScope = noParentScope;
+}
 
 void EvalContext::popStack() {
   // Top level variables must not be popped
@@ -471,4 +525,4 @@ bool ValueConsideredTrue(VPackSlice const value) {
   return !ValueConsideredFalse(value);
 }
 
-}  // namespace arangodb
+}  // namespace arangodb::greenspun
