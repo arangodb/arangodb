@@ -54,7 +54,7 @@ std::vector<size_t> const emptyAttributePositions;
 EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
     RegisterId outputRegister, aql::QueryContext& query,
     Collection const* collection, Variable const* outVariable, bool produceResult,
-    Expression* filter, std::vector<std::string> const& projections,
+    Expression* filter, std::vector<arangodb::aql::AttributeNamePath> const& projections,
     std::vector<size_t> const& coveringIndexAttributePositions, bool random, bool count)
     : _query(query),
       _collection(collection),
@@ -83,7 +83,7 @@ Expression* EnumerateCollectionExecutorInfos::getFilter() const noexcept {
   return _filter;
 }
 
-std::vector<std::string> const& EnumerateCollectionExecutorInfos::getProjections() const noexcept {
+std::vector<arangodb::aql::AttributeNamePath> const& EnumerateCollectionExecutorInfos::getProjections() const noexcept {
   return _projections;
 }
 

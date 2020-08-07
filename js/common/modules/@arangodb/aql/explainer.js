@@ -1073,7 +1073,13 @@ function processQuery(query, explain, planIndex) {
 
   var projection = function (node) {
     if (node.projections && node.projections.length > 0) {
-      return ', projections: `' + node.projections.join('`, `') + '`';
+      let p = node.projections.map(function(p) {
+        if (Array.isArray(p)) {
+          return p.join('`.`', p);
+        }
+        return p;
+      });
+      return ', projections: `' + p.join('`, `') + '`';
     }
     return '';
   };

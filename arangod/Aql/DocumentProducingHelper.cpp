@@ -39,25 +39,71 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-void aql::handleProjections(std::vector<std::pair<ProjectionType, std::string>> const& projections,
+void aql::handleProjections(std::vector<AttributeProjection> const& projections,
                             transaction::Methods const* trxPtr, VPackSlice slice,
                             VPackBuilder& b) {
   for (auto const& it : projections) {
-    if (it.first == ProjectionType::IdAttribute) {
-      b.add(it.second, VPackValue(transaction::helpers::extractIdString(trxPtr->resolver(), slice, slice)));
-      continue;
-    } else if (it.first == ProjectionType::KeyAttribute) {
+    if (it.type == AttributeNamePath::Type::IdAttribute) {
+      // projection for "_id"
+      TRI_ASSERT(it.path.size() == 1);
+      b.add(StaticStrings::IdString, VPackValue(transaction::helpers::extractIdString(trxPtr->resolver(), slice, slice)));
+    } else if (it.type == AttributeNamePath::Type::KeyAttribute) {
+      // projection for "_key"
+      TRI_ASSERT(it.path.size() == 1);
       VPackSlice found = transaction::helpers::extractKeyFromDocument(slice);
-      b.add(it.second, found);
-      continue;
-    }
-
-    VPackSlice found = slice.get(it.second);
-    if (found.isNone()) {
-      // attribute not found
-      b.add(it.second, VPackValue(VPackValueType::Null));
+      b.add(StaticStrings::KeyString, found);
+    } else if (it.type == AttributeNamePath::Type::SingleAttribute) {
+      // projection for any other top-level attribute
+      TRI_ASSERT(it.path.size() == 1);
+      VPackSlice found = slice.get(it.path.path[0]);
+      if (found.isNone()) {
+        // attribute not found
+        b.add(it.path.path[0], VPackValue(VPackValueType::Null));
+      } else {
+        b.add(it.path.path[0], found);
+      }
+    } else if (it.type == AttributeNamePath::Type::FromAttribute) {
+      // projection for "_from"
+      TRI_ASSERT(it.path.size() == 1);
+      VPackSlice found = transaction::helpers::extractFromFromDocument(slice);
+      b.add(StaticStrings::KeyString, found);
+    } else if (it.type == AttributeNamePath::Type::ToAttribute) {
+      // projection for "_to"
+      TRI_ASSERT(it.path.size() == 1);
+      VPackSlice found = transaction::helpers::extractToFromDocument(slice);
+      b.add(StaticStrings::KeyString, found);
     } else {
-      b.add(it.second, found);
+      // projection for a sub-attribute, e.g. a.b.c
+      TRI_ASSERT(it.type == AttributeNamePath::Type::MultiAttribute);
+      TRI_ASSERT(it.path.size() > 1);
+      size_t level = 0;
+      VPackSlice found = slice;
+      size_t const n = it.path.size();
+      while (level < n) {
+        found = found.get(it.path[level]);
+        if (found.isNone()) {
+          b.add(it.path[level], VPackValue(VPackValueType::Null));
+          break;
+        }
+        if (level < n - 1 && !found.isObject()) {
+          // premature end
+          b.add(it.path[level], VPackValue(VPackValueType::Null));
+          break;
+        }
+        if (level == n - 1) {
+          // target value
+          b.add(it.path[level], found);
+          break;
+        }
+        // recurse into sub-attribute object
+        b.add(it.path[level], VPackValue(VPackValueType::Object));
+        ++level;
+      }
+ 
+      // close all that we opened oursevles 
+      while (level-- > 0) {
+        b.close();
+      }
     }
   }
 }
@@ -206,7 +252,7 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
     InputAqlItemRow const& inputRow, OutputAqlItemRow* outputRow,
     RegisterId const outputRegister, bool produceResult,
     aql::QueryContext& query, transaction::Methods& trx, Expression* filter,
-    std::vector<std::string> const& projections, 
+    std::vector<arangodb::aql::AttributeNamePath> const& projections, 
     std::vector<size_t> const& coveringIndexAttributePositions,
     bool allowCoveringIndexOptimization, bool checkUniqueness)
     : _inputRow(inputRow),
@@ -223,16 +269,34 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
       _isLastIndex(false),
       _checkUniqueness(checkUniqueness) {
 
+  initializeProjections(projections);
+}
+
+void DocumentProducingFunctionContext::initializeProjections(std::vector<arangodb::aql::AttributeNamePath> const& projections) {
+  TRI_ASSERT(_projections.empty());
   _projections.reserve(projections.size());
+
+  // classify and order projections
   for (auto const& it : projections) {
-    ProjectionType type = ProjectionType::OtherAttribute;
-    if (it == StaticStrings::IdString) {
-      type = ProjectionType::IdAttribute;
-    } else if (it == StaticStrings::KeyString) {
-      type = ProjectionType::KeyAttribute;
-    }
-    _projections.emplace_back(type, it);
+    _projections.emplace_back(AttributeProjection{it, it.type()});
   }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (_projections.size() > 1) {
+    for (auto it = _projections.begin(); it != _projections.end(); ++it) {
+      // we expect all our projections to not have any common prefixes,
+      // because that would immensely complicate the logic inside 
+      // handleProjections
+      auto const& current = (*it).path;
+      // this is a quadratic algorithm (:gut:), but it is only activated
+      // as a safety check in maintainer mode
+      auto it2 = std::find_if(_projections.begin(), _projections.end(), [&current](auto const& other) {
+        return other.path[0] == current.path[0] && other.path.size() != current.path.size();
+      });
+      TRI_ASSERT(it2 == _projections.end());
+    }
+  }
+#endif
 }
 
 void DocumentProducingFunctionContext::setOutputRow(OutputAqlItemRow* outputRow) {
@@ -243,7 +307,7 @@ bool DocumentProducingFunctionContext::getProduceResult() const noexcept {
   return _produceResult;
 }
 
-std::vector<std::pair<ProjectionType, std::string>> const& DocumentProducingFunctionContext::getProjections() const noexcept {
+std::vector<AttributeProjection> const& DocumentProducingFunctionContext::getProjections() const noexcept {
   return _projections;
 }
 
@@ -401,9 +465,9 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
         }
         if (found.isNone()) {
           // attribute not found
-          objectBuilder.add(it.second, VPackValue(VPackValueType::Null));
+          objectBuilder.add(it.path.path[0], VPackValue(VPackValueType::Null));
         } else {
-          objectBuilder.add(it.second, found);
+          objectBuilder.add(it.path.path[0], found);
         }
       }
     } else {

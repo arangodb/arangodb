@@ -61,7 +61,7 @@ class IndexExecutorInfos {
   IndexExecutorInfos(RegisterId outputRegister, QueryContext& query,
                      Collection const* collection, Variable const* outVariable,
                      bool produceResult, Expression* filter,
-                     std::vector<std::string> const& projections,
+                     std::vector<arangodb::aql::AttributeNamePath> const& projections,
                      std::vector<size_t> const& coveringIndexAttributePositions,
                      std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
                      std::vector<Variable const*>&& expInVars,
@@ -79,7 +79,7 @@ class IndexExecutorInfos {
 
   Collection const* getCollection() const;
   Variable const* getOutVariable() const;
-  std::vector<std::string> const& getProjections() const noexcept;
+  std::vector<arangodb::aql::AttributeNamePath> const& getProjections() const noexcept;
   aql::QueryContext& query() noexcept;
   Expression* getFilter() const noexcept;
   std::vector<size_t> const& getCoveringIndexAttributePositions() const noexcept;
@@ -143,7 +143,7 @@ class IndexExecutorInfos {
   Collection const* _collection;
   Variable const* _outVariable;
   Expression* _filter;
-  std::vector<std::string> const& _projections;
+  std::vector<arangodb::aql::AttributeNamePath> const& _projections;
   std::vector<size_t> const& _coveringIndexAttributePositions;
   std::vector<Variable const*> _expInVars;  // input variables for expresseion
   std::vector<RegisterId> _expInRegs;       // input registers for expression

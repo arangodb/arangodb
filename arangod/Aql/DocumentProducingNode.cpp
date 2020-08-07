@@ -61,7 +61,13 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
   if (p.isArray()) {
     for (VPackSlice it : VPackArrayIterator(p)) {
       if (it.isString()) {
-        _projections.emplace_back(it.copyString());
+        _projections.emplace_back(arangodb::aql::AttributeNamePath(it.copyString()));
+      } else if (it.isArray()) {
+        arangodb::aql::AttributeNamePath path;
+        for (VPackSlice it2 : VPackArrayIterator(it)) {
+          path.path.emplace_back(it2.copyString());
+        }
+        _projections.emplace_back(std::move(path));
       }
     }
   }
@@ -90,7 +96,11 @@ void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
 
   builder.add(::projectionsKey, VPackValue(VPackValueType::Array));
   for (auto const& it : _projections) {
-    builder.add(VPackValue(it));
+    builder.openArray();
+    for (auto const& attribute : it.path) {
+      builder.add(VPackValue(attribute));
+    }
+    builder.close();
   }
   builder.close(); // projections
   
@@ -118,24 +128,20 @@ void DocumentProducingNode::setFilter(std::unique_ptr<Expression> filter) {
   _filter = std::move(filter);
 }
 
-std::vector<std::string> const& DocumentProducingNode::projections() const noexcept {
+std::vector<arangodb::aql::AttributeNamePath> const& DocumentProducingNode::projections() const noexcept {
   return _projections;
 }
 
-void DocumentProducingNode::projections(std::vector<std::string> const& projections) {
-  _projections = projections;
+void DocumentProducingNode::projections(std::vector<arangodb::aql::AttributeNamePath> projections) {
+  _projections = std::move(projections);
 }
 
-void DocumentProducingNode::projections(std::unordered_set<std::string>&& projections) {
+void DocumentProducingNode::projections(std::unordered_set<arangodb::aql::AttributeNamePath> projections) {
   _projections.clear();
   _projections.reserve(projections.size());
   for (auto& it : projections) {
     _projections.push_back(std::move(it));
   }
-}
-
-void DocumentProducingNode::projections(std::vector<std::string>&& projections) noexcept {
-  _projections = std::move(projections);
 }
 
 std::vector<size_t> const& DocumentProducingNode::coveringIndexAttributePositions() const noexcept {

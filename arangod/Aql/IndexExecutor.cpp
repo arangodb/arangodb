@@ -181,7 +181,7 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
 IndexExecutorInfos::IndexExecutorInfos(
     RegisterId outputRegister, QueryContext& query,
     Collection const* collection, Variable const* outVariable, bool produceResult,
-    Expression* filter, std::vector<std::string> const& projections,
+    Expression* filter, std::vector<arangodb::aql::AttributeNamePath> const& projections,
     std::vector<size_t> const& coveringIndexAttributePositions, 
     std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
     std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs,
@@ -269,7 +269,7 @@ Variable const* IndexExecutorInfos::getOutVariable() const {
   return _outVariable;
 }
 
-std::vector<std::string> const& IndexExecutorInfos::getProjections() const noexcept {
+std::vector<arangodb::aql::AttributeNamePath> const& IndexExecutorInfos::getProjections() const noexcept {
   return _projections;
 }
 

@@ -33,6 +33,7 @@
 
 #include "Aql/types.h"
 #include "Aql/AqlFunctionsInternalCache.h"
+#include "Aql/AttributeNamePath.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/voc-types.h"
 
@@ -52,14 +53,13 @@ class InputAqlItemRow;
 class OutputAqlItemRow;
 class QueryContext;
 class ExpressionContext;
-
-enum class ProjectionType : uint32_t {
-  IdAttribute,
-  KeyAttribute,
-  OtherAttribute
+  
+struct AttributeProjection {
+  AttributeNamePath path;
+  AttributeNamePath::Type type;
 };
 
-void handleProjections(std::vector<std::pair<ProjectionType, std::string>> const& projections,
+void handleProjections(std::vector<AttributeProjection> const& projections,
                        transaction::Methods const* trxPtr, velocypack::Slice slice,
                        velocypack::Builder& b);
 
@@ -69,7 +69,7 @@ struct DocumentProducingFunctionContext {
                                    RegisterId outputRegister, bool produceResult,
                                    aql::QueryContext& query,
                                    transaction::Methods& trx, Expression* filter,
-                                   std::vector<std::string> const& projections,
+                                   std::vector<arangodb::aql::AttributeNamePath> const& projections,
                                    std::vector<size_t> const& coveringIndexAttributePositions,
                                    bool allowCoveringIndexOptimization,
                                    bool checkUniqueness);
@@ -82,7 +82,7 @@ struct DocumentProducingFunctionContext {
 
   bool getProduceResult() const noexcept;
 
-  std::vector<std::pair<ProjectionType, std::string>> const& getProjections() const noexcept;
+  std::vector<AttributeProjection> const& getProjections() const noexcept;
 
   transaction::Methods* getTrxPtr() const noexcept;
 
@@ -124,17 +124,16 @@ struct DocumentProducingFunctionContext {
   arangodb::velocypack::Builder& getBuilder() noexcept;
 
  private:
-  aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
-
+  void initializeProjections(std::vector<arangodb::aql::AttributeNamePath> const& projections);
   bool checkFilter(ExpressionContext& ctx);
 
-  
+  aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
   InputAqlItemRow const& _inputRow;
   OutputAqlItemRow* _outputRow;
   aql::QueryContext& _query;
   transaction::Methods& _trx;
   Expression* _filter;
-  std::vector<std::pair<ProjectionType, std::string>> _projections;
+  std::vector<AttributeProjection> _projections;
   std::vector<size_t> const& _coveringIndexAttributePositions;
   size_t _numScanned;
   size_t _numFiltered;

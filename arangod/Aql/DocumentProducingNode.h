@@ -30,6 +30,8 @@
 #include <unordered_set>
 #include <vector>
 
+#include "Aql/AttributeNamePath.h"
+
 namespace arangodb {
 namespace velocypack {
 class Builder;
@@ -53,13 +55,11 @@ class DocumentProducingNode {
   /// @brief return the out variable
   Variable const* outVariable() const;
 
-  std::vector<std::string> const& projections() const noexcept;
+  std::vector<arangodb::aql::AttributeNamePath> const& projections() const noexcept;
 
-  void projections(std::vector<std::string> const& projections);
+  void projections(std::vector<arangodb::aql::AttributeNamePath> projections);
 
-  void projections(std::vector<std::string>&& projections) noexcept;
-
-  void projections(std::unordered_set<std::string>&& projections);
+  void projections(std::unordered_set<arangodb::aql::AttributeNamePath> projections);
 
   std::vector<size_t> const& coveringIndexAttributePositions() const noexcept;
   
@@ -87,7 +87,7 @@ class DocumentProducingNode {
   Variable const* _outVariable;
 
   /// @brief produce only the following attributes
-  std::vector<std::string> _projections;
+  std::vector<arangodb::aql::AttributeNamePath> _projections;
 
   /// @brief vector (built up in order of projection attributes) that contains
   /// the position of the index attribute value in the data returned by the

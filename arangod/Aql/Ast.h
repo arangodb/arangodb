@@ -37,6 +37,7 @@
 
 #include "Aql/AstNode.h"
 #include "Aql/AstResources.h"
+#include "Aql/AttributeNamePath.h"
 #include "Aql/Scopes.h"
 #include "Aql/VariableGenerator.h"
 #include "Aql/types.h"
@@ -402,14 +403,22 @@ class Ast {
   /// @brief count how many times a variable is referenced in an expression
   static size_t countReferences(AstNode const*, Variable const*);
 
-  /// @brief determines the top-level attributes in an expression, grouped by
+  /// @brief determines the top-level attributesused  in an expression, grouped by
   /// variable
   static TopLevelAttributes getReferencedAttributes(AstNode const*, bool&);
-  static std::unordered_set<std::string> getReferencedAttributesForKeep(
-      AstNode const*, Variable const* searchVariable, bool&);
-
+  
+  /// @brief determines the top-level attributes used in an expression for the
+  /// specified variable
   static bool getReferencedAttributes(AstNode const*, Variable const*,
                                       std::unordered_set<std::string>&);
+  
+  /// @brief determines the attributes and subattributes used in an expression for the
+  /// specified variable
+  static bool getReferencedAttributesRecursive(AstNode const*, Variable const*,
+                                               std::unordered_set<arangodb::aql::AttributeNamePath>&);
+
+  static std::unordered_set<std::string> getReferencedAttributesForKeep(
+      AstNode const*, Variable const* searchVariable, bool&);
 
   /// @brief replace an attribute access with just the variable
   static AstNode* replaceAttributeAccess(AstNode* node, Variable const* variable,

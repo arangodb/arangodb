@@ -215,13 +215,19 @@ void IndexNode::initIndexCoversProjections() {
 
   std::vector<size_t> coveringAttributePositions;
   // test if the index fields are the same fields as used in the projection
-  std::string result;
   for (auto const& it : projections()) {
     bool found = false;
     for (size_t j = 0; j < fields.size(); ++j) {
-      result.clear();
-      TRI_AttributeNamesToString(fields[j], result, false);
-      if (result == it) {
+      if (it.path.size() != fields[j].size()) {
+        break;
+      }
+      bool allMatch = true;
+      for (size_t k = 0; k < fields[j].size(); ++k) {
+        if (fields[j][k].name != it.path[k]) {
+          allMatch = false;
+        }
+      }
+      if (allMatch) {
         found = true;
         coveringAttributePositions.emplace_back(j);
         break;

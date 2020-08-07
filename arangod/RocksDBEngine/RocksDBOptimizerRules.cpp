@@ -23,6 +23,7 @@
 
 #include "RocksDBOptimizerRules.h"
 
+#include "Aql/AttributeNamePath.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
@@ -51,6 +52,35 @@ namespace {
 
 std::initializer_list<ExecutionNode::NodeType> const reduceExtractionToProjectionTypes = {
     ExecutionNode::ENUMERATE_COLLECTION, ExecutionNode::INDEX};
+      
+void removeCommonPrefixes(std::unordered_set<arangodb::aql::AttributeNamePath>& attributes) {
+  if (attributes.size() < 2) {
+    return;
+  }
+
+  arangodb::aql::AttributeNamePath temp;
+  // iterate over all the projections that we collected, and remove the ones for which
+  // there also exists a projection with a smaller prefix
+  for (auto it = attributes.begin(); it != attributes.end(); /**/) {
+    arangodb::aql::AttributeNamePath const& current = (*it);
+    bool prefixExists = false;
+    if (current.size() > 1) {
+      temp.clear();
+      for (size_t i = 0; i < current.size() - 1; ++i) {
+        temp.path.emplace_back(current.path[i]);
+        if (attributes.find(temp) != attributes.end()) {
+          prefixExists = true;
+          break;
+        }
+      }
+    }
+    if (prefixExists) {
+      it = attributes.erase(it);
+    } else {
+      ++it;
+    }
+  }
+}
 
 }  // namespace
 
@@ -81,7 +111,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
 
   bool modified = false;
   VarSet vars;
-  std::unordered_set<std::string> attributes;
+  std::unordered_set<arangodb::aql::AttributeNamePath> attributes;
 
   for (auto& n : nodes) {
     // isDeterministic is false for EnumerateCollectionNodes when the "random" flag is set.
@@ -107,7 +137,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         RemoveNode const* removeNode = ExecutionNode::castTo<RemoveNode const*>(current);
         if (removeNode->inVariable() == v) {
           // FOR doc IN collection REMOVE doc IN ...
-          attributes.emplace(StaticStrings::KeyString);
+          attributes.emplace(arangodb::aql::AttributeNamePath(StaticStrings::KeyString));
           optimize = true;
         } else {
           doRegularCheck = true;
@@ -119,7 +149,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         if (modificationNode->inKeyVariable() == v &&
             modificationNode->inDocVariable() != v) {
           // FOR doc IN collection UPDATE/REPLACE doc IN ...
-          attributes.emplace(StaticStrings::KeyString);
+          attributes.emplace(arangodb::aql::AttributeNamePath(StaticStrings::KeyString));
           optimize = true;
         } else {
           doRegularCheck = true;
@@ -133,7 +163,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           current->getVariablesUsedHere(vars);
 
           if (vars.find(v) != vars.end()) {
-            if (!Ast::getReferencedAttributes(node, v, attributes)) {
+            if (!Ast::getReferencedAttributesRecursive(node, v, attributes)) {
               stop = true;
               break;
             }
@@ -151,9 +181,8 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
               stop = true;
               break;
             }
-            // insert 0th level of attribute name into the set of attributes
-            // that we need for our projection
-            attributes.emplace(it.attributePath[0]);
+            // insert attribute name into the set of attributes that we need for our projection
+            attributes.emplace(AttributeNamePath(it.attributePath));
           }
         }
       } else if (current->getType() == EN::INDEX) {
@@ -166,7 +195,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           current->getVariablesUsedHere(vars);
 
           if (vars.find(v) != vars.end()) {
-            if (!Ast::getReferencedAttributes(node, v, attributes)) {
+            if (!Ast::getReferencedAttributesRecursive(node, v, attributes)) {
               stop = true;
               break;
             }
@@ -196,12 +225,15 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
       current = current->getFirstParent();
     }
 
+    ::removeCommonPrefixes(attributes);
+
     // projections are currently limited (arbitrarily to 5 attributes)
     if (optimize && !stop && !attributes.empty() && attributes.size() <= 5) {
+      arangodb::aql::AttributeNamePath const IdPath(StaticStrings::IdString);
+
       if (n->getType() == ExecutionNode::ENUMERATE_COLLECTION &&
           !isRandomOrder &&
-          std::find(attributes.begin(), attributes.end(), StaticStrings::IdString) ==
-              attributes.end()) {
+          std::find(attributes.begin(), attributes.end(), IdPath) == attributes.end()) {
         // the node is still an EnumerateCollection... now check if we should
         // turn it into an index scan we must never have a projection on _id, as
         // producing _id is not supported yet by the primary index iterator

@@ -32,6 +32,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
+#include "Aql/AttributeNamePath.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
@@ -953,18 +954,24 @@ void Index::expandInSearchValues(VPackSlice const base, VPackBuilder& result) co
   }
 }
 
-bool Index::covers(std::unordered_set<std::string> const& attributes) const {
+bool Index::covers(std::unordered_set<arangodb::aql::AttributeNamePath> const& attributes) const {
   // check if we can use covering indexes
   if (_fields.size() < attributes.size()) {
     // we will not be able to satisfy all requested projections with this index
     return false;
   }
 
-  std::string result;
+  arangodb::aql::AttributeNamePath compare;
   for (size_t i = 0; i < _fields.size(); ++i) {
-    result.clear();
-    TRI_AttributeNamesToString(_fields[i], result, false);
-    if (std::find(attributes.begin(), attributes.end(), result) == attributes.end()) {
+    auto const& field = _fields[i];
+    compare.clear();
+    for (auto const& part : field) {
+      if (part.shouldExpand) {
+        continue;
+      }
+      compare.path.emplace_back(part.name);
+    }
+    if (std::find(attributes.begin(), attributes.end(), compare) == attributes.end()) {
       return false;
     }
   }

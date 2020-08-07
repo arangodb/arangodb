@@ -54,6 +54,7 @@ class Slice;
 }  // namespace velocypack
 
 namespace aql {
+struct AttributeNamePath;
 class SortCondition;
 struct Variable;
 }  // namespace aql
@@ -228,7 +229,7 @@ class Index {
   virtual bool needsReversal() const { return false; } 
 
   /// @brief whether or not the index covers all the attributes passed in
-  virtual bool covers(std::unordered_set<std::string> const& attributes) const;
+  virtual bool covers(std::unordered_set<arangodb::aql::AttributeNamePath> const& attributes) const;
 
   /// @brief return the underlying collection
   inline LogicalCollection& collection() const { return _collection; }
