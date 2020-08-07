@@ -1,5 +1,7 @@
 v3.6.6 (XXXX-XX-XX)
 -------------------
+* Fixed internal issue #739: ArangoSearch filter volatility takes into
+  account calculation nodes dependencies
 
 * Fixed issue #12349: arangosh compact Arangoerror 404.
 
