@@ -1994,12 +1994,6 @@ function iResearchAqlTestSuite () {
       assertEqual(1, result.length);
     },
     
-    testPhraseInRangeViaArrayVariable : function () {
-      var result = db._query("LET p = NOOPT([{IN_RANGE: ['quic', 'ruick', false, true]}, 'brown'])"
-                             + "FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, p, 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
-      assertEqual(1, result.length);
-    },
-    
     testVolatileFilter : function() {
       let result = db._query("FOR doc IN AnotherUnitTestsCollection LET kk = NOEVAL(doc.id) "
                              + " FOR c IN UnitTestsWithArrayView SEARCH c.c == kk SORT c.c RETURN c ").toArray();
