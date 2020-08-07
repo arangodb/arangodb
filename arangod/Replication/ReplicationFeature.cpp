@@ -235,7 +235,8 @@ void ReplicationFeature::startApplier(TRI_vocbase_t* vocbase) {
   TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
   TRI_ASSERT(vocbase->replicationApplier() != nullptr);
 
-  if (vocbase->replicationApplier()->autoStart()) {
+  if (!ServerState::instance()->isClusterRole() &&
+      vocbase->replicationApplier()->autoStart()) {
     if (!_replicationApplierAutoStart) {
       LOG_TOPIC("c5378", INFO, arangodb::Logger::REPLICATION)
           << "replication applier explicitly deactivated for database '"
@@ -269,7 +270,8 @@ void ReplicationFeature::disableReplicationApplier() {
 void ReplicationFeature::stopApplier(TRI_vocbase_t* vocbase) {
   TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
 
-  if (vocbase->replicationApplier() != nullptr) {
+  if (!ServerState::instance()->isClusterRole() &&
+      vocbase->replicationApplier() != nullptr) {
     vocbase->replicationApplier()->stopAndJoin();
   }
 }

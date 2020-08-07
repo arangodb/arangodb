@@ -1,5 +1,9 @@
 devel
 -----
+
+* Don't prevent concurrent synchronization of different shards from the same
+  database. Previously only one shard was synchronized at a time per database.
+
 * Fixed OASIS-278 issue: Added proper sort/calc nodes cleanup for late materialzation
   after OneShard optimization
   
