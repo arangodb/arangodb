@@ -65,7 +65,7 @@ https://github.com/lz4/lz4
 
 ## rocksdb
 
-(commit ec711b23152ca4e426057557784af322a2065fbc)
+(commit 56f468b356563a65f6e0c89a25626f5f13eb4f4c)
 
 Our branch is maintained at:
 https://github.com/arangodb-helper/rocksdb
