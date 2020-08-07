@@ -112,12 +112,12 @@ ResultT<std::pair<std::string, bool>> RestDocumentHandler::forwardingTarget() {
   bool found = false;
   std::string const& value = _request->header(StaticStrings::TransactionId, found);
   if (found) {
-    uint64_t tid = basics::StringUtils::uint64(value);
-    if (!transaction::isCoordinatorTransactionId(tid)) {
-      TRI_ASSERT(transaction::isLegacyTransactionId(tid));
+    TransactionId tid{basics::StringUtils::uint64(value)};
+    if (!tid.isCoordinatorTransactionId()) {
+      TRI_ASSERT(tid.isLegacyTransactionId());
       return {std::make_pair(StaticStrings::Empty, false)};
     }
-    uint32_t sourceServer = TRI_ExtractServerIdFromTick(tid);
+    uint32_t sourceServer = tid.serverId();
     if (sourceServer == ServerState::instance()->getShortId()) {
       return {std::make_pair(StaticStrings::Empty, false)};
     }
@@ -218,7 +218,7 @@ RestStatus RestDocumentHandler::insertDocument() {
             // result stays valid!
             Result res = _activeTrx->finish(opres.result);
             if (opres.fail()) {
-              generateTransactionError(opres);
+              generateTransactionError(cname, opres);
               return;
             }
 
@@ -272,17 +272,17 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
 
   // check for an etag
   bool isValidRevision;
-  TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match", isValidRevision);
+  RevisionId ifNoneRid = extractRevision("if-none-match", isValidRevision);
   if (!isValidRevision) {
-    ifNoneRid = UINT64_MAX;  // an impossible rev, so precondition failed will happen
+    ifNoneRid = RevisionId::max();  // an impossible rev, so precondition failed will happen
   }
 
   OperationOptions options;
   options.ignoreRevs = true;
 
-  TRI_voc_rid_t ifRid = extractRevision("if-match", isValidRevision);
+  RevisionId ifRid = extractRevision("if-match", isValidRevision);
   if (!isValidRevision) {
-    ifRid = UINT64_MAX;  // an impossible rev, so precondition failed will happen
+    ifRid = RevisionId::max();  // an impossible rev, so precondition failed will happen
   }
 
   auto buffer = std::make_shared<VPackBuffer<uint8_t>>();
@@ -290,9 +290,9 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
   {
     VPackObjectBuilder guard(&builder);
     builder.add(StaticStrings::KeyString, VPackValue(key));
-    if (ifRid != 0) {
+    if (ifRid.isSet()) {
       options.ignoreRevs = false;
-      builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(ifRid)));
+      builder.add(StaticStrings::RevString, VPackValue(ifRid.toString()));
     }
   }
 
@@ -316,26 +316,20 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
 
   return waitForFuture(
       _activeTrx->documentAsync(collection, search, options).thenValue([=, buffer(std::move(buffer))](OperationResult opRes) {
-        auto res = _activeTrx->finish(opRes.result);
+        Result res = _activeTrx->finish(opRes.result);
 
         if (!opRes.ok()) {
-          if (opRes.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-            generateDocumentNotFound(collection, key);
-          } else if (ifRid != 0 && opRes.is(TRI_ERROR_ARANGO_CONFLICT)) {
-            generatePreconditionFailed(opRes.slice());
-          } else {
-            generateTransactionError(collection, res, key);
-          }
+          generateTransactionError(collection, opRes, key, ifRid);
           return;
         }
 
         if (!res.ok()) {
-          generateTransactionError(collection, res, key);
+          generateTransactionError(collection, res, key, ifRid);
           return;
         }
 
-        if (ifNoneRid != 0) {
-          TRI_voc_rid_t const rid = TRI_ExtractRevisionId(opRes.slice());
+        if (ifNoneRid.isSet()) {
+          RevisionId const rid = RevisionId::fromSlice(opRes.slice());
           if (ifNoneRid == rid) {
             generateNotModified(rid);
             return;
@@ -453,19 +447,20 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
 
   // extract the revision, if single document variant and header given:
   std::shared_ptr<VPackBuffer<uint8_t>> buffer;
+  RevisionId headerRev = RevisionId::none();
   if (!isArrayCase) {
     bool isValidRevision;
-    TRI_voc_rid_t headerRev = extractRevision("if-match", isValidRevision);
+    headerRev = extractRevision("if-match", isValidRevision);
     if (!isValidRevision) {
-      headerRev = UINT64_MAX;  // an impossible revision, so precondition failed
+      headerRev = RevisionId::max();  // an impossible revision, so precondition failed
     }
-    if (headerRev != 0) {
+    if (headerRev.isSet()) {
       opOptions.ignoreRevs = false;
     }
 
     VPackSlice keyInBody = body.get(StaticStrings::KeyString);
-    TRI_voc_rid_t revInBody = TRI_ExtractRevisionId(body);
-    if ((headerRev != 0 && revInBody != headerRev) || keyInBody.isNone() ||
+    RevisionId revInBody = RevisionId::fromSlice(body);
+    if ((headerRev.isSet() && revInBody != headerRev) || keyInBody.isNone() ||
         keyInBody.isNull() || (keyInBody.isString() && keyInBody.copyString() != key)) {
       // We need to rewrite the document with the given revision and key:
       buffer = std::make_shared<VPackBuffer<uint8_t>>();
@@ -474,10 +469,10 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
         VPackObjectBuilder guard(&builder);
         TRI_SanitizeObject(body, builder);
         builder.add(StaticStrings::KeyString, VPackValue(key));
-        if (headerRev != 0) {
-          builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(headerRev)));
-        } else if (!opOptions.ignoreRevs && revInBody != 0) {
-          builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(headerRev)));
+        if (headerRev.isSet()) {
+          builder.add(StaticStrings::RevString, VPackValue(headerRev.toString()));
+        } else if (!opOptions.ignoreRevs && revInBody.isSet()) {
+          builder.add(StaticStrings::RevString, VPackValue(headerRev.toString()));
         }
       }
 
@@ -514,19 +509,19 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   }
 
   return waitForFuture(std::move(f).thenValue([=, buffer(std::move(buffer))](OperationResult opRes) {
-    auto res = _activeTrx->finish(opRes.result);
+    Result res = _activeTrx->finish(opRes.result);
 
     // ...........................................................................
     // outside write transaction
     // ...........................................................................
 
     if (opRes.fail()) {
-      generateTransactionError(opRes);
+      generateTransactionError(cname, opRes, key, headerRev);
       return;
     }
 
     if (!res.ok()) {
-      generateTransactionError(cname, res, key, 0);
+      generateTransactionError(cname, res, key, headerRev);
       return;
     }
 
@@ -557,12 +552,12 @@ RestStatus RestDocumentHandler::removeDocument() {
   }
 
   // extract the revision if single document case
-  TRI_voc_rid_t revision = 0;
+  RevisionId revision = RevisionId::none();
   if (suffixes.size() == 2) {
     bool isValidRevision = false;
     revision = extractRevision("if-match", isValidRevision);
     if (!isValidRevision) {
-      revision = UINT64_MAX;  // an impossible revision, so precondition failed
+      revision = RevisionId::max();  // an impossible revision, so precondition failed
     }
   }
 
@@ -585,9 +580,9 @@ RestStatus RestDocumentHandler::removeDocument() {
 
       builder.add(StaticStrings::KeyString, VPackValue(key));
 
-      if (revision != 0) {
+      if (revision.isSet()) {
         opOptions.ignoreRevs = false;
-        builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revision)));
+        builder.add(StaticStrings::RevString, VPackValue(revision.toString()));
       }
     }
 
@@ -629,7 +624,7 @@ RestStatus RestDocumentHandler::removeDocument() {
     // ...........................................................................
 
     if (opRes.fail()) {
-      generateTransactionError(opRes);
+      generateTransactionError(cname, opRes, key, revision);
       return;
     }
 
@@ -687,7 +682,7 @@ RestStatus RestDocumentHandler::readManyDocuments() {
     auto res = _activeTrx->finish(opRes.result);
 
     if (opRes.fail()) {
-      generateTransactionError(opRes);
+      generateTransactionError(cname, opRes);
       return;
     }
 

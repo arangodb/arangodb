@@ -911,7 +911,7 @@ futures::Future<query_t> Agent::poll(
       builder->add("commitIndex", VPackValue(_commitIndex));
       builder->add("firstIndex", VPackValue(0));
       builder->add(VPackValue("readDB"));
-      _readDB.get().toBuilder(*builder, true);
+      _readDB.get("", *builder, true);
     } else if (index <= _commitIndex) {   // deliver immediately all logs since index
       builder = std::make_shared<VPackBuilder>();
       VPackObjectBuilder r(builder.get());
@@ -1908,7 +1908,8 @@ arangodb::consensus::index_t Agent::readDB(VPackBuilder& builder) const {
 
   uint64_t commitIndex = 0;
 
-  { READ_LOCKER(oLocker, _outputLock);
+  { 
+    READ_LOCKER(oLocker, _outputLock);
 
     commitIndex = _commitIndex;
     // commit index
@@ -1917,7 +1918,8 @@ arangodb::consensus::index_t Agent::readDB(VPackBuilder& builder) const {
 
     // key-value store {}
     builder.add(VPackValue("agency"));
-    _readDB.get().toBuilder(builder, true); }
+    _readDB.get("", builder, true); 
+  }
 
   // replicated log []
   _state.toVelocyPack(commitIndex, builder);

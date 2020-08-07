@@ -1063,9 +1063,8 @@ class ExecutionBlockImplExecuteIntegrationTest
     ASSERT_NE(block, nullptr);
     ASSERT_GT(block->size(), row);
     ASSERT_TRUE(block->isShadowRow(row));
-    auto val = block->getShadowRowDepth(row);
-    ASSERT_TRUE(val.isNumber());
-    EXPECT_EQ(static_cast<size_t>(val.toInt64()), expected);
+    size_t val = block->getShadowRowDepth(row);
+    EXPECT_EQ(val, expected);
   }
 
   /**
@@ -1890,10 +1889,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, only_relevant_shadowRows) {
     EXPECT_TRUE(block->hasShadowRows());
     EXPECT_TRUE(block->isShadowRow(0));
     auto rowIndex = block->getShadowRowDepth(0);
-    EXPECT_TRUE(basics::VelocyPackHelper::equal(rowIndex.slice(),
-                                                builder.slice().at(i), false))
-        << "Expected: " << builder.slice().at(i).toJson()
-        << " got: " << rowIndex.slice().toJson();
+    EXPECT_EQ(rowIndex, builder.slice().at(i).getNumber<size_t>());
   }
 }
 

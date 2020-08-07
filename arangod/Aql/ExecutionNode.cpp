@@ -649,16 +649,13 @@ void ExecutionNode::cloneRegisterPlan(ExecutionNode* dependency) {
 }
 
 bool ExecutionNode::isEqualTo(ExecutionNode const& other) const {
-  std::function<bool(ExecutionNode* const, ExecutionNode* const)> comparator =
-      [](ExecutionNode* const l, ExecutionNode* const r) {
-        return l->isEqualTo(*r);
-      };
-
   return ((this->getType() == other.getType()) && (_id == other._id) &&
           (_depth == other._depth) &&
           (isInSplicedSubquery() == other.isInSplicedSubquery()) &&
           (std::equal(_dependencies.begin(), _dependencies.end(),
-                      other._dependencies.begin(), comparator)));
+                      other._dependencies.begin(), [](ExecutionNode* const l, ExecutionNode* const r) {
+            return l->isEqualTo(*r);
+          })));
 }
 
 /// @brief invalidate the cost estimation for the node and its dependencies
@@ -945,7 +942,7 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
 
 /// @brief static analysis debugger
 #if 0
-struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode> {
+struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   RegisterPlanningDebugger()
     : indent(0) {
   }
@@ -2040,22 +2037,24 @@ bool SubqueryNode::mayAccessCollections() {
 
   // if the subquery contains any of these nodes, it may access data from
   // a collection
-  std::vector<ExecutionNode::NodeType> const types = {ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
-                                                      ExecutionNode::ENUMERATE_COLLECTION,
-                                                      ExecutionNode::INDEX,
-                                                      ExecutionNode::INSERT,
-                                                      ExecutionNode::UPDATE,
-                                                      ExecutionNode::REPLACE,
-                                                      ExecutionNode::REMOVE,
-                                                      ExecutionNode::UPSERT,
-                                                      ExecutionNode::TRAVERSAL,
-                                                      ExecutionNode::SHORTEST_PATH,
-                                                      ExecutionNode::K_SHORTEST_PATHS};
+  std::initializer_list<ExecutionNode::NodeType> const types = {
+      ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
+      ExecutionNode::ENUMERATE_COLLECTION,
+      ExecutionNode::INDEX,
+      ExecutionNode::INSERT,
+      ExecutionNode::UPDATE,
+      ExecutionNode::REPLACE,
+      ExecutionNode::REMOVE,
+      ExecutionNode::UPSERT,
+      ExecutionNode::TRAVERSAL,
+      ExecutionNode::SHORTEST_PATH,
+      ExecutionNode::K_SHORTEST_PATHS};
 
   ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
 
-  UniqueNodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, nodes, true);
+  NodeFinder<std::initializer_list<ExecutionNode::NodeType>, WalkerUniqueness::Unique> finder(
+      types, nodes, true);
   _subquery->walk(finder);
 
   if (!nodes.empty()) {
@@ -2146,7 +2145,8 @@ CostEstimate SubqueryNode::estimateCost() const {
 }
 
 /// @brief helper struct to find all (outer) variables used in a SubqueryNode
-struct SubqueryVarUsageFinder final : public UniqueWalkerWorker<ExecutionNode> {
+struct SubqueryVarUsageFinder final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::Unique> {
   VarSet _usedLater;
   VarSet _valid;
 
@@ -2199,7 +2199,8 @@ void SubqueryNode::getVariablesUsedHere(VarSet& vars) const {
 }
 
 /// @brief is the node determistic?
-struct DeterministicFinder final : public UniqueWalkerWorker<ExecutionNode> {
+struct DeterministicFinder final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::Unique> {
   bool _isDeterministic = true;
 
   DeterministicFinder() : _isDeterministic(true) {}

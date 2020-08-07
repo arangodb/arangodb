@@ -78,14 +78,10 @@ void EnumerateListExecutor::initializeNewRow(AqlItemBlockInputRange& inputRange)
 
   // store the length into a local variable
   // so we don't need to calculate length every time
-  if (inputList.isDocvec()) {
-    _inputArrayLength = inputList.docvecSize();
-  } else {
-    if (!inputList.isArray()) {
-      throwArrayExpectedException(inputList);
-    }
-    _inputArrayLength = inputList.length();
+  if (!inputList.isArray()) {
+    throwArrayExpectedException(inputList);
   }
+  _inputArrayLength = inputList.length();
 
   _inputArrayPosition = 0;
 }

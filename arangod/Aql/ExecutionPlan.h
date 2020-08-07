@@ -185,11 +185,13 @@ class ExecutionPlan {
 
   /// @brief find nodes of certain types
   void findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
-                       std::vector<ExecutionNode::NodeType> const&, bool enterSubqueries);
-  
+                       std::initializer_list<ExecutionNode::NodeType> const&,
+                       bool enterSubqueries);
+
   /// @brief find unique nodes of certain types
   void findUniqueNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
-                             std::vector<ExecutionNode::NodeType> const&, bool enterSubqueries);
+                             std::initializer_list<ExecutionNode::NodeType> const&,
+                             bool enterSubqueries);
 
   /// @brief find all end nodes in a plan
   void findEndNodes(::arangodb::containers::SmallVector<ExecutionNode*>& result,
@@ -270,7 +272,7 @@ class ExecutionPlan {
   ExecutionNode* fromSlice(velocypack::Slice const& slice);
 
   /// @brief whether or not the plan contains at least one node of this type
-  bool contains(ExecutionNode::NodeType type) const;
+  bool contains(ExecutionNode::NodeType) const;
 
   /// @brief increase the node counter for the type
   void increaseCounter(ExecutionNode::NodeType type) noexcept;
@@ -278,6 +280,12 @@ class ExecutionPlan {
   bool fullCount() const noexcept;
 
  private:
+  template <WalkerUniqueness U>
+  /// @brief find nodes of certain types
+  void findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
+                       std::initializer_list<ExecutionNode::NodeType> const&,
+                       bool enterSubqueries);
+
   /// @brief creates a calculation node
   ExecutionNode* createCalculation(Variable*, AstNode const*, ExecutionNode*);
 

@@ -132,9 +132,6 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     /// @brief configuration
     ReplicationApplierConfiguration applier;
 
-    /// @brief information about the replication barrier
-    replutils::BarrierInfo barrier{};
-
     /// @brief object holding the HTTP client and all connection machinery
     replutils::Connection connection;
 
@@ -175,9 +172,6 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
 
   /// @brief request location rewriter (injects database name)
   static std::string rewriteLocation(void*, std::string const&);
-
-  /// @brief steal the barrier id from the syncer
-  TRI_voc_tick_t stealBarrier();
 
   void setLeaderId(std::string const& leaderId) { _state.leaderId = leaderId; }
 

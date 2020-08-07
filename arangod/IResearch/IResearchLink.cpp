@@ -281,7 +281,7 @@ irs::utf8_path getPersistedPath(arangodb::DatabasePathFeature const& dbPathFeatu
   dataPath += std::to_string(link.collection().vocbase().id());
   dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
   dataPath += "-";
-  dataPath += std::to_string(link.collection().id());  // has to be 'id' since this can be a per-shard collection
+  dataPath += std::to_string(link.collection().id().id());  // has to be 'id' since this can be a per-shard collection
   dataPath += "_";
   dataPath += std::to_string(link.id().id());
 
@@ -1500,8 +1500,9 @@ Result IResearchLink::insert(
       return {TRI_ERROR_INTERNAL,
               "failed to store state into a TransactionState for insert into "
               "arangosearch link '" +
-                  std::to_string(id().id()) + "', tid '" + std::to_string(state.id()) +
-                  "', revision '" + std::to_string(documentId.id()) + "'"};
+                  std::to_string(id().id()) + "', tid '" +
+                  std::to_string(state.id().id()) + "', revision '" +
+                  std::to_string(documentId.id()) + "'"};
     }
   }
 
@@ -1645,8 +1646,9 @@ Result IResearchLink::remove(
       return {TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
               "failed to lock arangosearch link while removing a document from "
               "arangosearch link '" +
-                  std::to_string(id().id()) + "', tid '" + std::to_string(state.id()) +
-                  "', revision '" + std::to_string(documentId.id()) + "'"};
+                  std::to_string(id().id()) + "', tid '" +
+                  std::to_string(state.id().id()) + "', revision '" +
+                  std::to_string(documentId.id()) + "'"};
     }
 
     TRI_ASSERT(_dataStore); // must be valid if _asyncSelf->get() is valid
@@ -1662,8 +1664,9 @@ Result IResearchLink::remove(
       return {TRI_ERROR_INTERNAL,
               "failed to store state into a TransactionState for remove from "
               "arangosearch link '" +
-                  std::to_string(id().id()) + "', tid '" + std::to_string(state.id()) +
-                  "', revision '" + std::to_string(documentId.id()) + "'"};
+                  std::to_string(id().id()) + "', tid '" +
+                  std::to_string(state.id().id()) + "', revision '" +
+                  std::to_string(documentId.id()) + "'"};
     }
   }
 

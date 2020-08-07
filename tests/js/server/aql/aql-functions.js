@@ -3011,6 +3011,60 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test product function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testProduct : function () {
+      var data = [
+        [ 1, [ ] ],
+        [ 1, [ null ] ],
+        [ 1, [ null, null ] ],
+        [ 1, [ 1 ] ],
+        [ 33, [ 33 ] ],
+        [ -1, [ -1 ] ],
+        [ 0.5, [ 0.5 ] ],
+        [ 0.25, [ 0.5, 0.5 ] ],
+        [ 1, [ 1, null, null ] ],
+        [ 1, [ 1, null, null, 1 ] ],
+        [ 0, [ 1, null, null, 0 ] ],
+        [ 35, [ 1, null, null, 35 ] ],
+        [ 120, [ 1, 2, 3, 4, 5 ] ],
+        [ 120, [ 5, 4, 3, 2, 1 ] ],
+        [ 120, [ null, 5, 4, null, 3, 2, 1, null ] ],
+        [ -1, [ -1, 1, -1, 1, -1, 1 ] ],
+        [ 0, [ -1, 1, -1, 1, -1, 0 ] ],
+        [ 1, [ -1, -1, -1, -1 ] ],
+        [ 0.0001, [ 0.1, 0.1, 0.01, 1.1 ] ],
+        [ 0.001, [ 0.1, 0.1, 0.1 ] ],
+        [ 0.01, [ 0.1, 0.1 ] ],
+        [ 100, [ 0.1, 1000 ] ],
+        [ 350, [ 0.1, 0.1, 35, 1000 ] ],
+        [ 0.0001, [ -0.1, -0.1, -0.01, -1.1 ] ],
+        [ -2599473.95222, [ 45.356, 256.23, -223.6767 ] ],
+        [ -14106517788136454000, [ 45.356, 256.23, -223.6767, -14512.63, 456.00222, -0.090566, 9054325.1 ] ]
+      ];
+
+      data.forEach(function (value) {
+        var actual = getQueryResults("RETURN PRODUCT(" + JSON.stringify(value[1]) + ")");
+        assertEqual(value[0].toFixed(4), actual[0].toFixed(4), value);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test product function
+////////////////////////////////////////////////////////////////////////////////
+
+    testProductInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN PRODUCT()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN PRODUCT([ ], 2)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN PRODUCT(null)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN PRODUCT(false)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN PRODUCT(3)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN PRODUCT(\"yes\")"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN PRODUCT({ })"); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test min function
 ////////////////////////////////////////////////////////////////////////////////
     

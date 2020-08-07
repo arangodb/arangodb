@@ -39,7 +39,7 @@
 using namespace arangodb;
 
 RocksDBTransactionCollection::RocksDBTransactionCollection(TransactionState* trx,
-                                                           TRI_voc_cid_t cid,
+                                                           DataSourceId cid,
                                                            AccessMode::Type accessType)
     : TransactionCollection(trx, cid, accessType),
       _initialNumberDocuments(0),
@@ -48,8 +48,9 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(TransactionState* trx
       _numUpdates(0),
       _numRemoves(0),
       _usageLocked(false),
-      _exclusiveWrites(trx->vocbase().server().getFeature<arangodb::RocksDBOptionFeature>()._exclusiveWrites) {}
-
+      _exclusiveWrites(
+          trx->vocbase().server().getFeature<arangodb::RocksDBOptionFeature>()._exclusiveWrites) {
+}
 
 RocksDBTransactionCollection::~RocksDBTransactionCollection() = default;
 
@@ -81,7 +82,7 @@ Result RocksDBTransactionCollection::lockUsage() {
     if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
         !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
       // use and usage-lock
-      LOG_TRX("b72bb", TRACE, _transaction) << "using collection " << _cid;
+      LOG_TRX("b72bb", TRACE, _transaction) << "using collection " << _cid.id();
 
 #ifdef USE_ENTERPRISE
       // we don't need to check the permissions of collections that we only
@@ -152,7 +153,7 @@ void RocksDBTransactionCollection::releaseUsage() {
   // the top level transaction releases all collections
   if (_collection != nullptr) {
     // unuse collection, remove usage-lock
-    LOG_TRX("67a6b", TRACE, _transaction) << "unusing collection " << _cid;
+    LOG_TRX("67a6b", TRACE, _transaction) << "unusing collection " << _cid.id();
 
     TRI_ASSERT(_usageLocked); // simon: TODO make _usageLocked maintainer only
     if (_usageLocked) {
@@ -167,7 +168,7 @@ void RocksDBTransactionCollection::releaseUsage() {
 
 /// @brief add an operation for a transaction collection
 void RocksDBTransactionCollection::addOperation(TRI_voc_document_operation_e operationType,
-                                                TRI_voc_rid_t revisionId) {
+                                                RevisionId revisionId) {
   switch (operationType) {
     case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
       break;
@@ -187,7 +188,7 @@ void RocksDBTransactionCollection::addOperation(TRI_voc_document_operation_e ope
   }
 }
 
-void RocksDBTransactionCollection::prepareTransaction(uint64_t trxId, uint64_t beginSeq) {
+void RocksDBTransactionCollection::prepareTransaction(TransactionId trxId, uint64_t beginSeq) {
   TRI_ASSERT(_collection != nullptr);
   if (hasOperations() || !_trackedOperations.empty() || !_trackedIndexOperations.empty()) {
     auto* coll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
@@ -196,7 +197,7 @@ void RocksDBTransactionCollection::prepareTransaction(uint64_t trxId, uint64_t b
   }
 }
 
-void RocksDBTransactionCollection::abortCommit(uint64_t trxId) {
+void RocksDBTransactionCollection::abortCommit(TransactionId trxId) {
   TRI_ASSERT(_collection != nullptr);
   if (hasOperations() || !_trackedOperations.empty() || !_trackedIndexOperations.empty()) {
     auto* coll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
@@ -204,7 +205,7 @@ void RocksDBTransactionCollection::abortCommit(uint64_t trxId) {
   }
 }
 
-void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t commitSeq) {
+void RocksDBTransactionCollection::commitCounts(TransactionId trxId, uint64_t commitSeq) {
   TRI_IF_FAILURE("DisableCommitCounts") {
     return;
   }
@@ -214,7 +215,7 @@ void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t co
   // Update the collection count
   int64_t const adj = _numInserts - _numRemoves;
   if (hasOperations()) {
-    TRI_ASSERT(_revision != 0 && commitSeq != 0);
+    TRI_ASSERT(_revision.isSet() && commitSeq != 0);
     rcoll->meta().adjustNumberDocuments(commitSeq, _revision, adj);
   }
 
@@ -253,15 +254,15 @@ void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t co
   _trackedIndexOperations.clear();
 }
 
-void RocksDBTransactionCollection::trackInsert(TRI_voc_rid_t rid) {
+void RocksDBTransactionCollection::trackInsert(RevisionId rid) {
   if (_collection->useSyncByRevision()) {
-    _trackedOperations.inserts.emplace_back(static_cast<std::size_t>(rid));
+    _trackedOperations.inserts.emplace_back(static_cast<std::uint64_t>(rid.id()));
   }
 }
 
-void RocksDBTransactionCollection::trackRemove(TRI_voc_rid_t rid) {
+void RocksDBTransactionCollection::trackRemove(RevisionId rid) {
   if (_collection->useSyncByRevision()) {
-    _trackedOperations.removals.emplace_back(static_cast<std::size_t>(rid));
+    _trackedOperations.removals.emplace_back(static_cast<std::uint64_t>(rid.id()));
   }
 }
 
@@ -300,7 +301,7 @@ Result RocksDBTransactionCollection::doLock(AccessMode::Type type) {
 
   const double timeout = _transaction->lockTimeout();
 
-  LOG_TRX("f1246", TRACE, _transaction) << "write-locking collection " << _cid;
+  LOG_TRX("f1246", TRACE, _transaction) << "write-locking collection " << _cid.id();
   Result res;
   if (AccessMode::isExclusive(type)) {
     // exclusive locking means we'll be acquiring the collection's RW lock in
@@ -365,7 +366,7 @@ Result RocksDBTransactionCollection::doUnlock(AccessMode::Type type) {
   auto* physical = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
 
-  LOG_TRX("372c0", TRACE, _transaction) << "write-unlocking collection " << _cid;
+  LOG_TRX("372c0", TRACE, _transaction) << "write-unlocking collection " << _cid.id();
   if (AccessMode::isExclusive(type)) {
     // exclusive locking means we'll be releasing the collection's RW lock in
     // write mode

@@ -88,7 +88,7 @@ uint64_t AqlValue::hash(uint64_t seed) const {
       return slice(t).normalizedHash(seed);
     }
     case DOCVEC: {
-      uint64_t const tmp = docvecSize() ^ 0xba5bedf00d;
+      uint64_t const tmp = docvecLength() ^ 0xba5bedf00d;
       uint64_t value = VELOCYPACK_HASH(&tmp, sizeof(tmp), seed);
       for (auto const& it : *_data.docvec) {
         size_t const n = it->size();
@@ -118,15 +118,6 @@ uint64_t AqlValue::hash(uint64_t seed) const {
   }
 
   return 0;
-}
-
-/// @brief whether or not the value is a shadow row depth entry
-bool AqlValue::isShadowRowDepthValue() const noexcept {
-  /// this is a performance-optimized version of the check
-  /// isUInt() || isSmallInt()
-  /// VelocyPack UInts are in the range 0x28 - 0x2f, and
-  /// VelocyPack SmallInts are in the range 0x30 - 0x39
-  return _data.internal[0] >= 0x28 && _data.internal[0] <= 0x39 && ADB_LIKELY(type() == VPACK_INLINE);
 }
 
 /// @brief whether or not the value contains a none value
@@ -342,7 +333,7 @@ size_t AqlValue::length() const {
       return static_cast<size_t>(slice(t).length());
     }
     case DOCVEC: {
-      return docvecSize();
+      return docvecLength();
     }
     case RANGE: {
       return range()->size();
@@ -385,7 +376,7 @@ AqlValue AqlValue::at(int64_t position, bool& mustDestroy, bool doCopy) const {
       break;
     }
     case DOCVEC: {
-      size_t const n = docvecSize();
+      size_t const n = docvecLength();
       if (position < 0) {
         // a negative position is allowed
         position = static_cast<int64_t>(n) + position;
@@ -991,19 +982,15 @@ bool AqlValue::toBoolean() const {
 }
 
 /// @brief return the total size of the docvecs
-size_t AqlValue::docvecSize() const {
+size_t AqlValue::docvecLength() const {
   TRI_ASSERT(type() == DOCVEC);
+  TRI_ASSERT(_data.docvec != nullptr);
   size_t s = 0;
   for (auto const& it : *_data.docvec) {
+    TRI_ASSERT(it != nullptr);
     s += it->size();
   }
   return s;
-}
-
-/// @brief return the size of the docvec array
-size_t AqlValue::sizeofDocvec() const {
-  TRI_ASSERT(type() == DOCVEC);
-  return sizeof(_data.docvec[0]) * _data.docvec->size();
 }
 
 /// @brief construct a V8 value as input for the expression execution in V8
@@ -1019,7 +1006,7 @@ v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate, velocypack::Options c
     }
     case DOCVEC: {
       // calculate the result array length
-      size_t const s = docvecSize();
+      size_t const s = docvecLength();
       // allocate the result array
       v8::Handle<v8::Array> result = v8::Array::New(isolate, static_cast<int>(s));
       uint32_t j = 0;  // output row count
@@ -1072,7 +1059,8 @@ void AqlValue::toVelocyPack(VPackOptions const* options, arangodb::velocypack::B
       if (!resolveExternals && isManagedDocument()) {
         builder.addExternal(_data.pointer);
         break;
-      }  [[fallthrough]];
+      }  
+      [[fallthrough]];
     case VPACK_INLINE:
     case VPACK_MANAGED_SLICE:
     case VPACK_MANAGED_BUFFER: {
@@ -1165,9 +1153,10 @@ AqlValue AqlValue::clone() const {
     }
     case DOCVEC: {
       auto c = std::make_unique<std::vector<SharedAqlItemBlockPtr>>();
-      c->reserve(docvecSize());
+      c->reserve(docvecLength());
       for (auto const& it : *_data.docvec) {
         c->emplace_back(it->slice(0, it->size()));
+        TRI_ASSERT(c->back() != nullptr);
       }
       return AqlValue(c.release());
     }
@@ -1184,10 +1173,10 @@ AqlValue AqlValue::clone() const {
 /// @brief destroy the value's internals
 void AqlValue::destroy() noexcept {
   switch (type()) {
-    case VPACK_INLINE: {
-      case VPACK_SLICE_POINTER:
-        // nothing to do
-        return;
+    case VPACK_INLINE: 
+    case VPACK_SLICE_POINTER: {
+      // nothing to do
+      return;
     }
     case VPACK_MANAGED_SLICE: {
       delete[] _data.slice;
@@ -1373,13 +1362,12 @@ int AqlValue::Compare(transaction::Methods* trx, AqlValue const& left,
 AqlValue::AqlValue(std::vector<arangodb::aql::SharedAqlItemBlockPtr>* docvec) noexcept {
   TRI_ASSERT(docvec != nullptr);
   _data.docvec = docvec;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  for (auto const& it : *_data.docvec) {
+    TRI_ASSERT(it != nullptr);
+  }
+#endif
   setType(AqlValueType::DOCVEC);
-}
-
-/// @brief return the item block at position
-AqlItemBlock* AqlValue::docvecAt(size_t position) const {
-  TRI_ASSERT(isDocvec());
-  return _data.docvec->at(position).get();
 }
 
 AqlValue::AqlValue() noexcept {
@@ -1405,6 +1393,13 @@ AqlValue::AqlValue(uint8_t const* pointer) {
     setPointer<false>(pointer);
   }
   TRI_ASSERT(!VPackSlice(_data.pointer).isExternal());
+}
+
+AqlValue::AqlValue(AqlValueType type, void* data) noexcept {
+  TRI_ASSERT(data != nullptr);
+  TRI_ASSERT(type != VPACK_INLINE);
+  _data.data = data;
+  setType(type);
 }
 
 AqlValue::AqlValue(AqlValueHintNone const&) noexcept {
@@ -1503,9 +1498,7 @@ AqlValue::AqlValue(char const* value, size_t length) {
     // empty string
     _data.internal[0] = 0x40;
     setType(AqlValueType::VPACK_INLINE);
-    return;
-  }
-  if (length < sizeof(_data.internal) - 1) {
+  } else if (length < sizeof(_data.internal) - 1) {
     // short string... can store it inline
     _data.internal[0] = static_cast<uint8_t>(0x40 + length);
     memcpy(_data.internal + 1, value, length);
@@ -1533,7 +1526,7 @@ AqlValue::AqlValue(char const* value, size_t length) {
 }
 
 AqlValue::AqlValue(std::string const& value)
-    : AqlValue(value.c_str(), value.size()) {}
+    : AqlValue(value.data(), value.size()) {}
 
 AqlValue::AqlValue(AqlValueHintEmptyArray const&) noexcept {
   _data.internal[0] = 0x01;  // empty array in VPack
@@ -1575,11 +1568,6 @@ AqlValue::AqlValue(AqlValueHintDocumentNoCopy const& v) noexcept {
 AqlValue::AqlValue(AqlValueHintCopy const& v) {
   TRI_ASSERT(v.ptr != nullptr);
   initFromSlice(VPackSlice(v.ptr));
-}
-
-AqlValue::AqlValue(arangodb::velocypack::Builder const& builder) {
-  TRI_ASSERT(builder.isClosed());
-  initFromSlice(builder.slice());
 }
 
 AqlValue::AqlValue(arangodb::velocypack::Slice const& slice) {
@@ -1639,7 +1627,7 @@ size_t AqlValue::memoryUsage() const noexcept {
       // no need to count the memory usage for the item blocks in docvec.
       // these have already been counted elsewhere (in ctors of AqlItemBlock
       // and AqlItemBlock::setValue)
-      return sizeofDocvec();
+      return sizeof(_data.docvec) + sizeof(SharedAqlItemBlockPtr) * _data.docvec->size();
     case RANGE:
       return sizeof(Range);
   }
@@ -1673,6 +1661,12 @@ void AqlValue::setType(AqlValue::AqlValueType type) noexcept {
   _data.internal[sizeof(_data.internal) - 1] = type;
 }
 
+void* AqlValue::data() const noexcept {
+  TRI_ASSERT(type() != VPACK_INLINE);
+  TRI_ASSERT(_data.data != nullptr);
+  return _data.data;
+}
+
 template <bool isManagedDoc>
 void AqlValue::setPointer(uint8_t const* pointer) noexcept {
   _data.pointer = pointer;
@@ -1693,9 +1687,11 @@ AqlValueHintDouble::AqlValueHintDouble(double v) noexcept : value(v) {}
 AqlValueHintInt::AqlValueHintInt(int64_t v) noexcept : value(v) {}
 AqlValueHintInt::AqlValueHintInt(int v) noexcept : value(int64_t(v)) {}
 AqlValueHintUInt::AqlValueHintUInt(uint64_t v) noexcept : value(v) {}
+
 AqlValueGuard::AqlValueGuard(AqlValue& value, bool destroy) noexcept
     : _value(value), _destroy(destroy) {}
-AqlValueGuard::~AqlValueGuard() {
+
+AqlValueGuard::~AqlValueGuard() noexcept {
   if (_destroy) {
     _value.destroy();
   }

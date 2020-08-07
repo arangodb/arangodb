@@ -675,7 +675,8 @@ RestStatus RestAdminClusterHandler::handlePostMoveShard(std::unique_ptr<MoveShar
     return RestStatus::DONE;
   }
 
-  ctx->collectionID = TRI_RidToString(collection->planId());
+  // base64-encode collection id with RevisionId
+  ctx->collectionID = RevisionId{collection->planId().id()}.toString();
   auto planPath = arangodb::cluster::paths::root()->arango()->plan();
 
   VPackBuffer<uint8_t> trx;
@@ -1586,7 +1587,8 @@ void RestAdminClusterHandler::getShardDistribution(
     if (!collection->distributeShardsLike().empty()) {
       continue;
     }
-    std::string collectionID = TRI_RidToString(collection->planId());
+    // base64-encode collection id with RevisionId
+    std::string collectionID = RevisionId{collection->planId().id()}.toString();
     auto shardIds = collection->shardIds();
     for (auto const& shard : *shardIds) {
       for (size_t i = 0; i < shard.second.size(); i++) {

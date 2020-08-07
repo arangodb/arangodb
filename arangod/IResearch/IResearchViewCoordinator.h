@@ -77,7 +77,7 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
   ///        IDs
   /// @return success == view does not track collection
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result unlink(TRI_voc_cid_t cid) noexcept;
+  arangodb::Result unlink(DataSourceId cid) noexcept;
 
   bool visitCollections(CollectionVisitor const& visitor) const override;
 
@@ -86,6 +86,13 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
   ///////////////////////////////////////////////////////////////////////////////
   IResearchViewSort const& primarySort() const noexcept {
     return _meta._primarySort;
+  }
+
+  ///////////////////////////////////////////////////////////////////////////////
+  /// @return primary sort column compression method
+  ///////////////////////////////////////////////////////////////////////////////
+  auto const& primarySortCompression() const noexcept {
+    return _meta._primarySortCompression;
   }
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -108,7 +115,7 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
 
   IResearchViewCoordinator(TRI_vocbase_t& vocbase, velocypack::Slice info, uint64_t planVersion);
 
-  std::unordered_map<TRI_voc_cid_t, std::pair<std::string, arangodb::velocypack::Builder>> _collections;  // transient member, not persisted
+  std::unordered_map<DataSourceId, std::pair<std::string, arangodb::velocypack::Builder>> _collections;  // transient member, not persisted
   mutable irs::async_utils::read_write_mutex _mutex;  // for use with '_collections'
   IResearchViewMeta _meta;
 };  // IResearchViewCoordinator

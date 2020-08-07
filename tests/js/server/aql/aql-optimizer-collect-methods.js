@@ -490,6 +490,49 @@ function optimizerCollectMethodsTestSuite () {
       
       var result = AQL_EXECUTE(query).json;
       assertEqual([ 1001, 1002 ], result);
+    },
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief regression test external memory management
+////////////////////////////////////////////////////////////////////////////////
+ 
+    testRegressionMemoryManagementInHashedCollect : function () {
+      // This query triggers the following case:
+      // We have large input documents in `doc` which require
+      // non-inlined AQL values.
+      // Now we go above batch sizes with other values
+      // This way we have external management that needs
+      // to be manged accross different input and output blocks of AQL
+      const query = `
+        FOR doc IN ${c.name()}
+          LIMIT 2
+          FOR other IN 1..1001
+            COLLECT d = doc, o = other
+            RETURN 1`;
+      const res = db._query(query).toArray();
+      // We do not care for the result,
+      // ASAN would figure out invalid memory access here.
+      assertEqual(2002, res.length);
+    },
+
+    testRegressionMemoryManagementInSortedCollect : function () {
+      // This query triggers the following case:
+      // We have large input documents in `doc` which require
+      // non-inlined AQL values.
+      // Now we go above batch sizes with other values
+      // This way we have external management that needs
+      // to be manged accross different input and output blocks of AQL
+      const query = `
+        FOR doc IN ${c.name()}
+          LIMIT 2
+          FOR other IN 1..1001
+            SORT doc, other
+            COLLECT d = doc, o = other
+            RETURN 1`;
+      const res = db._query(query).toArray();
+      // We do not care for the result,
+      // ASAN would figure out invalid memory access here.
+      assertEqual(2002, res.length);
     }
   
   };

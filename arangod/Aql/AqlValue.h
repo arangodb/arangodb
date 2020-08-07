@@ -161,6 +161,7 @@ struct AqlValue final {
     uint8_t internal[16];
     uint8_t const* pointer;
     uint8_t* slice;
+    void* data;
     arangodb::velocypack::Buffer<uint8_t>* buffer;
     std::vector<arangodb::aql::SharedAqlItemBlockPtr>* docvec;
     Range const* range;
@@ -173,6 +174,9 @@ struct AqlValue final {
 
   // construct from pointer, not copying!
   explicit AqlValue(uint8_t const* pointer);
+  
+  // construct from type and pointer, not copying!
+  explicit AqlValue(AqlValueType type, void* data) noexcept;
 
   // construct from docvec, taking over its ownership
   explicit AqlValue(std::vector<arangodb::aql::SharedAqlItemBlockPtr>* docvec) noexcept;
@@ -214,9 +218,6 @@ struct AqlValue final {
   // construct from pointer, copying the data behind the pointer
   explicit AqlValue(AqlValueHintCopy const& v);
 
-  // construct from Builder, copying contents
-  explicit AqlValue(arangodb::velocypack::Builder const& builder);
-
   // construct from Slice, copying contents
   explicit AqlValue(arangodb::velocypack::Slice const& slice);
 
@@ -253,9 +254,6 @@ struct AqlValue final {
 
   /// @brief hashes the value
   uint64_t hash(uint64_t seed = 0xdeadbeef) const;
-
-  /// @brief whether or not the value is a shadow row depth entry
-  bool isShadowRowDepthValue() const noexcept;
 
   /// @brief whether or not the value contains a none value
   bool isNone() const noexcept;
@@ -318,16 +316,12 @@ struct AqlValue final {
   /// @brief whether or not an AqlValue evaluates to true/false
   bool toBoolean() const;
 
+  /// @brief return the pointer to the underlying AqlValue. 
+  /// only supported for AqlValue types with dynamic memory management
+  void* data() const noexcept;
+
   /// @brief return the range value
   Range const* range() const;
-
-  /// @brief return the total size of the docvecs
-  size_t docvecSize() const;
-
-  /// @brief return the size of the docvec array
-  size_t sizeofDocvec() const;
-
-  AqlItemBlock* docvecAt(size_t position) const;
 
   /// @brief construct a V8 value as input for the expression execution in V8
   v8::Handle<v8::Value> toV8(v8::Isolate* isolate, arangodb::velocypack::Options const*) const;
@@ -365,11 +359,11 @@ struct AqlValue final {
   static int Compare(transaction::Methods*, AqlValue const& left,
                      AqlValue const& right, bool useUtf8);
 
- private:
   /// @brief Returns the type of this value. If true it uses an external pointer
   /// if false it uses the internal data structure
   AqlValueType type() const noexcept;
 
+ private:
   /// @brief initializes value from a slice
   void initFromSlice(arangodb::velocypack::Slice const& slice);
 
@@ -378,6 +372,9 @@ struct AqlValue final {
 
   template <bool isManagedDoc>
   void setPointer(uint8_t const* pointer) noexcept;
+  
+  /// @brief return the total size of the docvecs
+  size_t docvecLength() const;
 };
 
 // Check that the defaulted constructors, destructor and assignment
@@ -402,7 +399,7 @@ class AqlValueGuard {
   AqlValueGuard& operator=(AqlValueGuard&&) = delete;
 
   AqlValueGuard(AqlValue& value, bool destroy) noexcept;
-  ~AqlValueGuard();
+  ~AqlValueGuard() noexcept;
 
   void steal() noexcept;
   AqlValue& value() noexcept;

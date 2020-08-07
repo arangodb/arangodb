@@ -60,9 +60,8 @@ arangodb::velocypack::StringRef const cuidRef("cuid");
 DatabaseTailingSyncer::DatabaseTailingSyncer(TRI_vocbase_t& vocbase,
                                              ReplicationApplierConfiguration const& configuration,
                                              TRI_voc_tick_t initialTick,
-                                             bool useTick, TRI_voc_tick_t barrierId)
-    : TailingSyncer(vocbase.replicationApplier(), configuration, initialTick,
-                    useTick, barrierId),
+                                             bool useTick)
+    : TailingSyncer(vocbase.replicationApplier(), configuration, initialTick, useTick),
       _vocbase(&vocbase),
       _queriedTranslations(false) {
   _state.vocbases.try_emplace(vocbase.name(), vocbase);

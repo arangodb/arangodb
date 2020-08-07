@@ -248,7 +248,8 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/vocbase-test.cpp
   VocBase/LogicalDataSource-test.cpp
   VocBase/LogicalView-test.cpp
-  VocBase/VersionTest.cpp)
+  VocBase/VersionTest.cpp
+  VPackDeserializer/BasicTests.cpp)
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags

@@ -62,10 +62,7 @@ class ClusterCollection final : public PhysicalCollection {
   /// @brief fetches current index selectivity estimates
   /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
   /// to fetch current values!
-  IndexEstMap clusterIndexEstimates(bool allowUpdating, TRI_voc_tick_t tid) override;
-
-  /// @brief sets the current index selectivity estimates
-  void setClusterIndexEstimates(IndexEstMap&& estimates) override;
+  IndexEstMap clusterIndexEstimates(bool allowUpdating, TransactionId tid) override;
 
   /// @brief flushes the current index selectivity estimates
   void flushClusterIndexEstimates() override;
@@ -87,7 +84,7 @@ class ClusterCollection final : public PhysicalCollection {
   void load() override;
   void unload() override;
 
-  TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override;
+  RevisionId revision(arangodb::transaction::Methods* trx) const override;
   uint64_t numberDocuments(transaction::Methods* trx) const override;
 
   /// @brief report extra memory used by indexes etc.
@@ -120,9 +117,9 @@ class ClusterCollection final : public PhysicalCollection {
   Result compact() override;
 
   void deferDropCollection(std::function<bool(LogicalCollection&)> const& callback) override;
-  
+
   Result lookupKey(transaction::Methods* trx, velocypack::StringRef key,
-                   std::pair<LocalDocumentId, TRI_voc_rid_t>& result) const override;
+                   std::pair<LocalDocumentId, RevisionId>& result) const override;
 
   Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
               ManagedDocumentResult& result) override;

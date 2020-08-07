@@ -32,6 +32,7 @@
 
 #include <velocypack/Builder.h>
 
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/voc-types.h"
 #include "index/index_writer.hpp"
 
@@ -165,8 +166,8 @@ struct IResearchViewMetaState {
     explicit Mask(bool mask = false) noexcept;
   };
 
-  std::unordered_set<TRI_voc_cid_t> _collections;  // collection links added to this view via IResearchLink
-                                                   // creation (may contain no-longer valid cids)
+  std::unordered_set<DataSourceId> _collections;  // collection links added to this view via IResearchLink
+                                                  // creation (may contain no-longer valid cids)
   // NOTE: if adding fields don't forget to modify the default constructor !!!
   // NOTE: if adding fields don't forget to modify the copy constructor !!!
   // NOTE: if adding fields don't forget to modify the move constructor !!!

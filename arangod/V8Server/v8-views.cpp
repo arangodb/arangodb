@@ -60,7 +60,7 @@ std::shared_ptr<arangodb::LogicalView> GetViewFromArgument(v8::Isolate* isolate,
   arangodb::CollectionNameResolver resolver(vocbase);
 
   return (val->IsNumber() || val->IsNumberObject())
-             ? resolver.getView(TRI_ObjectToUInt64(isolate, val, true))
+             ? resolver.getView(arangodb::DataSourceId{TRI_ObjectToUInt64(isolate, val, true)})
              : resolver.getView(TRI_ObjectToString(isolate, val));
 }
 
@@ -109,12 +109,15 @@ v8::Handle<v8::Object> WrapView( // wrap view
 
   TRI_GET_GLOBAL_STRING(_IdKey);
   TRI_GET_GLOBAL_STRING(_DbNameKey);
-  result->DefineOwnProperty( // define own property
-    TRI_IGETC, // context
-    _IdKey, // key
-    TRI_V8UInt64String<TRI_voc_cid_t>(isolate, view->id()), // value
-    v8::ReadOnly // attributes
-  ).FromMaybe(false); // Ignore result...
+  result
+      ->DefineOwnProperty(  // define own property
+          TRI_IGETC,        // context
+          _IdKey,           // key
+          TRI_V8UInt64String<arangodb::DataSourceId::BaseType>(isolate,
+                                                               view->id().id()),  // value
+          v8::ReadOnly  // attributes
+          )
+      .FromMaybe(false);  // Ignore result...
   result->Set(context, _DbNameKey, TRI_V8_STD_STRING(isolate, view->vocbase().name())).FromMaybe(false);
 
   return scope.Escape<v8::Object>(result);

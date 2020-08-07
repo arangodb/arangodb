@@ -133,6 +133,9 @@ class Store {
   /// Unprotected! Caller must guard the store.
   Node const* nodePtr(std::string const& path = std::string("/")) const;
 
+  /// @brief Get node at path under mutex and store it in velocypack
+  void get(std::string const& path, arangodb::velocypack::Builder& b, bool showHidden) const;
+
   /// @brief Copy out a node
   Node get(std::string const& path = std::string("/")) const;
 
@@ -155,9 +158,16 @@ class Store {
   std::unordered_multimap<std::string, std::string> const& observerTable() const;
   std::unordered_multimap<std::string, std::string>& observedTable();
   std::unordered_multimap<std::string, std::string> const& observedTable() const;
+  
+  static std::string normalize(char const* key, size_t length);
+  
+  /// @brief Normalize node URIs
+  static std::string normalize(std::string const& key) {
+    return normalize(key.data(), key.size());
+  }
 
-  /// @brief Split strings by forward slashes, omitting empty strings
-  /// this function is only public so that it can be test by unit tests
+  /// @brief Split strings by forward slashes, omitting empty strings,
+  /// and ignoring multiple subsequent forward slashes
   static std::vector<std::string> split(std::string const& str);
 
  private:

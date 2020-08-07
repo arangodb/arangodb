@@ -26,7 +26,9 @@
 
 #include <memory>
 
+#include <utils/type_id.hpp>
 #include "Basics/Result.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 
@@ -99,6 +101,7 @@ struct IResearchLinkHelper {
     bool isCreation, // definition for index creation
     TRI_vocbase_t const& vocbase, // index vocbase
     IResearchViewSort const* primarySort = nullptr,
+    irs::type_info::type_id const* primarySortCompression = nullptr,
     IResearchViewStoredValues const* storedValues = nullptr,
     arangodb::velocypack::Slice idSlice = arangodb::velocypack::Slice() // id for normalized
   );
@@ -137,11 +140,11 @@ struct IResearchLinkHelper {
   /// @param links the link modification definitions, null link == link removal
   /// @param stale links to remove if there is no creation definition in 'links'
   //////////////////////////////////////////////////////////////////////////////
-  static arangodb::Result updateLinks( // update links
-      std::unordered_set<TRI_voc_cid_t>& modified, // odified cids
-      arangodb::LogicalView& view, // modified view
-      arangodb::velocypack::Slice const& links, // link definitions to apply
-      std::unordered_set<TRI_voc_cid_t> const& stale = {} //stale view links
+  static arangodb::Result updateLinks(             // update links
+      std::unordered_set<DataSourceId>& modified,  // modified cids
+      arangodb::LogicalView& view,                 // modified view
+      arangodb::velocypack::Slice const& links,    // link definitions to apply
+      std::unordered_set<DataSourceId> const& stale = {}  // stale view links
   );
 
  private:
