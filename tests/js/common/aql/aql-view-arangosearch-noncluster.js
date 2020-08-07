@@ -1992,6 +1992,20 @@ function iResearchAqlTestSuite () {
     testPhraseInRangeViaArray : function () {
       var result = db._query("FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, [{IN_RANGE: ['quic', 'ruick', false, true]}, 'brown'], 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
       assertEqual(1, result.length);
+    },
+    
+    testPhraseInRangeViaArrayVariable : function () {
+      var result = db._query("LET p = NOOPT([{IN_RANGE: ['quic', 'ruick', false, true]}, 'brown'])"
+                             + "FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, p, 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+      assertEqual(1, result.length);
+    },
+    
+    testVolatileFilter : function() {
+      let result = db._query("FOR doc IN AnotherUnitTestsCollection LET kk = NOEVAL(doc.id) "
+                             + " FOR c IN UnitTestsWithArrayView SEARCH c.c == kk SORT c.c RETURN c ").toArray();
+      assertEqual(2, result.length);
+      assertEqual(result[0].c, 0);
+      assertEqual(result[1].c, 1);
     }
   };
 }
