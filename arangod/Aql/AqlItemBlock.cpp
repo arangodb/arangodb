@@ -1241,7 +1241,7 @@ void AqlItemBlock::ShadowRows::resize(size_t nrItems) {
 
 void AqlItemBlock::ShadowRows::make(size_t row, size_t depth) {
   TRI_ASSERT(row < _nrItems);
-  if (ADB_UNLIKELY(depth >= std::numeric_limits<decltype(_depths)::value_type>::max() - 1)) {
+  if (ADB_UNLIKELY(depth >= std::numeric_limits<decltype(_depths)::value_type>::max() - 1U)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid subquery depth");
   }
   if (ADB_UNLIKELY(row > std::numeric_limits<decltype(_indexes)::value_type>::max())) {
