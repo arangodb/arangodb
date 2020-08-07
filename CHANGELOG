@@ -1,6 +1,8 @@
 devel
 -----
 
+* Slightly improve the performance of cluster DDL maintenance operations.
+
 * Don't prevent concurrent synchronization of different shards from the same
   database. Previously only one shard was synchronized at a time per database.
 
