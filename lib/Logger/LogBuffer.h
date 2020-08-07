@@ -33,7 +33,7 @@
 namespace arangodb {
 
 struct LogBuffer {
-  static size_t const RING_BUFFER_SIZE = 10240;
+  static size_t const RING_BUFFER_SIZE = 1024000;
   static Mutex _ringBufferLock;
   static uint64_t _ringBufferId;
   static LogBuffer _ringBuffer[];
