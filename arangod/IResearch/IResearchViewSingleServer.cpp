@@ -91,7 +91,7 @@ namespace iresearch {
 
   // create links - "on a best-effort basis"
   if (properties.hasKey("links") && isNew) {
-    std::unordered_set<TRI_voc_cid_t> collections;
+    std::unordered_set<DataSourceId> collections;
     auto result = IResearchLinkHelper::updateLinks(collections, vocbase, *view.get(),
                                                    properties.get("links"));
 

@@ -87,7 +87,7 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
           if (!cc) {
             continue;
           }
-          auto shards = ci.getShardList(std::to_string(cc->id()));
+          auto shards = ci.getShardList(std::to_string(cc->id().id()));
           for (ShardID const& shard : *shards) {
             auto sss = ci.getResponsibleServer(shard);
             if (server == sss->at(0)) {

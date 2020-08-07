@@ -30,7 +30,104 @@
 
 #include "Logger/Logger.h"
 
-using namespace arangodb;
+namespace arangodb {
+
+LoggerStreamBase::LoggerStreamBase()
+    : _topicId(LogTopic::MAX_LOG_TOPICS),
+      _level(LogLevel::DEFAULT),
+      _line(0),
+      _logid(nullptr),
+      _file(nullptr),
+      _function(nullptr) {}
+
+LoggerStreamBase& LoggerStreamBase::operator<<(LogLevel const& level) noexcept {
+  _level = level;
+  return *this;
+}
+
+LoggerStreamBase& LoggerStreamBase::operator<<(LogTopic const& topic) noexcept {
+  _topicId = topic.id();
+  return *this;
+  }
+
+// print a hex representation of the binary data
+  LoggerStreamBase& LoggerStreamBase::operator<<(Logger::BINARY const& binary) {
+    try {
+      uint8_t const* ptr = static_cast<uint8_t const*>(binary.baseAddress);
+      uint8_t const* end = ptr + binary.size;
+
+      while (ptr < end) {
+        uint8_t n = *ptr;
+
+        uint8_t n1 = n >> 4;
+        uint8_t n2 = n & 0x0F;
+
+        _out << "\\x" << static_cast<char>((n1 < 10) ? ('0' + n1) : ('A' + n1 - 10))
+             << static_cast<char>((n2 < 10) ? ('0' + n2) : ('A' + n2 - 10));
+        ++ptr;
+      }
+    } catch (...) {
+      // ignore any errors here. logging should not have side effects
+    }
+
+    return *this;
+}
+
+// print a character array
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::CHARS const& data) {
+  try {
+    _out.write(data.data, data.size);
+  } catch (...) {
+    // ignore any errors here. logging should not have side effects
+  }
+
+  return *this;
+}
+
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::RANGE const& range) {
+  try {
+    _out << range.baseAddress << " - "
+         << static_cast<void const*>(static_cast<char const*>(range.baseAddress) +
+                                     range.size)
+         << " (" << range.size << " bytes)";
+  } catch (...) {
+    // ignore any errors here. logging should not have side effects
+  }
+
+  return *this;
+}
+
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::FIXED const& value) {
+  try {
+    std::ostringstream tmp;
+    tmp << std::setprecision(value._precision) << std::fixed << value._value;
+    _out << tmp.str();
+  } catch (...) {
+    // ignore any errors here. logging should not have side effects
+  }
+
+  return *this;
+}
+
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::LINE const& line) noexcept {
+  _line = line._line;
+  return *this;
+}
+
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::FILE const& file) noexcept {
+  _file = file._file;
+  return *this;
+}
+
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::FUNCTION const& function) noexcept {
+  _function = function._function;
+  return *this;
+}
+
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::LOGID const& logid) noexcept {
+  _logid = logid._logid;
+  return *this;
+}
 
 LoggerStream::~LoggerStream() {
   try {
@@ -45,61 +142,4 @@ LoggerStream::~LoggerStream() {
   }
 }
 
-// print a hex representation of the binary data
-LoggerStream& LoggerStream::operator<<(Logger::BINARY const& binary) {
-  try {
-    uint8_t const* ptr = static_cast<uint8_t const*>(binary.baseAddress);
-    uint8_t const* end = ptr + binary.size;
-
-    while (ptr < end) {
-      uint8_t n = *ptr;
-
-      uint8_t n1 = n >> 4;
-      uint8_t n2 = n & 0x0F;
-
-      _out << "\\x" << static_cast<char>((n1 < 10) ? ('0' + n1) : ('A' + n1 - 10))
-           << static_cast<char>((n2 < 10) ? ('0' + n2) : ('A' + n2 - 10));
-      ++ptr;
-    }
-  } catch (...) {
-    // ignore any errors here. logging should not have side effects
-  }
-
-  return *this;
-}
-
-// print a character array
-LoggerStream& LoggerStream::operator<<(Logger::CHARS const& data) {
-  try {
-    _out.write(data.data, data.size);
-  } catch (...) {
-    // ignore any errors here. logging should not have side effects
-  }
-
-  return *this;
-}
-
-LoggerStream& LoggerStream::operator<<(Logger::RANGE const& range) {
-  try {
-    _out << range.baseAddress << " - "
-         << static_cast<void const*>(static_cast<char const*>(range.baseAddress) +
-                                     range.size)
-         << " (" << range.size << " bytes)";
-  } catch (...) {
-    // ignore any errors here. logging should not have side effects
-  }
-
-  return *this;
-}
-
-LoggerStream& LoggerStream::operator<<(Logger::FIXED const& value) {
-  try {
-    std::ostringstream tmp;
-    tmp << std::setprecision(value._precision) << std::fixed << value._value;
-    _out << tmp.str();
-  } catch (...) {
-    // ignore any errors here. logging should not have side effects
-  }
-
-  return *this;
-}
+}  // namespace arangodb

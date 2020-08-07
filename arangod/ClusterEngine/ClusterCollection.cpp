@@ -163,7 +163,7 @@ void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
 futures::Future<OperationResult> ClusterCollection::figures() {
   auto& feature = _logicalCollection.vocbase().server().getFeature<ClusterFeature>();
   return figuresOnCoordinator(feature, _logicalCollection.vocbase().name(),
-                              std::to_string(_logicalCollection.id()));
+                              std::to_string(_logicalCollection.id().id()));
 }
 
 void ClusterCollection::figuresSpecific(arangodb::velocypack::Builder& builder) {

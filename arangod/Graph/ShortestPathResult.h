@@ -35,14 +35,6 @@ namespace aql {
 struct AqlValue;
 }
 
-namespace transaction {
-class Methods;
-}
-
-namespace velocypack {
-class Builder;
-}
-
 namespace graph {
 
 class AttributeWeightShortestPathFinder;
@@ -87,7 +79,7 @@ class ShortestPathResult {
 
   /// @brief Gets the length of the path. (Number of vertices)
 
-  size_t length() { return _vertices.size(); };
+  size_t length() { return _vertices.size(); }
 
   void addVertex(arangodb::velocypack::StringRef v);
   void addEdge(arangodb::graph::EdgeDocumentToken e);

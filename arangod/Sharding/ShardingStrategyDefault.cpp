@@ -307,7 +307,7 @@ void ShardingStrategyHashBase::determineShards() {
   // determine all available shards (which will stay const afterwards)
   auto& ci =
       _sharding->collection()->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
-  auto shards = ci.getShardList(std::to_string(_sharding->collection()->id()));
+  auto shards = ci.getShardList(std::to_string(_sharding->collection()->id().id()));
 
   _shards = *shards;
 

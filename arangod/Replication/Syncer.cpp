@@ -70,8 +70,8 @@ arangodb::velocypack::StringRef const databaseRef("database");
 arangodb::velocypack::StringRef const globallyUniqueIdRef("globallyUniqueId");
 
 /// @brief extract the collection id from VelocyPack
-TRI_voc_cid_t getCid(arangodb::velocypack::Slice const& slice) {
-  return arangodb::basics::VelocyPackHelper::extractIdValue(slice);
+arangodb::DataSourceId getCid(arangodb::velocypack::Slice const& slice) {
+  return arangodb::DataSourceId{arangodb::basics::VelocyPackHelper::extractIdValue(slice)};
 }
 
 /// @brief extract the collection name from VelocyPack
@@ -81,7 +81,7 @@ std::string getCName(arangodb::velocypack::Slice const& slice) {
 
 /// @brief extract the collection by either id or name, may return nullptr!
 std::shared_ptr<arangodb::LogicalCollection> getCollectionByIdOrName(
-    TRI_vocbase_t& vocbase, TRI_voc_cid_t cid, std::string const& name) {
+    TRI_vocbase_t& vocbase, arangodb::DataSourceId cid, std::string const& name) {
   auto idCol = vocbase.lookupCollection(cid);
   std::shared_ptr<arangodb::LogicalCollection> nameCol;
 
@@ -490,11 +490,7 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
   _state.master.endpoint = _state.applier._endpoint;
 }
 
-Syncer::~Syncer() {
-  if (!_state.isChildSyncer) {
-    _state.barrier.remove(_state.connection);
-  }
-}
+Syncer::~Syncer() = default;
 
 /// @brief request location rewriter (injects database name)
 std::string Syncer::rewriteLocation(void* data, std::string const& location) {
@@ -509,14 +505,6 @@ std::string Syncer::rewriteLocation(void* data, std::string const& location) {
     return "/_db/" + s->_state.databaseName + location;
   }
   return "/_db/" + s->_state.databaseName + "/" + location;
-}
-
-/// @brief steal the barrier id from the syncer
-TRI_voc_tick_t Syncer::stealBarrier() {
-  auto id = _state.barrier.id;
-  _state.barrier.id = 0;
-  _state.barrier.updateTime = 0;
-  return id;
 }
 
 void Syncer::setAborted(bool value) { _state.connection.setAborted(value); }
@@ -563,9 +551,9 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
 std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
     TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice) {
   // extract "cid"
-  TRI_voc_cid_t cid = ::getCid(slice);
+  DataSourceId cid = ::getCid(slice);
 
-  if (!_state.master.simulate32Client() || cid == 0) {
+  if (!_state.master.simulate32Client() || cid.empty()) {
     VPackSlice uuid;
 
     if ((uuid = slice.get(::cuidRef)).isString()) {
@@ -575,7 +563,7 @@ std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
     }
   }
 
-  if (cid == 0) {
+  if (cid.empty()) {
     LOG_TOPIC("fbf1a", ERR, Logger::REPLICATION)
         << "Invalid replication response: Was unable to resolve"
         << " collection from marker: " << slice.toJson();

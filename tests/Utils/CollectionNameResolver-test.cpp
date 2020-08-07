@@ -112,11 +112,11 @@ TEST_F(CollectionNameResolverTest, test_getDataSource) {
 
   // not present collection (no datasource)
   {
-    EXPECT_FALSE(resolver.getDataSource(100));
+    EXPECT_FALSE(resolver.getDataSource(arangodb::DataSourceId{100}));
     EXPECT_FALSE(resolver.getDataSource("100"));
     EXPECT_FALSE(resolver.getDataSource("testCollection"));
     EXPECT_FALSE(resolver.getDataSource("testCollectionGUID"));
-    EXPECT_FALSE(resolver.getCollection(100));
+    EXPECT_FALSE(resolver.getCollection(arangodb::DataSourceId{100}));
     EXPECT_FALSE(resolver.getCollection("100"));
     EXPECT_FALSE(resolver.getCollection("testCollection"));
     EXPECT_FALSE(resolver.getCollection("testCollectionGUID"));
@@ -124,11 +124,11 @@ TEST_F(CollectionNameResolverTest, test_getDataSource) {
 
   // not present view (no datasource)
   {
-    EXPECT_FALSE(resolver.getDataSource(200));
+    EXPECT_FALSE(resolver.getDataSource(arangodb::DataSourceId{200}));
     EXPECT_FALSE(resolver.getDataSource("200"));
     EXPECT_FALSE(resolver.getDataSource("testView"));
     EXPECT_FALSE(resolver.getDataSource("testViewGUID"));
-    EXPECT_FALSE(resolver.getView(200));
+    EXPECT_FALSE(resolver.getView(arangodb::DataSourceId{200}));
     EXPECT_FALSE(resolver.getView("200"));
     EXPECT_FALSE(resolver.getView("testView"));
     EXPECT_FALSE(resolver.getView("testViewGUID"));
@@ -142,11 +142,11 @@ TEST_F(CollectionNameResolverTest, test_getDataSource) {
 
   // not present collection (is view)
   {
-    EXPECT_FALSE(!resolver.getDataSource(200));
+    EXPECT_FALSE(!resolver.getDataSource(arangodb::DataSourceId{200}));
     EXPECT_FALSE(!resolver.getDataSource("200"));
     EXPECT_FALSE(!resolver.getDataSource("testView"));
     EXPECT_FALSE(resolver.getDataSource("testViewGUID"));
-    EXPECT_FALSE(resolver.getCollection(200));
+    EXPECT_FALSE(resolver.getCollection(arangodb::DataSourceId{200}));
     EXPECT_FALSE(resolver.getCollection("200"));
     EXPECT_FALSE(resolver.getCollection("testView"));
     EXPECT_FALSE(resolver.getCollection("testViewGUID"));
@@ -154,11 +154,11 @@ TEST_F(CollectionNameResolverTest, test_getDataSource) {
 
   // not preset view (is collection)
   {
-    EXPECT_FALSE(!resolver.getDataSource(100));
+    EXPECT_FALSE(!resolver.getDataSource(arangodb::DataSourceId{100}));
     EXPECT_FALSE(!resolver.getDataSource("100"));
     EXPECT_FALSE(!resolver.getDataSource("testCollection"));
     EXPECT_FALSE(!resolver.getDataSource("testCollectionGUID"));
-    EXPECT_FALSE(resolver.getView(100));
+    EXPECT_FALSE(resolver.getView(arangodb::DataSourceId{100}));
     EXPECT_FALSE(resolver.getView("100"));
     EXPECT_FALSE(resolver.getView("testCollection"));
     EXPECT_FALSE(resolver.getView("testCollectionGUID"));
@@ -166,11 +166,11 @@ TEST_F(CollectionNameResolverTest, test_getDataSource) {
 
   // present collection
   {
-    EXPECT_FALSE(!resolver.getDataSource(100));
+    EXPECT_FALSE(!resolver.getDataSource(arangodb::DataSourceId{100}));
     EXPECT_FALSE(!resolver.getDataSource("100"));
     EXPECT_FALSE(!resolver.getDataSource("testCollection"));
     EXPECT_FALSE(!resolver.getDataSource("testCollectionGUID"));
-    EXPECT_FALSE(!resolver.getCollection(100));
+    EXPECT_FALSE(!resolver.getCollection(arangodb::DataSourceId{100}));
     EXPECT_FALSE(!resolver.getCollection("100"));
     EXPECT_FALSE(!resolver.getCollection("testCollection"));
     EXPECT_FALSE(!resolver.getCollection("testCollectionGUID"));
@@ -178,11 +178,11 @@ TEST_F(CollectionNameResolverTest, test_getDataSource) {
 
   // present view
   {
-    EXPECT_FALSE(!resolver.getDataSource(200));
+    EXPECT_FALSE(!resolver.getDataSource(arangodb::DataSourceId{200}));
     EXPECT_FALSE(!resolver.getDataSource("200"));
     EXPECT_FALSE(!resolver.getDataSource("testView"));
     EXPECT_FALSE(resolver.getDataSource("testViewGUID"));
-    EXPECT_FALSE(!resolver.getView(200));
+    EXPECT_FALSE(!resolver.getView(arangodb::DataSourceId{200}));
     EXPECT_FALSE(!resolver.getView("200"));
     EXPECT_FALSE(!resolver.getView("testView"));
     EXPECT_FALSE(resolver.getView("testViewGUID"));
@@ -195,27 +195,27 @@ TEST_F(CollectionNameResolverTest, test_getDataSource) {
 
   // present collection (deleted, cached)
   {
-    EXPECT_FALSE(!resolver.getDataSource(100));
+    EXPECT_FALSE(!resolver.getDataSource(arangodb::DataSourceId{100}));
     EXPECT_FALSE(!resolver.getDataSource("100"));
     EXPECT_FALSE(!resolver.getDataSource("testCollection"));
     EXPECT_FALSE(!resolver.getDataSource("testCollectionGUID"));
-    EXPECT_FALSE(!resolver.getCollection(100));
+    EXPECT_FALSE(!resolver.getCollection(arangodb::DataSourceId{100}));
     EXPECT_FALSE(!resolver.getCollection("100"));
     EXPECT_FALSE(!resolver.getCollection("testCollection"));
     EXPECT_FALSE(!resolver.getCollection("testCollectionGUID"));
-    EXPECT_TRUE(resolver.getCollection(100)->deleted());
+    EXPECT_TRUE(resolver.getCollection(arangodb::DataSourceId{100})->deleted());
   }
 
   // present view (deleted, cached)
   {
-    EXPECT_FALSE(!resolver.getDataSource(200));
+    EXPECT_FALSE(!resolver.getDataSource(arangodb::DataSourceId{200}));
     EXPECT_FALSE(!resolver.getDataSource("200"));
     EXPECT_FALSE(!resolver.getDataSource("testView"));
     EXPECT_FALSE(resolver.getDataSource("testViewGUID"));
-    EXPECT_FALSE(!resolver.getView(200));
+    EXPECT_FALSE(!resolver.getView(arangodb::DataSourceId{200}));
     EXPECT_FALSE(!resolver.getView("200"));
     EXPECT_FALSE(!resolver.getView("testView"));
     EXPECT_FALSE(resolver.getView("testViewGUID"));
-    EXPECT_TRUE(resolver.getView(200)->deleted());
+    EXPECT_TRUE(resolver.getView(arangodb::DataSourceId{200})->deleted());
   }
 }

@@ -127,7 +127,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
         "true, \"collections\":[42] }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) +
+        std::to_string(logicalView->id().id()) +
         "\", "
         "\"primarySort\": [ { \"field\": \"my.nested.Fields\", \"asc\": "
         "false},  { \"field\": \"another.field\", \"asc\":true } ] }");
@@ -160,7 +160,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
     EXPECT_TRUE(node.options().forceSync);
     EXPECT_TRUE(node.options().restrictSources);
     EXPECT_EQ(1, node.options().sources.size());
-    EXPECT_EQ(42, *node.options().sources.begin());
+    EXPECT_EQ(42, node.options().sources.begin()->id());
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
@@ -172,7 +172,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
         "true, \"collections\":[42] }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) +
+        std::to_string(logicalView->id().id()) +
         "\", "
         "\"primarySort\": [ { \"field\": \"my.nested.Fields\", \"asc\": "
         "false},  { \"field\": \"another.field\", \"asc\":true } ], "
@@ -206,7 +206,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
     EXPECT_TRUE(node.options().forceSync);
     EXPECT_TRUE(node.options().restrictSources);
     EXPECT_EQ(1, node.options().sources.size());
-    EXPECT_EQ(42, *node.options().sources.begin());
+    EXPECT_EQ(42, node.options().sources.begin()->id());
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
@@ -218,7 +218,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) +
+        std::to_string(logicalView->id().id()) +
         "\", "
         "\"primarySort\": [ { \"field\": \"my.nested.Fields\", \"asc\": "
         "false},  { \"field\": \"another.field\", \"asc\":true } ], "
@@ -240,7 +240,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) +
+        std::to_string(logicalView->id().id()) +
         "\", "
         "\"primarySort\": [ { \"field\": \"my.nested.Fields\", \"asc\": "
         "false},  { \"field\": \"another.field\", \"asc\":true } ], "
@@ -724,7 +724,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) + "\", \"primarySort\": false }");
+        std::to_string(logicalView->id().id()) + "\", \"primarySort\": false }");
 
     try {
       arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
@@ -742,7 +742,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) + "\", \"primarySort\": [] }");
+        std::to_string(logicalView->id().id()) + "\", \"primarySort\": [] }");
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
                                                 json->slice());
@@ -782,7 +782,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) +
+        std::to_string(logicalView->id().id()) +
         "\", \"primarySort\": [], \"primarySortBuckets\": false }");
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
@@ -823,7 +823,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) +
+        std::to_string(logicalView->id().id()) +
         "\", \"primarySort\": [], \"primarySortBuckets\": 42 }");
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
@@ -865,7 +865,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
         "true, \"collections\":[42] }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) + "\", \"primarySort\": [] }");
+        std::to_string(logicalView->id().id()) + "\", \"primarySort\": [] }");
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
                                                 json->slice());
@@ -895,7 +895,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_TRUE(node.options().forceSync);
     EXPECT_TRUE(node.options().restrictSources);
     EXPECT_EQ(1, node.options().sources.size());
-    EXPECT_EQ(42, *node.options().sources.begin());
+    EXPECT_EQ(42, node.options().sources.begin()->id());
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
@@ -908,7 +908,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
         "true, \"collections\":[] }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) + "\" }");
+        std::to_string(logicalView->id().id()) + "\" }");
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
                                                 json->slice());
@@ -950,8 +950,9 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
-        "true, \"collection\":null, \"conditionOptimization\": \"none\" }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) + "\" }");
+        "true, \"collection\":null, \"conditionOptimization\": \"none\" }, "
+        "\"viewId\": \"" +
+        std::to_string(logicalView->id().id()) + "\" }");
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
                                                 json->slice());
@@ -989,12 +990,13 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
   // with options noneg conditionOptimization
   {
     auto json = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
-      "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-      "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
-      "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
-      "true, \"collection\":null, \"conditionOptimization\": \"noneg\" }, \"viewId\": \"" +
-      std::to_string(logicalView->id()) + "\" }");
+        "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
+        "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
+        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
+        "true, \"collection\":null, \"conditionOptimization\": \"noneg\" }, "
+        "\"viewId\": \"" +
+        std::to_string(logicalView->id().id()) + "\" }");
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
       json->slice());
@@ -1032,12 +1034,13 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
   // with options nodnf conditionOptimization
   {
     auto json = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
-      "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-      "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
-      "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
-      "true, \"collection\":null, \"conditionOptimization\": \"nodnf\" }, \"viewId\": \"" +
-      std::to_string(logicalView->id()) + "\" }");
+        "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
+        "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
+        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
+        "true, \"collection\":null, \"conditionOptimization\": \"nodnf\" }, "
+        "\"viewId\": \"" +
+        std::to_string(logicalView->id().id()) + "\" }");
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
       json->slice());
@@ -1081,7 +1084,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
         "\"false\"}, \"viewId\": \"" +
-        std::to_string(logicalView->id()) + "\" }");
+        std::to_string(logicalView->id().id()) + "\" }");
 
     try {
       arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
@@ -1102,7 +1105,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"options\": { \"collections\" : "
         "\"false\"}, \"viewId\": \"" +
-        std::to_string(logicalView->id()) + "\" }");
+        std::to_string(logicalView->id().id()) + "\" }");
 
     try {
       arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
@@ -1123,7 +1126,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"options\": { \"collections\" : "
         "{}}, \"viewId\": \"" +
-        std::to_string(logicalView->id()) + "\" }");
+        std::to_string(logicalView->id().id()) + "\" }");
 
     try {
       arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
@@ -1144,7 +1147,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"options\": { \"collections\" : "
         "{}}, \"viewId\": \"" +
-        std::to_string(logicalView->id()) +
+        std::to_string(logicalView->id().id()) +
         "\", "
         "\"primarySort\": true }");
 
@@ -1161,14 +1164,15 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
   // invalid option 'conditionOptimization'
   {
     auto json = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
-      "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-      "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
-      "\"name\":\"variable\", \"id\":0 }, \"options\": { \"conditionOptimization\" : "
-      "\"invalid\"}, \"viewId\": \"" +
-      std::to_string(logicalView->id()) +
-      "\", "
-      "\"primarySort\": true }");
+        "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
+        "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
+        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"name\":\"variable\", \"id\":0 }, \"options\": { "
+        "\"conditionOptimization\" : "
+        "\"invalid\"}, \"viewId\": \"" +
+        std::to_string(logicalView->id().id()) +
+        "\", "
+        "\"primarySort\": true }");
 
     try {
       arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
@@ -1188,10 +1192,11 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
-        "\"name\":\"variable\", \"id\":0 }, \"outNmDocId\": { \"name\":\"variable100\", \"id\":100 },"
+        "\"name\":\"variable\", \"id\":0 }, \"outNmDocId\": { "
+        "\"name\":\"variable100\", \"id\":100 },"
         "\"options\": { \"waitForSync\" : "
         "true, \"collection\":null }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) + "\" }");
+        std::to_string(logicalView->id().id()) + "\" }");
 
     try {
       arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
@@ -1209,10 +1214,11 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
-        "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { \"name\":\"variable100\", \"id\":100 },"
+        "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { "
+        "\"name\":\"variable100\", \"id\":100 },"
         "\"options\": { \"waitForSync\" : "
         "true, \"collection\":null }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) + "\" }");
+        std::to_string(logicalView->id().id()) + "\" }");
 
     try {
       arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
@@ -1230,13 +1236,14 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
-        "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { \"name\":\"variable100\", \"id\":100 }, "
+        "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { "
+        "\"name\":\"variable100\", \"id\":100 }, "
         "\"outNmDocId\": { \"name\":\"variable100\", \"id\":100 }, "
         "\"viewValuesVars\":{\"fieldNumber\":0, \"id\":101}, "
         "\"noMaterialization\":false, "
         "\"options\": { \"waitForSync\" : "
         "true, \"collection\":null }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) + "\" }");
+        std::to_string(logicalView->id().id()) + "\" }");
 
     try {
       arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
@@ -1254,13 +1261,14 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
-        "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { \"name\":\"variable100\", \"id\":100 }, "
+        "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { "
+        "\"name\":\"variable100\", \"id\":100 }, "
         "\"outNmDocId\": { \"name\":\"variable100\", \"id\":100 }, "
         "\"viewValuesVars\":[{\"fieldNumber\":\"0\", \"id\":101}], "
         "\"noMaterialization\":false, "
         "\"options\": { \"waitForSync\" : "
         "true, \"collection\":null }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) + "\" }");
+        std::to_string(logicalView->id().id()) + "\" }");
 
     try {
       arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
@@ -1278,13 +1286,14 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
-        "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { \"name\":\"variable100\", \"id\":100 }, "
+        "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { "
+        "\"name\":\"variable100\", \"id\":100 }, "
         "\"outNmDocId\": { \"name\":\"variable100\", \"id\":100 }, "
         "\"viewValuesVars\":[{\"fieldNumber\":0, \"id\":\"101\"}], "
         "\"noMaterialization\":false, "
         "\"options\": { \"waitForSync\" : "
         "true, \"collection\":null }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) + "\" }");
+        std::to_string(logicalView->id().id()) + "\" }");
 
     try {
       arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
@@ -1302,13 +1311,14 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
-        "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { \"name\":\"variable100\", \"id\":100 }, "
+        "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { "
+        "\"name\":\"variable100\", \"id\":100 }, "
         "\"outNmDocId\": { \"name\":\"variable100\", \"id\":100 }, "
         "\"viewValuesVars\":[{\"fieldNumber\":0, \"id\":101}], "
         "\"noMaterialization\":1, "
         "\"options\": { \"waitForSync\" : "
         "true, \"collection\":null }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) + "\" }");
+        std::to_string(logicalView->id().id()) + "\" }");
 
     try {
       arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
@@ -2438,8 +2448,12 @@ TEST_F(IResearchViewNodeTest, collections) {
                              nullptr, arangodb::velocypack::Parser::fromJson("{}"));
 
   // register collections with the query
-  query.collections().add(std::to_string(collection0->id()), arangodb::AccessMode::Type::READ, arangodb::aql::Collection::Hint::None);
-  query.collections().add(std::to_string(collection1->id()), arangodb::AccessMode::Type::READ, arangodb::aql::Collection::Hint::None);
+  query.collections().add(std::to_string(collection0->id().id()),
+                          arangodb::AccessMode::Type::READ,
+                          arangodb::aql::Collection::Hint::None);
+  query.collections().add(std::to_string(collection1->id().id()),
+                          arangodb::AccessMode::Type::READ,
+                          arangodb::aql::Collection::Hint::None);
 
   // prepare query
   query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
@@ -2463,8 +2477,8 @@ TEST_F(IResearchViewNodeTest, collections) {
 
   // we expect only collections 'collection0', 'collection1' to be
   // present since 'collection2' is not registered with the query
-  std::unordered_set<std::string> expectedCollections{std::to_string(collection0->id()),
-                                                      std::to_string(collection1->id())};
+  std::unordered_set<std::string> expectedCollections{
+      std::to_string(collection0->id().id()), std::to_string(collection1->id().id())};
 
   for (arangodb::aql::Collection const& collection : collections) {
     EXPECT_EQ(1, expectedCollections.erase(collection.name()));

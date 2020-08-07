@@ -88,6 +88,6 @@ Result AqlTransaction::processCollection(aql::Collection* collection) {
   }
 
   // views
-  TRI_voc_cid_t cid = resolver()->getCollectionId(collection->name());
+  DataSourceId cid = resolver()->getCollectionId(collection->name());
   return addCollection(cid, collection->name(), collection->accessType());
 }

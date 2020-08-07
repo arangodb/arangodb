@@ -117,7 +117,7 @@ std::shared_ptr<TransactionState> ClusterEngine::createTransactionState(
 }
 
 std::unique_ptr<TransactionCollection> ClusterEngine::createTransactionCollection(
-    TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType) {
+    TransactionState& state, DataSourceId cid, AccessMode::Type accessType) {
   return std::unique_ptr<TransactionCollection>(
       new ClusterTransactionCollection(&state, cid, accessType));
 }
@@ -158,7 +158,7 @@ void ClusterEngine::getDatabases(arangodb::velocypack::Builder& result) {
   obj->add(StaticStrings::DataSourceName, VPackValue(StaticStrings::SystemDatabase));
 }
 
-void ClusterEngine::getCollectionInfo(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid,
+void ClusterEngine::getCollectionInfo(TRI_vocbase_t& vocbase, DataSourceId cid,
                                       arangodb::velocypack::Builder& builder,
                                       bool includeIndexes, TRI_voc_tick_t maxTick) {}
 
@@ -215,8 +215,8 @@ TRI_voc_tick_t ClusterEngine::recoveryTick() {
 
 void ClusterEngine::createCollection(TRI_vocbase_t& vocbase,
                                      LogicalCollection const& collection) {
-  TRI_ASSERT(collection.id() != 0);
-  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(collection.id()));
+  TRI_ASSERT(collection.id().isSet());
+  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(collection.id().id()));
 }
 
 arangodb::Result ClusterEngine::dropCollection(TRI_vocbase_t& vocbase,
@@ -235,7 +235,7 @@ arangodb::Result ClusterEngine::renameCollection(TRI_vocbase_t& vocbase,
   return TRI_ERROR_NOT_IMPLEMENTED;
 }
 
-Result ClusterEngine::createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id,
+Result ClusterEngine::createView(TRI_vocbase_t& vocbase, DataSourceId id,
                                  arangodb::LogicalView const& /*view*/
 ) {
   return TRI_ERROR_NOT_IMPLEMENTED;

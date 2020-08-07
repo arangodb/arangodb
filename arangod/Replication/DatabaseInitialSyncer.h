@@ -62,8 +62,6 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   struct Configuration {
     /// @brief replication applier config (from the base Syncer)
     ReplicationApplierConfiguration const& applier;
-    /// @brief the compaction barrier state (from the base Syncer)
-    replutils::BarrierInfo& barrier;  // TODO worker safety
     /// @brief the dump batch state (from the base InitialSyncer)
     replutils::BatchInfo& batch;  // TODO worker safety
     /// @brief the client connection (from the base Syncer)
@@ -80,7 +78,7 @@ class DatabaseInitialSyncer final : public InitialSyncer {
     TRI_vocbase_t& vocbase;
 
     explicit Configuration(ReplicationApplierConfiguration const&,
-                           replutils::BarrierInfo&, replutils::BatchInfo&,
+                           replutils::BatchInfo&,
                            replutils::Connection&, bool, replutils::MasterInfo&,
                            replutils::ProgressInfo&, SyncerState& state, TRI_vocbase_t&);
 
@@ -130,23 +128,16 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   // TODO worker-safety
   bool isAborted() const override;
 
-  /// @brief insert the batch id and barrier ID.
-  ///        For use in globalinitialsyncer
+  /// @brief insert the batch ID for use in globalinitialsyncer
   // TODO worker safety
-  void useAsChildSyncer(replutils::MasterInfo const& info, SyncerId const syncerId, uint64_t barrierId,
-                        double barrierUpdateTime, uint64_t batchId, double batchUpdateTime) {
+  void useAsChildSyncer(replutils::MasterInfo const& info, SyncerId const syncerId,
+                        uint64_t batchId, double batchUpdateTime) {
     _state.syncerId = syncerId;
     _state.isChildSyncer = true;
     _state.master = info;
-    _state.barrier.id = barrierId;
-    _state.barrier.updateTime = barrierUpdateTime;
     _config.batch.id = batchId;
     _config.batch.updateTime = batchUpdateTime;
   }
-
-  /// @brief last time the barrier was extended or created
-  /// The barrier prevents the deletion of WAL files for mmfiles
-  double barrierUpdateTime() const { return _state.barrier.updateTime; }
 
   /// @brief last time the batch was extended or created
   /// The batch prevents compaction in mmfiles and keeps a snapshot

@@ -102,7 +102,7 @@ int main(int argc, char* argv[]) {
 
   arangodb::Logger::setShowLineNumber(logLineNumbers);
   arangodb::Logger::initialize(server, false);
-  arangodb::LogAppender::addAppender("-");
+  arangodb::LogAppender::addAppender(arangodb::Logger::defaultLogGroup(), "-");
 
   sc.prepare();
 

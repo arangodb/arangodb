@@ -349,7 +349,7 @@ class RepairOperationToTransactionVisitor {
 
   std::vector<VPackBufferPtr>&& steal();
 
-  std::string agencyCollectionId(DatabaseID database, CollectionID collection) const;
+  std::string agencyDataSourceId(DatabaseID database, CollectionID collection) const;
 
   VPackBufferPtr createShardDbServerArray(ServerID const& leader,
                                           DBServers const& followers) const;

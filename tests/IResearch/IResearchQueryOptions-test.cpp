@@ -296,7 +296,9 @@ TEST_F(IResearchQueryOptionsTest, Collections) {
   {
     std::string const query =
         "FOR d IN testView SEARCH d.name == 'A'"
-        " OPTIONS { collections : [ " + std::to_string(logicalCollection2->id()) + " ] }"
+        " OPTIONS { collections : [ " +
+        std::to_string(logicalCollection2->id().id()) +
+        " ] }"
         " RETURN d";
 
     EXPECT_TRUE(arangodb::tests::assertRules(
@@ -334,7 +336,7 @@ TEST_F(IResearchQueryOptionsTest, Collections) {
     std::string const query =
         "FOR d IN testView SEARCH d.name == 'A'"
         " OPTIONS { collections : [ '" +
-        std::to_string(logicalCollection2->id()) +
+        std::to_string(logicalCollection2->id().id()) +
         "' ] }"
         " RETURN d";
 
@@ -372,7 +374,9 @@ TEST_F(IResearchQueryOptionsTest, Collections) {
   {
     std::string const query =
         "FOR d IN testView SEARCH d.name == 'A'"
-        " OPTIONS { collections : [ '" + std::to_string(logicalCollection2->id()) + "', 'collection_1' ] }"
+        " OPTIONS { collections : [ '" +
+        std::to_string(logicalCollection2->id().id()) +
+        "', 'collection_1' ] }"
         " SORT d._id"
         " RETURN d";
 
