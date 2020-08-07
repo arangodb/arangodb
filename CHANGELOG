@@ -3,6 +3,12 @@ devel
 
 * Slightly improve the performance of cluster DDL maintenance operations.
 
+* Don't prevent concurrent synchronization of different shards from the same
+  database. Previously only one shard was synchronized at a time per database.
+
+* Fixed OASIS-278 issue: Added proper sort/calc nodes cleanup for late materialzation
+  after OneShard optimization
+  
 * Improve performance of many non-subquery AQL queries, by optimizing away
   some storage overhead for subquery context data.
 
