@@ -1,3 +1,8 @@
+v3.7.2 (XXXX-XX-XX)
+------------------------
+* Fixed internal issue #739: ArangoSearch filter volatility takes into
+  account calculation nodes dependencies
+
 v3.7.1-rc.1 (2020-07-24)
 ------------------------
 
