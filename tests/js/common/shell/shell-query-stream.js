@@ -64,7 +64,7 @@ function StreamCursorSuite () {
 
       let docs = [];
       for (let i = 0; i < 5000; i++) {
-        docs.push.insert({value1: i % 10, value2: i % 25 , value3: i % 25 });
+        docs.push({value1: i % 10, value2: i % 25 , value3: i % 25 });
       }
       c.insert(docs);
  

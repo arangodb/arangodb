@@ -34,6 +34,7 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
 
@@ -198,15 +199,9 @@ QueryStreamCursor::~QueryStreamCursor() {
   if (!_query) {
     return;
   }
-  // cursor is canceled or timed-out
-  cleanupStateCallback();
-  // remove the continue handler we may have registered in the query
-  _query->sharedState()->resetWakeupHandler();
 
-  while (!_queryResults.empty()) {
-    _queryResults.pop_front();
-  }
-
+  _queryResults.clear();
+  
   // Query destructor will cleanup plan and abort transaction
   _query.reset();
 }
@@ -335,21 +330,21 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
   options.escapeUnicode = true;
   builder.options = &options;
   
-  // reserve some space in Builder to avoid frequent reallocs
-  builder.reserve(16 * 1024);
-  
   const bool isDone = _numBufferedRows <= batchSize();
   if (isDone) {  // only able to add 'extra' after all stats are collected
     TRI_ASSERT(_finalization);
-    // cleanup callback, to avoid calling ourself
-    cleanupStateCallback();
-    builder.add(VPackValue("extra"));
     // finalize(..) will commit transaction
-    if (_query->finalize(builder) == ExecutionState::WAITING) {
+    transaction::BuilderLeaser leased(_ctx.get());
+    if (_query->finalize(*leased.get()) == ExecutionState::WAITING) {
       return ExecutionState::WAITING;
     }
+    TRI_ASSERT(leased->slice().isObject());
+    builder.add("extra", leased->slice());
   }
 
+  // reserve some space in Builder to avoid frequent reallocs
+  builder.reserve(16 * 1024);
+  
   builder.add("result", VPackValue(VPackValueType::Array, true));
 
   aql::ExecutionEngine* engine = _query->rootEngine();
@@ -358,6 +353,7 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
   RegisterId const resultRegister = engine->resultRegister();
 
   size_t rowsWritten = 0;
+  auto const& vopts = _query->vpackOptions();
   while (rowsWritten < batchSize() && !_queryResults.empty()) {
     SharedAqlItemBlockPtr& block = _queryResults.front();
     TRI_ASSERT(_queryResultPos < block->size());
@@ -365,10 +361,11 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
     while (rowsWritten < batchSize() && _queryResultPos < block->size()) {
       AqlValue const& value = block->getValueReference(_queryResultPos, resultRegister);
       if (!value.isEmpty()) {  // ignore empty blocks (e.g. from UpdateBlock)
-        value.toVelocyPack(&_query->vpackOptions(), builder, false);
+        value.toVelocyPack(&vopts, builder, false);
         ++rowsWritten;
       }
       ++_queryResultPos;
+      --_numBufferedRows;
     }
 
     if (_queryResultPos == block->size()) {
@@ -378,8 +375,8 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
       _queryResultPos = 0;
     }
   }
-  _numBufferedRows -= rowsWritten;
 
+  TRI_ASSERT(_numBufferedRows > 0 || _queryResults.empty());
   TRI_ASSERT(_queryResults.empty() || _queryResultPos < _queryResults.front()->size());
 
   builder.close();  // result
@@ -414,6 +411,7 @@ std::shared_ptr<transaction::Context> QueryStreamCursor::context() const {
 }
 
 ExecutionState QueryStreamCursor::prepareDump() {
+
   if (_finalization) {
     return ExecutionState::DONE;
   }
@@ -426,10 +424,15 @@ ExecutionState QueryStreamCursor::prepareDump() {
     _numBufferedRows += it->size();
   }
   _numBufferedRows -= _queryResultPos;
-
-  ExecutionState state = ExecutionState::HASMORE;
+  
   // We want to fill a result of batchSize if possible and have at least
   // one row left (or be definitively DONE) to set "hasMore" reliably.
+  ExecutionState state = ExecutionState::HASMORE;
+  auto guard = scopeGuard([&] {
+    if (_query) {
+      _query->exitV8Context();
+    }
+  });
   while (state != ExecutionState::DONE && _numBufferedRows <= batchSize()) {
     SharedAqlItemBlockPtr resultBlock;
     std::tie(state, resultBlock) = engine->getSome(batchSize());
@@ -445,13 +448,11 @@ ExecutionState QueryStreamCursor::prepareDump() {
     }
   }
 
-  if (state != ExecutionState::WAITING) {
-    if (_query) {
-      _query->exitV8Context();
-    }
-  }
   // remember not to call getSome() again
   _finalization = (state == ExecutionState::DONE);
+  if (_finalization) {
+    cleanupStateCallback();
+  }
 
   return state;
 }
