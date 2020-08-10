@@ -2926,14 +2926,14 @@ protected:
       arangodb::ManagedDocumentResult insertResult;
       arangodb::OperationOptions options;
       EXPECT_TRUE(collection0
-        ->insert(trx.get(), aliveDoc0->slice(), insertResult, options)
+        ->insert(trx.get(), aliveDoc0->slice(), insertResult, options, false)
         .ok());
 
       auto aliveDoc1 = arangodb::velocypack::Parser::fromJson("{ \"key\": 2 }");
       arangodb::ManagedDocumentResult insertResult1;
       arangodb::OperationOptions options1;
       EXPECT_TRUE(collection0
-        ->insert(trx.get(), aliveDoc1->slice(), insertResult1, options1)
+        ->insert(trx.get(), aliveDoc1->slice(), insertResult1, options1, false)
         .ok());
     }
     {
@@ -2941,7 +2941,7 @@ protected:
       arangodb::ManagedDocumentResult insertResult;
       arangodb::OperationOptions options;
       EXPECT_TRUE(collection1
-        ->insert(trx.get(), aliveDoc1->slice(), insertResult, options)
+        ->insert(trx.get(), aliveDoc1->slice(), insertResult, options, false)
         .ok());
       arangodb::iresearch::IResearchLinkMeta meta;
     }
