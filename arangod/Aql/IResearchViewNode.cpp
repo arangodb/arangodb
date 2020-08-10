@@ -357,7 +357,6 @@ bool parseOptions(aql::Query& query, LogicalView const& view, aql::AstNode const
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     other helpers
 // -----------------------------------------------------------------------------
-
 // in loop or non-deterministic
 bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
                      aql::Variable const& ref,
@@ -373,12 +372,6 @@ bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
       // unable to find setter
       continue;
     }
-
-    if (!setter->isDeterministic()) {
-      // found nondeterministic setter
-      return true;
-    }
-
     switch (setter->getType()) {
       case aql::ExecutionNode::ENUMERATE_COLLECTION:
       case aql::ExecutionNode::ENUMERATE_LIST:
@@ -393,6 +386,9 @@ bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
         return true;
       default:
         break;
+    }
+    if (!setter->isDeterministic() || setter->getLoop() != nullptr) {
+      return true;
     }
   }
 

@@ -1072,6 +1072,14 @@ function iResearchAqlTestSuite () {
     testAnalyzerNotOrFalse : function () {
       var result = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(doc.a != 'foo' OR FALSE, 'identity') OPTIONS { waitForSync : true } RETURN doc").toArray();
       assertNotEqual(0, result.length);
+    },
+    
+    testVolatileFilter : function() {
+      let result = db._query("FOR doc IN AnotherUnitTestsCollection LET kk = NOEVAL(doc.id) "
+                             + " FOR c IN UnitTestsView SEARCH c.c == kk && c.a =='baz' OPTIONS {waitForSync:true} SORT c.c RETURN c ").toArray();
+      assertEqual(2, result.length);
+      assertEqual(result[0].c, 0);
+      assertEqual(result[1].c, 1);
     }
   };
 }
