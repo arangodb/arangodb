@@ -699,7 +699,7 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
              status == transaction::Status::ABORTED);
 
   LOG_TOPIC("7bd2f", DEBUG, Logger::TRANSACTIONS)
-      << "managed trx '" << tid << " updating to '" << status << "'";
+      << "managed trx '" << tid << " updating to '" << (status == transaction::Status::COMMITTED ? "COMMITED" : "ABORTED") << "'";
 
   Result res;
   size_t const bucket = getBucket(tid);
