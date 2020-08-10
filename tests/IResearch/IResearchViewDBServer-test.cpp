@@ -300,7 +300,7 @@ TEST_F(IResearchViewDBServerTest, test_make) {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     arangodb::LogicalView::ptr wiew;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(wiew, vocbase, json->slice(), 42)
+                     .instantiate(wiew, vocbase, json->slice())
                      .ok()));
     EXPECT_FALSE(!wiew);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(wiew.get());
@@ -310,7 +310,6 @@ TEST_F(IResearchViewDBServerTest, test_make) {
     EXPECT_FALSE(wiew->deleted());
     EXPECT_EQ(wiewId, wiew->id().id());
     EXPECT_EQ(impl->id(), wiew->planId());  // same as view ID
-    EXPECT_EQ(42, wiew->planVersion());  // when creating via vocbase planVersion is always 0
     EXPECT_EQ(arangodb::iresearch::DATA_SOURCE_TYPE, wiew->type());
     EXPECT_EQ(&vocbase, &(wiew->vocbase()));
   }
@@ -326,7 +325,7 @@ TEST_F(IResearchViewDBServerTest, test_open) {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     arangodb::LogicalView::ptr wiew;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(wiew, vocbase, json->slice(), 42)
+                     .instantiate(wiew, vocbase, json->slice())
                      .ok()));
     EXPECT_FALSE(!wiew);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(wiew.get());
@@ -353,7 +352,7 @@ TEST_F(IResearchViewDBServerTest, test_open) {
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr wiew;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(wiew, vocbase, json->slice(), 42)
+                     .instantiate(wiew, vocbase, json->slice())
                      .ok()));
     EXPECT_FALSE(!wiew);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(wiew.get());
@@ -659,7 +658,7 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr wiew;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(wiew, vocbase, json->slice(), 42)
+                     .instantiate(wiew, vocbase, json->slice())
                      .ok()));
     EXPECT_FALSE(!wiew);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(wiew.get());
@@ -710,7 +709,7 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr wiew;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(wiew, vocbase, json->slice(), 42)
+                     .instantiate(wiew, vocbase, json->slice())
                      .ok()));
     EXPECT_FALSE(!wiew);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(wiew.get());
@@ -760,7 +759,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     arangodb::LogicalView::ptr wiew;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(wiew, vocbase, json->slice(), 42)
+                     .instantiate(wiew, vocbase, json->slice())
                      .ok()));
     EXPECT_FALSE(!wiew);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(wiew.get());
@@ -793,7 +792,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     arangodb::LogicalView::ptr wiew;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(wiew, vocbase, json->slice(), 42)
+                     .instantiate(wiew, vocbase, json->slice())
                      .ok()));
     EXPECT_FALSE(!wiew);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(wiew.get());
@@ -829,7 +828,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     arangodb::LogicalView::ptr wiew;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(wiew, vocbase, json->slice(), 42)
+                     .instantiate(wiew, vocbase, json->slice())
                      .ok()));
     EXPECT_FALSE(!wiew);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(wiew.get());
@@ -1493,7 +1492,7 @@ TEST_F(IResearchViewDBServerTest, test_visitCollections) {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     arangodb::LogicalView::ptr wiew;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(wiew, vocbase, json->slice(), 42)
+                     .instantiate(wiew, vocbase, json->slice())
                      .ok()));
     EXPECT_FALSE(!wiew);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(wiew.get());
@@ -1517,7 +1516,7 @@ TEST_F(IResearchViewDBServerTest, test_visitCollections) {
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr wiew;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(wiew, vocbase, json->slice(), 42)
+                     .instantiate(wiew, vocbase, json->slice())
                      .ok()));
     EXPECT_FALSE(!wiew);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(wiew.get());
