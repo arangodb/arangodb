@@ -122,8 +122,10 @@ static std::atomic<int32_t> counter;
 
 void Manager::registerTransaction(TRI_voc_tid_t transactionId,
                                   std::unique_ptr<TransactionData> data,
-                                  bool isReadOnlyTransaction) {
-  if (!isReadOnlyTransaction && !isFollowerTransactionId(transactionId)) {
+                                  bool isReadOnlyTransaction,
+                                  bool isFollowerTransaction) {
+  if (!isReadOnlyTransaction &&
+      !(isFollowerTransactionId(transactionId) || isFollowerTransaction)) {
     LOG_DEVEL << "Blabla: Acquiring read lock for tid " << transactionId;
     _rwLock.readLock();
     ++counter;
@@ -153,10 +155,11 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
 
 // unregisters a transaction
 void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed,
-                                    bool isReadOnlyTransaction) {
+                                    bool isReadOnlyTransaction, bool isFollowerTransaction) {
   // always perform an unlock when we leave this function
-  auto guard = scopeGuard([this, transactionId, &isReadOnlyTransaction]() {
-    if (!isReadOnlyTransaction && !isFollowerTransactionId(transactionId)) {
+  auto guard = scopeGuard([this, transactionId, &isReadOnlyTransaction, &isFollowerTransaction]() {
+    if (!isReadOnlyTransaction &&
+        !(isFollowerTransactionId(transactionId) || isFollowerTransaction)) {
       _rwLock.unlockRead();
       --counter;
       LOG_DEVEL << "Blabla: Released read lock lock for tid " << transactionId << " counter: " << counter.load();

@@ -107,11 +107,11 @@ class Manager final {
 
   // register a transaction
   void registerTransaction(TRI_voc_tid_t, std::unique_ptr<TransactionData> data,
-                           bool isReadOnlyTransaction);
+                           bool isReadOnlyTransaction, bool isFollowerTransaction = false);
 
   // unregister a transaction
   void unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed,
-                             bool isReadOnlyTransaction);
+                             bool isReadOnlyTransaction, bool isFollowerTransaction = false);
 
   // iterate all the active transactions
   void iterateActiveTransactions(TrxCallback const&);

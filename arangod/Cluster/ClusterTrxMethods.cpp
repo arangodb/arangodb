@@ -347,7 +347,7 @@ void addTransactionHeader(transaction::Methods const& trx,
   }
   TRI_voc_tid_t tidPlus = state.id() + 1;
   TRI_ASSERT(!transaction::isLegacyTransactionId(tidPlus));
-  //TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
+  TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
 
   const bool addBegin = !state.knowsServer(server);
   if (addBegin) {
