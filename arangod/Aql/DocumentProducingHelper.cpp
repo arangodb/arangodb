@@ -42,6 +42,8 @@ using namespace arangodb::aql;
 void aql::handleProjections(std::vector<AttributeProjection> const& projections,
                             transaction::Methods const* trxPtr, VPackSlice slice,
                             VPackBuilder& b) {
+  // the single-attribute projections are easy. we dispatch here based on the attribute name.
+  // there are a few optimized functions for retrieving _key, _id, _from and _to.
   for (auto const& it : projections) {
     if (it.type == AttributeNamePath::Type::IdAttribute) {
       // projection for "_id"
@@ -51,16 +53,6 @@ void aql::handleProjections(std::vector<AttributeProjection> const& projections,
       // projection for "_key"
       TRI_ASSERT(it.path.size() == 1);
       b.add(it.path[0], transaction::helpers::extractKeyFromDocument(slice));
-    } else if (it.type == AttributeNamePath::Type::SingleAttribute) {
-      // projection for any other top-level attribute
-      TRI_ASSERT(it.path.size() == 1);
-      VPackSlice found = slice.get(it.path.path[0]);
-      if (found.isNone()) {
-        // attribute not found
-        b.add(it.path[0], VPackValue(VPackValueType::Null));
-      } else {
-        b.add(it.path[0], found);
-      }
     } else if (it.type == AttributeNamePath::Type::FromAttribute) {
       // projection for "_from"
       TRI_ASSERT(it.path.size() == 1);
@@ -69,21 +61,41 @@ void aql::handleProjections(std::vector<AttributeProjection> const& projections,
       // projection for "_to"
       TRI_ASSERT(it.path.size() == 1);
       b.add(it.path[0], transaction::helpers::extractToFromDocument(slice));
+    } else if (it.type == AttributeNamePath::Type::SingleAttribute) {
+      // projection for any other top-level attribute
+      TRI_ASSERT(it.path.size() == 1);
+      VPackSlice found = slice.get(it.path.path[0]);
+      if (found.isNone()) {
+        // attribute not found
+        b.add(it.path[0], VPackValue(VPackValueType::Null));
+      } else {
+        // attribute found
+        b.add(it.path[0], found);
+      }
     } else {
       // projection for a sub-attribute, e.g. a.b.c
+      // this is a lot more complex, because we may need to open and close multiple
+      // sub-objects, e.g. a projection on the sub-attribute a.b.c needs to build
+      //   { a: { b: { c: valueOfC } } }
+      // when we get here it is guaranteed that there will be no projections for 
+      // sub-attributes with the same prefix, e.g. a.b.c and a.x.y. This would
+      // complicate the logic here even further, so it is not supported.
       TRI_ASSERT(it.type == AttributeNamePath::Type::MultiAttribute);
       TRI_ASSERT(it.path.size() > 1);
       size_t level = 0;
       VPackSlice found = slice;
       size_t const n = it.path.size();
       while (level < n) {
+        // look up attribute/sub-attribute
         found = found.get(it.path[level]);
         if (found.isNone()) {
+          // not found. we can exit early
           b.add(it.path[level], VPackValue(VPackValueType::Null));
           break;
         }
         if (level < n - 1 && !found.isObject()) {
-          // premature end
+          // we would to recurse into a sub-attribute, but what we found
+          // is no object... that means we can already stop here.
           b.add(it.path[level], VPackValue(VPackValueType::Null));
           break;
         }
@@ -93,11 +105,13 @@ void aql::handleProjections(std::vector<AttributeProjection> const& projections,
           break;
         }
         // recurse into sub-attribute object
+        TRI_ASSERT(level < n - 1);
         b.add(it.path[level], VPackValue(VPackValueType::Object));
         ++level;
       }
  
-      // close all that we opened oursevles 
+      // close all that we opened ourselves, so that the next projection can
+      // again start at the top level
       while (level-- > 0) {
         b.close();
       }
@@ -270,15 +284,22 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
 }
 
 void DocumentProducingFunctionContext::initializeProjections(std::vector<arangodb::aql::AttributeNamePath> const& projections) {
+  // classify all the projections we have (the type is only determined once, 
+  // so we don't have to recalculate it at run-time for each document)
   TRI_ASSERT(_projections.empty());
   _projections.reserve(projections.size());
 
-  // classify and order projections
   for (auto const& it : projections) {
     _projections.emplace_back(AttributeProjection{it, it.type()});
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // make sure all our projections are for distinct top-level attributes.
+  // we currently don't support multiple projections for the same top-level
+  // attribute, e.g. a.b.c and a.x.y.
+  // this would complicate the logic for attribute extraction considerably,
+  // so in this case we will just have combined the two projections into a
+  // single projection on attribute a before.
   if (_projections.size() > 1) {
     for (auto it = _projections.begin(); it != _projections.end(); ++it) {
       // we expect all our projections to not have any common prefixes,
