@@ -44,7 +44,7 @@ class IResearchViewSingleServer final {
   ///////////////////////////////////////////////////////////////////////////////
   static std::shared_ptr<LogicalView> make(TRI_vocbase_t& vocbase,
                                            velocypack::Slice const& info,
-                                           bool isNew, uint64_t planVersion,
+                                           bool isNew, 
                                            LogicalView::PreCommitCallback const& preCommit);
 };
 

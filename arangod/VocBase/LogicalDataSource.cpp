@@ -162,7 +162,7 @@ namespace arangodb {
 
 LogicalDataSource::LogicalDataSource(Category const& category, Type const& type,
                                      TRI_vocbase_t& vocbase,
-                                     velocypack::Slice const& definition, uint64_t planVersion)
+                                     velocypack::Slice const& definition)
     : LogicalDataSource(
           category, type, vocbase,
           DataSourceId{basics::VelocyPackHelper::extractIdValue(definition)},
@@ -172,14 +172,14 @@ LogicalDataSource::LogicalDataSource(Category const& category, Type const& type,
               definition.get(StaticStrings::DataSourcePlanId))},
           basics::VelocyPackHelper::getStringValue(definition, StaticStrings::DataSourceName,
                                                    ""),
-          planVersion, readIsSystem(definition),
+          readIsSystem(definition),
           basics::VelocyPackHelper::getBooleanValue(definition, StaticStrings::DataSourceDeleted,
                                                     false)) {}
 
 LogicalDataSource::LogicalDataSource(Category const& category, Type const& type,
                                      TRI_vocbase_t& vocbase, DataSourceId id,
                                      std::string&& guid, DataSourceId planId,
-                                     std::string&& name, uint64_t planVersion,
+                                     std::string&& name,
                                      bool system, bool deleted)
     : _name(std::move(name)),
       _category(category),
@@ -187,7 +187,6 @@ LogicalDataSource::LogicalDataSource(Category const& category, Type const& type,
       _vocbase(vocbase),
       _id(ensureId(vocbase, id)),
       _planId(planId ? planId : _id),
-      _planVersion(planVersion),
       _guid(ensureGuid(std::move(guid), _id, _planId, _name, system)),
       _deleted(deleted),
       _system(system) {
