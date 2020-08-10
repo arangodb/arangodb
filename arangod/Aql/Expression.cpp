@@ -620,7 +620,8 @@ AqlValue Expression::executeSimpleExpressionArray(AstNode const* node,
     bool localMustDestroy = false;
     AqlValue result = executeSimpleExpression(member, trx, localMustDestroy, false);
     AqlValueGuard guard(result, localMustDestroy);
-    result.toVelocyPack(&trx->vpackOptions(), *builder.get(), false);
+    result.toVelocyPack(&trx->vpackOptions(), *builder.get(), /*resolveExternals*/false,
+                        /*allowUnindexed*/false);
   }
 
   builder->close();
@@ -731,7 +732,8 @@ AqlValue Expression::executeSimpleExpressionObject(AstNode const* node,
     bool localMustDestroy;
     AqlValue result = executeSimpleExpression(member, trx, localMustDestroy, false);
     AqlValueGuard guard(result, localMustDestroy);
-    result.toVelocyPack(&trx->vpackOptions(), *builder.get(), false);
+    result.toVelocyPack(&trx->vpackOptions(), *builder.get(), /*resolveExternals*/false,
+                        /*allowUnindexed*/false);
   }
 
   builder->close();
@@ -1575,7 +1577,8 @@ AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node,
 
     if (takeItem) {
       AqlValue sub = executeSimpleExpression(projectionNode, trx, localMustDestroy, false);
-      sub.toVelocyPack(&trx->vpackOptions(), builder, false);
+      sub.toVelocyPack(&trx->vpackOptions(), builder, /*resolveExternals*/false,
+                       /*allowUnindexed*/false);
       if (localMustDestroy) {
         sub.destroy();
       }

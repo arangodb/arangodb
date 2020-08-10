@@ -139,7 +139,9 @@ void SubqueryEndExecutor::Accumulator::reset() {
 
 void SubqueryEndExecutor::Accumulator::addValue(AqlValue const& value) {
   TRI_ASSERT(_builder->isOpenArray());
-  value.toVelocyPack(_options, *_builder, false);
+  value.toVelocyPack(_options, *_builder,
+                     /*resolveExternals*/false,
+                     /*allowUnindexed*/false);
   ++_numValues;
 }
 

@@ -175,14 +175,18 @@ void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow const& input) 
       groupLength++;
     } else if (infos.getExpressionVariable() != nullptr) {
       // compute the expression
-      input.getValue(infos.getExpressionRegister()).toVelocyPack(infos.getVPackOptions(), _builder, false);
+      input.getValue(infos.getExpressionRegister()).toVelocyPack(infos.getVPackOptions(), _builder,
+                                                                 /*resolveExternals*/false,
+                                                                 /*allowUnindexed*/false);
     } else {
       // copy variables / keep variables into result register
 
       _builder.openObject();
       for (auto const& pair : infos.getInputVariables()) {
         _builder.add(VPackValue(pair.first));
-        input.getValue(pair.second).toVelocyPack(infos.getVPackOptions(), _builder, false);
+        input.getValue(pair.second).toVelocyPack(infos.getVPackOptions(), _builder,
+                                                 /*resolveExternals*/false,
+                                                 /*allowUnindexed*/false);
       }
       _builder.close();
     }
@@ -221,7 +225,9 @@ bool SortedCollectExecutor::CollectGroup::isSameGroup(InputAqlItemRow const& inp
 void SortedCollectExecutor::CollectGroup::groupValuesToArray(VPackBuilder& builder) {
   builder.openArray();
   for (auto const& value : groupValues) {
-    value.toVelocyPack(infos.getVPackOptions(), builder, false);
+    value.toVelocyPack(infos.getVPackOptions(), builder,
+                       /*resolveExternals*/false,
+                       /*allowUnindexed*/false);
   }
 
   builder.close();
