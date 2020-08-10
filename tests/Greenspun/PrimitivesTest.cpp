@@ -3,8 +3,8 @@
 
 #include <iostream>
 
-
 #include "Pregel/Algos/AIR/Greenspun/Interpreter.h"
+#include "Pregel/Algos/AIR/Greenspun/PrimEvalContext.h"
 #include "Pregel/Algos/AIR/Greenspun/Primitives.h"
 #include "Pregel/Algos/AIR/Greenspun/PrimEvalContext.h"
 #include "velocypack/Builder.h"
@@ -18,7 +18,6 @@
 using namespace arangodb::greenspun;
 
 #include "./structs/EvalContext.h"
-
 
 TEST_CASE("Test [+] primitive", "[addition]") {
   InitInterpreter();
@@ -827,7 +826,10 @@ TEST_CASE("Test [set] primitive", "[set]") {}
 TEST_CASE("Test [for] primitive", "[for]") {}
 TEST_CASE("Test [global-superstep] primitive", "[global-superstep]") {}
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/feature/pregel-vertex-accumulation-algorithm-2-let-bindings
 TEST_CASE("Test [lambda] primitive", "[lambda]") {
   InitInterpreter();
   MyEvalContext ctx;
@@ -890,7 +892,6 @@ TEST_CASE("Test [lambda] primitive", "[lambda]") {
   }
 
   SECTION("lambda single capture") {
-
     auto v = arangodb::velocypack::Parser::fromJson(R"aql(12)aql");
     ctx.setVariable("a", v->slice());
 
@@ -909,7 +910,6 @@ TEST_CASE("Test [lambda] primitive", "[lambda]") {
   }
 
   SECTION("lambda single capture, single param") {
-
     auto v = arangodb::velocypack::Parser::fromJson(R"aql(8)aql");
     ctx.setVariable("a", v->slice());
 
@@ -929,7 +929,6 @@ TEST_CASE("Test [lambda] primitive", "[lambda]") {
   }
 
   SECTION("lambda does not see vars that are not captured") {
-
     auto v = arangodb::velocypack::Parser::fromJson(R"aql(8)aql");
     ctx.setVariable("a", v->slice());
 
@@ -943,66 +942,8 @@ TEST_CASE("Test [lambda] primitive", "[lambda]") {
     REQUIRE(res.fail());
   }
 
-/*  SECTION("lambda returning lambda") {
-
-    auto v = arangodb::velocypack::Parser::fromJson(R"aql(8)aql");
-    ctx.setVariable("a", v->slice());
-
-    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-[
-  [
-    [
-      [
-        "lambda",
-        [
-          "quote",
-          "a"
-        ],
-        [
-          "quote"
-        ],
-        [
-          "quote",
-          "lambda",
-          [
-            "quote"
-          ],
-          [
-            "quote",
-            "x"
-          ],
-          [
-            "quote",
-            [
-              "+",
-              [
-                "var-ref",
-                "a"
-              ],
-              [
-                "var-ref",
-                "b"
-              ]
-            ]
-          ]
-        ]
-      ]
-    ]
-  ],
-  4
-]
-    )aql");
-
-    auto res = Evaluate(ctx, program->slice(), result);
-    if (res.fail()) {
-      FAIL(res.error().toString());
-    }
-    INFO(result.slice().toJson());
-    REQUIRE(result.slice().getNumericValue<double>() == 12);
-  }*/
 
   SECTION("lambda call evaluates parameter") {
-
     auto v = arangodb::velocypack::Parser::fromJson(R"aql(8)aql");
     ctx.setVariable("a", v->slice());
 
@@ -1021,3 +962,115 @@ TEST_CASE("Test [lambda] primitive", "[lambda]") {
     REQUIRE(result.slice().getNumericValue<double>() == 12);
   }
 }
+
+TEST_CASE("Test [let] primitive", "[let]") {
+  InitInterpreter();
+  MyEvalContext ctx;
+  VPackBuilder result;
+
+  SECTION("no binding") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["let", [], 12]
+    )aql");
+
+    auto res = Evaluate(ctx, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().getNumericValue<double>() == 12.);
+  }
+
+  SECTION("no binding, seq") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["let", [], 8, 12]
+    )aql");
+
+    auto res = Evaluate(ctx, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().getNumericValue<double>() == 12.);
+  }
+
+  SECTION("simple binding") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["let", [["a", 12]], ["var-ref", "a"]]
+    )aql");
+
+    auto res = Evaluate(ctx, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().getNumericValue<double>() == 12.);
+  }
+
+  SECTION("simple binding, double naming") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["let", [["a", 1], ["a", 12]], ["var-ref", "a"]]
+    )aql");
+
+    auto res = Evaluate(ctx, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().getNumericValue<double>() == 12.);
+  }
+
+  SECTION("multiple binding") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["let", [["a", 1], ["b", 11]], ["+", ["var-ref", "a"], ["var-ref", "b"]]]
+    )aql");
+
+    auto res = Evaluate(ctx, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().getNumericValue<double>() == 12.);
+  }
+
+  SECTION("no params - error") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["let"]
+    )aql");
+
+    auto res = Evaluate(ctx, program->slice(), result);
+    REQUIRE(res.fail());
+  }
+
+  SECTION("no list - error") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["let", "foo"]
+    )aql");
+
+    auto res = Evaluate(ctx, program->slice(), result);
+    REQUIRE(res.fail());
+  }
+
+  SECTION("no pairs - error") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["let", [[1, 2, 3]]]
+    )aql");
+
+    auto res = Evaluate(ctx, program->slice(), result);
+    REQUIRE(res.fail());
+  }
+
+  SECTION("no string name - error") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["let", [[1, 2]]]
+    )aql");
+
+    auto res = Evaluate(ctx, program->slice(), result);
+    REQUIRE(res.fail());
+  }
+
+  SECTION("bad seq - error") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["let", [["foo", 2]], ["foo"]]
+    )aql");
+
+    auto res = Evaluate(ctx, program->slice(), result);
+    REQUIRE(res.fail());
+  }
+}
+>>>>>>> origin/feature/pregel-vertex-accumulation-algorithm-2-let-bindings
