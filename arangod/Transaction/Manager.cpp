@@ -156,8 +156,7 @@ void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFail
                                     bool isReadOnlyTransaction, bool isFollowerTransaction) {
   // always perform an unlock when we leave this function
   auto guard = scopeGuard([this, transactionId, &isReadOnlyTransaction, &isFollowerTransaction]() {
-    if (!isReadOnlyTransaction &&
-        !(isFollowerTransactionId(transactionId) || isFollowerTransaction)) {
+    if (!isReadOnlyTransaction && !isFollowerTransaction) {
       _rwLock.unlockRead();
       LOG_TOPIC("ccded", TRACE, Logger::TRANSACTIONS) << "Released lock for tid " << transactionId << " nrReadLocked: " << --_nrReadLocked;
     }
