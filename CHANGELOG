@@ -1,9 +1,8 @@
 v3.6.6 (XXXX-XX-XX)
 -------------------
 
-* Fixed slightly wrong log level for authentication
-
-* Added login event also to the standard log
+* Slightly fixed wrong log level for authentication and also added login event
+  to the standard log.
 
 * Fixed OASIS-278 issue: Added proper sort/calc nodes cleanup for late
   materialzation after OneShard optimization.
