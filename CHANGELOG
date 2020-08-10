@@ -1,7 +1,8 @@
 v3.6.6 (XXXX-XX-XX)
 -------------------
-* Fixed OASIS-278 issue: Added proper sort/calc nodes cleanup for late materialzation
-  after OneShard optimization
+
+* Fixed OASIS-278 issue: Added proper sort/calc nodes cleanup for late
+  materialzation after OneShard optimization.
 
 * Fixed issue #12349: arangosh compact Arangoerror 404.
 
