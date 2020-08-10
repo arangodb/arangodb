@@ -60,8 +60,6 @@ class ExecutionBlockImpl<AsyncExecutor> : public ExecutionBlock {
  
   std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
-  std::pair<ExecutionState, Result> shutdown(int errorCode) override;
-
  private:
   
   std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> executeWithoutTrace(AqlCallStack const& stack);

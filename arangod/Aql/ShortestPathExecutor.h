@@ -166,13 +166,6 @@ class ShortestPathExecutor {
   ~ShortestPathExecutor() = default;
 
   /**
-   * @brief Shutdown will be called once for every query
-   *
-   * @return ExecutionState and no error.
-   */
-  [[nodiscard]] auto shutdown(int errorCode) -> std::pair<ExecutionState, Result>;
-
-  /**
    * @brief produce the next Row of Aql Values.
    */
   [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)

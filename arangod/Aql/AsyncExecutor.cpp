@@ -131,13 +131,3 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<AsyncExecutor>::initializeC
   _internalState = AsyncState::Empty;
   return res;
 }
-
-/// @brief shutdown, will be called exactly once for the whole query
-std::pair<ExecutionState, Result> ExecutionBlockImpl<AsyncExecutor>::shutdown(int errorCode) {
-  std::lock_guard<std::mutex> guard(_mutex);
-  auto res = ExecutionBlock::shutdown(errorCode);
-  _returnBlock = nullptr;
-  _returnState = ExecutionState::HASMORE;
-  _internalState = AsyncState::Empty;
-  return res;
-}

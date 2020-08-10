@@ -153,12 +153,6 @@ ShortestPathExecutor::ShortestPathExecutor(Fetcher&, Infos& infos)
   _finder.clear();
 }
 
-// Shutdown query
-std::pair<ExecutionState, Result> ShortestPathExecutor::shutdown(int errorCode) {
-  _finder.destroyEngines();
-  return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-}
-
 auto ShortestPathExecutor::doOutputPath(OutputAqlItemRow& output) -> void {
   while (!output.isFull() && _posInPath < _path->length()) {
     if (_infos.usesOutputRegister(ShortestPathExecutorInfos::VERTEX)) {

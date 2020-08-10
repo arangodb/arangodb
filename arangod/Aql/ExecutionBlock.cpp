@@ -107,32 +107,6 @@ std::pair<ExecutionState, Result> ExecutionBlock::initializeCursor(InputAqlItemR
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
-std::pair<ExecutionState, Result> ExecutionBlock::shutdown(int errorCode) {
-  if (_dependencyPos == _dependencies.end()) {
-    _shutdownResult.reset(TRI_ERROR_NO_ERROR);
-    _dependencyPos = _dependencies.begin();
-  }
-
-  for (; _dependencyPos != _dependencies.end(); ++_dependencyPos) {
-    Result res;
-    ExecutionState state;
-    try {
-      std::tie(state, res) = (*_dependencyPos)->shutdown(errorCode);
-      if (state == ExecutionState::WAITING) {
-        return {state, TRI_ERROR_NO_ERROR};
-      }
-    } catch (...) {
-      _shutdownResult.reset(TRI_ERROR_INTERNAL);
-    }
-
-    if (res.fail()) {
-      _shutdownResult = res;
-    }
-  }
-
-  return {ExecutionState::DONE, _shutdownResult};
-}
-
 ExecutionState ExecutionBlock::getHasMoreState() {
   if (_done) {
     return ExecutionState::DONE;

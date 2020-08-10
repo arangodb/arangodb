@@ -65,8 +65,6 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
-  std::pair<ExecutionState, Result> shutdown(int errorCode) override;
-
   std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
 
   [[nodiscard]] auto api() const noexcept -> Api;
@@ -118,7 +116,6 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   void traceGetSomeRequest(velocypack::Slice slice, size_t atMost);
   void traceSkipSomeRequest(velocypack::Slice slice, size_t atMost);
   void traceInitializeCursorRequest(velocypack::Slice slice);
-  void traceShutdownRequest(velocypack::Slice slice, int errorCode);
   void traceRequest(const char* rpc, velocypack::Slice slice, std::string const& args);
 
  private:
@@ -138,7 +135,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   std::string const _queryId;
 
   /// @brief whether or not this block will forward initialize,
-  /// initializeCursor or shutDown requests
+  /// initializeCursor requests
   bool const _isResponsibleForInitializeCursor;
 
   std::mutex _communicationMutex;
@@ -153,8 +150,6 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   unsigned _lastTicket;  /// used to check for canceled requests
 
   bool _requestInFlight;
-
-  bool _hasTriggeredShutdown;
 
   /// @brief Whether to use the pre-3.7 getSome/skipSome API, instead of the
   ///        execute API. Used for rolling upgrades, so can be removed in 3.8.

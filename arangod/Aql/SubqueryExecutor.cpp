@@ -213,25 +213,6 @@ void SubqueryExecutor<isModificationSubquery>::writeOutput(OutputAqlItemRow& out
   output.advanceRow();
 }
 
-/// @brief shutdown, tell dependency and the subquery
-template <bool isModificationSubquery>
-std::pair<ExecutionState, Result> SubqueryExecutor<isModificationSubquery>::shutdown(int errorCode) {
-  // Note this shutdown needs to be repeatable.
-  // Also note the ordering of this shutdown is different
-  // from earlier versions we now shutdown subquery first
-  ExecutionState state = ExecutionState::DONE;
-  if (!_shutdownDone) {
-    // We take ownership of _state here for shutdown state
-    std::tie(state, _shutdownResult) = _subquery.shutdown(errorCode);
-    if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(_shutdownResult.ok());
-      return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
-    }
-    _shutdownDone = true;
-  }
-  return {state, _shutdownResult};
-}
-
 template <bool isModificationSubquery>
 auto SubqueryExecutor<isModificationSubquery>::translatedReturnType() const
     noexcept -> ExecutionState {

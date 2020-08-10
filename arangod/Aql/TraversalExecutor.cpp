@@ -159,12 +159,6 @@ TraversalExecutor::~TraversalExecutor() {
   }
 };
 
-// Shutdown query
-std::pair<ExecutionState, Result> TraversalExecutor::shutdown(int errorCode) {
-  _traverser.destroyEngines();
-  return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-}
-
 auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
   while (!output.isFull() && _traverser.hasMore() && _traverser.next()) {
     TRI_ASSERT(_inputRow.isInitialized());
