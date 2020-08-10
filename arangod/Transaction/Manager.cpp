@@ -121,7 +121,7 @@ void Manager::unregisterFailedTransactions(std::unordered_set<TRI_voc_tid_t> con
 void Manager::registerTransaction(TRI_voc_tid_t transactionId,
                                   std::unique_ptr<TransactionData> data,
                                   bool isReadOnlyTransaction) {
-  if (!isReadOnlyTransaction) {
+  if (!isReadOnlyTransaction && !isFollowerTransactionId(transactionId)) {
     _rwLock.readLock();
   }
 
@@ -150,8 +150,8 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
 void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed,
                                     bool isReadOnlyTransaction) {
   // always perform an unlock when we leave this function
-  auto guard = scopeGuard([this, &isReadOnlyTransaction]() {
-    if (!isReadOnlyTransaction) {
+  auto guard = scopeGuard([this, transactionId, &isReadOnlyTransaction]() {
+    if (!isReadOnlyTransaction && !isFollowerTransactionId(transactionId)) {
       _rwLock.unlockRead();
     }
   });

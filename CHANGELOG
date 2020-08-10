@@ -1,6 +1,9 @@
 v3.6.6 (XXXX-XX-XX)
 -------------------
 
+* Fixed a blockage on hotbackup when writes are happening concurrently, since
+  followers could no longer replicate leader transactions.
+
 * Fixed issue #12349: arangosh compact Arangoerror 404.
 
 * Always fetch data for /_api/cluster/agency-dump from leader of the agency.
