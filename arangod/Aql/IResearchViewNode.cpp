@@ -376,7 +376,6 @@ bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
       case aql::ExecutionNode::ENUMERATE_COLLECTION:
       case aql::ExecutionNode::ENUMERATE_LIST:
       case aql::ExecutionNode::SUBQUERY:
-      case aql::ExecutionNode::SUBQUERY_END:
       case aql::ExecutionNode::COLLECT:
       case aql::ExecutionNode::TRAVERSAL:
       case aql::ExecutionNode::INDEX:

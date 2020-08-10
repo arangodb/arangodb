@@ -1983,24 +1983,87 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
 
 
 class IResearchViewVolatitlityTest
-  : public ::testing::Test,
-  public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
+  : public ::testing::Test {
  protected:
-  arangodb::tests::mocks::MockAqlServer server;
-  TRI_vocbase_t* vocbase{nullptr};
+   StorageEngineMock engine;
+   arangodb::application_features::ApplicationServer server;
+   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+   TRI_vocbase_t* vocbase{nullptr};
 
-  IResearchViewVolatitlityTest() : server(false) {
+  IResearchViewVolatitlityTest() 
+    : engine(server),
+      server(nullptr, nullptr) {
+    arangodb::EngineSelectorFeature::ENGINE = &engine;
     arangodb::tests::init(true);
 
-    server.addFeature<arangodb::FlushFeature>(false);
-    server.startFeatures();
+    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
+    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
+      arangodb::LogLevel::ERR);
 
-    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
-    arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
+    // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR);  // suppress WARNING DefaultCustomTypeHandler called
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
+      arangodb::LogLevel::FATAL);
+    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
-    auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
-    vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
-    EXPECT_NE(nullptr, vocbase);
+    // setup required application features
+    features.emplace_back(new arangodb::FlushFeature(server), false);
+    features.emplace_back(new arangodb::V8DealerFeature(server),
+      false);  // required for DatabaseFeature::createDatabase(...)
+    features.emplace_back(new arangodb::ViewTypesFeature(server), true);
+    features.emplace_back(new arangodb::AuthenticationFeature(server), true);
+    features.emplace_back(new arangodb::DatabasePathFeature(server), false);
+    features.emplace_back(new arangodb::DatabaseFeature(server), false);
+    features.emplace_back(new arangodb::ShardingFeature(server), false);
+    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // must be first
+    arangodb::application_features::ApplicationServer::server->addFeature(
+      features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
+    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false);  // must be before AqlFeature
+    features.emplace_back(new arangodb::AqlFeature(server), true);
+    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true);
+    features.emplace_back(new arangodb::aql::AqlFunctionFeature(server), true);  // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
+    features.emplace_back(new arangodb::iresearch::IResearchFeature(server), true);
+    features.emplace_back(new arangodb::SystemDatabaseFeature(server), true);  // required for IResearchAnalyzerFeature
+
+#if USE_ENTERPRISE
+    features.emplace_back(new arangodb::LdapFeature(server),
+      false);  // required for AuthenticationFeature with USE_ENTERPRISE
+#endif
+
+               // required for V8DealerFeature::prepare(), ClusterFeature::prepare() not required
+    arangodb::application_features::ApplicationServer::server->addFeature(
+      new arangodb::ClusterFeature(server));
+
+    for (auto& f : features) {
+      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
+    }
+
+    for (auto& f : features) {
+      f.first->prepare();
+    }
+
+    auto* dbPathFeature =
+      arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>(
+        "DatabasePath");
+    arangodb::tests::setDatabasePath(*dbPathFeature);  // ensure test data is stored in a unique directory
+
+
+    auto const databases = arangodb::velocypack::Parser::fromJson(
+      std::string("[ { \"name\": \"") +
+      arangodb::StaticStrings::SystemDatabase + "\" } ]");
+    auto* dbFeature =
+      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
+        "Database");
+    dbFeature->loadDatabases(databases->slice());
+
+    for (auto& f : features) {
+      if (f.second) {
+        f.first->start();
+      }
+    }
+    vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
     std::shared_ptr<arangodb::LogicalCollection> collection0;
     {
       auto createJson = arangodb::velocypack::Parser::fromJson(
@@ -2054,14 +2117,14 @@ class IResearchViewVolatitlityTest
       arangodb::ManagedDocumentResult insertResult;
       arangodb::OperationOptions options;
       EXPECT_TRUE(collection0
-        ->insert(trx.get(), aliveDoc0->slice(), insertResult, options)
+        ->insert(trx.get(), aliveDoc0->slice(), insertResult, options, false)
         .ok());
 
       auto aliveDoc1 = arangodb::velocypack::Parser::fromJson("{ \"key\": 2 }");
       arangodb::ManagedDocumentResult insertResult1;
       arangodb::OperationOptions options1;
       EXPECT_TRUE(collection0
-        ->insert(trx.get(), aliveDoc1->slice(), insertResult1, options1)
+        ->insert(trx.get(), aliveDoc1->slice(), insertResult1, options1, false)
         .ok());
     }
     {
@@ -2069,7 +2132,7 @@ class IResearchViewVolatitlityTest
       arangodb::ManagedDocumentResult insertResult;
       arangodb::OperationOptions options;
       EXPECT_TRUE(collection1
-        ->insert(trx.get(), aliveDoc1->slice(), insertResult, options)
+        ->insert(trx.get(), aliveDoc1->slice(), insertResult, options, false)
         .ok());
       arangodb::iresearch::IResearchLinkMeta meta;
     }
@@ -2084,6 +2147,27 @@ class IResearchViewVolatitlityTest
     EXPECT_TRUE(res.data->slice().isArray());
     EXPECT_NE(0, res.data->slice().length());
   }
+
+  ~IResearchViewVolatitlityTest() {
+    arangodb::AqlFeature(server).stop();  // unset singleton instance
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
+      arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(),
+      arangodb::LogLevel::DEFAULT);
+    // destroy application features
+    for (auto& f : features) {
+      if (f.second) {
+        f.first->stop();
+      }
+    }
+    for (auto& f : features) {
+      f.first->unprepare();
+    }
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
+      arangodb::LogLevel::DEFAULT);
+    arangodb::application_features::ApplicationServer::server = nullptr;
+    arangodb::EngineSelectorFeature::ENGINE = nullptr;
+  }
 };
 
 TEST_F(IResearchViewVolatitlityTest, volatilityFilterSubqueryWithVar) {
@@ -2092,8 +2176,8 @@ TEST_F(IResearchViewVolatitlityTest, volatilityFilterSubqueryWithVar) {
   auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
   auto plan = prepared->plan();
   ASSERT_NE(nullptr, plan);
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  ::arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, { arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW }, true);
   ASSERT_EQ(2, nodes.size());
   for (auto const* n : nodes) {
@@ -2123,8 +2207,8 @@ TEST_F(IResearchViewVolatitlityTest, volatilityFilterSubquery) {
   auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
   auto plan = prepared->plan();
   ASSERT_NE(nullptr, plan);
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  ::arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, { arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW }, true);
   ASSERT_EQ(2, nodes.size());
   for (auto const* n : nodes) {
@@ -2154,8 +2238,8 @@ TEST_F(IResearchViewVolatitlityTest, volatilityFilterNonDetVar) {
   auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
   auto plan = prepared->plan();
   ASSERT_NE(nullptr, plan);
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  ::arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, { arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW }, true);
   ASSERT_EQ(2, nodes.size());
   for (auto const* n : nodes) {
@@ -2185,8 +2269,8 @@ TEST_F(IResearchViewVolatitlityTest, volatilityFilterListWithVar) {
   auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
   auto plan = prepared->plan();
   ASSERT_NE(nullptr, plan);
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  ::arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, { arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW }, true);
   ASSERT_EQ(1, nodes.size());
   for (auto const* n : nodes) {
@@ -2213,8 +2297,8 @@ TEST_F(IResearchViewVolatitlityTest, volatilityFilterList) {
   auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
   auto plan = prepared->plan();
   ASSERT_NE(nullptr, plan);
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  ::arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, { arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW }, true);
   ASSERT_EQ(1, nodes.size());
   for (auto const* n : nodes) {
@@ -2241,8 +2325,8 @@ TEST_F(IResearchViewVolatitlityTest, volatilityFilterListNonVolatile) {
   auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
   auto plan = prepared->plan();
   ASSERT_NE(nullptr, plan);
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  ::arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, { arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW }, true);
   ASSERT_EQ(1, nodes.size());
   for (auto const* n : nodes) {
@@ -2269,8 +2353,8 @@ TEST_F(IResearchViewVolatitlityTest, volatilityFilterQueryNonVolatile) {
   auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
   auto plan = prepared->plan();
   ASSERT_NE(nullptr, plan);
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  ::arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, { arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW }, true);
   ASSERT_EQ(2, nodes.size());
   for (auto const* n : nodes) {
@@ -2300,8 +2384,8 @@ TEST_F(IResearchViewVolatitlityTest, volatilityFilterListSubquery) {
   auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
   auto plan = prepared->plan();
   ASSERT_NE(nullptr, plan);
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  ::arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, { arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW }, true);
   ASSERT_EQ(2, nodes.size());
   for (auto const* n : nodes) {
@@ -2331,8 +2415,8 @@ TEST_F(IResearchViewVolatitlityTest, volatilitySortFilterListSubquery) {
   auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
   auto plan = prepared->plan();
   ASSERT_NE(nullptr, plan);
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  ::arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, { arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW }, true);
   ASSERT_EQ(2, nodes.size());
   for (auto const* n : nodes) {
@@ -2362,8 +2446,8 @@ TEST_F(IResearchViewVolatitlityTest, volatilitySortNonVolatileFilter) {
   auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
   auto plan = prepared->plan();
   ASSERT_NE(nullptr, plan);
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  ::arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, { arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW }, true);
   ASSERT_EQ(2, nodes.size());
   for (auto const* n : nodes) {
