@@ -915,8 +915,6 @@ bool Query::isAsyncQuery() const noexcept {
 void Query::enterV8Context() {
   if (!_contextOwnedByExterior) {
     if (_v8Context == nullptr) {
-      LOG_DEVEL << "enterV8Context";
-      
       if (V8DealerFeature::DEALER == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "V8 engine is disabled");
@@ -951,8 +949,6 @@ void Query::enterV8Context() {
 void Query::exitV8Context() {
   if (!_contextOwnedByExterior) {
     if (_v8Context != nullptr) {
-      LOG_DEVEL << "exitV8Context";
-      
       // unregister transaction in context
       v8::Isolate* isolate = v8::Isolate::GetCurrent();
       TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
