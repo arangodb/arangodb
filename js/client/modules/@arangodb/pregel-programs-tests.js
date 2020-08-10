@@ -60,21 +60,45 @@ function exec_test_line() {
 }
 
 function exec_test_page_rank() {
-  pe.create_page_rank_graph("PageRankGraph", 6);
+  let graphName = "PageRankGraph";
+  let collectionNames = pe.create_page_rank_graph(graphName, 6);
+  let vertexName = collectionNames.vname;
 
-  let native_pid = pp.page_rank(
-      "PageRankGraph",
-      "pageRankResult",
-      0.85
+  internal.print("  Starting: Air Pregel PageRank");
+  let air_pid = pp.page_rank(
+    "PageRankGraph",
+    "pageRankResult",
+    0.85
   );
+  const air_status = wait_for_pregel(air_pid);
+  internal.print("  done, returned with status: ");
+  internal.print(JSON.stringify(air_status, null, 4));
+
+  internal.print("  Native Pregel");
+  const native_pid = pr.start("pagerank", graphName, {
+    maxGSS: 5,
+    resultField: "nativeRank"
+  });
   const native_status = wait_for_pregel(native_pid);
   internal.print("  done, returned with status: ");
   internal.print(JSON.stringify(native_status, null, 4));
+
+
+// Return results which differ too much (here currently 0.05)
+  const res = db._query(`FOR d IN @@V
+               FILTER ABS(d.nativeRank - d.pageRankResult.rank) >= 0.05
+               RETURN {
+                 name: d.name,
+                 native: d.nativeRank,
+                 air: d.pageRankResult.rank
+               }`, {"@V": vertexName});
+
+  internal.print("Discrepancies in results: " + JSON.stringify(res.toArray()));
 }
 
 function wait_for_pregel(pid) {
   var waited = 0;
-  while(true) {
+  while (true) {
     var status = pr.status(pid);
 
     if (status.state === "done") {
@@ -115,27 +139,26 @@ function exec_sssp_test() {
 
   internal.print("  AIR Pregel");
   const air_pid = pp.single_source_shortest_path(
-          "LineGraph",
-          "SSSP",
-          some_vertex,
-          "cost"
-        );
+    "LineGraph",
+    "SSSP",
+    some_vertex,
+    "cost"
+  );
   const air_status = wait_for_pregel(air_pid);
   internal.print("  done, returned with status: ");
   internal.print(JSON.stringify(air_status, null, 4));
 
   const res = db._query(`FOR d IN @@V
                FILTER d.result != d.SSSP.distance.value
-               RETURN d`, {"@V": collnames.vname });
+               RETURN d`, {"@V": collnames.vname});
 
   internal.print("Discrepancies in results: " + JSON.stringify(res.toArray()));
 }
 
 function exec_scc_test() {
   pe.create_circle("Circle", 5);
-  pe.create_line_graph("LineGraph", 5, 6);
 
-  return pp.strongly_connected_components("LineGraph", "scc");
+  return pp.strongly_connected_components("Circle", "scc");
 }
 
 function exec_air_tests() {
