@@ -137,7 +137,7 @@ function FollowersSuite () {
 
       internal.debugSetFailAt("FollowerInfo::add");
 
-      let c = db._create(cn, { numberOfShards: 5, replicationFactor: 2 });
+      db._create(cn, { numberOfShards: 5, replicationFactor: 2 }, { waitForSyncReplication: false });
 
       let result = require("@arangodb/cluster").shardDistribution().results[cn];
 
