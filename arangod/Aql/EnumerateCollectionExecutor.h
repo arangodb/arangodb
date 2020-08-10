@@ -67,7 +67,6 @@ class EnumerateCollectionExecutorInfos {
                                    Collection const* collection, Variable const* outVariable,
                                    bool produceResult, Expression* filter,
                                    std::vector<arangodb::aql::AttributeNamePath> const& projections,
-                                   std::vector<size_t> const& coveringIndexAttributePositions,
                                    bool random, bool count);
 
   EnumerateCollectionExecutorInfos() = delete;
@@ -80,7 +79,6 @@ class EnumerateCollectionExecutorInfos {
   QueryContext& getQuery() const;
   Expression* getFilter() const noexcept;
   std::vector<arangodb::aql::AttributeNamePath> const& getProjections() const noexcept;
-  std::vector<size_t> const& getCoveringIndexAttributePositions() const noexcept;
   bool getProduceResult() const noexcept;
   bool getRandom() const noexcept;
   bool getCount() const noexcept;
@@ -92,7 +90,6 @@ class EnumerateCollectionExecutorInfos {
   Variable const* _outVariable;
   Expression* _filter;
   std::vector<arangodb::aql::AttributeNamePath> const& _projections;
-  std::vector<size_t> const& _coveringIndexAttributePositions;
   RegisterId _outputRegisterId;
   bool _produceResult;
   bool _random;
@@ -152,9 +149,6 @@ class EnumerateCollectionExecutor {
       AqlItemBlockInputRange& inputRange, AqlCall& call);
 
   void initializeCursor();
-
- private:
-  void setAllowCoveringIndexOptimization(bool allowCoveringIndexOptimization);
 
  private:
   transaction::Methods _trx;

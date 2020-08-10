@@ -58,25 +58,25 @@ void removeCommonPrefixes(std::unordered_set<arangodb::aql::AttributeNamePath>& 
     return;
   }
 
-  arangodb::aql::AttributeNamePath temp;
   // iterate over all the projections that we collected, and remove the ones for which
   // there also exists a projection with a smaller prefix
   for (auto it = attributes.begin(); it != attributes.end(); /**/) {
-    arangodb::aql::AttributeNamePath const& current = (*it);
-    bool prefixExists = false;
-    if (current.size() > 1) {
-      temp.clear();
-      for (size_t i = 0; i < current.size() - 1; ++i) {
-        temp.path.emplace_back(current.path[i]);
-        if (attributes.find(temp) != attributes.end()) {
-          prefixExists = true;
-          break;
-        }
+    bool found = false;
+    for (auto it2 = attributes.begin(); it2 != attributes.end(); ++it2) {
+      // duplicate prefix. we need to remove the longer one
+      if (it2 != it && (*it2)[0] == (*it)[0]) {
+        arangodb::aql::AttributeNamePath temp((*it)[0]);
+        found = true;
+        attributes.erase(it2);
+        attributes.erase(it);
+        attributes.emplace(std::move(temp));
+        found = true;
+        // stop iterating
+        break;
       }
     }
-    if (prefixExists) {
-      it = attributes.erase(it);
-    } else {
+
+    if (!found) {
       ++it;
     }
   }

@@ -96,11 +96,19 @@ void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
 
   builder.add(::projectionsKey, VPackValue(VPackValueType::Array));
   for (auto const& it : _projections) {
-    builder.openArray();
-    for (auto const& attribute : it.path) {
-      builder.add(VPackValue(attribute));
+    if (it.path.size() == 1) {
+      // projection on a top-level attribute. will be returned as a string
+      // for downwards-compatibility
+      builder.add(VPackValue(it.path[0]));
+    } else {
+      // projection on a nested attribute (e.g. a.b.c). will be returned as an
+      // array. this kind of projection did not exist before 3.7
+      builder.openArray();
+      for (auto const& attribute : it.path) {
+        builder.add(VPackValue(attribute));
+      }
+      builder.close();
     }
-    builder.close();
   }
   builder.close(); // projections
   
@@ -144,10 +152,6 @@ void DocumentProducingNode::projections(std::unordered_set<arangodb::aql::Attrib
   }
 }
 
-std::vector<size_t> const& DocumentProducingNode::coveringIndexAttributePositions() const noexcept {
-  return _coveringIndexAttributePositions;
-}
-  
 bool DocumentProducingNode::doCount() const {
   return _count && (_filter == nullptr); 
 }

@@ -1538,7 +1538,6 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
       EnumerateCollectionExecutorInfos(outputRegister, engine.getQuery(), collection(),
                                        _outVariable, produceResult,
                                        this->_filter.get(), this->projections(),
-                                       this->coveringIndexAttributePositions(),
                                        this->_random, this->doCount());
   return std::make_unique<ExecutionBlockImpl<EnumerateCollectionExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));

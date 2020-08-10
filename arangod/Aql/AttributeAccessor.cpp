@@ -27,7 +27,6 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Variable.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Utils/CollectionNameResolver.h"
 
 using namespace arangodb;
@@ -137,11 +136,9 @@ AttributeAccessor* AttributeAccessor::create(arangodb::aql::AttributeNamePath&& 
   // use them for non-collection data, as the optimized functions may easily
   // create out-of-bounds accesses in that case
   AttributeNamePath::Type type = path.type();
-  if (!dataIsFromCollection) {
-    if (path.size() > 1) {
-      return new AttributeAccessorMulti(variable, std::move(path));
-    }
-    return new AttributeAccessorSingle(variable, path[0]);
+  if (!dataIsFromCollection &&
+      path.size() == 1) {
+    type = AttributeNamePath::Type::SingleAttribute;
   }
 
   switch (type) {

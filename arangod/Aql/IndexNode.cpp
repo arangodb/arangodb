@@ -217,19 +217,21 @@ void IndexNode::initIndexCoversProjections() {
   // test if the index fields are the same fields as used in the projection
   for (auto const& it : projections()) {
     bool found = false;
-    for (size_t j = 0; j < fields.size(); ++j) {
-      if (it.path.size() != fields[j].size()) {
+    for (size_t i = 0; i < fields.size(); ++i) {
+      if (it.path.size() != fields[i].size()) {
         break;
       }
+
       bool allMatch = true;
-      for (size_t k = 0; k < fields[j].size(); ++k) {
-        if (fields[j][k].name != it.path[k]) {
+      for (size_t j = 0; j < fields[i].size(); ++j) {
+        if (fields[i][j].name != it.path[j] || fields[i][j].shouldExpand) {
           allMatch = false;
+          break;
         }
       }
       if (allMatch) {
         found = true;
-        coveringAttributePositions.emplace_back(j);
+        coveringAttributePositions.emplace_back(i);
         break;
       }
     }
@@ -242,6 +244,10 @@ void IndexNode::initIndexCoversProjections() {
   _options.forceProjection = true;
 }
 
+std::vector<size_t> const& IndexNode::coveringIndexAttributePositions() const noexcept {
+  return _coveringIndexAttributePositions;
+}
+  
 /// @brief toVelocyPack, for IndexNode
 void IndexNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
                                    std::unordered_set<ExecutionNode const*>& seen) const {

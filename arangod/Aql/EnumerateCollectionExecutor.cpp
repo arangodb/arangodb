@@ -55,13 +55,12 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
     RegisterId outputRegister, aql::QueryContext& query,
     Collection const* collection, Variable const* outVariable, bool produceResult,
     Expression* filter, std::vector<arangodb::aql::AttributeNamePath> const& projections,
-    std::vector<size_t> const& coveringIndexAttributePositions, bool random, bool count)
+    bool random, bool count)
     : _query(query),
       _collection(collection),
       _outVariable(outVariable),
       _filter(filter),
       _projections(projections),
-      _coveringIndexAttributePositions(coveringIndexAttributePositions),
       _outputRegisterId(outputRegister),
       _produceResult(produceResult),
       _random(random),
@@ -87,11 +86,6 @@ std::vector<arangodb::aql::AttributeNamePath> const& EnumerateCollectionExecutor
   return _projections;
 }
 
-std::vector<size_t> const& EnumerateCollectionExecutorInfos::getCoveringIndexAttributePositions() const
-    noexcept {
-  return _coveringIndexAttributePositions;
-}
-
 bool EnumerateCollectionExecutorInfos::getProduceResult() const noexcept {
   return _produceResult;
 }
@@ -110,7 +104,7 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
       _documentProducingFunctionContext(_currentRow, nullptr, _infos.getOutputRegisterId(),
                                         _infos.getProduceResult(), _infos.getQuery(), _trx,
                                         _infos.getFilter(), _infos.getProjections(),
-                                        _infos.getCoveringIndexAttributePositions(),
+                                        std::vector<size_t>(),
                                         true, false),
       _state(ExecutionState::HASMORE),
       _executorState(ExecutorState::HASMORE),

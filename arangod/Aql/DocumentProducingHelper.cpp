@@ -46,32 +46,29 @@ void aql::handleProjections(std::vector<AttributeProjection> const& projections,
     if (it.type == AttributeNamePath::Type::IdAttribute) {
       // projection for "_id"
       TRI_ASSERT(it.path.size() == 1);
-      b.add(StaticStrings::IdString, VPackValue(transaction::helpers::extractIdString(trxPtr->resolver(), slice, slice)));
+      b.add(it.path[0], VPackValue(transaction::helpers::extractIdString(trxPtr->resolver(), slice, slice)));
     } else if (it.type == AttributeNamePath::Type::KeyAttribute) {
       // projection for "_key"
       TRI_ASSERT(it.path.size() == 1);
-      VPackSlice found = transaction::helpers::extractKeyFromDocument(slice);
-      b.add(StaticStrings::KeyString, found);
+      b.add(it.path[0], transaction::helpers::extractKeyFromDocument(slice));
     } else if (it.type == AttributeNamePath::Type::SingleAttribute) {
       // projection for any other top-level attribute
       TRI_ASSERT(it.path.size() == 1);
       VPackSlice found = slice.get(it.path.path[0]);
       if (found.isNone()) {
         // attribute not found
-        b.add(it.path.path[0], VPackValue(VPackValueType::Null));
+        b.add(it.path[0], VPackValue(VPackValueType::Null));
       } else {
-        b.add(it.path.path[0], found);
+        b.add(it.path[0], found);
       }
     } else if (it.type == AttributeNamePath::Type::FromAttribute) {
       // projection for "_from"
       TRI_ASSERT(it.path.size() == 1);
-      VPackSlice found = transaction::helpers::extractFromFromDocument(slice);
-      b.add(StaticStrings::KeyString, found);
+      b.add(it.path[0], transaction::helpers::extractFromFromDocument(slice));
     } else if (it.type == AttributeNamePath::Type::ToAttribute) {
       // projection for "_to"
       TRI_ASSERT(it.path.size() == 1);
-      VPackSlice found = transaction::helpers::extractToFromDocument(slice);
-      b.add(StaticStrings::KeyString, found);
+      b.add(it.path[0], transaction::helpers::extractToFromDocument(slice));
     } else {
       // projection for a sub-attribute, e.g. a.b.c
       TRI_ASSERT(it.type == AttributeNamePath::Type::MultiAttribute);
@@ -289,7 +286,8 @@ void DocumentProducingFunctionContext::initializeProjections(std::vector<arangod
       // handleProjections
       auto const& current = (*it).path;
       // this is a quadratic algorithm (:gut:), but it is only activated
-      // as a safety check in maintainer mode
+      // as a safety check in maintainer mode, plus we are guaranteed to have
+      // at most five projections right now
       auto it2 = std::find_if(_projections.begin(), _projections.end(), [&current](auto const& other) {
         return other.path[0] == current.path[0] && other.path.size() != current.path.size();
       });
@@ -447,7 +445,6 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
       // a potential call by a covering index iterator...
       bool const isArray = slice.isArray();
       size_t i = 0;
-      VPackSlice found;
       for (auto const& it : context.getProjections()) {
         if (isArray) {
           // we will get a Slice with an array of index values. now we need
@@ -455,19 +452,26 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
           // populate the result with the projection values this case will
           // be triggered for indexes that can be set up on any number of
           // attributes (hash/skiplist)
-          found = slice.at(context.getCoveringIndexAttributePositions()[i]);
+          VPackSlice found = slice.at(context.getCoveringIndexAttributePositions()[i]);
+          if (found.isNone()) {
+            found = VPackSlice::nullSlice();
+          }
+          for (size_t j = 0; j < it.path.size() - 1; ++j) {
+            objectBuilder.add(it.path[j], VPackValue(VPackValueType::Object));
+          }
+          objectBuilder.add(it.path.path.back(), found);
+          for (size_t j = 0; j < it.path.size() - 1; ++j) {
+            objectBuilder.close();
+          }
           ++i;
         } else {
           // no array Slice... this case will be triggered for indexes that
           // contain simple string values, such as the primary index or the
           // edge index
-          found = slice;
-        }
-        if (found.isNone()) {
-          // attribute not found
-          objectBuilder.add(it.path.path[0], VPackValue(VPackValueType::Null));
-        } else {
-          objectBuilder.add(it.path.path[0], found);
+          if (slice.isNone()) {
+            slice = VPackSlice::nullSlice();
+          }
+          objectBuilder.add(it.path[0], slice);
         }
       }
     } else {
