@@ -412,11 +412,9 @@ bool isElCheapo(transaction::Methods const& trx) {
 }
 
 bool isElCheapo(TransactionState const& state) {
-  bool res = !transaction::isLegacyTransactionId(state.id()) &&
-             (state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
-              state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
-  LOG_DEVEL << "El Cheapo: " << res << " " << state.id();
-  return res;
+  return !transaction::isLegacyTransactionId(state.id()) &&
+         (state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
+          state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
 }
 
 }  // namespace ClusterTrxMethods

@@ -174,13 +174,13 @@ class Manager final {
     std::unique_lock<std::mutex> guard(_mutex);
     bool ret = false;
     if (!_writeLockHeld) {
-      LOG_DEVEL << "Blabla: Trying to get write lock...";
+      LOG_TOPIC("eedda", TRACE, Logger::TRANSACTIONS) << "Trying to get write lock to hold transactions...";
       ret = _rwLock.writeLock(timeout);
       if (ret) {
-        LOG_DEVEL << "Blabla: Got write lock.";
+        LOG_TOPIC("eeddb", TRACE, Logger::TRANSACTIONS) << "Got write lock to hold transactions.";
         _writeLockHeld = true;
       } else {
-        LOG_DEVEL << "Blabla: Did not get write lock.";
+        LOG_TOPIC("eeddc", TRACE, Logger::TRANSACTIONS) << "Did not get write lock to hold transactions.";
       }
     }
     return ret;
@@ -190,7 +190,7 @@ class Manager final {
   void releaseTransactions() {
     std::unique_lock<std::mutex> guard(_mutex);
     if (_writeLockHeld) {
-      LOG_DEVEL << "Blabla: Releasing write lock.";
+      LOG_TOPIC("eeddd", TRACE, Logger::TRANSACTIONS) << "Releasing write lock to hold transactions.";
       _rwLock.unlockWrite();
       _writeLockHeld = false;
     }
@@ -234,6 +234,7 @@ class Manager final {
 
   /// Nr of running transactions
   std::atomic<uint64_t> _nrRunning;
+  std::atomic<uint64_t> _nrReadLocked;
 
   std::atomic<bool> _disallowInserts;
 

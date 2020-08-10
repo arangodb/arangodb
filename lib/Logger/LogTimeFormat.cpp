@@ -61,7 +61,7 @@ bool isLocalFormat(TimeFormat format) {
 
 /// @brief return the name of the default log time format
 std::string defaultFormatName() {
-  return "utc-datestring-millis";
+  return "utc-datestring";
 }
 
 /// @brief return the names of all log time formats

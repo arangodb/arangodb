@@ -88,12 +88,13 @@ struct MGMethods final : arangodb::transaction::Methods {
 }  // namespace
 
 Manager::Manager(ManagerFeature& feature, bool keepData)
-     : _feature(feature),
-       _keepTransactionData(keepData),
-       _nrRunning(0),
-       _disallowInserts(false),
-       _writeLockHeld(false),
-       _streamingLockTimeout(feature.streamingLockTimeout()) {}
+    : _feature(feature),
+      _keepTransactionData(keepData),
+      _nrRunning(0),
+      _nrReadLocked(0),
+      _disallowInserts(false),
+      _writeLockHeld(false),
+      _streamingLockTimeout(feature.streamingLockTimeout()) {}
 
 // register a list of failed transactions
 void Manager::registerFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions) {
@@ -118,18 +119,14 @@ void Manager::unregisterFailedTransactions(std::unordered_set<TRI_voc_tid_t> con
   }
 }
 
-static std::atomic<int32_t> counter;
-
 void Manager::registerTransaction(TRI_voc_tid_t transactionId,
                                   std::unique_ptr<TransactionData> data,
                                   bool isReadOnlyTransaction,
                                   bool isFollowerTransaction) {
-  if (!isReadOnlyTransaction &&
-      !(isFollowerTransactionId(transactionId) || isFollowerTransaction)) {
-    LOG_DEVEL << "Blabla: Acquiring read lock for tid " << transactionId;
+  if (!isReadOnlyTransaction && !isFollowerTransaction) {
+    LOG_TOPIC("aabbc", TRACE, Logger::TRANSACTIONS) << "Acquiring read lock for tid " << transactionId;
     _rwLock.readLock();
-    ++counter;
-    LOG_DEVEL << "Blabla: Got read lock for tid " << transactionId << " counter: " << counter.load();
+    LOG_TOPIC("aabbd", TRACE, Logger::TRANSACTIONS) << "Got read lock for tid " << transactionId << " nrReadLocked: " << ++_nrReadLocked;
   }
 
   _nrRunning.fetch_add(1, std::memory_order_relaxed);
@@ -145,8 +142,9 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
       _transactions[bucket]._activeTransactions.try_emplace(transactionId, std::move(data));
     } catch (...) {
       _nrRunning.fetch_sub(1, std::memory_order_relaxed);
-      if (!isReadOnlyTransaction) {
+      if (!isReadOnlyTransaction && !isFollowerTransaction) {
         _rwLock.unlockRead();
+        LOG_TOPIC("aabbe", TRACE, Logger::TRANSACTIONS) << "Released lock for tid " << transactionId << " nrReadLocked: " << --_nrReadLocked;
       }
       throw;
     }
@@ -161,8 +159,7 @@ void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFail
     if (!isReadOnlyTransaction &&
         !(isFollowerTransactionId(transactionId) || isFollowerTransaction)) {
       _rwLock.unlockRead();
-      --counter;
-      LOG_DEVEL << "Blabla: Released read lock lock for tid " << transactionId << " counter: " << counter.load();
+      LOG_TOPIC("aabbf", TRACE, Logger::TRANSACTIONS) << "Released lock for tid " << transactionId << " nrReadLocked: " << --_nrReadLocked;
     }
   });
 
