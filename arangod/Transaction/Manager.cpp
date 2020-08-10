@@ -124,9 +124,9 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
                                   bool isReadOnlyTransaction,
                                   bool isFollowerTransaction) {
   if (!isReadOnlyTransaction && !isFollowerTransaction) {
-    LOG_TOPIC("aabbc", TRACE, Logger::TRANSACTIONS) << "Acquiring read lock for tid " << transactionId;
+    LOG_TOPIC("ccdea", TRACE, Logger::TRANSACTIONS) << "Acquiring read lock for tid " << transactionId;
     _rwLock.readLock();
-    LOG_TOPIC("aabbd", TRACE, Logger::TRANSACTIONS) << "Got read lock for tid " << transactionId << " nrReadLocked: " << ++_nrReadLocked;
+    LOG_TOPIC("ccdeb", TRACE, Logger::TRANSACTIONS) << "Got read lock for tid " << transactionId << " nrReadLocked: " << ++_nrReadLocked;
   }
 
   _nrRunning.fetch_add(1, std::memory_order_relaxed);
@@ -144,7 +144,7 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
       _nrRunning.fetch_sub(1, std::memory_order_relaxed);
       if (!isReadOnlyTransaction && !isFollowerTransaction) {
         _rwLock.unlockRead();
-        LOG_TOPIC("aabbe", TRACE, Logger::TRANSACTIONS) << "Released lock for tid " << transactionId << " nrReadLocked: " << --_nrReadLocked;
+        LOG_TOPIC("ccdec", TRACE, Logger::TRANSACTIONS) << "Released lock for tid " << transactionId << " nrReadLocked: " << --_nrReadLocked;
       }
       throw;
     }
@@ -159,7 +159,7 @@ void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFail
     if (!isReadOnlyTransaction &&
         !(isFollowerTransactionId(transactionId) || isFollowerTransaction)) {
       _rwLock.unlockRead();
-      LOG_TOPIC("aabbf", TRACE, Logger::TRANSACTIONS) << "Released lock for tid " << transactionId << " nrReadLocked: " << --_nrReadLocked;
+      LOG_TOPIC("ccded", TRACE, Logger::TRANSACTIONS) << "Released lock for tid " << transactionId << " nrReadLocked: " << --_nrReadLocked;
     }
   });
 
