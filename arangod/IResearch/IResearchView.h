@@ -228,7 +228,6 @@ class IResearchView final: public arangodb::LogicalView {
   IResearchView( // constructor
     TRI_vocbase_t& vocbase, // view vocbase
     arangodb::velocypack::Slice const& info, // view definition
-    uint64_t planVersion, // view plan version
     IResearchViewMeta&& meta // view meta
   );
 

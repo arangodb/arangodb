@@ -50,8 +50,7 @@ struct InvalidViewFactory : public arangodb::ViewFactory {
   }
 
   virtual arangodb::Result instantiate(arangodb::LogicalView::ptr&, TRI_vocbase_t&,
-                                       arangodb::velocypack::Slice const& definition,
-                                       uint64_t) const override {
+                                       arangodb::velocypack::Slice const& definition) const override {
     return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
         std::string(
