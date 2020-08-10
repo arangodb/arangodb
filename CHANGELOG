@@ -1,7 +1,8 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
-* Fixed internal issue #739: ArangoSearch filter volatility takes into
-  account calculation nodes dependencies
+
+* Fixed internal issue #739: ArangoSearch filter volatility takes into account
+  calculation nodes dependencies.
 
 * Always fetch data for /_api/cluster/agency-dump from leader of the agency.
   Add option "redirectToLeader=true" to internal /_api/agency/state API.
