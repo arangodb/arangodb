@@ -39,7 +39,7 @@ namespace {
 class LogicalViewImpl : public arangodb::LogicalView {
  public:
   LogicalViewImpl(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition)
-      : LogicalView(vocbase, definition, 0) {}
+      : LogicalView(vocbase, definition) {}
   virtual arangodb::Result appendVelocyPackImpl(
       arangodb::velocypack::Builder&, Serialization) const override {
     return arangodb::Result();

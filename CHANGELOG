@@ -1,5 +1,22 @@
 devel
 -----
+
+* Hard-code returned "planVersion" attribute of collections to a value of 1.
+  Before 3.7, the most recent Plan version from the agency was returned inside
+  "planVersion".
+  In 3.7, the attribute contained the Plan version that was in use when the 
+  in-memory LogicalCollection object was last constructed. The object was
+  always reconstructed in case the underlying Plan data for the collection
+  changed or when a collection contained links to arangosearch views.
+  This made the attribute relatively useless for any real-world use cases, and
+  so we are now hard-coding it to simplify the internal code. Using the attribute
+  in client applications is also deprecated.
+
+* Slightly improve the performance of cluster DDL maintenance operations.
+
+* Don't prevent concurrent synchronization of different shards from the same
+  database. Previously only one shard was synchronized at a time per database.
+
 * Fixed OASIS-278 issue: Added proper sort/calc nodes cleanup for late materialzation
   after OneShard optimization
   
