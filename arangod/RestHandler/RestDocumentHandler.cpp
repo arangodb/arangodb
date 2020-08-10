@@ -199,6 +199,7 @@ RestStatus RestDocumentHandler::insertDocument() {
   if (!isMultiple && !opOptions.overwrite) {
      _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
+  _activeTrx->addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
   Result res = _activeTrx->begin();
   if (!res.ok()) {
@@ -486,6 +487,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   if (!isArrayCase) {
     _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
+  _activeTrx->addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
   // ...........................................................................
   // inside write transaction
@@ -605,6 +607,7 @@ RestStatus RestDocumentHandler::removeDocument() {
   if (suffixes.size() == 2 || !search.isArray()) {
     _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
+  _activeTrx->addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
   Result res = _activeTrx->begin();
 

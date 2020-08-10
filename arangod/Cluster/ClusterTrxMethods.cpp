@@ -347,7 +347,7 @@ void addTransactionHeader(transaction::Methods const& trx,
   }
   TRI_voc_tid_t tidPlus = state.id() + 1;
   TRI_ASSERT(!transaction::isLegacyTransactionId(tidPlus));
-  TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
+  //TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
 
   const bool addBegin = !state.knowsServer(server);
   if (addBegin) {
@@ -412,9 +412,11 @@ bool isElCheapo(transaction::Methods const& trx) {
 }
 
 bool isElCheapo(TransactionState const& state) {
-  return !transaction::isLegacyTransactionId(state.id()) &&
-         (state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
-          state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
+  bool res = !transaction::isLegacyTransactionId(state.id()) &&
+             (state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
+              state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
+  LOG_DEVEL << "El Cheapo: " << res << " " << state.id();
+  return res;
 }
 
 }  // namespace ClusterTrxMethods
