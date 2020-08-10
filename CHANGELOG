@@ -5,6 +5,12 @@ v3.6.6 (XXXX-XX-XX)
 
 * Added login event also to the standard log
 
+* Fixed OASIS-278 issue: Added proper sort/calc nodes cleanup for late
+  materialzation after OneShard optimization.
+
+* Fixed a blockage on hotbackup when writes are happening concurrently, since
+  followers could no longer replicate leader transactions.
+
 * Fixed issue #12349: arangosh compact Arangoerror 404.
 
 * Always fetch data for /_api/cluster/agency-dump from leader of the agency.
