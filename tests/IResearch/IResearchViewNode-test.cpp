@@ -127,7 +127,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
         "true, \"collections\":[42] }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) +
+        std::to_string(logicalView->id().id()) +
         "\", "
         "\"primarySort\": [ { \"field\": \"my.nested.Fields\", \"asc\": "
         "false},  { \"field\": \"another.field\", \"asc\":true } ] }");
@@ -160,7 +160,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
     EXPECT_TRUE(node.options().forceSync);
     EXPECT_TRUE(node.options().restrictSources);
     EXPECT_EQ(1, node.options().sources.size());
-    EXPECT_EQ(42, *node.options().sources.begin());
+    EXPECT_EQ(42, node.options().sources.begin()->id());
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
@@ -172,7 +172,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
         "true, \"collections\":[42] }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) +
+        std::to_string(logicalView->id().id()) +
         "\", "
         "\"primarySort\": [ { \"field\": \"my.nested.Fields\", \"asc\": "
         "false},  { \"field\": \"another.field\", \"asc\":true } ], "
@@ -206,7 +206,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
     EXPECT_TRUE(node.options().forceSync);
     EXPECT_TRUE(node.options().restrictSources);
     EXPECT_EQ(1, node.options().sources.size());
-    EXPECT_EQ(42, *node.options().sources.begin());
+    EXPECT_EQ(42, node.options().sources.begin()->id());
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
@@ -218,7 +218,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) +
+        std::to_string(logicalView->id().id()) +
         "\", "
         "\"primarySort\": [ { \"field\": \"my.nested.Fields\", \"asc\": "
         "false},  { \"field\": \"another.field\", \"asc\":true } ], "
@@ -240,7 +240,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) +
+        std::to_string(logicalView->id().id()) +
         "\", "
         "\"primarySort\": [ { \"field\": \"my.nested.Fields\", \"asc\": "
         "false},  { \"field\": \"another.field\", \"asc\":true } ], "
@@ -724,7 +724,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) + "\", \"primarySort\": false }");
+        std::to_string(logicalView->id().id()) + "\", \"primarySort\": false }");
 
     try {
       arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
@@ -742,7 +742,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) + "\", \"primarySort\": [] }");
+        std::to_string(logicalView->id().id()) + "\", \"primarySort\": [] }");
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
                                                 json->slice());
@@ -782,7 +782,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) +
+        std::to_string(logicalView->id().id()) +
         "\", \"primarySort\": [], \"primarySortBuckets\": false }");
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
@@ -823,7 +823,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) +
+        std::to_string(logicalView->id().id()) +
         "\", \"primarySort\": [], \"primarySortBuckets\": 42 }");
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
@@ -865,7 +865,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
         "true, \"collections\":[42] }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) + "\", \"primarySort\": [] }");
+        std::to_string(logicalView->id().id()) + "\", \"primarySort\": [] }");
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
                                                 json->slice());
@@ -895,7 +895,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_TRUE(node.options().forceSync);
     EXPECT_TRUE(node.options().restrictSources);
     EXPECT_EQ(1, node.options().sources.size());
-    EXPECT_EQ(42, *node.options().sources.begin());
+    EXPECT_EQ(42, node.options().sources.begin()->id());
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
@@ -908,7 +908,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
         "true, \"collections\":[] }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) + "\" }");
+        std::to_string(logicalView->id().id()) + "\" }");
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
                                                 json->slice());
@@ -950,8 +950,9 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
-        "true, \"collection\":null, \"conditionOptimization\": \"none\" }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) + "\" }");
+        "true, \"collection\":null, \"conditionOptimization\": \"none\" }, "
+        "\"viewId\": \"" +
+        std::to_string(logicalView->id().id()) + "\" }");
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
                                                 json->slice());
@@ -989,12 +990,13 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
   // with options noneg conditionOptimization
   {
     auto json = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
-      "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-      "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
-      "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
-      "true, \"collection\":null, \"conditionOptimization\": \"noneg\" }, \"viewId\": \"" +
-      std::to_string(logicalView->id()) + "\" }");
+        "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
+        "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
+        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
+        "true, \"collection\":null, \"conditionOptimization\": \"noneg\" }, "
+        "\"viewId\": \"" +
+        std::to_string(logicalView->id().id()) + "\" }");
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
       json->slice());
@@ -1032,12 +1034,13 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
   // with options nodnf conditionOptimization
   {
     auto json = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
-      "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-      "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
-      "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
-      "true, \"collection\":null, \"conditionOptimization\": \"nodnf\" }, \"viewId\": \"" +
-      std::to_string(logicalView->id()) + "\" }");
+        "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
+        "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
+        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
+        "true, \"collection\":null, \"conditionOptimization\": \"nodnf\" }, "
+        "\"viewId\": \"" +
+        std::to_string(logicalView->id().id()) + "\" }");
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
       json->slice());
@@ -1081,7 +1084,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
         "\"false\"}, \"viewId\": \"" +
-        std::to_string(logicalView->id()) + "\" }");
+        std::to_string(logicalView->id().id()) + "\" }");
 
     try {
       arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
@@ -1102,7 +1105,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"options\": { \"collections\" : "
         "\"false\"}, \"viewId\": \"" +
-        std::to_string(logicalView->id()) + "\" }");
+        std::to_string(logicalView->id().id()) + "\" }");
 
     try {
       arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
@@ -1123,7 +1126,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"options\": { \"collections\" : "
         "{}}, \"viewId\": \"" +
-        std::to_string(logicalView->id()) + "\" }");
+        std::to_string(logicalView->id().id()) + "\" }");
 
     try {
       arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
@@ -1144,7 +1147,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"options\": { \"collections\" : "
         "{}}, \"viewId\": \"" +
-        std::to_string(logicalView->id()) +
+        std::to_string(logicalView->id().id()) +
         "\", "
         "\"primarySort\": true }");
 
@@ -1161,14 +1164,15 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
   // invalid option 'conditionOptimization'
   {
     auto json = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
-      "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-      "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
-      "\"name\":\"variable\", \"id\":0 }, \"options\": { \"conditionOptimization\" : "
-      "\"invalid\"}, \"viewId\": \"" +
-      std::to_string(logicalView->id()) +
-      "\", "
-      "\"primarySort\": true }");
+        "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
+        "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
+        "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
+        "\"name\":\"variable\", \"id\":0 }, \"options\": { "
+        "\"conditionOptimization\" : "
+        "\"invalid\"}, \"viewId\": \"" +
+        std::to_string(logicalView->id().id()) +
+        "\", "
+        "\"primarySort\": true }");
 
     try {
       arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
@@ -1188,10 +1192,11 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
-        "\"name\":\"variable\", \"id\":0 }, \"outNmDocId\": { \"name\":\"variable100\", \"id\":100 },"
+        "\"name\":\"variable\", \"id\":0 }, \"outNmDocId\": { "
+        "\"name\":\"variable100\", \"id\":100 },"
         "\"options\": { \"waitForSync\" : "
         "true, \"collection\":null }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) + "\" }");
+        std::to_string(logicalView->id().id()) + "\" }");
 
     try {
       arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
@@ -1209,10 +1214,11 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
-        "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { \"name\":\"variable100\", \"id\":100 },"
+        "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { "
+        "\"name\":\"variable100\", \"id\":100 },"
         "\"options\": { \"waitForSync\" : "
         "true, \"collection\":null }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) + "\" }");
+        std::to_string(logicalView->id().id()) + "\" }");
 
     try {
       arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
@@ -1230,13 +1236,14 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
-        "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { \"name\":\"variable100\", \"id\":100 }, "
+        "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { "
+        "\"name\":\"variable100\", \"id\":100 }, "
         "\"outNmDocId\": { \"name\":\"variable100\", \"id\":100 }, "
         "\"viewValuesVars\":{\"fieldNumber\":0, \"id\":101}, "
         "\"noMaterialization\":false, "
         "\"options\": { \"waitForSync\" : "
         "true, \"collection\":null }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) + "\" }");
+        std::to_string(logicalView->id().id()) + "\" }");
 
     try {
       arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
@@ -1254,13 +1261,14 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
-        "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { \"name\":\"variable100\", \"id\":100 }, "
+        "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { "
+        "\"name\":\"variable100\", \"id\":100 }, "
         "\"outNmDocId\": { \"name\":\"variable100\", \"id\":100 }, "
         "\"viewValuesVars\":[{\"fieldNumber\":\"0\", \"id\":101}], "
         "\"noMaterialization\":false, "
         "\"options\": { \"waitForSync\" : "
         "true, \"collection\":null }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) + "\" }");
+        std::to_string(logicalView->id().id()) + "\" }");
 
     try {
       arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
@@ -1278,13 +1286,14 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
-        "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { \"name\":\"variable100\", \"id\":100 }, "
+        "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { "
+        "\"name\":\"variable100\", \"id\":100 }, "
         "\"outNmDocId\": { \"name\":\"variable100\", \"id\":100 }, "
         "\"viewValuesVars\":[{\"fieldNumber\":0, \"id\":\"101\"}], "
         "\"noMaterialization\":false, "
         "\"options\": { \"waitForSync\" : "
         "true, \"collection\":null }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) + "\" }");
+        std::to_string(logicalView->id().id()) + "\" }");
 
     try {
       arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
@@ -1302,13 +1311,14 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
-        "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { \"name\":\"variable100\", \"id\":100 }, "
+        "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { "
+        "\"name\":\"variable100\", \"id\":100 }, "
         "\"outNmDocId\": { \"name\":\"variable100\", \"id\":100 }, "
         "\"viewValuesVars\":[{\"fieldNumber\":0, \"id\":101}], "
         "\"noMaterialization\":1, "
         "\"options\": { \"waitForSync\" : "
         "true, \"collection\":null }, \"viewId\": \"" +
-        std::to_string(logicalView->id()) + "\" }");
+        std::to_string(logicalView->id().id()) + "\" }");
 
     try {
       arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
@@ -2438,8 +2448,12 @@ TEST_F(IResearchViewNodeTest, collections) {
                              nullptr, arangodb::velocypack::Parser::fromJson("{}"));
 
   // register collections with the query
-  query.collections().add(std::to_string(collection0->id()), arangodb::AccessMode::Type::READ, arangodb::aql::Collection::Hint::None);
-  query.collections().add(std::to_string(collection1->id()), arangodb::AccessMode::Type::READ, arangodb::aql::Collection::Hint::None);
+  query.collections().add(std::to_string(collection0->id().id()),
+                          arangodb::AccessMode::Type::READ,
+                          arangodb::aql::Collection::Hint::None);
+  query.collections().add(std::to_string(collection1->id().id()),
+                          arangodb::AccessMode::Type::READ,
+                          arangodb::aql::Collection::Hint::None);
 
   // prepare query
   query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
@@ -2463,8 +2477,8 @@ TEST_F(IResearchViewNodeTest, collections) {
 
   // we expect only collections 'collection0', 'collection1' to be
   // present since 'collection2' is not registered with the query
-  std::unordered_set<std::string> expectedCollections{std::to_string(collection0->id()),
-                                                      std::to_string(collection1->id())};
+  std::unordered_set<std::string> expectedCollections{
+      std::to_string(collection0->id().id()), std::to_string(collection1->id().id())};
 
   for (arangodb::aql::Collection const& collection : collections) {
     EXPECT_EQ(1, expectedCollections.erase(collection.name()));
@@ -2704,6 +2718,412 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinatorLateMaterialize) {
   EXPECT_TRUE(nullptr !=
               dynamic_cast<arangodb::aql::ExecutionBlockImpl<arangodb::aql::NoResultsExecutor>*>(
                   emptyBlock.get()));
+}
+
+
+class IResearchViewVolatitlityTest
+  : public ::testing::Test,
+  public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
+protected:
+  arangodb::tests::mocks::MockAqlServer server;
+  TRI_vocbase_t* vocbase{nullptr};
+
+  IResearchViewVolatitlityTest() : server(false) {
+    arangodb::tests::init(true);
+
+    server.addFeature<arangodb::FlushFeature>(false);
+    server.startFeatures();
+
+    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
+    arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
+
+    auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
+    vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
+    EXPECT_NE(nullptr, vocbase);
+    std::shared_ptr<arangodb::LogicalCollection> collection0;
+    {
+      auto createJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"name\": \"testCollection0\", \"id\" : \"42\" }");
+      collection0 = vocbase->createCollection(createJson->slice());
+      EXPECT_NE(nullptr, collection0);
+    }
+    std::shared_ptr<arangodb::LogicalCollection> collection1;
+    {
+      auto createJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"name\": \"testCollection1\", \"id\" : \"43\" }");
+      collection1 = vocbase->createCollection(createJson->slice());
+      EXPECT_NE(nullptr, collection1);
+    }
+    arangodb::LogicalView::ptr logicalView0;
+    {
+      auto createJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"name\": \"testView0\", \"type\": \"arangosearch\" }");
+      logicalView0 = vocbase->createView(createJson->slice());
+      EXPECT_NE(nullptr, logicalView0);
+      auto updateJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"links\": {"
+        "\"testCollection0\": { \"includeAllFields\": true, "
+        "\"trackListPositions\": true }"
+        "}}");
+      EXPECT_TRUE(logicalView0->properties(updateJson->slice(), true).ok());
+    }
+    arangodb::LogicalView::ptr logicalView1;
+    {
+      auto createJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"name\": \"testView1\", \"type\": \"arangosearch\" }");
+      logicalView1 = vocbase->createView(createJson->slice());
+      EXPECT_NE(nullptr, logicalView1);
+      auto updateJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"links\": {"
+        "\"testCollection1\": { \"includeAllFields\": true, "
+        "\"trackListPositions\": true }"
+        "}}");
+      EXPECT_TRUE(logicalView1->properties(updateJson->slice(), true).ok());
+    }
+
+    std::vector<std::string> EMPTY_VECTOR;
+    auto trx = std::make_shared<arangodb::transaction::Methods>(
+      arangodb::transaction::StandaloneContext::Create(*vocbase), EMPTY_VECTOR,
+      EMPTY_VECTOR, EMPTY_VECTOR, arangodb::transaction::Options());
+
+    EXPECT_TRUE(trx->begin().ok());
+    // in collection only one alive doc
+    {
+      auto aliveDoc0 = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
+      arangodb::ManagedDocumentResult insertResult;
+      arangodb::OperationOptions options;
+      EXPECT_TRUE(collection0
+        ->insert(trx.get(), aliveDoc0->slice(), insertResult, options)
+        .ok());
+
+      auto aliveDoc1 = arangodb::velocypack::Parser::fromJson("{ \"key\": 2 }");
+      arangodb::ManagedDocumentResult insertResult1;
+      arangodb::OperationOptions options1;
+      EXPECT_TRUE(collection0
+        ->insert(trx.get(), aliveDoc1->slice(), insertResult1, options1)
+        .ok());
+    }
+    {
+      auto aliveDoc1 = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
+      arangodb::ManagedDocumentResult insertResult;
+      arangodb::OperationOptions options;
+      EXPECT_TRUE(collection1
+        ->insert(trx.get(), aliveDoc1->slice(), insertResult, options)
+        .ok());
+      arangodb::iresearch::IResearchLinkMeta meta;
+    }
+    EXPECT_TRUE(trx->commit().ok());
+    // force views sync
+    auto res = arangodb::tests::executeQuery(
+        *vocbase, 
+        "FOR s IN testView0 OPTIONS { waitForSync: true } LET kk = s.key "
+        "FOR d IN testView1 SEARCH d.key == kk "
+        "OPTIONS { waitForSync: true } RETURN d ");
+    EXPECT_TRUE(res.ok());
+    EXPECT_TRUE(res.data->slice().isArray());
+    EXPECT_NE(0, res.data->slice().length());
+  }
+};
+
+TEST_F(IResearchViewVolatitlityTest, volatilityFilterSubqueryWithVar) {
+  std::string const queryString = "FOR s IN testView0 LET kk = s.key "
+                                  "FOR d IN testView1 SEARCH d.key == kk RETURN d";
+  auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
+  auto plan = prepared->plan();
+  ASSERT_NE(nullptr, plan);
+  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, { arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW }, true);
+  ASSERT_EQ(2, nodes.size());
+  for (auto const* n : nodes) {
+    arangodb::iresearch::IResearchViewNode const* view =
+      static_cast<arangodb::iresearch::IResearchViewNode const*>(n);
+    if (view->view()->name() == "testView1") {
+      ASSERT_TRUE(view->volatility().first);
+      ASSERT_FALSE(view->volatility().second);
+    } else if (view->view()->name() == "testView0") {
+      ASSERT_FALSE(view->volatility().first);
+      ASSERT_FALSE(view->volatility().second);
+    } else {
+      ASSERT_TRUE(false); // unexpected node
+    }
+  }
+  // check volatility affects results
+  auto res = arangodb::tests::executeQuery(*vocbase, queryString);
+
+  EXPECT_TRUE(res.ok());
+  EXPECT_TRUE(res.data->slice().isArray());
+  EXPECT_EQ(1, res.data->slice().length());
+}
+
+TEST_F(IResearchViewVolatitlityTest, volatilityFilterSubquery) {
+  std::string const queryString = "FOR s IN testView0 "
+                                  "FOR d IN testView1 SEARCH d.key == s.key RETURN d";
+  auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
+  auto plan = prepared->plan();
+  ASSERT_NE(nullptr, plan);
+  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, { arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW }, true);
+  ASSERT_EQ(2, nodes.size());
+  for (auto const* n : nodes) {
+    arangodb::iresearch::IResearchViewNode const* view =
+      static_cast<arangodb::iresearch::IResearchViewNode const*>(n);
+    if (view->view()->name() == "testView1") {
+      ASSERT_TRUE(view->volatility().first);
+      ASSERT_FALSE(view->volatility().second);
+    } else if (view->view()->name() == "testView0") {
+      ASSERT_FALSE(view->volatility().first);
+      ASSERT_FALSE(view->volatility().second);
+    } else {
+      ASSERT_TRUE(false); // unexpected node
+    }
+  }
+  // check volatility affects results
+  auto res = arangodb::tests::executeQuery(*vocbase, queryString);
+
+  EXPECT_TRUE(res.ok());
+  EXPECT_TRUE(res.data->slice().isArray());
+  EXPECT_EQ(1, res.data->slice().length());
+}
+
+TEST_F(IResearchViewVolatitlityTest, volatilityFilterNonDetVar) {
+  std::string const queryString = "FOR s IN testView0 LET kk = NOOPT(s.key) "
+                                  "FOR d IN testView1 SEARCH d.key == kk RETURN d";
+  auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
+  auto plan = prepared->plan();
+  ASSERT_NE(nullptr, plan);
+  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, { arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW }, true);
+  ASSERT_EQ(2, nodes.size());
+  for (auto const* n : nodes) {
+    arangodb::iresearch::IResearchViewNode const* view =
+      static_cast<arangodb::iresearch::IResearchViewNode const*>(n);
+    if (view->view()->name() == "testView1") {
+      ASSERT_TRUE(view->volatility().first);
+      ASSERT_FALSE(view->volatility().second);
+    } else if (view->view()->name() == "testView0") {
+      ASSERT_FALSE(view->volatility().first);
+      ASSERT_FALSE(view->volatility().second);
+    } else {
+      ASSERT_TRUE(false); // unexpected node
+    }
+  }
+  // check volatility affects results
+  auto res = arangodb::tests::executeQuery(*vocbase, queryString);
+
+  EXPECT_TRUE(res.ok());
+  EXPECT_TRUE(res.data->slice().isArray());
+  EXPECT_EQ(1, res.data->slice().length());
+}
+
+TEST_F(IResearchViewVolatitlityTest, volatilityFilterListWithVar) {
+  std::string const queryString = "FOR s IN 1..2 LET kk = s "
+                                  "FOR d IN testView1 SEARCH d.key == kk RETURN d";
+  auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
+  auto plan = prepared->plan();
+  ASSERT_NE(nullptr, plan);
+  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, { arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW }, true);
+  ASSERT_EQ(1, nodes.size());
+  for (auto const* n : nodes) {
+    arangodb::iresearch::IResearchViewNode const* view =
+      static_cast<arangodb::iresearch::IResearchViewNode const*>(n);
+    if (view->view()->name() == "testView1") {
+      ASSERT_TRUE(view->volatility().first);
+      ASSERT_FALSE(view->volatility().second);
+    } else {
+      ASSERT_TRUE(false); // unexpected node
+    }
+  }
+  // check volatility affects results
+  auto res = arangodb::tests::executeQuery(*vocbase, queryString);
+
+  EXPECT_TRUE(res.ok());
+  EXPECT_TRUE(res.data->slice().isArray());
+  EXPECT_EQ(1, res.data->slice().length());
+}
+
+TEST_F(IResearchViewVolatitlityTest, volatilityFilterList) {
+  std::string const queryString = "FOR s IN 1..2 "
+                                  "FOR d IN testView1 SEARCH d.key == s RETURN d";
+  auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
+  auto plan = prepared->plan();
+  ASSERT_NE(nullptr, plan);
+  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, { arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW }, true);
+  ASSERT_EQ(1, nodes.size());
+  for (auto const* n : nodes) {
+    arangodb::iresearch::IResearchViewNode const* view =
+      static_cast<arangodb::iresearch::IResearchViewNode const*>(n);
+    if (view->view()->name() == "testView1") {
+      ASSERT_TRUE(view->volatility().first);
+      ASSERT_FALSE(view->volatility().second);
+    } else {
+      ASSERT_TRUE(false); // unexpected node
+    }
+  }
+  // check volatility affects results
+  auto res = arangodb::tests::executeQuery(*vocbase, queryString);
+
+  EXPECT_TRUE(res.ok());
+  EXPECT_TRUE(res.data->slice().isArray());
+  EXPECT_EQ(1, res.data->slice().length());
+}
+
+TEST_F(IResearchViewVolatitlityTest, volatilityFilterListNonVolatile) {
+  std::string const queryString = "FOR s IN 1..20 LET kk = NOEVAL(1) "
+                                  "FOR d IN testView1 SEARCH d.key == kk RETURN d";
+  auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
+  auto plan = prepared->plan();
+  ASSERT_NE(nullptr, plan);
+  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, { arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW }, true);
+  ASSERT_EQ(1, nodes.size());
+  for (auto const* n : nodes) {
+    arangodb::iresearch::IResearchViewNode const* view =
+      static_cast<arangodb::iresearch::IResearchViewNode const*>(n);
+    if (view->view()->name() == "testView1") {
+      ASSERT_FALSE(view->volatility().first);
+      ASSERT_FALSE(view->volatility().second);
+    } else {
+      ASSERT_TRUE(false); // unexpected node
+    }
+  }
+  // check volatility affects results
+  auto res = arangodb::tests::executeQuery(*vocbase, queryString);
+
+  EXPECT_TRUE(res.ok());
+  EXPECT_TRUE(res.data->slice().isArray());
+  EXPECT_EQ(20, res.data->slice().length());
+}
+
+TEST_F(IResearchViewVolatitlityTest, volatilityFilterQueryNonVolatile) {
+  std::string const queryString = "FOR s IN testView0 COLLECT WITH COUNT INTO c LET kk = NOEVAL(c) "
+                                  "FOR d IN testView1 SEARCH d.key == kk RETURN d";
+  auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
+  auto plan = prepared->plan();
+  ASSERT_NE(nullptr, plan);
+  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, { arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW }, true);
+  ASSERT_EQ(2, nodes.size());
+  for (auto const* n : nodes) {
+    arangodb::iresearch::IResearchViewNode const* view =
+      static_cast<arangodb::iresearch::IResearchViewNode const*>(n);
+    if (view->view()->name() == "testView1") {
+      ASSERT_TRUE(view->volatility().first);
+      ASSERT_FALSE(view->volatility().second);
+    } else if (view->view()->name() == "testView0") {
+      ASSERT_FALSE(view->volatility().first);
+      ASSERT_FALSE(view->volatility().second);
+    } else {
+      ASSERT_TRUE(false); // unexpected node
+    }
+  }
+  // check volatility affects results
+  auto res = arangodb::tests::executeQuery(*vocbase, queryString);
+
+  EXPECT_TRUE(res.ok());
+  EXPECT_TRUE(res.data->slice().isArray());
+  EXPECT_EQ(0, res.data->slice().length());
+}
+
+TEST_F(IResearchViewVolatitlityTest, volatilityFilterListSubquery) {
+  std::string const queryString = "FOR s IN 1..20 LET kk = (FOR v IN testView0 SEARCH v.key == 1 RETURN v.key)[0] "
+                                  "FOR d IN testView1 SEARCH d.key == kk RETURN d";
+  auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
+  auto plan = prepared->plan();
+  ASSERT_NE(nullptr, plan);
+  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, { arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW }, true);
+  ASSERT_EQ(2, nodes.size());
+  for (auto const* n : nodes) {
+    arangodb::iresearch::IResearchViewNode const* view =
+      static_cast<arangodb::iresearch::IResearchViewNode const*>(n);
+    if (view->view()->name() == "testView1") {
+      ASSERT_TRUE(view->volatility().first);
+      ASSERT_FALSE(view->volatility().second);
+    } else if (view->view()->name() == "testView0") {
+      ASSERT_FALSE(view->volatility().first);
+      ASSERT_FALSE(view->volatility().second);
+    } else {
+      ASSERT_TRUE(false); // unexpected node
+    }
+  }
+  // check volatility affects results
+  auto res = arangodb::tests::executeQuery(*vocbase, queryString);
+
+  EXPECT_TRUE(res.ok());
+  EXPECT_TRUE(res.data->slice().isArray());
+  EXPECT_EQ(20, res.data->slice().length());
+}
+
+TEST_F(IResearchViewVolatitlityTest, volatilitySortFilterListSubquery) {
+  std::string const queryString = "FOR s IN 1..20 LET kk = (FOR v IN testView0 SEARCH v.key == 1 RETURN v.key)[0] "
+                                  "FOR d IN testView1 SEARCH d.key == kk SORT BM25(d, kk) RETURN d";
+  auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
+  auto plan = prepared->plan();
+  ASSERT_NE(nullptr, plan);
+  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, { arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW }, true);
+  ASSERT_EQ(2, nodes.size());
+  for (auto const* n : nodes) {
+    arangodb::iresearch::IResearchViewNode const* view =
+      static_cast<arangodb::iresearch::IResearchViewNode const*>(n);
+    if (view->view()->name() == "testView1") {
+      ASSERT_TRUE(view->volatility().first);
+      ASSERT_TRUE(view->volatility().second);
+    } else if (view->view()->name() == "testView0") {
+      ASSERT_FALSE(view->volatility().first);
+      ASSERT_FALSE(view->volatility().second);
+    } else {
+      ASSERT_TRUE(false); // unexpected node
+    }
+  }
+  // check volatility affects results
+  auto res = arangodb::tests::executeQuery(*vocbase, queryString);
+
+  EXPECT_TRUE(res.ok());
+  EXPECT_TRUE(res.data->slice().isArray());
+  EXPECT_EQ(20, res.data->slice().length());
+}
+
+TEST_F(IResearchViewVolatitlityTest, volatilitySortNonVolatileFilter) {
+  std::string const queryString = "FOR s IN 1..20 LET kk = (FOR v IN testView0 SEARCH v.key == 1 RETURN v.key)[0] "
+                                  "FOR d IN testView1 SEARCH d.key == 1 SORT BM25(d, kk) RETURN d";
+  auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
+  auto plan = prepared->plan();
+  ASSERT_NE(nullptr, plan);
+  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, { arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW }, true);
+  ASSERT_EQ(2, nodes.size());
+  for (auto const* n : nodes) {
+    arangodb::iresearch::IResearchViewNode const* view =
+      static_cast<arangodb::iresearch::IResearchViewNode const*>(n);
+    if (view->view()->name() == "testView1") {
+      ASSERT_FALSE(view->volatility().first);
+      ASSERT_TRUE(view->volatility().second);
+    } else if (view->view()->name() == "testView0") {
+      ASSERT_FALSE(view->volatility().first);
+      ASSERT_FALSE(view->volatility().second);
+    } else {
+      ASSERT_TRUE(false); // unexpected node
+    }
+  }
+  // check volatility affects results
+  auto res = arangodb::tests::executeQuery(*vocbase, queryString);
+
+  EXPECT_TRUE(res.ok());
+  EXPECT_TRUE(res.data->slice().isArray());
+  EXPECT_EQ(20, res.data->slice().length());
 }
 
 class IResearchViewBlockTest

@@ -50,7 +50,7 @@ void abortTransactions(LogicalCollection& coll) {
   "aborted leader transactions on shard '" << coll.id() << "'";
 }
 
-void abortLeaderTransactionsOnShard(TRI_voc_cid_t cid) {
+void abortLeaderTransactionsOnShard(DataSourceId cid) {
   TRI_ASSERT(ServerState::instance()->isRunningInCluster());
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
@@ -67,7 +67,7 @@ void abortLeaderTransactionsOnShard(TRI_voc_cid_t cid) {
   "aborted leader transactions on shard '" << cid << "'";
 }
 
-void abortFollowerTransactionsOnShard(TRI_voc_cid_t cid) {
+void abortFollowerTransactionsOnShard(DataSourceId cid) {
   TRI_ASSERT(ServerState::instance()->isRunningInCluster());
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);

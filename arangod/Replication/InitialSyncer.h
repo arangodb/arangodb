@@ -83,7 +83,7 @@ class InitialSyncer : public Syncer {
   TRI_voc_tick_t getLastLogTick() const { return _state.master.lastLogTick; }
 
   /// @brief return the collections that were synced
-  std::map<TRI_voc_cid_t, std::string> const& getProcessedCollections() const {
+  std::map<DataSourceId, std::string> const& getProcessedCollections() const {
     return _progress.processedCollections;
   }
 

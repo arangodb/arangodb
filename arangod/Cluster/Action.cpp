@@ -164,11 +164,6 @@ arangodb::Result Action::result() {
   return _action->result();
 }
 
-arangodb::Result Action::kill(Signal const& signal) {
-  TRI_ASSERT(_action != nullptr);
-  return _action->kill(signal);
-}
-
 arangodb::Result Action::progress(double& p) {
   TRI_ASSERT(_action != nullptr);
   return _action->progress(p);

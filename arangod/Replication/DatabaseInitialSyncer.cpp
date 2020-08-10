@@ -299,6 +299,38 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
 
 namespace arangodb {
 
+/// @brief helper struct to prevent multiple starts of the replication
+/// in the same database. used for single-server replication only.
+struct MultiStartPreventer {
+  MultiStartPreventer(MultiStartPreventer const&) = delete;
+  MultiStartPreventer& operator=(MultiStartPreventer const&) = delete;
+
+  MultiStartPreventer(TRI_vocbase_t& vocbase, bool preventStart)
+      : vocbase(vocbase), preventedStart(false) {
+    if (preventStart) {
+      TRI_ASSERT(!ServerState::instance()->isClusterRole());
+
+      auto res = vocbase.replicationApplier()->preventStart();
+      if (res.fail()) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+      preventedStart = true;
+    }
+  }
+
+  ~MultiStartPreventer() {
+    if (preventedStart) {
+      // reallow starting
+      TRI_ASSERT(!ServerState::instance()->isClusterRole());
+      vocbase.replicationApplier()->allowStart();
+    }
+  }
+
+  TRI_vocbase_t& vocbase;
+  bool preventedStart;
+};
+
+
 DatabaseInitialSyncer::Configuration::Configuration(
     ReplicationApplierConfiguration const& a,
     replutils::BatchInfo& bat, replutils::Connection& c, bool f, replutils::MasterInfo& m,
@@ -315,7 +347,8 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t& vocbase,
                     [this](std::string const& msg) -> void { setProgress(msg); }),
       _config{_state.applier, _batch,
               _state.connection, false,          _state.master,
-              _progress,         _state,         vocbase} {
+              _progress,         _state,         vocbase},
+      _isClusterRole(ServerState::instance()->isClusterRole()) {
   _state.vocbases.try_emplace(vocbase.name(), vocbase);
 
   if (configuration._database.empty()) {
@@ -329,30 +362,20 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
     return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
   }
 
-  auto res = vocbase().replicationApplier()->preventStart();
-
-  if (res.fail()) {
-    return res;
-  }
-
-  TRI_DEFER(vocbase().replicationApplier()->allowStart());
-
-  setAborted(false);
-
   double const startTime = TRI_microtime();
 
   try {
+    bool const preventMultiStart = !_isClusterRole;
+    MultiStartPreventer p(vocbase(), preventMultiStart);
+      
+    setAborted(false);
+
     _config.progress.set("fetching master state");
 
     LOG_TOPIC("0a10d", DEBUG, Logger::REPLICATION)
         << "client: getting master state to dump " << vocbase().name();
-    Result r;
-    
-    r = sendFlush();
-    if (r.fail()) {
-      return r;
-    }
 
+    Result r;
     if (!_config.isChild()) {
       r = _config.master.getState(_config.connection, _config.isChild());
 
@@ -491,51 +514,13 @@ void DatabaseInitialSyncer::setProgress(std::string const& msg) {
     LOG_TOPIC("d15ed", DEBUG, Logger::REPLICATION) << msg;
   }
 
-  auto* applier = _config.vocbase.replicationApplier();
+  if (!_isClusterRole) {
+    auto* applier = _config.vocbase.replicationApplier();
 
-  if (applier != nullptr) {
-    applier->setProgress(msg);
+    if (applier != nullptr) {
+      applier->setProgress(msg);
+    }
   }
-}
-
-/// @brief send a WAL flush command
-Result DatabaseInitialSyncer::sendFlush() {
-  if (isAborted()) {
-    return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
-  }
-
-  if (_state.master.engine == "rocksdb") {
-    // no WAL flush required for RocksDB. this is only relevant for MMFiles
-    return Result();
-  }
-
-  std::string const url = "/_admin/wal/flush";
-
-  VPackBuilder builder;
-  builder.openObject();
-  builder.add("waitForSync", VPackValue(true));
-  builder.add("waitForCollector", VPackValue(true));
-  builder.add("maxWaitTime", VPackValue(300.0));
-  builder.close();
-
-  VPackSlice bodySlice = builder.slice();
-  std::string const body = bodySlice.toJson();
-
-  // send request
-  _config.progress.set("sending WAL flush command to url " + url);
-
-  std::unique_ptr<httpclient::SimpleHttpResult> response;
-  _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
-    response.reset(client->retryRequest(rest::RequestType::PUT, url,
-                                        body.c_str(), body.size()));
-  });
-
-  if (replutils::hasFailed(response.get())) {
-    return replutils::buildHttpError(response.get(), url, _config.connection);
-  }
-
-  _config.flushed = true;
-  return Result();
 }
 
 /// @brief handle a single dump marker
@@ -1665,9 +1650,9 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
   std::string const masterName =
       basics::VelocyPackHelper::getStringValue(parameters, "name", "");
 
-  TRI_voc_cid_t const masterCid = basics::VelocyPackHelper::extractIdValue(parameters);
+  DataSourceId const masterCid{basics::VelocyPackHelper::extractIdValue(parameters)};
 
-  if (masterCid == 0) {
+  if (masterCid.empty()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "collection id is missing in response");
   }
@@ -1686,7 +1671,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
   std::string const typeString = (type.getNumber<int>() == 3 ? "edge" : "document");
 
   std::string const collectionMsg = "collection '" + masterName + "', type " +
-                                    typeString + ", id " + itoa(masterCid);
+                                    typeString + ", id " + itoa(masterCid.id());
 
   // phase handling
   if (phase == PHASE_VALIDATE) {
@@ -1836,7 +1821,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
                         " not found on slave. Collection info " + parameters.toJson());
     }
 
-    std::string const& masterColl = !masterUuid.empty() ? masterUuid : itoa(masterCid);
+    std::string const& masterColl =
+        !masterUuid.empty() ? masterUuid : itoa(masterCid.id());
     auto res = incremental && getSize(*col) > 0
                    ? fetchCollectionSync(col, masterColl, _config.master.lastLogTick)
                    : fetchCollectionDump(col, masterColl, _config.master.lastLogTick);

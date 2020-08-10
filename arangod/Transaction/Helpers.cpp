@@ -380,7 +380,7 @@ std::string transaction::helpers::makeIdFromCustom(CollectionNameResolver const*
   TRI_ASSERT(id.isCustom() && id.head() == 0xf3);
   TRI_ASSERT(key.isString());
 
-  uint64_t cid = encoding::readNumber<uint64_t>(id.begin() + 1, sizeof(uint64_t));
+  DataSourceId cid{encoding::readNumber<uint64_t>(id.begin() + 1, sizeof(uint64_t))};
 
   std::string resolved = resolver->getCollectionNameCluster(cid);
 #ifdef USE_ENTERPRISE

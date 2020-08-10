@@ -77,7 +77,7 @@ uint64_t latestSequenceNumber();
 /// in good shape
 void checkIteratorStatus(rocksdb::Iterator const* iterator);
 
-std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(uint64_t);
+std::pair<TRI_voc_tick_t, DataSourceId> mapObjectToCollection(uint64_t);
 RocksDBEngine::IndexTriple mapObjectToIndex(uint64_t);
 
 /// @brief count all keys in the given column family

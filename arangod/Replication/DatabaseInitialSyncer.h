@@ -160,9 +160,6 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   /// @brief set a progress message
   void setProgress(std::string const& msg);
 
-  /// @brief send a WAL flush command
-  Result sendFlush();
-
   /// @brief handle a single dump marker
   // TODO worker-safety
   Result parseCollectionDumpMarker(transaction::Methods&, arangodb::LogicalCollection*,
@@ -234,6 +231,9 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   Result batchFinish();
 
   Configuration _config;
+
+  /// @brief whether or not we are a coordinator/dbserver
+  bool const _isClusterRole;
 };
 
 }  // namespace arangodb

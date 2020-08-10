@@ -50,7 +50,7 @@ namespace iresearch {
 
 /*static*/ std::shared_ptr<LogicalView> IResearchViewSingleServer::make(
     TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& info, bool isNew,
-    uint64_t planVersion, LogicalView::PreCommitCallback const& preCommit /*= {}*/
+    LogicalView::PreCommitCallback const& preCommit /*= {}*/
 ) {
   auto& properties = info.isObject() ? info : emptyObjectSlice();  // if no 'info' then assume defaults
   std::string error;
@@ -87,11 +87,11 @@ namespace iresearch {
     }
   }
 
-  auto view = IResearchView::make(vocbase, info, isNew, planVersion, preCommit);
+  auto view = IResearchView::make(vocbase, info, isNew, preCommit);
 
   // create links - "on a best-effort basis"
   if (properties.hasKey("links") && isNew) {
-    std::unordered_set<TRI_voc_cid_t> collections;
+    std::unordered_set<DataSourceId> collections;
     auto result = IResearchLinkHelper::updateLinks(collections, vocbase, *view.get(),
                                                    properties.get("links"));
 

@@ -69,7 +69,7 @@ struct Collection {
   void isReadWrite(bool isReadWrite);
 
   /// @brief get the collection id
-  TRI_voc_cid_t id() const;
+  DataSourceId id() const;
 
   /// @brief returns the name of the collection, translated for the sharding
   /// case. this will return _currentShard if it is set, and name otherwise

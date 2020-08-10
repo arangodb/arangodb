@@ -95,7 +95,7 @@ void checkIteratorStatus(rocksdb::Iterator const* iterator) {
   }
 }
 
-std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(uint64_t objectId) {
+std::pair<TRI_voc_tick_t, DataSourceId> mapObjectToCollection(uint64_t objectId) {
   return globalRocksEngine()->mapObjectToCollection(objectId);
 }
 

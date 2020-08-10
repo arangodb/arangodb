@@ -184,7 +184,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     RocksDBEngine* engine = rocksutils::globalRocksEngine();
     // now adjust the counter in collections which are already loaded
     RocksDBEngine::CollectionPair dbColPair = engine->mapObjectToCollection(objectId);
-    if (dbColPair.second == 0 || dbColPair.first == 0) {
+    if (dbColPair.second.empty() || dbColPair.first == 0) {
       // collection with this objectID not known.Skip.
       return nullptr;
     }
@@ -201,7 +201,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   RocksDBIndex* findIndex(uint64_t objectId) {
     RocksDBEngine* engine = rocksutils::globalRocksEngine();
     RocksDBEngine::IndexTriple triple = engine->mapObjectToIndex(objectId);
-    if (std::get<0>(triple) == 0 && std::get<1>(triple) == 0) {
+    if (std::get<0>(triple) == 0 && std::get<1>(triple).empty()) {
       return nullptr;
     }
 
@@ -271,7 +271,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       auto const type = RocksDBKey::type(key);
 
       if (type == RocksDBEntryType::Collection) {
-        storeMaxTick(RocksDBKey::collectionId(key));
+        storeMaxTick(RocksDBKey::collectionId(key).id());
         auto slice = RocksDBValue::data(value);
         storeMaxTick(basics::VelocyPackHelper::stringUInt64(slice, "objectId"));
         VPackSlice indexes = slice.get("indexes");
@@ -283,7 +283,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       } else if (type == RocksDBEntryType::Database) {
         storeMaxTick(RocksDBKey::databaseId(key));
       } else if (type == RocksDBEntryType::View) {
-        storeMaxTick(std::max(RocksDBKey::databaseId(key), RocksDBKey::viewId(key)));
+        storeMaxTick(
+            std::max(RocksDBKey::databaseId(key), RocksDBKey::viewId(key).id()));
       }
     }
   }

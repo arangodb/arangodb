@@ -221,11 +221,11 @@ arangodb::Result dropLink<arangodb::iresearch::IResearchViewCoordinator>( // dro
 }
 
 template <typename ViewType>
-arangodb::Result modifyLinks( // modify links
-    std::unordered_set<TRI_voc_cid_t>& modified, // modified collection ids
-    ViewType& view, // modified view
-    arangodb::velocypack::Slice const& links, // modified link definitions
-    std::unordered_set<TRI_voc_cid_t> const& stale = {} // stale links
+arangodb::Result modifyLinks(                              // modify links
+    std::unordered_set<arangodb::DataSourceId>& modified,  // modified collection ids
+    ViewType& view,                                        // modified view
+    arangodb::velocypack::Slice const& links,  // modified link definitions
+    std::unordered_set<arangodb::DataSourceId> const& stale = {}  // stale links
 ) {
   LOG_TOPIC("4bdd2", DEBUG, arangodb::iresearch::TOPIC)
       << "link modification request for view '" << view.name() << "', original definition:" << links.toString();
@@ -356,7 +356,7 @@ arangodb::Result modifyLinks( // modify links
 
     linkModifications.emplace_back(collectionsToLock.size());
     linkModifications.back()._stale = true;
-    collectionsToLock.emplace_back(std::to_string(id));
+    collectionsToLock.emplace_back(std::to_string(id.id()));
   }
 
   if (collectionsToLock.empty()) {
@@ -366,8 +366,8 @@ arangodb::Result modifyLinks( // modify links
   arangodb::ExecContextSuperuserScope scope; // required to remove links from non-RW collections
 
   {
-    std::unordered_set<TRI_voc_cid_t> collectionsToRemove; // track removal for potential reindex
-    std::unordered_set<TRI_voc_cid_t> collectionsToUpdate; // track reindex requests
+    std::unordered_set<arangodb::DataSourceId> collectionsToRemove;  // track removal for potential reindex
+    std::unordered_set<arangodb::DataSourceId> collectionsToUpdate;  // track reindex requests
 
     // resolve corresponding collection and link
     for (auto itr = linkModifications.begin(); itr != linkModifications.end();) {
@@ -869,10 +869,8 @@ namespace iresearch {
 }
 
 /*static*/ arangodb::Result IResearchLinkHelper::updateLinks(
-    std::unordered_set<TRI_voc_cid_t>& modified,
-    arangodb::LogicalView& view,
-    arangodb::velocypack::Slice const& links,
-    std::unordered_set<TRI_voc_cid_t> const& stale /*= {}*/
+    std::unordered_set<DataSourceId>& modified, arangodb::LogicalView& view,
+    arangodb::velocypack::Slice const& links, std::unordered_set<DataSourceId> const& stale /*= {}*/
 ) {
   LOG_TOPIC("00bf9", TRACE, arangodb::iresearch::TOPIC)
       << "beginning IResearchLinkHelper::updateLinks";

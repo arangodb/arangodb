@@ -274,6 +274,7 @@ bool SupervisedScheduler::queue(RequestLane lane, fu2::unique_function<void()> h
   for (auto& state : _workerStates) {
     std::unique_lock<std::mutex> guard2(state->_mutex);
     if (state->_sleeping) {
+      guard2.unlock();
       state->_conditionWork.notify_one();
       break;
     }
@@ -322,6 +323,7 @@ void SupervisedScheduler::shutdown() {
     for (auto& state : _workerStates) {
       std::unique_lock<std::mutex> guard2(state->_mutex);
       state->_stop = true;
+      guard2.unlock();
       state->_conditionWork.notify_one();
     }
   }
@@ -354,30 +356,31 @@ void SupervisedScheduler::runWorker() {
   std::shared_ptr<WorkerState> state;
 
   {
-    {
-      std::lock_guard<std::mutex> guard1(_mutex);
-      id = _numWorkers++;  // increase the number of workers here, to obtain the id
-      // copy shared_ptr with worker state
-      state = _workerStates.back();
-    }
-
-    state->_sleepTimeout_ms = 20 * (id + 1);
-    // cap the timeout to some boundary value
-    if (state->_sleepTimeout_ms >= 1000) {
-      state->_sleepTimeout_ms = 1000;
-    }
-
-    if (id < 5U) {
-      state->_queueRetryTime_us = (uint64_t(32) >> id) + 1;
-    } else {
-      state->_queueRetryTime_us = 0;
-    }
-
-    // inform the supervisor that this thread is alive
-    state->_ready = true;
-    std::lock_guard<std::mutex> guard(_mutexSupervisor);
-    _conditionSupervisor.notify_one();
+    std::lock_guard<std::mutex> guard1(_mutex);
+    id = _numWorkers++;  // increase the number of workers here, to obtain the id
+    // copy shared_ptr with worker state
+    state = _workerStates.back();
   }
+
+  state->_sleepTimeout_ms = 20 * (id + 1);
+  // cap the timeout to some boundary value
+  if (state->_sleepTimeout_ms >= 1000) {
+    state->_sleepTimeout_ms = 1000;
+  }
+
+  if (id < 5U) {
+    state->_queueRetryTime_us = (uint64_t(32) >> id) + 1;
+  } else {
+    state->_queueRetryTime_us = 0;
+  }
+
+  // inform the supervisor that this thread is alive
+  state->_ready = true;
+  {
+    std::lock_guard<std::mutex> guard(_mutexSupervisor);
+  }
+  _conditionSupervisor.notify_one();
+
   _nrAwake.fetch_add(1, std::memory_order_relaxed);
   while (true) {
     try {
@@ -682,9 +685,9 @@ void SupervisedScheduler::stopOneThread() {
   {
     std::unique_lock<std::mutex> guard(state->_mutex);
     state->_stop = true;
-    state->_conditionWork.notify_one();
     // _stop is set under the mutex, then the worker thread is notified.
   }
+  state->_conditionWork.notify_one();
 
   // However the thread may be working on a long job. Hence we enqueue it on
   // the cleanup list and wait for its termination.
