@@ -118,13 +118,6 @@ class TraversalExecutor {
   TraversalExecutor(Fetcher& fetcher, Infos&);
   ~TraversalExecutor();
 
-  /**
-   * @brief Shutdown will be called once for every query
-   *
-   * @return ExecutionState and no error.
-   */
-  std::pair<ExecutionState, Result> shutdown(int errorCode);
-
   [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)

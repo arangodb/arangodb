@@ -290,11 +290,6 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
 }
 
 template <class Executor>
-std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::shutdown(int errorCode) {
-  return ExecutionBlock::shutdown(errorCode);
-}
-
-template <class Executor>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<Executor>::execute(AqlCallStack stack) {
   traceExecuteBegin(stack);
@@ -374,96 +369,6 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::
 
   // end of default initializeCursor
   return ExecutionBlock::initializeCursor(input);
-}
-
-// TODO the shutdown specializations shall be unified!
-
-template <>
-std::pair<ExecutionState, Result> ExecutionBlockImpl<TraversalExecutor>::shutdown(int errorCode) {
-  ExecutionState state;
-  Result result;
-
-  std::tie(state, result) = ExecutionBlock::shutdown(errorCode);
-
-  if (state == ExecutionState::WAITING) {
-    return {state, result};
-  }
-  return this->executor().shutdown(errorCode);
-}
-
-template <>
-std::pair<ExecutionState, Result> ExecutionBlockImpl<ShortestPathExecutor>::shutdown(int errorCode) {
-  ExecutionState state;
-  Result result;
-
-  std::tie(state, result) = ExecutionBlock::shutdown(errorCode);
-  if (state == ExecutionState::WAITING) {
-    return {state, result};
-  }
-  return this->executor().shutdown(errorCode);
-}
-
-template <>
-std::pair<ExecutionState, Result> ExecutionBlockImpl<KShortestPathsExecutor>::shutdown(int errorCode) {
-  ExecutionState state;
-  Result result;
-
-  std::tie(state, result) = ExecutionBlock::shutdown(errorCode);
-  if (state == ExecutionState::WAITING) {
-    return {state, result};
-  }
-  return this->executor().shutdown(errorCode);
-}
-
-template <>
-std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor<true>>::shutdown(int errorCode) {
-  ExecutionState state;
-  Result subqueryResult;
-  // shutdown is repeatable
-  std::tie(state, subqueryResult) = this->executor().shutdown(errorCode);
-  if (state == ExecutionState::WAITING) {
-    return {ExecutionState::WAITING, subqueryResult};
-  }
-  Result result;
-
-  std::tie(state, result) = ExecutionBlock::shutdown(errorCode);
-  if (state == ExecutionState::WAITING) {
-    return {state, result};
-  }
-  if (result.fail()) {
-    return {state, result};
-  }
-  return {state, subqueryResult};
-}
-
-template <>
-std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor<false>>::shutdown(int errorCode) {
-  ExecutionState state;
-  Result subqueryResult;
-  // shutdown is repeatable
-  std::tie(state, subqueryResult) = this->executor().shutdown(errorCode);
-  if (state == ExecutionState::WAITING) {
-    return {ExecutionState::WAITING, subqueryResult};
-  }
-  Result result;
-
-  std::tie(state, result) = ExecutionBlock::shutdown(errorCode);
-  if (state == ExecutionState::WAITING) {
-    return {state, result};
-  }
-  if (result.fail()) {
-    return {state, result};
-  }
-  return {state, subqueryResult};
-}
-
-template <>
-std::pair<ExecutionState, Result>
-ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>::shutdown(int errorCode) {
-  if (this->executorInfos().isResponsibleForInitializeCursor()) {
-    return ExecutionBlock::shutdown(errorCode);
-  }
-  return {ExecutionState::DONE, {errorCode}};
 }
 
 }  // namespace arangodb::aql

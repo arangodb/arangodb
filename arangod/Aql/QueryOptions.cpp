@@ -196,7 +196,7 @@ void QueryOptions::fromVelocyPack(VPackSlice const slice) {
   if (value.isArray()) {
     VPackArrayIterator it(value);
     while (it.valid()) {
-      VPackSlice value = it.value();
+      value = it.value();
       if (value.isString()) {
         restrictToShards.emplace(value.copyString());
       }
@@ -209,7 +209,7 @@ void QueryOptions::fromVelocyPack(VPackSlice const slice) {
   if (value.isArray()) {
     VPackArrayIterator it(value);
     while (it.valid()) {
-      VPackSlice value = it.value();
+      value = it.value();
       if (value.isString()) {
         inaccessibleCollections.emplace(value.copyString());
       }

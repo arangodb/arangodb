@@ -77,7 +77,8 @@ enum class BlockPassthrough { Disable, Enable };
 
 class ExecutionEngine;
 // list of snippets on coordinators
-using SnippetList = std::vector<std::pair<EngineId, std::unique_ptr<ExecutionEngine>>>;
+using SnippetList = std::vector<std::unique_ptr<ExecutionEngine>>;
+using ServerQueryIdList = std::vector<std::pair<std::string, QueryId>>;
 
 using AqlCollectionMap = std::map<std::string, aql::Collection*, std::less<>>;
 
@@ -98,8 +99,7 @@ using RegIdFlatSetStack = std::vector<containers::flat_set<RegisterId>>;
 namespace traverser {
 class BaseEngine;
 // list of graph engines on coordinators
-using GraphEngineList =
-    std::vector<std::pair<arangodb::aql::EngineId, std::unique_ptr<BaseEngine>>>;
+using GraphEngineList = std::vector<std::unique_ptr<BaseEngine>>;
 }  // namespace traverser
 
 enum class ExplainRegisterPlan {

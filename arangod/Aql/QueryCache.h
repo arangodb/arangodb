@@ -90,6 +90,9 @@ struct QueryCacheResultEntry {
   double executionTime() const;
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
+  
+  /// current user has all permissions
+  bool currentUserHasPermissions() const;
 };
 
 struct QueryCacheDatabaseEntry {
