@@ -27,6 +27,7 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/SkipResult.h"
+#include "Containers/SmallVector.h"
 
 #include <memory>
 
@@ -107,7 +108,7 @@ class ConstFetcher {
  private:
   auto indexIsValid() const noexcept -> bool;
   auto numRowsLeft() const noexcept -> size_t;
-  auto canUseFullBlock(std::vector<std::pair<size_t, size_t>> const& ranges) const
+  auto canUseFullBlock(arangodb::containers::SmallVector<std::pair<size_t, size_t>> const& ranges) const
       noexcept -> bool;
 };
 

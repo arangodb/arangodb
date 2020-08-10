@@ -34,7 +34,7 @@ class GlobalReplicationApplier;
 class GlobalTailingSyncer : public TailingSyncer {
  public:
   GlobalTailingSyncer(ReplicationApplierConfiguration const&, TRI_voc_tick_t initialTick,
-                      bool useTick, TRI_voc_tick_t barrierId);
+                      bool useTick);
 
  public:
   /// @brief return the syncer's replication applier

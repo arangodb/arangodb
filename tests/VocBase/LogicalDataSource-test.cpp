@@ -39,7 +39,7 @@ namespace {
 class LogicalViewImpl : public arangodb::LogicalView {
  public:
   LogicalViewImpl(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition)
-      : LogicalView(vocbase, definition, 0) {}
+      : LogicalView(vocbase, definition) {}
   virtual arangodb::Result appendVelocyPackImpl(
       arangodb::velocypack::Builder&, Serialization) const override {
     return arangodb::Result();
@@ -137,8 +137,8 @@ TEST_F(LogicalDataSourceTest, test_construct) {
         "\"testCollection\" }");
     arangodb::LogicalCollection instance(vocbase, json->slice(), true);
 
-    EXPECT_EQ(1, instance.id());
-    EXPECT_EQ(2, instance.planId());
+    EXPECT_EQ(1, instance.id().id());
+    EXPECT_EQ(2, instance.planId().id());
     EXPECT_EQ(std::string("abc"), instance.guid());
   }
 
@@ -150,8 +150,8 @@ TEST_F(LogicalDataSourceTest, test_construct) {
         "\"testView\" }");
     LogicalViewImpl instance(vocbase, json->slice());
 
-    EXPECT_EQ(1, instance.id());
-    EXPECT_EQ(2, instance.planId());
+    EXPECT_EQ(1, instance.id().id());
+    EXPECT_EQ(2, instance.planId().id());
     EXPECT_EQ(std::string("abc"), instance.guid());
   }
 }
@@ -164,8 +164,8 @@ TEST_F(LogicalDataSourceTest, test_defaults) {
         "{ \"name\": \"testCollection\" }");
     arangodb::LogicalCollection instance(vocbase, json->slice(), true);
 
-    EXPECT_NE(0, instance.id());
-    EXPECT_NE(0, instance.planId());
+    EXPECT_TRUE(instance.id().isSet());
+    EXPECT_TRUE(instance.planId().isSet());
     EXPECT_FALSE(instance.guid().empty());
   }
 
@@ -176,8 +176,8 @@ TEST_F(LogicalDataSourceTest, test_defaults) {
         arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
     LogicalViewImpl instance(vocbase, json->slice());
 
-    EXPECT_NE(0, instance.id());
-    EXPECT_NE(0, instance.planId());
+    EXPECT_TRUE(instance.id().isSet());
+    EXPECT_TRUE(instance.planId().isSet());
     EXPECT_EQ(instance.id(), instance.planId());
     EXPECT_FALSE(instance.guid().empty());
   }

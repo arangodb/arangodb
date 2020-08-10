@@ -106,7 +106,7 @@ std::string const TailingSyncer::WalAccessUrl = "/_api/wal";
 
 TailingSyncer::TailingSyncer(ReplicationApplier* applier,
                              ReplicationApplierConfiguration const& configuration,
-                             TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId)
+                             TRI_voc_tick_t initialTick, bool useTick)
     : Syncer(configuration),
       _applier(applier),
       _hasWrittenState(false),
@@ -116,12 +116,7 @@ TailingSyncer::TailingSyncer(ReplicationApplier* applier,
       _requireFromPresent(configuration._requireFromPresent),
       _ignoreRenameCreateDrop(false),
       _ignoreDatabaseMarkers(true),
-      _workInParallel(false) {
-  if (barrierId > 0) {
-    _state.barrier.id = barrierId;
-    _state.barrier.updateTime = TRI_microtime();
-  }
-}
+      _workInParallel(false) {}
 
 TailingSyncer::~TailingSyncer() { abortOngoingTransactions(); }
 
@@ -1228,8 +1223,6 @@ Result TailingSyncer::runInternal() {
 
   setAborted(false);
 
-  TRI_DEFER(
-      if (!_state.isChildSyncer) { _state.barrier.remove(_state.connection); });
   uint64_t shortTermFailsInRow = 0;
 
 retry:
@@ -1792,7 +1785,6 @@ void TailingSyncer::fetchMasterLog(std::shared_ptr<Syncer::JobSynchronizer> shar
     std::string const url =
         tailingBaseUrl("tail") +
         "chunkSize=" + StringUtils::itoa(_state.applier._chunkSize) +
-        "&barrier=" + StringUtils::itoa(_state.barrier.id) +
         "&from=" + StringUtils::itoa(fetchTick) +
         "&lastScanned=" + StringUtils::itoa(lastScannedTick) +
         (firstRegularTick > fetchTick ? "&firstRegular=" + StringUtils::itoa(firstRegularTick)
@@ -1805,7 +1797,6 @@ void TailingSyncer::fetchMasterLog(std::shared_ptr<Syncer::JobSynchronizer> shar
     setProgress(std::string("fetching master log from tick ") + StringUtils::itoa(fetchTick) +
                 ", last scanned tick " + StringUtils::itoa(lastScannedTick) +
                 ", first regular tick " + StringUtils::itoa(firstRegularTick) +
-                ", barrier: " + StringUtils::itoa(_state.barrier.id) +
                 ", open transactions: " + std::to_string(_ongoingTransactions.size()) +
                 ", chunk size " + std::to_string(_state.applier._chunkSize));
 

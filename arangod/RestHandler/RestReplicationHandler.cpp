@@ -129,7 +129,7 @@ static Result checkPlanLeaderDirect(std::shared_ptr<LogicalCollection> const& co
   std::vector<std::string> agencyPath = {"Plan",
                                          "Collections",
                                          col->vocbase().name(),
-                                         std::to_string(col->planId()),
+                                         std::to_string(col->planId().id()),
                                          "shards",
                                          col->name()};
 
@@ -853,7 +853,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
     std::shared_ptr<ShardMap> shardMap = c->shardIds();
     // shardMap is an unordered_map from ShardId (string) to a vector of
     // servers (strings), wrapped in a shared_ptr
-    auto cic = ci.getCollectionCurrent(dbName, basics::StringUtils::itoa(c->id()));
+    auto cic = ci.getCollectionCurrent(dbName, basics::StringUtils::itoa(c->id().id()));
     // Check all shards:
     bool isReady = true;
     bool allInSync = true;
@@ -2236,7 +2236,7 @@ void RestReplicationHandler::handleCommandSync() {
   result.add(VPackValue(VPackValueType::Object));
   result.add("collections", VPackValue(VPackValueType::Array));
   for (auto const& it : syncer->getProcessedCollections()) {
-    std::string const cidString = StringUtils::itoa(it.first);
+    std::string const cidString = StringUtils::itoa(it.first.id());
     // Insert a collection
     result.add(VPackValue(VPackValueType::Object));
     result.add("id", VPackValue(cidString));
@@ -2247,12 +2247,6 @@ void RestReplicationHandler::handleCommandSync() {
 
   auto tickString = std::to_string(syncer->getLastLogTick());
   result.add("lastLogTick", VPackValue(tickString));
-
-  bool const keepBarrier = VelocyPackHelper::getBooleanValue(body, "keepBarrier", false);
-  if (keepBarrier) {
-    auto barrierId = std::to_string(syncer->stealBarrier());
-    result.add("barrierId", VPackValue(barrierId));
-  }
 
   result.close();  // base
   generateResult(rest::ResponseCode::OK, result.slice());
@@ -2335,14 +2329,7 @@ void RestReplicationHandler::handleCommandApplierStart() {
     useTick = true;
   }
 
-  TRI_voc_tick_t barrierId = 0;
-  std::string const& value2 = _request->value("barrierId", found);
-  if (found) {
-    // query parameter "barrierId" specified
-    barrierId = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value2));
-  }
-
-  applier->startTailing(initialTick, useTick, barrierId);
+  applier->startTailing(initialTick, useTick);
   handleCommandApplierGetState();
 }
 
@@ -3392,13 +3379,13 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   /* Temporary ASSERTS to prove correctness of new constructor */
   TRI_ASSERT(col->system() == (name[0] == '_'));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_voc_cid_t planId = 0;
+  DataSourceId planId = DataSourceId::none();
   VPackSlice const planIdSlice = slice.get("planId");
   if (planIdSlice.isNumber()) {
-    planId = static_cast<TRI_voc_cid_t>(planIdSlice.getNumericValue<uint64_t>());
+    planId = DataSourceId{planIdSlice.getNumericValue<DataSourceId::BaseType>()};
   } else if (planIdSlice.isString()) {
     std::string tmp = planIdSlice.copyString();
-    planId = static_cast<TRI_voc_cid_t>(StringUtils::uint64(tmp));
+    planId = DataSourceId{StringUtils::uint64(tmp)};
   } else if (planIdSlice.isNone()) {
     // There is no plan ID it has to be equal to collection id
     planId = col->id();

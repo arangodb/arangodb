@@ -1501,7 +1501,7 @@ arangodb::Result StorageEngineMock::createTickRanges(VPackBuilder&) {
 }
 
 std::unique_ptr<arangodb::TransactionCollection> StorageEngineMock::createTransactionCollection(
-    arangodb::TransactionState& state, TRI_voc_cid_t cid,
+    arangodb::TransactionState& state, arangodb::DataSourceId cid,
     arangodb::AccessMode::Type accessType) {
   return std::unique_ptr<arangodb::TransactionCollection>(
       new TransactionCollectionMock(&state, cid, accessType));
@@ -1518,7 +1518,8 @@ std::shared_ptr<arangodb::TransactionState> StorageEngineMock::createTransaction
   return std::make_shared<TransactionStateMock>(vocbase, tid, options);
 }
 
-arangodb::Result StorageEngineMock::createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id,
+arangodb::Result StorageEngineMock::createView(TRI_vocbase_t& vocbase,
+                                               arangodb::DataSourceId id,
                                                arangodb::LogicalView const& view) {
   before();
   TRI_ASSERT(views.find(std::make_pair(vocbase.id(), view.id())) == views.end());  // called after createView()
@@ -1573,7 +1574,7 @@ arangodb::Result StorageEngineMock::firstTick(uint64_t&) {
   return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-void StorageEngineMock::getCollectionInfo(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid,
+void StorageEngineMock::getCollectionInfo(TRI_vocbase_t& vocbase, arangodb::DataSourceId cid,
                                           arangodb::velocypack::Builder& result,
                                           bool includeIndexes, TRI_voc_tick_t maxTick) {
   arangodb::velocypack::Builder parameters;
@@ -1733,7 +1734,7 @@ arangodb::Result StorageEngineMock::flushWal(bool waitForSync, bool waitForColle
 }
 
 TransactionCollectionMock::TransactionCollectionMock(arangodb::TransactionState* state,
-                                                     TRI_voc_cid_t cid,
+                                                     arangodb::DataSourceId cid,
                                                      arangodb::AccessMode::Type accessType)
     : TransactionCollection(state, cid, accessType) {}
 
@@ -1778,8 +1779,8 @@ arangodb::Result TransactionCollectionMock::lockUsage() {
                      .server()
                      .getFeature<arangodb::ClusterFeature>()
                      .clusterInfo();
-      _collection =
-          ci.getCollectionNT(_transaction->vocbase().name(), std::to_string(_cid));
+      _collection = ci.getCollectionNT(_transaction->vocbase().name(),
+                                       std::to_string(_cid.id()));
     } else {
       _collection = _transaction->vocbase().useCollection(_cid, true);
     }

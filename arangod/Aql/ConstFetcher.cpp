@@ -27,8 +27,10 @@
 #include "Aql/DependencyProxy.h"
 #include "Aql/ShadowAqlItemRow.h"
 #include "Aql/SkipResult.h"
-#include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
+#include "Containers/SmallVector.h"
+
+#include <algorithm>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -47,20 +49,23 @@ auto ConstFetcher::execute(AqlCallStack const&, AqlCallList clientCall)
     // we are done, nothing to move arround here.
     return {ExecutionState::DONE, skipped, AqlItemBlockInputRange{ExecutorState::DONE}};
   }
-  std::vector<std::pair<size_t, size_t>> sliceIndexes;
+
+  arangodb::containers::SmallVector<std::pair<size_t, size_t>>::allocator_type::arena_type arena;
+  arangodb::containers::SmallVector<std::pair<size_t, size_t>> sliceIndexes{arena};
+
   sliceIndexes.emplace_back(_rowIndex, _blockForPassThrough->size());
+
   // Modifiable first slice indexes.
   // from is the first data row to be returned
   // to is one after the last data row to be returned
 
   if (_blockForPassThrough->hasShadowRows()) {
-    auto const& shadowIndexes = _blockForPassThrough->getShadowRowIndexes();
-    auto shadowRow = shadowIndexes.lower_bound(_rowIndex);
-    if (shadowRow != shadowIndexes.end()) {
-      size_t fromShadowRow = *shadowRow;
-      size_t toShadowRow = *shadowRow + 1;
-      for (++shadowRow; shadowRow != shadowIndexes.end(); ++shadowRow) {
-        if (*shadowRow == toShadowRow) {
+    auto [shadowRowsBegin, shadowRowsEnd] = _blockForPassThrough->getShadowRowIndexesFrom(_rowIndex);
+    if (shadowRowsBegin != shadowRowsEnd) {
+      size_t fromShadowRow = *shadowRowsBegin;
+      size_t toShadowRow = *shadowRowsBegin + 1;
+      for (++shadowRowsBegin; shadowRowsBegin != shadowRowsEnd; ++shadowRowsBegin) {
+        if (*shadowRowsBegin == toShadowRow) {
           ShadowAqlItemRow srow{_blockForPassThrough, toShadowRow};
           TRI_ASSERT(srow.isInitialized());
           if (srow.isRelevant()) {
@@ -211,7 +216,7 @@ auto ConstFetcher::numRowsLeft() const noexcept -> size_t {
   return _currentBlock->size() - _rowIndex;
 }
 
-auto ConstFetcher::canUseFullBlock(std::vector<std::pair<size_t, size_t>> const& ranges) const
+auto ConstFetcher::canUseFullBlock(arangodb::containers::SmallVector<std::pair<size_t, size_t>> const& ranges) const
     noexcept -> bool {
   TRI_ASSERT(!ranges.empty());
   if (ranges.front().first != 0) {

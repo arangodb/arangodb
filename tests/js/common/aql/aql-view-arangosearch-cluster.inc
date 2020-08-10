@@ -560,6 +560,19 @@
 
         assertEqual(result3.length, 1);
         assertEqual(result3[0].name, 'full');
+        
+        var result6v = db._query("LET phraseStruct = NOOPT([' fox',  ' jumps']) "
+                               + "FOR doc IN UnitTestsView SEARCH ANALYZER(PHRASE(doc.text,  'quick ', 0, 'brown', 0, phraseStruct), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+        assertEqual(result6v.length, 1);
+        assertEqual(result6v[0].name, 'full');
+      
+            
+        var result6v2 = db._query("LET phraseStruct = NOOPT(['quick ', 0, 'brown', 0, [' fox',  ' jumps']]) "
+                               + "FOR doc IN UnitTestsView SEARCH ANALYZER(PHRASE(doc.text, phraseStruct), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+        assertEqual(result6v2.length, 1);
+        assertEqual(result6v2[0].name, 'full');
       },
 
       testExistsFilter : function () {
@@ -1934,6 +1947,14 @@
       testPhraseInRangeViaArray : function () {
         var result = db._query("FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, [{IN_RANGE: ['quic', 'ruick', false, true]}, 'brown'], 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
         assertEqual(1, result.length);
+      },
+
+      testVolatileFilter : function() {
+        let result = db._query("FOR doc IN AnotherUnitTestsCollection LET kk = NOEVAL(doc.id) "
+                               + " FOR c IN UnitTestsWithArrayView SEARCH c.c == kk SORT c.c RETURN c ").toArray();
+        assertEqual(2, result.length);
+        assertEqual(result[0].c, 0);
+        assertEqual(result[1].c, 1);
       }
     };
   };

@@ -204,7 +204,7 @@ void ExecutionBlock::traceExecuteEnd(std::tuple<ExecutionState, SkipResult, Shar
       size_t rows = 0;
       size_t shadowRows = 0;
       if (block != nullptr) {
-        shadowRows = block->getShadowRowIndexes().size();
+        shadowRows = block->numShadowRows();
         rows = block->size() - shadowRows;
       }
       ExecutionNode const* node = getPlanNode();

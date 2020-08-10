@@ -218,9 +218,6 @@ struct AqlValue final {
   // construct from pointer, copying the data behind the pointer
   explicit AqlValue(AqlValueHintCopy const& v);
 
-  // construct from Builder, copying contents
-  explicit AqlValue(arangodb::velocypack::Builder const& builder);
-
   // construct from Slice, copying contents
   explicit AqlValue(arangodb::velocypack::Slice const& slice);
 
@@ -257,9 +254,6 @@ struct AqlValue final {
 
   /// @brief hashes the value
   uint64_t hash(uint64_t seed = 0xdeadbeef) const;
-
-  /// @brief whether or not the value is a shadow row depth entry
-  bool isShadowRowDepthValue() const noexcept;
 
   /// @brief whether or not the value contains a none value
   bool isNone() const noexcept;
@@ -405,7 +399,7 @@ class AqlValueGuard {
   AqlValueGuard& operator=(AqlValueGuard&&) = delete;
 
   AqlValueGuard(AqlValue& value, bool destroy) noexcept;
-  ~AqlValueGuard();
+  ~AqlValueGuard() noexcept;
 
   void steal() noexcept;
   AqlValue& value() noexcept;

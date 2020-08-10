@@ -37,7 +37,7 @@
 using namespace arangodb;
 
 ClusterTransactionCollection::ClusterTransactionCollection(TransactionState* trx,
-                                                           TRI_voc_cid_t cid,
+                                                           DataSourceId cid,
                                                            AccessMode::Type accessType)
     : TransactionCollection(trx, cid, accessType) {}
 
@@ -69,8 +69,8 @@ Result ClusterTransactionCollection::lockUsage() {
     ClusterInfo& ci =
         _transaction->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
-    _collection =
-        ci.getCollectionNT(_transaction->vocbase().name(), std::to_string(_cid));
+    _collection = ci.getCollectionNT(_transaction->vocbase().name(),
+                                     std::to_string(_cid.id()));
     if (_collection == nullptr) {
       return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
     }

@@ -301,7 +301,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
 
       auto const col = todoSyncStateCheck.front();
       auto allShards = col->shardIds();
-      auto cic = _ci->getCollectionCurrent(dbName, std::to_string(col->id()));
+      auto cic = _ci->getCollectionCurrent(dbName, std::to_string(col->id().id()));
 
       // Send requests
       for (auto const& s : *(allShards.get())) {
@@ -492,7 +492,7 @@ bool ShardDistributionReporter::testAllShardsInSync(std::string const& dbName,
   TRI_ASSERT(col != nullptr);
   TRI_ASSERT(shardIds != nullptr);
 
-  auto cic = _ci->getCollectionCurrent(dbName, std::to_string(col->id()));
+  auto cic = _ci->getCollectionCurrent(dbName, std::to_string(col->id().id()));
 
   for (auto const& s : *shardIds) {
     auto curServers = cic->servers(s.first);

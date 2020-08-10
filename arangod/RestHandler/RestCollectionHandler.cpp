@@ -250,7 +250,7 @@ RestStatus RestCollectionHandler::handleCommandGet() {
                                /*detailedCount*/ true);
 
       auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-      auto shards = ci.getShardList(std::to_string(coll->planId()));
+      auto shards = ci.getShardList(std::to_string(coll->planId().id()));
 
       if (_request->parsedValue("details", false)) {
         // with details
@@ -438,7 +438,10 @@ RestStatus RestCollectionHandler::handleCommandPut() {
       collectionRepresentation(name, /*showProperties*/ false,
                                /*showFigures*/ false, /*showCount*/ false,
                                /*detailedCount*/ true);
+      return standardResponse();
     }
+    generateError(res);
+    return RestStatus::DONE;
   } else if (sub == "responsibleShard") {
     if (!ServerState::instance()->isCoordinator()) {
       res.reset(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
@@ -650,7 +653,7 @@ void RestCollectionHandler::handleCommandDelete() {
   {
     VPackObjectBuilder obj(&_builder, true);
 
-    obj->add("id", VPackValue(std::to_string(coll->id())));
+    obj->add("id", VPackValue(std::to_string(coll->id().id())));
     res = methods::Collections::drop(*coll, allowDropSystem, -1.0);
   }
 
@@ -714,7 +717,7 @@ futures::Future<futures::Unit> RestCollectionHandler::collectionRepresentationAs
   TRI_ASSERT(coll != nullptr);
 
   // `methods::Collections::properties` will filter these out
-  _builder.add(StaticStrings::DataSourceId, VPackValue(std::to_string(coll->id())));
+  _builder.add(StaticStrings::DataSourceId, VPackValue(std::to_string(coll->id().id())));
   _builder.add(StaticStrings::DataSourceName, VPackValue(coll->name()));
   _builder.add("status", VPackValue(coll->status()));
   _builder.add(StaticStrings::DataSourceType, VPackValue(coll->type()));

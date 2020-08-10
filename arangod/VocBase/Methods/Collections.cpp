@@ -546,11 +546,12 @@ Result Collections::load(TRI_vocbase_t& vocbase, LogicalCollection* coll) {
 #ifdef USE_ENTERPRISE
     auto& feature = vocbase.server().getFeature<ClusterFeature>();
     return ULColCoordinatorEnterprise(feature, coll->vocbase().name(),
-                                      std::to_string(coll->id()), TRI_VOC_COL_STATUS_LOADED);
+                                      std::to_string(coll->id().id()),
+                                      TRI_VOC_COL_STATUS_LOADED);
 #else
     auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
     return ci.setCollectionStatusCoordinator(coll->vocbase().name(),
-                                             std::to_string(coll->id()),
+                                             std::to_string(coll->id().id()),
                                              TRI_VOC_COL_STATUS_LOADED);
 #endif
   }
@@ -571,11 +572,12 @@ Result Collections::unload(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
 #ifdef USE_ENTERPRISE
     auto& feature = vocbase->server().getFeature<ClusterFeature>();
     return ULColCoordinatorEnterprise(feature, vocbase->name(),
-                                      std::to_string(coll->id()),
+                                      std::to_string(coll->id().id()),
                                       TRI_VOC_COL_STATUS_UNLOADED);
 #else
     auto& ci = vocbase->server().getFeature<ClusterFeature>().clusterInfo();
-    return ci.setCollectionStatusCoordinator(vocbase->name(), std::to_string(coll->id()),
+    return ci.setCollectionStatusCoordinator(vocbase->name(),
+                                             std::to_string(coll->id().id()),
                                              TRI_VOC_COL_STATUS_UNLOADED);
 #endif
   }
@@ -632,7 +634,7 @@ Result Collections::updateProperties(LogicalCollection& collection,
     ClusterInfo& ci =
         collection.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
     auto info = ci.getCollection(collection.vocbase().name(),
-                                 std::to_string(collection.id()));
+                                 std::to_string(collection.id().id()));
 
     // replication checks
     int64_t replFactor = Helper::getNumericValue<int64_t>(props, StaticStrings::ReplicationFactor, 0);
@@ -766,7 +768,7 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
   }
 
   auto& databaseName = collection->vocbase().name();
-  auto cid = std::to_string(collection->id());
+  auto cid = std::to_string(collection->id().id());
   ClusterInfo& ci =
       collection->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
   auto res = ci.dropCollectionCoordinator(databaseName, cid, 300.0);
@@ -842,7 +844,7 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    auto cid = std::to_string(coll.id());
+    auto cid = std::to_string(coll.id().id());
     auto& feature = vocbase.server().getFeature<ClusterFeature>();
     return warmupOnCoordinator(feature, vocbase.name(), cid);
   }
@@ -904,7 +906,7 @@ futures::Future<Result> Collections::upgrade(TRI_vocbase_t& vocbase,
 futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {
   if (ServerState::instance()->isCoordinator()) {
     auto& databaseName = ctxt.coll()->vocbase().name();
-    auto cid = std::to_string(ctxt.coll()->id());
+    auto cid = std::to_string(ctxt.coll()->id().id());
     auto& feature = ctxt.coll()->vocbase().server().getFeature<ClusterFeature>();
     return revisionOnCoordinator(feature, databaseName, cid);
   }
