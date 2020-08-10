@@ -1051,7 +1051,7 @@
 
       testVolatileFilter : function() {
         let result = db._query("FOR doc IN AnotherUnitTestsCollection LET kk = NOEVAL(doc.id) "
-                               + " FOR c IN UnitTestsWithArrayView SEARCH c.c == kk SORT c.c RETURN c ").toArray();
+                               + " FOR c IN UnitTestsView SEARCH c.c == kk && c.a =='baz' OPTIONS {waitForSync:true} SORT c.c RETURN c ").toArray();
         assertEqual(2, result.length);
         assertEqual(result[0].c, 0);
         assertEqual(result[1].c, 1);
