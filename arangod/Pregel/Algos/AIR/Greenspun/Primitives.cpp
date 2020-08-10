@@ -461,15 +461,6 @@ EvalResult Prim_Dict(PrimEvalContext& ctx, VPackSlice const params,
   return {};
 }
 
-<<<<<<< HEAD
-EvalResult Prim_Error(PrimEvalContext& ctx, VPackSlice const params,
-                      VPackBuilder& result) {
-  return EvalError(paramsToString(params));
-}
-
-=======
-<<<<<<< HEAD
->>>>>>> 730301610a8... Added report manager and reports for errors.
 EvalResult Prim_Lambda(PrimEvalContext& ctx, VPackSlice const paramsList,
                      VPackBuilder& result) {
   VPackArrayIterator paramIterator(paramsList);
