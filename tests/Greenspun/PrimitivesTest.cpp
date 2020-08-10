@@ -826,10 +826,6 @@ TEST_CASE("Test [set] primitive", "[set]") {}
 TEST_CASE("Test [for] primitive", "[for]") {}
 TEST_CASE("Test [global-superstep] primitive", "[global-superstep]") {}
 
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/feature/pregel-vertex-accumulation-algorithm-2-let-bindings
 TEST_CASE("Test [lambda] primitive", "[lambda]") {
   InitInterpreter();
   MyEvalContext ctx;
@@ -1073,4 +1069,3 @@ TEST_CASE("Test [let] primitive", "[let]") {
     REQUIRE(res.fail());
   }
 }
->>>>>>> origin/feature/pregel-vertex-accumulation-algorithm-2-let-bindings
