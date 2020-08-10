@@ -254,8 +254,7 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
 
   virtual arangodb::Result instantiate(arangodb::LogicalView::ptr& view,
                                        TRI_vocbase_t& vocbase,
-                                       arangodb::velocypack::Slice const& definition,
-                                       uint64_t planVersion) const override {
+                                       arangodb::velocypack::Slice const& definition) const override {
     std::string error;
     IResearchViewMeta meta;
     IResearchViewMetaState metaState;
@@ -273,7 +272,7 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
     }
 
     auto impl = std::shared_ptr<IResearchView>(
-        new IResearchView(vocbase, definition, planVersion, std::move(meta)));
+        new IResearchView(vocbase, definition, std::move(meta)));
 
     // NOTE: for single-server must have full list of collections to lock
     //       for cluster the shards to lock come from coordinator and are not in
@@ -297,8 +296,8 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
 };
 
 IResearchView::IResearchView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& info,
-                             uint64_t planVersion, IResearchViewMeta&& meta)
-    : LogicalView(vocbase, info, planVersion),
+                             IResearchViewMeta&& meta)
+    : LogicalView(vocbase, info),
       _asyncSelf(irs::memory::make_unique<AsyncViewPtr::element_type>(this)),
       _meta(std::move(meta)),
       _inRecovery(false) {

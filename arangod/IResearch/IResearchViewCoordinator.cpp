@@ -149,11 +149,10 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
 
   virtual Result instantiate(LogicalView::ptr& view,
                              TRI_vocbase_t& vocbase,
-                             velocypack::Slice const& definition,
-                             uint64_t planVersion) const override {
+                             velocypack::Slice const& definition) const override {
     std::string error;
     auto impl = std::shared_ptr<IResearchViewCoordinator>(
-        new IResearchViewCoordinator(vocbase, definition, planVersion));
+        new IResearchViewCoordinator(vocbase, definition));
 
     if (!impl->_meta.init(definition, error)) {
       return Result(
@@ -336,8 +335,8 @@ Result IResearchViewCoordinator::unlink(DataSourceId) noexcept {
 }
 
 IResearchViewCoordinator::IResearchViewCoordinator(TRI_vocbase_t& vocbase,
-                                                   velocypack::Slice info, uint64_t planVersion)
-    : LogicalView(vocbase, info, planVersion) {
+                                                   velocypack::Slice info)
+    : LogicalView(vocbase, info) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 }
 

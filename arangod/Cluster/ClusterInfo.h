@@ -984,7 +984,7 @@ public:
   /// @brief helper function to build a new LogicalCollection object from the velocypack
   /// input
   static std::shared_ptr<LogicalCollection> createCollectionObject(
-      arangodb::velocypack::Slice data, TRI_vocbase_t& vocbase, uint64_t planVersion);
+      arangodb::velocypack::Slice data, TRI_vocbase_t& vocbase);
 
   /// @brief create a new collecion object from the data, using the cache if possible
   CollectionWithHash buildCollection(
