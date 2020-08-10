@@ -62,9 +62,11 @@ function StreamCursorSuite () {
       c.ensureIndex({ type: 'skiplist', fields: ["value1"]});
       c.ensureIndex({ type: 'skiplist', fields: ["value2"]});
 
+      let docs = [];
       for (let i = 0; i < 5000; i++) {
-        c.insert({value1: i % 10, value2: i % 25 , value3: i % 25 });
+        docs.push({value1: i % 10, value2: i % 25 , value3: i % 25 });
       }
+      c.insert(docs);
  
       try {
         aqlfunctions.unregister("my::test");
@@ -114,6 +116,22 @@ function StreamCursorSuite () {
       while (cursor.hasNext() && i-- > 0) {
         cursor.next();
       }
+
+      cursor.dispose();
+    },
+
+    // Regression test, could fail in cluster
+    testDisposeCursorWithCollection : function() {
+      let cursor = db._query("FOR doc IN @@cn RETURN doc", { "@cn" : cn}, 
+      { stream: true, batchSize: 1000});
+
+      assertUndefined(cursor.count());
+      let i = 10;
+      while (cursor.hasNext() && i-- > 0) {
+        cursor.next();
+      }
+
+      cursor.dispose();
     },
 
     testUserDefinedFunction : function () {
@@ -131,7 +149,7 @@ function StreamCursorSuite () {
         ++count;
       }
       assertEqual(10000, count);
-    },
+    }
   };
 }
 
