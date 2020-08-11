@@ -5,6 +5,7 @@
 # ------------------------------------------------------------------------------
 
 cmake_minimum_required(VERSION 3.9)
+message(STATUS "CMake version: ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}.${CMAKE_PATCH_VERSION}")
 
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release
@@ -558,10 +559,10 @@ if (SOLARIS)
 endif ()
 
 if (CMAKE_COMPILER_IS_GNUCC)
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "5.4")
-    message(FATAL_ERROR "ArangoDB requires g++ 5.4 or newer.")
-  elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "9.9.9")
-    message(WARNING "ArangoDB doesn't support g++ 10.0 yet.")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.2")
+    message(WARNING "ArangoDB requires g++ 9.2 or newer, building with older compiler versions is unsupported")
+  elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "10.9.9")
+    message(WARNING "ArangoDB doesn't support g++ 11.0 yet, building with newer compiler versions is unsupported")
   endif()
   set(BASE_C_FLAGS "${BASE_C_FLAGS}")
 endif ()
@@ -571,10 +572,16 @@ if (CMAKE_COMPILER_IS_GNUCC OR APPLE)
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   # MSVC2018.1 - MSVC2018.7 does not correctly support alignas()
   if (MSVC_VERSION VERSION_LESS 1915)
-    message(FATAL_ERROR "ArangoDB Requires at least MSVC 2017 update 15.8!")
+    message(FATAL_ERROR "ArangoDB doesn't support MSVC less than 2017 update 15.8!")
+  elseif (MSVC_VERSION VERSION_GREATER_EQUAL 1915 AND MSVC_VERSION VERSION_LESS 1920)
+    message(WARNING "ArangoDB requires MSVC 2019 update 16.4 or newer, building with older compiler versions is unsupported")
+    # according to https://developercommunity.visualstudio.com/solutions/616098/view.html,
+    # the following define is not necessary anymore, as it should be fixed in MSVC 16.0:
+    # MSVC2018.8 requires the following define
+    add_definitions(-D_ENABLE_EXTENDED_ALIGNED_STORAGE)
+  elseif (MSVC_VERSION VERSION_GREATER_EQUAL 1920 AND MSVC_VERSION VERSION_LESS 1924)
+    message(FATAL_ERROR "ArangoDB requires at least MSVC 2019 update 16.4!")
   endif()
-  # MSVC2018.8 requires the following define
-  add_definitions(-D_ENABLE_EXTENDED_ALIGNED_STORAGE)
   set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std:c++17")
 endif()
 
@@ -589,8 +596,8 @@ if (CMAKE_COMPILER_IS_CLANG)
     endif ()
     add_definitions("-Wno-deprecated-declarations")
   else ()
-    if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "3.3")
-      message(FATAL_ERROR "ArangoDB requires clang 3.3 or newer.")
+    if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "10.0")
+      message(WARNING "ArangoDB requires clang 10.0 or newer, building with older compiler versions is unsupported")
     endif()
     list(APPEND BASE_LIBS atomic)
   endif ()
@@ -831,7 +838,7 @@ endif()
 
 message(STATUS "IPO_ENABLED: ${IPO_ENABLED}")
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
-  
+
 if (IPO_ENABLED)
   add_definitions("-DARANGODB_USE_IPO=1")
 endif()

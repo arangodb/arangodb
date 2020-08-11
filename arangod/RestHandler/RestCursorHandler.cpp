@@ -442,14 +442,12 @@ void RestCursorHandler::cancelQuery() {
   MUTEX_LOCKER(mutexLocker, _queryLock);
 
   if (_query != nullptr) {
+    // cursor is canceled. now remove the continue handler we may have
+    // registered in the query
+     _query->sharedState()->resetWakeupHandler();
     _query->kill();
     _queryKilled = true;
     _hasStarted = true;
-
-    // cursor is canceled. now remove the continue handler we may have
-    // registered in the query
-    std::shared_ptr<aql::SharedQueryState> ss = _query->sharedState();
-    ss->invalidate();
   } else if (!_hasStarted) {
     _queryKilled = true;
   }
