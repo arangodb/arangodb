@@ -1,8 +1,12 @@
-v3.7.1-rc.1 (XXXX-XX-XX)
-------------------------
+v3.7.2 (XXXX-XX-XX)
+-------------------
 
 * Always fetch data for /_api/cluster/agency-dump from leader of the agency.
   Add option "redirectToLeader=true" to internal /_api/agency/state API.
+
+
+v3.7.1-rc.1 (XXXX-XX-XX)
+------------------------
 
 * Added startup option `--rocksdb.encryption-key-rotation` to
   activate/deactivate the encryption key rotation REST API. The API is disabled
