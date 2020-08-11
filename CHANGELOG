@@ -4,6 +4,8 @@ devel
 * Fixed a blockage on hotbackup when writes are happening concurrently, since
   followers could no longer replicate leader transactions.
 
+* Fix: writeConcern is now honored correctly (ES-655).
+
 * Fix: The 'sorted' COLLECT variant would return undefined instead of null when
   grouping by a null value.
 
