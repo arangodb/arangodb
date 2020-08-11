@@ -52,7 +52,7 @@ class Hints {
     ALLOW_RANGE_DELETE = 8192,    // enable range-delete in rocksdb
     FROM_TOPLEVEL_AQL = 16384,    // transaction is only runnning one AQL query
     GLOBAL_MANAGED = 32768,  // transaction with externally managed lifetime
-    IS_FOLLOWER_TRX = 131072,  // transaction used to replicate something on a follower
+    IS_FOLLOWER_TRX = 65536,  // transaction used to replicate something on a follower
   };
 
   Hints() : _value(0) {}
