@@ -50,9 +50,9 @@ static const AqlValue EmptyValue;
 SortedCollectExecutor::CollectGroup::CollectGroup(bool count, Infos& infos)
     : groupLength(0),
       count(count),
-      _shouldDeleteBuilderBuffer(true),
       infos(infos),
-      _lastInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}) {
+      _lastInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
+      _builder(_buffer) {
   for (auto const& aggName : infos.getAggregateTypes()) {
     aggregators.emplace_back(Aggregator::fromTypeString(infos.getVPackOptions(), aggName));
   }
@@ -85,10 +85,7 @@ void SortedCollectExecutor::CollectGroup::initialize(size_t capacity) {
 }
 
 void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow const& input) {
-  _shouldDeleteBuilderBuffer = true;
-  ConditionalDeleter<VPackBuffer<uint8_t>> deleter(_shouldDeleteBuilderBuffer);
-  std::shared_ptr<VPackBuffer<uint8_t>> buffer(new VPackBuffer<uint8_t>, deleter);
-  _builder = VPackBuilder(buffer);
+  _builder.clear();
 
   if (!groupValues.empty()) {
     for (auto& it : groupValues) {
@@ -272,9 +269,9 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output
       TRI_ASSERT(_builder.isOpenArray());
       _builder.close();
 
-      auto buffer = _builder.steal();
-      AqlValue val(buffer.get(), _shouldDeleteBuilderBuffer);
+      AqlValue val(std::move(_buffer)); // _buffer still usable after
       AqlValueGuard guard{val, true};
+      TRI_ASSERT(_buffer.size() == 0);
 
       output.moveValueInto(infos.getCollectRegister(), _lastInputRow, guard);
     }

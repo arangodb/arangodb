@@ -1065,12 +1065,11 @@ AqlValue AqlValue::materialize(VPackOptions const* options, bool& hasCopied,
     case DOCVEC:
     case RANGE: {
       bool shouldDelete = true;
-      ConditionalDeleter<VPackBuffer<uint8_t>> deleter(shouldDelete);
-      std::shared_ptr<VPackBuffer<uint8_t>> buffer(new VPackBuffer<uint8_t>, deleter);
+      VPackBuffer<uint8_t> buffer;
       VPackBuilder builder(buffer);
       toVelocyPack(options, builder, resolveExternals, /*allowUnindexed*/true);
       hasCopied = true;
-      return AqlValue(buffer.get(), shouldDelete);
+      return AqlValue(std::move(buffer));
     }
   }
 
@@ -1462,30 +1461,27 @@ AqlValue::AqlValue(AqlValueHintEmptyObject const&) noexcept {
   setType(AqlValueType::VPACK_INLINE);
 }
 
-AqlValue::AqlValue(arangodb::velocypack::Buffer<uint8_t>* buffer, bool& shouldDelete) {
-  TRI_ASSERT(buffer != nullptr);
-  TRI_ASSERT(shouldDelete);  // here, the Buffer is still owned by the caller
-
+AqlValue::AqlValue(arangodb::velocypack::Buffer<uint8_t>&& buffer) {
   // intentionally do not resolve externals here
   // if (slice.isExternal()) {
   //   // recursively resolve externals
   //   slice = slice.resolveExternals();
   // }
-  if (buffer->length() < sizeof(_data.internal)) {
+  if (buffer.length() < sizeof(_data.internal)) {
     // Use inline value
-    memcpy(_data.internal, buffer->data(), static_cast<size_t>(buffer->length()));
+    memcpy(_data.internal, buffer.data(), static_cast<size_t>(buffer.length()));
+    buffer.clear(); // for move semantics
     setType(AqlValueType::VPACK_INLINE);
   } else {
     // Use managed slice
-    if (buffer->usesLocalMemory()) {
-      _data.slice = new uint8_t[buffer->length()]();
-      memcpy(&_data.slice[0], buffer->data(), buffer->length());
+    if (buffer.usesLocalMemory()) {
+      _data.slice = new uint8_t[buffer.length()]();
+      memcpy(&_data.slice[0], buffer.data(), buffer.length());
+      buffer.clear(); // for move semantics
     } else {
-//      _data.slice.byteSize = buffer->byteSize();
-      _data.slice = buffer->steal();
+      _data.slice = buffer.steal();
     }
     setType(AqlValueType::VPACK_MANAGED_SLICE);
-    shouldDelete = false;  // adjust deletion control variable
   }
 }
 

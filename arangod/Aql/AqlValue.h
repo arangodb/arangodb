@@ -204,8 +204,7 @@ struct AqlValue final {
   explicit AqlValue(AqlValueHintEmptyObject const&) noexcept;
 
   // construct from Buffer, potentially taking over its ownership
-  // (by adjusting the boolean passed)
-  AqlValue(arangodb::velocypack::Buffer<uint8_t>* buffer, bool& shouldDelete);
+  explicit AqlValue(arangodb::velocypack::Buffer<uint8_t>&& buffer);
 
   // construct from pointer, not copying!
   explicit AqlValue(AqlValueHintDocumentNoCopy const& v) noexcept;
