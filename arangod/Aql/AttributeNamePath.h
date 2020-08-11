@@ -87,7 +87,7 @@ struct AttributeNamePath {
   void clear() noexcept;
 
   /// @brief reverse the attributes in the path
-  void reverse();
+  AttributeNamePath& reverse();
 
   /// @brief determines the length of common prefixes
   static size_t commonPrefixLength(AttributeNamePath const& lhs,

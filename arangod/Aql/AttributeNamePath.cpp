@@ -112,8 +112,9 @@ void AttributeNamePath::clear() noexcept {
   path.clear();
 }
 
-void AttributeNamePath::reverse() {
+AttributeNamePath& AttributeNamePath::reverse() {
   std::reverse(path.begin(), path.end());
+  return *this;
 }
 
 /*static*/ size_t AttributeNamePath::commonPrefixLength(AttributeNamePath const& lhs,
@@ -125,7 +126,7 @@ void AttributeNamePath::reverse() {
       ++numEqual;
     }
   }
-  return commonLength;
+  return numEqual;
 }
 
 } // namespace aql
