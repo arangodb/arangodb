@@ -280,7 +280,7 @@ int fuerteToArangoErrorCode(fuerte::Error err) {
 }
 
 std::string fuerteToArangoErrorMessage(network::Response const& res) {
-  if (res.response) {
+  if (res.response && res.response->payloadSize() > 0) {
     try {
       // check "errorMessage" attribute first
       velocypack::Slice s = res.response->slice();
