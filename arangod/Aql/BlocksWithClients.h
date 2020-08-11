@@ -120,9 +120,6 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
   auto initializeCursor(InputAqlItemRow const& input)
       -> std::pair<ExecutionState, Result> override;
 
-  /// @brief shutdown
-  std::pair<ExecutionState, Result> shutdown(int) override;
-
   /// @brief execute: shouldn't be used, use executeForClient
   std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
 

@@ -85,7 +85,8 @@ static const std::string VERTICES = "vertices";
 BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
                        aql::QueryContext& query,
                        VPackSlice info)
-    : _query(query), _trx(nullptr) {
+    : _engineId(TRI_NewTickServer()),
+      _query(query), _trx(nullptr) {
   VPackSlice shardsSlice = info.get(SHARDS);
 
   if (shardsSlice.isNone() || !shardsSlice.isObject()) {

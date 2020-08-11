@@ -140,7 +140,15 @@ class TransactionState {
   Result useCollections();
 
   /// @brief run a callback on all collections of the transaction
-  void allCollections(std::function<bool(TransactionCollection&)> const& cb);
+  template<typename F>
+  void allCollections(F&& cb) {
+    for (auto& trxCollection : _collections) {
+      TRI_ASSERT(trxCollection);  // ensured by addCollection(...)
+      if (!std::forward<F>(cb)(*trxCollection)) { // abort early
+        return;
+      }
+    }
+  }
   
   /// @brief return the number of collections in the transaction
   size_t numCollections() const { return _collections.size(); }

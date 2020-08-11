@@ -1088,7 +1088,7 @@ void AqlValue::toVelocyPack(VPackOptions const* options, arangodb::velocypack::B
       break;
     }
     case RANGE: {
-      builder.openArray(true);
+      builder.openArray(/*unindexed*/true);
       size_t const n = _data.range->size();
       Range::throwIfTooBigForMaterialization(n);
       for (size_t i = 0; i < n; ++i) {

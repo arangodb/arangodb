@@ -128,21 +128,6 @@ auto BlocksWithClientsImpl<Executor>::initializeCursor(InputAqlItemRow const& in
   return ExecutionBlock::initializeCursor(input);
 }
 
-/// @brief shutdown
-template <class Executor>
-auto BlocksWithClientsImpl<Executor>::shutdown(int errorCode)
-    -> std::pair<ExecutionState, Result> {
-  if (_wasShutdown) {
-    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-  }
-  auto res = ExecutionBlock::shutdown(errorCode);
-  if (res.first == ExecutionState::WAITING) {
-    return res;
-  }
-  _wasShutdown = true;
-  return res;
-}
-
 /// @brief getClientId: get the number <clientId> (used internally)
 /// corresponding to <shardId>
 template <class Executor>
