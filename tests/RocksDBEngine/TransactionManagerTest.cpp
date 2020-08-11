@@ -48,7 +48,7 @@ TEST(RocksDBTransactionManager, test_non_overlapping) {
   EXPECT_TRUE(tm.holdTransactions(500) );
   tm.releaseTransactions();
 
-  tm.registerTransaction((TRI_voc_tid_t)1, std::unique_ptr<TransactionData>(), false), false;
+  tm.registerTransaction((TRI_voc_tid_t)1, std::unique_ptr<TransactionData>(), false, false);
   EXPECT_EQ(tm.getActiveTransactionCount(), 1);
   tm.unregisterTransaction((TRI_voc_tid_t)1, false, false, false);
   EXPECT_EQ(tm.getActiveTransactionCount(), 0);
