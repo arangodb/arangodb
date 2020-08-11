@@ -51,6 +51,7 @@ template <bool isModificationSubquery>
 class SubqueryExecutor;
 
 class SubqueryStartExecutor;
+class SubqueryEndExecutor;
 
 struct AqlCall;
 class AqlItemBlock;
@@ -265,10 +266,15 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   // Executor is done, we need to handle ShadowRows of subqueries.
   // In most executors they are simply copied, in subquery executors
   // there needs to be actions applied here.
-  [[nodiscard]] auto shadowRowForwarding() -> ExecState;
+  [[nodiscard]] auto shadowRowForwarding(AqlCallStack const& stack, AqlCallList const& clientCall) -> ExecState;
 
   template <class exec = Executor, typename = std::enable_if_t<is_one_of_v<exec, SubqueryStartExecutor>>>
-  [[nodiscard]] auto shadowRowForwardingSubqueryStart(AqlCallStack const& stack, AqlCall& subqueryCall) -> ExecState;
+  [[nodiscard]] auto shadowRowForwardingSubqueryStart(AqlCallStack const& stack, AqlCallList& subqueryCall) -> ExecState;
+
+  template <class exec = Executor, typename = std::enable_if_t<is_one_of_v<exec, SubqueryEndExecutor>>>
+  [[nodiscard]] auto shadowRowForwardingSubqueryEnd(AqlCallStack const& stack,
+                                                    AqlCallList& subqueryCall)
+      -> ExecState;
 
   [[nodiscard]] auto outputIsFull() const noexcept -> bool;
 
@@ -397,6 +403,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   bool _initialized = false;
 
   // std::optional<AqlCallStack> _modifiableStack;
+  // TODO:MCHACKI std::enable_if
+  std::optional<AqlCallStack> _fetchAllStack;
 };
 
 }  // namespace arangodb::aql

@@ -82,6 +82,30 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+namespace {
+  inline bool CanContinueAfterSubquery(AqlCallStack const& stack, AqlCallList const& clientCall, size_t depth) {
+    if (depth == 0) {
+      if (!clientCall.hasDefaultCalls()) {
+        return false;
+      }
+    } else {
+      auto const& list = stack.getCallListAtDepth(depth - 1);
+      if (!list.hasDefaultCalls()) {
+         return false;
+      }
+      // If this assert triggers we have violated the no default call on SoftLimit policy.
+      TRI_ASSERT(!list.peekNextCall().hasSoftLimit());
+    }
+    auto const& depthList = stack.getCallListAtDepth(depth);
+    if (depthList.peekNextCall().hasSoftLimit()) {
+      // We may have reached the softLimit.
+      // Do not continue
+      return false;
+    }
+    return true;
+  }
+}
+
 #define LOG_QUERY(logId, level)            \
   LOG_TOPIC(logId, level, Logger::QUERIES) \
       << "[query#" << this->_engine->getQuery().id() << "] "
@@ -812,12 +836,13 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(typename Fetcher::DataRa
 
 template <>
 template <>
-auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwardingSubqueryStart(AqlCallStack const& stack, AqlCall& subqueryCall)
+auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwardingSubqueryStart(AqlCallStack const& stack, AqlCallList& subqueryCall)
     -> ExecState {
   TRI_ASSERT(_outputItemRow);
   TRI_ASSERT(_outputItemRow->isInitialized());
   TRI_ASSERT(!_outputItemRow->allRowsUsed());
   if (_lastRange.hasDataRow()) {
+    TRI_ASSERT(subqueryCall.hasMoreCalls());
     // If we have a dataRow, the executor needs to write it's output.
     // If we get woken up by a dataRow during forwarding of ShadowRows
     // This will return false, and if so we need to call produce instead.
@@ -828,7 +853,7 @@ auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwardingSubqueryStart
     // Need to report that we have written a row in the call
 
     if (didWrite) {
-      subqueryCall.didProduce(1);
+      subqueryCall.modifyNextCall().didProduce(1);
       if (_lastRange.hasShadowRow()) {
         // Forward the ShadowRows
         return ExecState::SHADOWROWS;
@@ -852,8 +877,21 @@ auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwardingSubqueryStart
     }
     // If we do not have more shadowRows
     // we need to return.
-
-    auto& subqueryCallList = stack.getCallListAtDepth(shadowRow.getDepth());
+    auto depth = shadowRow.getDepth();
+    if (depth == 0) {
+      // Need to drop our subquery call.
+      // And go the the next iteration
+      std::ignore = subqueryCall.popNextCall();
+      if (!subqueryCall.hasDefaultCalls()) {
+        // There is no next iteration available
+        return ExecState::DONE;
+      } else {
+        // Go to next
+        return ExecState::NEXTSUBQUERY;
+      }
+    }
+    // Need to check in stack
+    auto& subqueryCallList = stack.getCallListAtDepth(depth - 1);
 
     if (!subqueryCallList.hasDefaultCalls()) {
       return ExecState::DONE;
@@ -865,13 +903,14 @@ auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwardingSubqueryStart
     }
 
     _executorReturnedDone = false;
-
     return ExecState::NEXTSUBQUERY;
   }
 }
 
 template <>
-auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding()
+template <>
+auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwardingSubqueryEnd(
+    AqlCallStack const& stack, AqlCallList& clientCall)
     -> ExecState {
   TRI_ASSERT(_outputItemRow);
   TRI_ASSERT(_outputItemRow->isInitialized());
@@ -883,13 +922,18 @@ auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding()
   }
   auto&& [state, shadowRow] = _lastRange.nextShadowRow();
   TRI_ASSERT(shadowRow.isInitialized());
-  if (shadowRow.isRelevant()) {
+  auto depth = shadowRow.getDepth();
+  if (depth == 0) {
+    // Invariant depth 0 <=> relevant, make sure API is consistent.
+    TRI_ASSERT(shadowRow.isRelevant());
     // We need to consume the row, and write the Aggregate to it.
     _executor.consumeShadowRow(shadowRow, *_outputItemRow);
     // we need to reset the ExecutorHasReturnedDone, it will
     // return done after every subquery is fully collected.
-    _executorReturnedDone = false;
 
+    // Report that we have produced a row.
+    clientCall.modifyNextCall().didProduce(1);
+    _executorReturnedDone = false;
   } else {
     _outputItemRow->decreaseShadowRowDepth(shadowRow);
   }
@@ -919,9 +963,24 @@ auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding()
     // Need to return!
     return ExecState::DONE;
   } else {
+    if (depth == 0) {
+      // Special Handling for SubqueryEnd, we need to check the clients
+      // Request here, we might have reached limits or such.
+      return ExecState::NEXTSUBQUERY;
+    }
+    // Otherwise just use a normal Subquery Check here, but be aware that stack-size is 1 off. (We decrease the depth)
+    TRI_ASSERT(depth > 0);
+    if (CanContinueAfterSubquery(stack, clientCall, depth - 1)) {
+      if (depth == 1) {
+        // Drop the current subquery call. we have completeted it.
+        // Can continue has checked that we can perform this operation here
+        std::ignore = clientCall.popNextCall();
+      }
+      return ExecState::NEXTSUBQUERY;
+    }
     // End of input, we are done for now
     // Need to call again
-    return ExecState::NEXTSUBQUERY;
+    return ExecState::DONE;
   }
 }
 
@@ -930,12 +989,6 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(AqlCallStack& s
                                                                  SkipResult& skipResult)
     -> ExecState {
   TRI_ASSERT(executorHasSideEffects<Executor>);
-  if (!stack.needToCountSubquery()) {
-    // We need to really produce things here
-    // fall back to original version as any other executor.
-    auto res = shadowRowForwarding();
-    return res;
-  }
   TRI_ASSERT(_outputItemRow);
   TRI_ASSERT(_outputItemRow->isInitialized());
   TRI_ASSERT(!_outputItemRow->allRowsUsed());
@@ -1015,7 +1068,7 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(AqlCallStack& s
 }
 
 template <class Executor>
-auto ExecutionBlockImpl<Executor>::shadowRowForwarding() -> ExecState {
+auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack const& stack, AqlCallList const& clientCall) -> ExecState {
   TRI_ASSERT(_outputItemRow);
   TRI_ASSERT(_outputItemRow->isInitialized());
   TRI_ASSERT(!_outputItemRow->allRowsUsed());
@@ -1066,7 +1119,6 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding() -> ExecState {
     if (lookAheadRow.isRelevant()) {
       // We are starting the NextSubquery here.
       if constexpr (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
-        // TODO: Check if this works with skip forwarding
         return ExecState::SHADOWROWS;
       }
       return ExecState::NEXTSUBQUERY;
@@ -1078,7 +1130,12 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding() -> ExecState {
     // Just start with the next subquery.
     // If in doubt the next row will be a shadowRow again,
     // this will be forwarded than.
-    return ExecState::NEXTSUBQUERY;
+
+    if (CanContinueAfterSubquery(stack, clientCall, shadowRow.getDepth())) {
+      return ExecState::NEXTSUBQUERY;
+    }
+    // We cannot continue as there is no default call available here.
+    return ExecState::DONE;
   }
 }
 
@@ -1214,19 +1271,22 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& stack, Aql
     subqueryUpstreamCall = stackCopy.value().popCall();
   } else if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
     stackCopy = stack;
-    // TODO:MCHACKI
-    // Unsure if we ca do it here, or need to do it before upstream.
-    // If so, move the belove movable block up again
-    stackCopy.value().pushCall(clientCallList);
+
+    stackCopy.value().pushCall(std::move(clientCallList));
+    // For the subquery executor we always use a fetch all.
+    // And allow overfetching
+    clientCallList = AqlCallList{AqlCall{}, AqlCall{}};
   } else if constexpr (executorHasSideEffects<Executor>) {
     // If the executor has side effects, we cannot bypass any subqueries
     // by skipping them. So we need to fetch all shadow rows in order to
     // trigger this Executor with everthing from above.
     // NOTE: The Executor needs to discard shadowRows, and do the accouting.
-    stackCopy = stack.createEquivalentFetchAllShadowRowsStack();
+    stackCopy = stack;
+    if (!_fetchAllStack.has_value()) {
+      _fetchAllStack = stack.createEquivalentFetchAllShadowRowsStack();
+    }
   } 
 
-  // TODO:MCHACKI Potentially need to move this back above the std::optional values
   AqlCall clientCall = clientCallList.popNextCall();
   // We got called with a skip count already set!
   // Caller is wrong fix it.
@@ -1237,7 +1297,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& stack, Aql
   TRI_ASSERT(!(clientCall.getOffset() == 0 && clientCall.softLimit == AqlCall::Limit{0u}));
   TRI_ASSERT(!(clientCall.hasSoftLimit() && clientCall.fullCount));
   TRI_ASSERT(!(clientCall.hasSoftLimit() && clientCall.hasHardLimit()));
-  // TODO:MCHACKI END OF MOVEABLE BLOCK
 
   if constexpr (is_one_of_v<Executor, SubqueryExecutor<true>, SubqueryExecutor<false>>) {
     // The old subquery executor can in-fact return waiting on produce call.
@@ -1262,11 +1321,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& stack, Aql
   // is disallowed to change her mind anyways so we simply continue to work on
   // the call we already have The guarantee is, if we have returned the block,
   // and modified our local call, then the outputItemRow is not initialized
-  if constexpr (!std::is_same_v<Executor, SubqueryEndExecutor>) {
-    // The subqueryEndeExecutor has handled it above
-    if (_outputItemRow != nullptr && _outputItemRow->isInitialized()) {
-      clientCall = _outputItemRow->getClientCall();
-    }
+  if (_outputItemRow != nullptr && _outputItemRow->isInitialized()) {
+    clientCall = _outputItemRow->getClientCall();
   }
 
   if constexpr (executorHasSideEffects<Executor>) {
@@ -1321,13 +1377,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& stack, Aql
       case ExecState::CHECKCALL: {
         LOG_QUERY("cfe46", DEBUG)
             << printTypeInfo() << " determine next action on call " << clientCall;
-        if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
-          // For the SubqueryEnd, we always do a fetchAll on the Executor itself.
-          _execState = handleCheckCallState(stack, AqlCall{});
-        } else {
-          _execState = handleCheckCallState(stack, clientCall);
-        }
-
+        _execState = handleCheckCallState(stack, clientCall);
         TRI_ASSERT(_execState == ExecState::FASTFORWARD || _execState == ExecState::SKIP ||
                    _execState == ExecState::PRODUCE || _execState == ExecState::DONE);
         break;
@@ -1402,11 +1452,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& stack, Aql
               return {subqueryState, SkipResult{}, nullptr};
             }
           }
-        } else if constexpr (is_one_of_v<Executor, SubqueryEndExecutor>) {
-          // SubqueryEnd executor always operates on a fetchAll call for the executor.
-          // ClientCall is handled in ShadowRowState
-          AqlCall fetchAllCall{};
-          std::tie(_execState, localExecutorState) = handleProduceState(fetchAllCall);
         } else {
           std::tie(_execState, localExecutorState) = handleProduceState(clientCall);
         }
@@ -1479,22 +1524,23 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& stack, Aql
               handleUpstreamState(stackCopy.value(),
                                   subqueryUpstreamCall.value().modifyNextCall(),
                                   subqueryUpstreamCall.value().peekNextCall(),
-                                  subqueryUpstreamCall.value().hasMoreCalls());
+                                  subqueryUpstreamCall.value().hasDefaultCalls());
         } else if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
           TRI_ASSERT(stackCopy.has_value());
-          AqlCall fetchAllCall{};
-          std::tie(_execState, _upstreamState) =
-              handleUpstreamState(stackCopy.value(), fetchAllCall, _upstreamRequest,
-                                  clientCallList.hasMoreCalls());
-        } else if constexpr (executorHasSideEffects<Executor>) {
-          TRI_ASSERT(stackCopy.has_value());
+          // We have increased the subquery level
+          TRI_ASSERT(stackCopy.value().subqueryLevel() == stack.subqueryLevel() + 1);
           std::tie(_execState, _upstreamState) =
               handleUpstreamState(stackCopy.value(), clientCall, _upstreamRequest,
-                                  clientCallList.hasMoreCalls());
+                                  clientCallList.hasDefaultCalls());
+        } else if constexpr (executorHasSideEffects<Executor>) {
+          TRI_ASSERT(_fetchAllStack.has_value());
+          std::tie(_execState, _upstreamState) =
+              handleUpstreamState(_fetchAllStack.value(), clientCall, _upstreamRequest,
+                                  clientCallList.hasDefaultCalls());
         } else {
           std::tie(_execState, _upstreamState) =
               handleUpstreamState(stack, clientCall, _upstreamRequest,
-                                  clientCallList.hasMoreCalls());
+                                  clientCallList.hasDefaultCalls());
         }
         if (_upstreamState == ExecutionState::WAITING) {
           // We need to persist the old call before we return.
@@ -1522,6 +1568,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& stack, Aql
           _execState = ExecState::DONE;
           break;
         }
+
         ensureOutputBlock(std::move(clientCall), _lastRange);
 
         TRI_ASSERT(!_outputItemRow->allRowsUsed());
@@ -1529,16 +1576,29 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& stack, Aql
           TRI_ASSERT(stackCopy.has_value());
           TRI_ASSERT(subqueryUpstreamCall.has_value());
           _execState =
-              shadowRowForwardingSubqueryStart(stackCopy.value(), subqueryUpstreamCall.value().modifyNextCall());
+              shadowRowForwardingSubqueryStart(stackCopy.value(), subqueryUpstreamCall.value());
         } else if constexpr (executorHasSideEffects<Executor>) {
+          if (!stack.needToCountSubquery()) {
+            // We need to really produce things here
+            // fall back to original version as any other executor.
+            _execState = shadowRowForwarding(stack, clientCallList);
+          } else {
+            TRI_ASSERT(stackCopy.has_value());
+            _execState = sideEffectShadowRowForwarding(stackCopy.value(), _skipped);
+          }
+        } else if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
           TRI_ASSERT(stackCopy.has_value());
-          _execState = sideEffectShadowRowForwarding(stackCopy.value(), _skipped);
+          auto subqueryCall = stackCopy.value().popCall();
+          _execState =
+              shadowRowForwardingSubqueryEnd(stackCopy.value(), subqueryCall);
+          stackCopy.value().pushCall(subqueryCall);
         } else {
           // This may write one or more rows.
-          _execState = shadowRowForwarding();
+          _execState = shadowRowForwarding(stack, clientCallList);
         }
 
         clientCall = _outputItemRow->getClientCall();
+        
         break;
       }
       case ExecState::NEXTSUBQUERY: {
@@ -1550,13 +1610,23 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& stack, Aql
           TRI_ASSERT(subqueryUpstreamCall.has_value());
 
           auto const& currentSubqueryCall = subqueryUpstreamCall.value().peekNextCall();
-          if (currentSubqueryCall.getLimit() == 0 && currentSubqueryCall.hasSoftLimit()) {
+          if (currentSubqueryCall.hasSoftLimit() && currentSubqueryCall.getOffset() == 0 && currentSubqueryCall.getLimit() == 0) {
             // SoftLimitReached.
             // We cannot continue.
             _execState = ExecState::DONE;
             break;
           }
           // Otherwise just check like the other blocks
+        } else if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
+          TRI_ASSERT(stackCopy.has_value());
+
+          auto const& currentSubqueryCall = stackCopy.value().peek();
+          if (currentSubqueryCall.hasSoftLimit() && currentSubqueryCall.getOffset() == 0 && currentSubqueryCall.getLimit() == 0) {
+            // SoftLimitReached.
+            // We cannot continue.
+            _execState = ExecState::DONE;
+            break;
+          }
         }
         _execState = handleNextSubqueryState(stack, clientCallList);
         TRI_ASSERT(_execState == ExecState::DONE || _execState == ExecState::CHECKCALL);
@@ -2109,6 +2179,11 @@ auto ExecutionBlockImpl<Executor>::memoizeCall(AqlCall const& call,
 template <class Executor>
 auto ExecutionBlockImpl<Executor>::createUpstreamCall(AqlCall const& call, bool wasCalledWithContinueCall)
     -> AqlCallList {
+  // Test if call is valid.
+  TRI_ASSERT(!(call.getOffset() == 0 && call.softLimit == AqlCall::Limit{0u}));
+  TRI_ASSERT(!(call.hasSoftLimit() && call.fullCount));
+  TRI_ASSERT(!(call.hasSoftLimit() && call.hasHardLimit()));
+
   // We can only memoize the first call
   memoizeCall(call, wasCalledWithContinueCall);
   TRI_ASSERT(_hasMemoizedCall);
