@@ -30,6 +30,7 @@
 
 #include "Index.h"
 
+#include "Aql/Projections.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/AttributeNamePath.h"
@@ -954,20 +955,21 @@ void Index::expandInSearchValues(VPackSlice const base, VPackBuilder& result) co
   }
 }
 
-bool Index::covers(std::unordered_set<arangodb::aql::AttributeNamePath> const& attributes) const {
+bool Index::covers(arangodb::aql::Projections const& projections) const {
   // check if we can use covering indexes
   auto const& covered = coveredFields();
 
-  if (attributes.size() > covered.size()) {
+  if (projections.size() > covered.size()) {
     return false;
   }
 
   arangodb::aql::AttributeNamePath compare;
-  for (auto const& it : attributes) {
+  size_t const n = projections.size();
+  for (size_t i = 0; i < n; ++i) {
     bool found = false;
-    for (size_t i = 0; i < covered.size(); ++i) {
+    for (size_t j = 0; j < covered.size(); ++j) {
       bool eligible = true;
-      auto const& field = covered[i];
+      auto const& field = covered[j];
       compare.clear();
       for (auto const& part : field) {
         if (part.shouldExpand) {
@@ -980,7 +982,7 @@ bool Index::covers(std::unordered_set<arangodb::aql::AttributeNamePath> const& a
       if (!eligible) {
         continue;
       }
-      if (compare == it) {
+      if (compare == projections[i].path) {
         found = true;
         break;
       }

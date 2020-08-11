@@ -29,15 +29,21 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 
 #include <algorithm>
 
 namespace {
 
+/// @brief velocypack attribute name for serializing/unserializing projections
 arangodb::velocypack::StringRef const projectionsKey("projections");
 
+/// @brief empty list of attributes, used if the projections are not backed by
+/// a covering index
 std::vector<std::vector<arangodb::basics::AttributeName>> const noFields;
 
+/// @brief return the attributes that are covered by index(es). if multiple indexes
+/// are passed in, then they all need to point to the same index object
 std::vector<std::vector<arangodb::basics::AttributeName>> const& indexFields(std::vector<arangodb::transaction::Methods::IndexHandle> const& indexes) {
   if (indexes.empty()) {
     return noFields;
@@ -56,6 +62,7 @@ std::vector<std::vector<arangodb::basics::AttributeName>> const& indexFields(std
     return noFields;
   }
 
+  // return the attributes which are covered by this index
   return idx->coveredFields();
 }
 
@@ -69,52 +76,49 @@ Projections::Projections()
 
 Projections::Projections(std::vector<arangodb::aql::AttributeNamePath> paths) 
     : _supportsCoveringIndex(false) {
-  // note: indexes may be a nullptr here!
   _projections.reserve(paths.size());
   for (auto& path : paths) {
     if (path.empty()) {
-      // ignore all the empty paths
+      // ignore all completely empty paths
       continue;
     }
 
+    // categorize the projection, based on the attribute name.
+    // we do this here only once in order to not do expensive string
+    // comparisons at runtime later
     arangodb::aql::AttributeNamePath::Type type = path.type();
+    // take over the projection
     _projections.emplace_back(Projection{std::move(path), 0, type});
   }
   
   TRI_ASSERT(_projections.size() <= paths.size());
 
-  // sort projections by attribute path, so we have similar prefixes next to each other
-  std::sort(_projections.begin(), _projections.end(), [](auto const& lhs, auto const& rhs) {
-    return lhs.path < rhs.path;
-  });
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // make sure all our projections are for distinct top-level attributes.
-  // we currently don't support multiple projections for the same top-level
-  // attribute, e.g. a.b.c and a.x.y.
-  // this would complicate the logic for attribute extraction considerably,
-  // so in this case we will just have combined the two projections into a
-  // single projection on attribute a before.
-  if (_projections.size() > 1) {
-    for (auto it = _projections.begin(); it != _projections.end(); ++it) {
-      // we expect all our projections to not have any common prefixes,
-      // because that would immensely complicate the logic inside 
-      // handleProjections
-      auto const& current = (*it).path;
-      // this is a quadratic algorithm (:gut:), but it is only activated
-      // as a safety check in maintainer mode, plus we are guaranteed to have
-      // at most five projections right now
-      auto it2 = std::find_if(_projections.begin(), _projections.end(), [&current](auto const& other) {
-        return other.path[0] == current.path[0] && other.path.size() != current.path.size();
-      });
-      TRI_ASSERT(it2 == _projections.end());
-    }
-  }
-#endif
+  init();
 }
 
-/// @brief determine the support by the covering indexes.
-/// this must be called after every change to the projections
+Projections::Projections(std::unordered_set<arangodb::aql::AttributeNamePath> const& paths) 
+    : _supportsCoveringIndex(false) {
+  _projections.reserve(paths.size());
+  for (auto& path : paths) {
+    if (path.empty()) {
+      // ignore all completely empty paths
+      continue;
+    }
+
+    // categorize the projection, based on the attribute name.
+    // we do this here only once in order to not do expensive string
+    // comparisons at runtime later
+    arangodb::aql::AttributeNamePath::Type type = path.type();
+    // take over the projection
+    _projections.emplace_back(Projection{std::move(path), 0, type});
+  }
+  
+  TRI_ASSERT(_projections.size() <= paths.size());
+
+  init();
+}
+
+/// @brief determine if there is covering support by indexes passed
 void Projections::determineIndexSupport(DataSourceId const& id,
                                         std::vector<transaction::Methods::IndexHandle> const& indexes) {
   _supportsCoveringIndex = false;
@@ -325,6 +329,104 @@ void Projections::toVelocyPack(arangodb::velocypack::Builder& b) const {
   }
 
   return arangodb::aql::Projections(std::move(projections));
+}
+
+/// @brief shared init function
+void Projections::init() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // validate that no projection contains an empty attribute
+  std::for_each(_projections.begin(), _projections.end(), [](auto const& it) {
+    TRI_ASSERT(!it.path.empty());
+  });
+#endif
+
+  if (_projections.size() <= 1) {
+    return;
+  }
+
+  // sort projections by attribute path, so we have similar prefixes next to each other, e.g. 
+  //   a
+  //   a.b
+  //   a.b.c
+  //   a.c
+  //   b
+  //   b.a
+  //   ...
+  std::sort(_projections.begin(), _projections.end(), [](auto const& lhs, auto const& rhs) {
+    return lhs.path < rhs.path;
+  });
+
+  removeSharedPrefixes();
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // make sure all our projections are for distinct top-level attributes.
+  // we currently don't support multiple projections for the same top-level
+  // attribute, e.g. a.b.c and a.x.y.
+  // this would complicate the logic for attribute extraction considerably,
+  // so in this case we will just have combined the two projections into a
+  // single projection on attribute a before.
+  for (auto it = _projections.begin(); it != _projections.end(); ++it) {
+    // we expect all our projections to not have any common prefixes,
+    // because that would immensely complicate the logic inside the
+    // actual projection data extraction functions
+    auto const& current = (*it).path;
+    // this is a quadratic algorithm (:gut:), but it is only activated
+    // as a safety check in maintainer mode, plus we are guaranteed to have
+    // at most five projections right now
+    auto it2 = std::find_if(_projections.begin(), _projections.end(), [&current](auto const& other) {
+      return other.path[0] == current.path[0] && other.path.size() != current.path.size();
+    });
+    TRI_ASSERT(it2 == _projections.end());
+  }
+
+  // validate that no projection contains an empty attribute
+  std::for_each(_projections.begin(), _projections.end(), [](auto const& it) {
+    TRI_ASSERT(!it.path.empty());
+  });
+#endif
+}
+
+
+/// @brief clean up projections, so that there are no 2 projections with a
+/// shared prefix
+void Projections::removeSharedPrefixes() {
+  TRI_ASSERT(_projections.size() >= 2);
+
+  auto current = _projections.begin();
+
+  while (current != _projections.end()) {
+    auto next = current + 1;
+    if (next == _projections.end()) {
+      // done
+      break;
+    }
+
+    size_t commonPrefixLength = arangodb::aql::AttributeNamePath::commonPrefixLength((*current).path, (*next).path);
+    if (commonPrefixLength > 0) {
+      // common prefix detected. now remove the longer of the paths
+      if ((*current).path.size() > (*next).path.size()) {
+        // shorten the other attribute to the shard prefix length
+        (*next).path.shortenTo(commonPrefixLength);
+        (*next).type = (*next).path.type();
+        // current already adjusted
+        current = _projections.erase(current);
+      } else { 
+        TRI_ASSERT(current != next);
+        (*current).path.shortenTo(commonPrefixLength);
+        (*current).type = (*current).path.type();
+        _projections.erase(next);
+        // don't move current forward here
+      }
+    } else {
+      ++current;
+      // move to next element
+    }
+  }
+}
+
+Projections::Projection const& Projections::operator[](size_t index) const {
+  TRI_ASSERT(index < size());
+  return _projections[index];
 }
 
 } // namespace aql

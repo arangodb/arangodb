@@ -30,7 +30,6 @@
 #include <unordered_set>
 #include <vector>
 
-#include "Aql/AttributeNamePath.h"
 #include "Aql/Projections.h"
 
 namespace arangodb {
@@ -60,7 +59,7 @@ class DocumentProducingNode {
   
   arangodb::aql::Projections& projections() noexcept;
   
-  void setProjections(std::unordered_set<arangodb::aql::AttributeNamePath> projections);
+  void setProjections(arangodb::aql::Projections projections);
 
   /// @brief remember the condition to execute for early filtering
   void setFilter(std::unique_ptr<Expression> filter);

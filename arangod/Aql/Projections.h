@@ -29,6 +29,7 @@
 #include "VocBase/Identifiers/DataSourceId.h"
 
 #include <cstdint>
+#include <unordered_set>
 #include <vector>
 
 namespace arangodb {
@@ -42,9 +43,10 @@ class Slice;
 
 namespace aql {
 
+/// @brief helper class to manage projections and extract attribute data from
+/// documents and index entries
 class Projections {
  public:
-
   /// @brief projection for a single top-level attribute or a nested attribute
   struct Projection {
    /// @brief the attribute path
@@ -57,25 +59,37 @@ class Projections {
   
   Projections();
 
+  /// @brief create projections from the vector of attributes passed.
+  /// attributes will be sorted and made unique inside
   explicit Projections(std::vector<arangodb::aql::AttributeNamePath> paths);
+  explicit Projections(std::unordered_set<arangodb::aql::AttributeNamePath> const& paths);
 
   Projections(Projections&&) = default;
   Projections& operator=(Projections&&) = default;
   Projections(Projections const&) = default;
   Projections& operator=(Projections const&) = default;
 
-  /// @brief determine the support by the covering indexes
+  /// @brief determine if there is covering support by indexes passed
   void determineIndexSupport(DataSourceId const& id, 
                              std::vector<transaction::Methods::IndexHandle> const& indexes);
 
   /// @brief whether or not the projections are backed by a covering index
   bool supportsCoveringIndex() const noexcept { return _supportsCoveringIndex; }
 
+  /// @brief remove projections with shared prefixes, e.g. a.b and a.c
+  bool removeShardPrefixes(); 
+
   /// @brief whether or not there are any projections
   bool empty() const noexcept { return _projections.empty(); }
   
+  /// @brief number of projections
+  size_t size() const noexcept { return _projections.size(); }
+  
   /// @brief checks if we have a single attribute projection on the attribute
   bool isSingle(std::string const& attribute) const noexcept;
+  
+  /// @brief get projection at position
+  Projection const& operator[](size_t index) const;
  
   /// @brief extract projections from a full document
   void toVelocyPackFromDocument(arangodb::velocypack::Builder& b, arangodb::velocypack::Slice slice,
@@ -92,8 +106,22 @@ class Projections {
   static Projections fromVelocyPack(arangodb::velocypack::Slice slice);
 
  private:
+  /// @brief shared init function
+  void init();
+
+  /// @brief clean up projections, so that there are no 2 projections with a
+  /// shared prefix
+  void removeSharedPrefixes();
+
+ private:
+  /// @brief all our projections (sorted, unique)
   std::vector<Projection> _projections;
+
+  /// @brief collection data source id (in case _id is queries and we need to resolve
+  /// the collection name)
   DataSourceId _datasourceId;
+
+  /// @brief whether or not the projections are backed by a covering index
   bool _supportsCoveringIndex;
 };
 

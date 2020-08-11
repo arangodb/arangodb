@@ -113,13 +113,8 @@ arangodb::aql::Projections& DocumentProducingNode::projections() noexcept {
   return _projections;
 }
 
-void DocumentProducingNode::setProjections(std::unordered_set<arangodb::aql::AttributeNamePath> projections) {
-  std::vector<arangodb::aql::AttributeNamePath> p;
-  p.reserve(projections.size());
-  for (auto& it : projections) {
-    p.push_back(std::move(it));
-  }
-  _projections = arangodb::aql::Projections(std::move(p));
+void DocumentProducingNode::setProjections(arangodb::aql::Projections projections) {
+  _projections = std::move(projections);
 }
 
 bool DocumentProducingNode::doCount() const {

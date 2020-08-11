@@ -47,6 +47,7 @@ class ExecutionBlock;
 class ExecutionEngine;
 class ExecutionPlan;
 class Expression;
+class Projections;
 template<typename T> struct RegisterPlanT;
 using RegisterPlan = RegisterPlanT<ExecutionNode>;
 
@@ -141,7 +142,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   void setLateMaterialized(aql::Variable const* docIdVariable, IndexId commonIndexId,
                            IndexVarsInfo const& indexVariables);
 
-  void setProjections(std::unordered_set<arangodb::aql::AttributeNamePath> projections);
+  void setProjections(arangodb::aql::Projections projections);
 
  private:
   void initializeOnce(bool& hasV8Expression, std::vector<Variable const*>& inVars,

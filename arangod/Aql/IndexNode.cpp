@@ -179,7 +179,7 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   _projections.determineIndexSupport(this->collection()->id(), _indexes);
 }
 
-void IndexNode::setProjections(std::unordered_set<arangodb::aql::AttributeNamePath> projections) {
+void IndexNode::setProjections(arangodb::aql::Projections projections) {
   auto dn = dynamic_cast<DocumentProducingNode*>(this);
   dn->setProjections(std::move(projections));
   dn->projections().determineIndexSupport(this->collection()->id(), _indexes);

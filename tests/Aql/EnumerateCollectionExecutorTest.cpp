@@ -40,6 +40,7 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/Projections.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/Stats.h"
 #include "Aql/Variable.h"
@@ -83,7 +84,7 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
   bool varUsedLater;
   ExecutionEngine* engine;
   Collection aqlCollection;
-  std::vector<arangodb::aql::AttributeNamePath> const projections;
+  arangodb::aql::Projections const projections;
   bool random;
   bool count;
 
@@ -268,7 +269,7 @@ class EnumerateCollectionExecutorTestProduce
   Variable outVariable;
   bool varUsedLater;
   ExecutionEngine* engine;
-  std::vector<arangodb::aql::AttributeNamePath> const projections;
+  arangodb::aql::Projections const projections;
   Collection aqlCollection;
   bool random;
   bool count;

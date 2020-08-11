@@ -52,35 +52,6 @@ namespace {
 
 std::initializer_list<ExecutionNode::NodeType> const reduceExtractionToProjectionTypes = {
     ExecutionNode::ENUMERATE_COLLECTION, ExecutionNode::INDEX};
-      
-void removeCommonPrefixes(std::unordered_set<arangodb::aql::AttributeNamePath>& attributes) {
-  if (attributes.size() < 2) {
-    return;
-  }
-
-  // iterate over all the projections that we collected, and remove the ones for which
-  // there also exists a projection with a smaller prefix
-  for (auto it = attributes.begin(); it != attributes.end(); /**/) {
-    bool found = false;
-    for (auto it2 = attributes.begin(); it2 != attributes.end(); ++it2) {
-      // duplicate prefix. we need to remove the longer one
-      if (it2 != it && (*it2)[0] == (*it)[0]) {
-        arangodb::aql::AttributeNamePath temp((*it)[0]);
-        found = true;
-        attributes.erase(it2);
-        attributes.erase(it);
-        attributes.emplace(std::move(temp));
-        found = true;
-        // stop iterating
-        break;
-      }
-    }
-
-    if (!found) {
-      ++it;
-    }
-  }
-}
 
 }  // namespace
 
@@ -225,12 +196,11 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
       current = current->getFirstParent();
     }
 
-    ::removeCommonPrefixes(attributes);
+    Projections projections(attributes);
 
     // projections are currently limited (arbitrarily to 5 attributes)
-    if (optimize && !stop && !attributes.empty() && attributes.size() <= 5) {
-      if (n->getType() == ExecutionNode::ENUMERATE_COLLECTION &&
-          !isRandomOrder) {
+    if (optimize && !stop && !projections.empty() && projections.size() <= 5) {
+      if (n->getType() == ExecutionNode::ENUMERATE_COLLECTION && !isRandomOrder) {
         // the node is still an EnumerateCollection... now check if we should
         // turn it into an index scan
         EnumerateCollectionNode const* en =
@@ -246,8 +216,8 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         }
 
         auto selectIndexIfPossible =
-            [&picked, &attributes](std::shared_ptr<Index> const& idx) -> bool {
-          if (!idx->hasCoveringIterator() || !idx->covers(attributes)) {
+            [&picked, &projections](std::shared_ptr<Index> const& idx) -> bool {
+          if (!idx->hasCoveringIterator() || !idx->covers(projections)) {
             // index doesn't cover the projection
             return false;
           }
@@ -316,15 +286,15 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
 
       if (n->getType() == ExecutionNode::INDEX) {
         // need to update covering index support in an IndexNode
-        ExecutionNode::castTo<IndexNode*>(n)->setProjections(std::move(attributes));
+        ExecutionNode::castTo<IndexNode*>(n)->setProjections(std::move(projections));
       } else {
         // store projections in DocumentProducingNode
-        e->setProjections(std::move(attributes));
+        e->setProjections(std::move(projections));
       }
 
       modified = true;
     } else if (!stop && 
-               attributes.empty() && 
+               projections.empty() && 
                n->getType() == ExecutionNode::ENUMERATE_COLLECTION && 
                !isRandomOrder) {
       // replace collection access with primary index access (which can be

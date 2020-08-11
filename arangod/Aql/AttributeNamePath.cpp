@@ -36,8 +36,8 @@ AttributeNamePath::AttributeNamePath(std::string attribute) {
   path.emplace_back(std::move(attribute));
 }
   
-AttributeNamePath::AttributeNamePath(std::vector<std::string> path) 
-    : path(std::move(path)) {}
+AttributeNamePath::AttributeNamePath(std::vector<std::string> p) 
+    : path(std::move(p)) {}
   
 bool AttributeNamePath::empty() const noexcept {
   return path.empty();
@@ -48,6 +48,8 @@ size_t AttributeNamePath::size() const noexcept {
 }
 
 AttributeNamePath::Type AttributeNamePath::type() const noexcept {
+  TRI_ASSERT(!empty());
+
   Type type = Type::SingleAttribute;
   if (size() == 1) {
     if (path[0] == StaticStrings::IdString) {
@@ -114,6 +116,15 @@ void AttributeNamePath::clear() noexcept {
 
 AttributeNamePath& AttributeNamePath::reverse() {
   std::reverse(path.begin(), path.end());
+  return *this;
+}
+  
+/// @brief shorten the attributes in the path to the specified length
+AttributeNamePath& AttributeNamePath::shortenTo(size_t length) {
+  if (length >= size()) {
+    return *this;
+  }
+  path.erase(path.begin() + length, path.end());
   return *this;
 }
 

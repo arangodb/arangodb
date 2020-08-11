@@ -198,6 +198,21 @@ TEST(AttributeNamePathTest, reverse) {
             AttributeNamePath(std::vector<std::string>{ "ihj", "fgh", "cde", "ab" }).reverse());
 }
 
+TEST(AttributeNamePathTest, shortenTo) {
+  ASSERT_EQ(AttributeNamePath("abc"), AttributeNamePath("abc").shortenTo(10));
+  ASSERT_EQ(AttributeNamePath("abc"), AttributeNamePath("abc").shortenTo(2));
+  ASSERT_EQ(AttributeNamePath("abc"), AttributeNamePath("abc").shortenTo(1));
+  ASSERT_EQ(AttributeNamePath(), AttributeNamePath("abc").shortenTo(0));
+  
+  ASSERT_EQ(AttributeNamePath(std::vector<std::string>{}), AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"}).shortenTo(0));
+  ASSERT_EQ(AttributeNamePath(std::vector<std::string>{"a"}), AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"}).shortenTo(1));
+  ASSERT_EQ(AttributeNamePath(std::vector<std::string>{"a", "b"}), AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"}).shortenTo(2));
+  ASSERT_EQ(AttributeNamePath(std::vector<std::string>{"a", "b", "c"}), AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"}).shortenTo(3));
+  ASSERT_EQ(AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"}), AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"}).shortenTo(4));
+  ASSERT_EQ(AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"}), AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"}).shortenTo(5));
+  ASSERT_EQ(AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"}), AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"}).shortenTo(1000));
+}
+
 TEST(AttributeNamePathTest, commonPrefixLength) {
   ASSERT_EQ(1, AttributeNamePath::commonPrefixLength(AttributeNamePath("abc"), AttributeNamePath("abc")));
   ASSERT_EQ(0, AttributeNamePath::commonPrefixLength(AttributeNamePath("abc"), AttributeNamePath("piff")));

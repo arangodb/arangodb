@@ -89,6 +89,9 @@ struct AttributeNamePath {
   /// @brief reverse the attributes in the path
   AttributeNamePath& reverse();
 
+  /// @brief shorten the attributes in the path to the specified length
+  AttributeNamePath& shortenTo(size_t length);
+
   /// @brief determines the length of common prefixes
   static size_t commonPrefixLength(AttributeNamePath const& lhs,
                                    AttributeNamePath const& rhs);

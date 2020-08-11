@@ -55,6 +55,7 @@ class Slice;
 
 namespace aql {
 struct AttributeNamePath;
+class Projections;
 class SortCondition;
 struct Variable;
 }  // namespace aql
@@ -229,7 +230,7 @@ class Index {
   virtual bool needsReversal() const { return false; } 
 
   /// @brief whether or not the index covers all the attributes passed in
-  virtual bool covers(std::unordered_set<arangodb::aql::AttributeNamePath> const& attributes) const;
+  bool covers(arangodb::aql::Projections const& projections) const;
 
   /// @brief return the underlying collection
   inline LogicalCollection& collection() const { return _collection; }
