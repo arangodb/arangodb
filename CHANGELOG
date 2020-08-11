@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed a blockage on hotbackup when writes are happening concurrently, since
+  followers could no longer replicate leader transactions.
+
 * Hard-code returned "planVersion" attribute of collections to a value of 1.
   Before 3.7, the most recent Plan version from the agency was returned inside
   "planVersion".
