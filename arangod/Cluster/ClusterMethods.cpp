@@ -4114,7 +4114,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
     // total timeout has been reached. We start with t=15, which gives us
     // 15, 30 and 60 to try before the default timeout of 120s has been reached.
     double lockWait(15.0);
-    while (cc != nullptr && steady_clock::now() < end && !feature.server().isStopping()) {
+    while (cc != nullptr && steady_clock::now() < end && !application_features::ApplicationServer::isStopping()) {
       result = lockDBServerTransactions(backupId, dbServers, lockWait, lockedServers);
       if (!result.ok()) {
         unlockDBServerTransactions(backupId, lockedServers);
