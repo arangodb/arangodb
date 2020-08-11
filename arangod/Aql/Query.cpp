@@ -369,8 +369,8 @@ ExecutionState Query::execute(QueryResult& queryResult) {
 
         // reserve some space in Builder to avoid frequent reallocs
         queryResult.data->reserve(16 * 1024);
-
         queryResult.data->openArray(/*unindexed*/true);
+        
         _executionPhase = ExecutionPhase::EXECUTE;
       }
       [[fallthrough]];

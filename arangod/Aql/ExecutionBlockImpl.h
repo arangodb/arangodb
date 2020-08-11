@@ -292,8 +292,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   DependencyProxy _dependencyProxy;
 
   /**
-   * @brief Fetcher used by the Executor. Calls this->fetchBlock() and handles
-   *        memory management of AqlItemBlocks as needed by Executor.
+   * @brief Fetcher used by the Executor.
    */
   Fetcher _rowFetcher;
 
