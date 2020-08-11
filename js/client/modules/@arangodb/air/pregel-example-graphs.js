@@ -24,8 +24,9 @@
 
 // Example graphs for pregel testing
 
+const internal = require("internal");
+const db = internal.db;
 const graphModule = require("@arangodb/smart-graph");
-const pregel = require("@arangodb/pregel");
 
 // This should maybe also be using other example graphs from
 // for example the traversal suite.
@@ -69,6 +70,7 @@ function createCircle(graphName, numberOfVertices, numberOfShards) {
 function createLineGraph(graphName, numberOfVertices, numberOfShards) {
   const vname = graphName + "_V";
   const ename = graphName + "_E";
+
   try {
     graphModule._drop(graphName, true);
   } catch (e) {}

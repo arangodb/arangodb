@@ -25,6 +25,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require("internal");
+const db = internal.db;
 const pr = require("@arangodb/pregel");
 const pp = require("@arangodb/air/pregel-programs");
 const pe = require("@arangodb/air/pregel-example-graphs");
@@ -66,44 +67,54 @@ function exec_test_page_rank() {
   let collectionNames = pe.create_page_rank_graph(graphName, 6);
   let vertexName = collectionNames.vname;
 
-  internal.print("  Starting: Air Pregel PageRank");
-  let air_pid = pp.page_rank(
-    "PageRankGraph",
-    "pageRankResult",
-    0.85
+  wait_for_pregel(
+    "Air Pagerank",
+    pp.page_rank(
+      "PageRankGraph",
+      "pageRankResult",
+      0.85
+    ));
+
+  wait_for_pregel(
+    "Native Pagerank",
+    pr.start("pagerank", graphName, {
+      maxGSS: 5,
+      resultField: "nativeRank"
+    })
   );
-  const air_status = wait_for_pregel(air_pid);
-  internal.print("  done, returned with status: ");
-  internal.print(JSON.stringify(air_status, null, 4));
 
-  internal.print("  Native Pregel");
-  const native_pid = pr.start("pagerank", graphName, {
-    maxGSS: 5,
-    resultField: "nativeRank"
-  });
-  const native_status = wait_for_pregel(native_pid);
-  internal.print("  done, returned with status: ");
-  internal.print(JSON.stringify(native_status, null, 4));
-
-
-// Return results which differ too much (here currently 0.05)
-  const res = db._query(`FOR d IN @@V
+  // Return results which differ too much (here currently 0.05)
+  return compare_pregel(
+    db._query(`FOR d IN @@V
                FILTER ABS(d.nativeRank - d.pageRankResult.rank) >= 0.05
                RETURN {
                  name: d.name,
                  native: d.nativeRank,
                  air: d.pageRankResult.rank
-               }`, {"@V": vertexName});
-
-  internal.print("Discrepancies in results: " + JSON.stringify(res.toArray()));
+               }`, {"@V": vertexName})
+  );
 }
 
-function wait_for_pregel(pid) {
+function compare_pregel(aqlResult) {
+  if (aqlResult.length > 0) {
+    internal.print("Test failed.");
+    internal.print("Discrepancies in results: " + JSON.stringify(res.toArray()));
+    return false;
+  }
+
+  internal.print("Test succeeded.");
+  return true;
+}
+
+function wait_for_pregel(name, pid) {
+  internal.print("  Started: " + name + " - PID: " + pid);
   var waited = 0;
   while (true) {
     var status = pr.status(pid);
 
     if (status.state === "done") {
+      internal.print("  " + name + " done, returned with status: ");
+      internal.print(JSON.stringify(status, null, 4));
       return status;
     } else {
       waited++;
@@ -128,33 +139,27 @@ function exec_sssp_test() {
     })
     .toArray()[0];
 
-  internal.print("Running SSSP with start vertex " + some_vertex);
+  internal.print("Used start vertex: " + some_vertex + ")");
 
-  internal.print("  Native Pregel");
-  const native_pid = pr.start("sssp", "LineGraph", {
+  wait_for_pregel(
+    "Native SSSP",
+    pr.start("sssp", "LineGraph", {
     source: some_vertex,
     maxGSS: 10000,
-  });
-  const native_status = wait_for_pregel(native_pid);
-  internal.print("  done, returned with status: ");
-  internal.print(JSON.stringify(native_status, null, 4));
+  }));
 
-  internal.print("  AIR Pregel");
-  const air_pid = pp.single_source_shortest_path(
+  wait_for_pregel(
+    "Air SSSP",
+    pp.single_source_shortest_path(
     "LineGraph",
     "SSSP",
     some_vertex,
     "cost"
-  );
-  const air_status = wait_for_pregel(air_pid);
-  internal.print("  done, returned with status: ");
-  internal.print(JSON.stringify(air_status, null, 4));
+  ));
 
-  const res = db._query(`FOR d IN @@V
+  return compare_pregel(db._query(`FOR d IN @@V
                FILTER d.result != d.SSSP.distance.value
-               RETURN d`, {"@V": collnames.vname});
-
-  internal.print("Discrepancies in results: " + JSON.stringify(res.toArray()));
+               RETURN d`, {"@V": collnames.vname}));
 }
 
 function exec_scc_test() {

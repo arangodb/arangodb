@@ -22,7 +22,6 @@
 // / @author Copyright 2020, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-const internal = require("internal");
 const pregel = require("@arangodb/pregel");
 
 /* Execute the given pregel program */
