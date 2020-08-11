@@ -167,7 +167,7 @@ class Manager final {
     std::unique_lock<std::mutex> guard(_mutex);
     if (!_writeLockHeld) {
       LOG_TOPIC("eedda", TRACE, Logger::TRANSACTIONS) << "Trying to get write lock to hold transactions...";
-      ret = _rwLock.writeLock(timeout);
+      ret = _rwLock.lockWrite(timeout);
       if (ret) {
         LOG_TOPIC("eeddb", TRACE, Logger::TRANSACTIONS) << "Got write lock to hold transactions.";
         _writeLockHeld = true;
