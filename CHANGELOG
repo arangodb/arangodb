@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix: The 'sorted' COLLECT variant would return undefined instead of null when
+  grouping by a null value.
+
 * Hard-code returned "planVersion" attribute of collections to a value of 1.
   Before 3.7, the most recent Plan version from the agency was returned inside
   "planVersion".
