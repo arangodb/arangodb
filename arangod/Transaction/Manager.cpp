@@ -303,7 +303,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   }
 
   LOG_TOPIC("7bd2d", DEBUG, Logger::TRANSACTIONS)
-      << "managed trx creating: '" << tid << "'";
+      << "managed trx creating: '" << tid.id() << "'";
 
   const size_t bucket = getBucket(tid);
 
