@@ -107,7 +107,7 @@ class Manager final {
 
   // register a transaction
   void registerTransaction(TRI_voc_tid_t, std::unique_ptr<TransactionData> data,
-                           bool isReadOnlyTransaction, bool isFollowerTransaction = false);
+                           bool isReadOnlyTransaction, bool isFollowerTransaction);
 
   // unregister a transaction
   void unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed,

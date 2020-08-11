@@ -123,10 +123,16 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
                                   std::unique_ptr<TransactionData> data,
                                   bool isReadOnlyTransaction,
                                   bool isFollowerTransaction) {
+  // If isFollowerTransaction is set then either the transactionId should be
+  // an isFollowerTransactionId or it should be a legacy transactionId:
+  TRI_ASSERT(!isFollowerTransaction ||
+             isFollowerTransactionId(transactionId) ||
+             isLegacyTransactionId(transactionId));
   if (!isReadOnlyTransaction && !isFollowerTransaction) {
     LOG_TOPIC("ccdea", TRACE, Logger::TRANSACTIONS) << "Acquiring read lock for tid " << transactionId;
     _rwLock.readLock();
-    LOG_TOPIC("ccdeb", TRACE, Logger::TRANSACTIONS) << "Got read lock for tid " << transactionId << " nrReadLocked: " << ++_nrReadLocked;
+    ++_nrReadLocked;
+    LOG_TOPIC("ccdeb", TRACE, Logger::TRANSACTIONS) << "Got read lock for tid " << transactionId << " nrReadLocked: " << _nrReadLocked;
   }
 
   _nrRunning.fetch_add(1, std::memory_order_relaxed);
@@ -144,7 +150,8 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
       _nrRunning.fetch_sub(1, std::memory_order_relaxed);
       if (!isReadOnlyTransaction && !isFollowerTransaction) {
         _rwLock.unlockRead();
-        LOG_TOPIC("ccdec", TRACE, Logger::TRANSACTIONS) << "Released lock for tid " << transactionId << " nrReadLocked: " << --_nrReadLocked;
+        --_nrReadLocked;
+        LOG_TOPIC("ccdec", TRACE, Logger::TRANSACTIONS) << "Released lock for tid " << transactionId << " nrReadLocked: " << _nrReadLocked;
       }
       throw;
     }
@@ -158,7 +165,8 @@ void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFail
   auto guard = scopeGuard([this, transactionId, &isReadOnlyTransaction, &isFollowerTransaction]() {
     if (!isReadOnlyTransaction && !isFollowerTransaction) {
       _rwLock.unlockRead();
-      LOG_TOPIC("ccded", TRACE, Logger::TRANSACTIONS) << "Released lock for tid " << transactionId << " nrReadLocked: " << --_nrReadLocked;
+      --_nrReadLocked;
+      LOG_TOPIC("ccded", TRACE, Logger::TRANSACTIONS) << "Released lock for tid " << transactionId << " nrReadLocked: " << _nrReadLocked;
     }
   });
 
