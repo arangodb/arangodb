@@ -1064,7 +1064,6 @@ AqlValue AqlValue::materialize(VPackOptions const* options, bool& hasCopied,
     }
     case DOCVEC:
     case RANGE: {
-      bool shouldDelete = true;
       VPackBuffer<uint8_t> buffer;
       VPackBuilder builder(buffer);
       toVelocyPack(options, builder, resolveExternals, /*allowUnindexed*/true);
