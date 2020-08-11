@@ -166,6 +166,7 @@ class Context {
   struct {
     TransactionId id;
     bool isReadOnlyTransaction;
+    bool isFollowerTransaction;
   } _transaction;
 
   bool _ownsResolver;

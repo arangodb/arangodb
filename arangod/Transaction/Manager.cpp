@@ -49,6 +49,7 @@
 #include "Transaction/Status.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
+#include "VocBase/Identifiers/TransactionId.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/VocBase/VirtualCollection.h"
@@ -99,11 +100,11 @@ void Manager::registerTransaction(TransactionId transactionId,
   // If isFollowerTransaction is set then either the transactionId should be
   // an isFollowerTransactionId or it should be a legacy transactionId:
   TRI_ASSERT(!isFollowerTransaction ||
-             isFollowerTransactionId(transactionId) ||
-             isLegacyTransactionId(transactionId));
+             transactionId.isFollowerTransactionId() ||
+             transactionId.isLegacyTransactionId());
   if (!isReadOnlyTransaction && !isFollowerTransaction) {
     LOG_TOPIC("ccdea", TRACE, Logger::TRANSACTIONS) << "Acquiring read lock for tid " << transactionId;
-    _rwLock.readLock();
+    _rwLock.lockRead();
     _nrReadLocked.fetch_add(1, std::memory_order_relaxed);
     LOG_TOPIC("ccdeb", TRACE, Logger::TRANSACTIONS) << "Got read lock for tid " << transactionId << " nrReadLocked: " << _nrReadLocked.load(std::memory_order_relaxed);
   }
