@@ -315,7 +315,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
         TRI_ASSERT(!isLocalCollection);
         break;
       case ServerState::ROLE_AGENT:
-        TRI_ASSERT(isLocalCollection && isSystemName);
+        TRI_ASSERT(isLocalCollection);
         break;
       case ServerState::ROLE_UNDEFINED:
         TRI_ASSERT(false);
