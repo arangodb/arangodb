@@ -272,6 +272,7 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output
       AqlValue val(std::move(_buffer)); // _buffer still usable after
       AqlValueGuard guard{val, true};
       TRI_ASSERT(_buffer.size() == 0);
+      _builder.clear(); // necessary
 
       output.moveValueInto(infos.getCollectRegister(), _lastInputRow, guard);
     }
