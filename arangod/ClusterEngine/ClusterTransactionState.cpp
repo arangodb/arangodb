@@ -74,7 +74,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   if (nestingLevel() == 0) {
     updateStatus(transaction::Status::RUNNING);
     
-    transaction::ManagerFeature::manager()->registerTransaction(id(), nullptr, isReadOnlyTransaction());
+    transaction::ManagerFeature::manager()->registerTransaction(id(), nullptr, isReadOnlyTransaction(), hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX));
     ServerStatistics::statistics()._transactionsStatistics._transactionsStarted++;
 
     setRegistered();
