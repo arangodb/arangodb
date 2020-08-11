@@ -1,6 +1,9 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
+* Fixed a blockage on hotbackup when writes are happening concurrently, since
+  followers could no longer replicate leader transactions.
+
 * Fixed internal issue #739: ArangoSearch filter volatility takes into account
   calculation nodes dependencies.
 
