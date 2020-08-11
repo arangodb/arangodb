@@ -131,8 +131,8 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
   if (!isReadOnlyTransaction && !isFollowerTransaction) {
     LOG_TOPIC("ccdea", TRACE, Logger::TRANSACTIONS) << "Acquiring read lock for tid " << transactionId;
     _rwLock.readLock();
-    ++_nrReadLocked;
-    LOG_TOPIC("ccdeb", TRACE, Logger::TRANSACTIONS) << "Got read lock for tid " << transactionId << " nrReadLocked: " << _nrReadLocked;
+    _nrReadLocked.fetch_add(1, std::memory_order_relaxed);
+    LOG_TOPIC("ccdeb", TRACE, Logger::TRANSACTIONS) << "Got read lock for tid " << transactionId << " nrReadLocked: " << _nrReadLocked.load(std::memory_order_relaxed);
   }
 
   _nrRunning.fetch_add(1, std::memory_order_relaxed);
@@ -150,8 +150,8 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
       _nrRunning.fetch_sub(1, std::memory_order_relaxed);
       if (!isReadOnlyTransaction && !isFollowerTransaction) {
         _rwLock.unlockRead();
-        --_nrReadLocked;
-        LOG_TOPIC("ccdec", TRACE, Logger::TRANSACTIONS) << "Released lock for tid " << transactionId << " nrReadLocked: " << _nrReadLocked;
+        _nrReadLocked.fetch_sub(1, std::memory_order_relaxed);
+        LOG_TOPIC("ccdec", TRACE, Logger::TRANSACTIONS) << "Released lock for tid " << transactionId << " nrReadLocked: " << _nrReadLocked.load(std::memory_order_relaxed);
       }
       throw;
     }
@@ -165,8 +165,8 @@ void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFail
   auto guard = scopeGuard([this, transactionId, &isReadOnlyTransaction, &isFollowerTransaction]() {
     if (!isReadOnlyTransaction && !isFollowerTransaction) {
       _rwLock.unlockRead();
-      --_nrReadLocked;
-      LOG_TOPIC("ccded", TRACE, Logger::TRANSACTIONS) << "Released lock for tid " << transactionId << " nrReadLocked: " << _nrReadLocked;
+      _nrReadLocked.fetch_sub(1, std::memory_order_relaxed);
+      LOG_TOPIC("ccded", TRACE, Logger::TRANSACTIONS) << "Released lock for tid " << transactionId << " nrReadLocked: " << _nrReadLocked.load(std::memory_order_relaxed);
     }
   });
 
