@@ -733,7 +733,7 @@ function AqlFunctionsSuite () {
       assertEqual("hello", actual[0].value);
 
       db._drop("UnitTestsFunc");
-      db._drop("UnitTestsFunc2")
+      db._drop("UnitTestsFunc2");
     }
 
   };
