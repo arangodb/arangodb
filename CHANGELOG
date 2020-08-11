@@ -1,10 +1,13 @@
 devel
 -----
 
+* Slightly fixed wrong log level for authentication and also added login event
+  to the standard log.
+
 * Hard-code returned "planVersion" attribute of collections to a value of 1.
   Before 3.7, the most recent Plan version from the agency was returned inside
   "planVersion".
-  In 3.7, the attribute contained the Plan version that was in use when the 
+  In 3.7, the attribute contained the Plan version that was in use when the
   in-memory LogicalCollection object was last constructed. The object was
   always reconstructed in case the underlying Plan data for the collection
   changed or when a collection contained links to arangosearch views.
@@ -19,11 +22,11 @@ devel
 
 * Fixed OASIS-278 issue: Added proper sort/calc nodes cleanup for late materialzation
   after OneShard optimization
-  
+
 * Improve performance of many non-subquery AQL queries, by optimizing away
   some storage overhead for subquery context data.
 
-* Improve performance of internal cluster Plan and Current reload operations. 
+* Improve performance of internal cluster Plan and Current reload operations.
 
 * Fixed issue #12349: arangosh compact Arangoerror 404.
 
@@ -68,12 +71,12 @@ devel
   RETURN 1
   ```
 
-* Revive faster out-of-range comparator for secondary index scans that do a full 
-  collection index scan for index types "hash", "skiplist", "persistent". 
+* Revive faster out-of-range comparator for secondary index scans that do a full
+  collection index scan for index types "hash", "skiplist", "persistent".
 
 * Fixed internal issue #733: Primary sort compression in views now used properly.
 
-* Errors with error code 1200 (Arango conflict) will now get the HTTP response 
+* Errors with error code 1200 (Arango conflict) will now get the HTTP response
   code 409 (Conflict) instead of 412 (Precondition failed), unless "if-match" header
   was used in `_api/document` or `_api/gharial`.
 
