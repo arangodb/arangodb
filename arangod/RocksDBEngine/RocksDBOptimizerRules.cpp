@@ -229,14 +229,10 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
 
     // projections are currently limited (arbitrarily to 5 attributes)
     if (optimize && !stop && !attributes.empty() && attributes.size() <= 5) {
-      arangodb::aql::AttributeNamePath const IdPath(StaticStrings::IdString);
-
       if (n->getType() == ExecutionNode::ENUMERATE_COLLECTION &&
-          !isRandomOrder &&
-          std::find(attributes.begin(), attributes.end(), IdPath) == attributes.end()) {
+          !isRandomOrder) {
         // the node is still an EnumerateCollection... now check if we should
-        // turn it into an index scan we must never have a projection on _id, as
-        // producing _id is not supported yet by the primary index iterator
+        // turn it into an index scan
         EnumerateCollectionNode const* en =
             ExecutionNode::castTo<EnumerateCollectionNode const*>(n);
         auto const& hint = en->hint();
@@ -294,7 +290,6 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           // we have already proven that we can use the covering index optimization,
           // so force it - if we wouldn't force it here it would mean that for a
           // FILTER-less query we would be a lot less efficient for some indexes
-          opts.forceProjection = true;
           auto inode = new IndexNode(plan.get(), plan->nextId(),
                                      en->collection(), en->outVariable(),
                                      std::vector<transaction::Methods::IndexHandle>{picked},
@@ -319,12 +314,12 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         }
       }
 
-      // store projections in DocumentProducingNode
-      e->projections(std::move(attributes));
-
       if (n->getType() == ExecutionNode::INDEX) {
-        // need to update _indexCoversProjections value in an IndexNode
-        ExecutionNode::castTo<IndexNode*>(n)->initIndexCoversProjections();
+        // need to update covering index support in an IndexNode
+        ExecutionNode::castTo<IndexNode*>(n)->setProjections(std::move(attributes));
+      } else {
+        // store projections in DocumentProducingNode
+        e->setProjections(std::move(attributes));
       }
 
       modified = true;

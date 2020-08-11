@@ -66,6 +66,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+using namespace arangodb::basics;
 
 namespace {
 std::string const lowest;            // smallest possible key
@@ -286,11 +287,10 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
  public:
   RocksDBPrimaryIndexRangeIterator(LogicalCollection* collection, transaction::Methods* trx,
                                    arangodb::RocksDBPrimaryIndex const* index,
-                                   RocksDBKeyBounds&& bounds, bool allowCoveringIndexOptimization)
+                                   RocksDBKeyBounds&& bounds) 
       : IndexIterator(collection, trx),
         _index(index),
         _cmp(index->comparator()),
-        _allowCoveringIndexOptimization(allowCoveringIndexOptimization),
         _mustSeek(true),
         _bounds(std::move(bounds)) {
     TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::primary());
@@ -349,7 +349,6 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
   }
   
   bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
-    TRI_ASSERT(_allowCoveringIndexOptimization);
     seekIfRequired();
 
     if (limit == 0 || !_iterator->Valid() || outOfRange()) {
@@ -417,7 +416,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
 
   /// @brief we provide a method to provide the index attribute values
   /// while scanning the index
-  bool hasCovering() const override { return _allowCoveringIndexOptimization; }
+  bool hasCovering() const override { return true; }
 
  private:
   bool outOfRange() const {
@@ -443,7 +442,6 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
   arangodb::RocksDBPrimaryIndex const* _index;
   rocksdb::Comparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
-  bool const _allowCoveringIndexOptimization;
   bool _mustSeek;
   RocksDBKeyBounds _bounds;
   // used for iterate_upper_bound iterate_lower_bound
@@ -464,12 +462,18 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(arangodb::LogicalCollection& collection
           basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId),
           basics::VelocyPackHelper::stringUInt64(info, StaticStrings::TempObjectId),
           static_cast<RocksDBCollection*>(collection.getPhysical())->cacheEnabled()),
+      _coveredFields({{AttributeName(StaticStrings::KeyString, false)},
+                      {AttributeName(StaticStrings::IdString, false)}}),
       _isRunningInCluster(ServerState::instance()->isRunningInCluster()) {
   TRI_ASSERT(_cf == RocksDBColumnFamily::primary());
   TRI_ASSERT(objectId() != 0);
 }
 
 RocksDBPrimaryIndex::~RocksDBPrimaryIndex() = default;
+
+std::vector<std::vector<arangodb::basics::AttributeName>> const& RocksDBPrimaryIndex::coveredFields() const {
+  return _coveredFields;
+}
 
 void RocksDBPrimaryIndex::load() {
   RocksDBIndex::load();
@@ -705,14 +709,12 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
       // forward version
       return std::make_unique<RocksDBPrimaryIndexRangeIterator<false>>(
           &_collection /*logical collection*/, trx, this,
-          RocksDBKeyBounds::PrimaryIndex(objectId(), ::lowest, ::highest),
-          opts.forceProjection);
+          RocksDBKeyBounds::PrimaryIndex(objectId(), ::lowest, ::highest));
     }
     // reverse version
     return std::make_unique<RocksDBPrimaryIndexRangeIterator<true>>(
         &_collection /*logical collection*/, trx, this,
-        RocksDBKeyBounds::PrimaryIndex(objectId(), ::lowest, ::highest),
-        opts.forceProjection);
+        RocksDBKeyBounds::PrimaryIndex(objectId(), ::lowest, ::highest));
   }
 
   TRI_ASSERT(node != nullptr);
@@ -886,12 +888,12 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
       // forward version
       return std::make_unique<RocksDBPrimaryIndexRangeIterator<false>>(
           &_collection /*logical collection*/, trx, this,
-          RocksDBKeyBounds::PrimaryIndex(objectId(), lower, upper), opts.forceProjection);
+          RocksDBKeyBounds::PrimaryIndex(objectId(), lower, upper));
     }
     // reverse version
     return std::make_unique<RocksDBPrimaryIndexRangeIterator<true>>(
         &_collection /*logical collection*/, trx, this,
-        RocksDBKeyBounds::PrimaryIndex(objectId(), lower, upper), opts.forceProjection);
+        RocksDBKeyBounds::PrimaryIndex(objectId(), lower, upper));
   }
 
   // operator type unsupported or IN used on non-array

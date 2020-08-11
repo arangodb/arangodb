@@ -36,6 +36,7 @@
 #include "Aql/IndexNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/Projections.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
@@ -181,8 +182,7 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
 IndexExecutorInfos::IndexExecutorInfos(
     RegisterId outputRegister, QueryContext& query,
     Collection const* collection, Variable const* outVariable, bool produceResult,
-    Expression* filter, std::vector<arangodb::aql::AttributeNamePath> const& projections,
-    std::vector<size_t> const& coveringIndexAttributePositions, 
+    Expression* filter, arangodb::aql::Projections projections,
     std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
     std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs,
     bool hasV8Expression, bool count, AstNode const* condition,
@@ -197,8 +197,7 @@ IndexExecutorInfos::IndexExecutorInfos(
       _collection(collection),
       _outVariable(outVariable),
       _filter(filter),
-      _projections(projections),
-      _coveringIndexAttributePositions(coveringIndexAttributePositions),
+      _projections(std::move(projections)),
       _expInVars(std::move(expInVars)),
       _expInRegs(std::move(expInRegs)),
       _nonConstExpression(std::move(nonConstExpression)),
@@ -269,7 +268,7 @@ Variable const* IndexExecutorInfos::getOutVariable() const {
   return _outVariable;
 }
 
-std::vector<arangodb::aql::AttributeNamePath> const& IndexExecutorInfos::getProjections() const noexcept {
+arangodb::aql::Projections const& IndexExecutorInfos::getProjections() const noexcept {
   return _projections;
 }
 
@@ -278,10 +277,6 @@ QueryContext& IndexExecutorInfos::query() noexcept {
 }
 
 Expression* IndexExecutorInfos::getFilter() const noexcept { return _filter; }
-
-std::vector<size_t> const& IndexExecutorInfos::getCoveringIndexAttributePositions() const noexcept {
-  return _coveringIndexAttributePositions;
-}
 
 bool IndexExecutorInfos::getProduceResult() const noexcept {
   return _produceResult;
@@ -358,7 +353,7 @@ IndexExecutor::CursorReader::CursorReader(transaction::Methods& trx,
                     : !infos.getProduceResult()
                           ? Type::NoResult
                           : _cursor->hasCovering() &&  // if change see IndexNode::canApplyLateDocumentMaterializationRule()
-                                    !infos.getCoveringIndexAttributePositions().empty()
+                                    infos.getProjections().supportsCoveringIndex()
                                 ? Type::Covering
                                 : Type::Document) {
   switch (_type) {
@@ -511,7 +506,7 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
       _documentProducingFunctionContext(
       _input, nullptr, infos.getOutputRegisterId(), infos.getProduceResult(),
       infos.query(), _trx, infos.getFilter(), infos.getProjections(),
-      infos.getCoveringIndexAttributePositions(), false,
+      false,
       infos.getIndexes().size() > 1 || infos.hasMultipleExpansions()),
       _infos(infos),
       _currentIndex(_infos.getIndexes().size()),

@@ -31,6 +31,7 @@
 #include <vector>
 
 #include "Aql/AttributeNamePath.h"
+#include "Aql/Projections.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -55,11 +56,11 @@ class DocumentProducingNode {
   /// @brief return the out variable
   Variable const* outVariable() const;
 
-  std::vector<arangodb::aql::AttributeNamePath> const& projections() const noexcept;
-
-  void projections(std::vector<arangodb::aql::AttributeNamePath> projections);
-
-  void projections(std::unordered_set<arangodb::aql::AttributeNamePath> projections);
+  arangodb::aql::Projections const& projections() const noexcept;
+  
+  arangodb::aql::Projections& projections() noexcept;
+  
+  void setProjections(std::unordered_set<arangodb::aql::AttributeNamePath> projections);
 
   /// @brief remember the condition to execute for early filtering
   void setFilter(std::unique_ptr<Expression> filter);
@@ -85,7 +86,7 @@ class DocumentProducingNode {
   Variable const* _outVariable;
 
   /// @brief produce only the following attributes
-  std::vector<arangodb::aql::AttributeNamePath> _projections;
+  arangodb::aql::Projections _projections;
 
   /// @brief early filtering condition
   std::unique_ptr<Expression> _filter;

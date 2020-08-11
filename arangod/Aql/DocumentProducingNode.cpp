@@ -42,7 +42,6 @@ using namespace arangodb::aql;
 namespace {
 arangodb::velocypack::StringRef const filterKey("filter");
 arangodb::velocypack::StringRef const producesResultKey("producesResult");
-arangodb::velocypack::StringRef const projectionsKey("projections");
 }
 
 DocumentProducingNode::DocumentProducingNode(Variable const* outVariable)
@@ -54,25 +53,11 @@ DocumentProducingNode::DocumentProducingNode(Variable const* outVariable)
 DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
                                              arangodb::velocypack::Slice slice)
     : _outVariable(Variable::varFromVPack(plan->getAst(), slice, "outVariable")),
+      _projections(arangodb::aql::Projections::fromVelocyPack(slice)),
       _count(false) {
   TRI_ASSERT(_outVariable != nullptr);
 
-  VPackSlice p = slice.get(::projectionsKey);
-  if (p.isArray()) {
-    for (VPackSlice it : VPackArrayIterator(p)) {
-      if (it.isString()) {
-        _projections.emplace_back(arangodb::aql::AttributeNamePath(it.copyString()));
-      } else if (it.isArray()) {
-        arangodb::aql::AttributeNamePath path;
-        for (VPackSlice it2 : VPackArrayIterator(it)) {
-          path.path.emplace_back(it2.copyString());
-        }
-        _projections.emplace_back(std::move(path));
-      }
-    }
-  }
-
-  p = slice.get(::filterKey);
+  VPackSlice p = slice.get(::filterKey);
   if (!p.isNone()) {
     Ast* ast = plan->getAst();
     // new AstNode is memory-managed by the Ast
@@ -94,23 +79,7 @@ void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
   builder.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(builder);
 
-  builder.add(::projectionsKey, VPackValue(VPackValueType::Array));
-  for (auto const& it : _projections) {
-    if (it.path.size() == 1) {
-      // projection on a top-level attribute. will be returned as a string
-      // for downwards-compatibility
-      builder.add(VPackValue(it.path[0]));
-    } else {
-      // projection on a nested attribute (e.g. a.b.c). will be returned as an
-      // array. this kind of projection did not exist before 3.7
-      builder.openArray();
-      for (auto const& attribute : it.path) {
-        builder.add(VPackValue(attribute));
-      }
-      builder.close();
-    }
-  }
-  builder.close(); // projections
+  _projections.toVelocyPack(builder);
   
   if (_filter != nullptr) {
     builder.add(VPackValuePair(::filterKey.data(), ::filterKey.size(), VPackValueType::String));
@@ -136,20 +105,21 @@ void DocumentProducingNode::setFilter(std::unique_ptr<Expression> filter) {
   _filter = std::move(filter);
 }
 
-std::vector<arangodb::aql::AttributeNamePath> const& DocumentProducingNode::projections() const noexcept {
+arangodb::aql::Projections const& DocumentProducingNode::projections() const noexcept {
   return _projections;
 }
 
-void DocumentProducingNode::projections(std::vector<arangodb::aql::AttributeNamePath> projections) {
-  _projections = std::move(projections);
+arangodb::aql::Projections& DocumentProducingNode::projections() noexcept {
+  return _projections;
 }
 
-void DocumentProducingNode::projections(std::unordered_set<arangodb::aql::AttributeNamePath> projections) {
-  _projections.clear();
-  _projections.reserve(projections.size());
+void DocumentProducingNode::setProjections(std::unordered_set<arangodb::aql::AttributeNamePath> projections) {
+  std::vector<arangodb::aql::AttributeNamePath> p;
+  p.reserve(projections.size());
   for (auto& it : projections) {
-    _projections.push_back(std::move(it));
+    p.push_back(std::move(it));
   }
+  _projections = arangodb::aql::Projections(std::move(p));
 }
 
 bool DocumentProducingNode::doCount() const {

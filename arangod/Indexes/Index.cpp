@@ -956,25 +956,40 @@ void Index::expandInSearchValues(VPackSlice const base, VPackBuilder& result) co
 
 bool Index::covers(std::unordered_set<arangodb::aql::AttributeNamePath> const& attributes) const {
   // check if we can use covering indexes
-  if (_fields.size() < attributes.size()) {
-    // we will not be able to satisfy all requested projections with this index
+  auto const& covered = coveredFields();
+
+  if (attributes.size() > covered.size()) {
     return false;
   }
 
   arangodb::aql::AttributeNamePath compare;
-  for (size_t i = 0; i < _fields.size(); ++i) {
-    auto const& field = _fields[i];
-    compare.clear();
-    for (auto const& part : field) {
-      if (part.shouldExpand) {
+  for (auto const& it : attributes) {
+    bool found = false;
+    for (size_t i = 0; i < covered.size(); ++i) {
+      bool eligible = true;
+      auto const& field = covered[i];
+      compare.clear();
+      for (auto const& part : field) {
+        if (part.shouldExpand) {
+          eligible = false;
+          break;
+        }
+        compare.path.emplace_back(part.name);
+      }
+
+      if (!eligible) {
         continue;
       }
-      compare.path.emplace_back(part.name);
+      if (compare == it) {
+        found = true;
+        break;
+      }
     }
-    if (std::find(attributes.begin(), attributes.end(), compare) == attributes.end()) {
+    if (!found) {
       return false;
     }
   }
+
   return true;
 }
 

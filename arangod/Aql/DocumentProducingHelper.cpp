@@ -39,86 +39,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-void aql::handleProjections(std::vector<AttributeProjection> const& projections,
-                            transaction::Methods const* trxPtr, VPackSlice slice,
-                            VPackBuilder& b) {
-  // the single-attribute projections are easy. we dispatch here based on the attribute name.
-  // there are a few optimized functions for retrieving _key, _id, _from and _to.
-  for (auto const& it : projections) {
-    if (it.type == AttributeNamePath::Type::IdAttribute) {
-      // projection for "_id"
-      TRI_ASSERT(it.path.size() == 1);
-      b.add(it.path[0], VPackValue(transaction::helpers::extractIdString(trxPtr->resolver(), slice, slice)));
-    } else if (it.type == AttributeNamePath::Type::KeyAttribute) {
-      // projection for "_key"
-      TRI_ASSERT(it.path.size() == 1);
-      b.add(it.path[0], transaction::helpers::extractKeyFromDocument(slice));
-    } else if (it.type == AttributeNamePath::Type::FromAttribute) {
-      // projection for "_from"
-      TRI_ASSERT(it.path.size() == 1);
-      b.add(it.path[0], transaction::helpers::extractFromFromDocument(slice));
-    } else if (it.type == AttributeNamePath::Type::ToAttribute) {
-      // projection for "_to"
-      TRI_ASSERT(it.path.size() == 1);
-      b.add(it.path[0], transaction::helpers::extractToFromDocument(slice));
-    } else if (it.type == AttributeNamePath::Type::SingleAttribute) {
-      // projection for any other top-level attribute
-      TRI_ASSERT(it.path.size() == 1);
-      VPackSlice found = slice.get(it.path.path[0]);
-      if (found.isNone()) {
-        // attribute not found
-        b.add(it.path[0], VPackValue(VPackValueType::Null));
-      } else {
-        // attribute found
-        b.add(it.path[0], found);
-      }
-    } else {
-      // projection for a sub-attribute, e.g. a.b.c
-      // this is a lot more complex, because we may need to open and close multiple
-      // sub-objects, e.g. a projection on the sub-attribute a.b.c needs to build
-      //   { a: { b: { c: valueOfC } } }
-      // when we get here it is guaranteed that there will be no projections for 
-      // sub-attributes with the same prefix, e.g. a.b.c and a.x.y. This would
-      // complicate the logic here even further, so it is not supported.
-      TRI_ASSERT(it.type == AttributeNamePath::Type::MultiAttribute);
-      TRI_ASSERT(it.path.size() > 1);
-      size_t level = 0;
-      VPackSlice found = slice;
-      size_t const n = it.path.size();
-      while (level < n) {
-        // look up attribute/sub-attribute
-        found = found.get(it.path[level]);
-        if (found.isNone()) {
-          // not found. we can exit early
-          b.add(it.path[level], VPackValue(VPackValueType::Null));
-          break;
-        }
-        if (level < n - 1 && !found.isObject()) {
-          // we would to recurse into a sub-attribute, but what we found
-          // is no object... that means we can already stop here.
-          b.add(it.path[level], VPackValue(VPackValueType::Null));
-          break;
-        }
-        if (level == n - 1) {
-          // target value
-          b.add(it.path[level], found);
-          break;
-        }
-        // recurse into sub-attribute object
-        TRI_ASSERT(level < n - 1);
-        b.add(it.path[level], VPackValue(VPackValueType::Object));
-        ++level;
-      }
- 
-      // close all that we opened ourselves, so that the next projection can
-      // again start at the top level
-      while (level-- > 0) {
-        b.close();
-      }
-    }
-  }
-}
-
 template <bool checkUniqueness, bool skip>
 IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex,
                                                  DocumentProducingFunctionContext& context) {
@@ -147,10 +67,7 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
     VPackBuilder& objectBuilder = context.getBuilder();
     objectBuilder.clear();
     objectBuilder.openObject(true);
-
-    handleProjections(context.getProjections(), context.getTrxPtr(), slice,
-                      objectBuilder);
-
+    context.getProjections().toVelocyPackFromDocument(objectBuilder, slice, context.getTrxPtr());
     objectBuilder.close();
     
     InputAqlItemRow const& input = context.getInputRow();
@@ -217,7 +134,7 @@ IndexIterator::DocumentCallback aql::buildDocumentCallback(DocumentProducingFunc
     
   if (!context.getProjections().empty()) {
     // return a projection
-    if (!context.getCoveringIndexAttributePositions().empty()) {
+    if (context.getProjections().supportsCoveringIndex()) {
       // projections from an index value (covering index)
       return getCallback<checkUniqueness, skip>(DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex{},
                                                 context);
@@ -263,60 +180,21 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
     InputAqlItemRow const& inputRow, OutputAqlItemRow* outputRow,
     RegisterId const outputRegister, bool produceResult,
     aql::QueryContext& query, transaction::Methods& trx, Expression* filter,
-    std::vector<arangodb::aql::AttributeNamePath> const& projections, 
-    std::vector<size_t> const& coveringIndexAttributePositions,
+    arangodb::aql::Projections const& projections, 
     bool allowCoveringIndexOptimization, bool checkUniqueness)
     : _inputRow(inputRow),
       _outputRow(outputRow),
       _query(query),
       _trx(trx),
       _filter(filter),
-      _coveringIndexAttributePositions(coveringIndexAttributePositions),
+      _projections(projections),
       _numScanned(0),
       _numFiltered(0),
       _outputRegister(outputRegister),
       _produceResult(produceResult),
       _allowCoveringIndexOptimization(allowCoveringIndexOptimization),
       _isLastIndex(false),
-      _checkUniqueness(checkUniqueness) {
-
-  initializeProjections(projections);
-}
-
-void DocumentProducingFunctionContext::initializeProjections(std::vector<arangodb::aql::AttributeNamePath> const& projections) {
-  // classify all the projections we have (the type is only determined once, 
-  // so we don't have to recalculate it at run-time for each document)
-  TRI_ASSERT(_projections.empty());
-  _projections.reserve(projections.size());
-
-  for (auto const& it : projections) {
-    _projections.emplace_back(AttributeProjection{it, it.type()});
-  }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // make sure all our projections are for distinct top-level attributes.
-  // we currently don't support multiple projections for the same top-level
-  // attribute, e.g. a.b.c and a.x.y.
-  // this would complicate the logic for attribute extraction considerably,
-  // so in this case we will just have combined the two projections into a
-  // single projection on attribute a before.
-  if (_projections.size() > 1) {
-    for (auto it = _projections.begin(); it != _projections.end(); ++it) {
-      // we expect all our projections to not have any common prefixes,
-      // because that would immensely complicate the logic inside 
-      // handleProjections
-      auto const& current = (*it).path;
-      // this is a quadratic algorithm (:gut:), but it is only activated
-      // as a safety check in maintainer mode, plus we are guaranteed to have
-      // at most five projections right now
-      auto it2 = std::find_if(_projections.begin(), _projections.end(), [&current](auto const& other) {
-        return other.path[0] == current.path[0] && other.path.size() != current.path.size();
-      });
-      TRI_ASSERT(it2 == _projections.end());
-    }
-  }
-#endif
-}
+      _checkUniqueness(checkUniqueness) {}
 
 void DocumentProducingFunctionContext::setOutputRow(OutputAqlItemRow* outputRow) {
   _outputRow = outputRow;
@@ -326,7 +204,7 @@ bool DocumentProducingFunctionContext::getProduceResult() const noexcept {
   return _produceResult;
 }
 
-std::vector<AttributeProjection> const& DocumentProducingFunctionContext::getProjections() const noexcept {
+arangodb::aql::Projections const& DocumentProducingFunctionContext::getProjections() const noexcept {
   return _projections;
 }
 
@@ -336,11 +214,6 @@ transaction::Methods* DocumentProducingFunctionContext::getTrxPtr() const noexce
   
 arangodb::velocypack::Builder& DocumentProducingFunctionContext::getBuilder() noexcept {
   return _objectBuilder;
-}
-
-std::vector<size_t> const& DocumentProducingFunctionContext::getCoveringIndexAttributePositions() const
-    noexcept {
-  return _coveringIndexAttributePositions;
 }
 
 bool DocumentProducingFunctionContext::getAllowCoveringIndexOptimization() const noexcept {
@@ -463,42 +336,11 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
     objectBuilder.openObject(true);
 
     if (context.getAllowCoveringIndexOptimization()) {
-      // a potential call by a covering index iterator...
-      bool const isArray = slice.isArray();
-      size_t i = 0;
-      for (auto const& it : context.getProjections()) {
-        if (isArray) {
-          // we will get a Slice with an array of index values. now we need
-          // to look up the array values from the correct positions to
-          // populate the result with the projection values this case will
-          // be triggered for indexes that can be set up on any number of
-          // attributes (hash/skiplist)
-          VPackSlice found = slice.at(context.getCoveringIndexAttributePositions()[i]);
-          if (found.isNone()) {
-            found = VPackSlice::nullSlice();
-          }
-          for (size_t j = 0; j < it.path.size() - 1; ++j) {
-            objectBuilder.add(it.path[j], VPackValue(VPackValueType::Object));
-          }
-          objectBuilder.add(it.path.path.back(), found);
-          for (size_t j = 0; j < it.path.size() - 1; ++j) {
-            objectBuilder.close();
-          }
-          ++i;
-        } else {
-          // no array Slice... this case will be triggered for indexes that
-          // contain simple string values, such as the primary index or the
-          // edge index
-          if (slice.isNone()) {
-            slice = VPackSlice::nullSlice();
-          }
-          objectBuilder.add(it.path[0], slice);
-        }
-      }
+      // projections from a covering index
+      context.getProjections().toVelocyPackFromIndex(objectBuilder, slice, context.getTrxPtr());
     } else {
       // projections from a "real" document
-      handleProjections(context.getProjections(), context.getTrxPtr(), slice,
-                        objectBuilder);
+      context.getProjections().toVelocyPackFromDocument(objectBuilder, slice, context.getTrxPtr());
     }
 
     objectBuilder.close();

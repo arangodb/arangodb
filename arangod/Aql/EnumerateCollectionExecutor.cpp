@@ -33,6 +33,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/Projections.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
@@ -54,13 +55,13 @@ std::vector<size_t> const emptyAttributePositions;
 EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
     RegisterId outputRegister, aql::QueryContext& query,
     Collection const* collection, Variable const* outVariable, bool produceResult,
-    Expression* filter, std::vector<arangodb::aql::AttributeNamePath> const& projections,
+    Expression* filter, arangodb::aql::Projections projections,
     bool random, bool count)
     : _query(query),
       _collection(collection),
       _outVariable(outVariable),
       _filter(filter),
-      _projections(projections),
+      _projections(std::move(projections)),
       _outputRegisterId(outputRegister),
       _produceResult(produceResult),
       _random(random),
@@ -82,7 +83,7 @@ Expression* EnumerateCollectionExecutorInfos::getFilter() const noexcept {
   return _filter;
 }
 
-std::vector<arangodb::aql::AttributeNamePath> const& EnumerateCollectionExecutorInfos::getProjections() const noexcept {
+arangodb::aql::Projections const& EnumerateCollectionExecutorInfos::getProjections() const noexcept {
   return _projections;
 }
 
@@ -104,7 +105,6 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
       _documentProducingFunctionContext(_currentRow, nullptr, _infos.getOutputRegisterId(),
                                         _infos.getProduceResult(), _infos.getQuery(), _trx,
                                         _infos.getFilter(), _infos.getProjections(),
-                                        std::vector<size_t>(),
                                         true, false),
       _state(ExecutionState::HASMORE),
       _executorState(ExecutorState::HASMORE),

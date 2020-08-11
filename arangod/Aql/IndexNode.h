@@ -116,10 +116,6 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   /// @brief getIndexes, hand out the indexes used
   std::vector<transaction::Methods::IndexHandle> const& getIndexes() const;
 
-  /// @brief called to build up the matching positions of the index values for
-  /// the projection attributes (if any)
-  void initIndexCoversProjections();
-
   bool isLateMaterialized() const noexcept {
     TRI_ASSERT((_outNonMaterializedDocId == nullptr && _outNonMaterializedIndVars.second.empty()) ||
                !(_outNonMaterializedDocId == nullptr || _outNonMaterializedIndVars.second.empty()));
@@ -127,7 +123,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   }
 
   bool canApplyLateDocumentMaterializationRule() const {
-    return isProduceResult() && coveringIndexAttributePositions().empty();
+    return isProduceResult() && !_projections.supportsCoveringIndex();
   }
 
   struct IndexVariable {
@@ -145,7 +141,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   void setLateMaterialized(aql::Variable const* docIdVariable, IndexId commonIndexId,
                            IndexVarsInfo const& indexVariables);
 
-  std::vector<size_t> const& coveringIndexAttributePositions() const noexcept;
+  void setProjections(std::unordered_set<arangodb::aql::AttributeNamePath> projections);
 
  private:
   void initializeOnce(bool& hasV8Expression, std::vector<Variable const*>& inVars,
@@ -166,14 +162,6 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   /// @brief the index(es) condition
   std::unique_ptr<Condition> _condition;
   
-  /// @brief vector (built up in order of projection attributes) that contains
-  /// the position of the index attribute value in the data returned by the
-  /// index example, if the index is on ["a", "b", "c"], and the projections are
-  /// ["b", "a"], then this vector will contain [1, 0] the vector will only be
-  /// populated by IndexNodes, and will be left empty by
-  /// EnumerateCollectionNodes
-  std::vector<std::size_t> mutable _coveringIndexAttributePositions;
-
   /// @brief the index sort order - this is the same order for all indexes
   bool _needsGatherNodeSort;
 

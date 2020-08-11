@@ -26,7 +26,6 @@
 #ifndef ARANGOD_AQL_ENUMERATECOLLECTION_EXECUTOR_H
 #define ARANGOD_AQL_ENUMERATECOLLECTION_EXECUTOR_H
 
-#include "Aql/AttributeNamePath.h"
 #include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
@@ -55,6 +54,7 @@ class RegisterInfos;
 class Expression;
 class InputAqlItemRow;
 class OutputAqlItemRow;
+class Projections;
 class QueryContext;
 struct Variable;
 
@@ -66,7 +66,7 @@ class EnumerateCollectionExecutorInfos {
   EnumerateCollectionExecutorInfos(RegisterId outputRegister, aql::QueryContext& query,
                                    Collection const* collection, Variable const* outVariable,
                                    bool produceResult, Expression* filter,
-                                   std::vector<arangodb::aql::AttributeNamePath> const& projections,
+                                   arangodb::aql::Projections projections,
                                    bool random, bool count);
 
   EnumerateCollectionExecutorInfos() = delete;
@@ -78,7 +78,7 @@ class EnumerateCollectionExecutorInfos {
   Variable const* getOutVariable() const;
   QueryContext& getQuery() const;
   Expression* getFilter() const noexcept;
-  std::vector<arangodb::aql::AttributeNamePath> const& getProjections() const noexcept;
+  arangodb::aql::Projections const& getProjections() const noexcept;
   bool getProduceResult() const noexcept;
   bool getRandom() const noexcept;
   bool getCount() const noexcept;
@@ -89,7 +89,7 @@ class EnumerateCollectionExecutorInfos {
   Collection const* _collection;
   Variable const* _outVariable;
   Expression* _filter;
-  std::vector<arangodb::aql::AttributeNamePath> const& _projections;
+  arangodb::aql::Projections _projections;
   RegisterId _outputRegisterId;
   bool _produceResult;
   bool _random;
