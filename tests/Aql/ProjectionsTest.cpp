@@ -38,9 +38,81 @@ TEST(ProjectionsTest, buildEmpty) {
 
   ASSERT_EQ(0, p.size());
   ASSERT_TRUE(p.empty());
+  ASSERT_FALSE(p.isSingle("a"));
+  ASSERT_FALSE(p.isSingle("_key"));
 }
 
-TEST(ProjectionsTest, buildUnique) {
+TEST(ProjectionsTest, buildSingleKey) {
+  std::vector<arangodb::aql::AttributeNamePath> attributes = {
+    AttributeNamePath("_key"),
+  };
+  Projections p(std::move(attributes));
+
+  ASSERT_EQ(1, p.size());
+  ASSERT_FALSE(p.empty());
+  ASSERT_EQ(AttributeNamePath("_key"), p[0].path);
+  ASSERT_EQ(arangodb::aql::AttributeNamePath::Type::KeyAttribute, p[0].type);
+  ASSERT_FALSE(p.isSingle("a"));
+  ASSERT_TRUE(p.isSingle("_key"));
+}
+
+TEST(ProjectionsTest, buildSingleId) {
+  std::vector<arangodb::aql::AttributeNamePath> attributes = {
+    AttributeNamePath("_id"),
+  };
+  Projections p(std::move(attributes));
+
+  ASSERT_EQ(1, p.size());
+  ASSERT_FALSE(p.empty());
+  ASSERT_EQ(AttributeNamePath("_id"), p[0].path);
+  ASSERT_EQ(arangodb::aql::AttributeNamePath::Type::IdAttribute, p[0].type);
+  ASSERT_FALSE(p.isSingle("a"));
+  ASSERT_TRUE(p.isSingle("_id"));
+}
+
+TEST(ProjectionsTest, buildSingleFrom) {
+  std::vector<arangodb::aql::AttributeNamePath> attributes = {
+    AttributeNamePath("_from"),
+  };
+  Projections p(std::move(attributes));
+
+  ASSERT_EQ(1, p.size());
+  ASSERT_FALSE(p.empty());
+  ASSERT_EQ(AttributeNamePath("_from"), p[0].path);
+  ASSERT_EQ(arangodb::aql::AttributeNamePath::Type::FromAttribute, p[0].type);
+  ASSERT_FALSE(p.isSingle("a"));
+  ASSERT_TRUE(p.isSingle("_from"));
+}
+
+TEST(ProjectionsTest, buildSingleTo) {
+  std::vector<arangodb::aql::AttributeNamePath> attributes = {
+    AttributeNamePath("_to"),
+  };
+  Projections p(std::move(attributes));
+
+  ASSERT_EQ(1, p.size());
+  ASSERT_FALSE(p.empty());
+  ASSERT_EQ(AttributeNamePath("_to"), p[0].path);
+  ASSERT_EQ(arangodb::aql::AttributeNamePath::Type::ToAttribute, p[0].type);
+  ASSERT_FALSE(p.isSingle("a"));
+  ASSERT_TRUE(p.isSingle("_to"));
+}
+
+TEST(ProjectionsTest, buildSingleOther) {
+  std::vector<arangodb::aql::AttributeNamePath> attributes = {
+    AttributeNamePath("piff"),
+  };
+  Projections p(std::move(attributes));
+
+  ASSERT_EQ(1, p.size());
+  ASSERT_FALSE(p.empty());
+  ASSERT_EQ(AttributeNamePath("piff"), p[0].path);
+  ASSERT_EQ(arangodb::aql::AttributeNamePath::Type::SingleAttribute, p[0].type);
+  ASSERT_FALSE(p.isSingle("a"));
+  ASSERT_TRUE(p.isSingle("piff"));
+}
+
+TEST(ProjectionsTest, buildMulti) {
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
     AttributeNamePath("a"),
     AttributeNamePath("b"),
@@ -49,12 +121,17 @@ TEST(ProjectionsTest, buildUnique) {
   Projections p(std::move(attributes));
 
   ASSERT_EQ(3, p.size());
+  ASSERT_FALSE(p.empty());
   ASSERT_EQ(AttributeNamePath("a"), p[0].path);
   ASSERT_EQ(arangodb::aql::AttributeNamePath::Type::SingleAttribute, p[0].type);
   ASSERT_EQ(AttributeNamePath("b"), p[1].path);
   ASSERT_EQ(arangodb::aql::AttributeNamePath::Type::SingleAttribute, p[1].type);
   ASSERT_EQ(AttributeNamePath("c"), p[2].path);
   ASSERT_EQ(arangodb::aql::AttributeNamePath::Type::SingleAttribute, p[2].type);
+  ASSERT_FALSE(p.isSingle("a"));
+  ASSERT_FALSE(p.isSingle("b"));
+  ASSERT_FALSE(p.isSingle("c"));
+  ASSERT_FALSE(p.isSingle("_key"));
 }
 
 TEST(ProjectionsTest, buildReverse) {
@@ -66,12 +143,17 @@ TEST(ProjectionsTest, buildReverse) {
   Projections p(std::move(attributes));
 
   ASSERT_EQ(3, p.size());
+  ASSERT_FALSE(p.empty());
   ASSERT_EQ(AttributeNamePath("a"), p[0].path);
   ASSERT_EQ(arangodb::aql::AttributeNamePath::Type::SingleAttribute, p[0].type);
   ASSERT_EQ(AttributeNamePath("b"), p[1].path);
   ASSERT_EQ(arangodb::aql::AttributeNamePath::Type::SingleAttribute, p[1].type);
   ASSERT_EQ(AttributeNamePath("c"), p[2].path);
   ASSERT_EQ(arangodb::aql::AttributeNamePath::Type::SingleAttribute, p[2].type);
+  ASSERT_FALSE(p.isSingle("a"));
+  ASSERT_FALSE(p.isSingle("b"));
+  ASSERT_FALSE(p.isSingle("c"));
+  ASSERT_FALSE(p.isSingle("_key"));
 }
 
 TEST(ProjectionsTest, buildWithSystem) {
@@ -83,12 +165,16 @@ TEST(ProjectionsTest, buildWithSystem) {
   Projections p(std::move(attributes));
 
   ASSERT_EQ(3, p.size());
+  ASSERT_FALSE(p.empty());
   ASSERT_EQ(AttributeNamePath("_id"), p[0].path);
   ASSERT_EQ(arangodb::aql::AttributeNamePath::Type::IdAttribute, p[0].type);
   ASSERT_EQ(AttributeNamePath("_key"), p[1].path);
   ASSERT_EQ(arangodb::aql::AttributeNamePath::Type::KeyAttribute, p[1].type);
   ASSERT_EQ(AttributeNamePath("a"), p[2].path);
   ASSERT_EQ(arangodb::aql::AttributeNamePath::Type::SingleAttribute, p[2].type);
+  ASSERT_FALSE(p.isSingle("a"));
+  ASSERT_FALSE(p.isSingle("_key"));
+  ASSERT_FALSE(p.isSingle("_id"));
 }
 
 TEST(ProjectionsTest, buildNested1) {
@@ -100,10 +186,14 @@ TEST(ProjectionsTest, buildNested1) {
   Projections p(std::move(attributes));
 
   ASSERT_EQ(2, p.size());
+  ASSERT_FALSE(p.empty());
   ASSERT_EQ(AttributeNamePath("_key"), p[0].path);
   ASSERT_EQ(arangodb::aql::AttributeNamePath::Type::KeyAttribute, p[0].type);
   ASSERT_EQ(AttributeNamePath("a"), p[1].path);
   ASSERT_EQ(arangodb::aql::AttributeNamePath::Type::SingleAttribute, p[1].type);
+  ASSERT_FALSE(p.isSingle("a"));
+  ASSERT_FALSE(p.isSingle("_key"));
+  ASSERT_FALSE(p.isSingle("z"));
 }
 
 TEST(ProjectionsTest, buildNested2) {
@@ -116,6 +206,7 @@ TEST(ProjectionsTest, buildNested2) {
   Projections p(std::move(attributes));
 
   ASSERT_EQ(4, p.size());
+  ASSERT_FALSE(p.empty());
   ASSERT_EQ(AttributeNamePath("A"), p[0].path);
   ASSERT_EQ(arangodb::aql::AttributeNamePath::Type::SingleAttribute, p[0].type);
   ASSERT_EQ(AttributeNamePath("_key"), p[1].path);

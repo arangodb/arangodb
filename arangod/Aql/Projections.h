@@ -76,9 +76,6 @@ class Projections {
   /// @brief whether or not the projections are backed by a covering index
   bool supportsCoveringIndex() const noexcept { return _supportsCoveringIndex; }
 
-  /// @brief remove projections with shared prefixes, e.g. a.b and a.c
-  bool removeShardPrefixes(); 
-
   /// @brief whether or not there are any projections
   bool empty() const noexcept { return _projections.empty(); }
   
