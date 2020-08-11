@@ -1,6 +1,9 @@
 v3.7.2 (XXXX-XX-XX)
 -------------------
 
+* Fixed hotbackup S3 credentials validation and error reporting for upload
+  and download.
+
 * Always fetch data for /_api/cluster/agency-dump from leader of the agency.
   Add option "redirectToLeader=true" to internal /_api/agency/state API.
 
