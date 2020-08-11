@@ -3781,8 +3781,14 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
 
     std::vector<ServerID> dbServers = ci.getCurrentDBServers();
     std::vector<ServerID> lockedServers;
-    double lockWait(1);
-    while (steady_clock::now() < end) {
+    // We try to hold all write transactions on all dbservers at the same time.
+    // The default timeout to get to this state is 120s. We first try for a
+    // certain time t, and if not everybody has stopped all transactions within
+    // t seconds, we release all locks and try again with t doubled, until the
+    // total timeout has been reached. We start with t=15, which gives us
+    // 15, 30 and 60 to try before the default timeout of 120s has been reached.
+    double lockWait(15.0);
+    while (steady_clock::now() < end && !feature.server().isStopping()) {
       result = lockDBServerTransactions(pool, backupId, dbServers, lockWait, lockedServers);
       if (!result.ok()) {
         unlockDBServerTransactions(pool, backupId, lockedServers);
@@ -3797,7 +3803,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
         break;
       }
       if (lockWait < 3600.0) {
-        lockWait *= 1.5;
+        lockWait *= 2.0;
       }
       std::this_thread::sleep_for(milliseconds(300));
     }

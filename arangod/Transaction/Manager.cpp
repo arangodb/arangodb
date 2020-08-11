@@ -88,24 +88,39 @@ struct MGMethods final : arangodb::transaction::Methods {
 Manager::Manager(ManagerFeature& feature)
   : _feature(feature),
     _nrRunning(0),
+    _nrReadLocked(0),
     _disallowInserts(false),
     _writeLockHeld(false),
     _streamingLockTimeout(feature.streamingLockTimeout()) {}
 
-void Manager::registerTransaction(TransactionId /*transactionId*/, bool isReadOnlyTransaction) {
-  if (!isReadOnlyTransaction) {
-    _rwLock.lockRead();
+void Manager::registerTransaction(TransactionId transactionId,
+                                  bool isReadOnlyTransaction,
+                                  bool isFollowerTransaction) {
+  // If isFollowerTransaction is set then either the transactionId should be
+  // an isFollowerTransactionId or it should be a legacy transactionId:
+  TRI_ASSERT(!isFollowerTransaction ||
+             isFollowerTransactionId(transactionId) ||
+             isLegacyTransactionId(transactionId));
+  if (!isReadOnlyTransaction && !isFollowerTransaction) {
+    LOG_TOPIC("ccdea", TRACE, Logger::TRANSACTIONS) << "Acquiring read lock for tid " << transactionId;
+    _rwLock.readLock();
+    _nrReadLocked.fetch_add(1, std::memory_order_relaxed);
+    LOG_TOPIC("ccdeb", TRACE, Logger::TRANSACTIONS) << "Got read lock for tid " << transactionId << " nrReadLocked: " << _nrReadLocked.load(std::memory_order_relaxed);
   }
 
   _nrRunning.fetch_add(1, std::memory_order_relaxed);
 }
 
 // unregisters a transaction
-void Manager::unregisterTransaction(TransactionId transactionId, bool isReadOnlyTransaction) {
+void Manager::unregisterTransaction(TransactionId transactionId,
+                                    bool isReadOnlyTransaction,
+                                    bool isFollowerTransaction) {
   // always perform an unlock when we leave this function
-  auto guard = scopeGuard([this, &isReadOnlyTransaction]() {
-    if (!isReadOnlyTransaction) {
+  auto guard = scopeGuard([this, transactionId, &isReadOnlyTransaction, &isFollowerTransaction]() {
+    if (!isReadOnlyTransaction && !isFollowerTransaction) {
       _rwLock.unlockRead();
+      _nrReadLocked.fetch_sub(1, std::memory_order_relaxed);
+      LOG_TOPIC("ccded", TRACE, Logger::TRANSACTIONS) << "Released lock for tid " << transactionId << " nrReadLocked: " << _nrReadLocked.load(std::memory_order_relaxed);
     }
   });
 
@@ -595,7 +610,7 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
              status == transaction::Status::ABORTED);
 
   LOG_TOPIC("7bd2f", DEBUG, Logger::TRANSACTIONS)
-      << "managed trx '" << tid << " updating to '" << status << "'";
+      << "managed trx '" << tid << " updating to '" << (status == transaction::Status::COMMITTED ? "COMMITED" : "ABORTED") << "'";
 
   Result res;
   size_t const bucket = getBucket(tid);

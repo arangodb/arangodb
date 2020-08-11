@@ -109,7 +109,8 @@ class Context {
   /// @brief unregister the transaction
   /// this will save the transaction's id and status locally
   void storeTransactionResult(TransactionId id, bool wasRegistered,
-                              bool isReadOnlyTransaction) noexcept;
+                              bool isReadOnlyTransaction,
+                              bool isFollowerTranaction) noexcept;
 
  public:
   /// @brief get a custom type handler
