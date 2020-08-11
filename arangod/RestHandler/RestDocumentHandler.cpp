@@ -197,7 +197,7 @@ bool RestDocumentHandler::insertDocument() {
     return false;
   }
   if (!opOptions.isSynchronousReplicationFrom.empty()) {
-    _activeTrx->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
+    trx->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
   }
 
   generateSaved(result, collectionName,
@@ -484,7 +484,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     result = trx->replace(collectionName, body, opOptions);
   }
   if (!opOptions.isSynchronousReplicationFrom.empty()) {
-    _activeTrx->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
+    trx->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
   }
 
   res = trx->finish(result.result);
@@ -608,7 +608,7 @@ bool RestDocumentHandler::removeDocument() {
     return false;
   }
   if (!opOptions.isSynchronousReplicationFrom.empty()) {
-    _activeTrx->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
+    trx->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
   }
 
   if (!res.ok()) {
