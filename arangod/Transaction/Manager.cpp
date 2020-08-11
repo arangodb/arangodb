@@ -49,7 +49,6 @@
 #include "Transaction/Status.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
-#include "VocBase/Identifiers/TransactionId.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/VocBase/VirtualCollection.h"
