@@ -97,8 +97,12 @@ void RestClusterHandler::handleAgencyDump() {
 
   std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-  ci.agencyDump(body);
-  generateResult(rest::ResponseCode::OK, body->slice());
+  Result res = ci.agencyDump(body);
+  if (res.ok()) {
+    generateResult(rest::ResponseCode::OK, body->slice());
+  } else {
+    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, res.errorNumber(), res.errorMessage());
+  }
 }
 
 void RestClusterHandler::handleAgencyCache() {
