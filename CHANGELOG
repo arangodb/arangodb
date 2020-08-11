@@ -2,7 +2,7 @@ v3.6.6 (XXXX-XX-XX)
 -------------------
 
 * Fixed hotbackup S3 credentials validation and error reporting for upload
-  and download.
+  and download (BTS-162).
 
 * Fix: The 'sorted' COLLECT variant would return undefined instead of null when
   grouping by a null value.
