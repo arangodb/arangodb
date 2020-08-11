@@ -793,7 +793,8 @@ transaction::Methods::~Methods() {
     _transactionContextPtr->storeTransactionResult(_state->id(),
                                                    _state->hasFailedOperations(),
                                                    _state->wasRegistered(),
-                                                   _state->isReadOnlyTransaction());
+                                                   _state->isReadOnlyTransaction(),
+                                                   _state->isFollowerTransaction());
 
     delete _state;
     _state = nullptr;
