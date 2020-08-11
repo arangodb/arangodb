@@ -289,7 +289,6 @@ Result Collections::create(TRI_vocbase_t& vocbase,
     helper.add(arangodb::StaticStrings::DataSourceType, VPackValue(static_cast<int>(info.collectionType)));
     helper.add(arangodb::StaticStrings::DataSourceName, VPackValue(info.name));
 
-    bool isSystem = vocbase.IsSystemName(info.name);
     /*if (addUseRevs) {
       helper.add(arangodb::StaticStrings::UsesRevisionsAsDocumentIds,
                  arangodb::velocypack::Value(useRevs));
