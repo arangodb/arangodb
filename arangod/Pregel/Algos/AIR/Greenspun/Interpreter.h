@@ -45,23 +45,32 @@ struct StackFrame {
   bool noParentScope = false;
 };
 
-struct EvalContext {
-  EvalContext() noexcept;
-  virtual ~EvalContext() = default;
+struct Machine {
+  Machine() noexcept;
+  virtual ~Machine() = default;
   // Variables go here.
   void pushStack(bool noParentScope = false);
   void popStack();
   EvalResult setVariable(std::string const& name, VPackSlice value);
   EvalResult getVariable(std::string const& name, VPackBuilder& result);
 
-
-  size_t depth{0};
-
   using function_type =
-      std::function<EvalResult(EvalContext& ctx, VPackSlice const slice, VPackBuilder& result)>;
+      std::function<EvalResult(Machine& ctx, VPackSlice const slice, VPackBuilder& result)>;
 
-  EvalResult setFunction(std::string name, function_type&& f);
-  EvalResult unsetFunction(std::string name);
+  EvalResult setFunction(std::string_view name, function_type&& f);
+  EvalResult unsetFunction(std::string_view name);
+
+  EvalResult applyFunction(std::string name, VPackSlice const slice, VPackBuilder& result);
+
+  template<typename T>
+  using member_function_type =
+    std::function<EvalResult(T*, Machine& ctx, VPackSlice const slice, VPackBuilder& result)>;
+
+  template<typename T, typename F>
+  EvalResult setFunctionMember(std::string_view name, F&& f, T* ptr) {
+    return setFunction(name, bind_member(f, ptr));
+  }
+
  private:
   std::vector<StackFrame> variables;
   std::unordered_map<std::string, function_type> functions;
@@ -69,28 +78,26 @@ struct EvalContext {
 
 template <bool isNewScope, bool noParentScope = false>
 struct StackFrameGuard {
-  StackFrameGuard(EvalContext& ctx) : _ctx(ctx) {
-    ctx.depth += 1;
+  StackFrameGuard(Machine& ctx) : _ctx(ctx) {
     if constexpr (isNewScope) {
       ctx.pushStack(noParentScope);
     }
   }
 
   ~StackFrameGuard() {
-    _ctx.depth -= 1;
     if constexpr (isNewScope) {
       _ctx.popStack();
     }
   }
 
-  EvalContext& _ctx;
+  Machine& _ctx;
 };
-
-EvalResult Evaluate(EvalContext& ctx, VPackSlice slice, VPackBuilder& result);
-void InitInterpreter();
 
 bool ValueConsideredTrue(VPackSlice const value);
 bool ValueConsideredFalse(VPackSlice const value);
+
+EvalResult Evaluate(Machine& ctx, VPackSlice slice, VPackBuilder& result);
+void InitMachine(Machine& ctx);
 
 }  // namespace greenspun
 }  // namespace arangodb

@@ -24,7 +24,6 @@
 
 // #include "Basics/debugging.h"
 #include "Interpreter.h"
-#include "PrimEvalContext.h"
 #include "Primitives.h"
 
 #include <iostream>
@@ -37,21 +36,24 @@ using namespace arangodb::velocypack;
 
 namespace arangodb::greenspun {
 
-void InitInterpreter() { RegisterPrimitives(); }
+void InitMachine(Machine& m) { RegisterAllPrimitives(m); }
 
-EvalResult Apply(EvalContext& ctx, std::string const& function,
+EvalResult Apply(Machine& ctx, std::string const& function,
                  VPackSlice const params, VPackBuilder& result) {
+  return ctx.applyFunction(function, params, result);
+/*
   TRI_ASSERT(params.isArray())
   auto f = primitives.find(function);
   if (f != primitives.end()) {
-    return f->second(reinterpret_cast<PrimEvalContext&>(ctx), params, result)
+    return f->second(reinterpret_cast<Machine&>(ctx), params, result)
         .wrapError([&](EvalError& err) { err.wrapCall(function, params); });
   } else {
     return EvalError("primitive not found `" + function + "`");
   }
+*/
 }
 
-EvalResult SpecialIf(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
+EvalResult SpecialIf(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
   for (auto iter = paramIterator; iter.valid(); iter++) {
     auto pair = *iter;
     if (!pair.isArray() || pair.length() != 2) {
@@ -82,13 +84,13 @@ EvalResult SpecialIf(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder
   return {};
 }
 
-EvalResult SpecialQuote(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
+EvalResult SpecialQuote(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
   VPackArrayBuilder array(&result);
   result.add(paramIterator);
   return {};
 }
 
-EvalResult SpecialCons(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
+EvalResult SpecialCons(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
   auto&& [head, list] = unpackTuple<VPackSlice, VPackSlice>(paramIterator);
   if (paramIterator.valid()) {
     return EvalError("Excess elements in cons call");
@@ -104,7 +106,7 @@ EvalResult SpecialCons(EvalContext& ctx, ArrayIterator paramIterator, VPackBuild
   return {};
 }
 
-EvalResult SpecialAnd(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
+EvalResult SpecialAnd(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
   for (; paramIterator.valid(); paramIterator++) {
     VPackBuilder value;
     if (auto res = Evaluate(ctx, *paramIterator, value); res.fail()) {
@@ -123,7 +125,7 @@ EvalResult SpecialAnd(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilde
   return {};
 }
 
-EvalResult SpecialOr(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
+EvalResult SpecialOr(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
   for (; paramIterator.valid(); paramIterator++) {
     VPackBuilder value;
     if (auto res = Evaluate(ctx, *paramIterator, value); res.fail()) {
@@ -142,7 +144,7 @@ EvalResult SpecialOr(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder
   return {};
 }
 
-EvalResult SpecialSeq(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
+EvalResult SpecialSeq(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
   VPackBuilder store;
   for (; paramIterator.valid(); paramIterator++) {
     auto& usedBuilder = std::invoke([&]() -> VPackBuilder& {
@@ -163,7 +165,7 @@ EvalResult SpecialSeq(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilde
   return {};
 }
 
-EvalResult SpecialMatch(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
+EvalResult SpecialMatch(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
   if (!paramIterator.valid()) {
     return EvalError("expected at least one argument");
   }
@@ -207,7 +209,7 @@ EvalResult SpecialMatch(EvalContext& ctx, ArrayIterator paramIterator, VPackBuil
   return {};
 }
 
-EvalResult SpecialForEach(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
+EvalResult SpecialForEach(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
   // ["for-each", ["a", ["A", "B", "C"]], ["d", ["1", "2", "3"]], ["print", ["var-ref", "a"], ["var-ref", "d"]]]
 
   if (!paramIterator.valid()) {
@@ -257,7 +259,7 @@ EvalResult SpecialForEach(EvalContext& ctx, ArrayIterator paramIterator, VPackBu
 
   VPackSlice body = paramIterator.value();
 
-  auto const runIterators = [&](EvalContext& ctx, std::size_t index, auto next) -> EvalResult {
+  auto const runIterators = [&](Machine& ctx, std::size_t index, auto next) -> EvalResult {
     if (index == iterators.size()) {
       VPackBuilder sink;
       return Evaluate(ctx, body, sink);
@@ -277,7 +279,7 @@ EvalResult SpecialForEach(EvalContext& ctx, ArrayIterator paramIterator, VPackBu
   return runIterators(ctx, 0, runIterators);
 }
 
-EvalResult Call(EvalContext& ctx, VPackSlice const functionSlice,
+EvalResult Call(Machine& ctx, VPackSlice const functionSlice,
                 ArrayIterator paramIterator, VPackBuilder& result) {
   VPackBuilder paramBuilder;
   {
@@ -294,7 +296,7 @@ EvalResult Call(EvalContext& ctx, VPackSlice const functionSlice,
   return Apply(ctx, functionSlice.copyString(), paramBuilder.slice(), result);
 }
 
-EvalResult LambdaCall(EvalContext& ctx, VPackSlice paramNames, VPackSlice captures,
+EvalResult LambdaCall(Machine& ctx, VPackSlice paramNames, VPackSlice captures,
                       ArrayIterator paramIterator, VPackSlice body, VPackBuilder& result) {
   VPackBuilder paramBuilder;
   {
@@ -339,7 +341,7 @@ EvalResult LambdaCall(EvalContext& ctx, VPackSlice paramNames, VPackSlice captur
   });
 }
 
-EvalResult SpecialLet(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
+EvalResult SpecialLet(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
   std::vector<VPackBuilder> store;
 
   if (!paramIterator.valid()) {
@@ -386,7 +388,7 @@ EvalResult SpecialLet(EvalContext& ctx, ArrayIterator paramIterator, VPackBuilde
   });
 }
 
-EvalResult Evaluate(EvalContext& ctx, VPackSlice const slice, VPackBuilder& result) {
+EvalResult Evaluate(Machine& ctx, VPackSlice const slice, VPackBuilder& result) {
   if (slice.isArray()) {
     if (slice.isEmptyArray()) {
       return EvalError("empty application");
@@ -449,12 +451,12 @@ EvalResult Evaluate(EvalContext& ctx, VPackSlice const slice, VPackBuilder& resu
   return {};
 }
 
-EvalContext::EvalContext() noexcept {
+Machine::Machine() noexcept {
   // Top level variables
   pushStack();
 }
 
-EvalResult EvalContext::getVariable(const std::string& name, VPackBuilder& result) {
+EvalResult Machine::getVariable(const std::string& name, VPackBuilder& result) {
   for (auto scope = variables.rbegin(); scope != variables.rend(); ++scope) {
     auto iter = scope->bindings.find(name);
     if (iter != std::end(scope->bindings)) {
@@ -470,21 +472,55 @@ EvalResult EvalContext::getVariable(const std::string& name, VPackBuilder& resul
   return EvalError("variable `" + name + "` not found");
 }
 
-EvalResult EvalContext::setVariable(std::string const& name, VPackSlice value) {
+EvalResult Machine::setVariable(std::string const& name, VPackSlice value) {
   TRI_ASSERT(!variables.empty());
   variables.back().bindings.operator[](name) = value; // insert or create
   return {};
 }
 
-void EvalContext::pushStack(bool noParentScope) {
+void Machine::pushStack(bool noParentScope) {
   variables.emplace_back().noParentScope = noParentScope;
 }
 
-void EvalContext::popStack() {
+void Machine::popStack() {
   // Top level variables must not be popped
   TRI_ASSERT(variables.size() > 1);
 
   variables.pop_back();
+}
+
+EvalResult Machine::setFunction(std::string_view name, function_type&& f) {
+  auto sname = std::string{name};
+
+  if (functions.find(sname) != functions.end()) {
+    return EvalError("function `" + sname + "` already registered");
+  }
+  functions[sname] = std::move(f);
+  return {};
+}
+
+EvalResult Machine::unsetFunction(std::string_view name) {
+  auto sname = std::string{name};
+
+  auto n = functions.erase(sname);
+  if (n == 0) {
+    return EvalError("function `" + sname + "` not known");
+  }
+  return {};
+}
+
+EvalResult Machine::applyFunction(std::string function, VPackSlice const params,
+                                  VPackBuilder& result) {
+  TRI_ASSERT(params.isArray());
+
+  auto f = functions.find(function);
+  if (f != functions.end()) {
+    return f->second(*this, params, result)
+      .wrapError([&](EvalError& err) { err.wrapCall(function, params); });
+  } else {
+    return EvalError("function not found `" + function + "`");
+  }
+  return {};
 }
 
 std::string EvalError::toString() const {

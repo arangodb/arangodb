@@ -29,17 +29,14 @@
 
 #include <iostream>
 
+#include "Extractor.h"
 #include "Interpreter.h"
-#include "PrimEvalContext.h"
 #include "Primitives.h"
 
 namespace arangodb {
 namespace greenspun {
 
-std::unordered_map<std::string, PrimitiveFunction> primitives;
-
-
-EvalResult Prim_Banana_Squared(EvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_Banana(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   auto tmp = double{0};
   for (auto p : VPackArrayIterator(params)) {
     if (p.isNumber<double>()) {
@@ -52,23 +49,7 @@ EvalResult Prim_Banana_Squared(EvalContext& ctx, VPackSlice const params, VPackB
   return {};
 }
 
-
-
-
-EvalResult Prim_Banana(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
-  auto tmp = double{0};
-  for (auto p : VPackArrayIterator(params)) {
-    if (p.isNumber<double>()) {
-      tmp += p.getNumericValue<double>();
-    } else {
-      return EvalError("expected double, found: " + p.toJson());
-    }
-  }
-  result.add(VPackValue(tmp));
-  return {};
-}
-
-EvalResult Prim_Sub(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_Sub(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   auto tmp = double{0};
   auto iter = VPackArrayIterator(params);
   if (iter.valid()) {
@@ -88,7 +69,7 @@ EvalResult Prim_Sub(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder&
   return {};
 }
 
-EvalResult Prim_Mul(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_Mul(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   auto tmp = double{1};
   for (auto p : VPackArrayIterator(params)) {
     if (!p.isNumber<double>()) {
@@ -100,7 +81,7 @@ EvalResult Prim_Mul(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder&
   return {};
 }
 
-EvalResult Prim_Div(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_Div(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   auto tmp = double{1};
   auto iter = VPackArrayIterator(params);
   if (iter.valid()) {
@@ -125,7 +106,7 @@ EvalResult Prim_Div(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder&
 }
 
 template <typename T>
-EvalResult Prim_CmpHuh(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_CmpHuh(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   auto iter = VPackArrayIterator(params);
   if (iter.valid()) {
     auto proto = *iter;
@@ -182,7 +163,7 @@ EvalResult Prim_CmpHuh(PrimEvalContext& ctx, VPackSlice const params, VPackBuild
   return {};
 }
 
-EvalResult Prim_VarRef(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_VarRef(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (params.length() == 1) {
     auto nameSlice = params.at(0);
     if (nameSlice.isString()) {
@@ -192,7 +173,7 @@ EvalResult Prim_VarRef(PrimEvalContext& ctx, VPackSlice const params, VPackBuild
   return EvalError("expecting a single string parameter, found " + params.toJson());
 }
 
-EvalResult Prim_Attrib(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_Attrib(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (!params.isArray() && params.length() != 2) {
     return EvalError("expected exactly two parameters");
   }
@@ -219,29 +200,29 @@ EvalResult Prim_Attrib(PrimEvalContext& ctx, VPackSlice const params, VPackBuild
   return {};
 }
 
-EvalResult Prim_This(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_This(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   result.add(VPackValue(ctx.getThisId()));
   return {};
 }
 
-EvalResult Prim_AccumRef(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_AccumRef(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   auto&& [accumId] = unpackTuple<std::string_view>(params);
   return ctx.getAccumulatorValue(accumId, result);
 }
 
-EvalResult Prim_AccumSet(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_AccumSet(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   auto&& [accumId, value] = unpackTuple<std::string_view, VPackSlice>(params);
   return ctx.setAccumulator(accumId, value);
 }
 
-EvalResult Prim_Update(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_Update(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   auto&& [accumId, toId, value] =
       unpackTuple<std::string_view, std::string_view, VPackSlice>(params);
 
   return ctx.updateAccumulator(accumId, toId, value);
 }
 
-EvalResult Prim_UpdateById(PrimEvalContext& ctx, VPackSlice const params,
+EvalResult Prim_UpdateById(Machine& ctx, VPackSlice const params,
                            VPackBuilder& result) {
   auto&& [accumId, toId, value] =
       unpackTuple<std::string_view, VPackSlice, VPackSlice>(params);
@@ -249,23 +230,23 @@ EvalResult Prim_UpdateById(PrimEvalContext& ctx, VPackSlice const params,
   return ctx.updateAccumulatorById(accumId, toId, value);
 }
 
-EvalResult Prim_SendToAllNeighbors(PrimEvalContext& ctx, VPackSlice const params,
+EvalResult Prim_SendToAllNeighbors(Machine& ctx, VPackSlice const params,
                                    VPackBuilder& result) {
   auto&& [accumId, value] = unpackTuple<std::string_view, VPackSlice>(params);
 
   return ctx.sendToAllNeighbors(accumId, value);
 }
 
-EvalResult Prim_PregelId(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_PregelId(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   return ctx.getPregelId(result);
 }
 
-EvalResult Prim_Set(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_Set(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   auto&& [accumId, value] = unpackTuple<std::string_view, VPackSlice>(params);
   return ctx.setAccumulator(accumId, value);
 }
 
-EvalResult Prim_For(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_For(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   auto&& [dir, vars, body] = unpackTuple<std::string_view, VPackSlice, VPackSlice>(params);
   auto&& [edgeVar] = unpackTuple<std::string>(vars);
 
@@ -278,7 +259,7 @@ EvalResult Prim_For(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder&
   });
 }
 
-EvalResult Prim_StringCat(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_StringCat(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   std::string str;
 
   for (auto iter = VPackArrayIterator(params); iter.valid(); iter++) {
@@ -294,7 +275,7 @@ EvalResult Prim_StringCat(PrimEvalContext& ctx, VPackSlice const params, VPackBu
   return {};
 }
 
-EvalResult Prim_ListCat(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_ListCat(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   VPackArrayBuilder array(&result);
   for (auto iter = VPackArrayIterator(params); iter.valid(); iter++) {
     VPackSlice p = *iter;
@@ -311,7 +292,7 @@ EvalResult Prim_ListCat(PrimEvalContext& ctx, VPackSlice const params, VPackBuil
 // TODO: Only for debugging purpose. Can be removed later again.
 void print(std::string msg) { std::cout << " >> LOG: " << msg << std::endl; }
 
-EvalResult Prim_IntToStr(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_IntToStr(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (params.length() != 1) {
     return EvalError("expected a single argument");
   }
@@ -324,7 +305,7 @@ EvalResult Prim_IntToStr(PrimEvalContext& ctx, VPackSlice const params, VPackBui
   return {};
 }
 
-EvalResult Prim_FalseHuh(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_FalseHuh(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (params.length() != 1) {
     return EvalError("expected a single argument");
   }
@@ -332,7 +313,7 @@ EvalResult Prim_FalseHuh(PrimEvalContext& ctx, VPackSlice const params, VPackBui
   return {};
 }
 
-EvalResult Prim_TrueHuh(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_TrueHuh(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (params.length() != 1) {
     return EvalError("expected a single argument");
   }
@@ -340,7 +321,7 @@ EvalResult Prim_TrueHuh(PrimEvalContext& ctx, VPackSlice const params, VPackBuil
   return {};
 }
 
-EvalResult Prim_Not(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_Not(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (params.length() != 1) {
     return EvalError("expected a single argument");
   }
@@ -348,7 +329,7 @@ EvalResult Prim_Not(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder&
   return {};
 }
 
-EvalResult Prim_VertexCount(PrimEvalContext& ctx, VPackSlice const params,
+EvalResult Prim_VertexCount(Machine& ctx, VPackSlice const params,
                             VPackBuilder& result) {
   if (!params.isEmptyArray()) {
     return EvalError("expected no argument");
@@ -356,7 +337,7 @@ EvalResult Prim_VertexCount(PrimEvalContext& ctx, VPackSlice const params,
   return ctx.getVertexCount(result);
 }
 
-EvalResult Prim_OutgoingEdgesCount(PrimEvalContext& ctx, VPackSlice const params,
+EvalResult Prim_OutgoingEdgesCount(Machine& ctx, VPackSlice const params,
                                    VPackBuilder& result) {
   if (!params.isEmptyArray()) {
     return EvalError("expected no argument");
@@ -383,13 +364,13 @@ std::string paramsToString(VPackSlice const params) {
 }
 }
 
-EvalResult Prim_PrintLn(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_PrintLn(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   ctx.printCallback(paramsToString(params));
   result.add(VPackSlice::noneSlice());
   return {};
 }
 
-EvalResult Prim_BindRef(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_BindRef(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (params.length() == 1) {
     VPackSlice name = params.at(0);
     if (name.isString()) {
@@ -400,7 +381,7 @@ EvalResult Prim_BindRef(PrimEvalContext& ctx, VPackSlice const params, VPackBuil
   return EvalError("expected a single string argument");
 }
 
-EvalResult Prim_GlobalSuperstep(PrimEvalContext& ctx, VPackSlice const params,
+EvalResult Prim_GlobalSuperstep(Machine& ctx, VPackSlice const params,
                                 VPackBuilder& result) {
   if (params.isEmptyArray()) {
     return ctx.getGlobalSuperstep(result);
@@ -409,7 +390,7 @@ EvalResult Prim_GlobalSuperstep(PrimEvalContext& ctx, VPackSlice const params,
   return EvalError("expected no arguments");
 }
 
-EvalResult Prim_GoToPhase(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_GoToPhase(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (params.length() == 1) {
     VPackSlice v = params.at(0);
     if (v.isString()) {
@@ -420,7 +401,7 @@ EvalResult Prim_GoToPhase(PrimEvalContext& ctx, VPackSlice const params, VPackBu
   return EvalError("expect single string argument");
 }
 
-EvalResult Prim_Finish(PrimEvalContext& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_Finish(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (params.isEmptyArray()) {
     return ctx.finishAlgorithm();
   }
@@ -428,7 +409,7 @@ EvalResult Prim_Finish(PrimEvalContext& ctx, VPackSlice const params, VPackBuild
   return EvalError("expect no arguments");
 }
 
-EvalResult Prim_VertexUniqueId(PrimEvalContext& ctx, VPackSlice const params,
+EvalResult Prim_VertexUniqueId(Machine& ctx, VPackSlice const params,
                                VPackBuilder& result) {
   if (params.isEmptyArray()) {
     result.add(VPackValue(ctx.getVertexUniqueId()));
@@ -438,14 +419,14 @@ EvalResult Prim_VertexUniqueId(PrimEvalContext& ctx, VPackSlice const params,
   return EvalError("expect no arguments");
 }
 
-EvalResult Prim_List(PrimEvalContext& ctx, VPackSlice const params,
+EvalResult Prim_List(Machine& ctx, VPackSlice const params,
                      VPackBuilder& result) {
   VPackArrayBuilder ab(&result);
   result.add(VPackArrayIterator(params));
   return {};
 }
 
-EvalResult Prim_Dict(PrimEvalContext& ctx, VPackSlice const params,
+EvalResult Prim_Dict(Machine& ctx, VPackSlice const params,
                      VPackBuilder& result) {
   VPackObjectBuilder ob(&result);
   for (auto&& pair : VPackArrayIterator(params)) {
@@ -461,7 +442,7 @@ EvalResult Prim_Dict(PrimEvalContext& ctx, VPackSlice const params,
   return {};
 }
 
-EvalResult Prim_Lambda(PrimEvalContext& ctx, VPackSlice const paramsList,
+EvalResult Prim_Lambda(Machine& ctx, VPackSlice const paramsList,
                      VPackBuilder& result) {
   VPackArrayIterator paramIterator(paramsList);
   if (!paramIterator.valid()) {
@@ -512,72 +493,58 @@ EvalResult Prim_Lambda(PrimEvalContext& ctx, VPackSlice const paramsList,
   return {};
 }
 
-EvalResult Prim_Error(PrimEvalContext& ctx, VPackSlice const params,
+EvalResult Prim_Error(Machine& ctx, VPackSlice const params,
                       VPackBuilder& result) {
   return EvalError(paramsToString(params));
 }
 
-void RegisterPrimitives() {
+void RegisterFunction(Machine& ctx, std::string_view name, Machine::function_type&& f) {
+  ctx.setFunction(name, std::move(f));
+}
+
+void RegisterAllPrimitives(Machine& ctx) {
   // Calculation operators
-  primitives["banana"] = Prim_Banana;
-  primitives["+"] = Prim_Banana;
-  primitives["-"] = Prim_Sub;
-  primitives["*"] = Prim_Mul;
-  primitives["/"] = Prim_Div;
+  ctx.setFunction("banana", Prim_Banana);
+  ctx.setFunction("+", Prim_Banana);
+  ctx.setFunction("-", Prim_Sub);
+  ctx.setFunction("*", Prim_Mul);
+  ctx.setFunction("/", Prim_Div);
 
   // Logical operators
-  primitives["not"] = Prim_Not;  // unary
-  primitives["false?"] = Prim_FalseHuh;
-  primitives["true?"] = Prim_TrueHuh;
+  ctx.setFunction("not", Prim_Not);  // unary
+  ctx.setFunction("false?", Prim_FalseHuh);
+  ctx.setFunction("true?", Prim_TrueHuh);
 
   // Comparison operators
-  primitives["eq?"] = Prim_CmpHuh<std::equal_to<>>;
-  primitives["gt?"] = Prim_CmpHuh<std::greater<>>;
-  primitives["ge?"] = Prim_CmpHuh<std::greater_equal<>>;
-  primitives["le?"] = Prim_CmpHuh<std::less_equal<>>;
-  primitives["lt?"] = Prim_CmpHuh<std::less<>>;
-  primitives["ne?"] = Prim_CmpHuh<std::not_equal_to<>>;
+  ctx.setFunction("eq?", Prim_CmpHuh<std::equal_to<>>);
+  ctx.setFunction("gt?", Prim_CmpHuh<std::greater<>>);
+  ctx.setFunction("ge?", Prim_CmpHuh<std::greater_equal<>>);
+  ctx.setFunction("le?", Prim_CmpHuh<std::less_equal<>>);
+  ctx.setFunction("lt?", Prim_CmpHuh<std::less<>>);
+  ctx.setFunction("ne?", Prim_CmpHuh<std::not_equal_to<>>);
 
   // Debug operators
-  primitives["print"] = Prim_PrintLn;
-  primitives["error"] = Prim_Error;
+  ctx.setFunction("print", Prim_PrintLn);
+
+  // Lambdas
+  ctx.setFunction("lambda", Prim_Lambda);
 
   // Utilities
-  primitives["list"] = Prim_List;
-  primitives["dict"] = Prim_Dict;
-  primitives["list-cat"] = Prim_ListCat;
-  primitives["string-cat"] = Prim_StringCat;
-  primitives["int-to-str"] = Prim_IntToStr;
-
-  primitives["lambda"] = Prim_Lambda;
+  ctx.setFunction("list-cat", Prim_ListCat);
+  ctx.setFunction("string-cat", Prim_StringCat);
+  ctx.setFunction("int-to-str", Prim_IntToStr);
 
   // Access operators
-  primitives["attrib"] = Prim_Attrib;
-  primitives["var-ref"] = Prim_VarRef;
-  primitives["bind-ref"] = Prim_BindRef;
-  primitives["accum-ref"] = Prim_AccumRef;
-  primitives["accum-set!"] = Prim_AccumSet;
+  ctx.setFunction("attrib-ref", Prim_AttribRef);
+  ctx.setFunction("attrib-set!", Prim_AttribSet);
 
-  primitives["this"] = Prim_This;
-  primitives["vertex-unique-id"] = Prim_VertexUniqueId;
-  //  primitives["doc"] = Prim_Doc;
-  primitives["update"] = Prim_Update;
-  primitives["update-by-id"] = Prim_UpdateById;
-  primitives["pregel-id"] = Prim_PregelId;
-  primitives["set"] = Prim_Set;
-  primitives["for"] = Prim_For;
-  primitives["global-superstep"] = Prim_GlobalSuperstep;
-  primitives["vertex-count"] = Prim_VertexCount;
-  primitives["this-number-outbound-edges"] = Prim_OutgoingEdgesCount;
-  primitives["send-to-all-neighbors"] = Prim_SendToAllNeighbors;
+  ctx.setFunction("var-ref", Prim_VarRef);
+  ctx.setFunction("var-set!", Prim_VarSet);
 
-  primitives["goto"] = Prim_GoToPhase;
-  primitives["finish"] = Prim_Finish;
+  ctx.setFunction("bind-ref", Prim_VarRef);
+  ctx.setFunction("param-test", Prim_ParamTest);
 }
 
-void RegisterFunction(std::string_view name, PrimitiveFunction&& f) {
-  primitives[std::string{name}] = f;
-}
 
 }  // namespace greenspun
 }  // namespace arangodb
