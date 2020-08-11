@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed hotbackup S3 credentials validation and error reporting for upload
+  and download.
+
 * Fix: writeConcern is now honored correctly (ES-655).
 
 * Fix: The 'sorted' COLLECT variant would return undefined instead of null when
