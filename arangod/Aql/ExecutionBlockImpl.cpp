@@ -1994,8 +1994,15 @@ auto ExecutionBlockImpl<Executor>::handleUpstreamState(AqlCallStack const& stack
     return {ExecState::UPSTREAM, upstreamState};
   }
 
-// TODO:MCHACKI skip counting needs implementation
-#if 0
+  TRI_ASSERT(stack.is36Compatible() || skippedLocal.subqueryDepth() == stack.subqueryLevel() + 1);
+
+  if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
+    if (!skippedLocal.nothingSkipped()) {
+      clientCall.didSkip(skippedLocal.getSkipCount());
+      clientCall.resetSkipCount();
+    }
+  }
+  #if 0
   if (!skippedLocal.nothingSkipped()) {
     if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
       // In SubqueryStart the stack is exactly the same size as the skip result
@@ -2028,7 +2035,8 @@ auto ExecutionBlockImpl<Executor>::handleUpstreamState(AqlCallStack const& stack
       }
     }
   }
-#endif
+  #endif
+
   if constexpr (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
     // We have a new range, passthrough can use this range.
     _hasUsedDataRangeBlock = false;
