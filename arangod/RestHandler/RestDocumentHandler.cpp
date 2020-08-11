@@ -199,6 +199,9 @@ RestStatus RestDocumentHandler::insertDocument() {
   if (!isMultiple && !opOptions.overwrite) {
      _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
+  if (!opOptions.isSynchronousReplicationFrom.empty()) {
+    _activeTrx->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
+  }
 
   Result res = _activeTrx->begin();
   if (!res.ok()) {
@@ -486,6 +489,9 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   if (!isArrayCase) {
     _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
+  if (!opOptions.isSynchronousReplicationFrom.empty()) {
+    _activeTrx->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
+  }
 
   // ...........................................................................
   // inside write transaction
@@ -604,6 +610,9 @@ RestStatus RestDocumentHandler::removeDocument() {
   _activeTrx = createTransaction(cname, AccessMode::Type::WRITE);
   if (suffixes.size() == 2 || !search.isArray()) {
     _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+  }
+  if (!opOptions.isSynchronousReplicationFrom.empty()) {
+    _activeTrx->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
   }
 
   Result res = _activeTrx->begin();

@@ -4,6 +4,25 @@ v3.6.6 (XXXX-XX-XX)
 * Fix: The 'sorted' COLLECT variant would return undefined instead of null when
   grouping by a null value.
 
+* Fix: writeConcern is now honored correctly (ES-655).
+
+* Fixed internal issue #739: ArangoSearch filter volatility takes into account
+  calculation nodes dependencies.
+
+* Slightly fixed wrong log level for authentication and also added login event
+  to the standard log.
+
+* Fixed OASIS-278 issue: Added proper sort/calc nodes cleanup for late
+  materialzation after OneShard optimization.
+
+* Fixed a blockage on hotbackup when writes are happening concurrently, since
+  followers could no longer replicate leader transactions.
+
+* Fixed issue #12349: arangosh compact Arangoerror 404.
+
+* Always fetch data for /_api/cluster/agency-dump from leader of the agency.
+  Add option "redirectToLeader=true" to internal /_api/agency/state API.
+
 * Fixed issue #12297: ArangoDB 3.6.5 Swagger Error?
   This issue caused the Swagger UI for displaying the APIs of user-defined Foxx 
   services to remain invisible in the web UI, because of a JavaScript exception.
