@@ -1,8 +1,6 @@
 v3.7.1-rc.1 (XXXX-XX-XX)
 ------------------------
 
-* Fix a race problem in the unit tests w.r.t. PlanSyncer.
-
 * Added startup option `--rocksdb.encryption-key-rotation` to
   activate/deactivate the encryption key rotation REST API. The API is disabled
   by default.
