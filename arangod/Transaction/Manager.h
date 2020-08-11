@@ -111,7 +111,7 @@ class Manager final {
 
   // unregister a transaction
   void unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed,
-                             bool isReadOnlyTransaction, bool isFollowerTransaction = false);
+                             bool isReadOnlyTransaction, bool isFollowerTransaction);
 
   // iterate all the active transactions
   void iterateActiveTransactions(TrxCallback const&);
