@@ -1,3 +1,9 @@
+v3.7.2 (XXXX-XX-XX)
+-------------------
+
+* Slightly improved the performance of some k-shortest-path queries.
+
+
 v3.7.1 (2020-08-07)
 -------------------
 
