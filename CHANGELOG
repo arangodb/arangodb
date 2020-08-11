@@ -1,3 +1,9 @@
+v3.7.2 (xxxx-xx-xx)
+
+* Fixed a blockage on hotbackup when writes are happening concurrently, since
+  followers could no longer replicate leader transactions.
+
+
 v3.7.1 (2020-08-07)
 -------------------
 

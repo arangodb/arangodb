@@ -353,7 +353,8 @@ transaction::Methods::~Methods() {
     // store result in context
     _transactionContext->storeTransactionResult(_state->id(),
                                                 _state->wasRegistered(),
-                                                _state->isReadOnlyTransaction());
+                                                _state->isReadOnlyTransaction(),
+                                                _state->isFollowerTransaction());
 
     _state = nullptr;
   }
