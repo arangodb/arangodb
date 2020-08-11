@@ -309,7 +309,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
 
     // All collections on a single server should be local collections.
     // A Coordinator should never have local collections.
-    // On an Agent, all collections should be both local and system collections.
+    // On an Agent, all collections should be local collections.
     // On a DBServer, the only local collections should be system collections
     // (like _statisticsRaw). Non-local (system or not) collections are shards,
     // so don't have system-names, even if they are system collections!
