@@ -94,11 +94,6 @@ std::string readGloballyUniqueId(arangodb::velocypack::Slice info) {
   return empty;
 }
 
-std::string readStringValue(arangodb::velocypack::Slice info,
-                            std::string const& name, std::string const& def) {
-  return info.isObject() ? Helper::getStringValue(info, name, def) : def;
-}
-
 arangodb::LogicalDataSource::Type const& readType(arangodb::velocypack::Slice info,
                                                   std::string const& key,
                                                   TRI_col_type_e def) {
@@ -131,19 +126,18 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
     : LogicalDataSource(
           LogicalCollection::category(),
           ::readType(info, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN),
-          vocbase, Helper::extractIdValue(info),
-          ::readGloballyUniqueId(info),
+          vocbase, Helper::extractIdValue(info), ::readGloballyUniqueId(info),
           Helper::stringUInt64(info.get(StaticStrings::DataSourcePlanId)),
-          ::readStringValue(info, StaticStrings::DataSourceName, ""), planVersion,
+          Helper::getStringValue(info, StaticStrings::DataSourceName, ""), planVersion,
           TRI_vocbase_t::IsSystemName(
-              ::readStringValue(info, StaticStrings::DataSourceName, "")) &&
+              Helper::getStringValue(info, StaticStrings::DataSourceName, "")) &&
               Helper::getBooleanValue(info, StaticStrings::DataSourceSystem, false),
           Helper::getBooleanValue(info, StaticStrings::DataSourceDeleted, false)),
-      _version(static_cast<Version>(Helper::getNumericValue<uint32_t>(info, "version",
-                                                    static_cast<uint32_t>(currentVersion())))),
+      _version(static_cast<Version>(Helper::getNumericValue<uint32_t>(
+          info, "version", static_cast<uint32_t>(currentVersion())))),
       _v8CacheVersion(0),
       _type(Helper::getNumericValue<TRI_col_type_e, int>(info, StaticStrings::DataSourceType,
-                                                          TRI_COL_TYPE_UNKNOWN)),
+                                                         TRI_COL_TYPE_UNKNOWN)),
       _status(Helper::getNumericValue<TRI_vocbase_col_status_e, int>(
           info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
       _isAStub(isAStub),
@@ -154,7 +148,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
       _allowUserKeys(Helper::getBooleanValue(info, "allowUserKeys", true)),
 #ifdef USE_ENTERPRISE
       _smartJoinAttribute(
-          ::readStringValue(info, StaticStrings::SmartJoinAttribute, "")),
+          Helper::getStringValue(info, StaticStrings::SmartJoinAttribute, "")),
 #endif
       _physical(EngineSelectorFeature::ENGINE->createPhysicalCollection(*this, info)) {
   TRI_ASSERT(info.isObject());
