@@ -103,10 +103,10 @@ void Manager::registerTransaction(TransactionId transactionId,
              transactionId.isFollowerTransactionId() ||
              transactionId.isLegacyTransactionId());
   if (!isReadOnlyTransaction && !isFollowerTransaction) {
-    LOG_TOPIC("ccdea", TRACE, Logger::TRANSACTIONS) << "Acquiring read lock for tid " << transactionId;
+    LOG_TOPIC("ccdea", TRACE, Logger::TRANSACTIONS) << "Acquiring read lock for tid " << transactionId.id();
     _rwLock.lockRead();
     _nrReadLocked.fetch_add(1, std::memory_order_relaxed);
-    LOG_TOPIC("ccdeb", TRACE, Logger::TRANSACTIONS) << "Got read lock for tid " << transactionId << " nrReadLocked: " << _nrReadLocked.load(std::memory_order_relaxed);
+    LOG_TOPIC("ccdeb", TRACE, Logger::TRANSACTIONS) << "Got read lock for tid " << transactionId.id() << " nrReadLocked: " << _nrReadLocked.load(std::memory_order_relaxed);
   }
 
   _nrRunning.fetch_add(1, std::memory_order_relaxed);
@@ -121,7 +121,7 @@ void Manager::unregisterTransaction(TransactionId transactionId,
     if (!isReadOnlyTransaction && !isFollowerTransaction) {
       _rwLock.unlockRead();
       _nrReadLocked.fetch_sub(1, std::memory_order_relaxed);
-      LOG_TOPIC("ccded", TRACE, Logger::TRANSACTIONS) << "Released lock for tid " << transactionId << " nrReadLocked: " << _nrReadLocked.load(std::memory_order_relaxed);
+      LOG_TOPIC("ccded", TRACE, Logger::TRANSACTIONS) << "Released lock for tid " << transactionId.id() << " nrReadLocked: " << _nrReadLocked.load(std::memory_order_relaxed);
     }
   });
 
