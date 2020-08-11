@@ -26,8 +26,8 @@
 
 const internal = require("internal");
 const pr = require("@arangodb/pregel");
-const pp = require("@arangodb/pregel-programs");
-const pe = require("@arangodb/pregel-example-graphs");
+const pp = require("@arangodb/air/pregel-programs");
+const pe = require("@arangodb/air/pregel-example-graphs");
 
 function exec_test_wiki_vote() {
   pe.create_wiki_vote_graph("WikiVoteGraph", 6);
