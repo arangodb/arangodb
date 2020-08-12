@@ -131,6 +131,7 @@ static std::unique_ptr<fuerte::Response> buildResponse(fuerte::StatusCode status
   }
   fuerte::ResponseHeader responseHeader;
   responseHeader.responseCode = statusCode;
+  responseHeader.contentType(ContentType::VPack);
   auto resp = std::make_unique<fuerte::Response>(responseHeader);
   resp->setPayload(std::move(buffer), 0);
   return resp;
@@ -160,8 +161,10 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
     arangodb::network::EndpointSpec spec;
     int res = resolveDestination(*pool->config().clusterInfo, dest, spec);
     if (res != TRI_ERROR_NO_ERROR) {
+      // We fake a successful request with statusCode 503 and a backend not available
+      // error here:
       auto resp = buildResponse(fuerte::StatusServiceUnavailable, Result{res});
-      return futures::makeFuture(Response{std::move(dest), Error::Canceled, std::move(resp), std::move(req)});
+      return futures::makeFuture(Response{std::move(dest), Error::NoError, std::move(resp), std::move(req)});
     }
     TRI_ASSERT(!spec.endpoint.empty());
 
@@ -275,8 +278,10 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
     arangodb::network::EndpointSpec spec;
     int res = resolveDestination(*_pool->config().clusterInfo, _destination, spec);
     if (res != TRI_ERROR_NO_ERROR) {  // ClusterInfo did not work
+      // We fake a successful request with statusCode 503 and a backend not available
+      // error here:
       auto resp = buildResponse(fuerte::StatusServiceUnavailable, Result{res});
-      callResponse(Error::Canceled, std::move(resp), std::move(_request));
+      callResponse(Error::NoError, std::move(resp), std::move(_request));
       return;
     }
 
