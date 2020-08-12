@@ -363,14 +363,19 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         }
 
         log();
+
+        _resultBuilderOptions = std::make_unique<VPackOptions>(VPackOptions::Defaults);
+        _resultBuilderOptions->buildUnindexedArrays = true;
+        _resultBuilderOptions->buildUnindexedObjects = true;
+
         // NOTE: If the options have a shorter lifetime than the builder, it
         // gets invalid (at least set() and close() are broken).
-        queryResult.data = std::make_shared<VPackBuilder>(&vpackOptions());
+        queryResult.data = std::make_shared<VPackBuilder>(_resultBuilderOptions.get());
 
         // reserve some space in Builder to avoid frequent reallocs
         queryResult.data->reserve(16 * 1024);
-        queryResult.data->openArray(/*unindexed*/true);
-        
+
+        queryResult.data->openArray();
         _executionPhase = ExecutionPhase::EXECUTE;
       }
       [[fallthrough]];
@@ -420,9 +425,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
               AqlValue const& val = block->getValueReference(i, resultRegister);
 
               if (!val.isEmpty()) {
-                val.toVelocyPack(&vpackOpts, resultBuilder,
-                                 /*resolveExternals*/useQueryCache,
-                                 /*allowUnindexed*/true);
+                val.toVelocyPack(&vpackOpts, resultBuilder, useQueryCache);
               }
             }
           }
@@ -618,7 +621,6 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
         if (!_queryOptions.silent) {
           size_t const n = value->size();
 
-          auto const& vpackOpts = vpackOptions();
           for (size_t i = 0; i < n; ++i) {
             AqlValue const& val = value->getValueReference(i, resultRegister);
 
@@ -626,9 +628,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
               resArray->Set(context, j++, val.toV8(isolate, &vpackOptions())).FromMaybe(false);
 
               if (useQueryCache) {
-                val.toVelocyPack(&vpackOpts, *builder,
-                                 /*resolveExternals*/true,
-                                 /*allowUnindexed*/true);
+                val.toVelocyPack(&vpackOptions(), *builder, true);
               }
 
               if (V8PlatformFeature::isOutOfMemory(isolate)) {

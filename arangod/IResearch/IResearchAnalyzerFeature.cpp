@@ -546,8 +546,8 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* /*expressi
 
   // to avoid copying Builder's default buffer when initializing AqlValue
   // create the buffer externally and pass ownership directly into AqlValue
-  arangodb::velocypack::Buffer<uint8_t> buffer;
-  arangodb::velocypack::Builder builder(buffer);
+  auto buffer = std::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
+  arangodb::velocypack::Builder builder(*buffer);
   builder.openArray();
   std::vector<arangodb::velocypack::ArrayIterator> arrayIteratorStack;
   auto current = args[0].slice();
@@ -641,7 +641,16 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* /*expressi
 
   builder.close();
 
-  return arangodb::aql::AqlValue(std::move(buffer));
+  bool bufOwner = true;  // out parameter from AqlValue denoting ownership
+                         // aquisition (must be true initially)
+  auto release = irs::make_finally([&buffer, &bufOwner]() -> void {
+    // cppcheck-suppress knownConditionTrueFalse
+    if (!bufOwner) {
+      buffer.release();
+    }
+  });
+
+  return arangodb::aql::AqlValue(buffer.get(), bufOwner);
 }
 
 void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {

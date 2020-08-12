@@ -274,6 +274,10 @@ class Query : public QueryContext {
   /// plan serialized before instantiation, used for query profiling
   std::unique_ptr<velocypack::UInt8Buffer> _planSliceCopy;
 
+  /// Options for _resultBuilder. Optimally, its lifetime should be linked to
+  /// it, but this is hard to do.
+  std::unique_ptr<arangodb::velocypack::Options> _resultBuilderOptions;
+  
   /// @brief the transaction object, in a distributed query every part of
   /// the query has its own transaction object. The transaction object is
   /// created in the prepare method.

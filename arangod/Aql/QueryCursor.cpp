@@ -319,7 +319,17 @@ void QueryStreamCursor::resetWakeupHandler() {
 }
 
 ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
-
+  VPackOptions const* oldOptions = builder.options;
+  auto guard = scopeGuard([&] {
+    builder.options = oldOptions;
+  });
+  
+  VPackOptions options = VPackOptions::Defaults;
+  options.buildUnindexedArrays = true;
+  options.buildUnindexedObjects = true;
+  options.escapeUnicode = true;
+  builder.options = &options;
+  
   const bool isDone = _numBufferedRows <= batchSize();
   if (isDone) {  // only able to add 'extra' after all stats are collected
     TRI_ASSERT(_finalization);
@@ -351,8 +361,7 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
     while (rowsWritten < batchSize() && _queryResultPos < block->size()) {
       AqlValue const& value = block->getValueReference(_queryResultPos, resultRegister);
       if (!value.isEmpty()) {  // ignore empty blocks (e.g. from UpdateBlock)
-        value.toVelocyPack(&vopts, builder, /*resolveExternals*/false,
-                           /*allowUnindexed*/true);
+        value.toVelocyPack(&vopts, builder, false);
         ++rowsWritten;
       }
       ++_queryResultPos;

@@ -620,8 +620,7 @@ AqlValue Expression::executeSimpleExpressionArray(AstNode const* node,
     bool localMustDestroy = false;
     AqlValue result = executeSimpleExpression(member, trx, localMustDestroy, false);
     AqlValueGuard guard(result, localMustDestroy);
-    result.toVelocyPack(&trx->vpackOptions(), *builder.get(), /*resolveExternals*/false,
-                        /*allowUnindexed*/false);
+    result.toVelocyPack(&trx->vpackOptions(), *builder.get(), false);
   }
 
   builder->close();
@@ -732,8 +731,7 @@ AqlValue Expression::executeSimpleExpressionObject(AstNode const* node,
     bool localMustDestroy;
     AqlValue result = executeSimpleExpression(member, trx, localMustDestroy, false);
     AqlValueGuard guard(result, localMustDestroy);
-    result.toVelocyPack(&trx->vpackOptions(), *builder.get(), /*resolveExternals*/false,
-                        /*allowUnindexed*/false);
+    result.toVelocyPack(&trx->vpackOptions(), *builder.get(), false);
   }
 
   builder->close();
@@ -1474,8 +1472,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node,
       return AqlValue(AqlValueHintEmptyArray());
     }
 
-    VPackBuffer<uint8_t> buffer;
-    VPackBuilder builder(buffer);
+    VPackBuilder builder;
     builder.openArray();
 
     // generate a new temporary for the flattened array
@@ -1505,7 +1502,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node,
     builder.close();
 
     mustDestroy = true;  // builder = dynamic data
-    value = AqlValue(std::move(buffer));
+    value = AqlValue(builder.slice());
   } else {
     bool localMustDestroy;
     AqlValue a = executeSimpleExpression(node->getMember(0), trx, localMustDestroy, false);
@@ -1546,8 +1543,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node,
     }
   }
 
-  VPackBuffer<uint8_t> buffer;
-  VPackBuilder builder(buffer);
+  VPackBuilder builder;
   builder.openArray();
 
   size_t const n = value.length();
@@ -1579,8 +1575,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node,
 
     if (takeItem) {
       AqlValue sub = executeSimpleExpression(projectionNode, trx, localMustDestroy, false);
-      sub.toVelocyPack(&trx->vpackOptions(), builder, /*resolveExternals*/false,
-                       /*allowUnindexed*/false);
+      sub.toVelocyPack(&trx->vpackOptions(), builder, false);
       if (localMustDestroy) {
         sub.destroy();
       }
@@ -1599,7 +1594,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node,
 
   builder.close();
   mustDestroy = true;
-  return AqlValue(std::move(buffer));  // builder = dynamic data
+  return AqlValue(builder.slice());  // builder = dynamic data
 }
 
 /// @brief execute an expression of type SIMPLE with ITERATOR
