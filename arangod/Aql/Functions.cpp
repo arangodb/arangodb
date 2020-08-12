@@ -7514,8 +7514,8 @@ AqlValue Functions::PregelResult(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintEmptyArray());
   }
 
-  auto buffer = std::make_unique<VPackBuffer<uint8_t>>();
-  VPackBuilder builder(*buffer);
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder builder(buffer);
   if (ServerState::instance()->isCoordinator()) {
     std::shared_ptr<pregel::Conductor> c = feature->conductor(execNr);
     if (!c) {
@@ -7539,12 +7539,7 @@ AqlValue Functions::PregelResult(ExpressionContext* expressionContext,
   TRI_ASSERT(builder.slice().isArray());
 
   // move the buffer into
-  bool shouldDelete = true;
-  AqlValue val(buffer.get(), shouldDelete);
-  if (!shouldDelete) {
-    buffer.release();
-  }
-  return val;
+  return AqlValue(std::move(buffer));
 }
 
 AqlValue Functions::Assert(ExpressionContext* expressionContext, transaction::Methods* trx,

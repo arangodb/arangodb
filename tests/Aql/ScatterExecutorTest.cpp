@@ -53,7 +53,7 @@ class SharedScatterExecutionBlockTest {
 
   SharedScatterExecutionBlockTest() {
     auto engine =
-      std::make_unique<ExecutionEngine>(*fakedQuery,
+      std::make_unique<ExecutionEngine>(0, *fakedQuery,
                                         itemBlockManager,
                                         SerializationFormat::SHADOWROWS);
     /// TODO fakedQuery->setEngine(engine.release());

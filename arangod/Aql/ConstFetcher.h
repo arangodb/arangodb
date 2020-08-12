@@ -79,9 +79,6 @@ class ConstFetcher {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
-  //@deprecated
-  auto useStack(AqlCallStack const& stack) -> void{};
-
  private:
   /**
    * @brief Input block currently in use. Used for memory management by the

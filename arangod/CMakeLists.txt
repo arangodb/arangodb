@@ -286,6 +286,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/DocumentIndexExpressionContext.cpp
   Aql/DocumentProducingHelper.cpp
   Aql/DocumentProducingNode.cpp
+  Aql/ClusterQuery.cpp
   Aql/EngineInfoContainerCoordinator.cpp
   Aql/EngineInfoContainerDBServerServerBased.cpp
   Aql/EnumerateCollectionExecutor.cpp
@@ -885,6 +886,7 @@ target_link_libraries(arango_aql arango_graph)
 target_link_libraries(arango_aql arango_indexes)
 target_link_libraries(arango_aql arango_iresearch)
 target_link_libraries(arango_aql arango_network)
+target_link_libraries(arango_aql immer)
 
 target_link_libraries(arango_cache arango)
 target_link_libraries(arango_cache boost_system)

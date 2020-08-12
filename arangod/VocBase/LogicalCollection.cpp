@@ -115,11 +115,6 @@ std::string readGloballyUniqueId(arangodb::velocypack::Slice info) {
   return arangodb::StaticStrings::Empty;
 }
 
-std::string readStringValue(arangodb::velocypack::Slice info,
-                            std::string const& name, std::string const& def) {
-  return info.isObject() ? Helper::getStringValue(info, name, def) : def;
-}
-
 arangodb::LogicalDataSource::Type const& readType(arangodb::velocypack::Slice info,
                                                   std::string const& key,
                                                   TRI_col_type_e def) {
@@ -146,17 +141,15 @@ arangodb::LogicalDataSource::Type const& readType(arangodb::velocypack::Slice in
 
 // The Slice contains the part of the plan that
 // is relevant for this collection.
-LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& info,
-                                     bool isAStub, uint64_t planVersion /*= 0*/
-                                     )
+LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& info, bool isAStub) 
     : LogicalDataSource(
           LogicalCollection::category(),
           ::readType(info, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN), vocbase,
           DataSourceId{Helper::extractIdValue(info)}, ::readGloballyUniqueId(info),
           DataSourceId{Helper::stringUInt64(info.get(StaticStrings::DataSourcePlanId))},
-          ::readStringValue(info, StaticStrings::DataSourceName, ""), planVersion,
+          Helper::getStringValue(info, StaticStrings::DataSourceName, ""),
           TRI_vocbase_t::IsSystemName(
-              ::readStringValue(info, StaticStrings::DataSourceName, "")) &&
+              Helper::getStringValue(info, StaticStrings::DataSourceName, "")) &&
               Helper::getBooleanValue(info, StaticStrings::DataSourceSystem, false),
           Helper::getBooleanValue(info, StaticStrings::DataSourceDeleted, false)),
       _version(static_cast<Version>(Helper::getNumericValue<uint32_t>(
@@ -182,7 +175,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
                        : RevisionId::fromSlice(info.get(StaticStrings::MinRevision))),
 #ifdef USE_ENTERPRISE
       _smartJoinAttribute(
-          ::readStringValue(info, StaticStrings::SmartJoinAttribute, "")),
+          Helper::getStringValue(info, StaticStrings::SmartJoinAttribute, "")),
 #endif
       _physical(EngineSelectorFeature::ENGINE->createPhysicalCollection(*this, info)) {
 
@@ -698,7 +691,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
         return !idx->isHidden() && !idx->inProgress();
     }
   });
-  result.add("planVersion", VPackValue(planVersion()));
+  result.add("planVersion", VPackValue(1)); // planVersion is hard-coded to 1 since 3.8
   result.add("isReady", VPackValue(isReady));
   result.add("allInSync", VPackValue(allInSync));
   result.close();  // CollectionInfo
@@ -720,7 +713,7 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   result.add(StaticStrings::Version, VPackValue(static_cast<uint32_t>(_version)));
 
   // Collection Flags
-  result.add("waitForSync", VPackValue(_waitForSync));
+  result.add(StaticStrings::WaitForSyncString, VPackValue(_waitForSync));
 
   if (!forPersistence) {
     // with 'forPersistence' added by LogicalDataSource::toVelocyPack
@@ -963,7 +956,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
   }
 
   TRI_ASSERT(!isSatellite() || replicationFactor == 0);
-  _waitForSync = Helper::getBooleanValue(slice, "waitForSync", _waitForSync);
+  _waitForSync = Helper::getBooleanValue(slice, StaticStrings::WaitForSyncString, _waitForSync);
   _sharding->setWriteConcernAndReplicationFactor(writeConcern, replicationFactor);
 
   if (ServerState::instance()->isCoordinator()) {

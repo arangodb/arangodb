@@ -120,31 +120,23 @@ auto SubqueryEndExecutor::consumeShadowRow(ShadowAqlItemRow shadowRow,
 }
 
 void SubqueryEndExecutor::Accumulator::reset() {
-  if (_buffer == nullptr) {
-    // no Buffer present
-    _buffer = std::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
-    // we need to recreate the builder even if the old one still exists.
-    // this is because the Builder points to the Buffer
-    _builder = std::make_unique<VPackBuilder>(*_buffer);
-  } else {
-    // Buffer still present. we can get away with reusing and clearing 
-    // the existing Builder, which points to the Buffer
-    TRI_ASSERT(_builder != nullptr);
-    _builder->clear();
-  }
-  TRI_ASSERT(_builder != nullptr);
-  _builder->openArray();
+  // Buffer present. we can get away with reusing and clearing
+  // the existing Builder, which points to the Buffer
+  _builder.clear();
+  _builder.openArray();
   _numValues = 0;
 }
 
 void SubqueryEndExecutor::Accumulator::addValue(AqlValue const& value) {
-  TRI_ASSERT(_builder->isOpenArray());
-  value.toVelocyPack(_options, *_builder, false);
+  TRI_ASSERT(_builder.isOpenArray());
+  value.toVelocyPack(_options, _builder,
+                     /*resolveExternals*/false,
+                     /*allowUnindexed*/false);
   ++_numValues;
 }
 
 SubqueryEndExecutor::Accumulator::Accumulator(VPackOptions const* const options)
-    : _options(options) {
+    : _options(options), _builder(_buffer) {
   reset();
 }
 
@@ -152,22 +144,15 @@ AqlValueGuard SubqueryEndExecutor::Accumulator::stealValue(AqlValue& result) {
   // Note that an AqlValueGuard holds an AqlValue&, so we cannot create it
   // from a local AqlValue and return the Guard!
 
-  TRI_ASSERT(_builder->isOpenArray());
-  _builder->close();
-  TRI_ASSERT(_builder->isClosed());
+  TRI_ASSERT(_builder.isOpenArray());
+  _builder.close();
+  TRI_ASSERT(_builder.isClosed());
 
   // Here we have all data *and* the relevant shadow row,
   // so we can now submit
-  bool shouldDelete = true;
-  result = AqlValue{_buffer.get(), shouldDelete};
-  if (shouldDelete) {
-    // resultDocVec told us to delete our data
-    _buffer->clear();
-  } else {
-    // relinquish ownership of _buffer, as it now belongs to
-    // resultDocVec
-    std::ignore = _buffer.release();
-  }
+  result = AqlValue{std::move(_buffer)};
+  TRI_ASSERT(_buffer.size() == 0);
+  _builder.clear();
 
   // Call reset *after* AqlValueGuard is constructed, so when an exception is
   // thrown, the ValueGuard can free the AqlValue.

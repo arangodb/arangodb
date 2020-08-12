@@ -2308,7 +2308,6 @@ int flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
 }
 
 #ifndef USE_ENTERPRISE
-
 std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::createCollectionOnCoordinator(
     TRI_vocbase_t& vocbase, velocypack::Slice parameters, bool ignoreDistributeShardsLikeErrors,
     bool waitForSyncReplication, bool enforceReplicationFactor,
@@ -2318,7 +2317,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::createCollection
   // etc. It is not used anywhere and will be cleaned up after this call.
   std::vector<std::shared_ptr<LogicalCollection>> cols;
   for (VPackSlice p : VPackArrayIterator(parameters)) {
-    cols.emplace_back(std::make_shared<LogicalCollection>(vocbase, p, true, 0));
+    cols.emplace_back(std::make_shared<LogicalCollection>(vocbase, p, true));
   }
 
   // Persist collection will return the real object.
@@ -2567,11 +2566,10 @@ arangodb::Result hotBackupList(network::ConnectionPool* pool,
     if (!r.ok()) {
       continue;
     }
-    auto status = r.response->statusCode();
-    if (status == fuerte::StatusOK ||
-        status == fuerte::StatusCreated ||
-        status == fuerte::StatusAccepted ||
-        status == fuerte::StatusNoContent) {
+    if (r.response->checkStatus({fuerte::StatusOK,
+                                 fuerte::StatusCreated,
+                                 fuerte::StatusAccepted,
+                                 fuerte::StatusNoContent})) {
       nrGood++;
     }
   }

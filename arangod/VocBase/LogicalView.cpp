@@ -51,11 +51,11 @@ namespace arangodb {
 // @brief Constructor used in coordinator case.
 // The Slice contains the part of the plan that
 // is relevant for this view
-LogicalView::LogicalView(TRI_vocbase_t& vocbase, VPackSlice const& definition, uint64_t planVersion)
+LogicalView::LogicalView(TRI_vocbase_t& vocbase, VPackSlice const& definition)
     : LogicalDataSource(LogicalView::category(),
                         LogicalDataSource::Type::emplace(arangodb::basics::VelocyPackHelper::getStringRef(
                             definition, StaticStrings::DataSourceType, VPackStringRef())),
-                        vocbase, definition, planVersion) {
+                        vocbase, definition) {
   // ensure that the 'definition' was used as the configuration source
   if (!definition.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -189,8 +189,7 @@ Result LogicalView::drop() {
 }
 
 /*static*/ Result LogicalView::instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                                           velocypack::Slice definition, uint64_t planVersion /*= 0*/
-) {
+                                           velocypack::Slice definition) {
   if (!vocbase.server().hasFeature<ViewTypesFeature>()) {
     return Result(
         TRI_ERROR_INTERNAL,
@@ -203,7 +202,7 @@ Result LogicalView::drop() {
                                              velocypack::StringRef(nullptr, 0));
   auto& factory = viewTypes.factory(LogicalDataSource::Type::emplace(type));
 
-  return factory.instantiate(view, vocbase, definition, planVersion);
+  return factory.instantiate(view, vocbase, definition);
 }
 
 Result LogicalView::rename(std::string&& newName) {
