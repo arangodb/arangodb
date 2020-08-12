@@ -2362,7 +2362,7 @@ Future<Result> Methods::replicateOperations(
           didRefuse = didRefuse || resp.response->statusCode() == fuerte::StatusNotAcceptable;
         }
       } catch (std::exception& e) {
-        LOG_TOPIC("12d888", INFO, Logger::REPLICATION)
+        LOG_TOPIC("12d88", INFO, Logger::REPLICATION)
             << "Exception thrown when trying to replicate an operation: " << e.what();
       }
 
