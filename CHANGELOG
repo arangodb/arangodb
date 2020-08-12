@@ -4,6 +4,8 @@ v3.7.2 (XXXX-XX-XX)
 * Fixed that dropping a vanished follower works again. An exception response
   to the replication request is now handled properly.
 
+* Fixed issue #12349: arangosh compact Arangoerror 404.
+
 * Improve performance of many non-subquery AQL queries, by optimizing away some
   storage overhead for subquery context data.
 
