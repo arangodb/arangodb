@@ -2566,11 +2566,10 @@ arangodb::Result hotBackupList(network::ConnectionPool* pool,
     if (!r.ok()) {
       continue;
     }
-    auto status = r.response->statusCode();
-    if (status == fuerte::StatusOK ||
-        status == fuerte::StatusCreated ||
-        status == fuerte::StatusAccepted ||
-        status == fuerte::StatusNoContent) {
+    if (r.response->checkStatus({fuerte::StatusOK,
+                                 fuerte::StatusCreated,
+                                 fuerte::StatusAccepted,
+                                 fuerte::StatusNoContent})) {
       nrGood++;
     }
   }
