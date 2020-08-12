@@ -26,6 +26,9 @@ devel
   the projection can be satisfied by a single-attribute index on attribute `b`,
   but now also by a combined index on attributes `a` and `b` (or `b` and `a`).
 
+* Fixed hotbackup S3 credentials validation and error reporting for upload
+  and download.
+
 * Make AQL user-defined functions (UDFs) work in a cluster in case the UDF runs
   an AQL query inside its own function code.
 
