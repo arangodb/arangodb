@@ -1,6 +1,8 @@
 v3.7.2 (XXXX-XX-XX)
 -------------------
 
+* Updated arangosync to 0.7.9.
+
 * Fixed issue #12349: arangosh compact Arangoerror 404.
 
 * Improve performance of many non-subquery AQL queries, by optimizing away some
