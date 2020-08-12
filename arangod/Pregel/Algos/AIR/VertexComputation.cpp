@@ -61,7 +61,7 @@ void VertexComputation::registerLocalFunctions() {
                           &VertexComputation::air_sendToAccum, this);
 
   _airMachine.setFunctionMember("send-to-all-neighbours",  // " name:id -> value:any -> void ",
-                          &VertexComputation::air_sendToAccum, this);
+                          &VertexComputation::air_sendToAllNeighbours, this);
 
   _airMachine.setFunctionMember("this-outbound-edges",  // " name:id -> value:any -> void ",
                           &VertexComputation::air_outboundEdges, this);

@@ -22,6 +22,8 @@
 // / @author Copyright 2020, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
+const pregel = require("@arangodb/pregel");
+
 /*
 
 
@@ -50,10 +52,10 @@ function vertex_degrees_program(resultField) {
         name: "main",
         initProgram: [ "seq",
                        // Set our out degree
-                       ["accum-set!", "outDegree", ["this-number-outbound-edges"]],
+                       ["accum-set!", "outDegree", ["this-outbound-edges-count"]],
                        // Init in degree to 0
                        ["accum-set!", "inDegree", 0],
-                       ["send-to-all-neighbors", "inDegree", 1]
+                       ["send-to-all-neighbours", "inDegree", 1]
                      ],
         // Update program has to run once to accumulate the
         // inDegrees that have been sent out in initProgram
@@ -68,10 +70,6 @@ function vertex_degrees(
     return pregel.start(
         "air",
         graphName,
-        vertex_degree_program(resultField)
+        vertex_degrees_program(resultField)
     );
 }
-
-
-
-

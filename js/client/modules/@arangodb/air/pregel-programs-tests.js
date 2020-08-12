@@ -30,37 +30,39 @@ const pr = require("@arangodb/pregel");
 const pp = require("@arangodb/air/pregel-programs");
 const pe = require("@arangodb/air/pregel-example-graphs");
 
-function exec_test_wiki_vote() {
-  pe.create_wiki_vote_graph("WikiVoteGraph", 6);
-  const some_vertex = db
-    ._query(`FOR d IN V FILTER d.id == "15" RETURN d._id`)
-    .toArray()[0];
+/* Some helper functions */
+function compare_pregel(aqlResult) {
+  const res = aqlResult.toArray();
+  if (res.length > 0) {
+    internal.print("Test failed.");
+    internal.print("Discrepancies in results: " + JSON.stringify(res));
+    return false;
+  }
 
-  return pp.single_source_shortest_path(
-    "WikiVoteGraph",
-    "SSSP",
-    some_vertex,
-    "cost"
-  );
+  internal.print("Test succeeded.");
+  return true;
 }
 
-function exec_test_line() {
-  const collnames = pe.create_line_graph("LineGraph", 10000, 6);
-  const some_vertex = db
-    ._query(`FOR d IN @@V FILTER d.id == "15" RETURN d._id`, {
-      "@V": collnames.vname,
-    })
-    .toArray()[0];
+function wait_for_pregel(name, pid) {
+  internal.print("  Started: " + name + " - PID: " + pid);
+  var waited = 0;
+  while (true) {
+    var status = pr.status(pid);
 
-  require("internal").print("vertex: " + some_vertex);
-
-  return pp.single_source_shortest_path(
-    "LineGraph",
-    "SSSP",
-    some_vertex,
-    "cost"
-  );
+    if (status.state === "done") {
+      internal.print("  " + name + " done, returned with status: ");
+      internal.print(JSON.stringify(status, null, 4));
+      return status;
+    } else {
+      waited++;
+      if (waited % 10 === 0) {
+        internal.print("waited" + waited * 10 + "seconds, not done yet, waiting some more");
+      }
+    }
+    internal.sleep(1);
+  }
 }
+
 
 function exec_test_page_rank() {
   let graphName = "PageRankGraph";
@@ -95,44 +97,12 @@ function exec_test_page_rank() {
   );
 }
 
-function compare_pregel(aqlResult) {
-  const res = aqlResult.toArray();
-  if (res.length > 0) {
-    internal.print("Test failed.");
-    internal.print("Discrepancies in results: " + JSON.stringify(res));
-    return false;
-  }
-
-  internal.print("Test succeeded.");
-  return true;
-}
-
-function wait_for_pregel(name, pid) {
-  internal.print("  Started: " + name + " - PID: " + pid);
-  var waited = 0;
-  while (true) {
-    var status = pr.status(pid);
-
-    if (status.state === "done") {
-      internal.print("  " + name + " done, returned with status: ");
-      internal.print(JSON.stringify(status, null, 4));
-      return status;
-    } else {
-      waited++;
-      if (waited % 10 === 0) {
-        internal.print("waited" + waited * 10 + "seconds, not done yet, waiting some more");
-      }
-    }
-    internal.sleep(1);
-  }
-}
-
 /* Run the "native" SSSP, the VertexAccumulators SSSP, and AQL ShortestPath and compare the
    results */
-function exec_sssp_test() {
+function exec_test_sssp() {
   // Import AIR programs
   const graphName = "LineGraph";
-  const air = require("@arangodb/air/single-source-shortest-paths")
+  const air = require("@arangodb/air/single-source-shortest-paths");
 
   // Create a line graph with 10000 vertices, 6 shards
   const collnames = pe.create_line_graph(graphName, 10000, 1);
@@ -167,6 +137,24 @@ function exec_sssp_test() {
                RETURN d`, {"@V": collnames.vname}));
 }
 
+function exec_test_vertex_degrees() {
+  const air = require("@arangodb/air/vertex-degrees");
+
+  const graphName = "LineGraph";
+  // Create a line graph with 10000 vertices, 6 shards
+  const collnames = pe.create_line_graph(graphName, 10000, 1);
+  wait_for_pregel("AIR vertex-degree", air.vertex_degrees(graphName, "vertexDegrees"));
+
+  return compare_pregel(db._query(`
+    FOR d IN @@V
+      LET outDegree = LENGTH(FOR x IN LineGraph_E FILTER x._from == d._id RETURN x)
+      LET inDegree = LENGTH(FOR x IN LineGraph_E FILTER x._to == d._id RETURN x)
+      FILTER d.vertexDegrees.inDegree != inDegree || d.vertexDegrees.outDegree != outDegree
+      RETURN { aql: { inDegree: inDegree, outDegree: outDegree },
+               air: { inDegree: d.vertexDegrees.inDegree, outDegree: d.vertexDegrees.outDegree } }`,
+                                  { "@V": collnames.vname}));
+}
+
 function exec_scc_test() {
   pe.create_circle("Circle", 5);
   // pe.create_line_graph("LineGraph", 5, 6);
@@ -181,11 +169,12 @@ function exec_air_tests() {
 
 exports.wait_for_pregel = wait_for_pregel;
 
-exports.exec_test_wiki_vote = exec_test_wiki_vote;
-exports.exec_test_line = exec_test_line;
 exports.exec_test_page_rank = exec_test_page_rank;
+
 exports.exec_scc_test = exec_scc_test;
-exports.exec_sssp_test = exec_sssp_test;
+
+exports.exec_test_vertex_degrees = exec_test_vertex_degrees;
+exports.exec_test_sssp = exec_test_sssp;
 
 
 exports.exec_air_tests = exec_air_tests;
