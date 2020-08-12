@@ -1,7 +1,7 @@
 devel
 -----
 
-* Support projections on sub-attributes (`a.b.c`).
+* Support projections on sub-attributes (e.g. `a.b.c`).
 
   In previous versions of ArangoDB, projections were only supported on 
   top-level attributes. For example, in the query
