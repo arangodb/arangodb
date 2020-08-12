@@ -28,7 +28,7 @@
 #include "Basics/voc-errors.h"
 #include "Containers/Enumerate.h"
 
-#include "Logger/LogMacros.h"
+#include <algorithm>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -114,9 +114,10 @@ void AqlItemMatrix::addBlock(SharedAqlItemBlockPtr blockPtr) {
 
   // ShadowRow handling
   if (blockPtr->hasShadowRows()) {
-    TRI_ASSERT(!blockPtr->getShadowRowIndexes().empty());
+    auto [shadowRowsBegin, shadowRowsEnd] = blockPtr->getShadowRowIndexesFrom(0);
+    TRI_ASSERT(shadowRowsBegin != shadowRowsEnd);
     // Let us stop on the first
-    _stopIndexInLastBlock = *blockPtr->getShadowRowIndexes().begin();
+    _stopIndexInLastBlock = *shadowRowsBegin;
     _size += _stopIndexInLastBlock;
   } else {
     _size += blockPtr->size();
@@ -137,14 +138,13 @@ ShadowAqlItemRow AqlItemMatrix::popShadowRow() {
   ShadowAqlItemRow shadowRow{_blocks.back(), _stopIndexInLastBlock};
 
   // We need to move forward the next shadow row.
-  auto const& shadowIndexes = blockPtr->getShadowRowIndexes();
-  auto next = shadowIndexes.find(_stopIndexInLastBlock);
+  auto [shadowRowsBegin, shadowRowsEnd] = blockPtr->getShadowRowIndexesFrom(_stopIndexInLastBlock);
   _startIndexInFirstBlock = _stopIndexInLastBlock + 1;
 
-  next++;
+  shadowRowsBegin++;
 
-  if (next != shadowIndexes.end()) {
-    _stopIndexInLastBlock = *next;
+  if (shadowRowsBegin != shadowRowsEnd) {
+    _stopIndexInLastBlock = *shadowRowsBegin;
     TRI_ASSERT(stoppedOnShadowRow());
     // We move always forward
     TRI_ASSERT(_stopIndexInLastBlock >= _startIndexInFirstBlock);
@@ -197,8 +197,8 @@ AqlItemMatrix::AqlItemMatrix(RegisterCount nrRegs)
     return 0;
   }
   auto const& block = _blocks.back();
-  auto const& rows = block->getShadowRowIndexes();
-  return std::count_if(rows.begin(), rows.end(),
+  auto [shadowRowsBegin, shadowRowsEnd] = block->getShadowRowIndexesFrom(_stopIndexInLastBlock);
+  return std::count_if(shadowRowsBegin, shadowRowsEnd,
                        [&](auto r) -> bool { return r >= _stopIndexInLastBlock; });
 }
 
