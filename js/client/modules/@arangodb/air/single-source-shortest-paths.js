@@ -22,6 +22,7 @@
 // / @author Copyright 2020, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
+const pregel = require("@arangodb/pregel");
 /*
 
 
@@ -39,70 +40,77 @@ exports.single_source_shortest_paths = single_source_shortest_paths;
 
 */
 function single_source_shortest_paths_program(
-    resultField,
-    startVertexId,
-    weightAttribute
+  resultField,
+  startVertexId,
+  weightAttribute
 ) {
-    return {
-        resultField: resultField,
-        maxGSS: 10000,
-        accumulatorsDeclaration: {
-            distance: {
-                accumulatorType: "min",
-                valueType: "doubles",
-                storeSender: true,
-            },
-        },
+  return {
+    resultField: resultField,
+    maxGSS: 10000,
+    vertexAccumulators: {
+      distance: {
+        accumulatorType: "min",
+        valueType: "doubles",
+        storeSender: true,
+      },
+    },
+    phases: [
+      {
+        name: "main",
         initProgram: [
-            "seq",
+          "seq",
+          [
+            "if",
             [
-                "if",
-                [
-                    ["eq?", ["this"], startVertexId],
-                    ["seq", ["set", "distance", 0], true],
-                ],
-                [true, ["seq", ["set", "distance", 9223372036854776000], false]],
+              ["eq?", ["this-vertex-id"], startVertexId],
+              ["seq", ["accum-set!", "distance", 0], true],
             ],
+            [true, ["seq",
+                    ["accum-clear!", "distance"],
+                    false]],
+          ],
         ],
         updateProgram: [
-            "seq",
-            [
-                "for",
-                "outbound",
-                ["quote", "edge"],
-                [
-                    "quote",
-                    "seq",
-                    [
-                        "update",
-                        "distance",
-                        ["attrib", "_to", ["var-ref", "edge"]],
-                        ["+", ["accum-ref", "distance"], ["attrib", weightAttribute, ["var-ref", "edge"]]],
-                    ],
-                ],
+          "seq",
+          [
+            "for-each",
+            ["edge", ["this-outbound-edges"]],
+            ["seq",
+             [
+               "send-to-accum",
+               ["attrib-ref", "to-pregel-id", ["var-ref", "edge"]],
+               "distance",
+               [
+                 "+",
+                 ["accum-ref", "distance"],
+                 ["attrib-ref", ["quote", "document", weightAttribute], ["var-ref", "edge"]],
+               ],
+             ],
             ],
-            false,
+          ],
+          false,
         ],
-    };
+      },
+    ],
+  };
 }
 
 /* `single_source_shortest_path` executes the program
    returned by `single_source_shortest_path_program`
    on the graph identified by `graphName`. */
 function single_source_shortest_paths(
-    graphName,
-    resultField,
-    startVertexId,
-    weightAttribute
+  graphName,
+  resultField,
+  startVertexId,
+  weightAttribute
 ) {
-    return pregel.start(
-        "air",
-        graphName,
-        single_source_shortest_paths_program(
-            resultField,
-            startVertexId,
-            weightAttribute
-        )
-    );
+  return pregel.start(
+    "air",
+    graphName,
+    single_source_shortest_paths_program(
+      resultField,
+      startVertexId,
+      weightAttribute
+    )
+  );
 }
-

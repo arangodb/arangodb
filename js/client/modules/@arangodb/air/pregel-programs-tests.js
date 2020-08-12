@@ -96,9 +96,10 @@ function exec_test_page_rank() {
 }
 
 function compare_pregel(aqlResult) {
-  if (aqlResult.length > 0) {
+  const res = aqlResult.toArray();
+  if (res.length > 0) {
     internal.print("Test failed.");
-    internal.print("Discrepancies in results: " + JSON.stringify(res.toArray()));
+    internal.print("Discrepancies in results: " + JSON.stringify(res));
     return false;
   }
 
@@ -126,11 +127,15 @@ function wait_for_pregel(name, pid) {
   }
 }
 
-/* TODO: Run the "native" SSSP, the VertexAccumulators SSSP, and AQL ShortestPath and compare the
+/* Run the "native" SSSP, the VertexAccumulators SSSP, and AQL ShortestPath and compare the
    results */
 function exec_sssp_test() {
+  // Import AIR programs
+  const graphName = "LineGraph";
+  const air = require("@arangodb/air/single-source-shortest-paths")
+
   // Create a line graph with 10000 vertices, 6 shards
-  const collnames = pe.create_line_graph("LineGraph", 10000, 6);
+  const collnames = pe.create_line_graph(graphName, 10000, 1);
 
   // Find the ID of a vertex
   const some_vertex = db
@@ -142,23 +147,23 @@ function exec_sssp_test() {
   internal.print("Used start vertex: " + some_vertex + ")");
 
   wait_for_pregel(
+    "Air SSSP",
+    air.single_source_shortest_paths(
+      graphName,
+      "SSSP",
+      some_vertex,
+      "cost"
+    ));
+
+  wait_for_pregel(
     "Native SSSP",
-    pr.start("sssp", "LineGraph", {
+    pr.start("sssp", graphName, {
     source: some_vertex,
     maxGSS: 10000,
   }));
 
-  wait_for_pregel(
-    "Air SSSP",
-    pp.single_source_shortest_path(
-    "LineGraph",
-    "SSSP",
-    some_vertex,
-    "cost"
-  ));
-
   return compare_pregel(db._query(`FOR d IN @@V
-               FILTER d.result != d.SSSP.distance.value
+               FILTER d.result != d.SSSP.distance
                RETURN d`, {"@V": collnames.vname}));
 }
 
