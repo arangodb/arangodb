@@ -28,9 +28,6 @@
 /// @author Copyright 2019, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-let jsunity = require("jsunity");
-let db = require("@arangodb").db;
-
 (function() {
   var db = require("@arangodb").db;
   const analyzers = require("@arangodb/analyzers");
