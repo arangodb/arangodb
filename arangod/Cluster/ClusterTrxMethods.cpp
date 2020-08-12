@@ -396,15 +396,6 @@ void addAQLTransactionHeader(transaction::Methods const& trx,
       TRI_ASSERT(false);
     }
     state.addKnownServer(server);  // remember server
-  } else if (state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL)) {
-    // this case cannot occur for be a top-level AQL query,
-    // simon: however it might occur when UDF functions uses
-    // db._query(...) in which case we can get here
-    bool canHaveUDF = trx.transactionContext()->isV8Context();
-    TRI_ASSERT(canHaveUDF);
-    if (!canHaveUDF) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal AQL transaction state");
-    }
   }
   headers.try_emplace(arangodb::StaticStrings::TransactionId, std::move(value));
 }
