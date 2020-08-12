@@ -1,6 +1,11 @@
 v3.6.6 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue ES-664: the optimizer rule `inline-subqueries` must pull out a
+  subqueries that contains a COLLECT statement if the subquery is itself
+  called from within a loop. Otherwise the COLLECT will be applied to the
+  values in the outer FOR loop, which can produce a different result.
+
 * Updated arangosync to 0.7.9.
 
 * Fixed hotbackup S3 credentials validation and error reporting for upload
