@@ -87,6 +87,9 @@ class Projections {
   
   /// @brief get projection at position
   Projection const& operator[](size_t index) const;
+  
+  /// @brief get projection at position
+  Projection& operator[](size_t index);
  
   /// @brief extract projections from a full document
   void toVelocyPackFromDocument(arangodb::velocypack::Builder& b, arangodb::velocypack::Slice slice,

@@ -229,8 +229,9 @@ class Index {
   /// @brief if index needs explicit reversal and wouldn`t be reverted by storage rollback
   virtual bool needsReversal() const { return false; } 
 
-  /// @brief whether or not the index covers all the attributes passed in
-  bool covers(arangodb::aql::Projections const& projections) const;
+  /// @brief whether or not the index covers all the attributes passed in.
+  /// the function may modify the projections by setting the coveringIndexPosition value in it.
+  bool covers(arangodb::aql::Projections& projections) const;
 
   /// @brief return the underlying collection
   inline LogicalCollection& collection() const { return _collection; }

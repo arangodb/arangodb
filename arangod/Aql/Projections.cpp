@@ -38,32 +38,30 @@ namespace {
 /// @brief velocypack attribute name for serializing/unserializing projections
 arangodb::velocypack::StringRef const projectionsKey("projections");
 
-/// @brief empty list of attributes, used if the projections are not backed by
-/// a covering index
-std::vector<std::vector<arangodb::basics::AttributeName>> const noFields;
-
-/// @brief return the attributes that are covered by index(es). if multiple indexes
-/// are passed in, then they all need to point to the same index object
-std::vector<std::vector<arangodb::basics::AttributeName>> const& indexFields(std::vector<arangodb::transaction::Methods::IndexHandle> const& indexes) {
+/// @brief extract the (single) index to be used for an index scan. this will
+/// return the index if only a single index is used, or if the same index is
+/// used multiple times. if different indexes or no indexes are used, returns
+/// a nullptr.
+arangodb::transaction::Methods::IndexHandle const getIndex(std::vector<arangodb::transaction::Methods::IndexHandle> const& indexes) {
   if (indexes.empty()) {
-    return noFields;
+    return nullptr;
   }
 
   // cannot apply the optimization if we use more than one different index
   auto const& idx = indexes[0];
   for (size_t i = 1; i < indexes.size(); ++i) {
     if (indexes[i] != idx) {
-      // different index used => optimization not possible
-      return noFields;
+      // different indexes used => optimization not possible
+      return nullptr;
     }
   }
 
   if (!idx->hasCoveringIterator()) {
-    return noFields;
+    return nullptr;
   }
 
-  // return the attributes which are covered by this index
-  return idx->coveredFields();
+  // return the index to be used
+  return idx;
 }
 
 } // namespace
@@ -121,38 +119,13 @@ Projections::Projections(std::unordered_set<arangodb::aql::AttributeNamePath> co
 /// @brief determine if there is covering support by indexes passed
 void Projections::determineIndexSupport(DataSourceId const& id,
                                         std::vector<transaction::Methods::IndexHandle> const& indexes) {
-  _supportsCoveringIndex = false;
   _datasourceId = id;
 
-  // determine attribute positions in a covering index
-  auto const& idxFields = indexFields(indexes);
-  if (!idxFields.empty() && idxFields.size() >= _projections.size()) {
-    for (auto& it : _projections) {
-      bool found = false;
-      for (size_t i = 0; i < idxFields.size(); ++i) {
-        if (it.path.size() != idxFields[i].size()) {
-          break;
-        }
-
-        bool allMatch = true;
-        for (size_t j = 0; j < idxFields[i].size(); ++j) {
-          if (idxFields[i][j].name != it.path[j] || idxFields[i][j].shouldExpand) {
-            allMatch = false;
-            break;
-          }
-        }
-        if (allMatch) {
-          found = true;
-          it.coveringIndexPosition = i;
-          _supportsCoveringIndex = true;
-          break;
-        }
-      }
-      if (!found) {
-        _supportsCoveringIndex = false;
-        break;
-      }
-    }
+  auto index = getIndex(indexes);
+  if (index != nullptr) {
+    _supportsCoveringIndex = index->covers(*this);
+  } else {
+    _supportsCoveringIndex = false;
   }
 }
   
@@ -425,6 +398,11 @@ void Projections::removeSharedPrefixes() {
 }
 
 Projections::Projection const& Projections::operator[](size_t index) const {
+  TRI_ASSERT(index < size());
+  return _projections[index];
+}
+
+Projections::Projection& Projections::operator[](size_t index) {
   TRI_ASSERT(index < size());
   return _projections[index];
 }
