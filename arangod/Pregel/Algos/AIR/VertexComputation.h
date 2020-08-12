@@ -28,7 +28,8 @@
 #define ARANGODB_PREGEL_ALGOS_ACCUMULATORS_VERTEXCOMPUTATION_H 1
 
 #include "AIR.h"
-#include "VertexComputationEvalContext.h"
+
+#include "Greenspun/Interpreter.h"
 
 namespace arangodb {
 namespace pregel {
@@ -36,17 +37,62 @@ namespace algos {
 namespace accumulators {
 
 class VertexComputation : public vertex_computation {
-public:
+ public:
   explicit VertexComputation(VertexAccumulators const& algorithm);
   void compute(MessageIterator<message_type> const& messages) override;
   VertexAccumulators const& algorithm() const;
 
-private:
+ private:
   bool processIncomingMessages(MessageIterator<MessageData> const& incomingMessages);
-  greenspun::EvalResult runProgram(VertexComputationEvalContext& ctx, VPackSlice program);
+  void runProgram(greenspun::Machine& ctx, VPackSlice program);
+
+  void registerLocalFunctions();
+
+  // Local functions
+  // TODO we might want to place these in a separate struct and call it
+  //      the "vertex function library" or somesuch
+  // TODO it has to be less cumbersome to declare these buggers. Maybe we implement
+  //      these as structs with operator (), because the parameters are all the same
+  //      and we can neatly wrap parameter checking inside?
+  //
+  // TODO Wrap and unwrap parameters using templates? Suppose I have a function I want
+  //      to call from AIR that takes an uint64_t and a string and returns a bool,
+  //      can we make template tricks to be able to declare
+  //      blafunc<uint64_t, std::string, bool> which automatically unwraps
+  //      into an appropriate call into the Machine, including error messages?
+  //
+  //      what about lists/variadic functions? might not be able to do them
+  //
+  //      register functions with type info & small documentation, so we can
+  //      display it in the editor?
+  greenspun::EvalResult air_accumRef(greenspun::Machine& ctx,
+                                     VPackSlice const params, VPackBuilder& result);
+  greenspun::EvalResult air_accumSet(greenspun::Machine& ctx,
+                                     VPackSlice const params, VPackBuilder& result);
+  greenspun::EvalResult air_accumClear(greenspun::Machine& ctx,
+                                       VPackSlice const params, VPackBuilder& result);
+
+  greenspun::EvalResult air_sendToAccum(greenspun::Machine& ctx,
+                                        VPackSlice const params, VPackBuilder& result);
+  greenspun::EvalResult air_sendToAllNeighbours(greenspun::Machine& ctx,
+                                                VPackSlice const params,
+                                                VPackBuilder& result);
+
+  greenspun::EvalResult air_outboundEdges(greenspun::Machine& ctx,
+                                          VPackSlice const params, VPackBuilder& result);
+  greenspun::EvalResult air_neigbours(greenspun::Machine& ctx,
+                                      VPackSlice const params, VPackBuilder& result);
+  greenspun::EvalResult air_numberOutboundEdges(greenspun::Machine& ctx,
+                                                VPackSlice const params,
+                                                VPackBuilder& result);
+  greenspun::EvalResult air_numberOfVertices(greenspun::Machine& ctx, VPackSlice const params,
+                                             VPackBuilder& result);
+  greenspun::EvalResult air_bindRef(greenspun::Machine& ctx,
+                                    VPackSlice const params, VPackBuilder& result);
 
  private:
   VertexAccumulators const& _algorithm;
+  greenspun::Machine _airMachine;
 };
 
 }  // namespace accumulators
