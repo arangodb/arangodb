@@ -2,7 +2,6 @@
 
 #include "Pregel/Algos/AIR/Greenspun/Interpreter.h"
 #include "Pregel/Algos/AIR/Greenspun/Primitives.h"
-#include "Pregel/Algos/AIR/Greenspun/PrimEvalContext.h"
 #include "Pregel/Algos/AIR/Greenspun/EvalResult.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
@@ -14,6 +13,7 @@
 
 /* YOLO */
 
+using namespace arangodb;
 namespace arangodb::basics::VelocyPackHelper {
 
 int compare(arangodb::velocypack::Slice, arangodb::velocypack::Slice, bool,
@@ -25,47 +25,14 @@ int compare(arangodb::velocypack::Slice, arangodb::velocypack::Slice, bool,
 
 }  // namespace arangodb::basics::VelocyPackHelper
 
-using namespace arangodb::greenspun;
+greenspun::EvalResult Func_thisId(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  result.add(VPackValue("V/1"));
+  return {};
+}
 
-struct MyEvalContext : PrimEvalContext {
-  std::string thisId = "V/1";
-  std::string const& getThisId() const override { return thisId; }
-
-  EvalResult getAccumulatorValue(std::string_view id, VPackBuilder& result) const override {
-    std::cerr << "accumulotor value on " << id << " requested ";
-  }
-
-  EvalResult updateAccumulator(std::string_view accumId, std::string_view vertexId,
-                         VPackSlice value) override {
-    std::cerr << "update called on " << accumId << " " << vertexId << " "
-              << value.toJson() << std::endl;
-  }
-
-  EvalResult setAccumulator(std::string_view accumId, VPackSlice value) override {
-    std::cerr << "set called on " << accumId << " with value " << value.toJson()
-              << std::endl;
-  }
-
-  EvalResult enumerateEdges(std::function<EvalResult(VPackSlice edge)> cb) const override {
-    auto oneEdge = arangodb::velocypack::Parser::fromJson(
-        R"json({ "_from": "V/1",
-               "_to": "V/2",
-               "_cost": 15 })json");
-    std::cerr << "1" << std::endl;
-    cb(oneEdge->slice());
-    std::cerr << "1" << std::endl;
-    cb(oneEdge->slice());
-    std::cerr << "1" << std::endl;
-    cb(oneEdge->slice());
-    std::cerr << "1" << std::endl;
-    cb(oneEdge->slice());
-    std::cerr << "1" << std::endl;
-    cb(oneEdge->slice());
-    std::cerr << "1" << std::endl;
-
-    return {};
-  }
-};
+void AddSomeFunctions(greenspun::Machine& m) {
+  m.setFunction("this-id", Func_thisId);
+}
 
 std::string TRI_HomeDirectory() {
   char const* result = getenv("HOME");
@@ -253,9 +220,9 @@ struct LispLineEditor : arangodb::LineEditor {
 };
 
 int main(int argc, char** argv) {
-  InitInterpreter();
-
-  MyEvalContext ctx;
+  greenspun::Machine m;
+  InitMachine(m);
+  AddSomeFunctions(m);
 
   LispLineEditor lineEditor(".arangolisphist");
   lineEditor.open(true);
@@ -274,7 +241,7 @@ int main(int argc, char** argv) {
       auto program = arangodb::velocypack::Parser::fromJson(line);
 
       VPackBuilder result;
-      auto res = Evaluate(ctx, program->slice(), result).wrapError([](EvalError& err) {
+      auto res = greenspun::Evaluate(m, program->slice(), result).mapError([](greenspun::EvalError& err) {
         err.wrapMessage("at top-level");
       });
       if (res.fail()) {

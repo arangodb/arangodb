@@ -17,11 +17,14 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Heiko Kernbach
 /// @author Lars Maier
+/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB3_EXTRACTOR_H
-#define ARANGODB3_EXTRACTOR_H
+#ifndef ARANGODB_GREENSPUN_EXTRACTOR_H
+#define ARANGODB_GREENSPUN_EXTRACTOR_H 1
+
 #include "EvalResult.h"
 #include "Interpreter.h"
 #include "template-stuff.h"

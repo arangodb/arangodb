@@ -173,7 +173,25 @@ EvalResult Prim_VarRef(Machine& ctx, VPackSlice const params, VPackBuilder& resu
   return EvalError("expecting a single string parameter, found " + params.toJson());
 }
 
-EvalResult Prim_Attrib(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_VarSet(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  if (!params.isArray() && params.length() != 2) {
+    return EvalError("expected exactly two parameters");
+  }
+
+  auto&& [key, slice] = unpackTuple<VPackSlice, VPackSlice>(params);
+  if (!slice.isObject()) {
+    return EvalError("expect second parameter to be an object");
+  }
+
+  if (key.isString()) {
+    return ctx.setVariable(key.copyString(), slice);
+  } else {
+    return EvalError("expect first parameter to be a string");
+  }
+  return {};
+}
+
+EvalResult Prim_AttribRef(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (!params.isArray() && params.length() != 2) {
     return EvalError("expected exactly two parameters");
   }
@@ -200,63 +218,10 @@ EvalResult Prim_Attrib(Machine& ctx, VPackSlice const params, VPackBuilder& resu
   return {};
 }
 
-EvalResult Prim_This(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  result.add(VPackValue(ctx.getThisId()));
+EvalResult Prim_AttribSet(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  // TODO: implement me
+  std::abort();
   return {};
-}
-
-EvalResult Prim_AccumRef(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  auto&& [accumId] = unpackTuple<std::string_view>(params);
-  return ctx.getAccumulatorValue(accumId, result);
-}
-
-EvalResult Prim_AccumSet(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  auto&& [accumId, value] = unpackTuple<std::string_view, VPackSlice>(params);
-  return ctx.setAccumulator(accumId, value);
-}
-
-EvalResult Prim_Update(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  auto&& [accumId, toId, value] =
-      unpackTuple<std::string_view, std::string_view, VPackSlice>(params);
-
-  return ctx.updateAccumulator(accumId, toId, value);
-}
-
-EvalResult Prim_UpdateById(Machine& ctx, VPackSlice const params,
-                           VPackBuilder& result) {
-  auto&& [accumId, toId, value] =
-      unpackTuple<std::string_view, VPackSlice, VPackSlice>(params);
-
-  return ctx.updateAccumulatorById(accumId, toId, value);
-}
-
-EvalResult Prim_SendToAllNeighbors(Machine& ctx, VPackSlice const params,
-                                   VPackBuilder& result) {
-  auto&& [accumId, value] = unpackTuple<std::string_view, VPackSlice>(params);
-
-  return ctx.sendToAllNeighbors(accumId, value);
-}
-
-EvalResult Prim_PregelId(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  return ctx.getPregelId(result);
-}
-
-EvalResult Prim_Set(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  auto&& [accumId, value] = unpackTuple<std::string_view, VPackSlice>(params);
-  return ctx.setAccumulator(accumId, value);
-}
-
-EvalResult Prim_For(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  auto&& [dir, vars, body] = unpackTuple<std::string_view, VPackSlice, VPackSlice>(params);
-  auto&& [edgeVar] = unpackTuple<std::string>(vars);
-
-  // TODO translate direction and pass to enumerateEdges
-  return ctx.enumerateEdges([&, edgeVar = edgeVar, body = body](VPackSlice edge) {
-    StackFrameGuard<true> guard(ctx);
-    ctx.setVariable(edgeVar, edge);
-    VPackBuilder localResult;
-    return Evaluate(ctx, body, localResult);
-  });
 }
 
 EvalResult Prim_StringCat(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
@@ -329,21 +294,7 @@ EvalResult Prim_Not(Machine& ctx, VPackSlice const params, VPackBuilder& result)
   return {};
 }
 
-EvalResult Prim_VertexCount(Machine& ctx, VPackSlice const params,
-                            VPackBuilder& result) {
-  if (!params.isEmptyArray()) {
-    return EvalError("expected no argument");
-  }
-  return ctx.getVertexCount(result);
-}
-
-EvalResult Prim_OutgoingEdgesCount(Machine& ctx, VPackSlice const params,
-                                   VPackBuilder& result) {
-  if (!params.isEmptyArray()) {
-    return EvalError("expected no argument");
-  }
-  return ctx.getOutgoingEdgesCount(result);
-}
+// TODO: Ugly
 namespace {
 std::string paramsToString(VPackSlice const params) {
   std::stringstream ss;
@@ -362,61 +313,17 @@ std::string paramsToString(VPackSlice const params) {
   }
   return ss.str();
 }
-}
+}  // namespace
 
 EvalResult Prim_PrintLn(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  ctx.printCallback(paramsToString(params));
+  std::cerr << paramsToString(params) << std::endl;
   result.add(VPackSlice::noneSlice());
   return {};
 }
 
-EvalResult Prim_BindRef(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  if (params.length() == 1) {
-    VPackSlice name = params.at(0);
-    if (name.isString()) {
-      return ctx.getBindingValue(name.stringView(), result);
-    }
-  }
-
-  return EvalError("expected a single string argument");
-}
-
-EvalResult Prim_GlobalSuperstep(Machine& ctx, VPackSlice const params,
-                                VPackBuilder& result) {
-  if (params.isEmptyArray()) {
-    return ctx.getGlobalSuperstep(result);
-  }
-
-  return EvalError("expected no arguments");
-}
-
-EvalResult Prim_GoToPhase(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  if (params.length() == 1) {
-    VPackSlice v = params.at(0);
-    if (v.isString()) {
-      return ctx.gotoPhase(v.stringView());
-    }
-  }
-
-  return EvalError("expect single string argument");
-}
-
-EvalResult Prim_Finish(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  if (params.isEmptyArray()) {
-    return ctx.finishAlgorithm();
-  }
-
-  return EvalError("expect no arguments");
-}
-
-EvalResult Prim_VertexUniqueId(Machine& ctx, VPackSlice const params,
-                               VPackBuilder& result) {
-  if (params.isEmptyArray()) {
-    result.add(VPackValue(ctx.getVertexUniqueId()));
-    return {};
-  }
-
-  return EvalError("expect no arguments");
+EvalResult Prim_Error(Machine& ctx, VPackSlice const params,
+                      VPackBuilder& result) {
+  return EvalError(paramsToString(params));
 }
 
 EvalResult Prim_List(Machine& ctx, VPackSlice const params,
@@ -493,11 +400,6 @@ EvalResult Prim_Lambda(Machine& ctx, VPackSlice const paramsList,
   return {};
 }
 
-EvalResult Prim_Error(Machine& ctx, VPackSlice const params,
-                      VPackBuilder& result) {
-  return EvalError(paramsToString(params));
-}
-
 void RegisterFunction(Machine& ctx, std::string_view name, Machine::function_type&& f) {
   ctx.setFunction(name, std::move(f));
 }
@@ -541,8 +443,8 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("var-ref", Prim_VarRef);
   ctx.setFunction("var-set!", Prim_VarSet);
 
+  // TODO: We can just register bind parameters as variables (or a variable)
   ctx.setFunction("bind-ref", Prim_VarRef);
-  ctx.setFunction("param-test", Prim_ParamTest);
 }
 
 

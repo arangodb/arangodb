@@ -41,16 +41,6 @@ void InitMachine(Machine& m) { RegisterAllPrimitives(m); }
 EvalResult Apply(Machine& ctx, std::string const& function,
                  VPackSlice const params, VPackBuilder& result) {
   return ctx.applyFunction(function, params, result);
-/*
-  TRI_ASSERT(params.isArray())
-  auto f = primitives.find(function);
-  if (f != primitives.end()) {
-    return f->second(reinterpret_cast<Machine&>(ctx), params, result)
-        .wrapError([&](EvalError& err) { err.wrapCall(function, params); });
-  } else {
-    return EvalError("primitive not found `" + function + "`");
-  }
-*/
 }
 
 EvalResult SpecialIf(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& result) {
@@ -67,14 +57,14 @@ EvalResult SpecialIf(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& re
       StackFrameGuard<false> guard(ctx);
       auto res = Evaluate(ctx, cond, condResult);
       if (!res) {
-        return res.wrapError([&](EvalError& err) {
+        return res.mapError([&](EvalError& err) {
           err.wrapMessage("in condition " + std::to_string(iter.index()));
         });
       }
     }
     if (!condResult.slice().isFalse()) {
       StackFrameGuard<false> guard(ctx);
-      return Evaluate(ctx, body, result).wrapError([&](EvalError& err) {
+      return Evaluate(ctx, body, result).mapError([&](EvalError& err) {
         err.wrapMessage("in case " + std::to_string(iter.index()));
       });
     }
@@ -110,7 +100,7 @@ EvalResult SpecialAnd(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& r
   for (; paramIterator.valid(); paramIterator++) {
     VPackBuilder value;
     if (auto res = Evaluate(ctx, *paramIterator, value); res.fail()) {
-      return res.wrapError([&](EvalError& err) {
+      return res.mapError([&](EvalError& err) {
         err.wrapMessage("in case " + std::to_string(paramIterator.index()));
       });
     }
@@ -129,7 +119,7 @@ EvalResult SpecialOr(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& re
   for (; paramIterator.valid(); paramIterator++) {
     VPackBuilder value;
     if (auto res = Evaluate(ctx, *paramIterator, value); res.fail()) {
-      return res.wrapError([&](EvalError& err) {
+      return res.mapError([&](EvalError& err) {
         err.wrapMessage("in case " + std::to_string(paramIterator.index()));
       });
     }
@@ -156,7 +146,7 @@ EvalResult SpecialSeq(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& r
       return store;
     });
     if (auto res = Evaluate(ctx, *paramIterator, usedBuilder); res.fail()) {
-      return res.wrapError([&](EvalError& err) {
+      return res.mapError([&](EvalError& err) {
         err.wrapMessage("at position " + std::to_string(paramIterator.index()));
       });
     }
@@ -188,7 +178,7 @@ EvalResult SpecialMatch(Machine& ctx, ArrayIterator paramIterator, VPackBuilder&
     auto&& [cmp, body] = unpackTuple<VPackSlice, VPackSlice>(pair);
     VPackBuilder cmpValue;
     if (auto res = Evaluate(ctx, cmp, cmpValue); !res) {
-      return res.wrapError([&](EvalError& err) {
+      return res.mapError([&](EvalError& err) {
         err.wrapMessage("in condition " + std::to_string(paramIterator.index() - 1));
       });
     }
@@ -199,7 +189,7 @@ EvalResult SpecialMatch(Machine& ctx, ArrayIterator paramIterator, VPackBuilder&
     }
 
     if (pattern == cmpValue.slice().getNumber<double>()) {
-      return Evaluate(ctx, body, result).wrapError([&](EvalError& err) {
+      return Evaluate(ctx, body, result).mapError([&](EvalError& err) {
         err.wrapMessage("in case " + std::to_string(paramIterator.index() - 1));
       });
     }
@@ -251,7 +241,7 @@ EvalResult SpecialForEach(Machine& ctx, ArrayIterator paramIterator, VPackBuilde
     VPackSlice pair = *paramIterator;
     paramIterator++;
     if (auto res = readIteratorPair(pair); res.fail()) {
-      return res.wrapError([&](EvalError& err) {
+      return res.mapError([&](EvalError& err) {
         err.wrapMessage("at position " + std::to_string(paramIterator.index() - 1));
       });
     }
@@ -287,7 +277,7 @@ EvalResult Call(Machine& ctx, VPackSlice const functionSlice,
     for (; paramIterator.valid(); ++paramIterator) {
       StackFrameGuard<false> guard(ctx);
       if (auto res = Evaluate(ctx, *paramIterator, paramBuilder); !res) {
-        return res.wrapError([&](EvalError& err) {
+        return res.mapError([&](EvalError& err) {
           err.wrapParameter(functionSlice.copyString(), paramIterator.index());
         });
       }
@@ -304,7 +294,7 @@ EvalResult LambdaCall(Machine& ctx, VPackSlice paramNames, VPackSlice captures,
     for (; paramIterator.valid(); ++paramIterator) {
       StackFrameGuard<false> guard(ctx);
       if (auto res = Evaluate(ctx, *paramIterator, paramBuilder); !res) {
-        return res.wrapError([&](EvalError& err) {
+        return res.mapError([&](EvalError& err) {
           err.wrapParameter("<lambda>" + captures.toJson() + paramNames.toJson(),
                             paramIterator.index());
         });
@@ -335,7 +325,7 @@ EvalResult LambdaCall(Machine& ctx, VPackSlice paramNames, VPackSlice captures,
     ctx.setVariable(paramName.copyString(), *builderIter);
     builderIter++;
   }
-  return Evaluate(ctx, body, result).wrapError([&](EvalError& err) {
+  return Evaluate(ctx, body, result).mapError([&](EvalError& err) {
     err.wrapCall("<lambda>" + captures.toJson() + paramNames.toJson(),
                  paramBuilder.slice());
   });
@@ -367,7 +357,7 @@ EvalResult SpecialLet(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& r
 
       auto& builder = store.emplace_back();
       if (auto res = Evaluate(ctx, valueSlice, builder); res.fail()) {
-        return res.wrapError([&](EvalError& err) {
+        return res.mapError([&](EvalError& err) {
           err.wrapMessage("when evaluating value for binding `" + nameSlice.copyString() +
                           "` at position " + std::to_string(iter.index()));
         });
@@ -383,7 +373,7 @@ EvalResult SpecialLet(Machine& ctx, ArrayIterator paramIterator, VPackBuilder& r
   }
 
   // Now do a seq evaluation of the remaining parameter
-  return SpecialSeq(ctx, paramIterator, result).wrapError([](EvalError& err) {
+  return SpecialSeq(ctx, paramIterator, result).mapError([](EvalError& err) {
     err.wrapMessage("in evaluation of let-statement");
   });
 }
@@ -400,7 +390,7 @@ EvalResult Evaluate(Machine& ctx, VPackSlice const slice, VPackBuilder& result) 
       StackFrameGuard<false> guard(ctx);
       auto err = Evaluate(ctx, *paramIterator, functionBuilder);
       if (err.fail()) {
-        return err.wrapError(
+        return err.mapError(
             [&](EvalError& err) { err.wrapMessage("in function expression"); });
       }
     }
@@ -516,7 +506,7 @@ EvalResult Machine::applyFunction(std::string function, VPackSlice const params,
   auto f = functions.find(function);
   if (f != functions.end()) {
     return f->second(*this, params, result)
-      .wrapError([&](EvalError& err) { err.wrapCall(function, params); });
+      .mapError([&](EvalError& err) { err.wrapCall(function, params); });
   } else {
     return EvalError("function not found `" + function + "`");
   }
