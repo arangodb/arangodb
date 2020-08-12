@@ -90,6 +90,22 @@ class VertexComputation : public vertex_computation {
   greenspun::EvalResult air_bindRef(greenspun::Machine& ctx,
                                     VPackSlice const params, VPackBuilder& result);
 
+  // TODO: which of these IDs do we actually need?
+  greenspun::EvalResult air_thisVertexId(greenspun::Machine& ctx,
+                                    VPackSlice const params, VPackBuilder& result);
+  greenspun::EvalResult air_thisUniqueId(greenspun::Machine& ctx,
+                                    VPackSlice const params, VPackBuilder& result);
+  greenspun::EvalResult air_thisPregelId(greenspun::Machine& ctx,
+                                    VPackSlice const params, VPackBuilder& result);
+
+  greenspun::EvalResult air_globalSuperstep(greenspun::Machine& ctx,
+                                            VPackSlice const params, VPackBuilder& result);
+
+
+
+
+
+
  private:
   VertexAccumulators const& _algorithm;
   greenspun::Machine _airMachine;

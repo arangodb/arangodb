@@ -63,8 +63,26 @@ void VertexComputation::registerLocalFunctions() {
   _airMachine.setFunctionMember("send-to-all-neighbours",  // " name:id -> value:any -> void ",
                           &VertexComputation::air_sendToAccum, this);
 
-  _airMachine.setFunctionMember("outbound-edges",  // " name:id -> value:any -> void ",
+  _airMachine.setFunctionMember("this-outbound-edges",  // " name:id -> value:any -> void ",
                           &VertexComputation::air_outboundEdges, this);
+
+  _airMachine.setFunctionMember("this-outbound-edges-count", //,
+                                &VertexComputation::air_numberOutboundEdges, this);
+
+  _airMachine.setFunctionMember("this-vertex-id", // " () -> value:any ",
+                                &VertexComputation::air_thisVertexId, this);
+
+  _airMachine.setFunctionMember("this-unique-id", // ,
+                                &VertexComputation::air_thisUniqueId, this);
+
+  _airMachine.setFunctionMember("this-pregel-id", // ,
+                                &VertexComputation::air_thisPregelId, this);
+
+  _airMachine.setFunctionMember("vertex-count", // ,
+                                &VertexComputation::air_numberOfVertices, this);
+
+  _airMachine.setFunctionMember("global-superstep", //,
+                                &VertexComputation::air_globalSuperstep, this);
 }
 
 greenspun::EvalResult VertexComputation::air_accumRef(greenspun::Machine& ctx,
@@ -288,6 +306,38 @@ greenspun::EvalResult VertexComputation::air_bindRef(greenspun::Machine& ctx,
   }
   return greenspun::EvalError("Bind parameter `" + bindId + "` not found");
 }
+
+greenspun::EvalResult VertexComputation::air_thisVertexId(greenspun::Machine& ctx,
+                                       VPackSlice const params, VPackBuilder& result) {
+  result.add(VPackValue(this->vertexData()._documentId));
+  return {};
+}
+
+greenspun::EvalResult VertexComputation::air_thisUniqueId(greenspun::Machine& ctx,
+                                       VPackSlice const params, VPackBuilder& result) {
+  result.add(VPackValue(this->vertexData()._vertexId));
+  return {};
+}
+
+greenspun::EvalResult VertexComputation::air_thisPregelId(greenspun::Machine& ctx,
+                                       VPackSlice const params, VPackBuilder& result) {
+  auto id = pregelId();
+  {
+    VPackObjectBuilder ob(&result);
+    result.add("key", VPackValue(id.key));
+    result.add("shard", VPackValue(id.shard));
+  }
+
+  return {};
+}
+
+greenspun::EvalResult VertexComputation::air_globalSuperstep(greenspun::Machine& ctx,
+                                                              VPackSlice const params,
+                                                              VPackBuilder& result) {
+  result.add(VPackValue(globalSuperstep()));
+  return {};
+}
+
 
 VertexAccumulators const& VertexComputation::algorithm() const {
   return _algorithm;
