@@ -67,15 +67,8 @@ const& vertexData) { os << vertexData.toString(); return os;
 VertexAccumulators::VertexAccumulators(application_features::ApplicationServer& server,
                                        VPackSlice userParams)
     : Algorithm(server, pregel_algorithm_name) {
-  LOG_VERTEXACC("", DEBUG) << "algorithm constructor entry";
-
-  LOG_VERTEXACC("", DEBUG) << "initializing Greenspun interpreter";
-  greenspun::InitInterpreter();
-
   LOG_VERTEXACC("", DEBUG) << "parsing user parameters";
   parseUserParams(userParams);
-
-  LOG_VERTEXACC("", DEBUG) << "algorithm constructor done";
 }
 
 bool VertexAccumulators::supportsAsyncMode() const { return false; }

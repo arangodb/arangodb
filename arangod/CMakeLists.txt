@@ -191,14 +191,12 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/Algos/AIR/AccumulatorOptionsDeserializer.cpp
   Pregel/Algos/AIR/Greenspun/Interpreter.cpp
   Pregel/Algos/AIR/Greenspun/Primitives.cpp
-  Pregel/Algos/AIR/Greenspun/PrimEvalContext.cpp
   Pregel/Algos/AIR/MessageData.cpp
   Pregel/Algos/AIR/VertexData.cpp
   Pregel/Algos/AIR/EdgeData.cpp
   Pregel/Algos/AIR/GraphFormat.cpp
   Pregel/Algos/AIR/MessageFormat.cpp
   Pregel/Algos/AIR/VertexComputation.cpp
-  Pregel/Algos/AIR/VertexComputationEvalContext.cpp
   Pregel/Algos/AIR/VertexData.cpp
   Pregel/Algos/AIR/EdgeData.cpp
   Pregel/Algos/AIR/MessageData.cpp

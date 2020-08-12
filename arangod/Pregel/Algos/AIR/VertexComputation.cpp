@@ -307,10 +307,11 @@ bool VertexComputation::processIncomingMessages(MessageIterator<MessageData> con
   return accumChanged;
 }
 
-void VertexComputation::runProgram(greenspun::Machine& ctx, VPackSlice program) {
+greenspun::EvalResult VertexComputation::runProgram(greenspun::Machine& ctx, VPackSlice program) {
   VPackBuilder resultBuilder;
 
   auto result = Evaluate(ctx, program, resultBuilder);
+  // TODO: Sort out?
   if (!result) {
     LOG_DEVEL << "execution error: " << result.error().toString() << " voting to halt.";
     voteHalt();
@@ -326,7 +327,7 @@ void VertexComputation::runProgram(greenspun::Machine& ctx, VPackSlice program) 
       LOG_DEVEL << "program did not return a boolean value, but " << rs.toJson();
     }
   }
-  return result.wrapError([](greenspun::EvalError &err) {
+  return result.mapError([](greenspun::EvalError &err) {
     err.wrapMessage("at top-level");
   });
 }

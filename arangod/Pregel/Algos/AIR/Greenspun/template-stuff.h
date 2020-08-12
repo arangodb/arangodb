@@ -58,5 +58,13 @@ static std::tuple<Ts...> unpackTuple(VPackArrayIterator& iter) {
   return detail::unpackTuple<Ts...>(iter, std::index_sequence_for<Ts...>{});
 }
 
+template<class T, typename R, typename... Args>
+auto bind_member(R(T::* fn)(Args...), T* ptr) {
+  return [fn, ptr](Args&&... args) {
+    return (ptr->*fn)(std::forward<Args>(args)...);
+  };
+}
+
+
 
 #endif  // ARANGODB3_TEMPLATE_STUFF_H

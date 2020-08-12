@@ -44,7 +44,7 @@ class VertexComputation : public vertex_computation {
 
  private:
   bool processIncomingMessages(MessageIterator<MessageData> const& incomingMessages);
-  void runProgram(greenspun::Machine& ctx, VPackSlice program);
+  greenspun::EvalResult runProgram(greenspun::Machine& ctx, VPackSlice program);
 
   void registerLocalFunctions();
 
