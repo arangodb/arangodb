@@ -26,6 +26,8 @@ devel
   the projection can be satisfied by a single-attribute index on attribute `b`,
   but now also by a combined index on attributes `a` and `b` (or `b` and `a`).
 
+* Updated arangosync to 0.7.9.
+
 * Fixed hotbackup S3 credentials validation and error reporting for upload
   and download.
 
