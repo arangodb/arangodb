@@ -4,6 +4,9 @@ devel
 * Fixed that dropping a vanished follower works again. An exception response
   to the replication request is now handled properly.
 
+* Fixed hotbackup S3 credentials validation and error reporting for upload
+  and download.
+
 * Make AQL user-defined functions (UDFs) work in a cluster in case the UDF runs
   an AQL query inside its own function code.
 
