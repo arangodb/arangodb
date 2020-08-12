@@ -130,8 +130,7 @@ struct AqlValue final {
     VPACK_SLICE_POINTER,   // contains a pointer to a vpack document, memory is
                            // not managed!
     VPACK_MANAGED_SLICE,   // contains vpack, via pointer to a managed uint8_t
-                           // slice
-    VPACK_MANAGED_BUFFER,  // contains vpack, via pointer to a managed buffer
+                           // slice, allocated by new[] or malloc()
     DOCVEC,  // a vector of blocks of results coming from a subquery, managed
     RANGE    // a pointer to a range remembering lower and upper bound, managed
   };
@@ -148,10 +147,10 @@ struct AqlValue final {
   /// so there is no need for memory management.
   /// VPACK_MANAGED_SLICE: all values of a larger size will be stored in
   /// _data.slice via a managed uint8_t* object. The uint8_t* points to a VPack
-  /// data and is managed by the AqlValue.
-  /// VPACK_MANAGED_BUFFER: all values of a larger size will be stored in
-  /// _data.external via a managed VPackBuffer object. The Buffer is managed
-  /// by the AqlValue.
+  /// data and is managed by the AqlValue. The second-last byte contains info
+  /// about how the memory was allocated:
+  /// - MemoryOriginType::New: memory was allocated by new[] and must be deleted
+  /// - MemoryOriginType::Malloc: memory was malloc'd and needs to be free'd
   /// DOCVEC: a managed vector of AqlItemBlocks, for storing subquery results.
   /// The vector and ItemBlocks are managed by the AqlValue
   /// RANGE: a managed range object. The memory is managed by the AqlValue
@@ -162,10 +161,16 @@ struct AqlValue final {
     uint8_t const* pointer;
     uint8_t* slice;
     void* data;
-    arangodb::velocypack::Buffer<uint8_t>* buffer;
     std::vector<arangodb::aql::SharedAqlItemBlockPtr>* docvec;
     Range const* range;
   } _data;
+
+  /// @brief type of memory that we are dealing with for values of type
+  /// VPACK_MANAGED_SLICE
+  enum class MemoryOriginType : uint8_t {
+    New = 0, // memory allocated by new[]
+    Malloc = 1, // memory allocated by malloc
+  };
 
  public:
   // construct an empty AqlValue
@@ -209,8 +214,7 @@ struct AqlValue final {
   explicit AqlValue(AqlValueHintEmptyObject const&) noexcept;
 
   // construct from Buffer, potentially taking over its ownership
-  // (by adjusting the boolean passed)
-  AqlValue(arangodb::velocypack::Buffer<uint8_t>* buffer, bool& shouldDelete);
+  explicit AqlValue(arangodb::velocypack::Buffer<uint8_t>&& buffer);
 
   // construct from pointer, not copying!
   explicit AqlValue(AqlValueHintDocumentNoCopy const& v) noexcept;
@@ -327,7 +331,8 @@ struct AqlValue final {
   v8::Handle<v8::Value> toV8(v8::Isolate* isolate, arangodb::velocypack::Options const*) const;
 
   /// @brief materializes a value into the builder
-  void toVelocyPack(velocypack::Options const*, arangodb::velocypack::Builder&, bool resolveExternals) const;
+  void toVelocyPack(velocypack::Options const*, arangodb::velocypack::Builder&,
+                    bool resolveExternals, bool allowUnindexed) const;
 
   /// @brief materialize a value into a new one. this expands docvecs and
   /// ranges
@@ -335,7 +340,7 @@ struct AqlValue final {
 
   /// @brief return the slice for the value
   /// this will throw if the value type is not VPACK_SLICE_POINTER,
-  /// VPACK_INLINE, VPACK_MANAGED_SLICE or VPACK_MANAGED_BUFFER
+  /// VPACK_INLINE, VPACK_MANAGED_SLICE
   arangodb::velocypack::Slice slice() const;
   
   arangodb::velocypack::Slice slice(AqlValueType type) const;
@@ -375,6 +380,12 @@ struct AqlValue final {
   
   /// @brief return the total size of the docvecs
   size_t docvecLength() const;
+
+  /// @brief return the memory origin type for values of type VPACK_MANAGED_SLICE
+  MemoryOriginType memoryOriginType() const noexcept;
+  
+  /// @brief set the memory origin type for values of type VPACK_MANAGED_SLICE
+  void setMemoryOriginType(MemoryOriginType type) noexcept;
 };
 
 // Check that the defaulted constructors, destructor and assignment

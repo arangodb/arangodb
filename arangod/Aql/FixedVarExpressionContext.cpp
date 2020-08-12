@@ -62,7 +62,8 @@ void FixedVarExpressionContext::serializeAllVariables(velocypack::Options const&
   for (auto const& it : _vars) {
     builder.openArray();
     it.first->toVelocyPack(builder);
-    it.second.toVelocyPack(&opts, builder, true);
+    it.second.toVelocyPack(&opts, builder, /*resolveExternals*/true,
+                           /*allowUnindexed*/false);
     builder.close();
   }
 }
