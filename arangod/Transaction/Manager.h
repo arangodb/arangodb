@@ -24,6 +24,7 @@
 #ifndef ARANGOD_TRANSACTION_MANAGER_H
 #define ARANGOD_TRANSACTION_MANAGER_H 1
 
+#include "Basics/Identifier.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/ReadWriteSpinLock.h"
 #include "Basics/Result.h"
