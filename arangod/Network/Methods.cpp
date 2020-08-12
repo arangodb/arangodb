@@ -234,6 +234,13 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
 
   // scheduler requests that are due
   void startRequest() {
+    if (!_pool) {
+      LOG_TOPIC("5949f", ERR, Logger::COMMUNICATION)
+          << "connection pool unavailable";
+      callResponse(Error::Canceled, nullptr, std::move(_request));
+      return;
+    }
+
     auto now = std::chrono::steady_clock::now();
     if (now > _endTime || _pool->config().clusterInfo->server().isStopping()) {
       callResponse(Error::Timeout, nullptr, std::move(_request));
@@ -244,13 +251,6 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
     int res = resolveDestination(*_pool->config().clusterInfo, _destination, spec);
     if (res != TRI_ERROR_NO_ERROR) {  // ClusterInfo did not work
       errorResponse(Result{res}, __FILE__, __LINE__);
-      return;
-    }
-
-    if (!_pool) {
-      LOG_TOPIC("5949f", ERR, Logger::COMMUNICATION)
-          << "connection pool unavailable";
-      callResponse(Error::Canceled, nullptr, std::move(_request));
       return;
     }
 
