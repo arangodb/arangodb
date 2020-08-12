@@ -234,7 +234,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
 
   // scheduler requests that are due
   void startRequest() {
-    if (!_pool) {
+    if (ADB_UNLIKELY(!_pool)) {
       LOG_TOPIC("5949f", ERR, Logger::COMMUNICATION)
           << "connection pool unavailable";
       callResponse(Error::Canceled, nullptr, std::move(_request));
