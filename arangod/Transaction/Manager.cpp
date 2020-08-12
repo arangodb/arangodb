@@ -115,9 +115,18 @@ void Manager::unregisterFailedTransactions(std::unordered_set<TRI_voc_tid_t> con
 
 void Manager::registerTransaction(TRI_voc_tid_t transactionId,
                                   std::unique_ptr<TransactionData> data,
-                                  bool isReadOnlyTransaction) {
-  if (!isReadOnlyTransaction) {
+                                  bool isReadOnlyTransaction,
+                                  bool isFollowerTransaction) {
+  // If isFollowerTransaction is set then either the transactionId should be
+  // an isFollowerTransactionId or it should be a legacy transactionId:
+  TRI_ASSERT(!isFollowerTransaction ||
+             isFollowerTransactionId(transactionId) ||
+             isLegacyTransactionId(transactionId));
+  if (!isReadOnlyTransaction && !isFollowerTransaction) {
+    LOG_TOPIC("ccdea", TRACE, Logger::TRANSACTIONS) << "Acquiring read lock for tid " << transactionId;
     _rwLock.readLock();
+    _nrReadLocked.fetch_add(1, std::memory_order_relaxed);
+    LOG_TOPIC("ccdeb", TRACE, Logger::TRANSACTIONS) << "Got read lock for tid " << transactionId << " nrReadLocked: " << _nrReadLocked.load(std::memory_order_relaxed);
   }
 
   _nrRunning.fetch_add(1, std::memory_order_relaxed);
@@ -133,8 +142,10 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
       _transactions[bucket]._activeTransactions.emplace(transactionId, std::move(data));
     } catch (...) {
       _nrRunning.fetch_sub(1, std::memory_order_relaxed);
-      if (!isReadOnlyTransaction) {
+      if (!isReadOnlyTransaction && !isFollowerTransaction) {
         _rwLock.unlockRead();
+        _nrReadLocked.fetch_sub(1, std::memory_order_relaxed);
+        LOG_TOPIC("ccdec", TRACE, Logger::TRANSACTIONS) << "Released lock for tid " << transactionId << " nrReadLocked: " << _nrReadLocked.load(std::memory_order_relaxed);
       }
       throw;
     }
@@ -142,11 +153,13 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
 }
 
 // unregisters a transaction
-void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed, bool isReadOnlyTransaction) {
+void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed, bool isReadOnlyTransaction, bool isFollowerTransaction) {
   // always perform an unlock when we leave this function
-  auto guard = scopeGuard([this, &isReadOnlyTransaction]() {
-    if (!isReadOnlyTransaction) {
+  auto guard = scopeGuard([this, transactionId, &isReadOnlyTransaction, &isFollowerTransaction]() {
+    if (!isReadOnlyTransaction && !isFollowerTransaction) {
       _rwLock.unlockRead();
+      _nrReadLocked.fetch_sub(1, std::memory_order_relaxed);
+      LOG_TOPIC("ccded", TRACE, Logger::TRANSACTIONS) << "Released lock for tid " << transactionId << " nrReadLocked: " << _nrReadLocked.load(std::memory_order_relaxed);
     }
   });
 
@@ -649,7 +662,7 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
              status == transaction::Status::ABORTED);
 
   LOG_TOPIC("7bd2f", DEBUG, Logger::TRANSACTIONS)
-      << "managed trx '" << tid << " updating to '" << status << "'";
+      << "managed trx '" << tid << " updating to '" << (status == transaction::Status::COMMITTED ? "COMMITED" : "ABORTED") << "'";
 
   Result res;
   size_t const bucket = getBucket(tid);

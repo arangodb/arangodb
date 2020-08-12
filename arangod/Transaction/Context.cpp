@@ -73,7 +73,7 @@ transaction::Context::Context(TRI_vocbase_t& vocbase)
       _options(arangodb::velocypack::Options::Defaults),
       _dumpOptions(arangodb::velocypack::Options::Defaults),
       _contextData(EngineSelectorFeature::ENGINE->createTransactionContextData()),
-      _transaction{0, false, false},
+      _transaction{0, false, false, false},
       _ownsResolver(false) {
   /// dump options contain have the escapeUnicode attribute set to true
   /// this allows dumping of string values as plain 7-bit ASCII values.
@@ -88,9 +88,9 @@ transaction::Context::Context(TRI_vocbase_t& vocbase)
 transaction::Context::~Context() {
   // unregister the transaction from the logfile manager
   if (_transaction.id > 0) {
-    transaction::ManagerFeature::manager()->unregisterTransaction(_transaction.id,
-                                                                _transaction.hasFailedOperations,
-                                                                _transaction.isReadOnlyTransaction);
+    transaction::ManagerFeature::manager()->unregisterTransaction(
+        _transaction.id, _transaction.hasFailedOperations,
+        _transaction.isReadOnlyTransaction, _transaction.isFollowerTransaction);
   }
 
   // free all VPackBuilders we handed out
@@ -235,13 +235,15 @@ CollectionNameResolver const* transaction::Context::createResolver() {
 void transaction::Context::storeTransactionResult(TRI_voc_tid_t id,
                                                   bool hasFailedOperations,
                                                   bool wasRegistered,
-                                                  bool isReadOnlyTransaction) noexcept {
+                                                  bool isReadOnlyTransaction,
+                                                  bool isFollowerTransaction) noexcept {
   TRI_ASSERT(_transaction.id == 0);
 
   if (wasRegistered) {
     _transaction.id = id;
     _transaction.hasFailedOperations = hasFailedOperations;
     _transaction.isReadOnlyTransaction = isReadOnlyTransaction;
+    _transaction.isFollowerTransaction = isFollowerTransaction;
   }
 }
 

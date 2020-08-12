@@ -606,7 +606,7 @@ int MMFilesLogfileManager::registerTransaction(TRI_voc_tid_t transactionId,
 
   try {
     auto data = std::make_unique<MMFilesTransactionData>(lastCollectedId, lastSealedId);
-    transaction::ManagerFeature::manager()->registerTransaction(transactionId, std::move(data), isReadOnlyTransaction);
+    transaction::ManagerFeature::manager()->registerTransaction(transactionId, std::move(data), isReadOnlyTransaction, false);
     return TRI_ERROR_NO_ERROR;
   } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;

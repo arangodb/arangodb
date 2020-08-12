@@ -196,6 +196,9 @@ bool RestDocumentHandler::insertDocument() {
     generateTransactionError(collectionName, OperationResult(std::move(res)), "");
     return false;
   }
+  if (!opOptions.isSynchronousReplicationFrom.empty()) {
+    trx->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
+  }
 
   generateSaved(result, collectionName,
                 TRI_col_type_e(trx->getCollectionType(collectionName)),
@@ -480,6 +483,9 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   } else {
     result = trx->replace(collectionName, body, opOptions);
   }
+  if (!opOptions.isSynchronousReplicationFrom.empty()) {
+    trx->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
+  }
 
   res = trx->finish(result.result);
 
@@ -600,6 +606,9 @@ bool RestDocumentHandler::removeDocument() {
   if (result.fail()) {
     generateTransactionError(collectionName, result, key);
     return false;
+  }
+  if (!opOptions.isSynchronousReplicationFrom.empty()) {
+    trx->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
   }
 
   if (!res.ok()) {
