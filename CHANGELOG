@@ -1,6 +1,9 @@
 v3.6.6 (XXXX-XX-XX)
 -------------------
 
+* Make AQL user-defined functions (UDFs) work in a cluster in case the UDF runs
+  an AQL query inside its own function code.
+
 * Fixed hotbackup S3 credentials validation and error reporting for upload
   and download (BTS-162).
 
