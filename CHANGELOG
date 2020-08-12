@@ -3,7 +3,7 @@ devel
 
 * Support projections on sub-attributes (`a.b.c`).
 
-  In previous versions of ArangoDBy, projections were only supported on 
+  In previous versions of ArangoDB, projections were only supported on 
   top-level attributes. For example, in the query
     
       FOR doc IN collection
