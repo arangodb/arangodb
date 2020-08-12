@@ -229,6 +229,12 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
             return false;
           }
 
+          if (idx->sparse()) {
+            // we cannot safely substitute a full collection scan with a sparse index scan,
+            // as the sparse index may be missing some documents
+            return false;
+          }
+
           picked = idx;
           return true;
         };
