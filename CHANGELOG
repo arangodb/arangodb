@@ -1,6 +1,9 @@
 devel
 -----
 
+* Make AQL user-defined functions (UDFs) work in a cluster in case the UDF runs
+  an AQL query inside its own function code.
+
 * Fix: writeConcern is now honored correctly (ES-655).
 
 * Fix: The 'sorted' COLLECT variant would return undefined instead of null when
