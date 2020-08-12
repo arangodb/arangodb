@@ -281,45 +281,45 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   [[nodiscard]] auto lastRangeHasDataRow() const noexcept -> bool;
 
   // State to determine what to do next based on the given user call and stack.
-  [[nodiscard]] auto handleCheckCallState(AqlCallStack const& stack,
+  [[nodiscard]] __attribute__((always_inline)) auto handleCheckCallState(AqlCallStack const& stack,
                                           AqlCall const& clientCall) const -> ExecState;
 
   // Now perform Skip operation(s) on this executor.
-  [[nodiscard]] auto handleSkipState(AqlCall& clientCall)
+  [[nodiscard]] __attribute__((always_inline)) auto handleSkipState(AqlCall& clientCall)
       -> std::pair<ExecState, ExecutorState>;
 
   // Now perform Skip operation(s) on this executor.
   // non-spliced subquery variant, can return WAITING in intermediate state.
   template <class exec = Executor, typename = std::enable_if_t<is_one_of_v<exec, SubqueryExecutor<true>>>>
-  [[nodiscard]] auto handleSkipStateSubquery(AqlCall& clientCall)
+  [[nodiscard]] __attribute__((always_inline)) auto handleSkipStateSubquery(AqlCall& clientCall)
       -> std::pair<ExecState, ExecutionState>;
 
   // Now perform Produce operation(s) on this executor.
-  [[nodiscard]] auto handleProduceState(AqlCall& clientCall)
+  [[nodiscard]] __attribute__((always_inline)) auto handleProduceState(AqlCall& clientCall)
       -> std::pair<ExecState, ExecutorState>;
 
   // Now perform Produce operation(s) on this executor.
   // non-spliced subquery variant, can return WAITING in intermediate state
-  [[nodiscard]] auto handleProduceStateSubquery(AqlCall& clientCall)
+  [[nodiscard]] __attribute__((always_inline)) auto handleProduceStateSubquery(AqlCall& clientCall)
       -> std::pair<ExecState, ExecutionState>;
 
 
   // Now perform fast Forward operation(s) on this executor.
-  [[nodiscard]] auto handleFastForwardState(AqlCall& clientCall)
+  [[nodiscard]] __attribute__((always_inline)) auto handleFastForwardState(AqlCall& clientCall)
       -> std::pair<ExecState, ExecutorState>;
 
   // Now perform fast Forward operation(s) on this executor.
   // non-spliced subquery variant, can return WAITING in intermediate state.
   template <class exec = Executor, typename = std::enable_if_t<is_one_of_v<exec, SubqueryExecutor<true>>>>
-  [[nodiscard]] auto handleFastForwardStateSubquery(AqlCall& clientCall)
+  [[nodiscard]] __attribute__((always_inline)) auto handleFastForwardStateSubquery(AqlCall& clientCall)
       -> std::pair<ExecState, ExecutionState>;
 
   // Now performan an upstream request
-  [[nodiscard]] auto handleUpstreamState(AqlCallStack const& stack, AqlCall& clientCall,
+  [[nodiscard]] __attribute__((always_inline)) auto handleUpstreamState(AqlCallStack const& stack, AqlCall& clientCall,
                                          AqlCallType const& upstreamCall, bool wasCalledWithContinueCall)
       -> std::pair<ExecState, ExecutionState>;
 
-  [[nodiscard]] auto handleNextSubqueryState(AqlCallStack const& stack,
+  [[nodiscard]] __attribute__((always_inline)) auto handleNextSubqueryState(AqlCallStack const& stack,
                                              AqlCallList const& clientCallList) -> ExecState;
 
   void resetExecutor();
