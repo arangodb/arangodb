@@ -203,6 +203,12 @@ bool SortedCollectExecutor::CollectGroup::isSameGroup(InputAqlItemRow const& inp
     size_t i = 0;
 
     for (auto& it : infos.getGroupRegisters()) {
+      // Note that `None` and `null` are considered equal by AqlValue::Compare,
+      // which is a problem if we encounter `null` values on the very first row,
+      // when groupValues is still uninitialized and thus `None`.
+      if (this->groupValues[i].isNone()) {
+        return false;
+      }
       // we already had a group, check if the group has changed
       // compare values 1 1 by one
       int cmp = AqlValue::Compare(infos.getVPackOptions(), this->groupValues[i],

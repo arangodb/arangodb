@@ -174,6 +174,13 @@ set(ARANGO_ROCKSDB_VERSION "${ARANGO_ROCKSDB_VERSION}" PARENT_SCOPE)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/nghttp2/)
 
 ################################################################################
+## IMMER
+################################################################################
+
+set(IMMER_VERSION "0.6.2")
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/immer/v${IMMER_VERSION})
+
+################################################################################
 ## LINK_DIRECTORIES
 ################################################################################
 
