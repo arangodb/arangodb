@@ -726,7 +726,7 @@ void ClusterInfo::loadPlan() {
     LOG_TOPIC("d68ae", WARN, Logger::CLUSTER)
         << "Attention: /arango/Plan/Version in the agency is not set or not a "
            "positive number.";
-      return;
+    return;
   }
 
   {
@@ -1224,12 +1224,12 @@ void ClusterInfo::loadPlan() {
     _shardToName.swap(newShardToName);
   }
 
-    if (swapViews) {
-      _plannedViews.swap(_newPlannedViews);
-    }
-    if (swapAnalyzers) {
-      _dbAnalyzersRevision.swap(newDbAnalyzersRevision);
-    }
+  if (swapViews) {
+    _plannedViews.swap(_newPlannedViews);
+  }
+  if (swapAnalyzers) {
+    _dbAnalyzersRevision.swap(newDbAnalyzersRevision);
+  }
 
   if (planValid) {
     _planProt.isValid = true;
@@ -1628,11 +1628,23 @@ std::shared_ptr<LogicalView> ClusterInfo::getView(DatabaseID const& databaseID,
     return nullptr;
   }
 
-  READ_LOCKER(readLocker, _planProt.lock);
-  auto const view = lookupView(_plannedViews, databaseID, viewID);
+  {
+    READ_LOCKER(readLocker, _planProt.lock);
+    auto const view = lookupView(_plannedViews, databaseID, viewID);
 
-  if (view) {
-    return view;
+    if (view) {
+      return view;
+    }
+  }
+
+  Result res = fetchAndWaitForPlanVersion(std::chrono::seconds(10)).get();
+  if (res.ok()) {
+    READ_LOCKER(readLocker, _planProt.lock);
+    auto const view = lookupView(_plannedViews, databaseID, viewID);
+
+    if (view) {
+      return view;
+    }
   }
 
   LOG_TOPIC("a227e", DEBUG, Logger::CLUSTER)
