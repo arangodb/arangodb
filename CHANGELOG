@@ -4,6 +4,9 @@ v3.7.2 (XXXX-XX-XX)
 * Fixed hotbackup S3 credentials validation and error reporting for upload
   and download.
 
+* Improve performance of many non-subquery AQL queries, by optimizing away some
+  storage overhead for subquery context data.
+
 * Always fetch data for /_api/cluster/agency-dump from leader of the agency.
   Add option "redirectToLeader=true" to internal /_api/agency/state API.
 

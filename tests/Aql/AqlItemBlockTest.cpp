@@ -50,11 +50,11 @@ class AqlItemBlockTest : public ::testing::Test {
               "d",
               {
                   "a": "b",
-                  "this": "is to large to be inlined"
+                  "this": "is too large to be inlined"
               },
               {
                   "c": "d",
-                  "this": "is to large to be inlined"
+                  "this": "is too large to be inlined"
               }
           ]
       )")};
@@ -77,20 +77,24 @@ class AqlItemBlockTest : public ::testing::Test {
                               std::vector<size_t> indexes) {
     if (indexes.empty()) {
       EXPECT_FALSE(testee->hasShadowRows());
+      EXPECT_EQ(testee->numShadowRows(), 0);
     } else {
       EXPECT_TRUE(testee->hasShadowRows());
+      EXPECT_GT(testee->numShadowRows(), 0);
     }
 
-    EXPECT_EQ(testee->getShadowRowIndexes().size(), indexes.size());
+    auto [sb, se] = testee->getShadowRowIndexesFrom(0);
+    EXPECT_EQ(std::distance(sb, se), indexes.size());
     for (auto const& it : indexes) {
-      EXPECT_NE(testee->getShadowRowIndexes().find(it),
-                testee->getShadowRowIndexes().end());
+      EXPECT_NE(std::find(sb, se, it), se);
     }
     size_t old = 0;
     // Set is ordered increasingly
-    for (auto const& it : testee->getShadowRowIndexes()) {
-      ASSERT_LE(old, it);
-      old = it;
+    auto it = sb;
+    while (it != se) {
+      ASSERT_LE(old, *it);
+      old = *it;
+      ++it;
     }
   }
 };
@@ -192,14 +196,13 @@ TEST_F(AqlItemBlockTest, test_block_contains_shadow_rows) {
 
   // No shadow Rows included
   assertShadowRowIndexes(block, {});
-
+  
   // add a shadow row
-  block->makeShadowRow(2);
-  assertShadowRowIndexes(block, {2});
+  block->makeShadowRow(1, 0);
+  assertShadowRowIndexes(block, {1});
 
   // add another shadow row
-  block->makeShadowRow(1);
-
+  block->makeShadowRow(2, 0);
   assertShadowRowIndexes(block, {1, 2});
 }
 
@@ -308,14 +311,14 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_shadowrows) {
 
   block->emplaceValue(1, 0, dummyData(0));
   block->emplaceValue(1, 1, dummyData(1));
-  block->setShadowRowDepth(1, AqlValue(AqlValueHintInt(0)));
+  block->makeShadowRow(1, 0);
 
   block->emplaceValue(2, 0, dummyData(2));
   block->emplaceValue(2, 1, dummyData(4));
 
   block->emplaceValue(3, 0, dummyData(2));
   block->emplaceValue(3, 1, dummyData(4));
-  block->setShadowRowDepth(3, AqlValue(AqlValueHintInt(0)));
+  block->makeShadowRow(3, 0);
 
   assertShadowRowIndexes(block, {1, 3});
 
@@ -524,11 +527,11 @@ class AqlItemBlockClassicTest : public ::testing::Test {
               "d",
               {
                   "a": "b",
-                  "this": "is to large to be inlined"
+                  "this": "is too large to be inlined"
               },
               {
                   "c": "d",
-                  "this": "is to large to be inlined"
+                  "this": "is too large to be inlined"
               }
           ]
       )")};
@@ -650,14 +653,14 @@ TEST_F(AqlItemBlockClassicTest, test_serialization_deserialization_shadowrows) {
 
   block->emplaceValue(1, 0, dummyData(0));
   block->emplaceValue(1, 1, dummyData(1));
-  block->setShadowRowDepth(1, AqlValue(AqlValueHintInt(0)));
+  block->makeShadowRow(1, 0);
 
   block->emplaceValue(2, 0, dummyData(2));
   block->emplaceValue(2, 1, dummyData(4));
 
   block->emplaceValue(3, 0, dummyData(2));
   block->emplaceValue(3, 1, dummyData(4));
-  block->setShadowRowDepth(3, AqlValue(AqlValueHintInt(0)));
+  block->makeShadowRow(3, 0);
 
   VPackBuilder result;
   result.openObject();
