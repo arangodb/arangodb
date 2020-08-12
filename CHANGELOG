@@ -1,6 +1,9 @@
 devel
 -----
 
+* Remove some JavaScript files containing testsuites and test utilities from our
+  official release packages.
+
 * Fix: writeConcern is now honored correctly (ES-655).
 
 * Fix: The 'sorted' COLLECT variant would return undefined instead of null when
