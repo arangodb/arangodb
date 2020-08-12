@@ -35,7 +35,7 @@ class DatabaseTailingSyncer final : public TailingSyncer {
  public:
   DatabaseTailingSyncer(TRI_vocbase_t& vocbase,
                         ReplicationApplierConfiguration const& configuration,
-                        TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId);
+                        TRI_voc_tick_t initialTick, bool useTick);
 
   TRI_vocbase_t* resolveVocbase(velocypack::Slice const&) override {
     return _vocbase;

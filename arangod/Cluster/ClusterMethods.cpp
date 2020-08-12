@@ -701,8 +701,8 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
   if (!other->distributeShardsLike().empty()) {
     CollectionNameResolver resolver(col->vocbase());
     std::string name = other->distributeShardsLike();
-    TRI_voc_cid_t cid = arangodb::basics::StringUtils::uint64(name);
-    if (cid > 0) {
+    DataSourceId cid{arangodb::basics::StringUtils::uint64(name)};
+    if (cid.isSet()) {
       name = resolver.getCollectionNameCluster(cid);
     }
     std::string const errorMessage = "Cannot distribute shards like '" + other->name() +
@@ -714,7 +714,7 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
       std::make_shared<std::unordered_map<std::string, std::vector<std::string>>>();
 
   // We need to replace the distribute with the cid.
-  auto cidString = arangodb::basics::StringUtils::itoa(other.get()->id());
+  auto cidString = arangodb::basics::StringUtils::itoa(other.get()->id().id());
   col->distributeShardsLike(cidString, other->shardingInfo());
 
   if (col->isSmart() && col->type() == TRI_COL_TYPE_EDGE) {
@@ -1227,7 +1227,7 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
                                                     LogicalCollection& coll,
                                                     VPackSlice const slice,
                                                     arangodb::OperationOptions const& options) {
-  const std::string collid = std::to_string(coll.id());
+  const std::string collid = std::to_string(coll.id().id());
 
   // create vars used in this function
   bool const useMultiple = slice.isArray();  // insert more than one document
@@ -1576,7 +1576,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
                                                  OperationOptions const& options) {
   // Set a few variables needed for our work:
 
-  const std::string collid = std::to_string(coll.id());
+  const std::string collid = std::to_string(coll.id().id());
   std::shared_ptr<ShardMap> shardIds = coll.shardIds();
 
   // If _key is the one and only sharding attribute, we can do this quickly,
@@ -2308,7 +2308,6 @@ int flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
 }
 
 #ifndef USE_ENTERPRISE
-
 std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::createCollectionOnCoordinator(
     TRI_vocbase_t& vocbase, velocypack::Slice parameters, bool ignoreDistributeShardsLikeErrors,
     bool waitForSyncReplication, bool enforceReplicationFactor,
@@ -2318,7 +2317,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::createCollection
   // etc. It is not used anywhere and will be cleaned up after this call.
   std::vector<std::shared_ptr<LogicalCollection>> cols;
   for (VPackSlice p : VPackArrayIterator(parameters)) {
-    cols.emplace_back(std::make_shared<LogicalCollection>(vocbase, p, true, 0));
+    cols.emplace_back(std::make_shared<LogicalCollection>(vocbase, p, true));
   }
 
   // Persist collection will return the real object.
@@ -2464,9 +2463,9 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
 
       auto const serverState = ServerState::instance();
       infos.emplace_back(ClusterCollectionCreationInfo{
-          std::to_string(col->id()), col->numberOfShards(), col->replicationFactor(),
-          col->writeConcern(), waitForSyncReplication, velocy.slice(),
-          serverState->getId(), serverState->getRebootId()});
+          std::to_string(col->id().id()), col->numberOfShards(),
+          col->replicationFactor(), col->writeConcern(), waitForSyncReplication,
+          velocy.slice(), serverState->getId(), serverState->getRebootId()});
       vpackData.emplace_back(velocy.steal());
     } // for col : collections
 
@@ -2567,11 +2566,10 @@ arangodb::Result hotBackupList(network::ConnectionPool* pool,
     if (!r.ok()) {
       continue;
     }
-    auto status = r.response->statusCode();
-    if (status == fuerte::StatusOK ||
-        status == fuerte::StatusCreated ||
-        status == fuerte::StatusAccepted ||
-        status == fuerte::StatusNoContent) {
+    if (r.response->checkStatus({fuerte::StatusOK,
+                                 fuerte::StatusCreated,
+                                 fuerte::StatusAccepted,
+                                 fuerte::StatusNoContent})) {
       nrGood++;
     }
   }

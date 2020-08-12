@@ -27,6 +27,7 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/SkipResult.h"
+#include "Containers/SmallVector.h"
 
 #include <memory>
 
@@ -78,9 +79,6 @@ class ConstFetcher {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
-  //@deprecated
-  auto useStack(AqlCallStack const& stack) -> void{};
-
  private:
   /**
    * @brief Input block currently in use. Used for memory management by the
@@ -108,7 +106,7 @@ class ConstFetcher {
  private:
   auto indexIsValid() const noexcept -> bool;
   auto numRowsLeft() const noexcept -> size_t;
-  auto canUseFullBlock(std::vector<std::pair<size_t, size_t>> const& ranges) const
+  auto canUseFullBlock(arangodb::containers::SmallVector<std::pair<size_t, size_t>> const& ranges) const
       noexcept -> bool;
 };
 

@@ -335,7 +335,7 @@ arangodb::aql::AstNode const ScopedAqlValue::INVALID_NODE(arangodb::aql::NODE_TY
 
 /*static*/ irs::string_ref const& ScopedAqlValue::typeString(ScopedValueType type) noexcept {
   static irs::string_ref const TYPE_NAMES[] = {
-    "invalid", "null", "boolean", "double", "string", "array", "range"
+    "invalid", "null", "boolean", "double", "string", "array", "range", "object"
   };
 
   TRI_ASSERT(size_t(type) < IRESEARCH_COUNTOF(TYPE_NAMES));
@@ -523,7 +523,6 @@ bool attributeAccessEqual(arangodb::aql::AstNode const* lhs,
         }
 
       } else if (!n) {  // end of attribute path (base case)
-
         if (arangodb::aql::NODE_TYPE_REFERENCE == type) {
           this->iVal = reinterpret_cast<int64_t>(node->value.value._data);
           this->type = Type::VALUE;

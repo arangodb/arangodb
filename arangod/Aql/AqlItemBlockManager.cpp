@@ -44,7 +44,7 @@ AqlItemBlockManager::~AqlItemBlockManager() = default;
 
 /// @brief request a block with the specified size
 SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(size_t nrItems, RegisterCount nrRegs) {
-  size_t const targetSize = nrItems * (nrRegs + 1);
+  size_t const targetSize = nrItems * nrRegs;
 
   AqlItemBlock* block = nullptr;
   uint32_t i = Bucket::getId(targetSize);

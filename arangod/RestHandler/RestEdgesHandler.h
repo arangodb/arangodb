@@ -67,7 +67,7 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
   /// @brief get all edges for a given vertex. Independent from the request
   //////////////////////////////////////////////////////////////////////////////
 
-  bool getEdgesForVertex(std::string const& id, TRI_voc_cid_t cid,
+  bool getEdgesForVertex(std::string const& id, DataSourceId cid,
                          std::string const& collectionName,
                          TRI_edge_direction_e direction, transaction::Methods& trx,
                          std::function<void(LocalDocumentId const&)> const& cb);

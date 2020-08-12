@@ -69,7 +69,7 @@ TransactionState::~TransactionState() {
 }
 
 /// @brief return the collection from a transaction
-TransactionCollection* TransactionState::collection(TRI_voc_cid_t cid,
+TransactionCollection* TransactionState::collection(DataSourceId cid,
                                                     AccessMode::Type accessType) const {
   TRI_ASSERT(_status == transaction::Status::CREATED ||
              _status == transaction::Status::RUNNING);
@@ -117,7 +117,7 @@ TransactionState::Cookie::ptr TransactionState::cookie(void const* key,
 }
 
 /// @brief add a collection to a transaction
-Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cname,
+Result TransactionState::addCollection(DataSourceId cid, std::string const& cname,
                                        AccessMode::Type accessType, bool lockUsage) {
   Result res;
 
@@ -206,19 +206,6 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
 
   return res;
 }
-
-/// @brief run a callback on all collections
-void TransactionState::allCollections(                     // iterate
-    std::function<bool(TransactionCollection&)> const& cb  // callback to invoke
-) {
-  for (auto& trxCollection : _collections) {
-    TRI_ASSERT(trxCollection);  // ensured by addCollection(...)
-    if (!cb(*trxCollection)) {
-      // abort early
-      return;
-    }
-  }
-}
   
 /// @brief use all participating collections of a transaction
 Result TransactionState::useCollections() {
@@ -234,7 +221,7 @@ Result TransactionState::useCollections() {
 }
 
 /// @brief find a collection in the transaction's list of collections
-TransactionCollection* TransactionState::findCollection(TRI_voc_cid_t cid) const {
+TransactionCollection* TransactionState::findCollection(DataSourceId cid) const {
   for (auto* trxCollection : _collections) {
     if (cid == trxCollection->id()) {
       // found
@@ -257,7 +244,7 @@ TransactionCollection* TransactionState::findCollection(TRI_voc_cid_t cid) const
 ///        defines where the collection should be inserted,
 ///        so whenever we want to insert the collection we
 ///        have to use this position for insert.
-TransactionCollection* TransactionState::findCollection(TRI_voc_cid_t cid,
+TransactionCollection* TransactionState::findCollection(DataSourceId cid,
                                                         size_t& position) const {
   size_t const n = _collections.size();
   size_t i;
@@ -301,8 +288,7 @@ void TransactionState::acceptAnalyzersRevision(
   _analyzersRevision = analyzersRevision;
 }
 
-Result TransactionState::checkCollectionPermission(TRI_voc_cid_t cid,
-                                                   std::string const& cname,
+Result TransactionState::checkCollectionPermission(DataSourceId cid, std::string const& cname,
                                                    AccessMode::Type accessType) {
   TRI_ASSERT(!cname.empty());
   ExecContext const& exec = ExecContext::current();

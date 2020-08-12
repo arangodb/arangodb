@@ -270,6 +270,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/DocumentIndexExpressionContext.cpp
   Aql/DocumentProducingHelper.cpp
   Aql/DocumentProducingNode.cpp
+  Aql/ClusterQuery.cpp
   Aql/EngineInfoContainerCoordinator.cpp
   Aql/EngineInfoContainerDBServerServerBased.cpp
   Aql/EnumerateCollectionExecutor.cpp
@@ -395,6 +396,7 @@ set(LIB_ARANGO_VOCBASE_SOURCES
   Utils/CursorRepository.cpp
   Utils/DatabaseGuard.cpp
   Utils/SingleCollectionTransaction.cpp
+  VocBase/Identifiers/DataSourceId.cpp
   VocBase/Identifiers/IndexId.cpp
   VocBase/Identifiers/LocalDocumentId.cpp
   VocBase/Identifiers/RevisionId.cpp

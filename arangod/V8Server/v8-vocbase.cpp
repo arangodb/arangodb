@@ -38,8 +38,8 @@
 #include "Agency/State.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
+#include "Aql/ClusterQuery.h"
 #include "Aql/ExpressionContext.h"
-#include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryList.h"
@@ -727,7 +727,7 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
  
   TRI_ASSERT(!ServerState::instance()->isDBServer());
   VPackBuilder ignoreResponse;
-  query.prepareClusterQuery(aql::SerializationFormat::SHADOWROWS, VPackSlice::emptyObjectSlice(),
+  query.prepareClusterQuery(VPackSlice::emptyObjectSlice(),
                             collections, variables,
                             snippetBuilder.slice(), VPackSlice::noneSlice(), ignoreResponse,
                             analyzersRevision);
@@ -1362,13 +1362,13 @@ static void MapGetVocBase(v8::Local<v8::Name> const name,
       auto internalVersion = collection->v8CacheVersion();
 
       // check if the collection is still alive
-      if (status != TRI_VOC_COL_STATUS_DELETED && cid > 0 &&
+      if (status != TRI_VOC_COL_STATUS_DELETED && cid.isSet() &&
           !ServerState::instance()->isCoordinator()) {
         TRI_GET_GLOBAL_STRING(_IdKey);
         TRI_GET_GLOBAL_STRING(VersionKeyHidden);
         if (TRI_HasProperty(context, isolate, value, _IdKey)) {
-          auto cachedCid = static_cast<TRI_voc_cid_t>
-            (TRI_ObjectToUInt64(isolate, value->Get(context, _IdKey).FromMaybe(v8::Local<v8::Value>()), true));
+          DataSourceId cachedCid{TRI_ObjectToUInt64(
+              isolate, value->Get(context, _IdKey).FromMaybe(v8::Local<v8::Value>()), true)};
           uint32_t cachedVersion =
               (uint32_t)TRI_ObjectToInt64(isolate,
                                           value->Get(context, VersionKeyHidden).FromMaybe(v8::Local<v8::Value>()));

@@ -69,13 +69,10 @@ std::string const ENDPOINT("endpoint");
 std::string const INCLUDE("include");
 std::string const INCLUDE_SYSTEM("includeSystem");
 std::string const INCREMENTAL("incremental");
-std::string const KEEP_BARRIER("keepBarrier");
 std::string const LEADER_ID("leaderId");
-std::string const BARRIER_ID("barrierId");
 std::string const LAST_LOG_TICK("lastLogTick");
 std::string const API_REPLICATION("/_api/replication/");
 std::string const REPL_ADD_FOLLOWER(API_REPLICATION + "addFollower");
-std::string const REPL_BARRIER_API(API_REPLICATION + "barrier/");
 std::string const REPL_HOLD_READ_LOCK(API_REPLICATION +
                                       "holdReadLockCollection");
 std::string const REPL_REM_FOLLOWER(API_REPLICATION + "removeFollower");
@@ -371,52 +368,6 @@ static arangodb::Result cancelReadLockOnLeader(network::ConnectionPool* pool,
   return arangodb::Result();
 }
 
-static arangodb::Result cancelBarrier(network::ConnectionPool* pool,
-                                      std::string const& endpoint,
-                                      std::string const& database, int64_t barrierId,
-                                      std::string const& clientId, double timeout = 120.0) {
-  if (barrierId <= 0) {
-    return Result();
-  }
-
-  if (pool == nullptr) {  // nullptr only happens during controlled shutdown
-    return arangodb::Result(TRI_ERROR_SHUTTING_DOWN,
-                            "startReadLockOnLeader: Shutting down");
-  }
-
-  network::RequestOptions options;
-  options.database = database;
-  options.timeout = network::Timeout(timeout);
-  options.skipScheduler = true; // hack to speed up future.get()
-  
-  auto response =
-      network::sendRequest(pool, endpoint, fuerte::RestVerb::Delete,
-                           REPL_BARRIER_API + std::to_string(barrierId),
-                           VPackBuffer<uint8_t>(), options)
-          .get();
-
-  auto res = response.combinedResult();
-
-  if (res.fail()) {
-    if (response.ok() && !fuerte::statusIsSuccess(response.response->statusCode())) {
-      std::string errorMessage =
-          "got status " + std::to_string(response.response->statusCode());
-      LOG_TOPIC("f5733", WARN, Logger::MAINTENANCE)
-          << "CancelBarrier: error '" << errorMessage << "'";
-      return arangodb::Result(res.errorNumber(), errorMessage);
-    } else {
-      std::string error(
-          "CancelBarrier: failed to send message to leader : status ");
-      error += res.errorMessage();
-      LOG_TOPIC("1c48a", WARN, Logger::MAINTENANCE) << error;
-      return arangodb::Result(res.errorNumber(), error);
-    }
-  } else {
-    LOG_TOPIC("313dc", DEBUG, Logger::MAINTENANCE) << "cancelBarrier: success";
-    return arangodb::Result();
-  }
-}
-
 arangodb::Result SynchronizeShard::getReadLock(
   network::ConnectionPool* pool,
   std::string const& endpoint, std::string const& database,
@@ -536,7 +487,6 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
 
   auto shard = col->name();
 
-  bool keepBarrier = config.get(KEEP_BARRIER).getBool();
   std::string leaderId;
   if (config.hasKey(LEADER_ID)) {
     leaderId = config.get(LEADER_ID).copyString();
@@ -577,16 +527,13 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
 
     {
       VPackObjectBuilder o(sy.get());
-      if (keepBarrier) {
-        sy->add(BARRIER_ID, VPackValue(syncer->stealBarrier()));
-      }
       sy->add(LAST_LOG_TICK, VPackValue(syncer->getLastLogTick()));
       sy->add(VPackValue(COLLECTIONS));
       {
         VPackArrayBuilder a(sy.get());
         for (auto const& i : syncer->getProcessedCollections()) {
           VPackObjectBuilder e(sy.get());
-          sy->add(ID, VPackValue(i.first));
+          sy->add(ID, VPackValue(i.first.id()));
           sy->add(NAME, VPackValue(i.second));
         }
       }
@@ -629,7 +576,7 @@ static arangodb::Result replicationSynchronizeCatchup(
   configuration.validate();
 
   DatabaseGuard guard(database);
-  DatabaseTailingSyncer syncer(guard.database(), configuration, fromTick, true, 0);
+  DatabaseTailingSyncer syncer(guard.database(), configuration, fromTick, /*useTick*/true);
 
   if (!leaderId.empty()) {
     syncer.setLeaderId(leaderId);
@@ -667,7 +614,7 @@ static arangodb::Result replicationSynchronizeFinalize(application_features::App
   configuration.validate();
 
   DatabaseGuard guard(database);
-  DatabaseTailingSyncer syncer(guard.database(), configuration, fromTick, true, 0);
+  DatabaseTailingSyncer syncer(guard.database(), configuration, fromTick, /*useTick*/true);
 
   if (!leaderId.empty()) {
     syncer.setLeaderId(leaderId);
@@ -742,7 +689,7 @@ bool SynchronizeShard::first() {
       return false;
     }
 
-    std::string const cid = std::to_string(ci->id());
+    std::string const cid = std::to_string(ci->id().id());
     std::shared_ptr<CollectionInfoCurrent> cic =
         clusterInfo.getCollectionCurrent(database, cid);
     std::vector<std::string> current = cic->servers(shard);
@@ -867,7 +814,6 @@ bool SynchronizeShard::first() {
         config.add(ENDPOINT, VPackValue(ep));
         config.add(INCREMENTAL,
                    VPackValue(docCount > 0));  // use dump if possible
-        config.add(KEEP_BARRIER, VPackValue(true));
         config.add(LEADER_ID, VPackValue(leader));
         config.add(SKIP_CREATE_DROP, VPackValue(true));
         config.add(RESTRICT_TYPE, VPackValue(INCLUDE));
@@ -909,15 +855,8 @@ bool SynchronizeShard::first() {
       }
 
       SyncerId syncerId = syncRes.get();
-      // From here on, we have to call `cancelBarrier` in case of errors
-      // as well as in the success case!
-      auto barrierId = sy.get(BARRIER_ID).getNumber<int64_t>();
-      NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
-      network::ConnectionPool* pool = nf.pool();
-      TRI_DEFER(cancelBarrier(pool, ep, database, barrierId, clientId));
 
       VPackSlice collections = sy.get(COLLECTIONS);
-
       if (collections.length() == 0 || collections[0].get("name").copyString() != shard) {
         std::stringstream error;
         error << "shard " << shard << " seems to be gone from leader, this "

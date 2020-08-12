@@ -76,7 +76,6 @@ ExecutionBlockImpl<RemoteExecutor>::ExecutionBlockImpl(
       _lastError(TRI_ERROR_NO_ERROR),
       _lastTicket(0),
       _requestInFlight(false),
-      _hasTriggeredShutdown(false),
       _apiToUse(api) {
   TRI_ASSERT(!queryId.empty());
   TRI_ASSERT((arangodb::ServerState::instance()->isCoordinator() && distributeId.empty()) ||
@@ -102,7 +101,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecut
   std::unique_lock<std::mutex> guard(_communicationMutex);
 
   if (_requestInFlight) {
-    // Already sent a shutdown request, but haven't got an answer yet.
+    // Already sent a getSome request, but haven't got an answer yet.
     return {ExecutionState::WAITING, nullptr};
   }
 
@@ -273,7 +272,6 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
       errorNumber = errorSlice.getNumericValue<int>();
     }
 
-    std::string errorMessage;
     errorSlice = slice.get(StaticStrings::ErrorMessage);
     if (errorSlice.isString()) {
       return {ExecutionState::DONE, {errorNumber, errorSlice.copyString()}};
@@ -316,107 +314,6 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
   }
 
   return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
-}
-
-/// @brief shutdown, will be called exactly once for the whole query
-std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(int errorCode) {
-  // this should make the whole thing idempotent
-  if (!_isResponsibleForInitializeCursor) {
-    // do nothing...
-    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-  }
-
-  std::unique_lock<std::mutex> guard(_communicationMutex);
-
-  if (!_hasTriggeredShutdown) {
-    // skip request in progress
-    std::ignore = generateRequestTicket();
-    _hasTriggeredShutdown = true;
-
-    // For every call we simply forward via HTTP
-    VPackBuffer<uint8_t> buffer;
-    VPackBuilder builder(buffer);
-    builder.openObject(/*unindexed*/ true);
-    builder.add("code", VPackValue(errorCode));
-    builder.close();
-
-    traceShutdownRequest(builder.slice(), errorCode);
-
-    auto res = sendAsyncRequest(fuerte::RestVerb::Put, "/_api/aql/shutdown",
-                                std::move(buffer));
-    if (!res.ok()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-
-    return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
-  }
-
-  if (_requestInFlight) {
-    // Already sent a shutdown request, but haven't got an answer yet.
-    return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
-  }
-
-  if (_lastError.fail()) {
-    TRI_ASSERT(_lastResponse == nullptr);
-    Result res = std::move(_lastError);
-    _lastError.reset();
-
-    if (res.is(TRI_ERROR_QUERY_NOT_FOUND)) {
-      // Ignore query not found errors, they should do no harm.
-      // However, as only the snippet with _isResponsibleForInitializeCursor
-      // should now call shutdown, this should not usually happen, so emit a
-      // warning.
-      LOG_TOPIC("8d035", WARN, Logger::AQL)
-          << "During AQL query shutdown: "
-          << "Query ID " << _queryId << " not found on " << _server;
-      return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-    }
-
-    // we were called with an error and need to throw it.
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  if (_lastResponse != nullptr) {
-    TRI_ASSERT(_lastError.ok());
-
-    auto response = std::move(_lastResponse);
-
-    // both must be reset before return or throw
-    TRI_ASSERT(_lastError.ok() && _lastResponse == nullptr);
-
-    VPackSlice slice = response->slice();
-    if (slice.isObject()) {
-      
-      if (slice.hasKey("stats")) {
-        ExecutionStats newStats(slice.get("stats"));
-        _engine->globalStats().add(newStats);
-      }
-
-      // read "warnings" attribute if present and add it to our query
-      VPackSlice warnings = slice.get("warnings");
-      if (warnings.isArray()) {
-        aql::QueryContext& query = _engine->getQuery();
-        for (VPackSlice it : VPackArrayIterator(warnings)) {
-          if (it.isObject()) {
-            VPackSlice code = it.get("code");
-            VPackSlice message = it.get("message");
-            if (code.isNumber() && message.isString()) {
-              query.warnings().registerWarning(code.getNumericValue<int>(),
-                                               message.copyString().c_str());
-            }
-          }
-        }
-      }
-      if (slice.hasKey("code")) {
-        return {ExecutionState::DONE, slice.get("code").getNumericValue<int>()};
-      }
-    }
-
-    return {ExecutionState::DONE, TRI_ERROR_INTERNAL};
-  }
-
-  TRI_ASSERT(false);
-  return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
 auto ExecutionBlockImpl<RemoteExecutor>::executeViaOldApi(AqlCallStack stack)
@@ -718,12 +615,6 @@ void ExecutionBlockImpl<RemoteExecutor>::traceSkipSomeRequest(VPackSlice const s
 void ExecutionBlockImpl<RemoteExecutor>::traceInitializeCursorRequest(VPackSlice const slice) {
   using namespace std::string_literals;
   traceRequest("initializeCursor", slice, ""s);
-}
-
-void ExecutionBlockImpl<RemoteExecutor>::traceShutdownRequest(VPackSlice const slice,
-                                                              int const errorCode) {
-  using namespace std::string_literals;
-  traceRequest("shutdown", slice, "errorCode="s + std::to_string(errorCode));
 }
 
 void ExecutionBlockImpl<RemoteExecutor>::traceRequest(char const* const rpc,

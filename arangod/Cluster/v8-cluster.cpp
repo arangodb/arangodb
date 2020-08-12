@@ -743,7 +743,7 @@ static void JS_GetCollectionInfoCurrentClusterInfo(v8::FunctionCallbackInfo<v8::
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   // First some stuff from Plan for which Current does not make sense:
-  auto cid = std::to_string(col->id());
+  auto cid = std::to_string(col->id().id());
   std::string const& name = col->name();
   result->Set(context, TRI_V8_ASCII_STRING(isolate, "id"), TRI_V8_STD_STRING(isolate, cid)).FromMaybe(false);
   result->Set(context, TRI_V8_ASCII_STRING(isolate, "name"), TRI_V8_STD_STRING(isolate, name)).FromMaybe(false);

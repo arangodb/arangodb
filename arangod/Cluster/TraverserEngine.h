@@ -87,7 +87,10 @@ class BaseEngine {
 
   virtual bool produceVertices() const { return true; }
   
+  arangodb::aql::EngineId engineId() const { return _engineId; }
+  
  protected:
+  const arangodb::aql::EngineId _engineId;
   arangodb::aql::QueryContext& _query;
   transaction::Methods* _trx;
   std::unordered_map<std::string, std::vector<std::string>> _vertexShards;

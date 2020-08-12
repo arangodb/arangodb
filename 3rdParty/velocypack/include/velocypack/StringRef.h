@@ -103,9 +103,9 @@ class StringRef {
   
   char at(std::size_t index) const;
   
-  std::size_t find(char c) const;
+  std::size_t find(char c, std::size_t offset = 0) const noexcept;
   
-  std::size_t rfind(char c) const;
+  std::size_t rfind(char c, std::size_t offset = std::string::npos) const noexcept;
 
   int compare(StringRef const& other) const noexcept;
   

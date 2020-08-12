@@ -120,15 +120,6 @@ uint64_t AqlValue::hash(uint64_t seed) const {
   return 0;
 }
 
-/// @brief whether or not the value is a shadow row depth entry
-bool AqlValue::isShadowRowDepthValue() const noexcept {
-  /// this is a performance-optimized version of the check
-  /// isUInt() || isSmallInt()
-  /// VelocyPack UInts are in the range 0x28 - 0x2f, and
-  /// VelocyPack SmallInts are in the range 0x30 - 0x39
-  return _data.internal[0] >= 0x28 && _data.internal[0] <= 0x39 && ADB_LIKELY(type() == VPACK_INLINE);
-}
-
 /// @brief whether or not the value contains a none value
 bool AqlValue::isNone() const noexcept {
   switch (type()) {
@@ -1068,7 +1059,8 @@ void AqlValue::toVelocyPack(VPackOptions const* options, arangodb::velocypack::B
       if (!resolveExternals && isManagedDocument()) {
         builder.addExternal(_data.pointer);
         break;
-      }  [[fallthrough]];
+      }  
+      [[fallthrough]];
     case VPACK_INLINE:
     case VPACK_MANAGED_SLICE:
     case VPACK_MANAGED_BUFFER: {
@@ -1096,7 +1088,7 @@ void AqlValue::toVelocyPack(VPackOptions const* options, arangodb::velocypack::B
       break;
     }
     case RANGE: {
-      builder.openArray(true);
+      builder.openArray(/*unindexed*/true);
       size_t const n = _data.range->size();
       Range::throwIfTooBigForMaterialization(n);
       for (size_t i = 0; i < n; ++i) {
@@ -1181,10 +1173,10 @@ AqlValue AqlValue::clone() const {
 /// @brief destroy the value's internals
 void AqlValue::destroy() noexcept {
   switch (type()) {
-    case VPACK_INLINE: {
-      case VPACK_SLICE_POINTER:
-        // nothing to do
-        return;
+    case VPACK_INLINE: 
+    case VPACK_SLICE_POINTER: {
+      // nothing to do
+      return;
     }
     case VPACK_MANAGED_SLICE: {
       delete[] _data.slice;
@@ -1506,9 +1498,7 @@ AqlValue::AqlValue(char const* value, size_t length) {
     // empty string
     _data.internal[0] = 0x40;
     setType(AqlValueType::VPACK_INLINE);
-    return;
-  }
-  if (length < sizeof(_data.internal) - 1) {
+  } else if (length < sizeof(_data.internal) - 1) {
     // short string... can store it inline
     _data.internal[0] = static_cast<uint8_t>(0x40 + length);
     memcpy(_data.internal + 1, value, length);
@@ -1536,7 +1526,7 @@ AqlValue::AqlValue(char const* value, size_t length) {
 }
 
 AqlValue::AqlValue(std::string const& value)
-    : AqlValue(value.c_str(), value.size()) {}
+    : AqlValue(value.data(), value.size()) {}
 
 AqlValue::AqlValue(AqlValueHintEmptyArray const&) noexcept {
   _data.internal[0] = 0x01;  // empty array in VPack
@@ -1578,11 +1568,6 @@ AqlValue::AqlValue(AqlValueHintDocumentNoCopy const& v) noexcept {
 AqlValue::AqlValue(AqlValueHintCopy const& v) {
   TRI_ASSERT(v.ptr != nullptr);
   initFromSlice(VPackSlice(v.ptr));
-}
-
-AqlValue::AqlValue(arangodb::velocypack::Builder const& builder) {
-  TRI_ASSERT(builder.isClosed());
-  initFromSlice(builder.slice());
 }
 
 AqlValue::AqlValue(arangodb::velocypack::Slice const& slice) {
@@ -1702,9 +1687,11 @@ AqlValueHintDouble::AqlValueHintDouble(double v) noexcept : value(v) {}
 AqlValueHintInt::AqlValueHintInt(int64_t v) noexcept : value(v) {}
 AqlValueHintInt::AqlValueHintInt(int v) noexcept : value(int64_t(v)) {}
 AqlValueHintUInt::AqlValueHintUInt(uint64_t v) noexcept : value(v) {}
+
 AqlValueGuard::AqlValueGuard(AqlValue& value, bool destroy) noexcept
     : _value(value), _destroy(destroy) {}
-AqlValueGuard::~AqlValueGuard() {
+
+AqlValueGuard::~AqlValueGuard() noexcept {
   if (_destroy) {
     _value.destroy();
   }

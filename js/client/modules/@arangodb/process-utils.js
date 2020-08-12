@@ -533,7 +533,6 @@ function makeArgsArangod (options, appDir, role, tmpDir) {
     'javascript.app-path': appDir,
     'javascript.copy-installation': false,
     'http.trusted-origin': options.httpTrustedOrigin || 'all',
-    'cluster.create-waits-for-sync-replication': false,
     'temp.path': tmpDir
   };
   if (options.storageEngine !== undefined) {
