@@ -318,9 +318,9 @@ RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type, uint64_t objectI
     case RocksDBIndex::TRI_IDX_TYPE_TTL_INDEX:
     case RocksDBIndex::TRI_IDX_TYPE_PERSISTENT_INDEX:
       if (unique) {
-        return RocksDBKeyBounds::UniqueVPackIndex(objectId);
+        return RocksDBKeyBounds::UniqueVPackIndex(objectId, false);
       }
-      return RocksDBKeyBounds::VPackIndex(objectId);
+      return RocksDBKeyBounds::VPackIndex(objectId, false);
     case RocksDBIndex::TRI_IDX_TYPE_FULLTEXT_INDEX:
       return RocksDBKeyBounds::FulltextIndex(objectId);
     case RocksDBIndex::TRI_IDX_TYPE_GEO1_INDEX:
