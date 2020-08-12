@@ -86,7 +86,7 @@ Projections::Projections(std::vector<arangodb::aql::AttributeNamePath> paths)
     // comparisons at runtime later
     arangodb::aql::AttributeNamePath::Type type = path.type();
     // take over the projection
-    _projections.emplace_back(Projection{std::move(path), 0, type});
+    _projections.emplace_back(Projection{std::move(path), 0, 0, type});
   }
   
   TRI_ASSERT(_projections.size() <= paths.size());
@@ -108,7 +108,7 @@ Projections::Projections(std::unordered_set<arangodb::aql::AttributeNamePath> co
     // comparisons at runtime later
     arangodb::aql::AttributeNamePath::Type type = path.type();
     // take over the projection
-    _projections.emplace_back(Projection{std::move(path), 0, type});
+    _projections.emplace_back(Projection{std::move(path), 0, 0, type});
   }
   
   TRI_ASSERT(_projections.size() <= paths.size());
@@ -239,11 +239,12 @@ void Projections::toVelocyPackFromIndex(arangodb::velocypack::Builder& b,
       if (found.isNone()) {
         found = VPackSlice::nullSlice();
       }
-      size_t const n = it.path.size();
+      size_t const n = std::min(it.path.size(), static_cast<size_t>(it.coveringIndexCutoff));
+      TRI_ASSERT(n > 0);
       for (size_t i = 0; i < n - 1; ++i) {
         b.add(it.path[i], VPackValue(VPackValueType::Object));
       }
-      b.add(it.path.path.back(), found);
+      b.add(it.path[n - 1], found);
       for (size_t i = 0; i < n - 1; ++i) {
         b.close();
       }

@@ -52,7 +52,9 @@ class Projections {
    /// @brief the attribute path
    AttributeNamePath path;
    /// @brief attribute position in a covering index entry. only valid if _supportsCoveringIndex is true
-   uint32_t coveringIndexPosition;
+   uint16_t coveringIndexPosition;
+   /// @brief attribute length in a covering index entry. this can be shorter than the projection
+   uint16_t coveringIndexCutoff;
    /// @brief attribute type
    AttributeNamePath::Type type;
   };

@@ -31,13 +31,12 @@
 let jsunity = require("jsunity");
 let db = require("@arangodb").db;
 const ruleName = "reduce-extraction-to-projection";
+const cn = "UnitTestsOptimizer";
 
 function projectionsPlansTestSuite () {
   let c = null;
-  const cn = "UnitTestsOptimizer";
 
   return {
-
     setUp : function () {
       db._drop(cn);
       c = db._createEdgeCollection(cn, { numberOfShards: 4 });
@@ -82,7 +81,7 @@ function projectionsPlansTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
-        assertEqual(query[2],nodes[0].projections, query);
+        assertEqual(query[2], nodes[0].projections, query);
         if (query[2].length) {
           assertTrue(nodes[0].indexCoversProjections, query);
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
@@ -111,7 +110,7 @@ function projectionsPlansTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
-        assertEqual(query[2],nodes[0].projections, query);
+        assertEqual(query[2], nodes[0].projections, query);
         assertEqual(query[3], nodes[0].indexCoversProjections, query);
         if (query[2].length) {
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
@@ -130,7 +129,7 @@ function projectionsPlansTestSuite () {
         let plan = AQL_EXPLAIN(query[0]).plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
-        assertEqual(query[1],nodes[0].projections, query);
+        assertEqual(query[1], nodes[0].projections, query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
       });
     },
@@ -154,7 +153,7 @@ function projectionsPlansTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
-        assertEqual(query[2],nodes[0].projections, query);
+        assertEqual(query[2], nodes[0].projections, query);
         assertEqual(query[3], nodes[0].indexCoversProjections, query);
         
         if (query[2].length) {
@@ -174,7 +173,7 @@ function projectionsPlansTestSuite () {
         let plan = AQL_EXPLAIN(query[0]).plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
-        assertEqual(query[1],nodes[0].projections, query);
+        assertEqual(query[1], nodes[0].projections, query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
       });
     },
@@ -198,7 +197,7 @@ function projectionsPlansTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
-        assertEqual(query[2],nodes[0].projections, query);
+        assertEqual(query[2], nodes[0].projections, query);
         assertEqual(query[3], nodes[0].indexCoversProjections, query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
       });
@@ -214,7 +213,7 @@ function projectionsPlansTestSuite () {
         let plan = AQL_EXPLAIN(query[0]).plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
-        assertEqual(query[1],nodes[0].projections, query);
+        assertEqual(query[1], nodes[0].projections, query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
       });
     },
@@ -236,7 +235,7 @@ function projectionsPlansTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
-        assertEqual(query[2],nodes[0].projections, query);
+        assertEqual(query[2], nodes[0].projections, query);
         assertEqual(query[3], nodes[0].indexCoversProjections, query);
         if (query[2].length) {
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
@@ -257,7 +256,7 @@ function projectionsPlansTestSuite () {
         let plan = AQL_EXPLAIN(query[0]).plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
-        assertEqual(query[1],nodes[0].projections, query);
+        assertEqual(query[1], nodes[0].projections, query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
       });
     },
@@ -284,7 +283,7 @@ function projectionsPlansTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
-        assertEqual(query[2],nodes[0].projections, query);
+        assertEqual(query[2], nodes[0].projections, query);
         assertEqual(query[3], nodes[0].indexCoversProjections, query);
         if (query[2].length) {
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
@@ -312,7 +311,7 @@ function projectionsPlansTestSuite () {
         let plan = AQL_EXPLAIN(query[0]).plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
-        assertEqual(query[1],nodes[0].projections, query);
+        assertEqual(query[1], nodes[0].projections, query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
       });
     },
@@ -334,7 +333,7 @@ function projectionsPlansTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
-        assertEqual(query[2],nodes[0].projections, query);
+        assertEqual(query[2], nodes[0].projections, query);
         assertEqual(query[3], nodes[0].indexCoversProjections, query);
         
         if (query[2].length) {
@@ -362,7 +361,7 @@ function projectionsPlansTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
-        assertEqual(query[2],nodes[0].projections, query);
+        assertEqual(query[2], nodes[0].projections, query);
         assertEqual(query[3], nodes[0].indexCoversProjections, query);
         
         if (query[2].length) {
@@ -392,7 +391,7 @@ function projectionsPlansTestSuite () {
         let plan = AQL_EXPLAIN(query[0]).plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length, query);
-        assertEqual(query[1],nodes[0].projections, query);
+        assertEqual(query[1], nodes[0].projections, query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
       });
     },
@@ -400,6 +399,126 @@ function projectionsPlansTestSuite () {
   };
 }
 
+function projectionsExtractionTestSuite () {
+  let c = null;
+
+  return {
+    setUp : function () {
+      db._drop(cn);
+      c = db._create(cn, { numberOfShards: 1 });
+
+      let docs = [];
+      for (var i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i, value2: i, foo: { bar: { a: i, b: i }, baz: i } });
+      }
+      c.insert(docs);
+    },
+
+    tearDown : function () {
+      db._drop(cn);
+    },
+
+    testExtractMultiAttribute : function () {
+      c.ensureIndex({ type: "persistent", fields: ["value1", "value2"] });
+      let one = [];
+      for (let i = 0; i < c.count(); ++i) {
+        one.push(i);
+      }
+      let two = [ 93 ];
+
+      let queries = [
+        [`FOR doc IN ${cn} RETURN doc.value1`, 'persistent', ['value1'], true, one ],
+        [`FOR doc IN ${cn} RETURN doc.value2`, 'persistent', ['value2'], true, one ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 93 RETURN doc.value1`, 'persistent', ['value1'], true, two ],
+        [`FOR doc IN ${cn} FILTER doc.value2 == 93 RETURN doc.value1`, 'persistent', ['value1', 'value2'], true, two ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 93 RETURN doc.value2`, 'persistent', ['value2'], true, two ],
+        [`FOR doc IN ${cn} FILTER doc.value2 == 93 RETURN doc.value2`, 'persistent', ['value2'], true, two ],
+        [`FOR doc IN ${cn} FILTER doc._key == 'test93' RETURN doc.value1`, 'primary', ['value1'], false, two ],
+        [`FOR doc IN ${cn} FILTER doc._key == 'test93' RETURN doc.value2`, 'primary', ['value2'], false, two ],
+      ];
+
+      queries.forEach(function(query) {
+        let plan = AQL_EXPLAIN(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).plan;
+        let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode'; });
+        assertEqual(1, nodes.length, query);
+        assertEqual(1, nodes[0].indexes.length, query);
+        assertEqual(query[1], nodes[0].indexes[0].type, query);
+        assertEqual(query[2], nodes[0].projections, query);
+        assertEqual(query[3], nodes[0].indexCoversProjections, query);
+        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        let results = db._query(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).toArray();
+        assertEqual(query[4], results);
+      });
+    },
+    
+    testExtractSingleAttribute : function () {
+      c.ensureIndex({ type: "persistent", fields: ["foo"] });
+      let foo = [], bar = [], barA = [], baz = [], barAB = [], bazBarA = [];
+      for (let i = 0; i < c.count(); ++i) {
+        foo.push({ bar: { a: i, b: i }, baz: i });
+        bar.push({ a: i, b: i });
+        barA.push(i);
+        barAB.push([i, i]);
+        bazBarA.push([i, i]);
+        baz.push(i);
+      }
+
+      let queries = [
+        [`FOR doc IN ${cn} RETURN doc.foo`, ['foo'], true, foo ],
+        [`FOR doc IN ${cn} RETURN doc.foo.bar`, [['foo', 'bar']], true, bar ],
+        [`FOR doc IN ${cn} RETURN doc.foo.bar.a`, [['foo', 'bar', 'a']], true, barA ],
+        [`FOR doc IN ${cn} RETURN doc.foo.baz`, [['foo', 'baz']], true, baz ],
+        [`FOR doc IN ${cn} RETURN [doc.foo.bar.a, doc.foo.bar.b]`, [['foo', 'bar']], true, barAB ],
+        [`FOR doc IN ${cn} RETURN [doc.foo.baz, doc.foo.bar.a]`, ['foo'], true, bazBarA ],
+      ];
+
+      queries.forEach(function(query) {
+        let plan = AQL_EXPLAIN(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).plan;
+        let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode' || node.type === 'EnumerateCollectionNode'; });
+        assertEqual(1, nodes.length, query);
+        assertEqual(query[1], nodes[0].projections, query);
+        assertEqual(query[2] ? 'IndexNode' : 'EnumerateCollectionNode', nodes[0].type, query);
+        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        let results = db._query(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).toArray();
+        assertEqual(query[3], results);
+      });
+    },
+    
+    testExtractSubAttribute : function () {
+      c.ensureIndex({ type: "persistent", fields: ["foo.bar"] });
+      let foo = [], bar = [], baz = [], barA = [], barBaz = [];
+      for (let i = 0; i < c.count(); ++i) {
+        foo.push({ bar: { a: i, b: i }, baz: i });
+        bar.push({ a: i, b: i });
+        barA.push(i);
+        baz.push(i);
+        barBaz.push([i, i]);
+      }
+
+      let queries = [
+        [`FOR doc IN ${cn} RETURN doc.foo`, ['foo'], false, foo ],
+        [`FOR doc IN ${cn} RETURN doc.foo.bar`, [['foo', 'bar']], true, bar ],
+        [`FOR doc IN ${cn} RETURN doc.foo.baz`, [['foo', 'baz']], false, baz ],
+        [`FOR doc IN ${cn} RETURN doc.foo.bar.a`, [['foo', 'bar', 'a']], true, barA ],
+        [`FOR doc IN ${cn} RETURN [doc.foo.bar.a, doc.foo.baz]`, ['foo'], false, barBaz ],
+        [`FOR doc IN ${cn} RETURN [doc.foo.bar.a, doc.foo.bar.b]`, [['foo', 'bar']], true, barBaz ],
+      ];
+
+      queries.forEach(function(query) {
+        let plan = AQL_EXPLAIN(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).plan;
+        let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode' || node.type === 'EnumerateCollectionNode'; });
+        assertEqual(1, nodes.length, query);
+        assertEqual(query[1], nodes[0].projections, query);
+        assertEqual(query[2] ? 'IndexNode' : 'EnumerateCollectionNode', nodes[0].type, query);
+        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        let results = db._query(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).toArray();
+        assertEqual(query[3], results);
+      });
+    },
+  };
+}
+
 jsunity.run(projectionsPlansTestSuite);
+jsunity.run(projectionsExtractionTestSuite);
 
 return jsunity.done();

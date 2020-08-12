@@ -996,7 +996,9 @@ bool Index::covers(arangodb::aql::Projections& projections) const {
       // projection on  a.b.c
       if (k >= field.size() &&
           k != std::numeric_limits<size_t>::max()) {
-        projections[i].coveringIndexPosition = j;
+        TRI_ASSERT(k > 0);
+        projections[i].coveringIndexPosition = static_cast<uint16_t>(j);
+        projections[i].coveringIndexCutoff = static_cast<uint16_t>(k);
         found = true;
         break;
       }
