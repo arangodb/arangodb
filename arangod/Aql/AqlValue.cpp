@@ -1144,8 +1144,6 @@ void AqlValue::destroy() noexcept {
 /// @brief return the slice from the value
 VPackSlice AqlValue::slice() const {
   return this->slice(type());
-
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
 }
 
 /// @brief return the slice from the value
