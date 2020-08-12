@@ -1,6 +1,8 @@
 v3.7.2 (XXXX-XX-XX)
 -------------------
 
+* Improve performance of internal cluster Plan and Current reload operations.
+
 * Updated arangosync to 0.7.9.
 
 * Fixed issue #12349: arangosh compact Arangoerror 404.
