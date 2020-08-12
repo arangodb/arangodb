@@ -1,37 +1,22 @@
-# Pull Request Guidelines
-
-Pull requests are an essential collaborative tool for modern software development. 
-
-The below list is intended to help you figure out whether your code is ready to be reviewed
-and merged into ArangoDB. The overarching goal is to:
-
-- Reduce the amount of *recurring* defects
-- Reduce the impact to the other developer’s time and energy spent on defects in your code
-- Increase the overall autonomy and productivity of individual developers
-
-## Acceptance Checklist
-
-*The below list is not exhaustive, think thoroughly whether the provided information is sufficient.*
-*Remove options that do not apply*
-
 ### Scope & Purpose
 
-*(Can you describe what functional change your PR is trying to effect?)*
+*(Please describe the changes of this PR for reviewers)*
 
-- [ ] Bug-Fix for *devel-branch* (i.e. no need for backports?)
-- [ ] Bug-Fix for a *released version* (did you remember to port this to all relevant release branches?)
-- [ ] Strictly *new functionality* (i.e. a new feature / new option, no need for porting)
-- [ ] The behavior in this PR can be (and was) *manually tested* (support / qa / customers can test it)
+- [ ] Bugfix
+- [ ] New feature
+- [ ] Refactoring
+- [ ] CHANGELOG entry made
+- [ ] The behavior in this PR was *manually tested*
 - [ ] The behavior change can be verified via automatic tests
 
 #### Related Information
 
-*(Please reference tickets / specification etc )*
+*(Please reference tickets / specification etc)*
 
-- [ ] There is a GitHub Issue reported by a Community User: 
-- [ ] There is an internal planning ticket: 
-- [ ] There is a *JIRA Ticket number* (In case a customer was affected / involved): 
-- [ ] There is a design document: 
+- [ ] Docs PR: 
+- [ ] Enterprise PR:
+- [ ] GitHub issue / Jira ticket number:
+- [ ] Design document: 
 
 ### Testing & Verification
 
@@ -47,27 +32,17 @@ This change is already covered by existing tests, such as *(please describe test
 
 This PR adds tests that were used to verify all changes:
 
-- [ ] Added **Regression Tests** (Only for bug-fixes) 
-- [ ] Added new C++ **Unit Tests** (Either GoogleTest or Catch-Test)
-   - Did you add tests for a new *RestHandler* subclass ?
-   - Did you add new mocks of underlying code layers to be able to verify your functionality ? 
-   - ...
+- [ ] Added **Regression Tests**
+- [ ] Added new C++ **Unit Tests**
 - [ ] Added new **integration tests** (i.e. in shell_server / shell_server_aql)
 - [ ] Added new **resilience tests** (only if the feature is impacted by failovers)
 
 Additionally:
 
-- [ ] There are tests in an external testing repository (i.e. node-resilience tests, chaos tests)
+- [ ] There are tests in an external testing repository:
 - [ ] I ensured this code runs with ASan / TSan or other static verification tools
 
-
 *(Include link to Jenkins run etc)*
-
-> Think about whether the new code you added is modular enough to be
-> easily testable by unit tests written with GTest / Catch. It is not good if your feature is so interconnected
-> that it prevents other people from writing their own unit gests. It should be possible
-> to use your code in future without extensively mocking your classes.
-> A bad example that required some extensive effort would be the storage engine API.
 
 ### Documentation
 
@@ -82,7 +57,7 @@ Additionally:
 - [ ] Added *Swagger examples* for the HTTP API  
 - [ ] Updated license information in *LICENSES-OTHER-COMPONENTS.md* for 3rd party libraries
 
-### CLA Note 
+### External contributors / CLA Note 
 
 Please note that for legal reasons we require you to sign the [Contributor Agreement](https://www.arangodb.com/documents/cla.pdf)
 before we can accept your pull requests.
