@@ -2343,19 +2343,27 @@ Future<Result> Methods::replicateOperations(
     // We drop all followers that were not successful:
     for (size_t i = 0; i < followerList->size(); ++i) {
       auto const& tryRes = responses[i];
-      network::Response const& resp = tryRes.get();
-
       bool replicationWorked = false;
-      if (resp.error == fuerte::Error::NoError) {
-        replicationWorked = resp.response->statusCode() == fuerte::StatusAccepted ||
-                            resp.response->statusCode() == fuerte::StatusCreated ||
-                            resp.response->statusCode() == fuerte::StatusOK;
-        if (replicationWorked) {
-          bool found;
-          resp.response->header.metaByKey(StaticStrings::ErrorCodes, found);
-          replicationWorked = !found;
+      try {
+        // Note that it is possible that the future was resolved with an exception
+        // which will be thrown when we ask for the response, we need to catch
+        // the exception here.
+        network::Response const& resp = tryRes.get();
+
+        if (resp.error == fuerte::Error::NoError) {
+          replicationWorked = resp.response->statusCode() == fuerte::StatusAccepted ||
+                              resp.response->statusCode() == fuerte::StatusCreated ||
+                              resp.response->statusCode() == fuerte::StatusOK;
+          if (replicationWorked) {
+            bool found;
+            resp.response->header.metaByKey(StaticStrings::ErrorCodes, found);
+            replicationWorked = !found;
+          }
+          didRefuse = didRefuse || resp.response->statusCode() == fuerte::StatusNotAcceptable;
         }
-        didRefuse = didRefuse || resp.response->statusCode() == fuerte::StatusNotAcceptable;
+      } catch (std::exception& e) {
+        LOG_TOPIC("12d888", INFO, Logger::REPLICATION)
+            << "Exception thrown when trying to replicate an operation: " << e.what();
       }
 
       if (!replicationWorked) {
