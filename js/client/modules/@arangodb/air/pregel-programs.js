@@ -116,82 +116,7 @@ function vertex_degree(
     );
 }
 
-/* Performs a single-source shortest path search (currently without path reconstruction)
-   on all vertices in the graph starting from startVertex, using the cost stored
-   in weightAttribute on each edge and storing the end result in resultField as an object
-   containing the attribute distance */
 
-/*
-
-  (for this -: edge :-> that
-    (update that.distance with this.distance + edge.weightAttribute))
-
-*/
-function single_source_shortest_path_program(
-    resultField,
-    startVertexId,
-    weightAttribute
-) {
-    return {
-        resultField: resultField,
-        // TODO: Karpott.
-        maxGSS: 10000,
-        accumulatorsDeclaration: {
-            distance: {
-                accumulatorType: "min",
-                valueType: "doubles",
-                storeSender: true,
-            },
-        },
-        initProgram: [
-            "seq",
-            [
-                "if",
-                [
-                    ["eq?", ["this"], startVertexId],
-                    ["seq", ["set", "distance", 0], true],
-                ],
-                [true, ["seq", ["set", "distance", 9223372036854776000], false]],
-            ],
-        ],
-        updateProgram: [
-            "seq",
-            [
-                "for",
-                "outbound",
-                ["quote", "edge"],
-                [
-                    "quote",
-                    "seq",
-                    [
-                        "update",
-                        "distance",
-                        ["attrib", "_to", ["var-ref", "edge"]],
-                        ["+", ["accum-ref", "distance"], ["attrib", weightAttribute, ["var-ref", "edge"]]],
-                    ],
-                ],
-            ],
-            false,
-        ],
-    };
-}
-
-function single_source_shortest_path(
-    graphName,
-    resultField,
-    startVertexId,
-    weightAttribute
-) {
-    return pregel.start(
-        "air",
-        graphName,
-        single_source_shortest_path_program(
-            resultField,
-            startVertexId,
-            weightAttribute
-        )
-    );
-}
 
 function strongly_connected_components_program(
     resultField,
@@ -484,8 +409,6 @@ function page_rank(
 
 exports.vertex_degree = vertex_degree;
 
-exports.single_source_shortest_path_program = single_source_shortest_path_program;
-exports.single_source_shortest_path = single_source_shortest_path;
 exports.strongly_connected_components_program = strongly_connected_components_program;
 exports.strongly_connected_components = strongly_connected_components;
 exports.page_rank_program = page_rank_program;
