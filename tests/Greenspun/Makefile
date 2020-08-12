@@ -67,3 +67,4 @@ clean:
 	rm -rf $(VELOCYPACK_OBJ_DIR)
 	rm -rf $(EVALUATOR_OBJ_DIR)
 	rm -rf $(LINENOISE_OBJ_DIR)
+	rm primitives repl
