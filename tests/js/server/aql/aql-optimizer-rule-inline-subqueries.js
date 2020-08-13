@@ -155,7 +155,6 @@ function optimizerRuleTestSuite () {
         [ "LET x = (FOR j IN [1,2,3,4] SORT j DESC RETURN j) FOR k IN x RETURN k", [ 4, 3, 2, 1 ] ],
         [ "LET x = (FOR j IN [1,2,3,4] SORT j DESC LIMIT 2 RETURN j) FOR k IN x RETURN k", [ 4, 3 ] ],
         [ "LET x = (FOR j IN [1,2,3,4] SORT j DESC LIMIT 2 RETURN j) FOR k IN x LIMIT 1 RETURN k", [ 4 ] ],
-        
         [ "FOR i IN [3,2,1] SORT i LET sub = (FOR j IN [1,2,3] RETURN j) FOR k IN sub RETURN [i, k]", [ [1, 1], [1, 2], [1, 3], [2, 1], [2, 2], [2, 3], [3, 1], [3, 2], [3, 3] ] ],
         [ "FOR i IN [3,2,1] SORT i DESC LET sub = (FOR j IN [1,2,3] RETURN j) FOR k IN sub RETURN [i, k]", [ [3, 1], [3, 2], [3, 3], [2, 1], [2, 2], [2, 3], [1, 1], [1, 2], [1, 3] ] ],
       ];
