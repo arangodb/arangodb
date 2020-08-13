@@ -90,25 +90,24 @@ function iResearchAqlTestSuite () {
                                                  "stemming": false},
                                                  ["position", "norm", "frequency"]);
                                                  
-      db._createView("WithPrimarySort", "arangosearch", 
-                     {primarySort: [{field: "field1", direction: "asc"},
-                                    {field: "field2", direction: "asc"},
-                                    {field: "field3", direction: "asc"},
-                                    {field: "field4", direction: "asc"},
-                                    {field: "_key", direction: "asc"}]});
+      let wps = db._createView("WithPrimarySort", "arangosearch", 
+                               {primarySort: [{field: "field1", direction: "asc"},
+                                              {field: "field2", direction: "asc"},
+                                              {field: "field3", direction: "asc"},
+                                              {field: "field4", direction: "asc"},
+                                              {field: "_key", direction: "asc"}]});
                                     
-      db.WithPrimarySort.properties({links:{
-                                       TestsCollectionWithManyFields: {
-                                         storeValues: "id",
-                                         analyzers: ["customAnalyzer"],
-                                         fields: {
-                                           field1: {},
-                                           field2: {},
-                                           field3: {},
-                                           field4: {},
-                                           field5: {},
-                                           field6: {},
-                                           _key: {}}}}});
+      wps.properties({links:{TestsCollectionWithManyFields: {
+                              storeValues: "id",
+                              analyzers: ["customAnalyzer"],
+                              fields: {
+                                field1: {},
+                                field2: {},
+                                field3: {},
+                                field4: {},
+                                field5: {},
+                                field6: {},
+                                _key: {}}}}});
     },
     tearDownAll : function () {
       db._drop("AnotherUnitTestsCollection");
