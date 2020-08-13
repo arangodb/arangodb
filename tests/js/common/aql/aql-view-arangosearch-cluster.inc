@@ -156,30 +156,41 @@
           }
         };
         arrayV.properties(meta);
-              db._drop("TestsCollectionWithManyFields");
-      let mfc = db._create("TestsCollectionWithManyFields");
-      mfc.save({field1:"1value", field2:"2value", field3: 1, field4: 11111, field5: 1, field6: 1});
-      mfc.save({field1:"1value1", field2:"2value1", field3: 2, field4: 11112, field5: 2, field6: 2});
-      mfc.save({field1:"1value2", field2:"2value2", field3: 3, field4: 11113, field5: 3, field6: 3});
-      mfc.save({field1:"1value3", field2:"2value3", field3: 4, field4: 11114, field5: 4, field6: 4});
-      try { analyzers.remove("customAnalyzer", true); } catch {}
-      analyzers.save("customAnalyzer", "text",  {"locale": "en.utf-8",     "case": "lower",     "stopwords": [],     "accent": false,     "stemming": false   }, [     "position",     "norm",     "frequency"   ]);
-      db._createView("WithPrimarySort", "arangosearch", { primarySort: [{ field: "field1", direction: "asc" },
-         { field: "field2", direction: "asc" },
-         { field: "field3", direction: "asc" },
-         { field: "field4", direction: "asc" },
-         { field: "_key", direction: "asc" }
-         ] } );
-         db.WithPrimarySort.properties({ links: { TestsCollectionWithManyFields: { storeValues: "id", analyzers: ["customAnalyzer"],
-          fields: 
-         { 
-          field1: {},
-          field2: {},
-          field3: {},
-          field4: {},
-          field5: {},
-          field6: {},
-          _key: {}} } } });
+        
+        db._drop("TestsCollectionWithManyFields");
+        let mfc = db._create("TestsCollectionWithManyFields");
+        mfc.save({field1:"1value", field2:"2value", field3: 1, field4: 11111, field5: 1, field6: 1});
+        mfc.save({field1:"1value1", field2:"2value1", field3: 2, field4: 11112, field5: 2, field6: 2});
+        mfc.save({field1:"1value2", field2:"2value2", field3: 3, field4: 11113, field5: 3, field6: 3});
+        mfc.save({field1:"1value3", field2:"2value3", field3: 4, field4: 11114, field5: 4, field6: 4});
+        
+        try { analyzers.remove("customAnalyzer", true); } catch {}
+        analyzers.save("customAnalyzer", "text",  {"locale": "en.utf-8",
+                                                   "case": "lower",
+                                                   "stopwords": [],
+                                                   "accent": false,
+                                                   "stemming": false},
+                                                   ["position", "norm", "frequency"]);
+                                                   
+        db._createView("WithPrimarySort", "arangosearch", 
+                       {primarySort: [{field: "field1", direction: "asc"},
+                                      {field: "field2", direction: "asc"},
+                                      {field: "field3", direction: "asc"},
+                                      {field: "field4", direction: "asc"},
+                                      {field: "_key", direction: "asc"}]});
+                                      
+        db.WithPrimarySort.properties({links:{
+                                         TestsCollectionWithManyFields: {
+                                           storeValues: "id",
+                                           analyzers: ["customAnalyzer"],
+                                           fields: {
+                                             field1: {},
+                                             field2: {},
+                                             field3: {},
+                                             field4: {},
+                                             field5: {},
+                                             field6: {},
+                                             _key: {}}}}});
       },
 
       tearDownAll : function () {
