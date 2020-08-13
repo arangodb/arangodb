@@ -450,9 +450,6 @@ void RegisterPlanT<T>::toVelocyPackEmpty(VPackBuilder& builder) {
   { VPackArrayBuilder guard(&builder); }
   builder.add(VPackValue("nrRegs"));
   { VPackArrayBuilder guard(&builder); }
-  // nrRegsHere is not used anymore and is intentionally left empty.
-  // it is only here for historical reasons.
-  // builder.add(VPackValue("nrRegsHere"));
   { VPackArrayBuilder guard(&builder); }
   builder.add("totalNrRegs", VPackValue(0));
 }
