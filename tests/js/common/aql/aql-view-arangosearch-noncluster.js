@@ -81,7 +81,7 @@ function iResearchAqlTestSuite () {
       mfc.save({field1:"1value2", field2:"2value2", field3: 3, field4: 11113, field5: 3, field6: 3});
       mfc.save({field1:"1value3", field2:"2value3", field3: 4, field4: 11114, field5: 4, field6: 4});
       
-      try { analyzers.remove("customAnalyzer", true); } catch {}
+      try { analyzers.remove("customAnalyzer", true); } catch(err) {}
       analyzers.save("customAnalyzer", "text",  {"locale": "en.utf-8",
                                                  "case": "lower",
                                                  "stopwords": [],
