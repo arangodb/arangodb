@@ -4,6 +4,10 @@ v3.7.2 (XXXX-XX-XX)
 * Fixed that dropping a vanished follower works again. An exception response
   to the replication request is now handled properly.
 
+* Improve performance of internal cluster Plan and Current reload operations.
+
+* Updated arangosync to 0.7.9.
+
 * Fixed issue #12349: arangosh compact Arangoerror 404.
 
 * Improve performance of many non-subquery AQL queries, by optimizing away some
