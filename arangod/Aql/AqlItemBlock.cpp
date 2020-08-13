@@ -55,25 +55,23 @@ inline void copyValueOver(arangodb::containers::HashSet<void*>& cache,
                           size_t rowNumber, 
                           RegisterId col, 
                           SharedAqlItemBlockPtr& res) {
-  if (!a.isEmpty()) {
-    if (a.requiresDestruction()) {
-      auto it = cache.find(a.data());
+  if (a.requiresDestruction()) {
+    auto it = cache.find(a.data());
 
-      if (it == cache.end()) {
-        AqlValue b = a.clone();
-        try {
-          res->setValue(rowNumber, col, b);
-        } catch (...) {
-          b.destroy();
-          throw;
-        }
-        cache.emplace(b.data());
-      } else {
-        res->setValue(rowNumber, col, AqlValue(a.type(), (*it)));
+    if (it == cache.end()) {
+      AqlValue b = a.clone();
+      try {
+        res->setValue(rowNumber, col, b);
+      } catch (...) {
+        b.destroy();
+        throw;
       }
+      cache.emplace(b.data());
     } else {
-      res->setValue(rowNumber, col, a);
+      res->setValue(rowNumber, col, AqlValue(a, (*it)));
     }
+  } else {
+    res->setValue(rowNumber, col, a);
   }
 }
 }  // namespace
@@ -339,6 +337,8 @@ void AqlItemBlock::destroy() noexcept {
   } catch (...) {
   }
 
+  TRI_ASSERT(_valueCount.empty());
+
   rescale(0, 0);
   TRI_ASSERT(numEntries() == 0);
 }
@@ -380,9 +380,11 @@ void AqlItemBlock::shrink(size_t nrItems) {
 
         if (--valueInfo.refCount == 0) {
           totalUsed += valueInfo.memoryUsage;
+          // destroy calls erase() for AqlValues with dynamic memory,
+          // no need for an extra a.erase() here
           a.destroy();
           _valueCount.erase(it);
-          continue;  // no need for an extra a.erase() here
+          continue;  
         }
       }
     }
@@ -457,9 +459,11 @@ void AqlItemBlock::clearRegisters(RegIdFlatSet const& toClear) {
 
           if (--valueInfo.refCount == 0) {
             totalUsed += valueInfo.memoryUsage;
+            // destroy calls erase() for AqlValues with dynamic memory,
+            // no need for an extra a.erase() here
             a.destroy();
             _valueCount.erase(it);
-            continue;  // no need for an extra a.erase() here
+            continue;  
           }
         }
       }
@@ -492,7 +496,7 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
           if (a.requiresDestruction()) {
             AqlValueGuard guard{a, true};
             auto [it, inserted] = cache.emplace(a.data());
-            res->setValue(row, col, AqlValue(a.type(), a.data()));
+            res->setValue(row, col, AqlValue(a, (*it)));
             if (inserted) {
               // otherwise, destroy this; we used a cached value.
               guard.steal();
@@ -812,7 +816,8 @@ void AqlItemBlock::toVelocyPack(size_t from, size_t to,
 
         if (it == table.end()) {
           currentState = Next;
-          a.toVelocyPack(trxOptions, raw, false);
+          a.toVelocyPack(trxOptions, raw, /*resolveExternals*/false,
+                         /*allowUnindexed*/true);
           table.try_emplace(a, pos++);
         } else {
           currentState = Positional;
@@ -877,7 +882,8 @@ void AqlItemBlock::rowToSimpleVPack(size_t const row, velocypack::Options const*
       if (ref.isEmpty()) {
         builder.add(VPackSlice::noneSlice());
       } else {
-        ref.toVelocyPack(options, builder, false);
+        ref.toVelocyPack(options, builder, /*resolveExternals*/false,
+                         /*allowUnindexed*/true);
       }
     }
   }
@@ -996,7 +1002,9 @@ void AqlItemBlock::destroyValue(size_t index, RegisterId varNr) {
         decreaseMemoryUsage(valueInfo.memoryUsage);
         _valueCount.erase(it);
         element.destroy();
-        return;  // no need for an extra element.erase() in this case
+        // no need for an extra element.erase() in this case, as
+        // destroy() calls erase() for AqlValues with dynamic memory
+        return;  
       }
     }
   }
@@ -1026,9 +1034,7 @@ void AqlItemBlock::eraseAll() {
   size_t const n = numEntries();
   for (size_t i = 0; i < n; i++) {
     auto& it = _data[i];
-    if (!it.isEmpty()) {
-      it.erase();
-    }
+    it.erase();
   }
 
   size_t totalUsed = 0;
