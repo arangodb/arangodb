@@ -69,6 +69,9 @@ void VertexComputation::registerLocalFunctions() {
   _airMachine.setFunctionMember("this-outbound-edges-count", //,
                                 &VertexComputation::air_numberOutboundEdges, this);
 
+  _airMachine.setFunctionMember("this-doc",
+                                &VertexComputation::air_thisDoc, this);
+
   _airMachine.setFunctionMember("this-vertex-id", // " () -> value:any ",
                                 &VertexComputation::air_thisVertexId, this);
 
@@ -305,6 +308,13 @@ greenspun::EvalResult VertexComputation::air_bindRef(greenspun::Machine& ctx,
     return {};
   }
   return greenspun::EvalError("Bind parameter `" + bindId + "` not found");
+}
+
+
+greenspun::EvalResult VertexComputation::air_thisDoc(greenspun::Machine& ctx,
+                                       VPackSlice const params, VPackBuilder& result) {
+  result.add(this->vertexData()._document.slice());
+  return {};
 }
 
 greenspun::EvalResult VertexComputation::air_thisVertexId(greenspun::Machine& ctx,
