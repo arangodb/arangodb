@@ -1,13 +1,18 @@
 ### Scope & Purpose
 
-*(Please describe the changes of this PR for reviewers)*
+*(Please describe the changes in this PR for reviewers)*
 
-- [ ] Bugfix
-- [ ] New feature
-- [ ] Refactoring
-- [ ] CHANGELOG entry made
-- [ ] The behavior in this PR was *manually tested*
-- [ ] The behavior change can be verified via automatic tests
+- [ ] :hankey: Bugfix 
+- [ ] :pizza: New feature 
+- [ ] :hammer: Refactoring 
+- [ ] :book: CHANGELOG entry made
+- [ ] :muscle: The behavior in this PR was *manually tested*
+- [ ] :computer: The behavior change can be verified via automatic tests
+
+#### Backports:
+
+- [ ] No backports required
+- [ ] Backports required for: *(Please specify versions)*
 
 #### Related Information
 
@@ -18,28 +23,17 @@
 - [ ] GitHub issue / Jira ticket number:
 - [ ] Design document: 
 
-#### Backports:
-
-- [ ] New functionality, no backports
-- [ ] Backports required for:
 ### Testing & Verification
 
 *(Please pick either of the following options)*
 
-This change is a trivial rework / code cleanup without any test coverage.
-
-*(or)*
-
-This change is already covered by existing tests, such as *(please describe tests)*.
-
-*(or)*
-
-This PR adds tests that were used to verify all changes:
-
-- [ ] Added **Regression Tests**
-- [ ] Added new C++ **Unit Tests**
-- [ ] Added new **integration tests** (i.e. in shell_server / shell_server_aql)
-- [ ] Added new **resilience tests** (only if the feature is impacted by failovers)
+- [ ] This change is a trivial rework / code cleanup without any test coverage.
+- [ ] This change is already covered by existing tests, such as *(please describe tests)*.
+- [ ] This PR adds tests that were used to verify all changes:
+  - [ ] Added **Regression Tests**
+  - [ ] Added new C++ **Unit Tests**
+  - [ ] Added new **integration tests** (i.e. in shell_server / shell_server_aql)
+  - [ ] Added new **resilience tests** (only if the feature is impacted by failovers)
 
 Additionally:
 
