@@ -87,7 +87,7 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
         return false;
       }
     }
-
+        
     context.incrScanned();
 
     auto indexId = index->id();
@@ -114,14 +114,14 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
           return AqlValue();
         }
         velocypack::Slice s;
-        // hash/skiplist/edge
+        // hash/skiplist/persistent
         if (fc.slice.isArray()) {
           TRI_ASSERT(it->second < fc.slice.length());
           if (ADB_UNLIKELY(it->second >= fc.slice.length())) {
             return AqlValue();
           }
           s = fc.slice.at(it->second);
-        } else {  // primary
+        } else {  // primary/edge
           s = fc.slice;
         }
         if (doCopy) {
@@ -146,7 +146,7 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
     TRI_ASSERT(!output.isFull());
     output.moveValueInto(registerId, input, guard);
 
-    // hash/skiplist/edge
+    // hash/skiplist/persistent
     if (slice.isArray()) {
       for (auto const& indReg : outNonMaterializedIndRegs.second) {
         TRI_ASSERT(indReg.first < slice.length());
@@ -159,7 +159,7 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
         TRI_ASSERT(!output.isFull());
         output.moveValueInto(indReg.second, input, guard);
       }
-    } else {  // primary
+    } else {  // primary/edge
       auto indReg = outNonMaterializedIndRegs.second.cbegin();
       TRI_ASSERT(indReg != outNonMaterializedIndRegs.second.cend());
       if (ADB_UNLIKELY(indReg == outNonMaterializedIndRegs.second.cend())) {

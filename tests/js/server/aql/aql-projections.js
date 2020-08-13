@@ -43,7 +43,7 @@ function projectionsPlansTestSuite () {
 
       let docs = [];
       for (var i = 0; i < 1000; ++i) {
-        docs.push({ _from: "v/test" + i, _to: "v/test" + i, value1: i, value2: "test" + i, foo: { bar: i, baz: i } });
+        docs.push({ _from: "v/test" + i, _to: "v/test" + i, _key: "test" + i, value1: i, value2: "test" + i, value3: i, foo: { bar: i, baz: i, bat: i } });
       }
       c.insert(docs);
     },
@@ -369,6 +369,72 @@ function projectionsPlansTestSuite () {
         } else {
           assertEqual(-1, plan.rules.indexOf(ruleName));
         }
+      });
+    },
+    
+    testMaterialize : function () {
+      c.ensureIndex({ type: "persistent", fields: ["value1", "value2", "value3"] });
+      let queries = [
+        [`FOR doc IN ${cn} FILTER doc.value1 == 93 SORT doc.value3 LIMIT 5 RETURN doc`, 'persistent', [], false, [ { _key: "test93", value1: 93, value2: "test93", value3: 93 } ] ],
+        [`FOR doc IN ${cn} FILTER doc.value1 >= 93 && doc.value1 <= 95 SORT doc.value3 LIMIT 5 RETURN doc`, 'persistent', [], false, [ { _key: "test93", value1: 93, value2: "test93", value3: 93 }, { _key: "test94", value1: 94, value2: "test94", value3: 94 }, { _key: "test95", value1: 95, value2: "test95", value3: 95 } ] ],
+        [`FOR doc IN ${cn} FILTER doc.value1 >= 93 && doc.value1 <= 95 SORT doc.value3 DESC LIMIT 5 RETURN doc`, 'persistent', [], false, [ { _key: "test95", value1: 95, value2: "test95", value3: 95 }, { _key: "test94", value1: 94, value2: "test94", value3: 94 }, { _key: "test93", value1: 93, value2: "test93", value3: 93 } ] ],
+        [`FOR doc IN ${cn} FILTER doc.value1 >= 93 && doc.value1 <= 95 && doc.value2 != 23 SORT doc.value3 LIMIT 5 RETURN doc`, 'persistent', [], false, [ { _key: "test93", value1: 93, value2: "test93", value3: 93 }, { _key: "test94", value1: 94, value2: "test94", value3: 94 }, { _key: "test95", value1: 95, value2: "test95", value3: 95 } ] ],
+        [`FOR doc IN ${cn} FILTER doc.value1 >= 93 && doc.value1 <= 95 && doc.value2 != 23 SORT doc.value3 DESC LIMIT 5 RETURN doc`, 'persistent', [], false, [ { _key: "test95", value1: 95, value2: "test95", value3: 95 }, { _key: "test94", value1: 94, value2: "test94", value3: 94 }, { _key: "test93", value1: 93, value2: "test93", value3: 93 } ] ],
+      ];
+
+      queries.forEach(function(query) {
+        let plan = AQL_EXPLAIN(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).plan;
+        let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode'; });
+        assertEqual(1, nodes.length, query);
+        assertEqual(1, nodes[0].indexes.length, query);
+        assertEqual(query[1], nodes[0].indexes[0].type, query);
+        assertEqual(query[2], nodes[0].projections, query);
+        assertEqual(query[3], nodes[0].indexCoversProjections, query);
+        
+        if (query[2].length) {
+          assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        } else {
+          assertEqual(-1, plan.rules.indexOf(ruleName));
+        }
+        let results = db._query(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).toArray();
+        assertEqual(query[4].length, results.length);
+        results = results.map(function(doc) {
+          return { _key: doc._key, value1: doc.value1, value2: doc.value2, value3: doc.value3 };
+        });
+        assertEqual(query[4], results);
+      });
+    },
+    
+    testMaterializeSubAttributes : function () {
+      c.ensureIndex({ type: "persistent", fields: ["foo.bar", "foo.baz", "foo.bat"] });
+      let queries = [
+        [`FOR doc IN ${cn} FILTER doc.foo.bar == 93 SORT doc.foo.bat LIMIT 5 RETURN doc`, 'persistent', [], false, [ { _key: "test93", value1: 93, value2: "test93", value3: 93 } ] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar >= 93 && doc.foo.bar <= 95 SORT doc.foo.bat LIMIT 5 RETURN doc`, 'persistent', [], false, [ { _key: "test93", value1: 93, value2: "test93", value3: 93 }, { _key: "test94", value1: 94, value2: "test94", value3: 94 }, { _key: "test95", value1: 95, value2: "test95", value3: 95 } ] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar >= 93 && doc.foo.bar <= 95 SORT doc.foo.bat DESC LIMIT 5 RETURN doc`, 'persistent', [], false, [ { _key: "test95", value1: 95, value2: "test95", value3: 95 }, { _key: "test94", value1: 94, value2: "test94", value3: 94 }, { _key: "test93", value1: 93, value2: "test93", value3: 93 } ] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar >= 93 && doc.foo.bar <= 95 && doc.foo.baz != 23 SORT doc.foo.bat LIMIT 5 RETURN doc`, 'persistent', [], false, [ { _key: "test93", value1: 93, value2: "test93", value3: 93 }, { _key: "test94", value1: 94, value2: "test94", value3: 94 }, { _key: "test95", value1: 95, value2: "test95", value3: 95 } ] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar >= 93 && doc.foo.bar <= 95 && doc.foo.baz != 23 SORT doc.foo.bat DESC LIMIT 5 RETURN doc`, 'persistent', [], false, [ { _key: "test95", value1: 95, value2: "test95", value3: 95 }, { _key: "test94", value1: 94, value2: "test94", value3: 94 }, { _key: "test93", value1: 93, value2: "test93", value3: 93 } ] ],
+      ];
+
+      queries.forEach(function(query) {
+        let plan = AQL_EXPLAIN(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).plan;
+        let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode'; });
+        assertEqual(1, nodes.length, query);
+        assertEqual(1, nodes[0].indexes.length, query);
+        assertEqual(query[1], nodes[0].indexes[0].type, query);
+        assertEqual(query[2], nodes[0].projections, query);
+        assertEqual(query[3], nodes[0].indexCoversProjections, query);
+        
+        if (query[2].length) {
+          assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        } else {
+          assertEqual(-1, plan.rules.indexOf(ruleName));
+        }
+        let results = db._query(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).toArray();
+        assertEqual(query[4].length, results.length);
+        results = results.map(function(doc) {
+          return { _key: doc._key, value1: doc.value1, value2: doc.value2, value3: doc.value3 };
+        });
+        assertEqual(query[4], results);
       });
     },
     
