@@ -450,7 +450,6 @@ void RegisterPlanT<T>::toVelocyPackEmpty(VPackBuilder& builder) {
   { VPackArrayBuilder guard(&builder); }
   builder.add(VPackValue("nrRegs"));
   { VPackArrayBuilder guard(&builder); }
-  { VPackArrayBuilder guard(&builder); }
   builder.add("totalNrRegs", VPackValue(0));
 }
 
