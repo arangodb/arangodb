@@ -68,7 +68,7 @@ inline void copyValueOver(arangodb::containers::HashSet<void*>& cache,
       }
       cache.emplace(b.data());
     } else {
-      res->setValue(rowNumber, col, AqlValue(a.type(), (*it)));
+      res->setValue(rowNumber, col, AqlValue(a, (*it)));
     }
   } else {
     res->setValue(rowNumber, col, a);
@@ -496,7 +496,7 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
           if (a.requiresDestruction()) {
             AqlValueGuard guard{a, true};
             auto [it, inserted] = cache.emplace(a.data());
-            res->setValue(row, col, AqlValue(a.type(), a.data()));
+            res->setValue(row, col, AqlValue(a, (*it)));
             if (inserted) {
               // otherwise, destroy this; we used a cached value.
               guard.steal();

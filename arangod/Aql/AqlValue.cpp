@@ -39,6 +39,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
+#include <type_traits>
 
 #ifndef velocypack_malloc
 #error velocypack_malloc must be defined
@@ -960,6 +961,7 @@ AqlValue::MemoryOriginType AqlValue::memoryOriginType() const noexcept {
   
 /// @brief store meta information for values of type VPACK_MANAGED_SLICE
 void AqlValue::setManagedSliceData(MemoryOriginType mot, arangodb::velocypack::ValueLength length) {
+  TRI_ASSERT(length > 0);
   TRI_ASSERT(mot == MemoryOriginType::New || mot == MemoryOriginType::Malloc);
   if (ADB_UNLIKELY(length > 0x0000ffffffffffffULL)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_OUT_OF_MEMORY, "invalid AqlValue length");
@@ -1358,11 +1360,12 @@ AqlValue::AqlValue(uint8_t const* pointer) {
   TRI_ASSERT(!VPackSlice(_data.pointer).isExternal());
 }
 
-AqlValue::AqlValue(AqlValueType type, void* data) noexcept {
+AqlValue::AqlValue(AqlValue const& other, void* data) noexcept {
   TRI_ASSERT(data != nullptr);
-  TRI_ASSERT(type != VPACK_INLINE);
+  TRI_ASSERT(other.type() != VPACK_INLINE);
   _data.data = data;
-  setType(type);
+  // copy meta data
+  _data.words[1] = other._data.words[1];
 }
 
 AqlValue::AqlValue(AqlValueHintNone const&) noexcept {
@@ -1612,6 +1615,7 @@ void AqlValue::initFromSlice(arangodb::velocypack::Slice slice, arangodb::velocy
   //   // recursively resolve externals
   //   slice = slice.resolveExternals();
   // }
+  TRI_ASSERT(length > 0);
   TRI_ASSERT(slice.byteSize() == length);
   if (length < sizeof(_data.internal)) {
     // Use inline value
@@ -1647,9 +1651,10 @@ void AqlValue::setPointer(uint8_t const* pointer) noexcept {
 template void AqlValue::setPointer<true>(uint8_t const* pointer) noexcept;
 template void AqlValue::setPointer<false>(uint8_t const* pointer) noexcept;
 
-AqlValueHintCopy::AqlValueHintCopy(uint8_t const* ptr) : ptr(ptr) {}
-AqlValueHintDocumentNoCopy::AqlValueHintDocumentNoCopy(uint8_t const* v)
-    : ptr(v) {}
+static_assert(std::is_standard_layout<AqlValue>::value, "AqlValue has an invalid type");
+
+AqlValueHintCopy::AqlValueHintCopy(uint8_t const* ptr) noexcept : ptr(ptr) {}
+AqlValueHintDocumentNoCopy::AqlValueHintDocumentNoCopy(uint8_t const* v) noexcept : ptr(v) {}
 AqlValueHintBool::AqlValueHintBool(bool v) noexcept : value(v) {}
 AqlValueHintDouble::AqlValueHintDouble(double v) noexcept : value(v) {}
 AqlValueHintInt::AqlValueHintInt(int64_t v) noexcept : value(v) {}

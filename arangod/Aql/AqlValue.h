@@ -68,14 +68,14 @@ class AqlItemBlock;
 // no-op struct used only internally to indicate that we want
 // to copy the data behind the passed pointer
 struct AqlValueHintCopy {
-  explicit AqlValueHintCopy(uint8_t const* ptr);
+  explicit AqlValueHintCopy(uint8_t const* ptr) noexcept;
   uint8_t const* ptr;
 };
 
 // no-op struct used only internally to indicate that we want
 // to NOT copy the database document data behind the passed pointer
 struct AqlValueHintDocumentNoCopy {
-  explicit AqlValueHintDocumentNoCopy(uint8_t const* v);
+  explicit AqlValueHintDocumentNoCopy(uint8_t const* v) noexcept;
   uint8_t const* ptr;
 };
 
@@ -181,8 +181,8 @@ struct AqlValue final {
   // construct from pointer, not copying!
   explicit AqlValue(uint8_t const* pointer);
   
-  // construct from type and pointer, not copying!
-  explicit AqlValue(AqlValueType type, void* data) noexcept;
+  // construct from another AqlValue and a new data pointer, not copying!
+  explicit AqlValue(AqlValue const& other, void* data) noexcept;
 
   // construct from docvec, taking over its ownership
   explicit AqlValue(std::vector<arangodb::aql::SharedAqlItemBlockPtr>* docvec) noexcept;
