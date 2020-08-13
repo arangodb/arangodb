@@ -6,6 +6,9 @@ devel
   called from within a loop. Otherwise the COLLECT will be applied to the
   values in the outer FOR loop, which can produce a different result.
 
+* Fixed a blockage on hotbackup when writes are happening concurrently, since
+  followers could no longer replicate leader transactions.
+
 * Updated arangosync to 0.7.9.
 
 * Fixed hotbackup S3 credentials validation and error reporting for upload
