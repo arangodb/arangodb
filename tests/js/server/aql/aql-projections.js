@@ -372,6 +372,79 @@ function projectionsPlansTestSuite () {
       });
     },
     
+    testSparseIndex : function () {
+      c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
+      let queries = [
+        [`FOR doc IN ${cn} FILTER doc.value1 == 93 RETURN doc.value1`, 'persistent', ['value1'], true ],
+      ];
+
+      queries.forEach(function(query) {
+        let plan = AQL_EXPLAIN(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).plan;
+        let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode'; });
+        assertEqual(1, nodes.length, query);
+        assertEqual(1, nodes[0].indexes.length, query);
+        assertEqual(query[1], nodes[0].indexes[0].type, query);
+        assertEqual(query[2], nodes[0].projections, query);
+        assertEqual(query[3], nodes[0].indexCoversProjections, query);
+        
+        if (query[2].length) {
+          assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        } else {
+          assertEqual(-1, plan.rules.indexOf(ruleName));
+        }
+      });
+      
+      queries = [
+        [`FOR doc IN ${cn} RETURN doc.value1`, ['value1'] ],
+        [`FOR doc IN ${cn} FILTER doc.value1 < 99 RETURN doc.value1`, ['value1'] ],
+      ];
+
+      queries.forEach(function(query) {
+        let plan = AQL_EXPLAIN(query[0]).plan;
+        let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
+        assertEqual(1, nodes.length, query);
+        assertEqual(query[1], nodes[0].projections, query);
+        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      });
+    },
+    
+    testSparseIndexSubAttribute : function () {
+      c.ensureIndex({ type: "persistent", fields: ["a.b"], sparse: true });
+      let queries = [
+        [`FOR doc IN ${cn} FILTER doc.a.b == 93 RETURN doc.a.b`, 'persistent', [['a', 'b']], true ],
+        [`FOR doc IN ${cn} FILTER doc.a.b == 93 RETURN doc.a`, 'persistent', ['a'], false ],
+      ];
+
+      queries.forEach(function(query) {
+        let plan = AQL_EXPLAIN(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).plan;
+        let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode'; });
+        assertEqual(1, nodes.length, query);
+        assertEqual(1, nodes[0].indexes.length, query);
+        assertEqual(query[1], nodes[0].indexes[0].type, query);
+        assertEqual(query[2], nodes[0].projections, query);
+        assertEqual(query[3], nodes[0].indexCoversProjections, query);
+        
+        if (query[2].length) {
+          assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        } else {
+          assertEqual(-1, plan.rules.indexOf(ruleName));
+        }
+      });
+      
+      queries = [
+        [`FOR doc IN ${cn} RETURN doc.a.b`, [['a', 'b']] ],
+        [`FOR doc IN ${cn} FILTER doc.a.b < 99 RETURN doc.a.b`, [['a', 'b']] ],
+      ];
+
+      queries.forEach(function(query) {
+        let plan = AQL_EXPLAIN(query[0]).plan;
+        let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
+        assertEqual(1, nodes.length, query);
+        assertEqual(query[1], nodes[0].projections, query);
+        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      });
+    },
+    
     testNoIndex : function () {
       let queries = [
         [`FOR doc IN ${cn} RETURN doc.foo`, ['foo'] ],
