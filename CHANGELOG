@@ -26,6 +26,14 @@ devel
   the projection can be satisfied by a single-attribute index on attribute `b`,
   but now also by a combined index on attributes `a` and `b` (or `b` and `a`).
 
+* Fixed issue ES-664: the optimizer rule `inline-subqueries` must not pull out 
+  subqueries that contain a COLLECT statement if the subquery is itself
+  called from within a loop. Otherwise the COLLECT will be applied to the
+  values in the outer FOR loop, which can produce a different result.
+
+* Fixed a blockage on hotbackup when writes are happening concurrently, since
+  followers could no longer replicate leader transactions.
+
 * Updated arangosync to 0.7.9.
 
 * Fixed hotbackup S3 credentials validation and error reporting for upload
