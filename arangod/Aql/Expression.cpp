@@ -620,12 +620,13 @@ AqlValue Expression::executeSimpleExpressionArray(AstNode const* node,
     bool localMustDestroy = false;
     AqlValue result = executeSimpleExpression(member, trx, localMustDestroy, false);
     AqlValueGuard guard(result, localMustDestroy);
-    result.toVelocyPack(&trx->vpackOptions(), *builder.get(), false);
+    result.toVelocyPack(&trx->vpackOptions(), *builder.get(), /*resolveExternals*/false,
+                        /*allowUnindexed*/false);
   }
 
   builder->close();
   mustDestroy = true;  // AqlValue contains builder contains dynamic data
-  return AqlValue(builder->slice());
+  return AqlValue(builder->slice(), builder->size());
 }
 
 /// @brief execute an expression of type SIMPLE with OBJECT
@@ -731,14 +732,15 @@ AqlValue Expression::executeSimpleExpressionObject(AstNode const* node,
     bool localMustDestroy;
     AqlValue result = executeSimpleExpression(member, trx, localMustDestroy, false);
     AqlValueGuard guard(result, localMustDestroy);
-    result.toVelocyPack(&trx->vpackOptions(), *builder.get(), false);
+    result.toVelocyPack(&trx->vpackOptions(), *builder.get(), /*resolveExternals*/false,
+                        /*allowUnindexed*/false);
   }
 
   builder->close();
 
   mustDestroy = true;  // AqlValue contains builder contains dynamic data
 
-  return AqlValue(builder->slice());
+  return AqlValue(builder->slice(), builder->size());
 }
 
 /// @brief execute an expression of type SIMPLE with VALUE
@@ -927,7 +929,7 @@ AqlValue Expression::invokeV8Function(ExpressionContext* expressionContext,
   }
 
   mustDestroy = true;  // builder = dynamic data
-  return AqlValue(builder->slice());
+  return AqlValue(builder->slice(), builder->size());
 }
 
 /// @brief execute an expression of type SIMPLE, JavaScript variant
@@ -1472,7 +1474,8 @@ AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node,
       return AqlValue(AqlValueHintEmptyArray());
     }
 
-    VPackBuilder builder;
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder builder(buffer);
     builder.openArray();
 
     // generate a new temporary for the flattened array
@@ -1502,7 +1505,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node,
     builder.close();
 
     mustDestroy = true;  // builder = dynamic data
-    value = AqlValue(builder.slice());
+    value = AqlValue(std::move(buffer));
   } else {
     bool localMustDestroy;
     AqlValue a = executeSimpleExpression(node->getMember(0), trx, localMustDestroy, false);
@@ -1543,7 +1546,8 @@ AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node,
     }
   }
 
-  VPackBuilder builder;
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder builder(buffer);
   builder.openArray();
 
   size_t const n = value.length();
@@ -1575,7 +1579,8 @@ AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node,
 
     if (takeItem) {
       AqlValue sub = executeSimpleExpression(projectionNode, trx, localMustDestroy, false);
-      sub.toVelocyPack(&trx->vpackOptions(), builder, false);
+      sub.toVelocyPack(&trx->vpackOptions(), builder, /*resolveExternals*/false,
+                       /*allowUnindexed*/false);
       if (localMustDestroy) {
         sub.destroy();
       }
@@ -1594,7 +1599,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(AstNode const* node,
 
   builder.close();
   mustDestroy = true;
-  return AqlValue(builder.slice());  // builder = dynamic data
+  return AqlValue(std::move(buffer));  // builder = dynamic data
 }
 
 /// @brief execute an expression of type SIMPLE with ITERATOR
