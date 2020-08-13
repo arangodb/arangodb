@@ -100,7 +100,7 @@ function createLineGraph(graphName, numberOfVertices, numberOfShards) {
 
   db._collection(ename).save(es);
 
-  return { vname: vname, ename: ename };
+  return { name: graphName, vname: vname, ename: ename };
 }
 
 function createPageRankGraph(graphName, numberOfVertices, numberOfShards) {
@@ -160,7 +160,7 @@ function createPageRankGraph(graphName, numberOfVertices, numberOfShards) {
 
   // E -> E
   storeEdge(vids[4]._id, vids[4]._id, 1);
-  return { vname: vname, ename: ename };
+  return { name: graphName, vname: vname, ename: ename };
 }
 
 function createWikiVoteGraph(graphName, numberOfShards) {
@@ -3113,10 +3113,10 @@ function createWikiVoteGraph(graphName, numberOfShards) {
 
   db._collection(ename).save(es);
 
-  return { vname: vname, ename: ename };
+  return { name: graphName, vname: vname, ename: ename };
 }
 
 exports.create_wiki_vote_graph = createWikiVoteGraph;
 exports.create_line_graph = createLineGraph;
-exports.create_page_rank_graph = createPageRankGraph;
+exports.create_pagerank_graph = createPageRankGraph;
 exports.create_circle = createCircle;

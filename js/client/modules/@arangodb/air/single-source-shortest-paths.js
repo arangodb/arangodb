@@ -23,12 +23,18 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const pregel = require("@arangodb/pregel");
+const examplegraphs = require("@arangodb/air/pregel-example-graphs");
+const testhelpers = require("@arangodb/air/test-helpers");
+
+const internal = require("internal");
+
 /*
 
 
 */
 exports.single_source_shortest_paths_program = single_source_shortest_paths_program;
 exports.single_source_shortest_paths = single_source_shortest_paths;
+exports.test = test;
 
 /*
 
@@ -113,4 +119,48 @@ function single_source_shortest_paths(
       weightAttribute
     )
   );
+}
+
+function exec_test_sssp_on_graph(graphSpec) {
+  // Find the ID of a vertex to start at.
+  const some_vertex = db
+        ._query(`FOR d IN @@V SORT RAND() LIMIT 1 RETURN d._id`,
+                { "@V": graphSpec.vname })
+        .toArray()[0];
+
+  internal.print("using " + some_vertex + " as start vertex.");
+
+  testhelpers.wait_for_pregel(
+    "Air SSSP",
+    single_source_shortest_paths(
+      graphSpec.name,
+      "SSSP",
+      some_vertex,
+      "cost"
+    ));
+
+  testhelpers.wait_for_pregel(
+    "Native SSSP",
+    pregel.start("sssp", graphSpec.name, {
+    source: some_vertex,
+    maxGSS: 10000,
+  }));
+
+  return testhelpers.compare_pregel(db._query(`FOR d IN @@V
+               FILTER d.result != d.SSSP.distance
+               RETURN d`, {"@V": graphSpec.vname}));
+}
+
+function exec_test_sssp(graphSpec) {
+  exec_test_sssp_on_graph(examplegraphs.create_line_graph("LineGraph100", 100, 1));
+  exec_test_sssp_on_graph(examplegraphs.create_line_graph("LineGraph1000", 1000, 9));
+  exec_test_sssp_on_graph(examplegraphs.create_line_graph("LineGraph10000", 10000, 18));
+
+  exec_test_sssp_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 1));
+  exec_test_sssp_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 9));
+  exec_test_sssp_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 18));
+}
+
+function test() {
+  exec_test_sssp();
 }

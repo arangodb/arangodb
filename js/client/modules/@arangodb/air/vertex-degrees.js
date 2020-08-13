@@ -23,6 +23,8 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const pregel = require("@arangodb/pregel");
+const examplegraphs = require("@arangodb/air/pregel-example-graphs");
+const testhelpers = require("@arangodb/air/test-helpers");
 
 /*
 
@@ -30,6 +32,7 @@ const pregel = require("@arangodb/pregel");
 */
 exports.vertex_degrees_program = vertex_degrees_program;
 exports.vertex_degrees = vertex_degrees;
+exports.test = test;
 
 /* returns a program that compputes the vertex degree of every vertex */
 function vertex_degrees_program(resultField) {
@@ -72,4 +75,41 @@ function vertex_degrees(
         graphName,
         vertex_degrees_program(resultField)
     );
+}
+
+
+
+/*
+ * Vertex Degree tests
+ */
+function exec_test_vertex_degrees_on_graph(graphSpec) {
+  testhelpers.wait_for_pregel("AIR vertex-degree", vertex_degrees(graphSpec.name, "vertexDegrees"));
+
+  return testhelpers.compare_pregel(db._query(`
+    FOR d IN @@V
+      LET outDegree = LENGTH(FOR x IN @@E FILTER x._from == d._id RETURN x)
+      LET inDegree = LENGTH(FOR x IN @@E FILTER x._to == d._id RETURN x)
+      FILTER d.vertexDegrees.inDegree != inDegree || d.vertexDegrees.outDegree != outDegree
+      RETURN { aql: { inDegree: inDegree, outDegree: outDegree },
+               air: { inDegree: d.vertexDegrees.inDegree, outDegree: d.vertexDegrees.outDegree } }`,
+                                  { "@V": graphSpec.vname,
+                                    "@E": graphSpec.ename }));
+}
+
+function exec_test_vertex_degrees() {
+  exec_test_vertex_degrees_on_graph(examplegraphs.create_line_graph("LineGraph100", 100, 1));
+  exec_test_vertex_degrees_on_graph(examplegraphs.create_line_graph("LineGraph1000", 1000, 9));
+  exec_test_vertex_degrees_on_graph(examplegraphs.create_line_graph("LineGraph10000", 10000, 18));
+
+  exec_test_vertex_degrees_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 1));
+  exec_test_vertex_degrees_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 9));
+  exec_test_vertex_degrees_on_graph(examplegraphs.create_wiki_vote_graph("WikiVote", 18));
+
+  // TODO: random graph
+  // TODO: structurally generated graph
+}
+
+// run tests
+function test() {
+  exec_test_vertex_degrees();
 }
