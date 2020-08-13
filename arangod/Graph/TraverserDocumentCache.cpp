@@ -107,8 +107,8 @@ aql::AqlValue TraverserDocumentCache::fetchVertexAqlResult(arangodb::velocypack:
   if (finding.found()) {
     auto val = finding.value();
     VPackSlice slice(val->value());
-    // finding makes sure that slice contant stays valid.
-    return aql::AqlValue(slice);
+    // finding makes sure that slice constant stays valid.
+    return aql::AqlValue(slice, val->size());
   }
   // Not in cache. Fetch and insert.
   return aql::AqlValue(lookupAndCache(idString));

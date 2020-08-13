@@ -28,6 +28,7 @@
 #include "Aql/AqlValueFwd.h"
 #include "Aql/types.h"
 
+#include <velocypack/velocypack-common.h>
 #include <vector>
 
 namespace v8 {
@@ -223,7 +224,10 @@ struct AqlValue final {
   explicit AqlValue(AqlValueHintCopy const& v);
 
   // construct from Slice, copying contents
-  explicit AqlValue(arangodb::velocypack::Slice const& slice);
+  explicit AqlValue(arangodb::velocypack::Slice slice);
+  
+  // construct from Slice and length, copying contents
+  AqlValue(arangodb::velocypack::Slice slice, arangodb::velocypack::ValueLength length);
 
   // construct range type
   AqlValue(int64_t low, int64_t high);
@@ -231,12 +235,12 @@ struct AqlValue final {
   /// @brief AqlValues can be copied and moved as required
   /// memory management is not performed via AqlValue destructor but via
   /// explicit calls to destroy()
-  AqlValue(AqlValue const&) = default;
-  AqlValue& operator=(AqlValue const&) = default;
-  AqlValue(AqlValue&&) = default;
-  AqlValue& operator=(AqlValue&&) = default;
+  AqlValue(AqlValue const&) noexcept = default;
+  AqlValue& operator=(AqlValue const&) noexcept = default;
+  AqlValue(AqlValue&&) noexcept = default;
+  AqlValue& operator=(AqlValue&&) noexcept = default;
 
-  ~AqlValue() = default;
+  ~AqlValue() noexcept = default;
 
   /// @brief whether or not the value must be destroyed
   bool requiresDestruction() const noexcept;
@@ -370,7 +374,10 @@ struct AqlValue final {
 
  private:
   /// @brief initializes value from a slice
-  void initFromSlice(arangodb::velocypack::Slice const& slice);
+  void initFromSlice(arangodb::velocypack::Slice slice);
+  
+  /// @brief initializes value from a slice, when the length is already known
+  void initFromSlice(arangodb::velocypack::Slice slice, arangodb::velocypack::ValueLength length);
 
   /// @brief sets the value type
   void setType(AqlValueType type) noexcept;
@@ -384,8 +391,8 @@ struct AqlValue final {
   /// @brief return the memory origin type for values of type VPACK_MANAGED_SLICE
   MemoryOriginType memoryOriginType() const noexcept;
   
-  /// @brief set the memory origin type for values of type VPACK_MANAGED_SLICE
-  void setMemoryOriginType(MemoryOriginType type) noexcept;
+  /// @brief store meta information for values of type VPACK_MANAGED_SLICE
+  void setManagedSliceData(MemoryOriginType mot, arangodb::velocypack::ValueLength length);
 };
 
 // Check that the defaulted constructors, destructor and assignment
