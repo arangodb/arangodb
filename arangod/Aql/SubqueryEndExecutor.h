@@ -78,6 +78,8 @@ class SubqueryEndExecutor {
   SubqueryEndExecutor(Fetcher& fetcher, SubqueryEndExecutorInfos& infos);
   ~SubqueryEndExecutor();
 
+  void initializeCursor();
+
   // produceRows accumulates all input rows it can get into _accumulator, which
   // will then be read out by ExecutionBlockImpl
   // TODO: can the production of output be moved to produceRows again?

@@ -68,6 +68,10 @@ SubqueryEndExecutor::SubqueryEndExecutor(Fetcher&, SubqueryEndExecutorInfos& inf
 
 SubqueryEndExecutor::~SubqueryEndExecutor() = default;
 
+void SubqueryEndExecutor::initializeCursor() {
+  _accumulator.reset();
+}
+
 auto SubqueryEndExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
   // We can not account for skipped rows here.
