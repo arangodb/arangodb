@@ -3,6 +3,14 @@ v3.6.6 (XXXX-XX-XX)
 * Fixed internal issue #748: Fixed reading of primary sort values for
   late materialization.
 
+* Updated arangosync to 0.7.9.
+
+* Fixed hotbackup S3 credentials validation and error reporting for upload
+  and download (BTS-162).
+
+* Fix: The 'sorted' COLLECT variant would return undefined instead of null when
+  grouping by a null value.
+
 * Fix: writeConcern is now honored correctly (ES-655).
 
 * Fixed internal issue #739: ArangoSearch filter volatility takes into account

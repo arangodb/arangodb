@@ -582,7 +582,33 @@ function optimizerCollectMethodsTestSuite () {
       // We do not care for the result,
       // ASAN would figure out invalid memory access here.
       assertEqual(2002, res.length);
-    }
+    },
+
+    // Regression test. There was a bug where the sorted collect returned
+    // [ { "n" : undefined }, { "n" : "testi" } ]
+    // instead of
+    // [ { "n" : null }, { "n" : "testi" } ].
+    testNullVsUndefinedInSortedCollect : function () {
+      const query = `
+        FOR doc IN [ {_key:"foo"}, {_key:"bar", name:"testi"} ]
+        COLLECT n = doc.name OPTIONS { method: "sorted" }
+        RETURN { n }
+      `;
+      const res = db._query(query).toArray();
+      assertEqual([ { "n" : null }, { "n" : "testi" } ], res);
+    },
+
+    // Just for the sake of completeness, a version of the regression test above
+    // for the hashed collect variant.
+    testNullVsUndefinedInHashedCollect : function () {
+      const query = `
+        FOR doc IN [ {_key:"foo"}, {_key:"bar", name:"testi"} ]
+        COLLECT n = doc.name OPTIONS { method: "hash" }
+        RETURN { n }
+      `;
+      const res = db._query(query).toArray();
+      assertEqual([ { "n" : null }, { "n" : "testi" } ], res);
+    },
   
   };
 }
