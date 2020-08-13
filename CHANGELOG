@@ -4,6 +4,8 @@ devel
 * Fixed that dropping a vanished follower works again. An exception response
   to the replication request is now handled properly.
 
+* Updated arangosync to 0.7.9.
+
 * Fixed hotbackup S3 credentials validation and error reporting for upload
   and download.
 
