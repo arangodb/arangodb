@@ -198,6 +198,8 @@ class FollowerInfo {
 #endif
         return _canWrite;
       }
+      READ_LOCKER(readLockerData, _dataLock);
+      TRI_ASSERT(_docColl != nullptr);
       if (!_theLeaderTouched) {
         READ_LOCKER(readLockerData, _dataLock);
         // prevent writes before `TakeoverShardLeadership` has run
@@ -206,8 +208,6 @@ class FollowerInfo {
             << _docColl->name() << " is temporarily in read-only mode, since we have not yet run TakeoverShardLeadership since the last restart.";
         return false;
       }
-      READ_LOCKER(readLockerData, _dataLock);
-      TRI_ASSERT(_docColl != nullptr);
       if (_followers->size() + 1 < _docColl->writeConcern()) {
         // We know that we still do not have enough followers
         LOG_TOPIC("d7306", ERR, Logger::REPLICATION)
