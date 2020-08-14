@@ -396,16 +396,11 @@ void addAQLTransactionHeader(transaction::Methods const& trx,
       TRI_ASSERT(false);
     }
     state.addKnownServer(server);  // remember server
-  } else if (state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL)) {
-     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal AQL transaction state");
   }
   headers.try_emplace(arangodb::StaticStrings::TransactionId, std::move(value));
 }
 template void addAQLTransactionHeader<std::map<std::string, std::string>>(
     transaction::Methods const&, ServerID const&, std::map<std::string, std::string>&);
-template void addAQLTransactionHeader<std::unordered_map<std::string, std::string>>(
-    transaction::Methods const&, ServerID const&,
-    std::unordered_map<std::string, std::string>&);
 
 bool isElCheapo(transaction::Methods const& trx) {
   return isElCheapo(*trx.state());
