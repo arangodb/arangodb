@@ -67,36 +67,37 @@ function strongly_connected_components_program(resultField) {
     phases: [
       {
         name: "init",
-        initProgram: ["seq", ["set", "isDisabled", false], false],
-        onHalt: ["seq", ["set", "converged", false], ["goto", "broadcast"]],
+        initProgram: ["seq", ["accum-set!", "isDisabled", false], false],
+        onHalt: [
+          "seq",
+          ["accum-set!", "converged", false],
+          ["goto-phase", "broadcast"],
+        ],
         updateProgram: false,
       },
       {
         name: "broadcast",
         initProgram: [
           "seq",
-          ["set", "activeInbound", ["quote"]],
+          ["accum-set!", "activeInbound", ["quote"]],
           //["print", "isDisabled =", ["accum-ref", "isDisabled"]],
           [
             "if",
             [
               ["not", ["accum-ref", "isDisabled"]],
               [
-                "for",
-                "outbound",
-                ["quote", "edge"],
+                // can this be send-to-all-neighbours?
+                "for-each",
+                ["edge", ["this-outbound-edges"]],
                 [
-                  "quote",
-                  "seq",
-                  //["print", ["vertex-unique-id"], "sending to vertex", ["attrib", "_to", ["var-ref", "edge"]], "with value", ["pregel-id"]],
                   [
-                    "update",
-                    "activeInbound",
-                    ["attrib", "_to", ["var-ref", "edge"]],
+                    "seq",
+                    //["print", ["vertex-unique-id"], "sending to vertex", ["attrib", "_to", ["var-ref", "edge"]], "with value", ["pregel-id"]],
                     [
-                      "dict",
-                      ["list", "pid", ["pregel-id"]],
-                      ["list", "unique-id", ["vertex-unique-id"]],
+                      "send-to-accum",
+                      ["attrib-ref", "to-pregel-id", ["var-ref", "edge"]],
+                      "activeInbound",
+                      ["this-pregel-id"],
                     ],
                   ],
                 ],
@@ -114,7 +115,7 @@ function strongly_connected_components_program(resultField) {
           [["accum-ref", "isDisabled"], false],
           [
             true, // else
-            ["seq", ["set", "forwardMin", ["vertex-unique-id"]], true],
+            ["seq", ["accum-set!", "forwardMin", ["this-unique-id"]], true],
           ],
         ],
         updateProgram: [
@@ -125,17 +126,14 @@ function strongly_connected_components_program(resultField) {
             [
               "seq",
               [
-                "for",
-                "outbound",
-                ["quote", "edge"],
-                [
-                  "quote",
-                  "seq",
+                "for-each",
+                ["edge", ["this-outbound-edges"]],
+                ["seq",
                   //["print", ["vertex-unique-id"], "sending to vertex", ["attrib", "_to", ["var-ref", "edge"]], "with value", ["accum-ref", "forwardMin"]],
                   [
-                    "update",
+                    "send-to-accum",
+                    ["attrib", "to-pregel-id", ["var-ref", "edge"]],
                     "forwardMin",
-                    ["attrib", "_to", ["var-ref", "edge"]],
                     ["accum-ref", "forwardMin"],
                   ],
                 ],
@@ -154,7 +152,7 @@ function strongly_connected_components_program(resultField) {
             "if",
             [
               ["accum-ref", "converged"],
-              ["seq", ["set", "converged", false], ["goto", "broadcast"]],
+              ["seq", ["accum-set!", "converged", false], ["goto-phase", "broadcast"]],
             ],
             [true, ["finish"]],
           ],
@@ -163,14 +161,14 @@ function strongly_connected_components_program(resultField) {
           "if",
           [
             ["accum-ref", "isDisabled"],
-            ["seq", ["print", ["vertex-unique-id"], "is disabled"], false],
+            ["seq", ["print", ["this-unique-id"], "isDisabled"], false],
           ],
           [
-            ["eq?", ["vertex-unique-id"], ["accum-ref", "forwardMin"]],
+            ["eq?", ["this-unique-id"], ["accum-ref", "forwardMin"]],
             [
               "seq",
-              ["print", ["vertex-unique-id"], "I am root of a SCC!"],
-              ["set", "backwardMin", ["accum-ref", "forwardMin"]],
+              ["print", ["this-unique-id"], " I am root of a SCC!"],
+              ["accum-set!", "backwardMin", ["accum-ref", "forwardMin"]],
               true,
             ],
           ],
@@ -178,8 +176,8 @@ function strongly_connected_components_program(resultField) {
             true,
             [
               "seq",
-              ["print", ["vertex-unique-id"], "I am _not_ root of a SCC"],
-              ["set", "backwardMin", 99999],
+              ["print", ["this-unique-id"], " I am _not_ root of a SCC"],
+              ["accum-clear!", "backwardMin"],
               false,
             ],
           ],
@@ -194,9 +192,9 @@ function strongly_connected_components_program(resultField) {
             ["eq?", ["accum-ref", "backwardMin"], ["accum-ref", "forwardMin"]],
             [
               "seq",
-              ["set", "isDisabled", true],
-              ["update", "converged", "", true],
-              ["set", "mySCC", ["accum-ref", "forwardMin"]],
+              ["accum-set!", "isDisabled", true],
+              ["send-to-accum", "", "converged", true],
+              ["accum-set!", "mySCC", ["accum-ref", "forwardMin"]],
               ["print", "I am done, my SCC id is", ["accum-ref", "forwardMin"]],
               [
                 "for-each",
@@ -205,16 +203,16 @@ function strongly_connected_components_program(resultField) {
                   "seq",
                   [
                     "print",
-                    ["vertex-unique-id"],
+                    ["this-unique-id"],
                     "sending to vertex",
                     ["var-ref", "vertex"],
                     "with value",
                     ["accum-ref", "backwardMin"],
                   ],
                   [
-                    "update-by-id",
+                    "send-to-accum",
+                    ["attrib-ref", "pid", ["var-ref", "vertex"]],
                     "backwardMin",
-                    ["attrib", "pid", ["var-ref", "vertex"]],
                     ["accum-ref", "backwardMin"],
                   ],
                 ],
@@ -240,18 +238,17 @@ function strongly_connected_components(graphName, resultField) {
 function exec_test_scc_on_graph(graphSpec) {
   wait_for_pregel(
     "Air Strongly Connected Components",
-    strongly_connected_components(
-      graphSpec.name,
-      "SCC"
-    ));
-
+    strongly_connected_components(graphSpec.name, "SCC")
+  );
 
   return pp.strongly_connected_components("Circle", "scc");
 }
 
 function exec_test_scc() {
   exec_test_scc_on_graph(examplegraphs.create_circle("Circle", 5));
-  exec_test_scc_on_graph(examplegraphs.create_line_graph("LineGraph100", 100, 1));
+  exec_test_scc_on_graph(
+    examplegraphs.create_line_graph("LineGraph100", 100, 1)
+  );
 }
 
 function test() {
