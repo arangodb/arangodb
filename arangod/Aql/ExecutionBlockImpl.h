@@ -32,8 +32,8 @@
 #include "Aql/ConstFetcher.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionBlock.h"
-#include "Aql/Stats.h"
 #include "Aql/RegisterInfos.h"
+#include "Aql/Stats.h"
 
 #include <functional>
 #include <memory>
@@ -212,11 +212,12 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   ///          * DONE: Here is some data, and there will be no further data available.
   ///        2. SkipResult: Amount of documents skipped.
   ///        3. SharedAqlItemBlockPtr: The next data block.
-  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack const& stack, AqlCallList clientCall) override;
+  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(
+      AqlCallStack const& stack, AqlCallList clientCall) override;
 
   virtual void collectExecStats(ExecutionStats& stats) const override {
     ExecutionBlock::collectExecStats(stats);
-    stats += _blockStats; // additional stats;
+    stats += _blockStats;  // additional stats;
   }
 
   template <class exec = Executor, typename = std::enable_if_t<std::is_same_v<exec, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>>
@@ -226,7 +227,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   /**
    * @brief Inner execute() part, without the tracing calls.
    */
-  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> executeWithoutTrace(AqlCallStack const& stack, AqlCallList clientCall);
+  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> executeWithoutTrace(
+      AqlCallStack const& stack, AqlCallList clientCall);
 
   std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange> executeFetcher(
       AqlCallStack const& stack, AqlCallType const& aqlCall, bool wasCalledWithContinueCall);
@@ -266,10 +268,13 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   // Executor is done, we need to handle ShadowRows of subqueries.
   // In most executors they are simply copied, in subquery executors
   // there needs to be actions applied here.
-  [[nodiscard]] auto shadowRowForwarding(AqlCallStack const& stack, AqlCallList const& clientCall) -> ExecState;
+  [[nodiscard]] auto shadowRowForwarding(AqlCallStack const& stack,
+                                         AqlCallList const& clientCall) -> ExecState;
 
   template <class exec = Executor, typename = std::enable_if_t<is_one_of_v<exec, SubqueryStartExecutor>>>
-  [[nodiscard]] auto shadowRowForwardingSubqueryStart(AqlCallStack const& stack, AqlCallList& subqueryCall) -> ExecState;
+  [[nodiscard]] auto shadowRowForwardingSubqueryStart(AqlCallStack const& stack,
+                                                      AqlCallList& subqueryCall)
+      -> ExecState;
 
   template <class exec = Executor, typename = std::enable_if_t<is_one_of_v<exec, SubqueryEndExecutor>>>
   [[nodiscard]] auto shadowRowForwardingSubqueryEnd(AqlCallStack const& stack,
@@ -281,45 +286,45 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   [[nodiscard]] auto lastRangeHasDataRow() const noexcept -> bool;
 
   // State to determine what to do next based on the given user call and stack.
-  [[nodiscard]] __attribute__((always_inline)) auto handleCheckCallState(AqlCallStack const& stack,
+  [[nodiscard]] auto handleCheckCallState(AqlCallStack const& stack,
                                           AqlCall const& clientCall) const -> ExecState;
 
   // Now perform Skip operation(s) on this executor.
-  [[nodiscard]] __attribute__((always_inline)) auto handleSkipState(AqlCall& clientCall)
+  [[nodiscard]] auto handleSkipState(AqlCall& clientCall)
       -> std::pair<ExecState, ExecutorState>;
 
   // Now perform Skip operation(s) on this executor.
   // non-spliced subquery variant, can return WAITING in intermediate state.
   template <class exec = Executor, typename = std::enable_if_t<is_one_of_v<exec, SubqueryExecutor<true>>>>
-  [[nodiscard]] __attribute__((always_inline)) auto handleSkipStateSubquery(AqlCall& clientCall)
+  [[nodiscard]] auto handleSkipStateSubquery(AqlCall& clientCall)
       -> std::pair<ExecState, ExecutionState>;
 
   // Now perform Produce operation(s) on this executor.
-  [[nodiscard]] __attribute__((always_inline)) auto handleProduceState(AqlCall& clientCall)
+  [[nodiscard]] auto handleProduceState(AqlCall& clientCall)
       -> std::pair<ExecState, ExecutorState>;
 
   // Now perform Produce operation(s) on this executor.
   // non-spliced subquery variant, can return WAITING in intermediate state
-  [[nodiscard]] __attribute__((always_inline)) auto handleProduceStateSubquery(AqlCall& clientCall)
+  [[nodiscard]] auto handleProduceStateSubquery(AqlCall& clientCall)
       -> std::pair<ExecState, ExecutionState>;
 
-
   // Now perform fast Forward operation(s) on this executor.
-  [[nodiscard]] __attribute__((always_inline)) auto handleFastForwardState(AqlCall& clientCall)
+  [[nodiscard]] auto handleFastForwardState(AqlCall& clientCall)
       -> std::pair<ExecState, ExecutorState>;
 
   // Now perform fast Forward operation(s) on this executor.
   // non-spliced subquery variant, can return WAITING in intermediate state.
   template <class exec = Executor, typename = std::enable_if_t<is_one_of_v<exec, SubqueryExecutor<true>>>>
-  [[nodiscard]] __attribute__((always_inline)) auto handleFastForwardStateSubquery(AqlCall& clientCall)
+  [[nodiscard]] auto handleFastForwardStateSubquery(AqlCall& clientCall)
       -> std::pair<ExecState, ExecutionState>;
 
   // Now performan an upstream request
-  [[nodiscard]] __attribute__((always_inline)) auto handleUpstreamState(AqlCallStack const& stack, AqlCall& clientCall,
-                                         AqlCallType const& upstreamCall, bool wasCalledWithContinueCall)
+  [[nodiscard]] auto handleUpstreamState(AqlCallStack const& stack, AqlCall& clientCall,
+                                         AqlCallType const& upstreamCall,
+                                         bool wasCalledWithContinueCall)
       -> std::pair<ExecState, ExecutionState>;
 
-  [[nodiscard]] __attribute__((always_inline)) auto handleNextSubqueryState(AqlCallStack const& stack,
+  [[nodiscard]] auto handleNextSubqueryState(AqlCallStack const& stack,
                                              AqlCallList const& clientCallList) -> ExecState;
 
   void resetExecutor();
@@ -372,7 +377,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   QueryContext const& _query;
 
   InternalState _state;
-  
+
   ExecState _execState;
 
   SkipResult _skipped{};
@@ -389,7 +394,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   typename Executor::Stats _blockStats;
 
   AqlCallStack _stackBeforeWaiting;
-  
+
   bool _hasMemoizedCall{false};
 
   // Only used in passthrough variant.
