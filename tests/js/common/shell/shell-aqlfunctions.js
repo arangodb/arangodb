@@ -702,6 +702,38 @@ function AqlFunctionsSuite () {
       assertEqual(false, actual[0].value4);
 
       db._drop("UnitTestsFunc");
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test for specific problem with docs returned by user functions
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testQueryUsesUDFWithNestedQuery : function () {
+      db._drop("UnitTestsFunc");
+      db._create("UnitTestsFunc", {numberOfShards: 2, shardKeys: ["productId"]});
+      db._create("UnitTestsFunc2", {numberOfShards: 1});
+
+      let docs = [];
+      for (let i = 0; i < 100; i++) {
+        docs.push({ productId: "abc" });
+      }
+      db.UnitTestsFunc.save(docs);
+      db.UnitTestsFunc2.save({ _key: "abc", value: "hello" });
+
+      unregister("UnitTests::testFunc");
+      var testFunc = function(d) {
+        let db = require("internal").db;
+        let query = "FOR d IN UnitTestsFunc2 RETURN d";
+        return db._query(query).toArray()[0];
+      };
+      aqlfunctions.register("UnitTests::testFunc", testFunc);
+
+      var actual = db._query({ query: "FOR doc in UnitTestsFunc RETURN UnitTests::testFunc(doc)" }).toArray();
+      assertEqual(100, actual.length);
+      assertEqual("hello", actual[0].value);
+
+      db._drop("UnitTestsFunc");
+      db._drop("UnitTestsFunc2");
     }
 
   };
