@@ -6025,7 +6025,15 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
 
     while (current != nullptr) {
       if (current->getType() == EN::COLLECT) {
+        if (subqueryNode->isInInnerLoop()) {
+          eligible = false;
+          break;
+        }
         if (ExecutionNode::castTo<CollectNode const*>(current)->hasOutVariable()) {
+          // COLLECT ... INTO captures all existing variables in the scope.
+          // if we move the subquery from one scope into another, we will end up with
+          // different variables captured, so we must not apply the optimization in
+          // this case.
           eligible = false;
           break;
         }
