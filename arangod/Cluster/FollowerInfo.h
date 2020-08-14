@@ -197,6 +197,10 @@ class FollowerInfo {
 #endif
         return _canWrite;
       }
+      if (!_theLeaderTouched) {
+        // prevent writes before `TakeoverShardLeadership` has run
+        return false;
+      }
       READ_LOCKER(readLockerData, _dataLock);
       TRI_ASSERT(_docColl != nullptr);
       if (_followers->size() + 1 < _docColl->writeConcern()) {
