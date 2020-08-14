@@ -24,6 +24,7 @@
 #ifndef ARANGOD_AQL_AQL_ITEM_BLOCK_H
 #define ARANGOD_AQL_AQL_ITEM_BLOCK_H 1
 
+#include "Aql/AqlItemBlockManager.h"
 #include "Aql/AqlValue.h"
 #include "Aql/ResourceUsage.h"
 #include "Containers/SmallVector.h"
@@ -35,7 +36,6 @@
 
 namespace arangodb {
 namespace aql {
-class AqlItemBlockManager;
 class BlockCollector;
 class SharedAqlItemBlockPtr;
 enum class SerializationFormat;
@@ -120,13 +120,33 @@ class AqlItemBlock {
 
  public:
   /// @brief getValue, get the value of a register
-  AqlValue getValue(size_t index, RegisterId varNr) const;
+  inline AqlValue getValue(size_t index, RegisterId varNr) const {
+    return _data[getAddress(index, varNr)];
+  }
 
   /// @brief getValue, get the value of a register by reference
-  AqlValue const& getValueReference(size_t index, RegisterId varNr) const;
+  AqlValue const& getValueReference(size_t index, RegisterId varNr) const {
+    return _data[getAddress(index, varNr)];
+  }
 
   /// @brief setValue, set the current value of a register
-  void setValue(size_t index, RegisterId varNr, AqlValue const& value);
+  inline void setValue(size_t index, RegisterId varNr, AqlValue const& value) {
+    TRI_ASSERT(_data[getAddress(index, varNr)].isEmpty());
+
+    // First update the reference count, if this fails, the value is empty
+    if (value.requiresDestruction()) {
+      // note: this may create a new entry in _valueCount, which is fine
+      auto& valueInfo = _valueCount[value.data()];
+      if (++valueInfo.refCount == 1) {
+        // we just inserted the item
+        size_t memoryUsage = value.memoryUsage();
+        increaseMemoryUsage(memoryUsage);
+        valueInfo.setMemoryUsage(memoryUsage);
+      }
+    }
+
+    _data[getAddress(index, varNr)] = value;
+  }
 
   /// @brief emplaceValue, set the current value of a register, constructing
   /// it in place
@@ -173,7 +193,23 @@ class AqlItemBlock {
 
   /// @brief eraseValue, erase the current value of a register not freeing it
   /// this is used if the value is stolen and later released from elsewhere
-  void eraseValue(size_t index, RegisterId varNr);
+  void eraseValue(size_t index, RegisterId varNr) {
+    auto& element = _data[getAddress(index, varNr)];
+
+    if (element.requiresDestruction()) {
+      auto it = _valueCount.find(element.data());
+
+      if (it != _valueCount.end()) {
+        auto& valueInfo = (*it).second;
+        if (--valueInfo.refCount == 0) {
+          decreaseMemoryUsage(valueInfo.memoryUsage);
+          _valueCount.erase(it);
+        }
+      }
+    }
+
+    element.erase();
+  }
 
   /// @brief eraseValue, erase the current value of all values, not freeing
   /// them. this is used if the value is stolen and later released from
@@ -191,10 +227,10 @@ class AqlItemBlock {
   AqlValue stealAndEraseValue(size_t index, RegisterId varNr);
 
   /// @brief getter for _nrRegs
-  RegisterCount getNrRegs() const noexcept;
+  inline RegisterCount getNrRegs() const noexcept { return _nrRegs; }
 
   /// @brief getter for _nrItems
-  size_t size() const noexcept;
+  inline size_t size() const noexcept { return _nrItems; }
 
   /// @brief get the relevant consumable range of the block
   std::tuple<size_t, size_t> getRelevantRange() const;
@@ -203,9 +239,9 @@ class AqlItemBlock {
   /// must be / in- or decreased appropriately as well.
   /// All entries _data[i] for numEntries() <= i < _data.size() always have to
   /// be erased, i.e. empty / none!
-  size_t numEntries() const;
+  inline size_t numEntries() const { return _nrRegs * _nrItems; }
 
-  size_t capacity() const noexcept;
+  inline size_t capacity() const noexcept { return _data.capacity(); }
 
   /// @brief shrink the block to the specified number of rows
   /// the superfluous rows are cleaned
@@ -281,27 +317,42 @@ class AqlItemBlock {
 
   /// @brief test if the given row is a shadow row and conveys subquery
   /// information only. It should not be handed to any non-subquery executor.
-  bool isShadowRow(size_t row) const;
+  inline bool isShadowRow(size_t row) const {
+    return _shadowRows.is(row);
+  }
 
   /// @brief get the ShadowRowDepth 
   /// Does only work if this row is a shadow row
   /// Asserts on Maintainer, returns 0 on production
-  size_t getShadowRowDepth(size_t row) const;
+  size_t getShadowRowDepth(size_t row) const {
+    TRI_ASSERT(isShadowRow(row));
+    TRI_ASSERT(hasShadowRows());
+    return _shadowRows.getDepth(row);
+  }
 
   /// @brief Transform the given row into a ShadowRow.
-  void makeShadowRow(size_t row, size_t depth);
+  void makeShadowRow(size_t row, size_t depth) {
+    _shadowRows.make(row, depth);
+    TRI_ASSERT(isShadowRow(row));
+  }
 
   /// @brief Transform the given row into a DataRow.
-  void makeDataRow(size_t row);
+  void makeDataRow(size_t row) {
+    TRI_ASSERT(isShadowRow(row));
+    _shadowRows.clear(row);
+    TRI_ASSERT(!isShadowRow(row));
+  }
   
   /// @brief Return the indexes of ShadowRows within this block, starting at lower.
   std::pair<ShadowRowIterator, ShadowRowIterator> getShadowRowIndexesFrom(size_t lower) const noexcept;
 
   /// @brief Quick test if we have any ShadowRows within this block;
-  bool hasShadowRows() const noexcept;
+  inline bool hasShadowRows() const noexcept {
+    return !_shadowRows.empty();
+  }
 
   /// @brief return the number of ShadowRows
-  size_t numShadowRows() const noexcept;
+  size_t numShadowRows() const noexcept { return _shadowRows.size(); }
 
   /// @brief Moves all values *from* source *to* this block.
   /// Returns the row index of the last written row plus one (may equal size()).
@@ -318,25 +369,41 @@ class AqlItemBlock {
 #endif
 
  protected:
-  AqlItemBlockManager& aqlItemBlockManager() noexcept;
-  size_t getRefCount() const noexcept;
-  void incrRefCount() const noexcept;
-  size_t decrRefCount() const noexcept;
+  inline AqlItemBlockManager& aqlItemBlockManager() noexcept { return _manager; }
+
+  inline size_t getRefCount() const noexcept { return _refCount; }
+  
+  inline void incrRefCount() const noexcept { ++_refCount; }
+  
+  inline size_t decrRefCount() const noexcept {
+    TRI_ASSERT(_refCount > 0);
+    return --_refCount;
+  }
 
  private:
   void destroy() noexcept;
 
-  ResourceMonitor& resourceMonitor() noexcept;
+  inline ResourceMonitor& resourceMonitor() noexcept {
+    return *_manager.resourceMonitor();
+  }
 
-  void increaseMemoryUsage(size_t value);
+  inline void increaseMemoryUsage(size_t value) {
+    resourceMonitor().increaseMemoryUsage(value);
+  }
 
-  void decreaseMemoryUsage(size_t value) noexcept;
+  inline void decreaseMemoryUsage(size_t value) noexcept {
+    resourceMonitor().decreaseMemoryUsage(value);
+  }
 
   void copySubqueryDepthFromOtherBlock(size_t targetRow, AqlItemBlock const& source,
                                        size_t sourceRow, bool forceShadowRow);
 
   /// @brief get the computed address within the data vector
-  size_t getAddress(size_t index, RegisterId varNr) const noexcept;
+  inline size_t getAddress(size_t index, RegisterId varNr) const noexcept {
+    TRI_ASSERT(index < _nrItems);
+    TRI_ASSERT(varNr < _nrRegs);
+    return index * _nrRegs + varNr;
+  }
 
   void copySubqueryDepth(size_t currentRow, size_t fromRow);
 
@@ -378,22 +445,27 @@ class AqlItemBlock {
   class ShadowRows {
    public:
     /// @brief create a shadow row manager for at most nrItems rows
-    explicit ShadowRows(size_t nrItems);
+    explicit ShadowRows(size_t nrItems) : _nrItems(nrItems) {}
 
     /// @brief whether or not there are any shadow rows
-    bool empty() const noexcept;
+    inline bool empty() const noexcept { return _indexes.empty(); }
 
     /// @brief return the number of shadow rows
-    size_t size() const noexcept;
+    inline size_t size() const noexcept { return _indexes.size(); }
     
     /// @brief whether or not the row is a shadow row
-    bool is(size_t row) const noexcept;
+    inline bool is(size_t row) const noexcept {
+      return _depths.size() > row && _depths[row] > 0;
+    }
     
     /// @brief get the shadow row depth for row
     size_t getDepth(size_t row) const noexcept;
 
     /// @brief clear all shadow rows
-    void clear() noexcept;
+    void clear() noexcept {
+      _indexes.clear();
+      _depths.clear();
+    }
     
     /// @brief resize the container to at most nrItems items
     void resize(size_t nrItems);

@@ -29,6 +29,7 @@
 #include "Aql/types.h"
 
 #include <velocypack/velocypack-common.h>
+#include <velocypack/Slice.h>
 #include <vector>
 
 namespace v8 {
@@ -68,14 +69,14 @@ class AqlItemBlock;
 // no-op struct used only internally to indicate that we want
 // to copy the data behind the passed pointer
 struct AqlValueHintCopy {
-  explicit AqlValueHintCopy(uint8_t const* ptr) noexcept;
+  explicit AqlValueHintCopy(uint8_t const* ptr) noexcept : ptr(ptr) {}
   uint8_t const* ptr;
 };
 
 // no-op struct used only internally to indicate that we want
 // to NOT copy the database document data behind the passed pointer
 struct AqlValueHintDocumentNoCopy {
-  explicit AqlValueHintDocumentNoCopy(uint8_t const* v) noexcept;
+  explicit AqlValueHintDocumentNoCopy(uint8_t const* v) noexcept : ptr(v) {}
   uint8_t const* ptr;
 };
 
@@ -88,7 +89,7 @@ struct AqlValueHintNull {
 };
 
 struct AqlValueHintBool {
-  explicit AqlValueHintBool(bool v) noexcept;
+  explicit AqlValueHintBool(bool v) noexcept : value(v) {}
   bool const value;
 };
 
@@ -97,18 +98,18 @@ struct AqlValueHintZero {
 };
 
 struct AqlValueHintDouble {
-  explicit AqlValueHintDouble(double v) noexcept;
+  explicit AqlValueHintDouble(double v) noexcept : value(v) {}
   double const value;
 };
 
 struct AqlValueHintInt {
-  explicit AqlValueHintInt(int64_t v) noexcept;
-  explicit AqlValueHintInt(int v) noexcept;
+  explicit AqlValueHintInt(int64_t v) noexcept : value(v) {}
+  explicit AqlValueHintInt(int v) noexcept : value(int64_t(v)) {}
   int64_t const value;
 };
 
 struct AqlValueHintUInt {
-  explicit AqlValueHintUInt(uint64_t v) noexcept;
+  explicit AqlValueHintUInt(uint64_t v) noexcept : value(v) {}
   uint64_t const value;
 };
 
@@ -176,24 +177,51 @@ struct AqlValue final {
  public:
   // construct an empty AqlValue
   // note: this is the default constructor and should be as cheap as possible
-  AqlValue() noexcept;
+  inline AqlValue() noexcept {
+    // we will simply zero-initialize the two 64 bit words
+    _data.words[0] = 0;
+    _data.words[1] = 0;
+
+    // VPACK_INLINE must have a value of 0, and VPackSlice::None must be equal
+    // to a NUL byte too
+    static_assert(AqlValueType::VPACK_INLINE == 0,
+                  "invalid value for VPACK_INLINE");
+  }
 
   // construct from pointer, not copying!
   explicit AqlValue(uint8_t const* pointer);
   
   // construct from another AqlValue and a new data pointer, not copying!
-  explicit AqlValue(AqlValue const& other, void* data) noexcept;
+  explicit AqlValue(AqlValue const& other, void* data) noexcept {
+    TRI_ASSERT(data != nullptr);
+    TRI_ASSERT(other.type() != VPACK_INLINE);
+    _data.data = data;
+    // copy meta data
+    _data.words[1] = other._data.words[1];
+  }
 
   // construct from docvec, taking over its ownership
   explicit AqlValue(std::vector<arangodb::aql::SharedAqlItemBlockPtr>* docvec) noexcept;
   
-  explicit AqlValue(AqlValueHintNone const&) noexcept;
+  explicit AqlValue(AqlValueHintNone const&) noexcept {
+    _data.internal[0] = 0x00;  // none in VPack
+    setType(AqlValueType::VPACK_INLINE);
+  }
 
-  explicit AqlValue(AqlValueHintNull const&) noexcept;
+  explicit AqlValue(AqlValueHintNull const&) noexcept {
+    _data.internal[0] = 0x18;  // null in VPack
+    setType(AqlValueType::VPACK_INLINE);
+  }
 
-  explicit AqlValue(AqlValueHintBool const& v) noexcept;
+  explicit AqlValue(AqlValueHintBool const& v) noexcept {
+    _data.internal[0] = v.value ? 0x1a : 0x19;  // true/false in VPack
+    setType(AqlValueType::VPACK_INLINE);
+  }
 
-  explicit AqlValue(AqlValueHintZero const&) noexcept;
+  explicit AqlValue(AqlValueHintZero const&) noexcept {
+    _data.internal[0] = 0x30;  // 0 in VPack
+    setType(AqlValueType::VPACK_INLINE);
+  }
 
   // construct from a double value
   explicit AqlValue(AqlValueHintDouble const& v) noexcept;
@@ -208,26 +236,43 @@ struct AqlValue final {
   AqlValue(char const* value, size_t length);
 
   // construct from std::string
-  explicit AqlValue(std::string const& value);
+  explicit AqlValue(std::string const& value) : AqlValue(value.data(), value.size()) {}
 
-  explicit AqlValue(AqlValueHintEmptyArray const&) noexcept;
+  explicit AqlValue(AqlValueHintEmptyArray const&) noexcept {
+    _data.internal[0] = 0x01;  // empty array in VPack
+    setType(AqlValueType::VPACK_INLINE);
+  }
 
-  explicit AqlValue(AqlValueHintEmptyObject const&) noexcept;
+  explicit AqlValue(AqlValueHintEmptyObject const&) noexcept {
+    _data.internal[0] = 0x0a;  // empty object in VPack
+    setType(AqlValueType::VPACK_INLINE);
+  }
 
   // construct from Buffer, potentially taking over its ownership
   explicit AqlValue(arangodb::velocypack::Buffer<uint8_t>&& buffer);
 
   // construct from pointer, not copying!
-  explicit AqlValue(AqlValueHintDocumentNoCopy const& v) noexcept;
+  explicit AqlValue(AqlValueHintDocumentNoCopy const& v) noexcept {
+    setPointer<true>(v.ptr);
+    TRI_ASSERT(!arangodb::velocypack::Slice(_data.pointer).isExternal());
+  }
 
   // construct from pointer, copying the data behind the pointer
-  explicit AqlValue(AqlValueHintCopy const& v);
+  explicit AqlValue(AqlValueHintCopy const& v) {
+    TRI_ASSERT(v.ptr != nullptr);
+    arangodb::velocypack::Slice slice(v.ptr);
+    initFromSlice(slice, slice.byteSize());
+  }
 
   // construct from Slice, copying contents
-  explicit AqlValue(arangodb::velocypack::Slice slice);
+  explicit AqlValue(arangodb::velocypack::Slice slice) {
+    initFromSlice(slice, slice.byteSize());
+  }
   
   // construct from Slice and length, copying contents
-  AqlValue(arangodb::velocypack::Slice slice, arangodb::velocypack::ValueLength length);
+  AqlValue(arangodb::velocypack::Slice slice, arangodb::velocypack::ValueLength length) {
+    initFromSlice(slice, length);
+  }
 
   // construct range type
   AqlValue(int64_t low, int64_t high);
@@ -243,22 +288,26 @@ struct AqlValue final {
   ~AqlValue() noexcept = default;
 
   /// @brief whether or not the value must be destroyed
-  bool requiresDestruction() const noexcept;
+  inline bool requiresDestruction() const noexcept {
+    auto t = type();
+    return (t != VPACK_SLICE_POINTER && t != VPACK_INLINE);
+  }
 
   /// @brief whether or not the value is empty / none
-  bool isEmpty() const noexcept;
-
-  /// @brief whether or not the value is a pointer
-  bool isPointer() const noexcept;
-
-  /// @brief whether or not the value is an external manager document
-  bool isManagedDocument() const noexcept;
+  inline bool isEmpty() const noexcept {
+    return (_data.internal[0] == '\x00' &&
+            _data.internal[sizeof(_data.internal) - 1] == VPACK_INLINE);
+  }
 
   /// @brief whether or not the value is a range
-  bool isRange() const noexcept;
+  inline bool isRange() const noexcept {
+    return type() == RANGE;
+  }
 
   /// @brief whether or not the value is a docvec
-  bool isDocvec() const noexcept;
+  inline bool isDocvec() const noexcept {
+    return type() == DOCVEC;
+  }
 
   /// @brief hashes the value
   uint64_t hash(uint64_t seed = 0xdeadbeef) const;
@@ -326,10 +375,17 @@ struct AqlValue final {
 
   /// @brief return the pointer to the underlying AqlValue. 
   /// only supported for AqlValue types with dynamic memory management
-  void* data() const noexcept;
+  void* data() const noexcept {
+    TRI_ASSERT(type() != VPACK_INLINE);
+    TRI_ASSERT(_data.data != nullptr);
+    return _data.data;
+  }
 
   /// @brief return the range value
-  Range const* range() const;
+  Range const* range() const {
+    TRI_ASSERT(isRange());
+    return _data.range;
+  }
 
   /// @brief construct a V8 value as input for the expression execution in V8
   v8::Handle<v8::Value> toV8(v8::Isolate* isolate, arangodb::velocypack::Options const*) const;
@@ -353,7 +409,11 @@ struct AqlValue final {
   AqlValue clone() const;
 
   /// @brief invalidates/resets a value to None, not freeing any memory
-  void erase() noexcept;
+  inline void erase() noexcept {
+    _data.words[0] = 0;
+    _data.words[1] = 0;
+    TRI_ASSERT(isEmpty());
+  }
 
   /// @brief destroy, explicit destruction, only when needed
   void destroy() noexcept;
@@ -370,7 +430,9 @@ struct AqlValue final {
 
   /// @brief Returns the type of this value. If true it uses an external pointer
   /// if false it uses the internal data structure
-  AqlValueType type() const noexcept;
+  inline AqlValueType type() const noexcept {
+    return static_cast<AqlValueType>(_data.internal[sizeof(_data.internal) - 1]);
+  }
 
  private:
   /// @brief initializes value from a slice
@@ -378,18 +440,41 @@ struct AqlValue final {
   
   /// @brief initializes value from a slice, when the length is already known
   void initFromSlice(arangodb::velocypack::Slice slice, arangodb::velocypack::ValueLength length);
+  
+  /// @brief whether or not the value is a pointer
+  inline bool isPointer() const noexcept {
+    return type() == VPACK_SLICE_POINTER;
+  }
+
+  /// @brief whether or not the value is an external manager document
+  inline bool isManagedDocument() const noexcept {
+    return isPointer() && (_data.internal[sizeof(_data.internal) - 2] == 1);
+  }
 
   /// @brief sets the value type
-  void setType(AqlValueType type) noexcept;
+  inline void setType(AqlValueType type) noexcept {
+    _data.internal[sizeof(_data.internal) - 1] = type;
+  }
 
   template <bool isManagedDoc>
-  void setPointer(uint8_t const* pointer) noexcept;
+  inline void setPointer(uint8_t const* pointer) noexcept {
+    _data.pointer = pointer;
+    // we use the byte at (size - 2) to distinguish between data pointing to
+    // database documents (size[-2] == 1) and other data(size[-2] == 0)
+    _data.internal[sizeof(_data.internal) - 2] = isManagedDoc ? 1 : 0;
+    _data.internal[sizeof(_data.internal) - 1] = AqlValueType::VPACK_SLICE_POINTER;
+  }
   
   /// @brief return the total size of the docvecs
   size_t docvecLength() const;
 
   /// @brief return the memory origin type for values of type VPACK_MANAGED_SLICE
-  MemoryOriginType memoryOriginType() const noexcept;
+  MemoryOriginType memoryOriginType() const noexcept {
+    TRI_ASSERT(type() == VPACK_MANAGED_SLICE);
+    MemoryOriginType mot = static_cast<MemoryOriginType>(_data.internal[sizeof(_data.internal) - 2]);
+    TRI_ASSERT(mot == MemoryOriginType::New || mot == MemoryOriginType::Malloc);
+    return mot;
+  }
   
   /// @brief store meta information for values of type VPACK_MANAGED_SLICE
   void setManagedSliceData(MemoryOriginType mot, arangodb::velocypack::ValueLength length);
@@ -416,11 +501,15 @@ class AqlValueGuard {
   AqlValueGuard(AqlValueGuard&&) = delete;
   AqlValueGuard& operator=(AqlValueGuard&&) = delete;
 
-  AqlValueGuard(AqlValue& value, bool destroy) noexcept;
-  ~AqlValueGuard() noexcept;
+  AqlValueGuard(AqlValue& value, bool destroy) noexcept : _value(value), _destroy(destroy) {}
+  ~AqlValueGuard() noexcept {
+    if (_destroy) {
+      _value.destroy();
+    }
+  }
 
-  void steal() noexcept;
-  AqlValue& value() noexcept;
+  void steal() noexcept { _destroy = false; }
+  AqlValue& value() noexcept { return _value; }
 
  private:
   AqlValue& _value;

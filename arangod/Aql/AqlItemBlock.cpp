@@ -23,7 +23,6 @@
 
 #include "AqlItemBlock.h"
 
-#include "Aql/AqlItemBlockManager.h"
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
@@ -904,10 +903,6 @@ void AqlItemBlock::toSimpleVPack(velocypack::Options const* options,
   }
 }
 
-ResourceMonitor& AqlItemBlock::resourceMonitor() noexcept {
-  return *_manager.resourceMonitor();
-}
-
 void AqlItemBlock::copySubqueryDepthFromOtherBlock(size_t targetRow,
                                                    AqlItemBlock const& source,
                                                    size_t sourceRow,
@@ -956,40 +951,6 @@ AqlItemBlock::~AqlItemBlock() {
   decreaseMemoryUsage(sizeof(AqlValue) * _nrItems * _nrRegs);
 }
 
-void AqlItemBlock::increaseMemoryUsage(size_t value) {
-  resourceMonitor().increaseMemoryUsage(value);
-}
-
-void AqlItemBlock::decreaseMemoryUsage(size_t value) noexcept {
-  resourceMonitor().decreaseMemoryUsage(value);
-}
-
-AqlValue AqlItemBlock::getValue(size_t index, RegisterId varNr) const {
-  return _data[getAddress(index, varNr)];
-}
-
-AqlValue const& AqlItemBlock::getValueReference(size_t index, RegisterId varNr) const {
-  return _data[getAddress(index, varNr)];
-}
-
-void AqlItemBlock::setValue(size_t index, RegisterId varNr, AqlValue const& value) {
-  TRI_ASSERT(_data[getAddress(index, varNr)].isEmpty());
-
-  // First update the reference count, if this fails, the value is empty
-  if (value.requiresDestruction()) {
-    // note: this may create a new entry in _valueCount, which is fine
-    auto& valueInfo = _valueCount[value.data()];
-    if (++valueInfo.refCount == 1) {
-      // we just inserted the item
-      size_t memoryUsage = value.memoryUsage();
-      increaseMemoryUsage(memoryUsage);
-      valueInfo.setMemoryUsage(memoryUsage);
-    }
-  }
-
-  _data[getAddress(index, varNr)] = value;
-}
-
 void AqlItemBlock::destroyValue(size_t index, RegisterId varNr) {
   auto& element = _data[getAddress(index, varNr)];
 
@@ -1005,24 +966,6 @@ void AqlItemBlock::destroyValue(size_t index, RegisterId varNr) {
         // no need for an extra element.erase() in this case, as
         // destroy() calls erase() for AqlValues with dynamic memory
         return;  
-      }
-    }
-  }
-
-  element.erase();
-}
-
-void AqlItemBlock::eraseValue(size_t index, RegisterId varNr) {
-  auto& element = _data[getAddress(index, varNr)];
-
-  if (element.requiresDestruction()) {
-    auto it = _valueCount.find(element.data());
-
-    if (it != _valueCount.end()) {
-      auto& valueInfo = (*it).second;
-      if (--valueInfo.refCount == 0) {
-        decreaseMemoryUsage(valueInfo.memoryUsage);
-        _valueCount.erase(it);
       }
     }
   }
@@ -1090,10 +1033,6 @@ AqlValue AqlItemBlock::stealAndEraseValue(size_t index, RegisterId varNr) {
   return value;
 }
 
-RegisterCount AqlItemBlock::getNrRegs() const noexcept { return _nrRegs; }
-
-size_t AqlItemBlock::size() const noexcept { return _nrItems; }
-
 std::tuple<size_t, size_t> AqlItemBlock::getRelevantRange() const {
   // NOTE:
   // Right now we can only support a range of datarows, that ends
@@ -1109,63 +1048,9 @@ std::tuple<size_t, size_t> AqlItemBlock::getRelevantRange() const {
   return {0, size()};
 }
 
-size_t AqlItemBlock::numEntries() const { return _nrRegs * _nrItems; }
-
-size_t AqlItemBlock::capacity() const noexcept { return _data.capacity(); }
-
-bool AqlItemBlock::isShadowRow(size_t row) const {
-  return _shadowRows.is(row);
-}
-
-size_t AqlItemBlock::getShadowRowDepth(size_t row) const {
-  TRI_ASSERT(isShadowRow(row));
-  TRI_ASSERT(hasShadowRows());
-  return _shadowRows.getDepth(row);
-}
-
-void AqlItemBlock::makeShadowRow(size_t row, size_t depth) {
-  _shadowRows.make(row, depth);
-  TRI_ASSERT(isShadowRow(row));
-}
-
-void AqlItemBlock::makeDataRow(size_t row) {
-  TRI_ASSERT(isShadowRow(row));
-  _shadowRows.clear(row);
-  TRI_ASSERT(!isShadowRow(row));
-}
-
 /// @brief Return the indexes of ShadowRows within this block
 std::pair<AqlItemBlock::ShadowRowIterator, AqlItemBlock::ShadowRowIterator> AqlItemBlock::getShadowRowIndexesFrom(size_t lower) const noexcept {
   return _shadowRows.getIndexesFrom(lower);
-}
-
-/// @brief Quick test if we have any ShadowRows within this block
-bool AqlItemBlock::hasShadowRows() const noexcept {
-  return !_shadowRows.empty();
-}
-
-/// @brief Returns the number of ShadowRows
-size_t AqlItemBlock::numShadowRows() const noexcept {
-  return _shadowRows.size();
-}
-
-AqlItemBlockManager& AqlItemBlock::aqlItemBlockManager() noexcept {
-  return _manager;
-}
-
-size_t AqlItemBlock::getRefCount() const noexcept { return _refCount; }
-
-void AqlItemBlock::incrRefCount() const noexcept { ++_refCount; }
-
-size_t AqlItemBlock::decrRefCount() const noexcept {
-  TRI_ASSERT(_refCount > 0);
-  return --_refCount;
-}
-
-size_t AqlItemBlock::getAddress(size_t index, RegisterId varNr) const noexcept {
-  TRI_ASSERT(index < _nrItems);
-  TRI_ASSERT(varNr < _nrRegs);
-  return index * _nrRegs + varNr;
 }
 
 void AqlItemBlock::copySubqueryDepth(size_t currentRow, size_t fromRow) {
@@ -1198,21 +1083,6 @@ size_t AqlItemBlock::moveOtherBlockHere(size_t const targetRow, AqlItemBlock& so
   return targetRow + n;
 }
 
-AqlItemBlock::ShadowRows::ShadowRows(size_t nrItems) 
-    : _nrItems(nrItems) {}
-
-bool AqlItemBlock::ShadowRows::empty() const noexcept {
-  return _indexes.empty();
-}
-
-size_t AqlItemBlock::ShadowRows::size() const noexcept {
-  return _indexes.size();
-}
-
-bool AqlItemBlock::ShadowRows::is(size_t row) const noexcept {
-  return _depths.size() > row && _depths[row] > 0;
-}
-
 size_t AqlItemBlock::ShadowRows::getDepth(size_t row) const noexcept {
   TRI_ASSERT(_depths.size() > row);
   if (ADB_UNLIKELY(_depths.size() <= row)) {
@@ -1230,11 +1100,6 @@ std::pair<AqlItemBlock::ShadowRowIterator, AqlItemBlock::ShadowRowIterator> AqlI
     return {_indexes.begin(), _indexes.end()};
   }
   return {std::lower_bound(_indexes.begin(), _indexes.end(), lower), _indexes.end()};
-}
-
-void AqlItemBlock::ShadowRows::clear() noexcept {
-  _indexes.clear();
-  _depths.clear();
 }
 
 void AqlItemBlock::ShadowRows::resize(size_t nrItems) {
