@@ -201,7 +201,6 @@ class FollowerInfo {
       READ_LOCKER(readLockerData, _dataLock);
       TRI_ASSERT(_docColl != nullptr);
       if (!_theLeaderTouched) {
-        READ_LOCKER(readLockerData, _dataLock);
         // prevent writes before `TakeoverShardLeadership` has run
         LOG_TOPIC("7c1d4", INFO, Logger::REPLICATION)
             << "Shard "
