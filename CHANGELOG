@@ -1,6 +1,11 @@
 devel
 -----
 
+* Fixed issue BTS-168: Fixed undefined behaviour that did trigger
+  segfaults on cluster startups. It is only witnessed for
+  MacOS based builds. The issue could be triggered by any network connection.
+  This behaviour is not part of any released version.
+
 * Fixed issue ES-664: the optimizer rule `inline-subqueries` must pull out a
   subqueries that contains a COLLECT statement if the subquery is itself
   called from within a loop. Otherwise the COLLECT will be applied to the
