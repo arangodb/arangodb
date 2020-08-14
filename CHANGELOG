@@ -1,7 +1,8 @@
 v3.6.6 (XXXX-XX-XX)
 -------------------
-* Fixed internal issue #748: Fixed reading of primary sort values for
-  late materialization.
+
+* Fixed internal issue #748: Fixed reading of primary sort values for late
+  materialization (of ArangoSearch views).
 
 * Updated arangosync to 0.7.9.
 
