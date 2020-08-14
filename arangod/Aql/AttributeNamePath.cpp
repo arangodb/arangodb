@@ -24,6 +24,7 @@
 #include "Aql/AttributeNamePath.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
+#include "Basics/fasthash.h"
 
 #include <algorithm>
 
@@ -69,12 +70,13 @@ AttributeNamePath::Type AttributeNamePath::type() const noexcept {
 }
 
 size_t AttributeNamePath::hash() const noexcept {
-  std::size_t hash = 0x0404b00b1e5;
-  auto hasher = std::hash<std::string>{};
+  // intentionally not use std::hash() here, because its results are platform-dependent.
+  // however, we need portable hash values because we are testing for them in unit tests.
+  uint64_t hash = 0x0404b00b1e5;
   for (auto const& it : path) {
-    boost::hash_combine(hash, hasher(it));
+    hash = fasthash64(it.data(), it.size(), hash);
   }
-  return hash;
+  return static_cast<size_t>(hash);
 }
 
 std::string const& AttributeNamePath::operator[](size_t index) const noexcept {

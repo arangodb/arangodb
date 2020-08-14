@@ -67,18 +67,23 @@ TEST(AttributeNamePathTest, type) {
   ASSERT_EQ(AttributeNamePath::Type::MultiAttribute, AttributeNamePath(std::vector<std::string>{ "a", "b" }).type());
 }
 
+/*
+ * note: these hash values are based on std::hash(), so they can differ
+ * across platforms or compiler versions. it is not safe to enable them
+ */ 
 TEST(AttributeNamePathTest, hash) {
-  EXPECT_EQ(17816462594913330409U, AttributeNamePath("_id").hash());
-  EXPECT_EQ(12022528804101920381U, AttributeNamePath("_key").hash());
-  EXPECT_EQ(2578897936239198297U, AttributeNamePath("_from").hash());
-  EXPECT_EQ(16855074258498962665U, AttributeNamePath("_to").hash());
-  EXPECT_EQ(13269526755862706111U, AttributeNamePath("_rev").hash());
-  EXPECT_EQ(16172794815300636078U, AttributeNamePath("peter").hash());
-  EXPECT_EQ(13480354774586618312U, AttributeNamePath("").hash());
-  EXPECT_EQ(3417200101823867740U, AttributeNamePath("key").hash());
-  EXPECT_EQ(1753109973746505091U, AttributeNamePath("id").hash());
-  EXPECT_EQ(3712298677190048360U, AttributeNamePath("1").hash());
-  EXPECT_EQ(12165985666513641907U, AttributeNamePath(std::vector<std::string>{ "a", "b" }).hash());
+  EXPECT_EQ(15615448896660710867U, AttributeNamePath("_id").hash());
+  EXPECT_EQ(10824270243171927571U, AttributeNamePath("_key").hash());
+  EXPECT_EQ(14053392154382459499U, AttributeNamePath("_from").hash());
+  EXPECT_EQ(13320164962300719886U, AttributeNamePath("_to").hash());
+  EXPECT_EQ(17306043388796241266U, AttributeNamePath("_rev").hash());
+  EXPECT_EQ(6428928981455593224U, AttributeNamePath("peter").hash());
+  EXPECT_EQ(3023579531467661406U, AttributeNamePath("").hash());
+  EXPECT_EQ(14833537490909846811U, AttributeNamePath("key").hash());
+  EXPECT_EQ(9633197497402266361U, AttributeNamePath("id").hash());
+  EXPECT_EQ(17812082371732153461U, AttributeNamePath("1").hash());
+  EXPECT_EQ(14488091495141700494U, AttributeNamePath(std::vector<std::string>{ "a", "b" }).hash());
+  EXPECT_EQ(8328517039192094391U, AttributeNamePath(std::vector<std::string>{ "b", "a" }).hash());
 }
 
 TEST(AttributeNamePathTest, atLong) {
