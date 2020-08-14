@@ -1,8 +1,11 @@
 v3.6.6 (XXXX-XX-XX)
 -------------------
 
+* Fixed internal issue #748: Fixed reading of primary sort values for late
+  materialization (of ArangoSearch views).
+
 * Make AQL user-defined functions (UDFs) work in a cluster in case the UDF runs
-  an AQL query inside its own function code.
+  an AQL query inside its own function code (BTS-159).
 
 * Fixed issue ES-664: the optimizer rule `inline-subqueries` must not pull out
   subqueries that contain a COLLECT statement if the subquery is itself called
