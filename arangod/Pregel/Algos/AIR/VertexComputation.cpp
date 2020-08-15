@@ -60,6 +60,9 @@ void VertexComputation::registerLocalFunctions() {
   _airMachine.setFunctionMember("send-to-accum",  // " name:id -> to-vertex:pid -> value:any -> void ",
                           &VertexComputation::air_sendToAccum, this);
 
+  _airMachine.setFunctionMember("send-to-global-accum",  // " name:id -> value:any -> void ",
+                                &VertexComputation::air_sendToGlobalAccum, this);
+
   _airMachine.setFunctionMember("send-to-all-neighbours",  // " name:id -> value:any -> void ",
                           &VertexComputation::air_sendToAllNeighbours, this);
 
@@ -204,16 +207,27 @@ greenspun::EvalResult VertexComputation::air_sendToAccum(greenspun::Machine& ctx
 
     sendMessage(id, msg);
     return {};
-  } else {
-    std::string globalName = "[global]-";
-    globalName += accumId;
-    auto accum = dynamic_cast<VertexAccumulatorAggregator*>(
-      getWriteAggregator(globalName));
-    if (accum != nullptr) {
-      LOG_DEVEL << "update global accum " << accumId << " with value " << value.toJson();
-      accum->getAccumulator().updateByMessageSlice(value);
-      return {};
-    }
+  }
+  return greenspun::EvalError("vertex accumulator `" + std::string{accumId} +
+                              "` not found");
+}
+
+greenspun::EvalResult VertexComputation::air_sendToGlobalAccum(greenspun::Machine& ctx,
+                                                               VPackSlice const params,
+                                                               VPackBuilder& result) {
+  auto res = greenspun::extract<std::string, VPackSlice>(params);
+  if (res.fail()) {
+    return res.error();
+  }
+  auto&& [accumId, value] = res.value();
+  std::string globalName = "[global]-";
+  globalName += accumId;
+  auto accum = dynamic_cast<VertexAccumulatorAggregator*>(
+    getWriteAggregator(globalName));
+  if (accum != nullptr) {
+    LOG_DEVEL << "update global accum " << accumId << " with value " << value.toJson();
+    accum->getAccumulator().updateByMessageSlice(value);
+    return {};
   }
   return greenspun::EvalError("vertex accumulator `" + std::string{accumId} +
                    "` not found");
@@ -368,21 +382,13 @@ VertexAccumulators const& VertexComputation::algorithm() const {
 bool VertexComputation::processIncomingMessages(MessageIterator<MessageData> const& incomingMessages) {
   auto accumChanged = bool{false};
 
-  std::cout << "vertex: " << vertexData()._vertexId << " processing messages" << std::endl;
-
   for (const MessageData* msg : incomingMessages) {
     auto accumName = msg->_accumulatorName;
 
     auto&& accum = vertexData().accumulatorByName(accumName);
-
-    std::cout << " incoming message: " << msg->_value.slice().toJson() << std::endl;
-
     accumChanged |= accum->updateByMessageSlice(msg->_value.slice()) ==
                     AccumulatorBase::UpdateResult::CHANGED;
   }
-
-  std::cout << "vertex: " << vertexData()._vertexId << " processing messages done" << std::endl;
-
   return accumChanged;
 }
 
