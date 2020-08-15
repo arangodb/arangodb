@@ -325,7 +325,19 @@ greenspun::EvalResult VertexComputation::air_thisVertexId(greenspun::Machine& ct
 
 greenspun::EvalResult VertexComputation::air_thisUniqueId(greenspun::Machine& ctx,
                                        VPackSlice const params, VPackBuilder& result) {
-  result.add(VPackValue(this->vertexData()._vertexId));
+  // TODO: FIXME, WE DO NOT KNOW THIS TO BE UNIQUE, WE SHOULD PROBABLY BE USING THE DOCMENT
+  //              ID AND COMPARE STRINGS OR SOMESUCH.
+  // HACK HACK HACK HACK
+  auto pid = pregelId();
+
+  uint64_t combined = this->vertexData()._vertexId;
+  combined <<= 16;
+  combined |= pid.shard;
+
+  LOG_DEVEL << "vertexId" << this->vertexData()._vertexId << " shard " << pid.shard;
+  LOG_DEVEL << "combined " << combined;
+
+  result.add(VPackValue(combined));
   return {};
 }
 
@@ -356,13 +368,20 @@ VertexAccumulators const& VertexComputation::algorithm() const {
 bool VertexComputation::processIncomingMessages(MessageIterator<MessageData> const& incomingMessages) {
   auto accumChanged = bool{false};
 
+  std::cout << "vertex: " << vertexData()._vertexId << " processing messages" << std::endl;
+
   for (const MessageData* msg : incomingMessages) {
     auto accumName = msg->_accumulatorName;
+
     auto&& accum = vertexData().accumulatorByName(accumName);
+
+    std::cout << " incoming message: " << msg->_value.slice().toJson() << std::endl;
 
     accumChanged |= accum->updateByMessageSlice(msg->_value.slice()) ==
                     AccumulatorBase::UpdateResult::CHANGED;
   }
+
+  std::cout << "vertex: " << vertexData()._vertexId << " processing messages done" << std::endl;
 
   return accumChanged;
 }
@@ -370,26 +389,47 @@ bool VertexComputation::processIncomingMessages(MessageIterator<MessageData> con
 greenspun::EvalResult VertexComputation::runProgram(greenspun::Machine& ctx, VPackSlice program) {
   VPackBuilder resultBuilder;
 
-  auto result = Evaluate(ctx, program, resultBuilder);
-  // TODO: Sort out?
-  if (!result) {
-    LOG_DEVEL << "execution error: " << result.error().toString() << " voting to halt.";
+  // A valid pregel program can at the moment return one of four values: true,
+  // false, "vote-halt", or "vote-active"
+  //
+  // if it returns "vote-halt" or false, then we voteHalt(), if it returns
+  // "vote-active" we voteActive()
+  //
+  // TODO: can this be done prettier?
+  auto evaluateResult = [this](VPackSlice& rs) -> greenspun::EvalResult {
+                          if (rs.isBoolean()) {
+                            if (rs.getBoolean()) {
+                              this->voteActive();
+                              return {};
+                            } else {
+                              this->voteHalt();
+                              return {};
+                            }
+                          } else if (rs.isString()) {
+                            if (rs.stringRef().equals("vote-active")) {
+                              this->voteActive();
+                              return {};
+                            } else if (rs.stringRef().equals("vote-halt")) {
+                              this->voteHalt();
+                              return {};
+                            }
+                          }
+                          // Not a valid value, vote to halt and return error
+                          voteHalt();
+                          return greenspun::EvalError("pregel program returned " +
+                                                       rs.toJson() +
+                                                       ", expect one of `true`, `false`, `\"vote-halt\", or `\"vote-active\"`");
+                        };
+
+  auto evalResult = Evaluate(ctx, program, resultBuilder);
+  if (!evalResult) {
+    // An error occurred during execution, we vote halt and return the error
     voteHalt();
+    return evalResult.mapError([](greenspun::EvalError& err) { err.wrapMessage("at top-level"); });
   } else {
     auto rs = resultBuilder.slice();
-    if (rs.isBoolean()) {
-      if (rs.getBoolean()) {
-        voteActive();
-      } else {
-        voteHalt();
-      }
-    } else {
-      LOG_DEVEL << "program did not return a boolean value, but " << rs.toJson();
-    }
+    return evaluateResult(rs);
   }
-  return result.mapError([](greenspun::EvalError &err) {
-    err.wrapMessage("at top-level");
-  });
 }
 
 void VertexComputation::compute(MessageIterator<MessageData> const& incomingMessages) {
