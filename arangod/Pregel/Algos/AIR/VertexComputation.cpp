@@ -395,37 +395,40 @@ bool VertexComputation::processIncomingMessages(MessageIterator<MessageData> con
 greenspun::EvalResult VertexComputation::runProgram(greenspun::Machine& ctx, VPackSlice program) {
   VPackBuilder resultBuilder;
 
-  // A valid pregel program can at the moment return one of four values: true,
+  // A valid pregel program can at the moment return one of five values: none, true,
   // false, "vote-halt", or "vote-active"
   //
-  // if it returns "vote-halt" or false, then we voteHalt(), if it returns
-  // "vote-active" we voteActive()
+  // if it returns none, false, or "vote-halt", then we voteHalt(), if it returns
+  // true or "vote-active" we voteActive()
   //
-  // TODO: can this be done prettier?
+  // In all other cases we throw an error
   auto evaluateResult = [this](VPackSlice& rs) -> greenspun::EvalResult {
-                          if (rs.isBoolean()) {
-                            if (rs.getBoolean()) {
-                              this->voteActive();
-                              return {};
-                            } else {
-                              this->voteHalt();
-                              return {};
-                            }
-                          } else if (rs.isString()) {
-                            if (rs.stringRef().equals("vote-active")) {
-                              this->voteActive();
-                              return {};
-                            } else if (rs.stringRef().equals("vote-halt")) {
-                              this->voteHalt();
-                              return {};
-                            }
-                          }
-                          // Not a valid value, vote to halt and return error
-                          voteHalt();
-                          return greenspun::EvalError("pregel program returned " +
-                                                       rs.toJson() +
-                                                       ", expect one of `true`, `false`, `\"vote-halt\", or `\"vote-active\"`");
-                        };
+    if (rs.isNone()) {
+      this->voteHalt();
+      return {};
+    } else if (rs.isBoolean()) {
+      if (rs.getBoolean()) {
+        this->voteActive();
+        return {};
+      } else {
+        this->voteHalt();
+        return {};
+      }
+    } else if (rs.isString()) {
+      if (rs.stringRef().equals("vote-active")) {
+        this->voteActive();
+        return {};
+      } else if (rs.stringRef().equals("vote-halt")) {
+        this->voteHalt();
+        return {};
+      }
+    }
+    // Not a valid value, vote to halt and return error
+    voteHalt();
+    return greenspun::EvalError("pregel program returned " + rs.toJson() +
+                                ", expect one of `none`, `true`, `false`, "
+                                "`\"vote-halt\", or `\"vote-active\"`");
+  };
 
   auto evalResult = Evaluate(ctx, program, resultBuilder);
   if (!evalResult) {
