@@ -84,6 +84,11 @@ RestStatus RestCursorHandler::execute() {
 }
 
 RestStatus RestCursorHandler::continueExecute() {
+  if (wasCanceled()) {
+    generateError(rest::ResponseCode::GONE, TRI_ERROR_QUERY_KILLED);
+    return RestStatus::DONE;
+  }
+  
   // extract the sub-request type
   rest::RequestType const type = _request->requestType();
 
@@ -446,7 +451,9 @@ void RestCursorHandler::unregisterQuery() {
 void RestCursorHandler::cancelQuery() {
   MUTEX_LOCKER(mutexLocker, _queryLock);
 
-  if (_query != nullptr) {
+  if (_cursor) {
+    _cursor->setDeleted();
+  } else if (_query != nullptr) {
     _query->kill();
     _queryKilled = true;
     _hasStarted = true;
@@ -464,9 +471,10 @@ void RestCursorHandler::cancelQuery() {
     }
 
     if (ss != nullptr) {
-      ss->invalidate();
+      ss->resetWakeupHandler();
     }
-  } else if (!_hasStarted) {
+  }
+  if (!_hasStarted) {
     _queryKilled = true;
   }
 }
