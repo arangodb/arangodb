@@ -1065,3 +1065,48 @@ TEST_CASE("Test [let] primitive", "[let]") {
     REQUIRE(res.fail());
   }
 }
+
+// TODO: HACK HACK HACK FIXME DO A COMPARE FUNCTION FOR OBJECTS
+TEST_CASE("Test [dict] primitive", "[dict]") {
+  Machine m;
+  InitMachine(m);
+  VPackBuilder result;
+
+  SECTION("no content") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["dict"]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().toJson() == "{}");
+  }
+
+  SECTION("one content") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["dict", ["quote", "a", 5]]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().toJson() == R"json({"a":5})json");
+  }
+
+  SECTION("two content") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["dict", ["quote", "a", 5], ["quote", "b", "abc"]]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().toJson() == R"json({"a":5,"b":"abc"})json");
+  }
+
+
+}
