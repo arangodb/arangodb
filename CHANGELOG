@@ -1,6 +1,9 @@
 v3.6.6 (XXXX-XX-XX)
 -------------------
 
+* Fixed bad behaviour in agency supervision in some corner cases involving
+  already resigned leaders in Current.
+
 * Fixed internal issue #748: Fixed reading of primary sort values for late
   materialization (of ArangoSearch views).
 
