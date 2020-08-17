@@ -189,6 +189,9 @@ Result AsyncJobManager::cancelJob(AsyncJobResult::IdType jobId) {
   if (handler != nullptr) {
     handler->cancel();
   }
+  
+  // simon: handlers running async tasks use shared_ptr to keep alive
+  _jobs.erase(it);
 
   return rv;
 }
