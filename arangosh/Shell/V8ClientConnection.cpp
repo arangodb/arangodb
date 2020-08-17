@@ -1724,9 +1724,9 @@ again:
     VPackBuilder builder(buffer, &_vpackOptions);
     int res = TRI_V8ToVPack(isolate, builder, body, false);
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC("46ae2", ERR, Logger::V8)
-          << "error converting request body: " << TRI_errno_string(res);
-      return v8::Null(isolate);
+      TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   std::string("error converting request body: ") + TRI_errno_string(res));
+      return v8::Undefined(isolate);
     }
     if (_forceJson) {
       auto resultJson = builder.slice().toJson();
