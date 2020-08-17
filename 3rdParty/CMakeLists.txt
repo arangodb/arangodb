@@ -178,7 +178,7 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/nghttp2/)
 ################################################################################
 
 set(IMMER_VERSION "0.6.2")
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/immer/v${IMMER_VERSION})
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/immer/v${IMMER_VERSION} EXCLUDE_FROM_ALL)
 
 ################################################################################
 ## LINK_DIRECTORIES

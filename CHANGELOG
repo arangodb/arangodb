@@ -5,10 +5,15 @@ devel
   happen at a wrong time or a restarted leader could come back at an
   unlucky time.
 
-* Fixed issue ES-664: the optimizer rule `inline-subqueries` must pull out a
-  subqueries that contains a COLLECT statement if the subquery is itself
-  called from within a loop. Otherwise the COLLECT will be applied to the
-  values in the outer FOR loop, which can produce a different result.
+* Fixed issue BTS-168: Fixed undefined behaviour that did trigger
+  segfaults on cluster startups. It is only witnessed for
+  MacOS based builds. The issue could be triggered by any network connection.
+  This behaviour is not part of any released version.
+
+* Fixed issue ES-664: the optimizer rule `inline-subqueries` must pull out
+  subqueries that contains a COLLECT statement if the subquery is itself called
+	from within a loop. Otherwise the COLLECT will be applied to the values in the
+	outer FOR loop, which can produce a different result.
 
 * Fixed a blockage on hotbackup when writes are happening concurrently, since
   followers could no longer replicate leader transactions.
@@ -19,7 +24,7 @@ devel
   and download.
 
 * Make AQL user-defined functions (UDFs) work in a cluster in case the UDF runs
-  an AQL query inside its own function code.
+  an AQL query inside its own function code (BTS-159).
 
 * Fix: writeConcern is now honored correctly (ES-655).
 
