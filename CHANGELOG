@@ -1,6 +1,11 @@
 v3.7.2 (XXXX-XX-XX)
 -------------------
 
+* Added AQL functions `IS_IPV4`, `IPV4_TO_NUMBER`, `IPV4_FROM_NUMBER` for IPv4
+  address checks and conversions.
+
+* Added AQL function `PRODUCT` to calculate the product of an array.
+
 * Improve performance of internal cluster Plan and Current reload operations.
 
 * Updated arangosync to 0.7.9.
