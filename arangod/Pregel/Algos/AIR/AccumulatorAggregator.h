@@ -25,7 +25,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_PREGEL_ALGOS_ACCUMULATORS_ACCUMULATORAGGREGATOR_H
-#define ARANGODB_PREGEL_ALGOS_ACCUMULATORS_ACCUMULATORAGGERGATOR_H 1
+#define ARANGODB_PREGEL_ALGOS_ACCUMULATORS_ACCUMULATORAGGREGATOR_H 1
 
 #include <Pregel/Aggregator.h>
 
@@ -50,7 +50,9 @@ struct VertexAccumulatorAggregator : IAggregator {
   /// @brief Value from superstep S-1 supplied by the conductor
   void setAggregatedValue(arangodb::velocypack::Slice const& slice) override;
   void serialize(std::string const& key, arangodb::velocypack::Builder& builder) const override;
+
   void reset() override;
+  void reset(IAggregator::ResetBy who) override;
 
   bool isConverging() const override;
 

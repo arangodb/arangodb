@@ -43,7 +43,7 @@ void VertexAccumulatorAggregator::aggregate(void const* valuePtr)  {
 
 /// @brief Used when updating aggregator value from remote
 void VertexAccumulatorAggregator::parseAggregate(arangodb::velocypack::Slice const& slice)  {
-  accumulator->updateByMessageSlice(slice);
+  accumulator->updateBySlice(slice);
 }
 
 void const* VertexAccumulatorAggregator::getAggregatedValue() const {
@@ -63,9 +63,24 @@ void VertexAccumulatorAggregator::serialize(std::string const& key,
   builder.add(local.slice());
 }
 
-void VertexAccumulatorAggregator::reset()  {
-  if (!permanent) {
+void VertexAccumulatorAggregator::reset() {
+  reset(IAggregator::ResetBy::Legacy);
+}
+
+void VertexAccumulatorAggregator::reset(IAggregator::ResetBy who) {
+  switch(who) {
+  // The worker gets to just reset us
+  case IAggregator::ResetBy::Worker: {
     accumulator->clear();
+  } break;
+  case IAggregator::ResetBy::Master: {
+  } break;
+  case IAggregator::ResetBy::Legacy: {
+    if (!permanent) {
+      LOG_DEVEL << "calling clear on accumulator";
+      accumulator->clear();
+    }
+  } break;
   }
 }
 

@@ -64,15 +64,7 @@ struct AccumulatorBase {
   // implementation to interpret the slice
   virtual void setBySlice(VPackSlice) = 0;
 
-  // Update the accumulator's value by a message slice
-  // The accumulator can assume that the slice was builder
-  // by getIntoMessageSlice
-  virtual auto updateByMessageSlice(VPackSlice) -> UpdateResult = 0;
-
-  // Write all information that is needed to send an update
-  // The slice built here must be interpretable by
-  // updateByMessageSlice
-  virtual void getUpdateMessageIntoBuilder(VPackBuilder& builder) = 0;
+  virtual auto updateBySlice(VPackSlice) -> UpdateResult = 0;
 
   // Get the value into a builder. The formatting of this result
   // is entirely up to the accumulators implementation
@@ -82,6 +74,7 @@ struct AccumulatorBase {
   virtual const void* getValuePointer() const = 0;
   // Set the value from a value pointer.
   virtual void setValueFromPointer(const void*) = 0;
+  virtual auto updateValueFromPointer(const void*) -> UpdateResult = 0;
 
   virtual void updateValueFromPointer(const void*) = 0;
 
@@ -105,6 +98,17 @@ class Accumulator : public AccumulatorBase {
   // Needed to implement updates by slice
   virtual UpdateResult update(data_type v) = 0;
 
+  auto updateBySlice(VPackSlice s) -> UpdateResult override {
+    // TODO proper error handling here!
+    if constexpr (std::is_same_v<T, bool>) {
+      return this->update(s.getBool());
+    } else if constexpr (std::is_arithmetic_v<T>) {
+      return this->update(s.getNumericValue<T>());
+    } else {
+      std::abort();
+    }
+  }
+
   void setBySlice(VPackSlice s) override {
     // TODO proper error handling here!
     if constexpr (std::is_same_v<T, bool>) {
@@ -114,24 +118,6 @@ class Accumulator : public AccumulatorBase {
     } else {
       std::abort();
     }
-  }
-
-  UpdateResult updateByMessageSlice(VPackSlice s) override {
-    if constexpr (std::is_same_v<T, bool>) {
-      return this->update(s.getBool());
-    } else if constexpr (std::is_arithmetic_v<T>) {
-      return this->update(s.getNumericValue<T>());
-    } else if constexpr (std::is_same_v<T, std::string>) {
-      return this->update(s.copyString());
-    } else if constexpr (std::is_same_v<T, VPackSlice>) {
-      return this->update(s);
-    } else {
-      std::abort();
-    }
-  }
-
-  void getUpdateMessageIntoBuilder(VPackBuilder& builder) override {
-    getValueIntoBuilder(builder);
   }
 
   void getValueIntoBuilder(VPackBuilder& builder) override {
@@ -150,8 +136,8 @@ class Accumulator : public AccumulatorBase {
     _value = *reinterpret_cast<data_type const*>(ptr);
   }
 
-  void updateValueFromPointer(const void * ptr) override {
-    this->update(*reinterpret_cast<data_type const *>(ptr));
+  auto updateValueFromPointer(const void * ptr) -> UpdateResult override {
+    return update(*reinterpret_cast<data_type const*>(ptr));
   }
 
  protected:

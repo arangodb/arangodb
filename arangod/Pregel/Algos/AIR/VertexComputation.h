@@ -43,6 +43,16 @@ class VertexComputation : public vertex_computation {
   VertexAccumulators const& algorithm() const;
 
  private:
+  // Reset the *local* data of all the global
+  // accumulators. We do this in every GSS, and never
+  // read from these inside a pregel program
+  void clearGlobalAccumulators();
+
+  // After the pregel program ran, aggregate the
+  // values in the global accumulators into
+  // the aggregators to be send off to the conductor
+  void aggregateGlobalAccumulators();
+
   bool processIncomingMessages(MessageIterator<MessageData> const& incomingMessages);
   greenspun::EvalResult runProgram(greenspun::Machine& ctx, VPackSlice program);
 
@@ -65,6 +75,9 @@ class VertexComputation : public vertex_computation {
   //
   //      register functions with type info & small documentation, so we can
   //      display it in the editor?
+
+  greenspun::EvalResultT<std::unique_ptr<AccumulatorBase>&> vertexAccumulatorByName(std::string_view accumId);
+
   greenspun::EvalResult air_accumRef(greenspun::Machine& ctx,
                                      VPackSlice const params, VPackBuilder& result);
   greenspun::EvalResult air_accumSet(greenspun::Machine& ctx,
@@ -72,13 +85,19 @@ class VertexComputation : public vertex_computation {
   greenspun::EvalResult air_accumClear(greenspun::Machine& ctx,
                                        VPackSlice const params, VPackBuilder& result);
 
+
+
   greenspun::EvalResult air_sendToAccum(greenspun::Machine& ctx,
                                         VPackSlice const params, VPackBuilder& result);
-  greenspun::EvalResult air_sendToGlobalAccum(greenspun::Machine& ctx,
-                                              VPackSlice const params, VPackBuilder& result);
   greenspun::EvalResult air_sendToAllNeighbours(greenspun::Machine& ctx,
                                                 VPackSlice const params,
                                                 VPackBuilder& result);
+
+  greenspun::EvalResult air_globalAccumRef(greenspun::Machine& ctx,
+                                           VPackSlice const params, VPackBuilder& result);
+  greenspun::EvalResult air_sendToGlobalAccum(greenspun::Machine& ctx,
+                                              VPackSlice const params, VPackBuilder& result);
+
 
   greenspun::EvalResult air_outboundEdges(greenspun::Machine& ctx,
                                           VPackSlice const params, VPackBuilder& result);

@@ -48,6 +48,9 @@ void VertexComputation::registerLocalFunctions() {
   _airMachine.setFunctionMember("accum-ref",  // " name:id -> value:any ",
                                 &VertexComputation::air_accumRef, this);
 
+  _airMachine.setFunctionMember("global-accum-ref",  // " name:id -> value:any ",
+                                &VertexComputation::air_globalAccumRef, this);
+
   _airMachine.setFunctionMember("accum-set!",  // " name:id -> value:any -> void ",
                           &VertexComputation::air_accumSet, this);
 
@@ -91,6 +94,7 @@ void VertexComputation::registerLocalFunctions() {
                                 &VertexComputation::air_globalSuperstep, this);
 }
 
+/* Vertex accumulators */
 greenspun::EvalResult VertexComputation::air_accumRef(greenspun::Machine& ctx,
                                                       VPackSlice const params,
                                                       VPackBuilder& result) {
@@ -101,29 +105,18 @@ greenspun::EvalResult VertexComputation::air_accumRef(greenspun::Machine& ctx,
 
   auto&& [accumId] = res.value();
 
-
-  if (auto iter = vertexData()._accumulators.find(accumId);
-      iter != std::end(vertexData()._accumulators)) {
+  if (auto iter = vertexData()._vertexAccumulators.find(accumId);
+      iter != std::end(vertexData()._vertexAccumulators)) {
     iter->second->getValueIntoBuilder(result);
     return {};
-  } else {
-    std::string globalName = "[global]-";
-    globalName += accumId;
-    auto accum =
-        dynamic_cast<VertexAccumulatorAggregator const*>(getReadAggregator(globalName));
-
-    if (accum != nullptr) {
-      accum->getAccumulator().getValueIntoBuilder(result);
-      return {};
-    }
   }
-  return greenspun::EvalError("accumulator `" + std::string{accumId} +
+  return greenspun::EvalError("vertex accumulator `" + std::string{accumId} +
                               "` not found");
 }
 
 greenspun::EvalResult VertexComputation::air_accumSet(greenspun::Machine& ctx,
-                                                      VPackSlice const params,
-                                                      VPackBuilder& result) {
+                                                       VPackSlice const params,
+                                                       VPackBuilder& result) {
   auto res = greenspun::extract<std::string, VPackSlice>(params);
   if (res.fail()) {
     return res.error();
@@ -131,8 +124,8 @@ greenspun::EvalResult VertexComputation::air_accumSet(greenspun::Machine& ctx,
 
   auto&& [accumId, value] = res.value();
 
-  if (auto iter = vertexData()._accumulators.find(std::string{accumId});
-      iter != std::end(vertexData()._accumulators)) {
+  if (auto iter = vertexData()._vertexAccumulators.find(std::string{accumId});
+      iter != std::end(vertexData()._vertexAccumulators)) {
     iter->second->setBySlice(value);
     return {};
   } else {
@@ -160,20 +153,12 @@ greenspun::EvalResult VertexComputation::air_accumClear(greenspun::Machine& ctx,
   }
   auto&& [accumId] = res.value();
 
-  if (auto iter = vertexData()._accumulators.find(accumId);
-      iter != std::end(vertexData()._accumulators)) {
+  if (auto iter = vertexData()._vertexAccumulators.find(accumId);
+      iter != std::end(vertexData()._vertexAccumulators)) {
     iter->second->clear();
     return {};
-  } else {
-    std::string globalName = "[global]-";
-    globalName += accumId;
-    auto accum = getAggregatedValue<VertexAccumulatorAggregator>(globalName);
-    if (accum != nullptr) {
-      accum->getAccumulator().clear();
-      return {};
-    }
   }
-  return greenspun::EvalError("accumulator `" + std::string{accumId} +
+  return greenspun::EvalError("vertex accumulator `" + std::string{accumId} +
                               "` not found");
 }
 
@@ -212,27 +197,6 @@ greenspun::EvalResult VertexComputation::air_sendToAccum(greenspun::Machine& ctx
                               "` not found");
 }
 
-greenspun::EvalResult VertexComputation::air_sendToGlobalAccum(greenspun::Machine& ctx,
-                                                               VPackSlice const params,
-                                                               VPackBuilder& result) {
-  auto res = greenspun::extract<std::string, VPackSlice>(params);
-  if (res.fail()) {
-    return res.error();
-  }
-  auto&& [accumId, value] = res.value();
-  std::string globalName = "[global]-";
-  globalName += accumId;
-  auto accum = dynamic_cast<VertexAccumulatorAggregator*>(
-    getWriteAggregator(globalName));
-  if (accum != nullptr) {
-    LOG_DEVEL << "update global accum " << accumId << " with value " << value.toJson();
-    accum->getAccumulator().updateByMessageSlice(value);
-    return {};
-  }
-  return greenspun::EvalError("vertex accumulator `" + std::string{accumId} +
-                   "` not found");
-}
-
 greenspun::EvalResult VertexComputation::air_sendToAllNeighbours(
     greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   auto res = greenspun::extract<std::string, VPackSlice>(params);
@@ -246,6 +210,54 @@ greenspun::EvalResult VertexComputation::air_sendToAllNeighbours(
   return {};
 }
 
+/* Global accumulators */
+greenspun::EvalResult VertexComputation::air_globalAccumRef(greenspun::Machine& ctx,
+                                                            VPackSlice const params,
+                                                            VPackBuilder& result) {
+  auto res = greenspun::extract<std::string>(params);
+  if (res.fail()) {
+    return std::move(res).error();
+  }
+
+  auto&& [accumId] = res.value();
+
+  std::string globalName = "[global]-";
+  globalName += accumId;
+  auto accum =
+      dynamic_cast<VertexAccumulatorAggregator const*>(getReadAggregator(globalName));
+
+  if (accum != nullptr) {
+    accum->getAccumulator().getValueIntoBuilder(result);
+    return {};
+  }
+  return greenspun::EvalError("global accumulator `" + std::string{accumId} +
+                              "` not found");
+}
+
+greenspun::EvalResult VertexComputation::air_sendToGlobalAccum(greenspun::Machine& ctx,
+                                                               VPackSlice const params,
+                                                               VPackBuilder& result) {
+  auto res = greenspun::extract<std::string, VPackSlice>(params);
+  if (res.fail()) {
+    return res.error();
+  }
+  auto&& [accumId, value] = res.value();
+
+  std::string globalName = "[global]-";
+  globalName += accumId;
+  auto accum =
+    dynamic_cast<VertexAccumulatorAggregator *>(getWriteAggregator(globalName));
+
+  if (accum != nullptr) {
+    accum->parseAggregate(value);
+    return {};
+  }
+
+  return greenspun::EvalError("vertex accumulator `" + std::string{accumId} +
+                              "` not found");
+}
+
+/*  Graph stuff */
 greenspun::EvalResult VertexComputation::air_outboundEdges(greenspun::Machine& ctx,
                                                            VPackSlice const params,
                                                            VPackBuilder& result) {
@@ -386,7 +398,7 @@ bool VertexComputation::processIncomingMessages(MessageIterator<MessageData> con
     auto accumName = msg->_accumulatorName;
 
     auto&& accum = vertexData().accumulatorByName(accumName);
-    accumChanged |= accum->updateByMessageSlice(msg->_value.slice()) ==
+    accumChanged |= accum->updateBySlice(msg->_value.slice()) ==
                     AccumulatorBase::UpdateResult::CHANGED;
   }
   return accumChanged;

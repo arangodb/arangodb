@@ -164,7 +164,6 @@ MasterContext::ContinuationResult MasterContext::postGlobalSuperstep(bool allVer
     VPackBuilder onHaltResult;
 
     userSelectedNext = ContinuationResult::DONT_CARE;
-    LOG_DEVEL << "evaluating user defined program: " << phase.onHalt.slice().toJson();
     auto res = greenspun::Evaluate(_airMachine, phase.onHalt.slice(), onHaltResult);
     if (res.fail()) {
       getReportManager().report(ReportLevel::ERROR).with("phase", phase.name)

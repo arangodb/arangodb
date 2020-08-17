@@ -32,10 +32,12 @@ namespace accumulators {
 // Graph Format
 GraphFormat::GraphFormat(application_features::ApplicationServer& server,
                          std::string const& resultField,
-                         AccumulatorsDeclaration const& accumulatorDeclarations)
+                         AccumulatorsDeclaration const& globalAccumulatorDeclarations,
+                         AccumulatorsDeclaration const& vertexAccumulatorDeclarations)
     : graph_format(server),
       _resultField(resultField),
-      _accumulatorDeclarations(accumulatorDeclarations){};
+      _globalAccumulatorDeclarations(globalAccumulatorDeclarations),
+      _vertexAccumulatorDeclarations(vertexAccumulatorDeclarations){};
 
 size_t GraphFormat::estimatedVertexSize() const { return sizeof(vertex_type); }
 size_t GraphFormat::estimatedEdgeSize() const { return sizeof(edge_type); }
@@ -44,7 +46,7 @@ size_t GraphFormat::estimatedEdgeSize() const { return sizeof(edge_type); }
 void GraphFormat::copyVertexData(std::string const& documentId,
                                  arangodb::velocypack::Slice vertexDocument,
                                  vertex_type& targetPtr) {
-  targetPtr.reset(_accumulatorDeclarations, documentId, vertexDocument, _vertexIdRange++);
+  targetPtr.reset(_globalAccumulatorDeclarations, _vertexAccumulatorDeclarations, documentId, vertexDocument, _vertexIdRange++);
 }
 
 void GraphFormat::copyEdgeData(arangodb::velocypack::Slice edgeDocument, edge_type& targetPtr) {
@@ -54,7 +56,7 @@ void GraphFormat::copyEdgeData(arangodb::velocypack::Slice edgeDocument, edge_ty
 bool GraphFormat::buildVertexDocument(arangodb::velocypack::Builder& b,
                                       const vertex_type* ptr, size_t size) const {
   VPackObjectBuilder guard(&b, _resultField);
-  for (auto&& acc : ptr->_accumulators) {
+  for (auto&& acc : ptr->_vertexAccumulators) {
     b.add(VPackValue(acc.first));
     acc.second->getValueIntoBuilder(b);
   }
