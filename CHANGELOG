@@ -1,6 +1,12 @@
 devel
 -----
 
+* Fixed: During a move-shard job there is a situation where the old owner of a shard
+  can reclaim ownership, with a small race where it allows to
+  write documents only locally, but then continue the move-shard to a
+  server without those documents. This could only happen if the owner
+  does reboot, or dropped the other server.
+
 * Fixed issue BTS-168: Fixed undefined behaviour that did trigger
   segfaults on cluster startups. It is only witnessed for
   MacOS based builds. The issue could be triggered by any network connection.
