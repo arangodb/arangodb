@@ -375,11 +375,6 @@ void DistributeNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
   builder.add(VPackValue("alternativeVariable"));
   _alternativeVariable->toVelocyPack(builder);
 
-  // legacy format, remove in 3.4
-  builder.add("varId", VPackValue(static_cast<int>(_variable->id)));
-  builder.add("alternativeVarId",
-              VPackValue(static_cast<int>(_alternativeVariable->id)));
-
   // And close it:
   builder.close();
 }
