@@ -1,3 +1,4 @@
+
 #include <iostream>
 
 #include "Pregel/Algos/AIR/Greenspun/Interpreter.h"
@@ -30,8 +31,30 @@ greenspun::EvalResult Func_thisId(greenspun::Machine& ctx, VPackSlice const para
   return {};
 }
 
+std::unordered_map<std::string, VPackBuilder> variableValues;
+
+greenspun::EvalResult Func_VarSet(greenspun::Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  if (params.length() != 2) {
+    return greenspun::EvalError("expected two parameters");
+  }
+  VPackSlice name = params.at(0);
+  VPackSlice value = params.at(1);
+  if (!name.isString()) {
+    return greenspun::EvalError("expected string as first parameter, found: " + name.toJson());
+  }
+
+  auto nameStr = name.copyString();
+  VPackBuilder& builder = variableValues[nameStr];
+  builder.clear();
+  builder.add(value);
+
+  ctx.setVariable(nameStr, builder.slice());
+  return {};
+}
+
 void AddSomeFunctions(greenspun::Machine& m) {
   m.setFunction("this-id", Func_thisId);
+  m.setFunction("var-set", Func_VarSet);
 }
 
 std::string TRI_HomeDirectory() {
