@@ -1,8 +1,8 @@
-v3.7.1 (2020-08-07)
--------------------
-
 * Fix: The 'sorted' COLLECT variant would return undefined instead of null when
   grouping by a null value.
+
+v3.7.1 (2020-08-07)
+-------------------
 
 * Fixed issue #12297: ArangoDB 3.6.5 Swagger Error?
   This issue caused the Swagger UI for displaying the APIs of user-defined Foxx
