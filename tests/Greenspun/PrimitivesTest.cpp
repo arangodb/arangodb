@@ -794,7 +794,9 @@ TEST_CASE("Test [int-to-str] primitive", "[int-to-str]") {
  * Access operators
  */
 
-TEST_CASE("Test [attrib] primitive", "[attrib]") {}
+TEST_CASE("Test [attrib-ref] primitive", "[attrib-ref]") {
+  REQUIRE(false);
+}
 
 TEST_CASE("Test [var-ref] primitive", "[var-ref]") {
   Machine m;
@@ -825,17 +827,6 @@ TEST_CASE("Test [for-each] primitive", "[for-each]") {
   REQUIRE(false);
 }
 
-
-// TODO: this is not a language primitive but part of `VertexComputation`
-TEST_CASE("Test [accum-ref] primitive", "[accumref]") {}
-TEST_CASE("Test [this] primitive", "[this]") {}
-TEST_CASE("Test [send-to-accum] primitive", "[send-to-accum]") {}
-TEST_CASE("Test [send-to-all-neighbours] primitive", "[send-to-all-neighbours]") {}
-
-
-
-
-TEST_CASE("Test [global-superstep] primitive", "[global-superstep]") {}
 
 TEST_CASE("Test [lambda] primitive", "[lambda]") {
   Machine m;
@@ -1123,3 +1114,58 @@ TEST_CASE("Test [dict] primitive", "[dict]") {
     REQUIRE(result.slice().toJson() == R"json({"a":5,"b":"abc"})json");
   }
 }
+
+TEST_CASE("Test [str] primitive", "[str]") {
+  Machine m;
+  InitMachine(m);
+  VPackBuilder result;
+
+  SECTION("no content") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["str"]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().isString());
+    REQUIRE(result.slice().copyString() == "");
+  }
+
+  SECTION("one content") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["str", "yello"]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().isString());
+    REQUIRE(result.slice().copyString() == "yello");
+  }
+
+  SECTION("two content") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["str", "yello", "world"]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().isString());
+    REQUIRE(result.slice().copyString() == "yelloworld");
+  }
+
+  // TODO error testing
+}
+
+// TODO: this is not a language primitive but part of `VertexComputation`
+TEST_CASE("Test [accum-ref] primitive", "[accumref]") {}
+TEST_CASE("Test [this] primitive", "[this]") {}
+TEST_CASE("Test [send-to-accum] primitive", "[send-to-accum]") {}
+TEST_CASE("Test [send-to-all-neighbours] primitive", "[send-to-all-neighbours]") {}
+TEST_CASE("Test [global-superstep] primitive", "[global-superstep]") {}
+
