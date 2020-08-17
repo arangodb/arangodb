@@ -1,10 +1,10 @@
 v3.7.2 (XXXX-XX-XX)
 -------------------
 
-* Fixed issue ES-664: the optimizer rule `inline-subqueries` must not pull out 
-  subqueries that contain a COLLECT statement if the subquery is itself
-  called from within a loop. Otherwise the COLLECT will be applied to the
-  values in the outer FOR loop, which can produce a different result.
+* Fixed issue ES-664: the optimizer rule `inline-subqueries` must not pull out
+  subqueries that contain a COLLECT statement if the subquery is itself called
+  from within a loop. Otherwise the COLLECT will be applied to the values in the
+  outer FOR loop, which can produce a different result.
 
 
 v3.7.1 (2020-08-07)
