@@ -203,10 +203,9 @@ bool FailedLeader::start(bool& aborts) {
   using namespace std::chrono;
 
   // Current servers vector
-  auto const& current = _snapshot
-                            .hasAsSlice(curColPrefix + _database + "/" +
-                                        _collection + "/" + _shard + "/servers")
-                            .first;
+  std::string curPath = curColPrefix + _database + "/" + _collection + "/" + _shard;
+  auto const& current = _snapshot.hasAsSlice(curPath + "/servers").first;
+
   // Planned servers vector
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
@@ -310,6 +309,13 @@ bool FailedLeader::start(bool& aborts) {
         addPreconditionServerHealth(pending, _to, "GOOD");
         // Server list in plan still as before
         addPreconditionUnchanged(pending, planPath, planned);
+        // Server list in Current still as known
+        addPreconditionUnchanged(pending, curPath + "/servers", current);
+        // Failover candidates in Current still as known
+        auto const& failoverCandidates = _snapshot.hasAsSlice(curPath + "/failoverCandidates");
+        if (failoverCandidates.second) {
+          addPreconditionUnchanged(pending, curPath + "/failoverCandidates", failoverCandidates.first);
+        }
         // Destination server should not be blocked by another job
         addPreconditionServerNotBlocked(pending, _to);
         // Shard to be handled is block by another job
