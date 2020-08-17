@@ -38,23 +38,20 @@ VertexAccumulatorAggregator::VertexAccumulatorAggregator(AccumulatorOptions cons
 
 /// @brief Used when updating aggregator value locally
 void VertexAccumulatorAggregator::aggregate(void const* valuePtr)  {
-  accumulator->setValueFromPointer(valuePtr);
+  accumulator->updateValueFromPointer(valuePtr);
 }
 
 /// @brief Used when updating aggregator value from remote
 void VertexAccumulatorAggregator::parseAggregate(arangodb::velocypack::Slice const& slice)  {
-  LOG_DEVEL << accumulator.get()  << "parseAggregate = " << slice.toJson();
-  accumulator->setBySlice(slice);
+  accumulator->updateByMessageSlice(slice);
 }
 
 void const* VertexAccumulatorAggregator::getAggregatedValue() const {
-  LOG_DEVEL << accumulator.get() << "VertexAccumulatorAggregator::getAggregatedValue";
   return accumulator->getValuePointer();
 }
 
 /// @brief Value from superstep S-1 supplied by the conductor
 void VertexAccumulatorAggregator::setAggregatedValue(arangodb::velocypack::Slice const& slice)  {
-  LOG_DEVEL << accumulator.get() << "setAggregatedValue " << slice.toJson();
   accumulator->setBySlice(slice);
 }
 
@@ -62,15 +59,12 @@ void VertexAccumulatorAggregator::serialize(std::string const& key,
                                             arangodb::velocypack::Builder& builder) const  {
   VPackBuilder local;
   accumulator->getValueIntoBuilder(local);
-  LOG_DEVEL << accumulator.get() << "serialize into key " << key << " with value " << local.toJson();
   builder.add(VPackValue(key));
   builder.add(local.slice());
 }
 
 void VertexAccumulatorAggregator::reset()  {
-  LOG_DEVEL << accumulator.get() << "VertexAccumulatorAggregator::reset called " << permanent;
   if (!permanent) {
-    LOG_DEVEL << "calling clear on accumulator";
     accumulator->clear();
   }
 }

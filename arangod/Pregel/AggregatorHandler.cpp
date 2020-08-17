@@ -96,7 +96,6 @@ void AggregatorHandler::setAggregatedValues(VPackSlice const& workerValues) {
       AggregatorID name = keyValue.key.copyString();
       IAggregator* agg = getAggregator(name);
       if (agg) {
-        LOG_DEVEL << "set aggregated value of " << name << " and address " << agg << " with value " << keyValue.value.toJson();
         agg->setAggregatedValue(keyValue.value);
       }
     }
