@@ -51,50 +51,58 @@ bool AgencyCache::start() {
   return true;
 }
 
-// Get Builder from readDB mainly /Plan /Current
-std::tuple <query_t, index_t> const AgencyCache::get(
-  std::string const& path) const {
-  auto ret = std::make_shared<VPackBuilder>();
+// Fill existing Builder from readDB, mainly /Plan /Current
+index_t AgencyCache::get(VPackBuilder& result, std::string const& path) const {
+  result.clear();
   std::lock_guard g(_storeLock);
   if (_commitIndex > 0) {
-    _readDB.get("arango/" + path, *ret, false);
+    _readDB.get("arango/" + path, result, false);
   }
-  return std::tuple(std::move(ret), _commitIndex);
+  return _commitIndex;
+}
+
+// Create Builder from readDB, mainly /Plan /Current
+std::tuple<query_t, index_t> AgencyCache::get(std::string const& path) const {
+  auto ret = std::make_shared<VPackBuilder>();
+  index_t commitIndex = get(*ret, path);
+  return std::tuple(std::move(ret), commitIndex);
 }
 
 // Get Builder from readDB mainly /Plan /Current
-query_t const AgencyCache::dump() const {
+query_t AgencyCache::dump() const {
+  auto query = std::make_shared<arangodb::velocypack::Builder>();
+  {
+    VPackArrayBuilder outer(query.get());
+    VPackArrayBuilder inner(query.get());
+    query->add(VPackValue("/"));
+  }
+
   auto ret = std::make_shared<VPackBuilder>();
-  { VPackObjectBuilder o(ret.get());
+  { 
+    VPackObjectBuilder o(ret.get());
     std::lock_guard g(_storeLock);
     ret->add("index", VPackValue(_commitIndex));
     ret->add(VPackValue("cache"));
-    auto query = std::make_shared<arangodb::velocypack::Builder>();
-    {
-      VPackArrayBuilder outer(query.get());
-      VPackArrayBuilder inner(query.get());
-      query->add(VPackValue("/"));
-    }
     _readDB.read(query, ret);
   }
   return ret;
 }
 
-// Get Builder from readDB mainly /Plan /Current
-std::tuple <query_t, index_t> const AgencyCache::read(
-  std::vector<std::string> const& paths) const {
+// Get Builder from readDB, mainly /Plan /Current
+std::tuple<query_t, index_t> AgencyCache::read(std::vector<std::string> const& paths) const {
+  auto query = std::make_shared<arangodb::velocypack::Builder>();
+  {
+    VPackArrayBuilder outer(query.get());
+    VPackArrayBuilder inner(query.get());
+    for (auto const& i : paths) {
+      query->add(VPackValue(i));
+    }
+  }
+
   auto result = std::make_shared<arangodb::velocypack::Builder>();
   std::lock_guard g(_storeLock);
 
   if (_commitIndex > 0) {
-    auto query = std::make_shared<arangodb::velocypack::Builder>();
-    {
-      VPackArrayBuilder outer(query.get());
-      VPackArrayBuilder inner(query.get());
-      for (auto const& i : paths) {
-        query->add(VPackValue(i));
-      }
-    }
     _readDB.read(query, result);
   }
   return std::tuple(std::move(result), _commitIndex);
@@ -127,7 +135,9 @@ void AgencyCache::handleCallbacksNoLock(VPackSlice slice, std::unordered_set<uin
   std::vector<std::string> keys;
   keys.reserve(slice.length());
   for (auto const& i : VPackObjectIterator(slice)) {
-    keys.push_back(Store::normalize(i.key.copyString()));
+    VPackValueLength l;
+    char const* p = i.key.getString(l);
+    keys.emplace_back(Store::normalize(p, l));
   }
 
   std::sort(keys.begin(), keys.end());

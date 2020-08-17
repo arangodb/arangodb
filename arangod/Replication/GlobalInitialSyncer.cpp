@@ -219,8 +219,12 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
         _state.barrier.extend(_state.connection);
       }
     }
+  } catch (arangodb::basics::Exception const& ex) {
+    return Result(ex.code(), std::string("syncer caught an unexpected exception: ") + ex.what());
+  } catch (std::exception const& ex) {
+    return Result(TRI_ERROR_INTERNAL, std::string("syncer caught an unexpected exception: ") + ex.what());
   } catch (...) {
-    return Result(TRI_ERROR_INTERNAL, "caught an unexpected exception");
+    return Result(TRI_ERROR_INTERNAL, "syncer caught an unexpected exception");
   }
 
   return Result();

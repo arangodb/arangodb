@@ -1555,6 +1555,10 @@ static bool CreateCollection(SimpleHttpClient* client, std::string const& name,
     int statusCode = result->getHttpReturnCode();
     if (statusCode == 200 || statusCode == 201 || statusCode == 202) {
       failed = false;
+    } else {
+      LOG_TOPIC("567b3", WARN, Logger::FIXME) 
+        << "error when creating collection: " << result->getHttpReturnMessage() 
+        << " for payload '" << payload << "': " << result->getBody();
     }
   }
 
@@ -1580,6 +1584,10 @@ static bool CreateIndex(SimpleHttpClient* client, std::string const& name,
   if (result != nullptr) {
     if (result->getHttpReturnCode() == 200 || result->getHttpReturnCode() == 201) {
       failed = false;
+    } else {
+      LOG_TOPIC("1dcba", WARN, Logger::FIXME) 
+        << "error when creating index: " << result->getHttpReturnMessage() 
+        << " for payload '" << payload << "': " << result->getBody();
     }
   }
 
