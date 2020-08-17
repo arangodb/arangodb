@@ -1,6 +1,9 @@
 v3.7.2 (XXXX-XX-XX)
 ------------------------
 
+* Make AQL user-defined functions (UDFs) work in a cluster in case the UDF runs
+  an AQL query inside its own function code (BTS-159).
+
 * Fixed hotbackup S3 credentials validation and error reporting for upload and
   download.
 
@@ -30,9 +33,6 @@ v3.7.2 (XXXX-XX-XX)
 * Updated arangosync to 0.7.9.
 
 * Fixed issue #12349: arangosh compact Arangoerror 404.
-
-* Make AQL user-defined functions (UDFs) work in a cluster in case the UDF runs
-  an AQL query inside its own function code (BTS-159).
 
 * Improve performance of many non-subquery AQL queries, by optimizing away some
   storage overhead for subquery context data.
