@@ -4,6 +4,41 @@ v3.7.2 (XXXX-XX-XX)
 * Fixed bad behaviour in agency supervision in some corner cases involving
   already resigned leaders in Current.
 
+* Fixed issue ES-664: the optimizer rule `inline-subqueries` must not pull out
+  subqueries that contain a COLLECT statement if the subquery is itself called
+  from within a loop. Otherwise the COLLECT will be applied to the values in the
+  outer FOR loop, which can produce a different result.
+
+* Fixed that dropping a vanished follower works again. An exception response
+  to the replication request is now handled properly.
+
+* Make AQL user-defined functions (UDFs) work in a cluster in case the UDF runs
+  an AQL query inside its own function code (BTS-159).
+
+* Fixed hotbackup S3 credentials validation and error reporting for upload and
+  download.
+
+* Fixed a blockage on hotbackup when writes are happening concurrently, since
+  followers could no longer replicate leader transactions.
+
+* Fix: The 'sorted' COLLECT variant would return undefined instead of null when
+  grouping by a null value.
+
+* Fix: writeConcern is now honored correctly (ES-655).
+
+* Fixed internal issue #739: ArangoSearch filter volatility takes into account
+  calculation nodes dependencies.
+
+* Fixed OASIS-278 issue: Added proper sort/calc nodes cleanup for late
+  materialzation after OneShard optimization.
+
+* Slightly improve the performance of cluster DDL maintenance operations.
+
+* Added AQL functions `IS_IPV4`, `IPV4_TO_NUMBER`, `IPV4_FROM_NUMBER` for IPv4
+  address checks and conversions.
+
+* Added AQL function `PRODUCT` to calculate the product of an array.
+
 * Improve performance of internal cluster Plan and Current reload operations.
 
 * Updated arangosync to 0.7.9.

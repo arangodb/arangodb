@@ -137,7 +137,10 @@ function FollowersSuite () {
 
       internal.debugSetFailAt("FollowerInfo::add");
 
-      let c = db._create(cn, { numberOfShards: 5, replicationFactor: 2 });
+      // Note that with waitForSyncReplication: true, the collection creation
+      // will run into a timeout while waiting for the followers to come in
+      // sync.
+      db._create(cn, { numberOfShards: 5, replicationFactor: 2 }, { waitForSyncReplication: false });
 
       let result = require("@arangodb/cluster").shardDistribution().results[cn];
 

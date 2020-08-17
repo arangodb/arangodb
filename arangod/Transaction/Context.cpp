@@ -73,7 +73,7 @@ transaction::Context::Context(TRI_vocbase_t& vocbase)
       _strings{_strArena},
       _options(arangodb::velocypack::Options::Defaults),
       _dumpOptions(arangodb::velocypack::Options::Defaults),
-      _transaction{0, false},
+      _transaction{0, false, false},
       _ownsResolver(false) {
   /// dump options contain have the escapeUnicode attribute set to true
   /// this allows dumping of string values as plain 7-bit ASCII values.
@@ -89,7 +89,8 @@ transaction::Context::~Context() {
   // unregister the transaction from the logfile manager
   if (_transaction.id > 0) {
     transaction::ManagerFeature::manager()->unregisterTransaction(_transaction.id,
-                                                                  _transaction.isReadOnlyTransaction);
+                                                                  _transaction.isReadOnlyTransaction,
+                                                                  _transaction.isFollowerTransaction);
   }
 
   // call the actual cleanup routine which frees all
@@ -241,12 +242,14 @@ std::shared_ptr<TransactionState> transaction::Context::createState(transaction:
 /// this will save the transaction's id and status locally
 void transaction::Context::storeTransactionResult(TRI_voc_tid_t id,
                                                   bool wasRegistered,
-                                                  bool isReadOnlyTransaction) noexcept {
+                                                  bool isReadOnlyTransaction,
+                                                  bool isFollowerTransaction) noexcept {
   TRI_ASSERT(_transaction.id == 0);
 
   if (wasRegistered) {
     _transaction.id = id;
     _transaction.isReadOnlyTransaction = isReadOnlyTransaction;
+    _transaction.isFollowerTransaction = isFollowerTransaction;
   }
 }
 

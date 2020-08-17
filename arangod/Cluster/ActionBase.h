@@ -83,8 +83,6 @@ class ActionBase {
 
   void notify();
 
-  virtual arangodb::Result kill(Signal const& signal);
-
   virtual arangodb::Result progress(double& progress);
 
   ActionDescription const& describe() const;
