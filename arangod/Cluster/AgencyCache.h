@@ -61,15 +61,16 @@ public:
   void beginShutdown() override;
 
   /// @brief Get velocypack from node downward. AgencyCommHelper::path is prepended
-  consensus::query_t const dump() const;
+  consensus::query_t dump() const;
 
   /// @brief Get velocypack from node downward. AgencyCommHelper::path is prepended
-  std::tuple <consensus::query_t, consensus::index_t> const get(
-    std::string const& path = std::string("/")) const;
+  consensus::index_t get(arangodb::velocypack::Builder& result, std::string const& path = "/") const;
+
+  /// @brief Get velocypack from node downward. AgencyCommHelper::path is prepended
+  std::tuple<consensus::query_t, consensus::index_t> get(std::string const& path = "/") const;
 
   /// @brief Get velocypack from node downward
-  std::tuple <consensus::query_t, consensus::index_t> const read(
-    std::vector<std::string> const& paths) const;
+  std::tuple<consensus::query_t, consensus::index_t> read(std::vector<std::string> const& paths) const;
 
   /// @brief Get current commit index
   consensus::index_t index() const;

@@ -439,7 +439,10 @@ RestStatus RestCollectionHandler::handleCommandPut() {
       collectionRepresentation(name, /*showProperties*/ false,
                                /*showFigures*/ false, /*showCount*/ false,
                                /*detailedCount*/ true);
+      return standardResponse();
     }
+    generateError(res);
+    return RestStatus::DONE;
   } else if (sub == "responsibleShard") {
     if (!ServerState::instance()->isCoordinator()) {
       res.reset(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
