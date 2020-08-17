@@ -1,6 +1,8 @@
 v3.7.2 (XXXX-XX-XX)
 -------------------
 
+* Slightly improve the performance of cluster DDL maintenance operations.
+
 * Added AQL functions `IS_IPV4`, `IPV4_TO_NUMBER`, `IPV4_FROM_NUMBER` for IPv4
   address checks and conversions.
 
