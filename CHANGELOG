@@ -1,5 +1,8 @@
 v3.7.2 (XXXX-XX-XX)
--------------------
+------------------------
+
+* Fixed internal issue #739: ArangoSearch filter volatility takes into account
+  calculation nodes dependencies.
 
 * Fixed OASIS-278 issue: Added proper sort/calc nodes cleanup for late
   materialzation after OneShard optimization.
