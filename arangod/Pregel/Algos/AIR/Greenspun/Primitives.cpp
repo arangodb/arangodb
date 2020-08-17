@@ -426,6 +426,9 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("print", Prim_PrintLn);
   ctx.setFunction("error", Prim_Error);
 
+  // Constructors
+  ctx.setFunction("dict", Prim_Dict);
+
   // Lambdas
   ctx.setFunction("lambda", Prim_Lambda);
 
