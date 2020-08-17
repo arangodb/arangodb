@@ -254,9 +254,6 @@ EvalResult Prim_ListCat(Machine& ctx, VPackSlice const params, VPackBuilder& res
   return {};
 }
 
-// TODO: Only for debugging purpose. Can be removed later again.
-void print(std::string msg) { std::cout << " >> LOG: " << msg << std::endl; }
-
 EvalResult Prim_IntToStr(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (params.length() != 1) {
     return EvalError("expected a single argument");
