@@ -4,6 +4,10 @@ devel
 * Fixed that dropping a vanished follower works again. An exception response
   to the replication request is now handled properly.
 
+* Fixed a problem with potentially lost updates because a failover could
+  happen at a wrong time or a restarted leader could come back at an
+  unlucky time.
+
 * Fixed issue BTS-168: Fixed undefined behaviour that did trigger
   segfaults on cluster startups. It is only witnessed for
   MacOS based builds. The issue could be triggered by any network connection.
