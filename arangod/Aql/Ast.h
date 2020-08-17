@@ -403,7 +403,7 @@ class Ast {
   /// @brief count how many times a variable is referenced in an expression
   static size_t countReferences(AstNode const*, Variable const*);
 
-  /// @brief determines the top-level attributes used  in an expression, grouped by
+  /// @brief determines the top-level attributes used in an expression, grouped by
   /// variable
   static TopLevelAttributes getReferencedAttributes(AstNode const*, bool&);
   
