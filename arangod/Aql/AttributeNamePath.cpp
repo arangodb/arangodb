@@ -28,8 +28,6 @@
 
 #include <algorithm>
 
-#include <boost/functional/hash.hpp>
-
 namespace arangodb {
 namespace aql {
 
