@@ -262,7 +262,8 @@ EvalResult Prim_MergeObject(Machine& ctx, VPackSlice const params, VPackBuilder&
     VPackSlice right = params.at(1);
     result = VPackCollection::merge(left, right, true, false);
   } else {
-    return EvalError("params are not objects");
+    return EvalError("expteded object, found: " + params.at(0).toJson() +
+                     " - " + params.at(1).toJson());
   }
 
   return {};
@@ -362,20 +363,17 @@ EvalResult Prim_PrintLn(Machine& ctx, VPackSlice const params, VPackBuilder& res
   return {};
 }
 
-EvalResult Prim_Error(Machine& ctx, VPackSlice const params,
-                      VPackBuilder& result) {
+EvalResult Prim_Error(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   return EvalError(paramsToString(params));
 }
 
-EvalResult Prim_List(Machine& ctx, VPackSlice const params,
-                     VPackBuilder& result) {
+EvalResult Prim_List(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   VPackArrayBuilder ab(&result);
   result.add(VPackArrayIterator(params));
   return {};
 }
 
-EvalResult Prim_Dict(Machine& ctx, VPackSlice const params,
-                     VPackBuilder& result) {
+EvalResult Prim_Dict(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   VPackObjectBuilder ob(&result);
   for (auto&& pair : VPackArrayIterator(params)) {
     if (pair.length() == 2) {
@@ -390,11 +388,11 @@ EvalResult Prim_Dict(Machine& ctx, VPackSlice const params,
   return {};
 }
 
-EvalResult Prim_Lambda(Machine& ctx, VPackSlice const paramsList,
-                     VPackBuilder& result) {
+EvalResult Prim_Lambda(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
   VPackArrayIterator paramIterator(paramsList);
   if (!paramIterator.valid()) {
-    return EvalError("lambda requires two arguments: a list of argument names and a body");
+    return EvalError(
+        "lambda requires two arguments: a list of argument names and a body");
   }
 
   auto captures = *paramIterator++;
@@ -430,7 +428,7 @@ EvalResult Prim_Lambda(Machine& ctx, VPackSlice const paramsList,
     result.add("_call", body);
     {
       VPackObjectBuilder cob(&result, "_captures");
-      for (auto&& name : VPackArrayIterator (captures)) {
+      for (auto&& name : VPackArrayIterator(captures)) {
         result.add(name);
         if (auto res = ctx.getVariable(name.copyString(), result); res.fail()) {
           return res;
@@ -484,6 +482,7 @@ void RegisterAllPrimitives(Machine& ctx) {
   // Access operators
   ctx.setFunction("attrib-ref", Prim_AttribRef);
   ctx.setFunction("attrib-set!", Prim_AttribSet);
+
   ctx.setFunction("merge", Prim_MergeObject);
 
   ctx.setFunction("var-ref", Prim_VarRef);
@@ -492,7 +491,6 @@ void RegisterAllPrimitives(Machine& ctx) {
   // TODO: We can just register bind parameters as variables (or a variable)
   ctx.setFunction("bind-ref", Prim_VarRef);
 }
-
 
 }  // namespace greenspun
 }  // namespace arangodb
