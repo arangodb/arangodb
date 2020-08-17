@@ -70,7 +70,54 @@ char const* dbs2Str =
 #include "DBServer0003.json"
     ;
 
-int loadResources(void) { return 0; }
+// Random stuff
+std::random_device rd{};
+std::mt19937 g(rd());
+
+std::vector<std::string> const shortNames{"DBServer0001", "DBServer0002",
+                                          "DBServer0003"};
+
+std::string const PLAN_COL_PATH = "/Collections/";
+std::string const PLAN_DB_PATH = "/Databases/";
+
+size_t localId = 1016002;
+
+std::string S("s");
+std::string C("c");
+
+namespace arangodb {
+class LogicalCollection;
+}
+
+class SharedMaintenanceTest : public ::testing::Test {
+ protected:
+  SharedMaintenanceTest() {
+    loadResources();
+    plan = createNode(planStr);
+    originalPlan = plan;
+    supervision = createNode(supervisionStr);
+    current = createNode(currentStr);
+    dbsIds = matchShortLongIds(supervision);
+  }
+
+ protected:
+  // Relevant agency
+  Node plan{""};
+  Node originalPlan{""};
+  Node supervision{""};
+  Node current{""};
+
+
+
+  // map <shortId, UUID>
+  std::map<std::string, std::string> dbsIds;
+
+  /**
+   * @brief Helper methods
+   *
+   */
+ protected:
+  int loadResources(void) { return 0; }
 
 #else  // _WIN32
 #include <Windows.h>
@@ -102,238 +149,205 @@ int loadResources(void) {
 
 #endif  // _WIN32
 
-std::map<std::string, std::string> matchShortLongIds(Node const& supervision) {
-  std::map<std::string, std::string> ret;
-  for (auto const& dbs : supervision("Health").children()) {
-    if (dbs.first.front() == 'P') {
-      ret.emplace((*dbs.second)("ShortName").getString(), dbs.first);
-    }
-  }
-  return ret;
-}
-
-Node createNodeFromBuilder(Builder const& builder) {
-  Builder opBuilder;
-  {
-    VPackObjectBuilder a(&opBuilder);
-    opBuilder.add("new", builder.slice());
-  }
-
-  Node node("");
-  node.handle<SET>(opBuilder.slice());
-  return node;
-}
-
-Builder createBuilder(char const* c) {
-  VPackOptions options;
-  options.checkAttributeUniqueness = true;
-  VPackParser parser(&options);
-  parser.parse(c);
-
-  Builder builder;
-  builder.add(parser.steal()->slice());
-  return builder;
-}
-
-Node createNode(char const* c) {
-  return createNodeFromBuilder(createBuilder(c));
-}
-
-// Random stuff
-std::random_device rd;
-std::mt19937 g(rd());
-
-// Relevant agency
-Node plan("");
-Node originalPlan("");
-Node supervision("");
-Node current("");
-
-std::vector<std::string> const shortNames{"DBServer0001", "DBServer0002",
-                                          "DBServer0003"};
-
-// map <shortId, UUID>
-std::map<std::string, std::string> dbsIds;
-
-std::string const PLAN_COL_PATH = "/Collections/";
-std::string const PLAN_DB_PATH = "/Databases/";
-
-size_t localId = 1016002;
-
-VPackBuilder createDatabase(std::string const& dbname) {
-  Builder builder;
-  {
-    VPackObjectBuilder o(&builder);
-    builder.add("id", VPackValue(std::to_string(localId++)));
-    builder.add("coordinator",
-                VPackValue("CRDN-42df19c3-73d5-48f4-b02e-09b29008eff8"));
-    builder.add(VPackValue("options"));
-    { VPackObjectBuilder oo(&builder); }
-    builder.add("name", VPackValue(dbname));
-  }
-  return builder;
-}
-
-void createPlanDatabase(std::string const& dbname, Node& plan) {
-  plan(PLAN_DB_PATH + dbname) = createDatabase(dbname).slice();
-}
-
-VPackBuilder createIndex(std::string const& type, std::vector<std::string> const& fields,
-                         bool unique, bool sparse, bool deduplicate) {
-  VPackBuilder index;
-  {
-    VPackObjectBuilder o(&index);
-    {
-      index.add("deduplicate", VPackValue(deduplicate));
-      index.add(VPackValue("fields"));
-      {
-        VPackArrayBuilder a(&index);
-        for (auto const& field : fields) {
-          index.add(VPackValue(field));
-        }
+  std::map<std::string, std::string> matchShortLongIds(Node const& supervision) {
+    std::map<std::string, std::string> ret;
+    for (auto const& dbs : supervision("Health").children()) {
+      if (dbs.first.front() == 'P') {
+        ret.emplace((*dbs.second)("ShortName").getString(), dbs.first);
       }
-      index.add("id", VPackValue(std::to_string(localId++)));
-      index.add("sparse", VPackValue(sparse));
-      index.add("type", VPackValue(type));
-      index.add("unique", VPackValue(unique));
     }
+    return ret;
   }
 
-  return index;
-}
+  Node createNodeFromBuilder(Builder const& builder) {
+    Builder opBuilder;
+    {
+      VPackObjectBuilder a(&opBuilder);
+      opBuilder.add("new", builder.slice());
+    }
 
-void createPlanIndex(std::string const& dbname, std::string const& colname,
-                     std::string const& type, std::vector<std::string> const& fields,
-                     bool unique, bool sparse, bool deduplicate, Node& plan) {
-  VPackBuilder val;
-  {
-    VPackObjectBuilder o(&val);
-    val.add("new", createIndex(type, fields, unique, sparse, deduplicate).slice());
-  }
-  plan(PLAN_COL_PATH + dbname + "/" + colname + "/indexes").handle<PUSH>(val.slice());
-}
-
-void createCollection(std::string const& colname, VPackBuilder& col) {
-  VPackBuilder keyOptions;
-  {
-    VPackObjectBuilder o(&keyOptions);
-    keyOptions.add("lastValue", VPackValue(0));
-    keyOptions.add("type", VPackValue("traditional"));
-    keyOptions.add("allowUserKeys", VPackValue(true));
+    Node node("");
+    node.handle<SET>(opBuilder.slice());
+    return node;
   }
 
-  VPackBuilder shardKeys;
-  {
-    VPackArrayBuilder a(&shardKeys);
-    shardKeys.add(VPackValue("_key"));
+  Builder createBuilder(char const* c) {
+    VPackOptions options;
+    options.checkAttributeUniqueness = true;
+    VPackParser parser(&options);
+    parser.parse(c);
+
+    Builder builder;
+    builder.add(parser.steal()->slice());
+    return builder;
   }
 
-  VPackBuilder indexes;
-  {
-    VPackArrayBuilder a(&indexes);
-    indexes.add(createIndex("primary", {"_key"}, true, false, false).slice());
+  Node createNode(char const* c) {
+    return createNodeFromBuilder(createBuilder(c));
   }
 
-  col.add("id", VPackValue(std::to_string(localId++)));
-  col.add("status", VPackValue(3));
-  col.add("keyOptions", keyOptions.slice());
-  col.add("cacheEnabled", VPackValue(false));
-  col.add("waitForSync", VPackValue(false));
-  col.add("type", VPackValue(2));
-  col.add("isSystem", VPackValue(true));
-  col.add("name", VPackValue(colname));
-  col.add("shardingStrategy", VPackValue("hash"));
-  col.add("statusString", VPackValue("loaded"));
-  col.add("shardKeys", shardKeys.slice());
-}
+  VPackBuilder createDatabase(std::string const& dbname) {
+    Builder builder;
+    {
+      VPackObjectBuilder o(&builder);
+      builder.add("id", VPackValue(std::to_string(localId++)));
+      builder.add("coordinator",
+                  VPackValue("CRDN-42df19c3-73d5-48f4-b02e-09b29008eff8"));
+      builder.add(VPackValue("options"));
+      { VPackObjectBuilder oo(&builder); }
+      builder.add("name", VPackValue(dbname));
+    }
+    return builder;
+  }
 
-std::string S("s");
-std::string C("c");
+  void createPlanDatabase(std::string const& dbname, Node& plan) {
+    plan(PLAN_DB_PATH + dbname) = createDatabase(dbname).slice();
+  }
 
-void createPlanShards(size_t numberOfShards, size_t replicationFactor, VPackBuilder& col) {
-  auto servers = shortNames;
-  std::shuffle(servers.begin(), servers.end(), g);
-
-  col.add("numberOfShards", VPackValue(1));
-  col.add("replicationFactor", VPackValue(2));
-  col.add(VPackValue("shards"));
-  {
-    VPackObjectBuilder s(&col);
-    for (size_t i = 0; i < numberOfShards; ++i) {
-      col.add(VPackValue(S + std::to_string(localId++)));
+  VPackBuilder createIndex(std::string const& type, std::vector<std::string> const& fields,
+                           bool unique, bool sparse, bool deduplicate) {
+    VPackBuilder index;
+    {
+      VPackObjectBuilder o(&index);
       {
-        VPackArrayBuilder a(&col);
-        size_t j = 0;
-        for (auto const& server : servers) {
-          if (j++ < replicationFactor) {
-            col.add(VPackValue(dbsIds[server]));
+        index.add("deduplicate", VPackValue(deduplicate));
+        index.add(VPackValue("fields"));
+        {
+          VPackArrayBuilder a(&index);
+          for (auto const& field : fields) {
+            index.add(VPackValue(field));
+          }
+        }
+        index.add("id", VPackValue(std::to_string(localId++)));
+        index.add("sparse", VPackValue(sparse));
+        index.add("type", VPackValue(type));
+        index.add("unique", VPackValue(unique));
+      }
+    }
+
+    return index;
+  }
+
+  void createPlanIndex(std::string const& dbname, std::string const& colname,
+                       std::string const& type, std::vector<std::string> const& fields,
+                       bool unique, bool sparse, bool deduplicate, Node& plan) {
+    VPackBuilder val;
+    {
+      VPackObjectBuilder o(&val);
+      val.add("new", createIndex(type, fields, unique, sparse, deduplicate).slice());
+    }
+    plan(PLAN_COL_PATH + dbname + "/" + colname + "/indexes").handle<PUSH>(val.slice());
+  }
+
+  void createCollection(std::string const& colname, VPackBuilder& col) {
+    VPackBuilder keyOptions;
+    {
+      VPackObjectBuilder o(&keyOptions);
+      keyOptions.add("lastValue", VPackValue(0));
+      keyOptions.add("type", VPackValue("traditional"));
+      keyOptions.add("allowUserKeys", VPackValue(true));
+    }
+
+    VPackBuilder shardKeys;
+    {
+      VPackArrayBuilder a(&shardKeys);
+      shardKeys.add(VPackValue("_key"));
+    }
+
+    VPackBuilder indexes;
+    {
+      VPackArrayBuilder a(&indexes);
+      indexes.add(createIndex("primary", {"_key"}, true, false, false).slice());
+    }
+
+    col.add("id", VPackValue(std::to_string(localId++)));
+    col.add("status", VPackValue(3));
+    col.add("keyOptions", keyOptions.slice());
+    col.add("cacheEnabled", VPackValue(false));
+    col.add("waitForSync", VPackValue(false));
+    col.add("type", VPackValue(2));
+    col.add("isSystem", VPackValue(true));
+    col.add("name", VPackValue(colname));
+    col.add("shardingStrategy", VPackValue("hash"));
+    col.add("statusString", VPackValue("loaded"));
+    col.add("shardKeys", shardKeys.slice());
+  }
+
+
+  void createPlanShards(size_t numberOfShards, size_t replicationFactor, VPackBuilder& col) {
+    auto servers = shortNames;
+    std::shuffle(servers.begin(), servers.end(), g);
+
+    col.add("numberOfShards", VPackValue(1));
+    col.add("replicationFactor", VPackValue(2));
+    col.add(VPackValue("shards"));
+    {
+      VPackObjectBuilder s(&col);
+      for (size_t i = 0; i < numberOfShards; ++i) {
+        col.add(VPackValue(S + std::to_string(localId++)));
+        {
+          VPackArrayBuilder a(&col);
+          size_t j = 0;
+          for (auto const& server : servers) {
+            if (j++ < replicationFactor) {
+              col.add(VPackValue(dbsIds[server]));
+            }
           }
         }
       }
     }
   }
-}
 
-void createPlanCollection(std::string const& dbname, std::string const& colname,
-                          size_t numberOfShards, size_t replicationFactor, Node& plan) {
-  VPackBuilder tmp;
-  {
-    VPackObjectBuilder o(&tmp);
-    createCollection(colname, tmp);
-    tmp.add("isSmart", VPackValue(false));
-    tmp.add("deleted", VPackValue(false));
-    createPlanShards(numberOfShards, replicationFactor, tmp);
-  }
-
-  Slice col = tmp.slice();
-  auto id = col.get("id").copyString();
-  plan(PLAN_COL_PATH + dbname + "/" + col.get("id").copyString()) = col;
-}
-
-void createLocalCollection(std::string const& dbname, std::string const& colname, Node& node) {
-  size_t planId = std::stoull(colname);
-  VPackBuilder tmp;
-  {
-    VPackObjectBuilder o(&tmp);
-    createCollection(colname, tmp);
-    tmp.add("planId", VPackValue(colname));
-    tmp.add("theLeader", VPackValue(""));
-    tmp.add("globallyUniqueId",
-            VPackValue(C + colname + "/" + S + std::to_string(planId + 1)));
-    tmp.add("objectId", VPackValue("9031415"));
-  }
-  node(dbname + "/" + S + std::to_string(planId + 1)) = tmp.slice();
-}
-
-std::map<std::string, std::string> collectionMap(Node const& plan) {
-  std::map<std::string, std::string> ret;
-  auto const pb = plan("Collections").toBuilder();
-  auto const ps = pb.slice();
-  for (auto const& db : VPackObjectIterator(ps)) {
-    for (auto const& col : VPackObjectIterator(db.value)) {
-      ret.emplace(db.key.copyString() + "/" + col.value.get("name").copyString(),
-                  col.key.copyString());
+  void createPlanCollection(std::string const& dbname, std::string const& colname,
+                            size_t numberOfShards, size_t replicationFactor, Node& plan) {
+    VPackBuilder tmp;
+    {
+      VPackObjectBuilder o(&tmp);
+      createCollection(colname, tmp);
+      tmp.add("isSmart", VPackValue(false));
+      tmp.add("deleted", VPackValue(false));
+      createPlanShards(numberOfShards, replicationFactor, tmp);
     }
+
+    Slice col = tmp.slice();
+    auto id = col.get("id").copyString();
+    plan(PLAN_COL_PATH + dbname + "/" + col.get("id").copyString()) = col;
   }
-  return ret;
-}
 
-namespace arangodb {
-class LogicalCollection;
-}
+  void createLocalCollection(std::string const& dbname,
+                             std::string const& colname, Node& node) {
+    size_t planId = std::stoull(colname);
+    VPackBuilder tmp;
+    {
+      VPackObjectBuilder o(&tmp);
+      createCollection(colname, tmp);
+      tmp.add("planId", VPackValue(colname));
+      tmp.add("theLeader", VPackValue(""));
+      tmp.add("globallyUniqueId",
+              VPackValue(C + colname + "/" + S + std::to_string(planId + 1)));
+      tmp.add("objectId", VPackValue("9031415"));
+    }
+    node(dbname + "/" + S + std::to_string(planId + 1)) = tmp.slice();
+  }
 
-class MaintenanceTestActionDescription : public ::testing::Test {
-  // private:
-  //   tests::mocks::MockDBServer _server;
+  std::map<std::string, std::string> collectionMap(Node const& plan) {
+    std::map<std::string, std::string> ret;
+    auto const pb = plan("Collections").toBuilder();
+    auto const ps = pb.slice();
+    for (auto const& db : VPackObjectIterator(ps)) {
+      for (auto const& col : VPackObjectIterator(db.value)) {
+        ret.emplace(db.key.copyString() + "/" + col.value.get("name").copyString(),
+                    col.key.copyString());
+      }
+    }
+    return ret;
+  }
+};
+
+class MaintenanceTestActionDescription : public SharedMaintenanceTest {
 
  protected:
-  MaintenanceTestActionDescription() /*: _server{}*/ {
-    loadResources();
-    plan = createNode(planStr);
-    originalPlan = plan;
-    supervision = createNode(supervisionStr);
-    current = createNode(currentStr);
-    dbsIds = matchShortLongIds(supervision);
+  MaintenanceTestActionDescription() : SharedMaintenanceTest() {
   }
 };
 
@@ -470,7 +484,7 @@ TEST_F(MaintenanceTestActionDescription, retrieve_array_value_from_actiondescrip
   ASSERT_EQ(desc.properties()->slice().get("array")[2].copyString(), hello);
 }
 
-class MaintenanceTestActionPhaseOne : public ::testing::Test {
+class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
  protected:
   int _dummy;
   std::shared_ptr<arangodb::options::ProgramOptions> po;
@@ -484,7 +498,8 @@ class MaintenanceTestActionPhaseOne : public ::testing::Test {
   arangodb::StorageEngine* origStorageEngine;
 
   MaintenanceTestActionPhaseOne()
-      : _dummy(loadResources()),
+      : SharedMaintenanceTest(),
+        _dummy(loadResources()),
         po(std::make_shared<arangodb::options::ProgramOptions>("test", std::string(),
                                                                std::string(),
                                                                "path")),
