@@ -1,6 +1,9 @@
 v3.7.2 (XXXX-XX-XX)
 ------------------------
 
+* Fixed that dropping a vanished follower works again. An exception response
+  to the replication request is now handled properly.
+
 * Make AQL user-defined functions (UDFs) work in a cluster in case the UDF runs
   an AQL query inside its own function code (BTS-159).
 
@@ -27,9 +30,6 @@ v3.7.2 (XXXX-XX-XX)
   address checks and conversions.
 
 * Added AQL function `PRODUCT` to calculate the product of an array.
-
-* Fixed that dropping a vanished follower works again. An exception response
-  to the replication request is now handled properly.
 
 * Improve performance of internal cluster Plan and Current reload operations.
 
