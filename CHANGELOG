@@ -1,8 +1,9 @@
+
+* Fixed hotbackup S3 credentials validation and error reporting for upload and
+  download.
+
 v3.7.2 (XXXX-XX-XX)
 -------------------
-
-* Fixed hotbackup S3 credentials validation and error reporting for upload
-  and download.
 
 * Improve performance of many non-subquery AQL queries, by optimizing away some
   storage overhead for subquery context data.
