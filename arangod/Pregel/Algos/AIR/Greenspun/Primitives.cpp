@@ -24,6 +24,7 @@
 
 #include <Basics/VelocyPackHelper.h>
 #include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -219,8 +220,51 @@ EvalResult Prim_AttribRef(Machine& ctx, VPackSlice const params, VPackBuilder& r
 }
 
 EvalResult Prim_AttribSet(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  // TODO: implement me
+  // TODO HEIKO
+  if (!params.isArray() && params.length() != 3) {
+    return EvalError("expected exactly three parameters");
+  }
+
+  auto&& [key, slice] = unpackTuple<VPackSlice, VPackSlice>(params);
+  if (!slice.isObject()) {
+    return EvalError("expect second parameter to be an object");
+  }
+
+  if (key.isString()) {
+    result.add(slice.get(key.stringRef()));
+  } else if (key.isArray()) {
+    std::vector<VPackStringRef> path;
+    for (auto&& pathStep : VPackArrayIterator(key)) {
+      if (!pathStep.isString()) {
+        return EvalError("expected string in key arrays");
+      }
+      path.emplace_back(pathStep.stringRef());
+    }
+    result.add(slice.get(path));
+  } else {
+    return EvalError("key is neither array nor string");
+  }
+  return {};
+}
+
+EvalResult Prim_AttribSetVal(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   std::abort();
+  return {};
+}
+
+EvalResult Prim_MergeObject(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  if (!params.isArray() && params.length() != 2) {
+    return EvalError("expected exactly two parameters");
+  }
+
+  if (params.at(0).isObject() && params.at(1).isObject()) {
+    VPackSlice left = params.at(0);
+    VPackSlice right = params.at(1);
+    result = VPackCollection::merge(left, right, true, false);
+  } else {
+    return EvalError("params are not objects");
+  }
+
   return {};
 }
 
