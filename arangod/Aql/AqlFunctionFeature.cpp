@@ -165,6 +165,7 @@ void AqlFunctionFeature::addTypeCheckFunctions() {
   addAlias("IS_DOCUMENT", "IS_OBJECT");
 
   add({"IS_DATESTRING", ".", flags, &Functions::IsDatestring});
+  add({"IS_IPV4", ".", flags, &Functions::IsIpV4});
   add({"IS_KEY", ".", flags, &Functions::IsKey});
   add({"TYPENAME", ".", flags, &Functions::Typename});
 }
@@ -208,6 +209,8 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"FIND_LAST", ".,.|.,.", flags, &Functions::FindLast});
   add({"SPLIT", ".|.,.", flags, &Functions::Split});
   add({"SUBSTITUTE", ".,.|.,.", flags, &Functions::Substitute});
+  add({"IPV4_TO_NUMBER", ".", flags, &Functions::IpV4ToNumber});
+  add({"IPV4_FROM_NUMBER", ".", flags, &Functions::IpV4FromNumber});
   add({"MD5", ".", flags, &Functions::Md5});
   add({"SHA1", ".", flags, &Functions::Sha1});
   add({"SHA512", ".", flags, &Functions::Sha512});
@@ -296,6 +299,7 @@ void AqlFunctionFeature::addListFunctions() {
   add({"COUNT_DISTINCT", ".", flags, &Functions::CountDistinct});
   // COUNT_UNIQUE is an alias for COUNT_DISTINCT
   addAlias("COUNT_UNIQUE", "COUNT_DISTINCT");
+  add({"PRODUCT", ".", flags, &Functions::Product});
   add({"UNIQUE", ".", flags, &Functions::Unique});
   add({"SORTED_UNIQUE", ".", flags, &Functions::SortedUnique});
   add({"SORTED", ".", flags, &Functions::Sorted});
@@ -436,7 +440,7 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"DECODE_REV", ".", flags, &Functions::DecodeRev});
   add({"V8", ".", Function::makeFlags(FF::Deterministic, FF::Cacheable)});  // only function without a
                                                                             // C++ implementation
-                                                                            //
+  
   auto validationFlags = Function::makeFlags(FF::None);
   add({"SCHEMA_GET", ".", validationFlags, &Functions::SchemaGet});
   add({"SCHEMA_VALIDATE", ".,.", validationFlags, &Functions::SchemaValidate});
