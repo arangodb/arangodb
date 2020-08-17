@@ -813,13 +813,28 @@ TEST_CASE("Test [var-ref] primitive", "[var-ref]") {
     REQUIRE(result.slice().isNone());
   }
 }
-TEST_CASE("Test [bind-ref] primitive", "[bind-ref]") {}
-TEST_CASE("Test [accum-ref] primitive", "[accumref]") {}
+TEST_CASE("Test [var-set!] primitive", "[var-set!]") {
+  REQUIRE(false);
+}
 
+TEST_CASE("Test [bind-ref] primitive", "[bind-ref]") {
+  REQUIRE(false);
+}
+
+TEST_CASE("Test [for-each] primitive", "[for-each]") {
+  REQUIRE(false);
+}
+
+
+// TODO: this is not a language primitive but part of `VertexComputation`
+TEST_CASE("Test [accum-ref] primitive", "[accumref]") {}
 TEST_CASE("Test [this] primitive", "[this]") {}
-TEST_CASE("Test [update] primitive", "[update]") {}
-TEST_CASE("Test [set] primitive", "[set]") {}
-TEST_CASE("Test [for] primitive", "[for]") {}
+TEST_CASE("Test [send-to-accum] primitive", "[send-to-accum]") {}
+TEST_CASE("Test [send-to-all-neighbours] primitive", "[send-to-all-neighbours]") {}
+
+
+
+
 TEST_CASE("Test [global-superstep] primitive", "[global-superstep]") {}
 
 TEST_CASE("Test [lambda] primitive", "[lambda]") {
@@ -1107,6 +1122,4 @@ TEST_CASE("Test [dict] primitive", "[dict]") {
     }
     REQUIRE(result.slice().toJson() == R"json({"a":5,"b":"abc"})json");
   }
-
-
 }
