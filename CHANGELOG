@@ -1,6 +1,8 @@
 v3.7.2 (XXXX-XX-XX)
 ------------------------
 
+* Fix: writeConcern is now honored correctly (ES-655).
+
 * Fixed internal issue #739: ArangoSearch filter volatility takes into account
   calculation nodes dependencies.
 
@@ -33,8 +35,6 @@ v3.7.2 (XXXX-XX-XX)
 
 v3.7.1 (2020-08-07)
 -------------------
-
-* Fix: writeConcern is now honored correctly (ES-655).
 
 * Fixed issue #12297: ArangoDB 3.6.5 Swagger Error?
   This issue caused the Swagger UI for displaying the APIs of user-defined Foxx
