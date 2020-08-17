@@ -1,6 +1,9 @@
 v3.7.2 (XXXX-XX-XX)
 ------------------------
 
+* Fixed hotbackup S3 credentials validation and error reporting for upload and
+  download.
+
 * Fixed a blockage on hotbackup when writes are happening concurrently, since
   followers could no longer replicate leader transactions.
 
