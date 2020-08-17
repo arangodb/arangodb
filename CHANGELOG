@@ -1,6 +1,9 @@
 v3.7.2 (XXXX-XX-XX)
 ------------------------
 
+* Fix: The 'sorted' COLLECT variant would return undefined instead of null when
+  grouping by a null value.
+
 * Fix: writeConcern is now honored correctly (ES-655).
 
 * Fixed internal issue #739: ArangoSearch filter volatility takes into account
