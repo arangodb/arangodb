@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixed a problem with potentially lost updates because a failover could
+  happen at a wrong time or a restarted leader could come back at an
+  unlucky time.
+
 * Fixed issue BTS-168: Fixed undefined behaviour that did trigger
   segfaults on cluster startups. It is only witnessed for
   MacOS based builds. The issue could be triggered by any network connection.
@@ -10,7 +14,6 @@ devel
   subqueries that contains a COLLECT statement if the subquery is itself called
 	from within a loop. Otherwise the COLLECT will be applied to the values in the
 	outer FOR loop, which can produce a different result.
-
 
 * Fixed a blockage on hotbackup when writes are happening concurrently, since
   followers could no longer replicate leader transactions.
