@@ -38,6 +38,7 @@ MasterContext::MasterContext(VertexAccumulators const* algorithm)
   _airMachine.setFunctionMember("vertex-count", &MasterContext::air_VertexCount, this);
   _airMachine.setFunctionMember("accum-ref", &MasterContext::air_AccumRef, this);
   _airMachine.setFunctionMember("accum-set!", &MasterContext::air_AccumSet, this);
+  _airMachine.setFunctionMember("accum-clear!", &MasterContext::air_AccumClear, this);
 }
 
 greenspun::EvalResult MasterContext::air_GotoPhase(greenspun::Machine& ctx,
@@ -104,6 +105,22 @@ greenspun::EvalResult MasterContext::air_AccumSet(greenspun::Machine& ctx,
   if (accum != nullptr) {
     accum->getAccumulator().setBySlice(value);
       return {};
+  }
+
+  return greenspun::EvalError("accumulator `" + std::string{accumId} +
+                              "` not found");
+}
+
+greenspun::EvalResult MasterContext::air_AccumClear(greenspun::Machine& ctx,
+                                                    VPackSlice const params,
+                                                    VPackBuilder& result) {
+  auto&& [accumId] = unpackTuple<std::string_view>(params);
+  std::string globalName = "[global]-";
+  globalName += accumId;
+  auto accum = getAggregator<VertexAccumulatorAggregator>(globalName);
+  if (accum != nullptr) {
+    accum->getAccumulator().clear();
+    return {};
   }
 
   return greenspun::EvalError("accumulator `" + std::string{accumId} +

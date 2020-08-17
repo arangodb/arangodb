@@ -60,6 +60,9 @@ void VertexComputation::registerLocalFunctions() {
   _airMachine.setFunctionMember("send-to-accum",  // " name:id -> to-vertex:pid -> value:any -> void ",
                           &VertexComputation::air_sendToAccum, this);
 
+  _airMachine.setFunctionMember("send-to-global-accum",  // " name:id -> value:any -> void ",
+                                &VertexComputation::air_sendToGlobalAccum, this);
+
   _airMachine.setFunctionMember("send-to-all-neighbours",  // " name:id -> value:any -> void ",
                           &VertexComputation::air_sendToAllNeighbours, this);
 
@@ -204,16 +207,27 @@ greenspun::EvalResult VertexComputation::air_sendToAccum(greenspun::Machine& ctx
 
     sendMessage(id, msg);
     return {};
-  } else {
-    std::string globalName = "[global]-";
-    globalName += accumId;
-    auto accum = dynamic_cast<VertexAccumulatorAggregator*>(
-      getWriteAggregator(globalName));
-    if (accum != nullptr) {
-      LOG_DEVEL << "update global accum " << accumId << " with value " << value.toJson();
-      accum->getAccumulator().updateByMessageSlice(value);
-      return {};
-    }
+  }
+  return greenspun::EvalError("vertex accumulator `" + std::string{accumId} +
+                              "` not found");
+}
+
+greenspun::EvalResult VertexComputation::air_sendToGlobalAccum(greenspun::Machine& ctx,
+                                                               VPackSlice const params,
+                                                               VPackBuilder& result) {
+  auto res = greenspun::extract<std::string, VPackSlice>(params);
+  if (res.fail()) {
+    return res.error();
+  }
+  auto&& [accumId, value] = res.value();
+  std::string globalName = "[global]-";
+  globalName += accumId;
+  auto accum = dynamic_cast<VertexAccumulatorAggregator*>(
+    getWriteAggregator(globalName));
+  if (accum != nullptr) {
+    LOG_DEVEL << "update global accum " << accumId << " with value " << value.toJson();
+    accum->getAccumulator().updateByMessageSlice(value);
+    return {};
   }
   return greenspun::EvalError("vertex accumulator `" + std::string{accumId} +
                    "` not found");
@@ -368,58 +382,53 @@ VertexAccumulators const& VertexComputation::algorithm() const {
 bool VertexComputation::processIncomingMessages(MessageIterator<MessageData> const& incomingMessages) {
   auto accumChanged = bool{false};
 
-  std::cout << "vertex: " << vertexData()._vertexId << " processing messages" << std::endl;
-
   for (const MessageData* msg : incomingMessages) {
     auto accumName = msg->_accumulatorName;
 
     auto&& accum = vertexData().accumulatorByName(accumName);
-
-    std::cout << " incoming message: " << msg->_value.slice().toJson() << std::endl;
-
     accumChanged |= accum->updateByMessageSlice(msg->_value.slice()) ==
                     AccumulatorBase::UpdateResult::CHANGED;
   }
-
-  std::cout << "vertex: " << vertexData()._vertexId << " processing messages done" << std::endl;
-
   return accumChanged;
 }
 
 greenspun::EvalResult VertexComputation::runProgram(greenspun::Machine& ctx, VPackSlice program) {
   VPackBuilder resultBuilder;
 
-  // A valid pregel program can at the moment return one of four values: true,
+  // A valid pregel program can at the moment return one of five values: none, true,
   // false, "vote-halt", or "vote-active"
   //
-  // if it returns "vote-halt" or false, then we voteHalt(), if it returns
-  // "vote-active" we voteActive()
+  // if it returns none, false, or "vote-halt", then we voteHalt(), if it returns
+  // true or "vote-active" we voteActive()
   //
-  // TODO: can this be done prettier?
+  // In all other cases we throw an error
   auto evaluateResult = [this](VPackSlice& rs) -> greenspun::EvalResult {
-                          if (rs.isBoolean()) {
-                            if (rs.getBoolean()) {
-                              this->voteActive();
-                              return {};
-                            } else {
-                              this->voteHalt();
-                              return {};
-                            }
-                          } else if (rs.isString()) {
-                            if (rs.stringRef().equals("vote-active")) {
-                              this->voteActive();
-                              return {};
-                            } else if (rs.stringRef().equals("vote-halt")) {
-                              this->voteHalt();
-                              return {};
-                            }
-                          }
-                          // Not a valid value, vote to halt and return error
-                          voteHalt();
-                          return greenspun::EvalError("pregel program returned " +
-                                                       rs.toJson() +
-                                                       ", expect one of `true`, `false`, `\"vote-halt\", or `\"vote-active\"`");
-                        };
+    if (rs.isNone()) {
+      this->voteHalt();
+      return {};
+    } else if (rs.isBoolean()) {
+      if (rs.getBoolean()) {
+        this->voteActive();
+        return {};
+      } else {
+        this->voteHalt();
+        return {};
+      }
+    } else if (rs.isString()) {
+      if (rs.stringRef().equals("vote-active")) {
+        this->voteActive();
+        return {};
+      } else if (rs.stringRef().equals("vote-halt")) {
+        this->voteHalt();
+        return {};
+      }
+    }
+    // Not a valid value, vote to halt and return error
+    voteHalt();
+    return greenspun::EvalError("pregel program returned " + rs.toJson() +
+                                ", expect one of `none`, `true`, `false`, "
+                                "`\"vote-halt\", or `\"vote-active\"`");
+  };
 
   auto evalResult = Evaluate(ctx, program, resultBuilder);
   if (!evalResult) {

@@ -794,7 +794,9 @@ TEST_CASE("Test [int-to-str] primitive", "[int-to-str]") {
  * Access operators
  */
 
-TEST_CASE("Test [attrib] primitive", "[attrib]") {}
+TEST_CASE("Test [attrib-ref] primitive", "[attrib-ref]") {
+  REQUIRE(false);
+}
 
 TEST_CASE("Test [var-ref] primitive", "[var-ref]") {
   Machine m;
@@ -813,14 +815,18 @@ TEST_CASE("Test [var-ref] primitive", "[var-ref]") {
     REQUIRE(result.slice().isNone());
   }
 }
-TEST_CASE("Test [bind-ref] primitive", "[bind-ref]") {}
-TEST_CASE("Test [accum-ref] primitive", "[accumref]") {}
+TEST_CASE("Test [var-set!] primitive", "[var-set!]") {
+  REQUIRE(false);
+}
 
-TEST_CASE("Test [this] primitive", "[this]") {}
-TEST_CASE("Test [update] primitive", "[update]") {}
-TEST_CASE("Test [set] primitive", "[set]") {}
-TEST_CASE("Test [for] primitive", "[for]") {}
-TEST_CASE("Test [global-superstep] primitive", "[global-superstep]") {}
+TEST_CASE("Test [bind-ref] primitive", "[bind-ref]") {
+  REQUIRE(false);
+}
+
+TEST_CASE("Test [for-each] primitive", "[for-each]") {
+  REQUIRE(false);
+}
+
 
 TEST_CASE("Test [lambda] primitive", "[lambda]") {
   Machine m;
@@ -1065,3 +1071,101 @@ TEST_CASE("Test [let] primitive", "[let]") {
     REQUIRE(res.fail());
   }
 }
+
+// TODO: HACK HACK HACK FIXME DO A COMPARE FUNCTION FOR OBJECTS
+TEST_CASE("Test [dict] primitive", "[dict]") {
+  Machine m;
+  InitMachine(m);
+  VPackBuilder result;
+
+  SECTION("no content") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["dict"]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().toJson() == "{}");
+  }
+
+  SECTION("one content") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["dict", ["quote", "a", 5]]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().toJson() == R"json({"a":5})json");
+  }
+
+  SECTION("two content") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["dict", ["quote", "a", 5], ["quote", "b", "abc"]]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().toJson() == R"json({"a":5,"b":"abc"})json");
+  }
+}
+
+TEST_CASE("Test [str] primitive", "[str]") {
+  Machine m;
+  InitMachine(m);
+  VPackBuilder result;
+
+  SECTION("no content") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["str"]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().isString());
+    REQUIRE(result.slice().copyString() == "");
+  }
+
+  SECTION("one content") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["str", "yello"]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().isString());
+    REQUIRE(result.slice().copyString() == "yello");
+  }
+
+  SECTION("two content") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["str", "yello", "world"]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().isString());
+    REQUIRE(result.slice().copyString() == "yelloworld");
+  }
+
+  // TODO error testing
+}
+
+// TODO: this is not a language primitive but part of `VertexComputation`
+TEST_CASE("Test [accum-ref] primitive", "[accumref]") {}
+TEST_CASE("Test [this] primitive", "[this]") {}
+TEST_CASE("Test [send-to-accum] primitive", "[send-to-accum]") {}
+TEST_CASE("Test [send-to-all-neighbours] primitive", "[send-to-all-neighbours]") {}
+TEST_CASE("Test [global-superstep] primitive", "[global-superstep]") {}
+
