@@ -427,6 +427,7 @@ void RegisterAllPrimitives(Machine& ctx) {
 
   // Debug operators
   ctx.setFunction("print", Prim_PrintLn);
+  ctx.setFunction("error", Prim_Error);
 
   // Lambdas
   ctx.setFunction("lambda", Prim_Lambda);
