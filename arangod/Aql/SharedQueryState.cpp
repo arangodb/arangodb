@@ -44,7 +44,6 @@ void SharedQueryState::waitForAsyncWakeup() {
   std::unique_lock<std::mutex> guard(_mutex);
   if (!_valid) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-    return;
   }
   
   TRI_ASSERT(!_wakeupCb);
