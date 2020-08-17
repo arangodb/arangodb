@@ -22,10 +22,16 @@ devel
   when the removal of `tmp1` and `tmp2` makes it possible to also remove the 
   calculation of `value`.
 
+* Fixed issue BTS-168: Fixed undefined behavior that did trigger
+  segfaults on cluster startups. It is only witnessed for
+  MacOS based builds. The issue could be triggered by any network connection.
+  This behavior is not part of any released version.
+
 * Fixed issue ES-664: the optimizer rule `inline-subqueries` must pull out
   subqueries that contains a COLLECT statement if the subquery is itself called
 	from within a loop. Otherwise the COLLECT will be applied to the values in the
 	outer FOR loop, which can produce a different result.
+
 
 * Fixed a blockage on hotbackup when writes are happening concurrently, since
   followers could no longer replicate leader transactions.
