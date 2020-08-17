@@ -523,12 +523,14 @@ class IRESEARCH_API index_writer
   ////////////////////////////////////////////////////////////////////////////
   uint64_t buffered_docs() const;
 
+  typedef std::function<bool(uint64_t, bstring&)> before_commit_f;
+
   ////////////////////////////////////////////////////////////////////////////
   /// @brief Clears the existing index repository by staring an empty index.
   ///        Previously opened readers still remain valid.
   /// @note call will rollback any opened transaction
   ////////////////////////////////////////////////////////////////////////////
-  void clear();
+  void clear(uint64_t tick, const before_commit_f& before_commit);
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief merges segments accepted by the specified defragment policty into
@@ -604,8 +606,7 @@ class IRESEARCH_API index_writer
     return comparator_;
   }
 
-  typedef std::function<bool(uint64_t, bstring&)> before_commit_f;
-
+  
   ////////////////////////////////////////////////////////////////////////////
   /// @brief begins the two-phase transaction
   /// @param payload arbitrary user supplied data to store in the index

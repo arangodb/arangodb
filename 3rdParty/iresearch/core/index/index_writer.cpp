@@ -1237,7 +1237,7 @@ index_writer::index_writer(
   flush_context_pool_[flush_context_pool_.size() - 1].next_context_ = &flush_context_pool_[0];
 }
 
-void index_writer::clear() {
+void index_writer::clear(uint64_t tick, const before_commit_f& before_commit) {
   SCOPED_LOCK(commit_lock_);
 
   if (!pending_state_
@@ -1261,6 +1261,10 @@ void index_writer::clear() {
 
   // setup new meta
   pending_meta.update_generation(meta_); // clone index metadata generation
+  pending_meta.payload_buf_.clear();
+  if (before_commit && before_commit(tick, pending_meta.payload_buf_)) {
+    pending_meta.payload_ = pending_meta.payload_buf_;
+  }
   pending_meta.seg_counter_.store(meta_.counter()); // ensure counter() >= max(seg#)
 
   // rollback already opened transaction if any

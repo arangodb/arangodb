@@ -358,7 +358,7 @@ bool IResearchLink::operator==(IResearchLinkMeta const& meta) const noexcept {
   return _meta == meta;
 }
 
-void IResearchLink::afterTruncate() {
+void IResearchLink::afterTruncate(TRI_voc_tick_t tick) {
   SCOPED_LOCK(_asyncSelf->mutex());  // '_dataStore' can be asynchronously modified
 
   if (!*_asyncSelf) {
@@ -372,7 +372,8 @@ void IResearchLink::afterTruncate() {
   TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
 
   try {
-    _dataStore._writer->clear();
+
+    _dataStore._writer->clear(tick, _before_commit);
     _dataStore._reader = _dataStore._reader.reopen();
   } catch (std::exception const& e) {
     LOG_TOPIC("a3c57", ERR, iresearch::TOPIC)
