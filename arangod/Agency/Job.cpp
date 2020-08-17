@@ -457,7 +457,11 @@ std::vector<Job::shard_t> Job::clones(Node const& snapshot, std::string const& d
 }
 
 std::string Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOOD" health
-    Node const& snap, std::string const& db, std::string const& col, std::string const& shrd) {
+    Node const& snap, std::string const& db, std::string const& col, std::string const& shrd,
+    std::string const& serverToAvoid) {
+  // serverToAvoid is the leader for which we are seeking a replacement. Note that
+  // it is not a given that this server is the first one in Current/servers or
+  // Current/failoverCandidates.
   auto cs = clones(snap, db, col, shrd);  // clones
   auto nclones = cs.size();               // #clones
   std::unordered_map<std::string, bool> good;
@@ -499,13 +503,12 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOO
     // Guaranteed by if above
     TRI_ASSERT(serverList.isArray());
 
-    size_t i = 0;
     for (const auto& server : VPackArrayIterator(serverList)) {
-      if (i++ == 0) {
-        // Skip leader
+      auto id = server.copyString();
+      if (id == serverToAvoid) {
+        // Skip current leader for which we are seeking a replacement
         continue;
       }
-      auto id = server.copyString();
 
       if (!good[id]) {
         // Skip unhealthy servers
