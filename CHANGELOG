@@ -1,6 +1,10 @@
 v3.7.2 (XXXX-XX-XX)
 -------------------
 
+* Fixed a problem with potentially lost updates because a failover could
+  happen at a wrong time or a restarted leader could come back at an
+  unlucky time.
+
 * Improve performance of internal cluster Plan and Current reload operations.
 
 * Updated arangosync to 0.7.9.
