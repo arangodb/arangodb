@@ -19,6 +19,9 @@ v3.7.2 (XXXX-XX-XX)
 
 * Added AQL function `PRODUCT` to calculate the product of an array.
 
+* Fixed a blockage on hotbackup when writes are happening concurrently, since
+  followers could no longer replicate leader transactions.
+
 * Improve performance of internal cluster Plan and Current reload operations.
 
 * Updated arangosync to 0.7.9.

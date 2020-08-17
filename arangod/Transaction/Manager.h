@@ -27,6 +27,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/ReadWriteSpinLock.h"
 #include "Basics/Result.h"
+#include "Logger/LogMacros.h"
 #include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
@@ -98,10 +99,12 @@ class Manager final {
   explicit Manager(ManagerFeature& feature);
 
   // register a transaction
-  void registerTransaction(TRI_voc_tid_t transactionId, bool isReadOnlyTransaction);
+  void registerTransaction(TRI_voc_tid_t transactionId, bool isReadOnlyTransaction,
+                           bool isFollowerTransaction);
 
   // unregister a transaction
-  void unregisterTransaction(TRI_voc_tid_t transactionId, bool isReadOnlyTransaction);
+  void unregisterTransaction(TRI_voc_tid_t transactionId, bool isReadOnlyTransaction,
+                             bool isFollowerTransaction);
 
   uint64_t getActiveTransactionCount();
 
@@ -162,9 +165,13 @@ class Manager final {
     std::unique_lock<std::mutex> guard(_mutex);
     bool ret = false;
     if (!_writeLockHeld) {
+      LOG_TOPIC("eedda", TRACE, Logger::TRANSACTIONS) << "Trying to get write lock to hold transactions...";
       ret = _rwLock.writeLock(timeout);
       if (ret) {
+        LOG_TOPIC("eeddb", TRACE, Logger::TRANSACTIONS) << "Got write lock to hold transactions.";
         _writeLockHeld = true;
+      } else {
+        LOG_TOPIC("eeddc", TRACE, Logger::TRANSACTIONS) << "Did not get write lock to hold transactions.";
       }
     }
     return ret;
@@ -174,6 +181,7 @@ class Manager final {
   void releaseTransactions() {
     std::unique_lock<std::mutex> guard(_mutex);
     if (_writeLockHeld) {
+      LOG_TOPIC("eeddd", TRACE, Logger::TRANSACTIONS) << "Releasing write lock to hold transactions.";
       _rwLock.unlockWrite();
       _writeLockHeld = false;
     }
@@ -209,6 +217,7 @@ class Manager final {
 
   /// Nr of running transactions
   std::atomic<uint64_t> _nrRunning;
+  std::atomic<uint64_t> _nrReadLocked;
 
   std::atomic<bool> _disallowInserts;
 

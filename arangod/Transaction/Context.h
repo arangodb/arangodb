@@ -108,7 +108,9 @@ class Context {
   /// @brief unregister the transaction
   /// this will save the transaction's id and status locally
   void storeTransactionResult(TRI_voc_tid_t id, 
-                              bool wasRegistered, bool isReadOnlyTransaction) noexcept;
+                              bool wasRegistered,
+                              bool isReadOnlyTransaction,
+                              bool isFollowerTransaction) noexcept;
 
  public:
   /// @brief get a custom type handler
@@ -164,6 +166,7 @@ class Context {
   struct {
     TRI_voc_tid_t id;
     bool isReadOnlyTransaction;
+    bool isFollowerTransaction;
   } _transaction;
 
   bool _ownsResolver;
