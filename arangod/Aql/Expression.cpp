@@ -626,7 +626,7 @@ AqlValue Expression::executeSimpleExpressionArray(AstNode const* node,
 
   builder->close();
   mustDestroy = true;  // AqlValue contains builder contains dynamic data
-  return AqlValue(builder->slice());
+  return AqlValue(builder->slice(), builder->size());
 }
 
 /// @brief execute an expression of type SIMPLE with OBJECT
@@ -740,7 +740,7 @@ AqlValue Expression::executeSimpleExpressionObject(AstNode const* node,
 
   mustDestroy = true;  // AqlValue contains builder contains dynamic data
 
-  return AqlValue(builder->slice());
+  return AqlValue(builder->slice(), builder->size());
 }
 
 /// @brief execute an expression of type SIMPLE with VALUE
@@ -929,7 +929,7 @@ AqlValue Expression::invokeV8Function(ExpressionContext* expressionContext,
   }
 
   mustDestroy = true;  // builder = dynamic data
-  return AqlValue(builder->slice());
+  return AqlValue(builder->slice(), builder->size());
 }
 
 /// @brief execute an expression of type SIMPLE, JavaScript variant
