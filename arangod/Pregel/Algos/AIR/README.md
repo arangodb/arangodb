@@ -57,6 +57,9 @@ arangosh> var pexec = pp.execute("WikiVoteGraph",
 
  * attrib-ref -- `["attrib-ref", doc, key]`, `["attrib-ref", doc, [p ...]]`, in the first variant, extract attribute `key` from `doc`, in the second variant extract attribute with path `p/...` from doc
  * attrib-set -- `["attrib-set", obj, key, value]` in `obj` set attribute `key` to `value` => returns mod. obj 
+ * attrib-set-val -- `["TODO"]`
+ 
+ * merge -- `["merge", leftSlice, rightSlice]` returns the merge of two object slices 
 
  * print -- `["print", expr ...]` print `expr` for each `expr`. 
 

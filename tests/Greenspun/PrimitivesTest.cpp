@@ -815,6 +815,7 @@ TEST_CASE("Test [var-ref] primitive", "[var-ref]") {
     REQUIRE(result.slice().isNone());
   }
 }
+
 TEST_CASE("Test [var-set!] primitive", "[var-set!]") {
   REQUIRE(false);
 }
@@ -1160,6 +1161,45 @@ TEST_CASE("Test [str] primitive", "[str]") {
   }
 
   // TODO error testing
+}
+
+TEST_CASE("Test [merge] primitive", "[merge]") {
+  Machine m;
+  InitMachine(m);
+  VPackBuilder result;
+
+  SECTION("Merge with empty (left) object") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["merge", {}, {"hello": "world"}]
+    )aql");
+
+    Evaluate(m, program->slice(), result);
+    REQUIRE(result.slice().isObject());
+    REQUIRE(result.slice().get("hello").isString());
+    REQUIRE(result.slice().get("hello").toString() == "world");
+  }
+
+  SECTION("Merge with empty (right) object") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["merge", {"hello": "world"}, {}]
+    )aql");
+
+    Evaluate(m, program->slice(), result);
+    REQUIRE(result.slice().isObject());
+    REQUIRE(result.slice().get("hello").isString());
+    REQUIRE(result.slice().get("hello").toString() == "world");
+  }
+
+  SECTION("Merge with empty (overwrite) object") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["merge", {"hello": "world"}, {"hello": "newWorld"}]
+    )aql");
+
+    Evaluate(m, program->slice(), result);
+    REQUIRE(result.slice().isObject());
+    REQUIRE(result.slice().get("hello").isString());
+    REQUIRE(result.slice().get("hello").toString() == "newWorld");
+  }
 }
 
 // TODO: this is not a language primitive but part of `VertexComputation`

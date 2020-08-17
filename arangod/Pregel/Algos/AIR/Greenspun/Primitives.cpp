@@ -484,6 +484,7 @@ void RegisterAllPrimitives(Machine& ctx) {
   // Access operators
   ctx.setFunction("attrib-ref", Prim_AttribRef);
   ctx.setFunction("attrib-set!", Prim_AttribSet);
+  ctx.setFunction("merge", Prim_MergeObject);
 
   ctx.setFunction("var-ref", Prim_VarRef);
   ctx.setFunction("var-set!", Prim_VarSet);
