@@ -6,6 +6,15 @@ v3.7.2 (XXXX-XX-XX)
 
 * Added AQL function `PRODUCT` to calculate the product of an array.
 
+* Improve performance of internal cluster Plan and Current reload operations.
+
+* Updated arangosync to 0.7.9.
+
+* Fixed issue #12349: arangosh compact Arangoerror 404.
+
+* Improve performance of many non-subquery AQL queries, by optimizing away some
+  storage overhead for subquery context data.
+
 * Always fetch data for /_api/cluster/agency-dump from leader of the agency.
   Add option "redirectToLeader=true" to internal /_api/agency/state API.
 

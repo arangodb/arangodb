@@ -130,7 +130,7 @@ SharedAqlItemBlockPtr buildBlock(AqlItemBlockManager& manager,
 
   if (!shadowRows.empty()) {
     for (auto const& it : shadowRows) {
-      block->setShadowRowDepth(it.first, AqlValue(AqlValueHintUInt(it.second)));
+      block->makeShadowRow(it.first, it.second);
     }
   }
 
