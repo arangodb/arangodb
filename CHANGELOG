@@ -28,6 +28,9 @@ v3.7.2 (XXXX-XX-XX)
 
 * Added AQL function `PRODUCT` to calculate the product of an array.
 
+* Fixed that dropping a vanished follower works again. An exception response
+  to the replication request is now handled properly.
+
 * Improve performance of internal cluster Plan and Current reload operations.
 
 * Updated arangosync to 0.7.9.
