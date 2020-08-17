@@ -1,6 +1,27 @@
 devel
 -----
 
+* Make optimizer rule "remove-filters-covered-by-index" remove FILTERs that were
+  referring to aliases of the collection variable, e.g.
+    
+      FOR doc IN collection
+        LET value = doc.indexedAttribute
+        FILTER value == ...
+
+  Previously, FILTERs that were using aliases were not removed by that optimizer
+  rule.
+  In addition, the optimizer rule "remove-unnecessary-calculations" will now run
+  again in case it successfully removed variables. This can unlock further removal
+  of unused variables in sequences such as
+
+      FOR doc IN collection
+        LET value = doc.indexedAttribute
+        LET tmp1 = value > ...
+        LET tmp2 = value < ...
+
+  when the removal of `tmp1` and `tmp2` makes it possible to also remove the 
+  calculation of `value`.
+
 * Fixed issue ES-664: the optimizer rule `inline-subqueries` must pull out
   subqueries that contains a COLLECT statement if the subquery is itself called
 	from within a loop. Otherwise the COLLECT will be applied to the values in the
