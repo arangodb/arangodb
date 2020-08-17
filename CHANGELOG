@@ -1,6 +1,9 @@
 v3.7.2 (XXXX-XX-XX)
 -------------------
 
+* Fixed OASIS-278 issue: Added proper sort/calc nodes cleanup for late
+  materialzation after OneShard optimization.
+
 * Slightly improve the performance of cluster DDL maintenance operations.
 
 * Added AQL functions `IS_IPV4`, `IPV4_TO_NUMBER`, `IPV4_FROM_NUMBER` for IPv4
