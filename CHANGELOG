@@ -1,4 +1,5 @@
 
+v3.7.2 (XXXX-XX-XX)
 * Fixed hotbackup S3 credentials validation and error reporting for upload and
   download.
 
