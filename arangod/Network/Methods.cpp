@@ -121,11 +121,7 @@ static std::unique_ptr<fuerte::Response> buildResponse(fuerte::StatusCode status
     builder.add(StaticStrings::Error, VPackValue(errorNum != TRI_ERROR_NO_ERROR));
     builder.add(StaticStrings::ErrorNum, VPackValue(errorNum));
     if (errorNum != TRI_ERROR_NO_ERROR) {
-      if (res.errorMessage().empty()) {
-        builder.add(StaticStrings::ErrorMessage, VPackValue(TRI_errno_string(errorNum)));
-      } else {
-        builder.add(StaticStrings::ErrorMessage, VPackValue(res.errorMessage()));
-      }
+      builder.add(StaticStrings::ErrorMessage, VPackValue(res.errorMessage()));
     }
     builder.add(StaticStrings::Code, VPackValue(static_cast<int>(statusCode)));
   }
