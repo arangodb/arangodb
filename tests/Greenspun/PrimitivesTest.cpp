@@ -1190,7 +1190,7 @@ TEST_CASE("Test [merge] primitive", "[merge]") {
     REQUIRE(result.slice().get("hello").toString() == "world");
   }
 
-  SECTION("Merge with empty (overwrite) object") {
+  SECTION("Merge with overwrite") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
       ["merge", {"hello": "world"}, {"hello": "newWorld"}]
     )aql");
@@ -1199,6 +1199,42 @@ TEST_CASE("Test [merge] primitive", "[merge]") {
     REQUIRE(result.slice().isObject());
     REQUIRE(result.slice().get("hello").isString());
     REQUIRE(result.slice().get("hello").toString() == "newWorld");
+  }
+
+  SECTION("Merge with invalid type string") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["merge", {"hello": "world"}, "peter"]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    REQUIRE(res.fail());
+  }
+
+  SECTION("Merge with invalid type double") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["merge", {"hello": "world"}, "2.0"]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    REQUIRE(res.fail());
+  }
+
+  SECTION("Merge with invalid type bool") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["merge", {"hello": "world"}, true]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    REQUIRE(res.fail());
+  }
+
+  SECTION("Merge with invalid type array") {
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["merge", {"hello": "world"}, [1,2,3]]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    REQUIRE(res.fail());
   }
 }
 
