@@ -181,7 +181,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
         _index(index),
         _cmp(static_cast<RocksDBVPackComparator const*>(index->comparator())),
         _bounds(std::move(bounds)),
-        _fullEnumerationObjectId(0),
         _mustSeek(true) {
     TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::vpack());
 
@@ -192,21 +191,9 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     if constexpr (reverse) {
       _rangeBound = _bounds.start();
       options.iterate_lower_bound = &_rangeBound;
-      VPackSlice s = VPackSlice(reinterpret_cast<uint8_t const*>(_rangeBound.data() + sizeof(uint64_t)));
-      if (s.isArray() && s.length() == 1 && s.at(0).isMinKey()) {
-        // lower bound is the min key. that means we can get away with a
-        // cheap outOfBounds comparator
-        _fullEnumerationObjectId = _index->objectId();
-      }
     } else {
       _rangeBound = _bounds.end();
       options.iterate_upper_bound = &_rangeBound;
-      VPackSlice s = VPackSlice(reinterpret_cast<uint8_t const*>(_rangeBound.data() + sizeof(uint64_t)));
-      if (s.isArray() && s.length() == 1 && s.at(0).isMaxKey()) {
-        // upper bound is the max key. that means we can get away with a
-        // cheap outOfBounds comparator
-        _fullEnumerationObjectId = _index->objectId();
-      }
     }
 
     TRI_ASSERT(options.prefix_same_as_start);
@@ -319,15 +306,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
  private:
   inline bool outOfRange() const {
-    if (_fullEnumerationObjectId) {
-      // we are enumerating the entire index range for a collection,
-      // so we can use a cheap comparator that only checks the index' objectId.
-      // there is no need to do a function call into the comparator here 
-      // (even though its type is know here), or to compare the 
-      // indexed velocypack values at all.
-      return (arangodb::rocksutils::uint64FromPersistent(_iterator->key().data()) != _fullEnumerationObjectId);
-    }
-
     // we are enumerating a subset of the index values of a collection
     // so we really need to run the full-featured (read: expensive)
     // comparator
@@ -369,7 +347,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   RocksDBKeyBounds _bounds;
   // used for iterate_upper_bound iterate_lower_bound
   rocksdb::Slice _rangeBound;
-  uint64_t _fullEnumerationObjectId;
   bool _mustSeek;
 };
 
@@ -953,6 +930,22 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::lookup(transaction::Methods* t
                                                          VPackSlice const searchValues, bool reverse) const {
   TRI_ASSERT(searchValues.isArray());
   TRI_ASSERT(searchValues.length() <= _fields.size());
+
+  if (ADB_UNLIKELY(searchValues.length() == 0)) {
+    // full range search
+    RocksDBKeyBounds bounds =
+        _unique ? RocksDBKeyBounds::UniqueVPackIndex(objectId(), reverse)
+                : RocksDBKeyBounds::VPackIndex(objectId(), reverse);
+
+    if (reverse) {
+      // reverse version
+      return std::make_unique<RocksDBVPackIndexIterator<true>>(&_collection, trx, this,
+                                                               std::move(bounds));
+    }
+    // forward version
+    return std::make_unique<RocksDBVPackIndexIterator<false>>(&_collection, trx, this,
+                                                              std::move(bounds));
+  }
 
   VPackBuilder leftSearch;
 

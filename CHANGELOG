@@ -1,7 +1,43 @@
-v3.7.x (XXXX-XX-XX)
+v3.7.2 (XXXX-XX-XX)
 -------------------
 
 * Slightly improve the performance of cluster DDL maintenance operations.
+
+* Added AQL functions `IS_IPV4`, `IPV4_TO_NUMBER`, `IPV4_FROM_NUMBER` for IPv4
+  address checks and conversions.
+
+* Added AQL function `PRODUCT` to calculate the product of an array.
+
+* Improve performance of internal cluster Plan and Current reload operations.
+
+* Updated arangosync to 0.7.9.
+
+* Fixed issue #12349: arangosh compact Arangoerror 404.
+
+* Improve performance of many non-subquery AQL queries, by optimizing away some
+  storage overhead for subquery context data.
+
+* Always fetch data for /_api/cluster/agency-dump from leader of the agency.
+  Add option "redirectToLeader=true" to internal /_api/agency/state API.
+
+* Fixed regression with view use-after-create in cluster (BTS-137).
+
+* Slightly improved the performance of some k-shortest-path queries.
+
+
+v3.7.1 (2020-08-07)
+-------------------
+
+* Fixed issue #12297: ArangoDB 3.6.5 Swagger Error?
+  This issue caused the Swagger UI for displaying the APIs of user-defined Foxx
+  services to remain invisible in the web UI, because of a JavaScript exception.
+  This PR fixes the JavaScript exception, so the services API is displayed
+  again properly.
+
+* Fixed issue #12248: Web UI on 3.6.5: 404 error on adding new index.
+  This issue caused "404: not found" errors when creating indexes via the web
+  UI. The indexes were created successfully despite the error message popping
+  up. This fix removes the misleading unconditional error message.
 
 
 v3.7.1-rc.1 (2020-07-24)

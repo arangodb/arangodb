@@ -198,11 +198,10 @@ QueryStreamCursor::~QueryStreamCursor() {
   }
   // cursor is canceled or timed-out
   cleanupStateCallback();
+  // remove the continue handler we may have registered in the query
+  _query->sharedState()->resetWakeupHandler();
 
   _queryResults.clear();
-
-  // now remove the continue handler we may have registered in the query
-  _query->sharedState()->invalidate();
 
   // Query destructor will cleanup plan and abort transaction
   _query.reset();

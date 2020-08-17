@@ -44,7 +44,8 @@ In a cluster setup, the result will also contain the following attributes:
 
 * *replicationFactor*: determines how many copies of each shard are kept
   on different DB-Servers. Has to be in the range of 1-10 or the string
-  `"satellite"` for a SatelliteCollection. _(cluster only)_
+  `"satellite"` for a SatelliteCollection (Enterprise Edition only).
+  _(cluster only)_
 
 * *writeConcern*: determines how many copies of each shard are required to be
   in sync on the different DB-Servers. If there are less then these many copies
@@ -69,7 +70,8 @@ one or more of the following attribute(s):
 
 * *replicationFactor*: Change the number of shard copies kept on
   different DB-Servers. Valid values are integer numbers in the range of 1-10
-  or the string `"satellite"` for a SatelliteCollection. _(cluster only)_
+  or the string `"satellite"` for a SatelliteCollection (Enterprise Edition only).
+  _(cluster only)_
 
 * *writeConcern*: change how many copies of each shard are required to be
   in sync on the different DB-Servers. If there are less then these many copies
