@@ -1722,12 +1722,7 @@ again:
   } else if (!body->IsNullOrUndefined()) {
     VPackBuffer<uint8_t> buffer;
     VPackBuilder builder(buffer, &_vpackOptions);
-    int res = TRI_V8ToVPack(isolate, builder, body, false);
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   std::string("error converting request body: ") + TRI_errno_string(res));
-      return v8::Undefined(isolate);
-    }
+    TRI_V8ToVPack(isolate, builder, body, false);
     if (_forceJson) {
       auto resultJson = builder.slice().toJson();
       char const* resStr = resultJson.c_str();
@@ -1817,12 +1812,7 @@ again:
   } else if (!body->IsNullOrUndefined()) {
     VPackBuffer<uint8_t> buffer;
     VPackBuilder builder(buffer);
-    int res = TRI_V8ToVPack(isolate, builder, body, false);
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC("10318", ERR, Logger::V8)
-          << "error converting request body: " << TRI_errno_string(res);
-      return v8::Null(isolate);
-    }
+    TRI_V8ToVPack(isolate, builder, body, false);
     req->addVPack(std::move(buffer));
     req->header.contentType(fu::ContentType::VPack);
   } else {
