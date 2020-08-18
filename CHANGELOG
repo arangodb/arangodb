@@ -3,8 +3,11 @@ v3.6.6 (XXXX-XX-XX)
 
 * Fixed BTS-167: Lingering Queries - Canceled from the UI.
   This fixes queries not vanishing from the list of running queries in the web
-  UI in case the query was canceled using the "Cancel" button in web UI's
-  query editor.
+  UI in case the query was canceled using the "Cancel" button in web UI's query
+  editor.
+
+* Fixed bad behaviour in agency supervision in some corner cases involving
+  already resigned leaders in Current.
 
 * Fixed internal issue #748: Fixed reading of primary sort values for late
   materialization (of ArangoSearch views).
