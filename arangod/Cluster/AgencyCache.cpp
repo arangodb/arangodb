@@ -235,7 +235,7 @@ void AgencyCache::run() {
     [&]() {
       index_t commitIndex = 0;
       {
-        std::lock_guard g(_storeLock);
+        std::shared_lock_guard g(_storeLock);
         commitIndex = _commitIndex + 1;
       }
       LOG_TOPIC("afede", TRACE, Logger::CLUSTER)
