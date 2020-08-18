@@ -219,30 +219,17 @@ EvalResult Prim_AttribRef(Machine& ctx, VPackSlice const params, VPackBuilder& r
   return {};
 }
 
-EvalResult Prim_AttribSet(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  // TODO HEIKO
-  if (!params.isArray() && params.length() != 3) {
-    return EvalError("expected exactly three parameters");
-  }
-
-  auto&& [key, slice] = unpackTuple<VPackSlice, VPackSlice>(params);
-  if (!slice.isObject()) {
-    return EvalError("expect second parameter to be an object");
-  }
-
-  if (key.isString()) {
-    result.add(slice.get(key.stringRef()));
-  } else if (key.isArray()) {
-    std::vector<VPackStringRef> path;
-    for (auto&& pathStep : VPackArrayIterator(key)) {
-      if (!pathStep.isString()) {
-        return EvalError("expected string in key arrays");
+EvalResult Prim_Dict(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  VPackObjectBuilder ob(&result);
+  for (auto&& pair : VPackArrayIterator(params)) {
+    if (pair.length() == 2) {
+      if (pair.at(0).isString()) {
+        result.add(pair.at(0).stringRef(), pair.at(1));
+        continue;
       }
-      path.emplace_back(pathStep.stringRef());
     }
-    result.add(slice.get(path));
-  } else {
-    return EvalError("key is neither array nor string");
+
+    return EvalError("expected pairs of string and slice");
   }
   return {};
 }
@@ -252,20 +239,19 @@ EvalResult Prim_AttribSetVal(Machine& ctx, VPackSlice const params, VPackBuilder
   return {};
 }
 
-EvalResult Prim_MergeObject(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_MergeDict(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (!params.isArray() && params.length() != 2) {
     return EvalError("expected exactly two parameters");
   }
 
-  if (params.at(0).isObject() && params.at(1).isObject()) {
-    VPackSlice left = params.at(0);
-    VPackSlice right = params.at(1);
-    result = VPackCollection::merge(left, right, true, false);
-  } else {
-    return EvalError("expteded object, found: " + params.at(0).toJson() +
-                     " - " + params.at(1).toJson());
+  if (!params.at(0).isObject()) {
+    return EvalError("expected object, found: " + params.at(0).toJson());
+  }
+  if (!params.at(1).isObject()) {
+    return EvalError("expected object, found: " + params.at(1).toJson());
   }
 
+  result = VPackCollection::merge(params.at(0), params.at(1), true, false);
   return {};
 }
 
@@ -373,18 +359,24 @@ EvalResult Prim_List(Machine& ctx, VPackSlice const params, VPackBuilder& result
   return {};
 }
 
-EvalResult Prim_Dict(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  VPackObjectBuilder ob(&result);
-  for (auto&& pair : VPackArrayIterator(params)) {
-    if (pair.length() == 2) {
-      if (pair.at(0).isString()) {
-        result.add(pair.at(0).stringRef(), pair.at(1));
-        continue;
-      }
-    }
-
-    return EvalError("expected pairs of string and slice");
+EvalResult Prim_AttribSet(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  if (!params.isArray() && params.length() != 2) {
+    return EvalError("expected exactly two parameters");
   }
+
+  auto&& [key, slice] = unpackTuple<VPackSlice, VPackSlice>(params);
+  if (!params.at(0).isObject()) {
+    return EvalError("expect first parameter to be an object");
+  }
+
+  VPackBuilder tmp;
+  VPackObjectBuilder ob(&tmp);
+
+  auto intermediateResult = Prim_Dict(ctx, params.at(1), tmp);
+  if (intermediateResult.fail()) {
+    return intermediateResult;
+  }
+
   return {};
 }
 
@@ -483,7 +475,7 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("attrib-ref", Prim_AttribRef);
   ctx.setFunction("attrib-set!", Prim_AttribSet);
 
-  ctx.setFunction("merge", Prim_MergeObject);
+  ctx.setFunction("dict-merge", Prim_MergeDict);
 
   ctx.setFunction("var-ref", Prim_VarRef);
   ctx.setFunction("var-set!", Prim_VarSet);
