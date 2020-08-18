@@ -190,7 +190,7 @@ bool FailedLeader::start(bool& aborts) {
 
   // Get healthy in Sync follower common to all prototype + clones
   auto commonHealthyInSync =
-      findNonblockedCommonHealthyInSyncFollower(_snapshot, _database, _collection, _shard);
+      findNonblockedCommonHealthyInSyncFollower(_snapshot, _database, _collection, _shard, _from);
   if (commonHealthyInSync.empty()) {
     return false;
   } else {
@@ -272,9 +272,17 @@ bool FailedLeader::start(bool& aborts) {
         {
           VPackArrayBuilder servers(&ns);
           ns.add(VPackValue(_to));
+          // We prefer servers in sync and want to put them early in the new Plan
+          // (behind the leader). This helps so that RemoveFollower prefers others
+          // to remove.
           for (auto const& i : VPackArrayIterator(current)) {
             std::string s = i.copyString();
+            if (s.size() > 0 && s[0] == '_') {
+              s = s.substr(1);
+            }
             if (s != _from && s != _to) {
+              TRI_ASSERT(std::find(planv.begin(), planv.end(), s) != planv.end());
+              // A server in Current ought to be in the Plan, if not, we want to know this.
               ns.add(i);
               planv.erase(std::remove(planv.begin(), planv.end(), s), planv.end());
             }

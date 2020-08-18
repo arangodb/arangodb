@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed bad behaviour in agency supervision in some corner cases involving
+  already resigned leaders in Current.
+
 * Fixed a problem with potentially lost updates because a failover could
   happen at a wrong time or a restarted leader could come back at an
   unlucky time.
