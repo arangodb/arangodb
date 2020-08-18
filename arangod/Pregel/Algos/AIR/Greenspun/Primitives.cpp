@@ -333,6 +333,31 @@ EvalResult Prim_List(Machine& ctx, VPackSlice const params, VPackBuilder& result
   return {};
 }
 
+EvalResult Prim_ArrayRef(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  if (!params.isArray() && params.length() != 2) {
+    return EvalError("expected exactly two parameters");
+  }
+
+  auto&& arr = params.at(0);
+  auto&& index = params.at(1);
+
+  if (!arr.isArray()) {
+    return EvalError("expect first parameter to be an array");
+  }
+
+  if (!index.isNumber()) {
+    return EvalError("expect second parameter to be a number");
+  }
+
+  if (index.getUInt() > (arr.length() - 1)) {
+    return EvalError("array index is out of bounds");
+  }
+
+  result.add(arr.at(index.getUInt()));
+
+  return {};
+}
+
 EvalResult Prim_AttribRef(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (!params.isArray() && params.length() != 2) {
     return EvalError("expected exactly two parameters");
@@ -468,11 +493,13 @@ EvalResult Prim_Lambda(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
   return {};
 }
 
-EvalResult EvaluateApply(Machine& ctx, VPackSlice const functionSlice, VPackArrayIterator paramIterator, VPackBuilder& result);
+EvalResult EvaluateApply(Machine& ctx, VPackSlice const functionSlice,
+                         VPackArrayIterator paramIterator, VPackBuilder& result);
 
 EvalResult Prim_Apply(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
   if (!paramsList.isArray() || paramsList.length() != 2) {
-    return EvalError("expected one function argument on one list of parameters");
+    return EvalError(
+        "expected one function argument on one list of parameters");
   }
 
   auto functionSlice = paramsList.at(0);
@@ -528,6 +555,7 @@ void RegisterAllPrimitives(Machine& ctx) {
   // Access operators
   ctx.setFunction("attrib-ref", Prim_AttribRef);
   ctx.setFunction("attrib-set", Prim_AttribSet);
+  ctx.setFunction("array-ref", Prim_ArrayRef);
 
   ctx.setFunction("dict-merge", Prim_MergeDict);
 
