@@ -92,10 +92,13 @@ using accumulator_options_deserializer_base =
 
 struct accumulator_options_validator {
   std::optional<deserialize_error> operator()(AccumulatorOptions const& opts) {
-    if (isValidAccumulatorOptions(opts)) {
-      return {};
+    if (!isValidAccumulatorOptions(opts)) {
+      return deserialize_error{"bad combination of accumulator and value type"};
     }
-    return deserialize_error{"bad combination of accumulator and value type"};
+    if (opts.type == AccumulatorType::CUSTOM && !opts.customType) {
+      return deserialize_error{"missing customType for custom accumulator"};
+    }
+    return {};
   }
 };
 
