@@ -264,13 +264,33 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
     // be the leader and now somebody else is the leader. However, it does
     // not handle the case of a controlled leadership resignation, see below
     // in handleLocalShard for this.
+    if (shouldResign && !leading) {
+      // This case is a special one which is triggered if a server
+      // restarts, has `NOT_YET_TOUCHED` in its local shard as theLeader
+      // and finds a resignation sign. In that case, it should first officially
+      // take over leadership. In the following round it will then resign.
+      // This enables cleanOutServer jobs to continue to work in case of
+      // a leader restart.
+      shouldBeLeading = true;
+      shouldResign = false;
+    }
     if ((leading != shouldBeLeading && !shouldResign) || !leaderTouched) {
+      std::string newLeader = std::invoke([&]() {
+        if (shouldBeLeading) {
+          return std::string();
+        }
+        TRI_ASSERT(!leaderId.empty());
+        if (leaderId.front() == UNDERSCORE[0]) {
+          return leaderId.substr(1);
+        }
+        return leaderId;
+      });
       LOG_TOPIC("52412", DEBUG, Logger::MAINTENANCE)
           << "Triggering TakeoverShardLeadership job for shard " << dbname
           << "/" << colname << "/" << shname
           << ", local leader: " << lcol.get(THE_LEADER).copyString()
           << ", leader id: " << leaderId << ", my id: " << serverId
-          << ", should be leader: " << (shouldBeLeading ? std::string() : leaderId)
+          << ", should be leader: " << newLeader
           << ", leaderTouched = " << (leaderTouched ? "yes" : "no");
       actions.emplace_back(std::make_shared<ActionDescription>(
           std::map<std::string, std::string>{
@@ -278,7 +298,7 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
               {DATABASE, dbname},
               {COLLECTION, colname},
               {SHARD, shname},
-              {THE_LEADER, shouldBeLeading ? std::string() : leaderId},
+              {THE_LEADER, std::move(newLeader)},
               {LOCAL_LEADER, std::string(localLeader)},
               {OLD_CURRENT_COUNTER, "0"},   // legacy, no longer used
               {PLAN_RAFT_INDEX, std::to_string(planIndex)}},
@@ -340,8 +360,7 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
     plannedLeader = shardMap.get(colname)[0].copyString();
   }
   bool const localLeader = cprops.get(THE_LEADER).stringRef().empty();
-  bool const localRestartedLeader = cprops.get(THE_LEADER).stringRef().equals(LEADER_NOT_YET_KNOWN);
-  if ((localLeader || localRestartedLeader) && plannedLeader == UNDERSCORE + serverId) {
+  if (localLeader && plannedLeader == UNDERSCORE + serverId) {
     actions.emplace_back(std::make_shared<ActionDescription>(
           std::map<std::string, std::string>{{NAME, RESIGN_SHARD_LEADERSHIP}, {DATABASE, dbname}, {SHARD, colname}},
           RESIGN_PRIORITY));
