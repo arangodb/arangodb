@@ -599,6 +599,7 @@ function MovingShardsSuite ({useData}) {
       }
       c = [];
       resetCleanedOutServers();
+      require("internal").wait(2);  // wait until all coordinators have got it
     },
 
 ////////////////////////////////////////////////////////////////////////////////
