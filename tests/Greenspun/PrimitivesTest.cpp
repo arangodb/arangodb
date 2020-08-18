@@ -1228,6 +1228,49 @@ TEST_CASE("Test [dict-merge] primitive", "[dict-merge]") {
   }
 }
 
+TEST_CASE("Test [attrib-set] primitive", "[attrib-set]") {
+  Machine m;
+  InitMachine(m);
+  VPackBuilder result;
+
+  SECTION("Set string value with key") {
+    // ["attrib-set", dict, key, value]
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["attrib-set",
+        ["dict", ["quote", "hello", "world"]],
+        "hello", "newWorld"
+      ]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().isObject());
+    REQUIRE(result.slice().get("hello").isString());
+    REQUIRE(result.slice().get("hello").toString() == "newWorld");
+  }
+
+  SECTION("Set string value with path (array)") {
+    // ["attrib-set", dict, [path...], value]
+    auto program = arangodb::velocypack::Parser::fromJson(R"aql(
+      ["attrib-set",
+        {"first": {"second": "oldWorld"}},
+        ["quote", "first", "second"], "newWorld"
+      ]
+    )aql");
+
+    auto res = Evaluate(m, program->slice(), result);
+    if (res.fail()) {
+      FAIL(res.error().toString());
+    }
+    REQUIRE(result.slice().isObject());
+    REQUIRE(result.slice().get("first").isObject());
+    REQUIRE(result.slice().get("first").get("second").isString());
+    REQUIRE(result.slice().get("first").get("second").toString() == "newWorld");
+  }
+}
+
 // TODO: this is not a language primitive but part of `VertexComputation`
 TEST_CASE("Test [accum-ref] primitive", "[accumref]") {}
 TEST_CASE("Test [this] primitive", "[this]") {}
