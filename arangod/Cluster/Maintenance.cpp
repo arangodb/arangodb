@@ -350,7 +350,8 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
     plannedLeader = shardMap.get(colname)[0].copyString();
   }
   bool const localLeader = cprops.get(THE_LEADER).stringRef().empty();
-  if (localLeader && plannedLeader == UNDERSCORE + serverId) {
+  bool const localRestartedLeader = cprops.get(THE_LEADER).stringRef().equals(LEADER_NOT_YET_KNOWN);
+  if ((localLeader || localRestartedLeader) && plannedLeader == UNDERSCORE + serverId) {
     actions.emplace_back(std::make_shared<ActionDescription>(
           std::map<std::string, std::string>{{NAME, RESIGN_SHARD_LEADERSHIP}, {DATABASE, dbname}, {SHARD, colname}},
           RESIGN_PRIORITY));
