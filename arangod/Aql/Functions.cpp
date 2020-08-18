@@ -1794,13 +1794,13 @@ AqlValue Functions::LevenshteinMatch(ExpressionContext* ctx, transaction::Method
   }
 
   if (maxDistanceValue < 0 ||
-      (withTranspositionsValue &&
-       maxDistanceValue > arangodb::iresearch::MAX_DAMERAU_LEVENSHTEIN_DISTANCE)) {
+      (!withTranspositionsValue &&
+       maxDistanceValue > arangodb::iresearch::MAX_LEVENSHTEIN_DISTANCE)) {
     registerInvalidArgumentWarning(ctx, AFN);
     return AqlValue{AqlValueHintNull{}};
   }
 
-  if (!withTranspositionsValue && maxDistanceValue > arangodb::iresearch::MAX_LEVENSHTEIN_DISTANCE) {
+  if (withTranspositionsValue && maxDistanceValue > arangodb::iresearch::MAX_DAMERAU_LEVENSHTEIN_DISTANCE) {
     // fallback to LEVENSHTEIN_DISTANCE
     auto const dist = Functions::LevenshteinDistance(ctx, trx, args);
     TRI_ASSERT(dist.isNumber());
