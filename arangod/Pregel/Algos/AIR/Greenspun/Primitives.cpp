@@ -333,14 +333,7 @@ EvalResult Prim_List(Machine& ctx, VPackSlice const params, VPackBuilder& result
   return {};
 }
 
-EvalResult Prim_ArrayRef(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
-  if (!params.isArray() && params.length() != 2) {
-    return EvalError("expected exactly two parameters");
-  }
-
-  auto&& arr = params.at(0);
-  auto&& index = params.at(1);
-
+EvalResult checkArrayParams(VPackSlice const& arr, VPackSlice const& index) {
   if (!arr.isArray()) {
     return EvalError("expect first parameter to be an array");
   }
@@ -353,7 +346,53 @@ EvalResult Prim_ArrayRef(Machine& ctx, VPackSlice const params, VPackBuilder& re
     return EvalError("array index is out of bounds");
   }
 
+  return {};
+}
+
+EvalResult Prim_ArrayRef(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  if (!params.isArray() && params.length() != 2) {
+    return EvalError("expected exactly two parameters");
+  }
+
+  auto&& arr = params.at(0);
+  auto&& index = params.at(1);
+
+  auto check = checkArrayParams(arr, index);
+  if (check.fail()) {
+    return check;
+  }
+
   result.add(arr.at(index.getUInt()));
+
+  return {};
+}
+
+EvalResult Prim_ArraySet(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+  if (!params.isArray() && params.length() != 3) {
+    return EvalError("expected exactly two parameters");
+  }
+
+  auto&& arr = params.at(0);
+  auto&& index = params.at(1);
+  auto&& value = params.at(2);
+
+  auto check = checkArrayParams(arr, index);
+  if (check.fail()) {
+    return check;
+  }
+
+  uint64_t pos = 0;
+  result.openArray();
+  for (auto&& element : VPackArrayIterator(arr)) {
+    if (pos == index.getUInt()) {
+      result.add(value);
+    } else {
+      result.add(element);
+    }
+
+    pos++;
+  }
+  result.close();
 
   return {};
 }
@@ -556,6 +595,7 @@ void RegisterAllPrimitives(Machine& ctx) {
   ctx.setFunction("attrib-ref", Prim_AttribRef);
   ctx.setFunction("attrib-set", Prim_AttribSet);
   ctx.setFunction("array-ref", Prim_ArrayRef);
+  ctx.setFunction("array-set", Prim_ArraySet);
 
   ctx.setFunction("dict-merge", Prim_MergeDict);
 
