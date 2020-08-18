@@ -82,9 +82,13 @@ RestStatus RestCursorHandler::execute() {
 }
 
 RestStatus RestCursorHandler::continueExecute() {
+  if (wasCanceled()) {
+    generateError(rest::ResponseCode::GONE, TRI_ERROR_QUERY_KILLED);
+    return RestStatus::DONE;
+  }
+  
   // extract the sub-request type
   rest::RequestType const type = _request->requestType();
-
   if (_query != nullptr) {  // non-stream query
     if (type == rest::RequestType::POST || type == rest::RequestType::PUT) {
       return processQuery();
@@ -273,7 +277,6 @@ RestStatus RestCursorHandler::processQuery() {
         TRI_ERROR_INTERNAL,
         "Illegal state in RestQueryHandler, query not found.");
   }
-
   {
     // always clean up
     auto guard = scopeGuard([this]() { unregisterQuery(); });
@@ -441,14 +444,17 @@ void RestCursorHandler::unregisterQuery() {
 void RestCursorHandler::cancelQuery() {
   MUTEX_LOCKER(mutexLocker, _queryLock);
 
-  if (_query != nullptr) {
+  if (_cursor) {
+    _cursor->setDeleted();
+  } else if (_query != nullptr) {
     // cursor is canceled. now remove the continue handler we may have
     // registered in the query
-     _query->sharedState()->resetWakeupHandler();
+    _query->sharedState()->resetWakeupHandler();
     _query->kill();
     _queryKilled = true;
     _hasStarted = true;
-  } else if (!_hasStarted) {
+  }
+  if (!_hasStarted) {
     _queryKilled = true;
   }
 }
