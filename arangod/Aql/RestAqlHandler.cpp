@@ -397,8 +397,11 @@ bool RestAqlHandler::registerTraverserEngines(VPackSlice const traverserEngines,
 
 // DELETE method for /_api/aql/kill/<queryId>, (internal)
 bool RestAqlHandler::killQuery(std::string const& idString) {
-  _qId = arangodb::basics::StringUtils::uint64(idString);
-  return _queryRegistry->kill(&_vocbase, _qId);
+  auto qid = arangodb::basics::StringUtils::uint64(idString);
+  if (qid != 0) {
+    return _queryRegistry->kill(&_vocbase, qid);
+  }
+  return false;
 }
 
 // PUT method for /_api/aql/<operation>/<queryId>, (internal)
