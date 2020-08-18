@@ -108,7 +108,8 @@ TEST_F(IResearchQuerySelectAllTest, test) {
     EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
   }
 
-  std::vector<arangodb::ManagedDocumentResult> insertedDocs(2 * 42);
+  // need more than 100 docs for constrained heap optimization to be applied
+  std::vector<arangodb::ManagedDocumentResult> insertedDocs(101);
 
   // populate view with the data
   {
