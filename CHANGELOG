@@ -3,8 +3,8 @@ v3.7.2 (XXXX-XX-XX)
 
 * Fixed BTS-167: Lingering Queries - Canceled from the UI.
   This fixes queries not vanishing from the list of running queries in the web
-  UI in case the query was canceled using the "Cancel" button in web UI's
-  query editor.
+  UI in case the query was canceled using the "Cancel" button in web UI's query
+  editor.
 
 * Fixed a blockage on hotbackup when writes are happening concurrently, since
   followers could no longer replicate leader transactions.
