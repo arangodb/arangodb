@@ -794,9 +794,7 @@ TEST_CASE("Test [int-to-str] primitive", "[int-to-str]") {
  * Access operators
  */
 
-TEST_CASE("Test [attrib-ref] primitive", "[attrib-ref]") {
-  REQUIRE(false);
-}
+TEST_CASE("Test [attrib-ref] primitive", "[attrib-ref]") { REQUIRE(false); }
 
 TEST_CASE("Test [var-ref] primitive", "[var-ref]") {
   Machine m;
@@ -816,18 +814,11 @@ TEST_CASE("Test [var-ref] primitive", "[var-ref]") {
   }
 }
 
-TEST_CASE("Test [var-set!] primitive", "[var-set!]") {
-  REQUIRE(false);
-}
+TEST_CASE("Test [var-set!] primitive", "[var-set!]") { REQUIRE(false); }
 
-TEST_CASE("Test [bind-ref] primitive", "[bind-ref]") {
-  REQUIRE(false);
-}
+TEST_CASE("Test [bind-ref] primitive", "[bind-ref]") { REQUIRE(false); }
 
-TEST_CASE("Test [for-each] primitive", "[for-each]") {
-  REQUIRE(false);
-}
-
+TEST_CASE("Test [for-each] primitive", "[for-each]") { REQUIRE(false); }
 
 TEST_CASE("Test [lambda] primitive", "[lambda]") {
   Machine m;
@@ -940,7 +931,6 @@ TEST_CASE("Test [lambda] primitive", "[lambda]") {
     auto res = Evaluate(m, program->slice(), result);
     REQUIRE(res.fail());
   }
-
 
   SECTION("lambda call evaluates parameter") {
     auto v = arangodb::velocypack::Parser::fromJson(R"aql(8)aql");
@@ -1163,14 +1153,14 @@ TEST_CASE("Test [str] primitive", "[str]") {
   // TODO error testing
 }
 
-TEST_CASE("Test [merge] primitive", "[merge]") {
+TEST_CASE("Test [dict-merge] primitive", "[dict-merge]") {
   Machine m;
   InitMachine(m);
   VPackBuilder result;
 
   SECTION("Merge with empty (left) object") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["merge", {}, {"hello": "world"}]
+      ["dict-merge", ["dict"], ["dict", ["quote", "hello", "world"]] ]
     )aql");
 
     Evaluate(m, program->slice(), result);
@@ -1181,7 +1171,7 @@ TEST_CASE("Test [merge] primitive", "[merge]") {
 
   SECTION("Merge with empty (right) object") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["merge", {"hello": "world"}, {}]
+      ["dict-merge", ["dict", ["quote", "hello", "world"]], ["dict"]]
     )aql");
 
     Evaluate(m, program->slice(), result);
@@ -1192,7 +1182,7 @@ TEST_CASE("Test [merge] primitive", "[merge]") {
 
   SECTION("Merge with overwrite") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["merge", {"hello": "world"}, {"hello": "newWorld"}]
+      ["dict-merge", ["dict", ["quote", "hello", "world"]], ["dict", ["quote", "hello", "newWorld"]]]
     )aql");
 
     Evaluate(m, program->slice(), result);
@@ -1203,7 +1193,7 @@ TEST_CASE("Test [merge] primitive", "[merge]") {
 
   SECTION("Merge with invalid type string") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["merge", {"hello": "world"}, "peter"]
+      ["dict-merge", ["dict", ["quote", "hello", "world"]], "peter"]
     )aql");
 
     auto res = Evaluate(m, program->slice(), result);
@@ -1212,7 +1202,7 @@ TEST_CASE("Test [merge] primitive", "[merge]") {
 
   SECTION("Merge with invalid type double") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["merge", {"hello": "world"}, "2.0"]
+      ["dict-merge", ["dict", ["quote", "hello", "world"]], "2.0"]
     )aql");
 
     auto res = Evaluate(m, program->slice(), result);
@@ -1221,7 +1211,7 @@ TEST_CASE("Test [merge] primitive", "[merge]") {
 
   SECTION("Merge with invalid type bool") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["merge", {"hello": "world"}, true]
+      ["dict-merge", ["dict", ["quote", "hello", "world"]], true]
     )aql");
 
     auto res = Evaluate(m, program->slice(), result);
@@ -1230,7 +1220,7 @@ TEST_CASE("Test [merge] primitive", "[merge]") {
 
   SECTION("Merge with invalid type array") {
     auto program = arangodb::velocypack::Parser::fromJson(R"aql(
-      ["merge", {"hello": "world"}, [1,2,3]]
+      ["dict-merge", ["dict", ["quote", "hello", "world"]], [1,2,3]]
     )aql");
 
     auto res = Evaluate(m, program->slice(), result);
@@ -1242,6 +1232,6 @@ TEST_CASE("Test [merge] primitive", "[merge]") {
 TEST_CASE("Test [accum-ref] primitive", "[accumref]") {}
 TEST_CASE("Test [this] primitive", "[this]") {}
 TEST_CASE("Test [send-to-accum] primitive", "[send-to-accum]") {}
-TEST_CASE("Test [send-to-all-neighbours] primitive", "[send-to-all-neighbours]") {}
+TEST_CASE("Test [send-to-all-neighbours] primitive",
+          "[send-to-all-neighbours]") {}
 TEST_CASE("Test [global-superstep] primitive", "[global-superstep]") {}
-
