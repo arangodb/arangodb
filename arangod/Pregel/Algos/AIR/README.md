@@ -59,6 +59,9 @@ arangosh> var pexec = pp.execute("WikiVoteGraph",
  * attrib-set -- `["attrib-set", dict, key, value]` - set dict at key to value 
  * attrib-set -- `["attrib-set", dict, [path...], value]` - set dict at path to value
  
+ * array-ref -- `["array-ref", arr, index]` - get value at specified index
+ * array-set -- `["array-set", arr, index, value]` - set value at specified index
+ 
  * dict-merge -- `["merge", dict, dict]` returns the merge of two dicts 
 
  * print -- `["print", expr ...]` print `expr` for each `expr`. 
