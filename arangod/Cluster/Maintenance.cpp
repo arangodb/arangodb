@@ -264,16 +264,6 @@ void handlePlanShard(uint64_t planIndex, VPackSlice const& cprops, VPackSlice co
     // be the leader and now somebody else is the leader. However, it does
     // not handle the case of a controlled leadership resignation, see below
     // in handleLocalShard for this.
-    if (shouldResign && !leading) {
-      // This case is a special one which is triggered if a server
-      // restarts, has `NOT_YET_TOUCHED` in its local shard as theLeader
-      // and finds a resignation sign. In that case, it should first officially
-      // take over leadership. In the following round it will then resign.
-      // This enables cleanOutServer jobs to continue to work in case of
-      // a leader restart.
-      shouldBeLeading = true;
-      shouldResign = false;
-    }
     if ((leading != shouldBeLeading && !shouldResign) || !leaderTouched) {
       LOG_TOPIC("52412", DEBUG, Logger::MAINTENANCE)
           << "Triggering TakeoverShardLeadership job for shard " << dbname
