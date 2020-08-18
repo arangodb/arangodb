@@ -1313,7 +1313,7 @@ aql::CostEstimate IResearchViewNode::estimateCost() const {
     auto const* collection = collections.get(id);
 
     if (collection) {
-      // FIXME better to have batch count for multiple collections
+      // FIXME better to gather count for multiple collections at once
       estimatedNrItems += collection->count(&trx, transaction::CountType::TryCache);
     } else {
       LOG_TOPIC("ee276", WARN, arangodb::iresearch::TOPIC)
