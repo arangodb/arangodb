@@ -136,7 +136,11 @@ TEST(LevenshteinMatchFunctionTest, test) {
   assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{3}), &Damerau);
   assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{4}), &Levenshtein);
   assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{4}));
-  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{5}), &Levenshtein);
+  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{4}), &Damerau);
+  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{5}));
+  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{5}), &Damerau);
+  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{6}));
+  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{6}), &Damerau);
   assertLevenshteinMatch(true, AqlValue(AqlValueHintNull{}), AqlValue("aa"), AqlValue(AqlValueHintInt{2}), &Levenshtein);
   assertLevenshteinMatch(false, AqlValue(AqlValueHintEmptyArray{}), AqlValue("aa"), AqlValue(AqlValueHintInt{1}), &Levenshtein);
   assertLevenshteinMatch(true, AqlValue(AqlValueHintEmptyObject{}), AqlValue("aa"), AqlValue(AqlValueHintInt{2}), &Levenshtein);
@@ -162,6 +166,6 @@ TEST(LevenshteinMatchFunctionTest, test) {
   assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{-1}));
   assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{-1}), &Damerau);
   assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{-1}), &Levenshtein);
-  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{4}), &Damerau);
-  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{5}), &Damerau);
+  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{5}), &Levenshtein);
+  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{6}), &Levenshtein);
 }
