@@ -58,8 +58,6 @@ arangosh> var pexec = pp.execute("WikiVoteGraph",
  * attrib-ref -- `["attrib-ref", doc, key]`, `["attrib-ref", doc, [p ...]]`, in the first variant, extract attribute `key` from `doc`, in the second variant extract attribute with path `p/...` from doc
  * attrib-set -- `["attrib-set", dict, key, value]` - set dict at key to value 
  * attrib-set -- `["attrib-set", dict, [path...], value]` - set dict at path to value
- * attrib-set-var! -- `["attrib-set-var!", varname, key, value]` - set variable at varname at key to value
- * attrib-set-var! -- `["attrib-set-var!", varname, [path...], value]` - set variable at varname at path to value
  
  * dict-merge -- `["merge", dict, dict]` returns the merge of two dicts 
 
