@@ -449,6 +449,11 @@ class IRESEARCH_API index_writer
     column_info_provider_t column_info;
 
     ////////////////////////////////////////////////////////////////////////////
+    /// @brief Provides payload for index_meta created by writer
+    ////////////////////////////////////////////////////////////////////////////
+    payload_provider_t meta_payload_provider;
+
+    ////////////////////////////////////////////////////////////////////////////
     /// @brief comparator defines physical order of documents in each segment
     ///        produced by an index_writer.
     ///        empty == use default system sorting order
@@ -472,11 +477,6 @@ class IRESEARCH_API index_writer
     ///        corruption from multiple index_writers
     ////////////////////////////////////////////////////////////////////////////
     bool lock_repository{true};
-
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief Provides payload for index_meta created by writer
-    ////////////////////////////////////////////////////////////////////////////
-    payload_provider_t meta_payload_provider;
 
     init_options() {} // GCC5 requires non-default definition
   };
